@@ -94,6 +94,7 @@ jobs:
       - name: Document and OCR metadata smoke test
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          ALLOW_DEV_AUTH_HEADERS: 'true'
         run: node apps/api/dist/testing/document-smoke.js
 
       - name: pg-boss OCR worker smoke test
