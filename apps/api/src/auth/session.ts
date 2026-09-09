@@ -20,7 +20,7 @@ export async function issueSession(db: DatabaseClient, userId: string, userAgent
   const session = await db.insertInto('user_sessions').values({
     user_id: userId,
     token_hash: tokenHash,
-    expires_at: expiresAt.toISOString(),
+    expires_at: expiresAt,
     revoked_at: null,
     user_agent: userAgent,
   }).returning(['id', 'expires_at']).executeTakeFirstOrThrow();
@@ -31,7 +31,7 @@ export async function issueSession(db: DatabaseClient, userId: string, userAgent
 export async function revokeSession(db: DatabaseClient, token: string) {
   const tokenHash = hashSessionToken(token);
   await db.updateTable('user_sessions')
-    .set({ revoked_at: new Date().toISOString() })
+    .set({ revoked_at: new Date() })
     .where('token_hash', '=', tokenHash)
     .where('revoked_at', 'is', null)
     .execute();
