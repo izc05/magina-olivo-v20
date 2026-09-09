@@ -1,7 +1,9 @@
+import type { CSSProperties } from 'react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import './premium.css';
 import './pwa.css';
+import './assets.css';
 
 export const metadata: Metadata = {
   title: 'Mágina Olivo V20',
@@ -23,9 +25,17 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+  const assetStyles = {
+    '--asset-hero-huelma': `url("${basePath}/assets/hero-huelma-concept.svg")`,
+    '--asset-farm-las-cenillas': `url("${basePath}/assets/farm-las-cenillas-concept.svg")`,
+    '--asset-delivery-ticket': `url("${basePath}/assets/delivery-ticket-concept.svg")`,
+    '--asset-olive-sprig': `url("${basePath}/assets/olive-sprig.svg")`,
+  } as CSSProperties;
+
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body style={assetStyles}>{children}</body>
     </html>
   );
 }
