@@ -41,7 +41,7 @@ export async function hydrateRequestAuthentication(request: FastifyRequest, db: 
   const token = request.cookies?.[SESSION_COOKIE_NAME];
   if (!token) return;
 
-  const now = new Date().toISOString();
+  const now = new Date();
   const session = await db.selectFrom('user_sessions as s')
     .innerJoin('users as u', 'u.id', 's.user_id')
     .select(['s.id as session_id', 's.user_id', 'u.status as user_status'])
