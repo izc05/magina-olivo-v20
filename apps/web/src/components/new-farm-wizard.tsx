@@ -2,14 +2,20 @@
 
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
+import { saveLocalField } from '@/lib/local-prototype-store';
 import { ArrowIcon, MapPinIcon, SproutIcon } from '@/components/icons';
 
 type LocateMode = 'mapa' | 'catastro' | 'sigpac' | 'dibujar' | null;
+
+type WaterRegime = 'Secano' | 'Regadío' | 'Mixto';
 
 export function NewFarmWizard() {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [trees, setTrees] = useState('');
+  const [municipality, setMunicipality] = useState('Huelma');
+  const [variety, setVariety] = useState('Picual');
+  const [waterRegime, setWaterRegime] = useState<WaterRegime>('Secano');
   const [mode, setMode] = useState<LocateMode>(null);
   const [linked, setLinked] = useState(false);
 
@@ -19,17 +25,34 @@ export function NewFarmWizard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  function finish() {
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `field-${Date.now()}`;
+    saveLocalField({
+      id,
+      name: name.trim() || 'Nueva finca',
+      municipality: municipality.trim() || undefined,
+      oliveTrees: trees ? Number(trees) : undefined,
+      variety,
+      waterRegime,
+      createdAt: new Date().toISOString(),
+    });
+    setStep(3);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   if (step === 3) {
     return (
       <section className="card new-farm-success">
         <div className="success-mark"><SproutIcon /></div>
-        <span className="eyebrow dark">FINCA CREADA · DEMO</span>
+        <span className="eyebrow dark">GUARDADA EN ESTE DISPOSITIVO</span>
         <h1>{name || 'Nueva finca'}</h1>
-        <p>{trees || '—'} olivas · La finca ya puede empezar a guardar historia aunque todavía no tenga Catastro o SIGPAC vinculado.</p>
+        <p>{trees || '—'} olivas · La finca ya aparece en Mi Campo aunque todavía no tenga Catastro o SIGPAC vinculado.</p>
         <div className="success-effects">
-          <span>✓ Ficha viva creada</span>
+          <span>✓ Finca guardada localmente</span>
           <span>✓ Lista para registrar trabajos</span>
-          <span>{linked ? '✓ Terreno oficial vinculado' : '○ Terreno oficial pendiente, opcional'}</span>
+          <span>{linked ? '✓ Localización de demo asociada' : '○ Terreno oficial pendiente, opcional'}</span>
         </div>
         <div className="record-actions">
           <Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link>
@@ -44,7 +67,7 @@ export function NewFarmWizard() {
       <div className="new-farm-location-flow">
         <section className="card new-farm-summary">
           <span className="new-farm-tree"><SproutIcon /></span>
-          <div><small>NUEVA FINCA</small><strong>{name}</strong><span>{trees} olivas</span></div>
+          <div><small>NUEVA FINCA</small><strong>{name}</strong><span>{trees} olivas · {municipality}</span></div>
           <button onClick={() => setStep(1)}>Editar</button>
         </section>
 
@@ -77,8 +100,8 @@ export function NewFarmWizard() {
         )}
 
         <div className="new-farm-actions">
-          <button className="secondary-action" type="button" onClick={() => setStep(3)}>Ahora no</button>
-          <button className="primary" type="button" onClick={() => setStep(3)} disabled={!mode}>Guardar finca →</button>
+          <button className="secondary-action" type="button" onClick={finish}>Ahora no</button>
+          <button className="primary" type="button" onClick={finish} disabled={!mode}>Guardar finca →</button>
         </div>
       </div>
     );
@@ -94,15 +117,15 @@ export function NewFarmWizard() {
         <div className="record-fields">
           <label className="record-field wide"><span>Nombre de la finca *</span><input className="record-control" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Ej. Las Cenillas" /></label>
           <label className="record-field"><span>Nº de olivas *</span><input className="record-control" value={trees} onChange={(e) => setTrees(e.target.value)} required inputMode="numeric" type="number" min="1" placeholder="23" /></label>
-          <label className="record-field"><span>Municipio</span><input className="record-control" defaultValue="Huelma" /></label>
+          <label className="record-field"><span>Municipio</span><input className="record-control" value={municipality} onChange={(e) => setMunicipality(e.target.value)} /></label>
         </div>
       </section>
 
       <details className="card record-details">
         <summary>Datos opcionales <span>Más adelante</span></summary>
         <div className="record-fields detail-fields">
-          <label className="record-field"><span>Variedad</span><select className="record-control" defaultValue="Picual"><option>Picual</option><option>Hojiblanca</option><option>Arbequina</option><option>Otra</option></select></label>
-          <label className="record-field"><span>Régimen</span><select className="record-control" defaultValue="Secano"><option>Secano</option><option>Regadío</option><option>Mixto</option></select></label>
+          <label className="record-field"><span>Variedad</span><select className="record-control" value={variety} onChange={(e) => setVariety(e.target.value)}><option>Picual</option><option>Hojiblanca</option><option>Arbequina</option><option>Otra</option></select></label>
+          <label className="record-field"><span>Régimen</span><select className="record-control" value={waterRegime} onChange={(e) => setWaterRegime(e.target.value as WaterRegime)}><option>Secano</option><option>Regadío</option><option>Mixto</option></select></label>
           <label className="record-field wide"><span>Notas</span><textarea className="record-control" rows={3} placeholder="Cómo llegar, nombre antiguo, referencias familiares…" /></label>
         </div>
       </details>
