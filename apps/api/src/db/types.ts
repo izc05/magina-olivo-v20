@@ -131,6 +131,8 @@ export interface AttachmentLinkTable {
 
 export interface OcrRunTable {
   id: string;
+  workspace_id: string;
+  client_operation_id: string;
   document_version_id: string;
   provider: string;
   provider_version: string | null;
