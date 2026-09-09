@@ -17,6 +17,22 @@ export type WorkspaceMembership = {
   role: 'owner' | 'admin' | 'manager' | 'member' | 'worker' | 'viewer';
 };
 
+export type UserProfile = {
+  municipality: string | null;
+  bio: string | null;
+  public_role: 'agricultor' | 'propietario' | 'trabajador' | 'profesional_agricola' | 'tecnico' | 'empresa' | 'otro' | null;
+  visibility: 'private' | 'public';
+};
+
+export type UserPreferences = {
+  theme: 'system' | 'light' | 'dark';
+  unit_system: 'metric';
+  preferred_municipality: string | null;
+  locale: string;
+  community_notifications: boolean;
+  weather_alerts: boolean;
+};
+
 type SessionPayload = {
   user: AuthUser;
   workspaces: WorkspaceMembership[];
@@ -28,11 +44,19 @@ type LoginPayload = SessionPayload & {
   session_expires_at: string;
 };
 
+type MePayload = {
+  user: AuthUser & { provider_display_name: string };
+  profile: UserProfile;
+  preferences: UserPreferences;
+};
+
 type AuthStatus = 'loading' | 'anonymous' | 'authenticated';
 
 type AuthContextValue = {
   status: AuthStatus;
   user: AuthUser | null;
+  profile: UserProfile | null;
+  preferences: UserPreferences | null;
   workspaces: WorkspaceMembership[];
   selectedWorkspaceId: string | null;
   apiConfigured: boolean;
@@ -40,6 +64,7 @@ type AuthContextValue = {
   signInWithGoogleCredential: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  refreshMe: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -53,6 +78,8 @@ function chooseWorkspace(workspaces: WorkspaceMembership[], preferred?: string |
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceMembership[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
 
@@ -68,10 +95,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const becomeAnonymous = useCallback(() => {
     setUser(null);
+    setProfile(null);
+    setPreferences(null);
     setWorkspaces([]);
     setSelectedWorkspaceId(null);
     setStatus('anonymous');
   }, []);
+
+  const refreshMe = useCallback(async () => {
+    if (!apiBaseUrl) return;
+    try {
+      const me = await apiFetch<MePayload>('/api/v1/me');
+      setUser({
+        id: me.user.id,
+        display_name: me.user.display_name,
+        primary_email: me.user.primary_email,
+        avatar_url: me.user.avatar_url,
+      });
+      setProfile(me.profile);
+      setPreferences(me.preferences);
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        becomeAnonymous();
+        return;
+      }
+      console.error('Unable to hydrate Mágina profile', error);
+    }
+  }, [becomeAnonymous]);
 
   const refreshSession = useCallback(async () => {
     if (!apiBaseUrl) {
@@ -82,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const session = await apiFetch<SessionPayload>('/api/v1/auth/session');
       applySession(session);
+      await refreshMe();
     } catch (error) {
       if (error instanceof ApiUnavailableError || (error instanceof ApiRequestError && error.status === 401)) {
         becomeAnonymous();
@@ -90,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Unable to refresh Mágina session', error);
       becomeAnonymous();
     }
-  }, [applySession, becomeAnonymous]);
+  }, [applySession, becomeAnonymous, refreshMe]);
 
   useEffect(() => {
     void refreshSession();
@@ -108,7 +159,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ credential }),
     });
     applySession(payload, payload.selected_workspace_id);
-  }, [applySession]);
+    await refreshMe();
+  }, [applySession, refreshMe]);
 
   const logout = useCallback(async () => {
     if (apiBaseUrl) {
@@ -125,6 +177,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(() => ({
     status,
     user,
+    profile,
+    preferences,
     workspaces,
     selectedWorkspaceId,
     apiConfigured: Boolean(apiBaseUrl),
@@ -132,7 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogleCredential,
     logout,
     refreshSession,
-  }), [logout, refreshSession, selectWorkspace, selectedWorkspaceId, signInWithGoogleCredential, status, user, workspaces]);
+    refreshMe,
+  }), [logout, preferences, profile, refreshMe, refreshSession, selectWorkspace, selectedWorkspaceId, signInWithGoogleCredential, status, user, workspaces]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
