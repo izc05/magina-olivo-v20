@@ -1,14 +1,15 @@
 import type { ColumnType, Generated } from 'kysely';
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
+export type GeneratedTimestamp = ColumnType<Date, Date | string | undefined, Date | string>;
 export type DateColumn = ColumnType<Date, Date | string, Date | string>;
 
 export interface WorkspaceTable {
   id: Generated<string>;
   name: string;
   type: 'family' | 'professional' | 'organization';
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
 }
 
 export interface UserTable {
@@ -17,8 +18,8 @@ export interface UserTable {
   display_name: string;
   avatar_url: string | null;
   status: 'active' | 'suspended' | 'deleted';
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
   last_login_at: Timestamp | null;
 }
 
@@ -30,9 +31,9 @@ export interface AuthIdentityTable {
   email: string | null;
   email_verified: boolean;
   provider_data: unknown;
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
-  last_seen_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
+  last_seen_at: GeneratedTimestamp;
 }
 
 export interface WorkspaceMembershipTable {
@@ -42,8 +43,8 @@ export interface WorkspaceMembershipTable {
   role: 'owner' | 'admin' | 'manager' | 'member' | 'worker' | 'viewer';
   status: 'invited' | 'active' | 'suspended' | 'revoked';
   invited_by: string | null;
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
 }
 
 export interface UserSessionTable {
@@ -51,8 +52,8 @@ export interface UserSessionTable {
   user_id: string;
   token_hash: string;
   expires_at: Timestamp;
-  created_at: Generated<Timestamp>;
-  last_seen_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  last_seen_at: GeneratedTimestamp;
   revoked_at: Timestamp | null;
   user_agent: string | null;
 }
@@ -73,8 +74,8 @@ export interface FieldTable {
   planting_year: number | null;
   tenure_type: string | null;
   status: 'active' | 'archived';
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
 }
 
 export interface CampaignTable {
@@ -84,7 +85,7 @@ export interface CampaignTable {
   start_date: DateColumn;
   end_date: ColumnType<Date | null, Date | string | null, Date | string | null>;
   status: 'planned' | 'active' | 'closed';
-  created_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
 }
 
 interface DomainRecordBase {
@@ -94,8 +95,8 @@ interface DomainRecordBase {
   campaign_id: string | null;
   client_operation_id: string;
   created_by: string;
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
 }
 
 export interface IrrigationRecordTable extends DomainRecordBase { occurred_at: Timestamp; duration_hours: number | null; water_m3: number | null; cost_eur: number | null; notes: string | null; }
@@ -115,8 +116,8 @@ export interface HarvestDeliveryTable {
   source: 'manual' | 'ocr' | 'import';
   client_operation_id: string;
   created_by: string;
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
 }
 export interface HarvestDeliveryFieldTable { delivery_id: string; field_id: string; kg: number; }
 export interface DeliveryResultTable {
@@ -131,7 +132,7 @@ export interface DeliveryResultTable {
   supersedes_id: string | null;
   client_operation_id: string;
   created_by: string;
-  created_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
 }
 
 export interface DocumentTable {
@@ -142,7 +143,7 @@ export interface DocumentTable {
   title: string;
   status: 'active' | 'archived';
   created_by: string;
-  created_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
   archived_at: Timestamp | null;
 }
 
@@ -161,7 +162,7 @@ export interface DocumentVersionTable {
   storage_etag: string | null;
   storage_checksum_sha256: string | null;
   created_by: string;
-  created_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
 }
 
 export interface AttachmentLinkTable {
@@ -172,7 +173,7 @@ export interface AttachmentLinkTable {
   domain_type: string | null;
   domain_record_id: string | null;
   relation: string;
-  created_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
 }
 
 export interface OcrRunTable {
@@ -187,7 +188,7 @@ export interface OcrRunTable {
   confidence: number | null;
   error_code: string | null;
   error_message: string | null;
-  created_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
   started_at: Timestamp | null;
   completed_at: Timestamp | null;
 }
@@ -200,7 +201,7 @@ export interface ExtractionRunTable {
   status: 'queued' | 'processing' | 'succeeded' | 'failed' | 'needs_review';
   data_json: unknown;
   confidence_json: unknown;
-  created_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
   completed_at: Timestamp | null;
 }
 
@@ -211,7 +212,7 @@ export interface ExtractionReviewTable {
   confirmed_fields: unknown;
   corrections: unknown;
   reviewed_by: string;
-  created_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
 }
 
 export interface CostLedgerProjectionTable {
@@ -224,7 +225,7 @@ export interface CostLedgerProjectionTable {
   domain_record_id: string;
   category: string;
   amount_eur: number;
-  created_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
 }
 
 export interface FarmTimelineProjectionTable {
@@ -237,7 +238,7 @@ export interface FarmTimelineProjectionTable {
   title: string;
   summary: string | null;
   icon_key: string | null;
-  created_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
 }
 
 export interface ScheduledEventTable {
@@ -250,8 +251,8 @@ export interface ScheduledEventTable {
   scheduled_at: Timestamp;
   status: 'planned' | 'completed' | 'postponed' | 'cancelled';
   source: 'manual' | 'domain_followup' | 'smart';
-  created_at: Generated<Timestamp>;
-  updated_at: Generated<Timestamp>;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
 }
 
 export interface Database {
