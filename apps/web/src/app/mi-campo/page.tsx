@@ -4,13 +4,14 @@ import { Topbar } from '@/components/topbar';
 import { ArrowIcon, PlusIcon, SproutIcon } from '@/components/icons';
 import { demoFarms, demoFarmSummary } from '@/lib/demo-data';
 
+const fincaBase = '/mi-campo/fincas/las-cenillas';
 const quick = [
   ['＋','Registrar','Nueva actividad','/mi-campo/registrar'],
-  ['🫒','Cosecha','Producción e histórico','/mi-campo/fincas/las-cenillas'],
-  ['💧','Riegos','Planificar y registrar','#'],
-  ['🌿','Tratamientos','Productos y aplicaciones','#'],
-  ['👷','Jornales','Personal y trabajos','#'],
-  ['◷','Historia','Todo lo realizado','#'],
+  ['🫒','Cosecha','Producción e histórico',`${fincaBase}/cosechas`],
+  ['💧','Riegos','Próximo e histórico',`${fincaBase}/riegos`],
+  ['🌿','Tratamientos','Productos y aplicaciones',`${fincaBase}/tratamientos`],
+  ['📅','Calendario','Próximos trabajos',`${fincaBase}/calendario`],
+  ['◷','Historia','Todo lo realizado',`${fincaBase}/historia`],
 ] as const;
 
 export default function MiCampoPage() {
@@ -27,8 +28,8 @@ export default function MiCampoPage() {
       {quick.map(([icon,title,text,href])=><Link href={href} className="card quick premium-quick" key={title}><span className="icon">{title==='Registrar'?<PlusIcon/>:icon}</span><div><strong>{title}</strong><small>{text}</small></div><ArrowIcon className="quick-arrow"/></Link>)}
     </div></section>
 
-    <section className="section"><div className="section-head"><h2>Hoy</h2><span className="subtle">2 pendientes</span></div><div className="card feed today-list"><div className="feed-row"><div className="dot water">💧</div><div className="feed-copy"><strong>Riego programado</strong><small>Las Cenillas · 10:00–12:00</small></div><button className="outline-action">Marcar hecho</button></div><div className="feed-row"><div className="dot">🌿</div><div className="feed-copy"><strong>Revisar tratamiento</strong><small>El Cerrillo · esta tarde</small></div><span className="pending-pill">Pendiente</span></div></div></section>
+    <section className="section"><div className="section-head"><h2>Hoy</h2><span className="subtle">2 pendientes</span></div><div className="card feed today-list"><div className="feed-row"><div className="dot water">💧</div><div className="feed-copy"><strong>Riego programado</strong><small>Las Cenillas · 10:00–12:00</small></div><Link href={`${fincaBase}/riegos`} className="outline-action">Ver</Link></div><div className="feed-row"><div className="dot">🌿</div><div className="feed-copy"><strong>Revisar tratamiento</strong><small>El Cerrillo · esta tarde</small></div><span className="pending-pill">Pendiente</span></div></div></section>
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">TU HISTORIA AGRÍCOLA</span><h2>Cada registro da memoria a tu finca</h2></div><Link href="/mi-campo/fincas/las-cenillas">Ver ficha <ArrowIcon/></Link></section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">TU HISTORIA AGRÍCOLA</span><h2>Cada registro da memoria a tu finca</h2></div><Link href={`${fincaBase}/historia`}>Ver historia <ArrowIcon/></Link></section>
   </div><BottomNav active="/mi-campo"/></main>;
 }
