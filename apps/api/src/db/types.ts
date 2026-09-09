@@ -52,53 +52,11 @@ interface DomainRecordBase {
   updated_at: Generated<Timestamp>;
 }
 
-export interface IrrigationRecordTable extends DomainRecordBase {
-  occurred_at: Timestamp;
-  duration_hours: number | null;
-  water_m3: number | null;
-  cost_eur: number | null;
-  notes: string | null;
-}
-
-export interface TreatmentRecordTable extends DomainRecordBase {
-  occurred_at: Timestamp;
-  reason: string;
-  product_name: string;
-  dose: string | null;
-  quantity: string | null;
-  applicator: string | null;
-  equipment: string | null;
-  cost_eur: number | null;
-  notes: string | null;
-}
-
-export interface FertilizationRecordTable extends DomainRecordBase {
-  occurred_at: Timestamp;
-  product_name: string;
-  quantity_kg: number | null;
-  application_method: string | null;
-  composition: string | null;
-  cost_eur: number | null;
-  supplier: string | null;
-  notes: string | null;
-}
-
-export interface PruningRecordTable extends DomainRecordBase {
-  occurred_at: Timestamp;
-  pruning_type: string;
-  workers: number | null;
-  hours: number | null;
-  cost_eur: number | null;
-  notes: string | null;
-}
-
-export interface ExpenseRecordTable extends DomainRecordBase {
-  occurred_on: DateColumn;
-  category: string;
-  concept: string;
-  amount_eur: number;
-  notes: string | null;
-}
+export interface IrrigationRecordTable extends DomainRecordBase { occurred_at: Timestamp; duration_hours: number | null; water_m3: number | null; cost_eur: number | null; notes: string | null; }
+export interface TreatmentRecordTable extends DomainRecordBase { occurred_at: Timestamp; reason: string; product_name: string; dose: string | null; quantity: string | null; applicator: string | null; equipment: string | null; cost_eur: number | null; notes: string | null; }
+export interface FertilizationRecordTable extends DomainRecordBase { occurred_at: Timestamp; product_name: string; quantity_kg: number | null; application_method: string | null; composition: string | null; cost_eur: number | null; supplier: string | null; notes: string | null; }
+export interface PruningRecordTable extends DomainRecordBase { occurred_at: Timestamp; pruning_type: string; workers: number | null; hours: number | null; cost_eur: number | null; notes: string | null; }
+export interface ExpenseRecordTable extends DomainRecordBase { occurred_on: DateColumn; category: string; concept: string; amount_eur: number; notes: string | null; }
 
 export interface HarvestDeliveryTable {
   id: string;
@@ -114,13 +72,7 @@ export interface HarvestDeliveryTable {
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
 }
-
-export interface HarvestDeliveryFieldTable {
-  delivery_id: string;
-  field_id: string;
-  kg: number;
-}
-
+export interface HarvestDeliveryFieldTable { delivery_id: string; field_id: string; kg: number; }
 export interface DeliveryResultTable {
   id: string;
   workspace_id: string;
@@ -134,6 +86,68 @@ export interface DeliveryResultTable {
   client_operation_id: string;
   created_by: string;
   created_at: Generated<Timestamp>;
+}
+
+export interface DocumentTable {
+  id: string;
+  workspace_id: string;
+  kind: string;
+  title: string;
+  status: 'active' | 'archived';
+  created_by: string;
+  created_at: Generated<Timestamp>;
+  archived_at: Timestamp | null;
+}
+
+export interface DocumentVersionTable {
+  id: string;
+  document_id: string;
+  version_no: number;
+  storage_key: string;
+  original_filename: string;
+  mime_type: string;
+  byte_size: number;
+  sha256: string;
+  created_by: string;
+  created_at: Generated<Timestamp>;
+}
+
+export interface AttachmentLinkTable {
+  id: Generated<string>;
+  workspace_id: string;
+  document_id: string;
+  field_id: string | null;
+  domain_type: string | null;
+  domain_record_id: string | null;
+  relation: string;
+  created_at: Generated<Timestamp>;
+}
+
+export interface OcrRunTable {
+  id: string;
+  document_version_id: string;
+  provider: string;
+  provider_version: string | null;
+  status: 'queued' | 'processing' | 'succeeded' | 'failed';
+  raw_text: string | null;
+  confidence: number | null;
+  error_code: string | null;
+  error_message: string | null;
+  created_at: Generated<Timestamp>;
+  started_at: Timestamp | null;
+  completed_at: Timestamp | null;
+}
+
+export interface ExtractionRunTable {
+  id: string;
+  ocr_run_id: string;
+  document_type: string;
+  schema_version: number;
+  status: 'queued' | 'processing' | 'succeeded' | 'failed' | 'needs_review';
+  data_json: unknown;
+  confidence_json: unknown;
+  created_at: Generated<Timestamp>;
+  completed_at: Timestamp | null;
 }
 
 export interface CostLedgerProjectionTable {
@@ -188,6 +202,11 @@ export interface Database {
   harvest_deliveries: HarvestDeliveryTable;
   harvest_delivery_fields: HarvestDeliveryFieldTable;
   delivery_results: DeliveryResultTable;
+  documents: DocumentTable;
+  document_versions: DocumentVersionTable;
+  attachment_links: AttachmentLinkTable;
+  ocr_runs: OcrRunTable;
+  extraction_runs: ExtractionRunTable;
   cost_ledger_projection: CostLedgerProjectionTable;
   farm_timeline_projection: FarmTimelineProjectionTable;
   scheduled_events: ScheduledEventTable;
