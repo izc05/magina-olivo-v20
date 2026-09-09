@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next';
 
+export const dynamic = 'force-static';
+
 export default function manifest(): MetadataRoute.Manifest {
   const basePath = process.env.GITHUB_PAGES === 'true' ? '/magina-olivo-v20' : '';
   const withBase = (path: string) => `${basePath}${path}`;
