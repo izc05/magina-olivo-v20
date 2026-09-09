@@ -4,6 +4,7 @@ import './globals.css';
 import './premium.css';
 import './pwa.css';
 import './assets.css';
+import './record.css';
 
 export const metadata: Metadata = {
   title: 'Mágina Olivo V20',
