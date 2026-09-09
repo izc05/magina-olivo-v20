@@ -1,13 +1,7 @@
-export type OcrProviderName = 'tesseract' | 'paddleocr' | 'doctr';
+import type { OcrJobPayload, OcrProviderName } from '@magina/contracts';
 
-export type OcrJob = {
-  ocrRunId: string;
-  documentVersionId: string;
-  storageKey: string;
-  mimeType: string;
-  expectedSha256Hex: string;
-  preferredProvider: 'auto' | OcrProviderName;
-};
+export type { OcrProviderName };
+export type OcrJob = OcrJobPayload;
 
 export interface OcrQueuePort {
   enqueue(job: OcrJob): Promise<{ jobId: string }>;
