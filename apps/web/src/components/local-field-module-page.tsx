@@ -10,7 +10,7 @@ import { ArrowIcon, PlusIcon } from '@/components/icons';
 type ViewKey = 'cosechas' | 'riegos' | 'tratamientos' | 'abonos' | 'poda' | 'gastos' | 'calendario' | 'historia';
 
 const views: Record<ViewKey, { title: string; symbol: string; subtitle: string; type?: ActivityType; register?: string }> = {
-  cosechas: { title: 'Cosechas', symbol: '🫒', subtitle: 'Producción registrada para esta finca' },
+  cosechas: { title: 'Cosechas', symbol: '🫒', subtitle: 'Producción registrada para esta finca', type: 'harvest' },
   riegos: { title: 'Riegos', symbol: '💧', subtitle: 'Riegos realizados y próximos avisos', type: 'irrigation', register: 'riego' },
   tratamientos: { title: 'Tratamientos', symbol: '🌿', subtitle: 'Curas y seguimientos', type: 'treatment', register: 'tratamiento' },
   abonos: { title: 'Abonos', symbol: '🧪', subtitle: 'Productos, cantidades y costes', type: 'fertilization', register: 'abono' },
@@ -30,19 +30,12 @@ export function LocalFieldModulePage() {
     const fieldId = params.get('fieldId');
     const rawView = params.get('view') as ViewKey | null;
     if (rawView && rawView in views) setView(rawView);
-    if (!fieldId) {
-      setField(null);
-      return;
-    }
+    if (!fieldId) { setField(null); return; }
     const found = getLocalFields().find((item) => item.id === fieldId) ?? null;
     setField(found);
     if (found) {
       const activities = getLocalActivities(found.id);
-      setSummary({
-        activities: activities.length,
-        costs: activities.reduce((sum, item) => sum + (item.costEur ?? 0), 0),
-        planned: activities.filter((item) => item.followUpOn).length,
-      });
+      setSummary({ activities: activities.length, costs: activities.reduce((sum, item) => sum + (item.costEur ?? 0), 0), planned: activities.filter((item) => item.followUpOn).length });
     }
   }, []);
 
@@ -55,23 +48,16 @@ export function LocalFieldModulePage() {
   const registerHref = current.register ? `/mi-campo/registrar/${current.register}?${fieldQuery}` : view === 'cosechas' ? `/mi-campo/registrar/cosecha?${fieldQuery}` : null;
 
   return <>
-    <header className="module-page-title local-module-title">
-      <Link href={`/mi-campo/fincas/local?id=${encodeURIComponent(field.id)}`}>‹ {field.name}</Link>
-      <span className="module-page-symbol">{current.symbol}</span>
-      <div><span className="eyebrow dark">FICHA LOCAL</span><h1>{current.title}</h1><p>{current.subtitle}</p></div>
-    </header>
+    <header className="module-page-title local-module-title"><Link href={`/mi-campo/fincas/local?id=${encodeURIComponent(field.id)}`}>‹ {field.name}</Link><span className="module-page-symbol">{current.symbol}</span><div><span className="eyebrow dark">FICHA LOCAL</span><h1>{current.title}</h1><p>{current.subtitle}</p></div></header>
 
     {view === 'gastos' && <section className="card module-highlight cost-highlight"><span>COSTE REGISTRADO EN ESTE DISPOSITIVO</span><strong>{summary.costs.toLocaleString('es-ES')} €</strong><p>Solo suma actividades de esta finca que tengan un importe.</p></section>}
     {view === 'calendario' && <section className="card module-highlight calendar-highlight"><span>TRABAJOS PROGRAMADOS</span><strong>{summary.planned}</strong><p>Se crean al indicar una fecha de seguimiento en un registro.</p></section>}
     {view === 'historia' && <section className="card module-highlight harvest-highlight"><span>MEMORIA DE LA FINCA</span><strong>{summary.activities}</strong><p>registros guardados localmente.</p></section>}
+    {view === 'cosechas' && <section className="card module-highlight harvest-highlight"><span>COSECHAS LOCALES</span><strong>{getLocalActivities(field.id).filter((item) => item.type === 'harvest').length}</strong><p>Confirmadas desde el OCR de demostración en este dispositivo.</p></section>}
 
-    {view === 'cosechas' ? (
-      <section className="card local-empty-module"><span className="local-empty-symbol">🫒</span><h2>Aún no hay cosechas locales</h2><p>El siguiente paso conectará la confirmación OCR con esta misma ficha. Mientras tanto, el histórico demo solo vive en Las Cenillas.</p></section>
-    ) : (
-      <LocalRecordsPanel fieldId={field.id} mode={mode} activityType={current.type}/>
-    )}
+    <LocalRecordsPanel fieldId={field.id} mode={mode} activityType={current.type}/>
 
-    {view !== 'historia' && view !== 'calendario' && view !== 'gastos' && <section className="card local-field-empty-note"><strong>Sin datos inventados</strong><p>Si esta sección está vacía es porque todavía no has registrado ese tipo de trabajo para {field.name}.</p></section>}
+    {view !== 'historia' && view !== 'calendario' && view !== 'gastos' && <section className="card local-field-empty-note"><strong>Sin datos inventados</strong><p>Esta sección solo muestra lo que registres para {field.name}. Si está vacía, aún no hay trabajos de este tipo.</p></section>}
 
     {registerHref && <section className="sticky-register-wrap module-register"><Link href={registerHref} className="primary action-link register-cta"><PlusIcon/> Registrar en {field.name} <ArrowIcon/></Link></section>}
   </>;
