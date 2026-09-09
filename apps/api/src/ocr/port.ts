@@ -5,6 +5,7 @@ export type OcrJob = {
   documentVersionId: string;
   storageKey: string;
   mimeType: string;
+  expectedSha256Hex: string;
   preferredProvider: 'auto' | OcrProviderName;
 };
 
