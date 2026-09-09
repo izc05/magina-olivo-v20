@@ -117,10 +117,19 @@ El `DeterministicTestOcrProcessor` existe exclusivamente para CI. El worker se n
 
 ## Storage
 
-Documentos usan `StoragePort` y un adaptador S3-compatible:
-- MinIO/local;
-- Cloudflare R2/producción;
-- otro S3-compatible futuro.
+Documentos usan `StoragePort` y un adaptador S3-compatible.
+
+### Producción
+Cloudflare R2 es candidato principal, pero el dominio no depende de R2.
+
+### Desarrollo local
+**No fijar todavía un servidor S3 local como dependencia del proyecto.** El servidor open-source histórico de MinIO quedó archivado en 2026 y las alternativas actuales deben probarse antes de incorporarlas al stack. RustFS (Apache-2.0) es candidato de evaluación, no una decisión aceptada.
+
+Hasta cerrar esta decisión:
+- CI usa `FakeStorage` para probar contrato/integridad sin servicio externo;
+- desarrollo puede apuntar a cualquier endpoint S3-compatible de pruebas;
+- `S3_FORCE_PATH_STYLE` permite compatibilidad con proveedores locales que lo requieran;
+- cambiar proveedor no modifica Documents, API ni worker.
 
 La API no recibe el binario pesado: reserva una URL PUT prefirmada; el cliente sube al storage y luego confirma la subida.
 
@@ -150,5 +159,6 @@ Si aumenta carga:
 - límites de concurrencia CPU/RAM;
 - métricas de duración/error/confianza;
 - política definitiva de DLQ/reprocesado desde Admin;
+- decidir/probar storage local S3-compatible;
 - validación antivirus/archivo si se considera necesaria;
 - secrets reales fuera del repositorio.
