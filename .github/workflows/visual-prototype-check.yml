@@ -91,6 +91,7 @@ jobs:
         env:
           PGPASSWORD: postgres
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          ALLOW_DEV_AUTH_HEADERS: 'true'
         run: |
           psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 <<'SQL'
           INSERT INTO workspaces (id, name, type)
