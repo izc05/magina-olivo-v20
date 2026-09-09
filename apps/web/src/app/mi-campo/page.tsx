@@ -2,15 +2,10 @@ import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
 import { ArrowIcon, PlusIcon, SproutIcon } from '@/components/icons';
-
-const farms = [
-  { name:'Las Cenillas', meta:'23 olivas · Huelma', status:'En buen estado', href:'/mi-campo/fincas/las-cenillas', tone:'ok' },
-  { name:'El Cerrillo', meta:'88 olivas · Huelma', status:'Atención', href:'#', tone:'warn' },
-  { name:'La Loma', meta:'64 olivas · Huelma', status:'En producción', href:'#', tone:'ok' },
-] as const;
+import { demoFarms, demoFarmSummary } from '@/lib/demo-data';
 
 const quick = [
-  ['＋','Registrar','Nueva actividad','/mi-campo/registrar/cosecha'],
+  ['＋','Registrar','Nueva actividad','/mi-campo/registrar'],
   ['🫒','Cosecha','Producción e histórico','/mi-campo/fincas/las-cenillas'],
   ['💧','Riegos','Planificar y registrar','#'],
   ['🌿','Tratamientos','Productos y aplicaciones','#'],
@@ -22,10 +17,10 @@ export default function MiCampoPage() {
   return <main className="app-shell"><Topbar/><div className="page mi-campo-page">
     <header className="page-title mi-campo-title"><div className="title-mark"><SproutIcon/></div><div><span className="eyebrow dark">GESTIÓN DEL OLIVAR</span><h1>Mi Campo</h1><p>Tus fincas y trabajos, ordenados y fáciles de consultar.</p></div></header>
 
-    <section className="card field-summary campaign-summary"><div className="stats"><div className="stat"><b>6</b><span>fincas</span></div><div className="stat"><b>248</b><span>olivas</span></div><div className="stat"><b>4.000 kg</b><span>campaña 26/27</span></div></div></section>
+    <section className="card field-summary campaign-summary"><div className="stats"><div className="stat"><b>{demoFarmSummary.farms}</b><span>fincas</span></div><div className="stat"><b>{demoFarmSummary.oliveTrees}</b><span>olivas</span></div><div className="stat"><b>{demoFarmSummary.campaignKg.toLocaleString('es-ES')} kg</b><span>campaña {demoFarmSummary.campaign}</span></div></div></section>
 
     <section className="section"><div className="section-head"><h2>Mis fincas</h2><span className="subtle">3 destacadas</span></div><div className="farm-row">
-      {farms.map((farm)=><Link key={farm.name} href={farm.href} className="card farm-card"><div className="farm-image"><span className={`farm-status ${farm.tone}`}>{farm.status}</span></div><div className="farm-body"><div className="farm-card-head"><div><h3>{farm.name}</h3><div className="farm-meta">{farm.meta}</div></div><ArrowIcon/></div></div></Link>)}
+      {demoFarms.map((farm)=><Link key={farm.name} href={farm.href} className="card farm-card"><div className="farm-image"><span className={`farm-status ${farm.tone}`}>{farm.status}</span></div><div className="farm-body"><div className="farm-card-head"><div><h3>{farm.name}</h3><div className="farm-meta">{farm.oliveTrees} olivas · {farm.municipality}</div></div><ArrowIcon/></div></div></Link>)}
     </div></section>
 
     <section className="section"><div className="section-head"><h2>Accesos rápidos</h2><span/></div><div className="quick-grid">
