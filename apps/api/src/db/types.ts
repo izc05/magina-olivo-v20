@@ -91,6 +91,7 @@ export interface DeliveryResultTable {
 export interface DocumentTable {
   id: string;
   workspace_id: string;
+  client_operation_id: string;
   kind: string;
   title: string;
   status: 'active' | 'archived';
