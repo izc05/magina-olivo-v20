@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { Metadata, Viewport } from 'next';
+import { AuthProvider } from '../components/auth-provider';
 import './globals.css';
 import './premium.css';
 import './pwa.css';
@@ -40,7 +41,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
   return (
     <html lang="es">
-      <body style={assetStyles}>{children}</body>
+      <body style={assetStyles}>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
