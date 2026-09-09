@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import type { FieldRecord } from '@/lib/domain';
 import { getLocalFields, removeLocalField } from '@/lib/local-prototype-store';
-import { SproutIcon } from '@/components/icons';
+import { ArrowIcon, SproutIcon } from '@/components/icons';
 
 export function LocalFarmsList() {
   const [fields, setFields] = useState<FieldRecord[]>([]);
@@ -36,21 +37,24 @@ export function LocalFarmsList() {
       <div className="farm-row">
         {fields.map((field) => (
           <article className="card farm-card local-farm-card" key={field.id}>
-            <div className="farm-image local-farm-image">
-              <span className="farm-status">Demo local</span>
-              <span className="local-farm-mark"><SproutIcon /></span>
-            </div>
-            <div className="farm-body">
-              <div className="farm-card-head">
-                <div>
-                  <h3>{field.name}</h3>
-                  <div className="farm-meta">{field.oliveTrees ?? '—'} olivas · {field.municipality ?? 'Sin municipio'}</div>
-                </div>
-                <button type="button" className="local-farm-remove" onClick={() => remove(field.id)} aria-label={`Eliminar ${field.name}`}>×</button>
+            <Link href={`/mi-campo/fincas/local?id=${encodeURIComponent(field.id)}`} className="local-farm-link">
+              <div className="farm-image local-farm-image">
+                <span className="farm-status">Demo local</span>
+                <span className="local-farm-mark"><SproutIcon /></span>
               </div>
-              <span className="status-pill">{field.variety ?? 'Variedad pendiente'} · {field.waterRegime ?? 'Régimen pendiente'}</span>
-              <p className="local-farm-note">La ficha dinámica por ID se conectará en el siguiente paso del prototipo.</p>
-            </div>
+              <div className="farm-body">
+                <div className="farm-card-head">
+                  <div>
+                    <h3>{field.name}</h3>
+                    <div className="farm-meta">{field.oliveTrees ?? '—'} olivas · {field.municipality ?? 'Sin municipio'}</div>
+                  </div>
+                  <ArrowIcon />
+                </div>
+                <span className="status-pill">{field.variety ?? 'Variedad pendiente'} · {field.waterRegime ?? 'Régimen pendiente'}</span>
+                <p className="local-farm-note">Abrir ficha local → registrar → consultar su propia historia.</p>
+              </div>
+            </Link>
+            <button type="button" className="local-farm-remove floating" onClick={() => remove(field.id)} aria-label={`Eliminar ${field.name}`}>×</button>
           </article>
         ))}
       </div>
