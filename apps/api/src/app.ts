@@ -3,6 +3,7 @@ import cookie from '@fastify/cookie';
 import type { DatabaseClient } from './db/client.js';
 import { hydrateRequestAuthentication, prototypeAuthWarning } from './request-context.js';
 import { registerAuthRoutes } from './routes/auth.js';
+import { registerMeRoutes } from './routes/me.js';
 import { registerFieldRoutes } from './routes/fields.js';
 import { registerIrrigationRoutes } from './routes/irrigations.js';
 import { registerDomainRecordRoutes } from './routes/domain-records.js';
@@ -43,6 +44,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   }));
 
   registerAuthRoutes(app, db, googleVerifier);
+  registerMeRoutes(app, db);
   registerFieldRoutes(app, db);
   registerIrrigationRoutes(app, db);
   registerDomainRecordRoutes(app, db);
