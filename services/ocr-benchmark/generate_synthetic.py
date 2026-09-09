@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+REFERENCE_FOOTER = "Documento sintético · Mágina Olivo V20 SIN DATOS PERSONALES REALES"
+
 
 def delivery_svg(case: dict[str, Any], variant: str) -> str:
     expected = case["expected"]
@@ -169,7 +171,7 @@ def main() -> int:
             "source": filename,
             "synthetic": True,
             "variant": case["variant"],
-            "reference_text": case["reference_text"],
+            "reference_text": f"{case['reference_text']} {REFERENCE_FOOTER}",
             "expected": case["expected"],
         })
 
