@@ -1,10 +1,15 @@
 import Link from 'next/link';
+import { Brand } from '@/components/brand';
+import { BellIcon } from '@/components/icons';
 
 export function Topbar() {
   return (
     <header className="topbar">
-      <Link href="/" className="brand">Mágina Olivo<small>TERRITORIO · PERSONAS · FUTURO</small></Link>
-      <span aria-label="Notificaciones">♢</span>
+      <Brand />
+      <Link href="/perfil" className="icon-button notification-button" aria-label="Notificaciones y perfil">
+        <BellIcon />
+        <span className="notification-dot" />
+      </Link>
     </header>
   );
 }
