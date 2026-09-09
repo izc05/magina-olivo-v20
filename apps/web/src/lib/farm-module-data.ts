@@ -45,6 +45,13 @@ export const farmHistory = [
   { date: '20 oct 2025', symbol: '🌿', title: 'Tratamiento', detail: 'Cobre · tratamiento de otoño' },
 ] as const;
 
+export const farmCalendar = [
+  { day: '14', month: 'SEP', symbol: '💧', title: 'Riego', time: '08:00', detail: 'Avisos: día anterior y 1 h antes', tone: 'blue' },
+  { day: '21', month: 'SEP', symbol: '🌿', title: 'Revisar mosca', time: 'Sin hora', detail: 'Seguimiento del tratamiento', tone: 'rose' },
+  { day: '05', month: 'OCT', symbol: '🧪', title: 'Abonado previsto', time: '08:30', detail: 'Planificación de demostración', tone: 'green' },
+  { day: '15', month: 'NOV', symbol: '🫒', title: 'Inicio estimado cosecha', time: 'Sin hora', detail: 'Fecha orientativa', tone: 'gold' },
+] as const;
+
 export const farmDocuments = [
   { type: 'Albarán', title: 'Entrega SCA San Isidro', date: '12 dic 2026', meta: '1.842 kg · nº 008421' },
   { type: 'Factura', title: 'Abono NPK', date: '7 sep 2026', meta: '42 €' },
@@ -53,5 +60,5 @@ export const farmDocuments = [
   { type: 'Documento', title: 'Referencia de terreno', date: 'Demo', meta: 'Pendiente de validación oficial' },
 ] as const;
 
-export const moduleSlugs = ['cosechas','riegos','tratamientos','abonos','poda','gastos','historia','documentos','terreno'] as const;
+export const moduleSlugs = ['cosechas','riegos','tratamientos','abonos','poda','gastos','calendario','historia','documentos','terreno'] as const;
 export type FarmModuleSlug = (typeof moduleSlugs)[number];
