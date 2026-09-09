@@ -19,7 +19,7 @@ export default function MiCampoPage() {
 
     <section className="card field-summary campaign-summary"><div className="stats"><div className="stat"><b>{demoFarmSummary.farms}</b><span>fincas</span></div><div className="stat"><b>{demoFarmSummary.oliveTrees}</b><span>olivas</span></div><div className="stat"><b>{demoFarmSummary.campaignKg.toLocaleString('es-ES')} kg</b><span>campaña {demoFarmSummary.campaign}</span></div></div></section>
 
-    <section className="section"><div className="section-head"><h2>Mis fincas</h2><span className="subtle">3 destacadas</span></div><div className="farm-row">
+    <section className="section"><div className="section-head"><h2>Mis fincas</h2><Link href="/mi-campo/fincas/nueva" className="detail-link"><PlusIcon/> Añadir finca</Link></div><div className="farm-row">
       {demoFarms.map((farm)=><Link key={farm.name} href={farm.href} className="card farm-card"><div className="farm-image"><span className={`farm-status ${farm.tone}`}>{farm.status}</span></div><div className="farm-body"><div className="farm-card-head"><div><h3>{farm.name}</h3><div className="farm-meta">{farm.oliveTrees} olivas · {farm.municipality}</div></div><ArrowIcon/></div></div></Link>)}
     </div></section>
 
