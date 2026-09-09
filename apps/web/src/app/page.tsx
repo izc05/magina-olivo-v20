@@ -1,44 +1,56 @@
 import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
+import { ArrowIcon, MapPinIcon, RainIcon, SproutIcon } from '@/components/icons';
 
 export default function HomePage() {
   return (
     <main className="app-shell">
       <Topbar />
-      <div className="page">
-        <section className="hero">
-          <div className="hero-kicker">📍 Huelma · ubicación de demostración</div>
-          <h1>Mágina,<br/>de un vistazo</h1>
-          <p>Aquí la tierra tiene sentido.</p>
-          <div className="weather-row">
-            <div className="weather-temp">24°</div>
-            <div className="weather-meta">Soleado<br/>Viento 9 km/h · Humedad 48 %</div>
+      <div className="page home-page">
+        <section className="hero home-hero">
+          <div className="hero-content">
+            <div className="location-chip"><MapPinIcon /> Huelma <span>· ubicación de demostración</span></div>
+            <div className="hero-spacer" />
+            <div className="hero-weather">
+              <div><div className="weather-temp">24°</div><strong>Soleado</strong></div>
+              <div className="weather-meta">Viento 9 km/h<br/>Humedad 48 %</div>
+            </div>
+            <div className="hero-rule" />
+            <p className="hero-message">Buen día para revisar el campo</p>
           </div>
         </section>
 
-        <section className="section">
-          <div className="section-head"><h2>Avisos importantes</h2><Link href="/radar">Ver todos ›</Link></div>
+        <section className="section section-overlap">
+          <div className="section-head"><h2>Avisos importantes</h2><Link href="/radar">Ver todos <ArrowIcon /></Link></div>
           <div className="alert-grid">
-            <Link href="/radar" className="card alert blue"><span className="icon">🌧</span><strong>Lluvia mañana</strong><small>70 % · 5–12 mm</small></Link>
-            <Link href="/mi-campo/fincas/las-cenillas" className="card alert green"><span className="icon">💧</span><strong>Próximo riego</strong><small>En 2 días</small></Link>
-            <div className="card alert rose"><span className="icon">🪰</span><strong>Riesgo de mosca</strong><small>Nivel alto</small></div>
+            <Link href="/radar" className="card alert blue"><span className="alert-icon"><RainIcon /></span><strong>Lluvia mañana</strong><small>Probabilidad 70 % · 5–12 mm</small></Link>
+            <Link href="/mi-campo/fincas/las-cenillas" className="card alert green"><span className="alert-icon water-drop">●</span><strong>Próximo riego</strong><small>Las Cenillas · en 2 días</small></Link>
+            <div className="card alert rose"><span className="alert-icon">◉</span><strong>Riesgo de mosca</strong><small>Nivel alto · extrema vigilancia</small></div>
           </div>
         </section>
 
-        <section className="section card field-summary">
-          <div className="field-summary-top"><div><h2>Mi Campo</h2><p>Tus fincas, siempre contigo</p></div><span>🌳</span></div>
+        <section className="section card field-summary premium-summary">
+          <div className="field-summary-top">
+            <div className="summary-brand"><span className="summary-mark"><SproutIcon /></span><div><h2>Mi Campo</h2><p>Tus fincas, siempre contigo</p></div></div>
+            <Link href="/mi-campo" className="detail-link">Ver detalle <ArrowIcon /></Link>
+          </div>
           <div className="stats"><div className="stat"><b>6</b><span>fincas</span></div><div className="stat"><b>248</b><span>olivas</span></div><div className="stat"><b>1</b><span>aviso activo</span></div></div>
-          <Link href="/mi-campo"><button className="primary">Entrar en Mi Campo →</button></Link>
+          <Link href="/mi-campo" className="primary action-link">Entrar en Mi Campo <ArrowIcon /></Link>
         </section>
 
         <section className="section">
-          <div className="section-head"><h2>Actualidad</h2><a>Ver todo ›</a></div>
-          <div className="card feed">
-            <div className="feed-row"><div className="dot">🫒</div><div><strong>La campaña del olivar</strong><small>Noticias · Sierra Mágina</small></div></div>
-            <div className="feed-row"><div className="dot">📅</div><div><strong>Feria del Olivo de Huelma</strong><small>Próximo evento</small></div></div>
-            <div className="feed-row"><div className="dot">⭐</div><div><strong>Empresa destacada cerca de ti</strong><small>Contenido patrocinado</small></div></div>
+          <div className="section-head"><h2>Actualidad y vida local</h2><Link href="/explorar">Ver todo <ArrowIcon /></Link></div>
+          <div className="story-grid">
+            <article className="card story-card"><div className="story-image story-olive"/><span className="story-tag">NOTICIAS</span><h3>La campaña del olivar en Sierra Mágina</h3><p>Actualidad agrícola y territorio.</p></article>
+            <article className="card story-card"><div className="story-image story-town"/><span className="story-tag">EVENTOS</span><h3>Agenda local de Huelma</h3><p>Ferias, jornadas y encuentros.</p></article>
+            <article className="card story-card sponsored"><div className="story-image story-oil"/><span className="story-tag gold">PATROCINADO</span><h3>Empresas de nuestra tierra</h3><p>Promoción local integrada y clara.</p></article>
           </div>
+        </section>
+
+        <section className="territory-banner">
+          <div><span className="eyebrow">MÁGINA OLIVO</span><h2>Personas que cuidan de un territorio único</h2></div>
+          <Link href="/explorar">Descubrir Mágina <ArrowIcon /></Link>
         </section>
       </div>
       <BottomNav active="/" />
