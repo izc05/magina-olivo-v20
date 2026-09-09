@@ -151,6 +151,16 @@ export interface ExtractionRunTable {
   completed_at: Timestamp | null;
 }
 
+export interface ExtractionReviewTable {
+  id: string;
+  workspace_id: string;
+  extraction_run_id: string;
+  confirmed_fields: unknown;
+  corrections: unknown;
+  reviewed_by: string;
+  created_at: Generated<Timestamp>;
+}
+
 export interface CostLedgerProjectionTable {
   id: Generated<string>;
   workspace_id: string;
@@ -208,6 +218,7 @@ export interface Database {
   attachment_links: AttachmentLinkTable;
   ocr_runs: OcrRunTable;
   extraction_runs: ExtractionRunTable;
+  extraction_reviews: ExtractionReviewTable;
   cost_ledger_projection: CostLedgerProjectionTable;
   farm_timeline_projection: FarmTimelineProjectionTable;
   scheduled_events: ScheduledEventTable;
