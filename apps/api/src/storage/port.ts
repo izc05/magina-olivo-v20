@@ -16,9 +16,17 @@ export type ReserveUploadInput = {
   sha256: string;
 };
 
+export type StoredObjectInfo = {
+  exists: boolean;
+  byteSize?: number;
+  mimeType?: string;
+  etag?: string;
+  checksumSha256?: string;
+};
+
 export interface StoragePort {
   reserveUpload(input: ReserveUploadInput): Promise<UploadReservation>;
-  objectExists(storageKey: string): Promise<boolean>;
+  headObject(storageKey: string): Promise<StoredObjectInfo>;
   createReadUrl(storageKey: string, expiresInSeconds?: number): Promise<string>;
 }
 
@@ -31,6 +39,6 @@ export class StorageNotConfiguredError extends Error {
 
 export class UnavailableStorage implements StoragePort {
   async reserveUpload(): Promise<UploadReservation> { throw new StorageNotConfiguredError(); }
-  async objectExists(): Promise<boolean> { throw new StorageNotConfiguredError(); }
+  async headObject(): Promise<StoredObjectInfo> { throw new StorageNotConfiguredError(); }
   async createReadUrl(): Promise<string> { throw new StorageNotConfiguredError(); }
 }
