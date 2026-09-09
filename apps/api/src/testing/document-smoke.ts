@@ -66,16 +66,33 @@ async function main() {
   if (list.statusCode !== 200) throw new Error(`Document list failed: ${list.statusCode} ${list.body}`);
   if (list.json().documents.length !== 1) throw new Error(`Expected one field document, got ${list.json().documents.length}`);
 
+  const ocrPayload = {
+    client_operation_id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    entity_id: '12121212-1212-4121-8121-121212121212',
+    document_version_id: payload.version_id,
+    preferred_provider: 'auto',
+  };
+
   const ocr = await app.inject({
     method: 'POST',
     url: `/api/v1/documents/${payload.entity_id}/ocr`,
     headers: jsonHeaders,
-    payload: { document_version_id: payload.version_id, preferred_provider: 'auto' },
+    payload: ocrPayload,
   });
   if (ocr.statusCode !== 202) throw new Error(`OCR enqueue failed: ${ocr.statusCode} ${ocr.body}`);
   if (ocrQueue.jobs.length !== 1) throw new Error(`Expected one OCR job, got ${ocrQueue.jobs.length}`);
-  if (ocrQueue.jobs[0].expectedSha256Hex !== payload.sha256) throw new Error('OCR job did not preserve expected checksum');
+  if (ocrQueue.jobs[0].version !== 1) throw new Error('OCR job contract version mismatch');
+  if (ocrQueue.jobs[0].expected_sha256_hex !== payload.sha256) throw new Error('OCR job did not preserve expected checksum');
   const ocrBody = ocr.json();
+
+  const ocrReplay = await app.inject({
+    method: 'POST',
+    url: `/api/v1/documents/${payload.entity_id}/ocr`,
+    headers: jsonHeaders,
+    payload: ocrPayload,
+  });
+  if (ocrReplay.statusCode !== 200 || ocrReplay.json().replayed !== true) throw new Error(`OCR replay failed: ${ocrReplay.statusCode} ${ocrReplay.body}`);
+  if (ocrQueue.jobs.length !== 1) throw new Error('OCR idempotency queued a duplicate job');
 
   const extractionId = randomUUID();
   await db.insertInto('extraction_runs').values({
@@ -116,13 +133,13 @@ async function main() {
 
   const ocrCount = await db.selectFrom('ocr_runs').select(({ fn }) => fn.countAll<number>().as('count'))
     .where('document_version_id', '=', payload.version_id).executeTakeFirstOrThrow();
-  if (Number(ocrCount.count) !== 1) throw new Error('OCR run was not persisted');
+  if (Number(ocrCount.count) !== 1) throw new Error('OCR run idempotency failed');
 
   const reviewCount = await db.selectFrom('extraction_reviews').select(({ fn }) => fn.countAll<number>().as('count'))
     .where('extraction_run_id', '=', extractionId).executeTakeFirstOrThrow();
   if (Number(reviewCount.count) !== 1) throw new Error('Extraction review was not persisted');
 
-  console.log('Document upload/OCR/review smoke test passed');
+  console.log('Document upload/OCR idempotency/review smoke test passed');
 }
 
 try {
