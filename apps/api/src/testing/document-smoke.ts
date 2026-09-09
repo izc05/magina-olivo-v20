@@ -11,10 +11,14 @@ const storage = new FakeStorage();
 const ocrQueue = new FakeOcrQueue();
 const app = buildApp({ db, storage, ocrQueue });
 
-const headers = {
-  'content-type': 'application/json',
+const authHeaders = {
   'x-workspace-id': '11111111-1111-4111-8111-111111111111',
   'x-user-id': '33333333-3333-4333-8333-333333333333',
+};
+
+const jsonHeaders = {
+  ...authHeaders,
+  'content-type': 'application/json',
 };
 
 async function main() {
@@ -31,20 +35,20 @@ async function main() {
     sha256: 'a'.repeat(64),
   };
 
-  const created = await app.inject({ method: 'POST', url: '/api/v1/documents', headers, payload });
+  const created = await app.inject({ method: 'POST', url: '/api/v1/documents', headers: jsonHeaders, payload });
   if (created.statusCode !== 201) throw new Error(`Document create failed: ${created.statusCode} ${created.body}`);
   const body = created.json();
   if (body.document.id !== payload.entity_id) throw new Error('Unexpected document id');
   if (body.version.id !== payload.version_id) throw new Error('Unexpected version id');
   if (!body.upload?.uploadUrl) throw new Error('Missing upload reservation');
 
-  const replay = await app.inject({ method: 'POST', url: '/api/v1/documents', headers, payload });
+  const replay = await app.inject({ method: 'POST', url: '/api/v1/documents', headers: jsonHeaders, payload });
   if (replay.statusCode !== 200 || replay.json().replayed !== true) throw new Error(`Document replay failed: ${replay.statusCode} ${replay.body}`);
 
   const complete = await app.inject({
     method: 'POST',
     url: `/api/v1/documents/${payload.entity_id}/versions/${payload.version_id}/complete`,
-    headers,
+    headers: authHeaders,
   });
   if (complete.statusCode !== 200) throw new Error(`Upload completion failed: ${complete.statusCode} ${complete.body}`);
   const completed = complete.json();
@@ -54,18 +58,18 @@ async function main() {
   const completeReplay = await app.inject({
     method: 'POST',
     url: `/api/v1/documents/${payload.entity_id}/versions/${payload.version_id}/complete`,
-    headers,
+    headers: authHeaders,
   });
   if (completeReplay.statusCode !== 200 || completeReplay.json().replayed !== true) throw new Error('Upload completion is not idempotent');
 
-  const list = await app.inject({ method: 'GET', url: `/api/v1/fields/${payload.field_id}/documents`, headers });
+  const list = await app.inject({ method: 'GET', url: `/api/v1/fields/${payload.field_id}/documents`, headers: authHeaders });
   if (list.statusCode !== 200) throw new Error(`Document list failed: ${list.statusCode} ${list.body}`);
   if (list.json().documents.length !== 1) throw new Error(`Expected one field document, got ${list.json().documents.length}`);
 
   const ocr = await app.inject({
     method: 'POST',
     url: `/api/v1/documents/${payload.entity_id}/ocr`,
-    headers,
+    headers: jsonHeaders,
     payload: { document_version_id: payload.version_id, preferred_provider: 'auto' },
   });
   if (ocr.statusCode !== 202) throw new Error(`OCR enqueue failed: ${ocr.statusCode} ${ocr.body}`);
@@ -88,7 +92,7 @@ async function main() {
   const review = await app.inject({
     method: 'POST',
     url: `/api/v1/extractions/${extractionId}/reviews`,
-    headers,
+    headers: jsonHeaders,
     payload: {
       extraction_run_id: extractionId,
       confirmed_fields: { kilograms: 1842 },
