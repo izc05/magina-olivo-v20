@@ -1,12 +1,15 @@
 import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
+  const basePath = process.env.GITHUB_PAGES === 'true' ? '/magina-olivo-v20' : '';
+  const withBase = (path: string) => `${basePath}${path}`;
+
   return {
     name: 'Mágina Olivo',
     short_name: 'Mágina',
     description: 'Territorio, personas y futuro. Gestión sencilla del olivar y guía de Sierra Mágina.',
-    start_url: '/',
-    scope: '/',
+    start_url: withBase('/'),
+    scope: withBase('/'),
     display: 'standalone',
     background_color: '#f6f2e8',
     theme_color: '#31452a',
@@ -14,13 +17,13 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['agriculture', 'lifestyle', 'productivity'],
     icons: [
       {
-        src: '/assets/app-icon.svg',
+        src: withBase('/assets/app-icon.svg'),
         sizes: 'any',
         type: 'image/svg+xml',
         purpose: 'any',
       },
       {
-        src: '/assets/app-icon.svg',
+        src: withBase('/assets/app-icon.svg'),
         sizes: 'any',
         type: 'image/svg+xml',
         purpose: 'maskable',
@@ -31,19 +34,19 @@ export default function manifest(): MetadataRoute.Manifest {
         name: 'Registrar',
         short_name: 'Registrar',
         description: 'Añadir un registro a Mi Campo',
-        url: '/mi-campo/registrar/cosecha',
+        url: withBase('/mi-campo/registrar/cosecha/'),
       },
       {
         name: 'Mi Campo',
         short_name: 'Mi Campo',
         description: 'Abrir mis fincas',
-        url: '/mi-campo',
+        url: withBase('/mi-campo/'),
       },
       {
         name: 'Radar',
         short_name: 'Radar',
         description: 'Consultar radar y avisos de lluvia',
-        url: '/radar',
+        url: withBase('/radar/'),
       },
     ],
   };
