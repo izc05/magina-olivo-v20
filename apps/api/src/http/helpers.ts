@@ -1,18 +1,27 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
 import type { DatabaseClient } from '../db/client.js';
-import { readRequestContext } from '../request-context.js';
+import { readAuthenticatedUserId, readRequestContext } from '../request-context.js';
 
 export function requireContext(request: FastifyRequest, reply: FastifyReply) {
   const context = readRequestContext(request);
   if (!context) {
     void reply.code(401).send({
-      error: 'missing_development_context',
-      message: 'Temporary development headers x-workspace-id and x-user-id are required.',
+      error: 'workspace_authentication_required',
+      message: 'A valid authenticated session and active workspace membership are required.',
     });
     return null;
   }
   return context;
+}
+
+export function requireAuthenticatedUser(request: FastifyRequest, reply: FastifyReply) {
+  const userId = readAuthenticatedUserId(request);
+  if (!userId) {
+    void reply.code(401).send({ error: 'authentication_required' });
+    return null;
+  }
+  return userId;
 }
 
 export function requireDatabase(db: DatabaseClient | null, reply: FastifyReply) {
