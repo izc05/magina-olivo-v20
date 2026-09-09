@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
+import { LocalFarmsList } from '@/components/local-farms-list';
 import { ArrowIcon, PlusIcon, SproutIcon } from '@/components/icons';
 import { demoFarms, demoFarmSummary } from '@/lib/demo-data';
 
@@ -23,6 +24,8 @@ export default function MiCampoPage() {
     <section className="section"><div className="section-head"><h2>Mis fincas</h2><Link href="/mi-campo/fincas/nueva" className="detail-link"><PlusIcon/> Añadir finca</Link></div><div className="farm-row">
       {demoFarms.map((farm)=><Link key={farm.name} href={farm.href} className="card farm-card"><div className="farm-image"><span className={`farm-status ${farm.tone}`}>{farm.status}</span></div><div className="farm-body"><div className="farm-card-head"><div><h3>{farm.name}</h3><div className="farm-meta">{farm.oliveTrees} olivas · {farm.municipality}</div></div><ArrowIcon/></div></div></Link>)}
     </div></section>
+
+    <LocalFarmsList />
 
     <section className="section"><div className="section-head"><h2>Accesos rápidos</h2><span/></div><div className="quick-grid">
       {quick.map(([icon,title,text,href])=><Link href={href} className="card quick premium-quick" key={title}><span className="icon">{title==='Registrar'?<PlusIcon/>:icon}</span><div><strong>{title}</strong><small>{text}</small></div><ArrowIcon className="quick-arrow"/></Link>)}
