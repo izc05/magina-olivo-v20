@@ -11,6 +11,52 @@ export interface WorkspaceTable {
   updated_at: Generated<Timestamp>;
 }
 
+export interface UserTable {
+  id: Generated<string>;
+  primary_email: string | null;
+  display_name: string;
+  avatar_url: string | null;
+  status: 'active' | 'suspended' | 'deleted';
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+  last_login_at: Timestamp | null;
+}
+
+export interface AuthIdentityTable {
+  id: Generated<string>;
+  user_id: string;
+  provider: 'google' | 'email';
+  provider_subject: string;
+  email: string | null;
+  email_verified: boolean;
+  provider_data: unknown;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+  last_seen_at: Generated<Timestamp>;
+}
+
+export interface WorkspaceMembershipTable {
+  id: Generated<string>;
+  workspace_id: string;
+  user_id: string;
+  role: 'owner' | 'admin' | 'manager' | 'member' | 'worker' | 'viewer';
+  status: 'invited' | 'active' | 'suspended' | 'revoked';
+  invited_by: string | null;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface UserSessionTable {
+  id: Generated<string>;
+  user_id: string;
+  token_hash: string;
+  expires_at: Timestamp;
+  created_at: Generated<Timestamp>;
+  last_seen_at: Generated<Timestamp>;
+  revoked_at: Timestamp | null;
+  user_agent: string | null;
+}
+
 export interface FieldTable {
   id: string;
   workspace_id: string;
@@ -210,6 +256,10 @@ export interface ScheduledEventTable {
 
 export interface Database {
   workspaces: WorkspaceTable;
+  users: UserTable;
+  auth_identities: AuthIdentityTable;
+  workspace_memberships: WorkspaceMembershipTable;
+  user_sessions: UserSessionTable;
   fields: FieldTable;
   campaigns: CampaignTable;
   irrigation_records: IrrigationRecordTable;
