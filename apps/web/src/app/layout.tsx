@@ -7,6 +7,7 @@ import './assets.css';
 import './record.css';
 import './new-farm.css';
 import './farm-modules.css';
+import './calendar.css';
 
 export const metadata: Metadata = {
   title: 'Mágina Olivo V20',
