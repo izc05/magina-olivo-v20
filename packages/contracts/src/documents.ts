@@ -35,7 +35,7 @@ export const createDocumentSchema = clientOperationSchema.extend({
   }
 });
 
-export const requestOcrSchema = z.object({
+export const requestOcrSchema = clientOperationSchema.extend({
   document_version_id: uuidSchema,
   preferred_provider: z.enum(['auto', 'tesseract', 'paddleocr', 'doctr']).default('auto'),
 });
