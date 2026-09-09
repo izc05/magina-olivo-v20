@@ -77,6 +77,7 @@ export function registerAuthRoutes(
         return reply.code(403).send({ error: 'user_not_active' });
       }
       userId = existingIdentity.user_id;
+      const now = new Date();
       await database.transaction().execute(async (trx) => {
         await trx.updateTable('auth_identities').set({
           email: claims.email,
@@ -86,15 +87,15 @@ export function registerAuthRoutes(
             given_name: claims.givenName,
             family_name: claims.familyName,
           },
-          updated_at: new Date().toISOString(),
-          last_seen_at: new Date().toISOString(),
+          updated_at: now,
+          last_seen_at: now,
         }).where('id', '=', existingIdentity.identity_id).execute();
 
         await trx.updateTable('users').set({
           display_name: claims.displayName,
           avatar_url: claims.pictureUrl,
-          updated_at: new Date().toISOString(),
-          last_login_at: new Date().toISOString(),
+          updated_at: now,
+          last_login_at: now,
         }).where('id', '=', userId).execute();
       });
     } else {
@@ -110,12 +111,13 @@ export function registerAuthRoutes(
       }
 
       const createdEntities = await database.transaction().execute(async (trx) => {
+        const now = new Date();
         const user = await trx.insertInto('users').values({
           primary_email: claims.emailVerified ? claims.email : null,
           display_name: claims.displayName,
           avatar_url: claims.pictureUrl,
           status: 'active',
-          last_login_at: new Date().toISOString(),
+          last_login_at: now,
         }).returning(['id']).executeTakeFirstOrThrow();
 
         await trx.insertInto('auth_identities').values({
@@ -129,14 +131,14 @@ export function registerAuthRoutes(
             given_name: claims.givenName,
             family_name: claims.familyName,
           },
-          updated_at: new Date().toISOString(),
-          last_seen_at: new Date().toISOString(),
+          updated_at: now,
+          last_seen_at: now,
         }).execute();
 
         const workspace = await trx.insertInto('workspaces').values({
           name: 'Mi campo',
           type: 'family',
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         }).returning(['id']).executeTakeFirstOrThrow();
 
         await trx.insertInto('workspace_memberships').values({
@@ -145,7 +147,7 @@ export function registerAuthRoutes(
           role: 'owner',
           status: 'active',
           invited_by: null,
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         }).execute();
 
         return { userId: user.id };
