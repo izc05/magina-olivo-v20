@@ -90,6 +90,13 @@ export const createDeliverySchema = clientOperationSchema.extend({
   fields: z.array(deliveryFieldAllocationSchema).min(1).max(100),
 });
 
+export const createDeliveryResultSchema = clientOperationSchema.extend({
+  result_date: isoDateSchema,
+  yield_percent: z.number().finite().min(0).max(100),
+  moisture_percent: z.number().finite().min(0).max(100).optional(),
+  acidity_percent: z.number().finite().min(0).max(100).optional(),
+});
+
 export type CreateFieldInput = z.infer<typeof createFieldSchema>;
 export type CreateIrrigationInput = z.infer<typeof createIrrigationSchema>;
 export type CreateTreatmentInput = z.infer<typeof createTreatmentSchema>;
@@ -97,3 +104,4 @@ export type CreateFertilizationInput = z.infer<typeof createFertilizationSchema>
 export type CreatePruningInput = z.infer<typeof createPruningSchema>;
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type CreateDeliveryInput = z.infer<typeof createDeliverySchema>;
+export type CreateDeliveryResultInput = z.infer<typeof createDeliveryResultSchema>;
