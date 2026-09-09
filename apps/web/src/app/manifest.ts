@@ -36,7 +36,7 @@ export default function manifest(): MetadataRoute.Manifest {
         name: 'Registrar',
         short_name: 'Registrar',
         description: 'Añadir un registro a Mi Campo',
-        url: withBase('/mi-campo/registrar/cosecha/'),
+        url: withBase('/mi-campo/registrar/'),
       },
       {
         name: 'Mi Campo',
