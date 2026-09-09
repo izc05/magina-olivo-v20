@@ -1,5 +1,5 @@
 import type { OcrJob, OcrQueuePort } from '../ocr/port.js';
-import type { ReserveUploadInput, StoragePort, UploadReservation } from '../storage/port.js';
+import type { ReserveUploadInput, StoragePort, StoredObjectInfo, UploadReservation } from '../storage/port.js';
 
 export class FakeStorage implements StoragePort {
   readonly reserved = new Map<string, ReserveUploadInput>();
@@ -7,17 +7,29 @@ export class FakeStorage implements StoragePort {
   async reserveUpload(input: ReserveUploadInput): Promise<UploadReservation> {
     const storageKey = `test/${input.workspaceId}/${input.documentId}/${input.versionId}`;
     this.reserved.set(storageKey, input);
+    const checksum = Buffer.from(input.sha256, 'hex').toString('base64');
     return {
       storageKey,
       uploadUrl: `https://storage.invalid/${encodeURIComponent(storageKey)}`,
       method: 'PUT',
-      headers: { 'content-type': input.mimeType },
+      headers: {
+        'content-type': input.mimeType,
+        'x-amz-checksum-sha256': checksum,
+      },
       expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
     };
   }
 
-  async objectExists(storageKey: string): Promise<boolean> {
-    return this.reserved.has(storageKey);
+  async headObject(storageKey: string): Promise<StoredObjectInfo> {
+    const input = this.reserved.get(storageKey);
+    if (!input) return { exists: false };
+    return {
+      exists: true,
+      byteSize: input.byteSize,
+      mimeType: input.mimeType,
+      etag: 'fake-etag',
+      checksumSha256: Buffer.from(input.sha256, 'hex').toString('base64'),
+    };
   }
 
   async createReadUrl(storageKey: string): Promise<string> {
