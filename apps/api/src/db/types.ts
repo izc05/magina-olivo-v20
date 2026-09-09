@@ -109,6 +109,11 @@ export interface DocumentVersionTable {
   mime_type: string;
   byte_size: number;
   sha256: string;
+  upload_status: 'reserved' | 'uploaded' | 'failed';
+  integrity_status: 'pending' | 'verified' | 'unverified' | 'failed';
+  uploaded_at: Timestamp | null;
+  storage_etag: string | null;
+  storage_checksum_sha256: string | null;
   created_by: string;
   created_at: Generated<Timestamp>;
 }
