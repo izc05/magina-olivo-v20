@@ -1,0 +1,89 @@
+name: V20 OCR benchmark docTR
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/v20-visual-prototype
+    paths:
+      - 'services/ocr-benchmark/providers/doctr_1_1.py'
+      - '.github/workflows/ocr-benchmark-doctr.yml'
+      - 'services/ocr-benchmark/generate_synthetic.py'
+      - 'services/ocr-benchmark/extract_fields.py'
+      - 'services/ocr-benchmark/benchmark.py'
+  pull_request:
+    paths:
+      - 'services/ocr-benchmark/providers/doctr_1_1.py'
+      - '.github/workflows/ocr-benchmark-doctr.yml'
+      - 'services/ocr-benchmark/generate_synthetic.py'
+      - 'services/ocr-benchmark/extract_fields.py'
+      - 'services/ocr-benchmark/benchmark.py'
+
+permissions:
+  contents: read
+
+jobs:
+  doctr-1-1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Parser regression checks
+        working-directory: services/ocr-benchmark
+        run: python test_extract_fields.py
+
+      - name: Install image and docTR tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y librsvg2-bin
+          python -m pip install --upgrade pip
+          python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install python-doctr==1.1.0
+          python - <<'PY'
+          import doctr
+          import torch
+          print('python-doctr', getattr(doctr, '__version__', 'unknown'))
+          print('torch', torch.__version__)
+          PY
+
+      - name: Generate and rasterize synthetic corpus
+        run: |
+          python services/ocr-benchmark/generate_synthetic.py
+          for svg in services/ocr-benchmark/corpus/synthetic/*.svg; do
+            png="${svg%.svg}.png"
+            rsvg-convert -w 1200 -h 1000 "$svg" -o "$png"
+          done
+
+      - name: Run docTR 1.1 baseline
+        run: |
+          mkdir -p services/ocr-benchmark/results
+          python services/ocr-benchmark/providers/doctr_1_1.py \
+            --manifest services/ocr-benchmark/corpus/synthetic/manifest.json \
+            --images-dir services/ocr-benchmark/corpus/synthetic \
+            --output services/ocr-benchmark/results/doctr-1.1.jsonl
+
+      - name: Score docTR
+        run: |
+          python services/ocr-benchmark/benchmark.py \
+            --manifest services/ocr-benchmark/corpus/synthetic/manifest.json \
+            --results services/ocr-benchmark/results/doctr-1.1.jsonl \
+            --output services/ocr-benchmark/results/doctr-1.1-report.json
+
+          echo '## OCR benchmark · docTR 1.1' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat services/ocr-benchmark/results/doctr-1.1-report.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload docTR benchmark evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocr-benchmark-doctr-1.1
+          path: |
+            services/ocr-benchmark/results/doctr-1.1.jsonl
+            services/ocr-benchmark/results/doctr-1.1-report.json
+          retention-days: 14
