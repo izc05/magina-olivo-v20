@@ -57,11 +57,23 @@ jobs:
       - name: Build contracts
         run: pnpm --filter @magina/contracts build
 
+      - name: Jobs typecheck
+        run: pnpm --filter @magina/jobs typecheck
+
+      - name: Build jobs
+        run: pnpm --filter @magina/jobs build
+
       - name: API typecheck
         run: pnpm --filter @magina/api typecheck
 
       - name: API build
         run: pnpm --filter @magina/api build
+
+      - name: Worker typecheck
+        run: pnpm --filter @magina/worker typecheck
+
+      - name: Worker build
+        run: pnpm --filter @magina/worker build
 
       - name: Install PostgreSQL client
         run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
