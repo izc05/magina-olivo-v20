@@ -1,0 +1,68 @@
+name: V20 OCR benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/v20-visual-prototype
+    paths:
+      - 'services/ocr-benchmark/**'
+      - '.github/workflows/ocr-benchmark.yml'
+  pull_request:
+    paths:
+      - 'services/ocr-benchmark/**'
+      - '.github/workflows/ocr-benchmark.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tesseract-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OCR baseline tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-spa librsvg2-bin
+
+      - name: Generate synthetic Mágina corpus
+        run: python3 services/ocr-benchmark/generate_synthetic.py
+
+      - name: Rasterize generated SVG documents
+        run: |
+          for svg in services/ocr-benchmark/corpus/synthetic/*.svg; do
+            png="${svg%.svg}.png"
+            rsvg-convert -w 1200 -h 1000 "$svg" -o "$png"
+          done
+
+      - name: Run Tesseract baseline
+        run: |
+          mkdir -p services/ocr-benchmark/results
+          python3 services/ocr-benchmark/providers/tesseract_cli.py \
+            --manifest services/ocr-benchmark/corpus/synthetic/manifest.json \
+            --images-dir services/ocr-benchmark/corpus/synthetic \
+            --output services/ocr-benchmark/results/tesseract.jsonl
+
+      - name: Score baseline
+        run: |
+          python3 services/ocr-benchmark/benchmark.py \
+            --manifest services/ocr-benchmark/corpus/synthetic/manifest.json \
+            --results services/ocr-benchmark/results/tesseract.jsonl \
+            --output services/ocr-benchmark/results/tesseract-report.json
+
+          echo '## OCR baseline · Tesseract' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat services/ocr-benchmark/results/tesseract-report.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload benchmark evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocr-benchmark-tesseract
+          path: |
+            services/ocr-benchmark/corpus/synthetic/*.png
+            services/ocr-benchmark/results/tesseract.jsonl
+            services/ocr-benchmark/results/tesseract-report.json
+          retention-days: 14
