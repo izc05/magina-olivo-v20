@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { buildApp } from '../app.js';
 import { createDatabase } from '../db/client.js';
 import { FakeOcrQueue, FakeStorage } from './fakes.js';
@@ -30,12 +31,7 @@ async function main() {
     sha256: 'a'.repeat(64),
   };
 
-  const created = await app.inject({
-    method: 'POST',
-    url: '/api/v1/documents',
-    headers,
-    payload,
-  });
+  const created = await app.inject({ method: 'POST', url: '/api/v1/documents', headers, payload });
   if (created.statusCode !== 201) throw new Error(`Document create failed: ${created.statusCode} ${created.body}`);
   const body = created.json();
   if (body.document.id !== payload.entity_id) throw new Error('Unexpected document id');
@@ -45,11 +41,7 @@ async function main() {
   const replay = await app.inject({ method: 'POST', url: '/api/v1/documents', headers, payload });
   if (replay.statusCode !== 200 || replay.json().replayed !== true) throw new Error(`Document replay failed: ${replay.statusCode} ${replay.body}`);
 
-  const list = await app.inject({
-    method: 'GET',
-    url: `/api/v1/fields/${payload.field_id}/documents`,
-    headers,
-  });
+  const list = await app.inject({ method: 'GET', url: `/api/v1/fields/${payload.field_id}/documents`, headers });
   if (list.statusCode !== 200) throw new Error(`Document list failed: ${list.statusCode} ${list.body}`);
   if (list.json().documents.length !== 1) throw new Error(`Expected one field document, got ${list.json().documents.length}`);
 
@@ -61,6 +53,33 @@ async function main() {
   });
   if (ocr.statusCode !== 202) throw new Error(`OCR enqueue failed: ${ocr.statusCode} ${ocr.body}`);
   if (ocrQueue.jobs.length !== 1) throw new Error(`Expected one OCR job, got ${ocrQueue.jobs.length}`);
+  const ocrBody = ocr.json();
+
+  const extractionId = randomUUID();
+  await db.insertInto('extraction_runs').values({
+    id: extractionId,
+    ocr_run_id: ocrBody.ocr_run_id,
+    document_type: 'delivery_ticket',
+    schema_version: 1,
+    status: 'needs_review',
+    data_json: { kilograms: 1842, ticket_number: 'CI-001' },
+    confidence_json: { kilograms: 0.98, ticket_number: 0.71 },
+    completed_at: new Date().toISOString(),
+  }).execute();
+
+  const review = await app.inject({
+    method: 'POST',
+    url: `/api/v1/extractions/${extractionId}/reviews`,
+    headers,
+    payload: {
+      extraction_run_id: extractionId,
+      confirmed_fields: { kilograms: 1842 },
+      corrections: { ticket_number: 'CI-0001' },
+    },
+  });
+  if (review.statusCode !== 201) throw new Error(`Extraction review failed: ${review.statusCode} ${review.body}`);
+  const reviewBody = review.json();
+  if (reviewBody.extraction.original_data.ticket_number !== 'CI-001') throw new Error('Original extraction was not preserved');
 
   const documentCount = await db.selectFrom('documents').select(({ fn }) => fn.countAll<number>().as('count'))
     .where('id', '=', payload.entity_id).executeTakeFirstOrThrow();
@@ -74,7 +93,11 @@ async function main() {
     .where('document_version_id', '=', payload.version_id).executeTakeFirstOrThrow();
   if (Number(ocrCount.count) !== 1) throw new Error('OCR run was not persisted');
 
-  console.log('Document/OCR smoke test passed');
+  const reviewCount = await db.selectFrom('extraction_reviews').select(({ fn }) => fn.countAll<number>().as('count'))
+    .where('extraction_run_id', '=', extractionId).executeTakeFirstOrThrow();
+  if (Number(reviewCount.count) !== 1) throw new Error('Extraction review was not persisted');
+
+  console.log('Document/OCR/review smoke test passed');
 }
 
 try {
