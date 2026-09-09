@@ -39,6 +39,22 @@ def first(patterns: list[str], text: str) -> str | None:
     return None
 
 
+def clean_line(line: str) -> str:
+    line = re.sub(r"^[^A-Z0-9]+|[^A-Z0-9]+$", "", line.strip())
+    return " ".join(line.split())
+
+
+def line_after_heading(raw_text: str, heading: str) -> str | None:
+    lines = [clean_line(ascii_upper(line)) for line in raw_text.splitlines()]
+    lines = [line for line in lines if line]
+    for index, line in enumerate(lines):
+        if heading in line:
+            for candidate in lines[index + 1:]:
+                if candidate and not re.fullmatch(r"[_\-=|. ]+", candidate):
+                    return candidate
+    return None
+
+
 def extract_fields(raw_text: str, document_type: str) -> dict[str, Any]:
     normalized = ascii_upper(raw_text)
     one_line = " ".join(normalized.split())
@@ -55,8 +71,9 @@ def extract_fields(raw_text: str, document_type: str) -> dict[str, Any]:
             date = f"{year}-{month}-{day}"
         fields["date"] = date
 
+    # OCR commonly confuses Nº/N° with NO, NE or N0.
     ticket = first([
-        r"(?:N[Oº°]?\s*ALBARAN|ALBARAN\s+RELACIONADO)[\s:.-]*([A-Z0-9][A-Z0-9\-]{2,})",
+        r"(?:N(?:O|E|0)?\s*ALBARAN|ALBARAN\s+RELACIONADO)[\s:.-]*([A-Z0-9][A-Z0-9\-]{2,})",
     ], one_line)
     if ticket:
         fields["ticket_number"] = ticket
@@ -70,12 +87,9 @@ def extract_fields(raw_text: str, document_type: str) -> dict[str, Any]:
             if kg is not None:
                 fields["total_kg"] = int(round(kg))
 
-        cooperative = first([
-            r"ALBARAN\s+DE\s+ENTREGA\s+(.+?)\s+FECHA(?:\s|:)",
-        ], one_line)
-        if cooperative:
-            # Avoid swallowing labels when OCR has collapsed layout.
-            cooperative = re.split(r"\b(?:N[Oº°]?\s*ALBARAN|PRODUCTO|PESO)\b", cooperative)[0].strip(" :-")
+        cooperative = line_after_heading(raw_text, "ALBARAN DE ENTREGA")
+        if cooperative and not cooperative.startswith("FECHA"):
+            cooperative = clean_line(cooperative)
             if cooperative:
                 fields["cooperative_or_mill"] = cooperative
 
