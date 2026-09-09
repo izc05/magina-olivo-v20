@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import './premium.css';
+import './pwa.css';
 
 export const metadata: Metadata = {
   title: 'Mágina Olivo V20',
