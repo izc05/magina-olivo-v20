@@ -26,6 +26,10 @@ async function domainRecordBelongsToWorkspace(db: DatabaseClient, workspaceId: s
   }
 }
 
+function expectedChecksumBase64(sha256Hex: string) {
+  return Buffer.from(sha256Hex, 'hex').toString('base64');
+}
+
 export function registerDocumentRoutes(
   app: FastifyInstance,
   db: DatabaseClient | null,
@@ -103,6 +107,11 @@ export function registerDocumentRoutes(
         mime_type: input.mime_type,
         byte_size: input.byte_size,
         sha256: input.sha256.toLowerCase(),
+        upload_status: 'reserved',
+        integrity_status: 'pending',
+        uploaded_at: null,
+        storage_etag: null,
+        storage_checksum_sha256: null,
         created_by: context.userId,
       }).returningAll().executeTakeFirstOrThrow();
 
@@ -119,6 +128,72 @@ export function registerDocumentRoutes(
     });
 
     return reply.code(201).send({ replayed: false, ...saved, upload });
+  });
+
+  app.post('/api/v1/documents/:documentId/versions/:versionId/complete', async (request, reply) => {
+    const context = requireContext(request, reply);
+    if (!context) return;
+    const database = requireDatabase(db, reply);
+    if (!database) return;
+
+    const params = request.params as { documentId?: string; versionId?: string };
+    const documentId = uuidSchema.safeParse(params.documentId);
+    const versionId = uuidSchema.safeParse(params.versionId);
+    if (!documentId.success || !versionId.success) return reply.code(400).send({ error: 'invalid_document_or_version_id' });
+
+    const version = await database.selectFrom('document_versions as dv')
+      .innerJoin('documents as d', 'd.id', 'dv.document_id')
+      .select([
+        'dv.id', 'dv.storage_key', 'dv.mime_type', 'dv.byte_size', 'dv.sha256',
+        'dv.upload_status', 'dv.integrity_status', 'dv.storage_etag', 'dv.storage_checksum_sha256',
+      ])
+      .where('d.id', '=', documentId.data)
+      .where('d.workspace_id', '=', context.workspaceId)
+      .where('dv.id', '=', versionId.data)
+      .executeTakeFirst();
+    if (!version) return reply.code(404).send({ error: 'document_version_not_found' });
+
+    if (version.upload_status === 'uploaded') {
+      return reply.code(200).send({ replayed: true, version });
+    }
+
+    let object;
+    try {
+      object = await storage.headObject(version.storage_key);
+    } catch (error) {
+      if (error instanceof StorageNotConfiguredError) return reply.code(503).send({ error: 'storage_not_configured' });
+      throw error;
+    }
+
+    if (!object.exists) return reply.code(409).send({ error: 'upload_not_found' });
+
+    const storedBytes = object.byteSize == null ? null : Number(object.byteSize);
+    if (storedBytes !== null && storedBytes !== Number(version.byte_size)) {
+      await database.updateTable('document_versions').set({ upload_status: 'failed', integrity_status: 'failed' }).where('id', '=', version.id).execute();
+      return reply.code(422).send({ error: 'upload_size_mismatch', expected: Number(version.byte_size), actual: storedBytes });
+    }
+
+    const expectedChecksum = expectedChecksumBase64(version.sha256);
+    if (object.checksumSha256 && object.checksumSha256 !== expectedChecksum) {
+      await database.updateTable('document_versions').set({
+        upload_status: 'failed',
+        integrity_status: 'failed',
+        storage_checksum_sha256: object.checksumSha256,
+        storage_etag: object.etag ?? null,
+      }).where('id', '=', version.id).execute();
+      return reply.code(422).send({ error: 'upload_checksum_mismatch' });
+    }
+
+    const integrityStatus = object.checksumSha256 ? 'verified' as const : 'unverified' as const;
+    const completed = await database.updateTable('document_versions').set({
+      upload_status: 'uploaded',
+      integrity_status: integrityStatus,
+      uploaded_at: new Date().toISOString(),
+      storage_etag: object.etag ?? null,
+      storage_checksum_sha256: object.checksumSha256 ?? null,
+    }).where('id', '=', version.id).returningAll().executeTakeFirstOrThrow();
+
+    return reply.code(200).send({ replayed: false, version: completed });
   });
 
   app.get('/api/v1/fields/:fieldId/documents', async (request, reply) => {
@@ -160,12 +235,15 @@ export function registerDocumentRoutes(
 
     const version = await database.selectFrom('document_versions as dv')
       .innerJoin('documents as d', 'd.id', 'dv.document_id')
-      .select(['dv.id', 'dv.storage_key', 'dv.mime_type', 'd.id as document_id'])
+      .select(['dv.id', 'dv.storage_key', 'dv.mime_type', 'dv.sha256', 'dv.upload_status', 'dv.integrity_status'])
       .where('d.id', '=', parsedDocumentId.data)
       .where('d.workspace_id', '=', context.workspaceId)
       .where('dv.id', '=', input.document_version_id)
       .executeTakeFirst();
     if (!version) return reply.code(404).send({ error: 'document_version_not_found' });
+    if (version.upload_status !== 'uploaded' || version.integrity_status === 'failed') {
+      return reply.code(409).send({ error: 'document_upload_not_ready', upload_status: version.upload_status, integrity_status: version.integrity_status });
+    }
 
     const ocrRunId = randomUUID();
     await database.insertInto('ocr_runs').values({
@@ -188,6 +266,7 @@ export function registerDocumentRoutes(
         documentVersionId: version.id,
         storageKey: version.storage_key,
         mimeType: version.mime_type,
+        expectedSha256Hex: version.sha256,
         preferredProvider: input.preferred_provider,
       });
       return reply.code(202).send({ ocr_run_id: ocrRunId, job_id: queued.jobId, status: 'queued' });
@@ -216,9 +295,7 @@ export function registerDocumentRoutes(
     if (!parsedExtractionId.success) return reply.code(400).send({ error: 'invalid_extraction_id' });
     const input = parseBody(confirmExtractionFieldSchema, request.body, reply);
     if (!input) return;
-    if (input.extraction_run_id !== parsedExtractionId.data) {
-      return reply.code(400).send({ error: 'extraction_id_mismatch' });
-    }
+    if (input.extraction_run_id !== parsedExtractionId.data) return reply.code(400).send({ error: 'extraction_id_mismatch' });
 
     const extraction = await database.selectFrom('extraction_runs as er')
       .innerJoin('ocr_runs as oru', 'oru.id', 'er.ocr_run_id')
