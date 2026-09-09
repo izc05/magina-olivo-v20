@@ -41,6 +41,23 @@ async function main() {
   const replay = await app.inject({ method: 'POST', url: '/api/v1/documents', headers, payload });
   if (replay.statusCode !== 200 || replay.json().replayed !== true) throw new Error(`Document replay failed: ${replay.statusCode} ${replay.body}`);
 
+  const complete = await app.inject({
+    method: 'POST',
+    url: `/api/v1/documents/${payload.entity_id}/versions/${payload.version_id}/complete`,
+    headers,
+  });
+  if (complete.statusCode !== 200) throw new Error(`Upload completion failed: ${complete.statusCode} ${complete.body}`);
+  const completed = complete.json();
+  if (completed.version.upload_status !== 'uploaded') throw new Error('Upload did not transition to uploaded');
+  if (completed.version.integrity_status !== 'verified') throw new Error('Upload checksum was not verified');
+
+  const completeReplay = await app.inject({
+    method: 'POST',
+    url: `/api/v1/documents/${payload.entity_id}/versions/${payload.version_id}/complete`,
+    headers,
+  });
+  if (completeReplay.statusCode !== 200 || completeReplay.json().replayed !== true) throw new Error('Upload completion is not idempotent');
+
   const list = await app.inject({ method: 'GET', url: `/api/v1/fields/${payload.field_id}/documents`, headers });
   if (list.statusCode !== 200) throw new Error(`Document list failed: ${list.statusCode} ${list.body}`);
   if (list.json().documents.length !== 1) throw new Error(`Expected one field document, got ${list.json().documents.length}`);
@@ -53,6 +70,7 @@ async function main() {
   });
   if (ocr.statusCode !== 202) throw new Error(`OCR enqueue failed: ${ocr.statusCode} ${ocr.body}`);
   if (ocrQueue.jobs.length !== 1) throw new Error(`Expected one OCR job, got ${ocrQueue.jobs.length}`);
+  if (ocrQueue.jobs[0].expectedSha256Hex !== payload.sha256) throw new Error('OCR job did not preserve expected checksum');
   const ocrBody = ocr.json();
 
   const extractionId = randomUUID();
@@ -85,6 +103,9 @@ async function main() {
     .where('id', '=', payload.entity_id).executeTakeFirstOrThrow();
   if (Number(documentCount.count) !== 1) throw new Error('Document idempotency failed');
 
+  const version = await db.selectFrom('document_versions').selectAll().where('id', '=', payload.version_id).executeTakeFirstOrThrow();
+  if (version.upload_status !== 'uploaded' || version.integrity_status !== 'verified') throw new Error('Persisted upload state is invalid');
+
   const versionCount = await db.selectFrom('document_versions').select(({ fn }) => fn.countAll<number>().as('count'))
     .where('document_id', '=', payload.entity_id).executeTakeFirstOrThrow();
   if (Number(versionCount.count) !== 1) throw new Error('Document version idempotency failed');
@@ -97,7 +118,7 @@ async function main() {
     .where('extraction_run_id', '=', extractionId).executeTakeFirstOrThrow();
   if (Number(reviewCount.count) !== 1) throw new Error('Extraction review was not persisted');
 
-  console.log('Document/OCR/review smoke test passed');
+  console.log('Document upload/OCR/review smoke test passed');
 }
 
 try {
