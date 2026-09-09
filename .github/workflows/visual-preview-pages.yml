@@ -1,9 +1,6 @@
 name: V20 visual preview
 
 on:
-  push:
-    branches:
-      - feat/v20-visual-prototype
   workflow_dispatch:
 
 permissions:
@@ -43,8 +40,6 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload static artifact
         uses: actions/upload-pages-artifact@v3
