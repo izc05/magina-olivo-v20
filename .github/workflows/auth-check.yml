@@ -1,4 +1,4 @@
-name: V20 auth and memberships check
+name: V20 auth profile and memberships check
 
 on:
   workflow_dispatch:
@@ -8,27 +8,35 @@ on:
     paths:
       - 'apps/api/src/auth/**'
       - 'apps/api/src/routes/auth.ts'
+      - 'apps/api/src/routes/me.ts'
       - 'apps/api/src/request-context.ts'
       - 'apps/api/src/http/helpers.ts'
       - 'apps/api/src/testing/auth-smoke.ts'
       - 'apps/api/src/db/types.ts'
+      - 'apps/api/src/db/profile-types.ts'
+      - 'apps/api/src/db/client.ts'
       - 'apps/api/package.json'
       - 'packages/contracts/src/auth.ts'
       - 'packages/contracts/src/index.ts'
       - 'database/migrations/0010_auth_memberships.sql'
+      - 'database/migrations/0011_user_profile_preferences.sql'
       - '.github/workflows/auth-check.yml'
   pull_request:
     paths:
       - 'apps/api/src/auth/**'
       - 'apps/api/src/routes/auth.ts'
+      - 'apps/api/src/routes/me.ts'
       - 'apps/api/src/request-context.ts'
       - 'apps/api/src/http/helpers.ts'
       - 'apps/api/src/testing/auth-smoke.ts'
       - 'apps/api/src/db/types.ts'
+      - 'apps/api/src/db/profile-types.ts'
+      - 'apps/api/src/db/client.ts'
       - 'apps/api/package.json'
       - 'packages/contracts/src/auth.ts'
       - 'packages/contracts/src/index.ts'
       - 'database/migrations/0010_auth_memberships.sql'
+      - 'database/migrations/0011_user_profile_preferences.sql'
       - '.github/workflows/auth-check.yml'
 
 permissions:
@@ -86,7 +94,7 @@ jobs:
             psql -h 127.0.0.1 -U postgres -d magina_auth -v ON_ERROR_STOP=1 -f "${migration}"
           done
 
-      - name: Google identity + session + membership smoke
+      - name: Google identity + session + profile + membership smoke
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_auth
           ALLOW_DEV_AUTH_HEADERS: 'false'
