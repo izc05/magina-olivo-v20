@@ -245,9 +245,11 @@ export function registerDocumentRoutes(
       return reply.code(409).send({ error: 'document_upload_not_ready', upload_status: version.upload_status, integrity_status: version.integrity_status });
     }
 
-    const ocrRunId = randomUUID();
-    await database.insertInto('ocr_runs').values({
-      id: ocrRunId,
+    const proposedRunId = input.entity_id ?? randomUUID();
+    const inserted = await database.insertInto('ocr_runs').values({
+      id: proposedRunId,
+      workspace_id: context.workspaceId,
+      client_operation_id: input.client_operation_id,
       document_version_id: version.id,
       provider: input.preferred_provider,
       provider_version: null,
@@ -258,27 +260,43 @@ export function registerDocumentRoutes(
       error_message: null,
       started_at: null,
       completed_at: null,
-    }).execute();
+    }).onConflict((oc) => oc.columns(['workspace_id', 'client_operation_id']).doNothing())
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!inserted) {
+      const existing = await database.selectFrom('ocr_runs').selectAll()
+        .where('workspace_id', '=', context.workspaceId)
+        .where('client_operation_id', '=', input.client_operation_id)
+        .executeTakeFirstOrThrow();
+      return reply.code(200).send({
+        replayed: true,
+        ocr_run_id: existing.id,
+        job_id: null,
+        status: existing.status,
+      });
+    }
 
     try {
       const queued = await ocrQueue.enqueue({
-        ocrRunId,
-        documentVersionId: version.id,
-        storageKey: version.storage_key,
-        mimeType: version.mime_type,
-        expectedSha256Hex: version.sha256,
-        preferredProvider: input.preferred_provider,
+        version: 1,
+        ocr_run_id: inserted.id,
+        document_version_id: version.id,
+        storage_key: version.storage_key,
+        mime_type: version.mime_type,
+        expected_sha256_hex: version.sha256,
+        preferred_provider: input.preferred_provider,
       });
-      return reply.code(202).send({ ocr_run_id: ocrRunId, job_id: queued.jobId, status: 'queued' });
+      return reply.code(202).send({ replayed: false, ocr_run_id: inserted.id, job_id: queued.jobId, status: 'queued' });
     } catch (error) {
       await database.updateTable('ocr_runs').set({
         status: 'failed',
         error_code: 'queue_unavailable',
         error_message: error instanceof Error ? error.message : 'OCR queue unavailable',
         completed_at: new Date().toISOString(),
-      }).where('id', '=', ocrRunId).execute();
+      }).where('id', '=', inserted.id).execute();
       if (error instanceof OcrQueueNotConfiguredError) {
-        return reply.code(503).send({ error: 'ocr_queue_not_configured', ocr_run_id: ocrRunId });
+        return reply.code(503).send({ error: 'ocr_queue_not_configured', ocr_run_id: inserted.id });
       }
       throw error;
     }
