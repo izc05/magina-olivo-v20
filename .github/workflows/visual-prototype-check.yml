@@ -1,4 +1,4 @@
-name: V20 visual prototype check
+name: V20 full candidate check
 
 on:
   push:
@@ -6,7 +6,9 @@ on:
       - feat/v20-visual-prototype
   pull_request:
     paths:
-      - 'apps/web/**'
+      - 'apps/**'
+      - 'packages/**'
+      - 'database/**'
       - 'package.json'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/visual-prototype-check.yml'
@@ -15,7 +17,7 @@ permissions:
   contents: read
 
 jobs:
-  web:
+  candidate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,8 +36,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Typecheck
+      - name: Contracts typecheck
+        run: pnpm --filter @magina/contracts typecheck
+
+      - name: Build contracts
+        run: pnpm --filter @magina/contracts build
+
+      - name: API typecheck
+        run: pnpm --filter @magina/api typecheck
+
+      - name: API build
+        run: pnpm --filter @magina/api build
+
+      - name: Web typecheck
         run: pnpm --filter @magina/web typecheck
 
-      - name: Build
+      - name: Web build
         run: pnpm --filter @magina/web build
