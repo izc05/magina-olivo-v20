@@ -7,6 +7,7 @@ export const moneySchema = z.number().finite().nonnegative().max(99_999_999.99);
 
 export const clientOperationSchema = z.object({
   client_operation_id: uuidSchema,
+  entity_id: uuidSchema.optional(),
 });
 
 export const createFieldSchema = clientOperationSchema.extend({
