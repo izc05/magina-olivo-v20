@@ -4,6 +4,8 @@ import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import type { RecordField, RecordType } from '@/lib/record-types';
 import { lasCenillas } from '@/lib/demo-data';
+import { activityLabels, recordSlugToActivityType } from '@/lib/domain';
+import { saveLocalActivity } from '@/lib/local-prototype-store';
 import { ArrowIcon, MapPinIcon } from '@/components/icons';
 
 function Field({ field }: { field: RecordField }) {
@@ -40,11 +42,53 @@ function Field({ field }: { field: RecordField }) {
   );
 }
 
+function buildSummary(data: Record<string, string>, fallback: string) {
+  const parts = [data.reason, data.product, data.task, data.machine, data.concept, data.type]
+    .filter((value): value is string => Boolean(value));
+  if (data.quantity) parts.push(`${data.quantity} kg`);
+  if (parts.length) return parts.join(' · ');
+  if (data.notes) return data.notes.slice(0, 90);
+  return fallback;
+}
+
 export function QuickRecordForm({ type }: { type: RecordType }) {
   const [saved, setSaved] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const data: Record<string, string> = {};
+    for (const [key, value] of formData.entries()) {
+      if (typeof value === 'string' && value.trim()) data[key] = value.trim();
+    }
+
+    const activityType = recordSlugToActivityType[type.slug as keyof typeof recordSlugToActivityType];
+    if (!activityType) return;
+
+    const costRaw = data.cost ?? data.amount;
+    const cost = costRaw ? Number(costRaw.replace(',', '.')) : undefined;
+    const followUpOn = data.nextDate ?? data.reviewDate;
+    const followUpTime = data.nextTime;
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `local-${Date.now()}`;
+
+    saveLocalActivity({
+      id,
+      fieldId: lasCenillas.id,
+      campaign: lasCenillas.campaign,
+      type: activityType,
+      occurredOn: data.date ?? new Date().toISOString().slice(0, 10),
+      title: activityLabels[activityType],
+      summary: buildSummary(data, `Registro de ${type.shortLabel.toLowerCase()}`),
+      costEur: cost !== undefined && Number.isFinite(cost) ? cost : undefined,
+      followUpOn,
+      followUpTime,
+      data,
+      source: 'prototype-local',
+      createdAt: new Date().toISOString(),
+    });
+
     setSaved(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -53,9 +97,9 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
     return (
       <section className="record-success card">
         <div className="success-mark">✓</div>
-        <span className="eyebrow dark">REGISTRO GUARDADO · DEMO</span>
+        <span className="eyebrow dark">GUARDADO EN ESTE DISPOSITIVO</span>
         <h1>{type.shortLabel} añadido a {lasCenillas.name}</h1>
-        <p>En la aplicación real este único registro actualizará automáticamente la historia de la finca y los apartados relacionados.</p>
+        <p>Esta demo ya guarda el registro en tu navegador. Al entrar en Historia, Costes o Calendario verás la información local añadida.</p>
         <div className="success-effects">
           <span>✓ Historia de la finca</span>
           <span>✓ Campaña {lasCenillas.campaign}</span>
@@ -64,7 +108,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         </div>
         <div className="record-actions">
           <button type="button" className="secondary-action" onClick={() => setSaved(false)}>Registrar otro</button>
-          <Link className="primary action-link" href="/mi-campo/fincas/las-cenillas">Ver Las Cenillas <ArrowIcon /></Link>
+          <Link className="primary action-link" href="/mi-campo/fincas/las-cenillas/historia">Ver Historia <ArrowIcon /></Link>
         </div>
       </section>
     );
@@ -104,7 +148,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
             <label className="record-field wide photo-field">
               <span>Foto o documento</span>
               <input className="record-control file-control" type="file" accept="image/*,.pdf" />
-              <small>Foto del trabajo, factura, ticket o documento relacionado.</small>
+              <small>Foto del trabajo, factura, ticket o documento relacionado. En esta fase aún no se guarda el archivo, solo el resto del registro.</small>
             </label>
           </div>
         </details>
@@ -115,7 +159,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
           <div>
             <span className="eyebrow dark">DESPUÉS</span>
             <h3>¿Quieres dejarlo programado?</h3>
-            <p>Si indicas una fecha aparecerá automáticamente en el calendario.</p>
+            <p>Si indicas una fecha aparecerá automáticamente en el calendario local de esta demo.</p>
           </div>
           <div className="record-fields follow-up-fields">
             {type.followUp.map((field) => <Field key={field.name} field={field} />)}
@@ -124,7 +168,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
       )}
 
       <section className="record-save-bar">
-        <small>Los datos de esta pantalla son una demostración visual.</small>
+        <small>Prototipo local-first: los datos se guardan únicamente en este navegador.</small>
         <button className="primary" type="submit">Guardar {type.shortLabel.toLowerCase()} →</button>
       </section>
     </form>
