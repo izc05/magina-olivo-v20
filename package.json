@@ -1,0 +1,10 @@
+{
+  "name": "magina-olivo-v20",
+  "private": true,
+  "packageManager": "pnpm@10.15.1",
+  "scripts": {
+    "dev": "pnpm --filter @magina/web dev",
+    "build": "pnpm --filter @magina/web build",
+    "typecheck": "pnpm --filter @magina/web typecheck"
+  }
+}
