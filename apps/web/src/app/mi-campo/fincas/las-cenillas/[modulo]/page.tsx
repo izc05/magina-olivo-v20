@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BottomNav } from '@/components/bottom-nav';
@@ -7,6 +7,7 @@ import { ArrowIcon, MapPinIcon, PlusIcon } from '@/components/icons';
 import { lasCenillas } from '@/lib/demo-data';
 import {
   costBreakdown,
+  farmCalendar,
   farmDocuments,
   farmHistory,
   fertilizationHistory,
@@ -31,6 +32,7 @@ const meta: Record<FarmModuleSlug, { title: string; symbol: string; subtitle: st
   abonos: { title: 'Abonos', symbol: '🧪', subtitle: 'Productos, cantidades y gasto', registerHref: '/mi-campo/registrar/abono', registerLabel: 'Registrar abono' },
   poda: { title: 'Poda', symbol: '✂', subtitle: 'Histórico de poda y próxima revisión', registerHref: '/mi-campo/registrar/poda', registerLabel: 'Registrar poda' },
   gastos: { title: 'Gastos', symbol: '€', subtitle: 'Costes de campaña sin duplicar datos', registerHref: '/mi-campo/registrar/gasto', registerLabel: 'Añadir gasto' },
+  calendario: { title: 'Calendario', symbol: '📅', subtitle: 'Próximos trabajos y recordatorios' },
   historia: { title: 'Historia', symbol: '◷', subtitle: 'La memoria completa de la finca' },
   documentos: { title: 'Documentos', symbol: '▤', subtitle: 'Albaranes, facturas, fotos y archivos' },
   terreno: { title: 'Terreno', symbol: '▱', subtitle: 'Geometría y referencias oficiales' },
@@ -93,6 +95,14 @@ function CostsView() {
   </>;
 }
 
+function CalendarView() {
+  return <>
+    <section className="card module-highlight calendar-highlight"><span>PRÓXIMO TRABAJO</span><strong>14 septiembre</strong><div><b>💧 Riego · 08:00</b><b>2 avisos programados</b></div></section>
+    <section className="section"><SectionTitle aside={<span className="subtle">Septiembre–noviembre</span>}>Próximos</SectionTitle><div className="card calendar-list">{farmCalendar.map((item) => <article key={`${item.day}-${item.month}-${item.title}`} className={`calendar-row ${item.tone}`}><div className="calendar-date"><strong>{item.day}</strong><span>{item.month}</span></div><span className="calendar-symbol">{item.symbol}</span><div><strong>{item.title}</strong><small>{item.time} · {item.detail}</small></div><ArrowIcon/></article>)}</div></section>
+    <section className="card no-duplicate-note"><strong>El calendario se alimenta solo</strong><p>Cuando registras una tarea y programas su seguimiento, Mágina crea el evento y sus avisos sin volver a escribir los datos.</p></section>
+  </>;
+}
+
 function HistoryView() {
   return <>
     <div className="history-filters"><button className="active">Todo</button><button>Cosecha</button><button>Riego</button><button>Tratamiento</button><button>Abono</button><button>Poda</button></div>
@@ -124,6 +134,7 @@ function ModuleContent({ modulo }: { modulo: FarmModuleSlug }) {
     case 'abonos': return <FertilizerView/>;
     case 'poda': return <PruningView/>;
     case 'gastos': return <CostsView/>;
+    case 'calendario': return <CalendarView/>;
     case 'historia': return <HistoryView/>;
     case 'documentos': return <DocumentsView/>;
     case 'terreno': return <TerrainView/>;
