@@ -35,7 +35,7 @@ export async function writeDomainEffects(trx: Transaction<Database>, input: Proj
       summary: input.summary ?? null,
       icon_key: input.iconKey ?? null,
     })
-    .onConflict((oc) => oc.columns(['domain_type', 'domain_record_id']).doUpdateSet({
+    .onConflict((oc) => oc.columns(['field_id', 'domain_type', 'domain_record_id']).doUpdateSet({
       occurred_at: input.occurredAt,
       title: input.title,
       summary: input.summary ?? null,
