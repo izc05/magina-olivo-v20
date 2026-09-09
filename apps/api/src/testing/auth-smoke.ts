@@ -69,7 +69,7 @@ try {
   const foreignWorkspace = await db.insertInto('workspaces').values({
     name: 'Workspace ajeno',
     type: 'family',
-    updated_at: new Date().toISOString(),
+    updated_at: new Date(),
   }).returning('id').executeTakeFirstOrThrow();
 
   const deniedWorkspace = await app.inject({
