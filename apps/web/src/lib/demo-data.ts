@@ -32,14 +32,14 @@ export const lasCenillas = {
   oliveTrees: 23,
   waterRegime: 'Secano',
   campaign: '2026/27',
-  campaignKg: 4000,
-  averageYieldPercent: 21.6,
+  campaignKg: 1425,
+  averageYieldPercent: 21.3,
   nextIrrigationLabel: '14 sep',
   nextIrrigationLong: '14 septiembre',
   campaignCostEur: 535,
   documents: 5,
   lastTreatment: '18 agosto',
-  lastFertilization: '12 marzo',
+  lastFertilization: '7 septiembre',
   lastPruning: 'febrero 2026',
 } as const;
 
