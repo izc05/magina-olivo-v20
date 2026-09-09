@@ -1,0 +1,25 @@
+{
+  "name": "@magina/jobs",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@magina/contracts": "workspace:*",
+    "pg-boss": "^12.30.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.0"
+  }
+}
