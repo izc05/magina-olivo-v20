@@ -1,10 +1,10 @@
 import type { ColumnType, Generated } from 'kysely';
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
-export type NullableTimestamp = ColumnType<Date | null, Date | string | null, Date | string | null>;
+export type DateColumn = ColumnType<Date, Date | string, Date | string>;
 
 export interface WorkspaceTable {
-  id: string;
+  id: Generated<string>;
   name: string;
   type: 'family' | 'professional' | 'organization';
   created_at: Generated<Timestamp>;
@@ -14,6 +14,7 @@ export interface WorkspaceTable {
 export interface FieldTable {
   id: string;
   workspace_id: string;
+  client_operation_id: string;
   name: string;
   description: string | null;
   municipality: string | null;
@@ -31,44 +32,90 @@ export interface FieldTable {
 }
 
 export interface CampaignTable {
-  id: string;
+  id: Generated<string>;
   workspace_id: string;
   name: string;
-  start_date: ColumnType<Date, Date | string, Date | string>;
+  start_date: DateColumn;
   end_date: ColumnType<Date | null, Date | string | null, Date | string | null>;
   status: 'planned' | 'active' | 'closed';
   created_at: Generated<Timestamp>;
 }
 
-export interface IrrigationRecordTable {
+interface DomainRecordBase {
   id: string;
   workspace_id: string;
   field_id: string;
   campaign_id: string | null;
-  occurred_at: Timestamp;
-  duration_hours: number | null;
-  water_m3: number | null;
-  cost_eur: number | null;
-  notes: string | null;
   client_operation_id: string;
   created_by: string;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
 }
 
+export interface IrrigationRecordTable extends DomainRecordBase {
+  occurred_at: Timestamp;
+  duration_hours: number | null;
+  water_m3: number | null;
+  cost_eur: number | null;
+  notes: string | null;
+}
+
+export interface TreatmentRecordTable extends DomainRecordBase {
+  occurred_at: Timestamp;
+  reason: string;
+  product_name: string;
+  dose: string | null;
+  quantity: string | null;
+  applicator: string | null;
+  equipment: string | null;
+  cost_eur: number | null;
+  notes: string | null;
+}
+
+export interface FertilizationRecordTable extends DomainRecordBase {
+  occurred_at: Timestamp;
+  product_name: string;
+  quantity_kg: number | null;
+  application_method: string | null;
+  composition: string | null;
+  cost_eur: number | null;
+  supplier: string | null;
+  notes: string | null;
+}
+
+export interface PruningRecordTable extends DomainRecordBase {
+  occurred_at: Timestamp;
+  pruning_type: string;
+  workers: number | null;
+  hours: number | null;
+  cost_eur: number | null;
+  notes: string | null;
+}
+
+export interface ExpenseRecordTable extends DomainRecordBase {
+  occurred_on: DateColumn;
+  category: string;
+  concept: string;
+  amount_eur: number;
+  notes: string | null;
+}
+
 export interface CostLedgerProjectionTable {
   id: Generated<string>;
+  workspace_id: string;
   field_id: string;
   campaign_id: string | null;
-  occurred_on: ColumnType<Date, Date | string, Date | string>;
+  occurred_on: DateColumn;
   domain_type: string;
   domain_record_id: string;
   category: string;
   amount_eur: number;
+  created_at: Generated<Timestamp>;
 }
 
 export interface FarmTimelineProjectionTable {
   id: Generated<string>;
+  workspace_id: string;
   field_id: string;
   occurred_at: Timestamp;
   domain_type: string;
@@ -98,6 +145,10 @@ export interface Database {
   fields: FieldTable;
   campaigns: CampaignTable;
   irrigation_records: IrrigationRecordTable;
+  treatment_records: TreatmentRecordTable;
+  fertilization_records: FertilizationRecordTable;
+  pruning_records: PruningRecordTable;
+  expense_records: ExpenseRecordTable;
   cost_ledger_projection: CostLedgerProjectionTable;
   farm_timeline_projection: FarmTimelineProjectionTable;
   scheduled_events: ScheduledEventTable;
