@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
+import { LocalRecordsPanel } from '@/components/local-records-panel';
 import { ArrowIcon, MapPinIcon, PlusIcon } from '@/components/icons';
 import { lasCenillas } from '@/lib/demo-data';
 import {
@@ -141,6 +142,20 @@ function ModuleContent({ modulo }: { modulo: FarmModuleSlug }) {
   }
 }
 
+function LocalProjection({ modulo }: { modulo: FarmModuleSlug }) {
+  switch (modulo) {
+    case 'cosechas': return <LocalRecordsPanel fieldId={lasCenillas.id} mode="type" activityType="harvest"/>;
+    case 'riegos': return <LocalRecordsPanel fieldId={lasCenillas.id} mode="type" activityType="irrigation"/>;
+    case 'tratamientos': return <LocalRecordsPanel fieldId={lasCenillas.id} mode="type" activityType="treatment"/>;
+    case 'abonos': return <LocalRecordsPanel fieldId={lasCenillas.id} mode="type" activityType="fertilization"/>;
+    case 'poda': return <LocalRecordsPanel fieldId={lasCenillas.id} mode="type" activityType="pruning"/>;
+    case 'gastos': return <LocalRecordsPanel fieldId={lasCenillas.id} mode="costs"/>;
+    case 'calendario': return <LocalRecordsPanel fieldId={lasCenillas.id} mode="calendar"/>;
+    case 'historia': return <LocalRecordsPanel fieldId={lasCenillas.id} mode="history"/>;
+    default: return null;
+  }
+}
+
 export default async function FarmModulePage({ params }: { params: Promise<{ modulo: string }> }) {
   const { modulo: raw } = await params;
   if (!moduleSlugs.includes(raw as FarmModuleSlug)) notFound();
@@ -150,6 +165,7 @@ export default async function FarmModulePage({ params }: { params: Promise<{ mod
   return <main className="app-shell"><Topbar/><div className="page farm-module-page">
     <header className="module-page-title"><Link href="/mi-campo/fincas/las-cenillas">‹ {lasCenillas.name}</Link><span className="module-page-symbol">{current.symbol}</span><div><span className="eyebrow dark">FICHA VIVA · {lasCenillas.campaign}</span><h1>{current.title}</h1><p>{current.subtitle}</p></div></header>
     <ModuleContent modulo={modulo}/>
+    <LocalProjection modulo={modulo}/>
     {current.registerHref && <section className="sticky-register-wrap module-register"><Link href={current.registerHref} className="primary action-link register-cta"><PlusIcon/> {current.registerLabel} <ArrowIcon/></Link></section>}
   </div><BottomNav active="/mi-campo"/></main>;
 }
