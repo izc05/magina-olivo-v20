@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import { createDocumentSchema, requestOcrSchema, uuidSchema } from '@magina/contracts';
+import {
+  confirmExtractionFieldSchema,
+  createDocumentSchema,
+  requestOcrSchema,
+  uuidSchema,
+} from '@magina/contracts';
 import type { DatabaseClient } from '../db/client.js';
 import { fieldBelongsToWorkspace, parseBody, requireContext, requireDatabase } from '../http/helpers.js';
 import type { StoragePort } from '../storage/port.js';
@@ -198,5 +203,50 @@ export function registerDocumentRoutes(
       }
       throw error;
     }
+  });
+
+  app.post('/api/v1/extractions/:extractionId/reviews', async (request, reply) => {
+    const context = requireContext(request, reply);
+    if (!context) return;
+    const database = requireDatabase(db, reply);
+    if (!database) return;
+
+    const rawExtractionId = (request.params as { extractionId?: string }).extractionId;
+    const parsedExtractionId = uuidSchema.safeParse(rawExtractionId);
+    if (!parsedExtractionId.success) return reply.code(400).send({ error: 'invalid_extraction_id' });
+    const input = parseBody(confirmExtractionFieldSchema, request.body, reply);
+    if (!input) return;
+    if (input.extraction_run_id !== parsedExtractionId.data) {
+      return reply.code(400).send({ error: 'extraction_id_mismatch' });
+    }
+
+    const extraction = await database.selectFrom('extraction_runs as er')
+      .innerJoin('ocr_runs as oru', 'oru.id', 'er.ocr_run_id')
+      .innerJoin('document_versions as dv', 'dv.id', 'oru.document_version_id')
+      .innerJoin('documents as d', 'd.id', 'dv.document_id')
+      .select(['er.id', 'er.data_json', 'er.confidence_json', 'er.status', 'd.id as document_id'])
+      .where('er.id', '=', parsedExtractionId.data)
+      .where('d.workspace_id', '=', context.workspaceId)
+      .executeTakeFirst();
+    if (!extraction) return reply.code(404).send({ error: 'extraction_not_found' });
+
+    const review = await database.insertInto('extraction_reviews').values({
+      id: randomUUID(),
+      workspace_id: context.workspaceId,
+      extraction_run_id: extraction.id,
+      confirmed_fields: input.confirmed_fields,
+      corrections: input.corrections ?? {},
+      reviewed_by: context.userId,
+    }).returningAll().executeTakeFirstOrThrow();
+
+    return reply.code(201).send({
+      review,
+      extraction: {
+        id: extraction.id,
+        status: extraction.status,
+        original_data: extraction.data_json,
+        confidence: extraction.confidence_json,
+      },
+    });
   });
 }
