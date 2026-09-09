@@ -4,7 +4,8 @@
   "packageManager": "pnpm@10.15.1",
   "scripts": {
     "dev": "pnpm --filter @magina/web dev",
-    "build": "pnpm --filter @magina/web build",
-    "typecheck": "pnpm --filter @magina/web typecheck"
+    "dev:api": "pnpm --filter @magina/api dev",
+    "build": "pnpm --filter @magina/contracts build && pnpm --filter @magina/api build && pnpm --filter @magina/web build",
+    "typecheck": "pnpm --filter @magina/contracts typecheck && pnpm --filter @magina/contracts build && pnpm --filter @magina/api typecheck && pnpm --filter @magina/web typecheck"
   }
 }
