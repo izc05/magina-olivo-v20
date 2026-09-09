@@ -49,6 +49,11 @@ export function saveLocalField(field: FieldRecord) {
   return field;
 }
 
+export function removeLocalField(id: string) {
+  const current = readArray<FieldRecord>(FIELD_KEY);
+  writeArray(FIELD_KEY, current.filter((item) => item.id !== id));
+}
+
 export function clearPrototypeData() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(ACTIVITY_KEY);
