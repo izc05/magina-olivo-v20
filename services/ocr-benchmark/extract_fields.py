@@ -71,9 +71,10 @@ def extract_fields(raw_text: str, document_type: str) -> dict[str, Any]:
             date = f"{year}-{month}-{day}"
         fields["date"] = date
 
-    # OCR commonly confuses Nº/N° with NO, NE or N0.
+    # OCR commonly renders Nº/N° as N°, NO, NE, N0 or simply N.
+    # Keep this tolerant only around the fixed ALBARAN label; the value remains strict.
     ticket = first([
-        r"(?:N(?:O|E|0)?\s*ALBARAN|ALBARAN\s+RELACIONADO)[\s:.-]*([A-Z0-9][A-Z0-9\-]{2,})",
+        r"(?:N(?:[^A-Z0-9]{0,3}|[EO0])?\s*ALBARAN|ALBARAN\s+RELACIONADO)[\s:.-]*([A-Z0-9][A-Z0-9\-]{2,})",
     ], one_line)
     if ticket:
         fields["ticket_number"] = ticket
