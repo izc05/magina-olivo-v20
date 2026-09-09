@@ -97,22 +97,52 @@ jobs:
           done
           curl -fsS http://127.0.0.1:3001/health
 
+          FIELD_PAYLOAD='{"client_operation_id":"44444444-4444-4444-8444-444444444444","entity_id":"55555555-5555-4555-8555-555555555555","name":"Finca CI","tree_count":23,"water_regime":"secano"}'
           curl -fsS -X POST http://127.0.0.1:3001/api/v1/fields \
             -H 'content-type: application/json' \
             -H 'x-workspace-id: 11111111-1111-4111-8111-111111111111' \
             -H 'x-user-id: 33333333-3333-4333-8333-333333333333' \
-            -d '{"client_operation_id":"44444444-4444-4444-8444-444444444444","entity_id":"55555555-5555-4555-8555-555555555555","name":"Finca CI","tree_count":23,"water_regime":"secano"}'
+            -d "${FIELD_PAYLOAD}"
 
-          curl -fsS -X POST http://127.0.0.1:3001/api/v1/fields/55555555-5555-4555-8555-555555555555/irrigations \
-            -H 'content-type: application/json' \
-            -H 'x-workspace-id: 11111111-1111-4111-8111-111111111111' \
-            -H 'x-user-id: 33333333-3333-4333-8333-333333333333' \
-            -d '{"client_operation_id":"66666666-6666-4666-8666-666666666666","entity_id":"77777777-7777-4777-8777-777777777777","occurred_at":"2026-09-09T10:00:00+02:00","duration_hours":2,"cost_eur":22,"follow_up":{"scheduled_at":"2026-09-14T08:00:00+02:00"}}'
+          IRRIGATION_PAYLOAD='{"client_operation_id":"66666666-6666-4666-8666-666666666666","entity_id":"77777777-7777-4777-8777-777777777777","occurred_at":"2026-09-09T10:00:00+02:00","duration_hours":2,"cost_eur":22,"follow_up":{"scheduled_at":"2026-09-14T08:00:00+02:00"}}'
+          for attempt in 1 2; do
+            curl -fsS -X POST http://127.0.0.1:3001/api/v1/fields/55555555-5555-4555-8555-555555555555/irrigations \
+              -H 'content-type: application/json' \
+              -H 'x-workspace-id: 11111111-1111-4111-8111-111111111111' \
+              -H 'x-user-id: 33333333-3333-4333-8333-333333333333' \
+              -d "${IRRIGATION_PAYLOAD}"
+          done
 
           test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM irrigation_records WHERE id='77777777-7777-4777-8777-777777777777'")" = "1"
           test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM cost_ledger_projection WHERE domain_record_id='77777777-7777-4777-8777-777777777777'")" = "1"
           test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM farm_timeline_projection WHERE domain_record_id='77777777-7777-4777-8777-777777777777'")" = "1"
           test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM scheduled_events WHERE source_domain_record_id='77777777-7777-4777-8777-777777777777'")" = "1"
+
+          curl -fsS -X POST http://127.0.0.1:3001/api/v1/deliveries \
+            -H 'content-type: application/json' \
+            -H 'x-workspace-id: 11111111-1111-4111-8111-111111111111' \
+            -H 'x-user-id: 33333333-3333-4333-8333-333333333333' \
+            -d '{"client_operation_id":"88888888-8888-4888-8888-888888888888","entity_id":"99999999-9999-4999-8999-999999999999","campaign_id":"22222222-2222-4222-8222-222222222222","cooperative_or_mill":"SCA CI","delivery_at":"2026-12-12T09:30:00+01:00","ticket_number":"CI-001","total_kg":1842,"source":"ocr","fields":[{"field_id":"55555555-5555-4555-8555-555555555555"}]}'
+
+          curl -fsS -X POST http://127.0.0.1:3001/api/v1/deliveries/99999999-9999-4999-8999-999999999999/results \
+            -H 'content-type: application/json' \
+            -H 'x-workspace-id: 11111111-1111-4111-8111-111111111111' \
+            -H 'x-user-id: 33333333-3333-4333-8333-333333333333' \
+            -d '{"client_operation_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","entity_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb","result_date":"2026-12-15","yield_percent":21.4}'
+
+          SUMMARY=$(curl -fsS 'http://127.0.0.1:3001/api/v1/fields/55555555-5555-4555-8555-555555555555/harvest-summary?campaignId=22222222-2222-4222-8222-222222222222' \
+            -H 'x-workspace-id: 11111111-1111-4111-8111-111111111111' \
+            -H 'x-user-id: 33333333-3333-4333-8333-333333333333')
+          SUMMARY="${SUMMARY}" node <<'NODE'
+          const summary = JSON.parse(process.env.SUMMARY);
+          if (Math.abs(summary.total_kg - 1842) > 0.001) throw new Error(`Unexpected total kg: ${summary.total_kg}`);
+          if (Math.abs(summary.weighted_yield_percent - 21.4) > 0.001) throw new Error(`Unexpected weighted yield: ${summary.weighted_yield_percent}`);
+          if (summary.pending_results !== 0) throw new Error(`Unexpected pending results: ${summary.pending_results}`);
+          NODE
+
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM harvest_deliveries WHERE id='99999999-9999-4999-8999-999999999999'")" = "1"
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM delivery_results WHERE id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' AND status='confirmed'")" = "1"
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM farm_timeline_projection WHERE field_id='55555555-5555-4555-8555-555555555555' AND domain_type IN ('harvest_delivery','harvest_result')")" = "2"
 
       - name: Web typecheck
         run: pnpm --filter @magina/web typecheck
