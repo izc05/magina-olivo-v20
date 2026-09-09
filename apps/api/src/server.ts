@@ -3,7 +3,7 @@ import { createDatabase } from './db/client.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 const db = databaseUrl ? createDatabase(databaseUrl) : null;
-const app = buildApp(db);
+const app = buildApp({ db });
 
 const port = Number(process.env.PORT ?? 3001);
 const host = process.env.HOST ?? '0.0.0.0';
