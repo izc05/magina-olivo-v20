@@ -100,6 +100,42 @@ export interface ExpenseRecordTable extends DomainRecordBase {
   notes: string | null;
 }
 
+export interface HarvestDeliveryTable {
+  id: string;
+  workspace_id: string;
+  campaign_id: string | null;
+  cooperative_or_mill: string | null;
+  delivery_at: Timestamp;
+  ticket_number: string | null;
+  total_kg: number;
+  source: 'manual' | 'ocr' | 'import';
+  client_operation_id: string;
+  created_by: string;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface HarvestDeliveryFieldTable {
+  delivery_id: string;
+  field_id: string;
+  kg: number;
+}
+
+export interface DeliveryResultTable {
+  id: string;
+  workspace_id: string;
+  delivery_id: string;
+  result_date: DateColumn;
+  yield_percent: number;
+  moisture_percent: number | null;
+  acidity_percent: number | null;
+  status: 'confirmed' | 'superseded' | 'voided';
+  supersedes_id: string | null;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Generated<Timestamp>;
+}
+
 export interface CostLedgerProjectionTable {
   id: Generated<string>;
   workspace_id: string;
@@ -149,6 +185,9 @@ export interface Database {
   fertilization_records: FertilizationRecordTable;
   pruning_records: PruningRecordTable;
   expense_records: ExpenseRecordTable;
+  harvest_deliveries: HarvestDeliveryTable;
+  harvest_delivery_fields: HarvestDeliveryFieldTable;
+  delivery_results: DeliveryResultTable;
   cost_ledger_projection: CostLedgerProjectionTable;
   farm_timeline_projection: FarmTimelineProjectionTable;
   scheduled_events: ScheduledEventTable;
