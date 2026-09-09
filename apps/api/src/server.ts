@@ -3,13 +3,15 @@ import { buildApp } from './app.js';
 import { createDatabase } from './db/client.js';
 import { PgBossOcrQueue } from './ocr/pg-boss.js';
 import { createS3StorageFromEnv } from './storage/s3.js';
+import { createGoogleIdentityVerifierFromEnv } from './auth/google.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 const db = databaseUrl ? createDatabase(databaseUrl) : null;
 const storage = createS3StorageFromEnv() ?? undefined;
 const boss = databaseUrl ? createJobBoss(databaseUrl) : null;
 const ocrQueue = boss ? new PgBossOcrQueue(boss) : undefined;
-const app = buildApp({ db, storage, ocrQueue });
+const googleVerifier = createGoogleIdentityVerifierFromEnv() ?? undefined;
+const app = buildApp({ db, storage, ocrQueue, googleVerifier });
 
 const port = Number(process.env.PORT ?? 3001);
 const host = process.env.HOST ?? '0.0.0.0';
