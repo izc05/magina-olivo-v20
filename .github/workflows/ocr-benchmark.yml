@@ -22,6 +22,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: OCR parser regression checks
+        working-directory: services/ocr-benchmark
+        run: python3 test_extract_fields.py
+
       - name: Install OCR baseline tools
         run: |
           sudo apt-get update -qq
