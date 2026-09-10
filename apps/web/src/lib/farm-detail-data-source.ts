@@ -2,6 +2,15 @@ import { apiFetch } from '@/lib/api-client';
 import { demoDelivery } from '@/lib/demo-data';
 import { getLocalHarvestDeliveries, getLocalHarvestResults, getLocalParcels } from '@/lib/local-prototype-store';
 
+export type FarmActivityView = {
+  id: string;
+  date: string;
+  title: string;
+  summary?: string;
+  domainType?: string;
+  iconKey?: string;
+};
+
 export type FarmHarvestDeliveryView = {
   id: string;
   date: string;
@@ -45,6 +54,7 @@ export type FarmDocumentView = {
 };
 
 export type FarmDetailData = {
+  activity: FarmActivityView[];
   harvest: FarmHarvestView;
   data: FarmDataView;
   documents: FarmDocumentView[];
@@ -91,6 +101,18 @@ type ApiDocumentsPayload = {
   }>;
 };
 
+type ApiActivityPayload = {
+  items: Array<{
+    id: string;
+    occurred_at: string;
+    domain_type: string;
+    domain_record_id: string;
+    title: string;
+    summary: string | null;
+    icon_key: string | null;
+  }>;
+};
+
 function finite(value: number | string | null | undefined) {
   if (value === null || value === undefined) return undefined;
   const parsed = Number(value);
@@ -98,13 +120,22 @@ function finite(value: number | string | null | undefined) {
 }
 
 export async function loadApiFarmDetailData(fieldId: string, workspaceId: string): Promise<FarmDetailData> {
-  const [harvest, map, documents] = await Promise.all([
+  const [activity, harvest, map, documents] = await Promise.all([
+    apiFetch<ApiActivityPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/activity`, { workspaceId }),
     apiFetch<ApiHarvestPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/harvest-summary`, { workspaceId }),
     apiFetch<ApiMapPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/map-context`, { workspaceId }),
     apiFetch<ApiDocumentsPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/documents`, { workspaceId }),
   ]);
 
   return {
+    activity: activity.items.map((item) => ({
+      id: item.id,
+      date: item.occurred_at.slice(0, 10),
+      title: item.title,
+      summary: item.summary ?? undefined,
+      domainType: item.domain_type,
+      iconKey: item.icon_key ?? undefined,
+    })),
     harvest: {
       totalKg: harvest.total_kg,
       weightedYieldPercent: harvest.weighted_yield_percent ?? undefined,
@@ -179,6 +210,7 @@ export function loadPreviewFarmDetailData(farmId: string, source?: string | null
   const weightedYieldPercent = resultKg > 0 ? withResult.reduce((sum, item) => sum + item.kg * (item.yieldPercent ?? 0), 0) / resultKg : undefined;
 
   return {
+    activity: [],
     harvest: {
       totalKg,
       weightedYieldPercent,
@@ -201,6 +233,7 @@ export function loadPreviewFarmDetailData(farmId: string, source?: string | null
 
 export function emptyFarmDetailData(): FarmDetailData {
   return {
+    activity: [],
     harvest: { totalKg: 0, pendingResults: 0, deliveries: [] },
     data: { parcelCount: 0, references: [] },
     documents: [],
