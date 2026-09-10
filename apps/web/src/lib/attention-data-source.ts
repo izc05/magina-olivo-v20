@@ -48,7 +48,7 @@ type ApiAttentionSummary = {
     source_domain_type: string | null;
     overdue: boolean;
     advisory: null | {
-      suitability: AttentionItem['advisory'] extends infer A ? A extends { suitability: infer S } ? S : never : never;
+      suitability: 'good' | 'caution' | 'avoid' | 'unknown';
       risk_level: 'none' | 'low' | 'medium' | 'high' | 'unknown';
       summary: string;
       stale: boolean;
