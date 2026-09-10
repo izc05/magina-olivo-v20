@@ -1,0 +1,47 @@
+name: V20 weather adapter check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/v20-visual-prototype
+    paths:
+      - 'apps/api/src/weather/**'
+      - 'apps/api/src/testing/weather-*.ts'
+      - '.github/workflows/weather-check.yml'
+  pull_request:
+    paths:
+      - 'apps/api/src/weather/**'
+      - 'apps/api/src/testing/weather-*.ts'
+      - '.github/workflows/weather-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  weather:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build contracts, jobs and API
+        run: |
+          pnpm --filter @magina/contracts typecheck
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/api build
+
+      - name: AEMET parser and endpoint smoke
+        run: node apps/api/dist/testing/weather-adapter-smoke.js
