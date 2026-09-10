@@ -12,9 +12,8 @@ const quick = [
 ] as const;
 
 function farmHref(farm: FarmListItem) {
-  if (farm.source === 'local') return `/mi-campo/fincas/local?id=${encodeURIComponent(farm.id)}`;
-  if (farm.source === 'demo' && farm.id === 'las-cenillas') return '/mi-campo/fincas/las-cenillas';
-  return `/mi-campo/fincas/${encodeURIComponent(farm.id)}`;
+  const params = new URLSearchParams({ id: farm.id, source: farm.source });
+  return `/mi-campo/fincas/ver?${params.toString()}`;
 }
 
 export function MiCampoDashboard() {
