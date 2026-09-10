@@ -8,6 +8,10 @@ on:
     paths:
       - '.github/workflows/radar-live-probe.yml'
       - 'packages/weather/src/testing/radar-live-inventory.ts'
+      - 'packages/weather/src/testing/radar-live-probe.ts'
+      - 'packages/weather/src/aemet-radar-geotiff.ts'
+      - 'packages/weather/src/radar-geotiff-inspection.ts'
+      - 'packages/weather/src/radar-escala.ts'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
@@ -42,3 +46,6 @@ jobs:
 
       - name: Inventory current public AEMET radar bundle
         run: node packages/weather/dist/testing/radar-live-inventory.js
+
+      - name: Probe latest selected AEMET reflectivity metadata
+        run: node packages/weather/dist/testing/radar-live-probe.js
