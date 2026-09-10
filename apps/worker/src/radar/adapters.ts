@@ -40,12 +40,12 @@ export class S3RadarObjectStorage implements RadarObjectStoragePort {
     bytes: Uint8Array;
     contentType: string;
     sha256Hex: string;
-  }) {
+  }): Promise<{ storageKey: string }> {
     const checksumSha256 = Buffer.from(input.sha256Hex, 'hex').toString('base64');
-    const key = [this.prefix, input.key.replace(/^\/+/, '')].filter(Boolean).join('/');
+    const storageKey = [this.prefix, input.key.replace(/^\/+/, '')].filter(Boolean).join('/');
     await this.client.send(new PutObjectCommand({
       Bucket: this.bucket,
-      Key: key,
+      Key: storageKey,
       Body: input.bytes,
       ContentType: input.contentType,
       ChecksumSHA256: checksumSha256,
@@ -54,6 +54,7 @@ export class S3RadarObjectStorage implements RadarObjectStoragePort {
         source: 'aemet-national-radar',
       },
     }));
+    return { storageKey };
   }
 }
 
