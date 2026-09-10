@@ -58,6 +58,43 @@ export interface UserSessionTable {
   user_agent: string | null;
 }
 
+export interface TerritoryMunicipalityTable {
+  id: Generated<string>;
+  ine_code: string;
+  aemet_code: string | null;
+  name: string;
+  slug: string;
+  province_code: string;
+  province_name: string;
+  active: boolean;
+  weather_enabled: boolean;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
+}
+
+export interface TerritoryPlaceTable {
+  id: Generated<string>;
+  municipality_id: string;
+  name: string;
+  slug: string;
+  kind: 'municipal_seat' | 'locality' | 'hamlet' | 'other';
+  is_default_for_municipality: boolean;
+  public_enabled: boolean;
+  hero_asset_key: string | null;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
+}
+
+export interface WeatherForecastCacheTable {
+  municipality_id: string;
+  provider: 'aemet_daily';
+  payload_json: unknown;
+  fetched_at: GeneratedTimestamp;
+  expires_at: Timestamp;
+  last_error_at: Timestamp | null;
+  last_error_code: string | null;
+}
+
 export interface FieldTable {
   id: string;
   workspace_id: string;
@@ -66,7 +103,12 @@ export interface FieldTable {
   description: string | null;
   municipality: string | null;
   province: string | null;
+  municipality_id: string | null;
+  place_id: string | null;
   calculated_area_ha: number | null;
+  geometry_source: 'manual' | 'catastro' | 'sigpac' | 'import' | 'composite' | null;
+  geometry_status: 'unlocated' | 'draft' | 'verified' | 'needs_review';
+  geometry_checked_at: Timestamp | null;
   tree_count: number | null;
   crop: string;
   variety: string | null;
@@ -261,6 +303,9 @@ export interface Database {
   auth_identities: AuthIdentityTable;
   workspace_memberships: WorkspaceMembershipTable;
   user_sessions: UserSessionTable;
+  territory_municipalities: TerritoryMunicipalityTable;
+  territory_places: TerritoryPlaceTable;
+  weather_forecast_cache: WeatherForecastCacheTable;
   fields: FieldTable;
   campaigns: CampaignTable;
   irrigation_records: IrrigationRecordTable;
