@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { sql } from 'kysely';
 import type { DatabaseClient } from '../db/client.js';
 import { getCachedMunicipalityForecast } from '../weather/cache.js';
@@ -17,7 +17,7 @@ async function respondWithForecast(
   database: DatabaseClient,
   provider: MunicipalityWeatherProvider,
   target: MunicipalityTarget,
-  reply: Parameters<FastifyInstance['get']>[1] extends (...args: infer A) => unknown ? A[1] : never,
+  reply: FastifyReply,
 ) {
   if (!target.aemet_code) return reply.code(409).send({ error: 'weather_not_configured_for_municipality' });
   try {
@@ -34,7 +34,7 @@ async function respondWithForecast(
       stale: result.cacheStatus === 'stale',
     });
   } catch (error) {
-    reply.log?.error?.({ err: error }, 'Unable to load AEMET forecast');
+    reply.log.error({ err: error }, 'Unable to load AEMET forecast');
     return reply.code(502).send({ error: 'weather_upstream_unavailable' });
   }
 }
