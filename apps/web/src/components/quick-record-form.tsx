@@ -7,6 +7,7 @@ import { activityLabels, recordSlugToActivityType } from '@/lib/domain';
 import { saveLocalActivity } from '@/lib/local-prototype-store';
 import { useFieldContext } from '@/lib/use-field-context';
 import { saveApiRecord, supportsApiRecord } from '@/lib/record-api-source';
+import { completePlannedTask } from '@/lib/planned-task-data-source';
 import { useAuth } from '@/components/auth-provider';
 import { ArrowIcon, MapPinIcon } from '@/components/icons';
 
@@ -50,6 +51,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [completionWarning, setCompletionWarning] = useState<string | null>(null);
   const [savedRemotely, setSavedRemotely] = useState(false);
   const { context, ready, found } = useFieldContext();
   const { selectedWorkspaceId } = useAuth();
@@ -68,11 +70,27 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
 
     setSaving(true);
     setSaveError(null);
+    setCompletionWarning(null);
 
     try {
       if (context.source === 'api' && selectedWorkspaceId && supportsApiRecord(type.slug)) {
-        await saveApiRecord({ slug: type.slug, fieldId: context.id, workspaceId: selectedWorkspaceId, data });
+        const savedRecord = await saveApiRecord({ slug: type.slug, fieldId: context.id, workspaceId: selectedWorkspaceId, data });
         setSavedRemotely(true);
+
+        const plannedEventId = new URLSearchParams(window.location.search).get('plannedEventId');
+        if (plannedEventId && savedRecord.domainType !== 'expense') {
+          try {
+            await completePlannedTask({
+              workspaceId: selectedWorkspaceId,
+              taskId: plannedEventId,
+              domainType: savedRecord.domainType,
+              domainRecordId: savedRecord.recordId,
+            });
+          } catch (completionError) {
+            console.warn('Record saved but planned task could not be linked', completionError);
+            setCompletionWarning('El registro se ha guardado correctamente, pero la tarea prevista sigue pendiente. Puedes revisarla desde Hoy.');
+          }
+        }
       } else {
         const costRaw = data.cost ?? data.amount;
         const cost = costRaw ? Number(costRaw.replace(',', '.')) : undefined;
@@ -119,9 +137,11 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         <span className="eyebrow dark">{savedRemotely ? 'GUARDADO EN MÁGINA' : 'GUARDADO EN ESTE DISPOSITIVO'}</span>
         <h1>{type.shortLabel} añadido a {context.name}</h1>
         <p>{savedRemotely ? 'El backend ha guardado el registro y sus proyecciones asociadas.' : context.source === 'api' ? 'Este tipo todavía se conserva como borrador local mientras se conecta al modelo Trabajo.' : 'El registro se ha guardado con la finca seleccionada.'}</p>
+        {completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : null}
         <div className="success-effects">
           <span>✓ Finca correcta: {context.name}</span>
           {savedRemotely ? <span>✓ Historial y costes derivados en servidor cuando corresponde</span> : <span>✓ Registro local preservado</span>}
+          {savedRemotely && !completionWarning && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('plannedEventId') ? <span>✓ Tarea prevista enlazada al registro real</span> : null}
           {type.followUp && <span>✓ Seguimiento, si has indicado fecha</span>}
         </div>
         <div className="record-actions">
