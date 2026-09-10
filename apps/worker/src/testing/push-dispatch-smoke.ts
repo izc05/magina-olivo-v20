@@ -71,11 +71,11 @@ try {
   };
   await pool.query(`
     INSERT INTO push_subscriptions (id,user_id,session_id,endpoint,endpoint_hash,p256dh,auth_secret,status) VALUES
-      ('96000000-0000-4000-8000-000000000001',$1,$4,$7,$10,$13,$14,'active'),
-      ('96000000-0000-4000-8000-000000000002',$1,$5,$8,$11,$13,$14,'active'),
-      ('96000000-0000-4000-8000-000000000003',$2,$6,$9,$12,$13,$14,'active')
+      ('96000000-0000-4000-8000-000000000001',$1,$3,$6,$9,$12,$13,'active'),
+      ('96000000-0000-4000-8000-000000000002',$1,$4,$7,$10,$12,$13,'active'),
+      ('96000000-0000-4000-8000-000000000003',$2,$5,$8,$11,$12,$13,'active')
   `, [
-    userGood, userRetry, userNone,
+    userGood, userRetry,
     sessions[0]?.[0], sessions[1]?.[0], sessions[2]?.[0],
     endpoints.good, endpoints.gone, endpoints.retry,
     hash(endpoints.good), hash(endpoints.gone), hash(endpoints.retry),
