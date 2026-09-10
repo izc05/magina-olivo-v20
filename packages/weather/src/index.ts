@@ -5,3 +5,4 @@ export * from './aemet-national-reflectivity-palette.js';
 export * from './radar-escala.js';
 export * from './radar-geotiff-inspection.js';
 export * from './radar-spatial-analysis.js';
+export * from './radar-geotiff-grid.js';
