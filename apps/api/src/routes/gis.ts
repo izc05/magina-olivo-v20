@@ -20,6 +20,33 @@ function canManageGeometry(role: string) {
   return role === 'owner' || role === 'admin' || role === 'manager' || role === 'development';
 }
 
+type LandReferenceRow = {
+  id: string;
+  source: string;
+  reference: string | null;
+  area_ha: number | null;
+  status: string;
+  metadata_json: Record<string, unknown>;
+  checked_at: Date | null;
+  geometry: unknown | null;
+};
+
+async function loadLandReferences(db: DatabaseClient, fieldId: string, workspaceId: string) {
+  const result = await sql<LandReferenceRow>`
+    SELECT flr.id, flr.source, flr.reference,
+           flr.area_ha::double precision AS area_ha,
+           flr.status, flr.metadata_json, flr.checked_at,
+           CASE WHEN flr.geometry IS NULL THEN NULL ELSE ST_AsGeoJSON(flr.geometry)::json END AS geometry
+    FROM field_land_refs flr
+    JOIN fields f ON f.id = flr.field_id
+    WHERE flr.field_id = ${fieldId}::uuid
+      AND f.workspace_id = ${workspaceId}::uuid
+      AND f.status = 'active'
+    ORDER BY flr.source, flr.reference NULLS LAST, flr.created_at
+  `.execute(db);
+  return result.rows;
+}
+
 async function persistReference(
   db: DatabaseClient,
   input: {
@@ -122,31 +149,51 @@ export function registerGisRoutes(
     }
   });
 
+  app.get('/api/v1/fields/:fieldId/map-context', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const fieldId = (request.params as { fieldId?: string }).fieldId;
+    if (!fieldId) return reply.code(404).send({ error: 'field_not_found' });
+
+    const fieldResult = await sql<{
+      id: string;
+      name: string;
+      municipality: string | null;
+      province: string | null;
+      calculated_area_ha: number | null;
+      geometry_source: string | null;
+      geometry_status: string;
+      geometry_checked_at: Date | null;
+      geometry: unknown | null;
+      centroid: unknown | null;
+      representative_point: unknown | null;
+    }>`
+      SELECT f.id, f.name, f.municipality, f.province,
+             f.calculated_area_ha::double precision AS calculated_area_ha,
+             f.geometry_source, f.geometry_status, f.geometry_checked_at,
+             CASE WHEN f.geometry IS NULL THEN NULL ELSE ST_AsGeoJSON(f.geometry)::json END AS geometry,
+             CASE WHEN f.geometry IS NULL THEN NULL ELSE ST_AsGeoJSON(ST_Centroid(f.geometry))::json END AS centroid,
+             CASE WHEN f.geometry IS NULL THEN NULL ELSE ST_AsGeoJSON(ST_PointOnSurface(f.geometry))::json END AS representative_point
+      FROM fields f
+      WHERE f.id = ${fieldId}::uuid
+        AND f.workspace_id = ${context.workspaceId}::uuid
+        AND f.status = 'active'
+    `.execute(database);
+
+    const field = fieldResult.rows[0];
+    if (!field) return reply.code(404).send({ error: 'field_not_found' });
+    const references = await loadLandReferences(database, fieldId, context.workspaceId);
+    return { field, references };
+  });
+
   app.get('/api/v1/fields/:fieldId/land-references', async (request, reply) => {
     const context = requireContext(request, reply);
     const database = requireDatabase(db, reply);
     if (!context || !database) return;
     const fieldId = (request.params as { fieldId?: string }).fieldId;
     if (!fieldId || !await fieldBelongsToWorkspace(database, fieldId, context.workspaceId)) return reply.code(404).send({ error: 'field_not_found' });
-
-    const result = await sql<{
-      id: string;
-      source: string;
-      reference: string | null;
-      area_ha: number | null;
-      status: string;
-      metadata_json: Record<string, unknown>;
-      checked_at: Date | null;
-      geometry: unknown | null;
-    }>`
-      SELECT flr.id, flr.source, flr.reference, flr.area_ha, flr.status, flr.metadata_json, flr.checked_at,
-             CASE WHEN flr.geometry IS NULL THEN NULL ELSE ST_AsGeoJSON(flr.geometry)::json END AS geometry
-      FROM field_land_refs flr
-      JOIN fields f ON f.id = flr.field_id
-      WHERE flr.field_id = ${fieldId}::uuid AND f.workspace_id = ${context.workspaceId}::uuid
-      ORDER BY flr.source, flr.reference NULLS LAST, flr.created_at
-    `.execute(database);
-    return { items: result.rows };
+    return { items: await loadLandReferences(database, fieldId, context.workspaceId) };
   });
 
   app.post('/api/v1/fields/:fieldId/land-references/catastro', async (request, reply) => {
