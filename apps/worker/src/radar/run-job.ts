@@ -196,6 +196,7 @@ async function ingestRadarAsset(
   if (!snapshotId) throw new Error('Radar snapshot insert did not return an id');
 
   const relativeKey = `${metadata.source}/${metadata.product}/${sha256}.tif`;
+  let storageKey: string;
 
   try {
     const stored = await storage.putObject({
@@ -204,6 +205,7 @@ async function ingestRadarAsset(
       contentType: asset.contentType,
       sha256Hex: sha256,
     });
+    storageKey = stored.storageKey;
 
     await pool.query(`
       UPDATE radar_snapshots
@@ -213,38 +215,40 @@ async function ingestRadarAsset(
           error_code = NULL,
           updated_at = now()
       WHERE id = $1
-    `, [snapshotId, stored.storageKey, inspection.analysisReady]);
-
-    const farmProjection = await projectIfReady({
-      pool,
-      snapshotId,
-      asset,
-      inspection,
-      grid: prepared.grid,
-    });
-
-    return {
-      replayed: false,
-      snapshotId,
-      status: 'processed',
-      analysisReady: inspection.analysisReady,
-      sha256,
-      storageKey: stored.storageKey,
-      sourceName: asset.sourceName ?? null,
-      validationErrors: inspection.validationErrors,
-      farmProjection,
-    };
+    `, [snapshotId, storageKey, inspection.analysisReady]);
   } catch (error) {
     await pool.query(`
       UPDATE radar_snapshots
       SET status = 'failed',
           analysis_ready = false,
-          error_code = 'storage_or_projection_error',
+          error_code = 'storage_error',
           updated_at = now()
       WHERE id = $1
     `, [snapshotId]);
     throw error;
   }
+
+  // Farm observations are rebuildable projections. If projection fails, the
+  // pg-boss job should retry, but the validated/stored snapshot remains intact.
+  const farmProjection = await projectIfReady({
+    pool,
+    snapshotId,
+    asset,
+    inspection,
+    grid: prepared.grid,
+  });
+
+  return {
+    replayed: false,
+    snapshotId,
+    status: 'processed',
+    analysisReady: inspection.analysisReady,
+    sha256,
+    storageKey,
+    sourceName: asset.sourceName ?? null,
+    validationErrors: inspection.validationErrors,
+    farmProjection,
+  };
 }
 
 export async function runRadarIngestJob(
