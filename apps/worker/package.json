@@ -10,8 +10,10 @@
     "smoke": "node dist/testing/worker-smoke.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1128.0",
     "@magina/contracts": "workspace:*",
     "@magina/jobs": "workspace:*",
+    "@magina/weather": "workspace:*",
     "pg": "^8.23.0"
   },
   "devDependencies": {
