@@ -116,3 +116,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
         run: node apps/worker/dist/testing/farm-radar-observation-schema-smoke.js
+
+      - name: Private farm radar projection behavior
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
+        run: node apps/worker/dist/testing/farm-radar-projection-smoke.js
