@@ -89,6 +89,9 @@ jobs:
       - name: AEMET GeoTIFF bundle parser smoke
         run: node packages/weather/dist/testing/radar-geotiff-smoke.js
 
+      - name: Radar GeoTIFF metadata inspection smoke
+        run: node packages/weather/dist/testing/radar-geotiff-inspection-smoke.js
+
       - name: Install PostgreSQL client
         run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
 
