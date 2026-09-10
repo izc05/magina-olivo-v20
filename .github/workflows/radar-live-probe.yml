@@ -1,0 +1,39 @@
+name: V20 one-shot AEMET radar live probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/v20-visual-prototype
+    paths:
+      - '.github/workflows/radar-live-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build contracts and weather
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather typecheck
+          pnpm --filter @magina/weather build
+
+      - name: Probe current public AEMET GeoTIFF metadata
+        run: node packages/weather/dist/testing/radar-live-probe.js
