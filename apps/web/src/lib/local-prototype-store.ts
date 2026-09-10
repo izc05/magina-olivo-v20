@@ -1,9 +1,23 @@
-import type { ActivityRecord, FarmRecord, FieldRecord, ParcelRecord, WorkRecord } from '@/lib/domain';
+import type {
+  ActivityRecord,
+  CrewRecord,
+  FarmRecord,
+  FieldRecord,
+  MachineryRecord,
+  MaterialRecord,
+  ParcelRecord,
+  PartyRecord,
+  WorkRecord,
+} from '@/lib/domain';
 
 const ACTIVITY_KEY = 'magina:v20:activities';
 const FARM_KEY = 'magina:v20:fields'; // legacy key kept to preserve existing preview data
 const PARCEL_KEY = 'magina:v20:parcels';
 const WORK_KEY = 'magina:v20:works';
+const PARTY_KEY = 'magina:v20:parties';
+const CREW_KEY = 'magina:v20:crews';
+const MACHINERY_KEY = 'magina:v20:machinery';
+const MATERIAL_KEY = 'magina:v20:materials';
 
 function readArray<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
@@ -105,12 +119,72 @@ export function removeLocalWork(id: string) {
   writeArray(WORK_KEY, current.filter((item) => item.id !== id));
 }
 
+export function getLocalParties() {
+  return readArray<PartyRecord>(PARTY_KEY);
+}
+
+export function saveLocalParty(party: PartyRecord) {
+  const current = readArray<PartyRecord>(PARTY_KEY);
+  writeArray(PARTY_KEY, [party, ...current.filter((item) => item.id !== party.id)]);
+  return party;
+}
+
+export function removeLocalParty(id: string) {
+  writeArray(PARTY_KEY, readArray<PartyRecord>(PARTY_KEY).filter((item) => item.id !== id));
+}
+
+export function getLocalCrews() {
+  return readArray<CrewRecord>(CREW_KEY);
+}
+
+export function saveLocalCrew(crew: CrewRecord) {
+  const current = readArray<CrewRecord>(CREW_KEY);
+  writeArray(CREW_KEY, [crew, ...current.filter((item) => item.id !== crew.id)]);
+  return crew;
+}
+
+export function removeLocalCrew(id: string) {
+  writeArray(CREW_KEY, readArray<CrewRecord>(CREW_KEY).filter((item) => item.id !== id));
+}
+
+export function getLocalMachinery() {
+  return readArray<MachineryRecord>(MACHINERY_KEY);
+}
+
+export function saveLocalMachinery(machine: MachineryRecord) {
+  const current = readArray<MachineryRecord>(MACHINERY_KEY);
+  writeArray(MACHINERY_KEY, [machine, ...current.filter((item) => item.id !== machine.id)]);
+  return machine;
+}
+
+export function removeLocalMachinery(id: string) {
+  writeArray(MACHINERY_KEY, readArray<MachineryRecord>(MACHINERY_KEY).filter((item) => item.id !== id));
+}
+
+export function getLocalMaterials() {
+  return readArray<MaterialRecord>(MATERIAL_KEY);
+}
+
+export function saveLocalMaterial(material: MaterialRecord) {
+  const current = readArray<MaterialRecord>(MATERIAL_KEY);
+  writeArray(MATERIAL_KEY, [material, ...current.filter((item) => item.id !== material.id)]);
+  return material;
+}
+
+export function removeLocalMaterial(id: string) {
+  writeArray(MATERIAL_KEY, readArray<MaterialRecord>(MATERIAL_KEY).filter((item) => item.id !== id));
+}
+
 export function clearPrototypeData() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(ACTIVITY_KEY);
   window.localStorage.removeItem(FARM_KEY);
   window.localStorage.removeItem(PARCEL_KEY);
   window.localStorage.removeItem(WORK_KEY);
+  window.localStorage.removeItem(PARTY_KEY);
+  window.localStorage.removeItem(CREW_KEY);
+  window.localStorage.removeItem(MACHINERY_KEY);
+  window.localStorage.removeItem(MATERIAL_KEY);
   window.dispatchEvent(new CustomEvent('magina:prototype-data-changed', { detail: { key: 'all' } }));
 }
 
@@ -120,4 +194,8 @@ export const prototypeStoreKeys = {
   fields: FARM_KEY,
   parcels: PARCEL_KEY,
   works: WORK_KEY,
+  parties: PARTY_KEY,
+  crews: CREW_KEY,
+  machinery: MACHINERY_KEY,
+  materials: MATERIAL_KEY,
 } as const;
