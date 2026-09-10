@@ -1,0 +1,208 @@
+import { apiFetch } from '@/lib/api-client';
+import { demoDelivery } from '@/lib/demo-data';
+import { getLocalHarvestDeliveries, getLocalHarvestResults, getLocalParcels } from '@/lib/local-prototype-store';
+
+export type FarmHarvestDeliveryView = {
+  id: string;
+  date: string;
+  kg: number;
+  destination?: string;
+  ticketNumber?: string;
+  yieldPercent?: number;
+  resultDate?: string;
+};
+
+export type FarmHarvestView = {
+  totalKg: number;
+  weightedYieldPercent?: number;
+  pendingResults: number;
+  deliveries: FarmHarvestDeliveryView[];
+};
+
+export type FarmLandReferenceView = {
+  id: string;
+  source: 'catastro' | 'sigpac' | 'manual' | string;
+  reference?: string;
+  areaHa?: number;
+  status?: string;
+};
+
+export type FarmDataView = {
+  geometryStatus?: string;
+  geometrySource?: string;
+  areaHa?: number;
+  references: FarmLandReferenceView[];
+  parcelCount: number;
+};
+
+export type FarmDocumentView = {
+  id: string;
+  kind: string;
+  title: string;
+  createdAt: string;
+  domainType?: string;
+  relation?: string;
+};
+
+export type FarmDetailData = {
+  harvest: FarmHarvestView;
+  data: FarmDataView;
+  documents: FarmDocumentView[];
+};
+
+type ApiHarvestPayload = {
+  total_kg: number;
+  weighted_yield_percent: number | null;
+  pending_results: number;
+  deliveries: Array<{
+    delivery_id: string;
+    delivery_at: string;
+    cooperative_or_mill: string | null;
+    ticket_number: string | null;
+    kg: number;
+    yield_percent: number | null;
+    result_date: string | null;
+  }>;
+};
+
+type ApiMapPayload = {
+  field: {
+    calculated_area_ha: number | string | null;
+    geometry_source: string | null;
+    geometry_status: string | null;
+  };
+  references: Array<{
+    id: string;
+    source: string;
+    reference: string | null;
+    area_ha: number | string | null;
+    status: string;
+  }>;
+};
+
+type ApiDocumentsPayload = {
+  documents: Array<{
+    id: string;
+    kind: string;
+    title: string;
+    created_at: string;
+    domain_type: string | null;
+    relation: string | null;
+  }>;
+};
+
+function finite(value: number | string | null | undefined) {
+  if (value === null || value === undefined) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+export async function loadApiFarmDetailData(fieldId: string, workspaceId: string): Promise<FarmDetailData> {
+  const [harvest, map, documents] = await Promise.all([
+    apiFetch<ApiHarvestPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/harvest-summary`, { workspaceId }),
+    apiFetch<ApiMapPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/map-context`, { workspaceId }),
+    apiFetch<ApiDocumentsPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/documents`, { workspaceId }),
+  ]);
+
+  return {
+    harvest: {
+      totalKg: harvest.total_kg,
+      weightedYieldPercent: harvest.weighted_yield_percent ?? undefined,
+      pendingResults: harvest.pending_results,
+      deliveries: harvest.deliveries.map((item) => ({
+        id: item.delivery_id,
+        date: item.delivery_at.slice(0, 10),
+        kg: item.kg,
+        destination: item.cooperative_or_mill ?? undefined,
+        ticketNumber: item.ticket_number ?? undefined,
+        yieldPercent: item.yield_percent ?? undefined,
+        resultDate: item.result_date ?? undefined,
+      })),
+    },
+    data: {
+      geometryStatus: map.field.geometry_status ?? undefined,
+      geometrySource: map.field.geometry_source ?? undefined,
+      areaHa: finite(map.field.calculated_area_ha),
+      parcelCount: map.references.length,
+      references: map.references.map((item) => ({
+        id: item.id,
+        source: item.source,
+        reference: item.reference ?? undefined,
+        areaHa: finite(item.area_ha),
+        status: item.status,
+      })),
+    },
+    documents: documents.documents.map((item) => ({
+      id: item.id,
+      kind: item.kind,
+      title: item.title,
+      createdAt: item.created_at,
+      domainType: item.domain_type ?? undefined,
+      relation: item.relation ?? undefined,
+    })),
+  };
+}
+
+export function loadPreviewFarmDetailData(farmId: string, source?: string | null): FarmDetailData {
+  const deliveries = getLocalHarvestDeliveries(undefined, farmId);
+  const results = getLocalHarvestResults();
+  const parcels = getLocalParcels(farmId);
+
+  const deliveryViews: FarmHarvestDeliveryView[] = deliveries.map((delivery) => {
+    const allocation = delivery.allocations.find((item) => item.farmId === farmId);
+    const kg = allocation?.kg ?? (allocation?.percentage !== undefined ? delivery.totalKg * allocation.percentage / 100 : delivery.allocations.length === 1 ? delivery.totalKg : 0);
+    const result = results.filter((item) => item.deliveryId === delivery.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    return {
+      id: delivery.id,
+      date: delivery.deliveredAt.slice(0, 10),
+      kg,
+      destination: delivery.millOrCooperativeName,
+      ticketNumber: delivery.ticketNumber,
+      yieldPercent: result?.yieldPercent,
+      resultDate: result?.resultDate,
+    };
+  });
+
+  if (source === 'demo' && farmId === 'las-cenillas' && deliveryViews.length === 0) {
+    deliveryViews.push({
+      id: 'demo-delivery',
+      date: '2026-12-12',
+      kg: demoDelivery.kilograms,
+      destination: demoDelivery.cooperative,
+      ticketNumber: demoDelivery.ticketNumber,
+    });
+  }
+
+  const totalKg = deliveryViews.reduce((sum, item) => sum + item.kg, 0);
+  const withResult = deliveryViews.filter((item) => item.yieldPercent !== undefined && item.kg > 0);
+  const resultKg = withResult.reduce((sum, item) => sum + item.kg, 0);
+  const weightedYieldPercent = resultKg > 0 ? withResult.reduce((sum, item) => sum + item.kg * (item.yieldPercent ?? 0), 0) / resultKg : undefined;
+
+  return {
+    harvest: {
+      totalKg,
+      weightedYieldPercent,
+      pendingResults: deliveryViews.filter((item) => item.yieldPercent === undefined).length,
+      deliveries: deliveryViews.sort((a, b) => b.date.localeCompare(a.date)),
+    },
+    data: {
+      parcelCount: parcels.length,
+      references: parcels.map((parcel) => ({
+        id: parcel.id,
+        source: parcel.kind,
+        reference: parcel.cadastralReference,
+        areaHa: parcel.areaHa,
+        status: parcel.status,
+      })),
+    },
+    documents: [],
+  };
+}
+
+export function emptyFarmDetailData(): FarmDetailData {
+  return {
+    harvest: { totalKg: 0, pendingResults: 0, deliveries: [] },
+    data: { parcelCount: 0, references: [] },
+    documents: [],
+  };
+}
