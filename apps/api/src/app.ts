@@ -13,6 +13,7 @@ import { registerHarvestFieldCommercialRoutes } from './routes/harvest-field-com
 import { registerFarmEconomicsRoutes } from './routes/farm-economics.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
 import { registerAgendaRoutes } from './routes/agenda.js';
+import { registerAgronomyRoutes } from './routes/agronomy.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
@@ -86,6 +87,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerFarmEconomicsRoutes(app, db);
   registerCampaignRoutes(app, db);
   registerAgendaRoutes(app, db);
+  registerAgronomyRoutes(app, db, weatherProvider);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);
   registerProfessionalRoutes(app, db);
