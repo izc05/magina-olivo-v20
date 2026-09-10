@@ -10,6 +10,7 @@ import { registerDomainRecordRoutes } from './routes/domain-records.js';
 import { registerHarvestRoutes } from './routes/harvest.js';
 import { registerHarvestCommercialRoutes } from './routes/harvest-commercial.js';
 import { registerHarvestFieldCommercialRoutes } from './routes/harvest-field-commercial.js';
+import { registerFarmEconomicsRoutes } from './routes/farm-economics.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
@@ -68,7 +69,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
     warning: prototypeAuthWarning,
   }));
 
-  registerAuthRoutes(app, db, googleVerifier);
+  registerAuthRoutes(app, db);
   registerMeRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
@@ -80,6 +81,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerHarvestRoutes(app, db);
   registerHarvestCommercialRoutes(app, db);
   registerHarvestFieldCommercialRoutes(app, db);
+  registerFarmEconomicsRoutes(app, db);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);
   registerProfessionalRoutes(app, db);
