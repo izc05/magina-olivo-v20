@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { AuthProvider } from '../components/auth-provider';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
 import './premium.css';
 import './pwa.css';
@@ -10,6 +11,7 @@ import './new-farm.css';
 import './farm-modules.css';
 import './calendar.css';
 import './local-prototype.css';
+import './map-platform.css';
 
 export const metadata: Metadata = {
   title: 'Mágina Olivo V20',
