@@ -28,13 +28,15 @@ export function registerAgendaRoutes(app: FastifyInstance, db: DatabaseClient | 
       field_name: string | null;
       source_domain_type: string | null;
       source_domain_record_id: string | null;
+      task_kind: string | null;
+      notes: string | null;
       title: string;
       scheduled_at: string;
       status: string;
       source: string;
     }>`
       SELECT se.id, se.field_id, f.name AS field_name, se.source_domain_type, se.source_domain_record_id,
-             se.title, se.scheduled_at, se.status, se.source
+             se.task_kind, se.notes, se.title, se.scheduled_at, se.status, se.source
       FROM scheduled_events se
       LEFT JOIN fields f ON f.id = se.field_id AND f.workspace_id = se.workspace_id
       WHERE se.workspace_id = ${context.workspaceId}::uuid
@@ -54,6 +56,8 @@ export function registerAgendaRoutes(app: FastifyInstance, db: DatabaseClient | 
         field_name: row.field_name,
         source_domain_type: row.source_domain_type,
         source_domain_record_id: row.source_domain_record_id,
+        task_kind: row.task_kind,
+        notes: row.notes,
         title: row.title,
         scheduled_at: row.scheduled_at,
         status: row.status,
