@@ -16,7 +16,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@magina/contracts": "workspace:*"
+    "@magina/contracts": "workspace:*",
+    "tar-stream": "3.2.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
