@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
+import { PlannedTaskActions } from '@/components/planned-task-actions';
 import { emptyAgenda, loadApiAgenda, type AgendaItem, type AgendaView } from '@/lib/agenda-data-source';
 import {
   agendaDomainToAgronomyTask,
@@ -25,7 +26,7 @@ function executionHref(item: AgendaItem) {
     treatment: 'tratamiento', irrigation: 'riego', fertilization: 'abono', pruning: 'poda',
     harvest: 'cosecha', harvest_delivery: 'cosecha', work: 'trabajo', observation: 'observacion', other: 'trabajo',
   };
-  const slug = routeByType[item.sourceDomainType ?? ''] ?? 'trabajo';
+  const slug = routeByType[item.taskKind ?? item.sourceDomainType ?? ''] ?? 'trabajo';
   const params = new URLSearchParams({ fieldId: item.fieldId, source: 'api', plannedEventId: item.id });
   return `/mi-campo/registrar/${slug}?${params.toString()}`;
 }
@@ -47,7 +48,19 @@ function AdvisoryEvidence({ advisory }: { advisory: AgronomyAdvisoryView }) {
   </div>;
 }
 
-function AgendaSection({ title, items, advisories }: { title: string; items: AgendaItem[]; advisories: AdvisoryState }) {
+function AgendaSection({
+  title,
+  items,
+  advisories,
+  workspaceId,
+  onChanged,
+}: {
+  title: string;
+  items: AgendaItem[];
+  advisories: AdvisoryState;
+  workspaceId?: string;
+  onChanged: () => void;
+}) {
   return <section className="section">
     <div className="section-head"><h2>{title}</h2><span className="subtle">{items.length}</span></div>
     {items.length ? <div className="card feed today-list">
@@ -57,14 +70,17 @@ function AgendaSection({ title, items, advisories }: { title: string; items: Age
         return <div className="feed-row" key={item.id}>
           <div className="feed-copy">
             <strong>{item.title}</strong>
-            <small>{item.fieldName ?? 'Sin finca'} · {item.scheduledAt.slice(0, 16).replace('T', ' ')}</small>
+            <small>{item.fieldName ?? 'Sin finca'} · {item.scheduledAt.slice(0, 16).replace('T', ' ')}{item.status === 'postponed' ? ' · aplazada' : ''}</small>
             {item.weatherSensitive ? <>
               <small>
                 {advisory === undefined ? 'Consultando contexto meteorológico…' : advisory === null ? 'Contexto meteorológico no disponible.' : `${advisoryLabel(advisory)} · ${advisory.summary}`}
               </small>
               {advisory ? <AdvisoryEvidence advisory={advisory} /> : null}
             </> : null}
-            {executeHref ? <small><Link href={executeHref}>Registrar realizado →</Link></small> : null}
+            <div className="record-actions">
+              {executeHref ? <Link className="primary action-link" href={executeHref}>Registrar realizado →</Link> : null}
+              {workspaceId ? <PlannedTaskActions item={item} workspaceId={workspaceId} onChanged={onChanged} /> : null}
+            </div>
           </div>
           <span className="pending-pill">{advisory ? advisoryLabel(advisory) : item.priority === 'high' ? 'Prioridad' : item.bucket === 'today' ? 'Hoy' : 'Próximo'}</span>
         </div>;
@@ -79,6 +95,7 @@ export function TodayAgendaClient() {
   const [advisories, setAdvisories] = useState<AdvisoryState>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
 
   const weatherSensitiveItems = useMemo(
     () => [...agenda.overdue, ...agenda.today, ...agenda.upcoming].filter((item) => item.weatherSensitive && item.fieldId),
@@ -106,7 +123,7 @@ export function TodayAgendaClient() {
     }
     void load();
     return () => { cancelled = true; };
-  }, [apiConfigured, selectedWorkspaceId, status]);
+  }, [apiConfigured, revision, selectedWorkspaceId, status]);
 
   useEffect(() => {
     if (!selectedWorkspaceId || !weatherSensitiveItems.length) {
@@ -121,7 +138,7 @@ export function TodayAgendaClient() {
             workspaceId: selectedWorkspaceId,
             fieldId: item.fieldId!,
             date: item.scheduledAt.slice(0, 10),
-            task: agendaDomainToAgronomyTask(item.sourceDomainType),
+            task: agendaDomainToAgronomyTask(item.taskKind ?? item.sourceDomainType),
           });
           return [item.id, advisory] as const;
         } catch (err) {
@@ -135,6 +152,8 @@ export function TodayAgendaClient() {
     return () => { cancelled = true; };
   }, [selectedWorkspaceId, weatherSensitiveItems]);
 
+  const refresh = () => setRevision((value) => value + 1);
+
   return <>
     <header className="page-title mi-campo-title"><div><span className="eyebrow dark">MI CAMPO · AGENDA</span><h1>Hoy</h1><p>Lo pendiente, lo de hoy y lo próximo, con previsión y radar cuando aportan contexto.</p></div></header>
 
@@ -147,9 +166,9 @@ export function TodayAgendaClient() {
     {loading ? <section className="card"><p>Cargando agenda…</p></section> : null}
     {error ? <p className="form-error" role="alert">{error}</p> : null}
     {!loading ? <>
-      <AgendaSection title="Atrasadas" items={agenda.overdue} advisories={advisories} />
-      <AgendaSection title="Para hoy" items={agenda.today} advisories={advisories} />
-      <AgendaSection title="Próximos 7 días" items={agenda.upcoming} advisories={advisories} />
+      <AgendaSection title="Atrasadas" items={agenda.overdue} advisories={advisories} workspaceId={selectedWorkspaceId ?? undefined} onChanged={refresh} />
+      <AgendaSection title="Para hoy" items={agenda.today} advisories={advisories} workspaceId={selectedWorkspaceId ?? undefined} onChanged={refresh} />
+      <AgendaSection title="Próximos 7 días" items={agenda.upcoming} advisories={advisories} workspaceId={selectedWorkspaceId ?? undefined} onChanged={refresh} />
       <section className="card"><strong>Regla de Mágina</strong><p>{agenda.rule}</p><small>La previsión estima condiciones futuras; el radar muestra reflectividad observada. Mágina no deduce una hora de llegada de lluvia a partir de una sola imagen radar.</small></section>
     </> : null}
 
