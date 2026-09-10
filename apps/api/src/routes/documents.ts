@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
+import { sql } from 'kysely';
 import {
   confirmExtractionFieldSchema,
   createDocumentSchema,
@@ -22,6 +23,10 @@ async function domainRecordBelongsToWorkspace(db: DatabaseClient, workspaceId: s
     case 'expense': return Boolean(await db.selectFrom('expense_records').select('id').where('id', '=', recordId).where('workspace_id', '=', workspaceId).executeTakeFirst());
     case 'harvest_delivery': return Boolean(await db.selectFrom('harvest_deliveries').select('id').where('id', '=', recordId).where('workspace_id', '=', workspaceId).executeTakeFirst());
     case 'harvest_result': return Boolean(await db.selectFrom('delivery_results').select('id').where('id', '=', recordId).where('workspace_id', '=', workspaceId).executeTakeFirst());
+    case 'work': {
+      const result = await sql<{ id: string }>`SELECT id FROM work_records WHERE id = ${recordId}::uuid AND workspace_id = ${workspaceId}::uuid`.execute(db);
+      return Boolean(result.rows[0]);
+    }
     default: return false;
   }
 }
