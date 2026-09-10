@@ -12,6 +12,12 @@ import {
   evaluateWeatherDayForTask,
   normalizeAgronomyTask,
 } from '../domain/agronomy-advisory.js';
+import {
+  RADAR_AGRONOMY_RULE_VERSION,
+  combineAgronomySignals,
+  evaluateRadarObservationForTask,
+  type RadarAgronomyObservation,
+} from '../domain/agronomy-radar.js';
 
 const preferencesSchema = z.object({
   enabled: z.boolean(),
@@ -31,6 +37,44 @@ type Candidate = {
   municipality_name: string | null;
   aemet_code: string | null;
 };
+
+type RadarRow = {
+  observation_id: string;
+  observed_at: Date | string;
+  coverage_status: 'covered' | 'partial' | 'outside' | 'unavailable';
+  precipitation_detected: boolean | null;
+  nearest_echo_distance_km: number | string | null;
+  reflectivity_dbz_max: number | string | null;
+  quality_flags: string[] | null;
+};
+
+function finiteNumber(value: unknown) {
+  if (value == null) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+async function latestRadarObservation(database: DatabaseClient, workspaceId: string, fieldId: string): Promise<RadarAgronomyObservation | null> {
+  const result = await sql<RadarRow>`
+    SELECT id AS observation_id, observed_at, coverage_status, precipitation_detected,
+           nearest_echo_distance_km, reflectivity_dbz_max, quality_flags
+    FROM farm_radar_observations
+    WHERE workspace_id = ${workspaceId}::uuid AND field_id = ${fieldId}::uuid
+    ORDER BY observed_at DESC, created_at DESC
+    LIMIT 1
+  `.execute(database);
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    observationId: row.observation_id,
+    observedAt: row.observed_at,
+    coverageStatus: row.coverage_status,
+    precipitationDetected: row.precipitation_detected,
+    nearestEchoDistanceKm: finiteNumber(row.nearest_echo_distance_km),
+    reflectivityDbzMax: finiteNumber(row.reflectivity_dbz_max),
+    qualityFlags: row.quality_flags ?? [],
+  };
+}
 
 export function registerAgronomyAlertRoutes(
   app: FastifyInstance,
@@ -109,6 +153,7 @@ export function registerAgronomyAlertRoutes(
     let created = 0;
     let skipped = 0;
     const queuedIntentIds: string[] = [];
+    const combinedRuleVersion = `${AGRONOMY_RULE_VERSION}+${RADAR_AGRONOMY_RULE_VERSION}`;
 
     for (const candidate of candidates.rows) {
       if (!candidate.municipality_id || !candidate.aemet_code) { skipped += 1; continue; }
@@ -119,13 +164,16 @@ export function registerAgronomyAlertRoutes(
         const day = cached.forecast.days.find((item) => item.date.slice(0, 10) === targetDate);
         if (!day) { skipped += 1; continue; }
         const task = normalizeAgronomyTask(candidate.source_domain_type ?? undefined);
-        const advisory = evaluateWeatherDayForTask(day, task);
+        const forecastAdvisory = evaluateWeatherDayForTask(day, task);
+        const radarObservation = await latestRadarObservation(database, context.workspaceId, candidate.field_id);
+        const radarAdvisory = evaluateRadarObservationForTask(radarObservation, task);
+        const advisory = combineAgronomySignals(forecastAdvisory, radarAdvisory);
         const shouldNotify = advisory.suitability === 'avoid'
           ? preferences.notify_avoid
           : advisory.suitability === 'caution' && preferences.notify_caution;
         if (!shouldNotify) { skipped += 1; continue; }
 
-        const dedupeKey = `agronomy:${context.userId}:${candidate.event_id}:${targetDate}:${AGRONOMY_RULE_VERSION}:${advisory.suitability}`;
+        const dedupeKey = `agronomy:${context.userId}:${candidate.event_id}:${targetDate}:${combinedRuleVersion}:${advisory.suitability}`;
         const intentId = randomUUID();
         const inserted = await sql<{ id: string }>`
           INSERT INTO notification_intents (
@@ -136,7 +184,21 @@ export function registerAgronomyAlertRoutes(
             'agronomy_task_warning', 'push', 'scheduled_event', ${candidate.event_id}::uuid,
             ${`Mágina · ${candidate.field_name}`},
             ${`${candidate.title}: ${advisory.summary}`},
-            ${JSON.stringify({ path: 'mi-campo/hoy/', scheduled_event_id: candidate.event_id, task, suitability: advisory.suitability, risk_level: advisory.riskLevel, rule_version: AGRONOMY_RULE_VERSION, forecast_date: targetDate, source: cached.forecast.provider })}::jsonb,
+            ${JSON.stringify({
+              path: 'mi-campo/hoy/',
+              scheduled_event_id: candidate.event_id,
+              task,
+              suitability: advisory.suitability,
+              risk_level: advisory.riskLevel,
+              rule_version: combinedRuleVersion,
+              forecast_date: targetDate,
+              forecast_source: cached.forecast.provider,
+              radar_observation_id: radarObservation?.observationId ?? null,
+              radar_observed_at: radarObservation?.observedAt ?? null,
+              radar_fresh: radarAdvisory.fresh,
+              radar_elevated: advisory.radarElevated,
+              semantics: { forecast: 'daily_forecast', radar: 'observed_reflectivity_not_eta' },
+            })}::jsonb,
             ${dedupeKey}, 'pending'
           )
           ON CONFLICT (dedupe_key) DO NOTHING
@@ -157,6 +219,6 @@ export function registerAgronomyAlertRoutes(
       }
     }
 
-    return { evaluated: candidates.rows.length, created, skipped, intent_ids: queuedIntentIds, rule_version: AGRONOMY_RULE_VERSION };
+    return { evaluated: candidates.rows.length, created, skipped, intent_ids: queuedIntentIds, rule_version: combinedRuleVersion };
   });
 }
