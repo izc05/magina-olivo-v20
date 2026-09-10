@@ -5,6 +5,13 @@ export const gisBboxQuerySchema = z.object({
   minLat: z.coerce.number().min(-90).max(90),
   maxLon: z.coerce.number().min(-180).max(180),
   maxLat: z.coerce.number().min(-90).max(90),
+}).superRefine((bbox, ctx) => {
+  if (bbox.minLon >= bbox.maxLon || bbox.minLat >= bbox.maxLat) {
+    ctx.addIssue({ code: 'custom', message: 'bbox must have positive width and height' });
+  }
+  if (bbox.maxLon - bbox.minLon > 0.05 || bbox.maxLat - bbox.minLat > 0.05) {
+    ctx.addIssue({ code: 'custom', message: 'bbox exceeds the V20 maximum span of 0.05 degrees' });
+  }
 });
 
 export const catastroReferenceSchema = z.object({
