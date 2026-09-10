@@ -19,6 +19,23 @@ function advisoryLabel(advisory: AgronomyAdvisoryView) {
   return 'Sin criterio';
 }
 
+function AdvisoryEvidence({ advisory }: { advisory: AgronomyAdvisoryView }) {
+  return <div className="today-advisory-evidence">
+    <small>
+      Previsión · {advisory.forecastEvidence.source}
+      {advisory.forecastEvidence.precipitationProbabilityPercent !== undefined ? ` · lluvia ${advisory.forecastEvidence.precipitationProbabilityPercent}%` : ''}
+      {advisory.forecastEvidence.windMaxKmh !== undefined ? ` · viento ${advisory.forecastEvidence.windMaxKmh} km/h` : ''}
+      {advisory.stale ? ' · datos antiguos' : ''}
+    </small>
+    {advisory.radarEvidence ? <small>
+      Radar observado · {advisory.radarEvidence.summary}
+      {advisory.radarEvidence.ageMinutes !== undefined ? ` · hace ${advisory.radarEvidence.ageMinutes} min` : ''}
+      {!advisory.radarEvidence.fresh ? ' · no modifica la recomendación' : ''}
+      {advisory.radarElevated ? ' · elevó la severidad' : ''}
+    </small> : null}
+  </div>;
+}
+
 function AgendaSection({ title, items, advisories }: { title: string; items: AgendaItem[]; advisories: AdvisoryState }) {
   return <section className="section">
     <div className="section-head"><h2>{title}</h2><span className="subtle">{items.length}</span></div>
@@ -29,9 +46,12 @@ function AgendaSection({ title, items, advisories }: { title: string; items: Age
           <div className="feed-copy">
             <strong>{item.title}</strong>
             <small>{item.fieldName ?? 'Sin finca'} · {item.scheduledAt.slice(0, 16).replace('T', ' ')}</small>
-            {item.weatherSensitive ? <small>
-              {advisory === undefined ? 'Consultando contexto meteorológico…' : advisory === null ? 'Contexto meteorológico no disponible.' : `${advisoryLabel(advisory)} · ${advisory.summary} · ${advisory.evidence.source}${advisory.stale ? ' · datos antiguos' : ''}`}
-            </small> : null}
+            {item.weatherSensitive ? <>
+              <small>
+                {advisory === undefined ? 'Consultando contexto meteorológico…' : advisory === null ? 'Contexto meteorológico no disponible.' : `${advisoryLabel(advisory)} · ${advisory.summary}`}
+              </small>
+              {advisory ? <AdvisoryEvidence advisory={advisory} /> : null}
+            </> : null}
           </div>
           <span className="pending-pill">{advisory ? advisoryLabel(advisory) : item.priority === 'high' ? 'Prioridad' : item.bucket === 'today' ? 'Hoy' : 'Próximo'}</span>
         </div>;
@@ -103,7 +123,7 @@ export function TodayAgendaClient() {
   }, [selectedWorkspaceId, weatherSensitiveItems]);
 
   return <>
-    <header className="page-title mi-campo-title"><div><span className="eyebrow dark">MI CAMPO · AGENDA</span><h1>Hoy</h1><p>Lo pendiente, lo de hoy y lo próximo, con contexto de finca.</p></div></header>
+    <header className="page-title mi-campo-title"><div><span className="eyebrow dark">MI CAMPO · AGENDA</span><h1>Hoy</h1><p>Lo pendiente, lo de hoy y lo próximo, con previsión y radar cuando aportan contexto.</p></div></header>
 
     <section className="card field-summary campaign-summary"><div className="stats">
       <div className="stat"><b>{agenda.counts.overdue}</b><span>atrasadas</span></div>
@@ -117,7 +137,7 @@ export function TodayAgendaClient() {
       <AgendaSection title="Atrasadas" items={agenda.overdue} advisories={advisories} />
       <AgendaSection title="Para hoy" items={agenda.today} advisories={advisories} />
       <AgendaSection title="Próximos 7 días" items={agenda.upcoming} advisories={advisories} />
-      <section className="card"><strong>Regla de Mágina</strong><p>{agenda.rule}</p><small>Las recomendaciones meteorológicas son orientativas y requieren criterio del usuario.</small></section>
+      <section className="card"><strong>Regla de Mágina</strong><p>{agenda.rule}</p><small>La previsión estima condiciones futuras; el radar muestra reflectividad observada. Mágina no deduce una hora de llegada de lluvia a partir de una sola imagen radar.</small></section>
     </> : null}
 
     <section className="territory-banner compact-banner"><div><span className="eyebrow">UNA AGENDA, NO OTRA LIBRETA</span><h2>Los seguimientos nacen de los trabajos y registros existentes.</h2></div><Link href="/mi-campo/registrar">Registrar</Link></section>
