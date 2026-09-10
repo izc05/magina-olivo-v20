@@ -1,0 +1,134 @@
+.map-platform-page {
+  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+}
+
+.map-platform-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 0 14px;
+}
+
+.map-platform-header h1 {
+  margin: 4px 0 4px;
+  font-size: clamp(1.7rem, 7vw, 2.35rem);
+  line-height: 1;
+}
+
+.map-platform-header p {
+  margin: 0;
+  color: var(--muted, #6f746c);
+  max-width: 620px;
+}
+
+.map-platform-shell {
+  overflow: hidden;
+  padding: 0;
+  border-radius: 24px;
+}
+
+.farm-map-canvas {
+  width: 100%;
+  height: min(58vh, 620px);
+  min-height: 390px;
+  background: #e7eadf;
+}
+
+.map-platform-statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 14px 14px;
+  background: rgba(255,255,255,.96);
+  border-top: 1px solid rgba(49,69,42,.1);
+}
+
+.map-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #f1f3ec;
+  color: #31452a;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.map-chip i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.map-chip.catastro { color: #9a5c18; }
+.map-chip.sigpac { color: #276277; }
+
+.map-platform-info {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.map-platform-info article {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+}
+
+.map-platform-info strong,
+.map-platform-info small {
+  display: block;
+}
+
+.map-platform-info small {
+  margin-top: 2px;
+  color: var(--muted, #6f746c);
+}
+
+.map-platform-info .map-info-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #eef1e7;
+  font-size: 1.25rem;
+}
+
+.map-platform-empty {
+  padding: 24px;
+}
+
+.map-platform-empty h2 {
+  margin: 0 0 8px;
+}
+
+.map-platform-empty p {
+  margin: 0 0 16px;
+  color: var(--muted, #6f746c);
+}
+
+.maplibregl-ctrl-group {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+}
+
+@media (min-width: 760px) {
+  .farm-map-canvas {
+    min-height: 520px;
+  }
+
+  .map-platform-info {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
