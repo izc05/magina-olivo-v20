@@ -21,11 +21,29 @@ export type FarmHarvestDeliveryView = {
   resultDate?: string;
 };
 
+export type FarmHarvestSettlementView = {
+  id: string;
+  date: string;
+  counterparty?: string;
+  settlementNumber?: string;
+  fieldKg: number;
+  sharePercent: number;
+  netEur: number;
+  collectedEur: number;
+  pendingEur: number;
+  allocationStatus: 'derived_estimate' | string;
+};
+
 export type FarmHarvestView = {
   totalKg: number;
   weightedYieldPercent?: number;
   pendingResults: number;
   deliveries: FarmHarvestDeliveryView[];
+  accruedEur: number;
+  collectedEur: number;
+  pendingEur: number;
+  settlements: FarmHarvestSettlementView[];
+  allocationNotice?: string;
 };
 
 export type FarmLandReferenceView = {
@@ -75,6 +93,25 @@ type ApiHarvestPayload = {
   }>;
 };
 
+type ApiHarvestCommercialPayload = {
+  accrued_eur: number;
+  collected_eur: number;
+  pending_eur: number;
+  allocation_notice?: string;
+  settlements: Array<{
+    id: string;
+    settled_on: string;
+    counterparty_name: string | null;
+    settlement_number: string | null;
+    field_kg: number;
+    share_percent: number;
+    net_eur: number;
+    collected_eur: number;
+    pending_eur: number;
+    allocation_status: string;
+  }>;
+};
+
 type ApiMapPayload = {
   field: {
     calculated_area_ha: number | string | null;
@@ -120,9 +157,10 @@ function finite(value: number | string | null | undefined) {
 }
 
 export async function loadApiFarmDetailData(fieldId: string, workspaceId: string): Promise<FarmDetailData> {
-  const [activity, harvest, map, documents] = await Promise.all([
+  const [activity, harvest, harvestCommercial, map, documents] = await Promise.all([
     apiFetch<ApiActivityPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/activity`, { workspaceId }),
     apiFetch<ApiHarvestPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/harvest-summary`, { workspaceId }),
+    apiFetch<ApiHarvestCommercialPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/harvest-commercial-summary`, { workspaceId }),
     apiFetch<ApiMapPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/map-context`, { workspaceId }),
     apiFetch<ApiDocumentsPayload>(`/api/v1/fields/${encodeURIComponent(fieldId)}/documents`, { workspaceId }),
   ]);
@@ -148,6 +186,22 @@ export async function loadApiFarmDetailData(fieldId: string, workspaceId: string
         ticketNumber: item.ticket_number ?? undefined,
         yieldPercent: item.yield_percent ?? undefined,
         resultDate: item.result_date ?? undefined,
+      })),
+      accruedEur: harvestCommercial.accrued_eur,
+      collectedEur: harvestCommercial.collected_eur,
+      pendingEur: harvestCommercial.pending_eur,
+      allocationNotice: harvestCommercial.allocation_notice,
+      settlements: harvestCommercial.settlements.map((item) => ({
+        id: item.id,
+        date: item.settled_on,
+        counterparty: item.counterparty_name ?? undefined,
+        settlementNumber: item.settlement_number ?? undefined,
+        fieldKg: item.field_kg,
+        sharePercent: item.share_percent,
+        netEur: item.net_eur,
+        collectedEur: item.collected_eur,
+        pendingEur: item.pending_eur,
+        allocationStatus: item.allocation_status,
       })),
     },
     data: {
@@ -216,6 +270,10 @@ export function loadPreviewFarmDetailData(farmId: string, source?: string | null
       weightedYieldPercent,
       pendingResults: deliveryViews.filter((item) => item.yieldPercent === undefined).length,
       deliveries: deliveryViews.sort((a, b) => b.date.localeCompare(a.date)),
+      accruedEur: 0,
+      collectedEur: 0,
+      pendingEur: 0,
+      settlements: [],
     },
     data: {
       parcelCount: parcels.length,
@@ -234,7 +292,7 @@ export function loadPreviewFarmDetailData(farmId: string, source?: string | null
 export function emptyFarmDetailData(): FarmDetailData {
   return {
     activity: [],
-    harvest: { totalKg: 0, pendingResults: 0, deliveries: [] },
+    harvest: { totalKg: 0, pendingResults: 0, deliveries: [], accruedEur: 0, collectedEur: 0, pendingEur: 0, settlements: [] },
     data: { parcelCount: 0, references: [] },
     documents: [],
   };
