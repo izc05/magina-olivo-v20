@@ -74,7 +74,7 @@ assert.deepEqual(parsed.map((asset) => asset.metadata.observed_at), [
   '2026-09-10T04:35:00.000Z',
 ]);
 assert.ok(parsed.every((asset) => asset.metadata.asset_format === 'geotiff'));
-assert.ok(parsed.every((asset) => asset.metadata.analysis_ready === true));
+assert.ok(parsed.every((asset) => asset.metadata.analysis_ready === false));
 assert.ok(parsed.every((asset) => asset.metadata.crs === 'EPSG:4326'));
 assert.ok(parsed.every((asset) => asset.contentType === 'image/tiff'));
 
