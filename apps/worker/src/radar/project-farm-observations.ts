@@ -5,6 +5,10 @@ import {
   type RadarSpatialObservation,
 } from '@magina/weather';
 import type { Pool } from 'pg';
+import {
+  evaluateRadarAlertRules,
+  type RadarAlertObservation,
+} from './evaluate-alert-rules.js';
 
 export const FARM_RADAR_ANALYSIS_VERSION = 'aemet-national-palette-v1-spatial-v1';
 export const FARM_RADAR_RADIUS_KM = 80;
@@ -13,6 +17,7 @@ export const FARM_RADAR_MIN_DBZ = 12;
 type FieldPointRow = {
   id: string;
   workspace_id: string;
+  name: string;
   lat: number | string;
   lon: number | string;
 };
@@ -22,6 +27,7 @@ export type FarmRadarProjectionOutcome = {
   projected: number;
   detected: number;
   unavailable: number;
+  notificationIntents: number;
 };
 
 function dbCoverage(status: RadarSpatialObservation['coverageAtPoint']): 'covered' | 'outside' | 'unavailable' {
@@ -51,16 +57,17 @@ export async function projectRadarSnapshotToFarms(input: {
   grid: RadarGrid;
 }): Promise<FarmRadarProjectionOutcome> {
   if (!input.inspection.analysisReady) {
-    return { eligibleFields: 0, projected: 0, detected: 0, unavailable: 0 };
+    return { eligibleFields: 0, projected: 0, detected: 0, unavailable: 0, notificationIntents: 0 };
   }
   if (!input.observedAt) {
-    return { eligibleFields: 0, projected: 0, detected: 0, unavailable: 0 };
+    return { eligibleFields: 0, projected: 0, detected: 0, unavailable: 0, notificationIntents: 0 };
   }
 
   const fields = await input.pool.query<FieldPointRow>(`
     SELECT
       id,
       workspace_id,
+      name,
       ST_Y(ST_PointOnSurface(geometry)) AS lat,
       ST_X(ST_PointOnSurface(geometry)) AS lon
     FROM fields
@@ -71,6 +78,7 @@ export async function projectRadarSnapshotToFarms(input: {
   let projected = 0;
   let detected = 0;
   let unavailable = 0;
+  let notificationIntents = 0;
 
   for (const field of fields.rows) {
     const lat = Number(field.lat);
@@ -91,10 +99,12 @@ export async function projectRadarSnapshotToFarms(input: {
     const directionDegrees = precipitationDetected && !pointHasEcho
       ? observation.nearestEchoBearingDeg
       : null;
-    const directionLabel = precipitationDetected
+    const directionLabel: RadarAlertObservation['directionLabel'] = precipitationDetected
       ? (pointHasEcho ? 'OVER_FIELD' : observation.nearestEchoDirection)
       : null;
     const nearestBand = pointHasEcho ? observation.pointBand : observation.nearestEchoBand;
+    const reflectivityDbzMin = precipitationDetected ? nearestBand?.minDbz ?? null : null;
+    const reflectivityDbzMax = precipitationDetected ? nearestBand?.maxDbz ?? null : null;
 
     const metadata = {
       source_name: input.sourceName,
@@ -106,7 +116,7 @@ export async function projectRadarSnapshotToFarms(input: {
       reason: observation.reason,
     };
 
-    await input.pool.query(`
+    const stored = await input.pool.query<{ id: string }>(`
       INSERT INTO farm_radar_observations (
         workspace_id,
         field_id,
@@ -143,6 +153,7 @@ export async function projectRadarSnapshotToFarms(input: {
         quality_flags = EXCLUDED.quality_flags,
         metadata_json = EXCLUDED.metadata_json,
         updated_at = now()
+      RETURNING id
     `, [
       field.workspace_id,
       field.id,
@@ -154,12 +165,28 @@ export async function projectRadarSnapshotToFarms(input: {
       nearestDistance,
       directionDegrees,
       directionLabel,
-      precipitationDetected ? nearestBand?.minDbz ?? null : null,
-      precipitationDetected ? nearestBand?.maxDbz ?? null : null,
+      reflectivityDbzMin,
+      reflectivityDbzMax,
       FARM_RADAR_RADIUS_KM,
       qualityFlags(observation, input.inspection),
       JSON.stringify(metadata),
     ]);
+
+    const observationId = stored.rows[0]?.id;
+    if (!observationId) throw new Error('Radar farm projection did not return an observation id');
+
+    notificationIntents += await evaluateRadarAlertRules(input.pool, {
+      id: observationId,
+      workspaceId: field.workspace_id,
+      fieldId: field.id,
+      fieldName: field.name,
+      observedAt: input.observedAt,
+      precipitationDetected,
+      nearestEchoDistanceKm: nearestDistance,
+      directionLabel,
+      reflectivityDbzMin,
+      reflectivityDbzMax,
+    });
 
     projected += 1;
     if (precipitationDetected) detected += 1;
@@ -171,5 +198,6 @@ export async function projectRadarSnapshotToFarms(input: {
     projected,
     detected,
     unavailable,
+    notificationIntents,
   };
 }
