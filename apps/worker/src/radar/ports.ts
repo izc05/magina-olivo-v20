@@ -1,7 +1,7 @@
 import type { RadarBinaryAsset } from '@magina/weather';
 
 export interface RadarSourcePort {
-  fetchNationalReflectivity(): Promise<RadarBinaryAsset>;
+  fetchNationalReflectivity(): Promise<RadarBinaryAsset[]>;
 }
 
 export interface RadarObjectStoragePort {
