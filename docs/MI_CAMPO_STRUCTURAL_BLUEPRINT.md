@@ -58,7 +58,7 @@ Una Finca **no equivale** obligatoriamente a una parcela catastral ni a un recin
 
 ## 4. Parcela / recinto
 
-`ParcelaRecord` representa una subdivisión o referencia territorial subordinada a una Finca.
+`ParcelRecord` representa una subdivisión o referencia territorial subordinada a una Finca.
 
 Una Finca puede tener:
 
@@ -71,7 +71,7 @@ Una Finca puede tener:
 Tipos estructurales:
 
 - `own-boundary`: geometría propia canónica;
-- `catastro`: referencia/geometry de Catastro;
+- `catastro`: referencia/geometría de Catastro;
 - `sigpac`: recinto SIGPAC;
 - `manual`: subdivisión interna creada por el usuario.
 
@@ -116,9 +116,25 @@ Un Trabajo puede afectar a:
 
 Los registros agronómicos especializados (tratamiento, riego, abonado, etc.) aportan datos propios, pero comparten el contexto común de Trabajo.
 
-## 6. Personas, jornales y recursos
+## 6. Personas, empresas, cuadrillas y jornales
 
-No se modelará `jornal` como sinónimo de trabajador. Un participante puede medirse por:
+Se usa una entidad genérica `PartyRecord` para representar tanto personas como organizaciones. Sus roles son contextuales y no se mezclan con los permisos de acceso a la aplicación.
+
+Una parte puede actuar como:
+
+- propietario;
+- familiar;
+- trabajador;
+- autónomo/contratista;
+- cliente;
+- proveedor;
+- cooperativa;
+- almazara;
+- otro.
+
+Una misma persona puede tener varios roles simultáneos. Ejemplo: propietario de sus propias fincas y trabajador para terceros.
+
+`Jornal` no es una entidad rígida ni sinónimo de trabajador. Cada participante de un trabajo puede valorarse por:
 
 - horas;
 - días;
@@ -126,17 +142,38 @@ No se modelará `jornal` como sinónimo de trabajador. Un participante puede med
 - unidades;
 - importe fijo.
 
-Esto permite representar tanto mano de obra familiar como empleados, autónomos o cuadrillas externas.
+Cada participación puede guardar cantidad, tarifa, coste calculado, importe pagado y estado de pago.
 
-Los recursos de un trabajo pueden ser:
+### Cuadrillas
 
-- maquinaria;
-- materiales;
-- servicios externos.
+`CrewRecord` permite guardar grupos reutilizables de trabajadores.
 
-Cada uno puede incorporar cantidad, unidad y coste.
+Una cuadrilla puede tener:
 
-## 7. Propio frente a terceros
+- nombre;
+- miembros;
+- responsable;
+- tarifa orientativa;
+- unidad de tarifa;
+- notas.
+
+El trabajo conserva los participantes reales de ese día aunque posteriormente cambie la composición de la cuadrilla.
+
+## 7. Maquinaria, materiales y servicios
+
+La maquinaria se modela como catálogo reutilizable (`MachineryRecord`) y puede ser:
+
+- propia;
+- alquilada;
+- servicio de tercero.
+
+Puede guardar categoría, propietario/proveedor, matrícula o número de serie, tarifa habitual y unidad de cobro.
+
+Los materiales (`MaterialRecord`) pueden guardar nombre, categoría, unidad habitual, coste unitario habitual y proveedor.
+
+Dentro de cada Trabajo se guarda una instantánea del recurso realmente usado: cantidad, unidad y coste. Esto evita que un cambio posterior en la tarifa del catálogo altere el histórico.
+
+## 8. Propio frente a terceros
 
 Una misma persona puede simultáneamente:
 
@@ -145,9 +182,55 @@ Una misma persona puede simultáneamente:
 - llevar fincas de familiares;
 - prestar trabajos agrícolas a terceros.
 
-Por eso Trabajo incluye `performedFor` y un `customerId` opcional. La contabilidad doméstica de una finca y el futuro resumen facturable de un profesional pueden compartir la misma base sin mezclarse visualmente.
+Por eso Trabajo incluye `performedFor` y, cuando procede, un contexto comercial separado con:
 
-## 8. Estructura visible prevista de una ficha de Finca
+- cliente;
+- presupuesto/importe previsto;
+- importe final a cobrar;
+- cantidad cobrada;
+- estado pendiente/parcial/pagado;
+- futura referencia de factura.
+
+Esto permite compartir la misma base de Trabajo sin convertir Mi Campo en un programa de contabilidad.
+
+## 9. Cosecha: estructura canónica
+
+La cosecha no se modela como un único número de kilos.
+
+```text
+CAMPAÑA
+└── Entrega
+    ├── fecha/hora
+    ├── cooperativa / almazara
+    ├── ticket / albarán
+    ├── kg totales
+    ├── una o varias fincas de origen
+    └── reparto de kg
+        ├── Finca A
+        └── Finca B
+
+        más tarde
+            ↓
+Resultado de entrega
+├── fecha del resultado
+├── rendimiento %
+├── humedad % opcional
+├── acidez % opcional
+└── otros parámetros futuros
+```
+
+Reglas:
+
+1. `Entrega` y `Resultado` son registros distintos.
+2. El rendimiento puede llegar días después.
+3. Una entrega puede mezclar aceituna de varias fincas.
+4. El total repartido debe poder ser exacto o provisional.
+5. Las correcciones posteriores no deben destruir el dato original; deben quedar auditables.
+6. El rendimiento de una finca/campaña se calcula ponderado por kg, nunca como media simple de porcentajes.
+7. Una foto/OCR de un ticket es una fuente documental, no sustituye al registro estructurado.
+8. La campaña debe poder existir aunque aún no tenga entregas.
+
+## 10. Estructura visible prevista de una ficha de Finca
 
 No crear una pestaña por cada tabla interna. La ficha final deberá tender a cinco superficies principales:
 
@@ -179,7 +262,7 @@ Identidad de la finca, parcelas/recintos, mapa, geometría, Catastro, SIGPAC, su
 ### Documentos
 Fotos, albaranes, facturas, fitosanitarios, análisis y cualquier documento relacionado.
 
-## 9. Flujo Registrar
+## 11. Flujo Registrar
 
 El botón `+ Registrar` es transversal y debe poder abrirse desde Mi Campo, una Finca o el mapa.
 
@@ -200,7 +283,7 @@ Flujo estructural:
 
 La interfaz debe mostrar solo los pasos relevantes según el tipo de registro.
 
-## 10. Reglas que quedan fijadas
+## 12. Reglas que quedan fijadas
 
 1. Finca es el concepto principal del usuario.
 2. Una finca no depende de Catastro ni SIGPAC para existir.
@@ -208,20 +291,25 @@ La interfaz debe mostrar solo los pasos relevantes según el tipo de registro.
 4. La geometría propia de la finca puede ser distinta de una geometría administrativa.
 5. Trabajo es entidad paraguas para recursos, personas, costes y trabajos a terceros.
 6. Jornal es una unidad de trabajo, no una entidad rígida.
-7. Las operaciones especializadas mantienen sus datos agronómicos sin duplicar el contexto común.
-8. La ficha visible se mantiene pequeña: Resumen, Actividad, Cosecha, Datos y Documentos.
-9. El prototipo visual puede ser provisional mientras este plano no esté cerrado.
-10. Ninguna nueva función obtiene una pestaña propia automáticamente.
+7. Personas/empresas son entidades reutilizables con roles contextuales múltiples.
+8. Cuadrillas son plantillas reutilizables, pero el Trabajo conserva su foto histórica de participantes.
+9. Maquinaria/materiales tienen catálogo, pero cada Trabajo conserva cantidades y costes históricos.
+10. Las operaciones especializadas mantienen sus datos agronómicos sin duplicar el contexto común.
+11. Entrega y resultado de cosecha son registros distintos.
+12. El rendimiento agregado se pondera por kg.
+13. La ficha visible se mantiene pequeña: Resumen, Actividad, Cosecha, Datos y Documentos.
+14. El prototipo visual puede ser provisional mientras este plano no esté cerrado.
+15. Ninguna nueva función obtiene una pestaña propia automáticamente.
 
-## 11. Siguientes bloques estructurales
+## 13. Siguientes bloques estructurales
 
 Orden acordado:
 
 1. Finca ✅ base definida
 2. Parcela/recinto ✅ base definida
 3. Trabajo ✅ base definida
-4. Personas / jornales / maquinaria — siguiente
-5. Cosecha y entrega/rendimiento
+4. Personas / jornales / maquinaria ✅ base definida
+5. Cosecha y entrega/rendimiento ✅ estructura definida; siguiente implementación de dominio
 6. Costes e ingresos
 7. Documentos
 8. Catastro/SIGPAC y geometría
