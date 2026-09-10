@@ -1,0 +1,67 @@
+name: V20 agronomy radar advisory check
+
+on:
+  push:
+    branches:
+      - feat/v20-visual-prototype
+    paths:
+      - 'apps/api/src/domain/agronomy-*.ts'
+      - 'apps/api/src/routes/agronomy*.ts'
+      - 'apps/api/src/routes/agenda.ts'
+      - 'apps/api/src/testing/agronomy-radar-smoke.ts'
+      - 'apps/web/src/lib/agronomy-data-source.ts'
+      - 'apps/web/src/components/today-agenda-client.tsx'
+      - '.github/workflows/agronomy-radar-check.yml'
+  pull_request:
+    paths:
+      - 'apps/api/src/domain/agronomy-*.ts'
+      - 'apps/api/src/routes/agronomy*.ts'
+      - 'apps/api/src/routes/agenda.ts'
+      - 'apps/api/src/testing/agronomy-radar-smoke.ts'
+      - 'apps/web/src/lib/agronomy-data-source.ts'
+      - 'apps/web/src/components/today-agenda-client.tsx'
+      - '.github/workflows/agronomy-radar-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  agronomy-radar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build contracts
+        run: pnpm --filter @magina/contracts build
+
+      - name: Build weather
+        run: pnpm --filter @magina/weather build
+
+      - name: Build jobs
+        run: pnpm --filter @magina/jobs build
+
+      - name: API typecheck
+        run: pnpm --filter @magina/api typecheck
+
+      - name: API build
+        run: pnpm --filter @magina/api build
+
+      - name: Agronomy radar smoke
+        run: node apps/api/dist/testing/agronomy-radar-smoke.js
+
+      - name: Web typecheck
+        run: pnpm --filter @magina/web typecheck
