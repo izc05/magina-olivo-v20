@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from './auth-provider';
 import { ArrowIcon, MapPinIcon, RainIcon } from './icons';
+import { RadarAlertSettings } from './radar-alert-settings';
 import { apiFetch, ApiRequestError } from '../lib/api-client';
 
 type FieldSummary = {
@@ -189,11 +190,13 @@ export function RadarObservationPanel() {
       <ArrowIcon />
     </section>
 
+    <RadarAlertSettings fieldId={field.id} />
+
     <section className="section card rain-settings">
       <div><span className="eyebrow dark">LECTURA SEGURA</span><h2>Radar observado, no pronóstico</h2><p>La previsión meteorológica y las futuras alertas de movimiento se calculan por separado. Mágina no convierte automáticamente dBZ en mm/h.</p></div>
       <div className="settings-grid">
         <span><b>Cobertura</b> {observation?.coverage_status ?? 'sin dato'}</span>
-        <span><b>Radio</b> {observation?.analysis_radius_km != null ? `${observation.analysis_radius_km} km` : 'sin dato'}</span>
+        <span><b>Radio analizado</b> {observation?.analysis_radius_km != null ? `${observation.analysis_radius_km} km` : 'sin dato'}</span>
         <span><b>Fuente</b> {radar.attribution}</span>
       </div>
     </section>
