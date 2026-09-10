@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
+import { AttentionSummaryCard } from '@/components/attention-summary-card';
 import { ArrowIcon, MapPinIcon, RainIcon, SproutIcon } from '@/components/icons';
 import { demoContext, demoFarmSummary, lasCenillas } from '@/lib/demo-data';
 
@@ -21,6 +22,8 @@ export default function HomePage() {
             <p className="hero-message">Buen día para revisar el campo</p>
           </div>
         </section>
+
+        <AttentionSummaryCard compact />
 
         <section className="section section-overlap">
           <div className="section-head"><h2>Avisos importantes</h2><Link href="/radar">Ver todos <ArrowIcon /></Link></div>
