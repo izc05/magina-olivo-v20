@@ -116,7 +116,12 @@ export function FarmDetailShell() {
     };
   }, [apiConfigured, id, selectedWorkspaceId, source, status]);
 
-  const registerHref = useMemo(() => id ? `/mi-campo/registrar?fieldId=${encodeURIComponent(id)}` : '/mi-campo/registrar', [id]);
+  const registerHref = useMemo(() => {
+    if (!id) return '/mi-campo/registrar';
+    const query = new URLSearchParams({ fieldId: id });
+    if (source) query.set('source', source);
+    return `/mi-campo/registrar?${query.toString()}`;
+  }, [id, source]);
 
   if (loading) return <section className="card"><p>Cargando finca…</p></section>;
   if (!farm) return <section className="card"><h1>Finca no encontrada</h1><p>{detailError ?? 'La finca no está disponible en esta fuente de datos.'}</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
