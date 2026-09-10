@@ -1,7 +1,8 @@
+import { radarAlertRuleInputSchema } from '@magina/contracts';
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import type { DatabaseClient } from '../db/client.js';
-import { requireContext, requireDatabase } from '../http/helpers.js';
+import { fieldBelongsToWorkspace, parseBody, requireContext, requireDatabase } from '../http/helpers.js';
 
 type RadarRow = {
   field_id: string;
@@ -21,6 +22,19 @@ type RadarRow = {
   snapshot_product: string | null;
 };
 
+type RadarAlertRuleRow = {
+  id: string;
+  user_id: string;
+  workspace_id: string;
+  field_id: string;
+  enabled: boolean;
+  radius_km: number | string;
+  min_dbz: number | string;
+  cooldown_minutes: number;
+  created_at: Date | string;
+  updated_at: Date | string;
+};
+
 const DIRECTION_ES: Record<Exclude<NonNullable<RadarRow['direction_label']>, 'OVER_FIELD'>, string> = {
   N: 'norte',
   NE: 'noreste',
@@ -32,10 +46,34 @@ const DIRECTION_ES: Record<Exclude<NonNullable<RadarRow['direction_label']>, 'OV
   NW: 'noroeste',
 };
 
+const RADAR_ALERT_DEFAULTS = {
+  enabled: true,
+  radius_km: 10,
+  min_dbz: 12,
+  cooldown_minutes: 60,
+} as const;
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function finiteNumber(value: unknown): number | null {
   if (value == null) return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function serializeAlertRule(row: RadarAlertRuleRow) {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    workspace_id: row.workspace_id,
+    field_id: row.field_id,
+    enabled: row.enabled,
+    radius_km: finiteNumber(row.radius_km),
+    min_dbz: finiteNumber(row.min_dbz),
+    cooldown_minutes: row.cooldown_minutes,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
 }
 
 function safeSummary(row: RadarRow) {
@@ -75,7 +113,7 @@ export function registerRadarRoutes(app: FastifyInstance, db: DatabaseClient | n
     if (!context || !database) return;
 
     const fieldId = (request.params as { fieldId?: string }).fieldId;
-    if (!fieldId) return reply.code(404).send({ error: 'field_not_found' });
+    if (!fieldId || !uuidPattern.test(fieldId)) return reply.code(404).send({ error: 'field_not_found' });
 
     const result = await sql<RadarRow>`
       SELECT
@@ -149,6 +187,81 @@ export function registerRadarRoutes(app: FastifyInstance, db: DatabaseClient | n
       summary: safeSummary(row),
       attribution: 'AEMET',
       semantics: 'observed_reflectivity_not_forecast',
+    });
+  });
+
+  app.get('/api/v1/fields/:fieldId/radar/alert-rule', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+
+    const fieldId = (request.params as { fieldId?: string }).fieldId;
+    if (!fieldId || !uuidPattern.test(fieldId)) return reply.code(404).send({ error: 'field_not_found' });
+    const field = await fieldBelongsToWorkspace(database, fieldId, context.workspaceId);
+    if (!field) return reply.code(404).send({ error: 'field_not_found' });
+
+    const result = await sql<RadarAlertRuleRow>`
+      SELECT id, user_id, workspace_id, field_id, enabled, radius_km, min_dbz,
+             cooldown_minutes, created_at, updated_at
+      FROM radar_alert_rules
+      WHERE user_id = ${context.userId}::uuid
+        AND field_id = ${fieldId}::uuid
+        AND workspace_id = ${context.workspaceId}::uuid
+      LIMIT 1
+    `.execute(database);
+
+    const rule = result.rows[0];
+    return reply.send({
+      field_id: fieldId,
+      rule: rule ? serializeAlertRule(rule) : null,
+      defaults: RADAR_ALERT_DEFAULTS,
+      semantics: 'observed_reflectivity_only',
+    });
+  });
+
+  app.put('/api/v1/fields/:fieldId/radar/alert-rule', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+
+    const fieldId = (request.params as { fieldId?: string }).fieldId;
+    if (!fieldId || !uuidPattern.test(fieldId)) return reply.code(404).send({ error: 'field_not_found' });
+    const field = await fieldBelongsToWorkspace(database, fieldId, context.workspaceId);
+    if (!field) return reply.code(404).send({ error: 'field_not_found' });
+
+    const input = parseBody(radarAlertRuleInputSchema, request.body, reply);
+    if (!input) return;
+
+    const result = await sql<RadarAlertRuleRow>`
+      INSERT INTO radar_alert_rules (
+        user_id, workspace_id, field_id, enabled, radius_km, min_dbz, cooldown_minutes
+      ) VALUES (
+        ${context.userId}::uuid,
+        ${context.workspaceId}::uuid,
+        ${fieldId}::uuid,
+        ${input.enabled},
+        ${input.radius_km},
+        ${input.min_dbz},
+        ${input.cooldown_minutes}
+      )
+      ON CONFLICT (user_id, field_id)
+      DO UPDATE SET
+        workspace_id = EXCLUDED.workspace_id,
+        enabled = EXCLUDED.enabled,
+        radius_km = EXCLUDED.radius_km,
+        min_dbz = EXCLUDED.min_dbz,
+        cooldown_minutes = EXCLUDED.cooldown_minutes,
+        updated_at = now()
+      RETURNING id, user_id, workspace_id, field_id, enabled, radius_km, min_dbz,
+                cooldown_minutes, created_at, updated_at
+    `.execute(database);
+
+    const rule = result.rows[0];
+    if (!rule) return reply.code(500).send({ error: 'radar_alert_rule_not_saved' });
+    return reply.send({
+      field_id: fieldId,
+      rule: serializeAlertRule(rule),
+      semantics: 'observed_reflectivity_only',
     });
   });
 }
