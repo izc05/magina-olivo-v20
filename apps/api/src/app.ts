@@ -16,6 +16,7 @@ import { registerRadarRoutes } from './routes/radar.js';
 import { registerPushRoutes } from './routes/push.js';
 import { registerWorkRoutes } from './routes/work.js';
 import { registerWorkCommercialRoutes } from './routes/work-commercial.js';
+import { registerProfessionalRoutes } from './routes/professional.js';
 import type { StoragePort } from './storage/port.js';
 import { UnavailableStorage } from './storage/port.js';
 import type { OcrQueuePort } from './ocr/port.js';
@@ -77,6 +78,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerHarvestRoutes(app, db);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);
+  registerProfessionalRoutes(app, db);
   registerDocumentRoutes(app, db, storage, ocrQueue);
   registerGisRoutes(app, db, gisProviders);
 
