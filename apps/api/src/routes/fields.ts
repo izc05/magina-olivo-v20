@@ -23,6 +23,33 @@ export function registerFieldRoutes(app: FastifyInstance, db: DatabaseClient | n
       return reply.code(200).send({ replayed: true, field: existing });
     }
 
+    let resolvedPlace: {
+      place_id: string;
+      place_name: string;
+      municipality_id: string;
+      municipality_name: string;
+      province_name: string;
+    } | null = null;
+
+    if (input.place_id) {
+      const row = await database.selectFrom('territory_places as p')
+        .innerJoin('territory_municipalities as m', 'm.id', 'p.municipality_id')
+        .select([
+          'p.id as place_id',
+          'p.name as place_name',
+          'm.id as municipality_id',
+          'm.name as municipality_name',
+          'm.province_name',
+        ])
+        .where('p.id', '=', input.place_id)
+        .where('p.public_enabled', '=', true)
+        .where('m.active', '=', true)
+        .executeTakeFirst();
+
+      if (!row) return reply.code(400).send({ error: 'invalid_territory_place' });
+      resolvedPlace = row;
+    }
+
     const id = input.entity_id ?? randomUUID();
     const created = await database.insertInto('fields').values({
       id,
@@ -30,9 +57,14 @@ export function registerFieldRoutes(app: FastifyInstance, db: DatabaseClient | n
       client_operation_id: input.client_operation_id,
       name: input.name,
       description: null,
-      municipality: input.municipality ?? null,
-      province: input.province ?? null,
+      municipality: resolvedPlace?.place_name ?? input.municipality ?? null,
+      province: resolvedPlace?.province_name ?? input.province ?? null,
+      municipality_id: resolvedPlace?.municipality_id ?? null,
+      place_id: resolvedPlace?.place_id ?? null,
       calculated_area_ha: null,
+      geometry_source: null,
+      geometry_status: 'unlocated',
+      geometry_checked_at: null,
       tree_count: input.tree_count ?? null,
       crop: 'olivar',
       variety: input.variety ?? null,
@@ -42,7 +74,16 @@ export function registerFieldRoutes(app: FastifyInstance, db: DatabaseClient | n
       status: 'active',
     }).returningAll().executeTakeFirstOrThrow();
 
-    return reply.code(201).send({ replayed: false, field: created });
+    return reply.code(201).send({
+      replayed: false,
+      field: created,
+      territory: resolvedPlace ? {
+        place_id: resolvedPlace.place_id,
+        place_name: resolvedPlace.place_name,
+        municipality_id: resolvedPlace.municipality_id,
+        municipality_name: resolvedPlace.municipality_name,
+      } : null,
+    });
   });
 
   app.get('/api/v1/fields', async (request, reply) => {
