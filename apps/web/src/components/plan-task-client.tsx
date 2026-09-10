@@ -17,11 +17,27 @@ const kinds: Array<{ value: PlannedTaskKind; label: string; hint: string }> = [
   { value: 'other', label: 'Otro', hint: 'Tarea manual.' },
 ];
 
+function toLocalInput(date: Date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
 function defaultLocalDateTime() {
   const now = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  now.setMinutes(0, 0, 0);
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
+  now.setHours(9, 0, 0, 0);
+  return toLocalInput(now);
+}
+
+function quickDate(kind: 'tomorrow' | 'saturday' | 'next-week') {
+  const date = new Date();
+  date.setHours(9, 0, 0, 0);
+  if (kind === 'tomorrow') date.setDate(date.getDate() + 1);
+  if (kind === 'next-week') date.setDate(date.getDate() + 7);
+  if (kind === 'saturday') {
+    const days = (6 - date.getDay() + 7) % 7 || 7;
+    date.setDate(date.getDate() + days);
+  }
+  return toLocalInput(date);
 }
 
 export function PlanTaskClient() {
@@ -83,7 +99,7 @@ export function PlanTaskClient() {
     <form className="section card" onSubmit={submit}>
       <label className="form-field"><span>Tipo de tarea</span><select value={kind} onChange={(event) => setKind(event.target.value as PlannedTaskKind)}>{kinds.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><small>{kindMeta.hint}</small></label>
       <label className="form-field"><span>Qué vas a hacer</span><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kindMeta.label} maxLength={180} /></label>
-      <label className="form-field"><span>Cuándo</span><input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} required /></label>
+      <div className="form-field"><span>Cuándo</span><div className="record-actions"><button type="button" className="secondary-action" onClick={() => setScheduledAt(quickDate('tomorrow'))}>Mañana</button><button type="button" className="secondary-action" onClick={() => setScheduledAt(quickDate('saturday'))}>Sábado</button><button type="button" className="secondary-action" onClick={() => setScheduledAt(quickDate('next-week'))}>+ 1 semana</button></div><input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} required /><small>Los accesos rápidos usan las 09:00; puedes cambiar la hora antes de guardar.</small></div>
       <label className="form-field"><span>Notas</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional: zona, motivo, preparación…" maxLength={3000} /></label>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       {saved ? <p role="status"><strong>Tarea planificada.</strong> Ya aparecerá en Hoy y podrá recibir contexto meteorológico cuando corresponda.</p> : null}
