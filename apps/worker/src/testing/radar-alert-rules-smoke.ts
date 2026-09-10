@@ -7,13 +7,15 @@ if (!databaseUrl) throw new Error('DATABASE_URL is required');
 const pool = new Pool({ connectionString: databaseUrl });
 
 try {
-  const workspaceId = '51000000-0000-4000-8000-000000000001';
-  const fieldId = '52000000-0000-4000-8000-000000000001';
-  const userMatch = '53000000-0000-4000-8000-000000000001';
-  const userTooStrict = '53000000-0000-4000-8000-000000000002';
-  const userAlertsOff = '53000000-0000-4000-8000-000000000003';
-  const userTooFar = '53000000-0000-4000-8000-000000000004';
-  const userInactiveMembership = '53000000-0000-4000-8000-000000000005';
+  // 61/62/63/64/65 prefixes are reserved for this smoke because the radar
+  // workflow intentionally runs all integration tests against one database.
+  const workspaceId = '61000000-0000-4000-8000-000000000001';
+  const fieldId = '62000000-0000-4000-8000-000000000001';
+  const userMatch = '63000000-0000-4000-8000-000000000001';
+  const userTooStrict = '63000000-0000-4000-8000-000000000002';
+  const userAlertsOff = '63000000-0000-4000-8000-000000000003';
+  const userTooFar = '63000000-0000-4000-8000-000000000004';
+  const userInactiveMembership = '63000000-0000-4000-8000-000000000005';
 
   await pool.query(`INSERT INTO workspaces (id, name, type) VALUES ($1, 'Radar alerts', 'family')`, [workspaceId]);
   await pool.query(`
@@ -34,7 +36,7 @@ try {
   `, [workspaceId, userMatch, userTooStrict, userAlertsOff, userTooFar, userInactiveMembership]);
   await pool.query(`
     INSERT INTO fields (id, workspace_id, client_operation_id, name, geometry, status)
-    VALUES ($1, $2, '54000000-0000-4000-8000-000000000001', 'Las Alertas',
+    VALUES ($1, $2, '64000000-0000-4000-8000-000000000001', 'Las Alertas',
       ST_Multi(ST_GeomFromText('POLYGON((-3.5 37.7,-3.49 37.7,-3.49 37.71,-3.5 37.71,-3.5 37.7))', 4326)), 'active')
   `, [fieldId, workspaceId]);
 
@@ -48,7 +50,7 @@ try {
   `, [userMatch, userTooStrict, userAlertsOff, userTooFar, userInactiveMembership, workspaceId, fieldId]);
 
   const observation: RadarAlertObservation = {
-    id: '55000000-0000-4000-8000-000000000001',
+    id: '65000000-0000-4000-8000-000000000001',
     workspaceId,
     fieldId,
     fieldName: 'Las Alertas',
@@ -84,7 +86,7 @@ try {
 
   const observationTwo: RadarAlertObservation = {
     ...observation,
-    id: '55000000-0000-4000-8000-000000000002',
+    id: '65000000-0000-4000-8000-000000000002',
     observedAt: '2026-09-10T10:10:00.000Z',
   };
   const duringCooldown = await evaluateRadarAlertRules(pool, observationTwo);
@@ -107,7 +109,7 @@ try {
 
   const noRain: RadarAlertObservation = {
     ...observation,
-    id: '55000000-0000-4000-8000-000000000003',
+    id: '65000000-0000-4000-8000-000000000003',
     precipitationDetected: false,
     nearestEchoDistanceKm: null,
     directionLabel: null,
