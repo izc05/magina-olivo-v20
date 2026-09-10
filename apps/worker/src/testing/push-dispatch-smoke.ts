@@ -92,10 +92,10 @@ try {
     INSERT INTO notification_intents (
       id,user_id,workspace_id,field_id,kind,channel,source_type,source_record_id,title,body,payload_json,dedupe_key,status
     ) VALUES
-      ($1,$5,$9,$10,'radar_observed_echo','push','radar_observation','98000000-0000-4000-8000-000000000001','Radar cerca','Eco observado','{"path":"radar/"}'::jsonb,'push-smoke-good','pending'),
-      ($2,$6,$9,$10,'push_test','push','push_test','98000000-0000-4000-8000-000000000002','Prueba','Reintento','{}'::jsonb,'push-smoke-retry','pending'),
-      ($3,$7,$9,$10,'push_test','push','push_test','98000000-0000-4000-8000-000000000003','Prueba','Sin dispositivo','{}'::jsonb,'push-smoke-none','pending'),
-      ($4,$8,$9,$10,'radar_observed_echo','push','radar_observation','98000000-0000-4000-8000-000000000004','Radar','Sin membership','{}'::jsonb,'push-smoke-revoked','pending')
+      ($1,$5,$9,$10,'radar_observed_echo','push','radar_observation','98000000-0000-4000-8000-000000000001','Radar cerca','Eco observado','{"path":"radar/"}'::jsonb,'push-smoke-good-01','pending'),
+      ($2,$6,$9,$10,'push_test','push','push_test','98000000-0000-4000-8000-000000000002','Prueba','Reintento','{}'::jsonb,'push-smoke-retry-01','pending'),
+      ($3,$7,$9,$10,'push_test','push','push_test','98000000-0000-4000-8000-000000000003','Prueba','Sin dispositivo','{}'::jsonb,'push-smoke-none-01','pending'),
+      ($4,$8,$9,$10,'radar_observed_echo','push','radar_observation','98000000-0000-4000-8000-000000000004','Radar','Sin membership','{}'::jsonb,'push-smoke-revoked-01','pending')
   `, [intents.good, intents.retry, intents.none, intents.revoked, userGood, userRetry, userNone, userRevokedMembership, workspaceId, fieldId]);
 
   const sender = new FakeSender();
