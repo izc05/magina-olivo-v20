@@ -9,6 +9,7 @@ on:
       - 'apps/api/src/gis/**'
       - 'apps/api/src/routes/gis.ts'
       - 'apps/api/src/testing/gis-*.ts'
+      - 'apps/api/src/testing/map-context-smoke.ts'
       - 'apps/api/src/app.ts'
       - 'apps/api/package.json'
       - 'packages/contracts/src/gis.ts'
@@ -20,6 +21,7 @@ on:
       - 'apps/api/src/gis/**'
       - 'apps/api/src/routes/gis.ts'
       - 'apps/api/src/testing/gis-*.ts'
+      - 'apps/api/src/testing/map-context-smoke.ts'
       - 'apps/api/src/app.ts'
       - 'apps/api/package.json'
       - 'packages/contracts/src/gis.ts'
@@ -105,3 +107,10 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'true'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/gis-smoke.js
+
+      - name: Unified finca map context smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_gis
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/map-context-smoke.js
