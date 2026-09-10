@@ -6,6 +6,9 @@ on:
     branches:
       - feat/v20-visual-prototype
     paths:
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/routes/radar.ts'
+      - 'apps/api/src/testing/radar-*.ts'
       - 'apps/worker/src/radar/**'
       - 'apps/worker/src/testing/radar-*.ts'
       - 'apps/worker/src/testing/farm-radar-*.ts'
@@ -20,6 +23,9 @@ on:
       - '.github/workflows/radar-check.yml'
   pull_request:
     paths:
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/routes/radar.ts'
+      - 'apps/api/src/testing/radar-*.ts'
       - 'apps/worker/src/radar/**'
       - 'apps/worker/src/testing/radar-*.ts'
       - 'apps/worker/src/testing/farm-radar-*.ts'
@@ -80,6 +86,8 @@ jobs:
           pnpm --filter @magina/weather build
           pnpm --filter @magina/jobs typecheck
           pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/api build
           pnpm --filter @magina/worker typecheck
           pnpm --filter @magina/worker build
 
@@ -121,3 +129,9 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
         run: node apps/worker/dist/testing/farm-radar-projection-smoke.js
+
+      - name: Private latest radar API behavior
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+        run: node apps/api/dist/testing/radar-latest-smoke.js
