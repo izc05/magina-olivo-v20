@@ -1,9 +1,9 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { fetchAemetNationalRadarAsset } from '@magina/weather';
+import { fetchAemetNationalRadarGeoTiffs } from '@magina/weather';
 import type { RadarObjectStoragePort, RadarSourcePort } from './ports.js';
 
 export const remoteAemetRadarSource: RadarSourcePort = {
-  fetchNationalReflectivity: () => fetchAemetNationalRadarAsset(),
+  fetchNationalReflectivity: () => fetchAemetNationalRadarGeoTiffs(),
 };
 
 export type RadarS3Config = {
