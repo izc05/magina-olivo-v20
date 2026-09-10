@@ -57,6 +57,12 @@ jobs:
       - name: Build contracts
         run: pnpm --filter @magina/contracts build
 
+      - name: Weather typecheck
+        run: pnpm --filter @magina/weather typecheck
+
+      - name: Build weather
+        run: pnpm --filter @magina/weather build
+
       - name: Jobs typecheck
         run: pnpm --filter @magina/jobs typecheck
 
