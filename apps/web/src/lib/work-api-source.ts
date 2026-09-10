@@ -2,6 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 
 export type WorkPartyOption = { id: string; display_name: string; roles?: string[] };
 export type CustomerSiteOption = { id: string; customer_party_id: string; name: string; municipality?: string | null; customer_name?: string };
+export type CreatedWork = { id: string } & Record<string, unknown>;
 
 export async function loadWorkDirectory(workspaceId: string) {
   const [parties, sites] = await Promise.all([
@@ -37,9 +38,10 @@ export async function createCustomerSite(workspaceId: string, input: { customerP
   return response.customer_site;
 }
 
-export async function createWork(workspaceId: string, payload: Record<string, unknown>) {
-  return apiFetch('/api/v1/works', {
+export async function createWork(workspaceId: string, payload: Record<string, unknown>): Promise<CreatedWork> {
+  const response = await apiFetch<{ work: CreatedWork }>('/api/v1/works', {
     method: 'POST', workspaceId,
     body: JSON.stringify({ client_operation_id: crypto.randomUUID(), ...payload }),
   });
+  return response.work;
 }
