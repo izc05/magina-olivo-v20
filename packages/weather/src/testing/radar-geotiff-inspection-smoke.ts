@@ -40,10 +40,14 @@ const ready = evaluateRadarGeoTiffFacts({
   bbox: [-10, 35, 5, 44],
   resolution: [0.01, -0.01, 0],
   noData: null,
+  photometricInterpretation: null,
+  bitsPerSample: [],
+  colorMap: null,
   scaleRaw: syntheticScale,
 });
 assert.equal(ready.parsed, true);
 assert.equal(ready.analysisReady, true);
+assert.equal(ready.scaleSource, 'escala');
 assert.deepEqual(ready.validationErrors, []);
 assert.equal(ready.scaleBands.length, 3);
 
@@ -56,6 +60,9 @@ const wrongCrs = evaluateRadarGeoTiffFacts({
   bbox: ready.bbox,
   resolution: ready.resolution,
   noData: ready.noData,
+  photometricInterpretation: ready.photometricInterpretation,
+  bitsPerSample: ready.bitsPerSample,
+  colorMap: null,
   scaleRaw: ready.scaleRaw,
 });
 assert.equal(wrongCrs.analysisReady, false);
@@ -70,10 +77,14 @@ const withoutScale = evaluateRadarGeoTiffFacts({
   bbox: ready.bbox,
   resolution: ready.resolution,
   noData: ready.noData,
+  photometricInterpretation: null,
+  bitsPerSample: [],
+  colorMap: null,
   scaleRaw: null,
 });
 assert.equal(withoutScale.analysisReady, false);
 assert.ok(withoutScale.validationErrors.includes('scale_missing'));
+assert.ok(withoutScale.validationErrors.includes('palette_raster_shape_unrecognized'));
 
 const generated = await writeArrayBuffer(new Uint8Array([1, 2, 3, 4]), {
   width: 2,
@@ -95,7 +106,7 @@ assert.equal(inspected.height, 2);
 assert.equal(inspected.noData, 0);
 assert.ok(inspected.bbox);
 assert.ok(inspected.resolution);
-assert.equal(inspected.analysisReady, false, 'a valid GeoTIFF without AEMET ESCALA must not be analysis-ready');
+assert.equal(inspected.analysisReady, false, 'a generic GeoTIFF without ESCALA/AEMET palette must not be analysis-ready');
 assert.ok(inspected.validationErrors.includes('scale_missing'));
 assert.deepEqual(inspected.scaleBands, []);
 
