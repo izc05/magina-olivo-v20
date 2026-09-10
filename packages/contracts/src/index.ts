@@ -5,3 +5,4 @@ export * from './auth.js';
 export * from './gis.js';
 export * from './radar.js';
 export * from './push.js';
+export * from './agronomy.js';
