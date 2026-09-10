@@ -1,9 +1,9 @@
 import { apiFetch } from '@/lib/api-client';
 
-export type SupportedApiRecordSlug = 'riego' | 'tratamiento' | 'abono' | 'poda' | 'gasto';
+export type SupportedApiRecordSlug = 'riego' | 'tratamiento' | 'abono' | 'poda' | 'gasto' | 'jornal' | 'maquinaria';
 
 export function supportsApiRecord(slug: string): slug is SupportedApiRecordSlug {
-  return ['riego', 'tratamiento', 'abono', 'poda', 'gasto'].includes(slug);
+  return ['riego', 'tratamiento', 'abono', 'poda', 'gasto', 'jornal', 'maquinaria'].includes(slug);
 }
 
 function numberValue(value?: string) {
@@ -92,6 +92,58 @@ export async function saveApiRecord(input: {
         cost_eur: numberValue(data.cost),
         notes: data.notes || undefined,
         follow_up: followUp(data),
+      }),
+    });
+  }
+
+  if (slug === 'jornal') {
+    const workers = numberValue(data.workers);
+    const hours = numberValue(data.hours);
+    const cost = numberValue(data.cost);
+    return apiFetch('/api/v1/works', {
+      method: 'POST', workspaceId,
+      body: JSON.stringify({
+        ...common,
+        field_id: fieldId,
+        type: 'manual-work',
+        occurred_on: data.date ?? new Date().toISOString().slice(0, 10),
+        title: data.task || 'Trabajo manual',
+        notes: data.notes || undefined,
+        performed_for: 'self',
+        participants: [{
+          display_name: data.crew || (workers ? `${workers} personas` : 'Mano de obra'),
+          role: workers ? `${workers} persona${workers === 1 ? '' : 's'}` : undefined,
+          quantity: hours,
+          unit: hours ? 'hours' : 'fixed',
+          cost_eur: cost,
+        }],
+        resources: [],
+      }),
+    });
+  }
+
+  if (slug === 'maquinaria') {
+    const hours = numberValue(data.hours);
+    const cost = numberValue(data.cost);
+    const fuel = numberValue(data.fuel);
+    return apiFetch('/api/v1/works', {
+      method: 'POST', workspaceId,
+      body: JSON.stringify({
+        ...common,
+        field_id: fieldId,
+        type: 'machinery-work',
+        occurred_on: data.date ?? new Date().toISOString().slice(0, 10),
+        title: data.task || `Trabajo con ${data.machine || 'maquinaria'}`,
+        notes: [data.notes, fuel !== undefined ? `Combustible: ${fuel} L` : undefined].filter(Boolean).join(' · ') || undefined,
+        performed_for: 'self',
+        participants: [],
+        resources: [{
+          kind: 'machinery',
+          name: data.machine || 'Maquinaria',
+          quantity: hours,
+          unit: hours ? 'h' : undefined,
+          cost_eur: cost,
+        }],
       }),
     });
   }
