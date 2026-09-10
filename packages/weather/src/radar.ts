@@ -11,6 +11,7 @@ export type RadarBinaryAsset = {
   bytes: Uint8Array;
   contentType: string;
   sourceUrl: string;
+  sourceName?: string;
 };
 
 type AemetEnvelope = {
