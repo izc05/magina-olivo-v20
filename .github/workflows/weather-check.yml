@@ -10,7 +10,10 @@ on:
       - 'apps/api/src/routes/weather.ts'
       - 'apps/api/src/routes/territory.ts'
       - 'apps/api/src/testing/weather-*.ts'
+      - 'apps/api/src/testing/radar-*.ts'
       - 'apps/api/src/app.ts'
+      - 'packages/contracts/src/radar.ts'
+      - 'packages/contracts/src/index.ts'
       - 'database/migrations/0013_territory_catalog.sql'
       - 'database/migrations/0014_weather_forecast_cache.sql'
       - '.github/workflows/weather-check.yml'
@@ -20,7 +23,10 @@ on:
       - 'apps/api/src/routes/weather.ts'
       - 'apps/api/src/routes/territory.ts'
       - 'apps/api/src/testing/weather-*.ts'
+      - 'apps/api/src/testing/radar-*.ts'
       - 'apps/api/src/app.ts'
+      - 'packages/contracts/src/radar.ts'
+      - 'packages/contracts/src/index.ts'
       - 'database/migrations/0013_territory_catalog.sql'
       - 'database/migrations/0014_weather_forecast_cache.sql'
       - '.github/workflows/weather-check.yml'
@@ -68,8 +74,11 @@ jobs:
           pnpm --filter @magina/api typecheck
           pnpm --filter @magina/api build
 
-      - name: AEMET parser and endpoint smoke
+      - name: AEMET forecast parser smoke
         run: node apps/api/dist/testing/weather-adapter-smoke.js
+
+      - name: AEMET radar adapter smoke
+        run: node apps/api/dist/testing/radar-adapter-smoke.js
 
       - name: Install PostgreSQL client
         run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
