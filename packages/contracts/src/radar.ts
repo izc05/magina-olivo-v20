@@ -38,7 +38,25 @@ export const farmRadarObservationSchema = z.object({
   created_at: z.string().datetime({ offset: true }),
 });
 
+export const radarAlertRuleInputSchema = z.object({
+  enabled: z.boolean().default(true),
+  radius_km: z.number().positive().max(80).default(10),
+  min_dbz: z.number().min(12).max(80).default(12),
+  cooldown_minutes: z.number().int().min(15).max(1440).default(60),
+});
+
+export const radarAlertRuleSchema = radarAlertRuleInputSchema.extend({
+  id: uuidSchema,
+  user_id: uuidSchema,
+  workspace_id: uuidSchema,
+  field_id: uuidSchema,
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+
 export type RadarSnapshotMetadata = z.infer<typeof radarSnapshotMetadataSchema>;
 export type RadarCoverageStatus = z.infer<typeof radarCoverageStatusSchema>;
 export type RadarDirectionLabel = z.infer<typeof radarDirectionLabelSchema>;
 export type FarmRadarObservation = z.infer<typeof farmRadarObservationSchema>;
+export type RadarAlertRuleInput = z.infer<typeof radarAlertRuleInputSchema>;
+export type RadarAlertRule = z.infer<typeof radarAlertRuleSchema>;
