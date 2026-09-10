@@ -3,6 +3,8 @@ import type { ColumnType, Generated } from 'kysely';
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 export type GeneratedTimestamp = ColumnType<Date, Date | string | undefined, Date | string>;
 export type DateColumn = ColumnType<Date, Date | string, Date | string>;
+export type Defaulted<T> = ColumnType<T, T | undefined, T>;
+export type OptionalNullable<T> = ColumnType<T | null, T | null | undefined, T | null>;
 
 export interface WorkspaceTable {
   id: Generated<string>;
@@ -61,13 +63,13 @@ export interface UserSessionTable {
 export interface TerritoryMunicipalityTable {
   id: Generated<string>;
   ine_code: string;
-  aemet_code: string | null;
+  aemet_code: OptionalNullable<string>;
   name: string;
   slug: string;
-  province_code: string;
-  province_name: string;
-  active: boolean;
-  weather_enabled: boolean;
+  province_code: Defaulted<string>;
+  province_name: Defaulted<string>;
+  active: Defaulted<boolean>;
+  weather_enabled: Defaulted<boolean>;
   created_at: GeneratedTimestamp;
   updated_at: GeneratedTimestamp;
 }
@@ -77,10 +79,10 @@ export interface TerritoryPlaceTable {
   municipality_id: string;
   name: string;
   slug: string;
-  kind: 'municipal_seat' | 'locality' | 'hamlet' | 'other';
-  is_default_for_municipality: boolean;
-  public_enabled: boolean;
-  hero_asset_key: string | null;
+  kind: Defaulted<'municipal_seat' | 'locality' | 'hamlet' | 'other'>;
+  is_default_for_municipality: Defaulted<boolean>;
+  public_enabled: Defaulted<boolean>;
+  hero_asset_key: OptionalNullable<string>;
   created_at: GeneratedTimestamp;
   updated_at: GeneratedTimestamp;
 }
@@ -91,8 +93,8 @@ export interface WeatherForecastCacheTable {
   payload_json: unknown;
   fetched_at: GeneratedTimestamp;
   expires_at: Timestamp;
-  last_error_at: Timestamp | null;
-  last_error_code: string | null;
+  last_error_at: OptionalNullable<Date | string>;
+  last_error_code: OptionalNullable<string>;
 }
 
 export interface FieldTable {
@@ -103,12 +105,12 @@ export interface FieldTable {
   description: string | null;
   municipality: string | null;
   province: string | null;
-  municipality_id: string | null;
-  place_id: string | null;
+  municipality_id: OptionalNullable<string>;
+  place_id: OptionalNullable<string>;
   calculated_area_ha: number | null;
-  geometry_source: 'manual' | 'catastro' | 'sigpac' | 'import' | 'composite' | null;
-  geometry_status: 'unlocated' | 'draft' | 'verified' | 'needs_review';
-  geometry_checked_at: Timestamp | null;
+  geometry_source: OptionalNullable<'manual' | 'catastro' | 'sigpac' | 'import' | 'composite'>;
+  geometry_status: Defaulted<'unlocated' | 'draft' | 'verified' | 'needs_review'>;
+  geometry_checked_at: OptionalNullable<Date | string>;
   tree_count: number | null;
   crop: string;
   variety: string | null;
