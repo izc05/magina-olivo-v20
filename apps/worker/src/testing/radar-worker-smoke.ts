@@ -57,8 +57,10 @@ try {
   assert.equal(first.fetched, 2);
   assert.equal(first.stored, 2);
   assert.equal(first.replayed, 0);
+  assert.equal(first.analysisReady, 0);
   assert.equal(storedKeys.length, 2);
-  assert.ok(first.snapshots.every((item) => item.analysisReady));
+  assert.ok(first.snapshots.every((item) => item.analysisReady === false));
+  assert.ok(first.snapshots.every((item) => item.validationErrors.includes('geotiff_parse_failed')));
   assert.deepEqual(first.snapshots.map((item) => item.sourceName), [a.sourceName, b.sourceName]);
 
   const replay = await runRadarIngestJob(pool, sourceFor([a, b]), storage, {
@@ -68,6 +70,7 @@ try {
   assert.equal(replay.fetched, 2);
   assert.equal(replay.stored, 0);
   assert.equal(replay.replayed, 2);
+  assert.equal(replay.analysisReady, 0);
   assert.equal(storedKeys.length, 2, 'replaying the same bundle must not upload objects again');
 
   const oneNew = await runRadarIngestJob(pool, sourceFor([a, b, c]), storage, {
@@ -77,6 +80,7 @@ try {
   assert.equal(oneNew.fetched, 3);
   assert.equal(oneNew.stored, 1);
   assert.equal(oneNew.replayed, 2);
+  assert.equal(oneNew.analysisReady, 0);
   assert.equal(storedKeys.length, 3, 'only the new GeoTIFF must be uploaded');
 
   const invalidVisualAsset: RadarBinaryAsset = {
@@ -88,7 +92,7 @@ try {
   };
   await assert.rejects(
     () => runRadarIngestJob(pool, sourceFor([invalidVisualAsset]), storage, job),
-    /only accepts analytical GeoTIFF assets/,
+    /only accepts GeoTIFF assets/,
   );
 
   const rows = await pool.query<{
@@ -96,7 +100,7 @@ try {
     analysis_ready: boolean;
     status: string;
     storage_key: string | null;
-    metadata_json: { source_name?: string };
+    metadata_json: { source_name?: string; geotiff_inspection?: { validationErrors?: string[] } };
   }>(`
     SELECT asset_format, analysis_ready, status, storage_key, metadata_json
     FROM radar_snapshots
@@ -104,8 +108,9 @@ try {
   `);
   assert.equal(rows.rowCount, 3);
   assert.ok(rows.rows.every((row) => row.asset_format === 'geotiff'));
-  assert.ok(rows.rows.every((row) => row.analysis_ready === true));
-  assert.ok(rows.rows.every((row) => row.status === 'stored' && row.storage_key));
+  assert.ok(rows.rows.every((row) => row.analysis_ready === false));
+  assert.ok(rows.rows.every((row) => row.status === 'processed' && row.storage_key));
+  assert.ok(rows.rows.every((row) => row.metadata_json.geotiff_inspection?.validationErrors?.includes('geotiff_parse_failed')));
   assert.deepEqual(
     rows.rows.map((row) => row.metadata_json.source_name),
     [a.sourceName, b.sourceName, c.sourceName],
