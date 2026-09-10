@@ -53,7 +53,7 @@ export function buildRadarSnapshotMetadata(contentType: string, fetchedAt: Date)
     observed_at: null,
     fetched_at: fetchedAt.toISOString(),
     asset_format: format,
-    analysis_ready: format === 'geotiff',
+    analysis_ready: false,
   };
 }
 
