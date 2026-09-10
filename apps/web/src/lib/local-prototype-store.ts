@@ -1,8 +1,11 @@
 import type {
   ActivityRecord,
+  CampaignRecord,
   CrewRecord,
   FarmRecord,
   FieldRecord,
+  HarvestDeliveryRecord,
+  HarvestResultRecord,
   MachineryRecord,
   MaterialRecord,
   ParcelRecord,
@@ -18,6 +21,9 @@ const PARTY_KEY = 'magina:v20:parties';
 const CREW_KEY = 'magina:v20:crews';
 const MACHINERY_KEY = 'magina:v20:machinery';
 const MATERIAL_KEY = 'magina:v20:materials';
+const CAMPAIGN_KEY = 'magina:v20:campaigns';
+const HARVEST_DELIVERY_KEY = 'magina:v20:harvest-deliveries';
+const HARVEST_RESULT_KEY = 'magina:v20:harvest-results';
 
 function readArray<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
@@ -175,6 +181,42 @@ export function removeLocalMaterial(id: string) {
   writeArray(MATERIAL_KEY, readArray<MaterialRecord>(MATERIAL_KEY).filter((item) => item.id !== id));
 }
 
+export function getLocalCampaigns() {
+  return readArray<CampaignRecord>(CAMPAIGN_KEY);
+}
+
+export function saveLocalCampaign(campaign: CampaignRecord) {
+  const current = readArray<CampaignRecord>(CAMPAIGN_KEY);
+  writeArray(CAMPAIGN_KEY, [campaign, ...current.filter((item) => item.id !== campaign.id)]);
+  return campaign;
+}
+
+export function getLocalHarvestDeliveries(campaignId?: string, farmId?: string) {
+  const items = readArray<HarvestDeliveryRecord>(HARVEST_DELIVERY_KEY);
+  return items.filter((item) => {
+    if (campaignId && item.campaignId !== campaignId) return false;
+    if (farmId && !item.allocations.some((allocation) => allocation.farmId === farmId)) return false;
+    return true;
+  });
+}
+
+export function saveLocalHarvestDelivery(delivery: HarvestDeliveryRecord) {
+  const current = readArray<HarvestDeliveryRecord>(HARVEST_DELIVERY_KEY);
+  writeArray(HARVEST_DELIVERY_KEY, [delivery, ...current.filter((item) => item.id !== delivery.id)]);
+  return delivery;
+}
+
+export function getLocalHarvestResults(deliveryId?: string) {
+  const items = readArray<HarvestResultRecord>(HARVEST_RESULT_KEY);
+  return deliveryId ? items.filter((item) => item.deliveryId === deliveryId) : items;
+}
+
+export function saveLocalHarvestResult(result: HarvestResultRecord) {
+  const current = readArray<HarvestResultRecord>(HARVEST_RESULT_KEY);
+  writeArray(HARVEST_RESULT_KEY, [result, ...current.filter((item) => item.id !== result.id)]);
+  return result;
+}
+
 export function clearPrototypeData() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(ACTIVITY_KEY);
@@ -185,6 +227,9 @@ export function clearPrototypeData() {
   window.localStorage.removeItem(CREW_KEY);
   window.localStorage.removeItem(MACHINERY_KEY);
   window.localStorage.removeItem(MATERIAL_KEY);
+  window.localStorage.removeItem(CAMPAIGN_KEY);
+  window.localStorage.removeItem(HARVEST_DELIVERY_KEY);
+  window.localStorage.removeItem(HARVEST_RESULT_KEY);
   window.dispatchEvent(new CustomEvent('magina:prototype-data-changed', { detail: { key: 'all' } }));
 }
 
@@ -198,4 +243,7 @@ export const prototypeStoreKeys = {
   crews: CREW_KEY,
   machinery: MACHINERY_KEY,
   materials: MATERIAL_KEY,
+  campaigns: CAMPAIGN_KEY,
+  harvestDeliveries: HARVEST_DELIVERY_KEY,
+  harvestResults: HARVEST_RESULT_KEY,
 } as const;
