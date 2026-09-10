@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/tar-stream": "3.1.4",
     "typescript": "^6.0.0"
   }
 }
