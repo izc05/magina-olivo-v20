@@ -7,6 +7,11 @@ on:
       - feat/v20-visual-prototype
     paths:
       - '.github/workflows/radar-live-probe.yml'
+      - 'packages/weather/src/testing/radar-live-inventory.ts'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -35,5 +40,5 @@ jobs:
           pnpm --filter @magina/weather typecheck
           pnpm --filter @magina/weather build
 
-      - name: Probe current public AEMET GeoTIFF metadata
-        run: node packages/weather/dist/testing/radar-live-probe.js
+      - name: Inventory current public AEMET radar bundle
+        run: node packages/weather/dist/testing/radar-live-inventory.js
