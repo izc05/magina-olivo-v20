@@ -46,9 +46,7 @@ function safeSummary(row: RadarRow) {
       return 'Eco de precipitación detectado sobre la finca.';
     }
     const distance = finiteNumber(row.nearest_echo_distance_km);
-    const direction = row.direction_label && row.direction_label !== 'OVER_FIELD'
-      ? DIRECTION_ES[row.direction_label]
-      : null;
+    const direction = row.direction_label ? DIRECTION_ES[row.direction_label] : null;
     if (distance !== null && direction) {
       const rounded = distance < 10 ? Math.round(distance * 10) / 10 : Math.round(distance);
       return `Precipitación detectada a unos ${rounded} km al ${direction}.`;
