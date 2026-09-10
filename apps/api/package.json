@@ -14,6 +14,7 @@
     "@fastify/cookie": "^11.1.2",
     "@magina/contracts": "workspace:*",
     "@magina/jobs": "workspace:*",
+    "@magina/weather": "workspace:*",
     "fastify": "^5.12.3",
     "google-auth-library": "^11.0.2",
     "kysely": "^0.29.5",
