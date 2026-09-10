@@ -23,6 +23,15 @@ export const workTypeSchema = z.enum([
   'mowing', 'tillage', 'transport', 'manual-work', 'machinery-work', 'other',
 ]);
 
+export const createCrewSchema = clientOperationSchema.extend({
+  name: z.string().trim().min(1).max(240),
+  leader_party_id: uuidSchema.optional(),
+  member_party_ids: z.array(uuidSchema).max(200).default([]),
+  default_rate_eur: moneySchema.optional(),
+  default_rate_unit: workUnitSchema.optional(),
+  notes: z.string().trim().max(4000).optional(),
+});
+
 export const createMachinerySchema = clientOperationSchema.extend({
   name: z.string().trim().min(1).max(240),
   category: z.string().trim().max(160).optional(),
@@ -45,12 +54,16 @@ export const createMaterialSchema = clientOperationSchema.extend({
 
 export const workParticipantSchema = z.object({
   party_id: uuidSchema.optional(),
+  crew_id: uuidSchema.optional(),
   display_name: z.string().trim().min(1).max(240),
   role: z.string().trim().max(120).optional(),
   quantity: z.number().positive().max(1_000_000).optional(),
   unit: workUnitSchema.optional(),
   rate_eur: moneySchema.optional(),
   cost_eur: moneySchema.optional(),
+}).refine((value) => !(value.party_id && value.crew_id), {
+  message: 'Use either party_id or crew_id for a participant, not both',
+  path: ['party_id'],
 });
 
 export const workResourceSchema = z.object({
@@ -85,6 +98,7 @@ export const createWorkSchema = clientOperationSchema.extend({
 });
 
 export type CreatePartyInput = z.infer<typeof createPartySchema>;
+export type CreateCrewInput = z.infer<typeof createCrewSchema>;
 export type CreateMachineryInput = z.infer<typeof createMachinerySchema>;
 export type CreateMaterialInput = z.infer<typeof createMaterialSchema>;
 export type CreateWorkInput = z.infer<typeof createWorkSchema>;
