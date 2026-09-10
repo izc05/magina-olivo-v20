@@ -2,7 +2,7 @@
 
 ## Estado
 
-Arquitectura aprobada para la primera fase de radar. No confundir este módulo con previsión meteorológica ni con nowcast.
+Arquitectura de ingestión en implementación y separada de previsión/nowcast.
 
 ## Regla principal
 
@@ -10,107 +10,124 @@ Arquitectura aprobada para la primera fase de radar. No confundir este módulo c
 AEMET previsión municipal  !=  radar observado  !=  nowcast
 ```
 
-- **Previsión**: responde a probabilidad/temperatura/viento por municipio y horizonte temporal.
-- **Radar observado**: responde a precipitación detectada por radar en una fecha/hora concreta.
-- **Nowcast**: estimaría movimiento y posible llegada futura. No se publicará hasta tener un algoritmo y validación propios.
+- **Previsión**: probabilidad, temperatura y viento por municipio.
+- **Radar observado**: precipitación detectada en una fecha/hora concreta.
+- **Nowcast**: movimiento/llegada futura. No se publicará hasta disponer de algoritmo y validación propios.
 
-## Fuente inicial
+## Fuentes AEMET
 
-Primera fuente: **mosaico nacional AEMET de reflectividad**.
+### Producto estándar OpenData
 
-Motivos:
+`/opendata/api/red/radar/nacional`
 
-1. evita seleccionar manualmente un radar regional para Sierra Mágina;
-2. AEMET compone el mosaico teniendo en cuenta distancia y bloqueo orográfico en zonas de solape;
-3. la reflectividad nacional está disponible en EPSG:4326;
-4. existe descarga georreferenciada GeoTIFF para análisis GIS;
-5. el endpoint OpenData `/api/red/radar/nacional` sirve como puerta de entrada al producto estándar actual.
+Uso: visual/referencia y comprobación de disponibilidad. No se utilizará para mediciones espaciales si el recurso obtenido no es un raster georreferenciado verificable.
 
-## Dos clases de asset
+### Distribución georreferenciada oficial
 
-### Imagen estándar OpenData
-
-Puede llegar como GIF/PNG u otro formato gráfico.
-
-Uso permitido:
-- referencia visual;
-- diagnóstico de disponibilidad de la fuente;
-- visualización aislada si se conserva atribución.
-
-Uso no permitido:
-- medir distancia desde una finca;
-- inferir dBZ por coordenada;
-- crear alertas espaciales;
-- afirmar llegada futura de lluvia.
-
-En código se marca:
+Fuente operativa para análisis:
 
 ```text
-analysis_ready = false
+https://www.aemet.es/es/api-eltiempo/radar/download/compo
 ```
 
-### GeoTIFF georreferenciado
+El catálogo oficial de datos identifica esta distribución para la composición nacional de radar. La descarga responde como paquete `tar+gzip` y contiene las imágenes GeoTIFF recientes de la composición.
 
-Uso futuro para:
-- reproyección/lectura GIS;
-- recorte a Sierra Mágina;
-- consulta de píxel o vecindad alrededor de una finca;
-- detección de precipitación observada;
-- generación de teselas/overlay MapLibre;
-- histórico corto de observaciones.
+Mágina no asume que el Swagger OpenData publique esta ruta: se trata como una distribución oficial separada.
 
-En código se marca:
+## Ingestión V20
 
 ```text
-analysis_ready = true
-```
-
-solo cuando el tipo de asset ha sido verificado como GeoTIFF.
-
-## Contrato conceptual
-
-```text
+AEMET GeoTIFF bundle
+       ↓
+validar HTTPS + host + ruta exacta
+       ↓
+validar MIME/tamaño del tar.gz
+       ↓
+gunzip + tar streaming
+       ↓
+aceptar solo .tif/.tiff
+       ↓
+validar firma TIFF
+       ↓
+RadarBinaryAsset[]
+       ↓
+SHA-256 por raster
+       ↓
 RadarSnapshot
-├── source = aemet_national_mosaic
-├── product = reflectivity
-├── crs = EPSG:4326
-├── observed_at
-├── fetched_at
-├── asset_format
-├── analysis_ready
-├── storage_key          [fase GeoTIFF]
-├── checksum             [fase GeoTIFF]
-└── processing_status    [fase GeoTIFF]
+       ↓
+S3: weather/radar/...
 ```
 
-## Flujo futuro de ingestión
+Límites iniciales de defensa:
+- paquete comprimido: 50 MB;
+- contenido descomprimido: 100 MB;
+- GeoTIFF individual: 35 MB;
+- máximo de entradas TIFF: 6;
+- sin extracción al filesystem;
+- entradas no TIFF se ignoran;
+- TIFF con firma inválida se rechaza.
+
+## Idempotencia
+
+El bundle contiene varias imágenes recientes. Cada raster se deduplica por:
 
 ```text
-AEMET
-  ↓
-resolver recurso oficial
-  ↓
-descargar GeoTIFF
-  ↓
-validar host + MIME + tamaño + CRS
-  ↓
-objeto S3-compatible
-  ↓
-registrar snapshot
-  ↓
-worker raster
-  ├── metadata
-  ├── escala dBZ
-  ├── recorte Sierra Mágina
-  ├── tiles/overlay
-  └── índice espacial de precipitación observada
+source + product + sha256
 ```
 
-El proceso será un job idempotente. Una misma imagen no debe procesarse dos veces.
+Ejemplo:
 
-## Estado de lluvia por finca
+```text
+job 1 → A B        => guarda A + B
+job 2 → A B        => 0 subidas
+job 3 → A B C      => guarda solo C
+```
 
-Primera versión segura:
+Por tanto la frecuencia del job no multiplica almacenamiento mientras AEMET siga devolviendo los mismos raster.
+
+## Persistencia
+
+`radar_snapshots` conserva:
+- fuente/producto/CRS declarado;
+- `observed_at` cuando puede resolverse;
+- `fetched_at`;
+- formato/MIME/tamaño;
+- SHA-256;
+- URL oficial de origen;
+- nombre de entrada del bundle;
+- `storage_key` privado;
+- estado `fetched | stored | processed | failed`;
+- flags de análisis y error.
+
+Los objetos radar no usan el flujo de subida de documentos de usuario. Comparten infraestructura S3-compatible, pero bajo el prefijo independiente `weather/radar`.
+
+## Cola
+
+```text
+magina-radar-ingest-v1
+└── DLQ: magina-radar-ingest-dlq-v1
+```
+
+El worker puede arrancar como:
+- `WORKER_MODULES=ocr`
+- `WORKER_MODULES=radar`
+- `WORKER_MODULES=ocr,radar`
+
+El modo radar requiere almacenamiento S3; la descarga GeoTIFF oficial directa no requiere `AEMET_API_KEY` en el worker.
+
+## Nivel de confianza actual
+
+Un archivo del bundle se marca candidato analítico tras validar paquete, extensión y firma TIFF. Antes de usar valores meteorológicos se añadirá una segunda validación interna con lector GeoTIFF:
+- comprobar GeoKeys/CRS;
+- bounding box/resolución;
+- fecha/hora real;
+- NoData;
+- metadatos `ESCALA`/equivalencia de reflectividad;
+- dimensiones y bandas esperadas.
+
+Hasta superar esa validación, **no se calcularán dBZ ni alertas por distancia** basadas en píxeles.
+
+## Estado de lluvia por finca — siguiente fase
 
 ```text
 FarmRadarObservation
@@ -122,29 +139,23 @@ FarmRadarObservation
 ├── direction_from_field
 ├── reflectivity_band
 ├── coverage_status
-└── confidence/quality flags
+└── quality_flags
 ```
 
-Mensajes permitidos:
-
+Mensajes permitidos cuando exista el análisis validado:
 - `Precipitación detectada sobre la finca.`
 - `Precipitación detectada a unos 8 km al oeste.`
 - `No se detecta precipitación en el radio analizado.`
 - `Radar sin cobertura suficiente o dato no disponible.`
 
-Mensajes no permitidos todavía:
-
+Mensajes prohibidos todavía:
 - `Lloverá en 20 minutos.`
 - `La tormenta llegará a las 18:40.`
 - `Caerán 12 mm en tu finca.`
 
-Estos mensajes requieren nowcast o modelos adicionales.
-
 ## Mapa
 
-`MapPlatform` consumirá una capa radar independiente de la geometría de la finca.
-
-Orden conceptual:
+`MapPlatform` mantendrá capas independientes:
 
 ```text
 base cartográfica
@@ -155,19 +166,19 @@ radar reflectividad
 alertas/observaciones
 ```
 
-La capa radar se podrá activar/desactivar y tendrá hora de observación siempre visible.
+La capa radar mostrará siempre la hora de observación y podrá activarse/desactivarse.
 
 ## Privacidad
 
-El radar es dato público. La asociación `radar -> finca` sí utiliza geometría privada del usuario y solo se calcula dentro del workspace autorizado. Nunca se publicarán coordenadas privadas como parte de una alerta pública.
+Radar = dato público. La operación `radar -> finca` usa geometría privada y solo se realiza dentro del workspace autorizado. Nunca se publican coordenadas privadas en alertas públicas.
 
 ## Próximos pasos
 
-1. cerrar CI general después de las migraciones territoriales;
-2. localizar y documentar el recurso operativo GeoTIFF de AEMET;
-3. crear `RadarSnapshot` persistente y almacenamiento de raster;
-4. implementar worker de metadata/recorte;
-5. generar overlay MapLibre;
-6. implementar observación por finca;
-7. diseñar alertas de precipitación observada;
-8. estudiar nowcast como módulo separado.
+1. CI verde de parser + worker + candidato completo;
+2. integrar lector `geotiff` para verificar metadatos internos;
+3. determinar `ESCALA`/reflectividad real del producto;
+4. marcar snapshots como `processed` solo tras validación;
+5. generar recorte/overlay MapLibre;
+6. calcular observación segura por finca;
+7. crear alertas de precipitación observada;
+8. estudiar nowcast como módulo independiente.
