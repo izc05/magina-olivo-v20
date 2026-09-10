@@ -10,6 +10,8 @@ import { registerDomainRecordRoutes } from './routes/domain-records.js';
 import { registerHarvestRoutes } from './routes/harvest.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerGisRoutes } from './routes/gis.js';
+import { registerTerritoryRoutes } from './routes/territory.js';
+import { registerWeatherRoutes } from './routes/weather.js';
 import type { StoragePort } from './storage/port.js';
 import { UnavailableStorage } from './storage/port.js';
 import type { OcrQueuePort } from './ocr/port.js';
@@ -18,6 +20,8 @@ import type { GoogleIdentityVerifier } from './auth/google.js';
 import { UnavailableGoogleIdentityVerifier } from './auth/google.js';
 import type { GisProviders } from './gis/providers.js';
 import { remoteGisProviders } from './gis/providers.js';
+import type { MunicipalityWeatherProvider } from './weather/providers.js';
+import { remoteAemetWeatherProvider } from './weather/providers.js';
 
 export type AppDependencies = {
   db?: DatabaseClient | null;
@@ -25,6 +29,7 @@ export type AppDependencies = {
   ocrQueue?: OcrQueuePort;
   googleVerifier?: GoogleIdentityVerifier;
   gisProviders?: GisProviders;
+  weatherProvider?: MunicipalityWeatherProvider;
 };
 
 export function buildApp(dependencies: AppDependencies = {}) {
@@ -33,6 +38,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   const ocrQueue = dependencies.ocrQueue ?? new UnavailableOcrQueue();
   const googleVerifier = dependencies.googleVerifier ?? new UnavailableGoogleIdentityVerifier();
   const gisProviders = dependencies.gisProviders ?? remoteGisProviders;
+  const weatherProvider = dependencies.weatherProvider ?? remoteAemetWeatherProvider;
   const app = Fastify({ logger: true });
 
   app.register(cookie);
@@ -50,6 +56,8 @@ export function buildApp(dependencies: AppDependencies = {}) {
 
   registerAuthRoutes(app, db, googleVerifier);
   registerMeRoutes(app, db);
+  registerTerritoryRoutes(app, db);
+  registerWeatherRoutes(app, db, weatherProvider);
   registerFieldRoutes(app, db);
   registerIrrigationRoutes(app, db);
   registerDomainRecordRoutes(app, db);
