@@ -4,37 +4,40 @@ import {
   radarSnapshotMetadataSchema,
   type RadarIngestJobPayload,
 } from '@magina/contracts';
+import type { RadarBinaryAsset } from '@magina/weather';
 import type { Pool } from 'pg';
 import type { RadarObjectStoragePort, RadarSourcePort } from './ports.js';
 
-export type RadarIngestOutcome = {
+export type RadarIngestItemOutcome = {
   replayed: boolean;
   snapshotId: string;
   status: 'stored' | 'processed';
-  analysisReady: boolean;
+  analysisReady: true;
   sha256: string;
   storageKey: string;
+  sourceName: string | null;
 };
 
-function extensionFor(format: 'gif' | 'png' | 'jpeg' | 'geotiff' | 'unknown') {
-  if (format === 'jpeg') return 'jpg';
-  if (format === 'geotiff') return 'tif';
-  if (format === 'unknown') return 'bin';
-  return format;
-}
+export type RadarIngestOutcome = {
+  fetched: number;
+  stored: number;
+  replayed: number;
+  snapshots: RadarIngestItemOutcome[];
+};
 
-export async function runRadarIngestJob(
+async function ingestRadarAsset(
   pool: Pool,
-  source: RadarSourcePort,
   storage: RadarObjectStoragePort,
-  rawJob: RadarIngestJobPayload,
-): Promise<RadarIngestOutcome> {
-  const job = radarIngestJobPayloadSchema.parse(rawJob);
-  const asset = await source.fetchNationalReflectivity();
+  job: RadarIngestJobPayload,
+  asset: RadarBinaryAsset,
+): Promise<RadarIngestItemOutcome> {
   const metadata = radarSnapshotMetadataSchema.parse(asset.metadata);
 
   if (metadata.source !== job.source || metadata.product !== job.product) {
     throw new Error('Radar source returned metadata that does not match the requested job');
+  }
+  if (metadata.asset_format !== 'geotiff' || metadata.analysis_ready !== true) {
+    throw new Error('Radar ingest only accepts analytical GeoTIFF assets');
   }
   if (asset.bytes.byteLength === 0) throw new Error('Radar source returned an empty asset');
 
@@ -56,9 +59,10 @@ export async function runRadarIngestJob(
       replayed: true,
       snapshotId: existing.id,
       status: existing.status,
-      analysisReady: existing.analysis_ready,
+      analysisReady: true,
       sha256,
       storageKey: existing.storage_key,
+      sourceName: asset.sourceName ?? null,
     };
   }
 
@@ -72,6 +76,7 @@ export async function runRadarIngestJob(
     )
     ON CONFLICT (source, product, sha256)
     DO UPDATE SET
+      observed_at = COALESCE(radar_snapshots.observed_at, EXCLUDED.observed_at),
       fetched_at = GREATEST(radar_snapshots.fetched_at, EXCLUDED.fetched_at),
       content_type = EXCLUDED.content_type,
       byte_size = EXCLUDED.byte_size,
@@ -92,13 +97,16 @@ export async function runRadarIngestJob(
     asset.bytes.byteLength,
     sha256,
     asset.sourceUrl,
-    JSON.stringify({ requested_at: job.requested_at }),
+    JSON.stringify({
+      requested_at: job.requested_at,
+      source_name: asset.sourceName ?? null,
+    }),
   ]);
 
   const snapshotId = row.rows[0]?.id;
   if (!snapshotId) throw new Error('Radar snapshot insert did not return an id');
 
-  const relativeKey = `${metadata.source}/${metadata.product}/${sha256}.${extensionFor(metadata.asset_format)}`;
+  const relativeKey = `${metadata.source}/${metadata.product}/${sha256}.tif`;
 
   try {
     const stored = await storage.putObject({
@@ -121,9 +129,10 @@ export async function runRadarIngestJob(
       replayed: false,
       snapshotId,
       status: 'stored',
-      analysisReady: metadata.analysis_ready,
+      analysisReady: true,
       sha256,
       storageKey: stored.storageKey,
+      sourceName: asset.sourceName ?? null,
     };
   } catch (error) {
     await pool.query(`
@@ -135,4 +144,27 @@ export async function runRadarIngestJob(
     `, [snapshotId]);
     throw error;
   }
+}
+
+export async function runRadarIngestJob(
+  pool: Pool,
+  source: RadarSourcePort,
+  storage: RadarObjectStoragePort,
+  rawJob: RadarIngestJobPayload,
+): Promise<RadarIngestOutcome> {
+  const job = radarIngestJobPayloadSchema.parse(rawJob);
+  const assets = await source.fetchNationalReflectivity();
+  if (assets.length === 0) throw new Error('Radar source returned no GeoTIFF assets');
+
+  const snapshots: RadarIngestItemOutcome[] = [];
+  for (const asset of assets) {
+    snapshots.push(await ingestRadarAsset(pool, storage, job, asset));
+  }
+
+  return {
+    fetched: snapshots.length,
+    stored: snapshots.filter((item) => !item.replayed).length,
+    replayed: snapshots.filter((item) => item.replayed).length,
+    snapshots,
+  };
 }
