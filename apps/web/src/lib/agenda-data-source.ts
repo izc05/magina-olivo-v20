@@ -9,6 +9,9 @@ export type AgendaItem = {
   bucket: 'overdue' | 'today' | 'upcoming';
   priority: 'high' | 'normal' | 'low';
   sourceDomainType?: string;
+  taskKind?: string;
+  notes?: string;
+  status?: 'planned' | 'postponed';
   weatherSensitive: boolean;
   weatherContextUrl?: string;
 };
@@ -27,8 +30,11 @@ type ApiAgendaItem = {
   field_id: string | null;
   field_name: string | null;
   source_domain_type: string | null;
+  task_kind: string | null;
+  notes: string | null;
   title: string;
   scheduled_at: string;
+  status: 'planned' | 'postponed';
   bucket: 'overdue' | 'today' | 'upcoming';
   priority: 'high' | 'normal' | 'low';
   weather_sensitive: boolean;
@@ -54,6 +60,9 @@ function mapItem(item: ApiAgendaItem): AgendaItem {
     bucket: item.bucket,
     priority: item.priority,
     sourceDomainType: item.source_domain_type ?? undefined,
+    taskKind: item.task_kind ?? undefined,
+    notes: item.notes ?? undefined,
+    status: item.status,
     weatherSensitive: item.weather_sensitive,
     weatherContextUrl: item.weather_context_url ?? undefined,
   };
