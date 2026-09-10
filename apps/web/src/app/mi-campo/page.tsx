@@ -11,6 +11,7 @@ const quick = [
   ['🫒','Cosecha','Producción e histórico',`${fincaBase}/cosechas`],
   ['💧','Riegos','Próximo e histórico',`${fincaBase}/riegos`],
   ['🌿','Tratamientos','Productos y aplicaciones',`${fincaBase}/tratamientos`],
+  ['▱','Mapa','Fincas y referencias','/mi-campo/mapa'],
   ['📅','Calendario','Próximos trabajos',`${fincaBase}/calendario`],
   ['◷','Historia','Todo lo realizado',`${fincaBase}/historia`],
 ] as const;
