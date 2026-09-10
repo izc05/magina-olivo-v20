@@ -12,6 +12,7 @@ import { registerDocumentRoutes } from './routes/documents.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
 import { registerWeatherRoutes } from './routes/weather.js';
+import { registerRadarRoutes } from './routes/radar.js';
 import type { StoragePort } from './storage/port.js';
 import { UnavailableStorage } from './storage/port.js';
 import type { OcrQueuePort } from './ocr/port.js';
@@ -58,6 +59,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerMeRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
+  registerRadarRoutes(app, db);
   registerFieldRoutes(app, db);
   registerIrrigationRoutes(app, db);
   registerDomainRecordRoutes(app, db);
