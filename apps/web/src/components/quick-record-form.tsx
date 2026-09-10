@@ -6,6 +6,8 @@ import type { RecordField, RecordType } from '@/lib/record-types';
 import { activityLabels, recordSlugToActivityType } from '@/lib/domain';
 import { saveLocalActivity } from '@/lib/local-prototype-store';
 import { useFieldContext } from '@/lib/use-field-context';
+import { saveApiRecord, supportsApiRecord } from '@/lib/record-api-source';
+import { useAuth } from '@/components/auth-provider';
 import { ArrowIcon, MapPinIcon } from '@/components/icons';
 
 function Field({ field }: { field: RecordField }) {
@@ -46,11 +48,15 @@ function buildSummary(data: Record<string, string>, fallback: string) {
 
 export function QuickRecordForm({ type }: { type: RecordType }) {
   const [saved, setSaved] = useState(false);
-  const { context, ready } = useFieldContext();
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedRemotely, setSavedRemotely] = useState(false);
+  const { context, ready, found } = useFieldContext();
+  const { selectedWorkspaceId } = useAuth();
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!ready) return;
+    if (!ready || !found || saving) return;
     const formData = new FormData(event.currentTarget);
     const data: Record<string, string> = {};
     for (const [key, value] of formData.entries()) {
@@ -60,52 +66,67 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
     const activityType = recordSlugToActivityType[type.slug as keyof typeof recordSlugToActivityType];
     if (!activityType) return;
 
-    const costRaw = data.cost ?? data.amount;
-    const cost = costRaw ? Number(costRaw.replace(',', '.')) : undefined;
-    const followUpOn = data.nextDate ?? data.reviewDate;
-    const followUpTime = data.nextTime;
-    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `local-${Date.now()}`;
+    setSaving(true);
+    setSaveError(null);
 
-    saveLocalActivity({
-      id,
-      fieldId: context.id,
-      campaign: context.campaign,
-      type: activityType,
-      occurredOn: data.date ?? new Date().toISOString().slice(0, 10),
-      title: activityLabels[activityType],
-      summary: buildSummary(data, `Registro de ${type.shortLabel.toLowerCase()}`),
-      costEur: cost !== undefined && Number.isFinite(cost) ? cost : undefined,
-      followUpOn,
-      followUpTime,
-      data,
-      source: 'prototype-local',
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      if (context.source === 'api' && selectedWorkspaceId && supportsApiRecord(type.slug)) {
+        await saveApiRecord({ slug: type.slug, fieldId: context.id, workspaceId: selectedWorkspaceId, data });
+        setSavedRemotely(true);
+      } else {
+        const costRaw = data.cost ?? data.amount;
+        const cost = costRaw ? Number(costRaw.replace(',', '.')) : undefined;
+        const followUpOn = data.nextDate ?? data.reviewDate;
+        const followUpTime = data.nextTime;
+        const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `local-${Date.now()}`;
 
-    setSaved(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+        saveLocalActivity({
+          id,
+          fieldId: context.id,
+          campaign: context.campaign,
+          type: activityType,
+          occurredOn: data.date ?? new Date().toISOString().slice(0, 10),
+          title: activityLabels[activityType],
+          summary: buildSummary(data, `Registro de ${type.shortLabel.toLowerCase()}`),
+          costEur: cost !== undefined && Number.isFinite(cost) ? cost : undefined,
+          followUpOn,
+          followUpTime,
+          data,
+          source: 'prototype-local',
+          createdAt: new Date().toISOString(),
+        });
+        setSavedRemotely(false);
+      }
+
+      setSaved(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      console.error('Unable to save finca record', error);
+      setSaveError('No se ha podido guardar el registro. Revisa la conexión o los datos e inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   }
 
-  const historyHref = context.local
-    ? `/mi-campo/fincas/local/modulo?fieldId=${encodeURIComponent(context.id)}&view=historia`
-    : '/mi-campo/fincas/las-cenillas/historia';
+  if (ready && !found) {
+    return <section className="record-success card"><h1>Finca no encontrada</h1><p>No se guardará ningún registro hasta identificar correctamente la finca de destino.</p><Link className="primary action-link" href="/mi-campo">Volver a Mi Campo</Link></section>;
+  }
 
   if (saved) {
     return (
       <section className="record-success card">
         <div className="success-mark">✓</div>
-        <span className="eyebrow dark">GUARDADO EN ESTE DISPOSITIVO</span>
+        <span className="eyebrow dark">{savedRemotely ? 'GUARDADO EN MÁGINA' : 'GUARDADO EN ESTE DISPOSITIVO'}</span>
         <h1>{type.shortLabel} añadido a {context.name}</h1>
-        <p>El registro se ha guardado con la finca seleccionada. Historia, Costes y Calendario lo reutilizan cuando corresponde.</p>
+        <p>{savedRemotely ? 'El backend ha guardado el registro y sus proyecciones asociadas.' : context.source === 'api' ? 'Este tipo todavía se conserva como borrador local mientras se conecta al modelo Trabajo.' : 'El registro se ha guardado con la finca seleccionada.'}</p>
         <div className="success-effects">
-          <span>✓ Historia de {context.name}</span>
-          <span>✓ Campaña {context.campaign}</span>
-          {type.slug !== 'observacion' && <span>✓ Costes, si has indicado importe</span>}
-          {type.followUp && <span>✓ Calendario, si has programado seguimiento</span>}
+          <span>✓ Finca correcta: {context.name}</span>
+          {savedRemotely ? <span>✓ Historial y costes derivados en servidor cuando corresponde</span> : <span>✓ Registro local preservado</span>}
+          {type.followUp && <span>✓ Seguimiento, si has indicado fecha</span>}
         </div>
         <div className="record-actions">
           <button type="button" className="secondary-action" onClick={() => setSaved(false)}>Registrar otro</button>
-          <Link className="primary action-link" href={historyHref}>Ver Historia <ArrowIcon /></Link>
+          <Link className="primary action-link" href={context.returnHref}>Volver a la finca <ArrowIcon /></Link>
         </div>
       </section>
     );
@@ -117,7 +138,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         <span className="record-farm-symbol">🌳</span>
         <div>
           <small>REGISTRANDO EN</small>
-          <strong>{context.name}</strong>
+          <strong>{ready ? context.name : 'Cargando finca…'}</strong>
           <span><MapPinIcon /> {context.municipality}{context.oliveTrees ? ` · ${context.oliveTrees} olivas` : ''}</span>
         </div>
         <Link href="/mi-campo">Cambiar</Link>
@@ -131,11 +152,12 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         <div className="record-fields">{type.essential.map((field) => <Field key={field.name} field={field} />)}</div>
       </section>
 
-      {type.details && <details className="card record-details"><summary>Más detalles <span>Opcional</span></summary><div className="record-fields detail-fields">{type.details.map((field) => <Field key={field.name} field={field} />)}<label className="record-field wide photo-field"><span>Foto o documento</span><input className="record-control file-control" type="file" accept="image/*,.pdf" /><small>Foto del trabajo, factura, ticket o documento relacionado. En esta fase aún no se guarda el archivo, solo el resto del registro.</small></label></div></details>}
+      {type.details && <details className="card record-details"><summary>Más detalles <span>Opcional</span></summary><div className="record-fields detail-fields">{type.details.map((field) => <Field key={field.name} field={field} />)}<label className="record-field wide photo-field"><span>Foto o documento</span><input className="record-control file-control" type="file" accept="image/*,.pdf" /><small>El archivo se conectará mediante el flujo documental; los datos del registro sí se guardan ya por su vía correspondiente.</small></label></div></details>}
 
-      {type.followUp && <section className="card record-follow-up"><div><span className="eyebrow dark">DESPUÉS</span><h3>¿Quieres dejarlo programado?</h3><p>Si indicas una fecha aparecerá automáticamente en el calendario local de esta finca.</p></div><div className="record-fields follow-up-fields">{type.followUp.map((field) => <Field key={field.name} field={field} />)}</div></section>}
+      {type.followUp && <section className="card record-follow-up"><div><span className="eyebrow dark">DESPUÉS</span><h3>¿Quieres dejarlo programado?</h3><p>Si indicas una fecha quedará asociada al seguimiento del registro.</p></div><div className="record-fields follow-up-fields">{type.followUp.map((field) => <Field key={field.name} field={field} />)}</div></section>}
 
-      <section className="record-save-bar"><small>Prototipo local-first: los datos se guardan únicamente en este navegador.</small><button className="primary" type="submit" disabled={!ready}>Guardar {type.shortLabel.toLowerCase()} →</button></section>
+      {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
+      <section className="record-save-bar"><small>{context.source === 'api' && supportsApiRecord(type.slug) ? 'Se guardará en el servidor real de Mágina.' : 'Modo local-first para este tipo de registro.'}</small><button className="primary" type="submit" disabled={!ready || !found || saving}>{saving ? 'Guardando…' : `Guardar ${type.shortLabel.toLowerCase()} →`}</button></section>
     </form>
   );
 }
