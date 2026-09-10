@@ -50,9 +50,8 @@ const pool = new Pool({ connectionString: databaseUrl, max: 4 });
 const processor = modules.has('ocr') ? createProcessorFromEnv() : null;
 const radarStorage = modules.has('radar') ? createRadarS3StorageFromEnv() : null;
 
-if (modules.has('radar')) {
-  if (!process.env.AEMET_API_KEY?.trim()) throw new Error('AEMET_API_KEY is required when WORKER_MODULES includes radar');
-  if (!radarStorage) throw new Error('S3 storage configuration is required when WORKER_MODULES includes radar');
+if (modules.has('radar') && !radarStorage) {
+  throw new Error('S3 storage configuration is required when WORKER_MODULES includes radar');
 }
 
 async function start() {
