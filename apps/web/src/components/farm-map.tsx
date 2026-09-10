@@ -80,7 +80,6 @@ export function FarmMap({ data }: { data: FarmMapData }) {
       style: previewStyle,
       center: initialCenter,
       zoom: data.geometry ? 14 : 11,
-      attributionControl: true,
     });
     mapRef.current = map;
 
