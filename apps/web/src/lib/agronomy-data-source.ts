@@ -12,7 +12,8 @@ export type AgronomyAdvisoryView = {
   ruleVersion: string;
   requiresUserJudgement: boolean;
   stale: boolean;
-  evidence: {
+  radarElevated: boolean;
+  forecastEvidence: {
     source: string;
     municipality?: string;
     precipitationProbabilityPercent?: number;
@@ -20,6 +21,17 @@ export type AgronomyAdvisoryView = {
     temperatureMinC?: number;
     temperatureMaxC?: number;
     fetchedAt: string;
+  };
+  radarEvidence?: {
+    observedAt: string;
+    coverageStatus: 'covered' | 'partial' | 'outside' | 'unavailable';
+    precipitationDetected?: boolean;
+    nearestEchoDistanceKm?: number;
+    reflectivityDbzMax?: number;
+    qualityFlags: string[];
+    fresh: boolean;
+    ageMinutes?: number;
+    summary: string;
   };
 };
 
@@ -33,16 +45,30 @@ type ApiAgronomyAdvisory = {
   summary: string;
   confidence: AgronomyAdvisoryView['confidence'];
   rule_version: string;
+  radar_elevated?: boolean;
   requires_user_judgement: boolean;
   evidence: {
-    source: string;
-    municipality: string | null;
-    precipitation_probability_percent: number | null;
-    wind_max_kmh: number | null;
-    temperature_min_c: number | null;
-    temperature_max_c: number | null;
-    fetched_at: string;
-    stale: boolean;
+    forecast: {
+      source: string;
+      municipality: string | null;
+      precipitation_probability_percent: number | null;
+      wind_max_kmh: number | null;
+      temperature_min_c: number | null;
+      temperature_max_c: number | null;
+      fetched_at: string;
+      stale: boolean;
+    };
+    radar: null | {
+      observed_at: string;
+      coverage_status: 'covered' | 'partial' | 'outside' | 'unavailable';
+      precipitation_detected: boolean | null;
+      nearest_echo_distance_km: number | null;
+      reflectivity_dbz_max: number | null;
+      quality_flags: string[];
+      fresh: boolean;
+      age_minutes: number | null;
+      summary: string;
+    };
   };
 };
 
@@ -62,6 +88,8 @@ export async function loadAgronomyAdvisory(input: {
 }): Promise<AgronomyAdvisoryView> {
   const params = new URLSearchParams({ date: input.date, task: input.task });
   const data = await apiFetch<ApiAgronomyAdvisory>(`/api/v1/fields/${encodeURIComponent(input.fieldId)}/agronomy/advisory?${params.toString()}`, { workspaceId: input.workspaceId });
+  const forecast = data.evidence.forecast;
+  const radar = data.evidence.radar;
   return {
     fieldId: data.field_id,
     date: data.date,
@@ -73,15 +101,27 @@ export async function loadAgronomyAdvisory(input: {
     confidence: data.confidence,
     ruleVersion: data.rule_version,
     requiresUserJudgement: data.requires_user_judgement,
-    stale: data.evidence.stale,
-    evidence: {
-      source: data.evidence.source,
-      municipality: data.evidence.municipality ?? undefined,
-      precipitationProbabilityPercent: data.evidence.precipitation_probability_percent ?? undefined,
-      windMaxKmh: data.evidence.wind_max_kmh ?? undefined,
-      temperatureMinC: data.evidence.temperature_min_c ?? undefined,
-      temperatureMaxC: data.evidence.temperature_max_c ?? undefined,
-      fetchedAt: data.evidence.fetched_at,
+    stale: forecast.stale,
+    radarElevated: Boolean(data.radar_elevated),
+    forecastEvidence: {
+      source: forecast.source,
+      municipality: forecast.municipality ?? undefined,
+      precipitationProbabilityPercent: forecast.precipitation_probability_percent ?? undefined,
+      windMaxKmh: forecast.wind_max_kmh ?? undefined,
+      temperatureMinC: forecast.temperature_min_c ?? undefined,
+      temperatureMaxC: forecast.temperature_max_c ?? undefined,
+      fetchedAt: forecast.fetched_at,
     },
+    radarEvidence: radar ? {
+      observedAt: radar.observed_at,
+      coverageStatus: radar.coverage_status,
+      precipitationDetected: radar.precipitation_detected ?? undefined,
+      nearestEchoDistanceKm: radar.nearest_echo_distance_km ?? undefined,
+      reflectivityDbzMax: radar.reflectivity_dbz_max ?? undefined,
+      qualityFlags: radar.quality_flags,
+      fresh: radar.fresh,
+      ageMinutes: radar.age_minutes ?? undefined,
+      summary: radar.summary,
+    } : undefined,
   };
 }
