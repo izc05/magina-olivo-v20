@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@magina/contracts": "workspace:*",
+    "geotiff": "3.0.5",
     "tar-stream": "3.2.0"
   },
   "devDependencies": {
