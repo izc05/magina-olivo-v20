@@ -10,7 +10,7 @@ export interface RadarObjectStoragePort {
     bytes: Uint8Array;
     contentType: string;
     sha256Hex: string;
-  }): Promise<void>;
+  }): Promise<{ storageKey: string }>;
 }
 
 export class RadarStorageNotConfiguredError extends Error {
