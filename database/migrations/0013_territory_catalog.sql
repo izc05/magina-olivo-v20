@@ -2,8 +2,8 @@ BEGIN;
 
 CREATE TABLE territory_municipalities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ine_code TEXT NOT NULL UNIQUE CHECK (ine_code ~ '^\\d{5}$'),
-  aemet_code TEXT UNIQUE CHECK (aemet_code IS NULL OR aemet_code ~ '^\\d{5}$'),
+  ine_code TEXT NOT NULL UNIQUE CHECK (ine_code ~ '^[0-9]{5}$'),
+  aemet_code TEXT UNIQUE CHECK (aemet_code IS NULL OR aemet_code ~ '^[0-9]{5}$'),
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   province_code TEXT NOT NULL DEFAULT '23',
