@@ -79,6 +79,7 @@ export function FarmDetailShell() {
             setDetail(remoteDetail);
             setDerived({
               ...emptyDerived(),
+              workCount: remoteDetail.activity.filter((item) => !item.domainType?.startsWith('harvest')).length,
               deliveryCount: remoteDetail.harvest.deliveries.length,
               deliveredKg: remoteDetail.harvest.totalKg,
               weightedYieldPercent: remoteDetail.harvest.weightedYieldPercent,
@@ -127,6 +128,7 @@ export function FarmDetailShell() {
   if (!farm) return <section className="card"><h1>Finca no encontrada</h1><p>{detailError ?? 'La finca no está disponible en esta fuente de datos.'}</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
 
   const effectiveArea = detail.data.areaHa ?? farm.areaHa;
+  const apiActivity = source === 'api' ? detail.activity : [];
 
   return <>
     <header className="page-title mi-campo-title">
@@ -156,12 +158,15 @@ export function FarmDetailShell() {
         <article className="card quick premium-quick"><div><strong>{formatMoney(derived.totalIncomeEur)}</strong><small>ingresos registrados</small></div></article>
         <article className="card quick premium-quick"><div><strong>{formatMoney(derived.marginEur)}</strong><small>margen provisional</small></div></article>
       </div>
-      {source === 'api' ? <p className="subtle">Cosecha, geometría y documentos ya se leen de la API real. Actividad y economía seguirán conectándose mediante sus proyecciones de lectura.</p> : null}
+      {source === 'api' ? <p className="subtle">Actividad, cosecha, geometría y documentos ya se leen de la API real. Economía será la siguiente proyección de lectura que conectaremos.</p> : null}
     </section> : null}
 
     {activeSection === 'Actividad' ? <section className="section">
       <div className="section-head"><h2>Actividad</h2><Link href={registerHref} className="detail-link"><PlusIcon /> Registrar trabajo</Link></div>
-      {derived.recentActivity.length ? <div className="card feed today-list">
+      {source === 'api' ? (
+        apiActivity.length ? <div className="card feed today-list">{apiActivity.map((item) => <div className="feed-row" key={item.id}><div className="feed-copy"><strong>{item.title}</strong><small>{item.date}{item.summary ? ` · ${item.summary}` : ''}{item.domainType ? ` · ${item.domainType}` : ''}</small></div></div>)}</div>
+        : <section className="card"><h3>Sin actividad todavía</h3><p>Los riegos, tratamientos, abonados, podas, gastos y cosechas guardados en servidor aparecerán aquí automáticamente.</p></section>
+      ) : derived.recentActivity.length ? <div className="card feed today-list">
         {derived.recentActivity.map((item) => <div className="feed-row" key={item.id}><div className="feed-copy"><strong>{item.title}</strong><small>{item.date}{item.summary ? ` · ${item.summary}` : ''}</small></div>{item.amountEur !== undefined ? <span className="pending-pill">{formatMoney(item.amountEur)}</span> : null}</div>)}
       </div> : <section className="card"><h3>Sin actividad todavía</h3><p>Los trabajos, cosechas y movimientos económicos aparecerán aquí ordenados por fecha.</p></section>}
     </section> : null}
