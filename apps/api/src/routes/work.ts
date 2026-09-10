@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
-import { createCrewSchema, createMachinerySchema, createMaterialSchema, createPartySchema, createWorkSchema } from '@magina/contracts';
+import { createCrewSchema, createCustomerSiteSchema, createMachinerySchema, createMaterialSchema, createPartySchema, createWorkSchema } from '@magina/contracts';
 import type { DatabaseClient } from '../db/client.js';
 import { writeDomainEffects } from '../domain/effects.js';
 import { fieldBelongsToWorkspace, parseBody, requireContext, requireDatabase } from '../http/helpers.js';
@@ -9,6 +9,15 @@ import { fieldBelongsToWorkspace, parseBody, requireContext, requireDatabase } f
 async function partyBelongsToWorkspace(db: DatabaseClient, partyId: string, workspaceId: string) {
   const result = await sql<{ id: string }>`SELECT id FROM parties WHERE id = ${partyId}::uuid AND workspace_id = ${workspaceId}::uuid AND active = TRUE`.execute(db);
   return Boolean(result.rows[0]);
+}
+
+async function customerSiteBelongsToWorkspace(db: DatabaseClient, siteId: string, workspaceId: string, customerPartyId?: string) {
+  const result = await sql<{ id: string; customer_party_id: string }>`
+    SELECT id, customer_party_id FROM customer_sites
+    WHERE id = ${siteId}::uuid AND workspace_id = ${workspaceId}::uuid AND active = TRUE
+  `.execute(db);
+  const site = result.rows[0];
+  return Boolean(site && (!customerPartyId || site.customer_party_id === customerPartyId));
 }
 
 async function crewBelongsToWorkspace(db: DatabaseClient, crewId: string, workspaceId: string) {
@@ -52,6 +61,38 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
       RETURNING *
     `.execute(database);
     return reply.code(201).send({ replayed: false, party: result.rows[0] });
+  });
+
+  app.get('/api/v1/customer-sites', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const query = request.query as { customer_party_id?: string };
+    const result = query.customer_party_id
+      ? await sql`SELECT cs.*, p.display_name AS customer_name FROM customer_sites cs JOIN parties p ON p.id = cs.customer_party_id WHERE cs.workspace_id = ${context.workspaceId}::uuid AND cs.customer_party_id = ${query.customer_party_id}::uuid AND cs.active = TRUE ORDER BY cs.name`.execute(database)
+      : await sql`SELECT cs.*, p.display_name AS customer_name FROM customer_sites cs JOIN parties p ON p.id = cs.customer_party_id WHERE cs.workspace_id = ${context.workspaceId}::uuid AND cs.active = TRUE ORDER BY p.display_name, cs.name`.execute(database);
+    return { customer_sites: result.rows };
+  });
+
+  app.post('/api/v1/customer-sites', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const input = parseBody(createCustomerSiteSchema, request.body, reply);
+    if (!input) return;
+    if (!await partyBelongsToWorkspace(database, input.customer_party_id, context.workspaceId)) return reply.code(404).send({ error: 'customer_party_not_found' });
+    if (input.canonical_field_id && !await fieldBelongsToWorkspace(database, input.canonical_field_id, context.workspaceId)) return reply.code(404).send({ error: 'canonical_field_not_found' });
+
+    const replay = await sql`SELECT * FROM customer_sites WHERE workspace_id = ${context.workspaceId}::uuid AND client_operation_id = ${input.client_operation_id}::uuid`.execute(database);
+    if (replay.rows[0]) return reply.code(200).send({ replayed: true, customer_site: replay.rows[0] });
+
+    const id = input.entity_id ?? randomUUID();
+    const result = await sql`
+      INSERT INTO customer_sites (id, workspace_id, client_operation_id, customer_party_id, name, municipality, address, external_reference, canonical_field_id, notes)
+      VALUES (${id}::uuid, ${context.workspaceId}::uuid, ${input.client_operation_id}::uuid, ${input.customer_party_id}::uuid, ${input.name}, ${input.municipality ?? null}, ${input.address ?? null}, ${input.external_reference ?? null}, ${input.canonical_field_id ?? null}::uuid, ${input.notes ?? null})
+      RETURNING *
+    `.execute(database);
+    return reply.code(201).send({ replayed: false, customer_site: result.rows[0] });
   });
 
   app.get('/api/v1/crews', async (request, reply) => {
@@ -175,14 +216,26 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
     };
   });
 
+  app.get('/api/v1/customer-sites/:siteId/works', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const siteId = (request.params as { siteId?: string }).siteId;
+    if (!siteId || !await customerSiteBelongsToWorkspace(database, siteId, context.workspaceId)) return reply.code(404).send({ error: 'customer_site_not_found' });
+    const works = await sql`SELECT * FROM work_records WHERE workspace_id = ${context.workspaceId}::uuid AND customer_site_id = ${siteId}::uuid ORDER BY occurred_on DESC, created_at DESC LIMIT 200`.execute(database);
+    return { works: works.rows };
+  });
+
   app.post('/api/v1/works', async (request, reply) => {
     const context = requireContext(request, reply);
     const database = requireDatabase(db, reply);
     if (!context || !database) return;
     const input = parseBody(createWorkSchema, request.body, reply);
     if (!input) return;
-    if (!await fieldBelongsToWorkspace(database, input.field_id, context.workspaceId)) return reply.code(404).send({ error: 'field_not_found' });
+
+    if (input.field_id && !await fieldBelongsToWorkspace(database, input.field_id, context.workspaceId)) return reply.code(404).send({ error: 'field_not_found' });
     if (input.customer_party_id && !await partyBelongsToWorkspace(database, input.customer_party_id, context.workspaceId)) return reply.code(404).send({ error: 'customer_party_not_found' });
+    if (input.customer_site_id && !await customerSiteBelongsToWorkspace(database, input.customer_site_id, context.workspaceId, input.customer_party_id)) return reply.code(404).send({ error: 'customer_site_not_found' });
 
     for (const participant of input.participants) {
       if (participant.party_id && !await partyBelongsToWorkspace(database, participant.party_id, context.workspaceId)) return reply.code(404).send({ error: 'participant_party_not_found', party_id: participant.party_id });
@@ -207,11 +260,22 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
     const participantCost = input.participants.reduce((sum, item) => sum + (item.cost_eur ?? ((item.quantity ?? 0) * (item.rate_eur ?? 0))), 0);
     const resourceCost = input.resources.reduce((sum, item) => sum + (item.cost_eur ?? ((item.quantity ?? 0) * (item.unit_cost_eur ?? 0))), 0);
     const totalCost = participantCost + resourceCost;
+    const initialPaymentStatus = input.performed_for === 'third-party'
+      ? (input.payment_status ?? ((input.collected_eur ?? 0) > 0 ? 'partial' : 'pending'))
+      : 'not-applicable';
 
     const saved = await database.transaction().execute(async (trx) => {
       const work = await sql`
-        INSERT INTO work_records (id, workspace_id, field_id, campaign_id, client_operation_id, type, occurred_on, title, notes, performed_for, customer_party_id, quoted_amount_eur, charge_eur, created_by)
-        VALUES (${workId}::uuid, ${context.workspaceId}::uuid, ${input.field_id}::uuid, ${campaignId}::uuid, ${input.client_operation_id}::uuid, ${input.type}, ${input.occurred_on}::date, ${input.title}, ${input.notes ?? null}, ${input.performed_for}, ${input.customer_party_id ?? null}::uuid, ${input.quoted_amount_eur ?? null}, ${input.charge_eur ?? null}, ${context.userId}::uuid) RETURNING *
+        INSERT INTO work_records (
+          id, workspace_id, field_id, customer_site_id, campaign_id, client_operation_id,
+          type, occurred_on, title, notes, performed_for, customer_party_id,
+          quoted_amount_eur, charge_eur, collected_eur, payment_status, invoice_reference, created_by
+        ) VALUES (
+          ${workId}::uuid, ${context.workspaceId}::uuid, ${input.field_id ?? null}::uuid, ${input.customer_site_id ?? null}::uuid,
+          ${campaignId}::uuid, ${input.client_operation_id}::uuid, ${input.type}, ${input.occurred_on}::date, ${input.title}, ${input.notes ?? null},
+          ${input.performed_for}, ${input.customer_party_id ?? null}::uuid, ${input.quoted_amount_eur ?? null}, ${input.charge_eur ?? null},
+          ${input.collected_eur ?? null}, ${initialPaymentStatus}, ${input.invoice_reference ?? null}, ${context.userId}::uuid
+        ) RETURNING *
       `.execute(trx);
 
       for (const participant of input.participants) {
@@ -223,7 +287,7 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
         await sql`INSERT INTO work_resources (work_id, kind, machinery_id, material_id, supplier_party_id, name, quantity, unit, unit_cost_eur, cost_eur) VALUES (${workId}::uuid, ${resource.kind}, ${resource.machinery_id ?? null}::uuid, ${resource.material_id ?? null}::uuid, ${resource.supplier_party_id ?? null}::uuid, ${resource.name}, ${resource.quantity ?? null}, ${resource.unit ?? null}, ${resource.unit_cost_eur ?? null}, ${calculatedCost || null})`.execute(trx);
       }
 
-      const projection = await writeDomainEffects(trx, {
+      const projection = input.field_id ? await writeDomainEffects(trx, {
         workspaceId: context.workspaceId,
         fieldId: input.field_id,
         campaignId,
@@ -239,7 +303,8 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
         ].filter(Boolean).join(' · ') || input.notes || null,
         iconKey: 'work',
         cost: totalCost > 0 ? { amountEur: totalCost, category: 'work' } : undefined,
-      });
+      }) : null;
+
       return { work: work.rows[0], projection, total_cost_eur: totalCost };
     });
 
