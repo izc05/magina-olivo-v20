@@ -19,6 +19,17 @@ function advisoryLabel(advisory: AgronomyAdvisoryView) {
   return 'Sin criterio';
 }
 
+function executionHref(item: AgendaItem) {
+  if (!item.fieldId) return null;
+  const routeByType: Record<string, string> = {
+    treatment: 'tratamiento', irrigation: 'riego', fertilization: 'abono', pruning: 'poda',
+    harvest: 'cosecha', harvest_delivery: 'cosecha', work: 'trabajo', observation: 'observacion', other: 'trabajo',
+  };
+  const slug = routeByType[item.sourceDomainType ?? ''] ?? 'trabajo';
+  const params = new URLSearchParams({ fieldId: item.fieldId, source: 'api', plannedEventId: item.id });
+  return `/mi-campo/registrar/${slug}?${params.toString()}`;
+}
+
 function AdvisoryEvidence({ advisory }: { advisory: AgronomyAdvisoryView }) {
   return <div className="today-advisory-evidence">
     <small>
@@ -42,6 +53,7 @@ function AgendaSection({ title, items, advisories }: { title: string; items: Age
     {items.length ? <div className="card feed today-list">
       {items.map((item) => {
         const advisory = advisories[item.id];
+        const executeHref = executionHref(item);
         return <div className="feed-row" key={item.id}>
           <div className="feed-copy">
             <strong>{item.title}</strong>
@@ -52,6 +64,7 @@ function AgendaSection({ title, items, advisories }: { title: string; items: Age
               </small>
               {advisory ? <AdvisoryEvidence advisory={advisory} /> : null}
             </> : null}
+            {executeHref ? <small><Link href={executeHref}>Registrar realizado →</Link></small> : null}
           </div>
           <span className="pending-pill">{advisory ? advisoryLabel(advisory) : item.priority === 'high' ? 'Prioridad' : item.bucket === 'today' ? 'Hoy' : 'Próximo'}</span>
         </div>;
@@ -140,6 +153,6 @@ export function TodayAgendaClient() {
       <section className="card"><strong>Regla de Mágina</strong><p>{agenda.rule}</p><small>La previsión estima condiciones futuras; el radar muestra reflectividad observada. Mágina no deduce una hora de llegada de lluvia a partir de una sola imagen radar.</small></section>
     </> : null}
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">UNA AGENDA, NO OTRA LIBRETA</span><h2>Los seguimientos nacen de los trabajos y registros existentes.</h2></div><Link href="/mi-campo/registrar">Registrar</Link></section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">UNA AGENDA, NO OTRA LIBRETA</span><h2>Planifica aquí, registra cuando realmente lo hagas.</h2></div><Link href="/mi-campo/registrar">Registrar</Link></section>
   </>;
 }
