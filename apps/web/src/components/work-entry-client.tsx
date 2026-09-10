@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { getPreviewFarms } from '@/lib/farm-data-source';
 import { saveLocalWork } from '@/lib/local-prototype-store';
+import { completePlannedTask } from '@/lib/planned-task-data-source';
 import { createCustomer, createCustomerSite, createWork, loadWorkDirectory, type CustomerSiteOption, type WorkPartyOption } from '@/lib/work-api-source';
 
 const workTypes = [
@@ -24,6 +25,7 @@ export function WorkEntryClient() {
   const params = useSearchParams();
   const fieldId = params.get('fieldId');
   const source = params.get('source');
+  const plannedEventId = params.get('plannedEventId');
   const { apiConfigured, status, selectedWorkspaceId } = useAuth();
   const apiMode = source === 'api' && apiConfigured && status === 'authenticated' && Boolean(selectedWorkspaceId);
   const previewFarm = useMemo(() => fieldId ? getPreviewFarms().find((farm) => farm.id === fieldId) : undefined, [fieldId]);
@@ -34,6 +36,7 @@ export function WorkEntryClient() {
   const [siteId, setSiteId] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [completionWarning, setCompletionWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,6 +53,7 @@ export function WorkEntryClient() {
     event.preventDefault();
     setSaving(true);
     setError(null);
+    setCompletionWarning(null);
     const fd = new FormData(event.currentTarget);
     const date = String(fd.get('date') || new Date().toISOString().slice(0, 10));
     const title = String(fd.get('title') || 'Trabajo');
@@ -72,7 +76,15 @@ export function WorkEntryClient() {
       if (apiMode && selectedWorkspaceId) {
         if (mode === 'self') {
           if (!fieldId) throw new Error('missing_field');
-          await createWork(selectedWorkspaceId, { field_id: fieldId, type, occurred_on: date, title, notes, performed_for: 'self', participants, resources });
+          const work = await createWork(selectedWorkspaceId, { field_id: fieldId, type, occurred_on: date, title, notes, performed_for: 'self', participants, resources });
+          if (plannedEventId) {
+            try {
+              await completePlannedTask({ workspaceId: selectedWorkspaceId, taskId: plannedEventId, domainType: 'work', domainRecordId: work.id });
+            } catch (completionError) {
+              console.warn('Work saved but planned task could not be linked', completionError);
+              setCompletionWarning('El trabajo se ha guardado, pero la tarea prevista sigue pendiente. Puedes revisarla desde Hoy.');
+            }
+          }
         } else {
           let effectiveCustomerId = customerId;
           if (!effectiveCustomerId) {
@@ -123,7 +135,7 @@ export function WorkEntryClient() {
     }
   }
 
-  if (saved) return <section className="card record-success"><div className="success-mark">✓</div><h1>Trabajo registrado</h1><p>Mano de obra, maquinaria, coste y contexto comercial han quedado unidos al mismo trabajo.</p><Link className="primary action-link" href="/mi-campo">Volver a Mi Campo</Link></section>;
+  if (saved) return <section className="card record-success"><div className="success-mark">✓</div><h1>Trabajo registrado</h1><p>Mano de obra, maquinaria, coste y contexto comercial han quedado unidos al mismo trabajo.</p>{completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : plannedEventId && mode === 'self' ? <p>✓ La tarea prevista ha quedado enlazada al trabajo realizado.</p> : null}<Link className="primary action-link" href="/mi-campo">Volver a Mi Campo</Link></section>;
 
   return <form className="quick-record-form" onSubmit={submit}>
     <header className="page-title compact-record-title"><span className="eyebrow dark">MI CAMPO · TRABAJO</span><h1>Registrar trabajo</h1><p>Una sola entrada para labor, personas, maquinaria, coste y cliente.</p></header>
