@@ -1,6 +1,12 @@
 import { apiFetch } from '@/lib/api-client';
 
 export type SupportedApiRecordSlug = 'riego' | 'tratamiento' | 'abono' | 'poda' | 'gasto' | 'jornal' | 'maquinaria';
+export type SavedApiRecord = {
+  recordId: string;
+  domainType: 'irrigation' | 'treatment' | 'fertilization' | 'pruning' | 'expense' | 'work';
+};
+
+type RecordEnvelope = Record<string, { id?: string } | boolean | undefined>;
 
 export function supportsApiRecord(slug: string): slug is SupportedApiRecordSlug {
   return ['riego', 'tratamiento', 'abono', 'poda', 'gasto', 'jornal', 'maquinaria'].includes(slug);
@@ -23,18 +29,25 @@ function followUp(data: Record<string, string>) {
   return { scheduled_at: `${date}T${time}:00.000Z` };
 }
 
+function identity(data: RecordEnvelope, key: string, domainType: SavedApiRecord['domainType']): SavedApiRecord {
+  const value = data[key];
+  const id = typeof value === 'object' && value ? value.id : undefined;
+  if (!id) throw new Error(`API response did not include ${key}.id`);
+  return { recordId: id, domainType };
+}
+
 export async function saveApiRecord(input: {
   slug: SupportedApiRecordSlug;
   fieldId: string;
   workspaceId: string;
   data: Record<string, string>;
-}) {
+}): Promise<SavedApiRecord> {
   const client_operation_id = crypto.randomUUID();
   const common = { client_operation_id };
   const { slug, fieldId, workspaceId, data } = input;
 
   if (slug === 'riego') {
-    return apiFetch(`/api/v1/fields/${encodeURIComponent(fieldId)}/irrigations`, {
+    const response = await apiFetch<RecordEnvelope>(`/api/v1/fields/${encodeURIComponent(fieldId)}/irrigations`, {
       method: 'POST', workspaceId,
       body: JSON.stringify({
         ...common,
@@ -46,10 +59,11 @@ export async function saveApiRecord(input: {
         follow_up: followUp(data),
       }),
     });
+    return identity(response, 'irrigation', 'irrigation');
   }
 
   if (slug === 'tratamiento') {
-    return apiFetch(`/api/v1/fields/${encodeURIComponent(fieldId)}/treatments`, {
+    const response = await apiFetch<RecordEnvelope>(`/api/v1/fields/${encodeURIComponent(fieldId)}/treatments`, {
       method: 'POST', workspaceId,
       body: JSON.stringify({
         ...common,
@@ -63,10 +77,11 @@ export async function saveApiRecord(input: {
         follow_up: followUp(data),
       }),
     });
+    return identity(response, 'treatment', 'treatment');
   }
 
   if (slug === 'abono') {
-    return apiFetch(`/api/v1/fields/${encodeURIComponent(fieldId)}/fertilizations`, {
+    const response = await apiFetch<RecordEnvelope>(`/api/v1/fields/${encodeURIComponent(fieldId)}/fertilizations`, {
       method: 'POST', workspaceId,
       body: JSON.stringify({
         ...common,
@@ -78,10 +93,11 @@ export async function saveApiRecord(input: {
         notes: data.notes || undefined,
       }),
     });
+    return identity(response, 'fertilization', 'fertilization');
   }
 
   if (slug === 'poda') {
-    return apiFetch(`/api/v1/fields/${encodeURIComponent(fieldId)}/prunings`, {
+    const response = await apiFetch<RecordEnvelope>(`/api/v1/fields/${encodeURIComponent(fieldId)}/prunings`, {
       method: 'POST', workspaceId,
       body: JSON.stringify({
         ...common,
@@ -94,13 +110,14 @@ export async function saveApiRecord(input: {
         follow_up: followUp(data),
       }),
     });
+    return identity(response, 'pruning', 'pruning');
   }
 
   if (slug === 'jornal') {
     const workers = numberValue(data.workers);
     const hours = numberValue(data.hours);
     const cost = numberValue(data.cost);
-    return apiFetch('/api/v1/works', {
+    const response = await apiFetch<RecordEnvelope>('/api/v1/works', {
       method: 'POST', workspaceId,
       body: JSON.stringify({
         ...common,
@@ -120,13 +137,14 @@ export async function saveApiRecord(input: {
         resources: [],
       }),
     });
+    return identity(response, 'work', 'work');
   }
 
   if (slug === 'maquinaria') {
     const hours = numberValue(data.hours);
     const cost = numberValue(data.cost);
     const fuel = numberValue(data.fuel);
-    return apiFetch('/api/v1/works', {
+    const response = await apiFetch<RecordEnvelope>('/api/v1/works', {
       method: 'POST', workspaceId,
       body: JSON.stringify({
         ...common,
@@ -146,9 +164,10 @@ export async function saveApiRecord(input: {
         }],
       }),
     });
+    return identity(response, 'work', 'work');
   }
 
-  return apiFetch(`/api/v1/fields/${encodeURIComponent(fieldId)}/expenses`, {
+  const response = await apiFetch<RecordEnvelope>(`/api/v1/fields/${encodeURIComponent(fieldId)}/expenses`, {
     method: 'POST', workspaceId,
     body: JSON.stringify({
       ...common,
@@ -159,4 +178,5 @@ export async function saveApiRecord(input: {
       notes: data.notes || undefined,
     }),
   });
+  return identity(response, 'expense', 'expense');
 }
