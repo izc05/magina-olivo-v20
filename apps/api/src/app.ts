@@ -9,18 +9,22 @@ import { registerIrrigationRoutes } from './routes/irrigations.js';
 import { registerDomainRecordRoutes } from './routes/domain-records.js';
 import { registerHarvestRoutes } from './routes/harvest.js';
 import { registerDocumentRoutes } from './routes/documents.js';
+import { registerGisRoutes } from './routes/gis.js';
 import type { StoragePort } from './storage/port.js';
 import { UnavailableStorage } from './storage/port.js';
 import type { OcrQueuePort } from './ocr/port.js';
 import { UnavailableOcrQueue } from './ocr/port.js';
 import type { GoogleIdentityVerifier } from './auth/google.js';
 import { UnavailableGoogleIdentityVerifier } from './auth/google.js';
+import type { GisProviders } from './gis/providers.js';
+import { remoteGisProviders } from './gis/providers.js';
 
 export type AppDependencies = {
   db?: DatabaseClient | null;
   storage?: StoragePort;
   ocrQueue?: OcrQueuePort;
   googleVerifier?: GoogleIdentityVerifier;
+  gisProviders?: GisProviders;
 };
 
 export function buildApp(dependencies: AppDependencies = {}) {
@@ -28,6 +32,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   const storage = dependencies.storage ?? new UnavailableStorage();
   const ocrQueue = dependencies.ocrQueue ?? new UnavailableOcrQueue();
   const googleVerifier = dependencies.googleVerifier ?? new UnavailableGoogleIdentityVerifier();
+  const gisProviders = dependencies.gisProviders ?? remoteGisProviders;
   const app = Fastify({ logger: true });
 
   app.register(cookie);
@@ -50,6 +55,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerDomainRecordRoutes(app, db);
   registerHarvestRoutes(app, db);
   registerDocumentRoutes(app, db, storage, ocrQueue);
+  registerGisRoutes(app, db, gisProviders);
 
   return app;
 }
