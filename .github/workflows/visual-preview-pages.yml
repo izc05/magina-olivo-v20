@@ -2,6 +2,9 @@ name: V20 visual preview
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/v20-visual-prototype
 
 permissions:
   contents: read
