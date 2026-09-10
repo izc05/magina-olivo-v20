@@ -1,4 +1,5 @@
 import { fromArrayBuffer } from 'geotiff';
+import { parseAemetRadarEscala, type RadarScaleBand } from './radar-escala.js';
 
 export type RadarGeoTiffInspection = {
   parsed: boolean;
@@ -12,10 +13,11 @@ export type RadarGeoTiffInspection = {
   resolution: [number, number, number] | null;
   noData: number | null;
   scaleRaw: string | null;
+  scaleBands: RadarScaleBand[];
   validationErrors: string[];
 };
 
-export type RadarGeoTiffFacts = Omit<RadarGeoTiffInspection, 'parsed' | 'analysisReady' | 'validationErrors'>;
+export type RadarGeoTiffFacts = Omit<RadarGeoTiffInspection, 'parsed' | 'analysisReady' | 'scaleBands' | 'validationErrors'>;
 
 const MAX_DIMENSION = 20_000;
 const MAX_PIXELS = 80_000_000;
@@ -110,11 +112,13 @@ export function evaluateRadarGeoTiffFacts(facts: RadarGeoTiffFacts): RadarGeoTif
     validationErrors.push('invalid_resolution');
   }
 
-  if (!facts.scaleRaw?.trim()) validationErrors.push('scale_missing');
+  const scale = parseAemetRadarEscala(facts.scaleRaw);
+  if (!scale.valid) validationErrors.push(scale.error ?? 'scale_invalid');
 
   return {
     ...facts,
     parsed: true,
+    scaleBands: scale.bands,
     analysisReady: validationErrors.length === 0,
     validationErrors,
   };
@@ -168,6 +172,7 @@ export async function inspectRadarGeoTiff(bytes: Uint8Array): Promise<RadarGeoTi
       resolution: null,
       noData: null,
       scaleRaw: null,
+      scaleBands: [],
       validationErrors: ['geotiff_parse_failed'],
     };
   }
