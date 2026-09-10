@@ -16,6 +16,10 @@ try {
   const fieldA = '20000000-0000-4000-8000-000000000001';
   const fieldB = '20000000-0000-4000-8000-000000000002';
   const snapshotId = '30000000-0000-4000-8000-000000000001';
+  // This fingerprint is intentionally unique to this smoke. The radar workflow
+  // runs several integration tests against the same database, so fixtures must
+  // not collide with the content-addressed snapshot constraint.
+  const snapshotSha256 = 'b'.repeat(64);
 
   await pool.query(`INSERT INTO workspaces (id, name, type) VALUES ($1,'A','family'),($2,'B','family')`, [workspaceA, workspaceB]);
   await pool.query(`
@@ -33,7 +37,7 @@ try {
       $1,'aemet_national_mosaic','reflectivity','EPSG:4326','2026-09-10T08:00:00Z','2026-09-10T08:01:00Z',
       'geotiff',true,'image/tiff',100,$2,'https://www.aemet.es/test','weather/radar/test.tif','processed'
     )
-  `, [snapshotId, 'a'.repeat(64)]);
+  `, [snapshotId, snapshotSha256]);
 
   const width = 5;
   const height = 5;
@@ -102,8 +106,9 @@ try {
   }>(`
     SELECT workspace_id, field_id, precipitation_detected, representative_dbz, analysis_version
     FROM farm_radar_observations
+    WHERE radar_snapshot_id = $1
     ORDER BY field_id
-  `);
+  `, [snapshotId]);
 
   assert.equal(rows.rows.length, 2, 'reprojection must upsert rather than duplicate');
   assert.deepEqual(rows.rows.map((row) => [row.field_id, row.workspace_id]), [
