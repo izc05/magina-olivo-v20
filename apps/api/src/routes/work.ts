@@ -1,0 +1,197 @@
+import { randomUUID } from 'node:crypto';
+import type { FastifyInstance } from 'fastify';
+import { sql } from 'kysely';
+import { createMachinerySchema, createMaterialSchema, createPartySchema, createWorkSchema } from '@magina/contracts';
+import type { DatabaseClient } from '../db/client.js';
+import { writeDomainEffects } from '../domain/effects.js';
+import { fieldBelongsToWorkspace, parseBody, requireContext, requireDatabase } from '../http/helpers.js';
+
+async function partyBelongsToWorkspace(db: DatabaseClient, partyId: string, workspaceId: string) {
+  const result = await sql<{ id: string }>`SELECT id FROM parties WHERE id = ${partyId}::uuid AND workspace_id = ${workspaceId}::uuid AND active = TRUE`.execute(db);
+  return Boolean(result.rows[0]);
+}
+
+async function machineryBelongsToWorkspace(db: DatabaseClient, id: string, workspaceId: string) {
+  const result = await sql<{ id: string }>`SELECT id FROM machinery WHERE id = ${id}::uuid AND workspace_id = ${workspaceId}::uuid AND active = TRUE`.execute(db);
+  return Boolean(result.rows[0]);
+}
+
+async function materialBelongsToWorkspace(db: DatabaseClient, id: string, workspaceId: string) {
+  const result = await sql<{ id: string }>`SELECT id FROM materials WHERE id = ${id}::uuid AND workspace_id = ${workspaceId}::uuid AND active = TRUE`.execute(db);
+  return Boolean(result.rows[0]);
+}
+
+export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | null) {
+  app.get('/api/v1/parties', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const result = await sql`SELECT * FROM parties WHERE workspace_id = ${context.workspaceId}::uuid AND active = TRUE ORDER BY display_name`.execute(database);
+    return { parties: result.rows };
+  });
+
+  app.post('/api/v1/parties', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const input = parseBody(createPartySchema, request.body, reply);
+    if (!input) return;
+
+    const replay = await sql`SELECT * FROM parties WHERE workspace_id = ${context.workspaceId}::uuid AND client_operation_id = ${input.client_operation_id}::uuid`.execute(database);
+    if (replay.rows[0]) return reply.code(200).send({ replayed: true, party: replay.rows[0] });
+
+    const id = input.entity_id ?? randomUUID();
+    const result = await sql`
+      INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, legal_name, tax_id, phone, email, roles, notes)
+      VALUES (${id}::uuid, ${context.workspaceId}::uuid, ${input.client_operation_id}::uuid, ${input.kind}, ${input.display_name}, ${input.legal_name ?? null}, ${input.tax_id ?? null}, ${input.phone ?? null}, ${input.email ?? null}, ${input.roles}::text[], ${input.notes ?? null})
+      RETURNING *
+    `.execute(database);
+    return reply.code(201).send({ replayed: false, party: result.rows[0] });
+  });
+
+  app.get('/api/v1/machinery', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const result = await sql`SELECT * FROM machinery WHERE workspace_id = ${context.workspaceId}::uuid AND active = TRUE ORDER BY name`.execute(database);
+    return { machinery: result.rows };
+  });
+
+  app.post('/api/v1/machinery', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const input = parseBody(createMachinerySchema, request.body, reply);
+    if (!input) return;
+    if (input.owner_party_id && !await partyBelongsToWorkspace(database, input.owner_party_id, context.workspaceId)) return reply.code(404).send({ error: 'owner_party_not_found' });
+
+    const id = input.entity_id ?? randomUUID();
+    const replay = await sql`SELECT * FROM machinery WHERE workspace_id = ${context.workspaceId}::uuid AND client_operation_id = ${input.client_operation_id}::uuid`.execute(database);
+    if (replay.rows[0]) return reply.code(200).send({ replayed: true, machinery: replay.rows[0] });
+    const result = await sql`
+      INSERT INTO machinery (id, workspace_id, client_operation_id, name, category, ownership, owner_party_id, registration_or_serial, default_rate_eur, default_rate_unit, notes)
+      VALUES (${id}::uuid, ${context.workspaceId}::uuid, ${input.client_operation_id}::uuid, ${input.name}, ${input.category ?? null}, ${input.ownership}, ${input.owner_party_id ?? null}::uuid, ${input.registration_or_serial ?? null}, ${input.default_rate_eur ?? null}, ${input.default_rate_unit ?? null}, ${input.notes ?? null}) RETURNING *
+    `.execute(database);
+    return reply.code(201).send({ replayed: false, machinery: result.rows[0] });
+  });
+
+  app.get('/api/v1/materials', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const result = await sql`SELECT * FROM materials WHERE workspace_id = ${context.workspaceId}::uuid AND active = TRUE ORDER BY name`.execute(database);
+    return { materials: result.rows };
+  });
+
+  app.post('/api/v1/materials', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const input = parseBody(createMaterialSchema, request.body, reply);
+    if (!input) return;
+    if (input.supplier_party_id && !await partyBelongsToWorkspace(database, input.supplier_party_id, context.workspaceId)) return reply.code(404).send({ error: 'supplier_party_not_found' });
+
+    const id = input.entity_id ?? randomUUID();
+    const replay = await sql`SELECT * FROM materials WHERE workspace_id = ${context.workspaceId}::uuid AND client_operation_id = ${input.client_operation_id}::uuid`.execute(database);
+    if (replay.rows[0]) return reply.code(200).send({ replayed: true, material: replay.rows[0] });
+    const result = await sql`
+      INSERT INTO materials (id, workspace_id, client_operation_id, name, category, default_unit, default_unit_cost_eur, supplier_party_id, notes)
+      VALUES (${id}::uuid, ${context.workspaceId}::uuid, ${input.client_operation_id}::uuid, ${input.name}, ${input.category ?? null}, ${input.default_unit ?? null}, ${input.default_unit_cost_eur ?? null}, ${input.supplier_party_id ?? null}::uuid, ${input.notes ?? null}) RETURNING *
+    `.execute(database);
+    return reply.code(201).send({ replayed: false, material: result.rows[0] });
+  });
+
+  app.get('/api/v1/fields/:fieldId/works', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const fieldId = (request.params as { fieldId?: string }).fieldId;
+    if (!fieldId || !await fieldBelongsToWorkspace(database, fieldId, context.workspaceId)) return reply.code(404).send({ error: 'field_not_found' });
+
+    const works = await sql`SELECT * FROM work_records WHERE workspace_id = ${context.workspaceId}::uuid AND field_id = ${fieldId}::uuid ORDER BY occurred_on DESC, created_at DESC LIMIT 200`.execute(database);
+    const ids = works.rows.map((row) => (row as { id: string }).id);
+    if (!ids.length) return { works: [] };
+    const participants = await sql`SELECT * FROM work_participants WHERE work_id = ANY(${ids}::uuid[]) ORDER BY created_at`.execute(database);
+    const resources = await sql`SELECT * FROM work_resources WHERE work_id = ANY(${ids}::uuid[]) ORDER BY created_at`.execute(database);
+    return {
+      works: works.rows.map((row) => {
+        const id = (row as { id: string }).id;
+        return {
+          ...row as Record<string, unknown>,
+          participants: participants.rows.filter((item) => (item as { work_id: string }).work_id === id),
+          resources: resources.rows.filter((item) => (item as { work_id: string }).work_id === id),
+        };
+      }),
+    };
+  });
+
+  app.post('/api/v1/works', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const input = parseBody(createWorkSchema, request.body, reply);
+    if (!input) return;
+    if (!await fieldBelongsToWorkspace(database, input.field_id, context.workspaceId)) return reply.code(404).send({ error: 'field_not_found' });
+    if (input.customer_party_id && !await partyBelongsToWorkspace(database, input.customer_party_id, context.workspaceId)) return reply.code(404).send({ error: 'customer_party_not_found' });
+
+    for (const participant of input.participants) {
+      if (participant.party_id && !await partyBelongsToWorkspace(database, participant.party_id, context.workspaceId)) return reply.code(404).send({ error: 'participant_party_not_found', party_id: participant.party_id });
+    }
+    for (const resource of input.resources) {
+      if (resource.machinery_id && !await machineryBelongsToWorkspace(database, resource.machinery_id, context.workspaceId)) return reply.code(404).send({ error: 'machinery_not_found', machinery_id: resource.machinery_id });
+      if (resource.material_id && !await materialBelongsToWorkspace(database, resource.material_id, context.workspaceId)) return reply.code(404).send({ error: 'material_not_found', material_id: resource.material_id });
+      if (resource.supplier_party_id && !await partyBelongsToWorkspace(database, resource.supplier_party_id, context.workspaceId)) return reply.code(404).send({ error: 'supplier_party_not_found', party_id: resource.supplier_party_id });
+    }
+
+    const replay = await sql`SELECT * FROM work_records WHERE workspace_id = ${context.workspaceId}::uuid AND client_operation_id = ${input.client_operation_id}::uuid`.execute(database);
+    if (replay.rows[0]) return reply.code(200).send({ replayed: true, work: replay.rows[0] });
+
+    let campaignId: string | null = input.campaign_id ?? null;
+    if (!campaignId) {
+      const active = await database.selectFrom('campaigns').select('id').where('workspace_id', '=', context.workspaceId).where('status', '=', 'active').orderBy('start_date', 'desc').executeTakeFirst();
+      campaignId = active?.id ?? null;
+    }
+
+    const workId = input.entity_id ?? randomUUID();
+    const participantCost = input.participants.reduce((sum, item) => sum + (item.cost_eur ?? ((item.quantity ?? 0) * (item.rate_eur ?? 0))), 0);
+    const resourceCost = input.resources.reduce((sum, item) => sum + (item.cost_eur ?? ((item.quantity ?? 0) * (item.unit_cost_eur ?? 0))), 0);
+    const totalCost = participantCost + resourceCost;
+
+    const saved = await database.transaction().execute(async (trx) => {
+      const work = await sql`
+        INSERT INTO work_records (id, workspace_id, field_id, campaign_id, client_operation_id, type, occurred_on, title, notes, performed_for, customer_party_id, quoted_amount_eur, charge_eur, created_by)
+        VALUES (${workId}::uuid, ${context.workspaceId}::uuid, ${input.field_id}::uuid, ${campaignId}::uuid, ${input.client_operation_id}::uuid, ${input.type}, ${input.occurred_on}::date, ${input.title}, ${input.notes ?? null}, ${input.performed_for}, ${input.customer_party_id ?? null}::uuid, ${input.quoted_amount_eur ?? null}, ${input.charge_eur ?? null}, ${context.userId}::uuid) RETURNING *
+      `.execute(trx);
+
+      for (const participant of input.participants) {
+        const calculatedCost = participant.cost_eur ?? ((participant.quantity ?? 0) * (participant.rate_eur ?? 0));
+        await sql`INSERT INTO work_participants (work_id, party_id, display_name, role, quantity, unit, rate_eur, cost_eur) VALUES (${workId}::uuid, ${participant.party_id ?? null}::uuid, ${participant.display_name}, ${participant.role ?? null}, ${participant.quantity ?? null}, ${participant.unit ?? null}, ${participant.rate_eur ?? null}, ${calculatedCost || null})`.execute(trx);
+      }
+      for (const resource of input.resources) {
+        const calculatedCost = resource.cost_eur ?? ((resource.quantity ?? 0) * (resource.unit_cost_eur ?? 0));
+        await sql`INSERT INTO work_resources (work_id, kind, machinery_id, material_id, supplier_party_id, name, quantity, unit, unit_cost_eur, cost_eur) VALUES (${workId}::uuid, ${resource.kind}, ${resource.machinery_id ?? null}::uuid, ${resource.material_id ?? null}::uuid, ${resource.supplier_party_id ?? null}::uuid, ${resource.name}, ${resource.quantity ?? null}, ${resource.unit ?? null}, ${resource.unit_cost_eur ?? null}, ${calculatedCost || null})`.execute(trx);
+      }
+
+      const projection = await writeDomainEffects(trx, {
+        workspaceId: context.workspaceId,
+        fieldId: input.field_id,
+        campaignId,
+        domainType: 'work',
+        domainRecordId: workId,
+        occurredAt: `${input.occurred_on}T12:00:00.000Z`,
+        title: input.title,
+        summary: [
+          input.performed_for === 'third-party' ? 'Trabajo para tercero' : null,
+          input.participants.length ? `${input.participants.length} participante${input.participants.length === 1 ? '' : 's'}` : null,
+          input.resources.length ? `${input.resources.length} recurso${input.resources.length === 1 ? '' : 's'}` : null,
+          totalCost > 0 ? `${totalCost.toFixed(2)} €` : null,
+        ].filter(Boolean).join(' · ') || input.notes || null,
+        iconKey: 'work',
+        cost: totalCost > 0 ? { amountEur: totalCost, category: 'work' } : undefined,
+      });
+      return { work: work.rows[0], projection, total_cost_eur: totalCost };
+    });
+
+    return reply.code(201).send({ replayed: false, ...saved });
+  });
+}
