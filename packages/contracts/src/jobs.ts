@@ -3,6 +3,8 @@ import { uuidSchema } from './mi-campo.js';
 
 export const OCR_QUEUE_NAME = 'magina-ocr-v1' as const;
 export const OCR_DEAD_LETTER_QUEUE_NAME = 'magina-ocr-dlq-v1' as const;
+export const RADAR_INGEST_QUEUE_NAME = 'magina-radar-ingest-v1' as const;
+export const RADAR_INGEST_DEAD_LETTER_QUEUE_NAME = 'magina-radar-ingest-dlq-v1' as const;
 
 export const ocrProviderNameSchema = z.enum(['tesseract', 'paddleocr', 'doctr']);
 
@@ -16,5 +18,13 @@ export const ocrJobPayloadSchema = z.object({
   preferred_provider: z.union([z.literal('auto'), ocrProviderNameSchema]),
 });
 
+export const radarIngestJobPayloadSchema = z.object({
+  version: z.literal(1),
+  source: z.literal('aemet_national_mosaic'),
+  product: z.literal('reflectivity'),
+  requested_at: z.string().datetime({ offset: true }),
+});
+
 export type OcrProviderName = z.infer<typeof ocrProviderNameSchema>;
 export type OcrJobPayload = z.infer<typeof ocrJobPayloadSchema>;
+export type RadarIngestJobPayload = z.infer<typeof radarIngestJobPayloadSchema>;
