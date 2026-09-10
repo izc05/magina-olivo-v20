@@ -8,6 +8,8 @@ import { getPreviewFarms, loadWorkspaceFarms, summarizeFarms, type FarmListItem 
 
 const quick = [
   ['＋', 'Registrar', 'Nueva actividad', '/mi-campo/registrar'],
+  ['☀', 'Hoy', 'Pendientes y próximos trabajos', '/mi-campo/hoy'],
+  ['🫒', 'Campaña', 'Producción, costes y cobros', '/mi-campo/campana'],
   ['▱', 'Mapa', 'Fincas y referencias', '/mi-campo/mapa'],
   ['€', 'Profesional', 'Clientes, trabajos y cobros', '/mi-campo/profesional'],
 ] as const;
@@ -90,6 +92,6 @@ export function MiCampoDashboard() {
       {quick.map(([icon, title, text, href]) => <Link href={href} className="card quick premium-quick" key={title}><span className="icon">{title === 'Registrar' ? <PlusIcon /> : icon}</span><div><strong>{title}</strong><small>{text}</small></div><ArrowIcon className="quick-arrow" /></Link>)}
     </div></section>
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">ESTRUCTURA V20</span><h2>Finca primero. Parcela, trabajos y datos dentro.</h2></div><Link href="/mi-campo/registrar">Registrar <ArrowIcon /></Link></section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">ESTRUCTURA V20</span><h2>Finca primero. Campaña y agenda agregan sin duplicar.</h2></div><Link href="/mi-campo/registrar">Registrar <ArrowIcon /></Link></section>
   </>;
 }
