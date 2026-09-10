@@ -7,6 +7,8 @@ import type { MunicipalityWeatherProvider } from '../weather/providers.js';
 import { evaluateWeatherDayForTask, normalizeAgronomyTask } from '../domain/agronomy-advisory.js';
 import { combineAgronomySignals, evaluateRadarObservationForTask, type RadarAgronomyObservation } from '../domain/agronomy-radar.js';
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 type AttentionRow = {
   event_id: string;
   field_id: string;
@@ -26,6 +28,27 @@ type AttentionRow = {
   quality_flags: string[] | null;
 };
 
+type AttentionAdvisory = {
+  suitability: 'good' | 'caution' | 'avoid' | 'unknown';
+  risk_level: 'none' | 'low' | 'medium' | 'high' | 'unknown';
+  summary: string;
+  stale: boolean;
+  radar_elevated: boolean;
+  forecast: Record<string, unknown>;
+  radar: Record<string, unknown> | null;
+};
+
+type AttentionItem = {
+  id: string;
+  field_id: string;
+  field_name: string;
+  title: string;
+  scheduled_at: string;
+  source_domain_type: string | null;
+  overdue: boolean;
+  advisory: AttentionAdvisory | null;
+};
+
 function finite(value: unknown) {
   if (value == null) return null;
   const parsed = Number(value);
@@ -40,6 +63,7 @@ export function registerAttentionRoutes(app: FastifyInstance, db: DatabaseClient
 
     const query = request.query as { fieldId?: string; limit?: string };
     const fieldId = query.fieldId?.trim() || null;
+    if (fieldId && !uuidPattern.test(fieldId)) return reply.code(400).send({ error: 'invalid_field_id' });
     const parsedLimit = Number(query.limit ?? 6);
     const limit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(12, Math.trunc(parsedLimit))) : 6;
 
@@ -81,10 +105,10 @@ export function registerAttentionRoutes(app: FastifyInstance, db: DatabaseClient
       LIMIT ${limit}
     `.execute(database);
 
-    const items = [] as Array<Record<string, unknown>>;
+    const items: AttentionItem[] = [];
     for (const row of result.rows) {
       const task = normalizeAgronomyTask(row.source_domain_type ?? undefined);
-      let advisory: Record<string, unknown> | null = null;
+      let advisory: AttentionAdvisory | null = null;
 
       if (row.municipality_id && row.aemet_code) {
         try {
@@ -145,8 +169,10 @@ export function registerAttentionRoutes(app: FastifyInstance, db: DatabaseClient
     }
 
     const important = items.filter((item) => {
-      const advisory = item.advisory as { suitability?: string } | null;
-      return Boolean(item.overdue) || advisory?.suitability === 'avoid' || advisory?.suitability === 'caution';
+      if (item.overdue) return true;
+      if (!item.advisory) return false;
+      if (item.advisory.radar_elevated) return true;
+      return !item.advisory.stale && (item.advisory.suitability === 'avoid' || item.advisory.suitability === 'caution');
     }).length;
 
     return {
