@@ -22,6 +22,7 @@ export const workTypeSchema = z.enum([
   'pruning', 'shredding', 'harvest', 'treatment', 'fertilization', 'irrigation',
   'mowing', 'tillage', 'transport', 'manual-work', 'machinery-work', 'other',
 ]);
+export const workPaymentStatusSchema = z.enum(['not-applicable', 'pending', 'partial', 'paid']);
 
 export const createCrewSchema = clientOperationSchema.extend({
   name: z.string().trim().min(1).max(240),
@@ -89,11 +90,20 @@ export const createWorkSchema = clientOperationSchema.extend({
   customer_party_id: uuidSchema.optional(),
   quoted_amount_eur: moneySchema.optional(),
   charge_eur: moneySchema.optional(),
+  collected_eur: moneySchema.optional(),
+  payment_status: workPaymentStatusSchema.optional(),
+  invoice_reference: z.string().trim().max(160).optional(),
   participants: z.array(workParticipantSchema).max(200).default([]),
   resources: z.array(workResourceSchema).max(200).default([]),
 }).superRefine((value, ctx) => {
   if (value.performed_for === 'third-party' && !value.customer_party_id) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['customer_party_id'], message: 'customer_party_id is required for third-party work' });
+  }
+  if (value.performed_for === 'self' && value.payment_status && value.payment_status !== 'not-applicable') {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['payment_status'], message: 'self work cannot have a collection status' });
+  }
+  if (value.charge_eur !== undefined && value.collected_eur !== undefined && value.collected_eur > value.charge_eur) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['collected_eur'], message: 'collected_eur cannot exceed charge_eur' });
   }
 });
 
