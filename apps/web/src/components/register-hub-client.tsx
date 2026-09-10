@@ -5,6 +5,12 @@ import { ArrowIcon, PlusIcon } from '@/components/icons';
 import { recordTypes } from '@/lib/record-types';
 import { useFieldContext, withFieldQuery } from '@/lib/use-field-context';
 
+const work = {
+  shortLabel: 'Trabajo',
+  symbol: '🧑‍🌾',
+  description: 'Labor, personas, maquinaria, coste o trabajo para un cliente.',
+} as const;
+
 const harvest = {
   shortLabel: 'Cosecha',
   symbol: '🫒',
@@ -32,6 +38,11 @@ export function RegisterHubClient() {
 
     <section className="section">
       <div className="register-choice-grid">
+        <Link className="card register-choice featured" href={withFieldQuery('/mi-campo/registrar/trabajo', context.id, context.source)}>
+          <span className="register-choice-symbol">{work.symbol}</span>
+          <div><strong>{work.shortLabel}</strong><small>{work.description}</small></div>
+          <ArrowIcon />
+        </Link>
         <Link className="card register-choice featured" href={withFieldQuery('/mi-campo/registrar/cosecha', context.id, context.source)}>
           <span className="register-choice-symbol">{harvest.symbol}</span>
           <div><strong>{harvest.shortLabel}</strong><small>{harvest.description}</small></div>
@@ -49,7 +60,7 @@ export function RegisterHubClient() {
 
     <section className="section register-tip">
       <span>💡</span>
-      <p><strong>Finca activa:</strong> {context.name}. Si registras un riego de 22 €, ese coste quedará asociado a esta finca y no tendrás que escribirlo otra vez.</p>
+      <p><strong>Finca activa:</strong> {context.name}. “Trabajo” es la vía completa; jornal y maquinaria siguen disponibles como atajos rápidos.</p>
     </section>
   </>;
 }
