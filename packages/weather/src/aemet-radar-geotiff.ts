@@ -9,7 +9,10 @@ const RADAR_GEOTIFF_TIMEOUT_MS = 15_000;
 const MAX_COMPRESSED_BYTES = 50 * 1024 * 1024;
 const MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
 const MAX_TIFF_BYTES = 35 * 1024 * 1024;
-const MAX_TIFF_ENTRIES = 6;
+const MAX_ARCHIVE_ENTRIES = 256;
+const MAX_REFLECTIVITY_TIFF_CANDIDATES = 64;
+const RECENT_REFLECTIVITY_SNAPSHOTS = 3;
+const NATIONAL_REFLECTIVITY_NAME = /(?:^|\/)down_radw(20\d{10})_4326\.tiff?$/i;
 
 export function buildAemetNationalRadarGeoTiffBundleUrl() {
   return AEMET_RADAR_GEOTIFF_BUNDLE_URL;
@@ -34,7 +37,30 @@ function isGeoTiff(bytes: Uint8Array) {
   return littleEndian || bigEndian;
 }
 
+export function isAemetNationalReflectivityGeoTiffName(name: string) {
+  return NATIONAL_REFLECTIVITY_NAME.test(name);
+}
+
 export function parseRadarObservationTimestampFromName(name: string): string | null {
+  const reflectivityMatch = name.match(NATIONAL_REFLECTIVITY_NAME);
+  if (reflectivityMatch?.[1]) {
+    const stamp = reflectivityMatch[1];
+    const year = Number(stamp.slice(0, 4));
+    const month = Number(stamp.slice(4, 6));
+    const day = Number(stamp.slice(6, 8));
+    const hour = Number(stamp.slice(8, 10));
+    const minute = Number(stamp.slice(10, 12));
+    const value = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+    if (
+      value.getUTCFullYear() === year
+      && value.getUTCMonth() === month - 1
+      && value.getUTCDate() === day
+      && value.getUTCHours() === hour
+      && value.getUTCMinutes() === minute
+    ) return value.toISOString();
+    return null;
+  }
+
   const match = name.match(/(20\d{2})[-_]?([01]\d)[-_]?([0-3]\d)[T_\-]?([0-2]\d)[:_\-]?([0-5]\d)(?:[:_\-]?([0-5]\d))?/);
   if (!match) return null;
 
@@ -59,6 +85,17 @@ export function parseRadarObservationTimestampFromName(name: string): string | n
   return value.toISOString();
 }
 
+function latestReflectivityAssets(assets: RadarBinaryAsset[]) {
+  return assets
+    .filter((asset) => asset.metadata.observed_at !== null)
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.metadata.observed_at ?? '');
+      const rightTime = Date.parse(right.metadata.observed_at ?? '');
+      return leftTime - rightTime;
+    })
+    .slice(-RECENT_REFLECTIVITY_SNAPSHOTS);
+}
+
 export async function parseAemetRadarGeoTiffBundle(
   compressed: Uint8Array,
   fetchedAt = new Date(),
@@ -71,7 +108,9 @@ export async function parseAemetRadarGeoTiffBundle(
   return new Promise<RadarBinaryAsset[]>((resolve, reject) => {
     const extractor = tar.extract();
     const gunzip = createGunzip();
-    const assets: RadarBinaryAsset[] = [];
+    const candidates: RadarBinaryAsset[] = [];
+    let archiveEntries = 0;
+    let reflectivityEntries = 0;
     let uncompressedBytes = 0;
     let settled = false;
 
@@ -93,17 +132,24 @@ export async function parseAemetRadarGeoTiffBundle(
     extractor.on('error', (error) => fail(error));
 
     extractor.on('entry', (header, stream, next) => {
-      const lowerName = header.name.toLowerCase();
-      const isTiffEntry = header.type === 'file' && (lowerName.endsWith('.tif') || lowerName.endsWith('.tiff'));
-      if (!isTiffEntry) {
+      archiveEntries += 1;
+      if (archiveEntries > MAX_ARCHIVE_ENTRIES) {
+        stream.resume();
+        stream.on('end', () => fail(new Error('AEMET_RADAR_GEOTIFF_TOO_MANY_ARCHIVE_ENTRIES')));
+        return;
+      }
+
+      const isReflectivityTiff = header.type === 'file' && isAemetNationalReflectivityGeoTiffName(header.name);
+      if (!isReflectivityTiff) {
         stream.resume();
         stream.on('end', next);
         return;
       }
 
-      if (assets.length >= MAX_TIFF_ENTRIES) {
+      reflectivityEntries += 1;
+      if (reflectivityEntries > MAX_REFLECTIVITY_TIFF_CANDIDATES) {
         stream.resume();
-        stream.on('end', () => fail(new Error('AEMET_RADAR_GEOTIFF_TOO_MANY_ENTRIES')));
+        stream.on('end', () => fail(new Error('AEMET_RADAR_GEOTIFF_TOO_MANY_REFLECTIVITY_ENTRIES')));
         return;
       }
 
@@ -125,12 +171,17 @@ export async function parseAemetRadarGeoTiffBundle(
           fail(new Error(`AEMET_RADAR_GEOTIFF_INVALID_SIGNATURE:${header.name}`));
           return;
         }
-        assets.push({
+        const observedAt = parseRadarObservationTimestampFromName(header.name);
+        if (!observedAt) {
+          fail(new Error(`AEMET_RADAR_GEOTIFF_TIMESTAMP_INVALID:${header.name}`));
+          return;
+        }
+        candidates.push({
           metadata: {
             source: 'aemet_national_mosaic',
             product: 'reflectivity',
             crs: 'EPSG:4326',
-            observed_at: parseRadarObservationTimestampFromName(header.name),
+            observed_at: observedAt,
             fetched_at: fetchedAt.toISOString(),
             asset_format: 'geotiff',
             analysis_ready: false,
@@ -146,12 +197,13 @@ export async function parseAemetRadarGeoTiffBundle(
 
     extractor.on('finish', () => {
       if (settled) return;
-      if (assets.length === 0) {
-        fail(new Error('AEMET_RADAR_GEOTIFF_NO_TIFF_ENTRIES'));
+      const selected = latestReflectivityAssets(candidates);
+      if (selected.length === 0) {
+        fail(new Error('AEMET_RADAR_GEOTIFF_NO_REFLECTIVITY_ENTRIES'));
         return;
       }
       settled = true;
-      resolve(assets);
+      resolve(selected);
     });
 
     Readable.from([Buffer.from(compressed)]).pipe(gunzip).pipe(extractor);
