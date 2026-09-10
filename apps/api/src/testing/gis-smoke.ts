@@ -115,7 +115,7 @@ try {
     url: '/api/v1/gis/catastro/parcels?minLon=-3.5&minLat=37.7&maxLon=-3.6&maxLat=37.71',
     headers: developmentHeaders,
   });
-  assert.equal(malformedBbox.statusCode, 502, malformedBbox.body);
+  assert.equal(malformedBbox.statusCode, 400, malformedBbox.body);
 
   const catastroLookup = await app.inject({
     method: 'GET',
