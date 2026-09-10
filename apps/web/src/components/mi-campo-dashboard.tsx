@@ -9,6 +9,7 @@ import { getPreviewFarms, loadWorkspaceFarms, summarizeFarms, type FarmListItem 
 const quick = [
   ['＋', 'Registrar', 'Nueva actividad', '/mi-campo/registrar'],
   ['▱', 'Mapa', 'Fincas y referencias', '/mi-campo/mapa'],
+  ['€', 'Profesional', 'Clientes, trabajos y cobros', '/mi-campo/profesional'],
 ] as const;
 
 function farmHref(farm: FarmListItem) {
