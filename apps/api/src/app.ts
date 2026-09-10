@@ -15,6 +15,7 @@ import { registerCampaignRoutes } from './routes/campaigns.js';
 import { registerAgendaRoutes } from './routes/agenda.js';
 import { registerAgronomyRoutes } from './routes/agronomy.js';
 import { registerAgronomyAlertRoutes } from './routes/agronomy-alerts.js';
+import { registerAttentionRoutes } from './routes/attention.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
@@ -90,6 +91,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAgendaRoutes(app, db);
   registerAgronomyRoutes(app, db, weatherProvider);
   registerAgronomyAlertRoutes(app, db, weatherProvider, notificationQueue);
+  registerAttentionRoutes(app, db, weatherProvider);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);
   registerProfessionalRoutes(app, db);
