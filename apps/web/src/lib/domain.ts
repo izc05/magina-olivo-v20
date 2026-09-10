@@ -35,6 +35,7 @@ export type FarmRecord = {
   waterRegime?: 'Secano' | 'Regadío' | 'Mixto';
   areaHa?: number;
   ownership?: FarmOwnership;
+  ownerPartyId?: string;
   status?: FarmStatus;
   notes?: string;
   createdAt: string;
@@ -67,6 +68,80 @@ export type ParcelRecord = {
   createdAt: string;
 };
 
+/**
+ * PARTY / PERSON MODEL
+ * --------------------
+ * A Party is any person or organisation with which Mi Campo can have an
+ * operational relationship: owner, family member, worker, customer, supplier,
+ * cooperative, service company, etc. Roles are contextual and intentionally
+ * separate from account/auth roles.
+ */
+export type PartyKind = 'person' | 'organization';
+export type PartyRole =
+  | 'owner'
+  | 'family'
+  | 'worker'
+  | 'contractor'
+  | 'customer'
+  | 'supplier'
+  | 'cooperative'
+  | 'mill'
+  | 'other';
+
+export type PartyRecord = {
+  id: string;
+  kind: PartyKind;
+  displayName: string;
+  legalName?: string;
+  taxId?: string;
+  phone?: string;
+  email?: string;
+  roles: PartyRole[];
+  notes?: string;
+  active: boolean;
+  createdAt: string;
+};
+
+export type CrewRecord = {
+  id: string;
+  name: string;
+  memberPartyIds: string[];
+  leaderPartyId?: string;
+  defaultRateEur?: number;
+  defaultRateUnit?: 'hours' | 'days' | 'jornales' | 'fixed';
+  notes?: string;
+  active: boolean;
+  createdAt: string;
+};
+
+export type ResourceOwnership = 'owned' | 'rented' | 'third-party-service';
+
+export type MachineryRecord = {
+  id: string;
+  name: string;
+  category?: string;
+  ownership: ResourceOwnership;
+  ownerPartyId?: string;
+  registrationOrSerial?: string;
+  defaultRateEur?: number;
+  defaultRateUnit?: 'hours' | 'days' | 'units' | 'fixed';
+  notes?: string;
+  active: boolean;
+  createdAt: string;
+};
+
+export type MaterialRecord = {
+  id: string;
+  name: string;
+  category?: string;
+  defaultUnit?: string;
+  defaultUnitCostEur?: number;
+  supplierPartyId?: string;
+  notes?: string;
+  active: boolean;
+  createdAt: string;
+};
+
 export type WorkType =
   | 'pruning'
   | 'shredding'
@@ -88,22 +163,37 @@ export type WorkScope = 'whole-farm' | 'selected-parcels';
 export type WorkParticipant = {
   id: string;
   personId?: string;
+  crewId?: string;
   displayName: string;
   role?: string;
   quantity?: number;
   unit?: WorkUnit;
   rateEur?: number;
   costEur?: number;
+  paidAmountEur?: number;
+  paymentStatus?: WorkPaymentStatus;
 };
 
 export type WorkResource = {
   id: string;
   kind: 'machinery' | 'material' | 'service';
+  machineryId?: string;
+  materialId?: string;
+  supplierPartyId?: string;
   name: string;
   quantity?: number;
   unit?: string;
   unitCostEur?: number;
   costEur?: number;
+};
+
+export type WorkCommercialContext = {
+  customerId?: string;
+  quotedAmountEur?: number;
+  chargeEur?: number;
+  collectedEur?: number;
+  paymentStatus: WorkPaymentStatus;
+  invoiceReference?: string;
 };
 
 /**
@@ -121,13 +211,11 @@ export type WorkRecord = {
   occurredOn: string;
   title: string;
   notes?: string;
-  customerId?: string;
   performedFor: 'self' | 'third-party';
   participants?: WorkParticipant[];
   resources?: WorkResource[];
   directCostEur?: number;
-  chargeEur?: number;
-  paymentStatus?: WorkPaymentStatus;
+  commercial?: WorkCommercialContext;
   documentIds?: string[];
   createdAt: string;
 };
