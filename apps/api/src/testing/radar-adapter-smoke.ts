@@ -30,6 +30,6 @@ assert.equal(gif.observed_at, null);
 
 const geotiff = buildRadarSnapshotMetadata('image/tiff', new Date('2026-09-10T04:05:00Z'));
 assert.equal(geotiff.asset_format, 'geotiff');
-assert.equal(geotiff.analysis_ready, true);
+assert.equal(geotiff.analysis_ready, false, 'MIME alone must never mark a GeoTIFF analysis-ready');
 
 console.log('RADAR_ADAPTER_SMOKE_OK');
