@@ -5,12 +5,17 @@ import {
   type RadarIngestJobPayload,
 } from '@magina/contracts';
 import {
-  inspectRadarGeoTiff,
+  prepareAemetNationalRadarGrid,
   type RadarBinaryAsset,
   type RadarGeoTiffInspection,
+  type RadarGrid,
 } from '@magina/weather';
 import type { Pool } from 'pg';
 import type { RadarObjectStoragePort, RadarSourcePort } from './ports.js';
+import {
+  projectRadarSnapshotToFarms,
+  type FarmRadarProjectionOutcome,
+} from './project-farm-observations.js';
 
 export type RadarIngestItemOutcome = {
   replayed: boolean;
@@ -21,6 +26,7 @@ export type RadarIngestItemOutcome = {
   storageKey: string;
   sourceName: string | null;
   validationErrors: string[];
+  farmProjection: FarmRadarProjectionOutcome | null;
 };
 
 export type RadarIngestOutcome = {
@@ -28,6 +34,8 @@ export type RadarIngestOutcome = {
   stored: number;
   replayed: number;
   analysisReady: number;
+  projectedFarms: number;
+  detectedFarms: number;
   snapshots: RadarIngestItemOutcome[];
 };
 
@@ -57,6 +65,24 @@ async function promoteStoredSnapshot(
   `, [snapshotId, inspection.analysisReady, JSON.stringify(inspectionMetadata(job, asset, inspection))]);
 }
 
+async function projectIfReady(input: {
+  pool: Pool;
+  snapshotId: string;
+  asset: RadarBinaryAsset;
+  inspection: RadarGeoTiffInspection;
+  grid: RadarGrid | null;
+}): Promise<FarmRadarProjectionOutcome | null> {
+  if (!input.inspection.analysisReady || !input.grid) return null;
+  return projectRadarSnapshotToFarms({
+    pool: input.pool,
+    snapshotId: input.snapshotId,
+    observedAt: input.asset.metadata.observed_at,
+    sourceName: input.asset.sourceName ?? null,
+    inspection: input.inspection,
+    grid: input.grid,
+  });
+}
+
 async function ingestRadarAsset(
   pool: Pool,
   storage: RadarObjectStoragePort,
@@ -73,7 +99,8 @@ async function ingestRadarAsset(
   }
   if (asset.bytes.byteLength === 0) throw new Error('Radar source returned an empty asset');
 
-  const inspection = await inspectRadarGeoTiff(asset.bytes);
+  const prepared = await prepareAemetNationalRadarGrid(asset.bytes);
+  const inspection = prepared.inspection;
   const sha256 = createHash('sha256').update(asset.bytes).digest('hex');
   const previous = await pool.query<{
     id: string;
@@ -88,20 +115,13 @@ async function ingestRadarAsset(
 
   const existing = previous.rows[0];
   if (existing?.storage_key && existing.status === 'processed') {
-    return {
-      replayed: true,
+    const farmProjection = await projectIfReady({
+      pool,
       snapshotId: existing.id,
-      status: 'processed',
-      analysisReady: existing.analysis_ready,
-      sha256,
-      storageKey: existing.storage_key,
-      sourceName: asset.sourceName ?? null,
-      validationErrors: inspection.validationErrors,
-    };
-  }
-
-  if (existing?.storage_key && existing.status === 'stored') {
-    await promoteStoredSnapshot(pool, existing.id, job, asset, inspection);
+      asset,
+      inspection,
+      grid: prepared.grid,
+    });
     return {
       replayed: true,
       snapshotId: existing.id,
@@ -111,6 +131,29 @@ async function ingestRadarAsset(
       storageKey: existing.storage_key,
       sourceName: asset.sourceName ?? null,
       validationErrors: inspection.validationErrors,
+      farmProjection,
+    };
+  }
+
+  if (existing?.storage_key && existing.status === 'stored') {
+    await promoteStoredSnapshot(pool, existing.id, job, asset, inspection);
+    const farmProjection = await projectIfReady({
+      pool,
+      snapshotId: existing.id,
+      asset,
+      inspection,
+      grid: prepared.grid,
+    });
+    return {
+      replayed: true,
+      snapshotId: existing.id,
+      status: 'processed',
+      analysisReady: inspection.analysisReady,
+      sha256,
+      storageKey: existing.storage_key,
+      sourceName: asset.sourceName ?? null,
+      validationErrors: inspection.validationErrors,
+      farmProjection,
     };
   }
 
@@ -172,6 +215,14 @@ async function ingestRadarAsset(
       WHERE id = $1
     `, [snapshotId, stored.storageKey, inspection.analysisReady]);
 
+    const farmProjection = await projectIfReady({
+      pool,
+      snapshotId,
+      asset,
+      inspection,
+      grid: prepared.grid,
+    });
+
     return {
       replayed: false,
       snapshotId,
@@ -181,13 +232,14 @@ async function ingestRadarAsset(
       storageKey: stored.storageKey,
       sourceName: asset.sourceName ?? null,
       validationErrors: inspection.validationErrors,
+      farmProjection,
     };
   } catch (error) {
     await pool.query(`
       UPDATE radar_snapshots
       SET status = 'failed',
           analysis_ready = false,
-          error_code = 'storage_error',
+          error_code = 'storage_or_projection_error',
           updated_at = now()
       WHERE id = $1
     `, [snapshotId]);
@@ -215,6 +267,8 @@ export async function runRadarIngestJob(
     stored: snapshots.filter((item) => !item.replayed).length,
     replayed: snapshots.filter((item) => item.replayed).length,
     analysisReady: snapshots.filter((item) => item.analysisReady).length,
+    projectedFarms: snapshots.reduce((sum, item) => sum + (item.farmProjection?.projected ?? 0), 0),
+    detectedFarms: snapshots.reduce((sum, item) => sum + (item.farmProjection?.detected ?? 0), 0),
     snapshots,
   };
 }
