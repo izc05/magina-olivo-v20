@@ -133,7 +133,7 @@ export async function parseAemetRadarGeoTiffBundle(
             observed_at: parseRadarObservationTimestampFromName(header.name),
             fetched_at: fetchedAt.toISOString(),
             asset_format: 'geotiff',
-            analysis_ready: true,
+            analysis_ready: false,
           },
           bytes,
           contentType: 'image/tiff',
