@@ -12,7 +12,11 @@ const harvest = {
 } as const;
 
 export function RegisterHubClient() {
-  const { context, ready } = useFieldContext();
+  const { context, ready, found } = useFieldContext();
+
+  if (ready && !found) {
+    return <section className="card"><h1>Finca no encontrada</h1><p>No se puede registrar nada hasta resolver correctamente la finca de destino.</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
+  }
 
   return <>
     <header className="page-title register-hub-title">
@@ -28,13 +32,13 @@ export function RegisterHubClient() {
 
     <section className="section">
       <div className="register-choice-grid">
-        <Link className="card register-choice featured" href={withFieldQuery('/mi-campo/registrar/cosecha', context.id)}>
+        <Link className="card register-choice featured" href={withFieldQuery('/mi-campo/registrar/cosecha', context.id, context.source)}>
           <span className="register-choice-symbol">{harvest.symbol}</span>
           <div><strong>{harvest.shortLabel}</strong><small>{harvest.description}</small></div>
           <ArrowIcon />
         </Link>
         {recordTypes.map((type) => (
-          <Link className="card register-choice" key={type.slug} href={withFieldQuery(`/mi-campo/registrar/${type.slug}`, context.id)}>
+          <Link className="card register-choice" key={type.slug} href={withFieldQuery(`/mi-campo/registrar/${type.slug}`, context.id, context.source)}>
             <span className="register-choice-symbol">{type.symbol}</span>
             <div><strong>{type.shortLabel}</strong><small>{type.description}</small></div>
             <ArrowIcon />
