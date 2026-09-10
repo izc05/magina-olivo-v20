@@ -20,6 +20,7 @@ on:
       - 'packages/jobs/**'
       - 'database/migrations/0015_radar_snapshots.sql'
       - 'database/migrations/0016_farm_radar_observations.sql'
+      - 'database/migrations/0017_radar_alert_rules.sql'
       - '.github/workflows/radar-check.yml'
   pull_request:
     paths:
@@ -37,6 +38,7 @@ on:
       - 'packages/jobs/**'
       - 'database/migrations/0015_radar_snapshots.sql'
       - 'database/migrations/0016_farm_radar_observations.sql'
+      - 'database/migrations/0017_radar_alert_rules.sql'
       - '.github/workflows/radar-check.yml'
 
 concurrency:
@@ -129,6 +131,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
         run: node apps/worker/dist/testing/farm-radar-projection-smoke.js
+
+      - name: Observational radar alert behavior
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
+        run: node apps/worker/dist/testing/radar-alert-rules-smoke.js
 
       - name: Private latest radar API behavior
         env:
