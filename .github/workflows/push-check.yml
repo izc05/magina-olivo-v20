@@ -1,0 +1,104 @@
+name: V20 Web Push check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/v20-visual-prototype
+    paths:
+      - 'apps/api/src/routes/push.ts'
+      - 'apps/api/src/notifications/**'
+      - 'apps/api/src/testing/push-*.ts'
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/server.ts'
+      - 'apps/worker/src/notifications/**'
+      - 'apps/worker/src/testing/push-*.ts'
+      - 'apps/worker/src/server.ts'
+      - 'apps/worker/package.json'
+      - 'apps/web/public/sw.js'
+      - 'apps/web/src/components/push-notification-settings.tsx'
+      - 'apps/web/src/components/radar-alert-settings.tsx'
+      - 'packages/contracts/src/push.ts'
+      - 'packages/contracts/src/jobs.ts'
+      - 'packages/contracts/src/index.ts'
+      - 'packages/jobs/**'
+      - 'database/migrations/0018_web_push.sql'
+      - '.github/workflows/push-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina_push
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina_push"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build dependency graph
+        run: |
+          pnpm --filter @magina/contracts typecheck
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather typecheck
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs typecheck
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/api build
+          pnpm --filter @magina/worker typecheck
+          pnpm --filter @magina/worker build
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      - name: Apply migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina_push -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Push subscription API behavior
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_push
+        run: node apps/api/dist/testing/push-api-smoke.js
+
+      - name: Push dispatcher behavior
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_push
+        run: node apps/worker/dist/testing/push-dispatch-smoke.js
+
+      - name: Web typecheck
+        run: pnpm --filter @magina/web typecheck
+
+      - name: Web build
+        run: pnpm --filter @magina/web build

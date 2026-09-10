@@ -13,10 +13,13 @@ import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
+import { registerPushRoutes } from './routes/push.js';
 import type { StoragePort } from './storage/port.js';
 import { UnavailableStorage } from './storage/port.js';
 import type { OcrQueuePort } from './ocr/port.js';
 import { UnavailableOcrQueue } from './ocr/port.js';
+import type { NotificationDispatchQueuePort } from './notifications/port.js';
+import { UnavailableNotificationDispatchQueue } from './notifications/port.js';
 import type { GoogleIdentityVerifier } from './auth/google.js';
 import { UnavailableGoogleIdentityVerifier } from './auth/google.js';
 import type { GisProviders } from './gis/providers.js';
@@ -28,6 +31,8 @@ export type AppDependencies = {
   db?: DatabaseClient | null;
   storage?: StoragePort;
   ocrQueue?: OcrQueuePort;
+  notificationQueue?: NotificationDispatchQueuePort;
+  pushPublicKey?: string | null;
   googleVerifier?: GoogleIdentityVerifier;
   gisProviders?: GisProviders;
   weatherProvider?: MunicipalityWeatherProvider;
@@ -37,6 +42,8 @@ export function buildApp(dependencies: AppDependencies = {}) {
   const db = dependencies.db ?? null;
   const storage = dependencies.storage ?? new UnavailableStorage();
   const ocrQueue = dependencies.ocrQueue ?? new UnavailableOcrQueue();
+  const notificationQueue = dependencies.notificationQueue ?? new UnavailableNotificationDispatchQueue();
+  const pushPublicKey = dependencies.pushPublicKey ?? null;
   const googleVerifier = dependencies.googleVerifier ?? new UnavailableGoogleIdentityVerifier();
   const gisProviders = dependencies.gisProviders ?? remoteGisProviders;
   const weatherProvider = dependencies.weatherProvider ?? remoteAemetWeatherProvider;
@@ -52,6 +59,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
     service: 'magina-api',
     databaseConfigured: Boolean(db),
     googleAuthConfigured: !(googleVerifier instanceof UnavailableGoogleIdentityVerifier),
+    webPushConfigured: Boolean(pushPublicKey),
     warning: prototypeAuthWarning,
   }));
 
@@ -60,6 +68,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerTerritoryRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db);
+  registerPushRoutes(app, db, notificationQueue, pushPublicKey);
   registerFieldRoutes(app, db);
   registerIrrigationRoutes(app, db);
   registerDomainRecordRoutes(app, db);

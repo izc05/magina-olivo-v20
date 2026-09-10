@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1128.0",
+    "@block65/webcrypto-web-push": "2.0.0",
     "@magina/contracts": "workspace:*",
     "@magina/jobs": "workspace:*",
     "@magina/weather": "workspace:*",

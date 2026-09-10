@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api-client';
 import { useAuth } from './auth-provider';
+import { PushNotificationSettings } from './push-notification-settings';
 
 type AlertRuleValues = {
   enabled: boolean;
@@ -98,10 +99,7 @@ export function RadarAlertSettings({ fieldId }: { fieldId: string }) {
       <div className="radar-alert-fields">
         <label className="radar-alert-field">
           <span>Distancia</span>
-          <select
-            value={values.radius_km}
-            onChange={(event) => setValues((current) => ({ ...current, radius_km: Number(event.target.value) }))}
-          >
+          <select value={values.radius_km} onChange={(event) => setValues((current) => ({ ...current, radius_km: Number(event.target.value) }))}>
             <option value={5}>Muy cerca · 5 km</option>
             <option value={10}>Cerca · 10 km</option>
             <option value={20}>Alrededor · 20 km</option>
@@ -111,10 +109,7 @@ export function RadarAlertSettings({ fieldId }: { fieldId: string }) {
 
         <label className="radar-alert-field">
           <span>Sensibilidad</span>
-          <select
-            value={values.min_dbz}
-            onChange={(event) => setValues((current) => ({ ...current, min_dbz: Number(event.target.value) }))}
-          >
+          <select value={values.min_dbz} onChange={(event) => setValues((current) => ({ ...current, min_dbz: Number(event.target.value) }))}>
             <option value={12}>Alta · desde 12 dBZ</option>
             <option value={18}>Media · desde 18 dBZ</option>
             <option value={24}>Selectiva · desde 24 dBZ</option>
@@ -124,10 +119,7 @@ export function RadarAlertSettings({ fieldId }: { fieldId: string }) {
 
         <label className="radar-alert-field">
           <span>Repetir como máximo</span>
-          <select
-            value={values.cooldown_minutes}
-            onChange={(event) => setValues((current) => ({ ...current, cooldown_minutes: Number(event.target.value) }))}
-          >
+          <select value={values.cooldown_minutes} onChange={(event) => setValues((current) => ({ ...current, cooldown_minutes: Number(event.target.value) }))}>
             <option value={60}>Cada 1 hora</option>
             <option value={180}>Cada 3 horas</option>
             <option value={360}>Cada 6 horas</option>
@@ -147,5 +139,7 @@ export function RadarAlertSettings({ fieldId }: { fieldId: string }) {
         {status ? <span className="radar-alert-status">{status}</span> : null}
       </div>
     </div>}
+
+    <PushNotificationSettings fieldId={fieldId} />
   </section>;
 }
