@@ -220,6 +220,75 @@ export type WorkRecord = {
   createdAt: string;
 };
 
+/**
+ * HARVEST / CAMPAIGN MODEL
+ * ------------------------
+ * A Campaign groups an agricultural season. Deliveries are immutable business
+ * events and may allocate olives across multiple farms. Results arrive later
+ * and are attached to a delivery without replacing the delivery itself.
+ */
+export type CampaignStatus = 'planned' | 'active' | 'closed';
+export type HarvestSource = 'manual' | 'ocr' | 'import';
+export type AllocationStatus = 'provisional' | 'confirmed';
+
+export type CampaignRecord = {
+  id: string;
+  label: string;
+  startsOn?: string;
+  endsOn?: string;
+  status: CampaignStatus;
+  notes?: string;
+  createdAt: string;
+};
+
+export type HarvestAllocation = {
+  id: string;
+  farmId: string;
+  parcelIds?: string[];
+  kg?: number;
+  percentage?: number;
+  status: AllocationStatus;
+};
+
+export type HarvestDeliveryRecord = {
+  id: string;
+  campaignId: string;
+  deliveredAt: string;
+  millOrCooperativePartyId?: string;
+  millOrCooperativeName?: string;
+  ticketNumber?: string;
+  totalKg: number;
+  source: HarvestSource;
+  allocations: HarvestAllocation[];
+  documentIds?: string[];
+  notes?: string;
+  correctionOfDeliveryId?: string;
+  createdAt: string;
+};
+
+export type HarvestResultRecord = {
+  id: string;
+  deliveryId: string;
+  resultDate: string;
+  yieldPercent: number;
+  moisturePercent?: number;
+  acidityPercent?: number;
+  additionalMetrics?: Record<string, number | string>;
+  source: HarvestSource;
+  documentIds?: string[];
+  correctionOfResultId?: string;
+  createdAt: string;
+};
+
+export type FarmCampaignSummary = {
+  farmId: string;
+  campaignId: string;
+  deliveredKg: number;
+  deliveriesCount: number;
+  weightedYieldPercent?: number;
+  estimatedOilKg?: number;
+};
+
 export type ActivityRecord = {
   id: string;
   /** Technical compatibility id: points to the visible Finca. */
