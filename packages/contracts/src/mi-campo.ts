@@ -12,6 +12,7 @@ export const clientOperationSchema = z.object({
 
 export const createFieldSchema = clientOperationSchema.extend({
   name: z.string().trim().min(1).max(120),
+  place_id: uuidSchema.optional(),
   municipality: z.string().trim().min(1).max(120).optional(),
   province: z.string().trim().min(1).max(120).optional(),
   tree_count: z.number().int().positive().max(1_000_000).optional(),
