@@ -17,6 +17,16 @@ export const createPartySchema = clientOperationSchema.extend({
   notes: z.string().trim().max(4000).optional(),
 });
 
+export const createCustomerSiteSchema = clientOperationSchema.extend({
+  customer_party_id: uuidSchema,
+  name: z.string().trim().min(1).max(240),
+  municipality: z.string().trim().max(160).optional(),
+  address: z.string().trim().max(500).optional(),
+  external_reference: z.string().trim().max(200).optional(),
+  canonical_field_id: uuidSchema.optional(),
+  notes: z.string().trim().max(4000).optional(),
+});
+
 export const workUnitSchema = z.enum(['hours', 'days', 'jornales', 'units', 'fixed']);
 export const workTypeSchema = z.enum([
   'pruning', 'shredding', 'harvest', 'treatment', 'fertilization', 'irrigation',
@@ -80,7 +90,8 @@ export const workResourceSchema = z.object({
 });
 
 export const createWorkSchema = clientOperationSchema.extend({
-  field_id: uuidSchema,
+  field_id: uuidSchema.optional(),
+  customer_site_id: uuidSchema.optional(),
   campaign_id: uuidSchema.optional(),
   type: workTypeSchema,
   occurred_on: isoDateSchema,
@@ -96,6 +107,16 @@ export const createWorkSchema = clientOperationSchema.extend({
   participants: z.array(workParticipantSchema).max(200).default([]),
   resources: z.array(workResourceSchema).max(200).default([]),
 }).superRefine((value, ctx) => {
+  const destinations = Number(Boolean(value.field_id)) + Number(Boolean(value.customer_site_id));
+  if (destinations !== 1) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['field_id'], message: 'Exactly one work destination is required' });
+  }
+  if (value.performed_for === 'self' && !value.field_id) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['field_id'], message: 'Self work requires field_id' });
+  }
+  if (value.performed_for === 'self' && value.customer_site_id) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['customer_site_id'], message: 'Self work cannot use a customer site' });
+  }
   if (value.performed_for === 'third-party' && !value.customer_party_id) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['customer_party_id'], message: 'customer_party_id is required for third-party work' });
   }
@@ -108,6 +129,7 @@ export const createWorkSchema = clientOperationSchema.extend({
 });
 
 export type CreatePartyInput = z.infer<typeof createPartySchema>;
+export type CreateCustomerSiteInput = z.infer<typeof createCustomerSiteSchema>;
 export type CreateCrewInput = z.infer<typeof createCrewSchema>;
 export type CreateMachineryInput = z.infer<typeof createMachinerySchema>;
 export type CreateMaterialInput = z.infer<typeof createMaterialSchema>;
