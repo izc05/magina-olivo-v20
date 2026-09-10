@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { fromArrayBuffer } from 'geotiff';
 import {
   fetchAemetNationalRadarGeoTiffs,
@@ -41,6 +42,33 @@ async function loadTag(directory: FileDirectoryProbe, tag: string) {
       return 'unreadable';
     }
   }
+}
+
+async function paletteSummary(directory: FileDirectoryProbe) {
+  if (!directory.hasTag('ColorMap')) return null;
+  const raw = await directory.loadValue('ColorMap');
+  if (!ArrayBuffer.isView(raw) && !Array.isArray(raw)) return null;
+
+  const values = Array.from(raw as ArrayLike<number>, Number);
+  if (values.length === 0 || values.length % 3 !== 0) return null;
+  const entries = values.length / 3;
+
+  const normalize = (value: number) => Math.max(0, Math.min(255, Math.round(value / 257)));
+  const palette = Array.from({ length: entries }, (_, index) => ({
+    index,
+    rgb: [
+      normalize(values[index] ?? 0),
+      normalize(values[index + entries] ?? 0),
+      normalize(values[index + entries * 2] ?? 0),
+    ],
+  }));
+
+  const fingerprintInput = palette.map((entry) => `${entry.index}:${entry.rgb.join(',')}`).join('|');
+  return {
+    entries,
+    sha256: createHash('sha256').update(fingerprintInput).digest('hex'),
+    first16: palette.slice(0, 16),
+  };
 }
 
 function rasterStats(values: ArrayLike<number>) {
@@ -100,11 +128,11 @@ for (const asset of assets) {
     noData: inspection.noData,
     validationErrors: inspection.validationErrors,
     scalePreview: inspection.scaleRaw?.slice(0, 1200) ?? null,
+    palette: await paletteSummary(directory),
     tiffTags: {
       photometricInterpretation: await loadTag(directory, 'PhotometricInterpretation'),
       bitsPerSample: await loadTag(directory, 'BitsPerSample'),
       sampleFormat: await loadTag(directory, 'SampleFormat'),
-      colorMap: await loadTag(directory, 'ColorMap'),
       imageDescription: await loadTag(directory, 'ImageDescription'),
       gdalMetadata: await loadTag(directory, 'GDAL_METADATA'),
       gdalNoData: await loadTag(directory, 'GDAL_NODATA'),
