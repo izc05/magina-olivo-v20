@@ -1,13 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
-import { createMachinerySchema, createMaterialSchema, createPartySchema, createWorkSchema } from '@magina/contracts';
+import { createCrewSchema, createMachinerySchema, createMaterialSchema, createPartySchema, createWorkSchema } from '@magina/contracts';
 import type { DatabaseClient } from '../db/client.js';
 import { writeDomainEffects } from '../domain/effects.js';
 import { fieldBelongsToWorkspace, parseBody, requireContext, requireDatabase } from '../http/helpers.js';
 
 async function partyBelongsToWorkspace(db: DatabaseClient, partyId: string, workspaceId: string) {
   const result = await sql<{ id: string }>`SELECT id FROM parties WHERE id = ${partyId}::uuid AND workspace_id = ${workspaceId}::uuid AND active = TRUE`.execute(db);
+  return Boolean(result.rows[0]);
+}
+
+async function crewBelongsToWorkspace(db: DatabaseClient, crewId: string, workspaceId: string) {
+  const result = await sql<{ id: string }>`SELECT id FROM crews WHERE id = ${crewId}::uuid AND workspace_id = ${workspaceId}::uuid AND active = TRUE`.execute(db);
   return Boolean(result.rows[0]);
 }
 
@@ -47,6 +52,51 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
       RETURNING *
     `.execute(database);
     return reply.code(201).send({ replayed: false, party: result.rows[0] });
+  });
+
+  app.get('/api/v1/crews', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const crews = await sql`SELECT * FROM crews WHERE workspace_id = ${context.workspaceId}::uuid AND active = TRUE ORDER BY name`.execute(database);
+    const crewIds = crews.rows.map((row) => (row as { id: string }).id);
+    if (!crewIds.length) return { crews: [] };
+    const members = await sql`SELECT cm.*, p.display_name FROM crew_members cm JOIN parties p ON p.id = cm.party_id WHERE cm.crew_id = ANY(${crewIds}::uuid[]) AND cm.active = TRUE ORDER BY p.display_name`.execute(database);
+    return {
+      crews: crews.rows.map((row) => {
+        const id = (row as { id: string }).id;
+        return { ...row as Record<string, unknown>, members: members.rows.filter((member) => (member as { crew_id: string }).crew_id === id) };
+      }),
+    };
+  });
+
+  app.post('/api/v1/crews', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+    const input = parseBody(createCrewSchema, request.body, reply);
+    if (!input) return;
+
+    if (input.leader_party_id && !await partyBelongsToWorkspace(database, input.leader_party_id, context.workspaceId)) return reply.code(404).send({ error: 'leader_party_not_found' });
+    for (const memberId of input.member_party_ids) {
+      if (!await partyBelongsToWorkspace(database, memberId, context.workspaceId)) return reply.code(404).send({ error: 'crew_member_not_found', party_id: memberId });
+    }
+
+    const replay = await sql`SELECT * FROM crews WHERE workspace_id = ${context.workspaceId}::uuid AND client_operation_id = ${input.client_operation_id}::uuid`.execute(database);
+    if (replay.rows[0]) return reply.code(200).send({ replayed: true, crew: replay.rows[0] });
+
+    const id = input.entity_id ?? randomUUID();
+    const saved = await database.transaction().execute(async (trx) => {
+      const crew = await sql`
+        INSERT INTO crews (id, workspace_id, client_operation_id, name, leader_party_id, default_rate_eur, default_rate_unit, notes)
+        VALUES (${id}::uuid, ${context.workspaceId}::uuid, ${input.client_operation_id}::uuid, ${input.name}, ${input.leader_party_id ?? null}::uuid, ${input.default_rate_eur ?? null}, ${input.default_rate_unit ?? null}, ${input.notes ?? null}) RETURNING *
+      `.execute(trx);
+      for (const memberId of input.member_party_ids) {
+        await sql`INSERT INTO crew_members (crew_id, party_id) VALUES (${id}::uuid, ${memberId}::uuid)`.execute(trx);
+      }
+      return crew.rows[0];
+    });
+    return reply.code(201).send({ replayed: false, crew: saved });
   });
 
   app.get('/api/v1/machinery', async (request, reply) => {
@@ -136,6 +186,7 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
 
     for (const participant of input.participants) {
       if (participant.party_id && !await partyBelongsToWorkspace(database, participant.party_id, context.workspaceId)) return reply.code(404).send({ error: 'participant_party_not_found', party_id: participant.party_id });
+      if (participant.crew_id && !await crewBelongsToWorkspace(database, participant.crew_id, context.workspaceId)) return reply.code(404).send({ error: 'participant_crew_not_found', crew_id: participant.crew_id });
     }
     for (const resource of input.resources) {
       if (resource.machinery_id && !await machineryBelongsToWorkspace(database, resource.machinery_id, context.workspaceId)) return reply.code(404).send({ error: 'machinery_not_found', machinery_id: resource.machinery_id });
@@ -165,7 +216,7 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
 
       for (const participant of input.participants) {
         const calculatedCost = participant.cost_eur ?? ((participant.quantity ?? 0) * (participant.rate_eur ?? 0));
-        await sql`INSERT INTO work_participants (work_id, party_id, display_name, role, quantity, unit, rate_eur, cost_eur) VALUES (${workId}::uuid, ${participant.party_id ?? null}::uuid, ${participant.display_name}, ${participant.role ?? null}, ${participant.quantity ?? null}, ${participant.unit ?? null}, ${participant.rate_eur ?? null}, ${calculatedCost || null})`.execute(trx);
+        await sql`INSERT INTO work_participants (work_id, party_id, crew_id, display_name, role, quantity, unit, rate_eur, cost_eur) VALUES (${workId}::uuid, ${participant.party_id ?? null}::uuid, ${participant.crew_id ?? null}::uuid, ${participant.display_name}, ${participant.role ?? null}, ${participant.quantity ?? null}, ${participant.unit ?? null}, ${participant.rate_eur ?? null}, ${calculatedCost || null})`.execute(trx);
       }
       for (const resource of input.resources) {
         const calculatedCost = resource.cost_eur ?? ((resource.quantity ?? 0) * (resource.unit_cost_eur ?? 0));
