@@ -86,6 +86,9 @@ jobs:
       - name: GeoTIFF bundle parser smoke
         run: node packages/weather/dist/testing/radar-geotiff-smoke.js
 
+      - name: Dynamic AEMET palette smoke
+        run: node packages/weather/dist/testing/radar-palette-smoke.js
+
       - name: GeoTIFF metadata inspection smoke
         run: node packages/weather/dist/testing/radar-geotiff-inspection-smoke.js
 
