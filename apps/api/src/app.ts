@@ -69,7 +69,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
     warning: prototypeAuthWarning,
   }));
 
-  registerAuthRoutes(app, db);
+  registerAuthRoutes(app, db, googleVerifier);
   registerMeRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
