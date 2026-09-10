@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import { createFieldSchema } from '@magina/contracts';
+import { createFieldSchema, uuidSchema } from '@magina/contracts';
 import type { DatabaseClient } from '../db/client.js';
-import { parseBody, requireContext, requireDatabase } from '../http/helpers.js';
+import { fieldBelongsToWorkspace, parseBody, requireContext, requireDatabase } from '../http/helpers.js';
 
 export function registerFieldRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.post('/api/v1/fields', async (request, reply) => {
@@ -100,5 +100,30 @@ export function registerFieldRoutes(app: FastifyInstance, db: DatabaseClient | n
       .execute();
 
     return { fields };
+  });
+
+  app.get('/api/v1/fields/:fieldId/activity', async (request, reply) => {
+    const context = requireContext(request, reply);
+    if (!context) return;
+    const database = requireDatabase(db, reply);
+    if (!database) return;
+
+    const parsedFieldId = uuidSchema.safeParse((request.params as { fieldId?: string }).fieldId);
+    if (!parsedFieldId.success) return reply.code(400).send({ error: 'invalid_field_id' });
+    const field = await fieldBelongsToWorkspace(database, parsedFieldId.data, context.workspaceId);
+    if (!field) return reply.code(404).send({ error: 'field_not_found' });
+
+    const items = await database.selectFrom('farm_timeline_projection')
+      .select(['id', 'occurred_at', 'domain_type', 'domain_record_id', 'title', 'summary', 'icon_key'])
+      .where('workspace_id', '=', context.workspaceId)
+      .where('field_id', '=', parsedFieldId.data)
+      .orderBy('occurred_at', 'desc')
+      .limit(100)
+      .execute();
+
+    return {
+      field: { id: field.id, name: field.name },
+      items,
+    };
   });
 }
