@@ -14,6 +14,7 @@ import { registerTerritoryRoutes } from './routes/territory.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
 import { registerPushRoutes } from './routes/push.js';
+import { registerWorkRoutes } from './routes/work.js';
 import type { StoragePort } from './storage/port.js';
 import { UnavailableStorage } from './storage/port.js';
 import type { OcrQueuePort } from './ocr/port.js';
@@ -73,6 +74,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerIrrigationRoutes(app, db);
   registerDomainRecordRoutes(app, db);
   registerHarvestRoutes(app, db);
+  registerWorkRoutes(app, db);
   registerDocumentRoutes(app, db, storage, ocrQueue);
   registerGisRoutes(app, db, gisProviders);
 
