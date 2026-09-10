@@ -1,3 +1,4 @@
+import { fromArrayBuffer } from 'geotiff';
 import {
   fetchAemetNationalRadarGeoTiffs,
   inspectRadarGeoTiff,
@@ -9,11 +10,79 @@ function endian(bytes: Uint8Array) {
   return 'unknown';
 }
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
+type FileDirectoryProbe = {
+  hasTag: (tag: string) => boolean;
+  getValue: (tag: string) => unknown;
+  loadValue: (tag: string) => Promise<unknown>;
+};
+
+function summarizeArrayLike(value: unknown, maxItems = 24) {
+  if (value == null || typeof value === 'string') return value;
+  if (!ArrayBuffer.isView(value) && !Array.isArray(value)) return value;
+  const array = Array.from(value as ArrayLike<number>);
+  return {
+    length: array.length,
+    preview: array.slice(0, maxItems),
+  };
+}
+
+async function loadTag(directory: FileDirectoryProbe, tag: string) {
+  try {
+    if (!directory.hasTag(tag)) return null;
+    return summarizeArrayLike(await directory.loadValue(tag));
+  } catch {
+    try {
+      return summarizeArrayLike(directory.getValue(tag));
+    } catch {
+      return 'unreadable';
+    }
+  }
+}
+
+function rasterStats(values: ArrayLike<number>) {
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  let zeroCount = 0;
+  const counts = new Map<number, number>();
+
+  for (let index = 0; index < values.length; index += 1) {
+    const value = Number(values[index]);
+    if (!Number.isFinite(value)) continue;
+    if (value < min) min = value;
+    if (value > max) max = value;
+    if (value === 0) zeroCount += 1;
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+
+  const mostFrequent = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20)
+    .map(([value, count]) => ({ value, count }));
+
+  return {
+    min: Number.isFinite(min) ? min : null,
+    max: Number.isFinite(max) ? max : null,
+    uniqueCount: counts.size,
+    zeroCount,
+    mostFrequent,
+  };
+}
+
 const assets = await fetchAemetNationalRadarGeoTiffs();
 const report = [];
 
 for (const asset of assets) {
   const inspection = await inspectRadarGeoTiff(asset.bytes);
+  const tiff = await fromArrayBuffer(toArrayBuffer(asset.bytes));
+  const image = await tiff.getImage();
+  const directory = image.fileDirectory as unknown as FileDirectoryProbe;
+  const interleaved = await image.readRasters({ interleave: true });
+  const pixels = interleaved as unknown as ArrayLike<number>;
+
   report.push({
     sourceName: asset.sourceName ?? null,
     byteSize: asset.bytes.byteLength,
@@ -31,6 +100,16 @@ for (const asset of assets) {
     noData: inspection.noData,
     validationErrors: inspection.validationErrors,
     scalePreview: inspection.scaleRaw?.slice(0, 1200) ?? null,
+    tiffTags: {
+      photometricInterpretation: await loadTag(directory, 'PhotometricInterpretation'),
+      bitsPerSample: await loadTag(directory, 'BitsPerSample'),
+      sampleFormat: await loadTag(directory, 'SampleFormat'),
+      colorMap: await loadTag(directory, 'ColorMap'),
+      imageDescription: await loadTag(directory, 'ImageDescription'),
+      gdalMetadata: await loadTag(directory, 'GDAL_METADATA'),
+      gdalNoData: await loadTag(directory, 'GDAL_NODATA'),
+    },
+    rasterStats: rasterStats(pixels),
   });
 }
 
