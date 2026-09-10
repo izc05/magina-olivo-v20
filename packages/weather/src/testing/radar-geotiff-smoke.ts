@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { gzipSync } from 'node:zlib';
 import * as tar from 'tar-stream';
 import {
+  isAemetNationalReflectivityGeoTiffName,
   parseAemetRadarGeoTiffBundle,
   parseRadarObservationTimestampFromName,
   validateAemetRadarGeoTiffBundleUrl,
@@ -43,35 +44,44 @@ assert.throws(
   /NOT_TRUSTED/,
 );
 
+assert.equal(isAemetNationalReflectivityGeoTiffName('down_radw202609100550_4326.tif'), true);
+assert.equal(isAemetNationalReflectivityGeoTiffName('nested/down_radw202609100550_4326.tiff'), true);
+assert.equal(isAemetNationalReflectivityGeoTiffName('other_product_202609100550_4326.tif'), false);
 assert.equal(
-  parseRadarObservationTimestampFromName('compo_20260910_0430.tif'),
-  '2026-09-10T04:30:00.000Z',
+  parseRadarObservationTimestampFromName('down_radw202609100550_4326.tif'),
+  '2026-09-10T05:50:00.000Z',
 );
 assert.equal(
   parseRadarObservationTimestampFromName('radar-2026-09-10T04-35-20.tiff'),
   '2026-09-10T04:35:20.000Z',
 );
-assert.equal(parseRadarObservationTimestampFromName('compo_latest.tif'), null);
+assert.equal(parseRadarObservationTimestampFromName('down_radw_latest_4326.tif'), null);
 
 const bundle = await createBundle([
   { name: 'README.txt', bytes: Buffer.from('ignored metadata') },
-  { name: 'compo_20260910_0430.tif', bytes: fakeTiff('snapshot-A') },
-  { name: 'nested/compo_20260910_0435.tiff', bytes: fakeTiff('snapshot-B') },
+  { name: 'down_radw202609100510_4326.tif', bytes: fakeTiff('snapshot-0510') },
+  { name: 'down_radw202609100520_4326.tif', bytes: fakeTiff('snapshot-0520') },
+  { name: 'down_radw202609100530_4326.tif', bytes: fakeTiff('snapshot-0530') },
+  { name: 'down_radw202609100540_4326.tif', bytes: fakeTiff('snapshot-0540') },
+  { name: 'down_radw202609100550_4326.tif', bytes: fakeTiff('snapshot-0550') },
+  { name: 'unrelated_202609100600_4326.tif', bytes: Buffer.from('not-a-reflectivity-tiff') },
 ]);
 
 const parsed = await parseAemetRadarGeoTiffBundle(
   new Uint8Array(bundle),
-  new Date('2026-09-10T04:36:00Z'),
+  new Date('2026-09-10T05:51:00Z'),
   'https://www.aemet.es/es/api-eltiempo/radar/download/compo',
 );
-assert.equal(parsed.length, 2);
+assert.equal(parsed.length, 3);
 assert.deepEqual(parsed.map((asset) => asset.sourceName), [
-  'compo_20260910_0430.tif',
-  'nested/compo_20260910_0435.tiff',
+  'down_radw202609100530_4326.tif',
+  'down_radw202609100540_4326.tif',
+  'down_radw202609100550_4326.tif',
 ]);
 assert.deepEqual(parsed.map((asset) => asset.metadata.observed_at), [
-  '2026-09-10T04:30:00.000Z',
-  '2026-09-10T04:35:00.000Z',
+  '2026-09-10T05:30:00.000Z',
+  '2026-09-10T05:40:00.000Z',
+  '2026-09-10T05:50:00.000Z',
 ]);
 assert.ok(parsed.every((asset) => asset.metadata.asset_format === 'geotiff'));
 assert.ok(parsed.every((asset) => asset.metadata.analysis_ready === false));
@@ -79,11 +89,19 @@ assert.ok(parsed.every((asset) => asset.metadata.crs === 'EPSG:4326'));
 assert.ok(parsed.every((asset) => asset.contentType === 'image/tiff'));
 
 const invalidBundle = await createBundle([
-  { name: 'compo_20260910_0440.tif', bytes: Buffer.from('not-a-tiff') },
+  { name: 'down_radw202609100600_4326.tif', bytes: Buffer.from('not-a-tiff') },
 ]);
 await assert.rejects(
   () => parseAemetRadarGeoTiffBundle(new Uint8Array(invalidBundle)),
   /INVALID_SIGNATURE/,
+);
+
+const noReflectivity = await createBundle([
+  { name: 'something_else_202609100600_4326.tif', bytes: fakeTiff('ignored') },
+]);
+await assert.rejects(
+  () => parseAemetRadarGeoTiffBundle(new Uint8Array(noReflectivity)),
+  /NO_REFLECTIVITY_ENTRIES/,
 );
 
 console.log('RADAR_GEOTIFF_BUNDLE_SMOKE_OK');
