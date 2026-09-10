@@ -9,6 +9,7 @@ CREATE TABLE radar_alert_rules (
   radius_km NUMERIC(7,3) NOT NULL DEFAULT 10 CHECK (radius_km > 0 AND radius_km <= 80),
   min_dbz NUMERIC(7,2) NOT NULL DEFAULT 12 CHECK (min_dbz >= 12 AND min_dbz <= 80),
   cooldown_minutes INTEGER NOT NULL DEFAULT 60 CHECK (cooldown_minutes BETWEEN 15 AND 1440),
+  last_triggered_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT radar_alert_rules_field_workspace_fk
@@ -55,6 +56,8 @@ CREATE INDEX notification_intents_user_kind_idx
 
 COMMENT ON TABLE radar_alert_rules IS
   'Per-user observational radar rules. They trigger only from validated observed reflectivity; they do not predict arrival time.';
+COMMENT ON COLUMN radar_alert_rules.last_triggered_at IS
+  'Atomic cooldown gate timestamp. It records rule evaluation output, not push delivery.';
 COMMENT ON TABLE notification_intents IS
   'Transport-neutral notification outbox. Creating an intent does not mean a push has been sent.';
 
