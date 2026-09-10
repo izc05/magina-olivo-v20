@@ -9,6 +9,7 @@ on:
       - 'apps/worker/**'
       - 'packages/contracts/**'
       - 'packages/jobs/**'
+      - 'packages/weather/**'
       - 'database/migrations/**'
       - '.github/workflows/document-ocr-check.yml'
   pull_request:
@@ -17,6 +18,7 @@ on:
       - 'apps/worker/**'
       - 'packages/contracts/**'
       - 'packages/jobs/**'
+      - 'packages/weather/**'
       - 'database/migrations/**'
       - '.github/workflows/document-ocr-check.yml'
 
@@ -55,10 +57,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build contracts, jobs, API and worker
+      - name: Build contracts, weather, jobs, API and worker
         run: |
           pnpm --filter @magina/contracts typecheck
           pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather typecheck
+          pnpm --filter @magina/weather build
           pnpm --filter @magina/jobs typecheck
           pnpm --filter @magina/jobs build
           pnpm --filter @magina/api typecheck
