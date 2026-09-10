@@ -12,6 +12,7 @@ import './farm-modules.css';
 import './calendar.css';
 import './local-prototype.css';
 import './map-platform.css';
+import './radar-alerts.css';
 
 export const metadata: Metadata = {
   title: 'Mágina Olivo V20',
