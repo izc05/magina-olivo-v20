@@ -83,8 +83,11 @@ jobs:
       - name: AEMET forecast parser smoke
         run: node apps/api/dist/testing/weather-adapter-smoke.js
 
-      - name: AEMET radar adapter smoke
+      - name: AEMET standard radar adapter smoke
         run: node apps/api/dist/testing/radar-adapter-smoke.js
+
+      - name: AEMET GeoTIFF bundle parser smoke
+        run: node packages/weather/dist/testing/radar-geotiff-smoke.js
 
       - name: Install PostgreSQL client
         run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
