@@ -157,27 +157,53 @@ export function NewFarmWizard() {
       <div className="success-effects">
         <span>✓ Finca creada</span>
         <span>{selectedPlace ? `✓ Localidad: ${selectedPlace.name} · ${selectedPlace.municipality_name}` : '○ Municipio sin vínculo oficial'}</span>
-        <span>{linked && !savedRemotely ? '✓ Localización demo asociada' : '○ Geometría oficial pendiente, opcional'}</span>
+        <span>{savedRemotely ? '○ Geometría oficial pendiente · vincúlala después desde Mi Campo → Mapa' : linked ? '✓ Localización demo asociada' : '○ Localización demo pendiente'}</span>
       </div>
       <div className="record-actions"><Link href={fieldHref} className="secondary-action action-link">Volver a Mi Campo</Link><Link href={registerHref} className="primary action-link">Registrar trabajo <ArrowIcon /></Link></div>
     </section>;
   }
 
-  if (step === 2) {
+  if (step === 2 && apiConfigured) {
     return <div className="new-farm-location-flow">
       <section className="card new-farm-summary"><span className="new-farm-tree"><SproutIcon /></span><div><small>NUEVA FINCA</small><strong>{name}</strong><span>{trees} olivas · {municipalityLabel}</span></div><button onClick={() => setStep(1)}>Editar</button></section>
-      <section className="card locate-panel"><span className="eyebrow dark">PASO 2 · UBICACIÓN</span><h2>¿Quieres localizarla ahora?</h2><p>Es recomendable, pero no obligatorio. La finca existe por sí misma; Catastro y SIGPAC son referencias que podrás vincular después.</p><div className="locate-grid">{[
-        ['mapa','📍','Buscar en mapa','Toca la finca sobre el mapa'],['catastro','▦','Catastro','Buscar por referencia catastral'],['sigpac','▱','SIGPAC','Recintos agrícolas'],['dibujar','✎','Dibujar','Marca tú mismo el contorno'],
+      <section className="card locate-panel">
+        <span className="eyebrow dark">PASO 2 · UBICACIÓN</span>
+        <h2>Guarda primero la finca</h2>
+        <p>La finca puede existir sin geometría oficial. En esta Beta, el vínculo con Catastro, SIGPAC o un contorno propio se confirma después desde <strong>Mi Campo → Mapa</strong>.</p>
+        <div className="locate-grid">
+          <div className="locate-choice"><span>📍</span><strong>Mapa</strong><small>Vincular después</small></div>
+          <div className="locate-choice"><span>▦</span><strong>Catastro</strong><small>Vincular después</small></div>
+          <div className="locate-choice"><span>▱</span><strong>SIGPAC</strong><small>Vincular después</small></div>
+          <div className="locate-choice"><span>✎</span><strong>Contorno propio</strong><small>Vincular después</small></div>
+        </div>
+      </section>
+      <section className="card locate-result">
+        <h3>No se guardará una localización ficticia</h3>
+        <p>Al continuar se guardarán únicamente los datos reales de la finca y su localidad. La geometría quedará marcada como pendiente hasta que confirmes una referencia o contorno real.</p>
+      </section>
+      {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
+      <div className="new-farm-actions">
+        <button className="secondary-action" type="button" onClick={() => setStep(1)} disabled={saving}>Volver</button>
+        <button className="primary" type="button" onClick={() => void finish()} disabled={saving}>{saving ? 'Guardando…' : 'Guardar finca →'}</button>
+      </div>
+    </div>;
+  }
+
+  if (step === 2) {
+    return <div className="new-farm-location-flow">
+      <section className="card new-farm-summary"><span className="new-farm-tree"><SproutIcon /></span><div><small>NUEVA FINCA · PREVIEW LOCAL</small><strong>{name}</strong><span>{trees} olivas · {municipalityLabel}</span></div><button onClick={() => setStep(1)}>Editar</button></section>
+      <section className="card locate-panel"><span className="eyebrow dark">PREVIEW · UBICACIÓN</span><h2>¿Quieres asociar una localización de demostración?</h2><p>Esta ruta solo existe para la preview sin API. No representa un vínculo oficial con Catastro o SIGPAC.</p><div className="locate-grid">{[
+        ['mapa','📍','Buscar en mapa','Demo visual'],['catastro','▦','Catastro','Demo visual'],['sigpac','▱','SIGPAC','Demo visual'],['dibujar','✎','Dibujar','Demo visual'],
       ].map(([key,symbol,label,text]) => <button type="button" key={key} className={mode === key ? 'locate-choice active' : 'locate-choice'} onClick={() => setMode(key as LocateMode)}><span>{symbol}</span><strong>{label}</strong><small>{text}</small></button>)}</div></section>
       {mode && <section className="card locate-result">
-        {mode === 'catastro' && <><h3>Referencia catastral</h3><div className="locate-search"><input placeholder="14 caracteres · parcela rústica" /><button type="button">Buscar</button></div><p>La búsqueda oficial ya existe en la API V20. En la siguiente iteración conectaremos esta caja al resultado cartográfico antes de confirmar.</p></>}
-        {mode === 'sigpac' && <><h3>Buscar en SIGPAC</h3><div className="triple-locate"><input placeholder="Polígono"/><input placeholder="Parcela"/><input placeholder="Recinto"/></div><p>La API V20 ya puede recuperar recintos oficiales y asociar varios a una misma finca.</p></>}
-        {mode === 'mapa' && <><h3>Selecciona sobre el mapa</h3><div className="mock-field-map"><span><MapPinIcon/> {name}</span></div><p>El MapPlatform real ya está disponible en Mi Campo → Mapa. Aquí conectaremos su selector de geometría.</p></>}
-        {mode === 'dibujar' && <><h3>Dibuja el contorno</h3><div className="mock-field-map draw"><span>✎ Toca puntos alrededor de la finca</span></div><p>Será la opción correcta cuando la finca no coincida exactamente con una parcela administrativa.</p></>}
-        {!apiConfigured ? <label className="link-confirm"><input type="checkbox" checked={linked} onChange={(event) => setLinked(event.target.checked)} /> Usar esta localización para la demo</label> : null}
+        {mode === 'catastro' && <><h3>Referencia catastral · demo</h3><div className="locate-search"><input placeholder="Referencia demo" disabled /><button type="button" disabled>Buscar</button></div></>}
+        {mode === 'sigpac' && <><h3>SIGPAC · demo</h3><div className="triple-locate"><input placeholder="Polígono" disabled/><input placeholder="Parcela" disabled/><input placeholder="Recinto" disabled/></div></>}
+        {mode === 'mapa' && <><h3>Mapa · demo</h3><div className="mock-field-map"><span><MapPinIcon/> {name}</span></div></>}
+        {mode === 'dibujar' && <><h3>Contorno · demo</h3><div className="mock-field-map draw"><span>✎ Vista previa</span></div></>}
+        <label className="link-confirm"><input type="checkbox" checked={linked} onChange={(event) => setLinked(event.target.checked)} /> Guardar esta referencia únicamente como demo local</label>
       </section>}
       {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
-      <div className="new-farm-actions"><button className="secondary-action" type="button" onClick={() => void finish()} disabled={saving}>{saving ? 'Guardando…' : 'Guardar sin localizar'}</button><button className="primary" type="button" onClick={() => void finish()} disabled={!mode || saving}>{saving ? 'Guardando…' : 'Guardar finca →'}</button></div>
+      <div className="new-farm-actions"><button className="secondary-action" type="button" onClick={() => void finish()} disabled={saving}>{saving ? 'Guardando…' : 'Guardar sin localización demo'}</button><button className="primary" type="button" onClick={() => void finish()} disabled={!mode || saving}>{saving ? 'Guardando…' : 'Guardar preview →'}</button></div>
     </div>;
   }
 
@@ -194,6 +220,6 @@ export function NewFarmWizard() {
       <label className="record-field wide"><span>Notas</span><textarea className="record-control" rows={3} placeholder="Cómo llegar, nombre antiguo, referencias familiares…" /></label>
     </div></details>
     {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
-    <div className="record-save-bar"><small>Primero creamos tu finca. La localización oficial se confirma después.</small><button className="primary" type="submit">Continuar: localizar finca →</button></div>
+    <div className="record-save-bar"><small>Primero creamos tu finca. La localización oficial se confirma después.</small><button className="primary" type="submit">Continuar →</button></div>
   </form>;
 }
