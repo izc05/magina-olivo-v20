@@ -3,6 +3,7 @@ import { apiFetch } from './api-client';
 export type PlatformAdminRole = 'super_admin' | 'admin' | 'editor' | 'support';
 export type CmsEntryType = 'page' | 'news' | 'event' | 'place' | 'mill' | 'directory' | 'promotion' | 'alert';
 export type CmsEntryStatus = 'draft' | 'published' | 'archived';
+export type TerritoryPlaceKind = 'municipal_seat' | 'locality' | 'hamlet' | 'other';
 
 export type AdminSession = {
   user: { id: string; display_name: string; primary_email: string | null; avatar_url: string | null; status: string };
@@ -84,6 +85,37 @@ export type MediaUploadReservation = {
   expiresAt: string;
 };
 
+export type AdminTerritoryMunicipality = {
+  id: string;
+  ine_code: string;
+  aemet_code: string | null;
+  name: string;
+  slug: string;
+  province_code: string;
+  province_name: string;
+  active: boolean;
+  weather_enabled: boolean;
+  center: unknown | null;
+  place_count: number;
+  public_place_count: number;
+};
+
+export type AdminTerritoryPlace = {
+  id: string;
+  municipality_id: string;
+  municipality_name: string;
+  municipality_slug: string;
+  name: string;
+  slug: string;
+  kind: TerritoryPlaceKind;
+  center: unknown | null;
+  is_default_for_municipality: boolean;
+  public_enabled: boolean;
+  hero_asset_key: string | null;
+  field_count: number;
+  editorial_count: number;
+};
+
 export const adminApi = {
   session: () => apiFetch<AdminSession>('/api/v1/admin/session'),
   overview: () => apiFetch<AdminOverview>('/api/v1/admin/overview'),
@@ -92,6 +124,10 @@ export const adminApi = {
   settings: () => apiFetch<{ settings: SiteSetting[] }>('/api/v1/admin/settings'),
   audit: () => apiFetch<{ entries: AdminAuditEntry[] }>('/api/v1/admin/audit'),
   media: () => apiFetch<{ assets: AdminMediaAsset[] }>('/api/v1/admin/media'),
+  territoryCatalog: () => apiFetch<{ municipalities: AdminTerritoryMunicipality[]; places: AdminTerritoryPlace[] }>('/api/v1/admin/territory/catalog'),
+  updateTerritoryPlace: (id: string, payload: { public_enabled?: boolean; kind?: TerritoryPlaceKind }) => apiFetch<{ place: AdminTerritoryPlace | null }>(`/api/v1/admin/territory/places/${id}`, {
+    method: 'PATCH', body: JSON.stringify(payload),
+  }),
   reserveMedia: (payload: { original_filename: string; mime_type: AdminMediaAsset['mime_type']; byte_size: number; sha256: string }) => apiFetch<{ asset: AdminMediaAsset; upload: MediaUploadReservation }>('/api/v1/admin/media/reserve', {
     method: 'POST', body: JSON.stringify(payload),
   }),
