@@ -133,7 +133,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAuthRoutes(app, db, googleVerifier);
   registerMeRoutes(app, db);
   registerTerritoryRoutes(app, db);
-  registerMarketRoutes(app);
+  registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db);
   registerPushRoutes(app, db, notificationQueue, pushPublicKey);
