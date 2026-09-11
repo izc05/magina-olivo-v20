@@ -39,6 +39,7 @@ jobs:
         env:
           GITHUB_PAGES: 'true'
           NEXT_PUBLIC_BASE_PATH: '/magina-olivo-v20'
+          NEXT_PUBLIC_PREVIEW_MODE: 'true'
         run: pnpm --filter @magina/web build
 
       - name: Configure Pages
