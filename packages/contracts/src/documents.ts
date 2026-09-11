@@ -10,6 +10,7 @@ export const documentKindSchema = z.enum([
   'sales_invoice',
   'purchase_receipt',
   'quote',
+  'sales_quote',
   'treatment',
   'fertilization',
   'irrigation',
