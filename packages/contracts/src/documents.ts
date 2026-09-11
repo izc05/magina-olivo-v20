@@ -4,6 +4,8 @@ import { clientOperationSchema, uuidSchema } from './mi-campo.js';
 export const documentKindSchema = z.enum([
   'delivery_ticket',
   'yield_result',
+  'settlement_statement',
+  'collection_receipt',
   'invoice',
   'purchase_receipt',
   'quote',
