@@ -17,21 +17,17 @@ La Beta no se considerará cerrada hasta cumplir simultáneamente:
 
 ## Cambios ya aplicados durante el cierre
 
-- ✅ El wizard de nueva finca ya no afirma ni sugiere que Catastro/SIGPAC/mapa han quedado vinculados si no existe persistencia real de esa geometría.
-- ✅ En API/Beta guarda la finca y deja la geometría como pendiente para vincular después desde Mi Campo → Mapa.
-- ✅ Se ha creado `NEXT_PUBLIC_PREVIEW_MODE` como flag explícito.
-- ✅ GitHub Pages activa `NEXT_PUBLIC_PREVIEW_MODE=true` de forma intencionada.
-- ✅ Inicio, Mi Campo y alta de finca ya no usan datos demo/local por el simple hecho de que falte la API.
-- ✅ Una instalación sin API y sin preview muestra estado de configuración/error y no datos ficticios.
-- ✅ Las rutas `fincas/local` quedan bloqueadas fuera del modo preview explícito.
-- ✅ `useFieldContext` resuelve API por defecto en runtime real y solo permite demo/local con preview explícita.
-- ✅ Registrar trabajo no persiste localmente fuera de preview y exige sesión/API en runtime real.
-- ✅ El hub Registrar espera a resolver la finca antes de renderizar acciones.
-- ✅ Ficha de finca es API-first y ya no cae a local/demo fuera de preview.
-- ✅ Mapa no muestra geometría demo fuera de preview.
-- ✅ Hoy no presenta una agenda privada vacía como si fuera real cuando falta sesión/API.
-- ✅ Campaña no cae a datos preview fuera del flag explícito.
-- ✅ Campaña etiqueta `cobrado − costes registrados` como comparación informativa, no como flujo de caja.
+- ✅ Wizard de nueva finca: no falsea vínculo Catastro/SIGPAC/mapa; guarda finca real y deja geometría pendiente.
+- ✅ `NEXT_PUBLIC_PREVIEW_MODE` separa preview de runtime real; GitHub Pages lo activa expresamente.
+- ✅ Inicio, Mi Campo, Ficha, Nueva finca, Registrar, Mapa, Planificar, Hoy y Campaña son API-first en runtime real.
+- ✅ Rutas `fincas/local` bloqueadas fuera de preview explícita.
+- ✅ Registrar no escribe localmente fuera de preview.
+- ✅ Campaña etiqueta `cobrado − costes registrados` como comparación informativa, no flujo de caja real.
+- ✅ Documentos de finca ya exigen contexto API/workspace real.
+- ✅ Revisión OCR legacy/parcial usa `extraction + confirmed_fields + corrections`, sin perder campos de la extracción base.
+- ✅ Revisión OCR sin workspace muestra estado de sesión, no una carga infinita.
+- ✅ Perfil deja de mostrar municipio demo y acciones decorativas como si fueran funcionales.
+- ✅ Full candidate ejecuta ahora también `map-context-smoke` y `document-smoke`.
 
 ## Clasificación
 
@@ -46,24 +42,25 @@ La Beta no se considerará cerrada hasta cumplir simultáneamente:
 
 | Área | Estado | Prioridad | Hallazgo / acción |
 |---|---|---:|---|
-| Inicio privado | HYBRID CONTROLADO | P1 | API real en Beta; preview solo con flag explícito. Revisar componentes secundarios para eliminar cualquier fallback implícito restante. |
-| Inicio público / actualidad | PREVIEW | P1 | Noticias, eventos y patrocinado siguen siendo tarjetas estáticas/demo. Sustituir por contenido real o etiquetar/ocultar para Beta. |
+| Inicio privado | HYBRID CONTROLADO | P1 | API real en Beta; preview solo con flag explícito. Pendiente auditoría móvil y componentes secundarios. |
+| Inicio público / actualidad | PREVIEW | P1 beta pública | Noticias, eventos y patrocinado siguen estáticos. |
 | Mi Campo | HYBRID CONTROLADO | P1 | Fincas API reales; preview solo explícita. |
-| Ficha de finca | HYBRID CONTROLADO | P1 | API-first; local/demo solo con preview explícita. Pendiente auditoría móvil/E2E. |
+| Ficha de finca | HYBRID CONTROLADO | P1 | API-first; pendiente móvil/E2E. |
 | Nueva finca — datos básicos | REAL | — | Alta `/api/v1/fields` y catálogo territorial reales. |
-| Nueva finca — localización | HONESTA / PENDIENTE DE CONEXIÓN | P1 | Ya no falsea vínculo. Falta integrar selector real Catastro/SIGPAC/Mapa en el wizard o dejarlo definitivamente como paso posterior. |
-| Rutas `fincas/local` | PREVIEW AISLADA | P1 | Bloqueadas fuera de `NEXT_PUBLIC_PREVIEW_MODE=true`. |
-| Registrar | HYBRID CONTROLADO | P1 | API-first; escritura local solo en preview explícita. Falta E2E de todos los tipos de registro. |
-| Planificar | REAL | P1 | Contexto de finca API-first; preview no persiste tareas remotas. Falta E2E/móvil. |
-| Hoy / agenda | REAL | P1 | API real y estados sesión/configuración honestos. Falta recorrido visual móvil/E2E. |
-| Campaña | HYBRID CONTROLADO | P1 | API real; preview explícita. Semántica de flujo de caja aclarada en UI; revisar aún separación agrícola/profesional del agregado backend. |
-| Profesional | REAL | P1 | Clientes, trabajos, costes, cobros, presupuestos, facturas, PDF, envío y aceptación pública. Falta consolidación UX/eventos de decisión. |
-| Documentos/OCR | REAL | P1 | Falta hardening de merge review legacy, parser fixtures y catálogo/paginación. |
-| GIS Catastro/SIGPAC backend | REAL | P1 | Servicios/modelo disponibles; falta cerrar selector de alta/edición de finca. |
-| Mapa Mi Campo | HYBRID CONTROLADO | P1 | API real; geometría demo solo en preview. Falta selector/vinculación y auditoría móvil. |
+| Nueva finca — localización | HONESTA / PENDIENTE | P1 | No falsea vínculo; selector real sigue pendiente. |
+| Rutas `fincas/local` | PREVIEW AISLADA | P1 | Bloqueadas fuera de preview. |
+| Registrar | HYBRID CONTROLADO | P1 | API-first; falta E2E de tipos de registro. |
+| Planificar | REAL | P1 | Contexto API-first. |
+| Hoy / agenda | REAL | P1 | Falta móvil/E2E. |
+| Campaña | HYBRID CONTROLADO | P1 | Semántica UI corregida; falta revisar agregado agrícola/profesional backend. |
+| Profesional | REAL | P1 | Muy avanzado; falta consolidación UX/eventos de decisión. |
+| Documentos/OCR | REAL / HARDENED | P1 | Merge legacy corregido; faltan parser fixtures, paginación/búsqueda y límite de subida. |
+| Perfil | REAL / HONESTO | P1 | Sin demo implícita ni CTAs ficticios; edición/exportación quedan explícitamente pendientes. |
+| GIS Catastro/SIGPAC backend | REAL | P1 | Falta selector de alta/edición. |
+| Mapa Mi Campo | HYBRID CONTROLADO | P1 | API real; demo solo en preview. |
 | Tiempo AEMET | REAL | P1 | Revisar error/stale/empty en móvil. |
-| Radar | REAL | P1 | Falta overlay final y auditoría móvil; nunca afirmar ETA no validada. |
-| Explorar | PREVIEW | P2 beta privada / P1 beta pública | Menú y contenido territorial aún no forman un CMS/directorio completo. |
+| Radar | REAL | P1 | Falta overlay final y auditoría móvil. |
+| Explorar | PREVIEW | P2 beta privada / P1 beta pública | CMS/directorio incompleto. |
 | Admin/CMS | INCOMPLETO | P2 beta privada / P0 lanzamiento público | Falta contenido, negocios, publicidad, imágenes y moderación. |
 | Mi Olivo | BLUEPRINT | P2 | No bloquea Beta núcleo. |
 
@@ -71,9 +68,7 @@ La Beta no se considerará cerrada hasta cumplir simultáneamente:
 
 ### P0-1 — Wizard de finca simulaba vínculo GIS
 
-**RESUELTO para Beta.**
-
-Se ha aplicado la opción segura: crear la finca real y marcar explícitamente la geometría como pendiente. El selector GIS completo se mantiene como P1 de producto, pero ya no existe una falsa confirmación de localización.
+**RESUELTO para Beta.** La finca se crea de forma real y la geometría queda explícitamente pendiente.
 
 ## P1 — Preview/local
 
@@ -81,13 +76,10 @@ Regla de candidate:
 
 - Con API configurada, nunca caer automáticamente a `demo-data` o `local-prototype-store` tras un error.
 - Sin API, solo hay demo cuando `NEXT_PUBLIC_PREVIEW_MODE=true`.
-- Un error real produce estado vacío/error y permite recuperación; nunca datos inventados.
-- Las rutas `fincas/local` son herramientas de preview, no flujo de Beta.
+- Un error real produce estado vacío/error; nunca datos inventados.
+- Las rutas local-only no forman parte del flujo Beta.
 
-Estado actual:
-
-- Núcleo privado corregido: Inicio, Mi Campo, Ficha, Nueva finca, Registrar, Mapa, Planificar, Hoy y Campaña.
-- Siguiente auditoría: documentos/OCR, Perfil y componentes secundarios del Home/Finca.
+Estado actual: núcleo privado principal corregido, incluyendo documentos y Perfil.
 
 ## P1 — Recorridos E2E
 
@@ -104,6 +96,8 @@ Estado actual:
 9. Ver campaña.
 10. Documento → OCR → revisión → guardado explícito.
 11. Tiempo/radar/alertas.
+
+El full candidate ya cubre mediante smokes reales: finca, riego/idempotencia, proyecciones, cosecha, rendimiento, map-context, documento/OCR metadata, economía y profesional. Falta convertirlo en recorrido visual/E2E de navegador.
 
 ### Profesional
 
@@ -129,7 +123,7 @@ Revisar scroll horizontal, botones, densidad, sticky bars, targets táctiles, te
 
 - CI candidate completo.
 - Semántica campaña agrícola/profesional consistente en backend/agregado.
-- OCR review legacy: `extraction + confirmed + corrections`.
+- Parser-specific OCR fixtures.
 - Races/idempotencia pendientes de liquidaciones/cobros.
 - Validación de workspace/filtros pendiente en rutas concretas.
 - Financial attention: prioridad/orden y counts totales.
@@ -150,8 +144,8 @@ Revisar scroll horizontal, botones, densidad, sticky bars, targets táctiles, te
 
 1. ~~Resolver P0 del wizard de finca.~~ ✅
 2. ~~Convertir preview implícita del núcleo privado en modo explícito.~~ ✅
-3. Auditar documentos/OCR, Perfil y componentes privados secundarios.
-4. Ejecutar E2E y reparar.
+3. ~~Auditar documentos/OCR y Perfil.~~ ✅
+4. Ejecutar E2E de navegador y reparar.
 5. Auditoría móvil.
 6. Seguridad/performance.
 7. Staging real.
