@@ -99,19 +99,21 @@ export function CampaignSummaryClient() {
       <section className="section"><div className="quick-grid">
         <article className="card quick premium-quick"><div><strong>{Math.round(summary.deliveredKg).toLocaleString('es-ES')} kg</strong><small>aceituna entregada</small></div></article>
         <article className="card quick premium-quick"><div><strong>{summary.weightedYieldPercent !== undefined ? `${number(summary.weightedYieldPercent)} %` : '—'}</strong><small>rendimiento ponderado</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{money(summary.totalCostEur)}</strong><small>costes</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{money(summary.totalCostEur)}</strong><small>costes registrados</small></div></article>
         <article className="card quick premium-quick"><div><strong>{money(summary.accruedIncomeEur)}</strong><small>liquidado</small></div></article>
         <article className="card quick premium-quick"><div><strong>{money(summary.collectedIncomeEur)}</strong><small>cobrado</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{money(summary.pendingCollectionEur)}</strong><small>pendiente</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{money(summary.accruedMarginEur)}</strong><small>margen campaña</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{money(summary.cashMarginEur)}</strong><small>margen de caja</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{summary.costPerDeliveredKgEur !== undefined ? `${number(summary.costPerDeliveredKgEur)} €/kg` : '—'}</strong><small>coste por kg</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{money(summary.pendingCollectionEur)}</strong><small>pendiente de cobro</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{money(summary.accruedMarginEur)}</strong><small>margen devengado</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{money(summary.cashMarginEur)}</strong><small>cobrado − costes registrados</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{summary.costPerDeliveredKgEur !== undefined ? `${number(summary.costPerDeliveredKgEur)} €/kg` : '—'}</strong><small>coste registrado por kg</small></div></article>
       </div></section>
+
+      <section className="card register-principle"><div><strong>Liquidado, cobrado y caja no son lo mismo</strong><small>Margen devengado = liquidado atribuible − costes registrados. “Cobrado − costes registrados” todavía no es flujo de caja real porque los pagos efectivos de gastos se modelarán por separado.</small></div></section>
 
       <section className="section">
         <div className="section-head"><h2>Por finca</h2><span className="subtle">{summary.fieldCount} con actividad</span></div>
         {summary.fields.length ? <div className="card feed today-list">
-          {summary.fields.map((field) => <div className="feed-row" key={field.fieldId}><div className="feed-copy"><strong>{field.fieldName}</strong><small>{Math.round(field.deliveredKg).toLocaleString('es-ES')} kg · coste {money(field.totalCostEur)} · liquidado {money(field.accruedIncomeEur)} · pendiente {money(field.pendingCollectionEur)} · margen {money(field.accruedMarginEur)}</small></div></div>)}
+          {summary.fields.map((field) => <div className="feed-row" key={field.fieldId}><div className="feed-copy"><strong>{field.fieldName}</strong><small>{Math.round(field.deliveredKg).toLocaleString('es-ES')} kg · coste {money(field.totalCostEur)} · liquidado {money(field.accruedIncomeEur)} · cobrado {money(field.collectedIncomeEur)} · pendiente {money(field.pendingCollectionEur)} · margen devengado {money(field.accruedMarginEur)}</small></div></div>)}
         </div> : <section className="card"><p>Aún no hay datos económicos o de cosecha en esta campaña.</p></section>}
       </section>
 
