@@ -34,6 +34,7 @@ import { runFinancialAlertEvaluationJob } from './notifications/financial-evalua
 import { runNotificationDispatchJob } from './notifications/dispatch.js';
 import { DeterministicTestOcrProcessor, type OcrProcessorPort } from './ocr/processor.js';
 import { runOcrJob } from './ocr/run-job.js';
+import { createTesseractCliOcrProcessorFromEnv } from './ocr/tesseract-cli.js';
 import { createRadarS3StorageFromEnv, remoteAemetRadarSource } from './radar/adapters.js';
 import { runRadarIngestJob } from './radar/run-job.js';
 
@@ -56,7 +57,11 @@ function configuredModules(): Set<WorkerModule> {
 function createProcessorFromEnv(): OcrProcessorPort {
   const mode = process.env.OCR_PROCESSOR_MODE;
   if (mode === 'test' && process.env.NODE_ENV !== 'production') return new DeterministicTestOcrProcessor();
-  throw new Error('No production OCR processor is configured. Refusing to start OCR worker.');
+
+  const tesseract = createTesseractCliOcrProcessorFromEnv();
+  if (tesseract) return tesseract;
+
+  throw new Error('No production OCR processor is configured. Set OCR_PROVIDER=tesseract with S3 credentials, or disable the ocr worker module.');
 }
 
 const databaseUrl = process.env.DATABASE_URL;
