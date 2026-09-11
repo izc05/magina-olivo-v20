@@ -49,10 +49,10 @@ function safeHref(value: string | null | undefined, fallback: string | null = nu
 
 function safeMediaUrl(value: string | null | undefined) {
   if (!value) return null;
+  if (value.startsWith('/') && !value.startsWith('//')) return value;
   try {
-    const url = new URL(value, window.location.origin);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-    return value.startsWith('/') ? value : url.toString();
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
   } catch {
     return null;
   }
