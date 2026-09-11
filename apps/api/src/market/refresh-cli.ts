@@ -1,6 +1,6 @@
 import { createDatabase } from '../db/client.js';
 import { fetchJuntaOliveOilMarketSnapshot } from './junta-observatorio-adapter.js';
-import { marketRefreshModeNeedsDatabase, parseMarketRefreshMode } from './refresh-mode.js';
+import { marketRefreshModeNeedsDatabase, parseMarketRefreshOperation } from './refresh-mode.js';
 import { refreshOliveOilMarketFromJunta } from './refresh.js';
 
 function summary(snapshot: Awaited<ReturnType<typeof fetchJuntaOliveOilMarketSnapshot>>) {
@@ -17,7 +17,8 @@ function summary(snapshot: Awaited<ReturnType<typeof fetchJuntaOliveOilMarketSna
 }
 
 async function main() {
-  const mode = parseMarketRefreshMode(process.argv.slice(2));
+  const operation = parseMarketRefreshOperation(process.argv.slice(2));
+  const { mode, allowCorrections } = operation;
   const databaseUrl = process.env.DATABASE_URL?.trim();
 
   if (mode === 'source-check') {
@@ -33,13 +34,15 @@ async function main() {
   const db = createDatabase(databaseUrl!);
   try {
     const apply = mode === 'apply';
-    const result = await refreshOliveOilMarketFromJunta(db, { apply });
+    const result = await refreshOliveOilMarketFromJunta(db, { apply, allowCorrections });
     console.log(
       JSON.stringify(
         {
           mode,
+          allowCorrections,
           kind: result.kind,
           applied: result.applied,
+          historicalCorrections: result.historicalCorrections,
           currentRevision: result.currentRevision,
           candidateRevision: result.candidateRevision,
           currentThrough: result.currentThrough,
