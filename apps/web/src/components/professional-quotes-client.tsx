@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { loadWorkDirectory, type CustomerSiteOption, type WorkPartyOption } from '@/lib/work-api-source';
@@ -160,7 +161,7 @@ export function ProfessionalQuotesClient() {
         const actualCost = Number(quote.actual_cost_eur ?? 0);
         const invoiced = Number(quote.invoice_total_eur ?? 0);
         const focused = quote.id === requestedQuoteId;
-        return <article className={`card activity-item${focused ? ' selected' : ''}`} key={quote.id}><div><small>{quote.quote_number || 'Sin número'} · {quote.status}</small><h3>{quote.title}</h3><p>{quote.customer_name}{quote.site_name ? ` · ${quote.site_name}` : ''}</p>{quote.status === 'converted' ? <small>Presupuestado {money(quoted)} · coste real {money(actualCost)}{quote.invoice_id ? ` · facturado ${money(invoiced)}` : ' · aún sin factura'}</small> : null}</div><div><strong>{money(quoted)}</strong><div className="record-actions">{quote.status === 'draft' ? <button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'sent')}>Marcar enviado</button> : null}{quote.status === 'sent' ? <><button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'accepted')}>Aceptar</button><button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'rejected')}>Rechazar</button></> : null}{quote.status === 'accepted' ? <button className="primary" type="button" onClick={() => setSelectedQuoteId(quote.id)}>Convertir a trabajo</button> : null}</div></div></article>;
+        return <article className={`card activity-item${focused ? ' selected' : ''}`} key={quote.id}><div><small>{quote.quote_number || 'Sin número'} · {quote.status}</small><h3>{quote.title}</h3><p>{quote.customer_name}{quote.site_name ? ` · ${quote.site_name}` : ''}</p>{quote.status === 'converted' ? <small>Presupuestado {money(quoted)} · coste real {money(actualCost)}{quote.invoice_id ? ` · facturado ${money(invoiced)}` : ' · aún sin factura'}</small> : null}</div><div><strong>{money(quoted)}</strong><div className="record-actions"><Link className="detail-link" href={`/mi-campo/profesional/documento?type=quote&id=${encodeURIComponent(quote.id)}`}>Imprimir / PDF</Link>{quote.status === 'draft' ? <button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'sent')}>Marcar enviado</button> : null}{quote.status === 'sent' ? <><button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'accepted')}>Aceptar</button><button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'rejected')}>Rechazar</button></> : null}{quote.status === 'accepted' ? <button className="primary" type="button" onClick={() => setSelectedQuoteId(quote.id)}>Convertir a trabajo</button> : null}</div></div></article>;
       })}</div>
     </section>
 
