@@ -42,6 +42,7 @@ import { registerProfessionalAttentionRoutes } from './routes/professional-atten
 import { registerProfessionalBusinessProfileRoutes } from './routes/professional-business-profile.js';
 import { registerProfessionalPrintRoutes } from './routes/professional-print.js';
 import { registerProfessionalDeliveryRoutes } from './routes/professional-deliveries.js';
+import { registerProfessionalShareLinkRoutes } from './routes/professional-share-links.js';
 import type { StoragePort } from './storage/port.js';
 import { UnavailableStorage } from './storage/port.js';
 import type { OcrQueuePort } from './ocr/port.js';
@@ -126,6 +127,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerProfessionalBusinessProfileRoutes(app, db);
   registerProfessionalPrintRoutes(app, db);
   registerProfessionalDeliveryRoutes(app, db);
+  registerProfessionalShareLinkRoutes(app, db, storage);
   registerDocumentRoutes(app, db, storage, ocrQueue);
   registerDocumentAccessRoutes(app, db, storage);
   registerDocumentCatalogRoutes(app, db);
