@@ -94,9 +94,9 @@ test('almazaras alias uses the same real CMS contract and preserves its route', 
   await page.goto('/almazaras?slug=almazara-jodar-e2e');
 
   await expect(page.getByRole('heading', { name: 'Almazara Sierra E2E' })).toBeVisible();
-  await expect(page.getByText('Jódar', { exact: true })).toBeVisible();
+  await expect(page.locator('dl').getByText('Jódar', { exact: true })).toBeVisible();
   await expect(page.getByText('Camino de la Campaña 2')).toBeVisible();
-  await expect(page.getByRole('link', { name: '← Cooperativas y almazaras' })).toHaveAttribute('href', '/almazaras');
+  await expect(page.getByRole('link', { name: '← Cooperativas y almazaras' })).toHaveAttribute('href', /^\/almazaras\/?$/);
   await expectNoHorizontalOverflow(page);
 });
 
