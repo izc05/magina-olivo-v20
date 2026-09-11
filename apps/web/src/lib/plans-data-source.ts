@@ -3,6 +3,7 @@
 import { apiFetch } from './api-client';
 
 export type PlanCode = 'free' | 'pro' | 'professional';
+export type FutureEntitlement = 'advanced_automation' | 'advanced_analysis' | 'professional_commercial_suite';
 export type PlanCatalogEntry = {
   code: PlanCode;
   name: string;
@@ -10,6 +11,7 @@ export type PlanCatalogEntry = {
   price_label: string;
   chargeable: boolean;
   checkout_available: boolean;
+  future_entitlements: FutureEntitlement[];
   summary: string;
   highlights: string[];
 };
@@ -17,6 +19,7 @@ export type PlanCatalogEntry = {
 export type PlanCatalogPayload = {
   schema_version: number;
   beta_policy: 'all_existing_beta_features_remain_available';
+  beta_access_override: true;
   billing_enabled: boolean;
   checkout_available: boolean;
   plans: PlanCatalogEntry[];
@@ -25,6 +28,8 @@ export type PlanCatalogPayload = {
 export type CurrentPlanPayload = {
   workspace_id: string;
   effective_plan: PlanCode;
+  future_entitlements: FutureEntitlement[];
+  beta_access_override: true;
   subscription: {
     plan_code: PlanCode;
     status: 'active' | 'trialing' | 'paused' | 'cancelled';
@@ -48,6 +53,7 @@ export type CurrentPlanPayload = {
 export const fallbackPlanCatalog: PlanCatalogPayload = {
   schema_version: 1,
   beta_policy: 'all_existing_beta_features_remain_available',
+  beta_access_override: true,
   billing_enabled: false,
   checkout_available: false,
   plans: [
@@ -58,6 +64,7 @@ export const fallbackPlanCatalog: PlanCatalogPayload = {
       price_label: 'Gratis',
       chargeable: false,
       checkout_available: false,
+      future_entitlements: [],
       summary: 'El cuaderno digital de tu olivar durante la Beta.',
       highlights: [
         'Mi Campo, campañas y registro agrícola',
@@ -72,6 +79,7 @@ export const fallbackPlanCatalog: PlanCatalogPayload = {
       price_label: 'Precio por definir',
       chargeable: false,
       checkout_available: false,
+      future_entitlements: ['advanced_automation', 'advanced_analysis'],
       summary: 'Para quien quiera más automatización y análisis cuando termine la Beta.',
       highlights: [
         'Todo lo existente en Campo durante la Beta',
@@ -86,6 +94,7 @@ export const fallbackPlanCatalog: PlanCatalogPayload = {
       price_label: 'Precio por definir',
       chargeable: false,
       checkout_available: false,
+      future_entitlements: ['advanced_automation', 'advanced_analysis', 'professional_commercial_suite'],
       summary: 'Para trabajos a terceros, clientes y actividad profesional agrícola.',
       highlights: [
         'Herramientas profesionales existentes siguen abiertas en la Beta',
