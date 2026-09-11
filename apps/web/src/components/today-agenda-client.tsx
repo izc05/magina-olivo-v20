@@ -54,6 +54,12 @@ function executionHref(item: AgendaItem) {
   return `/mi-campo/registrar/${slug}?${params.toString()}`;
 }
 
+function fieldActionHref(path: string, fieldId?: string) {
+  if (!fieldId) return '/mi-campo';
+  const params = new URLSearchParams({ fieldId, source: 'api' });
+  return `${path}?${params.toString()}`;
+}
+
 function AdvisoryEvidence({ advisory }: { advisory: AgronomyAdvisoryView }) {
   return <div className="today-advisory-evidence">
     <small>
@@ -122,10 +128,16 @@ export function TodayAgendaClient() {
   const [revision, setRevision] = useState(0);
   const [filter, setFilter] = useState<AgendaFilter>('all');
 
-  const weatherSensitiveItems = useMemo(
-    () => [...agenda.overdue, ...agenda.today, ...agenda.upcoming].filter((item) => item.weatherSensitive && item.fieldId),
+  const allAgendaItems = useMemo(
+    () => [...agenda.overdue, ...agenda.today, ...agenda.upcoming],
     [agenda],
   );
+  const weatherSensitiveItems = useMemo(
+    () => allAgendaItems.filter((item) => item.weatherSensitive && item.fieldId),
+    [allAgendaItems],
+  );
+  const actionFieldId = allAgendaItems.find((item) => item.fieldId)?.fieldId;
+  const planHref = fieldActionHref('/mi-campo/planificar', actionFieldId);
   const totalItems = agenda.counts.overdue + agenda.counts.today + agenda.counts.upcoming;
   const visibleSections = useMemo(() => {
     const sections = [
@@ -207,7 +219,7 @@ export function TodayAgendaClient() {
     </div></section>
 
     {!loading && !error ? <section className="section card">
-      <div className="section-head"><div><h2>Agenda del {formatAgendaDay(agenda.date)}</h2><small>{totalItems ? `${totalItems} tarea${totalItems === 1 ? '' : 's'} pendiente${totalItems === 1 ? '' : 's'}` : 'Sin tareas pendientes próximas'}</small></div><Link href="/mi-campo/planificar">Planificar nueva</Link></div>
+      <div className="section-head"><div><h2>Agenda del {formatAgendaDay(agenda.date)}</h2><small>{totalItems ? `${totalItems} tarea${totalItems === 1 ? '' : 's'} pendiente${totalItems === 1 ? '' : 's'}` : 'Sin tareas pendientes próximas'}</small></div><Link href={planHref}>{actionFieldId ? 'Planificar nueva' : 'Elegir finca'}</Link></div>
       {totalItems ? <div className="record-actions" aria-label="Filtrar agenda">
         {([
           ['all', 'Todas'],
@@ -221,12 +233,12 @@ export function TodayAgendaClient() {
     {previewEnabled && !apiConfigured ? <section className="card"><strong>Modo demostración</strong><p>Esta vista no carga tu agenda privada. Las tareas reales aparecerán cuando uses Mágina con tu cuenta conectada.</p></section> : null}
     {loading ? <section className="card" aria-busy="true"><p>Cargando agenda…</p></section> : null}
     {error ? <section className="card" role="alert"><strong>Agenda no disponible</strong><p>{error}</p>{status === 'authenticated' ? <button className="secondary-action" type="button" onClick={refresh}>Reintentar</button> : null}</section> : null}
-    {!loading && !error && totalItems === 0 ? <section className="section card"><h2>Agenda al día</h2><p>No tienes tareas atrasadas, para hoy ni para los próximos siete días.</p><div className="record-actions"><Link className="primary action-link" href="/mi-campo/planificar">Planificar tarea</Link><Link className="secondary-action action-link" href="/mi-campo/registrar">Registrar trabajo</Link></div></section> : null}
+    {!loading && !error && totalItems === 0 ? <section className="section card"><h2>Agenda al día</h2><p>No tienes tareas atrasadas, para hoy ni para los próximos siete días.</p><div className="record-actions"><Link className="primary action-link" href="/mi-campo">Elegir finca para planificar</Link></div></section> : null}
     {!loading && !error && totalItems > 0 ? <>
       {visibleSections.map((section) => <AgendaSection key={section.key} title={section.title} items={section.items} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />)}
       <section className="card"><strong>El tiempo ayuda; tú decides</strong><p>{agenda.rule}</p><small>La previsión mira hacia delante y el radar aporta observaciones recientes. No mostramos una hora exacta de llegada de la lluvia cuando los datos no permiten calcularla con fiabilidad.</small></section>
     </> : null}
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">TU TRABAJO, BIEN ORGANIZADO</span><h2>Planifica primero y registra la tarea cuando realmente la hayas hecho.</h2></div><Link href="/mi-campo/planificar">Planificar tarea</Link></section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">TU TRABAJO, BIEN ORGANIZADO</span><h2>Planifica primero y registra la tarea cuando realmente la hayas hecho.</h2></div><Link href={planHref}>{actionFieldId ? 'Planificar tarea' : 'Elegir finca'}</Link></section>
   </>;
 }
