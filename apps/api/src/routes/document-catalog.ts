@@ -3,6 +3,31 @@ import { documentKindSchema, uuidSchema } from '@magina/contracts';
 import type { DatabaseClient } from '../db/client.js';
 import { fieldBelongsToWorkspace, requireContext, requireDatabase } from '../http/helpers.js';
 
+async function recordBelongsToField(
+  db: DatabaseClient,
+  workspaceId: string,
+  fieldId: string,
+  domainType: string,
+  recordId: string,
+) {
+  if (domainType === 'expense') {
+    return Boolean(await db.selectFrom('expense_records').select('id')
+      .where('id', '=', recordId).where('workspace_id', '=', workspaceId).where('field_id', '=', fieldId).executeTakeFirst());
+  }
+  if (domainType === 'harvest_delivery') {
+    return Boolean(await db.selectFrom('harvest_deliveries as hd')
+      .innerJoin('harvest_delivery_fields as hdf', 'hdf.delivery_id', 'hd.id')
+      .select('hd.id').where('hd.id', '=', recordId).where('hd.workspace_id', '=', workspaceId).where('hdf.field_id', '=', fieldId).executeTakeFirst());
+  }
+  if (domainType === 'harvest_result') {
+    return Boolean(await db.selectFrom('delivery_results as dr')
+      .innerJoin('harvest_deliveries as hd', 'hd.id', 'dr.delivery_id')
+      .innerJoin('harvest_delivery_fields as hdf', 'hdf.delivery_id', 'hd.id')
+      .select('dr.id').where('dr.id', '=', recordId).where('dr.workspace_id', '=', workspaceId).where('hdf.field_id', '=', fieldId).executeTakeFirst());
+  }
+  return false;
+}
+
 export function registerDocumentCatalogRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/fields/:fieldId/document-catalog', async (request, reply) => {
     const context = requireContext(request, reply);
@@ -81,5 +106,53 @@ export function registerDocumentCatalogRoutes(app: FastifyInstance, db: Database
     if (!links.length) return reply.code(404).send({ error: 'document_link_not_found' });
 
     return { document_id: documentId.data, campaign_id: campaignId, links };
+  });
+
+  app.post('/api/v1/documents/:documentId/link-domain', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+
+    const documentId = uuidSchema.safeParse((request.params as { documentId?: string }).documentId);
+    if (!documentId.success) return reply.code(400).send({ error: 'invalid_document_id' });
+    const body = request.body as { field_id?: string; domain_type?: string; domain_record_id?: string } | null;
+    const fieldId = uuidSchema.safeParse(body?.field_id);
+    const recordId = uuidSchema.safeParse(body?.domain_record_id);
+    const domainType = body?.domain_type ?? '';
+    if (!fieldId.success || !recordId.success || !['expense', 'harvest_delivery', 'harvest_result'].includes(domainType)) {
+      return reply.code(400).send({ error: 'invalid_document_domain_link' });
+    }
+
+    const document = await database.selectFrom('documents').select('id')
+      .where('id', '=', documentId.data).where('workspace_id', '=', context.workspaceId).where('status', '=', 'active').executeTakeFirst();
+    if (!document) return reply.code(404).send({ error: 'document_not_found' });
+    const field = await fieldBelongsToWorkspace(database, fieldId.data, context.workspaceId);
+    if (!field) return reply.code(404).send({ error: 'field_not_found' });
+    if (!await recordBelongsToField(database, context.workspaceId, fieldId.data, domainType, recordId.data)) {
+      return reply.code(404).send({ error: 'domain_record_not_found_for_field' });
+    }
+
+    const existing = await database.selectFrom('attachment_links').selectAll()
+      .where('workspace_id', '=', context.workspaceId)
+      .where('document_id', '=', documentId.data)
+      .where('field_id', '=', fieldId.data)
+      .where('domain_type', '=', domainType)
+      .where('domain_record_id', '=', recordId.data)
+      .executeTakeFirst();
+    if (existing) return reply.send({ replayed: true, link: existing });
+
+    const sourceLink = await database.selectFrom('attachment_links').select('campaign_id')
+      .where('workspace_id', '=', context.workspaceId).where('document_id', '=', documentId.data).where('field_id', '=', fieldId.data).executeTakeFirst();
+    const link = await database.insertInto('attachment_links').values({
+      workspace_id: context.workspaceId,
+      document_id: documentId.data,
+      field_id: fieldId.data,
+      domain_type: domainType,
+      domain_record_id: recordId.data,
+      relation: 'source_document',
+      campaign_id: sourceLink?.campaign_id ?? null,
+    }).returningAll().executeTakeFirstOrThrow();
+
+    return reply.code(201).send({ replayed: false, link });
   });
 }
