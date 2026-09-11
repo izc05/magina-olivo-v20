@@ -99,7 +99,6 @@ if (apiUrl.origin === publicWebOrigin) fail('NEXT_PUBLIC_API_URL should use a de
 requireHttps(valueOf(values, 'S3_ENDPOINT'), 'S3_ENDPOINT');
 
 valueOf(values, 'GOOGLE_CLIENT_ID');
-valueOf(values, 'GOOGLE_CLIENT_SECRET');
 const sessionSecret = valueOf(values, 'SESSION_SECRET');
 if (Buffer.byteLength(sessionSecret, 'utf8') < 32) fail('SESSION_SECRET must contain at least 32 bytes');
 
