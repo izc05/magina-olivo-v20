@@ -29,6 +29,12 @@ try {
   assert.equal(catalog.json().plans.length, 3);
   assert.equal(catalog.json().billing_enabled, false);
   assert.equal(catalog.json().checkout_available, false);
+  assert.equal(catalog.json().beta_access_override, true);
+  assert.deepEqual(catalog.json().plans.find((plan: { code: string }) => plan.code === 'free').future_entitlements, []);
+  assert.deepEqual(
+    catalog.json().plans.find((plan: { code: string }) => plan.code === 'professional').future_entitlements,
+    ['advanced_automation', 'advanced_analysis', 'professional_commercial_suite'],
+  );
 
   const credential = 'synthetic-google-id-token-'.padEnd(140, 'p');
   const login = await app.inject({ method: 'POST', url: '/api/v1/auth/google', payload: { credential } });
@@ -45,6 +51,8 @@ try {
   assert.equal(initial.json().subscription.source, 'default');
   assert.equal(initial.json().can_manage_plan, true);
   assert.equal(initial.json().interests.length, 0);
+  assert.equal(initial.json().beta_access_override, true);
+  assert.deepEqual(initial.json().future_entitlements, []);
 
   const firstInterest = await app.inject({
     method: 'POST',
@@ -92,6 +100,8 @@ try {
   assert.equal(upgraded.json().effective_plan, 'pro');
   assert.equal(upgraded.json().subscription.source, 'manual');
   assert.equal(upgraded.json().interests.length, 0);
+  assert.deepEqual(upgraded.json().future_entitlements, ['advanced_automation', 'advanced_analysis']);
+  assert.equal(upgraded.json().beta_access_override, true);
 
   const duplicateActive = await app.inject({
     method: 'POST',
@@ -112,6 +122,7 @@ try {
   const memberView = await app.inject({ method: 'GET', url: '/api/v1/plans/current', headers });
   assert.equal(memberView.statusCode, 200, memberView.body);
   assert.equal(memberView.json().can_manage_plan, false);
+  assert.equal(memberView.json().beta_access_override, true);
 
   const forbidden = await app.inject({
     method: 'POST',
