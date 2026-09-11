@@ -40,7 +40,7 @@ function apiWaterRegime(value: WaterRegime) {
 }
 
 export function NewFarmWizard() {
-  const { status, apiConfigured, selectedWorkspaceId } = useAuth();
+  const { status, apiConfigured, previewEnabled, selectedWorkspaceId } = useAuth();
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [trees, setTrees] = useState('');
@@ -84,6 +84,10 @@ export function NewFarmWizard() {
   function continueBasics(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaveError(null);
+    if (!apiConfigured && !previewEnabled) {
+      setSaveError('Esta instalación no tiene API configurada y el modo preview está desactivado. No se guardará una finca local como sustituto.');
+      return;
+    }
     if (apiConfigured && status !== 'authenticated') {
       setSaveError('Inicia sesión para guardar esta finca en Mi Campo.');
       return;
@@ -121,7 +125,7 @@ export function NewFarmWizard() {
         });
         setSavedId(created.field.id);
         setSavedRemotely(true);
-      } else {
+      } else if (previewEnabled) {
         const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `field-${Date.now()}`;
         saveLocalField({
           id,
@@ -134,6 +138,9 @@ export function NewFarmWizard() {
         });
         setSavedId(id);
         setSavedRemotely(false);
+      } else {
+        setSaveError('No hay una fuente persistente disponible para guardar la finca.');
+        return;
       }
 
       setStep(3);
@@ -151,7 +158,7 @@ export function NewFarmWizard() {
     const registerHref = savedId ? `/mi-campo/registrar?fieldId=${encodeURIComponent(savedId)}` : '/mi-campo/registrar';
     return <section className="card new-farm-success">
       <div className="success-mark"><SproutIcon /></div>
-      <span className="eyebrow dark">{savedRemotely ? 'FINCA GUARDADA EN MI CAMPO' : 'GUARDADA EN ESTE DISPOSITIVO'}</span>
+      <span className="eyebrow dark">{savedRemotely ? 'FINCA GUARDADA EN MI CAMPO' : 'PREVIEW · GUARDADA EN ESTE DISPOSITIVO'}</span>
       <h1>{name || 'Nueva finca'}</h1>
       <p>{trees || '—'} olivas · {municipalityLabel} · La finca ya tiene identidad propia para guardar trabajos, documentos y territorio.</p>
       <div className="success-effects">
@@ -189,7 +196,7 @@ export function NewFarmWizard() {
     </div>;
   }
 
-  if (step === 2) {
+  if (step === 2 && previewEnabled) {
     return <div className="new-farm-location-flow">
       <section className="card new-farm-summary"><span className="new-farm-tree"><SproutIcon /></span><div><small>NUEVA FINCA · PREVIEW LOCAL</small><strong>{name}</strong><span>{trees} olivas · {municipalityLabel}</span></div><button onClick={() => setStep(1)}>Editar</button></section>
       <section className="card locate-panel"><span className="eyebrow dark">PREVIEW · UBICACIÓN</span><h2>¿Quieres asociar una localización de demostración?</h2><p>Esta ruta solo existe para la preview sin API. No representa un vínculo oficial con Catastro o SIGPAC.</p><div className="locate-grid">{[
@@ -205,6 +212,10 @@ export function NewFarmWizard() {
       {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
       <div className="new-farm-actions"><button className="secondary-action" type="button" onClick={() => void finish()} disabled={saving}>{saving ? 'Guardando…' : 'Guardar sin localización demo'}</button><button className="primary" type="button" onClick={() => void finish()} disabled={!mode || saving}>{saving ? 'Guardando…' : 'Guardar preview →'}</button></div>
     </div>;
+  }
+
+  if (!apiConfigured && !previewEnabled) {
+    return <section className="card new-farm-summary"><div><strong>Mi Campo no está conectado</strong><span>Configura `NEXT_PUBLIC_API_URL` para crear fincas reales. El modo preview está desactivado y no se crearán datos locales.</span></div></section>;
   }
 
   return <form className="new-farm-basics" onSubmit={continueBasics}>
