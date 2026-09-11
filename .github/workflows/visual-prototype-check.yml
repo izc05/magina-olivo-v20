@@ -193,6 +193,12 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'true'
         run: node apps/api/dist/testing/professional-invoice-smoke.js
 
+      - name: Professional attention smoke test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+        run: node apps/api/dist/testing/professional-attention-smoke.js
+
       - name: Web typecheck
         run: pnpm --filter @magina/web typecheck
 
