@@ -26,7 +26,9 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   const fieldId = new URL(registerHref!, 'http://127.0.0.1:3000').searchParams.get('fieldId');
   expect(fieldId).toBeTruthy();
 
-  await page.goto(`/mi-campo/mapa?fieldId=${encodeURIComponent(fieldId!)}`);
+  const addBoundariesLink = page.getByRole('link', { name: /Añadir límites/ });
+  await expect(addBoundariesLink).toHaveAttribute('href', `/mi-campo/mapa?fieldId=${encodeURIComponent(fieldId!)}`);
+  await addBoundariesLink.click();
   await expect(page.getByRole('heading', { name: 'Tu finca sobre el terreno' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Añade los límites reales' })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Finca', exact: true })).toHaveValue(fieldId!);
