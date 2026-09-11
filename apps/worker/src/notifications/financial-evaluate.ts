@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type pg from 'pg';
+import type { Pool } from 'pg';
 import type { FinancialAlertEvaluateJobPayload } from '@magina/contracts';
 
 const ruleVersion = 'financial-attention-notify-v1';
@@ -13,7 +13,7 @@ type PreferenceRow = {
   notify_ocr_failure: boolean;
 };
 
-export async function runFinancialAlertEvaluationJob(pool: pg.Pool, payload: FinancialAlertEvaluateJobPayload) {
+export async function runFinancialAlertEvaluationJob(pool: Pool, payload: FinancialAlertEvaluateJobPayload) {
   const preferences = await pool.query<PreferenceRow>(`
     SELECT user_id, workspace_id, notify_settlements, settlement_min_eur,
            notify_document_review, notify_ocr_failure
