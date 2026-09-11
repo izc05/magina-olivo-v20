@@ -12,7 +12,7 @@ test.describe('Planes y monetización honesta', () => {
       await expect(page.getByText('Beta sin cobros')).toBeVisible();
       await expect(page.getByTestId('plan-card')).toHaveCount(3);
       await expect(page.getByRole('heading', { name: 'Campo' })).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Pro' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Pro', exact: true })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Profesional' })).toBeVisible();
       await expect(page.getByText('Gratis')).toBeVisible();
       await expect(page.getByText('Precio por definir')).toHaveCount(2);
