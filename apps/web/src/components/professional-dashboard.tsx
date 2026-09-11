@@ -70,7 +70,7 @@ export function ProfessionalDashboard() {
       <div>
         <span className="eyebrow dark">MI CAMPO · ACTIVIDAD PROFESIONAL</span>
         <h1>Trabajos para terceros</h1>
-        <p>Clientes, trabajos, facturas, costes, márgenes y cobros pendientes, separados de tu explotación agrícola.</p>
+        <p>Clientes, presupuestos, trabajos, facturas, costes, márgenes y cobros pendientes, separados de tu explotación agrícola.</p>
       </div>
     </header>
 
@@ -83,7 +83,7 @@ export function ProfessionalDashboard() {
     <ProfessionalAttentionCard />
 
     <section className="section">
-      <div className="section-head"><h2>Resumen profesional</h2><div className="action-row"><Link href="/mi-campo/profesional/facturas/nueva" className="detail-link">Nueva factura</Link><Link href="/mi-campo/profesional/cobrar" className="detail-link">Registrar cobro</Link><Link href="/mi-campo/registrar/trabajo" className="detail-link"><PlusIcon /> Registrar trabajo</Link></div></div>
+      <div className="section-head"><h2>Resumen profesional</h2><div className="action-row"><Link href="/mi-campo/profesional/presupuestos" className="detail-link">Presupuestos</Link><Link href="/mi-campo/profesional/facturas/nueva" className="detail-link">Nueva factura</Link><Link href="/mi-campo/profesional/cobrar" className="detail-link">Registrar cobro</Link><Link href="/mi-campo/registrar/trabajo" className="detail-link"><PlusIcon /> Registrar trabajo</Link></div></div>
       <div className="quick-grid">
         <div className="card quick"><div><strong>{money(data.chargedEur)}</strong><small>facturado / devengado</small></div></div>
         <div className="card quick"><div><strong>{money(data.collectedEur)}</strong><small>cobrado</small></div></div>
@@ -91,7 +91,7 @@ export function ProfessionalDashboard() {
         <div className="card quick"><div><strong>{money(data.directCostEur)}</strong><small>coste directo</small></div></div>
         <div className="card quick"><div><strong>{money(data.accruedMarginEur)}</strong><small>margen devengado</small></div></div>
       </div>
-      <p className="form-help">Margen devengado = importe facturado − coste directo. El cobro se registra aparte y mantiene su propio historial.</p>
+      <p className="form-help">Margen devengado = importe facturado − coste directo. Presupuesto, trabajo, factura y cobro se mantienen como momentos distintos.</p>
     </section>
 
     {pendingCustomers.length ? <section className="section">
@@ -112,6 +112,6 @@ export function ProfessionalDashboard() {
       <div className="activity-list">{data.recentWork.map((work) => <article className="card activity-item" key={work.id}><div><small>{work.date}</small><h3>{work.title}</h3><p>{[work.customerName, work.siteName].filter(Boolean).join(' · ') || 'Cliente'}</p><small>Coste {money(work.directCostEur)} · margen {money(work.accruedMarginEur)}</small></div><div><strong>{money(work.chargeEur)}</strong><small>{work.pendingEur > 0 ? `${money(work.pendingEur)} pendiente` : 'Cobrado'}</small>{work.pendingEur > 0 ? <Link className="detail-link" href={`/mi-campo/profesional/cobrar?workId=${encodeURIComponent(work.id)}`}>Registrar cobro</Link> : null}</div></article>)}</div>
     </section>
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">TRABAJO PROFESIONAL</span><h2>Cliente → trabajo → factura → cobro, sin mezclarlo con la cosecha.</h2></div><Link href="/mi-campo/profesional/facturas/nueva">Facturar <ArrowIcon /></Link></section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">TRABAJO PROFESIONAL</span><h2>Presupuesto → trabajo → factura → cobro, con margen real.</h2></div><Link href="/mi-campo/profesional/presupuestos">Presupuestar <ArrowIcon /></Link></section>
   </>;
 }
