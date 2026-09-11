@@ -93,10 +93,16 @@ export function registerFarmEconomicsRoutes(app: FastifyInstance, db: DatabaseCl
       collected_income_eur: collected,
       pending_collection_eur: Math.max(accrued - collected, 0),
       accrued_margin_eur: accrued - totalCost,
-      cash_margin_eur: collected - totalCost,
+      collected_less_registered_costs_eur: collected - totalCost,
       delivered_kg: deliveredKg,
       cost_per_delivered_kg_eur: deliveredKg > 0 ? totalCost / deliveredKg : null,
       attribution_status: 'derived_from_cost_ledger_and_harvest_delivery_share',
+      semantics: {
+        accrued_income: 'confirmed settlement amount attributed to the field',
+        collected_income: 'collections received against attributed settlements',
+        accrued_margin: 'accrued income minus registered costs',
+        collected_less_registered_costs: 'collected income minus registered costs; not cash flow because expense payments are not modeled yet',
+      },
     };
   });
 }
