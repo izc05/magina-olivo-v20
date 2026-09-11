@@ -28,6 +28,11 @@ function farmHref(farm: FarmListItem) {
   return `/mi-campo/fincas/ver?${params.toString()}`;
 }
 
+function planHref(farm: FarmListItem) {
+  const params = new URLSearchParams({ fieldId: farm.id, source: farm.source });
+  return `/mi-campo/planificar?${params.toString()}`;
+}
+
 function todayIso() {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
@@ -138,6 +143,7 @@ export function HomeDailyCenter() {
       <div className="stats"><div className="stat"><b>{summary.farms}</b><span>fincas</span></div><div className="stat"><b>{summary.oliveTrees}</b><span>olivas</span></div><div className="stat"><b>{summary.areaHa !== undefined ? `${summary.areaHa.toLocaleString('es-ES', { maximumFractionDigits: 2 })} ha` : '—'}</b><span>superficie</span></div></div>
       <div className="record-actions">
         {focusFarm ? <Link href={farmHref(focusFarm)} className="secondary-action action-link">Abrir {focusFarm.name}</Link> : null}
+        {focusFarm ? <Link href={planHref(focusFarm)} className="secondary-action action-link">Planificar</Link> : null}
         <Link href="/mi-campo/registrar" className="primary action-link"><PlusIcon /> Registrar</Link>
       </div>
     </section>
