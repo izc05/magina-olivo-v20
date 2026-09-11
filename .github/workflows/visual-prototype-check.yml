@@ -163,6 +163,18 @@ jobs:
           test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM delivery_results WHERE id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' AND status='confirmed'")" = "1"
           test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM farm_timeline_projection WHERE field_id='55555555-5555-4555-8555-555555555555' AND domain_type IN ('harvest_delivery','harvest_result')")" = "2"
 
+      - name: Map context smoke test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+        run: node apps/api/dist/testing/map-context-smoke.js
+
+      - name: Document upload and OCR metadata smoke test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+        run: node apps/api/dist/testing/document-smoke.js
+
       - name: Financial attention smoke test
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
