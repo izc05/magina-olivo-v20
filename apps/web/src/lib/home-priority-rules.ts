@@ -3,11 +3,11 @@ import type { FinancialAttentionSummary } from '@/lib/financial-attention-data-s
 import type { ProfessionalAttentionSummary } from '@/lib/professional-attention-data-source';
 import type { HomePriorityPreferences } from '@/lib/home-priority-preferences';
 
-export const HOME_PRIORITY_RULE_VERSION = 'home-priority-v3';
+export const HOME_PRIORITY_RULE_VERSION = 'home-priority-v4';
 
 export type HomePriorityItem = {
   id: string;
-  kind: 'task' | 'settlement' | 'document' | 'professional_invoice' | 'professional_unbilled';
+  kind: 'task' | 'settlement' | 'document' | 'professional_invoice' | 'professional_unbilled' | 'professional_quote_expired' | 'professional_quote_followup';
   score: number;
   level: 'critical' | 'high' | 'medium' | 'low';
   title: string;
@@ -64,9 +64,21 @@ function unbilledWorkScore(ageDays: number, chargeEur: number) {
   return { score: 56, reason: 'Trabajo realizado todavía sin factura' };
 }
 
+function expiredQuoteScore(overdueDays: number, totalEur: number) {
+  if (overdueDays >= 30 || totalEur >= 5000) return { score: 72, reason: 'Presupuesto fuera de plazo que conviene revisar' };
+  if (overdueDays >= 7 || totalEur >= 2500) return { score: 64, reason: 'Presupuesto enviado ya fuera de vigencia' };
+  return { score: 57, reason: 'Presupuesto fuera de plazo' };
+}
+
+function quoteFollowupScore(ageDays: number, totalEur: number) {
+  if (ageDays >= 21 || totalEur >= 5000) return { score: 63, reason: 'Presupuesto enviado sin respuesta desde hace tiempo' };
+  if (ageDays >= 14 || totalEur >= 2500) return { score: 58, reason: 'Conviene hacer seguimiento del presupuesto' };
+  return { score: 52, reason: 'Presupuesto enviado pendiente de respuesta' };
+}
+
 function adjustedScore(score: number, kind: HomePriorityItem['kind'], preferences?: HomePriorityPreferences) {
   if (!preferences) return score;
-  if ((kind === 'settlement' || kind === 'professional_invoice' || kind === 'professional_unbilled') && preferences.economicWeight === 'reduced') return Math.max(score - 18, 0);
+  if ((kind === 'settlement' || kind === 'professional_invoice' || kind === 'professional_unbilled' || kind === 'professional_quote_expired' || kind === 'professional_quote_followup') && preferences.economicWeight === 'reduced') return Math.max(score - 18, 0);
   if (kind === 'document' && preferences.documentWeight === 'reduced') return Math.max(score - 16, 0);
   return score;
 }
@@ -165,6 +177,42 @@ export function buildHomePriorities(input: {
       detail: `${work.ageDays} días desde el trabajo`,
       href: `/mi-campo/profesional/facturas/nueva?customerId=${encodeURIComponent(work.customerId)}&workId=${encodeURIComponent(work.id)}`,
       actionLabel: 'Facturar',
+      reason: ranking.reason,
+      protected: false,
+    });
+  }
+
+  for (const quote of input.professional?.expiredQuotes ?? []) {
+    const ranking = expiredQuoteScore(quote.overdueDays, quote.totalEur);
+    const score = adjustedScore(ranking.score, 'professional_quote_expired', input.preferences);
+    items.push({
+      id: `professional-quote-expired:${quote.id}`,
+      kind: 'professional_quote_expired',
+      score,
+      level: levelForScore(score),
+      title: `Presupuesto ${quote.quoteNumber ?? 'sin nº'} fuera de plazo`,
+      subtitle: `${quote.customerName} · ${quote.totalEur.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`,
+      detail: `${quote.overdueDays} días fuera de vigencia`,
+      href: `/mi-campo/profesional/presupuestos?quoteId=${encodeURIComponent(quote.id)}&customerId=${encodeURIComponent(quote.customerId)}`,
+      actionLabel: 'Gestionar',
+      reason: ranking.reason,
+      protected: false,
+    });
+  }
+
+  for (const quote of input.professional?.quoteFollowups ?? []) {
+    const ranking = quoteFollowupScore(quote.ageDays, quote.totalEur);
+    const score = adjustedScore(ranking.score, 'professional_quote_followup', input.preferences);
+    items.push({
+      id: `professional-quote-followup:${quote.id}`,
+      kind: 'professional_quote_followup',
+      score,
+      level: levelForScore(score),
+      title: quote.title,
+      subtitle: `${quote.customerName} · presupuesto ${quote.totalEur.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`,
+      detail: `${quote.ageDays} días enviado sin decisión`,
+      href: `/mi-campo/profesional/presupuestos?quoteId=${encodeURIComponent(quote.id)}&customerId=${encodeURIComponent(quote.customerId)}`,
+      actionLabel: 'Revisar',
       reason: ranking.reason,
       protected: false,
     });
