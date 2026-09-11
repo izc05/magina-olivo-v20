@@ -5,19 +5,31 @@ on:
     branches:
       - feat/v20-visual-prototype
     paths:
+      - 'packages/weather/src/agronomy-*.ts'
+      - 'packages/contracts/src/jobs.ts'
+      - 'packages/jobs/src/index.ts'
       - 'apps/api/src/domain/agronomy-*.ts'
       - 'apps/api/src/routes/agronomy*.ts'
       - 'apps/api/src/routes/agenda.ts'
       - 'apps/api/src/testing/agronomy-radar-smoke.ts'
+      - 'apps/worker/src/notifications/agronomy-evaluate.ts'
+      - 'apps/worker/src/notifications/dispatch.ts'
+      - 'apps/worker/src/server.ts'
       - 'apps/web/src/lib/agronomy-data-source.ts'
       - 'apps/web/src/components/today-agenda-client.tsx'
       - '.github/workflows/agronomy-radar-check.yml'
   pull_request:
     paths:
+      - 'packages/weather/src/agronomy-*.ts'
+      - 'packages/contracts/src/jobs.ts'
+      - 'packages/jobs/src/index.ts'
       - 'apps/api/src/domain/agronomy-*.ts'
       - 'apps/api/src/routes/agronomy*.ts'
       - 'apps/api/src/routes/agenda.ts'
       - 'apps/api/src/testing/agronomy-radar-smoke.ts'
+      - 'apps/worker/src/notifications/agronomy-evaluate.ts'
+      - 'apps/worker/src/notifications/dispatch.ts'
+      - 'apps/worker/src/server.ts'
       - 'apps/web/src/lib/agronomy-data-source.ts'
       - 'apps/web/src/components/today-agenda-client.tsx'
       - '.github/workflows/agronomy-radar-check.yml'
@@ -48,8 +60,14 @@ jobs:
       - name: Build contracts
         run: pnpm --filter @magina/contracts build
 
+      - name: Weather typecheck
+        run: pnpm --filter @magina/weather typecheck
+
       - name: Build weather
         run: pnpm --filter @magina/weather build
+
+      - name: Jobs typecheck
+        run: pnpm --filter @magina/jobs typecheck
 
       - name: Build jobs
         run: pnpm --filter @magina/jobs build
@@ -59,6 +77,12 @@ jobs:
 
       - name: API build
         run: pnpm --filter @magina/api build
+
+      - name: Worker typecheck
+        run: pnpm --filter @magina/worker typecheck
+
+      - name: Worker build
+        run: pnpm --filter @magina/worker build
 
       - name: Agronomy radar smoke
         run: node apps/api/dist/testing/agronomy-radar-smoke.js
