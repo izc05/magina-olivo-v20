@@ -20,6 +20,23 @@ function advisoryLabel(advisory: AgronomyAdvisoryView) {
   return 'Sin criterio';
 }
 
+function formatAgendaDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function forecastSourceLabel(source: string) {
+  if (source.toLowerCase().includes('aemet')) return 'AEMET';
+  return source.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function executionHref(item: AgendaItem) {
   if (!item.fieldId) return null;
   const routeByType: Record<string, string> = {
@@ -34,16 +51,16 @@ function executionHref(item: AgendaItem) {
 function AdvisoryEvidence({ advisory }: { advisory: AgronomyAdvisoryView }) {
   return <div className="today-advisory-evidence">
     <small>
-      Previsión · {advisory.forecastEvidence.source}
+      Previsión {forecastSourceLabel(advisory.forecastEvidence.source)}
       {advisory.forecastEvidence.precipitationProbabilityPercent !== undefined ? ` · lluvia ${advisory.forecastEvidence.precipitationProbabilityPercent}%` : ''}
       {advisory.forecastEvidence.windMaxKmh !== undefined ? ` · viento ${advisory.forecastEvidence.windMaxKmh} km/h` : ''}
-      {advisory.stale ? ' · datos antiguos' : ''}
+      {advisory.stale ? ' · previsión desactualizada' : ''}
     </small>
     {advisory.radarEvidence ? <small>
-      Radar observado · {advisory.radarEvidence.summary}
+      Radar · {advisory.radarEvidence.summary}
       {advisory.radarEvidence.ageMinutes !== undefined ? ` · hace ${advisory.radarEvidence.ageMinutes} min` : ''}
-      {!advisory.radarEvidence.fresh ? ' · no modifica la recomendación' : ''}
-      {advisory.radarElevated ? ' · elevó la severidad' : ''}
+      {!advisory.radarEvidence.fresh ? ' · observación antigua, solo orientativa' : ''}
+      {advisory.radarElevated ? ' · aumenta la precaución' : ''}
     </small> : null}
   </div>;
 }
@@ -70,10 +87,10 @@ function AgendaSection({
         return <div className="feed-row" key={item.id}>
           <div className="feed-copy">
             <strong>{item.title}</strong>
-            <small>{item.fieldName ?? 'Sin finca'} · {item.scheduledAt.slice(0, 16).replace('T', ' ')}{item.status === 'postponed' ? ' · aplazada' : ''}</small>
+            <small>{item.fieldName ?? 'Sin finca'} · {formatAgendaDate(item.scheduledAt)}{item.status === 'postponed' ? ' · aplazada' : ''}</small>
             {item.weatherSensitive ? <>
               <small>
-                {advisory === undefined ? 'Consultando contexto meteorológico…' : advisory === null ? 'Contexto meteorológico no disponible.' : `${advisoryLabel(advisory)} · ${advisory.summary}`}
+                {advisory === undefined ? 'Consultando el tiempo para esta tarea…' : advisory === null ? 'No hay información meteorológica disponible para esta tarea.' : `${advisoryLabel(advisory)} · ${advisory.summary}`}
               </small>
               {advisory ? <AdvisoryEvidence advisory={advisory} /> : null}
             </> : null}
@@ -82,7 +99,7 @@ function AgendaSection({
               {workspaceId ? <PlannedTaskActions item={item} workspaceId={workspaceId} onChanged={onChanged} /> : null}
             </div>
           </div>
-          <span className="pending-pill">{advisory ? advisoryLabel(advisory) : item.priority === 'high' ? 'Prioridad' : item.bucket === 'today' ? 'Hoy' : 'Próximo'}</span>
+          <span className="pending-pill">{advisory ? advisoryLabel(advisory) : item.priority === 'high' ? 'Prioridad alta' : item.bucket === 'today' ? 'Hoy' : 'Próximo'}</span>
         </div>;
       })}
     </div> : <section className="card"><p>No hay tareas en este bloque.</p></section>}
@@ -117,7 +134,7 @@ export function TodayAgendaClient() {
           return;
         } else if (!cancelled) {
           setAgenda(emptyAgenda());
-          setError(apiConfigured ? 'Inicia sesión para consultar tu agenda.' : 'La API privada no está configurada en esta instalación.');
+          setError(apiConfigured ? 'Inicia sesión para consultar tu agenda.' : 'El servicio de agenda no está disponible en esta instalación.');
         }
       } catch (err) {
         console.error(err);
@@ -162,7 +179,7 @@ export function TodayAgendaClient() {
   const refresh = () => setRevision((value) => value + 1);
 
   return <>
-    <header className="page-title mi-campo-title"><div><span className="eyebrow dark">MI CAMPO · AGENDA</span><h1>Hoy</h1><p>Lo pendiente, lo de hoy y lo próximo, con previsión y radar cuando aportan contexto.</p></div></header>
+    <header className="page-title mi-campo-title"><div><span className="eyebrow dark">MI CAMPO · AGENDA</span><h1>Hoy</h1><p>Lo pendiente, lo de hoy y lo próximo, con el tiempo como ayuda para decidir.</p></div></header>
 
     <section className="card field-summary campaign-summary"><div className="stats">
       <div className="stat"><b>{agenda.counts.overdue}</b><span>atrasadas</span></div>
@@ -170,16 +187,16 @@ export function TodayAgendaClient() {
       <div className="stat"><b>{agenda.counts.weatherSensitive}</b><span>sensibles al clima</span></div>
     </div></section>
 
-    {previewEnabled && !apiConfigured ? <section className="card"><strong>Modo preview explícito</strong><p>La agenda está vacía porque GitHub Pages no tiene tu workspace privado.</p></section> : null}
+    {previewEnabled && !apiConfigured ? <section className="card"><strong>Modo demostración</strong><p>Esta vista no carga tu agenda privada. Las tareas reales aparecerán cuando uses Mágina con tu cuenta conectada.</p></section> : null}
     {loading ? <section className="card"><p>Cargando agenda…</p></section> : null}
     {error ? <p className="form-error" role="alert">{error}</p> : null}
     {!loading && !error ? <>
       <AgendaSection title="Atrasadas" items={agenda.overdue} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />
       <AgendaSection title="Para hoy" items={agenda.today} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />
       <AgendaSection title="Próximos 7 días" items={agenda.upcoming} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />
-      <section className="card"><strong>Regla de Mágina</strong><p>{agenda.rule}</p><small>La previsión estima condiciones futuras; el radar muestra reflectividad observada. Mágina no deduce una hora de llegada de lluvia a partir de una sola imagen radar.</small></section>
+      <section className="card"><strong>El tiempo ayuda; tú decides</strong><p>{agenda.rule}</p><small>La previsión mira hacia delante y el radar aporta observaciones recientes. No mostramos una hora exacta de llegada de la lluvia cuando los datos no permiten calcularla con fiabilidad.</small></section>
     </> : null}
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">UNA AGENDA, NO OTRA LIBRETA</span><h2>Planifica aquí, registra cuando realmente lo hagas.</h2></div><Link href="/mi-campo">Mi Campo</Link></section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">TU TRABAJO, BIEN ORGANIZADO</span><h2>Planifica aquí y registra la tarea cuando realmente la hayas hecho.</h2></div><Link href="/mi-campo">Mi Campo</Link></section>
   </>;
 }
