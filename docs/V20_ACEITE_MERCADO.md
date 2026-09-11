@@ -37,7 +37,8 @@ La ruta `/mercado` incorpora:
 
 - tarjetas AOVE / Virgen / Lampante con último dato validado;
 - variación respecto a la semana anterior;
-- evolución visual de ocho semanas;
+- histórico visual con selector real de **4 / 8 semanas** alimentado por la API persistente;
+- fallback del selector sobre el snapshot ya visible si falla la petición histórica;
 - lectura rápida descriptiva del mercado, sin predicción;
 - fecha de publicación, periodo y nivel de mercado visibles;
 - enlace a la fuente oficial;
@@ -68,7 +69,7 @@ source_name
 source_url
 market_level
 status
-injected_at / ingested_at
+ingested_at
 ```
 
 La clave natural `(source_key, category, period_start)` permite reingestar una publicación y aplicar una corrección histórica mediante `UPSERT` sin duplicar semanas.
@@ -141,6 +142,18 @@ validación cliente
 /mercado
 ```
 
+La gráfica histórica utiliza además:
+
+```text
+Selector 4 / 8 semanas
+        ↓
+GET /api/v1/public/market/olive-oil/history?weeks=N
+        ↓
+validación de contrato
+        ↓
+serie visible
+```
+
 Y el modo degradado:
 
 ```text
@@ -153,7 +166,7 @@ API pública
 web
 ```
 
-La web conserva además un snapshot local únicamente como último fallback para preview estática o falta total de API. La interfaz distingue el estado API del fallback mediante `data-market-source="api|fallback"`.
+La web conserva además un snapshot local únicamente como último fallback para preview estática o falta total de API. La interfaz distingue el estado API del fallback mediante `data-market-source="api|fallback"`. Si falla únicamente la petición del histórico, el selector recorta de forma local el snapshot ya disponible en lugar de vaciar la gráfica.
 
 ## Preparación de ingesta
 
@@ -191,6 +204,7 @@ No se automatiza todavía la captura desde una fuente estructurada no verificada
 - ventana de 4 semanas;
 - rechazo de `weeks` fuera de 1–52 o no enteros;
 - hidratación real de `/mercado` desde API;
+- cambio interactivo 8 → 4 → 8 semanas consumiendo el endpoint histórico;
 - coincidencia de precios API/UI;
 - lectura rápida de mercado;
 - ausencia de overflow horizontal a 360 px;
@@ -201,10 +215,11 @@ No se automatiza todavía la captura desde una fuente estructurada no verificada
 
 1. Conectar un adaptador de ingesta automática únicamente cuando exista una fuente oficial estructurada y verificable.
 2. Acumular histórico persistente real para 3, 6 y 12 meses a medida que entren nuevos cortes.
-3. Comparar con una segunda referencia independiente cuando su licencia y estabilidad lo permitan.
-4. Preferencias de precio y alertas, sin notificaciones especulativas.
-5. Relación opcional con una campaña real de `Mi Campo` para reutilizar kilos y rendimiento del usuario.
-6. Información de cooperativas/almazaras como contexto separado del índice de mercado.
+3. Ampliar progresivamente el selector cuando existan ventanas reales suficientes, sin rellenar meses con datos inventados.
+4. Comparar con una segunda referencia independiente cuando su licencia y estabilidad lo permitan.
+5. Preferencias de precio y alertas, sin notificaciones especulativas.
+6. Relación opcional con una campaña real de `Mi Campo` para reutilizar kilos y rendimiento del usuario.
+7. Información de cooperativas/almazaras como contexto separado del índice de mercado.
 
 ## Fuera de alcance de esta rama
 
