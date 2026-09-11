@@ -1,0 +1,96 @@
+name: V20 plans check
+
+on:
+  push:
+    branches:
+      - agent/planes-monetizacion
+    paths:
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/routes/plans.ts'
+      - 'apps/api/src/testing/plans-smoke.ts'
+      - 'apps/web/src/app/planes/**'
+      - 'apps/web/src/lib/plans-data-source.ts'
+      - 'database/migrations/0060_workspace_plans.sql'
+      - 'e2e/plans.spec.ts'
+      - '.github/workflows/plans-check.yml'
+  pull_request:
+    paths:
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/routes/plans.ts'
+      - 'apps/api/src/testing/plans-smoke.ts'
+      - 'apps/web/src/app/planes/**'
+      - 'apps/web/src/lib/plans-data-source.ts'
+      - 'database/migrations/0060_workspace_plans.sql'
+      - 'e2e/plans.spec.ts'
+      - '.github/workflows/plans-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  plans:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina_plans
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina_plans"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build API and web
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/api build
+          pnpm --filter @magina/web typecheck
+          pnpm --filter @magina/web build
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      - name: Apply migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina_plans -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Plans permissions and idempotency smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_plans
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/plans-smoke.js
