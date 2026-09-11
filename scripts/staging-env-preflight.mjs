@@ -51,6 +51,12 @@ function requireHttps(value, key) {
   return url;
 }
 
+function requirePort(values, key) {
+  const parsed = Number(valueOf(values, key));
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) fail(`${key} must be a valid TCP port`);
+  return parsed;
+}
+
 const source = await readFile(envPath, 'utf8').catch((error) => {
   throw new Error(`Unable to read staging env file ${envPath}`, { cause: error });
 });
@@ -77,8 +83,9 @@ if (decodeURIComponent(parsedDatabaseUrl.username) !== postgresUser) fail('DATAB
 if (decodeURIComponent(parsedDatabaseUrl.password) !== postgresPassword) fail('DATABASE_URL password must match POSTGRES_PASSWORD');
 if (decodeURIComponent(parsedDatabaseUrl.pathname.replace(/^\//, '')) !== postgresDb) fail('DATABASE_URL database must match POSTGRES_DB');
 
-const apiPort = Number(valueOf(values, 'API_PORT'));
-if (!Number.isInteger(apiPort) || apiPort < 1 || apiPort > 65535) fail('API_PORT must be a valid TCP port');
+const webPort = requirePort(values, 'WEB_PORT');
+const apiPort = requirePort(values, 'API_PORT');
+if (webPort === apiPort) fail('WEB_PORT and API_PORT must be different');
 
 const corsOrigins = valueOf(values, 'CORS_ALLOWED_ORIGINS').split(',').map((item) => item.trim()).filter(Boolean);
 if (!corsOrigins.length) fail('CORS_ALLOWED_ORIGINS must contain at least one origin');
@@ -87,7 +94,8 @@ for (const origin of corsOrigins) requireHttps(origin, 'CORS_ALLOWED_ORIGINS');
 
 const publicWebOrigin = requireHttps(valueOf(values, 'PUBLIC_WEB_ORIGIN'), 'PUBLIC_WEB_ORIGIN').origin;
 if (!corsOrigins.includes(publicWebOrigin)) fail('PUBLIC_WEB_ORIGIN must be included in CORS_ALLOWED_ORIGINS');
-requireHttps(valueOf(values, 'NEXT_PUBLIC_API_URL'), 'NEXT_PUBLIC_API_URL');
+const apiUrl = requireHttps(valueOf(values, 'NEXT_PUBLIC_API_URL'), 'NEXT_PUBLIC_API_URL');
+if (apiUrl.origin === publicWebOrigin) fail('NEXT_PUBLIC_API_URL should use a dedicated API origin in staging');
 requireHttps(valueOf(values, 'S3_ENDPOINT'), 'S3_ENDPOINT');
 
 valueOf(values, 'GOOGLE_CLIENT_ID');
@@ -128,4 +136,4 @@ const vapidSubject = valueOf(values, 'VAPID_SUBJECT');
 if (!/^mailto:[^@\s]+@[^@\s]+$/.test(vapidSubject)) fail('VAPID_SUBJECT must be a mailto address');
 valueOf(values, 'AEMET_API_KEY');
 
-console.log(`Staging env preflight passed for ${envPath}. Required production flags, origins, database, storage, OCR and provider settings are coherent.`);
+console.log(`Staging env preflight passed for ${envPath}. Required production flags, origins, ports, database, storage, OCR and provider settings are coherent.`);

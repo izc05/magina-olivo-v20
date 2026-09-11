@@ -83,6 +83,7 @@ services:
       - no-new-privileges:true
     networks:
       - backend
+      - edge
 
   worker:
     build:
@@ -124,9 +125,40 @@ services:
     networks:
       - backend
 
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/staging/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz | grep -Fx ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    read_only: true
+    tmpfs:
+      - /tmp:size=16777216,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+
 volumes:
   postgres_data:
 
 networks:
   backend:
+    driver: bridge
+  edge:
     driver: bridge
