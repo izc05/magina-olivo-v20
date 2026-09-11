@@ -41,7 +41,7 @@ test('ficha de cliente preselecciona el trabajo profesional', async ({ page }) =
 
   await expect(page.getByText('Cliente preseleccionado desde Profesional')).toBeVisible();
   await expect(page.getByLabel('Cliente existente')).toHaveValue(customerId);
-  await expect(page.getByLabel('Tipo', { exact: true })).toHaveValue('third-party');
+  await expect(page.getByRole('combobox', { name: 'Tipo', exact: true })).toHaveValue('third-party');
 });
 
 test('recorre cliente, presupuesto, trabajo, factura, documento y cobro', async ({ page }, testInfo) => {
@@ -54,8 +54,8 @@ test('recorre cliente, presupuesto, trabajo, factura, documento y cobro', async 
   await page.getByRole('link', { name: 'Nuevo presupuesto' }).first().click();
 
   await expect(page.getByRole('heading', { name: 'Presupuestos' })).toBeVisible();
-  await expect(page.getByLabel('Cliente')).toHaveValue(customerId);
-  await page.getByLabel('Finca / sitio del cliente').selectOption(siteId);
+  await expect(page.getByRole('combobox', { name: 'Cliente', exact: true })).toHaveValue(customerId);
+  await page.getByRole('combobox', { name: /^Finca \/ sitio del cliente/ }).selectOption(siteId);
   await page.getByLabel('Concepto').fill(title);
   await page.getByLabel('Nº presupuesto').fill(quoteNumber);
   await page.getByLabel('Estado inicial').selectOption('sent');
@@ -83,7 +83,7 @@ test('recorre cliente, presupuesto, trabajo, factura, documento y cobro', async 
   await page.getByRole('link', { name: 'Facturar este trabajo →' }).click();
 
   await expect(page.getByRole('heading', { name: 'Nueva factura' })).toBeVisible();
-  await expect(page.getByLabel('Cliente')).toHaveValue(customerId);
+  await expect(page.getByRole('combobox', { name: 'Cliente', exact: true })).toHaveValue(customerId);
   await expect(page.locator('label.card.activity-item').filter({ hasText: title })).toBeVisible();
   await page.getByLabel('Estado').selectOption('issued');
   await page.getByLabel('Nº factura').fill(invoiceNumber);
