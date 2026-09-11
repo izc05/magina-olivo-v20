@@ -23,7 +23,7 @@ const updateSchema = z.object({
 }).refine((value) => Object.keys(value).length > 0, 'No changes supplied');
 
 const completeSchema = z.object({
-  domain_type: z.enum(['treatment','irrigation','fertilization','pruning','harvest_delivery','work']),
+  domain_type: z.enum(['treatment','irrigation','fertilization','pruning','observation','harvest_delivery','work']),
   domain_record_id: z.string().uuid(),
 });
 
@@ -79,6 +79,9 @@ async function executedRecordMatchesField(
       break;
     case 'pruning':
       result = await sql`SELECT 1 FROM pruning_records WHERE id=${recordId}::uuid AND workspace_id=${workspaceId}::uuid AND field_id=${fieldId}::uuid LIMIT 1`.execute(database);
+      break;
+    case 'observation':
+      result = await sql`SELECT 1 FROM observation_records WHERE id=${recordId}::uuid AND workspace_id=${workspaceId}::uuid AND field_id=${fieldId}::uuid LIMIT 1`.execute(database);
       break;
     case 'harvest_delivery':
       result = await sql`SELECT 1 FROM harvest_delivery_fields hdf JOIN harvest_deliveries hd ON hd.id=hdf.delivery_id WHERE hd.id=${recordId}::uuid AND hd.workspace_id=${workspaceId}::uuid AND hdf.field_id=${fieldId}::uuid LIMIT 1`.execute(database);
