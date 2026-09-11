@@ -44,9 +44,12 @@ CREATE TABLE site_settings (
   key TEXT PRIMARY KEY CHECK (key ~ '^[a-z0-9]+(?:[._-][a-z0-9]+)*$'),
   value_json JSONB NOT NULL,
   description TEXT,
+  is_public BOOLEAN NOT NULL DEFAULT false,
   updated_by UUID NOT NULL REFERENCES users(id),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX site_settings_public_idx ON site_settings(is_public, key);
 
 CREATE TABLE admin_audit_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
