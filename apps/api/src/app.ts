@@ -21,6 +21,7 @@ import { registerPlannedTaskRoutes } from './routes/planned-tasks.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerDocumentAccessRoutes } from './routes/document-access.js';
 import { registerDocumentCatalogRoutes } from './routes/document-catalog.js';
+import { registerDocumentAnalysisRoutes } from './routes/document-analysis.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
 import { registerWeatherRoutes } from './routes/weather.js';
@@ -95,7 +96,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerCampaignRoutes(app, db);
   registerAgendaRoutes(app, db);
   registerAgronomyRoutes(app, db, weatherProvider);
-  registerAgronomyAlertRoutes(app, db, weatherProvider, notificationQueue);
+  registerAgronomyAlertRoutes(app, db, weatherProvider);
   registerAttentionRoutes(app, db, weatherProvider);
   registerPlannedTaskRoutes(app, db);
   registerWorkRoutes(app, db);
@@ -104,6 +105,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerDocumentRoutes(app, db, storage, ocrQueue);
   registerDocumentAccessRoutes(app, db, storage);
   registerDocumentCatalogRoutes(app, db);
+  registerDocumentAnalysisRoutes(app, db);
   registerGisRoutes(app, db, gisProviders);
 
   return app;
