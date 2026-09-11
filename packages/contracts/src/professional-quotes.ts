@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { clientOperationSchema, isoDateSchema, moneySchema, uuidSchema } from './mi-campo.js';
-import { workTypeSchema } from './work.js';
+import { workParticipantSchema, workResourceSchema, workTypeSchema } from './work.js';
 
 export const professionalQuoteStatusSchema = z.enum(['draft','sent','accepted','rejected','expired','converted']);
 
@@ -47,6 +47,8 @@ export const convertProfessionalQuoteSchema = clientOperationSchema.extend({
   occurred_on: isoDateSchema,
   title: z.string().trim().min(1).max(300).optional(),
   notes: z.string().trim().max(4000).optional(),
+  participants: z.array(workParticipantSchema).max(200).default([]),
+  resources: z.array(workResourceSchema).max(200).default([]),
 }).superRefine((value, ctx) => {
   const destinations = Number(Boolean(value.field_id)) + Number(Boolean(value.customer_site_id));
   if (destinations !== 1) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['field_id'], message: 'Exactly one work destination is required' });
