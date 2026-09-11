@@ -117,8 +117,9 @@ async function main() {
     },
   });
   if (review.statusCode !== 201) throw new Error(`Extraction review failed: ${review.statusCode} ${review.body}`);
-  const reviewBody = review.json();
-  if (reviewBody.extraction.original_data.ticket_number !== 'CI-001') throw new Error('Original extraction was not preserved');
+  const originalExtraction = await db.selectFrom('extraction_runs').select('data_json').where('id', '=', extractionId).executeTakeFirstOrThrow();
+  const originalData = originalExtraction.data_json as Record<string, unknown>;
+  if (originalData.ticket_number !== 'CI-001') throw new Error('Original extraction was not preserved');
 
   const analysis = await app.inject({
     method: 'GET',
