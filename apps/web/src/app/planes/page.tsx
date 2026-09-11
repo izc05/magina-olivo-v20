@@ -131,7 +131,7 @@ export default function PlansPage() {
             if (!plan) return null;
             const isCurrent = currentPlan?.effective_plan === plan.code;
             const interestRegistered = plan.code !== 'free' && registeredInterests.has(plan.code);
-            const isPaidCandidate = plan.code === 'pro' || plan.code === 'professional';
+            const targetPlan = plan.code === 'pro' || plan.code === 'professional' ? plan.code : null;
             const canRequest = Boolean(currentPlan?.can_manage_plan && selectedWorkspaceId);
 
             return (
@@ -165,14 +165,14 @@ export default function PlansPage() {
                   <button className={styles.secondaryButton} type="button" disabled>Solo propietario o admin</button>
                 ) : isCurrent ? (
                   <button className={styles.secondaryButton} type="button" disabled>Plan actual</button>
-                ) : isPaidCandidate ? (
+                ) : targetPlan ? (
                   <button
                     className={styles.primaryButton}
                     type="button"
                     disabled={actionPlan !== null}
-                    onClick={() => void handleInterest(plan.code)}
+                    onClick={() => void handleInterest(targetPlan)}
                   >
-                    {actionPlan === plan.code ? 'Registrando…' : 'Avísame cuando esté disponible'}
+                    {actionPlan === targetPlan ? 'Registrando…' : 'Avísame cuando esté disponible'}
                   </button>
                 ) : null}
               </article>
