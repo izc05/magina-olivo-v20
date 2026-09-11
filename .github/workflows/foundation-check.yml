@@ -66,6 +66,9 @@ jobs:
       - name: Verify migration sequence contract
         run: pnpm check:migrations
 
+      - name: Verify immutable staging container references
+        run: pnpm check:containers
+
       - name: Typecheck workspace
         run: pnpm typecheck
 
