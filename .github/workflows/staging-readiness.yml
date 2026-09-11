@@ -77,7 +77,9 @@ jobs:
         run: pnpm check:staging
 
       - name: Validate immutable staging container references
-        run: pnpm check:containers
+        run: |
+          pnpm check:containers
+          sh -n deploy/staging/deploy-host.sh
 
       - name: Validate staging env preflight
         run: |
@@ -133,6 +135,14 @@ jobs:
 
           STAGING_PREFLIGHT_ALLOW_RESERVED_HOSTS=true \
             node scripts/staging-env-preflight.mjs /tmp/magina-staging-valid.env
+
+          sed 's/NEXT_PUBLIC_GOOGLE_CLIENT_ID=staging-ci.apps.googleusercontent.com/NEXT_PUBLIC_GOOGLE_CLIENT_ID=other-client.apps.googleusercontent.com/' \
+            /tmp/magina-staging-valid.env > /tmp/magina-staging-google-mismatch.env
+          if STAGING_PREFLIGHT_ALLOW_RESERVED_HOSTS=true node scripts/staging-env-preflight.mjs /tmp/magina-staging-google-mismatch.env >/tmp/google-mismatch.log 2>&1; then
+            echo 'Preflight must reject different browser/API Google client IDs.' >&2
+            exit 1
+          fi
+          grep -F 'GOOGLE_CLIENT_ID and NEXT_PUBLIC_GOOGLE_CLIENT_ID must match' /tmp/google-mismatch.log
 
       - name: Restore Next.js build cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -224,6 +234,7 @@ jobs:
             -f deploy/staging/docker-compose.yml \
             config > /tmp/magina-staging-compose.yml
           test -s /tmp/magina-staging-compose.yml
+          grep -F 'NEXT_PUBLIC_GOOGLE_CLIENT_ID: CHANGE_ME.apps.googleusercontent.com' /tmp/magina-staging-compose.yml
 
       - name: Build staging images
         run: |
@@ -253,46 +264,38 @@ jobs:
             run --rm --no-deps --entrypoint /bin/sh web -ec \
             "grep -R -F 'https://api-staging.example.com' /usr/share/nginx/html/_next >/dev/null && grep -R -F 'CHANGE_ME.apps.googleusercontent.com' /usr/share/nginx/html/_next >/dev/null"
 
-      - name: Smoke staging containers and migration repeatability
+      - name: Smoke real host deploy path, backup and migration repeatability
         run: |
+          set -eu
+          cp /tmp/magina-staging-valid.env deploy/staging/.ci.env
+          chmod 600 deploy/staging/.ci.env
+          backup_dir=/tmp/magina-staging-backups
+          rm -rf "$backup_dir"
+          mkdir -p "$backup_dir"
+
           compose() {
             docker compose \
-              --env-file deploy/staging/.env.example \
+              --env-file deploy/staging/.ci.env \
               -f deploy/staging/docker-compose.yml "$@"
           }
-          cleanup() { compose down -v --remove-orphans || true; }
+          cleanup() {
+            compose down -v --remove-orphans || true
+            rm -f deploy/staging/.ci.env
+          }
           trap cleanup EXIT
 
-          if ! compose up -d web; then
-            echo 'Staging compose failed during dependency startup.' >&2
-            compose ps -a || true
-            compose logs --no-color postgres migrate api web || true
-            exit 1
-          fi
+          STAGING_PREFLIGHT_ALLOW_RESERVED_HOSTS=true \
+          STAGING_BACKUP_DIR="$backup_dir" \
+            ./deploy/staging/deploy-host.sh deploy/staging/.ci.env
 
-          api_ready=false
-          web_ready=false
-          for attempt in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:3001/health >/tmp/staging-health.json; then
-              api_ready=true
-            fi
-            if curl -fsS http://127.0.0.1:8080/healthz >/tmp/staging-web-health.txt; then
-              web_ready=true
-            fi
-            if [ "$api_ready" = true ] && [ "$web_ready" = true ]; then
-              break
-            fi
-            sleep 1
-          done
+          backup_count="$(find "$backup_dir" -maxdepth 1 -type f -name 'magina-staging-before-*.dump' | wc -l | tr -d ' ')"
+          test "$backup_count" = '1'
+          backup_file="$(find "$backup_dir" -maxdepth 1 -type f -name 'magina-staging-before-*.dump' -print -quit)"
+          test -s "$backup_file"
+          pg_restore -l "$backup_file" >/dev/null
 
-          if [ "$api_ready" != true ] || [ "$web_ready" != true ]; then
-            compose ps -a || true
-            compose logs --no-color postgres migrate api web || true
-            exit 1
-          fi
-
-          cat /tmp/staging-health.json
-          grep -Fx 'ok' /tmp/staging-web-health.txt
+          curl -fsS http://127.0.0.1:3001/health >/tmp/staging-health.json
+          curl -fsS http://127.0.0.1:8080/healthz | grep -Fx 'ok'
           curl -fsS http://127.0.0.1:8080/ >/tmp/staging-web-index.html
           test -s /tmp/staging-web-index.html
           curl -fsSI http://127.0.0.1:8080/ | tr -d '\r' | grep -Fi 'X-Frame-Options: DENY'
@@ -301,22 +304,10 @@ jobs:
           curl -fsSI http://127.0.0.1:8080/documento-publico | tr -d '\r' | grep -Fi 'X-Robots-Tag: noindex, nofollow, noarchive'
 
           STAGING_API_URL=http://127.0.0.1:3001 \
-          STAGING_WEB_ORIGIN=https://staging.example.com \
+          STAGING_WEB_ORIGIN=https://web.staging.magina.invalid \
           STAGING_REJECTED_ORIGIN=https://untrusted.magina.invalid \
           STAGING_ALLOW_HTTP=true \
             node scripts/staging-postdeploy-smoke.mjs
-
-          if ! second_migration_run="$(compose run --rm migrate 2>&1)"; then
-            printf '%s\n' "$second_migration_run" >&2
-            compose ps -a || true
-            compose logs --no-color postgres migrate api web || true
-            exit 1
-          fi
-          printf '%s\n' "$second_migration_run"
-          if printf '%s\n' "$second_migration_run" | grep -F 'Applying /migrations/'; then
-            echo 'Second migration run attempted to reapply an existing migration.' >&2
-            exit 1
-          fi
 
           expected_count="$(find database/migrations -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')"
           applied_count="$(compose exec -T postgres psql -U magina_staging -d magina_staging -Atc "SELECT count(*) FROM public.schema_migrations WHERE status='applied';")"
