@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { sql } from 'kysely';
 import { buildApp } from '../app.js';
 import { createDatabase } from '../db/client.js';
 
@@ -8,11 +9,51 @@ if (!databaseUrl) throw new Error('DATABASE_URL is required for map context smok
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const userId = '33333333-3333-4333-8333-333333333333';
 const fieldId = '55555555-5555-4555-8555-555555555555';
+const cadastralReference = '23044A00100001';
+const sigpacReference = '233788127';
 
 const db = createDatabase(databaseUrl);
 const app = buildApp({ db });
 
 try {
+  await sql`
+    UPDATE fields
+    SET
+      name = 'Finca GIS CI',
+      geometry = ST_Multi(ST_GeomFromText('POLYGON((-3.5000 37.7000,-3.4990 37.7000,-3.4990 37.7010,-3.5000 37.7010,-3.5000 37.7000))', 4326)),
+      calculated_area_ha = 1.2,
+      geometry_source = 'catastro',
+      geometry_status = 'verified',
+      geometry_checked_at = now()
+    WHERE id = ${fieldId}::uuid AND workspace_id = ${workspaceId}::uuid
+  `.execute(db);
+
+  await sql`
+    INSERT INTO field_land_refs (field_id, source, reference, geometry, area_ha, status, metadata_json, checked_at)
+    VALUES
+      (
+        ${fieldId}::uuid,
+        'catastro',
+        ${cadastralReference},
+        ST_Multi(ST_GeomFromText('POLYGON((-3.5000 37.7000,-3.4990 37.7000,-3.4990 37.7010,-3.5000 37.7010,-3.5000 37.7000))', 4326)),
+        1.2,
+        'verified',
+        '{}'::jsonb,
+        now()
+      ),
+      (
+        ${fieldId}::uuid,
+        'sigpac',
+        ${sigpacReference},
+        ST_Multi(ST_GeomFromText('POLYGON((-3.4998 37.7002,-3.4992 37.7002,-3.4992 37.7008,-3.4998 37.7008,-3.4998 37.7002))', 4326)),
+        0.8,
+        'verified',
+        '{}'::jsonb,
+        now()
+      )
+    ON CONFLICT (field_id, source, reference) WHERE reference IS NOT NULL DO NOTHING
+  `.execute(db);
+
   await app.ready();
   const response = await app.inject({
     method: 'GET',
