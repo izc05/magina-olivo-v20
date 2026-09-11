@@ -21,6 +21,7 @@ async function domainRecordBelongsToWorkspace(db: DatabaseClient, workspaceId: s
     case 'fertilization': return Boolean(await db.selectFrom('fertilization_records').select('id').where('id', '=', recordId).where('workspace_id', '=', workspaceId).executeTakeFirst());
     case 'pruning': return Boolean(await db.selectFrom('pruning_records').select('id').where('id', '=', recordId).where('workspace_id', '=', workspaceId).executeTakeFirst());
     case 'expense': return Boolean(await db.selectFrom('expense_records').select('id').where('id', '=', recordId).where('workspace_id', '=', workspaceId).executeTakeFirst());
+    case 'observation': return Boolean(await db.selectFrom('observation_records').select('id').where('id', '=', recordId).where('workspace_id', '=', workspaceId).executeTakeFirst());
     case 'harvest_delivery': return Boolean(await db.selectFrom('harvest_deliveries').select('id').where('id', '=', recordId).where('workspace_id', '=', workspaceId).executeTakeFirst());
     case 'harvest_result': return Boolean(await db.selectFrom('delivery_results').select('id').where('id', '=', recordId).where('workspace_id', '=', workspaceId).executeTakeFirst());
     case 'work': {
@@ -330,8 +331,9 @@ export function registerDocumentRoutes(
       .executeTakeFirst();
     if (!extraction) return reply.code(404).send({ error: 'extraction_not_found' });
 
+    const reviewId = randomUUID();
     const review = await database.insertInto('extraction_reviews').values({
-      id: randomUUID(),
+      id: reviewId,
       workspace_id: context.workspaceId,
       extraction_run_id: extraction.id,
       confirmed_fields: input.confirmed_fields,
@@ -339,14 +341,6 @@ export function registerDocumentRoutes(
       reviewed_by: context.userId,
     }).returningAll().executeTakeFirstOrThrow();
 
-    return reply.code(201).send({
-      review,
-      extraction: {
-        id: extraction.id,
-        status: extraction.status,
-        original_data: extraction.data_json,
-        confidence: extraction.confidence_json,
-      },
-    });
+    return reply.code(201).send({ review });
   });
 }
