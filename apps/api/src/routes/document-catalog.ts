@@ -141,6 +141,23 @@ export function registerDocumentCatalogRoutes(app: FastifyInstance, db: Database
       .executeTakeFirst();
     if (existing) return reply.send({ replayed: true, link: existing });
 
+    const generic = await database.selectFrom('attachment_links').selectAll()
+      .where('workspace_id', '=', context.workspaceId)
+      .where('document_id', '=', documentId.data)
+      .where('field_id', '=', fieldId.data)
+      .where('domain_record_id', 'is', null)
+      .orderBy('created_at', 'asc')
+      .executeTakeFirst();
+
+    if (generic) {
+      const link = await database.updateTable('attachment_links').set({
+        domain_type: domainType,
+        domain_record_id: recordId.data,
+        relation: 'source_document',
+      }).where('id', '=', generic.id).returningAll().executeTakeFirstOrThrow();
+      return reply.code(201).send({ replayed: false, reused_generic_link: true, link });
+    }
+
     const sourceLink = await database.selectFrom('attachment_links').select('campaign_id')
       .where('workspace_id', '=', context.workspaceId).where('document_id', '=', documentId.data).where('field_id', '=', fieldId.data).executeTakeFirst();
     const link = await database.insertInto('attachment_links').values({
@@ -153,6 +170,6 @@ export function registerDocumentCatalogRoutes(app: FastifyInstance, db: Database
       campaign_id: sourceLink?.campaign_id ?? null,
     }).returningAll().executeTakeFirstOrThrow();
 
-    return reply.code(201).send({ replayed: false, link });
+    return reply.code(201).send({ replayed: false, reused_generic_link: false, link });
   });
 }
