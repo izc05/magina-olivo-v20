@@ -80,7 +80,7 @@ export async function linkDocumentToDomain(input: {
   workspaceId: string;
   documentId: string;
   fieldId: string;
-  domainType: 'expense' | 'harvest_delivery' | 'harvest_result';
+  domainType: 'expense' | 'harvest_delivery' | 'harvest_result' | 'harvest_settlement' | 'harvest_collection';
   domainRecordId: string;
 }) {
   return apiFetch(`/api/v1/documents/${encodeURIComponent(input.documentId)}/link-domain`, {
