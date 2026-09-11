@@ -35,16 +35,36 @@ export function ProfessionalAttentionCard() {
   if (loading && !data) return <section className="card"><p>Revisando seguimiento comercial…</p></section>;
   if (!data) return null;
 
-  const hasAttention = data.summary.overdueInvoiceCount > 0 || data.summary.unbilledWorkCount > 0 || data.summary.agedCustomerCount > 0;
+  const hasAttention = data.summary.overdueInvoiceCount > 0
+    || data.summary.unbilledWorkCount > 0
+    || data.summary.agedCustomerCount > 0
+    || data.summary.expiredQuoteCount > 0
+    || data.summary.quoteFollowupCount > 0;
   if (!hasAttention) return null;
 
   return <section className="section">
-    <div className="section-head"><div><h2>Seguimiento comercial</h2><small>Vencimientos, trabajos sin facturar y deuda antigua</small></div><Link href="/mi-campo/profesional/facturas/nueva">Nueva factura</Link></div>
+    <div className="section-head"><div><h2>Seguimiento comercial</h2><small>Vencimientos, facturación y presupuestos sin respuesta</small></div><Link href="/mi-campo/profesional/presupuestos">Presupuestos</Link></div>
     <div className="quick-grid">
       {data.summary.overdueInvoiceCount > 0 ? <article className="card quick"><div><strong>{money(data.summary.overdueInvoiceEur)}</strong><small>{data.summary.overdueInvoiceCount} factura{data.summary.overdueInvoiceCount === 1 ? '' : 's'} vencida{data.summary.overdueInvoiceCount === 1 ? '' : 's'}</small></div></article> : null}
       {data.summary.unbilledWorkCount > 0 ? <article className="card quick"><div><strong>{money(data.summary.unbilledWorkEur)}</strong><small>{data.summary.unbilledWorkCount} trabajo{data.summary.unbilledWorkCount === 1 ? '' : 's'} sin facturar</small></div></article> : null}
+      {data.summary.expiredQuoteCount > 0 ? <article className="card quick"><div><strong>{money(data.summary.expiredQuoteEur)}</strong><small>{data.summary.expiredQuoteCount} presupuesto{data.summary.expiredQuoteCount === 1 ? '' : 's'} fuera de plazo</small></div></article> : null}
+      {data.summary.quoteFollowupCount > 0 ? <article className="card quick"><div><strong>{data.summary.quoteFollowupCount}</strong><small>presupuesto{data.summary.quoteFollowupCount === 1 ? '' : 's'} enviado{data.summary.quoteFollowupCount === 1 ? '' : 's'} sin respuesta</small></div></article> : null}
       {data.summary.agedCustomerCount > 0 ? <article className="card quick"><div><strong>{money(data.summary.agedReceivableEur)}</strong><small>{data.summary.agedCustomerCount} cliente{data.summary.agedCustomerCount === 1 ? '' : 's'} con deuda de 30+ días</small></div></article> : null}
     </div>
+
+    {data.expiredQuotes.length ? <div className="card feed today-list">
+      {data.expiredQuotes.slice(0, 3).map((quote) => <div className="feed-row" key={quote.id}>
+        <div className="feed-copy"><strong>Presupuesto {quote.quoteNumber ?? 'sin nº'} · {quote.customerName}</strong><small>{quote.overdueDays} días fuera de plazo · {money(quote.totalEur)}</small></div>
+        <Link className="secondary-action action-link" href={`/mi-campo/profesional/presupuestos?quoteId=${encodeURIComponent(quote.id)}&customerId=${encodeURIComponent(quote.customerId)}`}>Gestionar</Link>
+      </div>)}
+    </div> : null}
+
+    {data.quoteFollowups.length ? <div className="card feed today-list">
+      {data.quoteFollowups.slice(0, 3).map((quote) => <div className="feed-row" key={quote.id}>
+        <div className="feed-copy"><strong>{quote.title}</strong><small>{quote.customerName} · enviado hace {quote.ageDays} días · {money(quote.totalEur)}</small></div>
+        <Link className="secondary-action action-link" href={`/mi-campo/profesional/presupuestos?quoteId=${encodeURIComponent(quote.id)}&customerId=${encodeURIComponent(quote.customerId)}`}>Revisar</Link>
+      </div>)}
+    </div> : null}
 
     {data.overdueInvoices.length ? <div className="card feed today-list">
       {data.overdueInvoices.slice(0, 3).map((invoice) => <div className="feed-row" key={invoice.id}>
