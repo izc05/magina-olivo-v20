@@ -13,11 +13,11 @@ import {
 } from '@/lib/campaign-data-source';
 
 function money(value: number) {
-  return `${value.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
+  return `${value.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2, useGrouping: 'always' })} €`;
 }
 
 function number(value: number) {
-  return value.toLocaleString('es-ES', { maximumFractionDigits: 2 });
+  return value.toLocaleString('es-ES', { maximumFractionDigits: 2, useGrouping: 'always' });
 }
 
 export function CampaignSummaryClient() {
@@ -108,7 +108,7 @@ export function CampaignSummaryClient() {
 
     {summary ? <>
       <section className="section"><div className="quick-grid">
-        <article className="card quick premium-quick"><div><strong>{Math.round(summary.deliveredKg).toLocaleString('es-ES')} kg</strong><small>aceituna entregada</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{number(Math.round(summary.deliveredKg))} kg</strong><small>aceituna entregada</small></div></article>
         <article className="card quick premium-quick"><div><strong>{summary.weightedYieldPercent !== undefined ? `${number(summary.weightedYieldPercent)} %` : '—'}</strong><small>rendimiento ponderado</small></div></article>
         <article className="card quick premium-quick"><div><strong>{money(summary.totalCostEur)}</strong><small>costes registrados</small></div></article>
         <article className="card quick premium-quick"><div><strong>{money(summary.accruedIncomeEur)}</strong><small>liquidado</small></div></article>
@@ -124,11 +124,11 @@ export function CampaignSummaryClient() {
       <section className="section">
         <div className="section-head"><h2>Por finca</h2><span className="subtle">{summary.fieldCount} con actividad</span></div>
         {summary.fields.length ? <div className="card feed today-list">
-          {summary.fields.map((field) => <div className="feed-row" key={field.fieldId}><div className="feed-copy"><strong>{field.fieldName}</strong><small>{Math.round(field.deliveredKg).toLocaleString('es-ES')} kg · coste {money(field.totalCostEur)} · liquidado {money(field.accruedIncomeEur)} · cobrado {money(field.collectedIncomeEur)} · pendiente {money(field.pendingCollectionEur)} · margen devengado {money(field.accruedMarginEur)}</small></div></div>)}
+          {summary.fields.map((field) => <div className="feed-row" key={field.fieldId}><div className="feed-copy"><strong>{field.fieldName}</strong><small>{number(Math.round(field.deliveredKg))} kg · coste {money(field.totalCostEur)} · liquidado {money(field.accruedIncomeEur)} · cobrado {money(field.collectedIncomeEur)} · pendiente {money(field.pendingCollectionEur)} · margen devengado {money(field.accruedMarginEur)}</small></div></div>)}
         </div> : <section className="card"><p>Aún no hay datos económicos o de cosecha en esta campaña.</p></section>}
       </section>
 
-      <section className="card"><strong>Lectura de campaña</strong><p>{summary.deliveryCount} entregas · {summary.settlementCount} liquidaciones · {Math.round(summary.pendingResultKg).toLocaleString('es-ES')} kg todavía sin resultado de rendimiento.</p><small>{summary.attributionStatus}</small></section>
+      <section className="card"><strong>Lectura de campaña</strong><p>{summary.deliveryCount} entregas · {summary.settlementCount} liquidaciones · {number(Math.round(summary.pendingResultKg))} kg todavía sin resultado de rendimiento.</p><small>{summary.attributionStatus}</small></section>
     </> : null}
 
     <section className="territory-banner compact-banner"><div><span className="eyebrow">CAMPAÑA COMPLETA</span><h2>Ver cada finca y el conjunto sin duplicar cálculos.</h2></div><Link href="/mi-campo">Mi Campo</Link></section>
