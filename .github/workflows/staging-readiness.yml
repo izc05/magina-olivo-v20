@@ -259,7 +259,13 @@ jobs:
           cleanup() { compose down -v --remove-orphans || true; }
           trap cleanup EXIT
 
-          compose up -d web
+          if ! compose up -d web; then
+            echo 'Staging compose failed during dependency startup.' >&2
+            compose ps -a || true
+            compose logs --no-color postgres migrate api web || true
+            exit 1
+          fi
+
           api_ready=false
           web_ready=false
           for attempt in $(seq 1 90); do
@@ -276,8 +282,8 @@ jobs:
           done
 
           if [ "$api_ready" != true ] || [ "$web_ready" != true ]; then
-            compose ps
-            compose logs --no-color postgres migrate api web
+            compose ps -a || true
+            compose logs --no-color postgres migrate api web || true
             exit 1
           fi
 
@@ -296,7 +302,12 @@ jobs:
           STAGING_ALLOW_HTTP=true \
             node scripts/staging-postdeploy-smoke.mjs
 
-          second_migration_run="$(compose run --rm migrate 2>&1)"
+          if ! second_migration_run="$(compose run --rm migrate 2>&1)"; then
+            printf '%s\n' "$second_migration_run" >&2
+            compose ps -a || true
+            compose logs --no-color postgres migrate api web || true
+            exit 1
+          fi
           printf '%s\n' "$second_migration_run"
           if printf '%s\n' "$second_migration_run" | grep -F 'Applying /migrations/'; then
             echo 'Second migration run attempted to reapply an existing migration.' >&2
