@@ -93,7 +93,33 @@ También se añadió el workflow rápido `V20 environment contract`, que no inst
 
 Los logs actuales muestran que `actions/checkout@v4` y `actions/setup-node@v4` todavía dependen del runtime antiguo de Actions y GitHub ya los fuerza a Node 24. Las versiones publicadas actuales son superiores.
 
-**Acción iniciada:** el nuevo `V20 environment contract` ya usa `actions/checkout@v7` y `actions/setup-node@v7`. La actualización del resto de workflows se hará por lotes para no provocar conflictos artificiales con ramas de producto activas.
+**Acción iniciada:** los nuevos workflows de foundation usan `actions/checkout@v7`, `actions/setup-node@v7`, `pnpm/action-setup@v6` y `actions/upload-artifact@v7` cuando corresponde. La actualización del resto de workflows se hará por lotes para no provocar conflictos artificiales con ramas de producto activas.
+
+## Lote 3 — dependencias reproducibles e integración paralela
+
+### El repositorio no tenía lockfile
+
+Los workflows instalaban con `pnpm install --no-frozen-lockfile`, por lo que dos ramas podían resolver versiones transitorias diferentes sin modificar sus manifests.
+
+**Acción:**
+
+- generado y versionado `pnpm-lock.yaml` con pnpm 10.15.1 y Node 22;
+- creado `V20 lockfile guard`, que regenera el lockfile y lo mantiene sincronizado en PRs del mismo repositorio;
+- añadido `pnpm check:lockfile`;
+- `pnpm check` y `pnpm check:fast` validan ahora lockfile y contrato de entorno antes de typecheck/build;
+- `LOCAL_DEVELOPMENT.md` usa `pnpm install --frozen-lockfile` como instalación normal.
+
+El primer lockfile fue generado por CI y el bot lo incorporó a la rama mediante `chore(deps): refresh pnpm lockfile`. Una segunda ejecución confirmó que ya estaba sincronizado.
+
+### Integrar muchas ramas necesitaba más contexto
+
+**Acción:** añadido `.github/pull_request_template.md` para que cada PR declare workstream, base, archivos compartidos, dependencia con otras ramas, checks ejecutados y riesgo de integración.
+
+### El candidate avanzó durante el trabajo transversal
+
+`feat/v20-visual-prototype` avanzó con una corrección E2E para volver desde mapa al hub de registro mediante ruta relativa.
+
+**Acción:** se incorporó la corrección compatible manteniendo el endurecimiento semántico anterior y se creó una sincronización formal de Git. Tras ella, `chore/v20-cleanup-structure` quedó **0 commits por detrás** del candidate correspondiente.
 
 ## Coherencia comprobada
 
@@ -107,17 +133,20 @@ El código y los gates actuales confirman:
 - Playwright con identidad E2E explícita;
 - Node 22 como runtime de aplicación acordado;
 - contrato automático de variables de entorno;
-- workstreams paralelos documentados por rama.
+- `pnpm-lock.yaml` reproducible y guard automático;
+- workstreams paralelos documentados por rama;
+- plantilla de integración común para PRs.
 
 ## Deuda transversal pendiente
 
 Se mantiene como backlog de este mismo workstream:
 
 - actualizar progresivamente las actions antiguas de los workflows existentes;
-- introducir un lockfile reproducible y, después, pasar CI a instalación congelada;
+- migrar los workflows existentes desde `--no-frozen-lockfile` a `--frozen-lockfile` una vez incorporado este foundation al candidate;
 - revisar duplicación entre workflows y extraer convenciones comunes cuando aporte valor real;
 - auditar configuración de staging/producción conforme se activen nuevos módulos;
-- mantener el mapa de workstreams actualizado durante la integración.
+- mantener el mapa de workstreams actualizado durante la integración;
+- revisar periódicamente que la rama foundation no quede por detrás del candidate activo.
 
 ## Deuda que pertenece a otros frentes
 
