@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
 import { ArrowIcon, MapPinIcon, RainIcon } from '@/components/icons';
+import { ManagedExploreContent } from '@/components/managed-explore-content';
 
 const areas = [
   ['📰','Noticias','Campo, pueblos y actualidad'],
@@ -20,6 +21,8 @@ export default function ExplorePage(){
     </section>
 
     <section className="section"><div className="section-head"><h2>Explorar</h2><span/></div><div className="explore-grid">{areas.map(([icon,title,text])=><article className="card explore-card" key={title}><span className="explore-icon">{icon}</span><div><h3>{title}</h3><p>{text}</p></div><ArrowIcon/></article>)}</div></section>
+
+    <ManagedExploreContent />
 
     <section className="section"><div className="section-head"><h2>Ahora en Mágina</h2><Link href="/radar">Radar <ArrowIcon/></Link></div><Link href="/radar" className="card weather-feature"><span className="weather-feature-icon"><RainIcon/></span><div><strong>Radar y avisos de lluvia</strong><small>Consulta precipitación cerca de tus fincas.</small></div><ArrowIcon/></Link></section>
 
