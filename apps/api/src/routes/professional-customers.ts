@@ -58,6 +58,20 @@ export function registerProfessionalCustomerRoutes(app: FastifyInstance, db: Dat
       ORDER BY pi.issued_on DESC NULLS LAST, pi.created_at DESC
     `.execute(database);
 
+    const invoiceIds = invoices.rows.map((row) => (row as { id: string }).id);
+    const documents = invoiceIds.length ? await sql`
+      SELECT d.id, d.kind, d.title, d.created_at,
+             al.domain_record_id AS invoice_id,
+             al.relation
+      FROM attachment_links al
+      JOIN documents d ON d.id = al.document_id
+      WHERE al.workspace_id = ${context.workspaceId}::uuid
+        AND al.domain_type = 'professional_invoice'
+        AND al.domain_record_id = ANY(${invoiceIds}::uuid[])
+        AND d.status = 'active'
+      ORDER BY d.created_at DESC
+    `.execute(database) : { rows: [] as unknown[] };
+
     const collections = await sql`
       SELECT wc.id, wc.collected_on::text, wc.amount_eur::double precision, wc.method, wc.reference,
              wr.id AS work_id, wr.title AS work_title
@@ -95,6 +109,7 @@ export function registerProfessionalCustomerRoutes(app: FastifyInstance, db: Dat
       works: normalizedWorks,
       invoices: normalizedInvoices,
       collections: collections.rows,
+      documents: documents.rows,
     };
   });
 }
