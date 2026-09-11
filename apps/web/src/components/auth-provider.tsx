@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { apiBaseUrl, apiFetch, ApiRequestError, ApiUnavailableError } from '../lib/api-client';
+import { apiBaseUrl, apiFetch, ApiRequestError, ApiUnavailableError, previewModeEnabled } from '../lib/api-client';
 
 export type AuthUser = {
   id: string;
@@ -60,6 +60,7 @@ type AuthContextValue = {
   workspaces: WorkspaceMembership[];
   selectedWorkspaceId: string | null;
   apiConfigured: boolean;
+  previewEnabled: boolean;
   selectWorkspace: (workspaceId: string) => void;
   signInWithGoogleCredential: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -182,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     workspaces,
     selectedWorkspaceId,
     apiConfigured: Boolean(apiBaseUrl),
+    previewEnabled: previewModeEnabled,
     selectWorkspace,
     signInWithGoogleCredential,
     logout,
