@@ -1,374 +1,339 @@
 # V20 — Staging runbook
 
-Estado: runtime de staging reproducible preparado y validado en CI. El último runtime de código verificado es `b1dd423e002f582ff9de620f2e7cbc49b4c01e23`.
+Estado: runtime de staging reproducible y gateado preparado. El último HEAD de código completamente validado es `7d663b6e747abe201a5ffe6ca65e07dd8fa35ba5`.
 
-En ese SHA quedaron verdes conjuntamente:
+En ese HEAD quedaron verdes conjuntamente:
 
-- `V20 full candidate check` #2070.
-- `V20 beta browser E2E` #373.
-- `V20 staging readiness` #25.
+- `V20 environment contract` #49;
+- `V20 lockfile guard` #41;
+- `V20 foundation check` #32;
+- `V20 full candidate check` #2129;
+- `V20 beta browser E2E` #435;
+- `V20 staging readiness` #70.
 
-`staging readiness` ya construye las imágenes Docker de API y worker, valida Tesseract/Poppler dentro de la imagen final, arranca PostGIS, aplica todas las migraciones, levanta la API containerizada y comprueba `/health`.
+`staging readiness` construye las imágenes Docker de **web + API + worker**, valida Tesseract/Poppler dentro de la imagen final, arranca PostGIS 17, aplica las migraciones registradas, levanta el stack y comprueba health. También ejecuta una segunda pasada de migraciones sobre la misma base y exige que sea un no-op.
 
-Esto no equivale todavía a un staging externo aprobado: faltan los secretos y servicios reales del entorno (dominio HTTPS, bucket, Google Auth, AEMET, VAPID y observabilidad).
+Esto **no significa que exista ya un staging externo aprobado**. Para desplegar fuera de CI siguen siendo necesarios un host autorizado, los secretos del Environment `staging`, dominios HTTPS y servicios reales de storage, Google Auth, AEMET/radar y VAPID.
 
 ## Objetivo
 
 Validar la Beta V20 en un entorno real antes de cualquier merge a `main`:
 
-- web estática sin preview;
+- web estática sin preview servida por nginx no-root;
 - API Fastify real;
 - PostgreSQL 17 + PostGIS;
 - worker/jobs;
-- OCR Tesseract de producción;
-- storage S3-compatible;
-- Google Auth;
+- OCR Tesseract + Poppler;
+- storage S3-compatible aislado;
+- Google Auth por ID token;
 - AEMET/radar;
 - documentos/OCR;
 - notificaciones configurables;
 - enlaces comerciales públicos.
 
-Staging no usa datos demo ni `ALLOW_DEV_AUTH_HEADERS`.
+Staging no usa fallback demo ni `ALLOW_DEV_AUTH_HEADERS`.
 
 ## Runtime preparado
 
-`deploy/staging/` contiene:
+`deploy/staging/` contiene, entre otros:
 
 ```text
 .env.example
 Dockerfile.api
 Dockerfile.worker
+Dockerfile.web
 docker-compose.yml
+deploy-host.sh
+migrate.sh
+nginx.conf
 ```
 
-El stack backend incluye:
+Arquitectura:
 
 ```text
-PostGIS 17
-   ↓
-migrate (one-shot)
-   ↓
-API Fastify ── 127.0.0.1:3001
-   │
-   └──────── worker
-              ├─ OCR Tesseract + Poppler
-              ├─ radar
-              └─ notificaciones
+                         ┌── web nginx no-root ───── 127.0.0.1:WEB_PORT
+                         │
+PostGIS 17 ── migrate ───┴── API Fastify ────────── 127.0.0.1:API_PORT
+              │                 │
+              │                 └── worker
+              │                     ├─ OCR Tesseract + Poppler
+              │                     ├─ radar
+              │                     └─ notificaciones
+              └── registry + SHA-256
 ```
 
-Decisiones de seguridad del compose:
+Decisiones de seguridad:
 
-- PostgreSQL no publica ningún puerto al host;
-- la API publica únicamente en `127.0.0.1` para colocar HTTPS/Cloudflare/reverse proxy delante;
-- API y worker usan filesystem de solo lectura;
-- `/tmp` es `tmpfs` con límite explícito;
-- se eliminan capabilities Linux (`cap_drop: ALL`);
-- `no-new-privileges` está activo;
-- los secretos de aplicación no se inyectan en PostgreSQL ni en el contenedor de migraciones;
-- las migraciones deben terminar correctamente antes de arrancar API/worker.
+- PostgreSQL no publica puerto al host;
+- web y API publican únicamente en loopback para situar HTTPS/Cloudflare/reverse proxy delante;
+- API y worker usan filesystem de solo lectura donde corresponde;
+- `/tmp` usa `tmpfs` limitado;
+- se eliminan capabilities Linux y se activa `no-new-privileges`;
+- secretos de aplicación no se inyectan en PostgreSQL ni en el migrador;
+- API/worker no arrancan si las migraciones fallan;
+- web se compila con `NEXT_PUBLIC_PREVIEW_MODE=false`;
+- `/documento-publico` se sirve con `no-store` y `noindex`;
+- dev-auth falla cerrado en producción.
 
-## Preparación del host
+## Contrato de entorno
 
-Requisitos:
-
-- Docker Engine actual;
-- Docker Compose v2;
-- Git o un mecanismo equivalente para obtener el commit candidato;
-- salida HTTPS mediante Cloudflare Tunnel o reverse proxy;
-- almacenamiento privado para el archivo `.env` y copias de seguridad.
-
-Crear el archivo privado de entorno:
+Partir de:
 
 ```bash
 cp deploy/staging/.env.example deploy/staging/.env
 chmod 600 deploy/staging/.env
 ```
 
-Editar **todos** los `CHANGE_ME` y revisar que:
+Editar todos los placeholders y comprobar:
 
-- `POSTGRES_PASSWORD` coincide con la contraseña embebida en `DATABASE_URL`;
-- `CORS_ALLOWED_ORIGINS` contiene únicamente el origen web real de staging;
-- `GOOGLE_CLIENT_ID` y `NEXT_PUBLIC_GOOGLE_CLIENT_ID` son el mismo OAuth Web Client ID;
+- `POSTGRES_PASSWORD` coincide con `DATABASE_URL`;
+- `CORS_ALLOWED_ORIGINS` contiene el origen HTTPS real de la web;
+- `NEXT_PUBLIC_API_URL` apunta al origen HTTPS real de la API;
+- `GOOGLE_CLIENT_ID` y `NEXT_PUBLIC_GOOGLE_CLIENT_ID` son idénticos;
 - `NEXT_PUBLIC_PREVIEW_MODE=false`;
 - `AUTH_COOKIE_SECURE=true`;
 - `ALLOW_DEV_AUTH_HEADERS=false`;
-- `S3_BUCKET` es exclusivo de staging;
-- las credenciales S3 no son las de producción;
-- Google Auth, AEMET y VAPID pertenecen al entorno de staging.
+- bucket y credenciales S3 pertenecen solo a staging;
+- AEMET y VAPID pertenecen a staging;
+- límites OCR son positivos y acotados.
 
-No añadir `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `PUBLIC_WEB_ORIGIN` ni `OCR_PROCESSOR_MODE`: no pertenecen al contrato de runtime actual.
+No añadir `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `PUBLIC_WEB_ORIGIN` ni `OCR_PROCESSOR_MODE`: no pertenecen al contrato runtime actual.
 
-Antes de arrancar el stack, ejecutar el preflight sobre el archivo privado:
+Validación obligatoria:
 
 ```bash
 node scripts/staging-env-preflight.mjs deploy/staging/.env
 ```
 
-El preflight debe terminar en verde. Comprueba flags de producción, coherencia de PostgreSQL, HTTPS/CORS, Google ID-token, bucket aislado, módulos worker y límites OCR, y rechaza placeholders o claves obsoletas.
+El preflight valida flags de producción, coherencia Postgres, HTTPS/CORS, Google ID-token, storage aislado, worker/OCR y rechaza placeholders o claves obsoletas.
 
 Nunca versionar `deploy/staging/.env`.
 
-## Validación del compose
+## Migraciones persistentes y repetibles
 
-Antes de arrancar:
+Las migraciones históricas no se vuelven a ejecutar ciegamente. `deploy/staging/migrate.sh` mantiene `public.schema_migrations` con:
 
-```bash
-docker compose \
-  --env-file deploy/staging/.env \
-  -f deploy/staging/docker-compose.yml \
-  config
-```
+- nombre de migración;
+- SHA-256;
+- estado `applying` / `applied`;
+- timestamps de inicio/aplicación.
 
-La configuración debe resolver sin avisos de variables ausentes.
+Comportamiento esperado:
 
-Construir las imágenes:
+1. instalación nueva → aplica cada SQL una sola vez y lo registra;
+2. siguiente despliegue → omite las ya aplicadas;
+3. migración histórica editada → falla por checksum distinto;
+4. ejecución previa interrumpida (`applying`) → falla antes de continuar;
+5. registro final debe contener exactamente una fila `applied` por migración.
 
-```bash
-docker compose \
-  --env-file deploy/staging/.env \
-  -f deploy/staging/docker-compose.yml \
-  build api worker
-```
+`V20 staging readiness` #70 valida explícitamente primera pasada + segunda pasada no-op sobre la misma base.
 
-El worker incluye en su imagen:
+## Preparación del host
 
-- `tesseract`;
-- datos de idioma `spa` y `eng`;
-- `pdfinfo`;
-- `pdftoppm`.
+Requisitos mínimos:
 
-## Base de datos y backup
+- Docker Engine;
+- Docker Compose v2;
+- `curl` y `tar`;
+- salida HTTPS mediante Cloudflare Tunnel o reverse proxy;
+- usuario SSH dedicado con acceso limitado a Docker y al directorio de staging;
+- almacenamiento protegido para `.env` y backups.
 
-Staging usa PostgreSQL 17 + PostGIS con volumen persistente `postgres_data`.
+El despliegue automatizado no requiere clonar Git en el host: GitHub Actions sube una release inmutable identificada por SHA.
 
-Para una instalación nueva puede arrancarse directamente el stack. Si se reutiliza un staging existente, levantar primero solo PostgreSQL y crear un dump **antes** de ejecutar las nuevas migraciones:
+## Environment de GitHub `staging`
 
-```bash
-docker compose \
-  --env-file deploy/staging/.env \
-  -f deploy/staging/docker-compose.yml \
-  up -d postgres
+El workflow `.github/workflows/staging-deploy.yml` es exclusivamente manual (`workflow_dispatch`) y usa el Environment `staging`.
 
-mkdir -p backups
+Secrets esperados:
 
-docker compose \
-  --env-file deploy/staging/.env \
-  -f deploy/staging/docker-compose.yml \
-  exec -T postgres sh -lc 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' \
-  > "backups/magina-staging-before-$(date +%Y%m%d-%H%M%S).dump"
-```
+- `STAGING_ENV_FILE`: contenido completo del `.env` privado;
+- `STAGING_SSH_PRIVATE_KEY`: clave SSH dedicada al deploy;
+- `STAGING_SSH_KNOWN_HOSTS`: entrada `known_hosts` verificada.
 
-Comprobar que el dump existe y no está vacío antes de continuar.
+Variables esperadas:
 
-El servicio `migrate` aplica en orden `database/migrations/*.sql` con `ON_ERROR_STOP=1`. Si una migración falla, API/worker no deben arrancar.
+- `STAGING_HOST`;
+- `STAGING_USER`;
+- `STAGING_PORT`;
+- `STAGING_PATH`, por ejemplo `/srv/stacks/magina-olivo-v20-staging`;
+- `STAGING_WEB_URL`: origen HTTPS público de la web.
 
-## Arranque backend
+`STAGING_WEB_URL` es una variable de orquestación de GitHub, no una variable runtime de la aplicación y no sustituye a `CORS_ALLOWED_ORIGINS`.
 
-Con el `.env` completo y el backup realizado cuando corresponda:
+Mientras V20 siga en Beta, conviene mantener aprobación manual del Environment.
 
-```bash
-docker compose \
-  --env-file deploy/staging/.env \
-  -f deploy/staging/docker-compose.yml \
-  up -d api worker
-```
+## Gating del despliegue remoto
 
-Estado:
+El workflow requiere:
 
-```bash
-docker compose \
-  --env-file deploy/staging/.env \
-  -f deploy/staging/docker-compose.yml \
-  ps
-```
+- `expected_sha`: SHA completo de 40 caracteres;
+- `confirm`: exactamente `DEPLOY-STAGING`.
 
-Logs:
+Antes de usar secretos o abrir SSH:
 
-```bash
-docker compose \
-  --env-file deploy/staging/.env \
-  -f deploy/staging/docker-compose.yml \
-  logs -f --tail=200 api worker migrate
-```
+1. checkout exacto del SHA solicitado;
+2. verifica que ese SHA pertenece al historial actual de `feat/v20-visual-prototype`;
+3. exige `success` para ese mismo SHA en:
+   - `V20 full candidate check`;
+   - `V20 beta browser E2E`;
+   - `V20 staging readiness`;
+4. valida el `.env` privado con el preflight;
+5. comprueba que `STAGING_WEB_URL` sea un origen HTTPS limpio y esté permitido por CORS;
+6. valida host, usuario, puerto, ruta y `known_hosts`.
 
-Health local, antes de exponerlo públicamente:
+Las Actions usadas por CI/deploy están fijadas a SHAs inmutables y Node se obtiene desde `.nvmrc`.
 
-```bash
-curl -fsS http://127.0.0.1:3001/health
-```
+## Release inmutable y backup
 
-Después de configurar HTTPS/Cloudflare/reverse proxy:
-
-```bash
-curl -fsS https://api-staging.example.com/health
-```
-
-No publicar directamente el puerto PostgreSQL. El proxy debe apuntar a `http://127.0.0.1:3001`.
-
-## Web
-
-La web continúa siendo un export estático separado del compose backend.
-
-Build de staging:
-
-```bash
-NEXT_PUBLIC_API_URL=https://api-staging.example.com \
-NEXT_PUBLIC_PREVIEW_MODE=false \
-pnpm --filter @magina/web build
-```
-
-Publicar:
+Cada despliegue se sube a:
 
 ```text
-apps/web/out
+$STAGING_PATH/releases/<SHA>
 ```
 
-El hosting debe respetar `apps/web/public/_headers`:
+El `.env` se copia con permisos restrictivos y queda fuera del repositorio.
 
-- assets `_next/static/*` con cache immutable;
-- HTML revalidable;
-- `/documento-publico*` con `no-store` y `noindex`;
-- `nosniff`, anti-framing y Referrer-Policy.
+`deploy-host.sh`:
 
-## OCR de producción
+1. vuelve a validar el `.env` privado;
+2. construye web/API/worker;
+3. arranca solo PostgreSQL;
+4. espera a que esté listo;
+5. crea **siempre** un `pg_dump -Fc` antes de ejecutar migraciones;
+6. comprueba que el dump no esté vacío;
+7. levanta migraciones, API, worker y web;
+8. espera health de API/web;
+9. ejecuta nuevamente el migrador y exige no-op;
+10. comprueba el número de filas `applied` del registry.
 
-El worker usa `OCR_PROVIDER=tesseract`.
+Los backups se guardan fuera de la release, por defecto en el directorio indicado por `STAGING_BACKUP_DIR`.
 
-Controles actuales:
+La existencia de un backup no autoriza rollback automático de datos.
 
-- descarga el objeto desde el bucket configurado;
-- limita tamaño máximo (`OCR_MAX_BYTES`);
-- verifica SHA-256 contra la versión documental encolada;
-- limita páginas PDF (`OCR_MAX_PDF_PAGES`);
-- convierte PDF con Poppler sin usar shell para procesar el archivo;
-- ejecuta Tesseract mediante `execFile`;
-- impone timeout;
-- limpia el directorio temporal al terminar;
-- rechaza un job que pida explícitamente otro proveedor;
-- el OCR no crea registros agrícolas automáticamente: la revisión humana sigue siendo obligatoria.
+## Ejecución manual en el host
 
-La CI confirma que el procesador se inicializa y que los binarios existen dentro de la imagen. Staging real debe comprobar además un documento real contra el bucket real.
-
-## Smoke post-deploy
-
-Con la API ya publicada por HTTPS se puede ejecutar la comprobación automática transversal:
+Para operar sin Actions, con una release ya presente:
 
 ```bash
-STAGING_API_URL=https://api-staging.example.com \
-STAGING_WEB_ORIGIN=https://staging.example.com \
-node scripts/staging-postdeploy-smoke.mjs
+STAGING_BACKUP_DIR=/srv/stacks/magina-olivo-v20-staging/backups \
+  ./deploy/staging/deploy-host.sh deploy/staging/.env
 ```
 
-El smoke comprueba `/health`, CORS permitido/rechazado, cabeceras de seguridad y que los headers de autenticación de desarrollo no sean aceptados en producción.
+Si falla, el script imprime estado y logs recientes de Postgres, migrador, API, worker y web.
 
-### API y seguridad
+Health local esperado:
 
-Comprobar:
+```bash
+curl -fsS http://127.0.0.1:$API_PORT/health
+curl -fsS http://127.0.0.1:$WEB_PORT/healthz
+```
 
-- `/health` responde 200;
-- origen web permitido por CORS;
-- un origen no autorizado es rechazado;
-- API privada responde `Cache-Control: no-store`;
-- `X-Content-Type-Options: nosniff`;
+No publicar PostgreSQL directamente.
+
+## Cloudflare / reverse proxy
+
+Exponer solo los servicios loopback:
+
+```text
+https://staging.example.com      → http://127.0.0.1:<WEB_PORT>
+https://api-staging.example.com  → http://127.0.0.1:<API_PORT>
+```
+
+`CORS_ALLOWED_ORIGINS`, `NEXT_PUBLIC_API_URL` y la variable de deploy `STAGING_WEB_URL` deben describir esos orígenes coherentemente.
+
+## Smoke externo
+
+Después del arranque local, el workflow comprueba por HTTPS:
+
+- `/healthz` web responde `ok`;
+- la portada es accesible;
 - `X-Frame-Options: DENY`;
-- `ALLOW_DEV_AUTH_HEADERS` permanece desactivado;
-- PostgreSQL no es accesible desde la red exterior.
+- `X-Content-Type-Options: nosniff`;
+- `/documento-publico` mantiene `Cache-Control: no-store` y `X-Robots-Tag`;
+- `/health` API responde 200;
+- origen web permitido por CORS;
+- origen no autorizado rechazado;
+- API privada mantiene cabeceras `no-store`;
+- headers de autenticación de desarrollo no son aceptados en producción.
 
-### Auth
+Solo si todo lo anterior pasa se actualizan `$STAGING_PATH/current` y `CURRENT_SHA`.
 
-1. Entrar con Google.
-2. Resolver usuario.
-3. Resolver membership/workspace.
-4. Recargar página y conservar sesión.
-5. Cerrar sesión y comprobar invalidación.
+## OCR de staging
 
-### Agricultor
+El worker usa `OCR_PROVIDER=tesseract` con:
+
+- Tesseract `spa+eng`;
+- Poppler (`pdfinfo`, `pdftoppm`);
+- límite de bytes;
+- límite de páginas;
+- timeout;
+- SHA-256 del objeto;
+- directorio temporal limpiado al finalizar;
+- revisión humana obligatoria antes de convertir extracción en datos agrícolas.
+
+CI valida binarios e inicialización dentro de la imagen. El staging externo debe probar además un documento real contra el bucket real.
+
+## Pruebas funcionales antes de aprobar staging
+
+Agricultor:
 
 ```text
 Crear finca
-→ añadir/gestionar límites
-→ registrar trabajo
-→ registrar cosecha
-→ añadir rendimiento
-→ comprobar Campaña
-→ adjuntar/revisar documento OCR
-→ abrir tiempo/radar
+→ límites/mapa
+→ trabajo
+→ cosecha
+→ rendimiento
+→ Campaña
+→ documento + OCR + revisión
+→ tiempo/radar
 ```
 
-No debe aparecer ningún dato demo.
-
-### Profesional
+Profesional:
 
 ```text
 Cliente
 → presupuesto
 → PDF
 → compartir
-→ confirmar envío
-→ abrir enlace público en incógnito
+→ envío
+→ enlace público en incógnito
 → aceptar/rechazar
 → convertir a trabajo
 → factura
 → cobro
 ```
 
-La decisión pública debe quedar ligada al envío y a la versión PDF correspondiente.
+También deben comprobarse Google Auth real, notificaciones, AEMET/radar, storage y enlaces revocables.
 
-## Storage
+## Observabilidad y rollback
 
-Usar un bucket exclusivo de staging. Nunca reutilizar el bucket de producción.
+No registrar cookies, secretos, tokens públicos completos ni contenido sensible de documentos.
 
-Verificar con infraestructura real:
+Antes de aprobar staging debe existir persistencia/rotación de logs o un colector equivalente. `docker compose logs` es diagnóstico inicial, no observabilidad definitiva.
 
-- upload prefirmado;
-- complete upload;
-- SHA-256/integridad;
-- read URL temporal;
-- OCR de un PDF/imagen real;
-- PDF comercial archivado;
-- enlaces públicos revocables.
+Ante fallo post-deploy:
 
-## Logs y observabilidad mínima
+1. no marcar la release como `current`;
+2. volver a servir la release de aplicación anterior si procede;
+3. no intentar rollback destructivo automático de base de datos;
+4. restaurar datos solo desde un dump verificado y mediante una decisión operativa explícita;
+5. documentar el incidente antes de reintentar.
 
-Conservar logs separados o distinguibles de:
+## Criterio de salida
 
-- API;
-- worker;
-- migrations/deploy;
-- errores de storage/OCR;
-- radar/AEMET;
-- dispatch de notificaciones.
-
-No registrar tokens públicos completos, cookies de sesión, secretos ni contenido sensible de documentos.
-
-Antes de aprobar staging, configurar persistencia/rotación de logs o un colector equivalente; `docker compose logs` sirve para diagnóstico inicial, no como estrategia final de observabilidad.
-
-## Rollback
-
-Si falla una validación post-deploy:
-
-1. retirar el nuevo web build o volver al build anterior;
-2. volver al commit/imágenes anteriores de API/worker;
-3. detener el stack nuevo;
-4. si hubo cambio de datos incompatible, restaurar exclusivamente desde un dump verificado;
-5. documentar el fallo antes de reintentar.
-
-No hacer rollback destructivo de base de datos sin dump válido.
-
-## Criterio de salida de staging
-
-Staging puede considerarse aprobado cuando:
+Staging se considera aprobado solo cuando:
 
 - recorridos Agricultor y Profesional pasan con servicios reales;
 - no hay fallback demo;
 - Google Auth funciona en el dominio real;
-- móvil 360/390/430 funciona con latencia/red real;
+- móvil 360/390/430 funciona con red real;
 - documento público funciona en incógnito;
-- storage/OCR funcionan contra el bucket real;
+- storage/OCR funcionan contra bucket real;
 - AEMET/radar funcionan con credenciales reales;
 - headers/CORS son correctos desde Internet;
-- no aparecen errores repetidos de worker;
+- worker no muestra errores repetidos;
 - observabilidad básica está activa;
 - backup **y restore** han sido probados al menos una vez.
 
-Solo después se actualiza el PR candidato para decidir merge/squash. `main` no se toca durante estas pruebas.
+Solo después se decide la integración del candidate. `main` no se toca durante estas pruebas.
