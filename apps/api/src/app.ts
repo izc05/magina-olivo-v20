@@ -79,6 +79,10 @@ function corsOrigins() {
   return ['http://127.0.0.1:3000', 'http://localhost:3000'];
 }
 
+function isPrivateApiPath(url: string) {
+  return url.startsWith('/api/v1/') && !url.startsWith('/api/v1/public/');
+}
+
 export function buildApp(dependencies: AppDependencies = {}) {
   const db = dependencies.db ?? null;
   const storage = dependencies.storage ?? new UnavailableStorage();
@@ -106,6 +110,14 @@ export function buildApp(dependencies: AppDependencies = {}) {
   app.register(cookie);
   app.addHook('onRequest', async (request) => {
     await hydrateRequestAuthentication(request, db);
+  });
+  app.addHook('onSend', async (request, reply, payload) => {
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header('referrer-policy', 'strict-origin-when-cross-origin');
+    reply.header('x-frame-options', 'DENY');
+    reply.header('permissions-policy', 'camera=(), microphone=(), geolocation=(self)');
+    if (isPrivateApiPath(request.url)) reply.header('cache-control', 'no-store');
+    return payload;
   });
 
   app.get('/health', async () => ({
