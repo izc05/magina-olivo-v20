@@ -61,7 +61,7 @@ test('Inicio y Hoy conectan finca, actividad y tarea real', async ({ page }, tes
   const activitySection = page.getByRole('heading', { name: 'Actividad reciente' }).locator('xpath=ancestor::section');
   await expect(activitySection).toBeVisible();
   await expect(activitySection.getByText(workTitle, { exact: true })).toBeVisible();
-  await expect(page.getByText(taskTitle, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(`Siguiente: ${taskTitle}`, { exact: true })).toBeVisible();
   await expect(page.getByText(farmName, { exact: false }).first()).toBeVisible();
 
   await page.goto('/mi-campo/hoy');
