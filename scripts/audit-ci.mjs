@@ -24,6 +24,7 @@ let actionReferences = 0;
 let installCommands = 0;
 let pullRequestWorkflows = 0;
 let writePermissionWorkflows = 0;
+let setupNodeWorkflows = 0;
 
 function addFinding(kind, file, detail) {
   findings.push({ kind, file, detail });
@@ -55,9 +56,11 @@ for (const entry of entries) {
   const hasPullRequestTarget = /^  pull_request_target:\s*$/m.test(source);
   const permissions = topLevelPermissions(source);
   const writeScopes = allWritePermissions(source);
+  const usesSetupNode = /uses:\s*actions\/setup-node@v\d+/.test(source);
 
   if (hasPullRequest) pullRequestWorkflows += 1;
   if (writeScopes.length) writePermissionWorkflows += 1;
+  if (usesSetupNode) setupNodeWorkflows += 1;
 
   if (hasPullRequestTarget) {
     addFinding('dangerous-trigger', entry.name, 'pull_request_target executes with base-repository privileges');
@@ -77,6 +80,13 @@ for (const entry of entries) {
 
   if (hasPullRequest && /\bsecrets\.[A-Za-z0-9_]+/.test(source)) {
     addFinding('pull-request-secret-reference', entry.name, 'pull_request workflow references repository secrets');
+  }
+
+  if (/^\s+node-version:\s*/m.test(source)) {
+    addFinding('runtime-version-literal', entry.name, "use node-version-file: '.nvmrc' instead of duplicating a Node version");
+  }
+  if (usesSetupNode && !/node-version-file:\s*['"]?\.nvmrc['"]?/.test(source)) {
+    addFinding('runtime-source-drift', entry.name, "actions/setup-node must read Node from .nvmrc");
   }
 
   for (const match of source.matchAll(/uses:\s*([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)@v(\d+)/g)) {
@@ -104,10 +114,10 @@ for (const finding of findings) {
 }
 
 console.log(
-  `CI audit: ${entries.length} workflows, ${actionReferences} action references, ${installCommands} pnpm install commands, ${pullRequestWorkflows} pull_request workflows, ${writePermissionWorkflows} workflows with explicit write permissions.`,
+  `CI audit: ${entries.length} workflows, ${actionReferences} action references, ${installCommands} pnpm install commands, ${setupNodeWorkflows} setup-node workflows, ${pullRequestWorkflows} pull_request workflows, ${writePermissionWorkflows} workflows with explicit write permissions.`,
 );
 if (!findings.length) {
-  console.log('CI audit OK: no known modernization or permission debt detected.');
+  console.log('CI audit OK: no known modernization, runtime-source or permission debt detected.');
   process.exit(0);
 }
 

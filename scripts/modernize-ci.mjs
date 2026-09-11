@@ -4,13 +4,15 @@ import process from 'node:process';
 
 const workflowsDir = join(process.cwd(), '.github', 'workflows');
 const write = process.argv.includes('--write');
-const lockfileWorkflow = 'lockfile-generation.yml';
 const replacements = [
   [/actions\/checkout@v4/g, 'actions/checkout@v7'],
   [/actions\/setup-node@v4/g, 'actions/setup-node@v7'],
   [/pnpm\/action-setup@v4/g, 'pnpm/action-setup@v6'],
+  [/actions\/cache@v4/g, 'actions/cache@v6'],
   [/actions\/upload-artifact@v4/g, 'actions/upload-artifact@v7'],
+  [/actions\/upload-pages-artifact@v3/g, 'actions/upload-pages-artifact@v4'],
 ];
+const nodeVersionLiteralPattern = /^(\s*)node-version:\s*['"]?\d+(?:\.\d+){0,2}['"]?\s*$/gm;
 
 const entries = (await readdir(workflowsDir, { withFileTypes: true }))
   .filter((entry) => entry.isFile() && ['.yml', '.yaml'].includes(extname(entry.name)))
@@ -32,12 +34,16 @@ for (const entry of entries) {
     }
   }
 
-  if (entry.name !== lockfileWorkflow) {
-    const mutableMatches = next.match(/pnpm install --no-frozen-lockfile/g)?.length ?? 0;
-    if (mutableMatches) {
-      replacementsApplied += mutableMatches;
-      next = next.replace(/pnpm install --no-frozen-lockfile/g, 'pnpm install --frozen-lockfile');
-    }
+  const runtimeMatches = next.match(nodeVersionLiteralPattern)?.length ?? 0;
+  if (runtimeMatches) {
+    replacementsApplied += runtimeMatches;
+    next = next.replace(nodeVersionLiteralPattern, "$1node-version-file: '.nvmrc'");
+  }
+
+  const mutableMatches = next.match(/pnpm install --no-frozen-lockfile/g)?.length ?? 0;
+  if (mutableMatches) {
+    replacementsApplied += mutableMatches;
+    next = next.replace(/pnpm install --no-frozen-lockfile/g, 'pnpm install --frozen-lockfile');
   }
 
   if (next === original) continue;

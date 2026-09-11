@@ -1,0 +1,44 @@
+name: V20 CI runtime normalizer
+
+on:
+  push:
+    branches:
+      - chore/v20-cleanup-structure
+    paths:
+      - 'scripts/modernize-ci.mjs'
+      - '.github/workflows/ci-runtime-normalizer.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Setup Node from repository contract
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Normalize CI runtime references
+        run: node scripts/modernize-ci.mjs --write
+
+      - name: Audit normalized workflows
+        run: node scripts/audit-ci.mjs --strict
+
+      - name: Commit mechanical normalization
+        run: |
+          if git diff --quiet; then
+            echo 'CI workflows already normalized.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows
+          git commit -m 'ci: use .nvmrc across workflows'
+          git push origin "HEAD:${{ github.ref_name }}"
