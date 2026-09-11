@@ -71,7 +71,7 @@ test('news list and detail use published CMS content', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Noticias de Mágina' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'La campaña de aceituna encara su tramo principal' })).toBeVisible();
-  await expect(page.getByText('Bedmar', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Bedmar.*La campaña de aceituna encara su tramo principal/ })).toBeVisible();
 
   await page.getByPlaceholder('Buscar noticias…').fill('cooperativas');
   await expect(page.getByText('1 resultado')).toBeVisible();
