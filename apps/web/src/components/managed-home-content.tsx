@@ -58,6 +58,12 @@ function safeMediaUrl(value: string | null | undefined) {
   }
 }
 
+function hasFixedPromotionSlot(entry: CmsEntry) {
+  if (entry.type !== 'promotion' || !entry.content_json || typeof entry.content_json !== 'object' || Array.isArray(entry.content_json)) return false;
+  const slot = (entry.content_json as { slot?: unknown }).slot;
+  return slot === 'home_top' || slot === 'home_inline' || slot === 'explore_top' || slot === 'explore_inline';
+}
+
 function storyTag(entry: CmsEntry) {
   if (entry.type === 'news') return 'NOTICIAS';
   if (entry.type === 'event') return 'EVENTOS';
@@ -115,7 +121,7 @@ export function ManagedHomeContent() {
   const banner = objectSetting<BannerSetting>(settings, 'alerts.banner');
 
   const stories = useMemo(() => entries
-    .filter((entry) => entry.type === 'news' || entry.type === 'event' || entry.type === 'promotion')
+    .filter((entry) => (entry.type === 'news' || entry.type === 'event' || entry.type === 'promotion') && !hasFixedPromotionSlot(entry))
     .slice(0, 3), [entries]);
 
   const heroMediaUrl = safeMediaUrl(hero?.image_url);
