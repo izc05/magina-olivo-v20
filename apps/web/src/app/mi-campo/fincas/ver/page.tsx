@@ -3,6 +3,7 @@ import { BottomNav } from '@/components/bottom-nav';
 import { FarmDetailShell } from '@/components/farm-detail-shell';
 import { AttentionSummaryCard } from '@/components/attention-summary-card';
 import { FarmPlanShortcut } from '@/components/farm-plan-shortcut';
+import { FarmDocumentsPanel } from '@/components/farm-documents-panel';
 import { Topbar } from '@/components/topbar';
 
 export default function FarmDetailPage() {
@@ -14,6 +15,7 @@ export default function FarmDetailPage() {
           <FarmDetailShell />
           <FarmPlanShortcut />
           <AttentionSummaryCard inferFieldFromQuery compact />
+          <FarmDocumentsPanel />
         </Suspense>
       </div>
       <BottomNav active="/mi-campo" />
