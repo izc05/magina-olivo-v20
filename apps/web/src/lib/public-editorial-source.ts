@@ -55,8 +55,8 @@ export function editorialDetails(entry: PublicEditorialEntry): EditorialDetails 
     location: stringValue(content.location),
     town: stringValue(content.town),
     address: stringValue(content.address),
-    eventStart: nullableDate(content.event_start) ?? entry.starts_at,
-    eventEnd: nullableDate(content.event_end) ?? entry.ends_at,
+    eventStart: nullableDate(content.event_start),
+    eventEnd: nullableDate(content.event_end),
   };
 }
 
