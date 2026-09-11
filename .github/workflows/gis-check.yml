@@ -17,19 +17,10 @@ on:
       - 'packages/weather/**'
       - 'database/migrations/0012_gis_land_references.sql'
       - '.github/workflows/gis-check.yml'
-  pull_request:
-    paths:
-      - 'apps/api/src/gis/**'
-      - 'apps/api/src/routes/gis.ts'
-      - 'apps/api/src/testing/gis-*.ts'
-      - 'apps/api/src/testing/map-context-smoke.ts'
-      - 'apps/api/src/app.ts'
-      - 'apps/api/package.json'
-      - 'packages/contracts/src/gis.ts'
-      - 'packages/contracts/src/index.ts'
-      - 'packages/weather/**'
-      - 'database/migrations/0012_gis_land_references.sql'
-      - '.github/workflows/gis-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

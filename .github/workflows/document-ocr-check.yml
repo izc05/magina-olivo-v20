@@ -1,6 +1,7 @@
 name: V20 documents OCR metadata check
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feat/v20-visual-prototype
@@ -12,15 +13,10 @@ on:
       - 'packages/weather/**'
       - 'database/migrations/**'
       - '.github/workflows/document-ocr-check.yml'
-  pull_request:
-    paths:
-      - 'apps/api/**'
-      - 'apps/worker/**'
-      - 'packages/contracts/**'
-      - 'packages/jobs/**'
-      - 'packages/weather/**'
-      - 'database/migrations/**'
-      - '.github/workflows/document-ocr-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

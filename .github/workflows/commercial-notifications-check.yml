@@ -1,6 +1,7 @@
 name: V20 commercial notifications check
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feat/v20-visual-prototype
@@ -13,16 +14,10 @@ on:
       - 'packages/weather/**'
       - 'database/migrations/0035_commercial_notification_preferences.sql'
       - '.github/workflows/commercial-notifications-check.yml'
-  pull_request:
-    paths:
-      - 'apps/api/**'
-      - 'apps/worker/**'
-      - 'apps/web/**'
-      - 'packages/contracts/**'
-      - 'packages/jobs/**'
-      - 'packages/weather/**'
-      - 'database/migrations/0035_commercial_notification_preferences.sql'
-      - '.github/workflows/commercial-notifications-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

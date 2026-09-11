@@ -19,21 +19,10 @@ on:
       - 'database/migrations/0014_weather_forecast_cache.sql'
       - 'database/migrations/0015_radar_snapshots.sql'
       - '.github/workflows/weather-check.yml'
-  pull_request:
-    paths:
-      - 'apps/api/src/weather/**'
-      - 'apps/api/src/routes/weather.ts'
-      - 'apps/api/src/routes/territory.ts'
-      - 'apps/api/src/testing/weather-*.ts'
-      - 'apps/api/src/testing/radar-*.ts'
-      - 'apps/api/src/app.ts'
-      - 'packages/contracts/src/radar.ts'
-      - 'packages/contracts/src/index.ts'
-      - 'packages/weather/**'
-      - 'database/migrations/0013_territory_catalog.sql'
-      - 'database/migrations/0014_weather_forecast_cache.sql'
-      - 'database/migrations/0015_radar_snapshots.sql'
-      - '.github/workflows/weather-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

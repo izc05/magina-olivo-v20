@@ -1,6 +1,7 @@
 name: V20 professional delivery check
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feat/v20-visual-prototype
@@ -13,16 +14,10 @@ on:
       - 'database/migrations/0040_professional_public_share_links.sql'
       - 'database/migrations/0041_public_quote_decision_audit.sql'
       - '.github/workflows/professional-delivery-check.yml'
-  pull_request:
-    paths:
-      - 'apps/api/**'
-      - 'apps/web/**'
-      - 'packages/weather/**'
-      - 'packages/jobs/**'
-      - 'database/migrations/0039_professional_delivery_tracking.sql'
-      - 'database/migrations/0040_professional_public_share_links.sql'
-      - 'database/migrations/0041_public_quote_decision_audit.sql'
-      - '.github/workflows/professional-delivery-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

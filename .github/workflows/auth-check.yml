@@ -22,24 +22,10 @@ on:
       - 'database/migrations/0010_auth_memberships.sql'
       - 'database/migrations/0011_user_profile_preferences.sql'
       - '.github/workflows/auth-check.yml'
-  pull_request:
-    paths:
-      - 'apps/api/src/auth/**'
-      - 'apps/api/src/routes/auth.ts'
-      - 'apps/api/src/routes/me.ts'
-      - 'apps/api/src/request-context.ts'
-      - 'apps/api/src/http/helpers.ts'
-      - 'apps/api/src/testing/auth-smoke.ts'
-      - 'apps/api/src/db/types.ts'
-      - 'apps/api/src/db/profile-types.ts'
-      - 'apps/api/src/db/client.ts'
-      - 'apps/api/package.json'
-      - 'packages/contracts/src/auth.ts'
-      - 'packages/contracts/src/index.ts'
-      - 'packages/weather/**'
-      - 'database/migrations/0010_auth_memberships.sql'
-      - 'database/migrations/0011_user_profile_preferences.sql'
-      - '.github/workflows/auth-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

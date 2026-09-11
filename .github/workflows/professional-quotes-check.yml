@@ -1,6 +1,7 @@
 name: V20 professional quotes check
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feat/v20-visual-prototype
@@ -12,15 +13,10 @@ on:
       - 'packages/jobs/**'
       - 'database/migrations/0034_professional_quotes.sql'
       - '.github/workflows/professional-quotes-check.yml'
-  pull_request:
-    paths:
-      - 'apps/api/**'
-      - 'apps/web/**'
-      - 'packages/contracts/**'
-      - 'packages/weather/**'
-      - 'packages/jobs/**'
-      - 'database/migrations/0034_professional_quotes.sql'
-      - '.github/workflows/professional-quotes-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

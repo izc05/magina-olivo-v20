@@ -1,6 +1,7 @@
 name: V20 agronomy radar advisory check
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feat/v20-visual-prototype
@@ -18,21 +19,10 @@ on:
       - 'apps/web/src/lib/agronomy-data-source.ts'
       - 'apps/web/src/components/today-agenda-client.tsx'
       - '.github/workflows/agronomy-radar-check.yml'
-  pull_request:
-    paths:
-      - 'packages/weather/src/agronomy-*.ts'
-      - 'packages/contracts/src/jobs.ts'
-      - 'packages/jobs/src/index.ts'
-      - 'apps/api/src/domain/agronomy-*.ts'
-      - 'apps/api/src/routes/agronomy*.ts'
-      - 'apps/api/src/routes/agenda.ts'
-      - 'apps/api/src/testing/agronomy-radar-smoke.ts'
-      - 'apps/worker/src/notifications/agronomy-evaluate.ts'
-      - 'apps/worker/src/notifications/dispatch.ts'
-      - 'apps/worker/src/server.ts'
-      - 'apps/web/src/lib/agronomy-data-source.ts'
-      - 'apps/web/src/components/today-agenda-client.tsx'
-      - '.github/workflows/agronomy-radar-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

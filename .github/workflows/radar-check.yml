@@ -22,27 +22,9 @@ on:
       - 'database/migrations/0016_farm_radar_observations.sql'
       - 'database/migrations/0017_radar_alert_rules.sql'
       - '.github/workflows/radar-check.yml'
-  pull_request:
-    paths:
-      - 'apps/api/src/app.ts'
-      - 'apps/api/src/routes/radar.ts'
-      - 'apps/api/src/testing/radar-*.ts'
-      - 'apps/worker/src/radar/**'
-      - 'apps/worker/src/testing/radar-*.ts'
-      - 'apps/worker/src/testing/farm-radar-*.ts'
-      - 'apps/worker/package.json'
-      - 'packages/contracts/src/radar.ts'
-      - 'packages/contracts/src/jobs.ts'
-      - 'packages/contracts/src/index.ts'
-      - 'packages/weather/**'
-      - 'packages/jobs/**'
-      - 'database/migrations/0015_radar_snapshots.sql'
-      - 'database/migrations/0016_farm_radar_observations.sql'
-      - 'database/migrations/0017_radar_alert_rules.sql'
-      - '.github/workflows/radar-check.yml'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 permissions:
