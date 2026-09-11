@@ -45,7 +45,19 @@ Los accesos directos **Editar web** y **Multimedia** llevan a las superficies ed
 
 ## Editor visual `/admin/web`
 
-Permite modificar la web sin escribir JSON ni desplegar código.
+La segunda versión del editor concentra Inicio, contenido editorial, territorio, publicidad y SEO. Permite modificar la web sin escribir JSON ni desplegar código.
+
+### Selección directa de imágenes
+
+Los campos de imagen de portada, noticias, eventos, cooperativas, promociones y SEO abren directamente la biblioteca corporativa. Ya no es necesario copiar y pegar manualmente la URL desde `/admin/media`.
+
+El selector:
+
+- lista solo activos con estado `uploaded`;
+- muestra miniaturas y nombre de archivo;
+- conserva la entrada manual de URL como alternativa;
+- permite retirar la imagen seleccionada;
+- ofrece acceso directo a la biblioteca completa.
 
 ### Inicio
 
@@ -67,7 +79,20 @@ Permite gestionar pueblos/lugares, almazaras/cooperativas y elementos de directo
 
 ### Publicidad y avisos
 
-Permite crear promociones y avisos diferenciados del contenido editorial.
+Las promociones pueden declarar patrocinador, llamada a la acción y una posición pública fija:
+
+- `home_top` — Inicio, parte superior;
+- `home_inline` — Inicio, entre bloques;
+- `explore_top` — Explorar, parte superior;
+- `explore_inline` — Explorar, entre bloques.
+
+Las posiciones solo consumen promociones publicadas y vigentes. Las promociones asignadas a un slot fijo se excluyen de la parrilla editorial genérica de Inicio para evitar duplicidades. Los enlaces y recursos administrados se restringen a rutas relativas seguras o protocolos HTTP/HTTPS antes de renderizarse.
+
+### Vista previa antes de publicar
+
+El formulario dispone de **Vista previa** sin guardar. La previsualización muestra los valores que están actualmente en el formulario, incluidos imagen, título, resumen, texto, ubicación, CTA, patrocinador y posición publicitaria.
+
+También indica si el elemento está en borrador, programado, visible actualmente, caducado o archivado según estado y fechas.
 
 ### Programación
 
@@ -78,15 +103,16 @@ Cada entrada puede indicar:
 
 El endpoint público filtra por ambas fechas. Un elemento publicado con inicio futuro no aparece antes de tiempo y uno caducado deja de aparecer automáticamente.
 
-### Configuración pública
+### SEO y buscadores
 
-El editor dispone de formularios para:
+El ajuste público `site.seo` permite administrar:
 
-- identidad pública (`site.identity`);
-- contacto (`site.contact`);
-- redes sociales (`site.social`).
+- título;
+- descripción;
+- imagen Open Graph seleccionada desde Multimedia;
+- permiso de indexación mediante `robots_index`.
 
-Los ajustes privados continúan visibles únicamente en el centro de control.
+El editor incluye contadores de longitud y una previsualización tipo resultado de búsqueda. La aplicación conserva metadatos estáticos de respaldo y, cuando carga la configuración pública, actualiza `title`, description, Open Graph y robots en el navegador. Esta implementación actual es compatible con la arquitectura estática/client de V20; una fase futura puede promover estos valores a metadatos generados en servidor cuando el despliegue público use renderizado dinámico.
 
 ## Biblioteca multimedia `/admin/media`
 
@@ -122,8 +148,6 @@ Restricciones actuales:
 - SVG no permitido.
 
 No se exponen las claves privadas de almacenamiento ni se hace público el bucket. Reservar, completar y archivar medios queda auditado.
-
-Desde la biblioteca se copia una URL pública estable de Mágina y se pega en el campo **Imagen** del editor de portada, noticias, eventos, cooperativas o promociones. El editor ofrece acceso directo a **Multimedia** para que este flujo no dependa de servicios externos.
 
 ## CMS
 
@@ -163,7 +187,7 @@ Entre otras acciones se auditan:
 - creación/edición/archivo de contenido;
 - cambios de estado de usuarios;
 - cambios de roles de plataforma;
-- ajustes globales;
+- ajustes globales, incluido SEO;
 - reserva/subida/archivo de multimedia.
 
 ## Endpoints principales
@@ -220,6 +244,8 @@ El smoke cubre, entre otros casos:
 8. concesión de rol `editor`;
 9. editor puede editar contenido pero no suspender usuarios;
 10. acciones sensibles y multimedia aparecen en auditoría.
+
+Además, el build web/typecheck cubre el selector multimedia integrado, editor V2, SEO administrado, posiciones publicitarias y previsualización.
 
 ## Regla de despliegue
 
