@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: ''
+      allow_corrections:
+        description: Allow overwriting already persisted official periods after manual review
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: '47 7 * * 4'
 
@@ -58,6 +63,7 @@ jobs:
         env:
           DISPATCH_MODE: ${{ inputs.mode }}
           APPLY_CONFIRMATION: ${{ inputs.confirm_apply }}
+          ALLOW_CORRECTIONS_INPUT: ${{ inputs.allow_corrections }}
           AUTO_APPLY: ${{ vars.MARKET_AUTO_APPLY }}
         run: |
           set -euo pipefail
@@ -68,8 +74,10 @@ jobs:
               exit 1
             fi
             mode="apply"
+            allow_corrections="false"
           else
             mode="${DISPATCH_MODE:-dry-run}"
+            allow_corrections="${ALLOW_CORRECTIONS_INPUT:-false}"
           fi
 
           case "$mode" in
@@ -85,18 +93,25 @@ jobs:
             exit 1
           fi
 
+          if [[ "$allow_corrections" == "true" && "$mode" != "apply" ]]; then
+            echo "allow_corrections can only be used with mode=apply." >&2
+            exit 1
+          fi
+
           if [[ "$mode" != "source-check" && -z "${DATABASE_URL:-}" ]]; then
             echo "MARKET_DATABASE_URL is required for $mode." >&2
             exit 1
           fi
 
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "allow_corrections=$allow_corrections" >> "$GITHUB_OUTPUT"
 
       - name: Execute market refresh
         shell: bash
         run: |
           set -euo pipefail
           mode="${{ steps.refresh-mode.outputs.mode }}"
+          allow_corrections="${{ steps.refresh-mode.outputs.allow_corrections }}"
 
           case "$mode" in
             source-check)
@@ -106,7 +121,11 @@ jobs:
               pnpm --filter @magina/api market:refresh:dry-run | tee market-refresh-result.json
               ;;
             apply)
-              pnpm --filter @magina/api market:refresh | tee market-refresh-result.json
+              if [[ "$allow_corrections" == "true" ]]; then
+                pnpm --filter @magina/api market:refresh:corrections | tee market-refresh-result.json
+              else
+                pnpm --filter @magina/api market:refresh | tee market-refresh-result.json
+              fi
               ;;
           esac
 
@@ -119,6 +138,7 @@ jobs:
             echo
             echo "- Event: \`$GITHUB_EVENT_NAME\`"
             echo "- Mode: \`${{ steps.refresh-mode.outputs.mode || 'not-resolved' }}\`"
+            echo "- Corrections approved: \`${{ steps.refresh-mode.outputs.allow_corrections || 'false' }}\`"
             echo
             if [[ -f market-refresh-result.json ]]; then
               echo '```json'
@@ -136,4 +156,4 @@ jobs:
           name: market-refresh-${{ github.run_id }}
           path: market-refresh-result.json
           if-no-files-found: ignore
-          retention-days: 30
+          retention-days: 90
