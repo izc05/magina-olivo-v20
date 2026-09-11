@@ -129,6 +129,66 @@ export function registerProfessionalAttentionRoutes(app: FastifyInstance, db: Da
       LIMIT ${limit}
     `.execute(database);
 
+    const expiredQuotes = await sql<{
+      id: string;
+      quote_number: string | null;
+      title: string;
+      customer_id: string;
+      customer_name: string;
+      valid_until: string;
+      total_eur: number | string;
+      overdue_days: number;
+    }>`
+      SELECT
+        pq.id,
+        pq.quote_number,
+        pq.title,
+        pq.customer_party_id AS customer_id,
+        p.display_name AS customer_name,
+        pq.valid_until::text,
+        pq.total_eur::double precision,
+        GREATEST((CURRENT_DATE - pq.valid_until), 0)::int AS overdue_days
+      FROM professional_quotes pq
+      JOIN parties p ON p.id = pq.customer_party_id
+      WHERE pq.workspace_id = ${context.workspaceId}::uuid
+        AND pq.status IN ('sent', 'expired')
+        AND pq.valid_until IS NOT NULL
+        AND pq.valid_until < CURRENT_DATE
+      ORDER BY overdue_days DESC, pq.total_eur DESC
+      LIMIT ${limit}
+    `.execute(database);
+
+    const quoteFollowups = await sql<{
+      id: string;
+      quote_number: string | null;
+      title: string;
+      customer_id: string;
+      customer_name: string;
+      issued_on: string | null;
+      valid_until: string | null;
+      total_eur: number | string;
+      age_days: number;
+    }>`
+      SELECT
+        pq.id,
+        pq.quote_number,
+        pq.title,
+        pq.customer_party_id AS customer_id,
+        p.display_name AS customer_name,
+        pq.issued_on::text,
+        pq.valid_until::text,
+        pq.total_eur::double precision,
+        GREATEST((CURRENT_DATE - COALESCE(pq.issued_on, pq.created_at::date)), 0)::int AS age_days
+      FROM professional_quotes pq
+      JOIN parties p ON p.id = pq.customer_party_id
+      WHERE pq.workspace_id = ${context.workspaceId}::uuid
+        AND pq.status = 'sent'
+        AND (pq.valid_until IS NULL OR pq.valid_until >= CURRENT_DATE)
+        AND CURRENT_DATE - COALESCE(pq.issued_on, pq.created_at::date) >= 7
+      ORDER BY age_days DESC, pq.total_eur DESC
+      LIMIT ${limit}
+    `.execute(database);
+
     const overdue = overdueInvoices.rows.map((item) => ({
       ...item,
       total_eur: Number(item.total_eur),
@@ -137,6 +197,8 @@ export function registerProfessionalAttentionRoutes(app: FastifyInstance, db: Da
     }));
     const unbilled = unbilledWorks.rows.map((item) => ({ ...item, charge_eur: Number(item.charge_eur) }));
     const aged = agedCustomers.rows.map((item) => ({ ...item, pending_eur: Number(item.pending_eur) }));
+    const expired = expiredQuotes.rows.map((item) => ({ ...item, total_eur: Number(item.total_eur) }));
+    const followups = quoteFollowups.rows.map((item) => ({ ...item, total_eur: Number(item.total_eur) }));
 
     return {
       summary: {
@@ -146,14 +208,22 @@ export function registerProfessionalAttentionRoutes(app: FastifyInstance, db: Da
         unbilled_work_eur: unbilled.reduce((sum, item) => sum + item.charge_eur, 0),
         aged_customer_count: aged.length,
         aged_receivable_eur: aged.reduce((sum, item) => sum + item.pending_eur, 0),
+        expired_quote_count: expired.length,
+        expired_quote_eur: expired.reduce((sum, item) => sum + item.total_eur, 0),
+        quote_followup_count: followups.length,
+        quote_followup_eur: followups.reduce((sum, item) => sum + item.total_eur, 0),
       },
       overdue_invoices: overdue,
       unbilled_works: unbilled,
       aged_customers: aged,
+      expired_quotes: expired,
+      quote_followups: followups,
       semantics: {
         overdue_invoice: 'issued invoice with due_on before current date and remaining balance',
         unbilled_work: 'third-party work with charge_eur and no active invoice',
         aged_receivable: 'customer with unpaid third-party work at least 30 days old',
+        expired_quote: 'sent or manually expired quote whose valid_until is before current date',
+        quote_followup: 'sent quote with no decision at least 7 days after issue/creation and not yet expired',
       },
     };
   });
