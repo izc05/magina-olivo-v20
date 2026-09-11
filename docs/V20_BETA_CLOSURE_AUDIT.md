@@ -23,11 +23,20 @@ La Beta no se considerará cerrada hasta cumplir simultáneamente:
 - ✅ GitHub Pages activa `NEXT_PUBLIC_PREVIEW_MODE=true` de forma intencionada.
 - ✅ Inicio, Mi Campo y alta de finca ya no usan datos demo/local por el simple hecho de que falte la API.
 - ✅ Una instalación sin API y sin preview muestra estado de configuración/error y no datos ficticios.
+- ✅ Las rutas `fincas/local` quedan bloqueadas fuera del modo preview explícito.
+- ✅ `useFieldContext` resuelve API por defecto en runtime real y solo permite demo/local con preview explícita.
+- ✅ Registrar trabajo no persiste localmente fuera de preview y exige sesión/API en runtime real.
+- ✅ El hub Registrar espera a resolver la finca antes de renderizar acciones.
+- ✅ Ficha de finca es API-first y ya no cae a local/demo fuera de preview.
+- ✅ Mapa no muestra geometría demo fuera de preview.
+- ✅ Hoy no presenta una agenda privada vacía como si fuera real cuando falta sesión/API.
+- ✅ Campaña no cae a datos preview fuera del flag explícito.
+- ✅ Campaña etiqueta `cobrado − costes registrados` como comparación informativa, no como flujo de caja.
 
 ## Clasificación
 
 - `REAL`: consume API/datos persistidos y su flujo principal existe.
-- `HYBRID`: API real en producción + preview explícita para demo.
+- `HYBRID CONTROLADO`: API real en Beta + preview explícita solo para demo.
 - `PREVIEW`: contenido estático/demo o interacción no conectada.
 - `P0`: bloquea Beta.
 - `P1`: debe cerrarse antes de candidate final.
@@ -40,16 +49,18 @@ La Beta no se considerará cerrada hasta cumplir simultáneamente:
 | Inicio privado | HYBRID CONTROLADO | P1 | API real en Beta; preview solo con flag explícito. Revisar componentes secundarios para eliminar cualquier fallback implícito restante. |
 | Inicio público / actualidad | PREVIEW | P1 | Noticias, eventos y patrocinado siguen siendo tarjetas estáticas/demo. Sustituir por contenido real o etiquetar/ocultar para Beta. |
 | Mi Campo | HYBRID CONTROLADO | P1 | Fincas API reales; preview solo explícita. |
-| Ficha de finca | HYBRID | P1 | API real para `source=api`; revisar el fallback local/demo para que solo funcione en preview explícita. |
+| Ficha de finca | HYBRID CONTROLADO | P1 | API-first; local/demo solo con preview explícita. Pendiente auditoría móvil/E2E. |
 | Nueva finca — datos básicos | REAL | — | Alta `/api/v1/fields` y catálogo territorial reales. |
 | Nueva finca — localización | HONESTA / PENDIENTE DE CONEXIÓN | P1 | Ya no falsea vínculo. Falta integrar selector real Catastro/SIGPAC/Mapa en el wizard o dejarlo definitivamente como paso posterior. |
-| Rutas `fincas/local` | PREVIEW | P1 | Mantener solo para preview explícita; no deben ser alcanzables desde candidate productivo. |
-| Hoy / agenda | REAL | P1 | Falta recorrido visual móvil completo y regresión E2E. |
-| Campaña | REAL | P1 | Revisar separación agrícola/profesional en todos los totales y UX móvil. |
+| Rutas `fincas/local` | PREVIEW AISLADA | P1 | Bloqueadas fuera de `NEXT_PUBLIC_PREVIEW_MODE=true`. |
+| Registrar | HYBRID CONTROLADO | P1 | API-first; escritura local solo en preview explícita. Falta E2E de todos los tipos de registro. |
+| Planificar | REAL | P1 | Contexto de finca API-first; preview no persiste tareas remotas. Falta E2E/móvil. |
+| Hoy / agenda | REAL | P1 | API real y estados sesión/configuración honestos. Falta recorrido visual móvil/E2E. |
+| Campaña | HYBRID CONTROLADO | P1 | API real; preview explícita. Semántica de flujo de caja aclarada en UI; revisar aún separación agrícola/profesional del agregado backend. |
 | Profesional | REAL | P1 | Clientes, trabajos, costes, cobros, presupuestos, facturas, PDF, envío y aceptación pública. Falta consolidación UX/eventos de decisión. |
 | Documentos/OCR | REAL | P1 | Falta hardening de merge review legacy, parser fixtures y catálogo/paginación. |
 | GIS Catastro/SIGPAC backend | REAL | P1 | Servicios/modelo disponibles; falta cerrar selector de alta/edición de finca. |
-| Mapa Mi Campo | REAL/HYBRID | P1 | Auditar geometrías y experiencia móvil en candidate. |
+| Mapa Mi Campo | HYBRID CONTROLADO | P1 | API real; geometría demo solo en preview. Falta selector/vinculación y auditoría móvil. |
 | Tiempo AEMET | REAL | P1 | Revisar error/stale/empty en móvil. |
 | Radar | REAL | P1 | Falta overlay final y auditoría móvil; nunca afirmar ETA no validada. |
 | Explorar | PREVIEW | P2 beta privada / P1 beta pública | Menú y contenido territorial aún no forman un CMS/directorio completo. |
@@ -73,11 +84,10 @@ Regla de candidate:
 - Un error real produce estado vacío/error y permite recuperación; nunca datos inventados.
 - Las rutas `fincas/local` son herramientas de preview, no flujo de Beta.
 
-Pendiente inmediato:
+Estado actual:
 
-1. Aplicar esta regla a `FarmDetailShell` y componentes privados restantes.
-2. Auditar `Registrar`, `Mapa`, `Planificar`, `Hoy`, `Campaña`, documentos y Perfil en busca de fallback local/demo.
-3. Aislar rutas local-only del candidate productivo.
+- Núcleo privado corregido: Inicio, Mi Campo, Ficha, Nueva finca, Registrar, Mapa, Planificar, Hoy y Campaña.
+- Siguiente auditoría: documentos/OCR, Perfil y componentes secundarios del Home/Finca.
 
 ## P1 — Recorridos E2E
 
@@ -118,7 +128,7 @@ Revisar scroll horizontal, botones, densidad, sticky bars, targets táctiles, te
 ## P1 — Hardening conocido
 
 - CI candidate completo.
-- Semántica campaña agrícola/profesional consistente.
+- Semántica campaña agrícola/profesional consistente en backend/agregado.
 - OCR review legacy: `extraction + confirmed + corrections`.
 - Races/idempotencia pendientes de liquidaciones/cobros.
 - Validación de workspace/filtros pendiente en rutas concretas.
@@ -139,8 +149,8 @@ Revisar scroll horizontal, botones, densidad, sticky bars, targets táctiles, te
 ## Orden de ejecución actual
 
 1. ~~Resolver P0 del wizard de finca.~~ ✅
-2. Convertir preview implícita en modo explícito. **En progreso; núcleo Inicio/Mi Campo/Nueva finca ya corregido.**
-3. Cerrar `PREVIEW/HYBRID` privados restantes.
+2. ~~Convertir preview implícita del núcleo privado en modo explícito.~~ ✅
+3. Auditar documentos/OCR, Perfil y componentes privados secundarios.
 4. Ejecutar E2E y reparar.
 5. Auditoría móvil.
 6. Seguridad/performance.
