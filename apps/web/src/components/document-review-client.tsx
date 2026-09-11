@@ -106,6 +106,9 @@ export function DocumentReviewClient() {
   const settlementHref = reviewed && analysis.document.kind === 'settlement_statement' ? buildHref('/mi-campo/registrar/liquidacion', {
     ...baseParams, prefillDate: stringValue(reviewed, 'date'), prefillGross: stringValue(reviewed, 'gross_eur'), prefillDeductions: stringValue(reviewed, 'deductions_eur'), prefillNet: stringValue(reviewed, 'net_eur'), prefillNumber: stringValue(reviewed, 'settlement_number'), prefillCounterparty: stringValue(reviewed, 'counterparty_name'),
   }) : null;
+  const collectionHref = reviewed && analysis.document.kind === 'collection_receipt' ? buildHref('/mi-campo/registrar/cobro', {
+    ...baseParams, prefillDate: stringValue(reviewed, 'date'), prefillAmount: stringValue(reviewed, 'amount_eur'), prefillReference: stringValue(reviewed, 'reference'),
+  }) : null;
 
   return <>
     <header className="page-title mi-campo-title"><div><span className="eyebrow dark">MI CAMPO · DOCUMENTOS</span><h1>Revisar lectura</h1><p>{analysis.document.title}</p></div></header>
@@ -119,11 +122,12 @@ export function DocumentReviewClient() {
       {editableKeys.map((key) => <label className="form-field" key={key}><span>{fieldLabel(key)}</span><input value={values[key] ?? ''} onChange={(event) => setValues((current) => ({ ...current, [key]: event.target.value }))} disabled={Boolean(analysis.review)} /><small>Confianza OCR: {Math.round((analysis.extraction?.confidence_json[key] ?? 0) * 100)} %</small></label>)}
       {analysis.review ? <p className="success-note">✓ Revisión humana guardada. Estos son los datos confirmados; aún no se ha creado ningún registro agrícola automáticamente.</p> : <button className="primary" type="button" onClick={() => void confirmReview()} disabled={saving}>{saving ? 'Guardando revisión…' : 'Confirmar datos revisados'}</button>}
     </section> : null}
-    {analysis.review && (expenseHref || deliveryHref || resultHref || settlementHref) ? <section className="section card"><div className="section-head"><h2>Usar datos confirmados</h2><span>paso manual</span></div><p>El siguiente formulario se abrirá prellenado. Puedes cambiar cualquier dato y nada se guardará hasta que pulses Guardar.</p><div className="record-actions">
+    {analysis.review && (expenseHref || deliveryHref || resultHref || settlementHref || collectionHref) ? <section className="section card"><div className="section-head"><h2>Usar datos confirmados</h2><span>paso manual</span></div><p>El siguiente formulario se abrirá prellenado. Puedes cambiar cualquier dato y nada se guardará hasta que pulses Guardar.</p><div className="record-actions">
       {expenseHref ? <Link className="primary action-link" href={expenseHref}>Crear gasto con estos datos →</Link> : null}
       {deliveryHref ? <Link className="primary action-link" href={deliveryHref}>Crear entrega con estos datos →</Link> : null}
       {resultHref ? <Link className="primary action-link" href={resultHref}>Asociar rendimiento a una entrega →</Link> : null}
       {settlementHref ? <Link className="primary action-link" href={settlementHref}>Crear liquidación y elegir entregas →</Link> : null}
+      {collectionHref ? <Link className="primary action-link" href={collectionHref}>Registrar cobro y elegir liquidación →</Link> : null}
     </div></section> : null}
     {error ? <p className="form-error" role="alert">{error}</p> : null}<div className="record-actions"><Link className="secondary-action action-link" href={backHref}>Volver a la finca</Link></div>
   </>;
