@@ -23,7 +23,7 @@ CREATE TABLE professional_invoices (
 
 CREATE UNIQUE INDEX professional_invoices_number_uidx
   ON professional_invoices(workspace_id, invoice_number)
-  WHERE invoice_number IS NOT NULL AND status <> 'void';
+  WHERE invoice_number IS NOT NULL;
 
 CREATE INDEX professional_invoices_customer_idx
   ON professional_invoices(workspace_id, customer_party_id, issued_on DESC NULLS LAST, created_at DESC);
