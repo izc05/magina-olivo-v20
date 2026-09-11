@@ -149,6 +149,10 @@ export function FarmDetailShell() {
   const costPerKg = isApi
     ? detail.economics.costPerDeliveredKgEur
     : deliveredKg > 0 ? totalCostEur / deliveredKg : undefined;
+  const workCosts = detail.economics.workCostBreakdown;
+  const professional = detail.economics.professionalWork;
+  const hasWorkCosts = isApi && workCosts.totalWorkEur > 0;
+  const hasProfessionalWork = isApi && (professional.chargedEur > 0 || professional.collectedEur > 0 || professional.directCostEur > 0);
 
   return <>
     <header className="page-title mi-campo-title">
@@ -187,6 +191,31 @@ export function FarmDetailShell() {
         <article className="card quick premium-quick"><div><strong>{formatMoney(pendingCollectionEur)}</strong><small>pendiente de cobro</small></div></article>
         <article className="card quick premium-quick"><div><strong>{formatMoney(accruedMarginEur)}</strong><small>margen devengado</small></div></article>
       </div>
+
+      {hasWorkCosts ? <>
+        <div className="section-head"><h3>Costes de trabajos</h3><span className="subtle">Incluidos en costes registrados</span></div>
+        <div className="quick-grid">
+          <article className="card quick premium-quick"><div><strong>{formatMoney(workCosts.laborEur)}</strong><small>mano de obra / jornales</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(workCosts.machineryEur)}</strong><small>maquinaria</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(workCosts.materialsEur)}</strong><small>materiales</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(workCosts.servicesEur)}</strong><small>servicios externos</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(workCosts.totalWorkEur)}</strong><small>total trabajos</small></div></article>
+        </div>
+        <p className="subtle">Este desglose explica una parte de los costes registrados; no se suma de nuevo al total.</p>
+      </> : null}
+
+      {hasProfessionalWork ? <>
+        <div className="section-head"><h3>Trabajo para terceros</h3><Link href="/mi-campo/profesional" className="detail-link">Ver actividad profesional</Link></div>
+        <div className="quick-grid">
+          <article className="card quick premium-quick"><div><strong>{formatMoney(professional.chargedEur)}</strong><small>facturado / devengado</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(professional.collectedEur)}</strong><small>cobrado</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(professional.pendingEur)}</strong><small>pendiente de cobro</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(professional.directCostEur)}</strong><small>coste directo</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(professional.accruedMarginEur)}</strong><small>margen del servicio</small></div></article>
+        </div>
+        <p className="subtle">Los importes facturables de trabajos para terceros se muestran separados de los ingresos de cosecha y nunca se contabilizan como coste.</p>
+      </> : null}
+
       {isApi ? <p className="subtle">Margen devengado = liquidado atribuible − costes registrados. El flujo de caja real se mostrará cuando también modelemos pagos efectivos de gastos.</p> : <p className="subtle">Vista de demostración: los importes proceden del almacenamiento local de la preview.</p>}
     </section> : null}
 
