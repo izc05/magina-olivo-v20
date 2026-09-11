@@ -18,9 +18,7 @@ function parseEnv(source) {
     const key = line.slice(0, separator).trim();
     let value = line.slice(separator + 1).trim();
     if (!/^[A-Z][A-Z0-9_]*$/.test(key)) fail(`invalid variable name ${key} on line ${index + 1}`);
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
     if (values.has(key)) fail(`duplicate variable ${key}`);
     values.set(key, value);
   }
@@ -49,18 +47,15 @@ function requireHttps(value, key) {
   }
   if (url.protocol !== 'https:') fail(`${key} must use https`);
   if (['localhost', '127.0.0.1', '0.0.0.0'].includes(url.hostname)) fail(`${key} must not point to localhost`);
-  if (!allowReservedHosts && /(^|\.)(example|invalid|test)$/i.test(url.hostname.split('.').at(-1) ?? '')) {
-    fail(`${key} must not use a reserved example/test hostname`);
-  }
+  const tld = url.hostname.split('.').at(-1) ?? '';
+  if (!allowReservedHosts && /^(example|invalid|test)$/i.test(tld)) fail(`${key} must not use a reserved example/test hostname`);
   if (/^example\.(com|org|net)$/i.test(url.hostname)) fail(`${key} still points to an example hostname`);
   return url;
 }
 
 function requireInteger(values, key, min, max) {
   const parsed = Number(valueOf(values, key));
-  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-    fail(`${key} must be an integer between ${min} and ${max}`);
-  }
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) fail(`${key} must be an integer between ${min} and ${max}`);
   return parsed;
 }
 
@@ -97,23 +92,22 @@ if (decodeURIComponent(parsedDatabaseUrl.username) !== postgresUser) fail('DATAB
 if (decodeURIComponent(parsedDatabaseUrl.password) !== postgresPassword) fail('DATABASE_URL password must match POSTGRES_PASSWORD');
 if (decodeURIComponent(parsedDatabaseUrl.pathname.replace(/^\//, '')) !== postgresDb) fail('DATABASE_URL database must match POSTGRES_DB');
 
-requireInteger(values, 'API_PORT', 1, 65535);
+const webPort = requireInteger(values, 'WEB_PORT', 1, 65535);
+const apiPort = requireInteger(values, 'API_PORT', 1, 65535);
+if (webPort === apiPort) fail('WEB_PORT and API_PORT must be different');
 
 const corsOrigins = valueOf(values, 'CORS_ALLOWED_ORIGINS').split(',').map((item) => item.trim()).filter(Boolean);
 if (!corsOrigins.length) fail('CORS_ALLOWED_ORIGINS must contain at least one origin');
 if (corsOrigins.includes('*')) fail('CORS_ALLOWED_ORIGINS must not contain *');
-for (const origin of corsOrigins) requireHttps(origin, 'CORS_ALLOWED_ORIGINS');
-requireHttps(valueOf(values, 'NEXT_PUBLIC_API_URL'), 'NEXT_PUBLIC_API_URL');
+const normalizedCorsOrigins = corsOrigins.map((origin) => requireHttps(origin, 'CORS_ALLOWED_ORIGINS').origin);
+const apiUrl = requireHttps(valueOf(values, 'NEXT_PUBLIC_API_URL'), 'NEXT_PUBLIC_API_URL');
+if (normalizedCorsOrigins.includes(apiUrl.origin)) fail('NEXT_PUBLIC_API_URL must use a dedicated API origin, separate from the web origin(s)');
 requireHttps(valueOf(values, 'S3_ENDPOINT'), 'S3_ENDPOINT');
 
 const googleClientId = valueOf(values, 'GOOGLE_CLIENT_ID');
 const publicGoogleClientId = valueOf(values, 'NEXT_PUBLIC_GOOGLE_CLIENT_ID');
-if (googleClientId !== publicGoogleClientId) {
-  fail('GOOGLE_CLIENT_ID and NEXT_PUBLIC_GOOGLE_CLIENT_ID must match for the Google ID-token flow');
-}
-if (!googleClientId.endsWith('.apps.googleusercontent.com')) {
-  fail('GOOGLE_CLIENT_ID must be an OAuth Web Client ID ending in .apps.googleusercontent.com');
-}
+if (googleClientId !== publicGoogleClientId) fail('GOOGLE_CLIENT_ID and NEXT_PUBLIC_GOOGLE_CLIENT_ID must match for the Google ID-token flow');
+if (!googleClientId.endsWith('.apps.googleusercontent.com')) fail('GOOGLE_CLIENT_ID must be an OAuth Web Client ID ending in .apps.googleusercontent.com');
 
 const bucket = valueOf(values, 'S3_BUCKET');
 if (!/staging/i.test(bucket)) fail('S3_BUCKET must clearly identify an isolated staging bucket');
@@ -121,7 +115,8 @@ if (/prod(uction)?/i.test(bucket)) fail('S3_BUCKET looks like a production bucke
 valueOf(values, 'S3_REGION');
 valueOf(values, 'S3_ACCESS_KEY_ID');
 valueOf(values, 'S3_SECRET_ACCESS_KEY');
-expectExact(values, 'S3_FORCE_PATH_STYLE', values.get('S3_FORCE_PATH_STYLE') === 'true' ? 'true' : 'false');
+const forcePathStyle = valueOf(values, 'S3_FORCE_PATH_STYLE');
+if (!['true', 'false'].includes(forcePathStyle)) fail('S3_FORCE_PATH_STYLE must be true or false');
 valueOf(values, 'S3_PREFIX');
 valueOf(values, 'RADAR_S3_PREFIX');
 requireInteger(values, 'S3_UPLOAD_TTL_SECONDS', 60, 86_400);
@@ -149,4 +144,4 @@ const vapidSubject = valueOf(values, 'VAPID_SUBJECT');
 if (!/^mailto:[^@\s]+@[^@\s]+$/.test(vapidSubject)) fail('VAPID_SUBJECT must be a mailto address');
 valueOf(values, 'AEMET_API_KEY');
 
-console.log(`Staging env preflight passed for ${envPath}. Production flags, database, HTTPS/CORS, Google ID-token, isolated storage, OCR and provider settings are coherent.`);
+console.log(`Staging env preflight passed for ${envPath}. Production flags, ports, database, HTTPS/CORS, Google ID-token, isolated storage, OCR and provider settings are coherent.`);

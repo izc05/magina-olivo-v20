@@ -89,6 +89,7 @@ jobs:
           POSTGRES_PASSWORD=staging-ci-password
           POSTGRES_DB=magina_staging
           DATABASE_URL=postgresql://magina_staging:staging-ci-password@postgres:5432/magina_staging
+          WEB_PORT=8080
           API_PORT=3001
           HOST=0.0.0.0
           PORT=3001
@@ -208,6 +209,7 @@ jobs:
       - name: Production web build and bundle budget
         env:
           NEXT_PUBLIC_API_URL: https://api-staging.example.test
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: staging-ci.apps.googleusercontent.com
           NEXT_PUBLIC_PREVIEW_MODE: 'false'
         run: pnpm --filter @magina/web build
 
@@ -219,12 +221,12 @@ jobs:
             config > /tmp/magina-staging-compose.yml
           test -s /tmp/magina-staging-compose.yml
 
-      - name: Build staging API and worker images
+      - name: Build staging images
         run: |
           docker compose \
             --env-file deploy/staging/.env.example \
             -f deploy/staging/docker-compose.yml \
-            build api worker
+            build api worker web
 
       - name: Validate OCR inside worker image
         run: |
@@ -239,7 +241,15 @@ jobs:
               command -v pdftoppm
             '
 
-      - name: Smoke staging API container
+      - name: Validate production values embedded in web image
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            run --rm --no-deps --entrypoint /bin/sh web -ec \
+            "grep -R -F 'https://api-staging.example.com' /usr/share/nginx/html/_next >/dev/null && grep -R -F 'CHANGE_ME.apps.googleusercontent.com' /usr/share/nginx/html/_next >/dev/null"
+
+      - name: Smoke staging containers
         run: |
           compose() {
             docker compose \
@@ -249,23 +259,37 @@ jobs:
           cleanup() { compose down -v --remove-orphans || true; }
           trap cleanup EXIT
 
-          compose up -d api
-          ready=false
-          for attempt in $(seq 1 60); do
+          compose up -d web
+          api_ready=false
+          web_ready=false
+          for attempt in $(seq 1 90); do
             if curl -fsS http://127.0.0.1:3001/health >/tmp/staging-health.json; then
-              ready=true
+              api_ready=true
+            fi
+            if curl -fsS http://127.0.0.1:8080/healthz >/tmp/staging-web-health.txt; then
+              web_ready=true
+            fi
+            if [ "$api_ready" = true ] && [ "$web_ready" = true ]; then
               break
             fi
             sleep 1
           done
 
-          if [ "$ready" != true ]; then
+          if [ "$api_ready" != true ] || [ "$web_ready" != true ]; then
             compose ps
-            compose logs --no-color postgres migrate api
+            compose logs --no-color postgres migrate api web
             exit 1
           fi
 
           cat /tmp/staging-health.json
+          grep -Fx 'ok' /tmp/staging-web-health.txt
+          curl -fsS http://127.0.0.1:8080/ >/tmp/staging-web-index.html
+          test -s /tmp/staging-web-index.html
+          curl -fsSI http://127.0.0.1:8080/ | tr -d '\r' | grep -Fi 'X-Frame-Options: DENY'
+          curl -fsSI http://127.0.0.1:8080/ | tr -d '\r' | grep -Fi 'X-Content-Type-Options: nosniff'
+          curl -fsSI http://127.0.0.1:8080/documento-publico | tr -d '\r' | grep -Fi 'Cache-Control: no-store'
+          curl -fsSI http://127.0.0.1:8080/documento-publico | tr -d '\r' | grep -Fi 'X-Robots-Tag: noindex, nofollow, noarchive'
+
           STAGING_API_URL=http://127.0.0.1:3001 \
           STAGING_WEB_ORIGIN=https://staging.example.com \
           STAGING_REJECTED_ORIGIN=https://untrusted.magina.invalid \
