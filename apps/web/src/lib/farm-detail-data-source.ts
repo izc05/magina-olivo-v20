@@ -6,7 +6,7 @@ export type FarmActivityView = { id: string; date: string; title: string; summar
 export type FarmHarvestDeliveryView = { id: string; date: string; kg: number; destination?: string; ticketNumber?: string; yieldPercent?: number; resultDate?: string };
 export type FarmHarvestSettlementView = { id: string; date: string; counterparty?: string; settlementNumber?: string; fieldKg: number; sharePercent: number; netEur: number; collectedEur: number; pendingEur: number; allocationStatus: 'derived_estimate' | string };
 export type FarmHarvestView = { totalKg: number; weightedYieldPercent?: number; pendingResults: number; deliveries: FarmHarvestDeliveryView[]; accruedEur: number; collectedEur: number; pendingEur: number; settlements: FarmHarvestSettlementView[]; allocationNotice?: string };
-export type FarmEconomicsView = { totalCostEur: number; accruedIncomeEur: number; collectedIncomeEur: number; pendingCollectionEur: number; accruedMarginEur: number; cashMarginEur: number; deliveredKg: number; costPerDeliveredKgEur?: number; attributionStatus?: string };
+export type FarmEconomicsView = { totalCostEur: number; accruedIncomeEur: number; collectedIncomeEur: number; pendingCollectionEur: number; accruedMarginEur: number; collectedLessRegisteredCostsEur: number; deliveredKg: number; costPerDeliveredKgEur?: number; attributionStatus?: string };
 export type FarmLandReferenceView = { id: string; source: 'catastro' | 'sigpac' | 'manual' | string; reference?: string; areaHa?: number; status?: string };
 export type FarmDataView = { geometryStatus?: string; geometrySource?: string; areaHa?: number; references: FarmLandReferenceView[]; parcelCount: number };
 export type FarmDocumentView = { id: string; kind: string; title: string; createdAt: string; domainType?: string; relation?: string };
@@ -14,13 +14,13 @@ export type FarmDetailData = { activity: FarmActivityView[]; harvest: FarmHarves
 
 type ApiHarvestPayload = { total_kg: number; weighted_yield_percent: number | null; pending_results: number; deliveries: Array<{ delivery_id: string; delivery_at: string; cooperative_or_mill: string | null; ticket_number: string | null; kg: number; yield_percent: number | null; result_date: string | null }> };
 type ApiHarvestCommercialPayload = { accrued_eur: number; collected_eur: number; pending_eur: number; allocation_notice?: string; settlements: Array<{ id: string; settled_on: string; counterparty_name: string | null; settlement_number: string | null; field_kg: number; share_percent: number; net_eur: number; collected_eur: number; pending_eur: number; allocation_status: string }> };
-type ApiEconomicsPayload = { total_cost_eur: number; accrued_income_eur: number; collected_income_eur: number; pending_collection_eur: number; accrued_margin_eur: number; cash_margin_eur: number; delivered_kg: number; cost_per_delivered_kg_eur: number | null; attribution_status: string };
+type ApiEconomicsPayload = { total_cost_eur: number; accrued_income_eur: number; collected_income_eur: number; pending_collection_eur: number; accrued_margin_eur: number; collected_less_registered_costs_eur: number; delivered_kg: number; cost_per_delivered_kg_eur: number | null; attribution_status: string };
 type ApiMapPayload = { field: { calculated_area_ha: number | string | null; geometry_source: string | null; geometry_status: string | null }; references: Array<{ id: string; source: string; reference: string | null; area_ha: number | string | null; status: string }> };
 type ApiDocumentsPayload = { documents: Array<{ id: string; kind: string; title: string; created_at: string; domain_type: string | null; relation: string | null }> };
 type ApiActivityPayload = { items: Array<{ id: string; occurred_at: string; domain_type: string; domain_record_id: string; title: string; summary: string | null; icon_key: string | null }> };
 
 function finite(value: number | string | null | undefined) { if (value === null || value === undefined) return undefined; const parsed = Number(value); return Number.isFinite(parsed) ? parsed : undefined; }
-function emptyEconomics(): FarmEconomicsView { return { totalCostEur: 0, accruedIncomeEur: 0, collectedIncomeEur: 0, pendingCollectionEur: 0, accruedMarginEur: 0, cashMarginEur: 0, deliveredKg: 0 }; }
+function emptyEconomics(): FarmEconomicsView { return { totalCostEur: 0, accruedIncomeEur: 0, collectedIncomeEur: 0, pendingCollectionEur: 0, accruedMarginEur: 0, collectedLessRegisteredCostsEur: 0, deliveredKg: 0 }; }
 
 export async function loadApiFarmDetailData(fieldId: string, workspaceId: string): Promise<FarmDetailData> {
   const [activity, harvest, harvestCommercial, economics, map, documents] = await Promise.all([
@@ -39,7 +39,17 @@ export async function loadApiFarmDetailData(fieldId: string, workspaceId: string
       accruedEur: harvestCommercial.accrued_eur, collectedEur: harvestCommercial.collected_eur, pendingEur: harvestCommercial.pending_eur, allocationNotice: harvestCommercial.allocation_notice,
       settlements: harvestCommercial.settlements.map((item) => ({ id: item.id, date: item.settled_on, counterparty: item.counterparty_name ?? undefined, settlementNumber: item.settlement_number ?? undefined, fieldKg: item.field_kg, sharePercent: item.share_percent, netEur: item.net_eur, collectedEur: item.collected_eur, pendingEur: item.pending_eur, allocationStatus: item.allocation_status })),
     },
-    economics: { totalCostEur: economics.total_cost_eur, accruedIncomeEur: economics.accrued_income_eur, collectedIncomeEur: economics.collected_income_eur, pendingCollectionEur: economics.pending_collection_eur, accruedMarginEur: economics.accrued_margin_eur, cashMarginEur: economics.cash_margin_eur, deliveredKg: economics.delivered_kg, costPerDeliveredKgEur: economics.cost_per_delivered_kg_eur ?? undefined, attributionStatus: economics.attribution_status },
+    economics: {
+      totalCostEur: economics.total_cost_eur,
+      accruedIncomeEur: economics.accrued_income_eur,
+      collectedIncomeEur: economics.collected_income_eur,
+      pendingCollectionEur: economics.pending_collection_eur,
+      accruedMarginEur: economics.accrued_margin_eur,
+      collectedLessRegisteredCostsEur: economics.collected_less_registered_costs_eur,
+      deliveredKg: economics.delivered_kg,
+      costPerDeliveredKgEur: economics.cost_per_delivered_kg_eur ?? undefined,
+      attributionStatus: economics.attribution_status,
+    },
     data: { geometryStatus: map.field.geometry_status ?? undefined, geometrySource: map.field.geometry_source ?? undefined, areaHa: finite(map.field.calculated_area_ha), parcelCount: map.references.length, references: map.references.map((item) => ({ id: item.id, source: item.source, reference: item.reference ?? undefined, areaHa: finite(item.area_ha), status: item.status })) },
     documents: documents.documents.map((item) => ({ id: item.id, kind: item.kind, title: item.title, createdAt: item.created_at, domainType: item.domain_type ?? undefined, relation: item.relation ?? undefined })),
   };
