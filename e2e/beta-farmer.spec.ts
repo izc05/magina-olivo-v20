@@ -29,7 +29,7 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   await page.goto(`/mi-campo/mapa?fieldId=${encodeURIComponent(fieldId!)}`);
   await expect(page.getByRole('heading', { name: 'Tu finca sobre el terreno' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Añade los límites reales' })).toBeVisible();
-  await expect(page.getByLabel('Finca')).toHaveValue(fieldId!);
+  await expect(page.getByRole('combobox', { name: 'Finca', exact: true })).toHaveValue(fieldId!);
   await expect(page.getByLabel('Referencia catastral')).toBeVisible();
   await expect(page.getByLabel('ID del recinto SIGPAC')).toBeVisible();
 
