@@ -96,7 +96,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerCampaignRoutes(app, db);
   registerAgendaRoutes(app, db);
   registerAgronomyRoutes(app, db, weatherProvider);
-  registerAgronomyAlertRoutes(app, db, weatherProvider);
+  registerAgronomyAlertRoutes(app, db, weatherProvider, notificationQueue);
   registerAttentionRoutes(app, db, weatherProvider);
   registerPlannedTaskRoutes(app, db);
   registerWorkRoutes(app, db);
