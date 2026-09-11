@@ -9,6 +9,7 @@ const pool = new Pool({ connectionString: databaseUrl });
 const workspaceId = 'c1111111-1111-4111-8111-111111111111';
 const userId = 'c2222222-2222-4222-8222-222222222222';
 const customerId = 'c3333333-3333-4333-8333-333333333333';
+const customerSiteId = 'c3aaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const invoiceWorkId = 'c4444444-4444-4444-8444-444444444444';
 const unbilledWorkId = 'c5555555-5555-4555-8555-555555555555';
 const invoiceId = 'c6666666-6666-4666-8666-666666666666';
@@ -23,14 +24,18 @@ async function main() {
     INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, roles)
       VALUES ($1, $2, 'c9999999-9999-4999-8999-999999999999', 'person', 'Cliente Alertas CI', ARRAY['customer']) ON CONFLICT (id) DO NOTHING
   `, [customerId, workspaceId]);
+  await pool.query(`
+    INSERT INTO customer_sites (id, workspace_id, client_operation_id, customer_party_id, name, active)
+      VALUES ($1, $2, 'c9aaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', $3, 'Finca Alertas CI', TRUE) ON CONFLICT (id) DO NOTHING
+  `, [customerSiteId, workspaceId, customerId]);
 
   await pool.query(`
-    INSERT INTO work_records (id, workspace_id, client_operation_id, type, occurred_on, title, performed_for, customer_party_id, charge_eur, collected_eur, payment_status, created_by)
+    INSERT INTO work_records (id, workspace_id, client_operation_id, type, occurred_on, title, performed_for, customer_party_id, customer_site_id, charge_eur, collected_eur, payment_status, created_by)
     VALUES
-      ($1, $3, 'ca111111-1111-4111-8111-111111111111', 'manual-work', CURRENT_DATE - 40, 'Trabajo facturado CI', 'third-party', $4, 500, 0, 'pending', $5),
-      ($2, $3, 'ca222222-2222-4222-8222-222222222222', 'manual-work', CURRENT_DATE - 30, 'Trabajo sin factura CI', 'third-party', $4, 300, 0, 'pending', $5)
+      ($1, $3, 'ca111111-1111-4111-8111-111111111111', 'manual-work', CURRENT_DATE - 40, 'Trabajo facturado CI', 'third-party', $4, $5, 500, 0, 'pending', $6),
+      ($2, $3, 'ca222222-2222-4222-8222-222222222222', 'manual-work', CURRENT_DATE - 30, 'Trabajo sin factura CI', 'third-party', $4, $5, 300, 0, 'pending', $6)
     ON CONFLICT (id) DO NOTHING;
-  `, [invoiceWorkId, unbilledWorkId, workspaceId, customerId, userId]);
+  `, [invoiceWorkId, unbilledWorkId, workspaceId, customerId, customerSiteId, userId]);
 
   await pool.query(`
     INSERT INTO professional_invoices (id, workspace_id, customer_party_id, client_operation_id, invoice_number, issued_on, due_on, status, subtotal_eur, tax_eur, total_eur, created_by)

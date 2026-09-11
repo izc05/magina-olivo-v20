@@ -61,7 +61,7 @@ export function registerProfessionalCustomerRoutes(app: FastifyInstance, db: Dat
     const quotes = await sql`
       SELECT pq.id, pq.quote_number, pq.title, pq.issued_on::text, pq.valid_until::text, pq.status,
              pq.subtotal_eur::double precision, pq.tax_eur::double precision, pq.total_eur::double precision,
-             pq.accepted_at, pq.rejected_at, pq.converted_at,
+             pq.accepted_at, pq.rejected_at,
              cs.name AS site_name,
              wr.id AS work_id, wr.title AS work_title, wr.charge_eur::double precision AS work_charge_eur,
              (
