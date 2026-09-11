@@ -8,6 +8,10 @@ export type ProfessionalAttentionSummary = {
     unbilledWorkEur: number;
     agedCustomerCount: number;
     agedReceivableEur: number;
+    expiredQuoteCount: number;
+    expiredQuoteEur: number;
+    quoteFollowupCount: number;
+    quoteFollowupEur: number;
   };
   overdueInvoices: Array<{
     id: string;
@@ -37,6 +41,27 @@ export type ProfessionalAttentionSummary = {
     ageDays: number;
     workCount: number;
   }>;
+  expiredQuotes: Array<{
+    id: string;
+    quoteNumber?: string;
+    title: string;
+    customerId: string;
+    customerName: string;
+    validUntil: string;
+    totalEur: number;
+    overdueDays: number;
+  }>;
+  quoteFollowups: Array<{
+    id: string;
+    quoteNumber?: string;
+    title: string;
+    customerId: string;
+    customerName: string;
+    issuedOn?: string;
+    validUntil?: string;
+    totalEur: number;
+    ageDays: number;
+  }>;
 };
 
 type ApiPayload = {
@@ -47,6 +72,10 @@ type ApiPayload = {
     unbilled_work_eur: number;
     aged_customer_count: number;
     aged_receivable_eur: number;
+    expired_quote_count: number;
+    expired_quote_eur: number;
+    quote_followup_count: number;
+    quote_followup_eur: number;
   };
   overdue_invoices: Array<{
     id: string;
@@ -76,6 +105,27 @@ type ApiPayload = {
     age_days: number;
     work_count: number;
   }>;
+  expired_quotes: Array<{
+    id: string;
+    quote_number: string | null;
+    title: string;
+    customer_id: string;
+    customer_name: string;
+    valid_until: string;
+    total_eur: number;
+    overdue_days: number;
+  }>;
+  quote_followups: Array<{
+    id: string;
+    quote_number: string | null;
+    title: string;
+    customer_id: string;
+    customer_name: string;
+    issued_on: string | null;
+    valid_until: string | null;
+    total_eur: number;
+    age_days: number;
+  }>;
 };
 
 export async function loadProfessionalAttention(workspaceId: string, limit = 8): Promise<ProfessionalAttentionSummary> {
@@ -88,6 +138,10 @@ export async function loadProfessionalAttention(workspaceId: string, limit = 8):
       unbilledWorkEur: payload.summary.unbilled_work_eur,
       agedCustomerCount: payload.summary.aged_customer_count,
       agedReceivableEur: payload.summary.aged_receivable_eur,
+      expiredQuoteCount: payload.summary.expired_quote_count,
+      expiredQuoteEur: payload.summary.expired_quote_eur,
+      quoteFollowupCount: payload.summary.quote_followup_count,
+      quoteFollowupEur: payload.summary.quote_followup_eur,
     },
     overdueInvoices: payload.overdue_invoices.map((item) => ({
       id: item.id,
@@ -116,6 +170,27 @@ export async function loadProfessionalAttention(workspaceId: string, limit = 8):
       oldestUnpaidOn: item.oldest_unpaid_on,
       ageDays: item.age_days,
       workCount: item.work_count,
+    })),
+    expiredQuotes: payload.expired_quotes.map((item) => ({
+      id: item.id,
+      quoteNumber: item.quote_number ?? undefined,
+      title: item.title,
+      customerId: item.customer_id,
+      customerName: item.customer_name,
+      validUntil: item.valid_until,
+      totalEur: item.total_eur,
+      overdueDays: item.overdue_days,
+    })),
+    quoteFollowups: payload.quote_followups.map((item) => ({
+      id: item.id,
+      quoteNumber: item.quote_number ?? undefined,
+      title: item.title,
+      customerId: item.customer_id,
+      customerName: item.customer_name,
+      issuedOn: item.issued_on ?? undefined,
+      validUntil: item.valid_until ?? undefined,
+      totalEur: item.total_eur,
+      ageDays: item.age_days,
     })),
   };
 }
