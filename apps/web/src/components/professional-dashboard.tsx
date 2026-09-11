@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowIcon, PlusIcon } from '@/components/icons';
 import { useAuth } from '@/components/auth-provider';
+import { ProfessionalAttentionCard } from '@/components/professional-attention-card';
 import { loadApiProfessionalSummary, loadPreviewProfessionalSummary, type ProfessionalSummaryView } from '@/lib/professional-data-source';
 
 function money(value: number) {
@@ -78,6 +79,8 @@ export function ProfessionalDashboard() {
       <div className="stat"><b>{loading ? '…' : data.customerCount}</b><span>clientes</span></div>
       <div className="stat"><b>{loading ? '…' : money(data.pendingEur)}</b><span>pendiente de cobrar</span></div>
     </div></section>
+
+    <ProfessionalAttentionCard />
 
     <section className="section">
       <div className="section-head"><h2>Resumen profesional</h2><div className="action-row"><Link href="/mi-campo/profesional/facturas/nueva" className="detail-link">Nueva factura</Link><Link href="/mi-campo/profesional/cobrar" className="detail-link">Registrar cobro</Link><Link href="/mi-campo/registrar/trabajo" className="detail-link"><PlusIcon /> Registrar trabajo</Link></div></div>
