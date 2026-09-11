@@ -33,9 +33,11 @@ export function registerFarmEconomicsRoutes(app: FastifyInstance, db: DatabaseCl
 
     let campaignCostFilter = sql``;
     let campaignSettlementFilter = sql``;
+    let campaignWorkFilter = sql``;
     if (campaignId) {
       campaignCostFilter = sql`AND clp.campaign_id = ${campaignId}::uuid`;
       campaignSettlementFilter = sql`AND hs.campaign_id = ${campaignId}::uuid`;
+      campaignWorkFilter = sql`AND wr.campaign_id = ${campaignId}::uuid`;
     }
 
     const costs = await sql<{ total_cost_eur: number }>`
@@ -44,6 +46,69 @@ export function registerFarmEconomicsRoutes(app: FastifyInstance, db: DatabaseCl
       WHERE clp.workspace_id = ${context.workspaceId}::uuid
         AND clp.field_id = ${fieldId}::uuid
         ${campaignCostFilter}
+    `.execute(database);
+
+    const workBreakdown = await sql<{
+      labor_eur: number;
+      machinery_eur: number;
+      materials_eur: number;
+      services_eur: number;
+      total_work_eur: number;
+    }>`
+      WITH scoped_work AS (
+        SELECT wr.id
+        FROM work_records wr
+        WHERE wr.workspace_id = ${context.workspaceId}::uuid
+          AND wr.field_id = ${fieldId}::uuid
+          ${campaignWorkFilter}
+      ), participant_cost AS (
+        SELECT COALESCE(SUM(wp.cost_eur), 0)::double precision AS labor_eur
+        FROM work_participants wp
+        JOIN scoped_work sw ON sw.id = wp.work_id
+      ), resource_cost AS (
+        SELECT
+          COALESCE(SUM(wr.cost_eur) FILTER (WHERE wr.kind = 'machinery'), 0)::double precision AS machinery_eur,
+          COALESCE(SUM(wr.cost_eur) FILTER (WHERE wr.kind = 'material'), 0)::double precision AS materials_eur,
+          COALESCE(SUM(wr.cost_eur) FILTER (WHERE wr.kind = 'service'), 0)::double precision AS services_eur
+        FROM work_resources wr
+        JOIN scoped_work sw ON sw.id = wr.work_id
+      )
+      SELECT
+        participant_cost.labor_eur,
+        resource_cost.machinery_eur,
+        resource_cost.materials_eur,
+        resource_cost.services_eur,
+        (participant_cost.labor_eur + resource_cost.machinery_eur + resource_cost.materials_eur + resource_cost.services_eur)::double precision AS total_work_eur
+      FROM participant_cost CROSS JOIN resource_cost
+    `.execute(database);
+
+    const professionalWork = await sql<{
+      charged_eur: number;
+      collected_eur: number;
+      pending_eur: number;
+      direct_cost_eur: number;
+    }>`
+      WITH scoped AS (
+        SELECT
+          wr.id,
+          COALESCE(wr.charge_eur, 0)::double precision AS charge_eur,
+          COALESCE(wr.collected_eur, 0)::double precision AS collected_eur,
+          (
+            COALESCE((SELECT SUM(wp.cost_eur) FROM work_participants wp WHERE wp.work_id = wr.id), 0)
+            + COALESCE((SELECT SUM(wres.cost_eur) FROM work_resources wres WHERE wres.work_id = wr.id), 0)
+          )::double precision AS direct_cost_eur
+        FROM work_records wr
+        WHERE wr.workspace_id = ${context.workspaceId}::uuid
+          AND wr.field_id = ${fieldId}::uuid
+          AND wr.performed_for = 'third-party'
+          ${campaignWorkFilter}
+      )
+      SELECT
+        COALESCE(SUM(charge_eur), 0)::double precision AS charged_eur,
+        COALESCE(SUM(collected_eur), 0)::double precision AS collected_eur,
+        COALESCE(SUM(GREATEST(charge_eur - collected_eur, 0)), 0)::double precision AS pending_eur,
+        COALESCE(SUM(direct_cost_eur), 0)::double precision AS direct_cost_eur
+      FROM scoped
     `.execute(database);
 
     const harvest = await sql<{
@@ -84,6 +149,8 @@ export function registerFarmEconomicsRoutes(app: FastifyInstance, db: DatabaseCl
     const accrued = harvest.rows[0]?.accrued_eur ?? 0;
     const collected = harvest.rows[0]?.collected_eur ?? 0;
     const deliveredKg = harvest.rows[0]?.delivered_kg ?? 0;
+    const work = workBreakdown.rows[0] ?? { labor_eur: 0, machinery_eur: 0, materials_eur: 0, services_eur: 0, total_work_eur: 0 };
+    const professional = professionalWork.rows[0] ?? { charged_eur: 0, collected_eur: 0, pending_eur: 0, direct_cost_eur: 0 };
 
     return {
       field: { id: field.id, name: field.name },
@@ -96,12 +163,29 @@ export function registerFarmEconomicsRoutes(app: FastifyInstance, db: DatabaseCl
       collected_less_registered_costs_eur: collected - totalCost,
       delivered_kg: deliveredKg,
       cost_per_delivered_kg_eur: deliveredKg > 0 ? totalCost / deliveredKg : null,
+      work_cost_breakdown: {
+        labor_eur: work.labor_eur,
+        machinery_eur: work.machinery_eur,
+        materials_eur: work.materials_eur,
+        services_eur: work.services_eur,
+        total_work_eur: work.total_work_eur,
+      },
+      professional_work: {
+        charged_eur: professional.charged_eur,
+        collected_eur: professional.collected_eur,
+        pending_eur: professional.pending_eur,
+        direct_cost_eur: professional.direct_cost_eur,
+        accrued_margin_eur: professional.charged_eur - professional.direct_cost_eur,
+      },
       attribution_status: 'derived_from_cost_ledger_and_harvest_delivery_share',
       semantics: {
-        accrued_income: 'confirmed settlement amount attributed to the field',
-        collected_income: 'collections received against attributed settlements',
-        accrued_margin: 'accrued income minus registered costs',
-        collected_less_registered_costs: 'collected income minus registered costs; not cash flow because expense payments are not modeled yet',
+        total_cost: 'canonical registered costs from the cost ledger projection',
+        work_cost_breakdown: 'informational decomposition of work participant and resource costs; already included in total_cost_eur',
+        accrued_income: 'confirmed harvest settlement amount attributed to the field',
+        collected_income: 'collections received against attributed harvest settlements',
+        accrued_margin: 'harvest accrued income minus all registered field costs',
+        collected_less_registered_costs: 'harvest collections minus registered field costs; not cash flow because expense payments are not modeled yet',
+        professional_work: 'third-party work commercial figures shown separately and never added to harvest income totals',
       },
     };
   });
