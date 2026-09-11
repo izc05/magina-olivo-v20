@@ -10,10 +10,13 @@ export type FarmWorkCostBreakdownView = { laborEur: number; machineryEur: number
 export type FarmProfessionalWorkView = { chargedEur: number; collectedEur: number; pendingEur: number; directCostEur: number; accruedMarginEur: number };
 export type FarmEconomicsView = {
   totalCostEur: number;
+  productionCostEur: number;
+  professionalCostEur: number;
   accruedIncomeEur: number;
   collectedIncomeEur: number;
   pendingCollectionEur: number;
   accruedMarginEur: number;
+  combinedAccruedMarginEur: number;
   collectedLessRegisteredCostsEur: number;
   deliveredKg: number;
   costPerDeliveredKgEur?: number;
@@ -30,10 +33,13 @@ type ApiHarvestPayload = { total_kg: number; weighted_yield_percent: number | nu
 type ApiHarvestCommercialPayload = { accrued_eur: number; collected_eur: number; pending_eur: number; allocation_notice?: string; settlements: Array<{ id: string; settled_on: string; counterparty_name: string | null; settlement_number: string | null; field_kg: number; share_percent: number; net_eur: number; collected_eur: number; pending_eur: number; allocation_status: string }> };
 type ApiEconomicsPayload = {
   total_cost_eur: number;
+  production_cost_eur: number;
+  professional_cost_eur: number;
   accrued_income_eur: number;
   collected_income_eur: number;
   pending_collection_eur: number;
   accrued_margin_eur: number;
+  combined_accrued_margin_eur: number;
   collected_less_registered_costs_eur: number;
   delivered_kg: number;
   cost_per_delivered_kg_eur: number | null;
@@ -49,10 +55,13 @@ function finite(value: number | string | null | undefined) { if (value === null 
 function emptyEconomics(): FarmEconomicsView {
   return {
     totalCostEur: 0,
+    productionCostEur: 0,
+    professionalCostEur: 0,
     accruedIncomeEur: 0,
     collectedIncomeEur: 0,
     pendingCollectionEur: 0,
     accruedMarginEur: 0,
+    combinedAccruedMarginEur: 0,
     collectedLessRegisteredCostsEur: 0,
     deliveredKg: 0,
     workCostBreakdown: { laborEur: 0, machineryEur: 0, materialsEur: 0, servicesEur: 0, totalWorkEur: 0 },
@@ -79,10 +88,13 @@ export async function loadApiFarmDetailData(fieldId: string, workspaceId: string
     },
     economics: {
       totalCostEur: economics.total_cost_eur,
+      productionCostEur: economics.production_cost_eur,
+      professionalCostEur: economics.professional_cost_eur,
       accruedIncomeEur: economics.accrued_income_eur,
       collectedIncomeEur: economics.collected_income_eur,
       pendingCollectionEur: economics.pending_collection_eur,
       accruedMarginEur: economics.accrued_margin_eur,
+      combinedAccruedMarginEur: economics.combined_accrued_margin_eur,
       collectedLessRegisteredCostsEur: economics.collected_less_registered_costs_eur,
       deliveredKg: economics.delivered_kg,
       costPerDeliveredKgEur: economics.cost_per_delivered_kg_eur ?? undefined,
