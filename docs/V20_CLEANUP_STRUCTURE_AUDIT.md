@@ -44,7 +44,7 @@ Existían `typecheck`, `build` y `e2e:beta`, pero faltaba un comando único para
 
 ### Documentación y ramas paralelas
 
-**Acción:** añadidos `docs/INDEX.md` y `docs/WORKSTREAMS.md`. Este último mantiene ahora un mapa explícito de ramas activas y propiedad de frentes.
+**Acción:** añadidos `docs/INDEX.md`, `docs/WORKSTREAMS.md` y `AGENTS.md`. El repositorio mantiene ahora un mapa explícito de ramas activas, ownership y protocolo de handoff.
 
 ### E2E heredado dependía de una barra final de URL
 
@@ -54,9 +54,9 @@ El candidate de partida tenía el `V20 full candidate check` verde pero su `V20 
 
 **Resultado del lote 1:** `V20 full candidate check` y `V20 beta browser E2E` verdes.
 
-## Lote 2 — runtime, variables de entorno y CI rápido
+## Lote 2 — runtime, variables de entorno y dependencias reproducibles
 
-### Node no estaba declarado en el repositorio
+### Node y pnpm declarados
 
 CI usaba Node 22 pero el repositorio no declaraba versión compatible para desarrollo local.
 
@@ -64,93 +64,98 @@ CI usaba Node 22 pero el repositorio no declaraba versión compatible para desar
 
 - añadido `.nvmrc` con Node 22;
 - añadido `engines.node >=22 <23` en `package.json`;
-- declarado también el rango de pnpm compatible con el `packageManager` actual.
+- declarado el rango de pnpm compatible con `packageManager`.
 
-### Contrato de entorno incompleto y divergente
+### Contrato de entorno
 
-El `.env.example` raíz no incluía todas las variables realmente consumidas por API, web, worker y paquetes. Además los ejemplos de API, worker, infra y staging habían evolucionado de forma distinta.
+El `.env.example` raíz no incluía todas las variables consumidas por API, web, worker y paquetes.
 
-Hallazgos relevantes:
+**Acción:** reconciliados `.env.example`, API, worker, infra y staging. `scripts/check-env-contract.mjs` inspecciona `apps/` y `packages/` y falla ante variables `process.env.*` no documentadas.
 
-- `VAPID_PUBLIC_KEY` era runtime de API pero faltaba en el contrato raíz;
-- el worker necesita `WORKER_MODULES`, `OCR_PROCESSOR_MODE`, VAPID y configuración S3/radar según módulo;
-- `AEMET_API_KEY` es usada por weather y por las evaluaciones agronómicas del worker;
-- `infra/.env.example` documentaba una variable TTL S3 que el runtime actual no consume;
-- staging declaraba `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET` y `OCR_PROVIDER=tesseract` aunque el código actual no los usa;
-- el worker actual rechaza iniciar OCR en `NODE_ENV=production` porque todavía no existe un procesador OCR productivo configurado.
+**Resultado:** 29 variables runtime documentadas y gate `V20 environment contract` verde.
 
-**Acción:** alineados `.env.example`, `apps/api/.env.example`, `apps/worker/.env.example`, `infra/.env.example` y `deploy/staging/.env.example` con el runtime implementado. Staging deja OCR fuera de `WORKER_MODULES` hasta disponer de un proveedor productivo real.
+### Lockfile reproducible
 
-### Variables ocultas podían reaparecer
+El repositorio no tenía `pnpm-lock.yaml` y CI instalaba con `--no-frozen-lockfile`.
 
-**Acción:** añadido `scripts/check-env-contract.mjs` y comando `pnpm check:env`. El script inspecciona `apps/` y `packages/` y falla si encuentra un `process.env.*` no documentado en `.env.example`.
+**Acción:** generado y versionado `pnpm-lock.yaml` (lockfile v9), añadido `check:lockfile` y gate `V20 lockfile guard`.
 
-También se añadió el workflow rápido `V20 environment contract`, que no instala dependencias y se dispara cuando cambian runtime, configuración o el propio contrato.
+`pnpm check`, `pnpm check:fast` y el nuevo `V20 foundation check` usan instalación reproducible y validan entorno + typecheck/build.
 
-**Resultado actual:** el gate ha pasado detectando 29 variables runtime, todas documentadas.
+**Resultado:** foundation verde con Node 22, pnpm 10.15.1, instalación congelada, contrato de entorno, typecheck y build completo.
 
-### GitHub Actions obsoletas detectadas
+## Lote 3 — CI compartida y trabajo paralelo
 
-Los logs actuales muestran que `actions/checkout@v4` y `actions/setup-node@v4` todavía dependen del runtime antiguo de Actions y GitHub ya los fuerza a Node 24. Las versiones publicadas actuales son superiores.
+### Inventario de deuda CI
 
-**Acción iniciada:** los nuevos workflows de foundation usan `actions/checkout@v7`, `actions/setup-node@v7`, `pnpm/action-setup@v6` y `actions/upload-artifact@v7` cuando corresponde. La actualización del resto de workflows se hará por lotes para no provocar conflictos artificiales con ramas de producto activas.
+Se añadió `scripts/audit-ci.mjs` para auditar workflows de forma reproducible.
 
-## Lote 3 — dependencias reproducibles e integración paralela
+Primera auditoría objetiva:
 
-### El repositorio no tenía lockfile
+- 21 workflows;
+- 66 referencias a Actions;
+- 17 comandos de instalación pnpm;
+- 52 referencias a Actions antiguas;
+- 15 instalaciones mutables (`--no-frozen-lockfile`).
 
-Los workflows instalaban con `pnpm install --no-frozen-lockfile`, por lo que dos ramas podían resolver versiones transitorias diferentes sin modificar sus manifests.
+### Modernización controlada de workflows
 
-**Acción:**
+Se añadió `scripts/modernize-ci.mjs` y se generó un artefacto validado con `audit-ci --strict` antes de publicarlo.
 
-- generado y versionado `pnpm-lock.yaml` con pnpm 10.15.1 y Node 22;
-- creado `V20 lockfile guard`, que regenera el lockfile y lo mantiene sincronizado en PRs del mismo repositorio;
-- añadido `pnpm check:lockfile`;
-- `pnpm check` y `pnpm check:fast` validan ahora lockfile y contrato de entorno antes de typecheck/build;
-- `LOCAL_DEVELOPMENT.md` usa `pnpm install --frozen-lockfile` como instalación normal.
+**Aplicado:** 18 workflows actualizados mecánicamente, 67 sustituciones:
 
-El primer lockfile fue generado por CI y el bot lo incorporó a la rama mediante `chore(deps): refresh pnpm lockfile`. Una segunda ejecución confirmó que ya estaba sincronizado.
+- `actions/checkout@v4` → `actions/checkout@v7`;
+- `actions/setup-node@v4` → `actions/setup-node@v7`;
+- `pnpm/action-setup@v4` → `pnpm/action-setup@v6`;
+- `actions/upload-artifact@v4` → `actions/upload-artifact@v7`;
+- `pnpm install --no-frozen-lockfile` → `pnpm install --frozen-lockfile`.
 
-### Integrar muchas ramas necesitaba más contexto
+El workflow temporal usado para generar el artefacto se elimina tras publicar el lote. Los archivos grandes (`beta-browser-e2e.yml` y `visual-prototype-check.yml`) se verificaron por SHA contra el artefacto validado antes de ensamblar el commit.
 
-**Acción:** añadido `.github/pull_request_template.md` para que cada PR declare workstream, base, archivos compartidos, dependencia con otras ramas, checks ejecutados y riesgo de integración.
+### Protocolo para chats/agentes paralelos
 
-### El candidate avanzó durante el trabajo transversal
+`AGENTS.md` y `docs/WORKSTREAMS.md` consolidan:
 
-`feat/v20-visual-prototype` avanzó con una corrección E2E para volver desde mapa al hub de registro mediante ruta relativa.
+- cada chat/agente trabaja en una rama propia y un frente concreto;
+- no se toca `main`;
+- no se fusiona automáticamente el candidate;
+- ownership de archivos compartidos;
+- responsive 360/390/430 para pantallas;
+- datos reales por defecto y preview explícita;
+- formato estándar de handoff con SHA, archivos, tests y limitaciones.
 
-**Acción:** se incorporó la corrección compatible manteniendo el endurecimiento semántico anterior y se creó una sincronización formal de Git. Tras ella, `chore/v20-cleanup-structure` quedó **0 commits por detrás** del candidate correspondiente.
+Workstreams registrados: Inicio/Hoy, Mi Campo/Finca, Registro/Campaña, Profesional, Documentos/OCR, GIS/Nueva finca, QA móvil/E2E, Público/Explorar, Perfil/Ajustes, Planificar/Tareas, Admin, Weather/Radar y este frente transversal.
 
 ## Coherencia comprobada
 
 El código y los gates actuales confirman:
 
 - sesiones y memberships activas por defecto;
-- headers de desarrollo desactivados salvo `ALLOW_DEV_AUTH_HEADERS=true`;
+- headers de desarrollo solo con `ALLOW_DEV_AUTH_HEADERS=true`;
 - CORS con allowlist;
 - headers de seguridad en API privada;
-- `NEXT_PUBLIC_PREVIEW_MODE=false` como configuración esperada fuera de demo;
+- `NEXT_PUBLIC_PREVIEW_MODE=false` fuera de demo;
 - Playwright con identidad E2E explícita;
-- Node 22 como runtime de aplicación acordado;
+- Node 22 y pnpm 10.15.1 como runtime/tooling acordados;
+- lockfile versionado;
 - contrato automático de variables de entorno;
-- `pnpm-lock.yaml` reproducible y guard automático;
-- workstreams paralelos documentados por rama;
-- plantilla de integración común para PRs.
+- foundation reproducible;
+- workstreams paralelos documentados por rama.
 
 ## Deuda transversal pendiente
 
-Se mantiene como backlog de este mismo workstream:
+Backlog de este workstream después de cerrar la modernización CI:
 
-- actualizar progresivamente las actions antiguas de los workflows existentes;
-- migrar los workflows existentes desde `--no-frozen-lockfile` a `--frozen-lockfile` una vez incorporado este foundation al candidate;
-- revisar duplicación entre workflows y extraer convenciones comunes cuando aporte valor real;
+- vigilar que nuevas ramas no reintroduzcan Actions antiguas o instalaciones mutables;
+- revisar duplicación entre workflows y extraer componentes reutilizables solo cuando reduzca complejidad real;
 - auditar configuración de staging/producción conforme se activen nuevos módulos;
-- mantener el mapa de workstreams actualizado durante la integración;
-- revisar periódicamente que la rama foundation no quede por detrás del candidate activo.
+- mantener foundation sincronizada con el candidate activo;
+- revisar seguridad y permisos de Actions antes del cierre beta;
+- mantener el mapa de workstreams al día durante la integración.
 
 ## Deuda que pertenece a otros frentes
 
-No se intenta resolver aquí porque ya tiene workstream de producto:
+No se resuelve aquí porque ya tiene workstream propietario:
 
 - GIS real de alta/edición de finca y Catastro/SIGPAC;
 - experiencia Mi Campo y ficha de finca;
@@ -159,6 +164,8 @@ No se intenta resolver aquí porque ya tiene workstream de producto:
 - documentos/OCR funcional;
 - clima/radar/mapa de producto;
 - Inicio/Hoy;
+- Perfil/Ajustes;
+- Planificar/Tareas;
 - Admin;
 - público/explorar;
 - QA móvil y pulido UX.
