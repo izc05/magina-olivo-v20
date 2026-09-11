@@ -21,6 +21,7 @@ on:
       - 'apps/web/**'
       - 'scripts/check-runtime-contract.mjs'
       - 'scripts/check-staging-contract.mjs'
+      - 'scripts/check-container-pins.mjs'
       - 'scripts/check-web-bundle-budget.mjs'
       - 'scripts/staging-env-preflight.mjs'
       - 'scripts/staging-postdeploy-smoke.mjs'
@@ -40,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgis/postgis:17-3.5
+        image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -74,6 +75,9 @@ jobs:
 
       - name: Validate staging production-safety contract
         run: pnpm check:staging
+
+      - name: Validate immutable staging container references
+        run: pnpm check:containers
 
       - name: Validate staging env preflight
         run: |
