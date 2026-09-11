@@ -32,6 +32,10 @@ async function domainRecordBelongsToWorkspace(db: DatabaseClient, workspaceId: s
       const result = await sql<{ id: string }>`SELECT id FROM professional_invoices WHERE id = ${recordId}::uuid AND workspace_id = ${workspaceId}::uuid`.execute(db);
       return Boolean(result.rows[0]);
     }
+    case 'professional_quote': {
+      const result = await sql<{ id: string }>`SELECT id FROM professional_quotes WHERE id = ${recordId}::uuid AND workspace_id = ${workspaceId}::uuid`.execute(db);
+      return Boolean(result.rows[0]);
+    }
     default: return false;
   }
 }
