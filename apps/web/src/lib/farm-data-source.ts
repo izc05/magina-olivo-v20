@@ -46,6 +46,7 @@ function numericArea(value: ApiField['calculated_area_ha']) {
 }
 
 export function normalizeApiField(field: ApiField): FarmListItem {
+  const archived = field.status === 'archived';
   return {
     id: field.id,
     name: field.name,
@@ -57,11 +58,11 @@ export function normalizeApiField(field: ApiField): FarmListItem {
     waterRegime: waterRegimeLabel(field.water_regime),
     areaHa: numericArea(field.calculated_area_ha),
     ownership: field.tenure_type === 'leased' ? 'leased' : field.tenure_type === 'managed' ? 'managed' : undefined,
-    status: field.status === 'archived' ? 'archived' : 'active',
+    status: archived ? 'archived' : 'active',
     createdAt: field.created_at,
     source: 'api',
-    statusLabel: 'Activa',
-    tone: 'ok',
+    statusLabel: archived ? 'Archivada' : 'Activa',
+    tone: archived ? 'neutral' : 'ok',
   };
 }
 
