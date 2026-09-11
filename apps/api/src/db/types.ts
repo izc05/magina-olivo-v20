@@ -147,6 +147,7 @@ export interface IrrigationRecordTable extends DomainRecordBase { occurred_at: T
 export interface TreatmentRecordTable extends DomainRecordBase { occurred_at: Timestamp; reason: string; product_name: string; dose: string | null; quantity: string | null; applicator: string | null; equipment: string | null; cost_eur: number | null; notes: string | null; }
 export interface FertilizationRecordTable extends DomainRecordBase { occurred_at: Timestamp; product_name: string; quantity_kg: number | null; application_method: string | null; composition: string | null; cost_eur: number | null; supplier: string | null; notes: string | null; }
 export interface PruningRecordTable extends DomainRecordBase { occurred_at: Timestamp; pruning_type: string; workers: number | null; hours: number | null; cost_eur: number | null; notes: string | null; }
+export interface ObservationRecordTable extends DomainRecordBase { occurred_at: Timestamp; observation_type: string; notes: string; severity: 'low' | 'medium' | 'high' | null; }
 export interface ExpenseRecordTable extends DomainRecordBase { occurred_on: DateColumn; category: string; concept: string; amount_eur: number; notes: string | null; }
 
 export interface HarvestDeliveryTable {
@@ -295,6 +296,12 @@ export interface ScheduledEventTable {
   scheduled_at: Timestamp;
   status: 'planned' | 'completed' | 'postponed' | 'cancelled';
   source: 'manual' | 'domain_followup' | 'smart';
+  task_kind: string | null;
+  notes: string | null;
+  created_by: string | null;
+  completed_domain_type: string | null;
+  completed_domain_record_id: string | null;
+  completed_at: Timestamp | null;
   created_at: GeneratedTimestamp;
   updated_at: GeneratedTimestamp;
 }
@@ -314,6 +321,7 @@ export interface Database {
   treatment_records: TreatmentRecordTable;
   fertilization_records: FertilizationRecordTable;
   pruning_records: PruningRecordTable;
+  observation_records: ObservationRecordTable;
   expense_records: ExpenseRecordTable;
   harvest_deliveries: HarvestDeliveryTable;
   harvest_delivery_fields: HarvestDeliveryFieldTable;
