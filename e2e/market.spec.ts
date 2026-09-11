@@ -69,18 +69,25 @@ test.describe('Aceite y Mercado', () => {
     expect(dimensions.bodyWidth).toBeLessThanOrEqual(dimensions.viewport + 1);
   });
 
-  test('recalcula el valor teórico de una cosecha', async ({ page }) => {
+  test('recalcula con precio oficial y permite una referencia manual', async ({ page }) => {
     await page.goto('/mercado');
     await expect(page.locator('[data-market-source="api"]')).toBeVisible();
 
     const kilos = page.getByLabel('Kilos de aceituna');
     const yieldInput = page.getByLabel('Rendimiento industrial');
     const price = page.getByLabel('Precio del aceite por kilogramo');
+    const virgenPreset = page.getByRole('button', { name: /^Virgen 3,25 €\/kg$/ });
 
     await kilos.fill('10000');
     await yieldInput.fill('18');
-    await price.fill('3.50');
+    await virgenPreset.click();
 
+    await expect(virgenPreset).toHaveAttribute('aria-pressed', 'true');
+    await expect(price).toHaveValue('3.25');
+    await expect(page.getByText(/5[.\s]?850,00/)).toBeVisible();
+
+    await price.fill('3.50');
+    await expect(virgenPreset).toHaveAttribute('aria-pressed', 'false');
     await expect(page.getByText(/1[.\s]?800 kg/)).toBeVisible();
     await expect(page.getByText(/6[.\s]?300,00/)).toBeVisible();
     await expect(page.getByText(/0,63/)).toBeVisible();
