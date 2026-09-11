@@ -5,6 +5,7 @@ import type { DatabaseClient } from './db/client.js';
 import { hydrateRequestAuthentication, prototypeAuthWarning } from './request-context.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerMeRoutes } from './routes/me.js';
+import { registerPlanRoutes } from './routes/plans.js';
 import { registerFieldRoutes } from './routes/fields.js';
 import { registerIrrigationRoutes } from './routes/irrigations.js';
 import { registerObservationRoutes } from './routes/observations.js';
@@ -131,6 +132,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
 
   registerAuthRoutes(app, db, googleVerifier);
   registerMeRoutes(app, db);
+  registerPlanRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db);
