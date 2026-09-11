@@ -27,7 +27,12 @@ test('sube y verifica un documento real contra storage controlado', async ({ pag
   await page.getByRole('link', { name: 'Volver a la finca' }).click();
   await expect(page.getByRole('heading', { name: 'Finca Mobile Audit', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Documentos', exact: true }).click();
-  await expect(page.getByText(title, { exact: true })).toBeVisible();
+
+  const documentCatalog = page.locator('section.section').filter({
+    has: page.getByRole('heading', { name: 'Documentos recientes', exact: true }),
+  });
+  await expect(documentCatalog).toBeVisible();
+  await expect(documentCatalog.getByText(title, { exact: true })).toBeVisible();
 });
 
 test('revisa OCR, corrige kilos y abre entrega prellenada', async ({ page }) => {
