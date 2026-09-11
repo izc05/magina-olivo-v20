@@ -6,7 +6,7 @@ import './site-admin-v2.css';
 
 export const metadata: Metadata = {
   title: 'Editar web · Administración · Mágina Olivo',
-  description: 'Editor visual del contenido público de Mágina Olivo V20.',
+  description: 'Editor visual de contenido, SEO, multimedia y publicidad de Mágina Olivo V20.',
   robots: { index: false, follow: false },
 };
 
