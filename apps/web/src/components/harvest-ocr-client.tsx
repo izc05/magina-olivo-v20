@@ -16,6 +16,11 @@ export function HarvestOcrClient() {
   const { apiConfigured, status, selectedWorkspaceId } = useAuth();
   const params = useSearchParams();
   const plannedEventId = params.get('plannedEventId');
+  const sourceDocumentId = params.get('sourceDocumentId');
+  const prefillDate = params.get('prefillDate') ?? '';
+  const prefillKg = params.get('prefillKg') ?? '';
+  const prefillTicket = params.get('prefillTicket') ?? '';
+  const prefillCooperative = params.get('prefillCooperative') ?? '';
   const apiMode = context.source === 'api' && apiConfigured && status === 'authenticated' && Boolean(selectedWorkspaceId);
   const [saved, setSaved] = useState(false);
   const [savedKg, setSavedKg] = useState<number | null>(null);
@@ -47,7 +52,7 @@ export function HarvestOcrClient() {
           delivery_at: `${date}T12:00:00.000Z`,
           ticket_number: String(form.get('ticket') || '').trim() || undefined,
           total_kg: kg,
-          source: 'manual',
+          source: sourceDocumentId ? 'ocr' : 'manual',
           fields: [{ field_id: context.id, kg }],
         }),
       });
@@ -108,6 +113,7 @@ export function HarvestOcrClient() {
       <span className="eyebrow dark">{apiMode ? 'COSECHA GUARDADA EN MÁGINA' : 'COSECHA GUARDADA · PREVIEW'}</span>
       <h1>{savedKg?.toLocaleString('es-ES')} kg en {context.name}</h1>
       <p>{apiMode ? 'La entrega estructurada ya forma parte de la finca y de la campaña. El rendimiento podrá llegar después.' : 'El albarán de demostración se ha convertido en un registro local de preview.'}</p>
+      {sourceDocumentId && apiMode ? <p>✓ Los datos procedían de un albarán revisado y solo se guardaron después de tu confirmación.</p> : null}
       {completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : plannedEventId && apiMode ? <p>✓ La tarea prevista ha quedado enlazada a esta entrega.</p> : null}
       <div className="record-actions"><button type="button" className="secondary-action" onClick={() => setSaved(false)}>Registrar otra</button><Link href={context.returnHref} className="primary action-link">Volver a la finca <ArrowIcon/></Link></div>
     </section>;
@@ -116,12 +122,13 @@ export function HarvestOcrClient() {
   if (apiMode) {
     return <>
       <header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar entrega</h1><p>Primero guardamos peso y albarán. El rendimiento se incorpora cuando lo comunique la cooperativa o almazara.</p></header>
+      {sourceDocumentId ? <section className="card register-principle"><div><strong>Datos prellenados desde un albarán revisado</strong><small>Comprueba fecha, kilos y número de albarán antes de guardar.</small></div></section> : null}
       <form className="quick-record-form" onSubmit={saveRemote}>
         <section className="card record-panel"><div className="record-fields">
-          <label className="record-field"><span>Fecha</span><input className="record-control" name="date" type="date" required /></label>
-          <label className="record-field"><span>Peso</span><div className="record-input-wrap"><input className="record-control" name="kg" type="number" step="any" min="0.01" required /><b className="record-suffix">kg</b></div></label>
-          <label className="record-field"><span>Cooperativa / almazara</span><input className="record-control" name="cooperative" /></label>
-          <label className="record-field"><span>Nº albarán</span><input className="record-control" name="ticket" /></label>
+          <label className="record-field"><span>Fecha</span><input className="record-control" name="date" type="date" defaultValue={prefillDate} required /></label>
+          <label className="record-field"><span>Peso</span><div className="record-input-wrap"><input className="record-control" name="kg" type="number" step="any" min="0.01" defaultValue={prefillKg} required /><b className="record-suffix">kg</b></div></label>
+          <label className="record-field"><span>Cooperativa / almazara</span><input className="record-control" name="cooperative" defaultValue={prefillCooperative} /></label>
+          <label className="record-field"><span>Nº albarán</span><input className="record-control" name="ticket" defaultValue={prefillTicket} /></label>
         </div></section>
         <section className="card register-principle"><div><strong>Entrega ≠ rendimiento ≠ liquidación ≠ cobro</strong><small>Mágina conserva cada momento por separado para no inventar datos económicos o productivos.</small></div></section>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
