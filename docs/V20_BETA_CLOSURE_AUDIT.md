@@ -15,144 +15,136 @@ La Beta no se considerará cerrada hasta cumplir simultáneamente:
 5. Revisión móvil de Inicio, Mi Campo, Finca, Registrar, Hoy, Campaña, Profesional, Cliente, Presupuesto/Factura y documento público.
 6. Auditoría mínima de seguridad/performance y despliegue staging antes de merge.
 
+## Cambios ya aplicados durante el cierre
+
+- ✅ El wizard de nueva finca ya no afirma ni sugiere que Catastro/SIGPAC/mapa han quedado vinculados si no existe persistencia real de esa geometría.
+- ✅ En API/Beta guarda la finca y deja la geometría como pendiente para vincular después desde Mi Campo → Mapa.
+- ✅ Se ha creado `NEXT_PUBLIC_PREVIEW_MODE` como flag explícito.
+- ✅ GitHub Pages activa `NEXT_PUBLIC_PREVIEW_MODE=true` de forma intencionada.
+- ✅ Inicio, Mi Campo y alta de finca ya no usan datos demo/local por el simple hecho de que falte la API.
+- ✅ Una instalación sin API y sin preview muestra estado de configuración/error y no datos ficticios.
+
 ## Clasificación
 
 - `REAL`: consume API/datos persistidos y su flujo principal existe.
-- `HYBRID`: API real en producción + fallback preview/local explícito.
+- `HYBRID`: API real en producción + preview explícita para demo.
 - `PREVIEW`: contenido estático/demo o interacción no conectada.
 - `P0`: bloquea Beta.
 - `P1`: debe cerrarse antes de candidate final.
 - `P2`: puede completarse después de Beta sin falsear funcionalidad.
 
-## Inventario inicial
+## Inventario vivo
 
 | Área | Estado | Prioridad | Hallazgo / acción |
 |---|---|---:|---|
-| Inicio privado | HYBRID | P1 | Agenda, fincas, prioridades y clima usan API cuando está configurada. Conserva preview demo cuando no hay API. Mantener preview solo como modo explícito, no como fallback silencioso productivo. |
-| Inicio público / actualidad | PREVIEW | P1 | Noticias, eventos y patrocinado siguen siendo tarjetas estáticas/demo. Sustituir por contenido real o marcar claramente sección no disponible para Beta. |
-| Mi Campo | HYBRID | P1 | Fincas usan API con auth; conserva `demo/local` para preview. Separar modo preview del runtime productivo. |
-| Ficha de finca | HYBRID | P1 | API real para finca `source=api`; conserva rutas/derivaciones local/demo. Candidate productivo debe entrar siempre por API. |
-| Nueva finca — datos básicos | REAL | — | Alta `/api/v1/fields` y catálogo territorial reales cuando API está configurada. |
-| Nueva finca — localización | PREVIEW | **P0** | Mapa/Catastro/SIGPAC/dibujar muestran UI, pero el wizard no vincula todavía la referencia/geometría al guardar. No debe aparentar localización completada. Conectar o degradar a “vincular después”. |
-| Rutas `fincas/local` | PREVIEW | P1 | Persistencia local explícita de prototipo. Excluir del recorrido productivo/staging o proteger por modo preview. |
-| Hoy / agenda | REAL | P1 | API de agenda/planned tasks ya existe. Falta recorrido visual móvil completo y regresión E2E. |
-| Campaña | REAL | P1 | Agregado real; revisar separación agrícola/profesional en todos los totales y UX móvil. |
-| Profesional | REAL | P1 | Clientes, trabajos, costes, cobros, presupuestos, facturas, PDF, envío y aceptación pública implementados. Falta consolidación UX y eventos de decisión en seguimiento. |
-| Documentos/OCR | REAL | P1 | Persistencia, versiones, OCR y revisión humana reales. Falta hardening de merge de revisión legacy, parser fixtures y catálogo/paginación. |
-| GIS Catastro/SIGPAC backend | REAL | P1 | Servicios/modelo disponibles. Falta cerrar selector dentro del flujo de alta/edición de finca. |
-| Mapa Mi Campo | REAL/HYBRID | P1 | Existe MapPlatform y datos GIS; requiere auditoría visual y confirmar que no haya geometrías demo en candidate productivo. |
-| Tiempo AEMET | REAL | P1 | API real por finca/municipio con stale. Falta UX final y manejo visual de ausencia/error. |
-| Radar | REAL | P1 | Reflectividad observada y reglas reales. Falta overlay final y auditoría móvil; no afirmar ETA. |
-| Explorar | PREVIEW | P2 para Beta privada / P1 para Beta pública | Menú visual estático; Noticias, Eventos, Aceite, Gastronomía, Rutas y Cerca de ti aún no son directorio/CMS completo. |
-| Admin/CMS | INCOMPLETO | P2 Beta privada / P0 lanzamiento público | Blueprint existe; falta implementación completa de contenido, negocios, publicidad, imágenes y moderación. |
-| Mi Olivo | BLUEPRINT | P2 | No bloquea Beta del núcleo agrícola. |
+| Inicio privado | HYBRID CONTROLADO | P1 | API real en Beta; preview solo con flag explícito. Revisar componentes secundarios para eliminar cualquier fallback implícito restante. |
+| Inicio público / actualidad | PREVIEW | P1 | Noticias, eventos y patrocinado siguen siendo tarjetas estáticas/demo. Sustituir por contenido real o etiquetar/ocultar para Beta. |
+| Mi Campo | HYBRID CONTROLADO | P1 | Fincas API reales; preview solo explícita. |
+| Ficha de finca | HYBRID | P1 | API real para `source=api`; revisar el fallback local/demo para que solo funcione en preview explícita. |
+| Nueva finca — datos básicos | REAL | — | Alta `/api/v1/fields` y catálogo territorial reales. |
+| Nueva finca — localización | HONESTA / PENDIENTE DE CONEXIÓN | P1 | Ya no falsea vínculo. Falta integrar selector real Catastro/SIGPAC/Mapa en el wizard o dejarlo definitivamente como paso posterior. |
+| Rutas `fincas/local` | PREVIEW | P1 | Mantener solo para preview explícita; no deben ser alcanzables desde candidate productivo. |
+| Hoy / agenda | REAL | P1 | Falta recorrido visual móvil completo y regresión E2E. |
+| Campaña | REAL | P1 | Revisar separación agrícola/profesional en todos los totales y UX móvil. |
+| Profesional | REAL | P1 | Clientes, trabajos, costes, cobros, presupuestos, facturas, PDF, envío y aceptación pública. Falta consolidación UX/eventos de decisión. |
+| Documentos/OCR | REAL | P1 | Falta hardening de merge review legacy, parser fixtures y catálogo/paginación. |
+| GIS Catastro/SIGPAC backend | REAL | P1 | Servicios/modelo disponibles; falta cerrar selector de alta/edición de finca. |
+| Mapa Mi Campo | REAL/HYBRID | P1 | Auditar geometrías y experiencia móvil en candidate. |
+| Tiempo AEMET | REAL | P1 | Revisar error/stale/empty en móvil. |
+| Radar | REAL | P1 | Falta overlay final y auditoría móvil; nunca afirmar ETA no validada. |
+| Explorar | PREVIEW | P2 beta privada / P1 beta pública | Menú y contenido territorial aún no forman un CMS/directorio completo. |
+| Admin/CMS | INCOMPLETO | P2 beta privada / P0 lanzamiento público | Falta contenido, negocios, publicidad, imágenes y moderación. |
+| Mi Olivo | BLUEPRINT | P2 | No bloquea Beta núcleo. |
 
-## P0 actuales
+## P0
 
-### P0-1 — Wizard “Nueva finca” no debe simular vínculo GIS
+### P0-1 — Wizard de finca simulaba vínculo GIS
 
-Situación actual:
+**RESUELTO para Beta.**
 
-- Alta de finca básica: real.
-- Catastro/SIGPAC/Mapa/Dibujar: interfaz de selección aún no conectada al guardado de la finca.
-- El CTA puede dar a entender que la localización elegida ha quedado asociada.
+Se ha aplicado la opción segura: crear la finca real y marcar explícitamente la geometría como pendiente. El selector GIS completo se mantiene como P1 de producto, pero ya no existe una falsa confirmación de localización.
 
-Resolución Beta aceptable (orden preferido):
-
-1. Conectar selector real `mapa/catastro/sigpac` → referencia/geometría → confirmación → asociación a finca.
-2. Si no se termina en esta fase, degradar el Paso 2 a una elección informativa y guardar la finca con texto inequívoco: “Finca creada. Vincular ubicación después”. Nunca mostrar “localizada” si no existe vínculo persistido.
-
-## P1 — Datos demo/local
+## P1 — Preview/local
 
 Regla de candidate:
 
-- Con API configurada, nunca caer automáticamente a `demo-data` o `local-prototype-store` tras un error de API.
-- Un error real debe producir estado vacío/error y permitir reintento.
-- Preview debe activarse de forma explícita y reconocible.
-- Las rutas `fincas/local` se mantienen como herramienta de prototipo, no como flujo normal de Beta.
+- Con API configurada, nunca caer automáticamente a `demo-data` o `local-prototype-store` tras un error.
+- Sin API, solo hay demo cuando `NEXT_PUBLIC_PREVIEW_MODE=true`.
+- Un error real produce estado vacío/error y permite recuperación; nunca datos inventados.
+- Las rutas `fincas/local` son herramientas de preview, no flujo de Beta.
 
-## P1 — Recorridos E2E a validar
+Pendiente inmediato:
+
+1. Aplicar esta regla a `FarmDetailShell` y componentes privados restantes.
+2. Auditar `Registrar`, `Mapa`, `Planificar`, `Hoy`, `Campaña`, documentos y Perfil en busca de fallback local/demo.
+3. Aislar rutas local-only del candidate productivo.
+
+## P1 — Recorridos E2E
 
 ### Agricultor
 
 1. Login → workspace.
 2. Crear finca.
-3. Vincular/posponer localización sin engaño.
+3. Posponer localización sin engaño.
 4. Abrir finca.
 5. Registrar trabajo.
 6. Ver actividad y costes.
-7. Registrar entrega de cosecha.
+7. Registrar entrega.
 8. Añadir rendimiento posterior.
 9. Ver campaña.
-10. Subir documento → OCR → revisar → guardar dominio explícitamente.
-11. Ver tiempo/radar/alertas.
+10. Documento → OCR → revisión → guardado explícito.
+11. Tiempo/radar/alertas.
 
 ### Profesional
 
-1. Crear cliente y sitio.
-2. Crear presupuesto.
-3. Generar/archivar PDF.
+1. Crear cliente/sitio.
+2. Presupuesto.
+3. PDF.
 4. Compartir enlace.
 5. Confirmar envío.
-6. Cliente abre y acepta/rechaza.
-7. Convertir aceptado a trabajo.
-8. Registrar costes.
-9. Facturar.
-10. Registrar cobros parciales/totales.
-11. Ver pendiente y margen en cliente/Profesional/Inicio.
+6. Cliente acepta/rechaza.
+7. Convertir a trabajo.
+8. Costes.
+9. Factura.
+10. Cobros parciales/totales.
+11. Pendiente y margen.
 
 ## P1 — Auditoría móvil
 
-Anchuras mínimas objetivo:
+Objetivos mínimos: 360 px, 390–430 px, tablet y escritorio.
 
-- 360 px
-- 390–430 px
-- tablet
-- escritorio
-
-Comprobar por pantalla:
-
-- scroll horizontal accidental;
-- botones fuera de viewport;
-- tarjetas excesivamente densas;
-- sticky bars que tapen contenido;
-- tamaños táctiles;
-- formularios y teclado móvil;
-- tablas comerciales;
-- mapas;
-- estados loading/error/empty;
-- contraste/foco/labels.
+Revisar scroll horizontal, botones, densidad, sticky bars, targets táctiles, teclado, tablas, mapas, loading/error/empty, contraste/foco/labels.
 
 ## P1 — Hardening conocido
 
 - CI candidate completo.
 - Semántica campaña agrícola/profesional consistente.
-- OCR review: merge `extraction + confirmed + corrections` para legacy/partial.
-- Evitar duplicidad/race en asociaciones de liquidación/cobro restantes.
-- Validación explícita de filtros/IDs de workspace en rutas pendientes.
-- Financial attention: ordenar por urgencia real y contar totales independientemente del límite.
-- Catálogo documental: paginación/búsqueda y límite de subida más razonable.
-- Observabilidad de workers/notificaciones.
-- Auditoría de seguridad/performance.
+- OCR review legacy: `extraction + confirmed + corrections`.
+- Races/idempotencia pendientes de liquidaciones/cobros.
+- Validación de workspace/filtros pendiente en rutas concretas.
+- Financial attention: prioridad/orden y counts totales.
+- Catálogo documental: paginación/búsqueda/límite de subida.
+- Observabilidad workers/notificaciones.
+- Seguridad/performance.
 
-## P2 — Después de la Beta núcleo
+## P2 — Después de Beta núcleo
 
 - Admin/CMS completo.
 - Noticias/eventos/pueblos/almazaras dinámicos.
-- Cerca de ti + publicidad/promociones.
-- Mi Olivo/gamificación.
+- Cerca de ti/publicidad/promociones.
+- Mi Olivo.
 - Monetización/planes.
-- Nowcast solo si existe metodología validada; nunca inferir ETA desde dBZ sin modelo adecuado.
+- Nowcast solo con metodología validada.
 
-## Orden de ejecución desde este documento
+## Orden de ejecución actual
 
-1. Resolver P0 del wizard de finca.
-2. Convertir preview implícita en modo explícito.
-3. Inventariar y cerrar todos los `PREVIEW/HYBRID` privados.
-4. Ejecutar recorridos E2E y reparar.
+1. ~~Resolver P0 del wizard de finca.~~ ✅
+2. Convertir preview implícita en modo explícito. **En progreso; núcleo Inicio/Mi Campo/Nueva finca ya corregido.**
+3. Cerrar `PREVIEW/HYBRID` privados restantes.
+4. Ejecutar E2E y reparar.
 5. Auditoría móvil.
 6. Seguridad/performance.
 7. Staging real.
 8. Actualizar PR y decidir candidate final.
 
-Este documento es el checklist vivo de Cierre Beta. Cualquier función nueva grande debe esperar salvo que cierre un P0/P1 de esta lista.
+Este documento es el checklist vivo de Cierre Beta. No se añade una función grande nueva salvo que cierre un P0/P1.
