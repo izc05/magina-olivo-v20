@@ -1,0 +1,44 @@
+name: V20 CI modernization apply
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/modernize-ci.mjs'
+      - '.github/workflows/ci-modernization-apply.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'chore/v20-cleanup-structure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout foundation branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Apply mechanical workflow modernization
+        run: node scripts/modernize-ci.mjs --write
+
+      - name: Commit workflow modernization
+        run: |
+          if git diff --quiet -- .github/workflows; then
+            echo 'No workflow modernization changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows
+          git commit -m 'ci: modernize shared GitHub Actions runtime'
+          git push origin "HEAD:${{ github.head_ref }}"
