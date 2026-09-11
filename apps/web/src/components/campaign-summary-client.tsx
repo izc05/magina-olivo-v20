@@ -20,6 +20,16 @@ function number(value: number) {
   return value.toLocaleString('es-ES', { maximumFractionDigits: 2, useGrouping: 'always' });
 }
 
+function attributionNote(status: string) {
+  if (status === 'harvest_income_allocated_by_linked_delivery_kg_share') {
+    return 'Los ingresos de cosecha se reparten entre fincas según los kg de las entregas vinculadas.';
+  }
+  if (status === 'preview_without_harvest_settlement_store') {
+    return 'Vista previa: todavía no hay liquidaciones reales vinculadas a esta campaña.';
+  }
+  return 'Los importes se muestran según el criterio de reparto disponible para esta campaña.';
+}
+
 export function CampaignSummaryClient() {
   const { apiConfigured, previewEnabled, status, selectedWorkspaceId } = useAuth();
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
@@ -128,7 +138,7 @@ export function CampaignSummaryClient() {
         </div> : <section className="card"><p>Aún no hay datos económicos o de cosecha en esta campaña.</p></section>}
       </section>
 
-      <section className="card"><strong>Lectura de campaña</strong><p>{summary.deliveryCount} entregas · {summary.settlementCount} liquidaciones · {number(Math.round(summary.pendingResultKg))} kg todavía sin resultado de rendimiento.</p><small>{summary.attributionStatus}</small></section>
+      <section className="card"><strong>Lectura de campaña</strong><p>{summary.deliveryCount} entregas · {summary.settlementCount} liquidaciones · {number(Math.round(summary.pendingResultKg))} kg todavía sin resultado de rendimiento.</p><small>{attributionNote(summary.attributionStatus)}</small></section>
     </> : null}
 
     <section className="territory-banner compact-banner"><div><span className="eyebrow">CAMPAÑA COMPLETA</span><h2>Ver cada finca y el conjunto sin duplicar cálculos.</h2></div><Link href="/mi-campo">Mi Campo</Link></section>
