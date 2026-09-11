@@ -129,20 +129,20 @@ export function WorkEntryClient() {
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : '';
       setError(code === 'third_party_requires_api'
-        ? 'En la preview no creamos fincas falsas de clientes. Este flujo se guarda en el servidor real.'
+        ? 'En el modo demostración no se guardan trabajos para clientes. Entra con tu cuenta para usar esta opción.'
         : code === 'api_required'
-          ? 'Esta instalación necesita API y sesión activa para registrar trabajos.'
-          : 'No se ha podido guardar el trabajo. Revisa destino y datos.');
+          ? 'Inicia sesión para registrar trabajos en Mi Campo.'
+          : 'No se ha podido guardar el trabajo. Revisa la finca o cliente y los datos introducidos.');
     } finally {
       setSaving(false);
     }
   }
 
-  if (!apiConfigured && !previewEnabled) return <section className="card"><h1>Registro no disponible</h1><p>Esta instalación no tiene la API privada configurada.</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
+  if (!apiConfigured && !previewEnabled) return <section className="card"><h1>Registro no disponible</h1><p>Mi Campo no está conectado al servicio de datos en esta instalación.</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
   if (apiConfigured && status === 'loading') return <section className="card"><p>Comprobando sesión…</p></section>;
   if (apiConfigured && status !== 'authenticated') return <section className="card"><h1>Inicia sesión</h1><p>Registrar trabajos modifica datos privados de tu explotación.</p><Link href="/perfil" className="primary action-link">Ir a mi cuenta</Link></section>;
 
-  if (saved) return <section className="card record-success"><div className="success-mark">✓</div><h1>Trabajo registrado</h1><p>Mano de obra, maquinaria, coste y contexto comercial han quedado unidos al mismo trabajo.</p>{completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : plannedEventId && mode === 'self' ? <p>✓ La tarea prevista ha quedado enlazada al trabajo realizado.</p> : null}<Link className="primary action-link" href="/mi-campo">Volver a Mi Campo</Link></section>;
+  if (saved) return <section className="card record-success"><div className="success-mark">✓</div><h1>Trabajo registrado</h1><p>La labor, las personas, la maquinaria, los costes y el cobro han quedado reunidos en el mismo trabajo.</p>{completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : plannedEventId && mode === 'self' ? <p>✓ La tarea prevista ha quedado enlazada al trabajo realizado.</p> : null}<Link className="primary action-link" href="/mi-campo">Volver a Mi Campo</Link></section>;
 
   return <form className="quick-record-form" onSubmit={submit}>
     <header className="page-title compact-record-title"><span className="eyebrow dark">MI CAMPO · TRABAJO</span><h1>Registrar trabajo</h1><p>Una sola entrada para labor, personas, maquinaria, coste y cliente.</p></header>
@@ -177,8 +177,8 @@ export function WorkEntryClient() {
 
     {mode === 'third-party' ? <section className="card record-panel"><h2>¿Qué vas a cobrar?</h2><div className="record-fields"><label className="record-field"><span>Importe a cobrar</span><input className="record-control" name="charge" type="number" step="any" /></label><label className="record-field"><span>Ya cobrado</span><input className="record-control" name="collected" type="number" step="any" /></label></div></section> : null}
 
-    {mode === 'third-party' && !apiMode ? <p className="form-error">La preview muestra el flujo, pero no guardará trabajos de terceros para no crear fincas falsas.</p> : null}
+    {mode === 'third-party' && !apiMode ? <p className="form-error">En el modo demostración puedes recorrer esta pantalla, pero los trabajos de clientes solo se guardan al entrar con tu cuenta.</p> : null}
     {error ? <p className="form-error" role="alert">{error}</p> : null}
-    <section className="record-save-bar"><small>{apiMode ? 'Destino, costes y cobro se guardarán en el servidor.' : 'Modo preview explícito.'}</small><button className="primary" type="submit" disabled={saving || (mode === 'self' && !fieldId)}>{saving ? 'Guardando…' : 'Guardar trabajo →'}</button></section>
+    <section className="record-save-bar"><small>{apiMode ? 'El trabajo, sus costes y el cobro quedarán guardados en Mi Campo.' : 'Modo demostración: este registro se guarda solo en este dispositivo.'}</small><button className="primary" type="submit" disabled={saving || (mode === 'self' && !fieldId)}>{saving ? 'Guardando…' : 'Guardar trabajo →'}</button></section>
   </form>;
 }
