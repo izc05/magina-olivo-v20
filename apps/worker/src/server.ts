@@ -1,14 +1,18 @@
 import {
+  financialAlertEvaluateJobPayloadSchema,
   notificationDispatchJobPayloadSchema,
   ocrJobPayloadSchema,
   radarIngestJobPayloadSchema,
+  type FinancialAlertEvaluateJobPayload,
   type NotificationDispatchJobPayload,
   type OcrJobPayload,
   type RadarIngestJobPayload,
 } from '@magina/contracts';
 import {
   createJobBoss,
+  ensureFinancialAlertEvaluationSchedule,
   ensureNotificationDispatchSchedule,
+  FINANCIAL_ALERT_EVALUATE_QUEUE_NAME,
   NOTIFICATION_DISPATCH_QUEUE_NAME,
   OCR_QUEUE_NAME,
   RADAR_INGEST_QUEUE_NAME,
@@ -16,6 +20,7 @@ import {
 } from '@magina/jobs';
 import pg from 'pg';
 import { createPushSenderFromEnv } from './notifications/web-push.js';
+import { runFinancialAlertEvaluationJob } from './notifications/financial-evaluate.js';
 import { runNotificationDispatchJob } from './notifications/dispatch.js';
 import { DeterministicTestOcrProcessor, type OcrProcessorPort } from './ocr/processor.js';
 import { runOcrJob } from './ocr/run-job.js';
@@ -90,6 +95,14 @@ async function start() {
   if (modules.has('notifications')) {
     if (!pushSender) throw new Error('Push sender was not initialized');
     await ensureNotificationDispatchSchedule(boss);
+    await ensureFinancialAlertEvaluationSchedule(boss);
+
+    await boss.work<FinancialAlertEvaluateJobPayload>(FINANCIAL_ALERT_EVALUATE_QUEUE_NAME, { batchSize: 1 }, async ([job]) => {
+      if (!job) return;
+      const payload = financialAlertEvaluateJobPayloadSchema.parse(job.data);
+      await runFinancialAlertEvaluationJob(pool, payload);
+    });
+
     await boss.work<NotificationDispatchJobPayload>(NOTIFICATION_DISPATCH_QUEUE_NAME, { batchSize: 1 }, async ([job]) => {
       if (!job) return;
       const payload = notificationDispatchJobPayloadSchema.parse(job.data);
