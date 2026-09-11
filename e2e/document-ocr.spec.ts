@@ -29,7 +29,7 @@ test('sube y verifica un documento real contra storage controlado', async ({ pag
   await page.getByRole('button', { name: 'Documentos', exact: true }).click();
 
   const documentCatalog = page.locator('section.section').filter({
-    has: page.getByRole('heading', { name: 'Documentos recientes', exact: true }),
+    has: page.getByRole('heading', { name: 'Documentos', exact: true, level: 2 }),
   });
   const uploadedDocument = documentCatalog.getByText(title, { exact: true });
   await expect(documentCatalog).toBeVisible();
