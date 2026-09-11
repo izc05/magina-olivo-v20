@@ -35,6 +35,13 @@ async function materialBelongsToWorkspace(db: DatabaseClient, id: string, worksp
   return Boolean(result.rows[0]);
 }
 
+function paymentStatus(charge: number | undefined, collected: number | undefined) {
+  if (charge === undefined || charge <= 0) return 'pending' as const;
+  if ((collected ?? 0) >= charge) return 'paid' as const;
+  if ((collected ?? 0) > 0) return 'partial' as const;
+  return 'pending' as const;
+}
+
 export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/parties', async (request, reply) => {
     const context = requireContext(request, reply);
@@ -260,8 +267,9 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
     const participantCost = input.participants.reduce((sum, item) => sum + (item.cost_eur ?? ((item.quantity ?? 0) * (item.rate_eur ?? 0))), 0);
     const resourceCost = input.resources.reduce((sum, item) => sum + (item.cost_eur ?? ((item.quantity ?? 0) * (item.unit_cost_eur ?? 0))), 0);
     const totalCost = participantCost + resourceCost;
+    const initialCollected = input.performed_for === 'third-party' ? input.collected_eur ?? 0 : 0;
     const initialPaymentStatus = input.performed_for === 'third-party'
-      ? (input.payment_status ?? ((input.collected_eur ?? 0) > 0 ? 'partial' : 'pending'))
+      ? paymentStatus(input.charge_eur, initialCollected)
       : 'not-applicable';
 
     const saved = await database.transaction().execute(async (trx) => {
@@ -274,9 +282,22 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
           ${workId}::uuid, ${context.workspaceId}::uuid, ${input.field_id ?? null}::uuid, ${input.customer_site_id ?? null}::uuid,
           ${campaignId}::uuid, ${input.client_operation_id}::uuid, ${input.type}, ${input.occurred_on}::date, ${input.title}, ${input.notes ?? null},
           ${input.performed_for}, ${input.customer_party_id ?? null}::uuid, ${input.quoted_amount_eur ?? null}, ${input.charge_eur ?? null},
-          ${input.collected_eur ?? null}, ${initialPaymentStatus}, ${input.invoice_reference ?? null}, ${context.userId}::uuid
+          ${initialCollected}, ${initialPaymentStatus}, ${input.invoice_reference ?? null}, ${context.userId}::uuid
         ) RETURNING *
       `.execute(trx);
+
+      if (input.performed_for === 'third-party' && initialCollected > 0) {
+        await sql`
+          INSERT INTO work_collections (
+            id, workspace_id, work_id, client_operation_id, collected_on,
+            amount_eur, method, reference, notes, created_by
+          ) VALUES (
+            ${randomUUID()}::uuid, ${context.workspaceId}::uuid, ${workId}::uuid, ${randomUUID()}::uuid,
+            ${input.occurred_on}::date, ${initialCollected}, NULL, ${input.invoice_reference ?? null},
+            'Cobro inicial registrado junto con el trabajo', ${context.userId}::uuid
+          )
+        `.execute(trx);
+      }
 
       for (const participant of input.participants) {
         const calculatedCost = participant.cost_eur ?? ((participant.quantity ?? 0) * (participant.rate_eur ?? 0));
@@ -312,7 +333,7 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
         total_cost_eur: totalCost,
         cost_breakdown: { labor_eur: participantCost, resources_eur: resourceCost },
         commercial: input.performed_for === 'third-party'
-          ? { charge_eur: input.charge_eur ?? 0, collected_eur: input.collected_eur ?? 0 }
+          ? { charge_eur: input.charge_eur ?? 0, collected_eur: initialCollected }
           : null,
       };
     });
