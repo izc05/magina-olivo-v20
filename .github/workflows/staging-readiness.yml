@@ -215,7 +215,7 @@ jobs:
             run --rm --no-deps --entrypoint /bin/sh web -ec \
             "grep -R -F 'https://api-staging.example.com' /usr/share/nginx/html/_next >/dev/null"
 
-      - name: Smoke staging containers
+      - name: Smoke staging containers and migration repeatability
         run: |
           compose() {
             docker compose \
@@ -258,3 +258,14 @@ jobs:
           STAGING_WEB_ORIGIN=https://staging.example.com \
           STAGING_ALLOW_HTTP=true \
           node scripts/staging-postdeploy-smoke.mjs
+
+          second_migration_run="$(compose run --rm migrate 2>&1)"
+          printf '%s\n' "$second_migration_run"
+          if printf '%s\n' "$second_migration_run" | grep -F 'Applying /migrations/'; then
+            echo 'Second migration run attempted to reapply an existing migration.' >&2
+            exit 1
+          fi
+
+          expected_count="$(find database/migrations -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')"
+          applied_count="$(compose exec -T postgres psql -U magina_staging -d magina_staging -Atc "SELECT count(*) FROM public.schema_migrations WHERE status='applied';")"
+          test "$applied_count" = "$expected_count"
