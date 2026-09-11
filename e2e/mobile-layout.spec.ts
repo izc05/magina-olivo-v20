@@ -11,6 +11,17 @@ const invoiceId = '14141414-abcd-4abc-8abc-141414141414';
 const invoiceOperationId = '15151515-abcd-4abc-8abc-151515151515';
 const apiUrl = 'http://127.0.0.1:3001';
 
+const quickRecordRoutes = [
+  'riego',
+  'tratamiento',
+  'abono',
+  'poda',
+  'jornal',
+  'maquinaria',
+  'gasto',
+  'observacion',
+].map((type) => `/mi-campo/registrar/${type}?fieldId=${fieldId}&source=api`);
+
 const routes = [
   '/',
   '/explorar',
@@ -21,8 +32,11 @@ const routes = [
   `/mi-campo/planificar?fieldId=${fieldId}&source=api`,
   `/mi-campo/registrar?fieldId=${fieldId}`,
   `/mi-campo/registrar/trabajo?fieldId=${fieldId}`,
+  ...quickRecordRoutes,
   `/mi-campo/registrar/cosecha?fieldId=${fieldId}&source=api`,
   `/mi-campo/registrar/rendimiento?fieldId=${fieldId}&source=api`,
+  `/mi-campo/registrar/liquidacion?fieldId=${fieldId}&source=api`,
+  `/mi-campo/registrar/cobro?fieldId=${fieldId}&source=api`,
   `/mi-campo/documentos/nuevo?fieldId=${fieldId}&source=api`,
   '/mi-campo/hoy',
   '/mi-campo/campana',
@@ -32,6 +46,8 @@ const routes = [
   '/mi-campo/profesional/cliente',
   '/mi-campo/profesional/presupuestos',
   `/mi-campo/profesional/presupuestos?quoteId=${quoteId}&customerId=${customerId}`,
+  `/mi-campo/profesional/facturas/nueva?customerId=${customerId}&workId=${workId}`,
+  `/mi-campo/profesional/cobrar?workId=${workId}`,
   `/mi-campo/profesional/documento?type=invoice&id=${invoiceId}`,
   '/mi-campo/profesional/documento',
   '/perfil',
