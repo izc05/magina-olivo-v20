@@ -108,17 +108,17 @@ export function HomeDailyCenter() {
   if (!apiConfigured && previewEnabled) {
     return <>
       <section className="hero home-hero"><div className="hero-content">
-        <div className="location-chip"><MapPinIcon /> {demoContext.municipality} <span>· preview estructural</span></div>
+        <div className="location-chip"><MapPinIcon /> {demoContext.municipality} <span>· demostración</span></div>
         <div className="hero-spacer" />
         <div className="hero-weather"><div><div className="weather-temp">{demoContext.temperatureC}°</div><strong>{demoContext.condition}</strong></div><div className="weather-meta">Viento {demoContext.windKmh} km/h<br/>Humedad {demoContext.humidityPercent} %</div></div>
-        <div className="hero-rule"/><p className="hero-message">Preview explícita: en servidor este bloque usa tu finca prioritaria y AEMET.</p>
+        <div className="hero-rule"/><p className="hero-message">Datos de ejemplo para conocer cómo será tu centro diario.</p>
       </div></section>
-      <section className="section card field-summary premium-summary"><div className="field-summary-top"><div className="summary-brand"><span className="summary-mark"><SproutIcon /></span><div><h2>Mi Campo</h2><p>Vista previa del centro diario</p></div></div><Link href="/mi-campo" className="detail-link">Ver detalle <ArrowIcon /></Link></div><div className="stats"><div className="stat"><b>{demoFarmSummary.farms}</b><span>fincas demo</span></div><div className="stat"><b>{demoFarmSummary.oliveTrees}</b><span>olivas demo</span></div><div className="stat"><b>—</b><span>agenda real</span></div></div></section>
+      <section className="section card field-summary premium-summary"><div className="field-summary-top"><div className="summary-brand"><span className="summary-mark"><SproutIcon /></span><div><h2>Mi Campo</h2><p>Así se verá el resumen de tus fincas</p></div></div><Link href="/mi-campo" className="detail-link">Ver detalle <ArrowIcon /></Link></div><div className="stats"><div className="stat"><b>{demoFarmSummary.farms}</b><span>fincas de ejemplo</span></div><div className="stat"><b>{demoFarmSummary.oliveTrees}</b><span>olivas de ejemplo</span></div><div className="stat"><b>—</b><span>sin tareas reales</span></div></div></section>
     </>;
   }
 
   if (!apiConfigured) {
-    return <section className="section card"><h2>Servicio privado no configurado</h2><p>Esta instalación no tiene API configurada y el modo preview está desactivado. No mostraremos datos demo como si fueran reales.</p></section>;
+    return <section className="section card"><h2>Mi Campo no está disponible</h2><p>No se ha podido conectar con tus datos privados. Vuelve a intentarlo cuando el servicio esté disponible.</p></section>;
   }
 
   if (status !== 'authenticated') {
