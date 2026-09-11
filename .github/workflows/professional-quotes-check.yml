@@ -8,6 +8,8 @@ on:
       - 'apps/api/**'
       - 'apps/web/**'
       - 'packages/contracts/**'
+      - 'packages/weather/**'
+      - 'packages/jobs/**'
       - 'database/migrations/0034_professional_quotes.sql'
       - '.github/workflows/professional-quotes-check.yml'
   pull_request:
@@ -15,6 +17,8 @@ on:
       - 'apps/api/**'
       - 'apps/web/**'
       - 'packages/contracts/**'
+      - 'packages/weather/**'
+      - 'packages/jobs/**'
       - 'database/migrations/0034_professional_quotes.sql'
       - '.github/workflows/professional-quotes-check.yml'
 
@@ -49,6 +53,10 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @magina/contracts typecheck
       - run: pnpm --filter @magina/contracts build
+      - run: pnpm --filter @magina/weather typecheck
+      - run: pnpm --filter @magina/weather build
+      - run: pnpm --filter @magina/jobs typecheck
+      - run: pnpm --filter @magina/jobs build
       - run: pnpm --filter @magina/api typecheck
       - run: pnpm --filter @magina/api build
       - run: pnpm --filter @magina/web typecheck
