@@ -18,16 +18,14 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  generate-lockfile:
+  verify-lockfile:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Checkout
         uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -39,26 +37,5 @@ jobs:
         with:
           node-version-file: '.nvmrc'
 
-      - name: Generate pnpm lockfile
-        run: pnpm install --lockfile-only --no-frozen-lockfile
-
-      - name: Upload generated lockfile
-        uses: actions/upload-artifact@v7
-        with:
-          name: pnpm-lockfile-candidate
-          path: pnpm-lock.yaml
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Commit lockfile for same-repository PR
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          if git diff --quiet -- pnpm-lock.yaml && git ls-files --error-unmatch pnpm-lock.yaml >/dev/null 2>&1; then
-            echo 'pnpm-lock.yaml is already current.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add pnpm-lock.yaml
-          git commit -m 'chore(deps): refresh pnpm lockfile'
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+      - name: Verify pnpm lockfile is current
+        run: pnpm check:lockfile
