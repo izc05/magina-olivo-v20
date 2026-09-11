@@ -26,26 +26,41 @@ export function WorkEntryClient() {
   const fieldId = params.get('fieldId');
   const source = params.get('source');
   const plannedEventId = params.get('plannedEventId');
+  const requestedCustomerId = params.get('customerId') ?? '';
   const { apiConfigured, previewEnabled, status, selectedWorkspaceId } = useAuth();
   const apiMode = apiConfigured && status === 'authenticated' && Boolean(selectedWorkspaceId) && source !== 'local' && source !== 'demo';
   const previewFarm = useMemo(() => previewEnabled && fieldId ? getPreviewFarms().find((farm) => farm.id === fieldId) : undefined, [fieldId, previewEnabled]);
-  const [mode, setMode] = useState<'self' | 'third-party'>(fieldId ? 'self' : 'third-party');
+  const [mode, setMode] = useState<'self' | 'third-party'>(requestedCustomerId ? 'third-party' : fieldId ? 'self' : 'third-party');
   const [parties, setParties] = useState<WorkPartyOption[]>([]);
   const [sites, setSites] = useState<CustomerSiteOption[]>([]);
-  const [customerId, setCustomerId] = useState('');
+  const [customerId, setCustomerId] = useState(requestedCustomerId);
   const [siteId, setSiteId] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedWorkId, setSavedWorkId] = useState<string | null>(null);
+  const [savedCustomerId, setSavedCustomerId] = useState<string | null>(null);
   const [completionWarning, setCompletionWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (requestedCustomerId) {
+      setMode('third-party');
+      setCustomerId(requestedCustomerId);
+      setSiteId('');
+    }
+  }, [requestedCustomerId]);
 
   useEffect(() => {
     if (!apiMode || !selectedWorkspaceId) return;
     void loadWorkDirectory(selectedWorkspaceId).then(({ parties: nextParties, sites: nextSites }) => {
       setParties(nextParties);
       setSites(nextSites);
+      if (requestedCustomerId && !nextParties.some((party) => party.id === requestedCustomerId && party.roles?.includes('customer'))) {
+        setCustomerId('');
+        setError('El cliente seleccionado ya no está disponible. Elige otro o crea uno nuevo.');
+      }
     }).catch(() => setError('No se ha podido cargar la agenda de trabajo.'));
-  }, [apiMode, selectedWorkspaceId]);
+  }, [apiMode, requestedCustomerId, selectedWorkspaceId]);
 
   const customerSites = sites.filter((site) => !customerId || site.customer_party_id === customerId);
 
@@ -77,6 +92,8 @@ export function WorkEntryClient() {
         if (mode === 'self') {
           if (!fieldId) throw new Error('missing_field');
           const work = await createWork(selectedWorkspaceId, { field_id: fieldId, type, occurred_on: date, title, notes, performed_for: 'self', participants, resources });
+          setSavedWorkId(work.id);
+          setSavedCustomerId(null);
           if (plannedEventId) {
             try {
               await completePlannedTask({ workspaceId: selectedWorkspaceId, taskId: plannedEventId, domainType: 'work', domainRecordId: work.id });
@@ -104,7 +121,7 @@ export function WorkEntryClient() {
             })).id;
           }
 
-          await createWork(selectedWorkspaceId, {
+          const work = await createWork(selectedWorkspaceId, {
             customer_site_id: effectiveSiteId,
             type, occurred_on: date, title, notes,
             performed_for: 'third-party', customer_party_id: effectiveCustomerId,
@@ -112,6 +129,8 @@ export function WorkEntryClient() {
             payment_status: charge !== undefined ? (collected && collected >= charge ? 'paid' : collected ? 'partial' : 'pending') : 'pending',
             participants, resources,
           });
+          setSavedWorkId(work.id);
+          setSavedCustomerId(effectiveCustomerId);
         }
       } else {
         if (!previewEnabled) throw new Error('api_required');
@@ -124,8 +143,11 @@ export function WorkEntryClient() {
           resources: resources.map((item) => ({ id: crypto.randomUUID(), kind: 'machinery', name: item.name, quantity: item.quantity, unit: item.unit, costEur: item.cost_eur })),
           directCostEur: (laborCost ?? 0) + (machineCost ?? 0), createdAt: new Date().toISOString(),
         });
+        setSavedWorkId(null);
+        setSavedCustomerId(null);
       }
       setSaved(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : '';
       setError(code === 'third_party_requires_api'
@@ -142,10 +164,12 @@ export function WorkEntryClient() {
   if (apiConfigured && status === 'loading') return <section className="card"><p>Comprobando sesión…</p></section>;
   if (apiConfigured && status !== 'authenticated') return <section className="card"><h1>Inicia sesión</h1><p>Registrar trabajos modifica datos privados de tu explotación.</p><Link href="/perfil" className="primary action-link">Ir a mi cuenta</Link></section>;
 
-  if (saved) return <section className="card record-success"><div className="success-mark">✓</div><h1>Trabajo registrado</h1><p>La labor, las personas, la maquinaria, los costes y el cobro han quedado reunidos en el mismo trabajo.</p>{completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : plannedEventId && mode === 'self' ? <p>✓ La tarea prevista ha quedado enlazada al trabajo realizado.</p> : null}<Link className="primary action-link" href="/mi-campo">Volver a Mi Campo</Link></section>;
+  if (saved) return <section className="card record-success"><div className="success-mark">✓</div><h1>Trabajo registrado</h1><p>La labor, las personas, la maquinaria, los costes y el cobro han quedado reunidos en el mismo trabajo.</p>{completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : plannedEventId && mode === 'self' ? <p>✓ La tarea prevista ha quedado enlazada al trabajo realizado.</p> : null}<div className="record-actions">{mode === 'third-party' && savedWorkId && savedCustomerId ? <><Link className="primary action-link" href={`/mi-campo/profesional/facturas/nueva?customerId=${encodeURIComponent(savedCustomerId)}&workId=${encodeURIComponent(savedWorkId)}`}>Facturar este trabajo →</Link><Link className="secondary-action action-link" href={`/mi-campo/profesional/cliente?id=${encodeURIComponent(savedCustomerId)}`}>Ver cliente</Link><Link className="secondary-action action-link" href="/mi-campo/profesional">Profesional</Link></> : <Link className="primary action-link" href="/mi-campo">Volver a Mi Campo</Link>}</div></section>;
 
   return <form className="quick-record-form" onSubmit={submit}>
     <header className="page-title compact-record-title"><span className="eyebrow dark">MI CAMPO · TRABAJO</span><h1>Registrar trabajo</h1><p>Una sola entrada para labor, personas, maquinaria, coste y cliente.</p></header>
+
+    {requestedCustomerId && mode === 'third-party' ? <section className="card register-principle"><div><strong>Cliente preseleccionado desde Profesional</strong><small>Solo tienes que indicar la finca/ubicación, el trabajo y sus importes reales.</small></div></section> : null}
 
     <section className="card record-panel"><h2>¿Dónde trabajaste?</h2><div className="record-fields">
       <label className="record-field"><span>Tipo</span><select className="record-control" value={mode} onChange={(e) => setMode(e.target.value as 'self' | 'third-party')}><option value="self">En mi finca</option><option value="third-party">Para un cliente</option></select></label>
