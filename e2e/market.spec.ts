@@ -108,7 +108,7 @@ test.describe('Aceite y Mercado', () => {
     }
   });
 
-  test('muestra precios trazables, lectura rápida y no desborda en móvil', async ({ page, request }) => {
+  test('muestra precios trazables, cambia la ventana histórica y no desborda en móvil', async ({ page, request }) => {
     const apiResponse = await request.get(`${apiUrl}/api/v1/public/market/olive-oil`);
     const payload = (await apiResponse.json()) as {
       market: { series: Array<{ latest: { priceEurKg: number } }> };
@@ -128,6 +128,30 @@ test.describe('Aceite y Mercado', () => {
       });
       await expect(page.getByText(formattedPrice, { exact: true }).first()).toBeVisible();
     }
+
+    const trend = page.locator('[data-market-history-weeks]');
+    const fourWeeks = page.getByRole('button', { name: '4 sem', exact: true });
+    const eightWeeks = page.getByRole('button', { name: '8 sem', exact: true });
+
+    await expect(trend).toHaveAttribute('data-market-history-weeks', '8');
+    await expect(eightWeeks).toHaveAttribute('aria-pressed', 'true');
+
+    const fourWeeksResponse = page.waitForResponse(
+      (response) => response.url().includes('/api/v1/public/market/olive-oil/history?weeks=4') && response.status() === 200,
+    );
+    await fourWeeks.click();
+    await fourWeeksResponse;
+    await expect(trend).toHaveAttribute('data-market-history-weeks', '4');
+    await expect(fourWeeks).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('img', { name: 'Evolución de AOVE durante las últimas 4 semanas' })).toBeVisible();
+
+    const eightWeeksResponse = page.waitForResponse(
+      (response) => response.url().includes('/api/v1/public/market/olive-oil/history?weeks=8') && response.status() === 200,
+    );
+    await eightWeeks.click();
+    await eightWeeksResponse;
+    await expect(trend).toHaveAttribute('data-market-history-weeks', '8');
+    await expect(eightWeeks).toHaveAttribute('aria-pressed', 'true');
 
     await expect(page.getByRole('heading', { name: 'Qué dicen los datos' })).toBeVisible();
     await expect(page.getByText('-7,6%', { exact: true })).toBeVisible();
