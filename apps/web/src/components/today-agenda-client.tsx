@@ -135,13 +135,15 @@ export function TodayAgendaClient() {
       setAdvisories({});
       return;
     }
+    const workspaceId = selectedWorkspaceId;
     let cancelled = false;
     async function loadAdvisories() {
       const entries = await Promise.all(weatherSensitiveItems.map(async (item) => {
+        if (!item.fieldId) return [item.id, null] as const;
         try {
           const advisory = await loadAgronomyAdvisory({
-            workspaceId: selectedWorkspaceId,
-            fieldId: item.fieldId!,
+            workspaceId,
+            fieldId: item.fieldId,
             date: item.scheduledAt.slice(0, 10),
             task: agendaDomainToAgronomyTask(item.taskKind ?? item.sourceDomainType),
           });
