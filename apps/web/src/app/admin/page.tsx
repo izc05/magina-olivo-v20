@@ -9,5 +9,28 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPage() {
-  return <AdminControlCenter />;
+  return (
+    <>
+      <AdminControlCenter />
+      <a
+        href="/admin/web"
+        aria-label="Abrir editor visual de la web"
+        style={{
+          position: 'fixed',
+          right: 18,
+          bottom: 18,
+          zIndex: 50,
+          borderRadius: 999,
+          padding: '12px 16px',
+          background: '#315c3a',
+          color: '#fff',
+          fontWeight: 800,
+          textDecoration: 'none',
+          boxShadow: '0 12px 30px rgba(37, 74, 44, .28)',
+        }}
+      >
+        Editar web
+      </a>
+    </>
+  );
 }
