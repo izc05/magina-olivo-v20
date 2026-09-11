@@ -17,6 +17,7 @@ const unbilledWorkId = '97777777-7777-4777-8777-777777777777';
 const invoiceId = '98888888-8888-4888-8888-888888888888';
 const expiredQuoteId = '98999999-9999-4999-8999-999999999999';
 const followupQuoteId = '98aaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const collectionId = '98dddddd-dddd-4ddd-8ddd-dddddddddddd';
 const headers = { 'x-workspace-id': workspaceId, 'x-user-id': userId, 'content-type': 'application/json' };
 
 async function main() {
@@ -71,8 +72,8 @@ async function main() {
   `.execute(db);
 
   await sql`
-    INSERT INTO work_collections (workspace_id, work_id, client_operation_id, collected_on, amount_eur, method, created_by)
-    VALUES (${workspaceId}::uuid, ${invoicedWorkId}::uuid, '99999999-9999-4999-8999-999999999995'::uuid, CURRENT_DATE - 20, 100, 'bank', ${userId}::uuid)
+    INSERT INTO work_collections (id, workspace_id, work_id, client_operation_id, collected_on, amount_eur, method, created_by)
+    VALUES (${collectionId}::uuid, ${workspaceId}::uuid, ${invoicedWorkId}::uuid, '99999999-9999-4999-8999-999999999995'::uuid, CURRENT_DATE - 20, 100, 'bank', ${userId}::uuid)
     ON CONFLICT (workspace_id, client_operation_id) DO NOTHING
   `.execute(db);
 
