@@ -4,6 +4,13 @@ import { updateWorkCommercialSchema, uuidSchema } from '@magina/contracts';
 import type { DatabaseClient } from '../db/client.js';
 import { parseBody, requireContext, requireDatabase } from '../http/helpers.js';
 
+function derivePaymentStatus(charge: number | undefined, collected: number | undefined) {
+  if (charge === undefined || charge <= 0) return 'pending' as const;
+  if ((collected ?? 0) >= charge) return 'paid' as const;
+  if ((collected ?? 0) > 0) return 'partial' as const;
+  return 'pending' as const;
+}
+
 export function registerWorkCommercialRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.patch('/api/v1/works/:workId/commercial', async (request, reply) => {
     const context = requireContext(request, reply);
@@ -33,26 +40,27 @@ export function registerWorkCommercialRoutes(app: FastifyInstance, db: DatabaseC
 
     const charge = input.charge_eur ?? work.charge_eur ?? undefined;
     const collected = input.collected_eur ?? work.collected_eur ?? undefined;
+    if (collected !== undefined && collected > 0 && charge === undefined) {
+      return reply.code(400).send({ error: 'collection_requires_charge' });
+    }
     if (charge !== undefined && collected !== undefined && collected > charge) {
       return reply.code(400).send({ error: 'collected_exceeds_charge' });
     }
-    if (input.payment_status === 'paid' && charge !== undefined && collected !== charge) {
-      return reply.code(400).send({ error: 'paid_requires_full_collection' });
-    }
 
+    const paymentStatus = derivePaymentStatus(charge, collected);
     const result = await sql`
       UPDATE work_records
       SET quoted_amount_eur = COALESCE(${input.quoted_amount_eur ?? null}, quoted_amount_eur),
           charge_eur = COALESCE(${input.charge_eur ?? null}, charge_eur),
           collected_eur = COALESCE(${input.collected_eur ?? null}, collected_eur),
-          payment_status = ${input.payment_status},
+          payment_status = ${paymentStatus},
           invoice_reference = COALESCE(${input.invoice_reference ?? null}, invoice_reference),
           updated_at = now()
       WHERE id = ${parsedWorkId.data}::uuid AND workspace_id = ${context.workspaceId}::uuid
       RETURNING *
     `.execute(database);
 
-    return { work: result.rows[0] };
+    return { work: result.rows[0], payment_status_derived: true };
   });
 
   app.get('/api/v1/works/receivables', async (request, reply) => {
