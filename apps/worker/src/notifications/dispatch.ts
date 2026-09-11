@@ -84,8 +84,8 @@ async function intentStillAllowed(pool: Pool, intent: IntentRow) {
           OR (
             COALESCE(aap.enabled, false) = true
             AND (
-              COALESCE(($4->>'suitability') = 'avoid', false) AND COALESCE(aap.notify_avoid, false) = true
-              OR COALESCE(($4->>'suitability') = 'caution', false) AND COALESCE(aap.notify_caution, false) = true
+              COALESCE(($4::jsonb->>'suitability') = 'avoid', false) AND COALESCE(aap.notify_avoid, false) = true
+              OR COALESCE(($4::jsonb->>'suitability') = 'caution', false) AND COALESCE(aap.notify_caution, false) = true
             )
           )
         )
