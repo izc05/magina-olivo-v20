@@ -8,13 +8,13 @@ if (!databaseUrl) throw new Error('DATABASE_URL is required for admin territory 
 
 const db = createDatabase(databaseUrl);
 let claims: GoogleIdentityClaims = {
-  subject: 'territory-admin-google-subject',
+  subject: 'admin-google-subject',
   email: 'admin@magina.test',
   emailVerified: true,
-  displayName: 'Admin Territorio',
+  displayName: 'Admin Mágina',
   pictureUrl: null,
   givenName: 'Admin',
-  familyName: 'Territorio',
+  familyName: 'Mágina',
   hostedDomain: 'magina.test',
 };
 
