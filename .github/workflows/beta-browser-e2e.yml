@@ -10,7 +10,10 @@ on:
       - 'database/**'
       - 'e2e/**'
       - 'playwright.config.ts'
+      - '.nvmrc'
       - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/beta-browser-e2e.yml'
 
 concurrency:
