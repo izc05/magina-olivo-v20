@@ -5,13 +5,14 @@ const apiUrl = 'http://127.0.0.1:3001';
 test.describe('Aceite y Mercado', () => {
   test.use({ viewport: { width: 360, height: 844 } });
 
-  test('expone un snapshot público trazable y cacheable', async ({ request }) => {
+  test('expone un snapshot público persistido, trazable y cacheable', async ({ request }) => {
     const response = await request.get(`${apiUrl}/api/v1/public/market/olive-oil`);
     expect(response.status()).toBe(200);
     expect(response.headers()['cache-control']).toContain('public');
     expect(response.headers().etag).toBe('"junta-andalucia-olive-oil-2026-w36-v1"');
 
     const payload = (await response.json()) as {
+      origin: string;
       market: {
         schemaVersion: number;
         revision: string;
@@ -21,6 +22,7 @@ test.describe('Aceite y Mercado', () => {
       };
     };
 
+    expect(payload.origin).toBe('database');
     expect(payload.market.schemaVersion).toBe(1);
     expect(payload.market.revision).toBe('junta-andalucia-olive-oil-2026-w36-v1');
     expect(payload.market.period).toMatchObject({ week: 36, end: '2026-09-06' });
@@ -35,6 +37,75 @@ test.describe('Aceite y Mercado', () => {
       headers: { 'if-none-match': response.headers().etag },
     });
     expect(cached.status()).toBe(304);
+  });
+
+  test('sirve histórico persistido por ventana y valida el rango solicitado', async ({ request }) => {
+    const response = await request.get(`${apiUrl}/api/v1/public/market/olive-oil/history?weeks=8`);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['cache-control']).toContain('public');
+    expect(response.headers().etag).toBe('"junta-andalucia-olive-oil-2026-w36-v1-history-8"');
+
+    const payload = (await response.json()) as {
+      history: {
+        origin: string;
+        revision: string;
+        windowWeeks: number;
+        availableFrom: string;
+        availableThrough: string;
+        series: Array<{
+          id: string;
+          points: Array<{ week: number; periodStart: string; periodEnd: string; priceEurKg: number }>;
+        }>;
+      };
+    };
+
+    expect(payload.history).toMatchObject({
+      origin: 'database',
+      revision: 'junta-andalucia-olive-oil-2026-w36-v1',
+      windowWeeks: 8,
+      availableFrom: '2026-07-13',
+      availableThrough: '2026-09-06',
+    });
+    expect(payload.history.series).toHaveLength(3);
+    expect(payload.history.series.every((series) => series.points.length === 8)).toBe(true);
+
+    const aove = payload.history.series.find((series) => series.id === 'virgen-extra');
+    expect(aove?.points.map((point) => [point.week, point.priceEurKg])).toEqual([
+      [29, 3.76],
+      [30, 3.6],
+      [31, 3.7],
+      [32, 3.63],
+      [33, 3.44],
+      [34, 3.49],
+      [35, 3.7],
+      [36, 3.42],
+    ]);
+
+    const fourWeeksResponse = await request.get(`${apiUrl}/api/v1/public/market/olive-oil/history?weeks=4`);
+    expect(fourWeeksResponse.status()).toBe(200);
+    const fourWeeksPayload = (await fourWeeksResponse.json()) as {
+      history: { origin: string; windowWeeks: number; series: Array<{ points: Array<{ week: number }> }> };
+    };
+    expect(fourWeeksPayload.history.origin).toBe('database');
+    expect(fourWeeksPayload.history.windowWeeks).toBe(4);
+    expect(fourWeeksPayload.history.series[0]?.points.map((point) => point.week)).toEqual([33, 34, 35, 36]);
+
+    const cached = await request.get(`${apiUrl}/api/v1/public/market/olive-oil/history?weeks=8`, {
+      headers: { 'if-none-match': response.headers().etag },
+    });
+    expect(cached.status()).toBe(304);
+
+    for (const invalidWeeks of ['0', '53', 'abc', '4.5']) {
+      const invalid = await request.get(
+        `${apiUrl}/api/v1/public/market/olive-oil/history?weeks=${encodeURIComponent(invalidWeeks)}`,
+      );
+      expect(invalid.status()).toBe(400);
+      await expect(invalid.json()).resolves.toMatchObject({
+        error: 'invalid_market_history_weeks',
+        min: 1,
+        max: 52,
+      });
+    }
   });
 
   test('muestra precios trazables, lectura rápida y no desborda en móvil', async ({ page, request }) => {
