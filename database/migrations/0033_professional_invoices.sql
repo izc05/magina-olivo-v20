@@ -33,8 +33,7 @@ CREATE TABLE professional_invoice_works (
   work_id UUID NOT NULL REFERENCES work_records(id) ON DELETE RESTRICT,
   amount_eur NUMERIC(12,2) NOT NULL CHECK (amount_eur >= 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (invoice_id, work_id),
-  UNIQUE (work_id)
+  PRIMARY KEY (invoice_id, work_id)
 );
 
 CREATE INDEX professional_invoice_works_work_idx ON professional_invoice_works(work_id);
