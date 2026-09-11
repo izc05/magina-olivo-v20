@@ -68,6 +68,14 @@ export const createPruningSchema = clientOperationSchema.extend({
   follow_up: followUpSchema,
 });
 
+export const createObservationSchema = clientOperationSchema.extend({
+  occurred_at: isoDateTimeSchema,
+  observation_type: z.string().trim().min(1).max(160),
+  notes: z.string().trim().min(1).max(4_000),
+  severity: z.enum(['low', 'medium', 'high']).optional(),
+  follow_up: followUpSchema,
+});
+
 export const createExpenseSchema = clientOperationSchema.extend({
   occurred_on: isoDateSchema,
   category: z.string().trim().min(1).max(120),
@@ -103,6 +111,7 @@ export type CreateIrrigationInput = z.infer<typeof createIrrigationSchema>;
 export type CreateTreatmentInput = z.infer<typeof createTreatmentSchema>;
 export type CreateFertilizationInput = z.infer<typeof createFertilizationSchema>;
 export type CreatePruningInput = z.infer<typeof createPruningSchema>;
+export type CreateObservationInput = z.infer<typeof createObservationSchema>;
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type CreateDeliveryInput = z.infer<typeof createDeliverySchema>;
 export type CreateDeliveryResultInput = z.infer<typeof createDeliveryResultSchema>;
