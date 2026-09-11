@@ -280,11 +280,11 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
 
       for (const participant of input.participants) {
         const calculatedCost = participant.cost_eur ?? ((participant.quantity ?? 0) * (participant.rate_eur ?? 0));
-        await sql`INSERT INTO work_participants (work_id, party_id, crew_id, display_name, role, quantity, unit, rate_eur, cost_eur) VALUES (${workId}::uuid, ${participant.party_id ?? null}::uuid, ${participant.crew_id ?? null}::uuid, ${participant.display_name}, ${participant.role ?? null}, ${participant.quantity ?? null}, ${participant.unit ?? null}, ${participant.rate_eur ?? null}, ${calculatedCost || null})`.execute(trx);
+        await sql`INSERT INTO work_participants (work_id, party_id, crew_id, display_name, role, quantity, unit, rate_eur, cost_eur) VALUES (${workId}::uuid, ${participant.party_id ?? null}::uuid, ${participant.crew_id ?? null}::uuid, ${participant.display_name}, ${participant.role ?? null}, ${participant.quantity ?? null}, ${participant.unit ?? null}, ${participant.rate_eur ?? null}, ${calculatedCost})`.execute(trx);
       }
       for (const resource of input.resources) {
         const calculatedCost = resource.cost_eur ?? ((resource.quantity ?? 0) * (resource.unit_cost_eur ?? 0));
-        await sql`INSERT INTO work_resources (work_id, kind, machinery_id, material_id, supplier_party_id, name, quantity, unit, unit_cost_eur, cost_eur) VALUES (${workId}::uuid, ${resource.kind}, ${resource.machinery_id ?? null}::uuid, ${resource.material_id ?? null}::uuid, ${resource.supplier_party_id ?? null}::uuid, ${resource.name}, ${resource.quantity ?? null}, ${resource.unit ?? null}, ${resource.unit_cost_eur ?? null}, ${calculatedCost || null})`.execute(trx);
+        await sql`INSERT INTO work_resources (work_id, kind, machinery_id, material_id, supplier_party_id, name, quantity, unit, unit_cost_eur, cost_eur) VALUES (${workId}::uuid, ${resource.kind}, ${resource.machinery_id ?? null}::uuid, ${resource.material_id ?? null}::uuid, ${resource.supplier_party_id ?? null}::uuid, ${resource.name}, ${resource.quantity ?? null}, ${resource.unit ?? null}, ${resource.unit_cost_eur ?? null}, ${calculatedCost})`.execute(trx);
       }
 
       const projection = input.field_id ? await writeDomainEffects(trx, {
