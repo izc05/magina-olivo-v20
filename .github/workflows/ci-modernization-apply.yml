@@ -1,4 +1,4 @@
-name: V20 CI modernization apply
+name: V20 CI modernization artifact
 
 on:
   pull_request:
@@ -11,10 +11,10 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply:
+  generate:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'chore/v20-cleanup-structure'
     runs-on: ubuntu-latest
     steps:
@@ -31,14 +31,13 @@ jobs:
       - name: Apply mechanical workflow modernization
         run: node scripts/modernize-ci.mjs --write
 
-      - name: Commit workflow modernization
-        run: |
-          if git diff --quiet -- .github/workflows; then
-            echo 'No workflow modernization changes required.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows
-          git commit -m 'ci: modernize shared GitHub Actions runtime'
-          git push origin "HEAD:${{ github.head_ref }}"
+      - name: Verify transformed CI audit
+        run: node scripts/audit-ci.mjs --strict
+
+      - name: Upload modernized workflows
+        uses: actions/upload-artifact@v7
+        with:
+          name: modernized-workflows
+          path: .github/workflows
+          if-no-files-found: error
+          retention-days: 1
