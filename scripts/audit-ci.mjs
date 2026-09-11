@@ -1,23 +1,15 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import process from 'node:process';
+import { ACTION_PINS } from './ci-action-pins.mjs';
 
 const workflowsDir = join(process.cwd(), '.github', 'workflows');
 const strict = process.argv.includes('--strict');
-const expectedMajors = new Map([
-  ['actions/checkout', 7],
-  ['actions/setup-node', 7],
-  ['pnpm/action-setup', 6],
-  ['actions/cache', 6],
-  ['actions/upload-artifact', 7],
-  ['actions/configure-pages', 5],
-  ['actions/upload-pages-artifact', 4],
-  ['actions/deploy-pages', 4],
-]);
 const criticalPullRequestPaths = new Map([
   ['visual-prototype-check.yml', ['.nvmrc', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']],
   ['beta-browser-e2e.yml', ['.nvmrc', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']],
 ]);
+const actionUsesPattern = /uses:\s*([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)@([^\s#]+)(?:\s+#\s*([^\s]+))?/g;
 
 const entries = (await readdir(workflowsDir, { withFileTypes: true }))
   .filter((entry) => entry.isFile() && ['.yml', '.yaml'].includes(extname(entry.name)))
@@ -125,8 +117,8 @@ for (const entry of entries) {
   const hasPullRequestTarget = /^  pull_request_target:\s*$/m.test(source);
   const permissions = topLevelPermissions(source);
   const writeScopes = allWritePermissions(source);
-  const usesSetupNode = /uses:\s*actions\/setup-node@v\d+/.test(source);
-  const usesDeployPages = /uses:\s*actions\/deploy-pages@v\d+/.test(source);
+  const usesSetupNode = /uses:\s*actions\/setup-node@/.test(source);
+  const usesDeployPages = /uses:\s*actions\/deploy-pages@/.test(source);
 
   if (hasPullRequest) pullRequestWorkflows += 1;
   if (writeScopes.length) writePermissionWorkflows += 1;
@@ -180,7 +172,7 @@ for (const entry of entries) {
     }
 
     const jobs = workflowJobs(source);
-    const deploymentJobs = jobs.filter((job) => /uses:\s*actions\/deploy-pages@v\d+/.test(job.source));
+    const deploymentJobs = jobs.filter((job) => /uses:\s*actions\/deploy-pages@/.test(job.source));
     if (deploymentJobs.length !== 1) {
       addFinding('pages-deploy-job-count', entry.name, `expected exactly one deploy-pages job, found ${deploymentJobs.length}`);
     } else {
@@ -216,13 +208,26 @@ for (const entry of entries) {
     }
   }
 
-  for (const match of source.matchAll(/uses:\s*([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)@v(\d+)/g)) {
+  for (const match of source.matchAll(actionUsesPattern)) {
     actionReferences += 1;
     const action = match[1];
-    const major = Number(match[2]);
-    const expected = expectedMajors.get(action);
-    if (expected && major < expected) {
-      addFinding('outdated-action', entry.name, `${action}@v${major} -> expected v${expected}+`);
+    const ref = match[2];
+    const versionComment = match[3] ?? null;
+    const pin = ACTION_PINS.get(action);
+
+    if (!pin) {
+      addFinding('unapproved-action', entry.name, `${action}@${ref} is not in scripts/ci-action-pins.mjs`);
+      continue;
+    }
+    if (!/^[0-9a-f]{40}$/.test(ref)) {
+      addFinding('mutable-action-ref', entry.name, `${action}@${ref} must use a full immutable commit SHA`);
+      continue;
+    }
+    if (ref !== pin.sha) {
+      addFinding('unapproved-action-sha', entry.name, `${action}@${ref} -> approved ${pin.sha}`);
+    }
+    if (versionComment !== pin.version) {
+      addFinding('action-version-comment', entry.name, `${action}@${ref} must retain human-readable comment # ${pin.version}`);
     }
   }
 
@@ -241,10 +246,10 @@ for (const finding of findings) {
 }
 
 console.log(
-  `CI audit: ${entries.length} workflows, ${actionReferences} action references, ${installCommands} pnpm install commands, ${setupNodeWorkflows} setup-node workflows, ${pullRequestWorkflows} pull_request workflows, ${writePermissionWorkflows} workflows with explicit write permissions, ${deployPagesWorkflows} Pages deploy workflows.`,
+  `CI audit: ${entries.length} workflows, ${actionReferences} immutable Action references, ${installCommands} pnpm install commands, ${setupNodeWorkflows} setup-node workflows, ${pullRequestWorkflows} pull_request workflows, ${writePermissionWorkflows} workflows with explicit write permissions, ${deployPagesWorkflows} Pages deploy workflows.`,
 );
 if (!findings.length) {
-  console.log('CI audit OK: no known modernization, runtime-source, trigger or permission debt detected.');
+  console.log('CI audit OK: immutable Action pins, runtime source, critical triggers and least-privilege permissions are all enforced.');
   process.exit(0);
 }
 
