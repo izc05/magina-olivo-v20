@@ -20,13 +20,17 @@ const harvest = {
 export function RegisterHubClient() {
   const { context, ready, found } = useFieldContext();
 
-  if (ready && !found) {
+  if (!ready) {
+    return <section className="card"><p>Resolviendo finca de destino…</p></section>;
+  }
+
+  if (!found) {
     return <section className="card"><h1>Finca no encontrada</h1><p>No se puede registrar nada hasta resolver correctamente la finca de destino.</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
   }
 
   return <>
     <header className="page-title register-hub-title">
-      <span className="eyebrow dark">MI CAMPO · {ready ? context.name.toUpperCase() : 'CARGANDO FINCA'}</span>
+      <span className="eyebrow dark">MI CAMPO · {context.name.toUpperCase()}</span>
       <h1>¿Qué quieres registrar?</h1>
       <p>Elige lo que acabas de hacer. Después solo pediremos los datos necesarios.</p>
     </header>
