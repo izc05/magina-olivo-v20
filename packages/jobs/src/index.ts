@@ -1,13 +1,16 @@
 import {
+  FINANCIAL_ALERT_EVALUATE_QUEUE_NAME,
   NOTIFICATION_DISPATCH_DEAD_LETTER_QUEUE_NAME,
   NOTIFICATION_DISPATCH_QUEUE_NAME,
   OCR_DEAD_LETTER_QUEUE_NAME,
   OCR_QUEUE_NAME,
   RADAR_INGEST_DEAD_LETTER_QUEUE_NAME,
   RADAR_INGEST_QUEUE_NAME,
+  financialAlertEvaluateJobPayloadSchema,
   notificationDispatchJobPayloadSchema,
   ocrJobPayloadSchema,
   radarIngestJobPayloadSchema,
+  type FinancialAlertEvaluateJobPayload,
   type NotificationDispatchJobPayload,
   type OcrJobPayload,
   type RadarIngestJobPayload,
@@ -15,6 +18,7 @@ import {
 import { PgBoss } from 'pg-boss';
 
 export {
+  FINANCIAL_ALERT_EVALUATE_QUEUE_NAME,
   NOTIFICATION_DISPATCH_DEAD_LETTER_QUEUE_NAME,
   NOTIFICATION_DISPATCH_QUEUE_NAME,
   OCR_DEAD_LETTER_QUEUE_NAME,
@@ -22,7 +26,7 @@ export {
   RADAR_INGEST_DEAD_LETTER_QUEUE_NAME,
   RADAR_INGEST_QUEUE_NAME,
 };
-export type { NotificationDispatchJobPayload, OcrJobPayload, RadarIngestJobPayload };
+export type { FinancialAlertEvaluateJobPayload, NotificationDispatchJobPayload, OcrJobPayload, RadarIngestJobPayload };
 export type JobBoss = PgBoss;
 
 export function createJobBoss(connectionString: string) {
@@ -65,6 +69,12 @@ export async function startJobBoss(boss: PgBoss) {
     deadLetter: NOTIFICATION_DISPATCH_DEAD_LETTER_QUEUE_NAME,
   });
 
+  await boss.createQueue(FINANCIAL_ALERT_EVALUATE_QUEUE_NAME, {
+    policy: 'singleton', retryLimit: 2, retryDelay: 60, retryBackoff: true,
+    retryDelayMax: 10 * 60, expireInSeconds: 10 * 60, heartbeatSeconds: 60,
+    retentionSeconds: 3 * 24 * 60 * 60, deleteAfterSeconds: 3 * 24 * 60 * 60,
+  });
+
   return boss;
 }
 
@@ -74,6 +84,15 @@ export async function ensureNotificationDispatchSchedule(boss: PgBoss) {
     '* * * * *',
     { version: 1, limit: 50 },
     { key: 'pending-intents-v1', tz: 'UTC' },
+  );
+}
+
+export async function ensureFinancialAlertEvaluationSchedule(boss: PgBoss) {
+  await boss.schedule(
+    FINANCIAL_ALERT_EVALUATE_QUEUE_NAME,
+    '12 * * * *',
+    { version: 1, limit_users: 200 },
+    { key: 'financial-alerts-v1', tz: 'UTC' },
   );
 }
 
@@ -95,5 +114,12 @@ export async function enqueueNotificationDispatchJob(boss: PgBoss, payload: Noti
   const parsed = notificationDispatchJobPayloadSchema.parse(payload);
   const jobId = await boss.send(NOTIFICATION_DISPATCH_QUEUE_NAME, parsed);
   if (!jobId) throw new Error('pg-boss did not return a notification dispatch job id');
+  return jobId;
+}
+
+export async function enqueueFinancialAlertEvaluationJob(boss: PgBoss, payload: FinancialAlertEvaluateJobPayload) {
+  const parsed = financialAlertEvaluateJobPayloadSchema.parse(payload);
+  const jobId = await boss.send(FINANCIAL_ALERT_EVALUATE_QUEUE_NAME, parsed);
+  if (!jobId) throw new Error('pg-boss did not return a financial alert evaluation job id');
   return jobId;
 }
