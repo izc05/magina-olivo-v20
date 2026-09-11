@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { DatabaseClient } from '../db/client.js';
 import {
   bootstrapOliveOilMarketHistory,
@@ -42,7 +42,7 @@ async function resolveHistory(
 }
 
 function applyCacheHeaders(
-  reply: Parameters<Parameters<FastifyInstance['get']>[1]>[1],
+  reply: FastifyReply,
   revision: string,
   publishedOn: string,
   suffix = '',
