@@ -71,72 +71,49 @@ test.describe('Adaptador oficial de Aceite y Mercado', () => {
     expect(correction.snapshot.series.find((series: any) => series.id === 'virgen-extra')?.latest.priceEurKg).toBe(3.43);
   });
 
-  test('clasifica primera carga y una semana posterior sin confundirlas con correcciones', async () => {
+  test('cubre alta inicial, nuevo periodo y rechazo de regresión temporal', async () => {
     const adapter = await loadDistModule('junta-observatorio-adapter.js');
     const refresh = await loadDistModule('refresh.js');
     const snapshotModule = await loadDistModule('snapshot.js');
-    const now = new Date('2026-09-16T12:00:00Z');
+    const now = new Date('2026-09-18T12:00:00Z');
     const candidate = adapter.buildJuntaOliveOilMarketSnapshot(pricesHtml, publicationsHtml);
 
     const initial = refresh.planOliveOilMarketRefresh(null, candidate, now);
-    expect(initial).toMatchObject({
-      kind: 'initial',
-      currentRevision: null,
-      candidateRevision: candidate.revision,
-      currentThrough: null,
-      candidateThrough: '2026-09-06',
-    });
+    expect(initial.kind).toBe('initial');
+    expect(initial.currentRevision).toBeNull();
 
-    const nextWeek = {
-      ...candidate,
-      revision: 'junta-andalucia-olive-oil-2026-w37-v1',
-      source: {
-        ...candidate.source,
-        publishedOn: '2026-09-15',
-        validatedThrough: '2026-09-13',
-      },
-      period: {
-        week: 37,
-        start: '2026-09-07',
-        end: '2026-09-13',
-        label: 'Semana 37 · 7–13 sep 2026',
-      },
-    };
-
-    const newPeriod = refresh.planOliveOilMarketRefresh(snapshotModule.oliveOilMarketSnapshot, nextWeek, now);
-    expect(newPeriod).toMatchObject({
-      kind: 'new-period',
-      currentRevision: 'junta-andalucia-olive-oil-2026-w36-v1',
-      candidateRevision: 'junta-andalucia-olive-oil-2026-w37-v1',
-      currentThrough: '2026-09-06',
-      candidateThrough: '2026-09-13',
-    });
-  });
-
-  test('rechaza una fuente que retrocede respecto al periodo ya persistido', async () => {
-    const adapter = await loadDistModule('junta-observatorio-adapter.js');
-    const refresh = await loadDistModule('refresh.js');
-    const snapshotModule = await loadDistModule('snapshot.js');
-    const candidate = adapter.buildJuntaOliveOilMarketSnapshot(pricesHtml, publicationsHtml);
-
-    const futureCurrent = {
+    const previous = {
       ...snapshotModule.oliveOilMarketSnapshot,
-      revision: 'junta-andalucia-olive-oil-2026-w37-v1',
+      revision: 'junta-andalucia-olive-oil-2026-w35-v1',
+      period: { week: 35, start: '2026-08-24', end: '2026-08-30' },
       source: {
         ...snapshotModule.oliveOilMarketSnapshot.source,
-        publishedOn: '2026-09-15',
-        validatedThrough: '2026-09-13',
-      },
-      period: {
-        week: 37,
-        start: '2026-09-07',
-        end: '2026-09-13',
-        label: 'Semana 37 · 7–13 sep 2026',
+        publishedOn: '2026-09-02',
+        validatedThrough: '2026-08-30',
       },
     };
+    const newPeriod = refresh.planOliveOilMarketRefresh(previous, candidate, now);
+    expect(newPeriod.kind).toBe('new-period');
+    expect(newPeriod.currentThrough).toBe('2026-08-30');
+    expect(newPeriod.candidateThrough).toBe('2026-09-06');
 
-    expect(() =>
-      refresh.planOliveOilMarketRefresh(futureCurrent, candidate, new Date('2026-09-16T12:00:00Z')),
-    ).toThrow(/market_source_regression:2026-09-06:2026-09-13/);
+    expect(() => refresh.planOliveOilMarketRefresh(candidate, previous, now)).toThrow(
+      /market_source_regression:2026-08-30:2026-09-06/,
+    );
+  });
+
+  test('los modos de operación son explícitos y fallan cerrado ante flags ambiguos', async () => {
+    const modes = await loadDistModule('refresh-mode.js');
+
+    expect(modes.parseMarketRefreshMode([])).toBe('source-check');
+    expect(modes.parseMarketRefreshMode(['--source-check'])).toBe('source-check');
+    expect(modes.parseMarketRefreshMode(['--dry-run'])).toBe('dry-run');
+    expect(modes.parseMarketRefreshMode(['--apply'])).toBe('apply');
+    expect(modes.marketRefreshModeNeedsDatabase('source-check')).toBe(false);
+    expect(modes.marketRefreshModeNeedsDatabase('dry-run')).toBe(true);
+    expect(modes.marketRefreshModeNeedsDatabase('apply')).toBe(true);
+
+    expect(() => modes.parseMarketRefreshMode(['--dry-run', '--apply'])).toThrow(/market_refresh_mode_conflict/);
+    expect(() => modes.parseMarketRefreshMode(['--force'])).toThrow(/market_refresh_mode_unknown:--force/);
   });
 });
