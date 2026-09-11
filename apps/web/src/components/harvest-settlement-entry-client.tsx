@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { apiFetch } from '@/lib/api-client';
-import { useFieldContext } from '@/lib/use-field-context';
+import { useFieldContext, withFieldQuery } from '@/lib/use-field-context';
 
 type Candidate = {
   id: string;
@@ -28,6 +28,7 @@ export function HarvestSettlementEntryClient() {
   const [deliveries, setDeliveries] = useState<Candidate[]>([]);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
@@ -41,22 +42,31 @@ export function HarvestSettlementEntryClient() {
   const prefillCounterparty = params.get('prefillCounterparty') ?? '';
 
   useEffect(() => {
-    if (!ready || !found || context.source !== 'api' || !selectedWorkspaceId) return;
+    if (!ready || !found || context.source !== 'api' || !selectedWorkspaceId) { setLoading(false); return; }
     let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setSelected([]);
     apiFetch<{ campaign_id: string | null; deliveries: Candidate[] }>('/api/v1/harvest-settlement-candidates', { workspaceId: selectedWorkspaceId })
       .then((response) => {
         if (cancelled) return;
         setCampaignId(response.campaign_id);
-        setDeliveries(response.deliveries);
-        const sameField = response.deliveries.filter((item) => !item.settlement_id && item.fields.some((field) => field.field_id === context.id));
-        if (sameField.length === 1) setSelected([sameField[0].id]);
+        const related = response.deliveries.filter((item) => item.fields.some((field) => field.field_id === context.id));
+        setDeliveries(related);
+        const available = related.filter((item) => !item.settlement_id);
+        if (available.length === 1) setSelected([available[0].id]);
       })
-      .catch((cause) => { console.error('Unable to load settlement candidates', cause); if (!cancelled) setError('No se han podido cargar las entregas disponibles.'); });
+      .catch((cause) => { console.error('Unable to load settlement candidates', cause); if (!cancelled) setError('No se han podido cargar las entregas disponibles de esta finca.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [context.id, context.source, found, ready, selectedWorkspaceId]);
 
-  const selectedRows = useMemo(() => deliveries.filter((item) => selected.includes(item.id)), [deliveries, selected]);
+  const availableDeliveries = useMemo(() => deliveries.filter((item) => !item.settlement_id), [deliveries]);
+  const settledDeliveries = useMemo(() => deliveries.filter((item) => Boolean(item.settlement_id)), [deliveries]);
+  const selectedRows = useMemo(() => availableDeliveries.filter((item) => selected.includes(item.id)), [availableDeliveries, selected]);
   const selectedKg = selectedRows.reduce((sum, item) => sum + Number(item.total_kg), 0);
+  const deliveryHref = withFieldQuery('/mi-campo/registrar/cosecha', context.id, context.source);
+  const collectionHref = withFieldQuery('/mi-campo/registrar/cobro', context.id, context.source);
 
   function toggle(id: string) {
     setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
@@ -102,17 +112,20 @@ export function HarvestSettlementEntryClient() {
       setSaved(true); window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (cause) {
       console.error('Unable to save harvest settlement', cause);
-      setError('No se ha podido guardar la liquidación.');
+      setError('No se ha podido guardar la liquidación. Comprueba que las entregas sigan pendientes de liquidar.');
     } finally { setSaving(false); }
   }
 
-  if (!ready) return <section className="card"><p>Cargando…</p></section>;
+  if (!ready || loading) return <section className="card"><p>Cargando entregas disponibles…</p></section>;
   if (!found || context.source !== 'api') return <section className="card"><h1>Finca no disponible</h1><Link href="/mi-campo">Volver</Link></section>;
-  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Liquidación guardada</h1><p>La liquidación queda separada de los cobros. Has asociado {selected.length} entrega(s), {selectedKg.toLocaleString('es-ES')} kg.</p>{warning ? <p className="form-error">{warning}</p> : null}<Link className="primary action-link" href={context.returnHref}>Volver a la finca</Link></section>;
+  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Liquidación guardada</h1><p>La liquidación queda separada de los cobros. Has asociado {selected.length} entrega(s), {selectedKg.toLocaleString('es-ES')} kg.</p>{warning ? <p className="form-error">{warning}</p> : null}<div className="record-actions"><Link className="primary action-link" href={collectionHref}>Registrar cobro →</Link><Link className="secondary-action action-link" href="/mi-campo/campana">Ver campaña</Link><Link className="secondary-action action-link" href={context.returnHref}>Volver a la finca</Link></div></section>;
+
+  if (!availableDeliveries.length && !error) return <><header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar liquidación</h1><p>Una liquidación solo puede vincular entregas reales de esta finca que todavía no estén liquidadas.</p></header><section className="card"><h2>No hay entregas pendientes de liquidar</h2><p>{settledDeliveries.length ? `Las ${settledDeliveries.length} entrega(s) relacionadas con ${context.name} ya están incluidas en una liquidación.` : `Todavía no hay entregas de cosecha registradas en ${context.name}.`}</p><div className="record-actions"><Link className="primary action-link" href={deliveryHref}>Registrar entrega →</Link><Link className="secondary-action action-link" href="/mi-campo/campana">Ver campaña</Link></div></section></>;
 
   return <>
-    <header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA</span><h1>Registrar liquidación</h1><p>Selecciona exactamente qué entregas incluye el documento. Liquidación y cobro se registran por separado.</p></header>
+    <header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar liquidación</h1><p>Selecciona exactamente qué entregas de esta finca incluye el documento. Una entrega mixta puede incluir también kilos de otras fincas.</p></header>
     {sourceDocumentId ? <section className="card register-principle"><div><strong>Datos prellenados desde una liquidación revisada</strong><small>Comprueba importes y albaranes antes de guardar.</small></div></section> : null}
+    {error ? <p className="form-error" role="alert">{error}</p> : null}
     <form className="quick-record-form" onSubmit={submit}>
       <section className="card record-panel"><div className="record-fields">
         <label className="record-field"><span>Fecha</span><input className="record-control" name="date" type="date" defaultValue={prefillDate} required /></label>
@@ -123,12 +136,10 @@ export function HarvestSettlementEntryClient() {
         <label className="record-field"><span>Neto</span><input className="record-control" name="net" type="number" step="0.01" min="0" defaultValue={prefillNet} required /></label>
       </div></section>
       <section className="card record-panel"><div className="section-head"><h2>Entregas incluidas</h2><span>{selected.length} seleccionadas · {selectedKg.toLocaleString('es-ES')} kg</span></div>
-        <div className="today-list">{deliveries.map((item) => {
-          const used = Boolean(item.settlement_id);
-          return <label className="feed-row" key={item.id}><input type="checkbox" checked={selected.includes(item.id)} disabled={used} onChange={() => toggle(item.id)} /><div className="feed-copy"><strong>{item.delivery_at.slice(0,10)} · {item.total_kg.toLocaleString('es-ES')} kg{item.ticket_number ? ` · ${item.ticket_number}` : ''}</strong><small>{item.fields.map((field) => `${field.field_name} ${field.kg.toLocaleString('es-ES')} kg`).join(' · ')}{used ? ` · ya liquidada ${item.settlement_number ?? ''}` : ''}</small></div></label>;
-        })}</div>
+        <div className="today-list">{availableDeliveries.map((item) => <label className="feed-row" key={item.id}><input type="checkbox" checked={selected.includes(item.id)} onChange={() => toggle(item.id)} /><div className="feed-copy"><strong>{item.delivery_at.slice(0,10)} · {item.total_kg.toLocaleString('es-ES')} kg{item.ticket_number ? ` · ${item.ticket_number}` : ''}</strong><small>{item.fields.map((field) => `${field.field_name} ${field.kg.toLocaleString('es-ES')} kg`).join(' · ')}</small></div></label>)}</div>
+        {settledDeliveries.length ? <p className="subtle">{settledDeliveries.length} entrega(s) de esta finca ya están liquidadas y no se pueden volver a seleccionar.</p> : null}
       </section>
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      <section className="card register-principle"><div><strong>Liquidación ≠ cobro</strong><small>Guardar esta liquidación reconoce el importe devengado. El dinero realmente recibido se registra después como cobro.</small></div></section>
       <section className="record-save-bar"><small>Guardar la liquidación NO registra ningún cobro.</small><button className="primary" type="submit" disabled={!selected.length || saving}>{saving ? 'Guardando…' : 'Guardar liquidación →'}</button></section>
     </form>
   </>;
