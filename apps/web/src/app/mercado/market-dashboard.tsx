@@ -11,8 +11,15 @@ import {
   type MarketSeries,
   type OliveMarketSnapshot,
 } from '@/lib/market-data';
-import { fetchOliveMarketSnapshot, type MarketSnapshotOrigin } from '@/lib/market-data-source';
+import {
+  fetchOliveMarketHistory,
+  fetchOliveMarketSnapshot,
+  type MarketSnapshotOrigin,
+} from '@/lib/market-data-source';
+import historyStyles from './market-history-controls.module.css';
 import styles from './market.module.css';
+
+type HistoryWindow = 4 | 8;
 
 function formatPrice(value: number): string {
   return new Intl.NumberFormat('es-ES', {
@@ -47,6 +54,13 @@ function formatDelta(series: MarketSeries): { label: string; className: string }
   return { label, className: styles.deltaFlat };
 }
 
+function sliceSeriesForWindow(series: MarketSeries[], weeks: number): MarketSeries[] {
+  return series.map((entry) => ({
+    ...entry,
+    points: entry.points.slice(-weeks),
+  }));
+}
+
 function Sparkline({ series }: { series: MarketSeries }) {
   const width = 240;
   const height = 64;
@@ -68,7 +82,7 @@ function Sparkline({ series }: { series: MarketSeries }) {
       className={styles.sparkline}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label={`Evolución de ${series.shortName} durante las últimas ocho semanas`}
+      aria-label={`Evolución de ${series.shortName} durante las últimas ${series.points.length} semanas`}
       preserveAspectRatio="none"
     >
       <line x1="0" y1={height - 8} x2={width} y2={height - 8} />
@@ -81,6 +95,9 @@ function Sparkline({ series }: { series: MarketSeries }) {
 export function MarketDashboard() {
   const [snapshot, setSnapshot] = useState<OliveMarketSnapshot>(oliveMarketSnapshot);
   const [origin, setOrigin] = useState<MarketSnapshotOrigin>('fallback');
+  const [trendWeeks, setTrendWeeks] = useState<HistoryWindow>(8);
+  const [trendSeriesOverride, setTrendSeriesOverride] = useState<MarketSeries[] | null>(null);
+  const [trendLoading, setTrendLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -101,6 +118,8 @@ export function MarketDashboard() {
     };
   }, []);
 
+  const trendSeries = trendSeriesOverride ?? snapshot.series;
+  const visibleTrendWeeks = trendSeries[0]?.points.length ?? trendWeeks;
   const aove = snapshot.series.find((series) => series.id === 'virgen-extra');
   const defaultPrice = aove ? latestMarketPrice(aove) : 0;
   const priceOptions = snapshot.series.map((series) => ({
@@ -108,8 +127,26 @@ export function MarketDashboard() {
     label: series.shortName,
     priceEurKg: latestMarketPrice(series),
   }));
-  const firstWeek = snapshot.series[0]?.points[0];
-  const lastWeek = snapshot.series[0]?.points.at(-1);
+  const firstWeek = trendSeries[0]?.points[0];
+  const lastWeek = trendSeries[0]?.points.at(-1);
+
+  async function selectTrendWindow(weeks: HistoryWindow) {
+    if (weeks === trendWeeks) return;
+
+    setTrendWeeks(weeks);
+    setTrendLoading(true);
+
+    try {
+      const history = await fetchOliveMarketHistory(weeks);
+      setTrendSeriesOverride(history.series);
+    } catch {
+      // Si falla el histórico dedicado seguimos ofreciendo una ventana útil
+      // sobre el snapshot que ya está visible, sin vaciar la gráfica.
+      setTrendSeriesOverride(sliceSeriesForWindow(snapshot.series, weeks));
+    } finally {
+      setTrendLoading(false);
+    }
+  }
 
   return (
     <div className={styles.page}>
@@ -161,16 +198,39 @@ export function MarketDashboard() {
         </div>
       </section>
 
-      <section className={styles.trendCard} aria-labelledby="market-trend-title">
+      <section
+        className={styles.trendCard}
+        aria-labelledby="market-trend-title"
+        data-market-history-weeks={visibleTrendWeeks}
+      >
         <div className={styles.sectionHeading}>
           <div>
-            <span className={styles.eyebrow}>8 SEMANAS</span>
+            <span className={styles.eyebrow}>{visibleTrendWeeks} SEMANAS</span>
             <h2 id="market-trend-title">Cómo se está moviendo</h2>
+          </div>
+          <div>
+            <div className={historyStyles.controls} role="group" aria-label="Periodo del histórico">
+              {([4, 8] as const).map((weeks) => (
+                <button
+                  className={historyStyles.button}
+                  type="button"
+                  key={weeks}
+                  aria-pressed={trendWeeks === weeks}
+                  disabled={trendLoading}
+                  onClick={() => void selectTrendWindow(weeks)}
+                >
+                  {weeks} sem
+                </button>
+              ))}
+            </div>
+            <p className={historyStyles.status} aria-live="polite">
+              {trendLoading ? 'Actualizando histórico…' : `Ventana de ${visibleTrendWeeks} semanas`}
+            </p>
           </div>
         </div>
 
         <div className={styles.trendList}>
-          {snapshot.series.map((series) => (
+          {trendSeries.map((series) => (
             <div className={styles.trendRow} key={series.id}>
               <div className={styles.trendName}>
                 <strong>{series.shortName}</strong>
@@ -184,8 +244,7 @@ export function MarketDashboard() {
 
         <div className={styles.weeksLegend} aria-hidden="true">
           <span>{firstWeek?.label ?? ''}</span>
-          <span>agosto</span>
-          <span>agosto</span>
+          <span>{visibleTrendWeeks} semanas</span>
           <span>{lastWeek?.label ?? ''}</span>
         </div>
       </section>
