@@ -73,14 +73,13 @@ Requisitos:
 
 ## 4. Google Auth
 
-Crear/configurar credenciales de staging con los dominios definitivos.
-
-Preparar:
+El flujo actual usa Google Identity Services y la API verifica directamente el ID token. Solo necesita el identificador público del cliente OAuth:
 
 ```text
 GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET
 ```
+
+No se requiere `GOOGLE_CLIENT_SECRET` en el runtime actual.
 
 Después del deploy probar login, persistencia de sesión y logout.
 
@@ -126,7 +125,6 @@ NEXT_PUBLIC_API_URL=https://<api-dominio-staging>
 NEXT_PUBLIC_PREVIEW_MODE=false
 
 GOOGLE_CLIENT_ID=<REAL>
-GOOGLE_CLIENT_SECRET=<REAL>
 SESSION_SECRET=<MINIMO_32_BYTES_ALEATORIOS>
 ALLOW_DEV_AUTH_HEADERS=false
 
