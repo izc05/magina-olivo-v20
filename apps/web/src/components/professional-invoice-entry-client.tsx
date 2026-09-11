@@ -64,10 +64,10 @@ export function ProfessionalInvoiceEntryClient() {
   }, [customerId, selectedWorkspaceId]);
 
   const selectedWorks = useMemo(() => works.filter((item) => selectedIds.includes(item.id)), [selectedIds, works]);
-  const subtotal = selectedWorks.reduce((sum, item) => sum + Number(item.charge_eur ?? 0), 0);
-  const taxRate = Number(taxPercent.replace(',', '.')) || 0;
-  const tax = subtotal * taxRate / 100;
-  const total = subtotal + tax;
+  const total = selectedWorks.reduce((sum, item) => sum + Number(item.charge_eur ?? 0), 0);
+  const taxRate = Math.max(Number(taxPercent.replace(',', '.')) || 0, 0);
+  const subtotal = taxRate > 0 ? total / (1 + taxRate / 100) : total;
+  const tax = total - subtotal;
 
   function toggleWork(id: string) {
     setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
@@ -112,10 +112,10 @@ export function ProfessionalInvoiceEntryClient() {
   }
 
   if (loading) return <section className="card"><p>Cargando clientes…</p></section>;
-  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Factura guardada</h1><p>Los trabajos quedan vinculados a la factura y ya no podrán incluirse en otra.</p><Link className="primary action-link" href="/mi-campo/profesional">Volver a Profesional</Link></section>;
+  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Factura guardada</h1><p>Los trabajos quedan vinculados a la factura y ya no podrán incluirse en otra factura activa.</p><Link className="primary action-link" href="/mi-campo/profesional">Volver a Profesional</Link></section>;
 
   return <>
-    <header className="page-title"><span className="eyebrow dark">MI CAMPO · PROFESIONAL</span><h1>Nueva factura</h1><p>Agrupa trabajos del mismo cliente. Puedes dejarla en borrador o emitirla con número y fecha.</p></header>
+    <header className="page-title"><span className="eyebrow dark">MI CAMPO · PROFESIONAL</span><h1>Nueva factura</h1><p>Agrupa trabajos del mismo cliente. El importe a cobrar de cada trabajo se considera total final; el IVA se desglosa dentro de ese total.</p></header>
     <form className="quick-record-form" onSubmit={submit}>
       <section className="card record-panel"><div className="record-fields">
         <label className="record-field wide"><span>Cliente</span><select className="record-control" value={customerId} onChange={(event) => setCustomerId(event.target.value)} required><option value="" disabled>Seleccionar cliente</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.display_name}</option>)}</select></label>
@@ -123,7 +123,7 @@ export function ProfessionalInvoiceEntryClient() {
         <label className="record-field"><span>Nº factura</span><input className="record-control" name="invoice_number" placeholder="2026-001" required={status === 'issued'} /></label>
         <label className="record-field"><span>Fecha emisión</span><input className="record-control" name="issued_on" type="date" required={status === 'issued'} /></label>
         <label className="record-field"><span>Vencimiento</span><input className="record-control" name="due_on" type="date" /></label>
-        <label className="record-field"><span>IVA %</span><input className="record-control" type="number" min="0" max="100" step="0.01" value={taxPercent} onChange={(event) => setTaxPercent(event.target.value)} /></label>
+        <label className="record-field"><span>IVA incluido %</span><input className="record-control" type="number" min="0" max="100" step="0.01" value={taxPercent} onChange={(event) => setTaxPercent(event.target.value)} /></label>
         <label className="record-field wide"><span>Notas</span><textarea className="record-control" name="notes" rows={3} /></label>
       </div></section>
 
@@ -131,10 +131,10 @@ export function ProfessionalInvoiceEntryClient() {
         {works.length === 0 ? <section className="card"><p>Este cliente no tiene trabajos pendientes de facturar.</p></section> : <div className="activity-list">{works.map((work) => <label className="card activity-item" key={work.id}><div><input type="checkbox" checked={selectedIds.includes(work.id)} onChange={() => toggleWork(work.id)} /> <strong>{work.title}</strong><p>{work.occurred_on}{work.site_name ? ` · ${work.site_name}` : ''}</p></div><div><strong>{money(Number(work.charge_eur ?? 0))} €</strong><small>{Number(work.collected_eur ?? 0) > 0 ? `${money(Number(work.collected_eur))} € ya cobrados` : 'sin cobros'}</small></div></label>)}</div>}
       </section>
 
-      <section className="card register-principle"><div><strong>Resumen</strong><small>Subtotal {money(subtotal)} € · impuestos {money(tax)} € · total {money(total)} €</small></div></section>
+      <section className="card register-principle"><div><strong>Resumen</strong><small>Base {money(subtotal)} € · IVA incluido {money(tax)} € · total {money(total)} €</small></div></section>
       <section className="card register-principle"><div><strong>Factura ≠ cobro</strong><small>Emitir una factura no registra dinero recibido. Los cobros siguen siendo movimientos independientes.</small></div></section>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
-      <section className="record-save-bar"><small>{status === 'draft' ? 'Podrás emitirla después.' : 'El número debe ser único en tu espacio.'}</small><button className="primary" type="submit" disabled={saving || selectedWorks.length === 0}>{saving ? 'Guardando…' : status === 'draft' ? 'Guardar borrador →' : 'Emitir factura →'}</button></section>
+      <section className="record-save-bar"><small>{status === 'draft' ? 'Podrás emitirla después.' : 'El número debe ser único y queda reservado incluso si después anulas la factura.'}</small><button className="primary" type="submit" disabled={saving || selectedWorks.length === 0}>{saving ? 'Guardando…' : status === 'draft' ? 'Guardar borrador →' : 'Emitir factura →'}</button></section>
     </form>
   </>;
 }
