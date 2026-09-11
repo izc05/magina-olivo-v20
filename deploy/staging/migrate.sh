@@ -21,9 +21,14 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
   version="$(basename "$migration")"
   checksum="$(sha256sum "$migration" | awk '{print $1}')"
 
-  existing="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
-    -v version="$version" \
-    -c "SELECT checksum || '|' || status FROM public.schema_migrations WHERE version = :'version';")"
+  existing="$(
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
+      -v version="$version" <<'SQL'
+SELECT checksum || '|' || status
+FROM public.schema_migrations
+WHERE version = :'version';
+SQL
+  )"
 
   if [ -n "$existing" ]; then
     existing_checksum="${existing%%|*}"
@@ -41,8 +46,10 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
   fi
 
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
-    -v version="$version" -v checksum="$checksum" \
-    -c "INSERT INTO public.schema_migrations(version, checksum, status) VALUES (:'version', :'checksum', 'applying');"
+    -v version="$version" -v checksum="$checksum" <<'SQL'
+INSERT INTO public.schema_migrations(version, checksum, status)
+VALUES (:'version', :'checksum', 'applying');
+SQL
 
   echo "Applying $migration"
   if ! psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"; then
@@ -51,8 +58,11 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
   fi
 
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
-    -v version="$version" \
-    -c "UPDATE public.schema_migrations SET status='applied', applied_at=now() WHERE version=:'version' AND status='applying';"
+    -v version="$version" <<'SQL'
+UPDATE public.schema_migrations
+SET status='applied', applied_at=now()
+WHERE version=:'version' AND status='applying';
+SQL
 done
 
 if [ "$found" != true ]; then
