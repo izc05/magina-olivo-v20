@@ -10,6 +10,7 @@ import { AgronomyAlertSettings } from '@/components/agronomy-alert-settings';
 import { HomePrioritySettings } from '@/components/home-priority-settings';
 import { FinancialNotificationSettings } from '@/components/financial-notification-settings';
 import { CommercialNotificationSettings } from '@/components/commercial-notification-settings';
+import { ProfessionalBusinessProfileSettings } from '@/components/professional-business-profile-settings';
 import { useAuth } from '@/components/auth-provider';
 import { demoUser } from '@/lib/demo-data';
 
@@ -78,6 +79,7 @@ export default function ProfilePage(){
       <HomePrioritySettings />
       <FinancialNotificationSettings />
       <CommercialNotificationSettings />
+      <ProfessionalBusinessProfileSettings />
 
       {authenticated && workspaces.length > 1 ? <section className="card profile-card premium-profile-card"><div className="profile-card-head"><h3>Espacio activo</h3><span>Cambiar</span></div>{workspaces.map((workspace)=><button type="button" className="profile-line" key={workspace.workspace_id} onClick={()=>selectWorkspace(workspace.workspace_id)}><span>{workspace.workspace_name}</span><span>{workspace.workspace_id === selectedWorkspaceId ? 'Activo ✓' : `${workspace.role} ›`}</span></button>)}</section> : null}
 
