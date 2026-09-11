@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
+import cors from '@fastify/cors';
 import type { DatabaseClient } from './db/client.js';
 import { hydrateRequestAuthentication, prototypeAuthWarning } from './request-context.js';
 import { registerAuthRoutes } from './routes/auth.js';
@@ -67,6 +68,17 @@ export type AppDependencies = {
   weatherProvider?: MunicipalityWeatherProvider;
 };
 
+function corsOrigins() {
+  const configured = process.env.CORS_ALLOWED_ORIGINS
+    ?.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (configured?.length) return configured;
+  if (process.env.NODE_ENV === 'production') return [];
+  return ['http://127.0.0.1:3000', 'http://localhost:3000'];
+}
+
 export function buildApp(dependencies: AppDependencies = {}) {
   const db = dependencies.db ?? null;
   const storage = dependencies.storage ?? new UnavailableStorage();
@@ -77,7 +89,20 @@ export function buildApp(dependencies: AppDependencies = {}) {
   const gisProviders = dependencies.gisProviders ?? remoteGisProviders;
   const weatherProvider = dependencies.weatherProvider ?? remoteAemetWeatherProvider;
   const app = Fastify({ logger: true });
+  const allowedOrigins = corsOrigins();
 
+  app.register(cors, {
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['content-type', 'x-workspace-id', 'x-user-id'],
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('origin_not_allowed'), false);
+    },
+  });
   app.register(cookie);
   app.addHook('onRequest', async (request) => {
     await hydrateRequestAuthentication(request, db);
