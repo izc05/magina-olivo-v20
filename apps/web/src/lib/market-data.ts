@@ -15,8 +15,10 @@ export type MarketSeries = {
 };
 
 export type OliveMarketSnapshot = {
+  revision: string;
   sourceName: string;
   sourceUrl: string;
+  sourcePublishedOn: string;
   marketLevel: string;
   periodLabel: string;
   validatedThrough: string;
@@ -44,14 +46,15 @@ function toPoints(values: readonly number[]): MarketPoint[] {
 }
 
 /**
- * Snapshot oficial y fechado del Observatorio de Precios y Mercados de la
- * Junta de Andalucía. Se mantiene explícitamente como snapshot para no dar a
- * entender que la interfaz dispone todavía de una cotización en tiempo real.
+ * Fallback offline/preview del último snapshot oficial conocido. En ejecución
+ * normal la pantalla intenta reemplazarlo por el contrato público de la API.
  */
 export const oliveMarketSnapshot: OliveMarketSnapshot = {
+  revision: 'junta-andalucia-olive-oil-2026-w36-v1',
   sourceName: 'Observatorio de Precios y Mercados · Junta de Andalucía',
   sourceUrl:
-    'https://www.juntadeandalucia.es/agriculturaypesca/observatorio/servlet/FrontController?action=UltimosPrecios&posicion=2291332&producto=33000&subsector=33',
+    'https://www.juntadeandalucia.es/agriculturaypesca/observatorio/servlet/FrontController?action=Static&subsector=33&url=subsector.jsp',
+  sourcePublishedOn: '2026-09-09',
   marketLevel: 'Almazara o bodega · Andalucía',
   periodLabel: 'Semana 36 · 31 ago–6 sep 2026',
   validatedThrough: '2026-09-06',
