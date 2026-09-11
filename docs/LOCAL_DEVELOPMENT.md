@@ -7,7 +7,7 @@ Estado: candidato V20. No producción.
 - Node.js 22
 - pnpm 10.15.1
 - Docker + Docker Compose
-- cliente `psql` para aplicar migraciones manualmente
+- cliente `psql`
 
 ## 1. Instalar dependencias
 
@@ -23,7 +23,7 @@ docker compose -f infra/docker-compose.dev.yml up -d
 
 Esperar a que `magina-v20-postgres` esté healthy.
 
-Conexión local:
+Conexión local por defecto:
 
 ```text
 postgresql://magina:magina@127.0.0.1:5432/magina_v20
@@ -34,36 +34,74 @@ postgresql://magina:magina@127.0.0.1:5432/magina_v20
 ```bash
 export PGPASSWORD=magina
 for migration in database/migrations/*.sql; do
+  echo "Applying ${migration}"
   psql -h 127.0.0.1 -U magina -d magina_v20 -v ON_ERROR_STOP=1 -f "$migration"
 done
 ```
 
-Las migraciones se aplican en orden por nombre.
+Las migraciones se aplican en orden por nombre. Una migración que ya haya sido compartida no se reescribe: cualquier cambio de esquema entra en un archivo nuevo.
 
-No editar manualmente tablas de un entorno real. Los cambios de esquema deben entrar como migración nueva una vez exista un entorno compartido.
+## 4. Cargar datos locales opcionales
 
-## 4. Cargar datos demo opcionales
+Datos funcionales de ejemplo:
 
 ```bash
 psql -h 127.0.0.1 -U magina -d magina_v20 -v ON_ERROR_STOP=1 -f database/seeds/001_demo.sql
 ```
 
-Datos demo principales:
-
-- workspace: `10000000-0000-4000-8000-000000000001`
-- campaña: `10000000-0000-4000-8000-000000000002`
-- Las Cenillas: `10000000-0000-4000-8000-000000000003`
-
-## 5. Compilar contratos compartidos
+Identidad local reproducible para desarrollo:
 
 ```bash
-pnpm --filter @magina/contracts build
+psql -h 127.0.0.1 -U magina -d magina_v20 -v ON_ERROR_STOP=1 -f database/seeds/002_dev_identity.sql
 ```
 
-## 6. Arrancar API
+Identificadores del entorno local:
+
+```text
+workspace: 10000000-0000-4000-8000-000000000001
+campaign:  10000000-0000-4000-8000-000000000002
+field:     10000000-0000-4000-8000-000000000003
+user:      10000000-0000-4000-8000-000000000005
+```
+
+Los seeds son solo para desarrollo y pruebas. No se cargan en staging ni producción.
+
+## 5. Variables mínimas
+
+Partir de `.env.example`. Para API local:
 
 ```bash
 export DATABASE_URL=postgresql://magina:magina@127.0.0.1:5432/magina_v20
+export NODE_ENV=development
+export CORS_ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
+```
+
+La autenticación normal ya usa sesiones y memberships. Los headers de desarrollo están desactivados por defecto. Solo para pruebas locales/automatizadas se pueden habilitar explícitamente:
+
+```bash
+export ALLOW_DEV_AUTH_HEADERS=true
+```
+
+Con esa variable activa, las peticiones pueden usar:
+
+```text
+x-workspace-id: 10000000-0000-4000-8000-000000000001
+x-user-id:      10000000-0000-4000-8000-000000000005
+```
+
+No activar `ALLOW_DEV_AUTH_HEADERS` en staging ni producción.
+
+## 6. Compilar paquetes compartidos
+
+```bash
+pnpm --filter @magina/contracts build
+pnpm --filter @magina/weather build
+pnpm --filter @magina/jobs build
+```
+
+## 7. Arrancar API
+
+```bash
 pnpm dev:api
 ```
 
@@ -73,49 +111,49 @@ Health:
 GET http://127.0.0.1:3001/health
 ```
 
-### Contexto de autenticación provisional
-
-Mientras Auth/Workspace Membership no esté implementado, las rutas privadas exigen dos cabeceras de desarrollo:
-
-```text
-x-workspace-id
-x-user-id
-```
-
-Esto **no es autenticación de producción** y debe desaparecer antes del piloto real.
-
-## 7. Arrancar web
+## 8. Arrancar web
 
 En otra terminal:
 
 ```bash
+export NEXT_PUBLIC_API_URL=http://127.0.0.1:3001
+export NEXT_PUBLIC_PREVIEW_MODE=false
 pnpm dev
 ```
 
-## 8. Validación completa
+`NEXT_PUBLIC_PREVIEW_MODE=false` es la configuración correcta para validar el producto real. Si la API falla, la web debe mostrar el error/estado vacío correspondiente; no debe inventar datos demo.
+
+El modo preview se reserva para la demo estática:
 
 ```bash
-pnpm typecheck
-pnpm build
+export NEXT_PUBLIC_PREVIEW_MODE=true
 ```
 
-GitHub Actions añade además:
+## 9. Validación
 
-1. PostGIS real;
-2. migraciones;
-3. seed mínimo de CI;
-4. API real;
-5. creación de finca;
-6. registro de riego;
-7. comprobación de Timeline, Costes y Calendario.
+Chequeo estructural del monorepo:
 
-## 9. Parar desarrollo
+```bash
+pnpm check
+```
+
+Equivale a typecheck + build. Para el navegador:
+
+```bash
+pnpm e2e:beta
+```
+
+Playwright usa `E2E_WORKSPACE_ID` y `E2E_USER_ID` si se definen; en caso contrario usa la identidad E2E documentada en `playwright.config.ts`. La API que acompaña al E2E debe arrancar con `ALLOW_DEV_AUTH_HEADERS=true`.
+
+GitHub Actions añade PostGIS real, migraciones, smokes de API/GIS/clima/radar/documentos/profesional, browser E2E y auditoría móvil.
+
+## 10. Parar desarrollo
 
 ```bash
 docker compose -f infra/docker-compose.dev.yml down
 ```
 
-Para borrar además la base local:
+Para borrar también la base local:
 
 ```bash
 docker compose -f infra/docker-compose.dev.yml down -v
@@ -123,6 +161,10 @@ docker compose -f infra/docker-compose.dev.yml down -v
 
 Usar `-v` solo cuando se quiera eliminar deliberadamente la información local.
 
-## Principio
+## Principios de desarrollo
 
-El prototipo web puede seguir usando almacenamiento local mientras el backend se construye. La migración hacia API debe respetar los contratos de `packages/contracts` para no rehacer la UX.
+- API real por defecto; preview explícita para demo.
+- Finca como unidad principal visible para el usuario.
+- Contratos compartidos antes de duplicar tipos entre web/API/worker.
+- Cambios de base de datos mediante migraciones nuevas.
+- Ningún secreto ni documento real debe entrar en Git.
