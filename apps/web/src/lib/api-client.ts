@@ -1,4 +1,5 @@
 export const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+export const previewModeEnabled = process.env.NEXT_PUBLIC_PREVIEW_MODE === 'true';
 
 export class ApiUnavailableError extends Error {
   constructor() {
