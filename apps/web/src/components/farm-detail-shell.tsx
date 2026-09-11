@@ -49,7 +49,7 @@ export function FarmDetailShell() {
   const params = useSearchParams();
   const id = params.get('id');
   const source = params.get('source');
-  const { apiConfigured, status, selectedWorkspaceId } = useAuth();
+  const { apiConfigured, previewEnabled, status, selectedWorkspaceId } = useAuth();
   const [farm, setFarm] = useState<FarmListItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<Section>('Resumen');
@@ -62,13 +62,16 @@ export function FarmDetailShell() {
     async function load() {
       setLoading(true);
       setDetailError(null);
+
+      if (apiConfigured && status === 'loading') return;
+
       try {
         if (!id) {
           if (!cancelled) setFarm(null);
           return;
         }
 
-        if (source === 'api' && apiConfigured && status === 'authenticated' && selectedWorkspaceId) {
+        if (apiConfigured && status === 'authenticated' && selectedWorkspaceId && source !== 'local' && source !== 'demo') {
           const [farms, remoteDetail] = await Promise.all([
             loadWorkspaceFarms(selectedWorkspaceId),
             loadApiFarmDetailData(id, selectedWorkspaceId),
@@ -99,13 +102,20 @@ export function FarmDetailShell() {
               })),
             });
           }
-        } else {
+        } else if (previewEnabled) {
           const farms = getPreviewFarms();
           if (!cancelled) {
             setFarm(farms.find((item) => item.id === id && (!source || item.source === source)) ?? null);
             setDerived(getLocalFarmDerivedView(id));
             setDetail(loadPreviewFarmDetailData(id, source));
           }
+        } else if (!cancelled) {
+          setFarm(null);
+          setDetail(emptyFarmDetailData());
+          setDerived(emptyDerived());
+          setDetailError(apiConfigured && status !== 'authenticated'
+            ? 'Inicia sesión para abrir una finca privada.'
+            : 'La API privada no está configurada en esta instalación.');
         }
       } catch (error) {
         console.error('Unable to load finca detail', error);
@@ -120,26 +130,27 @@ export function FarmDetailShell() {
     }
 
     void load();
-    const refresh = () => { if (source !== 'api') void load(); };
+    const refresh = () => { if (previewEnabled && source !== 'api') void load(); };
     window.addEventListener('magina:prototype-data-changed', refresh);
     return () => {
       cancelled = true;
       window.removeEventListener('magina:prototype-data-changed', refresh);
     };
-  }, [apiConfigured, id, selectedWorkspaceId, source, status]);
+  }, [apiConfigured, id, previewEnabled, selectedWorkspaceId, source, status]);
 
   const registerHref = useMemo(() => {
     if (!id) return '/mi-campo/registrar';
     const query = new URLSearchParams({ fieldId: id });
-    if (source) query.set('source', source);
+    if (farm?.source) query.set('source', farm.source);
+    else if (source) query.set('source', source);
     return `/mi-campo/registrar?${query.toString()}`;
-  }, [id, source]);
+  }, [farm?.source, id, source]);
 
   if (loading) return <section className="card"><p>Cargando finca…</p></section>;
   if (!farm) return <section className="card"><h1>Finca no encontrada</h1><p>{detailError ?? 'La finca no está disponible en esta fuente de datos.'}</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
 
   const effectiveArea = detail.data.areaHa ?? farm.areaHa;
-  const isApi = source === 'api';
+  const isApi = farm.source === 'api';
   const deliveredKg = isApi ? detail.economics.deliveredKg : detail.harvest.totalKg || derived.deliveredKg;
   const agriculturalCostEur = isApi ? detail.economics.productionCostEur : derived.totalCostEur;
   const accruedIncomeEur = isApi ? detail.economics.accruedIncomeEur : derived.totalIncomeEur;
