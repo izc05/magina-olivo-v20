@@ -6,3 +6,5 @@ export * from './radar-escala.js';
 export * from './radar-geotiff-inspection.js';
 export * from './radar-spatial-analysis.js';
 export * from './radar-geotiff-grid.js';
+export * from './agronomy-advisory.js';
+export * from './agronomy-radar.js';
