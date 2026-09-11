@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const apiUrl = 'http://127.0.0.1:3001';
+const seededFieldId = 'dddddddd-4444-4444-8444-dddddddddddd';
 const secondFieldId = 'abababab-1212-4212-8212-abababababab';
 const secondFieldName = 'Finca Selección E2E';
 
@@ -44,4 +45,31 @@ test('Mi Campo obliga a elegir finca y Registrar conserva la selección', async 
   await expect(page).toHaveURL(/source=api/);
   await expect(page.getByRole('heading', { name: '¿Qué quieres registrar?', exact: true })).toBeVisible();
   await expect(page.getByText(`Estás registrando en ${secondFieldName}.`, { exact: true })).toBeVisible();
+});
+
+test('la ficha mantiene sus secciones y acciones sobre la finca seleccionada', async ({ page }) => {
+  await page.goto(`/mi-campo/fincas/ver?id=${seededFieldId}&source=api`);
+
+  await expect(page.getByRole('heading', { name: 'Finca Mobile Audit', exact: true })).toBeVisible();
+  await expect(page.getByText('80 olivas', { exact: true })).toBeVisible();
+
+  const registerLinks = page.locator(`a[href*="/mi-campo/registrar"][href*="fieldId=${seededFieldId}"]`);
+  await expect(registerLinks.first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Actividad', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Actividad', exact: true, level: 2 })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Cosecha', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Cosecha', exact: true, level: 2 })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Datos', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Datos', exact: true, level: 2 })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Gestionar límites', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Documentos', exact: true }).click();
+  const documentsSection = page.locator('section.section').filter({
+    has: page.getByRole('heading', { name: 'Documentos', exact: true, level: 2 }),
+  });
+  await expect(documentsSection).toBeVisible();
+  await expect(documentsSection.getByText('Albarán OCR E2E', { exact: true })).toBeVisible();
 });
