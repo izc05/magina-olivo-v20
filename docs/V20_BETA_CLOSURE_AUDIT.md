@@ -1,6 +1,6 @@
 # V20 — Cierre de Beta
 
-Estado: cierre técnico avanzado sobre `feat/v20-visual-prototype`.
+Estado: cierre técnico preparado para ejecutar staging real sobre `feat/v20-visual-prototype`.
 
 Objetivo: dejar de ampliar módulos grandes y cerrar una beta coherente, API-first, móvil y verificable.
 
@@ -19,13 +19,15 @@ La Beta no se considerará cerrada hasta cumplir simultáneamente:
 
 ## Estado verificado de gates
 
-Último HEAD completamente verificado antes del adaptador OCR de producción: `42c2f4e04a72432a40eaae9c73db8be676be9ab6`.
+Último HEAD de código/runtime completamente verificado: `b1dd423e002f582ff9de620f2e7cbc49b4c01e23`.
 
-- ✅ `V20 full candidate check` #2035.
-- ✅ `V20 beta browser E2E` #338.
-- ✅ `V20 staging readiness` #1.
+- ✅ `V20 full candidate check` #2070.
+- ✅ `V20 beta browser E2E` #373.
+- ✅ `V20 staging readiness` #25.
 
-Ese HEAD valida conjuntamente candidate completo, navegador real, responsive, migraciones PostGIS 17, seguridad en modo producción y build web con `NEXT_PUBLIC_PREVIEW_MODE=false` y bundle budget.
+Ese HEAD valida conjuntamente candidate completo, navegador real, responsive, PostGIS 17, migraciones, seguridad en modo producción, build web sin preview y bundle budget. Además construye las imágenes Docker de API/worker, valida Tesseract/Poppler dentro del worker final y arranca PostGIS → migraciones → API containerizada hasta obtener `/health` correcto.
+
+**Lo que todavía no se ha declarado como aprobado:** un staging externo con secretos, bucket, Google Auth, AEMET/VAPID y dominio HTTPS reales. Esa validación sigue siendo obligatoria antes de merge.
 
 ## Cambios ya aplicados durante el cierre
 
@@ -41,7 +43,7 @@ Ese HEAD valida conjuntamente candidate completo, navegador real, responsive, mi
 - ✅ Perfil deja de mostrar municipio demo y acciones decorativas como si fueran funcionales.
 - ✅ Full candidate ejecuta `map-context-smoke`, `document-smoke`, economía, profesional, facturas y documento comercial.
 - ✅ API incorpora CORS explícito con credenciales y allowlist de orígenes; en producción no se permite ningún origen si `CORS_ALLOWED_ORIGINS` no está configurado.
-- ✅ `.env.example` documenta `CORS_ALLOWED_ORIGINS`, `NEXT_PUBLIC_PREVIEW_MODE=false` y `ALLOW_DEV_AUTH_HEADERS=false` para staging/producción.
+- ✅ `.env.example` documenta `CORS_ALLOWED_ORIGINS`, `NEXT_PUBLIC_PREVIEW_MODE=false`, `ALLOW_DEV_AUTH_HEADERS=false`, PostGIS, worker y OCR de staging.
 - ✅ El workflow `V20 beta browser E2E` usa PostgreSQL/PostGIS, API real, Next real y Playwright Chromium.
 - ✅ El recorrido browser cubre: identidad/membership real de CI → nueva finca → añadir límites → mapa → registrar trabajo → entrega de cosecha → rendimiento posterior → ficha de finca → campaña.
 - ✅ El navegador cubre documento real: subida → storage controlado → integridad → persistencia → revisión OCR → prellenado.
@@ -53,6 +55,12 @@ Ese HEAD valida conjuntamente candidate completo, navegador real, responsive, mi
 - ✅ API privada responde `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` y política de referrer/permisos.
 - ✅ El hosting estático incluye `_headers` con hardening equivalente compatible con Cloudflare Pages.
 - ✅ `V20 staging readiness` valida defaults seguros, migraciones PostGIS, security smoke de producción y build/bundle budget sin preview.
+- ✅ Worker de producción incorpora adaptador Tesseract CLI: S3 → SHA-256 → límites → PDF/imagen → OCR → revisión humana.
+- ✅ La imagen Docker del worker incluye Tesseract `spa+eng`, `pdfinfo` y `pdftoppm` y se valida en CI.
+- ✅ `deploy/staging/docker-compose.yml` encapsula PostGIS, migraciones one-shot, API y worker.
+- ✅ PostgreSQL no se publica al host; API solo se expone en loopback para proxy/túnel HTTPS.
+- ✅ API/worker containerizados usan filesystem de solo lectura, `tmpfs`, `cap_drop: ALL` y `no-new-privileges`.
+- ✅ Readiness construye las imágenes y levanta la API real containerizada con su base/migraciones.
 
 ## Clasificación
 
@@ -75,17 +83,18 @@ Ese HEAD valida conjuntamente candidate completo, navegador real, responsive, mi
 | Nueva finca — localización | REAL / E2E PARCIAL | P1 | Alta de finca enlaza a Mapa; Catastro/SIGPAC manuales reales. Selección visual avanzada queda para después. |
 | Rutas `fincas/local` | PREVIEW AISLADA | P1 | Bloqueadas fuera de preview. |
 | Registrar | HYBRID CONTROLADO / E2E | P1 | Trabajo, cosecha y rendimiento cubiertos por Playwright. |
-| Planificar | REAL | P1 | Contexto API-first. |
+| Planificar | REAL | P1 | Tareas, filtros, calendario y ejecución integrados en el candidato. |
 | Hoy / agenda | REAL | P1 | Responsive verificado; falta profundidad funcional solo si se exige para lanzamiento público. |
 | Campaña | HYBRID CONTROLADO / E2E | P1 | Playwright valida kilos y rendimiento ponderado tras registros reales. |
 | Profesional | REAL | P1 | Responsive verificado; candidate cubre summary/attention/delivery. |
 | Presupuestos | REAL / E2E VISUAL | P1 | Listado, presupuesto concreto, cliente y factura concreta en matriz determinista. |
-| Documentos/OCR | REAL / HARDENED / E2E | P1 | Browser real con storage fixture e integridad; staging real requiere procesador OCR de producción + bucket real. |
+| Documentos/OCR | REAL / HARDENED / E2E / RUNTIME | P1 | Browser real + integridad; Tesseract de producción e imagen worker validados. Falta comprobar bucket/documento real en staging externo. |
 | Perfil | REAL / HONESTO | P1 | Sin demo implícita ni CTAs ficticios; responsive verificado. |
 | GIS Catastro/SIGPAC backend | REAL | P1 | Enlace manual real disponible desde Mapa; selección por click/visual queda fuera del cierre Beta núcleo. |
 | Mapa Mi Campo | REAL / HYBRID CONTROLADO | P1 | API real con selección de finca y referencias Catastro/SIGPAC; demo solo en preview. |
-| Tiempo AEMET | REAL | P1 | Backend real; revisión final de proveedor/credenciales corresponde a staging real. |
-| Radar | REAL | P1 | Backend/worker real; overlay final puede evolucionar sin bloquear Beta núcleo. |
+| Tiempo AEMET | REAL | P1 | Backend real; proveedor/credenciales reales se validan en staging externo. |
+| Radar | REAL / WORKER PREPARADO | P1 | Worker y almacenamiento preparados; credenciales/latencia reales se validan en staging externo. |
+| Runtime staging backend | REAL / CI VALIDADO | P1 | Compose + imágenes + PostGIS + migraciones + API health verificados; falta host externo. |
 | Explorar | PREVIEW | P2 beta privada / P1 beta pública | CMS/directorio incompleto. |
 | Admin/CMS | INCOMPLETO | P2 beta privada / P0 lanzamiento público | Falta contenido, negocios, publicidad, imágenes y moderación. |
 | Mi Olivo | BLUEPRINT | P2 | No bloquea Beta núcleo. |
@@ -126,7 +135,7 @@ Estado actual: núcleo privado principal corregido, incluyendo documentos, Perfi
 9. Añadir rendimiento posterior. **Browser E2E con 21,4 %.**
 10. Ver campaña. **Browser E2E valida kilos y rendimiento ponderado.**
 11. Documento → upload → integridad → OCR/revisión → prellenado. **Browser E2E con storage fixture controlado.**
-12. Tiempo/radar/alertas. **Smokes API; proveedor/credenciales reales se validan en staging real.**
+12. Tiempo/radar/alertas. **Smokes API; proveedor/credenciales reales se validan en staging externo.**
 
 El full candidate cubre por smokes reales finca, riego/idempotencia, proyecciones, cosecha, rendimiento, map-context, documentos, economía y profesional. Playwright añade validación real del navegador y del límite web/API.
 
@@ -147,7 +156,7 @@ Objetivos mínimos alcanzados de forma automática:
 
 Pendiente exclusivamente de staging/manual: teclado móvil real, sensación táctil, contraste/foco final y comportamiento con latencia/red externa real.
 
-## P1 — Seguridad / performance
+## P1 — Seguridad / performance / runtime
 
 Automatizado y verde:
 
@@ -160,8 +169,13 @@ Automatizado y verde:
 - build web con `NEXT_PUBLIC_PREVIEW_MODE=false`.
 - bundle budget ejecutado como parte de `@magina/web build`.
 - gate dedicado `V20 staging readiness`.
+- Docker Compose validado.
+- imágenes API y worker construidas desde el monorepo/lockfile.
+- OCR verificado dentro de la imagen worker.
+- API Docker levantada detrás de PostGIS + migraciones y health comprobado.
+- DB sin puerto host y API limitada a loopback en la plantilla de staging.
 
-Pendiente exclusivamente de staging real:
+Pendiente exclusivamente de staging externo:
 
 - CSP basada en los orígenes externos definitivos.
 - HSTS cuando el dominio HTTPS definitivo esté confirmado.
@@ -169,18 +183,27 @@ Pendiente exclusivamente de staging real:
 - observabilidad persistente de API/worker.
 - rate limiting por endpoint según exposición pública/privada.
 - backup/restore real de staging.
+- prueba externa de que PostgreSQL no es alcanzable.
 
 ## P1 — OCR de producción
 
-El E2E ya valida el contrato completo con storage controlado. Para staging real, el worker debe usar un procesador de producción y nunca el doble determinista de pruebas.
+**Implementado y validado a nivel de runtime.**
 
-Configuración objetivo:
+El worker de producción usa `OCR_PROVIDER=tesseract` y:
 
-- `OCR_PROVIDER=tesseract`.
-- bucket S3 exclusivo de staging.
-- binarios `tesseract`, idiomas `spa+eng`, `pdfinfo` y `pdftoppm` disponibles en el host/imagen.
-- límites explícitos de tamaño, páginas y timeout.
-- revisión humana obligatoria después de OCR; el OCR no crea registros agrícolas automáticamente.
+- descarga desde S3-compatible;
+- limita tamaño;
+- verifica SHA-256 de la versión documental encolada;
+- limita páginas PDF;
+- convierte PDF mediante Poppler;
+- ejecuta Tesseract mediante `execFile`;
+- impone timeout;
+- limpia temporales;
+- conserva revisión humana obligatoria.
+
+La imagen incluye Tesseract con `spa+eng`, `pdfinfo` y `pdftoppm`; readiness comprueba esos binarios dentro del contenedor final.
+
+Pendiente para cerrar staging real: subir un documento al bucket real de staging, procesarlo con el worker desplegado y confirmar revisión/prellenado desde la web real.
 
 ## P1 — Hardening conocido
 
@@ -189,10 +212,12 @@ Configuración objetivo:
 - ✅ Documento/OCR visual con storage fixture controlado.
 - ✅ Responsive móvil/tablet/escritorio automatizado.
 - ✅ Security/performance readiness automatizado.
+- ✅ OCR de producción conectado y runtime Docker verificado.
+- ✅ Backend staging reproducible y smokeado en contenedores.
 - Parser-specific OCR fixtures pueden ampliarse después de Beta.
 - Races/idempotencia de liquidaciones/cobros siguen siendo hardening posterior si no bloquean el flujo Beta.
 - Catálogo documental puede ampliar paginación/búsqueda/límites tras Beta.
-- Observabilidad, CSP/HSTS/rate limiting definitivos dependen de staging/host.
+- Observabilidad, CSP/HSTS/rate limiting definitivos dependen del host/dominio real.
 
 ## P2 — Después de Beta núcleo
 
@@ -214,8 +239,8 @@ Configuración objetivo:
 6. ~~Documento/OCR con storage fixture controlado.~~ ✅
 7. ~~Auditoría responsive móvil/tablet/escritorio.~~ ✅
 8. ~~Security/performance readiness automatizado.~~ ✅
-9. Conectar/probar OCR de producción y preparar runtime de staging.
-10. Ejecutar staging real con secretos, bucket, Google Auth, AEMET/radar y dominio HTTPS.
+9. ~~Conectar/probar OCR de producción y preparar runtime de staging.~~ ✅
+10. Ejecutar staging externo con secretos, bucket, Google Auth, AEMET/radar, VAPID y dominio HTTPS reales.
 11. Validar backup/restore, observabilidad y recorridos reales.
 12. Actualizar PR y decidir candidate final.
 
