@@ -6,7 +6,18 @@ import type { DatabaseClient } from '../db/client.js';
 import { fieldBelongsToWorkspace, requireContext, requireDatabase } from '../http/helpers.js';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const taskKindSchema = z.enum(['treatment','irrigation','fertilization','pruning','harvest','work','observation','other']);
+
+const listSchema = z.object({
+  status: z.enum(['all','active','planned','postponed','completed','cancelled']).default('all'),
+  field_id: z.string().uuid().optional(),
+  from: z.string().regex(datePattern).optional(),
+  to: z.string().regex(datePattern).optional(),
+}).refine((value) => !value.from || !value.to || value.from <= value.to, {
+  message: 'from must be on or before to',
+  path: ['to'],
+});
 
 const createSchema = z.object({
   title: z.string().trim().min(1).max(180),
@@ -94,6 +105,38 @@ async function executedRecordMatchesField(
 }
 
 export function registerPlannedTaskRoutes(app: FastifyInstance, db: DatabaseClient | null) {
+  app.get('/api/v1/planned-tasks', async (request, reply) => {
+    const context = requireContext(request, reply);
+    const database = requireDatabase(db, reply);
+    if (!context || !database) return;
+
+    const parsed = listSchema.safeParse(request.query);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_planned_task_filters', issues: parsed.error.issues });
+    const input = parsed.data;
+
+    const result = await sql<TaskRow>`
+      SELECT se.id, se.field_id, f.name AS field_name, se.title, se.scheduled_at, se.status,
+             se.task_kind, se.notes, se.completed_domain_type, se.completed_domain_record_id, se.completed_at
+      FROM scheduled_events se
+      JOIN fields f ON f.id=se.field_id AND f.workspace_id=se.workspace_id
+      WHERE se.workspace_id=${context.workspaceId}::uuid
+        AND se.field_id IS NOT NULL
+        AND se.source='manual'
+        AND (${input.field_id ?? null}::uuid IS NULL OR se.field_id=${input.field_id ?? null}::uuid)
+        AND (
+          ${input.status}='all'
+          OR (${input.status}='active' AND se.status IN ('planned','postponed'))
+          OR se.status=${input.status}
+        )
+        AND (${input.from ?? null}::date IS NULL OR se.scheduled_at >= ${input.from ?? null}::date)
+        AND (${input.to ?? null}::date IS NULL OR se.scheduled_at < (${input.to ?? null}::date + interval '1 day'))
+      ORDER BY se.scheduled_at ASC, se.id ASC
+      LIMIT 500
+    `.execute(database);
+
+    return reply.send({ tasks: result.rows.map(serialize) });
+  });
+
   app.post('/api/v1/fields/:fieldId/planned-tasks', async (request, reply) => {
     const context = requireContext(request, reply);
     const database = requireDatabase(db, reply);
