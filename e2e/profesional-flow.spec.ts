@@ -115,7 +115,18 @@ test('recorre cliente, presupuesto, trabajo, factura, documento y cobro', async 
   await page.goto(`/mi-campo/profesional/cliente?id=${customerId}`);
   await expect(page.getByRole('heading', { name: customerName })).toBeVisible();
   await expect(page.locator('article.activity-item').filter({ hasText: invoiceNumber }).first()).toContainText('cobrada');
-  await expect(page.locator('article.activity-item').filter({ hasText: title }).last()).toContainText('cobrado');
+
+  const workSection = page.locator('section.section').filter({
+    has: page.getByRole('heading', { name: 'Trabajos', exact: true }),
+  });
+  await expect(workSection.locator('article.activity-item').filter({ hasText: title }).first()).toContainText('cobrado');
+
+  const collectionSection = page.locator('section.section').filter({
+    has: page.getByRole('heading', { name: 'Cobros', exact: true }),
+  });
+  const collectionCard = collectionSection.locator('article.activity-item').filter({ hasText: title }).first();
+  await expect(collectionCard).toContainText('2026-09-14');
+  await expect(collectionCard).toContainText('bank');
 });
 
 for (const width of [360, 390, 430]) {
