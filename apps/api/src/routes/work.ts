@@ -299,13 +299,22 @@ export function registerWorkRoutes(app: FastifyInstance, db: DatabaseClient | nu
           input.performed_for === 'third-party' ? 'Trabajo para tercero' : null,
           input.participants.length ? `${input.participants.length} participante${input.participants.length === 1 ? '' : 's'}` : null,
           input.resources.length ? `${input.resources.length} recurso${input.resources.length === 1 ? '' : 's'}` : null,
-          totalCost > 0 ? `${totalCost.toFixed(2)} €` : null,
+          `${totalCost.toFixed(2)} € coste`,
+          input.performed_for === 'third-party' && input.charge_eur !== undefined ? `${input.charge_eur.toFixed(2)} € facturable` : null,
         ].filter(Boolean).join(' · ') || input.notes || null,
         iconKey: 'work',
         cost: totalCost > 0 ? { amountEur: totalCost, category: 'work' } : undefined,
       }) : null;
 
-      return { work: work.rows[0], projection, total_cost_eur: totalCost };
+      return {
+        work: work.rows[0],
+        projection,
+        total_cost_eur: totalCost,
+        cost_breakdown: { labor_eur: participantCost, resources_eur: resourceCost },
+        commercial: input.performed_for === 'third-party'
+          ? { charge_eur: input.charge_eur ?? 0, collected_eur: input.collected_eur ?? 0 }
+          : null,
+      };
     });
 
     return reply.code(201).send({ replayed: false, ...saved });
