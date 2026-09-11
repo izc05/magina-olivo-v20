@@ -1,5 +1,6 @@
 import {
   AGRONOMY_ALERT_EVALUATE_QUEUE_NAME,
+  COMMERCIAL_ALERT_EVALUATE_QUEUE_NAME,
   FINANCIAL_ALERT_EVALUATE_QUEUE_NAME,
   NOTIFICATION_DISPATCH_DEAD_LETTER_QUEUE_NAME,
   NOTIFICATION_DISPATCH_QUEUE_NAME,
@@ -8,11 +9,13 @@ import {
   RADAR_INGEST_DEAD_LETTER_QUEUE_NAME,
   RADAR_INGEST_QUEUE_NAME,
   agronomyAlertEvaluateJobPayloadSchema,
+  commercialAlertEvaluateJobPayloadSchema,
   financialAlertEvaluateJobPayloadSchema,
   notificationDispatchJobPayloadSchema,
   ocrJobPayloadSchema,
   radarIngestJobPayloadSchema,
   type AgronomyAlertEvaluateJobPayload,
+  type CommercialAlertEvaluateJobPayload,
   type FinancialAlertEvaluateJobPayload,
   type NotificationDispatchJobPayload,
   type OcrJobPayload,
@@ -22,6 +25,7 @@ import { PgBoss } from 'pg-boss';
 
 export {
   AGRONOMY_ALERT_EVALUATE_QUEUE_NAME,
+  COMMERCIAL_ALERT_EVALUATE_QUEUE_NAME,
   FINANCIAL_ALERT_EVALUATE_QUEUE_NAME,
   NOTIFICATION_DISPATCH_DEAD_LETTER_QUEUE_NAME,
   NOTIFICATION_DISPATCH_QUEUE_NAME,
@@ -30,7 +34,7 @@ export {
   RADAR_INGEST_DEAD_LETTER_QUEUE_NAME,
   RADAR_INGEST_QUEUE_NAME,
 };
-export type { AgronomyAlertEvaluateJobPayload, FinancialAlertEvaluateJobPayload, NotificationDispatchJobPayload, OcrJobPayload, RadarIngestJobPayload };
+export type { AgronomyAlertEvaluateJobPayload, CommercialAlertEvaluateJobPayload, FinancialAlertEvaluateJobPayload, NotificationDispatchJobPayload, OcrJobPayload, RadarIngestJobPayload };
 export type JobBoss = PgBoss;
 
 export function createJobBoss(connectionString: string) {
@@ -78,6 +82,11 @@ export async function startJobBoss(boss: PgBoss) {
     retryDelayMax: 10 * 60, expireInSeconds: 10 * 60, heartbeatSeconds: 60,
     retentionSeconds: 3 * 24 * 60 * 60, deleteAfterSeconds: 3 * 24 * 60 * 60,
   });
+  await boss.createQueue(COMMERCIAL_ALERT_EVALUATE_QUEUE_NAME, {
+    policy: 'singleton', retryLimit: 2, retryDelay: 60, retryBackoff: true,
+    retryDelayMax: 10 * 60, expireInSeconds: 10 * 60, heartbeatSeconds: 60,
+    retentionSeconds: 3 * 24 * 60 * 60, deleteAfterSeconds: 3 * 24 * 60 * 60,
+  });
   await boss.createQueue(AGRONOMY_ALERT_EVALUATE_QUEUE_NAME, {
     policy: 'singleton', retryLimit: 2, retryDelay: 60, retryBackoff: true,
     retryDelayMax: 10 * 60, expireInSeconds: 12 * 60, heartbeatSeconds: 60,
@@ -93,6 +102,10 @@ export async function ensureNotificationDispatchSchedule(boss: PgBoss) {
 
 export async function ensureFinancialAlertEvaluationSchedule(boss: PgBoss) {
   await boss.schedule(FINANCIAL_ALERT_EVALUATE_QUEUE_NAME, '12 * * * *', { version: 1, limit_users: 200 }, { key: 'financial-alerts-v1', tz: 'UTC' });
+}
+
+export async function ensureCommercialAlertEvaluationSchedule(boss: PgBoss) {
+  await boss.schedule(COMMERCIAL_ALERT_EVALUATE_QUEUE_NAME, '32 * * * *', { version: 1, limit_users: 200 }, { key: 'commercial-alerts-v1', tz: 'UTC' });
 }
 
 export async function ensureAgronomyAlertEvaluationSchedule(boss: PgBoss) {
@@ -124,6 +137,13 @@ export async function enqueueFinancialAlertEvaluationJob(boss: PgBoss, payload: 
   const parsed = financialAlertEvaluateJobPayloadSchema.parse(payload);
   const jobId = await boss.send(FINANCIAL_ALERT_EVALUATE_QUEUE_NAME, parsed);
   if (!jobId) throw new Error('pg-boss did not return a financial alert evaluation job id');
+  return jobId;
+}
+
+export async function enqueueCommercialAlertEvaluationJob(boss: PgBoss, payload: CommercialAlertEvaluateJobPayload) {
+  const parsed = commercialAlertEvaluateJobPayloadSchema.parse(payload);
+  const jobId = await boss.send(COMMERCIAL_ALERT_EVALUATE_QUEUE_NAME, parsed);
+  if (!jobId) throw new Error('pg-boss did not return a commercial alert evaluation job id');
   return jobId;
 }
 
