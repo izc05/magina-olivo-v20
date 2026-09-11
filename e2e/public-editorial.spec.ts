@@ -46,10 +46,10 @@ const events = {
 };
 
 async function mockEditorial(page: Page) {
-  await page.route('**/api/v1/public/content?type=news', async (route) => {
+  await page.route(/\/api\/v1\/public\/content\?type=news$/, async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(news) });
   });
-  await page.route('**/api/v1/public/content?type=event', async (route) => {
+  await page.route(/\/api\/v1\/public\/content\?type=event$/, async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(events) });
   });
 }
@@ -71,13 +71,13 @@ test('news list and detail use published CMS content', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Noticias de Mágina' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'La campaña de aceituna encara su tramo principal' })).toBeVisible();
-  await expect(page.getByText('Bedmar')).toBeVisible();
+  await expect(page.getByText('Bedmar', { exact: true })).toBeVisible();
 
   await page.getByPlaceholder('Buscar noticias…').fill('cooperativas');
   await expect(page.getByText('1 resultado')).toBeVisible();
 
   await page.getByRole('heading', { name: 'La campaña de aceituna encara su tramo principal' }).click();
-  await expect(page).toHaveURL(/\/noticias\?slug=campana-aceituna-maginas$/);
+  await expect(page).toHaveURL(/\/noticias\/?\?slug=campana-aceituna-maginas$/);
   await expect(page.getByText('La recomendación es revisar accesos y documentación antes de la entrega.')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
@@ -89,8 +89,8 @@ test('event detail shows agenda information and remains usable on narrow screens
 
   await expect(page.getByRole('heading', { name: 'Eventos en Mágina' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Jornada práctica de olivar en Jódar' })).toBeVisible();
-  await expect(page.getByText('Casa de la Cultura')).toBeVisible();
-  await expect(page.getByText('Jódar')).toBeVisible();
+  await expect(page.getByText('Casa de la Cultura', { exact: true })).toBeVisible();
+  await expect(page.getByText('Jódar', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Más información ↗' })).toHaveAttribute('href', 'https://example.com/jornada');
   await expectNoHorizontalOverflow(page);
 });
@@ -100,7 +100,7 @@ for (const width of [360, 390, 430]) {
     await mockEditorial(page);
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/noticias');
-    await expect(page.getByText('La campaña de aceituna encara su tramo principal')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'La campaña de aceituna encara su tramo principal' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 }
