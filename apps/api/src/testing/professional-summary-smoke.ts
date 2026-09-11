@@ -14,6 +14,8 @@ const campaignId = '73333333-3333-4333-8333-333333333333';
 const fieldId = '74444444-4444-4444-8444-444444444444';
 const customerA = '75555555-5555-4555-8555-555555555555';
 const customerB = '76666666-6666-4666-8666-666666666666';
+const workA1 = '7bbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const workA2 = '7ddddddd-dddd-4ddd-8ddd-dddddddddddd';
 
 const headers = {
   'x-workspace-id': workspaceId,
@@ -64,7 +66,7 @@ async function main() {
 
   await createWork({
     client_operation_id: '7aaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    entity_id: '7bbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    entity_id: workA1,
     field_id: fieldId,
     campaign_id: campaignId,
     type: 'manual-work',
@@ -73,14 +75,63 @@ async function main() {
     performed_for: 'third-party',
     customer_party_id: customerA,
     charge_eur: 500,
-    collected_eur: 200,
+    collected_eur: 0,
     participants: [{ display_name: 'Operario A', cost_eur: 100 }],
     resources: [{ kind: 'machinery', name: 'Máquina A', cost_eur: 50 }],
   });
 
+  const partial = await app.inject({
+    method: 'POST',
+    url: `/api/v1/works/${workA1}/collections`,
+    headers,
+    payload: {
+      client_operation_id: '70111111-1111-4111-8111-111111111111',
+      entity_id: '70222222-2222-4222-8222-222222222222',
+      collected_on: '2026-10-05',
+      amount_eur: 200,
+      method: 'bank',
+      reference: 'TRANSFER-ALFA-1',
+    },
+  });
+  if (partial.statusCode !== 201) throw new Error(`Professional collection failed: ${partial.statusCode} ${partial.body}`);
+  near(partial.json().pending_eur, 300, 'partial.pending_eur');
+  if (partial.json().payment_status !== 'partial') throw new Error('Expected partial payment status');
+
+  const duplicate = await app.inject({
+    method: 'POST',
+    url: `/api/v1/works/${workA1}/collections`,
+    headers,
+    payload: {
+      client_operation_id: '70111111-1111-4111-8111-111111111111',
+      entity_id: '70222222-2222-4222-8222-222222222222',
+      collected_on: '2026-10-05',
+      amount_eur: 200,
+      method: 'bank',
+    },
+  });
+  if (duplicate.statusCode !== 200 || duplicate.json().replayed !== true) throw new Error('Collection idempotency failed');
+
+  const over = await app.inject({
+    method: 'POST',
+    url: `/api/v1/works/${workA1}/collections`,
+    headers,
+    payload: {
+      client_operation_id: '70333333-3333-4333-8333-333333333333',
+      collected_on: '2026-10-06',
+      amount_eur: 301,
+      method: 'cash',
+    },
+  });
+  if (over.statusCode !== 409 || over.json().error !== 'collection_exceeds_pending_amount') throw new Error(`Overcollection was not rejected: ${over.statusCode} ${over.body}`);
+
+  const history = await app.inject({ method: 'GET', url: `/api/v1/works/${workA1}/collections`, headers });
+  if (history.statusCode !== 200) throw new Error(`Collection history failed: ${history.statusCode}`);
+  if (history.json().collections.length !== 1) throw new Error('Expected exactly one audited collection for work A1');
+  near(history.json().collections[0].amount_eur, 200, 'history.amount_eur');
+
   await createWork({
     client_operation_id: '7ccccccc-cccc-4ccc-8ccc-cccccccccccc',
-    entity_id: '7ddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    entity_id: workA2,
     field_id: fieldId,
     campaign_id: campaignId,
     type: 'transport',
@@ -93,6 +144,10 @@ async function main() {
     participants: [{ display_name: 'Operario B', cost_eur: 40 }],
     resources: [],
   });
+
+  const initialHistory = await app.inject({ method: 'GET', url: `/api/v1/works/${workA2}/collections`, headers });
+  if (initialHistory.statusCode !== 200 || initialHistory.json().collections.length !== 1) throw new Error('Initial collection was not audited');
+  near(initialHistory.json().collections[0].amount_eur, 200, 'initialHistory.amount_eur');
 
   await createWork({
     client_operation_id: '7eeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
@@ -136,7 +191,7 @@ async function main() {
   near(beta.pending_eur, 100, 'beta.pending_eur');
   near(beta.accrued_margin_eur, 70, 'beta.accrued_margin_eur');
 
-  const paidWork = body.recent_work.find((item: { id: string }) => item.id === '7ddddddd-dddd-4ddd-8ddd-dddddddddddd');
+  const paidWork = body.recent_work.find((item: { id: string }) => item.id === workA2);
   if (!paidWork || paidWork.payment_status !== 'paid') throw new Error(`Expected fully collected work to be paid, got ${paidWork?.payment_status}`);
   near(paidWork.accrued_margin_eur, 160, 'paidWork.accrued_margin_eur');
 
