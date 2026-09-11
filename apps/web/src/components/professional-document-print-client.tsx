@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
+import { uploadDomainAttachment } from '@/lib/document-upload-source';
+import { generateProfessionalPdf } from '@/lib/professional-pdf-generator';
 import { loadProfessionalPrintData, type ProfessionalPrintPayload } from '@/lib/professional-print-source';
 
 function money(value: number) {
@@ -20,6 +22,10 @@ function text(value: unknown) {
   return value == null ? '' : String(value);
 }
 
+function safeFilename(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120) || 'documento';
+}
+
 export function ProfessionalDocumentPrintClient() {
   const params = useSearchParams();
   const rawType = params.get('type');
@@ -28,6 +34,8 @@ export function ProfessionalDocumentPrintClient() {
   const { selectedWorkspaceId } = useAuth();
   const [data, setData] = useState<ProfessionalPrintPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [archiving, setArchiving] = useState(false);
+  const [archived, setArchived] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,16 +68,48 @@ export function ProfessionalDocumentPrintClient() {
     ? `/mi-campo/profesional/facturas/documento?${new URLSearchParams({ invoiceId: data.document.id, customerId: data.customer.id, invoiceNumber: number }).toString()}`
     : `/mi-campo/profesional/presupuestos/documento?${new URLSearchParams({ quoteId: data.document.id, customerId: data.customer.id, quoteNumber: number }).toString()}`;
 
+  async function generateAndArchive() {
+    if (!selectedWorkspaceId || archiving) return;
+    try {
+      setArchiving(true);
+      setArchived(false);
+      setError(null);
+      const blob = generateProfessionalPdf(data);
+      const filename = `${safeFilename(isInvoice ? `factura-${number}` : `presupuesto-${number}`)}.pdf`;
+      const file = new File([blob], filename, { type: 'application/pdf', lastModified: Date.now() });
+      await uploadDomainAttachment({
+        workspaceId: selectedWorkspaceId,
+        domainType: isInvoice ? 'professional_invoice' : 'professional_quote',
+        domainRecordId: data.document.id,
+        file,
+        kind: isInvoice ? 'sales_invoice' : 'sales_quote',
+        title: `${isInvoice ? 'Factura emitida' : 'Presupuesto emitido'} ${number}`,
+        relation: 'generated_pdf',
+      });
+      setArchived(true);
+    } catch (cause) {
+      console.error('Unable to generate/archive professional PDF', cause);
+      setError('No se ha podido generar y archivar el PDF. El documento estructurado no se ha modificado.');
+    } finally {
+      setArchiving(false);
+    }
+  }
+
   return <main className="commercial-print-shell">
     <div className="commercial-print-toolbar no-print">
       <Link className="secondary-action action-link" href={`/mi-campo/profesional/cliente?id=${encodeURIComponent(data.customer.id)}`}>← Volver al cliente</Link>
-      <div className="action-row"><Link className="secondary-action action-link" href={uploadHref}>Adjuntar PDF guardado</Link><button className="primary" type="button" onClick={() => window.print()}>Imprimir / Guardar PDF</button></div>
+      <div className="action-row">
+        <button className="primary" type="button" onClick={() => void generateAndArchive()} disabled={archiving}>{archiving ? 'Generando…' : archived ? 'PDF archivado ✓' : 'Generar y archivar PDF'}</button>
+        <button className="secondary-action" type="button" onClick={() => window.print()}>Imprimir / Guardar manualmente</button>
+        <Link className="detail-link" href={uploadHref}>Adjuntar otro PDF</Link>
+      </div>
     </div>
+    {error ? <p className="form-error no-print" role="alert">{error}</p> : null}
 
     <article className="commercial-a4">
       <header className="commercial-doc-head">
         <div className="commercial-brand"><span>MÁGINA</span><strong>{issuer?.legal_name || issuer?.workspace_name || 'Profesional agrícola'}</strong><small>{[issuer?.tax_id, issuer?.phone, issuer?.email].filter(Boolean).join(' · ')}</small></div>
-        <div className="commercial-doc-title"><span>{title}</span><strong>{number}</strong><small>{isInvoice ? `Fecha ${dateLabel(data.document.issued_on)}` : `Fecha ${dateLabel(data.document.issued_on)}`}</small></div>
+        <div className="commercial-doc-title"><span>{title}</span><strong>{number}</strong><small>{`Fecha ${dateLabel(data.document.issued_on)}`}</small></div>
       </header>
 
       <section className="commercial-parties">
