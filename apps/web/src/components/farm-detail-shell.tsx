@@ -208,6 +208,11 @@ export function FarmDetailShell() {
     return `/mi-campo/registrar?${query.toString()}`;
   }, [farm?.source, id, source]);
 
+  const mapHref = useMemo(() => {
+    if (!id) return '/mi-campo/mapa';
+    return `/mi-campo/mapa?fieldId=${encodeURIComponent(id)}`;
+  }, [id]);
+
   if (loading) return <section className="card"><p>Cargando finca…</p></section>;
   if (!farm) return <section className="card"><h1>Finca no encontrada</h1><p>{detailError ?? 'La finca no está disponible ahora mismo.'}</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
 
@@ -324,7 +329,7 @@ export function FarmDetailShell() {
     </section> : null}
 
     {activeSection === 'Datos' ? <section className="section">
-      <div className="section-head"><h2>Datos</h2><Link href="/mi-campo/mapa" className="detail-link">Abrir mapa</Link></div>
+      <div className="section-head"><h2>Datos</h2><Link href={mapHref} className="detail-link">Gestionar límites</Link></div>
       <div className="card">
         <p><strong>Municipio:</strong> {farm.municipality ?? 'Pendiente'}</p>
         <p><strong>Olivas:</strong> {farm.oliveTrees ?? 'Pendiente'}</p>
