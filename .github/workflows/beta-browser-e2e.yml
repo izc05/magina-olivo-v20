@@ -88,6 +88,62 @@ jobs:
 
           INSERT INTO campaigns (id, workspace_id, name, start_date, status)
           VALUES ('cccccccc-3333-4333-8333-cccccccccccc', 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '2026/27', '2026-09-01', 'active');
+
+          INSERT INTO fields (id, workspace_id, client_operation_id, name, tree_count, water_regime)
+          VALUES (
+            'dddddddd-4444-4444-8444-dddddddddddd',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'eeeeeeee-5555-4555-8555-eeeeeeeeeeee',
+            'Finca Mobile Audit', 80, 'secano'
+          );
+
+          INSERT INTO documents (id, workspace_id, kind, title, created_by)
+          VALUES (
+            'ffffffff-6666-4666-8666-ffffffffffff',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'delivery_ticket', 'Albarán OCR E2E',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          INSERT INTO document_versions (
+            id, document_id, version_no, storage_key, original_filename, mime_type,
+            byte_size, sha256, created_by, upload_status, integrity_status, uploaded_at
+          ) VALUES (
+            '11111111-7777-4777-8777-111111111111',
+            'ffffffff-6666-4666-8666-ffffffffffff', 1,
+            'e2e/albaran-ocr.pdf', 'albaran-ocr.pdf', 'application/pdf', 2048,
+            repeat('0', 64), 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            'uploaded', 'verified', now()
+          );
+
+          INSERT INTO attachment_links (workspace_id, document_id, field_id, relation)
+          VALUES (
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'ffffffff-6666-4666-8666-ffffffffffff',
+            'dddddddd-4444-4444-8444-dddddddddddd', 'source'
+          );
+
+          INSERT INTO ocr_runs (
+            id, document_version_id, provider, provider_version, status, raw_text,
+            confidence, created_at, started_at, completed_at
+          ) VALUES (
+            '22222222-8888-4888-8888-222222222222',
+            '11111111-7777-4777-8777-111111111111',
+            'e2e-fixture', '1', 'succeeded',
+            '15/12/2026 ALB-TEST-01 1250 kg', 0.96000, now(), now(), now()
+          );
+
+          INSERT INTO extraction_runs (
+            id, ocr_run_id, document_type, schema_version, status,
+            data_json, confidence_json, created_at, completed_at
+          ) VALUES (
+            '33333333-9999-4999-8999-333333333333',
+            '22222222-8888-4888-8888-222222222222',
+            'delivery_ticket', 1, 'needs_review',
+            '{"date":"2026-12-15","total_kg":1250,"ticket_number":"ALB-TEST-01"}'::jsonb,
+            '{"date":0.99,"total_kg":0.95,"ticket_number":0.93}'::jsonb,
+            now(), now()
+          );
           SQL
 
       - name: Run farmer browser journey
