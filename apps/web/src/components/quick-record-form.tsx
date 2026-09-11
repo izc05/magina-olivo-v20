@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import Link from 'next/link';
 import type { RecordField, RecordType } from '@/lib/record-types';
 import { activityLabels, recordSlugToActivityType } from '@/lib/domain';
@@ -8,6 +9,7 @@ import { saveLocalActivity } from '@/lib/local-prototype-store';
 import { useFieldContext } from '@/lib/use-field-context';
 import { saveApiRecord, supportsApiRecord } from '@/lib/record-api-source';
 import { completePlannedTask } from '@/lib/planned-task-data-source';
+import { uploadDomainAttachment, type DocumentKind } from '@/lib/document-upload-source';
 import { useAuth } from '@/components/auth-provider';
 import { ArrowIcon, MapPinIcon } from '@/components/icons';
 
@@ -47,11 +49,23 @@ function buildSummary(data: Record<string, string>, fallback: string) {
   return fallback;
 }
 
+function attachmentKind(slug: string, file: File): DocumentKind {
+  if (file.type.startsWith('image/')) return 'photo';
+  if (slug === 'tratamiento') return 'treatment';
+  if (slug === 'abono') return 'fertilization';
+  if (slug === 'riego') return 'irrigation';
+  if (slug === 'jornal' || slug === 'maquinaria') return 'work_report';
+  if (slug === 'gasto') return 'invoice';
+  return 'other';
+}
+
 export function QuickRecordForm({ type }: { type: RecordType }) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [completionWarning, setCompletionWarning] = useState<string | null>(null);
+  const [attachmentWarning, setAttachmentWarning] = useState<string | null>(null);
+  const [attachmentSaved, setAttachmentSaved] = useState(false);
   const [savedRemotely, setSavedRemotely] = useState(false);
   const { context, ready, found } = useFieldContext();
   const { selectedWorkspaceId } = useAuth();
@@ -71,11 +85,33 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
     setSaving(true);
     setSaveError(null);
     setCompletionWarning(null);
+    setAttachmentWarning(null);
+    setAttachmentSaved(false);
 
     try {
       if (context.source === 'api' && selectedWorkspaceId && supportsApiRecord(type.slug)) {
         const savedRecord = await saveApiRecord({ slug: type.slug, fieldId: context.id, workspaceId: selectedWorkspaceId, data });
         setSavedRemotely(true);
+
+        const attachment = formData.get('attachment');
+        if (attachment instanceof File && attachment.size > 0) {
+          try {
+            await uploadDomainAttachment({
+              workspaceId: selectedWorkspaceId,
+              fieldId: context.id,
+              domainType: savedRecord.domainType,
+              domainRecordId: savedRecord.recordId,
+              file: attachment,
+              kind: attachmentKind(type.slug, attachment),
+              title: `${type.shortLabel} · ${attachment.name}`,
+              relation: type.slug === 'observacion' ? 'evidence' : 'attachment',
+            });
+            setAttachmentSaved(true);
+          } catch (attachmentError) {
+            console.warn('Record saved but attachment upload failed', attachmentError);
+            setAttachmentWarning('El registro se ha guardado, pero el archivo no pudo subirse o verificarse. Puedes añadirlo después desde Documentos.');
+          }
+        }
 
         const plannedEventId = new URLSearchParams(window.location.search).get('plannedEventId');
         if (plannedEventId && savedRecord.domainType !== 'expense') {
@@ -138,9 +174,11 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         <h1>{type.shortLabel} añadido a {context.name}</h1>
         <p>{savedRemotely ? 'El backend ha guardado el registro y sus proyecciones asociadas.' : context.source === 'api' ? 'Este tipo todavía se conserva como borrador local mientras se conecta al modelo Trabajo.' : 'El registro se ha guardado con la finca seleccionada.'}</p>
         {completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : null}
+        {attachmentWarning ? <p className="form-error" role="status">{attachmentWarning}</p> : null}
         <div className="success-effects">
           <span>✓ Finca correcta: {context.name}</span>
           {savedRemotely ? <span>✓ Historial y costes derivados en servidor cuando corresponde</span> : <span>✓ Registro local preservado</span>}
+          {attachmentSaved ? <span>✓ Foto/documento subido y verificado</span> : null}
           {savedRemotely && !completionWarning && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('plannedEventId') ? <span>✓ Tarea prevista enlazada al registro real</span> : null}
           {type.followUp && <span>✓ Seguimiento, si has indicado fecha</span>}
         </div>
@@ -172,7 +210,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         <div className="record-fields">{type.essential.map((field) => <Field key={field.name} field={field} />)}</div>
       </section>
 
-      {type.details && <details className="card record-details"><summary>Más detalles <span>Opcional</span></summary><div className="record-fields detail-fields">{type.details.map((field) => <Field key={field.name} field={field} />)}<label className="record-field wide photo-field"><span>Foto o documento</span><input className="record-control file-control" type="file" accept="image/*,.pdf" /><small>El archivo se conectará mediante el flujo documental; los datos del registro sí se guardan ya por su vía correspondiente.</small></label></div></details>}
+      {type.details && <details className="card record-details"><summary>Más detalles <span>Opcional</span></summary><div className="record-fields detail-fields">{type.details.map((field) => <Field key={field.name} field={field} />)}<label className="record-field wide photo-field"><span>Foto o documento</span><input className="record-control file-control" name="attachment" type="file" accept="image/*,.pdf" /><small>En servidor se vincula al registro concreto y se verifica tamaño/checksum tras la subida.</small></label></div></details>}
 
       {type.followUp && <section className="card record-follow-up"><div><span className="eyebrow dark">DESPUÉS</span><h3>¿Quieres dejarlo programado?</h3><p>Si indicas una fecha quedará asociada al seguimiento del registro.</p></div><div className="record-fields follow-up-fields">{type.followUp.map((field) => <Field key={field.name} field={field} />)}</div></section>}
 
