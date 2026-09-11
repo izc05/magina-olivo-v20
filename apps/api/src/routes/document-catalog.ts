@@ -39,6 +39,20 @@ async function recordBelongsToField(
     `.execute(db);
     return Boolean(result.rows[0]);
   }
+  if (domainType === 'harvest_collection') {
+    const result = await sql<{ id: string }>`
+      SELECT hc.id
+      FROM harvest_collections hc
+      JOIN harvest_settlements hs ON hs.id = hc.settlement_id
+      JOIN harvest_settlement_deliveries hsd ON hsd.settlement_id = hs.id
+      JOIN harvest_delivery_fields hdf ON hdf.delivery_id = hsd.delivery_id
+      WHERE hc.id = ${recordId}::uuid
+        AND hc.workspace_id = ${workspaceId}::uuid
+        AND hdf.field_id = ${fieldId}::uuid
+      LIMIT 1
+    `.execute(db);
+    return Boolean(result.rows[0]);
+  }
   return false;
 }
 
@@ -133,7 +147,7 @@ export function registerDocumentCatalogRoutes(app: FastifyInstance, db: Database
     const fieldId = uuidSchema.safeParse(body?.field_id);
     const recordId = uuidSchema.safeParse(body?.domain_record_id);
     const domainType = body?.domain_type ?? '';
-    if (!fieldId.success || !recordId.success || !['expense', 'harvest_delivery', 'harvest_result', 'harvest_settlement'].includes(domainType)) {
+    if (!fieldId.success || !recordId.success || !['expense', 'harvest_delivery', 'harvest_result', 'harvest_settlement', 'harvest_collection'].includes(domainType)) {
       return reply.code(400).send({ error: 'invalid_document_domain_link' });
     }
 
