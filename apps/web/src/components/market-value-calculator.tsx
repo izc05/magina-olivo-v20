@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import styles from '@/app/mercado/market.module.css';
+import calculatorStyles from './market-calculator.module.css';
 
 type MarketPriceOption = {
   id: string;
@@ -82,14 +83,14 @@ export function MarketValueCalculator({ defaultPrice, priceOptions = [] }: Marke
       </p>
 
       {priceOptions.length > 0 ? (
-        <div className={styles.pricePresets} aria-label="Precios oficiales rápidos">
+        <div className={calculatorStyles.pricePresets} aria-label="Precios oficiales rápidos">
           {priceOptions.map((option) => {
             const selected = selectedPriceId === option.id;
             return (
               <button
                 type="button"
                 key={option.id}
-                className={selected ? styles.pricePresetActive : styles.pricePreset}
+                className={selected ? calculatorStyles.pricePresetActive : calculatorStyles.pricePreset}
                 aria-pressed={selected}
                 onClick={() => useReferencePrice(option)}
               >
