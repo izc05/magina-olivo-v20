@@ -42,5 +42,6 @@ test('Mi Campo obliga a elegir finca y Registrar conserva la selección', async 
   await selectedFarm.getByRole('link', { name: 'Registrar', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`fieldId=${secondFieldId}`));
   await expect(page).toHaveURL(/source=api/);
-  await expect(page.getByText(secondFieldName, { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '¿Qué quieres registrar?', exact: true })).toBeVisible();
+  await expect(page.getByText(`Estás registrando en ${secondFieldName}.`, { exact: true })).toBeVisible();
 });
