@@ -64,6 +64,8 @@ async function main() {
   }});
   if (changedProfile.statusCode !== 200) throw new Error(`Profile update failed: ${changedProfile.statusCode}`);
   await sql`UPDATE parties SET legal_name = 'Cliente Modificado SL', tax_id = 'B99999999' WHERE id = ${customerId}::uuid`.execute(db);
+  await sql`UPDATE professional_quotes SET issuer_snapshot_json = '{"legal_name":"Manipulado"}'::jsonb, customer_snapshot_json = '{"legal_name":"Manipulado"}'::jsonb WHERE id = ${quoteId}::uuid`.execute(db);
+  await sql`UPDATE professional_invoices SET issuer_snapshot_json = '{"legal_name":"Manipulado"}'::jsonb, customer_snapshot_json = '{"legal_name":"Manipulado"}'::jsonb WHERE id = ${invoiceId}::uuid`.execute(db);
 
   const quotePrint = await app.inject({ method: 'GET', url: `/api/v1/professional/print/quote/${quoteId}`, headers });
   if (quotePrint.statusCode !== 200) throw new Error(`Quote print failed: ${quotePrint.statusCode} ${quotePrint.body}`);
