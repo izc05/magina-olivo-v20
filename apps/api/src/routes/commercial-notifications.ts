@@ -75,6 +75,23 @@ export function registerCommercialNotificationRoutes(app: FastifyInstance, db: D
                 notify_expired_quotes, notify_quote_followup, quote_followup_days,
                 notify_unbilled_work, unbilled_work_days
     `.execute(database);
+
+    await sql`
+      UPDATE notification_intents
+      SET status = 'suppressed'
+      WHERE user_id = ${context.userId}::uuid
+        AND workspace_id = ${context.workspaceId}::uuid
+        AND status = 'pending'
+        AND kind IN ('professional_invoice_overdue','professional_quote_expired','professional_quote_followup','professional_work_unbilled')
+        AND (
+          ${input.enabled} = false
+          OR (kind = 'professional_invoice_overdue' AND ${input.notify_overdue_invoices} = false)
+          OR (kind = 'professional_quote_expired' AND ${input.notify_expired_quotes} = false)
+          OR (kind = 'professional_quote_followup' AND ${input.notify_quote_followup} = false)
+          OR (kind = 'professional_work_unbilled' AND ${input.notify_unbilled_work} = false)
+        )
+    `.execute(database);
+
     return result.rows[0];
   });
 }
