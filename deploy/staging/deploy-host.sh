@@ -5,6 +5,7 @@ ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 ENV_FILE="${1:-$ROOT/deploy/staging/.env}"
 COMPOSE_FILE="$ROOT/deploy/staging/docker-compose.yml"
 BACKUP_DIR="${STAGING_BACKUP_DIR:-$ROOT/backups/staging}"
+NODE_PREFLIGHT_IMAGE="node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5"
 
 case "$ENV_FILE" in
   /*) ;;
@@ -39,7 +40,7 @@ echo "Validating private staging environment..."
 docker run --rm \
   -v "$ROOT:/app:ro" \
   -w /app \
-  node:22-bookworm-slim \
+  "$NODE_PREFLIGHT_IMAGE" \
   node scripts/staging-env-preflight.mjs "${ENV_FILE#$ROOT/}"
 
 echo "Building staging images..."
