@@ -1,52 +1,56 @@
 @media (max-width: 819px) {
   .page,
   .page > *,
-  .page .card,
-  .page .section,
-  .page .quick,
-  .page .record-field,
-  .page .record-input-wrap,
-  .page .activity-list,
-  .page .activity-item,
-  .page .feed-row,
-  .page .feed-copy,
-  .page .territory-banner,
-  .page .territory-banner > div {
+  .card,
+  .section,
+  .quick,
+  .record-field,
+  .record-input-wrap,
+  .activity-list,
+  .activity-item,
+  .activity-item > *,
+  .feed-row,
+  .feed-row > *,
+  .feed-copy,
+  .territory-banner,
+  .territory-banner > div,
+  .section-head,
+  .section-head > * {
     min-width: 0;
     max-width: 100%;
   }
 
-  .page .quick-grid,
-  .page .record-fields {
+  .quick-grid,
+  .record-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .page .record-control,
-  .page select,
-  .page textarea,
-  .page input:not([type='hidden']):not([type='checkbox']):not([type='radio']) {
+  .record-control,
+  select,
+  textarea,
+  input:not([type='hidden']):not([type='checkbox']):not([type='radio']) {
     min-width: 0;
     max-width: 100%;
     min-height: 36px;
   }
 
-  .page input[type='checkbox'],
-  .page input[type='radio'] {
+  input[type='checkbox'],
+  input[type='radio'] {
     width: 28px;
     height: 28px;
     min-width: 28px;
     min-height: 28px;
   }
 
-  .page button {
+  button {
     min-height: 32px;
   }
 
-  .page .quick strong,
-  .page .quick small,
-  .page .feed-row small,
-  .page .activity-item,
-  .page .territory-banner h2 {
+  .quick strong,
+  .quick small,
+  .feed-row small,
+  .activity-item,
+  .territory-banner h2 {
     overflow-wrap: anywhere;
   }
 }

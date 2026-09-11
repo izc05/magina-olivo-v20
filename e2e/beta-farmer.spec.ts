@@ -60,8 +60,9 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   await expect(page.getByRole('heading', { name: 'Rendimiento guardado' })).toBeVisible();
 
   await page.goto('/mi-campo');
-  await expect(page.getByText('Finca E2E')).toBeVisible();
-  await page.getByRole('link', { name: /Finca E2E/ }).click();
+  const createdFarmLink = page.locator(`a[href*="id=${fieldId}"]`).filter({ hasText: 'Finca E2E' });
+  await expect(createdFarmLink).toBeVisible();
+  await createdFarmLink.click();
   await expect(page.getByRole('heading', { name: 'Finca E2E' })).toBeVisible();
   const workMetric = page.locator('article').filter({ hasText: 'trabajos registrados' }).first();
   await expect(workMetric).toContainText('1');
