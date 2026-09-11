@@ -3,6 +3,7 @@ import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
 import { ArrowIcon, MapPinIcon, RainIcon } from '@/components/icons';
 import { ManagedExploreContent } from '@/components/managed-explore-content';
+import { ManagedAdSlot } from '@/components/managed-ad-slot';
 
 const areas = [
   ['📰','Noticias','Campo, pueblos y actualidad'],
@@ -20,9 +21,12 @@ export default function ExplorePage(){
       <div><span className="eyebrow">DESCUBRE EL TERRITORIO</span><h1>Sierra Mágina,<br/>en tu mano</h1><p>Información local, gastronomía, empresas, rutas y vida de nuestros pueblos.</p></div>
     </section>
 
+    <ManagedAdSlot slot="explore_top" />
+
     <section className="section"><div className="section-head"><h2>Explorar</h2><span/></div><div className="explore-grid">{areas.map(([icon,title,text])=><article className="card explore-card" key={title}><span className="explore-icon">{icon}</span><div><h3>{title}</h3><p>{text}</p></div><ArrowIcon/></article>)}</div></section>
 
     <ManagedExploreContent />
+    <ManagedAdSlot slot="explore_inline" />
 
     <section className="section"><div className="section-head"><h2>Ahora en Mágina</h2><Link href="/radar">Radar <ArrowIcon/></Link></div><Link href="/radar" className="card weather-feature"><span className="weather-feature-icon"><RainIcon/></span><div><strong>Radar y avisos de lluvia</strong><small>Consulta precipitación cerca de tus fincas.</small></div><ArrowIcon/></Link></section>
 
