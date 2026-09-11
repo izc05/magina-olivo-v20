@@ -18,7 +18,7 @@ function safeExternalUrl(value: string | null): string | null {
 
 function safeMediaUrl(value: string | null): string | null {
   if (!value) return null;
-  if (value.startsWith('/')) return value;
+  if (value.startsWith('/') && !value.startsWith('//')) return value;
   return safeExternalUrl(value);
 }
 
