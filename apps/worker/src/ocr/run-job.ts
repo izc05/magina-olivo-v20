@@ -1,6 +1,7 @@
 import { ocrJobPayloadSchema, type OcrJobPayload } from '@magina/contracts';
 import type { Pool } from 'pg';
 import type { OcrProcessorPort } from './processor.js';
+import { extractDocumentProposal } from './extract-proposal.js';
 
 export type OcrJobOutcome = {
   replayed: boolean;
@@ -23,6 +24,7 @@ export async function runOcrJob(
     sha256: string;
     upload_status: string;
     integrity_status: string;
+    document_kind: string;
   }>(`
     SELECT
       o.id,
@@ -31,9 +33,11 @@ export async function runOcrJob(
       dv.storage_key,
       dv.sha256,
       dv.upload_status,
-      dv.integrity_status
+      dv.integrity_status,
+      d.kind AS document_kind
     FROM ocr_runs o
     JOIN document_versions dv ON dv.id = o.document_version_id
+    JOIN documents d ON d.id = dv.document_id
     WHERE o.id = $1
   `, [job.ocr_run_id]);
 
@@ -84,6 +88,42 @@ export async function runOcrJob(
       result.rawText,
       confidence,
     ]);
+
+    const proposal = extractDocumentProposal(current.document_kind, result.rawText);
+    if (proposal) {
+      const existingExtraction = await pool.query<{ id: string }>(
+        'SELECT id FROM extraction_runs WHERE ocr_run_id = $1 ORDER BY created_at DESC LIMIT 1',
+        [job.ocr_run_id],
+      );
+      if (!existingExtraction.rows[0]) {
+        await pool.query(`
+          INSERT INTO extraction_runs (
+            id,
+            ocr_run_id,
+            document_type,
+            schema_version,
+            status,
+            data_json,
+            confidence_json,
+            completed_at
+          ) VALUES (
+            gen_random_uuid(),
+            $1,
+            $2,
+            1,
+            'needs_review',
+            $3::jsonb,
+            $4::jsonb,
+            now()
+          )
+        `, [
+          job.ocr_run_id,
+          proposal.documentType,
+          JSON.stringify(proposal.data),
+          JSON.stringify(proposal.confidence),
+        ]);
+      }
+    }
 
     return { replayed: false, ocrRunId: job.ocr_run_id, status: 'succeeded' };
   } catch (error) {
