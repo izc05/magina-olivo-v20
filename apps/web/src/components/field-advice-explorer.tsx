@@ -62,6 +62,7 @@ export function FieldAdviceExplorer() {
           <span>Buscar en las guías</span>
           <input
             id="advice-search"
+            className={styles.searchInput}
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
