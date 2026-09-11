@@ -59,30 +59,46 @@ export function registerHarvestCommercialRoutes(app: FastifyInstance, db: Databa
     const input = parseBody(createHarvestCollectionSchema, request.body, reply);
     if (!input) return;
 
-    const settlement = await sql<{ id: string; net_eur: number }>`
-      SELECT id, net_eur::double precision FROM harvest_settlements
-      WHERE id = ${parsed.data}::uuid AND workspace_id = ${context.workspaceId}::uuid AND status = 'confirmed'
-    `.execute(database);
-    const row = settlement.rows[0];
-    if (!row) return reply.code(404).send({ error: 'settlement_not_found' });
-
     const replay = await sql`SELECT * FROM harvest_collections WHERE workspace_id = ${context.workspaceId}::uuid AND client_operation_id = ${input.client_operation_id}::uuid`.execute(database);
     if (replay.rows[0]) return reply.code(200).send({ replayed: true, collection: replay.rows[0] });
 
-    const previous = await sql<{ total: number }>`SELECT COALESCE(SUM(amount_eur), 0)::double precision AS total FROM harvest_collections WHERE settlement_id = ${parsed.data}::uuid`.execute(database);
-    const alreadyCollected = previous.rows[0]?.total ?? 0;
-    if (alreadyCollected + input.amount_eur > row.net_eur + 0.01) {
-      return reply.code(400).send({ error: 'collection_exceeds_settlement_net', net_eur: row.net_eur, already_collected_eur: alreadyCollected });
-    }
-
     const id = input.entity_id ?? randomUUID();
-    const collection = await sql`
-      INSERT INTO harvest_collections (id, workspace_id, settlement_id, client_operation_id, collected_on, amount_eur, method, reference, notes, created_by)
-      VALUES (${id}::uuid, ${context.workspaceId}::uuid, ${parsed.data}::uuid, ${input.client_operation_id}::uuid, ${input.collected_on}::date, ${input.amount_eur}, ${input.method ?? null}, ${input.reference ?? null}, ${input.notes ?? null}, ${context.userId}::uuid)
-      RETURNING *
-    `.execute(database);
+    const saved = await database.transaction().execute(async (trx) => {
+      const settlement = await sql<{ id: string; net_eur: number }>`
+        SELECT id, net_eur::double precision FROM harvest_settlements
+        WHERE id = ${parsed.data}::uuid AND workspace_id = ${context.workspaceId}::uuid AND status = 'confirmed'
+        FOR UPDATE
+      `.execute(trx);
+      const row = settlement.rows[0];
+      if (!row) return { error: 'settlement_not_found' as const };
 
-    return reply.code(201).send({ replayed: false, collection: collection.rows[0] });
+      const previous = await sql<{ total: number }>`
+        SELECT COALESCE(SUM(amount_eur), 0)::double precision AS total
+        FROM harvest_collections WHERE settlement_id = ${parsed.data}::uuid
+      `.execute(trx);
+      const alreadyCollected = previous.rows[0]?.total ?? 0;
+      if (alreadyCollected + input.amount_eur > row.net_eur + 0.01) {
+        return {
+          error: 'collection_exceeds_settlement_net' as const,
+          net_eur: row.net_eur,
+          already_collected_eur: alreadyCollected,
+        };
+      }
+
+      const collection = await sql`
+        INSERT INTO harvest_collections (id, workspace_id, settlement_id, client_operation_id, collected_on, amount_eur, method, reference, notes, created_by)
+        VALUES (${id}::uuid, ${context.workspaceId}::uuid, ${parsed.data}::uuid, ${input.client_operation_id}::uuid, ${input.collected_on}::date, ${input.amount_eur}, ${input.method ?? null}, ${input.reference ?? null}, ${input.notes ?? null}, ${context.userId}::uuid)
+        RETURNING *
+      `.execute(trx);
+
+      return { collection: collection.rows[0] };
+    });
+
+    if ('error' in saved) {
+      if (saved.error === 'settlement_not_found') return reply.code(404).send({ error: saved.error });
+      return reply.code(400).send(saved);
+    }
+    return reply.code(201).send({ replayed: false, collection: saved.collection });
   });
 
   app.get('/api/v1/harvest-settlements', async (request, reply) => {
