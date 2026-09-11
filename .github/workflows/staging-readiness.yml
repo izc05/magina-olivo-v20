@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - '.dockerignore'
       - '.env.example'
       - '.nvmrc'
       - 'package.json'
@@ -18,6 +19,7 @@ on:
       - 'apps/api/src/testing/staging-security-smoke.ts'
       - 'apps/worker/**'
       - 'apps/web/**'
+      - 'scripts/check-runtime-contract.mjs'
       - 'scripts/check-staging-contract.mjs'
       - 'scripts/check-web-bundle-budget.mjs'
       - 'database/migrations/**'
@@ -100,6 +102,12 @@ jobs:
       - name: Validate OCR runtime
         env:
           OCR_PROVIDER: tesseract
+          S3_ENDPOINT: http://127.0.0.1:9000
+          S3_REGION: us-east-1
+          S3_BUCKET: magina-staging
+          S3_ACCESS_KEY_ID: staging-readiness
+          S3_SECRET_ACCESS_KEY: staging-readiness-secret
+          S3_FORCE_PATH_STYLE: 'true'
           OCR_TESSERACT_LANGUAGES: spa+eng
           OCR_TESSERACT_TIMEOUT_MS: '120000'
           OCR_MAX_BYTES: '26214400'
@@ -146,3 +154,54 @@ jobs:
           NEXT_PUBLIC_API_URL: https://api-staging.example.test
           NEXT_PUBLIC_PREVIEW_MODE: 'false'
         run: pnpm --filter @magina/web build
+
+      - name: Validate staging compose
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            config > /tmp/magina-staging-compose.yml
+          test -s /tmp/magina-staging-compose.yml
+
+      - name: Build staging API and worker images
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            build api worker
+
+      - name: Validate OCR inside worker image
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            run --rm --no-deps --entrypoint /bin/sh worker -ec '
+              tesseract --version >/dev/null
+              tesseract --list-langs | grep -Fx spa
+              tesseract --list-langs | grep -Fx eng
+              command -v pdfinfo
+              command -v pdftoppm
+            '
+
+      - name: Smoke staging API container
+        run: |
+          compose() {
+            docker compose \
+              --env-file deploy/staging/.env.example \
+              -f deploy/staging/docker-compose.yml "$@"
+          }
+          cleanup() { compose down -v --remove-orphans || true; }
+          trap cleanup EXIT
+
+          compose up -d api
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3001/health >/tmp/staging-health.json; then
+              cat /tmp/staging-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+
+          compose ps
+          compose logs --no-color postgres migrate api
+          exit 1

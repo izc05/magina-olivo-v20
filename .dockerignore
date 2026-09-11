@@ -1,0 +1,17 @@
+.git
+.gitignore
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/out
+playwright-report
+test-results
+coverage
+*.log
+.env
+.env.*
+!deploy/staging/.env.example
+*.dump
+*.sql.gz
+backups
