@@ -95,6 +95,7 @@ export function ProfessionalCustomerClient() {
           </div>
           <div>
             {quote.work_id ? <><strong>{money(Number(quote.invoiced_less_real_cost_eur))}</strong><small>facturado − coste real</small></> : <strong>{money(Number(quote.total_eur))}</strong>}
+            <Link className="detail-link" href={`/mi-campo/profesional/documento?type=quote&id=${encodeURIComponent(quote.id)}`}>Imprimir / PDF</Link>
             <Link className="detail-link" href={`/mi-campo/profesional/presupuestos?quoteId=${encodeURIComponent(quote.id)}&customerId=${encodeURIComponent(customer.id)}`}>{quote.status === 'accepted' ? 'Convertir' : 'Gestionar'}</Link>
             <Link className="detail-link" href={`/mi-campo/profesional/presupuestos/documento?${uploadQuery.toString()}`}>Adjuntar PDF</Link>
             {quoteDocuments.map((document) => <button key={document.id} type="button" className="secondary-action" onClick={() => void openDocument(document.id, 'presupuesto')} disabled={openingDocumentId === document.id}>{openingDocumentId === document.id ? 'Abriendo…' : 'Abrir PDF'}</button>)}
@@ -118,7 +119,7 @@ export function ProfessionalCustomerClient() {
         const uploadQuery = new URLSearchParams({ invoiceId: invoice.id, customerId: customer.id, invoiceNumber: invoice.invoice_number ?? 'factura' });
         return <article className="card activity-item" key={invoice.id}>
           <div><small>{invoice.issued_on ?? 'Borrador'}</small><h3>{invoice.invoice_number ?? 'Factura sin número'}</h3><p>{invoice.work_count} trabajo{invoice.work_count === 1 ? '' : 's'} · {invoice.status}</p>{invoiceDocuments.length ? <small>{invoiceDocuments.length} documento{invoiceDocuments.length === 1 ? '' : 's'} vinculado{invoiceDocuments.length === 1 ? '' : 's'}</small> : null}</div>
-          <div><strong>{money(Number(invoice.total_eur))}</strong><small>{Number(invoice.pending_eur) > 0 ? `${money(Number(invoice.pending_eur))} pendiente` : 'cobrada'}</small><Link className="detail-link" href={`/mi-campo/profesional/facturas/documento?${uploadQuery.toString()}`}>Adjuntar PDF</Link>{invoiceDocuments.map((document) => <button key={document.id} type="button" className="secondary-action" onClick={() => void openDocument(document.id, 'factura')} disabled={openingDocumentId === document.id}>{openingDocumentId === document.id ? 'Abriendo…' : 'Abrir PDF'}</button>)}</div>
+          <div><strong>{money(Number(invoice.total_eur))}</strong><small>{Number(invoice.pending_eur) > 0 ? `${money(Number(invoice.pending_eur))} pendiente` : 'cobrada'}</small><Link className="detail-link" href={`/mi-campo/profesional/documento?type=invoice&id=${encodeURIComponent(invoice.id)}`}>Imprimir / PDF</Link><Link className="detail-link" href={`/mi-campo/profesional/facturas/documento?${uploadQuery.toString()}`}>Adjuntar PDF</Link>{invoiceDocuments.map((document) => <button key={document.id} type="button" className="secondary-action" onClick={() => void openDocument(document.id, 'factura')} disabled={openingDocumentId === document.id}>{openingDocumentId === document.id ? 'Abriendo…' : 'Abrir PDF'}</button>)}</div>
         </article>;
       })}</div> : <section className="card"><p>Este cliente todavía no tiene facturas.</p></section>}
     </section>
