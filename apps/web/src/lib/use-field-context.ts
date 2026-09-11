@@ -33,10 +33,10 @@ function detailHref(id: string, source: FieldContext['source']) {
 }
 
 export function useFieldContext() {
-  const { apiConfigured, status, selectedWorkspaceId } = useAuth();
+  const { apiConfigured, previewEnabled, status, selectedWorkspaceId } = useAuth();
   const [context, setContext] = useState<FieldContext>(demoContext);
   const [ready, setReady] = useState(false);
-  const [found, setFound] = useState(true);
+  const [found, setFound] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,17 +46,21 @@ export function useFieldContext() {
       const fieldId = params.get('fieldId');
       const requestedSource = params.get('source') as FieldContext['source'] | null;
 
-      if (!fieldId || (fieldId === lasCenillas.id && requestedSource !== 'api')) {
+      if (!fieldId) {
         if (!cancelled) {
-          setContext(demoContext);
-          setFound(true);
+          if (previewEnabled) {
+            setContext(demoContext);
+            setFound(true);
+          } else {
+            setFound(false);
+          }
           setReady(true);
         }
         return;
       }
 
       try {
-        if (requestedSource === 'api' && apiConfigured && status === 'authenticated' && selectedWorkspaceId) {
+        if (apiConfigured && status === 'authenticated' && selectedWorkspaceId && requestedSource !== 'local' && requestedSource !== 'demo') {
           const farm = (await loadWorkspaceFarms(selectedWorkspaceId)).find((item) => item.id === fieldId);
           if (!cancelled && farm) {
             setContext({
@@ -73,6 +77,19 @@ export function useFieldContext() {
             setReady(true);
             return;
           }
+        }
+
+        if (!previewEnabled) {
+          if (!cancelled) setFound(false);
+          return;
+        }
+
+        if (fieldId === lasCenillas.id && requestedSource !== 'api') {
+          if (!cancelled) {
+            setContext(demoContext);
+            setFound(true);
+          }
+          return;
         }
 
         const farm = getPreviewFarms().find((item) => item.id === fieldId && (!requestedSource || item.source === requestedSource));
@@ -103,7 +120,7 @@ export function useFieldContext() {
     if (requestedApiNeedsAuth(status, apiConfigured)) return;
     void resolve();
     return () => { cancelled = true; };
-  }, [apiConfigured, selectedWorkspaceId, status]);
+  }, [apiConfigured, previewEnabled, selectedWorkspaceId, status]);
 
   return { context, ready, found };
 }
@@ -111,7 +128,8 @@ export function useFieldContext() {
 function requestedApiNeedsAuth(status: 'loading' | 'anonymous' | 'authenticated', apiConfigured: boolean) {
   if (!apiConfigured) return false;
   const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  return params?.get('source') === 'api' && status === 'loading';
+  const source = params?.get('source');
+  return source !== 'local' && source !== 'demo' && status === 'loading';
 }
 
 export function withFieldQuery(path: string, fieldId: string, source?: FieldContext['source']) {
