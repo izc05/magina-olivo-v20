@@ -8,7 +8,12 @@ on:
     paths:
       - 'apps/api/**'
       - 'apps/worker/**'
-      - 'apps/web/**'
+      - 'apps/web/src/app/mi-campo/profesional/**'
+      - 'apps/web/src/app/documento-publico/**'
+      - 'apps/web/src/components/professional-*.tsx'
+      - 'apps/web/src/components/public-commercial-share-client.tsx'
+      - 'apps/web/src/components/commercial-notification-settings.tsx'
+      - 'apps/web/src/lib/commercial-notification-source.ts'
       - 'packages/contracts/**'
       - 'packages/jobs/**'
       - 'packages/weather/**'

@@ -7,7 +7,10 @@ on:
       - feat/v20-visual-prototype
     paths:
       - 'apps/api/**'
-      - 'apps/web/**'
+      - 'apps/web/src/app/mi-campo/profesional/**'
+      - 'apps/web/src/app/documento-publico/**'
+      - 'apps/web/src/components/professional-*.tsx'
+      - 'apps/web/src/components/public-commercial-share-client.tsx'
       - 'packages/weather/**'
       - 'packages/jobs/**'
       - 'database/migrations/0036_professional_business_profile.sql'
