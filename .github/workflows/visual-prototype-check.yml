@@ -1,9 +1,7 @@
 name: V20 full candidate check
 
 on:
-  push:
-    branches:
-      - feat/v20-visual-prototype
+  workflow_dispatch:
   pull_request:
     paths:
       - 'apps/**'
@@ -12,6 +10,10 @@ on:
       - 'package.json'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/visual-prototype-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
