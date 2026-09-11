@@ -49,6 +49,8 @@ type EntryForm = {
   slot: AdSlot;
   status: CmsEntryStatus;
   featured: boolean;
+  eventStart: string;
+  eventEnd: string;
   startsAt: string;
   endsAt: string;
   sortOrder: string;
@@ -94,6 +96,8 @@ const emptyEntry: EntryForm = {
   slot: '',
   status: 'draft',
   featured: false,
+  eventStart: '',
+  eventEnd: '',
   startsAt: '',
   endsAt: '',
   sortOrder: '0',
@@ -188,6 +192,8 @@ function entryToForm(item: CmsEntry): EntryForm {
     slot: adSlots.some(([value]) => value === slot) ? slot : '',
     status: item.status,
     featured: item.featured,
+    eventStart: localDateTime(stringValue(data.event_start)),
+    eventEnd: localDateTime(stringValue(data.event_end)),
     startsAt: localDateTime(item.starts_at),
     endsAt: localDateTime(item.ends_at),
     sortOrder: String(item.sort_order ?? 0),
@@ -202,6 +208,13 @@ function entryVisibility(entry: EntryForm) {
   return 'Visible ahora';
 }
 
+function formatPreviewDate(value: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+}
+
 function ContentPreview({ entry, onClose }: { entry: EntryForm; onClose: () => void }) {
   return <div className="site-admin-v2-preview-backdrop" role="dialog" aria-modal="true" aria-label="Vista previa del contenido">
     <div className="site-admin-v2-preview-modal">
@@ -212,6 +225,7 @@ function ContentPreview({ entry, onClose }: { entry: EntryForm; onClose: () => v
         <h3>{entry.title || 'Título del contenido'}</h3>
         <p>{entry.summary || 'Aquí aparecerá el resumen que verá el usuario.'}</p>
         {entry.body ? <p>{entry.body}</p> : null}
+        {entry.type === 'event' && entry.eventStart ? <small>Evento: {formatPreviewDate(entry.eventStart)}{entry.eventEnd ? ` → ${formatPreviewDate(entry.eventEnd)}` : ''}</small> : null}
         {entry.location || entry.town || entry.address ? <small>{[entry.location, entry.town, entry.address].filter(Boolean).join(' · ')}</small> : null}
         {entry.ctaLabel ? <div className="site-admin-v2-preview-cta">{entry.ctaLabel} →</div> : null}
         {entry.slot ? <div className="site-admin-v2-preview-slot">Posición: {adSlots.find(([value]) => value === entry.slot)?.[1]}</div> : null}
@@ -326,12 +340,28 @@ export function SiteAdminConsoleV2() {
 
   async function saveEntry() {
     if (!editable || !entry.title.trim() || !entry.slug.trim()) return;
+    if (entry.type === 'event' && entry.eventStart && entry.eventEnd && new Date(entry.eventEnd).getTime() < new Date(entry.eventStart).getTime()) {
+      setMessage(null);
+      setError('La fecha de fin del evento no puede ser anterior a la fecha de inicio.');
+      return;
+    }
     const payload = {
       type: entry.type,
       title: entry.title.trim(),
       slug: slugify(entry.slug),
       summary: entry.summary.trim() || null,
-      content_json: { body: entry.body.trim(), location: entry.location.trim(), town: entry.town.trim(), phone: entry.phone.trim(), address: entry.address.trim(), cta_label: entry.ctaLabel.trim(), sponsor: entry.sponsor.trim(), slot: entry.slot || null },
+      content_json: {
+        body: entry.body.trim(),
+        location: entry.location.trim(),
+        town: entry.town.trim(),
+        phone: entry.phone.trim(),
+        address: entry.address.trim(),
+        cta_label: entry.ctaLabel.trim(),
+        sponsor: entry.sponsor.trim(),
+        slot: entry.slot || null,
+        event_start: entry.type === 'event' ? isoDateTime(entry.eventStart) : null,
+        event_end: entry.type === 'event' ? isoDateTime(entry.eventEnd) : null,
+      },
       status: entry.status,
       featured: entry.featured,
       starts_at: isoDateTime(entry.startsAt),
@@ -403,13 +433,14 @@ export function SiteAdminConsoleV2() {
             <label>Resumen<textarea disabled={!editable} rows={3} value={entry.summary} onChange={(event) => setEntry({ ...entry, summary: event.target.value })} /></label>
             <label>Texto ampliado<textarea disabled={!editable} rows={5} value={entry.body} onChange={(event) => setEntry({ ...entry, body: event.target.value })} /></label>
             {(entry.type === 'event' || entry.type === 'place') ? <label>Ubicación<input disabled={!editable} value={entry.location} onChange={(event) => setEntry({ ...entry, location: event.target.value })} /></label> : null}
+            {entry.type === 'event' ? <div className="site-admin-schedule"><strong>Fecha y hora del evento</strong><p className="site-admin-help">Estas fechas son las que verá el público y son independientes de la programación editorial.</p><div className="site-admin-fields two"><label>Empieza<input disabled={!editable} type="datetime-local" value={entry.eventStart} onChange={(event) => setEntry({ ...entry, eventStart: event.target.value })} /></label><label>Termina<input disabled={!editable} type="datetime-local" value={entry.eventEnd} onChange={(event) => setEntry({ ...entry, eventEnd: event.target.value })} /></label></div></div> : null}
             {(entry.type === 'place' || entry.type === 'mill' || entry.type === 'directory') ? <div className="site-admin-fields two"><label>Pueblo<input disabled={!editable} value={entry.town} onChange={(event) => setEntry({ ...entry, town: event.target.value })} /></label><label>Teléfono<input disabled={!editable} value={entry.phone} onChange={(event) => setEntry({ ...entry, phone: event.target.value })} /></label></div> : null}
             {(entry.type === 'mill' || entry.type === 'directory') ? <label>Dirección<input disabled={!editable} value={entry.address} onChange={(event) => setEntry({ ...entry, address: event.target.value })} /></label> : null}
             <AdminMediaPicker label="Imagen" value={entry.mediaUrl} disabled={!editable} onChange={(value) => setEntry({ ...entry, mediaUrl: value })} />
             <label>Enlace / destino<input disabled={!editable} value={entry.externalUrl} onChange={(event) => setEntry({ ...entry, externalUrl: event.target.value })} /></label>
             {(entry.type === 'promotion' || entry.type === 'alert') ? <label>Texto del botón<input disabled={!editable} value={entry.ctaLabel} onChange={(event) => setEntry({ ...entry, ctaLabel: event.target.value })} /></label> : null}
             {entry.type === 'promotion' ? <><div className="site-admin-fields two"><label>Patrocinador<input disabled={!editable} value={entry.sponsor} onChange={(event) => setEntry({ ...entry, sponsor: event.target.value })} /></label><label>Posición<select disabled={!editable} value={entry.slot} onChange={(event) => setEntry({ ...entry, slot: event.target.value as AdSlot })}>{adSlots.map(([value, label]) => <option key={value || 'none'} value={value}>{label}</option>)}</select></label></div><p className="site-admin-help">Las posiciones fijas se muestran automáticamente en Inicio o Explorar mientras la promoción esté publicada y vigente.</p></> : null}
-            <div className="site-admin-schedule"><strong>Programación</strong><div className="site-admin-fields two"><label>Desde<input disabled={!editable} type="datetime-local" value={entry.startsAt} onChange={(event) => setEntry({ ...entry, startsAt: event.target.value })} /></label><label>Hasta<input disabled={!editable} type="datetime-local" value={entry.endsAt} onChange={(event) => setEntry({ ...entry, endsAt: event.target.value })} /></label></div></div>
+            <div className="site-admin-schedule"><strong>Visibilidad en la web</strong><p className="site-admin-help">Controla desde cuándo y hasta cuándo se publica este contenido. No cambia la fecha real de un evento.</p><div className="site-admin-fields two"><label>Publicar desde<input disabled={!editable} type="datetime-local" value={entry.startsAt} onChange={(event) => setEntry({ ...entry, startsAt: event.target.value })} /></label><label>Publicar hasta<input disabled={!editable} type="datetime-local" value={entry.endsAt} onChange={(event) => setEntry({ ...entry, endsAt: event.target.value })} /></label></div></div>
             <div className="site-admin-fields two"><label>Estado<select disabled={!editable} value={entry.status} onChange={(event) => setEntry({ ...entry, status: event.target.value as CmsEntryStatus })}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Orden<input disabled={!editable} type="number" value={entry.sortOrder} onChange={(event) => setEntry({ ...entry, sortOrder: event.target.value })} /></label></div>
             <label className="site-admin-check"><input disabled={!editable} type="checkbox" checked={entry.featured} onChange={(event) => setEntry({ ...entry, featured: event.target.checked })} /> Destacar en la web</label>
           </div><div className="site-admin-inline-actions"><button className="site-admin-btn secondary" type="button" disabled={!entry.title.trim()} onClick={() => setPreviewOpen(true)}>Vista previa</button>{editable ? <button className="site-admin-btn" disabled={busy || !entry.title.trim() || !entry.slug.trim()} onClick={() => void saveEntry()}>Guardar</button> : null}{editable && entry.id ? <button className="site-admin-btn danger" disabled={busy} onClick={() => void archiveEntry()}>Archivar</button> : null}</div>

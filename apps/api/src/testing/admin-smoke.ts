@@ -104,6 +104,30 @@ try {
   assert.equal(createContent.statusCode, 201, createContent.body);
   const contentId = String(createContent.json().entry.id);
 
+  const eventStart = '2026-10-03T18:00:00.000Z';
+  const eventEnd = '2026-10-03T20:30:00.000Z';
+  const createEvent = await app.inject({
+    method: 'POST',
+    url: '/api/v1/admin/content',
+    headers: { cookie: adminLogin.cookie },
+    payload: {
+      type: 'event',
+      slug: 'evento-fecha-real-smoke',
+      title: 'Evento con fecha real',
+      summary: 'La fecha del evento no es la ventana de publicación.',
+      content_json: {
+        body: 'Agenda pública de prueba',
+        location: 'Plaza de Bedmar',
+        town: 'Bedmar',
+        event_start: eventStart,
+        event_end: eventEnd,
+      },
+      status: 'published',
+    },
+  });
+  assert.equal(createEvent.statusCode, 201, createEvent.body);
+  const eventId = String(createEvent.json().entry.id);
+
   const futurePromotion = await app.inject({
     method: 'POST',
     url: '/api/v1/admin/content',
@@ -137,6 +161,15 @@ try {
   const publicContent = await app.inject({ method: 'GET', url: '/api/v1/public/content?type=news' });
   assert.equal(publicContent.statusCode, 200, publicContent.body);
   assert.ok(publicContent.json().entries.some((entry: { id: string }) => entry.id === contentId));
+
+  const publicEvents = await app.inject({ method: 'GET', url: '/api/v1/public/content?type=event' });
+  assert.equal(publicEvents.statusCode, 200, publicEvents.body);
+  const publicEvent = publicEvents.json().entries.find((entry: { id: string }) => entry.id === eventId);
+  assert.ok(publicEvent, 'Published event must be visible without a publication window');
+  assert.equal(publicEvent.content_json.event_start, eventStart);
+  assert.equal(publicEvent.content_json.event_end, eventEnd);
+  assert.equal(publicEvent.starts_at, null, 'Event date must not be copied into starts_at');
+  assert.equal(publicEvent.ends_at, null, 'Event date must not be copied into ends_at');
 
   const publicPromotions = await app.inject({ method: 'GET', url: '/api/v1/public/content?type=promotion' });
   assert.equal(publicPromotions.statusCode, 200, publicPromotions.body);
