@@ -19,15 +19,19 @@ La Beta no se considerará cerrada hasta cumplir simultáneamente:
 
 ## Estado verificado de gates
 
-Último HEAD de código/runtime completamente verificado: `b1dd423e002f582ff9de620f2e7cbc49b4c01e23`.
+Último HEAD técnico completamente verificado antes de esta actualización documental: `a88dde53069b5508eaba4ffbbd0ab9dcc6dd34d9`.
 
-- ✅ `V20 full candidate check` #2070.
-- ✅ `V20 beta browser E2E` #373.
-- ✅ `V20 staging readiness` #25.
+- ✅ `V20 full candidate check` #2122.
+- ✅ `V20 beta browser E2E` #426.
+- ✅ `V20 staging readiness` #63.
 
-Ese HEAD valida conjuntamente candidate completo, navegador real, responsive, PostGIS 17, migraciones, seguridad en modo producción, build web sin preview y bundle budget. Además construye las imágenes Docker de API/worker, valida Tesseract/Poppler dentro del worker final y arranca PostGIS → migraciones → API containerizada hasta obtener `/health` correcto.
+Ese HEAD valida conjuntamente candidate completo, navegador real, responsive, PostGIS 17, migraciones, seguridad en modo producción, build web sin preview y bundle budget. Además construye las imágenes Docker de **web + API + worker**, valida Tesseract/Poppler dentro del worker final, arranca el stack y comprueba health.
 
-**Lo que todavía no se ha declarado como aprobado:** un staging externo con secretos, bucket, Google Auth, AEMET/VAPID y dominio HTTPS reales. Esa validación sigue siendo obligatoria antes de merge.
+La persistencia de staging también quedó validada: el runner registra cada migración con checksum SHA-256, una segunda ejecución sobre la misma base es no-op y una migración histórica alterada/interrumpida se considera error.
+
+Existe además el workflow manual `V20 staging deploy`, que exige SHA exacto + los tres gates verdes del mismo SHA + confirmación `DEPLOY-STAGING`. Sube una release inmutable por SSH, valida `.env`, crea backup PostgreSQL previo cuando existe una base en marcha, despliega web/API/worker y ejecuta smoke HTTPS antes de marcar la release como actual.
+
+**Lo que todavía no se ha declarado como aprobado:** un staging externo con host, secretos, bucket, Google Auth, AEMET/VAPID y dominio HTTPS reales. Esa validación sigue siendo obligatoria antes de merge.
 
 ## Cambios ya aplicados durante el cierre
 
@@ -57,10 +61,14 @@ Ese HEAD valida conjuntamente candidate completo, navegador real, responsive, Po
 - ✅ `V20 staging readiness` valida defaults seguros, migraciones PostGIS, security smoke de producción y build/bundle budget sin preview.
 - ✅ Worker de producción incorpora adaptador Tesseract CLI: S3 → SHA-256 → límites → PDF/imagen → OCR → revisión humana.
 - ✅ La imagen Docker del worker incluye Tesseract `spa+eng`, `pdfinfo` y `pdftoppm` y se valida en CI.
-- ✅ `deploy/staging/docker-compose.yml` encapsula PostGIS, migraciones one-shot, API y worker.
-- ✅ PostgreSQL no se publica al host; API solo se expone en loopback para proxy/túnel HTTPS.
+- ✅ `deploy/staging/docker-compose.yml` encapsula PostGIS, migraciones registradas, API, worker y web.
+- ✅ La web de staging se construye sin preview y se sirve mediante nginx no-root.
+- ✅ PostgreSQL no se publica al host; web y API solo se exponen en loopback para proxy/túnel HTTPS.
 - ✅ API/worker containerizados usan filesystem de solo lectura, `tmpfs`, `cap_drop: ALL` y `no-new-privileges`.
-- ✅ Readiness construye las imágenes y levanta la API real containerizada con su base/migraciones.
+- ✅ Readiness construye las tres imágenes y levanta el stack real con base/migraciones/health.
+- ✅ Las migraciones persistentes son repetibles: primera pasada aplica, segunda pasada no-op.
+- ✅ `V20 staging deploy` bloquea cualquier deploy si el SHA exacto no tiene candidate + E2E + readiness verdes.
+- ✅ El deploy remoto crea backup previo cuando ya existe PostgreSQL activo y nunca restaura de forma destructiva automáticamente.
 
 ## Clasificación
 
@@ -94,7 +102,7 @@ Ese HEAD valida conjuntamente candidate completo, navegador real, responsive, Po
 | Mapa Mi Campo | REAL / HYBRID CONTROLADO | P1 | API real con selección de finca y referencias Catastro/SIGPAC; demo solo en preview. |
 | Tiempo AEMET | REAL | P1 | Backend real; proveedor/credenciales reales se validan en staging externo. |
 | Radar | REAL / WORKER PREPARADO | P1 | Worker y almacenamiento preparados; credenciales/latencia reales se validan en staging externo. |
-| Runtime staging backend | REAL / CI VALIDADO | P1 | Compose + imágenes + PostGIS + migraciones + API health verificados; falta host externo. |
+| Runtime staging | REAL / CI VALIDADO / DEPLOY PREPARADO | P1 | Web + API + worker + PostGIS + migraciones persistentes + health verificados. Workflow remoto exact-SHA preparado; falta ejecutar en host externo. |
 | Explorar | PREVIEW | P2 beta privada / P1 beta pública | CMS/directorio incompleto. |
 | Admin/CMS | INCOMPLETO | P2 beta privada / P0 lanzamiento público | Falta contenido, negocios, publicidad, imágenes y moderación. |
 | Mi Olivo | BLUEPRINT | P2 | No bloquea Beta núcleo. |
@@ -166,23 +174,26 @@ Automatizado y verde:
 - `nosniff`, anti-frame, referrer y permissions policy en API.
 - `_headers` equivalente para hosting estático.
 - migraciones PostGIS 17 desde cero.
+- registro persistente/checksum de migraciones y segunda pasada no-op.
 - build web con `NEXT_PUBLIC_PREVIEW_MODE=false`.
 - bundle budget ejecutado como parte de `@magina/web build`.
 - gate dedicado `V20 staging readiness`.
 - Docker Compose validado.
-- imágenes API y worker construidas desde el monorepo/lockfile.
+- imágenes web, API y worker construidas desde el monorepo/lockfile.
 - OCR verificado dentro de la imagen worker.
-- API Docker levantada detrás de PostGIS + migraciones y health comprobado.
-- DB sin puerto host y API limitada a loopback en la plantilla de staging.
+- web/API/worker levantados detrás de PostGIS + migraciones y health comprobado.
+- DB sin puerto host y web/API limitadas a loopback en la plantilla de staging.
+- workflow de deploy manual exact-SHA con gates obligatorios y backup previo.
 
 Pendiente exclusivamente de staging externo:
 
-- CSP basada en los orígenes externos definitivos.
-- HSTS cuando el dominio HTTPS definitivo esté confirmado.
-- latencia/requests iniciales con red real y mapa real.
-- observabilidad persistente de API/worker.
-- rate limiting por endpoint según exposición pública/privada.
-- backup/restore real de staging.
+- ejecutar el deploy contra un host real;
+- CSP basada en los orígenes externos definitivos;
+- HSTS cuando el dominio HTTPS definitivo esté confirmado;
+- latencia/requests iniciales con red real y mapa real;
+- observabilidad persistente de API/worker;
+- rate limiting por endpoint según exposición pública/privada;
+- backup/restore real de staging;
 - prueba externa de que PostgreSQL no es alcanzable.
 
 ## P1 — OCR de producción
@@ -213,7 +224,10 @@ Pendiente para cerrar staging real: subir un documento al bucket real de staging
 - ✅ Responsive móvil/tablet/escritorio automatizado.
 - ✅ Security/performance readiness automatizado.
 - ✅ OCR de producción conectado y runtime Docker verificado.
-- ✅ Backend staging reproducible y smokeado en contenedores.
+- ✅ Staging reproducible completo (web/API/worker/PostGIS) smokeado en contenedores.
+- ✅ Migraciones persistentes protegidas por checksum y segunda pasada no-op.
+- ✅ Deploy remoto manual exact-SHA con backup y smoke HTTPS preparado.
+- ⏳ Staging externo real pendiente de ejecutar/configurar.
 - Parser-specific OCR fixtures pueden ampliarse después de Beta.
 - Races/idempotencia de liquidaciones/cobros siguen siendo hardening posterior si no bloquean el flujo Beta.
 - Catálogo documental puede ampliar paginación/búsqueda/límites tras Beta.
@@ -240,8 +254,9 @@ Pendiente para cerrar staging real: subir un documento al bucket real de staging
 7. ~~Auditoría responsive móvil/tablet/escritorio.~~ ✅
 8. ~~Security/performance readiness automatizado.~~ ✅
 9. ~~Conectar/probar OCR de producción y preparar runtime de staging.~~ ✅
-10. Ejecutar staging externo con secretos, bucket, Google Auth, AEMET/radar, VAPID y dominio HTTPS reales.
-11. Validar backup/restore, observabilidad y recorridos reales.
-12. Actualizar PR y decidir candidate final.
+10. ~~Preparar migraciones persistentes, web Docker y deploy remoto exact-SHA.~~ ✅
+11. Ejecutar staging externo con host, secretos, bucket, Google Auth, AEMET/radar, VAPID y dominios HTTPS reales.
+12. Validar backup/restore, observabilidad y recorridos reales.
+13. Actualizar PR y decidir candidate final.
 
 Este documento es el checklist vivo de Cierre Beta. No se añade una función grande nueva salvo que cierre un P0/P1.
