@@ -7,6 +7,7 @@ export const RADAR_INGEST_QUEUE_NAME = 'magina-radar-ingest-v1' as const;
 export const RADAR_INGEST_DEAD_LETTER_QUEUE_NAME = 'magina-radar-ingest-dlq-v1' as const;
 export const NOTIFICATION_DISPATCH_QUEUE_NAME = 'magina-notification-dispatch-v1' as const;
 export const NOTIFICATION_DISPATCH_DEAD_LETTER_QUEUE_NAME = 'magina-notification-dispatch-dlq-v1' as const;
+export const FINANCIAL_ALERT_EVALUATE_QUEUE_NAME = 'magina-financial-alert-evaluate-v1' as const;
 
 export const ocrProviderNameSchema = z.enum(['tesseract', 'paddleocr', 'doctr']);
 
@@ -33,7 +34,13 @@ export const notificationDispatchJobPayloadSchema = z.object({
   limit: z.number().int().min(1).max(100).default(50),
 });
 
+export const financialAlertEvaluateJobPayloadSchema = z.object({
+  version: z.literal(1),
+  limit_users: z.number().int().min(1).max(500).default(200),
+});
+
 export type OcrProviderName = z.infer<typeof ocrProviderNameSchema>;
 export type OcrJobPayload = z.infer<typeof ocrJobPayloadSchema>;
 export type RadarIngestJobPayload = z.infer<typeof radarIngestJobPayloadSchema>;
 export type NotificationDispatchJobPayload = z.infer<typeof notificationDispatchJobPayloadSchema>;
+export type FinancialAlertEvaluateJobPayload = z.infer<typeof financialAlertEvaluateJobPayloadSchema>;
