@@ -1,0 +1,38 @@
+name: V20 market source monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 4'
+
+concurrency:
+  group: market-source-monitor
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Validate Junta market source contract
+        run: pnpm --filter @magina/api market:source-check
