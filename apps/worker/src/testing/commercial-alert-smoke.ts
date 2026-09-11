@@ -40,9 +40,9 @@ async function main() {
   await pool.query(`
     INSERT INTO professional_invoices (id, workspace_id, customer_party_id, client_operation_id, invoice_number, issued_on, due_on, status, subtotal_eur, tax_eur, total_eur, created_by)
     VALUES ($1, $2, $3, 'ca333333-3333-4333-8333-333333333333', 'COM-CI-001', CURRENT_DATE - 30, CURRENT_DATE - 15, 'issued', 413.22, 86.78, 500, $4)
-    ON CONFLICT (id) DO NOTHING;
-    INSERT INTO professional_invoice_works (invoice_id, work_id, amount_eur) VALUES ($1, $5, 500) ON CONFLICT DO NOTHING;
-  `, [invoiceId, workspaceId, customerId, userId, invoiceWorkId]);
+    ON CONFLICT (id) DO NOTHING
+  `, [invoiceId, workspaceId, customerId, userId]);
+  await pool.query('INSERT INTO professional_invoice_works (invoice_id, work_id, amount_eur) VALUES ($1, $2, 500) ON CONFLICT DO NOTHING', [invoiceId, invoiceWorkId]);
 
   await pool.query(`
     INSERT INTO professional_quotes (id, workspace_id, customer_party_id, client_operation_id, quote_number, title, issued_on, valid_until, status, subtotal_eur, tax_eur, total_eur, created_by)

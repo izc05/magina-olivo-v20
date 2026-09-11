@@ -18,13 +18,13 @@ const replacementInvoiceId = '88888888-8888-4888-8888-888888888881';
 const headers = { 'x-workspace-id': workspaceId, 'x-user-id': userId, 'content-type': 'application/json' };
 
 async function main() {
+  await sql`INSERT INTO users (id, primary_email, display_name) VALUES (${userId}::uuid, 'invoice-ci@example.test', 'Invoice CI') ON CONFLICT (id) DO NOTHING`.execute(db);
+  await sql`INSERT INTO workspaces (id, name, type) VALUES (${workspaceId}::uuid, 'Invoice CI Workspace', 'professional') ON CONFLICT (id) DO NOTHING`.execute(db);
+  await sql`INSERT INTO workspace_memberships (workspace_id, user_id, role, status) VALUES (${workspaceId}::uuid, ${userId}::uuid, 'owner', 'active') ON CONFLICT (workspace_id, user_id) DO NOTHING`.execute(db);
+  await sql`INSERT INTO campaigns (id, workspace_id, name, start_date, status) VALUES (${campaignId}::uuid, ${workspaceId}::uuid, 'Invoice CI 2026/27', '2026-09-01', 'active') ON CONFLICT (id) DO NOTHING`.execute(db);
+  await sql`INSERT INTO fields (id, workspace_id, client_operation_id, name, crop, status) VALUES (${fieldId}::uuid, ${workspaceId}::uuid, '89999999-9999-4999-8999-999999999999'::uuid, 'Invoice Field CI', 'olivar', 'active') ON CONFLICT (id) DO NOTHING`.execute(db);
   await sql`
-    INSERT INTO users (id, primary_email, display_name) VALUES (${userId}::uuid, 'invoice-ci@example.test', 'Invoice CI') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO workspaces (id, name, type) VALUES (${workspaceId}::uuid, 'Invoice CI Workspace', 'professional') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO workspace_memberships (workspace_id, user_id, role, status) VALUES (${workspaceId}::uuid, ${userId}::uuid, 'owner', 'active') ON CONFLICT (workspace_id, user_id) DO NOTHING;
-    INSERT INTO campaigns (id, workspace_id, name, start_date, status) VALUES (${campaignId}::uuid, ${workspaceId}::uuid, 'Invoice CI 2026/27', '2026-09-01', 'active') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO fields (id, workspace_id, client_operation_id, name, crop, status) VALUES (${fieldId}::uuid, ${workspaceId}::uuid, '89999999-9999-4999-8999-999999999999'::uuid, 'Invoice Field CI', 'olivar', 'active') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, roles) VALUES (${customerId}::uuid, ${workspaceId}::uuid, '8aaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'person', 'Cliente Factura CI', ARRAY['customer']) ON CONFLICT (id) DO NOTHING;
+    INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, roles) VALUES (${customerId}::uuid, ${workspaceId}::uuid, '8aaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'person', 'Cliente Factura CI', ARRAY['customer']) ON CONFLICT (id) DO NOTHING
   `.execute(db);
 
   const workResponse = await app.inject({ method: 'POST', url: '/api/v1/works', headers, payload: {
