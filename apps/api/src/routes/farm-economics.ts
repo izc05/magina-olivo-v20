@@ -21,6 +21,11 @@ export function registerFarmEconomicsRoutes(app: FastifyInstance, db: DatabaseCl
     if (query.campaignId) {
       const parsedCampaign = uuidSchema.safeParse(query.campaignId);
       if (!parsedCampaign.success) return reply.code(400).send({ error: 'invalid_campaign_id' });
+      const campaign = await database.selectFrom('campaigns').select('id')
+        .where('id', '=', parsedCampaign.data)
+        .where('workspace_id', '=', context.workspaceId)
+        .executeTakeFirst();
+      if (!campaign) return reply.code(404).send({ error: 'campaign_not_found' });
       campaignId = parsedCampaign.data;
     } else {
       const active = await database.selectFrom('campaigns').select('id')
@@ -151,18 +156,25 @@ export function registerFarmEconomicsRoutes(app: FastifyInstance, db: DatabaseCl
     const deliveredKg = harvest.rows[0]?.delivered_kg ?? 0;
     const work = workBreakdown.rows[0] ?? { labor_eur: 0, machinery_eur: 0, materials_eur: 0, services_eur: 0, total_work_eur: 0 };
     const professional = professionalWork.rows[0] ?? { charged_eur: 0, collected_eur: 0, pending_eur: 0, direct_cost_eur: 0 };
+    const productionCost = Math.max(totalCost - professional.direct_cost_eur, 0);
+    const agriculturalMargin = accrued - productionCost;
+    const professionalMargin = professional.charged_eur - professional.direct_cost_eur;
+    const combinedAccruedMargin = accrued + professional.charged_eur - totalCost;
 
     return {
       field: { id: field.id, name: field.name },
       campaign_id: campaignId,
       total_cost_eur: totalCost,
+      production_cost_eur: productionCost,
+      professional_cost_eur: professional.direct_cost_eur,
       accrued_income_eur: accrued,
       collected_income_eur: collected,
       pending_collection_eur: Math.max(accrued - collected, 0),
-      accrued_margin_eur: accrued - totalCost,
-      collected_less_registered_costs_eur: collected - totalCost,
+      accrued_margin_eur: agriculturalMargin,
+      combined_accrued_margin_eur: combinedAccruedMargin,
+      collected_less_registered_costs_eur: collected + professional.collected_eur - totalCost,
       delivered_kg: deliveredKg,
-      cost_per_delivered_kg_eur: deliveredKg > 0 ? totalCost / deliveredKg : null,
+      cost_per_delivered_kg_eur: deliveredKg > 0 ? productionCost / deliveredKg : null,
       work_cost_breakdown: {
         labor_eur: work.labor_eur,
         machinery_eur: work.machinery_eur,
@@ -175,17 +187,20 @@ export function registerFarmEconomicsRoutes(app: FastifyInstance, db: DatabaseCl
         collected_eur: professional.collected_eur,
         pending_eur: professional.pending_eur,
         direct_cost_eur: professional.direct_cost_eur,
-        accrued_margin_eur: professional.charged_eur - professional.direct_cost_eur,
+        accrued_margin_eur: professionalMargin,
       },
-      attribution_status: 'derived_from_cost_ledger_and_harvest_delivery_share',
+      attribution_status: 'derived_from_cost_ledger_harvest_share_and_work_scope',
       semantics: {
-        total_cost: 'canonical registered costs from the cost ledger projection',
+        total_cost: 'all canonical registered costs from the field cost ledger projection',
+        production_cost: 'registered field costs excluding direct costs attributed to third-party professional work',
+        professional_cost: 'participant and resource costs of third-party work on this field',
         work_cost_breakdown: 'informational decomposition of work participant and resource costs; already included in total_cost_eur',
         accrued_income: 'confirmed harvest settlement amount attributed to the field',
         collected_income: 'collections received against attributed harvest settlements',
-        accrued_margin: 'harvest accrued income minus all registered field costs',
-        collected_less_registered_costs: 'harvest collections minus registered field costs; not cash flow because expense payments are not modeled yet',
-        professional_work: 'third-party work commercial figures shown separately and never added to harvest income totals',
+        accrued_margin: 'harvest accrued income minus production_cost_eur only',
+        combined_accrued_margin: 'harvest accrued income plus third-party charges minus all registered costs',
+        collected_less_registered_costs: 'harvest collections plus professional collections minus registered costs; not cash flow because expense payments are not modeled yet',
+        professional_work: 'third-party work commercial figures kept separate from harvest income',
       },
     };
   });
