@@ -26,7 +26,14 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   const fieldId = new URL(registerHref!, 'http://127.0.0.1:3000').searchParams.get('fieldId');
   expect(fieldId).toBeTruthy();
 
-  await page.getByRole('link', { name: /Registrar trabajo/ }).click();
+  await page.goto(`/mi-campo/mapa?fieldId=${encodeURIComponent(fieldId!)}`);
+  await expect(page.getByRole('heading', { name: 'Tu finca sobre el terreno' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Añade los límites reales' })).toBeVisible();
+  await expect(page.getByLabel('Finca')).toHaveValue(fieldId!);
+  await expect(page.getByLabel('Referencia catastral')).toBeVisible();
+  await expect(page.getByLabel('ID del recinto SIGPAC')).toBeVisible();
+
+  await page.goto(registerHref!);
   await expect(page.getByRole('heading', { name: '¿Qué quieres registrar?' })).toBeVisible();
 
   const workLink = page.getByRole('link').filter({ hasText: 'Trabajo' }).first();
