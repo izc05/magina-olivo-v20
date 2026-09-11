@@ -24,7 +24,7 @@ function fieldActionHref(path: string, farm: FarmListItem) {
 }
 
 export function MiCampoDashboard() {
-  const { apiConfigured, status, selectedWorkspaceId } = useAuth();
+  const { apiConfigured, previewEnabled, status, selectedWorkspaceId } = useAuth();
   const [farms, setFarms] = useState<FarmListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,10 +39,11 @@ export function MiCampoDashboard() {
         if (apiConfigured && status === 'authenticated' && selectedWorkspaceId) {
           const remote = await loadWorkspaceFarms(selectedWorkspaceId);
           if (!cancelled) setFarms(remote);
-        } else if (!apiConfigured) {
+        } else if (!apiConfigured && previewEnabled) {
           if (!cancelled) setFarms(getPreviewFarms());
         } else if (!cancelled) {
           setFarms([]);
+          if (!apiConfigured) setError('Mi Campo necesita conexión con la API. El modo demo no está activo en esta instalación.');
         }
       } catch (loadError) {
         console.error('Unable to load Mi Campo farms', loadError);
@@ -56,16 +57,17 @@ export function MiCampoDashboard() {
     }
 
     void load();
-    const refresh = () => { if (!apiConfigured) void load(); };
+    const refresh = () => { if (!apiConfigured && previewEnabled) void load(); };
     window.addEventListener('magina:prototype-data-changed', refresh);
     return () => {
       cancelled = true;
       window.removeEventListener('magina:prototype-data-changed', refresh);
     };
-  }, [apiConfigured, selectedWorkspaceId, status]);
+  }, [apiConfigured, previewEnabled, selectedWorkspaceId, status]);
 
   const summary = useMemo(() => summarizeFarms(farms), [farms]);
   const defaultFarm = farms[0];
+  const canCreateFarm = apiConfigured || previewEnabled;
 
   return <>
     <header className="page-title mi-campo-title">
@@ -82,9 +84,9 @@ export function MiCampoDashboard() {
     </section>
 
     <section className="section">
-      <div className="section-head"><h2>Mis fincas</h2><Link href="/mi-campo/fincas/nueva" className="detail-link"><PlusIcon /> Añadir finca</Link></div>
+      <div className="section-head"><h2>Mis fincas</h2>{canCreateFarm ? <Link href="/mi-campo/fincas/nueva" className="detail-link"><PlusIcon /> Añadir finca</Link> : <span />}</div>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
-      {!loading && farms.length === 0 ? <section className="card"><h3>Aún no tienes fincas</h3><p>Crea la primera con su nombre habitual. Catastro y SIGPAC podrán vincularse después.</p><Link href="/mi-campo/fincas/nueva" className="primary action-link">Añadir finca</Link></section> : null}
+      {!error && !loading && farms.length === 0 ? <section className="card"><h3>Aún no tienes fincas</h3><p>Crea la primera con su nombre habitual. Catastro y SIGPAC podrán vincularse después.</p>{canCreateFarm ? <Link href="/mi-campo/fincas/nueva" className="primary action-link">Añadir finca</Link> : null}</section> : null}
       <div className="farm-row">
         {farms.map((farm) => <Link key={`${farm.source}:${farm.id}`} href={farmHref(farm)} className="card farm-card">
           <div className="farm-image"><span className={`farm-status ${farm.tone ?? 'neutral'}`}>{farm.statusLabel ?? 'Activa'}</span></div>
@@ -98,6 +100,6 @@ export function MiCampoDashboard() {
       {quick.map(([icon, title, text, href]) => <Link href={href} className="card quick premium-quick" key={title}><span className="icon">{icon}</span><div><strong>{title}</strong><small>{text}</small></div><ArrowIcon className="quick-arrow" /></Link>)}
     </div></section>
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">ESTRUCTURA V20</span><h2>Finca primero. Campaña y agenda agregan sin duplicar.</h2></div>{defaultFarm ? <Link href={fieldActionHref('/mi-campo/registrar', defaultFarm)}>Registrar <ArrowIcon /></Link> : <Link href="/mi-campo/fincas/nueva">Añadir finca <ArrowIcon /></Link>}</section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">ESTRUCTURA V20</span><h2>Finca primero. Campaña y agenda agregan sin duplicar.</h2></div>{defaultFarm ? <Link href={fieldActionHref('/mi-campo/registrar', defaultFarm)}>Registrar <ArrowIcon /></Link> : canCreateFarm ? <Link href="/mi-campo/fincas/nueva">Añadir finca <ArrowIcon /></Link> : <span />}</section>
   </>;
 }
