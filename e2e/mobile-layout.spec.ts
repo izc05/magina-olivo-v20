@@ -63,7 +63,7 @@ const widerRoutes = [
   `/mi-campo/profesional/documento?type=invoice&id=${invoiceId}`,
 ];
 
-async function expectNoHorizontalOverflow(page: Page, route: string, width: number) {
+async function navigateAndAssertLayout(page: Page, route: string, width: number) {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
@@ -82,6 +82,29 @@ async function expectNoHorizontalOverflow(page: Page, route: string, width: numb
   expect(pageErrors, `${route} raised browser page errors at ${width}px: ${pageErrors.join(' | ')}`).toEqual([]);
   expect(dimensions.documentWidth, `${route} document overflow at ${width}px`).toBeLessThanOrEqual(dimensions.viewport + 1);
   expect(dimensions.bodyWidth, `${route} body overflow at ${width}px`).toBeLessThanOrEqual(dimensions.viewport + 1);
+}
+
+async function expectMobileRouteContract(page: Page, route: string, width: number) {
+  await navigateAndAssertLayout(page, route, width);
+
+  const tooSmall = await page.locator('button, input:not([type="hidden"]), select, textarea, .primary, .secondary-action').evaluateAll((nodes) =>
+    nodes.flatMap((node) => {
+      const element = node as HTMLElement;
+      const style = getComputedStyle(element);
+      if (style.display === 'none' || style.visibility === 'hidden') return [];
+      const rect = element.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return [];
+      if (rect.width >= 28 && rect.height >= 28) return [];
+      return [{
+        tag: element.tagName,
+        text: (element.textContent || (element as HTMLInputElement).value || '').trim().slice(0, 60),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+      }];
+    }),
+  );
+
+  expect(tooSmall, `${route} has controls below 28px at ${width}px: ${JSON.stringify(tooSmall)}`).toEqual([]);
 }
 
 test.beforeAll(async ({ request }) => {
@@ -138,35 +161,8 @@ for (const width of [360, 390, 430]) {
     test.use({ viewport: { width, height: 844 } });
 
     for (const route of routes) {
-      test(`${route} no desborda horizontalmente ni lanza errores de página`, async ({ page }) => {
-        await expectNoHorizontalOverflow(page, route, width);
-      });
-
-      test(`${route} no tiene controles críticos minúsculos`, async ({ page }) => {
-        const response = await page.goto(route);
-        expect(response, `${route} did not produce a navigation response at ${width}px`).not.toBeNull();
-        expect(response!.status(), `${route} returned ${response!.status()} at ${width}px`).toBeLessThan(400);
-        await expect(page.locator('body')).toBeVisible();
-        await page.waitForTimeout(350);
-
-        const tooSmall = await page.locator('button, input:not([type="hidden"]), select, textarea, .primary, .secondary-action').evaluateAll((nodes) =>
-          nodes.flatMap((node) => {
-            const element = node as HTMLElement;
-            const style = getComputedStyle(element);
-            if (style.display === 'none' || style.visibility === 'hidden') return [];
-            const rect = element.getBoundingClientRect();
-            if (rect.width === 0 || rect.height === 0) return [];
-            if (rect.width >= 28 && rect.height >= 28) return [];
-            return [{
-              tag: element.tagName,
-              text: (element.textContent || (element as HTMLInputElement).value || '').trim().slice(0, 60),
-              width: Math.round(rect.width),
-              height: Math.round(rect.height),
-            }];
-          }),
-        );
-
-        expect(tooSmall, `${route} has controls below 28px at ${width}px: ${JSON.stringify(tooSmall)}`).toEqual([]);
+      test(`${route} cumple el contrato móvil`, async ({ page }) => {
+        await expectMobileRouteContract(page, route, width);
       });
     }
   });
@@ -178,13 +174,13 @@ test.describe('estados vacíos profesionales en móvil', () => {
   test('cliente sin seleccionar conserva un estado útil', async ({ page }) => {
     await page.goto('/mi-campo/profesional/cliente');
     await expect(page.getByRole('heading', { name: 'Cliente no disponible' })).toBeVisible();
-    await expectNoHorizontalOverflow(page, '/mi-campo/profesional/cliente', 360);
+    await navigateAndAssertLayout(page, '/mi-campo/profesional/cliente', 360);
   });
 
   test('documento sin identificar conserva un estado útil', async ({ page }) => {
     await page.goto('/mi-campo/profesional/documento');
     await expect(page.getByRole('heading', { name: 'Documento no disponible' })).toBeVisible();
-    await expectNoHorizontalOverflow(page, '/mi-campo/profesional/documento', 360);
+    await navigateAndAssertLayout(page, '/mi-campo/profesional/documento', 360);
   });
 });
 
@@ -197,7 +193,7 @@ for (const viewport of [
 
     for (const route of widerRoutes) {
       test(`${route} mantiene el layout`, async ({ page }) => {
-        await expectNoHorizontalOverflow(page, route, viewport.width);
+        await navigateAndAssertLayout(page, route, viewport.width);
       });
     }
   });
