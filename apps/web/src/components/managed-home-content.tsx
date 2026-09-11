@@ -36,6 +36,28 @@ function objectSetting<T>(settings: PublicSettings, key: string): T | null {
   return value as T;
 }
 
+function safeHref(value: string | null | undefined, fallback: string | null = null) {
+  if (!value) return fallback;
+  if (value.startsWith('/') && !value.startsWith('//')) return value;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeMediaUrl(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value, window.location.origin);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return value.startsWith('/') ? value : url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function storyTag(entry: CmsEntry) {
   if (entry.type === 'news') return 'NOTICIAS';
   if (entry.type === 'event') return 'EVENTOS';
@@ -51,17 +73,19 @@ function storyClass(entry: CmsEntry) {
 }
 
 function ManagedStory({ entry }: { entry: CmsEntry }) {
+  const mediaUrl = safeMediaUrl(entry.media_url);
+  const externalUrl = safeHref(entry.external_url);
   const card = (
     <article className={`card story-card ${entry.type === 'promotion' ? 'sponsored' : ''}`}>
-      <div className={storyClass(entry)} style={entry.media_url ? { backgroundImage: `url(${entry.media_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
+      <div className={storyClass(entry)} style={mediaUrl ? { backgroundImage: `url(${mediaUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
       <span className={`story-tag ${entry.type === 'promotion' ? 'gold' : ''}`}>{storyTag(entry)}</span>
       <h3>{entry.title}</h3>
       <p>{entry.summary ?? 'Publicado desde Mágina Olivo.'}</p>
     </article>
   );
 
-  if (entry.external_url) {
-    return <a href={entry.external_url} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{card}</a>;
+  if (externalUrl) {
+    return <a href={externalUrl} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{card}</a>;
   }
   return card;
 }
@@ -94,25 +118,29 @@ export function ManagedHomeContent() {
     .filter((entry) => entry.type === 'news' || entry.type === 'event' || entry.type === 'promotion')
     .slice(0, 3), [entries]);
 
-  const showManagedHero = Boolean(hero?.title || hero?.subtitle || hero?.image_url);
+  const heroMediaUrl = safeMediaUrl(hero?.image_url);
+  const heroHref = safeHref(hero?.cta_href);
+  const bannerHref = safeHref(banner?.href);
+  const territoryHref = safeHref(territory?.cta_href, '/explorar') ?? '/explorar';
+  const showManagedHero = Boolean(hero?.title || hero?.subtitle || heroMediaUrl);
 
   return (
     <>
       {banner?.enabled && banner.text ? (
         <section className="section" aria-label="Aviso de Mágina Olivo">
-          {banner.href ? <a className="card" href={banner.href} style={{ display: 'block', padding: 16, textDecoration: 'none', color: 'inherit' }}><strong>{banner.text}</strong></a> : <div className="card" style={{ padding: 16 }}><strong>{banner.text}</strong></div>}
+          {bannerHref ? <a className="card" href={bannerHref} style={{ display: 'block', padding: 16, textDecoration: 'none', color: 'inherit' }}><strong>{banner.text}</strong></a> : <div className="card" style={{ padding: 16 }}><strong>{banner.text}</strong></div>}
         </section>
       ) : null}
 
       {showManagedHero ? (
         <section className="section">
           <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
-            <div style={{ minHeight: 220, display: 'flex', alignItems: 'flex-end', padding: 24, background: hero?.image_url ? `linear-gradient(90deg, rgba(18,38,22,.78), rgba(18,38,22,.22)), url(${hero.image_url}) center/cover` : 'linear-gradient(135deg, #244b31, #78936b)', color: '#fff' }}>
+            <div style={{ minHeight: 220, display: 'flex', alignItems: 'flex-end', padding: 24, background: heroMediaUrl ? `linear-gradient(90deg, rgba(18,38,22,.78), rgba(18,38,22,.22)), url(${heroMediaUrl}) center/cover` : 'linear-gradient(135deg, #244b31, #78936b)', color: '#fff' }}>
               <div style={{ maxWidth: 720 }}>
                 <span className="eyebrow" style={{ color: 'inherit' }}>{hero?.eyebrow ?? 'MÁGINA OLIVO'}</span>
                 <h2 style={{ fontSize: 'clamp(1.8rem,4vw,3rem)', margin: '8px 0' }}>{hero?.title}</h2>
                 {hero?.subtitle ? <p style={{ fontSize: '1.05rem', opacity: .92 }}>{hero.subtitle}</p> : null}
-                {hero?.cta_label && hero?.cta_href ? <Link className="primary action-link" href={hero.cta_href}>{hero.cta_label} <ArrowIcon /></Link> : null}
+                {hero?.cta_label && heroHref ? <Link className="primary action-link" href={heroHref}>{hero.cta_label} <ArrowIcon /></Link> : null}
               </div>
             </div>
           </div>
@@ -134,7 +162,7 @@ export function ManagedHomeContent() {
 
       <section className="territory-banner">
         <div><span className="eyebrow">MÁGINA OLIVO</span><h2>{territory?.title ?? 'Personas que cuidan de un territorio único'}</h2></div>
-        <Link href={territory?.cta_href ?? '/explorar'}>{territory?.cta_label ?? 'Descubrir Mágina'} <ArrowIcon /></Link>
+        <Link href={territoryHref}>{territory?.cta_label ?? 'Descubrir Mágina'} <ArrowIcon /></Link>
       </section>
     </>
   );
