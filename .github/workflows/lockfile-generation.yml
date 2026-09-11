@@ -1,4 +1,4 @@
-name: V20 lockfile candidate
+name: V20 lockfile guard
 
 on:
   workflow_dispatch:
@@ -18,14 +18,16 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate-lockfile:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout branch
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -47,3 +49,16 @@ jobs:
           path: pnpm-lock.yaml
           if-no-files-found: error
           retention-days: 1
+
+      - name: Commit lockfile for same-repository PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml && git ls-files --error-unmatch pnpm-lock.yaml >/dev/null 2>&1; then
+            echo 'pnpm-lock.yaml is already current.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pnpm-lock.yaml
+          git commit -m 'chore(deps): refresh pnpm lockfile'
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
