@@ -106,12 +106,24 @@ export function registerHarvestCommercialRoutes(app: FastifyInstance, db: Databa
     const database = requireDatabase(db, reply);
     if (!context || !database) return;
 
-    const query = request.query as { campaignId?: string };
+    const query = request.query as { campaignId?: string; fieldId?: string };
     let campaignFilter = sql``;
+    let fieldFilter = sql``;
     if (query.campaignId) {
       const parsed = uuidSchema.safeParse(query.campaignId);
       if (!parsed.success) return reply.code(400).send({ error: 'invalid_campaign_id' });
       campaignFilter = sql`AND hs.campaign_id = ${parsed.data}::uuid`;
+    }
+    if (query.fieldId) {
+      const parsed = uuidSchema.safeParse(query.fieldId);
+      if (!parsed.success) return reply.code(400).send({ error: 'invalid_field_id' });
+      fieldFilter = sql`AND EXISTS (
+        SELECT 1
+        FROM harvest_settlement_deliveries hsd_filter
+        JOIN harvest_delivery_fields hdf_filter ON hdf_filter.delivery_id = hsd_filter.delivery_id
+        WHERE hsd_filter.settlement_id = hs.id
+          AND hdf_filter.field_id = ${parsed.data}::uuid
+      )`;
     }
 
     const result = await sql`
@@ -123,6 +135,7 @@ export function registerHarvestCommercialRoutes(app: FastifyInstance, db: Databa
       WHERE hs.workspace_id = ${context.workspaceId}::uuid
         AND hs.status = 'confirmed'
         ${campaignFilter}
+        ${fieldFilter}
       ORDER BY hs.settled_on DESC, hs.created_at DESC
     `.execute(database);
 
