@@ -2,14 +2,19 @@
   "name": "magina-olivo-v20",
   "private": true,
   "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=22 <23",
+    "pnpm": ">=10.15.1 <11"
+  },
   "scripts": {
     "dev": "pnpm --filter @magina/web dev",
     "dev:api": "pnpm --filter @magina/api dev",
     "dev:worker": "pnpm --filter @magina/worker dev",
     "build": "pnpm --filter @magina/contracts build && pnpm --filter @magina/weather build && pnpm --filter @magina/jobs build && pnpm --filter @magina/api build && pnpm --filter @magina/worker build && pnpm --filter @magina/web build",
     "typecheck": "pnpm --filter @magina/contracts typecheck && pnpm --filter @magina/contracts build && pnpm --filter @magina/weather typecheck && pnpm --filter @magina/weather build && pnpm --filter @magina/jobs typecheck && pnpm --filter @magina/jobs build && pnpm --filter @magina/api typecheck && pnpm --filter @magina/worker typecheck && pnpm --filter @magina/web typecheck",
-    "check": "pnpm typecheck && pnpm build",
-    "check:fast": "pnpm typecheck",
+    "check:env": "node scripts/check-env-contract.mjs",
+    "check": "pnpm check:env && pnpm typecheck && pnpm build",
+    "check:fast": "pnpm check:env && pnpm typecheck",
     "e2e:beta": "playwright test"
   },
   "devDependencies": {
