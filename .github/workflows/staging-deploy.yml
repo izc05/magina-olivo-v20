@@ -1,0 +1,214 @@
+name: V20 staging deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch/tag/SHA to deploy
+        required: true
+        default: feat/v20-visual-prototype
+      expected_sha:
+        description: Exact 40-character commit SHA that must be checked out and have all gates green
+        required: true
+      confirm:
+        description: Type DEPLOY-STAGING to allow deployment
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: v20-staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm == 'DEPLOY-STAGING' }}
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout exact candidate ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify exact SHA
+        id: candidate
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -eu
+          actual="$(git rev-parse HEAD)"
+          if ! printf '%s' "$EXPECTED_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo 'expected_sha must be a full 40-character lowercase Git SHA.' >&2
+            exit 1
+          fi
+          if [ "$actual" != "$EXPECTED_SHA" ]; then
+            echo "Checked out $actual but expected $EXPECTED_SHA" >&2
+            exit 1
+          fi
+          echo "sha=$actual" >> "$GITHUB_OUTPUT"
+
+      - name: Require all V20 gates green for exact SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          set -eu
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&per_page=100" > /tmp/v20-runs.json
+          for workflow in 'V20 full candidate check' 'V20 beta browser E2E' 'V20 staging readiness'; do
+            if ! jq -e --arg workflow "$workflow" --arg sha "$SHA" \
+              '[.workflow_runs[] | select(.name == $workflow and .head_sha == $sha and .conclusion == "success")] | length > 0' \
+              /tmp/v20-runs.json >/dev/null; then
+              echo "No successful '$workflow' run found for $SHA" >&2
+              exit 1
+            fi
+          done
+
+      - name: Validate staging environment secret
+        env:
+          STAGING_ENV_FILE: ${{ secrets.STAGING_ENV_FILE }}
+        run: |
+          set -eu
+          test -n "$STAGING_ENV_FILE"
+          umask 077
+          printf '%s' "$STAGING_ENV_FILE" > /tmp/magina-staging.env
+          node scripts/staging-env-preflight.mjs /tmp/magina-staging.env
+
+          node --input-type=module <<'NODE' >> "$GITHUB_ENV"
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync('/tmp/magina-staging.env', 'utf8');
+          const values = new Map();
+          for (const raw of source.split(/\r?\n/)) {
+            const line = raw.trim();
+            if (!line || line.startsWith('#')) continue;
+            const i = line.indexOf('=');
+            if (i < 1) continue;
+            let value = line.slice(i + 1).trim();
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+            values.set(line.slice(0, i).trim(), value);
+          }
+          console.log(`STAGING_WEB_URL=${values.get('PUBLIC_WEB_ORIGIN')}`);
+          console.log(`STAGING_API_URL=${values.get('NEXT_PUBLIC_API_URL')}`);
+          NODE
+
+      - name: Validate SSH deployment settings
+        env:
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+          SSH_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+        run: |
+          set -eu
+          test -n "$STAGING_HOST"
+          test -n "$STAGING_USER"
+          test -n "$STAGING_PORT"
+          test -n "$STAGING_PATH"
+          test -n "$SSH_KEY"
+          test -n "$KNOWN_HOSTS"
+          printf '%s' "$STAGING_HOST" | grep -Eq '^[A-Za-z0-9.-]+$'
+          printf '%s' "$STAGING_USER" | grep -Eq '^[A-Za-z0-9._-]+$'
+          printf '%s' "$STAGING_PORT" | grep -Eq '^[0-9]{1,5}$'
+          printf '%s' "$STAGING_PATH" | grep -Eq '^/[A-Za-z0-9._/-]+$'
+
+          install -m 700 -d ~/.ssh
+          umask 077
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+      - name: Verify staging host prerequisites
+        env:
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+        run: |
+          set -eu
+          remote="$STAGING_USER@$STAGING_HOST"
+          ssh -p "$STAGING_PORT" "$remote" 'set -eu; docker version >/dev/null; docker compose version >/dev/null; curl --version >/dev/null; tar --version >/dev/null'
+
+      - name: Upload immutable release
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+        run: |
+          set -eu
+          remote="$STAGING_USER@$STAGING_HOST"
+          release="$STAGING_PATH/releases/$SHA"
+          ssh -p "$STAGING_PORT" "$remote" "mkdir -p '$release' '$STAGING_PATH/backups'"
+          tar \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='deploy/staging/.env' \
+            -czf - . | ssh -p "$STAGING_PORT" "$remote" "tar -xzf - -C '$release'"
+          scp -P "$STAGING_PORT" /tmp/magina-staging.env "$remote:$release/deploy/staging/.env.tmp"
+          ssh -p "$STAGING_PORT" "$remote" \
+            "chmod 600 '$release/deploy/staging/.env.tmp' && mv '$release/deploy/staging/.env.tmp' '$release/deploy/staging/.env'"
+
+      - name: Deploy on staging host with pre-migration backup
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+        run: |
+          set -eu
+          remote="$STAGING_USER@$STAGING_HOST"
+          release="$STAGING_PATH/releases/$SHA"
+          ssh -p "$STAGING_PORT" "$remote" \
+            "cd '$release' && STAGING_BACKUP_DIR='$STAGING_PATH/backups' ./deploy/staging/deploy-host.sh deploy/staging/.env"
+
+      - name: External HTTPS smoke
+        run: |
+          set -eu
+          web="${STAGING_WEB_URL%/}"
+          curl -fsS "$web/healthz" | grep -Fx 'ok'
+          curl -fsS "$web/" >/tmp/staging-web.html
+          test -s /tmp/staging-web.html
+          curl -fsSI "$web/" | tr -d '\r' | grep -Fi 'X-Frame-Options: DENY'
+          curl -fsSI "$web/" | tr -d '\r' | grep -Fi 'X-Content-Type-Options: nosniff'
+          STAGING_WEB_ORIGIN="$STAGING_WEB_URL" STAGING_API_URL="$STAGING_API_URL" \
+            node scripts/staging-postdeploy-smoke.mjs
+
+      - name: Mark successful release current
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+        run: |
+          set -eu
+          remote="$STAGING_USER@$STAGING_HOST"
+          release="$STAGING_PATH/releases/$SHA"
+          ssh -p "$STAGING_PORT" "$remote" \
+            "ln -sfn '$release' '$STAGING_PATH/current' && printf '%s\n' '$SHA' > '$STAGING_PATH/CURRENT_SHA'"
+
+      - name: Deployment summary
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          {
+            echo '### V20 staging deployment'
+            echo
+            echo "- SHA: \`$SHA\`"
+            echo "- Web: $STAGING_WEB_URL"
+            echo "- API: $STAGING_API_URL"
+            echo '- Candidate, browser E2E and readiness were required green for this exact SHA.'
+            echo '- PostgreSQL backup was attempted before migrations whenever a staging database was already running.'
+            echo '- No destructive database rollback is performed automatically.'
+          } >> "$GITHUB_STEP_SUMMARY"
