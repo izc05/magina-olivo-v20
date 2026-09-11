@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const fieldId = 'dddddddd-4444-4444-8444-dddddddddddd';
 const documentId = 'ffffffff-6666-4666-8666-ffffffffffff';
@@ -13,11 +13,17 @@ const apiUrl = 'http://127.0.0.1:3001';
 
 const routes = [
   '/',
+  '/explorar',
   '/mi-campo',
+  '/mi-campo/fincas/nueva',
   `/mi-campo/fincas/ver?id=${fieldId}&source=api`,
   `/mi-campo/mapa?fieldId=${fieldId}`,
+  `/mi-campo/planificar?fieldId=${fieldId}&source=api`,
   `/mi-campo/registrar?fieldId=${fieldId}`,
   `/mi-campo/registrar/trabajo?fieldId=${fieldId}`,
+  `/mi-campo/registrar/cosecha?fieldId=${fieldId}&source=api`,
+  `/mi-campo/registrar/rendimiento?fieldId=${fieldId}&source=api`,
+  `/mi-campo/documentos/nuevo?fieldId=${fieldId}&source=api`,
   '/mi-campo/hoy',
   '/mi-campo/campana',
   `/mi-campo/documentos/revisar?documentId=${documentId}&fieldId=${fieldId}&source=api`,
@@ -33,14 +39,21 @@ const routes = [
 
 const widerRoutes = [
   '/',
+  '/explorar',
   `/mi-campo/fincas/ver?id=${fieldId}&source=api`,
   `/mi-campo/mapa?fieldId=${fieldId}`,
+  `/mi-campo/planificar?fieldId=${fieldId}&source=api`,
   `/mi-campo/profesional/cliente?id=${customerId}`,
   `/mi-campo/profesional/documento?type=invoice&id=${invoiceId}`,
 ];
 
-async function expectNoHorizontalOverflow(page: Parameters<Parameters<typeof test>[1]>[0]['page'], route: string, width: number) {
-  await page.goto(route);
+async function expectNoHorizontalOverflow(page: Page, route: string, width: number) {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+
+  const response = await page.goto(route);
+  expect(response, `${route} did not produce a navigation response at ${width}px`).not.toBeNull();
+  expect(response!.status(), `${route} returned ${response!.status()} at ${width}px`).toBeLessThan(400);
   await expect(page.locator('body')).toBeVisible();
   await page.waitForTimeout(350);
 
@@ -50,6 +63,7 @@ async function expectNoHorizontalOverflow(page: Parameters<Parameters<typeof tes
     bodyWidth: document.body.scrollWidth,
   }));
 
+  expect(pageErrors, `${route} raised browser page errors at ${width}px: ${pageErrors.join(' | ')}`).toEqual([]);
   expect(dimensions.documentWidth, `${route} document overflow at ${width}px`).toBeLessThanOrEqual(dimensions.viewport + 1);
   expect(dimensions.bodyWidth, `${route} body overflow at ${width}px`).toBeLessThanOrEqual(dimensions.viewport + 1);
 }
@@ -108,12 +122,14 @@ for (const width of [360, 390, 430]) {
     test.use({ viewport: { width, height: 844 } });
 
     for (const route of routes) {
-      test(`${route} no desborda horizontalmente`, async ({ page }) => {
+      test(`${route} no desborda horizontalmente ni lanza errores de página`, async ({ page }) => {
         await expectNoHorizontalOverflow(page, route, width);
       });
 
       test(`${route} no tiene controles críticos minúsculos`, async ({ page }) => {
-        await page.goto(route);
+        const response = await page.goto(route);
+        expect(response, `${route} did not produce a navigation response at ${width}px`).not.toBeNull();
+        expect(response!.status(), `${route} returned ${response!.status()} at ${width}px`).toBeLessThan(400);
         await expect(page.locator('body')).toBeVisible();
         await page.waitForTimeout(350);
 
