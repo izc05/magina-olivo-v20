@@ -1,12 +1,13 @@
 import type { AttentionItem } from '@/lib/attention-data-source';
 import type { FinancialAttentionSummary } from '@/lib/financial-attention-data-source';
+import type { ProfessionalAttentionSummary } from '@/lib/professional-attention-data-source';
 import type { HomePriorityPreferences } from '@/lib/home-priority-preferences';
 
-export const HOME_PRIORITY_RULE_VERSION = 'home-priority-v2';
+export const HOME_PRIORITY_RULE_VERSION = 'home-priority-v3';
 
 export type HomePriorityItem = {
   id: string;
-  kind: 'task' | 'settlement' | 'document';
+  kind: 'task' | 'settlement' | 'document' | 'professional_invoice' | 'professional_unbilled';
   score: number;
   level: 'critical' | 'high' | 'medium' | 'low';
   title: string;
@@ -51,9 +52,21 @@ function settlementScore(pendingEur: number) {
   return { score: 60, reason: 'Liquidación con saldo pendiente' };
 }
 
+function overdueInvoiceScore(overdueDays: number, pendingEur: number) {
+  if (overdueDays >= 30) return { score: 88, reason: 'Factura vencida hace 30 días o más' };
+  if (overdueDays >= 7 || pendingEur >= 2500) return { score: 80, reason: 'Factura vencida relevante' };
+  return { score: 74, reason: 'Factura vencida pendiente de cobro' };
+}
+
+function unbilledWorkScore(ageDays: number, chargeEur: number) {
+  if (ageDays >= 30) return { score: 73, reason: 'Trabajo realizado hace 30 días o más y aún sin facturar' };
+  if (ageDays >= 14 || chargeEur >= 2500) return { score: 66, reason: 'Trabajo pendiente de facturar' };
+  return { score: 56, reason: 'Trabajo realizado todavía sin factura' };
+}
+
 function adjustedScore(score: number, kind: HomePriorityItem['kind'], preferences?: HomePriorityPreferences) {
   if (!preferences) return score;
-  if (kind === 'settlement' && preferences.economicWeight === 'reduced') return Math.max(score - 18, 0);
+  if ((kind === 'settlement' || kind === 'professional_invoice' || kind === 'professional_unbilled') && preferences.economicWeight === 'reduced') return Math.max(score - 18, 0);
   if (kind === 'document' && preferences.documentWeight === 'reduced') return Math.max(score - 16, 0);
   return score;
 }
@@ -61,6 +74,7 @@ function adjustedScore(score: number, kind: HomePriorityItem['kind'], preference
 export function buildHomePriorities(input: {
   attention: AttentionItem[];
   financial: FinancialAttentionSummary | null;
+  professional?: ProfessionalAttentionSummary | null;
   preferences?: HomePriorityPreferences;
   limit?: number;
 }): HomePriorityItem[] {
@@ -115,6 +129,42 @@ export function buildHomePriorities(input: {
       subtitle: `${settlement.subtitle || 'Liquidación'} · pendiente ${settlement.pendingEur.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`,
       href: '/mi-campo/campana',
       actionLabel: 'Ver campaña',
+      reason: ranking.reason,
+      protected: false,
+    });
+  }
+
+  for (const invoice of input.professional?.overdueInvoices ?? []) {
+    const ranking = overdueInvoiceScore(invoice.overdueDays, invoice.pendingEur);
+    const score = adjustedScore(ranking.score, 'professional_invoice', input.preferences);
+    items.push({
+      id: `professional-invoice:${invoice.id}`,
+      kind: 'professional_invoice',
+      score,
+      level: levelForScore(score),
+      title: `Factura ${invoice.invoiceNumber ?? 'sin nº'} vencida`,
+      subtitle: `${invoice.customerName} · pendiente ${invoice.pendingEur.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`,
+      detail: `${invoice.overdueDays} días desde el vencimiento`,
+      href: `/mi-campo/profesional/cliente?id=${encodeURIComponent(invoice.customerId)}`,
+      actionLabel: 'Ver cliente',
+      reason: ranking.reason,
+      protected: false,
+    });
+  }
+
+  for (const work of input.professional?.unbilledWorks ?? []) {
+    const ranking = unbilledWorkScore(work.ageDays, work.chargeEur);
+    const score = adjustedScore(ranking.score, 'professional_unbilled', input.preferences);
+    items.push({
+      id: `professional-unbilled:${work.id}`,
+      kind: 'professional_unbilled',
+      score,
+      level: levelForScore(score),
+      title: work.title,
+      subtitle: `${work.customerName} · ${work.chargeEur.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} € sin facturar`,
+      detail: `${work.ageDays} días desde el trabajo`,
+      href: `/mi-campo/profesional/facturas/nueva?customerId=${encodeURIComponent(work.customerId)}&workId=${encodeURIComponent(work.id)}`,
+      actionLabel: 'Facturar',
       reason: ranking.reason,
       protected: false,
     });
