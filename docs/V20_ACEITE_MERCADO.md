@@ -8,19 +8,19 @@ Construir un módulo de mercado sencillo para el agricultor de Sierra Mágina qu
 2. ¿Está subiendo o bajando?
 3. ¿Qué significa aproximadamente para mi cosecha?
 
-La primera entrega vive en `/mercado` y es deliberadamente independiente de `Mi Campo`, Admin, GIS, tiempo, profesional y demás frentes paralelos.
+La entrega vive en `/mercado` y permanece deliberadamente independiente de `Mi Campo`, Admin, GIS, tiempo, profesional y demás frentes paralelos.
 
 ## Fuente actual
 
 La referencia es el **Observatorio de Precios y Mercados de la Junta de Andalucía** para aceites de oliva en **almazara o bodega**.
 
-El snapshot incluido está fechado en la **semana 36 de 2026 (31 de agosto a 6 de septiembre)**, publicado el **9 de septiembre de 2026**, y conserva ocho semanas de histórico para:
+El corte inicial persistido corresponde a la **semana 36 de 2026 (31 de agosto a 6 de septiembre)**, publicado el **9 de septiembre de 2026**, y conserva ocho semanas para:
 
 - aceite de oliva virgen extra (AOVE),
 - aceite de oliva virgen,
 - aceite de oliva lampante de 1 grado.
 
-La procedencia, URL oficial, periodo, fecha de publicación y revisión del snapshot viajan dentro del contrato público de mercado para mantener la trazabilidad.
+La procedencia, URL oficial, periodo, fecha de publicación y revisión viajan dentro del contrato público para mantener la trazabilidad.
 
 ## Regla de producto
 
@@ -38,133 +38,170 @@ La ruta `/mercado` incorpora:
 - tarjetas AOVE / Virgen / Lampante con último dato validado;
 - variación respecto a la semana anterior;
 - evolución visual de ocho semanas;
+- lectura rápida descriptiva del mercado, sin predicción;
 - fecha de publicación, periodo y nivel de mercado visibles;
 - enlace a la fuente oficial;
 - calculadora orientativa de kilos de aceituna × rendimiento industrial × precio de referencia;
+- presets AOVE / Virgen / Lampante y precio manual;
 - advertencia explícita de que la estimación no es una liquidación ni una oferta de compra;
 - diseño mobile-first;
 - hidratación desde la API pública de mercado;
 - fallback local del último snapshot conocido para preview u operación sin API.
 
-## Contrato público
+## Persistencia
 
-El backend expone:
+La migración `0042_market_olive_oil_history.sql` crea `market_olive_oil_weekly`.
 
-```text
-GET /api/v1/public/market/olive-oil
-```
-
-El endpoint no requiere autenticación y devuelve un snapshot versionado con:
+La granularidad es **una observación por fuente + categoría + semana**. El modelo guarda:
 
 ```text
-schemaVersion
-revision
-source
-  name
-  url
-  marketLevel
-  publishedOn
-  validatedThrough
-period
-  week
-  start
-  end
-  label
-series[]
-  id
-  name
-  shortName
-  unit
-  points[]
-  latest
-note
-```
-
-La revisión actual es:
-
-```text
-junta-andalucia-olive-oil-2026-w36-v1
-```
-
-La respuesta publica `ETag`, `Last-Modified` y una política de caché pública corta (`max-age=900`) con `stale-while-revalidate`, de forma que puede servirse eficientemente sin presentar el dato semanal como tiempo real.
-
-## Flujo web y fallback
-
-La pantalla sigue este recorrido:
-
-```text
-Snapshot local conocido
-        ↓ render inmediato
-/mercado
-        ↓ useEffect
-GET /api/v1/public/market/olive-oil
-        ↓
-validación de schema + series + precios
-        ↓
-reemplazo del snapshot visible
-        ↓
-Dato API validado
-```
-
-Si la API o la red no responden, se conserva el último snapshot local conocido. Ese fallback es deliberado: permite que una preview estática o una situación sin conexión siga mostrando la última referencia conocida, pero la interfaz distingue ambos estados mediante `data-market-source="api|fallback"` y el texto correspondiente.
-
-La prueba Playwright exige `data-market-source="api"` en el recorrido completo con backend levantado. Por tanto, CI no considera válida una pantalla que simplemente coincida con la API por tener constantes duplicadas.
-
-## Fuente de verdad y actualización semanal
-
-En esta fase, la **fuente canónica para ejecución conectada** es `apps/api/src/market/snapshot.ts`. El snapshot de `apps/web/src/lib/market-data.ts` existe únicamente como fallback offline/preview y debe actualizarse junto con la revisión oficial cuando se publique un nuevo corte.
-
-El siguiente salto técnico será eliminar esa actualización manual doble mediante una ingesta persistente:
-
-```text
-Fuente externa
-    ↓
-Adaptador / ingesta
-    ↓
-Validación y normalización
-    ↓
-Persistencia del snapshot
-    ↓
-API de mercado
-    ↓
-Web / alertas / Mi Campo
-```
-
-Campos mínimos de un snapshot persistido:
-
-```text
-source
-market_level
+source_key
 category
+period_week
 period_start
 period_end
 price_eur_kg
-published_at
-fetched_at
-status (validated/provisional)
 revision
+snapshot_published_on
+validated_through
+source_name
+source_url
+market_level
+status
+injected_at / ingested_at
 ```
+
+La clave natural `(source_key, category, period_start)` permite reingestar una publicación y aplicar una corrección histórica mediante `UPSERT` sin duplicar semanas.
+
+El bootstrap de la migración incorpora las 24 observaciones ya contrastadas: 8 semanas × 3 categorías. A partir de ahí, la base de datos es la fuente de ejecución conectada.
+
+`apps/api/src/market/history.ts` encapsula tanto la lectura como el camino de escritura idempotente para una futura ingesta. No se ha añadido un endpoint público de escritura.
+
+## Contratos públicos
+
+### Último snapshot
+
+```text
+GET /api/v1/public/market/olive-oil
+```
+
+Cuando PostgreSQL está disponible, el endpoint reconstruye el snapshot visible desde el histórico persistido. Si la base no está disponible o el histórico está incompleto, cae de forma controlada al snapshot bootstrap conocido.
+
+La respuesta incluye:
+
+```text
+origin = database | bootstrap
+market
+  schemaVersion
+  revision
+  source
+  period
+  series[]
+  note
+```
+
+### Histórico
+
+```text
+GET /api/v1/public/market/olive-oil/history?weeks=8
+```
+
+`weeks` admite enteros entre **1 y 52**. El endpoint devuelve:
+
+```text
+history
+  schemaVersion
+  origin
+  revision
+  source
+  windowWeeks
+  availableFrom
+  availableThrough
+  series[]
+    points[]
+```
+
+Si se solicitan más semanas de las disponibles, se devuelve el histórico existente y `windowWeeks` refleja la ventana real.
+
+Los dos endpoints publican `ETag`, `Last-Modified` y caché pública corta (`max-age=900`) con `stale-while-revalidate`. `If-None-Match` produce 304 cuando la revisión y la ventana no han cambiado.
+
+## Flujo conectado y fallback
+
+El recorrido actual es:
+
+```text
+PostgreSQL · market_olive_oil_weekly
+        ↓
+repositorio de histórico
+        ↓
+GET /api/v1/public/market/olive-oil
+        ↓
+validación cliente
+        ↓
+/mercado
+```
+
+Y el modo degradado:
+
+```text
+DB no disponible / histórico incompleto
+        ↓
+snapshot backend conocido
+        ↓
+API pública
+        ↓
+web
+```
+
+La web conserva además un snapshot local únicamente como último fallback para preview estática o falta total de API. La interfaz distingue el estado API del fallback mediante `data-market-source="api|fallback"`.
+
+## Preparación de ingesta
+
+La escritura persistente ya está preparada mediante `upsertOliveOilMarketSnapshot()`:
+
+```text
+Fuente externa fiable
+    ↓
+Adaptador
+    ↓
+validación + normalización
+    ↓
+OliveOilMarketSnapshot
+    ↓
+upsertOliveOilMarketSnapshot()
+    ↓
+market_olive_oil_weekly
+    ↓
+API / web
+```
+
+No se automatiza todavía la captura desde una fuente estructurada no verificada. Durante la investigación, los recursos CSV/JSON del catálogo de Datos Abiertos localizados aparecían obsoletos o vacíos. Hasta disponer de un recurso máquina-a-máquina estable y comprobable, la autoridad sigue siendo el Observatorio semanal vivo.
 
 ## Validación automatizada
 
-`e2e/market.spec.ts` comprueba:
+`e2e/market.spec.ts` cubre:
 
 - respuesta 200 de la API pública;
+- origen `database` cuando CI levanta PostgreSQL;
 - cabeceras de caché y `ETag`;
 - revisión, periodo y fechas de fuente;
 - AOVE 3,42 €/kg, Virgen 3,25 €/kg y Lampante 3,17 €/kg para semana 36;
 - respuesta 304 con `If-None-Match`;
+- histórico de 8 semanas y 24 observaciones persistidas;
+- ventana de 4 semanas;
+- rechazo de `weeks` fuera de 1–52 o no enteros;
 - hidratación real de `/mercado` desde API;
 - coincidencia de precios API/UI;
+- lectura rápida de mercado;
 - ausencia de overflow horizontal a 360 px;
-- cálculo orientativo de cosecha;
-- presencia del aviso que evita confundir estimación con liquidación.
+- cálculo orientativo de cosecha y presets de precio;
+- presencia de avisos para no confundir estimación, predicción y liquidación.
 
 ## Siguientes fases
 
-1. Ingesta automática y persistencia controlada del Observatorio.
-2. Histórico persistente para 3, 6 y 12 meses.
-3. Comparación con una segunda referencia independiente cuando su licencia y estabilidad lo permitan.
+1. Conectar un adaptador de ingesta automática únicamente cuando exista una fuente oficial estructurada y verificable.
+2. Acumular histórico persistente real para 3, 6 y 12 meses a medida que entren nuevos cortes.
+3. Comparar con una segunda referencia independiente cuando su licencia y estabilidad lo permitan.
 4. Preferencias de precio y alertas, sin notificaciones especulativas.
 5. Relación opcional con una campaña real de `Mi Campo` para reutilizar kilos y rendimiento del usuario.
 6. Información de cooperativas/almazaras como contexto separado del índice de mercado.
