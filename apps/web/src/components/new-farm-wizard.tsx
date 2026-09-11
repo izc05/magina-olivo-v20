@@ -85,7 +85,7 @@ export function NewFarmWizard() {
     event.preventDefault();
     setSaveError(null);
     if (!apiConfigured && !previewEnabled) {
-      setSaveError('Esta instalación no tiene API configurada y el modo preview está desactivado. No se guardará una finca local como sustituto.');
+      setSaveError('Mi Campo no está disponible en esta instalación. No se guardará la finca hasta que vuelvas a entrar desde una instalación conectada.');
       return;
     }
     if (apiConfigured && status !== 'authenticated') {
@@ -139,7 +139,7 @@ export function NewFarmWizard() {
         setSavedId(id);
         setSavedRemotely(false);
       } else {
-        setSaveError('No hay una fuente persistente disponible para guardar la finca.');
+        setSaveError('No se puede guardar la finca ahora mismo.');
         return;
       }
 
@@ -158,13 +158,13 @@ export function NewFarmWizard() {
     const registerHref = savedId ? `/mi-campo/registrar?fieldId=${encodeURIComponent(savedId)}` : '/mi-campo/registrar';
     return <section className="card new-farm-success">
       <div className="success-mark"><SproutIcon /></div>
-      <span className="eyebrow dark">{savedRemotely ? 'FINCA GUARDADA EN MI CAMPO' : 'PREVIEW · GUARDADA EN ESTE DISPOSITIVO'}</span>
+      <span className="eyebrow dark">{savedRemotely ? 'FINCA GUARDADA EN MI CAMPO' : 'DEMOSTRACIÓN · GUARDADA EN ESTE DISPOSITIVO'}</span>
       <h1>{name || 'Nueva finca'}</h1>
-      <p>{trees || '—'} olivas · {municipalityLabel} · La finca ya tiene identidad propia para guardar trabajos, documentos y territorio.</p>
+      <p>{trees || '—'} olivas · {municipalityLabel} · Ya puedes guardar trabajos, documentos y datos de esta finca.</p>
       <div className="success-effects">
         <span>✓ Finca creada</span>
-        <span>{selectedPlace ? `✓ Localidad: ${selectedPlace.name} · ${selectedPlace.municipality_name}` : '○ Municipio sin vínculo oficial'}</span>
-        <span>{savedRemotely ? '○ Geometría oficial pendiente · vincúlala después desde Mi Campo → Mapa' : linked ? '✓ Localización demo asociada' : '○ Localización demo pendiente'}</span>
+        <span>{selectedPlace ? `✓ Localidad: ${selectedPlace.name} · ${selectedPlace.municipality_name}` : '○ Localidad pendiente de vincular'}</span>
+        <span>{savedRemotely ? '○ Límites en el mapa pendientes · puedes añadirlos después desde Mi Campo → Mapa' : linked ? '✓ Ubicación de ejemplo asociada' : '○ Ubicación de ejemplo pendiente'}</span>
       </div>
       <div className="record-actions"><Link href={fieldHref} className="secondary-action action-link">Volver a Mi Campo</Link><Link href={registerHref} className="primary action-link">Registrar trabajo <ArrowIcon /></Link></div>
     </section>;
@@ -176,17 +176,17 @@ export function NewFarmWizard() {
       <section className="card locate-panel">
         <span className="eyebrow dark">PASO 2 · UBICACIÓN</span>
         <h2>Guarda primero la finca</h2>
-        <p>La finca puede existir sin geometría oficial. En esta Beta, el vínculo con Catastro, SIGPAC o un contorno propio se confirma después desde <strong>Mi Campo → Mapa</strong>.</p>
+        <p>La finca puede existir aunque todavía no hayas definido sus límites. Podrás vincular Catastro, SIGPAC o dibujar el contorno después desde <strong>Mi Campo → Mapa</strong>.</p>
         <div className="locate-grid">
-          <div className="locate-choice"><span>📍</span><strong>Mapa</strong><small>Vincular después</small></div>
+          <div className="locate-choice"><span>📍</span><strong>Mapa</strong><small>Añadir después</small></div>
           <div className="locate-choice"><span>▦</span><strong>Catastro</strong><small>Vincular después</small></div>
           <div className="locate-choice"><span>▱</span><strong>SIGPAC</strong><small>Vincular después</small></div>
-          <div className="locate-choice"><span>✎</span><strong>Contorno propio</strong><small>Vincular después</small></div>
+          <div className="locate-choice"><span>✎</span><strong>Contorno propio</strong><small>Dibujar después</small></div>
         </div>
       </section>
       <section className="card locate-result">
         <h3>No se guardará una localización ficticia</h3>
-        <p>Al continuar se guardarán únicamente los datos reales de la finca y su localidad. La geometría quedará marcada como pendiente hasta que confirmes una referencia o contorno real.</p>
+        <p>Al continuar se guardarán únicamente los datos de la finca y su localidad. Sus límites quedarán pendientes hasta que confirmes una parcela, referencia o contorno real.</p>
       </section>
       {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
       <div className="new-farm-actions">
@@ -198,24 +198,24 @@ export function NewFarmWizard() {
 
   if (step === 2 && previewEnabled) {
     return <div className="new-farm-location-flow">
-      <section className="card new-farm-summary"><span className="new-farm-tree"><SproutIcon /></span><div><small>NUEVA FINCA · PREVIEW LOCAL</small><strong>{name}</strong><span>{trees} olivas · {municipalityLabel}</span></div><button onClick={() => setStep(1)}>Editar</button></section>
-      <section className="card locate-panel"><span className="eyebrow dark">PREVIEW · UBICACIÓN</span><h2>¿Quieres asociar una localización de demostración?</h2><p>Esta ruta solo existe para la preview sin API. No representa un vínculo oficial con Catastro o SIGPAC.</p><div className="locate-grid">{[
-        ['mapa','📍','Buscar en mapa','Demo visual'],['catastro','▦','Catastro','Demo visual'],['sigpac','▱','SIGPAC','Demo visual'],['dibujar','✎','Dibujar','Demo visual'],
+      <section className="card new-farm-summary"><span className="new-farm-tree"><SproutIcon /></span><div><small>NUEVA FINCA · DEMOSTRACIÓN</small><strong>{name}</strong><span>{trees} olivas · {municipalityLabel}</span></div><button onClick={() => setStep(1)}>Editar</button></section>
+      <section className="card locate-panel"><span className="eyebrow dark">DEMOSTRACIÓN · UBICACIÓN</span><h2>¿Quieres asociar una ubicación de ejemplo?</h2><p>Puedes probar cómo se vería una finca localizada. Estas referencias son solo de demostración y no se vinculan con Catastro o SIGPAC.</p><div className="locate-grid">{[
+        ['mapa','📍','Buscar en mapa','Ejemplo'],['catastro','▦','Catastro','Ejemplo'],['sigpac','▱','SIGPAC','Ejemplo'],['dibujar','✎','Dibujar','Ejemplo'],
       ].map(([key,symbol,label,text]) => <button type="button" key={key} className={mode === key ? 'locate-choice active' : 'locate-choice'} onClick={() => setMode(key as LocateMode)}><span>{symbol}</span><strong>{label}</strong><small>{text}</small></button>)}</div></section>
       {mode && <section className="card locate-result">
-        {mode === 'catastro' && <><h3>Referencia catastral · demo</h3><div className="locate-search"><input placeholder="Referencia demo" disabled /><button type="button" disabled>Buscar</button></div></>}
-        {mode === 'sigpac' && <><h3>SIGPAC · demo</h3><div className="triple-locate"><input placeholder="Polígono" disabled/><input placeholder="Parcela" disabled/><input placeholder="Recinto" disabled/></div></>}
-        {mode === 'mapa' && <><h3>Mapa · demo</h3><div className="mock-field-map"><span><MapPinIcon/> {name}</span></div></>}
-        {mode === 'dibujar' && <><h3>Contorno · demo</h3><div className="mock-field-map draw"><span>✎ Vista previa</span></div></>}
-        <label className="link-confirm"><input type="checkbox" checked={linked} onChange={(event) => setLinked(event.target.checked)} /> Guardar esta referencia únicamente como demo local</label>
+        {mode === 'catastro' && <><h3>Referencia catastral · ejemplo</h3><div className="locate-search"><input placeholder="Referencia de ejemplo" disabled /><button type="button" disabled>Buscar</button></div></>}
+        {mode === 'sigpac' && <><h3>SIGPAC · ejemplo</h3><div className="triple-locate"><input placeholder="Polígono" disabled/><input placeholder="Parcela" disabled/><input placeholder="Recinto" disabled/></div></>}
+        {mode === 'mapa' && <><h3>Mapa · ejemplo</h3><div className="mock-field-map"><span><MapPinIcon/> {name}</span></div></>}
+        {mode === 'dibujar' && <><h3>Contorno · ejemplo</h3><div className="mock-field-map draw"><span>✎ Vista de ejemplo</span></div></>}
+        <label className="link-confirm"><input type="checkbox" checked={linked} onChange={(event) => setLinked(event.target.checked)} /> Guardar esta referencia solo como ejemplo</label>
       </section>}
       {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
-      <div className="new-farm-actions"><button className="secondary-action" type="button" onClick={() => void finish()} disabled={saving}>{saving ? 'Guardando…' : 'Guardar sin localización demo'}</button><button className="primary" type="button" onClick={() => void finish()} disabled={!mode || saving}>{saving ? 'Guardando…' : 'Guardar preview →'}</button></div>
+      <div className="new-farm-actions"><button className="secondary-action" type="button" onClick={() => void finish()} disabled={saving}>{saving ? 'Guardando…' : 'Guardar sin ubicación'}</button><button className="primary" type="button" onClick={() => void finish()} disabled={!mode || saving}>{saving ? 'Guardando…' : 'Guardar demostración →'}</button></div>
     </div>;
   }
 
   if (!apiConfigured && !previewEnabled) {
-    return <section className="card new-farm-summary"><div><strong>Mi Campo no está conectado</strong><span>Configura `NEXT_PUBLIC_API_URL` para crear fincas reales. El modo preview está desactivado y no se crearán datos locales.</span></div></section>;
+    return <section className="card new-farm-summary"><div><strong>Mi Campo no está disponible</strong><span>Entra desde una instalación conectada para crear y guardar tus fincas.</span></div></section>;
   }
 
   return <form className="new-farm-basics" onSubmit={continueBasics}>
@@ -231,6 +231,6 @@ export function NewFarmWizard() {
       <label className="record-field wide"><span>Notas</span><textarea className="record-control" rows={3} placeholder="Cómo llegar, nombre antiguo, referencias familiares…" /></label>
     </div></details>
     {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
-    <div className="record-save-bar"><small>Primero creamos tu finca. La localización oficial se confirma después.</small><button className="primary" type="submit">Continuar →</button></div>
+    <div className="record-save-bar"><small>Primero creamos tu finca. Sus límites y parcelas pueden añadirse después.</small><button className="primary" type="submit">Continuar →</button></div>
   </form>;
 }
