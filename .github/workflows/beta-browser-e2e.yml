@@ -144,6 +144,88 @@ jobs:
             '{"date":0.99,"total_kg":0.95,"ticket_number":0.93}'::jsonb,
             now(), now()
           );
+
+          INSERT INTO parties (
+            id, workspace_id, client_operation_id, kind, display_name, legal_name, tax_id, roles
+          ) VALUES (
+            '44444444-aaaa-4aaa-8aaa-444444444444',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '55555555-bbbb-4bbb-8bbb-555555555555',
+            'person', 'Cliente Público E2E', 'Cliente Público E2E', '12345678Z', ARRAY['customer']
+          );
+
+          INSERT INTO professional_quotes (
+            id, workspace_id, customer_party_id, client_operation_id, quote_number, title,
+            issued_on, valid_until, status, subtotal_eur, tax_eur, total_eur, created_by
+          ) VALUES (
+            '66666666-cccc-4ccc-8ccc-666666666666',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '44444444-aaaa-4aaa-8aaa-444444444444',
+            '77777777-dddd-4ddd-8ddd-777777777777',
+            'P-E2E-001', 'Poda y trituración',
+            CURRENT_DATE, CURRENT_DATE + 15, 'sent', 100, 21, 121,
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          INSERT INTO professional_quote_lines (
+            quote_id, description, quantity, unit, unit_price_eur, line_total_eur, sort_order
+          ) VALUES (
+            '66666666-cccc-4ccc-8ccc-666666666666', 'Poda y trituración', 1, 'servicio', 100, 100, 0
+          );
+
+          INSERT INTO documents (id, workspace_id, kind, title, status, created_by)
+          VALUES (
+            '88888888-eeee-4eee-8eee-888888888888',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'sales_quote', 'Presupuesto P-E2E-001', 'active',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          INSERT INTO document_versions (
+            id, document_id, version_no, storage_key, original_filename, mime_type,
+            byte_size, sha256, created_by, upload_status, integrity_status, uploaded_at
+          ) VALUES (
+            '99999999-ffff-4fff-8fff-999999999999',
+            '88888888-eeee-4eee-8eee-888888888888', 1,
+            'e2e/p-e2e-001.pdf', 'P-E2E-001.pdf', 'application/pdf', 1024,
+            repeat('a', 64), 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            'uploaded', 'verified', now()
+          );
+
+          INSERT INTO attachment_links (
+            workspace_id, document_id, domain_type, domain_record_id, relation
+          ) VALUES (
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '88888888-eeee-4eee-8eee-888888888888',
+            'professional_quote', '66666666-cccc-4ccc-8ccc-666666666666', 'generated_pdf'
+          );
+
+          INSERT INTO professional_document_deliveries (
+            id, workspace_id, entity_type, entity_id, document_id, client_operation_id,
+            channel, recipient, status, confirmed_sent_at, created_by
+          ) VALUES (
+            'aaaaaaaa-1234-4abc-8abc-aaaaaaaaaaaa',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'professional_quote', '66666666-cccc-4ccc-8ccc-666666666666',
+            '88888888-eeee-4eee-8eee-888888888888',
+            'bbbbbbbb-1234-4abc-8abc-bbbbbbbbbbbb',
+            'link', 'cliente@example.invalid', 'confirmed_sent', now(),
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          INSERT INTO professional_public_share_links (
+            id, workspace_id, entity_type, entity_id, document_id, delivery_id,
+            token_hash, expires_at, created_by
+          ) VALUES (
+            'cccccccc-1234-4abc-8abc-cccccccccccc',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'professional_quote', '66666666-cccc-4ccc-8ccc-666666666666',
+            '88888888-eeee-4eee-8eee-888888888888',
+            'aaaaaaaa-1234-4abc-8abc-aaaaaaaaaaaa',
+            '5c6b1c8ebd873b8fa31024e66d2f0d0496c47dd69b67490a241e609f39729b36',
+            now() + interval '7 days',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
           SQL
 
       - name: Run farmer browser journey
