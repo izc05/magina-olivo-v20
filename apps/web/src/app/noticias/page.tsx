@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { PublicEditorialPage } from '../../components/public-editorial-page';
 
 export const metadata: Metadata = {
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function NewsPage() {
-  return <PublicEditorialPage type="news" />;
+  return <Suspense fallback={null}><PublicEditorialPage type="news" /></Suspense>;
 }
