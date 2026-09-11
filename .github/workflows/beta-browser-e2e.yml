@@ -125,10 +125,13 @@ jobs:
           );
 
           INSERT INTO ocr_runs (
-            id, document_version_id, provider, provider_version, status, raw_text,
+            id, workspace_id, client_operation_id, document_version_id,
+            provider, provider_version, status, raw_text,
             confidence, created_at, started_at, completed_at
           ) VALUES (
             '22222222-8888-4888-8888-222222222222',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '2f2f2f2f-8888-4888-8888-2f2f2f2f2f2f',
             '11111111-7777-4777-8777-111111111111',
             'e2e-fixture', '1', 'succeeded',
             '15/12/2026 ALB-TEST-01 1250 kg', 0.96000, now(), now(), now()
