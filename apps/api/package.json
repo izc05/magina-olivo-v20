@@ -7,7 +7,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "market:source-check": "tsx src/market/refresh-cli.ts",
+    "market:source-check": "tsx src/market/refresh-cli.ts --source-check",
+    "market:refresh:dry-run": "tsx src/market/refresh-cli.ts --dry-run",
     "market:refresh": "tsx src/market/refresh-cli.ts --apply"
   },
   "dependencies": {
