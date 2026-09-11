@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { getDocumentReadUrl } from '@/lib/document-data-source';
 import { uploadDomainAttachment } from '@/lib/document-upload-source';
 import { confirmCommercialDelivery, loadCommercialDeliveries, prepareCommercialDelivery, type CommercialDelivery, type CommercialDeliveryChannel } from '@/lib/professional-delivery-source';
 import { generateProfessionalPdf } from '@/lib/professional-pdf-generator';
-import type { ProfessionalPrintPayload } from '@/lib/professional-print-source';
+import { loadProfessionalPrintData, type ProfessionalPrintPayload } from '@/lib/professional-print-source';
 
 function safeFilename(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120) || 'documento';
@@ -17,34 +18,59 @@ function dateTime(value: string | null | undefined) {
   return new Date(value).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-export function ProfessionalDeliveryPanel({ data }: { data: ProfessionalPrintPayload }) {
+export function ProfessionalDeliveryPanel() {
+  const params = useSearchParams();
+  const rawType = params.get('type');
+  const type = rawType === 'invoice' || rawType === 'quote' ? rawType : null;
+  const id = params.get('id');
   const { selectedWorkspaceId } = useAuth();
-  const isInvoice = data.document_type === 'invoice';
-  const entityType = isInvoice ? 'professional_invoice' : 'professional_quote';
-  const number = data.document.number || (isInvoice ? 'Borrador' : 'Sin número');
+  const [data, setData] = useState<ProfessionalPrintPayload | null>(null);
   const [documentId, setDocumentId] = useState<string | undefined>();
   const [deliveries, setDeliveries] = useState<CommercialDelivery[]>([]);
   const [channel, setChannel] = useState<CommercialDeliveryChannel>('share');
-  const [recipient, setRecipient] = useState(data.customer.email || data.customer.phone || '');
+  const [recipient, setRecipient] = useState('');
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function reload() {
+  const isInvoice = data?.document_type === 'invoice';
+  const entityType = isInvoice ? 'professional_invoice' : 'professional_quote';
+  const number = data?.document.number || (isInvoice ? 'Borrador' : 'Sin número');
+
+  async function reloadDeliveries(entityId: string) {
     if (!selectedWorkspaceId) return;
     try {
-      setDeliveries(await loadCommercialDeliveries(selectedWorkspaceId, entityType, data.document.id));
+      setDeliveries(await loadCommercialDeliveries(selectedWorkspaceId, entityType, entityId));
     } catch (cause) {
       console.warn('Unable to load commercial deliveries', cause);
     }
   }
 
-  useEffect(() => { void reload(); }, [selectedWorkspaceId, data.document.id, entityType]);
+  useEffect(() => {
+    if (!selectedWorkspaceId || !type || !id) return;
+    let cancelled = false;
+    loadProfessionalPrintData(selectedWorkspaceId, type, id)
+      .then((payload) => {
+        if (cancelled) return;
+        setData(payload);
+        setRecipient(payload.customer.email || payload.customer.phone || '');
+      })
+      .catch((cause) => {
+        console.error('Unable to load commercial delivery document', cause);
+        if (!cancelled) setError('No se ha podido preparar la zona de envío.');
+      });
+    return () => { cancelled = true; };
+  }, [id, selectedWorkspaceId, type]);
+
+  useEffect(() => {
+    if (!data) return;
+    void reloadDeliveries(data.document.id);
+  }, [data?.document.id, selectedWorkspaceId, entityType]);
 
   const latestPrepared = useMemo(() => deliveries.find((item) => item.status === 'prepared') ?? null, [deliveries]);
 
   async function ensurePdf() {
-    if (!selectedWorkspaceId) throw new Error('workspace_required');
+    if (!selectedWorkspaceId || !data) throw new Error('workspace_or_document_required');
     if (documentId) return documentId;
     const blob = generateProfessionalPdf(data);
     const filename = `${safeFilename(isInvoice ? `factura-${number}` : `presupuesto-${number}`)}.pdf`;
@@ -63,11 +89,11 @@ export function ProfessionalDeliveryPanel({ data }: { data: ProfessionalPrintPay
   }
 
   async function prepareAndShare() {
-    if (!selectedWorkspaceId || working) return;
+    if (!selectedWorkspaceId || !data || working) return;
     setWorking(true); setError(null); setMessage(null);
     try {
       const docId = await ensurePdf();
-      const delivery = await prepareCommercialDelivery({
+      await prepareCommercialDelivery({
         workspaceId: selectedWorkspaceId,
         entityType,
         entityId: data.document.id,
@@ -95,9 +121,8 @@ export function ProfessionalDeliveryPanel({ data }: { data: ProfessionalPrintPay
         setMessage('Tu navegador no ofrece compartir. Se ha copiado un enlace temporal.');
       }
 
-      if (!message) setMessage('Compartición preparada. Confirma solo cuando sepas que el documento se envió.');
-      await reload();
-      return delivery;
+      setMessage((current) => current ?? 'Compartición preparada. Confirma solo cuando sepas que el documento se envió.');
+      await reloadDeliveries(data.document.id);
     } catch (cause) {
       console.error('Unable to prepare commercial delivery', cause);
       setError('No se ha podido preparar el envío. El presupuesto/factura y su PDF no se han alterado.');
@@ -107,12 +132,12 @@ export function ProfessionalDeliveryPanel({ data }: { data: ProfessionalPrintPay
   }
 
   async function confirm(deliveryId: string, sent: boolean) {
-    if (!selectedWorkspaceId || working) return;
+    if (!selectedWorkspaceId || !data || working) return;
     setWorking(true); setError(null);
     try {
       await confirmCommercialDelivery(selectedWorkspaceId, deliveryId, sent);
       setMessage(sent ? 'Envío confirmado y registrado.' : 'Compartición cancelada.');
-      await reload();
+      await reloadDeliveries(data.document.id);
     } catch (cause) {
       console.error('Unable to confirm commercial delivery', cause);
       setError('No se ha podido actualizar el estado del envío.');
@@ -120,6 +145,8 @@ export function ProfessionalDeliveryPanel({ data }: { data: ProfessionalPrintPay
       setWorking(false);
     }
   }
+
+  if (!data || !type || !id) return null;
 
   return <section className="card no-print" style={{ maxWidth: '210mm', margin: '0 auto 18px' }}>
     <div className="section-head"><div><h2>Compartir y registrar</h2><small>Preparar una app no demuestra recepción: confirma el envío después.</small></div></div>
