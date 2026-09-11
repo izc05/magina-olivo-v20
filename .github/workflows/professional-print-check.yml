@@ -8,12 +8,16 @@ on:
       - 'apps/api/**'
       - 'apps/web/**'
       - 'database/migrations/0036_professional_business_profile.sql'
+      - 'database/migrations/0037_professional_document_identity_snapshots.sql'
+      - 'database/migrations/0038_professional_snapshot_triggers.sql'
       - '.github/workflows/professional-print-check.yml'
   pull_request:
     paths:
       - 'apps/api/**'
       - 'apps/web/**'
       - 'database/migrations/0036_professional_business_profile.sql'
+      - 'database/migrations/0037_professional_document_identity_snapshots.sql'
+      - 'database/migrations/0038_professional_snapshot_triggers.sql'
       - '.github/workflows/professional-print-check.yml'
 
 permissions:
