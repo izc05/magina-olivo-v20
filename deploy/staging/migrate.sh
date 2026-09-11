@@ -21,9 +21,17 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
   version="$(basename "$migration")"
   checksum="$(sha256sum "$migration" | awk '{print $1}')"
 
-  existing="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
-    -v version="$version" \
-    -c "SELECT checksum || '|' || status FROM public.schema_migrations WHERE version = :'version';")"
+  if ! printf '%s' "$version" | grep -Eq '^[0-9]{4}_[A-Za-z0-9._-]+\.sql$'; then
+    echo "Unsafe migration filename: $version" >&2
+    exit 1
+  fi
+  if ! printf '%s' "$checksum" | grep -Eq '^[0-9a-f]{64}$'; then
+    echo "Invalid SHA-256 checksum for $version" >&2
+    exit 1
+  fi
+
+  existing="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc \
+    "SELECT checksum || '|' || status FROM public.schema_migrations WHERE version = '$version';")"
 
   if [ -n "$existing" ]; then
     existing_checksum="${existing%%|*}"
@@ -36,13 +44,16 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
       echo "Migration $version is marked as applying from a previous interrupted/failed run. Inspect the database before retrying." >&2
       exit 1
     fi
+    if [ "$existing_status" != "applied" ]; then
+      echo "Migration $version has unexpected status: $existing_status" >&2
+      exit 1
+    fi
     echo "Skipping already applied migration $version"
     continue
   fi
 
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
-    -v version="$version" -v checksum="$checksum" \
-    -c "INSERT INTO public.schema_migrations(version, checksum, status) VALUES (:'version', :'checksum', 'applying');"
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+    "INSERT INTO public.schema_migrations(version, checksum, status) VALUES ('$version', '$checksum', 'applying');"
 
   echo "Applying $migration"
   if ! psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"; then
@@ -50,9 +61,12 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
     exit 1
   fi
 
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
-    -v version="$version" \
-    -c "UPDATE public.schema_migrations SET status='applied', applied_at=now() WHERE version=:'version' AND status='applying';"
+  updated="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc \
+    "UPDATE public.schema_migrations SET status='applied', applied_at=now() WHERE version='$version' AND status='applying' RETURNING version;")"
+  if [ "$updated" != "$version" ]; then
+    echo "Migration registry update failed for $version" >&2
+    exit 1
+  fi
 done
 
 if [ "$found" != true ]; then
@@ -60,7 +74,7 @@ if [ "$found" != true ]; then
   exit 1
 fi
 
-pending="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At -c "SELECT count(*) FROM public.schema_migrations WHERE status <> 'applied';")"
+pending="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "SELECT count(*) FROM public.schema_migrations WHERE status <> 'applied';")"
 if [ "$pending" != "0" ]; then
   echo "Migration registry contains $pending non-applied row(s)." >&2
   exit 1
