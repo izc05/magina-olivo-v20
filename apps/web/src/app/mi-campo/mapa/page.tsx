@@ -55,7 +55,7 @@ type MapContextPayload = {
 };
 
 export default function MiCampoMapPage() {
-  const { status, apiConfigured, selectedWorkspaceId } = useAuth();
+  const { status, apiConfigured, previewEnabled, selectedWorkspaceId } = useAuth();
   const [context, setContext] = useState<MapContextPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,17 +94,19 @@ export default function MiCampoMapPage() {
     return () => { cancelled = true; };
   }, [apiConfigured, selectedWorkspaceId, status]);
 
-  const mapData = useMemo<FarmMapData>(() => {
-    if (!context) return demoData;
-    return {
-      id: context.field.id,
-      name: context.field.name,
-      geometry: context.field.geometry,
-      centroid: context.field.centroid,
-      representative_point: context.field.representative_point,
-      references: context.references,
-    };
-  }, [context]);
+  const mapData = useMemo<FarmMapData | null>(() => {
+    if (context) {
+      return {
+        id: context.field.id,
+        name: context.field.name,
+        geometry: context.field.geometry,
+        centroid: context.field.centroid,
+        representative_point: context.field.representative_point,
+        references: context.references,
+      };
+    }
+    return previewEnabled ? demoData : null;
+  }, [context, previewEnabled]);
 
   const catastroCount = context?.references.filter((item) => item.source === 'catastro').length ?? 0;
   const sigpacCount = context?.references.filter((item) => item.source === 'sigpac').length ?? 0;
@@ -121,6 +123,8 @@ export default function MiCampoMapPage() {
         </div>
       </header>
 
+      {!apiConfigured && !previewEnabled ? <section className="card map-platform-empty"><h2>Mapa privado no disponible</h2><p>Esta instalación no tiene configurada la API de Mi Campo.</p></section> : null}
+
       {apiConfigured && status === 'anonymous' ? <section className="card map-platform-empty">
         <h2>Entra para ver tus fincas</h2>
         <p>El mapa de Mi Campo es privado. La Guía de Mágina continúa disponible sin cuenta.</p>
@@ -129,13 +133,13 @@ export default function MiCampoMapPage() {
 
       {apiConfigured && status === 'loading' ? <section className="card map-platform-empty"><h2>Comprobando tu sesión…</h2><p>Preparando el contexto privado del mapa.</p></section> : null}
 
-      {!apiConfigured || status === 'authenticated' ? <>
+      {mapData && (previewEnabled || status === 'authenticated') ? <>
         <section className="card map-platform-shell">
           <FarmMap data={mapData}/>
           <div className="map-platform-statusbar">
             <span className="map-chip"><i/> Finca</span>
-            <span className="map-chip catastro"><i/> Catastro {liveMode ? catastroCount : '· pendiente'}</span>
-            <span className="map-chip sigpac"><i/> SIGPAC {liveMode ? sigpacCount : '· pendiente'}</span>
+            <span className="map-chip catastro"><i/> Catastro {liveMode ? catastroCount : '· preview'}</span>
+            <span className="map-chip sigpac"><i/> SIGPAC {liveMode ? sigpacCount : '· preview'}</span>
             <span className="map-chip">📍 Mi ubicación</span>
           </div>
         </section>
@@ -146,10 +150,10 @@ export default function MiCampoMapPage() {
         <section className="map-platform-info">
           <article className="card"><span className="map-info-icon">▱</span><div><strong>{context?.field.geometry_status === 'verified' ? 'Geometría verificada' : liveMode ? 'Geometría por completar' : 'Geometría demo'}</strong><small>{context?.field.geometry_source ? `Origen: ${context.field.geometry_source}` : 'La finca seguirá siendo la entidad principal'}</small></div></article>
           <article className="card"><span className="map-info-icon">◎</span><div><strong>{context?.field.calculated_area_ha != null ? `${context.field.calculated_area_ha.toLocaleString('es-ES')} ha` : 'Superficie pendiente'}</strong><small>{context ? `${context.field.municipality ?? 'Municipio sin indicar'} · ${context.field.province ?? 'Provincia sin indicar'}` : 'Vista conceptual de Sierra Mágina'}</small></div></article>
-          <article className="card"><span className="map-info-icon">⌁</span><div><strong>{context ? `${context.references.length} referencias` : 'Referencias separadas'}</strong><small>Vincular Catastro/SIGPAC no cambia la finca sin confirmación.</small></div></article>
+          <article className="card"><span className="map-info-icon">⌁</span><div><strong>{context ? `${context.references.length} referencias` : 'Referencias de preview'}</strong><small>Vincular Catastro/SIGPAC no cambia la finca sin confirmación.</small></div></article>
         </section>
 
-        {!apiConfigured ? <section className="card no-duplicate-note"><strong>Modo demostración</strong><p>GitHub Pages no tiene backend privado configurado. Este mapa sirve para validar la interfaz; al desplegar API + PostGIS se alimentará de `map-context`.</p></section> : null}
+        {previewEnabled && !apiConfigured ? <section className="card no-duplicate-note"><strong>Modo preview explícito</strong><p>Esta geometría es solo una demostración visual de GitHub Pages y no representa una finca persistida.</p></section> : null}
       </> : null}
     </div>
     <BottomNav active="/mi-campo"/>
