@@ -14,9 +14,10 @@
     "typecheck": "pnpm --filter @magina/contracts typecheck && pnpm --filter @magina/contracts build && pnpm --filter @magina/weather typecheck && pnpm --filter @magina/weather build && pnpm --filter @magina/jobs typecheck && pnpm --filter @magina/jobs build && pnpm --filter @magina/api typecheck && pnpm --filter @magina/worker typecheck && pnpm --filter @magina/web typecheck",
     "check:lockfile": "pnpm install --lockfile-only --frozen-lockfile",
     "check:env": "node scripts/check-env-contract.mjs",
+    "check:migrations": "node scripts/check-migrations.mjs",
     "audit:ci": "node scripts/audit-ci.mjs",
-    "check": "pnpm check:lockfile && pnpm check:env && pnpm typecheck && pnpm build",
-    "check:fast": "pnpm check:lockfile && pnpm check:env && pnpm typecheck",
+    "check": "pnpm check:lockfile && pnpm check:env && pnpm check:migrations && pnpm typecheck && pnpm build",
+    "check:fast": "pnpm check:lockfile && pnpm check:env && pnpm check:migrations && pnpm typecheck",
     "e2e:beta": "playwright test"
   },
   "devDependencies": {

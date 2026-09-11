@@ -10,6 +10,7 @@ on:
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - 'scripts/**'
+      - 'database/migrations/**'
       - 'apps/**/package.json'
       - 'apps/web/tsconfig.json'
       - 'tsconfig*.json'
@@ -57,6 +58,9 @@ jobs:
 
       - name: Verify environment contract
         run: pnpm check:env
+
+      - name: Verify migration sequence contract
+        run: pnpm check:migrations
 
       - name: Typecheck workspace
         run: pnpm typecheck
