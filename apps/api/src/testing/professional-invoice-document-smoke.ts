@@ -16,6 +16,7 @@ const invoiceId = 'a4444444-4444-4444-8444-444444444444';
 const documentId = 'a5555555-5555-4555-8555-555555555555';
 const versionId = 'a6666666-6666-4666-8666-666666666666';
 const headers = { 'x-workspace-id': workspaceId, 'x-user-id': userId, 'content-type': 'application/json' };
+const authHeaders = { 'x-workspace-id': workspaceId, 'x-user-id': userId };
 
 async function main() {
   await sql`
@@ -84,11 +85,11 @@ async function main() {
   const complete = await app.inject({
     method: 'POST',
     url: `/api/v1/documents/${documentId}/versions/${versionId}/complete`,
-    headers,
+    headers: authHeaders,
   });
   if (complete.statusCode !== 200) throw new Error(`Document complete failed: ${complete.statusCode} ${complete.body}`);
 
-  const detail = await app.inject({ method: 'GET', url: `/api/v1/professional/customers/${customerId}`, headers });
+  const detail = await app.inject({ method: 'GET', url: `/api/v1/professional/customers/${customerId}`, headers: authHeaders });
   if (detail.statusCode !== 200) throw new Error(`Customer detail failed: ${detail.statusCode} ${detail.body}`);
   const linked = detail.json().documents.find((item: { id: string }) => item.id === documentId);
   if (!linked || linked.invoice_id !== invoiceId || linked.kind !== 'sales_invoice') {
