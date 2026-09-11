@@ -92,6 +92,17 @@ Los ajustes privados continúan visibles únicamente en el centro de control.
 
 La biblioteca usa el mismo `StoragePort` S3-compatible de V20 (por ejemplo R2/S3), pero con un namespace corporativo separado: `platform-media`.
 
+El servidor ya inicializa ese almacenamiento desde las variables S3 existentes. Para habilitar subidas reales deben estar configuradas, como mínimo:
+
+```env
+S3_ENDPOINT=https://...
+S3_BUCKET=...
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+```
+
+Opcionales: `S3_REGION`, `S3_FORCE_PATH_STYLE`, `S3_PREFIX`, `S3_UPLOAD_TTL_SECONDS` y `S3_READ_TTL_SECONDS`.
+
 Flujo:
 
 1. el navegador calcula SHA-256 del archivo;
