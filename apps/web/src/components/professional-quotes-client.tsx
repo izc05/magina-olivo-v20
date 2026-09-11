@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { loadWorkDirectory, type CustomerSiteOption, type WorkPartyOption } from '@/lib/work-api-source';
 import { createProfessionalQuote, convertProfessionalQuote, loadProfessionalQuotes, updateProfessionalQuoteStatus, type ProfessionalQuote } from '@/lib/professional-quote-source';
@@ -11,11 +12,14 @@ function money(value: number) {
 }
 
 export function ProfessionalQuotesClient() {
+  const params = useSearchParams();
+  const requestedQuoteId = params.get('quoteId');
+  const requestedCustomerId = params.get('customerId');
   const { selectedWorkspaceId } = useAuth();
   const [quotes, setQuotes] = useState<ProfessionalQuote[]>([]);
   const [customers, setCustomers] = useState<WorkPartyOption[]>([]);
   const [sites, setSites] = useState<CustomerSiteOption[]>([]);
-  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(requestedQuoteId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +32,7 @@ export function ProfessionalQuotesClient() {
       setCustomers(directory.parties.filter((party) => party.roles?.includes('customer')));
       setSites(directory.sites);
       setQuotes(quoteRows);
+      if (requestedQuoteId && quoteRows.some((quote) => quote.id === requestedQuoteId)) setSelectedQuoteId(requestedQuoteId);
     } catch (cause) {
       console.error('Unable to load professional quotes', cause);
       setError('No se han podido cargar los presupuestos.');
@@ -96,7 +101,7 @@ export function ProfessionalQuotesClient() {
 
   async function convert(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedWorkspaceId || !selectedQuote) return;
+    if (!selectedWorkspaceId || !selectedQuote || selectedQuote.status !== 'accepted') return;
     const form = new FormData(event.currentTarget);
     const siteId = String(form.get('site') ?? selectedQuote.customer_site_id ?? '');
     const occurredOn = String(form.get('occurred_on') ?? '');
@@ -130,10 +135,10 @@ export function ProfessionalQuotesClient() {
     <header className="page-title"><span className="eyebrow dark">MI CAMPO · PROFESIONAL</span><h1>Presupuestos</h1><p>Presupuesta primero y convierte a trabajo solo cuando el cliente lo acepte.</p></header>
 
     <section className="section"><div className="section-head"><h2>Nuevo presupuesto</h2></div>
-      <form className="quick-record-form" onSubmit={createQuote}>
+      <form className="quick-record-form" onSubmit={createQuote} key={requestedCustomerId ?? 'quote-form'}>
         <section className="card record-panel"><div className="record-fields">
-          <label className="record-field wide"><span>Cliente</span><select className="record-control" name="customer" required><option value="">Seleccionar</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.display_name}</option>)}</select></label>
-          <label className="record-field wide"><span>Finca / sitio del cliente</span><select className="record-control" name="site"><option value="">Sin sitio todavía</option>{sites.map((site) => <option key={site.id} value={site.id}>{site.customer_name ? `${site.customer_name} · ` : ''}{site.name}</option>)}</select></label>
+          <label className="record-field wide"><span>Cliente</span><select className="record-control" name="customer" defaultValue={requestedCustomerId ?? ''} required><option value="">Seleccionar</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.display_name}</option>)}</select></label>
+          <label className="record-field wide"><span>Finca / sitio del cliente</span><select className="record-control" name="site"><option value="">Sin sitio todavía</option>{sites.filter((site) => !requestedCustomerId || site.customer_party_id === requestedCustomerId).map((site) => <option key={site.id} value={site.id}>{site.customer_name ? `${site.customer_name} · ` : ''}{site.name}</option>)}</select></label>
           <label className="record-field wide"><span>Concepto</span><input className="record-control" name="title" required /></label>
           <label className="record-field"><span>Nº presupuesto</span><input className="record-control" name="number" placeholder="P-2026-001" /></label>
           <label className="record-field"><span>Estado inicial</span><select className="record-control" name="status" defaultValue="draft"><option value="draft">Borrador</option><option value="sent">Enviado</option></select></label>
@@ -154,11 +159,12 @@ export function ProfessionalQuotesClient() {
         const quoted = Number(quote.total_eur ?? 0);
         const actualCost = Number(quote.actual_cost_eur ?? 0);
         const invoiced = Number(quote.invoice_total_eur ?? 0);
-        return <article className="card activity-item" key={quote.id}><div><small>{quote.quote_number || 'Sin número'} · {quote.status}</small><h3>{quote.title}</h3><p>{quote.customer_name}{quote.site_name ? ` · ${quote.site_name}` : ''}</p>{quote.status === 'converted' ? <small>Presupuestado {money(quoted)} · coste real {money(actualCost)}{quote.invoice_id ? ` · facturado ${money(invoiced)}` : ' · aún sin factura'}</small> : null}</div><div><strong>{money(quoted)}</strong><div className="record-actions">{quote.status === 'draft' ? <button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'sent')}>Marcar enviado</button> : null}{quote.status === 'sent' ? <><button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'accepted')}>Aceptar</button><button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'rejected')}>Rechazar</button></> : null}{quote.status === 'accepted' ? <button className="primary" type="button" onClick={() => setSelectedQuoteId(quote.id)}>Convertir a trabajo</button> : null}</div></div></article>;
+        const focused = quote.id === requestedQuoteId;
+        return <article className={`card activity-item${focused ? ' selected' : ''}`} key={quote.id}><div><small>{quote.quote_number || 'Sin número'} · {quote.status}</small><h3>{quote.title}</h3><p>{quote.customer_name}{quote.site_name ? ` · ${quote.site_name}` : ''}</p>{quote.status === 'converted' ? <small>Presupuestado {money(quoted)} · coste real {money(actualCost)}{quote.invoice_id ? ` · facturado ${money(invoiced)}` : ' · aún sin factura'}</small> : null}</div><div><strong>{money(quoted)}</strong><div className="record-actions">{quote.status === 'draft' ? <button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'sent')}>Marcar enviado</button> : null}{quote.status === 'sent' ? <><button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'accepted')}>Aceptar</button><button className="secondary-action" type="button" onClick={() => void changeStatus(quote.id, 'rejected')}>Rechazar</button></> : null}{quote.status === 'accepted' ? <button className="primary" type="button" onClick={() => setSelectedQuoteId(quote.id)}>Convertir a trabajo</button> : null}</div></div></article>;
       })}</div>
     </section>
 
-    {selectedQuote ? <section className="section"><div className="section-head"><h2>Convertir presupuesto aceptado</h2></div><form className="quick-record-form" onSubmit={convert}><section className="card record-panel"><div className="record-fields">
+    {selectedQuote?.status === 'accepted' ? <section className="section"><div className="section-head"><h2>Convertir presupuesto aceptado</h2></div><form className="quick-record-form" onSubmit={convert}><section className="card record-panel"><div className="record-fields">
       <label className="record-field wide"><span>Finca / sitio</span><select className="record-control" name="site" defaultValue={selectedQuote.customer_site_id ?? ''} required><option value="">Seleccionar</option>{sites.filter((site) => site.customer_party_id === selectedQuote.customer_party_id).map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}</select></label>
       <label className="record-field"><span>Fecha trabajo</span><input className="record-control" name="occurred_on" type="date" required /></label>
       <label className="record-field"><span>Tipo</span><select className="record-control" name="type" defaultValue="manual-work"><option value="manual-work">Trabajo manual</option><option value="pruning">Poda</option><option value="harvest">Recolección</option><option value="treatment">Tratamiento</option><option value="transport">Transporte</option><option value="machinery-work">Maquinaria</option><option value="other">Otro</option></select></label>
