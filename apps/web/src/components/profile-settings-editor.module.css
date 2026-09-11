@@ -1,0 +1,119 @@
+.card {
+  display: grid;
+  gap: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.field > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(42, 55, 34, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  color: inherit;
+  font: inherit;
+  padding: 0.7rem 0.8rem;
+}
+
+.field textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible,
+.primaryButton:focus-visible {
+  outline: 3px solid rgba(104, 130, 65, 0.25);
+  outline-offset: 2px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 54px;
+  padding: 0.7rem 0;
+  border-top: 1px solid rgba(42, 55, 34, 0.1);
+}
+
+.toggle > span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.toggle small,
+.hint {
+  color: var(--muted, #66705f);
+  line-height: 1.45;
+}
+
+.toggle input {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.hint,
+.error {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.error {
+  color: #9b2f25;
+  font-weight: 700;
+}
+
+.primaryButton {
+  min-height: 46px;
+  border: 0;
+  border-radius: 14px;
+  padding: 0.75rem 1rem;
+  background: #465d2f;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 620px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .toggle {
+    align-items: flex-start;
+  }
+
+  .primaryButton {
+    width: 100%;
+  }
+}

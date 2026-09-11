@@ -82,6 +82,17 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   const workMetric = page.locator('article').filter({ hasText: 'trabajos registrados' }).first();
   await expect(workMetric).toContainText('1');
 
+  await page.getByRole('button', { name: 'Datos', exact: true }).click();
+  const manageBoundariesLink = page.getByRole('link', { name: 'Gestionar límites', exact: true });
+  const manageBoundariesHref = await manageBoundariesLink.getAttribute('href');
+  expect(manageBoundariesHref).toBeTruthy();
+  const manageBoundariesUrl = new URL(manageBoundariesHref!, 'http://127.0.0.1:3000');
+  expect(manageBoundariesUrl.pathname.replace(/\/$/, '')).toBe('/mi-campo/mapa');
+  expect(manageBoundariesUrl.searchParams.get('fieldId')).toBe(fieldId);
+  await manageBoundariesLink.click();
+  await expect(page.getByRole('heading', { name: 'Tu finca sobre el terreno' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Finca', exact: true })).toHaveValue(fieldId!);
+
   await page.goto('/mi-campo/campana');
   await expect(page.getByRole('heading', { name: 'Campaña', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox')).toContainText('2026/27');
