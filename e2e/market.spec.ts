@@ -37,7 +37,7 @@ test.describe('Aceite y Mercado', () => {
     expect(cached.status()).toBe(304);
   });
 
-  test('muestra precios trazables y no desborda en móvil', async ({ page, request }) => {
+  test('muestra precios trazables hidratados desde API y no desborda en móvil', async ({ page, request }) => {
     const apiResponse = await request.get(`${apiUrl}/api/v1/public/market/olive-oil`);
     const payload = (await apiResponse.json()) as {
       market: { series: Array<{ latest: { priceEurKg: number } }> };
@@ -47,8 +47,15 @@ test.describe('Aceite y Mercado', () => {
 
     await expect(page.getByRole('heading', { name: 'El precio del aceite, explicado sin ruido.' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Último dato validado' })).toBeVisible();
+    await expect(page.locator('[data-market-source="api"]')).toBeVisible();
+    await expect(page.getByText('Dato API validado', { exact: true })).toBeVisible();
+
     for (const series of payload.market.series) {
-      await expect(page.getByText(series.latest.priceEurKg.toLocaleString('es-ES', { minimumFractionDigits: 2 }), { exact: true })).toBeVisible();
+      const formattedPrice = series.latest.priceEurKg.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      await expect(page.getByText(formattedPrice, { exact: true }).first()).toBeVisible();
     }
     await expect(page.getByRole('link', { name: 'Ver fuente oficial' })).toHaveAttribute('href', /juntadeandalucia\.es/);
 
@@ -64,6 +71,7 @@ test.describe('Aceite y Mercado', () => {
 
   test('recalcula el valor teórico de una cosecha', async ({ page }) => {
     await page.goto('/mercado');
+    await expect(page.locator('[data-market-source="api"]')).toBeVisible();
 
     const kilos = page.getByLabel('Kilos de aceituna');
     const yieldInput = page.getByLabel('Rendimiento industrial');
