@@ -16,16 +16,24 @@ const workId = 'b6666666-6666-4666-8666-666666666666';
 const invoiceId = 'b7777777-7777-4777-8777-777777777777';
 const headers = { 'x-workspace-id': workspaceId, 'x-user-id': userId, 'content-type': 'application/json' };
 
-async function main() {
+async function seed() {
+  await sql`INSERT INTO users (id, primary_email, display_name) VALUES (${userId}::uuid, 'print-ci@example.test', 'Print CI') ON CONFLICT (id) DO NOTHING`.execute(db);
+  await sql`INSERT INTO workspaces (id, name, type) VALUES (${workspaceId}::uuid, 'Print CI Workspace', 'professional') ON CONFLICT (id) DO NOTHING`.execute(db);
+  await sql`INSERT INTO workspace_memberships (workspace_id, user_id, role, status) VALUES (${workspaceId}::uuid, ${userId}::uuid, 'owner', 'active') ON CONFLICT (workspace_id, user_id) DO NOTHING`.execute(db);
   await sql`
-    INSERT INTO users (id, primary_email, display_name) VALUES (${userId}::uuid, 'print-ci@example.test', 'Print CI') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO workspaces (id, name, type) VALUES (${workspaceId}::uuid, 'Print CI Workspace', 'professional') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO workspace_memberships (workspace_id, user_id, role, status) VALUES (${workspaceId}::uuid, ${userId}::uuid, 'owner', 'active') ON CONFLICT (workspace_id, user_id) DO NOTHING;
     INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, legal_name, tax_id, roles)
-    VALUES (${customerId}::uuid, ${workspaceId}::uuid, 'b8888888-8888-4888-8888-888888888888'::uuid, 'organization', 'Cliente Print CI', 'Cliente Print SL', 'B12345678', ARRAY['customer']) ON CONFLICT (id) DO NOTHING;
-    INSERT INTO customer_sites (id, workspace_id, client_operation_id, customer_party_id, name, active)
-    VALUES (${siteId}::uuid, ${workspaceId}::uuid, 'b9999999-9999-4999-8999-999999999999'::uuid, ${customerId}::uuid, 'Finca Cliente Print', TRUE) ON CONFLICT (id) DO NOTHING;
+    VALUES (${customerId}::uuid, ${workspaceId}::uuid, 'b8888888-8888-4888-8888-888888888888'::uuid, 'organization', 'Cliente Print CI', 'Cliente Print SL', 'B12345678', ARRAY['customer'])
+    ON CONFLICT (id) DO NOTHING
   `.execute(db);
+  await sql`
+    INSERT INTO customer_sites (id, workspace_id, client_operation_id, customer_party_id, name, active)
+    VALUES (${siteId}::uuid, ${workspaceId}::uuid, 'b9999999-9999-4999-8999-999999999999'::uuid, ${customerId}::uuid, 'Finca Cliente Print', TRUE)
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
+}
+
+async function main() {
+  await seed();
 
   const profile = await app.inject({ method: 'PUT', url: '/api/v1/professional/business-profile', headers, payload: {
     legal_name: 'Servicios Mágina SL', tax_id: 'A12345678', address: 'Calle Olivo 1', postal_code: '23537', municipality: 'Bedmar', province: 'Jaén', email: 'facturacion@example.test', phone: '600000000', payment_terms: 'Transferencia a 30 días', footer_note: 'Gracias por confiar en nosotros.',
@@ -48,7 +56,7 @@ async function main() {
       ${workId}::uuid, ${workspaceId}::uuid, ${siteId}::uuid, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'::uuid,
       ${quoteId}::uuid, 'pruning', '2026-09-20', 'Poda y trituración', 'third-party', ${customerId}::uuid,
       1210, 1210, 0, 'pending', ${userId}::uuid
-    ) ON CONFLICT (id) DO NOTHING;
+    ) ON CONFLICT (id) DO NOTHING
   `.execute(db);
 
   const invoice = await app.inject({ method: 'POST', url: '/api/v1/professional/invoices', headers, payload: {
