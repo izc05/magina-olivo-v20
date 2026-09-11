@@ -11,6 +11,7 @@ import { useFieldContext } from '@/lib/use-field-context';
 import { saveApiRecord, supportsApiRecord } from '@/lib/record-api-source';
 import { completePlannedTask } from '@/lib/planned-task-data-source';
 import { uploadDomainAttachment, type DocumentKind } from '@/lib/document-upload-source';
+import { linkDocumentToDomain } from '@/lib/document-data-source';
 import { useAuth } from '@/components/auth-provider';
 import { ArrowIcon, MapPinIcon } from '@/components/icons';
 
@@ -68,6 +69,8 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [completionWarning, setCompletionWarning] = useState<string | null>(null);
   const [attachmentWarning, setAttachmentWarning] = useState<string | null>(null);
+  const [sourceLinkWarning, setSourceLinkWarning] = useState<string | null>(null);
+  const [sourceLinked, setSourceLinked] = useState(false);
   const [attachmentSaved, setAttachmentSaved] = useState(false);
   const [savedRemotely, setSavedRemotely] = useState(false);
   const { context, ready, found } = useFieldContext();
@@ -98,12 +101,30 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
     setSaveError(null);
     setCompletionWarning(null);
     setAttachmentWarning(null);
+    setSourceLinkWarning(null);
+    setSourceLinked(false);
     setAttachmentSaved(false);
 
     try {
       if (context.source === 'api' && selectedWorkspaceId && supportsApiRecord(type.slug)) {
         const savedRecord = await saveApiRecord({ slug: type.slug, fieldId: context.id, workspaceId: selectedWorkspaceId, data });
         setSavedRemotely(true);
+
+        if (sourceDocumentId && savedRecord.domainType === 'expense') {
+          try {
+            await linkDocumentToDomain({
+              workspaceId: selectedWorkspaceId,
+              documentId: sourceDocumentId,
+              fieldId: context.id,
+              domainType: 'expense',
+              domainRecordId: savedRecord.recordId,
+            });
+            setSourceLinked(true);
+          } catch (linkError) {
+            console.warn('Expense saved but source document link failed', linkError);
+            setSourceLinkWarning('El gasto se ha guardado, pero no se pudo enlazar automáticamente con el documento de origen. El documento sigue conservado en la finca.');
+          }
+        }
 
         const attachment = formData.get('attachment');
         if (attachment instanceof File && attachment.size > 0) {
@@ -186,6 +207,8 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         <h1>{type.shortLabel} añadido a {context.name}</h1>
         <p>{savedRemotely ? 'El backend ha guardado el registro y sus proyecciones asociadas.' : context.source === 'api' ? 'Este tipo todavía se conserva como borrador local mientras se conecta al modelo Trabajo.' : 'El registro se ha guardado con la finca seleccionada.'}</p>
         {sourceDocumentId ? <p>✓ Los datos partieron de un documento revisado; el registro solo se creó después de esta confirmación.</p> : null}
+        {sourceLinked ? <p>✓ El documento de origen ha quedado enlazado al registro creado.</p> : null}
+        {sourceLinkWarning ? <p className="form-error" role="status">{sourceLinkWarning}</p> : null}
         {completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : null}
         {attachmentWarning ? <p className="form-error" role="status">{attachmentWarning}</p> : null}
         <div className="success-effects">
