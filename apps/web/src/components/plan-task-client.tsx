@@ -212,9 +212,10 @@ export function PlanTaskClient() {
           listPlannedTasks({ workspaceId: selectedWorkspaceId, status: 'all' }),
         ]);
         if (cancelled) return;
-        setFarms(nextFarms.filter((farm) => farm.status !== 'archived'));
+        const activeFarms = nextFarms.filter((farm) => farm.status !== 'archived');
+        setFarms(activeFarms);
         setTasks(nextTasks);
-        setCreationFieldId((current) => current || (nextFarms.length === 1 ? nextFarms[0]!.id : ''));
+        setCreationFieldId((current) => current || (activeFarms.length === 1 ? activeFarms[0]!.id : ''));
       } catch (cause) {
         console.error('Unable to load planning workspace', cause);
         if (!cancelled) setError('No se ha podido cargar la planificación. Comprueba la conexión e inténtalo de nuevo.');
@@ -256,7 +257,6 @@ export function PlanTaskClient() {
     if (filterStatus !== 'active') return [{ title: filterStatus === 'completed' ? 'Realizadas' : filterStatus === 'cancelled' ? 'Canceladas' : 'Historial', tasks: filteredTasks }];
     const now = new Date();
     const todayKey = taskDayKey(now.toISOString());
-    const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
     const weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7);
     const buckets = { overdue: [] as PlannedTask[], today: [] as PlannedTask[], week: [] as PlannedTask[], later: [] as PlannedTask[] };
     for (const task of filteredTasks) {
