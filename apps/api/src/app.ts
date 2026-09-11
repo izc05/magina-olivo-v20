@@ -5,6 +5,7 @@ import type { DatabaseClient } from './db/client.js';
 import { hydrateRequestAuthentication, prototypeAuthWarning } from './request-context.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerMeRoutes } from './routes/me.js';
+import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerFieldRoutes } from './routes/fields.js';
 import { registerIrrigationRoutes } from './routes/irrigations.js';
 import { registerObservationRoutes } from './routes/observations.js';
@@ -131,6 +132,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
 
   registerAuthRoutes(app, db, googleVerifier);
   registerMeRoutes(app, db);
+  registerMiOlivoRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db);
@@ -152,7 +154,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerFinancialAttentionRoutes(app, db);
   registerHomePriorityPreferenceRoutes(app, db);
   registerFinancialNotificationRoutes(app, db, notificationQueue);
-  registerCommercialNotificationRoutes(app, db);
+  registerCommercialNotificationRoutes(app, db, notificationQueue);
   registerPlannedTaskRoutes(app, db);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);
