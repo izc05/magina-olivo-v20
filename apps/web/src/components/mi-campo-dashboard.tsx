@@ -7,7 +7,6 @@ import { useAuth } from '@/components/auth-provider';
 import { getPreviewFarms, loadWorkspaceFarms, summarizeFarms, type FarmListItem } from '@/lib/farm-data-source';
 
 const quick = [
-  ['＋', 'Registrar', 'Nueva actividad', '/mi-campo/registrar'],
   ['☀', 'Hoy', 'Pendientes y próximos trabajos', '/mi-campo/hoy'],
   ['🫒', 'Campaña', 'Producción, costes y cobros', '/mi-campo/campana'],
   ['▱', 'Mapa', 'Fincas y referencias', '/mi-campo/mapa'],
@@ -17,6 +16,11 @@ const quick = [
 function farmHref(farm: FarmListItem) {
   const params = new URLSearchParams({ id: farm.id, source: farm.source });
   return `/mi-campo/fincas/ver?${params.toString()}`;
+}
+
+function fieldActionHref(path: string, farm: FarmListItem) {
+  const params = new URLSearchParams({ fieldId: farm.id, source: farm.source });
+  return `${path}?${params.toString()}`;
 }
 
 export function MiCampoDashboard() {
@@ -61,6 +65,7 @@ export function MiCampoDashboard() {
   }, [apiConfigured, selectedWorkspaceId, status]);
 
   const summary = useMemo(() => summarizeFarms(farms), [farms]);
+  const defaultFarm = farms[0];
 
   return <>
     <header className="page-title mi-campo-title">
@@ -89,9 +94,10 @@ export function MiCampoDashboard() {
     </section>
 
     <section className="section"><div className="section-head"><h2>Acciones</h2><span /></div><div className="quick-grid">
-      {quick.map(([icon, title, text, href]) => <Link href={href} className="card quick premium-quick" key={title}><span className="icon">{title === 'Registrar' ? <PlusIcon /> : icon}</span><div><strong>{title}</strong><small>{text}</small></div><ArrowIcon className="quick-arrow" /></Link>)}
+      {defaultFarm ? <Link href={fieldActionHref('/mi-campo/registrar', defaultFarm)} className="card quick premium-quick"><span className="icon"><PlusIcon /></span><div><strong>Registrar</strong><small>Nueva actividad · {defaultFarm.name}</small></div><ArrowIcon className="quick-arrow" /></Link> : null}
+      {quick.map(([icon, title, text, href]) => <Link href={href} className="card quick premium-quick" key={title}><span className="icon">{icon}</span><div><strong>{title}</strong><small>{text}</small></div><ArrowIcon className="quick-arrow" /></Link>)}
     </div></section>
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">ESTRUCTURA V20</span><h2>Finca primero. Campaña y agenda agregan sin duplicar.</h2></div><Link href="/mi-campo/registrar">Registrar <ArrowIcon /></Link></section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">ESTRUCTURA V20</span><h2>Finca primero. Campaña y agenda agregan sin duplicar.</h2></div>{defaultFarm ? <Link href={fieldActionHref('/mi-campo/registrar', defaultFarm)}>Registrar <ArrowIcon /></Link> : <Link href="/mi-campo/fincas/nueva">Añadir finca <ArrowIcon /></Link>}</section>
   </>;
 }
