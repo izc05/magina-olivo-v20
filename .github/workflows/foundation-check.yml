@@ -1,0 +1,55 @@
+name: V20 foundation check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.env.example'
+      - '.nvmrc'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'scripts/**'
+      - 'apps/**/package.json'
+      - 'packages/**/package.json'
+      - 'tsconfig*.json'
+      - '.github/workflows/foundation-check.yml'
+      - '.github/workflows/environment-contract-check.yml'
+      - '.github/workflows/lockfile-generation.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify environment contract
+        run: pnpm check:env
+
+      - name: Typecheck workspace
+        run: pnpm typecheck
+
+      - name: Build workspace
+        run: pnpm build
