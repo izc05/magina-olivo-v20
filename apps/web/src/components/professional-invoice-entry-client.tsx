@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { createProfessionalInvoice, loadInvoiceCandidates, type InvoiceCandidateWork } from '@/lib/professional-invoice-source';
 import { loadWorkDirectory, type WorkPartyOption } from '@/lib/work-api-source';
@@ -12,9 +13,12 @@ function money(value: number) {
 }
 
 export function ProfessionalInvoiceEntryClient() {
+  const params = useSearchParams();
+  const preselectedCustomerId = params.get('customerId') ?? '';
+  const preselectedWorkId = params.get('workId') ?? '';
   const { selectedWorkspaceId } = useAuth();
   const [customers, setCustomers] = useState<WorkPartyOption[]>([]);
-  const [customerId, setCustomerId] = useState('');
+  const [customerId, setCustomerId] = useState(preselectedCustomerId);
   const [works, setWorks] = useState<InvoiceCandidateWork[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [taxPercent, setTaxPercent] = useState('21');
@@ -33,7 +37,8 @@ export function ProfessionalInvoiceEntryClient() {
         if (cancelled) return;
         const next = directory.parties.filter((party) => party.roles?.includes('customer'));
         setCustomers(next);
-        if (next[0]) setCustomerId(next[0].id);
+        const preferred = next.find((item) => item.id === preselectedCustomerId)?.id ?? next[0]?.id ?? '';
+        setCustomerId(preferred);
       })
       .catch((cause) => {
         console.error('Unable to load customers', cause);
@@ -41,7 +46,7 @@ export function ProfessionalInvoiceEntryClient() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedWorkspaceId]);
+  }, [preselectedCustomerId, selectedWorkspaceId]);
 
   useEffect(() => {
     if (!selectedWorkspaceId || !customerId) {
@@ -54,14 +59,18 @@ export function ProfessionalInvoiceEntryClient() {
       .then((items) => {
         if (cancelled) return;
         setWorks(items);
-        setSelectedIds(items.filter((item) => Number(item.charge_eur ?? 0) > 0).map((item) => item.id));
+        if (preselectedWorkId && items.some((item) => item.id === preselectedWorkId)) {
+          setSelectedIds([preselectedWorkId]);
+        } else {
+          setSelectedIds(items.filter((item) => Number(item.charge_eur ?? 0) > 0).map((item) => item.id));
+        }
       })
       .catch((cause) => {
         console.error('Unable to load invoice candidates', cause);
         if (!cancelled) setError('No se han podido cargar los trabajos pendientes de facturar.');
       });
     return () => { cancelled = true; };
-  }, [customerId, selectedWorkspaceId]);
+  }, [customerId, preselectedWorkId, selectedWorkspaceId]);
 
   const selectedWorks = useMemo(() => works.filter((item) => selectedIds.includes(item.id)), [selectedIds, works]);
   const total = selectedWorks.reduce((sum, item) => sum + Number(item.charge_eur ?? 0), 0);
@@ -116,6 +125,7 @@ export function ProfessionalInvoiceEntryClient() {
 
   return <>
     <header className="page-title"><span className="eyebrow dark">MI CAMPO · PROFESIONAL</span><h1>Nueva factura</h1><p>Agrupa trabajos del mismo cliente. El importe a cobrar de cada trabajo se considera total final; el IVA se desglosa dentro de ese total.</p></header>
+    {preselectedWorkId ? <section className="card register-principle"><div><strong>Trabajo preseleccionado desde seguimiento comercial</strong><small>Comprueba cliente, trabajo, impuestos y estado antes de guardar.</small></div></section> : null}
     <form className="quick-record-form" onSubmit={submit}>
       <section className="card record-panel"><div className="record-fields">
         <label className="record-field wide"><span>Cliente</span><select className="record-control" value={customerId} onChange={(event) => setCustomerId(event.target.value)} required><option value="" disabled>Seleccionar cliente</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.display_name}</option>)}</select></label>
