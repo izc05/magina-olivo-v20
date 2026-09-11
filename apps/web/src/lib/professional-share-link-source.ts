@@ -6,6 +6,7 @@ export type ProfessionalShareLink = {
   entity_type: CommercialEntityType;
   entity_id: string;
   document_id: string;
+  delivery_id?: string | null;
   expires_at: string;
   revoked_at: string | null;
   access_count: number;
@@ -18,6 +19,7 @@ export async function createProfessionalShareLink(input: {
   entityType: CommercialEntityType;
   entityId: string;
   documentId: string;
+  deliveryId?: string;
   expiresInDays?: number;
 }) {
   const result = await apiFetch<{ share: ProfessionalShareLink; token: string; path: string }>('/api/v1/professional/share-links', {
@@ -27,10 +29,17 @@ export async function createProfessionalShareLink(input: {
       entity_type: input.entityType,
       entity_id: input.entityId,
       document_id: input.documentId,
+      delivery_id: input.deliveryId,
       expires_in_days: input.expiresInDays ?? 7,
     }),
   });
-  return { ...result, url: `${apiBaseUrl}${result.path}` };
+  return {
+    ...result,
+    apiUrl: `${apiBaseUrl}${result.path}`,
+    publicPageUrl: typeof window === 'undefined'
+      ? result.path
+      : `${window.location.origin}/documento-publico?token=${encodeURIComponent(result.token)}`,
+  };
 }
 
 export async function loadProfessionalShareLinks(workspaceId: string, entityType: CommercialEntityType, entityId: string) {
