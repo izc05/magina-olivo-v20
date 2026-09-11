@@ -40,7 +40,7 @@ const places = {
       featured: false,
       starts_at: null,
       ends_at: null,
-      media_url: null,
+      media_url: '//evil.example/jimena.jpg',
       external_url: 'javascript:alert(1)',
       sort_order: 1,
       updated_at: '2026-09-11T20:00:00.000Z',
@@ -89,7 +89,7 @@ test('pueblos searches and opens a published CMS place', async ({ page }) => {
   await expectNoHorizontalOverflow(page);
 });
 
-test('pueblos does not render unsafe external protocols', async ({ page }) => {
+test('pueblos does not render unsafe external or media protocols', async ({ page }) => {
   await mockPlaces(page);
   await page.setViewportSize({ width: 430, height: 900 });
   await page.goto('/pueblos?slug=jimena-e2e');
@@ -97,6 +97,7 @@ test('pueblos does not render unsafe external protocols', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Jimena E2E', exact: true })).toBeVisible();
   await expect(page.locator('dl').getByText('Jimena', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Enlace no seguro/ })).toHaveCount(0);
+  await expect(page.locator('img[src="//evil.example/jimena.jpg"]')).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
 });
 
