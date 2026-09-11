@@ -35,13 +35,14 @@ const root = rootParsed.values;
 const staging = stagingParsed.values;
 const failures = [...rootParsed.failures, ...stagingParsed.failures];
 
-const deploymentOnlyKeys = new Set(['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB', 'API_PORT']);
+const deploymentOnlyKeys = new Set(['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB', 'WEB_PORT', 'API_PORT']);
 const required = [
   'NODE_ENV',
   'POSTGRES_USER',
   'POSTGRES_PASSWORD',
   'POSTGRES_DB',
   'DATABASE_URL',
+  'WEB_PORT',
   'API_PORT',
   'HOST',
   'PORT',
@@ -93,6 +94,7 @@ const exactValues = new Map([
   ['NODE_ENV', 'production'],
   ['POSTGRES_USER', 'magina_staging'],
   ['POSTGRES_DB', 'magina_staging'],
+  ['WEB_PORT', '8080'],
   ['API_PORT', '3001'],
   ['HOST', '0.0.0.0'],
   ['PORT', '3001'],
@@ -166,8 +168,10 @@ function requireIntegerRange(key, minimum, maximum = Number.MAX_SAFE_INTEGER) {
   if (!Number.isInteger(value) || value < minimum || value > maximum) failures.push(`${key} debe ser un entero entre ${minimum} y ${maximum}`);
 }
 
+requireIntegerRange('WEB_PORT', 1, 65535);
 requireIntegerRange('API_PORT', 1, 65535);
 requireIntegerRange('PORT', 1, 65535);
+if (staging.get('WEB_PORT') === staging.get('API_PORT')) failures.push('WEB_PORT y API_PORT deben ser distintos en staging');
 requireIntegerRange('S3_UPLOAD_TTL_SECONDS', 1);
 requireIntegerRange('S3_READ_TTL_SECONDS', 1);
 requireIntegerRange('OCR_MAX_BYTES', 1048576, 104857600);
