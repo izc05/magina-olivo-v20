@@ -122,7 +122,7 @@ export function registerProfessionalCustomerRoutes(app: FastifyInstance, db: Dat
       return { ...value, pending_eur: Math.max(Number(value.total_eur) - Number(value.collected_eur), 0) };
     });
     const normalizedQuotes = quotes.rows.map((row) => {
-      const value = row as Record<string, unknown> & { total_eur: number; real_cost_eur: number; invoiced_eur: number };
+      const value = row as Record<string, unknown> & { status: string; total_eur: number; real_cost_eur: number; invoiced_eur: number };
       const realCost = Number(value.real_cost_eur ?? 0);
       const invoiced = Number(value.invoiced_eur ?? 0);
       return { ...value, invoiced_less_real_cost_eur: invoiced - realCost };
