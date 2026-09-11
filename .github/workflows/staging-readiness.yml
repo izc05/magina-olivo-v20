@@ -1,0 +1,112 @@
+name: V20 staging readiness
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.nvmrc'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/server.ts'
+      - 'apps/api/src/runtime-security.ts'
+      - 'apps/api/src/request-context.ts'
+      - 'apps/api/src/http/**'
+      - 'apps/api/src/auth/**'
+      - 'apps/api/src/testing/staging-security-smoke.ts'
+      - 'apps/web/package.json'
+      - 'scripts/check-staging-contract.mjs'
+      - 'scripts/check-web-bundle-budget.mjs'
+      - 'database/migrations/**'
+      - 'deploy/staging/**'
+      - '.github/workflows/staging-readiness.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina_staging
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina_staging"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate staging production-safety contract
+        run: node scripts/check-staging-contract.mjs
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v6
+        with:
+          path: apps/web/.next/cache
+          key: ${{ runner.os }}-next-staging-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/**') }}
+          restore-keys: |
+            ${{ runner.os }}-next-staging-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - name: Build API dependencies
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/api build
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      - name: Apply staging migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina_staging -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Production security smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_staging
+          NODE_ENV: production
+          CORS_ALLOWED_ORIGINS: https://staging.example.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+        run: node apps/api/dist/testing/staging-security-smoke.js
+
+      - name: Production web build and bundle budget
+        env:
+          NEXT_PUBLIC_API_URL: https://api-staging.example.test
+          NEXT_PUBLIC_PREVIEW_MODE: 'false'
+        run: pnpm --filter @magina/web build
