@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { loadAttentionSummary } from '@/lib/attention-data-source';
 import { loadFinancialAttention } from '@/lib/financial-attention-data-source';
+import { loadHomePriorityPreferences } from '@/lib/home-priority-preferences';
 import { buildHomePriorities, HOME_PRIORITY_RULE_VERSION, type HomePriorityItem } from '@/lib/home-priority-rules';
 
 function levelLabel(level: HomePriorityItem['level']) {
@@ -29,9 +30,10 @@ export function HomePriorityCard() {
     Promise.all([
       loadAttentionSummary({ workspaceId: selectedWorkspaceId, limit: 8 }),
       loadFinancialAttention({ workspaceId: selectedWorkspaceId, limit: 8 }),
+      loadHomePriorityPreferences(selectedWorkspaceId),
     ])
-      .then(([attention, financial]) => {
-        if (!cancelled) setItems(buildHomePriorities({ attention: attention.items, financial, limit: 4 }));
+      .then(([attention, financial, preferences]) => {
+        if (!cancelled) setItems(buildHomePriorities({ attention: attention.items, financial, preferences, limit: 4 }));
       })
       .catch((error) => {
         console.warn('Home priorities unavailable', error);
@@ -46,13 +48,13 @@ export function HomePriorityCard() {
   if (!items.length) return null;
 
   return <section className="section">
-    <div className="section-head"><div><h2>Prioridad ahora</h2><small>Solo lo más importante en este momento</small></div><Link href="/mi-campo/hoy">Ver todo</Link></div>
+    <div className="section-head"><div><h2>Prioridad ahora</h2><small>Solo lo más importante en este momento</small></div><Link href="/perfil">Ajustar</Link></div>
     <div className="card feed today-list">
       {items.map((item, index) => <div className="feed-row" key={item.id}>
         <div className="feed-copy">
           <strong>{index + 1}. {item.title}</strong>
           <small>{item.subtitle}</small>
-          <small>{item.reason}{item.detail ? ` · ${item.detail}` : ''}</small>
+          <small>{item.reason}{item.detail ? ` · ${item.detail}` : ''}{item.protected ? ' · prioridad protegida' : ''}</small>
         </div>
         <div className="record-actions">
           <span className="pending-pill">{levelLabel(item.level)}</span>
@@ -60,6 +62,6 @@ export function HomePriorityCard() {
         </div>
       </div>)}
     </div>
-    <p className="subtle">Ordenado con reglas {HOME_PRIORITY_RULE_VERSION}. La prioridad organiza la pantalla; no modifica datos ni ejecuta acciones automáticamente.</p>
+    <p className="subtle">Ordenado con reglas {HOME_PRIORITY_RULE_VERSION}. Las preferencias pueden reducir economía y documentos, pero nunca ocultar tareas atrasadas ni recomendaciones “Evitar”.</p>
   </section>;
 }
