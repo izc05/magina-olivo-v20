@@ -22,11 +22,15 @@ export function registerProfessionalInvoiceRoutes(app: FastifyInstance, db: Data
              COALESCE((SELECT SUM(wc.amount_eur) FROM work_collections wc WHERE wc.work_id = wr.id), 0)::double precision AS collected_eur
       FROM work_records wr
       LEFT JOIN customer_sites cs ON cs.id = wr.customer_site_id
-      LEFT JOIN professional_invoice_works piw ON piw.work_id = wr.id
       WHERE wr.workspace_id = ${context.workspaceId}::uuid
         AND wr.customer_party_id = ${customer.data}::uuid
         AND wr.performed_for = 'third-party'
-        AND piw.work_id IS NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM professional_invoice_works piw
+          JOIN professional_invoices pi ON pi.id = piw.invoice_id
+          WHERE piw.work_id = wr.id AND pi.status <> 'void'
+        )
       ORDER BY wr.occurred_on DESC, wr.created_at DESC
     `.execute(database);
     return { works: result.rows };
@@ -88,12 +92,17 @@ export function registerProfessionalInvoiceRoutes(app: FastifyInstance, db: Data
       customer_party_id: string | null;
       performed_for: string;
       charge_eur: number | string | null;
-      existing_invoice_id: string | null;
+      active_invoice_id: string | null;
     }>`
       SELECT wr.id, wr.customer_party_id, wr.performed_for, wr.charge_eur,
-             piw.invoice_id AS existing_invoice_id
+             (
+               SELECT piw.invoice_id
+               FROM professional_invoice_works piw
+               JOIN professional_invoices pi ON pi.id = piw.invoice_id
+               WHERE piw.work_id = wr.id AND pi.status <> 'void'
+               LIMIT 1
+             ) AS active_invoice_id
       FROM work_records wr
-      LEFT JOIN professional_invoice_works piw ON piw.work_id = wr.id
       WHERE wr.workspace_id = ${context.workspaceId}::uuid
         AND wr.id = ANY(${ids}::uuid[])
     `.execute(database);
@@ -103,7 +112,7 @@ export function registerProfessionalInvoiceRoutes(app: FastifyInstance, db: Data
       if (work.performed_for !== 'third-party' || work.customer_party_id !== input.customer_party_id) {
         return reply.code(409).send({ error: 'invoice_work_customer_mismatch', work_id: work.id });
       }
-      if (work.existing_invoice_id) return reply.code(409).send({ error: 'work_already_invoiced', work_id: work.id });
+      if (work.active_invoice_id) return reply.code(409).send({ error: 'work_already_invoiced', work_id: work.id });
     }
 
     const invoiceId = input.entity_id ?? randomUUID();
@@ -174,6 +183,14 @@ export function registerProfessionalInvoiceRoutes(app: FastifyInstance, db: Data
           UPDATE work_records wr SET invoice_reference = ${nextNumber}, updated_at = now()
           FROM professional_invoice_works piw
           WHERE piw.invoice_id = ${parsedId.data}::uuid AND piw.work_id = wr.id
+        `.execute(trx);
+      }
+      if (nextStatus === 'void') {
+        await sql`
+          UPDATE work_records wr SET invoice_reference = NULL, updated_at = now()
+          FROM professional_invoice_works piw
+          WHERE piw.invoice_id = ${parsedId.data}::uuid AND piw.work_id = wr.id
+            AND wr.invoice_reference = ${current.invoice_number}
         `.execute(trx);
       }
       return invoice.rows[0];
