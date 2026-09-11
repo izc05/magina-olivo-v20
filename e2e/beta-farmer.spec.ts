@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
 
-test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ page }) => {
+test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ page }, testInfo) => {
+  const farmName = `Finca E2E ${testInfo.retry + 1}`;
+
   await page.goto('/mi-campo/fincas/nueva');
 
   await expect(page.getByRole('heading', { name: '¿Cómo llamáis a esta finca?' })).toBeVisible();
-  await page.getByLabel('Nombre de la finca *').fill('Finca E2E');
+  await page.getByLabel('Nombre de la finca *').fill(farmName);
   await page.getByLabel('Nº de olivas *').fill('120');
 
   const placeSelect = page.getByLabel('Pueblo / localidad');
@@ -17,7 +19,7 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
 
   await page.getByRole('button', { name: 'Guardar finca →' }).click();
   await expect(page.getByText('FINCA GUARDADA EN MI CAMPO')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Finca E2E' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: farmName, exact: true })).toBeVisible();
 
   const registerHref = await page.getByRole('link', { name: /Registrar trabajo/ }).getAttribute('href');
   expect(registerHref).toBeTruthy();
@@ -45,10 +47,10 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   await page.locator('input[name="date"]').fill('2026-12-12');
   await page.locator('input[name="kg"]').fill('1842');
   await page.locator('input[name="cooperative"]').fill('SCA E2E');
-  await page.locator('input[name="ticket"]').fill('E2E-001');
+  await page.locator('input[name="ticket"]').fill(`E2E-${testInfo.retry + 1}`);
   await page.getByRole('button', { name: 'Guardar entrega →' }).click();
   await expect(page.getByText('COSECHA GUARDADA EN MÁGINA')).toBeVisible();
-  await expect(page.getByRole('heading', { name: /1\.842 kg en Finca E2E/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: `1.842 kg en ${farmName}`, exact: true })).toBeVisible();
 
   await page.goto(`/mi-campo/registrar/rendimiento?fieldId=${encodeURIComponent(fieldId!)}&source=api`);
   await expect(page.getByRole('heading', { name: 'Registrar rendimiento' })).toBeVisible();
@@ -60,18 +62,18 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   await expect(page.getByRole('heading', { name: 'Rendimiento guardado' })).toBeVisible();
 
   await page.goto('/mi-campo');
-  const createdFarmLink = page.locator(`a[href*="id=${fieldId}"]`).filter({ hasText: 'Finca E2E' });
+  const createdFarmLink = page.locator(`a[href*="id=${fieldId}"]`).filter({ hasText: farmName });
   await expect(createdFarmLink).toBeVisible();
   await createdFarmLink.click();
-  await expect(page.getByRole('heading', { name: 'Finca E2E' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: farmName, exact: true })).toBeVisible();
   const workMetric = page.locator('article').filter({ hasText: 'trabajos registrados' }).first();
   await expect(workMetric).toContainText('1');
 
   await page.goto('/mi-campo/campana');
-  await expect(page.getByRole('heading', { name: 'Campaña' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Campaña', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox')).toContainText('2026/27');
-  const deliveredMetric = page.locator('article').filter({ hasText: 'aceituna entregada' }).first();
-  await expect(deliveredMetric.getByText('1.842 kg', { exact: true })).toBeVisible();
+  const farmCampaignRow = page.locator('.feed-row').filter({ hasText: farmName }).first();
+  await expect(farmCampaignRow).toContainText('1.842 kg');
   const yieldMetric = page.locator('article').filter({ hasText: 'rendimiento ponderado' }).first();
   await expect(yieldMetric.getByText('21,4 %', { exact: true })).toBeVisible();
 });
