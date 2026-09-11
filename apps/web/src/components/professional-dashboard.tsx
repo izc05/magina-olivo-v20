@@ -80,7 +80,7 @@ export function ProfessionalDashboard() {
     </section>
 
     <section className="section">
-      <div className="section-head"><h2>Resumen profesional</h2><Link href="/mi-campo/registrar/trabajo" className="detail-link"><PlusIcon /> Registrar trabajo</Link></div>
+      <div className="section-head"><h2>Resumen profesional</h2><div className="action-row"><Link href="/mi-campo/profesional/cobrar" className="detail-link">Registrar cobro</Link><Link href="/mi-campo/registrar/trabajo" className="detail-link"><PlusIcon /> Registrar trabajo</Link></div></div>
       <div className="quick-grid">
         <div className="card quick"><div><strong>{money(data.chargedEur)}</strong><small>facturado / devengado</small></div></div>
         <div className="card quick"><div><strong>{money(data.collectedEur)}</strong><small>cobrado</small></div></div>
@@ -140,6 +140,7 @@ export function ProfessionalDashboard() {
           <div>
             <strong>{money(work.chargeEur)}</strong>
             <small>{work.pendingEur > 0 ? `${money(work.pendingEur)} pendiente` : 'Cobrado'}</small>
+            {work.pendingEur > 0 ? <Link className="detail-link" href={`/mi-campo/profesional/cobrar?workId=${encodeURIComponent(work.id)}`}>Registrar cobro</Link> : null}
           </div>
         </article>)}
       </div>
