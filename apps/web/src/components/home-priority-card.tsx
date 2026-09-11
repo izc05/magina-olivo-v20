@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { loadAttentionSummary } from '@/lib/attention-data-source';
 import { loadFinancialAttention } from '@/lib/financial-attention-data-source';
+import { loadProfessionalAttention } from '@/lib/professional-attention-data-source';
 import { loadHomePriorityPreferences } from '@/lib/home-priority-preferences';
 import { buildHomePriorities, HOME_PRIORITY_RULE_VERSION, type HomePriorityItem } from '@/lib/home-priority-rules';
 
@@ -30,10 +31,11 @@ export function HomePriorityCard() {
     Promise.all([
       loadAttentionSummary({ workspaceId: selectedWorkspaceId, limit: 8 }),
       loadFinancialAttention({ workspaceId: selectedWorkspaceId, limit: 8 }),
+      loadProfessionalAttention(selectedWorkspaceId, 8),
       loadHomePriorityPreferences(selectedWorkspaceId),
     ])
-      .then(([attention, financial, preferences]) => {
-        if (!cancelled) setItems(buildHomePriorities({ attention: attention.items, financial, preferences, limit: 4 }));
+      .then(([attention, financial, professional, preferences]) => {
+        if (!cancelled) setItems(buildHomePriorities({ attention: attention.items, financial, professional, preferences, limit: 4 }));
       })
       .catch((error) => {
         console.warn('Home priorities unavailable', error);
@@ -62,6 +64,6 @@ export function HomePriorityCard() {
         </div>
       </div>)}
     </div>
-    <p className="subtle">Ordenado con reglas {HOME_PRIORITY_RULE_VERSION}. Las preferencias pueden reducir economía y documentos, pero nunca ocultar tareas atrasadas ni recomendaciones “Evitar”.</p>
+    <p className="subtle">Ordenado con reglas {HOME_PRIORITY_RULE_VERSION}. Las preferencias pueden reducir economía, documentos y seguimiento profesional, pero nunca ocultar tareas atrasadas ni recomendaciones “Evitar”.</p>
   </section>;
 }
