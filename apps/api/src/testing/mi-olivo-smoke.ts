@@ -90,6 +90,26 @@ try {
   assert.ok(activity.json().rhythm.active_weeks >= 2, 'created_at spread across recent days should create a multi-week rhythm');
   assert.equal(activity.json().rhythm.grace_active, false);
 
+  await sql`
+    UPDATE irrigation_records
+    SET created_at = created_at - interval '7 days'
+    WHERE workspace_id = ${workspaceId}::uuid
+      AND created_by = ${userId}::uuid
+  `.execute(db);
+
+  const grace = await app.inject({ method: 'GET', url: '/api/v1/mi-olivo', headers });
+  assert.equal(grace.statusCode, 200, grace.body);
+  assert.equal(grace.json().balance, 95, 'grace week must never change the ledger balance');
+  assert.equal(grace.json().rhythm.grace_active, true, 'previous-week activity should activate one grace week');
+  assert.ok(grace.json().rhythm.active_weeks >= 2, 'grace should preserve the consecutive active-week projection');
+
+  await sql`
+    UPDATE irrigation_records
+    SET created_at = created_at + interval '7 days'
+    WHERE workspace_id = ${workspaceId}::uuid
+      AND created_by = ${userId}::uuid
+  `.execute(db);
+
   const paused = await app.inject({
     method: 'PUT',
     url: '/api/v1/mi-olivo/preferences',
