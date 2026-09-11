@@ -38,18 +38,16 @@ chmod 700 "$BACKUP_DIR" 2>/dev/null || true
 
 echo "Validating private staging environment..."
 docker run --rm \
+  -e STAGING_PREFLIGHT_ALLOW_RESERVED_HOSTS="${STAGING_PREFLIGHT_ALLOW_RESERVED_HOSTS:-false}" \
   -v "$ROOT:/app:ro" \
   -w /app \
   "$NODE_PREFLIGHT_IMAGE" \
   node scripts/staging-env-preflight.mjs "${ENV_FILE#$ROOT/}"
 
-echo "Building staging images..."
-compose build api worker web
-
-echo "Starting PostgreSQL for pre-migration backup..."
+echo "Starting PostgreSQL before any migration..."
 compose up -d postgres
 postgres_ready=false
-for attempt in $(seq 1 60); do
+for attempt in $(seq 1 90); do
   if compose exec -T postgres sh -ec 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' >/dev/null 2>&1; then
     postgres_ready=true
     break
@@ -57,16 +55,19 @@ for attempt in $(seq 1 60); do
   sleep 1
 done
 if [ "$postgres_ready" != true ]; then
-  echo "PostgreSQL did not become ready for backup." >&2
+  echo "PostgreSQL did not become ready before backup." >&2
   exit 1
 fi
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 backup="$BACKUP_DIR/magina-staging-before-$stamp.dump"
-echo "Creating PostgreSQL backup at $backup"
+echo "Creating mandatory pre-migration PostgreSQL backup at $backup"
 compose exec -T postgres sh -ec 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$backup"
 test -s "$backup"
 chmod 600 "$backup" 2>/dev/null || true
+
+echo "Building staging images..."
+compose build api worker web
 
 echo "Starting migrations, API, worker and web..."
 compose up -d web worker
@@ -100,6 +101,11 @@ fi
 
 grep -Fx 'ok' /tmp/magina-staging-web-health.txt >/dev/null
 
+if [ -z "$(compose ps --status running -q worker 2>/dev/null || true)" ]; then
+  echo "Staging worker is not running after deployment." >&2
+  exit 1
+fi
+
 echo "Verifying migration runner is a no-op after successful startup..."
 if ! second_run="$(compose run --rm migrate 2>&1)"; then
   printf '%s\n' "$second_run" >&2
@@ -123,4 +129,4 @@ if [ "$applied_count" != "$expected_count" ]; then
 fi
 
 compose ps
-printf 'Local staging health passed. API: http://%s  Web: http://%s\n' "$api_address" "$web_address"
+printf 'Local staging health passed. API: http://%s  Web: http://%s  Backup: %s\n' "$api_address" "$web_address" "$backup"
