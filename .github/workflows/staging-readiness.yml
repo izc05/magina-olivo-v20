@@ -14,6 +14,8 @@ on:
       - 'apps/worker/package.json'
       - 'apps/web/package.json'
       - 'scripts/check-web-bundle-budget.mjs'
+      - 'scripts/staging-env-preflight.mjs'
+      - 'scripts/staging-postdeploy-smoke.mjs'
       - '.dockerignore'
       - 'deploy/staging/**'
       - '.github/workflows/staging-readiness.yml'
@@ -76,6 +78,50 @@ jobs:
             exit 1
           fi
           grep -Eq '^S3_BUCKET=.*staging' deploy/staging/.env.example
+
+      - name: Validate staging env preflight
+        run: |
+          if node scripts/staging-env-preflight.mjs deploy/staging/.env.example >/tmp/example-preflight.log 2>&1; then
+            echo 'The committed example must not pass as a real staging environment.' >&2
+            exit 1
+          fi
+
+          cat >/tmp/magina-staging-valid.env <<'EOF'
+          NODE_ENV=production
+          POSTGRES_USER=magina_staging
+          POSTGRES_PASSWORD=staging-ci-password
+          POSTGRES_DB=magina_staging
+          DATABASE_URL=postgresql://magina_staging:staging-ci-password@postgres:5432/magina_staging
+          API_PORT=3001
+          CORS_ALLOWED_ORIGINS=https://web.staging.magina.invalid
+          NEXT_PUBLIC_API_URL=https://api.staging.magina.invalid
+          NEXT_PUBLIC_PREVIEW_MODE=false
+          GOOGLE_CLIENT_ID=staging-ci-google-client
+          GOOGLE_CLIENT_SECRET=staging-ci-google-secret
+          SESSION_SECRET=staging-ci-session-secret-at-least-32-bytes-long
+          ALLOW_DEV_AUTH_HEADERS=false
+          S3_ENDPOINT=https://s3.staging.magina.invalid
+          S3_REGION=auto
+          S3_BUCKET=magina-staging-ci
+          S3_ACCESS_KEY_ID=staging-ci-access-key
+          S3_SECRET_ACCESS_KEY=staging-ci-secret-key
+          S3_FORCE_PATH_STYLE=false
+          WORKER_MODULES=ocr,radar,notifications
+          OCR_PROVIDER=tesseract
+          OCR_TESSERACT_LANGUAGES=spa+eng
+          OCR_MAX_BYTES=20971520
+          OCR_MAX_PDF_PAGES=12
+          OCR_TESSERACT_TIMEOUT_MS=120000
+          OCR_TESSERACT_DPI=200
+          OCR_TESSERACT_PSM=3
+          VAPID_PUBLIC_KEY=staging-ci-vapid-public
+          VAPID_PRIVATE_KEY=staging-ci-vapid-private
+          VAPID_SUBJECT=mailto:staging@magina.invalid
+          AEMET_API_KEY=staging-ci-aemet
+          PUBLIC_WEB_ORIGIN=https://web.staging.magina.invalid
+          EOF
+
+          node scripts/staging-env-preflight.mjs /tmp/magina-staging-valid.env
 
       - name: Build API and worker dependencies
         run: |
@@ -170,14 +216,23 @@ jobs:
           trap cleanup EXIT
 
           compose up -d api
+          ready=false
           for attempt in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:3001/health >/tmp/staging-health.json; then
-              cat /tmp/staging-health.json
-              exit 0
+              ready=true
+              break
             fi
             sleep 1
           done
 
-          compose ps
-          compose logs --no-color postgres migrate api
-          exit 1
+          if [ "$ready" != true ]; then
+            compose ps
+            compose logs --no-color postgres migrate api
+            exit 1
+          fi
+
+          cat /tmp/staging-health.json
+          STAGING_API_URL=http://127.0.0.1:3001 \
+          STAGING_WEB_ORIGIN=https://staging.example.com \
+          STAGING_ALLOW_HTTP=true \
+          node scripts/staging-postdeploy-smoke.mjs
