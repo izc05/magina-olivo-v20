@@ -19,6 +19,10 @@ CREATE INDEX IF NOT EXISTS professional_quote_decisions_share_idx
   ON professional_quote_decisions (share_link_id, decided_at DESC)
   WHERE share_link_id IS NOT NULL;
 
+CREATE UNIQUE INDEX IF NOT EXISTS professional_quote_decisions_one_public_per_share_uidx
+  ON professional_quote_decisions (share_link_id)
+  WHERE share_link_id IS NOT NULL AND decision_source='public_link';
+
 COMMENT ON COLUMN professional_public_share_links.delivery_id IS 'Concrete prepared/confirmed delivery associated with this public link when available.';
 COMMENT ON COLUMN professional_quote_decisions.requester_ip IS 'Minimal audit metadata for public quote decisions. Treat as personal data and apply normal retention/privacy controls.';
 COMMENT ON COLUMN professional_quote_decisions.user_agent IS 'Truncated user-agent captured for public decision audit; not used as identity proof.';
