@@ -67,6 +67,14 @@ test('Inicio y Hoy conectan finca, actividad y tarea real', async ({ page }, tes
   await page.goto('/mi-campo/hoy');
   await expect(page.getByRole('heading', { name: 'Hoy', exact: true })).toBeVisible();
   await expect(page.getByText(taskTitle, { exact: true })).toBeVisible();
+
+  const planNewHref = await page.getByRole('link', { name: 'Planificar nueva', exact: true }).getAttribute('href');
+  expect(planNewHref).toBeTruthy();
+  const planNewUrl = new URL(planNewHref!, 'http://127.0.0.1:3000');
+  expect(planNewUrl.pathname).toBe('/mi-campo/planificar');
+  expect(planNewUrl.searchParams.get('fieldId')).toBe(fieldId);
+  expect(planNewUrl.searchParams.get('source')).toBe('api');
+
   const todayFilter = page.getByRole('button', { name: /^Hoy \(\d+\)$/ });
   await expect(todayFilter).toBeVisible();
   await todayFilter.click();
