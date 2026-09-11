@@ -25,6 +25,8 @@ const kinds: Array<{ value: DocumentKind; label: string }> = [
   { value: 'other', label: 'Otros' },
 ];
 
+const ocrKinds = new Set<DocumentKind>(['invoice', 'purchase_receipt', 'quote', 'delivery_ticket', 'yield_result']);
+
 function kindLabel(kind: string) {
   return kinds.find((item) => item.value === kind)?.label.replace(/s$/, '') ?? kind;
 }
@@ -103,7 +105,10 @@ export function FarmDocumentsPanel() {
     {error ? <p className="form-error" role="alert">{error}</p> : null}
     {loading ? <section className="card"><p>Cargando documentos…</p></section> : null}
     {!loading && documents.length === 0 ? <section className="card"><p>{filtersActive ? 'No hay documentos con estos filtros.' : 'Aún no hay documentos vinculados a esta finca.'}</p></section> : null}
-    {visibleDocuments.length ? <div className="card feed today-list">{visibleDocuments.map((document) => <div className="feed-row" key={document.id}><div className="feed-copy"><strong>{document.title}</strong><small>{kindLabel(document.kind)} · {document.created_at.slice(0, 10)}{document.campaign_name ? ` · ${document.campaign_name}` : ' · sin campaña'}{document.domain_type ? ` · vinculado a ${document.domain_type}` : ''}</small></div><button type="button" className="secondary-action" onClick={() => void openDocument(document.id)} disabled={openingId === document.id}>{openingId === document.id ? 'Abriendo…' : 'Abrir'}</button></div>)}</div> : null}
+    {visibleDocuments.length ? <div className="card feed today-list">{visibleDocuments.map((document) => {
+      const reviewHref = `/mi-campo/documentos/revisar?documentId=${encodeURIComponent(document.id)}&fieldId=${encodeURIComponent(context.id)}&source=${encodeURIComponent(context.source)}`;
+      return <div className="feed-row" key={document.id}><div className="feed-copy"><strong>{document.title}</strong><small>{kindLabel(document.kind)} · {document.created_at.slice(0, 10)}{document.campaign_name ? ` · ${document.campaign_name}` : ' · sin campaña'}{document.domain_type ? ` · vinculado a ${document.domain_type}` : ''}</small></div><div className="record-actions">{ocrKinds.has(document.kind as DocumentKind) ? <Link className="secondary-action action-link" href={reviewHref}>Analizar</Link> : null}<button type="button" className="secondary-action" onClick={() => void openDocument(document.id)} disabled={openingId === document.id}>{openingId === document.id ? 'Abriendo…' : 'Abrir'}</button></div></div>;
+    })}</div> : null}
     {!filtersActive && documents.length > 5 ? <p className="subtle">Mostrando los 5 más recientes. Usa los filtros para consultar el catálogo.</p> : null}
   </section>;
 }
