@@ -32,8 +32,13 @@ La Beta no se considerará cerrada hasta cumplir simultáneamente:
 - ✅ API incorpora CORS explícito con credenciales y allowlist de orígenes; en producción no se permite ningún origen si `CORS_ALLOWED_ORIGINS` no está configurado.
 - ✅ `.env.example` documenta `CORS_ALLOWED_ORIGINS` y `NEXT_PUBLIC_PREVIEW_MODE=false` para staging/producción.
 - ✅ Se ha creado el workflow `V20 beta browser E2E` con PostgreSQL/PostGIS, API real, Next real y Playwright Chromium.
-- ✅ El primer recorrido browser cubre: sesión de desarrollo con usuario/membership real → nueva finca → localización pospuesta honestamente → registrar trabajo → ficha de finca → campaña.
+- ✅ El recorrido browser cubre ya: sesión dev con usuario/membership real → nueva finca → localización pospuesta honestamente → registrar trabajo → entrega de cosecha → rendimiento posterior → ficha de finca → campaña.
 - ✅ Los fallos Playwright conservan trace y screenshot como artifact para diagnóstico.
+- ✅ Auditoría móvil automática preparada en 360/390/430 px para Inicio, Mi Campo, Ficha, Registrar, Hoy, Campaña, Profesional, Presupuestos y Perfil.
+- ✅ La auditoría móvil comprueba scroll horizontal y controles interactivos claramente demasiado pequeños (<28 px) como umbral de fallo duro.
+- ✅ API privada responde `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` y política de referrer/permisos.
+- ✅ El hosting estático incluye `_headers` con hardening equivalente compatible con Cloudflare Pages.
+- ✅ El workflow E2E verifica los headers de seguridad de una ruta privada antes de ejecutar Playwright.
 
 ## Clasificación
 
@@ -48,20 +53,21 @@ La Beta no se considerará cerrada hasta cumplir simultáneamente:
 
 | Área | Estado | Prioridad | Hallazgo / acción |
 |---|---|---:|---|
-| Inicio privado | HYBRID CONTROLADO | P1 | API real en Beta; preview solo con flag explícito. Pendiente auditoría móvil y componentes secundarios. |
+| Inicio privado | HYBRID CONTROLADO | P1 | API real en Beta; entra ya en auditoría móvil multi-viewport. |
 | Inicio público / actualidad | PREVIEW | P1 beta pública | Noticias, eventos y patrocinado siguen estáticos. |
-| Mi Campo | HYBRID CONTROLADO | P1 | Fincas API reales; preview solo explícita. |
-| Ficha de finca | HYBRID CONTROLADO | P1 | API-first; ya entra en browser E2E. |
+| Mi Campo | HYBRID CONTROLADO | P1 | Fincas API reales; preview solo explícita; auditoría móvil activa. |
+| Ficha de finca | HYBRID CONTROLADO / E2E | P1 | API-first; entra en browser E2E y auditoría móvil con finca real sembrada. |
 | Nueva finca — datos básicos | REAL / E2E | — | Alta `/api/v1/fields` y catálogo territorial reales, incluidos en Playwright. |
 | Nueva finca — localización | HONESTA / PENDIENTE | P1 | No falsea vínculo; selector real sigue pendiente. |
 | Rutas `fincas/local` | PREVIEW AISLADA | P1 | Bloqueadas fuera de preview. |
-| Registrar | HYBRID CONTROLADO / E2E | P1 | API-first; primer registro de trabajo cubierto por Playwright. Falta ampliar a cosecha y otros tipos. |
+| Registrar | HYBRID CONTROLADO / E2E | P1 | Trabajo, cosecha y rendimiento cubiertos por Playwright; auditoría móvil activa. |
 | Planificar | REAL | P1 | Contexto API-first. |
-| Hoy / agenda | REAL | P1 | Falta móvil/E2E. |
-| Campaña | HYBRID CONTROLADO / E2E BÁSICO | P1 | La pantalla y campaña activa entran en Playwright; falta recorrido visual con cosecha/rendimiento. |
-| Profesional | REAL | P1 | Muy avanzado; falta consolidación UX/eventos de decisión. |
-| Documentos/OCR | REAL / HARDENED | P1 | Merge legacy corregido; full candidate ejecuta document smoke. Falta navegador después de estabilizar E2E base. |
-| Perfil | REAL / HONESTO | P1 | Sin demo implícita ni CTAs ficticios; edición/exportación quedan explícitamente pendientes. |
+| Hoy / agenda | REAL | P1 | Auditoría móvil activa; falta recorrido funcional más profundo. |
+| Campaña | HYBRID CONTROLADO / E2E | P1 | Playwright valida kilos y rendimiento ponderado tras registros reales. |
+| Profesional | REAL | P1 | Muy avanzado; ya entra en auditoría móvil. Falta consolidación UX/eventos de decisión. |
+| Presupuestos | REAL | P1 | Entra en auditoría móvil; falta cliente/documento público en matriz determinista. |
+| Documentos/OCR | REAL / HARDENED | P1 | Merge legacy corregido; full candidate ejecuta document smoke. Navegador completo sigue pendiente de storage/fixture controlado. |
+| Perfil | REAL / HONESTO | P1 | Sin demo implícita ni CTAs ficticios; auditoría móvil activa. |
 | GIS Catastro/SIGPAC backend | REAL | P1 | Falta selector de alta/edición. |
 | Mapa Mi Campo | HYBRID CONTROLADO | P1 | API real; demo solo en preview. |
 | Tiempo AEMET | REAL | P1 | Revisar error/stale/empty en móvil. |
@@ -101,10 +107,10 @@ Estado actual: núcleo privado principal corregido, incluyendo documentos y Perf
 4. Abrir finca. **Browser E2E.**
 5. Registrar trabajo. **Browser E2E.**
 6. Ver actividad y costes. **Browser E2E básico en ficha.**
-7. Registrar entrega. **Pendiente de ampliar Playwright; cubierto por smoke API.**
-8. Añadir rendimiento posterior. **Pendiente de ampliar Playwright; cubierto por smoke API.**
-9. Ver campaña. **Browser E2E básico; agregados cubiertos por smoke API.**
-10. Documento → OCR → revisión → guardado explícito. **Smoke API; navegador pendiente.**
+7. Registrar entrega. **Browser E2E con 1.842 kg.**
+8. Añadir rendimiento posterior. **Browser E2E con 21,4 %.**
+9. Ver campaña. **Browser E2E valida kilos y rendimiento ponderado.**
+10. Documento → OCR → revisión → guardado explícito. **Smoke API; navegador pendiente de fixture/storage controlado.**
 11. Tiempo/radar/alertas. **Smokes API; navegador/móvil pendiente.**
 
 El full candidate cubre por smokes reales finca, riego/idempotencia, proyecciones, cosecha, rendimiento, map-context, documento/OCR metadata, economía y profesional. Playwright añade validación real del navegador y del límite web/API.
@@ -127,14 +133,35 @@ El full candidate cubre por smokes reales finca, riego/idempotencia, proyeccione
 
 Objetivos mínimos: 360 px, 390–430 px, tablet y escritorio.
 
-El primer Playwright usa viewport 390×844 como base móvil. Cuando el recorrido base esté verde se añadirá matriz 360 / 430 / desktop para auditoría de layout, no antes.
+Cobertura automática actual: 360 / 390 / 430 px en Inicio, Mi Campo, Ficha de finca, Registrar, Registrar trabajo, Hoy, Campaña, Profesional, Presupuestos y Perfil. Comprueba desbordamiento horizontal y controles críticos por debajo de 28 px. El objetivo UX final de targets táctiles seguirá siendo mayor y se revisará visualmente; 28 px se usa solo como umbral duro de regresión.
+
+Pendiente: Cliente, Presupuesto/Factura concreta, documento público, mapas y estados loading/error/empty; después tablet y escritorio.
 
 Revisar scroll horizontal, botones, densidad, sticky bars, targets táctiles, teclado, tablas, mapas, loading/error/empty, contraste/foco/labels.
+
+## P1 — Seguridad / performance
+
+Aplicado:
+
+- CORS restrictivo por allowlist.
+- API privada `no-store`.
+- `nosniff`, anti-frame, referrer y permissions policy en API.
+- `_headers` equivalente para hosting estático.
+- Assertions automáticas de headers en `V20 beta browser E2E`.
+
+Pendiente de staging:
+
+- CSP basada en inventario real de orígenes externos.
+- HSTS solo cuando el dominio HTTPS definitivo esté confirmado.
+- revisión de tamaño de bundles, requests iniciales y mapas.
+- límites/catálogos documentales y pruebas de subida grande.
+- observabilidad y rate limiting público/privado según endpoint.
 
 ## P1 — Hardening conocido
 
 - CI candidate completo.
-- Browser E2E base en verde y luego ampliación cosecha/rendimiento/documentos.
+- Browser E2E en verde sobre HEAD candidato.
+- Documento/OCR visual con storage/fixture controlado.
 - Semántica campaña agrícola/profesional consistente en backend/agregado.
 - Parser-specific OCR fixtures.
 - Races/idempotencia pendientes de liquidaciones/cobros.
@@ -142,7 +169,7 @@ Revisar scroll horizontal, botones, densidad, sticky bars, targets táctiles, te
 - Financial attention: prioridad/orden y counts totales.
 - Catálogo documental: paginación/búsqueda/límite de subida.
 - Observabilidad workers/notificaciones.
-- Seguridad/performance.
+- CSP/HSTS/rate limiting y performance final en staging.
 
 ## P2 — Después de Beta núcleo
 
@@ -159,10 +186,11 @@ Revisar scroll horizontal, botones, densidad, sticky bars, targets táctiles, te
 2. ~~Convertir preview implícita del núcleo privado en modo explícito.~~ ✅
 3. ~~Auditar documentos/OCR y Perfil.~~ ✅
 4. Ejecutar E2E de navegador y reparar. **En curso.**
-5. Ampliar E2E a cosecha/rendimiento/documentos.
-6. Auditoría móvil multi-viewport.
-7. Seguridad/performance.
-8. Staging real.
-9. Actualizar PR y decidir candidate final.
+5. ~~Ampliar E2E a cosecha/rendimiento.~~ ✅ preparado; pendiente verde CI.
+6. Ampliar E2E a documento/OCR con fixture/storage controlado.
+7. Auditoría móvil multi-viewport. **En curso.**
+8. Seguridad/performance. **Hardening básico aplicado; staging pendiente.**
+9. Staging real.
+10. Actualizar PR y decidir candidate final.
 
 Este documento es el checklist vivo de Cierre Beta. No se añade una función grande nueva salvo que cierre un P0/P1.
