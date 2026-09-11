@@ -1,0 +1,41 @@
+name: Temporary pin CI Actions
+
+on:
+  push:
+    branches:
+      - chore/v20-cleanup-structure
+    paths:
+      - 'scripts/ci-action-pins.mjs'
+      - 'scripts/pin-ci-actions.mjs'
+      - '.github/workflows/pin-actions-apply.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  pin-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Foundation branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: chore/v20-cleanup-structure
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Pin all approved external Actions
+        run: node scripts/pin-ci-actions.mjs
+
+      - name: Remove temporary workflow and publish pinned references
+        run: |
+          git rm .github/workflows/pin-actions-apply.yml
+          git add .github/workflows scripts/ci-action-pins.mjs scripts/pin-ci-actions.mjs
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'ci: pin GitHub Actions to immutable SHAs'
+          git push origin HEAD:chore/v20-cleanup-structure
