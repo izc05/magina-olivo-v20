@@ -4,8 +4,67 @@ import { uuidSchema } from '@magina/contracts';
 import type { DatabaseClient } from '../db/client.js';
 import { requireContext, requireDatabase } from '../http/helpers.js';
 
+type InvoicePrintRow = {
+  id: string;
+  invoice_number: string | null;
+  issued_on: string | null;
+  due_on: string | null;
+  status: string;
+  subtotal_eur: number | string;
+  tax_eur: number | string;
+  total_eur: number | string;
+  notes: string | null;
+  issuer_snapshot_json: Record<string, unknown> | null;
+  customer_snapshot_json: Record<string, unknown> | null;
+  customer_id: string;
+  customer_name: string;
+  customer_legal_name: string | null;
+  customer_tax_id: string | null;
+  customer_phone: string | null;
+  customer_email: string | null;
+};
+
+type InvoiceLineRow = {
+  work_id: string;
+  occurred_on: string;
+  title: string;
+  site_name: string | null;
+  amount_eur: number | string;
+};
+
+type QuotePrintRow = {
+  id: string;
+  quote_number: string | null;
+  title: string;
+  issued_on: string | null;
+  valid_until: string | null;
+  status: string;
+  subtotal_eur: number | string;
+  tax_eur: number | string;
+  total_eur: number | string;
+  notes: string | null;
+  issuer_snapshot_json: Record<string, unknown> | null;
+  customer_snapshot_json: Record<string, unknown> | null;
+  customer_id: string;
+  customer_name: string;
+  customer_legal_name: string | null;
+  customer_tax_id: string | null;
+  customer_phone: string | null;
+  customer_email: string | null;
+  site_name: string | null;
+};
+
+type QuoteLineRow = {
+  description: string;
+  quantity: number | string;
+  unit: string | null;
+  unit_price_eur: number | string;
+  line_total_eur: number | string;
+  sort_order: number;
+};
+
 async function issuerForWorkspace(database: DatabaseClient, workspaceId: string) {
-  const result = await sql`
+  const result = await sql<Record<string, unknown>>`
     SELECT w.id AS workspace_id, w.name AS workspace_name,
            COALESCE(NULLIF(pbp.legal_name, ''), w.name) AS legal_name,
            pbp.tax_id, pbp.address, pbp.postal_code, pbp.municipality, pbp.province,
@@ -25,7 +84,7 @@ export function registerProfessionalPrintRoutes(app: FastifyInstance, db: Databa
     const parsed = uuidSchema.safeParse((request.params as { invoiceId?: string }).invoiceId);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_invoice_id' });
 
-    const invoiceResult = await sql`
+    const invoiceResult = await sql<InvoicePrintRow>`
       SELECT pi.id, pi.invoice_number, pi.issued_on::text, pi.due_on::text, pi.status,
              pi.subtotal_eur::double precision, pi.tax_eur::double precision, pi.total_eur::double precision,
              pi.notes, pi.issuer_snapshot_json, pi.customer_snapshot_json,
@@ -38,7 +97,7 @@ export function registerProfessionalPrintRoutes(app: FastifyInstance, db: Databa
     const invoice = invoiceResult.rows[0];
     if (!invoice) return reply.code(404).send({ error: 'invoice_not_found' });
 
-    const lines = await sql`
+    const lines = await sql<InvoiceLineRow>`
       SELECT wr.id AS work_id, wr.occurred_on::text, wr.title,
              cs.name AS site_name,
              piw.amount_eur::double precision AS amount_eur
@@ -89,7 +148,7 @@ export function registerProfessionalPrintRoutes(app: FastifyInstance, db: Databa
     const parsed = uuidSchema.safeParse((request.params as { quoteId?: string }).quoteId);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_quote_id' });
 
-    const quoteResult = await sql`
+    const quoteResult = await sql<QuotePrintRow>`
       SELECT pq.id, pq.quote_number, pq.title, pq.issued_on::text, pq.valid_until::text, pq.status,
              pq.subtotal_eur::double precision, pq.tax_eur::double precision, pq.total_eur::double precision,
              pq.notes, pq.issuer_snapshot_json, pq.customer_snapshot_json,
@@ -104,7 +163,7 @@ export function registerProfessionalPrintRoutes(app: FastifyInstance, db: Databa
     const quote = quoteResult.rows[0];
     if (!quote) return reply.code(404).send({ error: 'quote_not_found' });
 
-    const lines = await sql`
+    const lines = await sql<QuoteLineRow>`
       SELECT description, quantity::double precision, unit,
              unit_price_eur::double precision, line_total_eur::double precision, sort_order
       FROM professional_quote_lines
