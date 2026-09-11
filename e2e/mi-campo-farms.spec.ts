@@ -50,8 +50,9 @@ test('Mi Campo obliga a elegir finca y Registrar conserva la selección', async 
 test('la ficha mantiene sus secciones y acciones sobre la finca seleccionada', async ({ page }) => {
   await page.goto(`/mi-campo/fincas/ver?id=${seededFieldId}&source=api`);
 
+  const farmHeader = page.locator('header.page-title');
   await expect(page.getByRole('heading', { name: 'Finca Mobile Audit', exact: true })).toBeVisible();
-  await expect(page.getByText('80 olivas', { exact: true })).toBeVisible();
+  await expect(farmHeader).toContainText('80 olivas');
 
   const registerLinks = page.locator(`a[href*="/mi-campo/registrar"][href*="fieldId=${seededFieldId}"]`);
   await expect(registerLinks.first()).toBeVisible();
