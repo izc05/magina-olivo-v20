@@ -87,7 +87,7 @@ export function FarmDetailShell() {
               estimatedOilKg: remoteDetail.harvest.weightedYieldPercent !== undefined
                 ? remoteDetail.economics.deliveredKg * (remoteDetail.harvest.weightedYieldPercent / 100)
                 : undefined,
-              totalCostEur: remoteDetail.economics.totalCostEur,
+              totalCostEur: remoteDetail.economics.productionCostEur,
               totalIncomeEur: remoteDetail.economics.accruedIncomeEur,
               marginEur: remoteDetail.economics.accruedMarginEur,
               recentActivity: remoteDetail.activity.map((item) => ({
@@ -141,14 +141,14 @@ export function FarmDetailShell() {
   const effectiveArea = detail.data.areaHa ?? farm.areaHa;
   const isApi = source === 'api';
   const deliveredKg = isApi ? detail.economics.deliveredKg : detail.harvest.totalKg || derived.deliveredKg;
-  const totalCostEur = isApi ? detail.economics.totalCostEur : derived.totalCostEur;
+  const agriculturalCostEur = isApi ? detail.economics.productionCostEur : derived.totalCostEur;
   const accruedIncomeEur = isApi ? detail.economics.accruedIncomeEur : derived.totalIncomeEur;
   const collectedIncomeEur = isApi ? detail.economics.collectedIncomeEur : detail.harvest.collectedEur;
   const pendingCollectionEur = isApi ? detail.economics.pendingCollectionEur : detail.harvest.pendingEur;
   const accruedMarginEur = isApi ? detail.economics.accruedMarginEur : derived.marginEur;
   const costPerKg = isApi
     ? detail.economics.costPerDeliveredKgEur
-    : deliveredKg > 0 ? totalCostEur / deliveredKg : undefined;
+    : deliveredKg > 0 ? agriculturalCostEur / deliveredKg : undefined;
   const workCosts = detail.economics.workCostBreakdown;
   const professional = detail.economics.professionalWork;
   const hasWorkCosts = isApi && workCosts.totalWorkEur > 0;
@@ -182,18 +182,18 @@ export function FarmDetailShell() {
         <article className="card quick premium-quick"><div><strong>{(detail.harvest.weightedYieldPercent ?? derived.weightedYieldPercent) !== undefined ? `${formatNumber(detail.harvest.weightedYieldPercent ?? derived.weightedYieldPercent!)} %` : '—'}</strong><small>rendimiento ponderado</small></div></article>
       </div>
 
-      <div className="section-head"><h3>Economía de la campaña</h3><Link href="/mi-campo/campana" className="detail-link">Ver campaña</Link></div>
+      <div className="section-head"><h3>Economía agrícola</h3><Link href="/mi-campo/campana" className="detail-link">Ver campaña</Link></div>
       <div className="quick-grid">
-        <article className="card quick premium-quick"><div><strong>{formatMoney(totalCostEur)}</strong><small>costes registrados</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{costPerKg !== undefined ? `${formatNumber(costPerKg)} €/kg` : '—'}</strong><small>coste por kg entregado</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{formatMoney(agriculturalCostEur)}</strong><small>costes agrícolas registrados</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{costPerKg !== undefined ? `${formatNumber(costPerKg)} €/kg` : '—'}</strong><small>coste agrícola por kg</small></div></article>
         <article className="card quick premium-quick"><div><strong>{formatMoney(accruedIncomeEur)}</strong><small>liquidado atribuible</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{formatMoney(collectedIncomeEur)}</strong><small>cobrado</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{formatMoney(pendingCollectionEur)}</strong><small>pendiente de cobro</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{formatMoney(accruedMarginEur)}</strong><small>margen devengado</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{formatMoney(collectedIncomeEur)}</strong><small>cobrado de cosecha</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{formatMoney(pendingCollectionEur)}</strong><small>pendiente de cosecha</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{formatMoney(accruedMarginEur)}</strong><small>margen agrícola devengado</small></div></article>
       </div>
 
       {hasWorkCosts ? <>
-        <div className="section-head"><h3>Costes de trabajos</h3><span className="subtle">Incluidos en costes registrados</span></div>
+        <div className="section-head"><h3>Costes de trabajos</h3><span className="subtle">Desglose informativo</span></div>
         <div className="quick-grid">
           <article className="card quick premium-quick"><div><strong>{formatMoney(workCosts.laborEur)}</strong><small>mano de obra / jornales</small></div></article>
           <article className="card quick premium-quick"><div><strong>{formatMoney(workCosts.machineryEur)}</strong><small>maquinaria</small></div></article>
@@ -201,22 +201,23 @@ export function FarmDetailShell() {
           <article className="card quick premium-quick"><div><strong>{formatMoney(workCosts.servicesEur)}</strong><small>servicios externos</small></div></article>
           <article className="card quick premium-quick"><div><strong>{formatMoney(workCosts.totalWorkEur)}</strong><small>total trabajos</small></div></article>
         </div>
-        <p className="subtle">Este desglose explica una parte de los costes registrados; no se suma de nuevo al total.</p>
+        <p className="subtle">El desglose de trabajos ya está incluido en el ledger. Puede contener trabajos agrícolas propios y trabajos profesionales; nunca se suma una segunda vez.</p>
       </> : null}
 
       {hasProfessionalWork ? <>
-        <div className="section-head"><h3>Trabajo para terceros</h3><Link href="/mi-campo/profesional" className="detail-link">Ver actividad profesional</Link></div>
+        <div className="section-head"><h3>Actividad profesional</h3><Link href="/mi-campo/profesional" className="detail-link">Ver actividad profesional</Link></div>
         <div className="quick-grid">
           <article className="card quick premium-quick"><div><strong>{formatMoney(professional.chargedEur)}</strong><small>facturado / devengado</small></div></article>
           <article className="card quick premium-quick"><div><strong>{formatMoney(professional.collectedEur)}</strong><small>cobrado</small></div></article>
           <article className="card quick premium-quick"><div><strong>{formatMoney(professional.pendingEur)}</strong><small>pendiente de cobro</small></div></article>
-          <article className="card quick premium-quick"><div><strong>{formatMoney(professional.directCostEur)}</strong><small>coste directo</small></div></article>
-          <article className="card quick premium-quick"><div><strong>{formatMoney(professional.accruedMarginEur)}</strong><small>margen del servicio</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(professional.directCostEur)}</strong><small>coste profesional directo</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(professional.accruedMarginEur)}</strong><small>margen profesional devengado</small></div></article>
+          <article className="card quick premium-quick"><div><strong>{formatMoney(detail.economics.combinedAccruedMarginEur)}</strong><small>margen combinado finca + servicios</small></div></article>
         </div>
-        <p className="subtle">Los importes facturables de trabajos para terceros se muestran separados de los ingresos de cosecha y nunca se contabilizan como coste.</p>
+        <p className="subtle">Los costes profesionales se separan del coste agrícola: no encarecen el €/kg de aceituna ni reducen artificialmente el margen de cosecha.</p>
       </> : null}
 
-      {isApi ? <p className="subtle">Margen devengado = liquidado atribuible − costes registrados. El flujo de caja real se mostrará cuando también modelemos pagos efectivos de gastos.</p> : <p className="subtle">Vista de demostración: los importes proceden del almacenamiento local de la preview.</p>}
+      {isApi ? <p className="subtle">Margen agrícola devengado = liquidado atribuible − costes agrícolas registrados. El flujo de caja real se mostrará cuando también modelemos pagos efectivos de gastos.</p> : <p className="subtle">Vista de demostración: los importes proceden del almacenamiento local de la preview.</p>}
     </section> : null}
 
     {activeSection === 'Actividad' ? <section className="section">
