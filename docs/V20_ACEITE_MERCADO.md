@@ -124,8 +124,10 @@ Clasifica cada candidato como:
 initial      → no existe histórico
 unchanged    → coincide con lo persistido
 new-period   → existe una semana posterior
-correction   → corrige una semana ya publicada
+correction   → corrige el último corte ya publicado
 ```
+
+Además cuenta `historicalCorrections`: puntos de periodos ya persistidos cuyo precio cambia dentro del nuevo snapshot.
 
 Rechaza:
 
@@ -134,31 +136,55 @@ Rechaza:
 - publicación injustificadamente futura;
 - retroceso del periodo respecto al histórico persistido.
 
-Una corrección genera una revisión determinista distinta:
+Una corrección del mismo corte genera una revisión determinista distinta:
 
 ```text
 junta-andalucia-olive-oil-YYYY-wN-v1-corr-<fingerprint>
 ```
 
-Así también cambia el ETag y no se conserva una caché anterior después de una rectificación oficial.
+Así cambia el ETag y no se conserva una caché anterior después de una rectificación oficial.
 
-## Operación controlada
+## Política de escritura
 
-`apps/api/src/market/refresh-cli.ts` expone:
+La automatización aplica una regla conservadora:
+
+- `unchanged` → no escribe;
+- `new-period` sin cambios retrospectivos → puede escribirse;
+- `correction` → requiere aprobación explícita;
+- `new-period` que también cambia semanas anteriores → requiere aprobación explícita;
+- regresión temporal → se rechaza siempre.
+
+`assertMarketRefreshApplyAllowed()` bloquea cualquier corrección salvo que la operación se ejecute con `allowCorrections=true`.
+
+Esto evita que una actualización automática reescriba histórico sin intervención humana.
+
+## CLI explícito
+
+`apps/api/src/market/refresh-cli.ts` ya no deduce el modo a partir de la presencia de `DATABASE_URL`. Cada operación es explícita:
 
 ```bash
 pnpm --filter @magina/api market:source-check
+pnpm --filter @magina/api market:refresh:dry-run
 pnpm --filter @magina/api market:refresh
+pnpm --filter @magina/api market:refresh:corrections
 ```
 
-- `market:source-check`: solo lectura / dry-run;
-- `market:refresh`: aplica el candidato de forma explícita y requiere `DATABASE_URL`;
-- `unchanged`: no escribe;
-- no existe endpoint público de escritura.
+Equivalencias:
+
+```text
+market:source-check         → --source-check
+market:refresh:dry-run      → --dry-run
+market:refresh              → --apply
+market:refresh:corrections  → --apply --allow-corrections
+```
+
+`dry-run` y `apply` requieren `DATABASE_URL`. `source-check` no accede a PostgreSQL.
+
+Flags desconocidos, combinaciones ambiguas o `--allow-corrections` fuera de `--apply` fallan cerrado.
 
 ## Monitor semanal de contrato
 
-`.github/workflows/market-source-monitor.yml` prepara un monitor de solo lectura:
+`.github/workflows/market-source-monitor.yml` mantiene el monitor de solo lectura:
 
 - `workflow_dispatch`;
 - `schedule` jueves 06:17 UTC;
@@ -168,7 +194,44 @@ pnpm --filter @magina/api market:refresh
 
 Su función es detectar cambios del contrato HTML, no escribir en producción.
 
-**El schedule solo se activará cuando el workflow esté integrado en la rama por defecto.** En este PR está preparado, no activo como monitor programado de producción.
+## Workflow de refresco productivo
+
+`.github/workflows/market-refresh.yml` prepara la operación de escritura sin activarla por defecto.
+
+Modos manuales:
+
+```text
+source-check
+dry-run
+apply
+```
+
+Para `apply` manual se exige escribir exactamente `APPLY` en `confirm_apply`.
+
+Las correcciones necesitan además `allow_corrections=true`. Esa opción nunca se habilita desde el schedule automático.
+
+Configuración futura:
+
+```text
+Secret:   MARKET_DATABASE_URL
+Variable: MARKET_AUTO_APPLY=true
+```
+
+Sin `MARKET_AUTO_APPLY=true`, el job programado no escribe. Sin `MARKET_DATABASE_URL`, `dry-run` y `apply` fallan antes de ejecutar el refresco.
+
+Cuando ambas piezas estén configuradas y el workflow se encuentre en la rama por defecto, el schedule del jueves 07:47 UTC podrá aplicar únicamente semanas nuevas sin correcciones retrospectivas.
+
+Cada ejecución publica:
+
+- modo;
+- si las correcciones estaban aprobadas;
+- tipo de plan;
+- revisión actual/candidata;
+- periodo actual/candidato;
+- número de correcciones históricas;
+- precios del snapshot.
+
+El resultado se conserva también como artifact de auditoría durante **90 días**.
 
 ## Flujo de actualización
 
@@ -183,7 +246,9 @@ planOliveOilMarketRefresh()
         ↓
 initial / unchanged / new-period / correction
         ↓
-[solo en ejecución explícita de refresh]
+control de correcciones ya persistidas
+        ↓
+[solo si la operación está autorizada]
 upsertOliveOilMarketSnapshot()
         ↓
 market_olive_oil_weekly
@@ -223,32 +288,38 @@ Si la DB o el histórico fallan, backend usa bootstrap. Si falla totalmente la A
 
 - HTML oficial esperado → snapshot exacto semana 36;
 - categoría obligatoria ausente → fallo cerrado;
-- mismo corte → `unchanged`;
-- corrección AOVE 3,42 → 3,43 → `correction` y revisión nueva.
+- `initial`, `unchanged`, `new-period` y `correction`;
+- regresión temporal → rechazo;
+- corrección del mismo corte → revisión nueva;
+- cambio retrospectivo dentro de una nueva semana → detectado;
+- correcciones → bloqueadas salvo aprobación explícita;
+- modos CLI explícitos y rechazo de flags ambiguos/desconocidos.
 
-## Staging e integración paralela
+## Integración paralela
 
-Durante el desarrollo, `V20 staging readiness` comenzó a fallar en `Smoke staging containers and migration repeatability`. Se comprobó que la propia rama base `feat/v20-visual-prototype`, sin Mercado ni la migración 0042, fallaba en el mismo punto.
+El frente propietario de staging corrigió `deploy/staging/migrate.sh` en **`b1b2a261` — `fix(staging): verify applied migration status cleanly`**. Aceite/Mercado no copió ni modificó esa corrección.
 
-El frente propietario de staging corrigió después `deploy/staging/migrate.sh` en **`b1b2a261` — `fix(staging): verify applied migration status cleanly`**. El HEAD de la base pasó entonces:
+La rama continúa sin tocar navegación global, Mi Campo, Admin, GIS, clima, profesional, OCR/documentos, staging compartido ni notificaciones.
 
-- `V20 full candidate check` ✅
-- `V20 beta browser E2E` ✅
-- `V20 staging readiness` ✅, incluido `Smoke staging containers and migration repeatability`.
+## Activación futura
 
-Aceite/Mercado no copió ni modificó esa corrección; espera la integración mediante la base para mantener la separación entre chats.
+Antes de activar escritura programada en la rama por defecto:
 
-Este commit documental fuerza una nueva validación del PR #23 contra la base saneada.
+1. configurar `MARKET_DATABASE_URL` con credencial limitada a la base de staging/producción correspondiente;
+2. ejecutar `source-check`;
+3. ejecutar `dry-run` contra la DB real;
+4. revisar el resultado y el histórico existente;
+5. ejecutar un primer `apply` manual limpio;
+6. comprobar API `/market/olive-oil` e histórico;
+7. solo entonces establecer `MARKET_AUTO_APPLY=true`;
+8. mantener correcciones siempre fuera del auto-apply.
 
 ## Siguientes fases
 
-1. Confirmar los tres gates del PR #23 contra la base con el fix de staging.
-2. Mantener el adaptador/monitor en lectura hasta integrar el workflow en la rama por defecto.
-3. Acumular histórico real para 3, 6 y 12 meses a medida que se publiquen nuevos cortes.
-4. Diseñar ejecución productiva del `market:refresh` con credencial mínima y sin escritura pública.
-5. Ampliar el selector solo cuando existan datos reales suficientes.
-6. Coordinar alertas de precio con el frente propietario de notificaciones; no tocarlo desde esta rama.
-7. Conectar opcionalmente una campaña de Mi Campo para reutilizar kilos y rendimiento cuando se integren los frentes.
+1. Acumular histórico real hasta disponer de ventanas suficientes para 3, 6 y 12 meses.
+2. Ampliar el selector solo cuando existan datos reales suficientes.
+3. Coordinar alertas de precio con el frente propietario de notificaciones; no tocarlo desde esta rama.
+4. Conectar opcionalmente una campaña de Mi Campo para reutilizar kilos y rendimiento cuando se integren los frentes.
 
 ## Fuera de alcance
 
