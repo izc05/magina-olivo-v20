@@ -21,11 +21,11 @@ export function RegisterHubClient() {
   const { context, ready, found } = useFieldContext();
 
   if (!ready) {
-    return <section className="card"><p>Resolviendo finca de destino…</p></section>;
+    return <section className="card"><p>Preparando la finca…</p></section>;
   }
 
   if (!found) {
-    return <section className="card"><h1>Finca no encontrada</h1><p>No se puede registrar nada hasta resolver correctamente la finca de destino.</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
+    return <section className="card"><h1>Finca no encontrada</h1><p>No hemos podido abrir la finca en la que quieres registrar esta actividad.</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
   }
 
   return <>
@@ -37,7 +37,7 @@ export function RegisterHubClient() {
 
     <section className="card register-principle">
       <PlusIcon />
-      <div><strong>Una vez, en un solo sitio</strong><small>Al guardar, Mágina reutiliza el registro en historia, costes y calendario cuando corresponde.</small></div>
+      <div><strong>Guárdalo una vez</strong><small>Mágina reutiliza ese registro en la actividad, los costes y el calendario cuando corresponde.</small></div>
     </section>
 
     <section className="section">
@@ -64,7 +64,7 @@ export function RegisterHubClient() {
 
     <section className="section register-tip">
       <span>💡</span>
-      <p><strong>Finca activa:</strong> {context.name}. “Trabajo” es la vía completa; jornal y maquinaria siguen disponibles como atajos rápidos.</p>
+      <p><strong>Estás registrando en {context.name}.</strong> Usa “Trabajo” para reunir labor, personas, maquinaria y costes. Si solo quieres apuntar un jornal o una máquina, puedes usar su acceso rápido.</p>
     </section>
   </>;
 }
