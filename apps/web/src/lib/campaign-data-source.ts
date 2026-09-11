@@ -137,9 +137,9 @@ export async function loadApiCampaignSummary(campaignId: string, workspaceId: st
 export function getPreviewCampaigns(): CampaignListItem[] {
   return getLocalCampaigns().map((item) => ({
     id: item.id,
-    name: item.name,
-    startDate: item.startDate,
-    endDate: item.endDate,
+    name: item.label,
+    startDate: item.startsOn ?? item.createdAt.slice(0, 10),
+    endDate: item.endsOn,
     status: item.status,
   }));
 }
