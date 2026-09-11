@@ -1,10 +1,12 @@
 import {
   agronomyAlertEvaluateJobPayloadSchema,
+  commercialAlertEvaluateJobPayloadSchema,
   financialAlertEvaluateJobPayloadSchema,
   notificationDispatchJobPayloadSchema,
   ocrJobPayloadSchema,
   radarIngestJobPayloadSchema,
   type AgronomyAlertEvaluateJobPayload,
+  type CommercialAlertEvaluateJobPayload,
   type FinancialAlertEvaluateJobPayload,
   type NotificationDispatchJobPayload,
   type OcrJobPayload,
@@ -12,8 +14,10 @@ import {
 } from '@magina/contracts';
 import {
   AGRONOMY_ALERT_EVALUATE_QUEUE_NAME,
+  COMMERCIAL_ALERT_EVALUATE_QUEUE_NAME,
   createJobBoss,
   ensureAgronomyAlertEvaluationSchedule,
+  ensureCommercialAlertEvaluationSchedule,
   ensureFinancialAlertEvaluationSchedule,
   ensureNotificationDispatchSchedule,
   FINANCIAL_ALERT_EVALUATE_QUEUE_NAME,
@@ -25,6 +29,7 @@ import {
 import pg from 'pg';
 import { createPushSenderFromEnv } from './notifications/web-push.js';
 import { runAgronomyAlertEvaluationJob } from './notifications/agronomy-evaluate.js';
+import { runCommercialAlertEvaluationJob } from './notifications/commercial-evaluate.js';
 import { runFinancialAlertEvaluationJob } from './notifications/financial-evaluate.js';
 import { runNotificationDispatchJob } from './notifications/dispatch.js';
 import { DeterministicTestOcrProcessor, type OcrProcessorPort } from './ocr/processor.js';
@@ -90,11 +95,17 @@ async function start() {
     if (!pushSender) throw new Error('Push sender was not initialized');
     await ensureNotificationDispatchSchedule(boss);
     await ensureFinancialAlertEvaluationSchedule(boss);
+    await ensureCommercialAlertEvaluationSchedule(boss);
     await ensureAgronomyAlertEvaluationSchedule(boss);
 
     await boss.work<FinancialAlertEvaluateJobPayload>(FINANCIAL_ALERT_EVALUATE_QUEUE_NAME, { batchSize: 1 }, async ([job]) => {
       if (!job) return;
       await runFinancialAlertEvaluationJob(pool, financialAlertEvaluateJobPayloadSchema.parse(job.data));
+    });
+
+    await boss.work<CommercialAlertEvaluateJobPayload>(COMMERCIAL_ALERT_EVALUATE_QUEUE_NAME, { batchSize: 1 }, async ([job]) => {
+      if (!job) return;
+      await runCommercialAlertEvaluationJob(pool, commercialAlertEvaluateJobPayloadSchema.parse(job.data));
     });
 
     await boss.work<AgronomyAlertEvaluateJobPayload>(AGRONOMY_ALERT_EVALUATE_QUEUE_NAME, { batchSize: 1 }, async ([job]) => {
