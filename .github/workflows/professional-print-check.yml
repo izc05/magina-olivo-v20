@@ -7,6 +7,8 @@ on:
     paths:
       - 'apps/api/**'
       - 'apps/web/**'
+      - 'packages/weather/**'
+      - 'packages/jobs/**'
       - 'database/migrations/0036_professional_business_profile.sql'
       - 'database/migrations/0037_professional_document_identity_snapshots.sql'
       - 'database/migrations/0038_professional_snapshot_triggers.sql'
@@ -15,6 +17,8 @@ on:
     paths:
       - 'apps/api/**'
       - 'apps/web/**'
+      - 'packages/weather/**'
+      - 'packages/jobs/**'
       - 'database/migrations/0036_professional_business_profile.sql'
       - 'database/migrations/0037_professional_document_identity_snapshots.sql'
       - 'database/migrations/0038_professional_snapshot_triggers.sql'
@@ -51,6 +55,10 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @magina/contracts typecheck
       - run: pnpm --filter @magina/contracts build
+      - run: pnpm --filter @magina/weather typecheck
+      - run: pnpm --filter @magina/weather build
+      - run: pnpm --filter @magina/jobs typecheck
+      - run: pnpm --filter @magina/jobs build
       - run: pnpm --filter @magina/api typecheck
       - run: pnpm --filter @magina/api build
       - run: pnpm --filter @magina/web typecheck
