@@ -89,40 +89,44 @@ export async function runOcrJob(
       confidence,
     ]);
 
-    const proposal = extractDocumentProposal(current.document_kind, result.rawText);
-    if (proposal) {
-      const existingExtraction = await pool.query<{ id: string }>(
-        'SELECT id FROM extraction_runs WHERE ocr_run_id = $1 ORDER BY created_at DESC LIMIT 1',
-        [job.ocr_run_id],
-      );
-      if (!existingExtraction.rows[0]) {
-        await pool.query(`
-          INSERT INTO extraction_runs (
-            id,
-            ocr_run_id,
-            document_type,
-            schema_version,
-            status,
-            data_json,
-            confidence_json,
-            completed_at
-          ) VALUES (
-            gen_random_uuid(),
-            $1,
-            $2,
-            1,
-            'needs_review',
-            $3::jsonb,
-            $4::jsonb,
-            now()
-          )
-        `, [
-          job.ocr_run_id,
-          proposal.documentType,
-          JSON.stringify(proposal.data),
-          JSON.stringify(proposal.confidence),
-        ]);
+    try {
+      const proposal = extractDocumentProposal(current.document_kind, result.rawText);
+      if (proposal) {
+        const existingExtraction = await pool.query<{ id: string }>(
+          'SELECT id FROM extraction_runs WHERE ocr_run_id = $1 ORDER BY created_at DESC LIMIT 1',
+          [job.ocr_run_id],
+        );
+        if (!existingExtraction.rows[0]) {
+          await pool.query(`
+            INSERT INTO extraction_runs (
+              id,
+              ocr_run_id,
+              document_type,
+              schema_version,
+              status,
+              data_json,
+              confidence_json,
+              completed_at
+            ) VALUES (
+              gen_random_uuid(),
+              $1,
+              $2,
+              1,
+              'needs_review',
+              $3::jsonb,
+              $4::jsonb,
+              now()
+            )
+          `, [
+            job.ocr_run_id,
+            proposal.documentType,
+            JSON.stringify(proposal.data),
+            JSON.stringify(proposal.confidence),
+          ]);
+        }
       }
+    } catch (extractionError) {
+      console.warn('OCR succeeded but structured extraction proposal failed', extractionError);
     }
 
     return { replayed: false, ocrRunId: job.ocr_run_id, status: 'succeeded' };
