@@ -3,8 +3,15 @@
 import { useMemo, useState } from 'react';
 import styles from '@/app/mercado/market.module.css';
 
+type MarketPriceOption = {
+  id: string;
+  label: string;
+  priceEurKg: number;
+};
+
 type MarketValueCalculatorProps = {
   defaultPrice: number;
+  priceOptions?: MarketPriceOption[];
 };
 
 function parsePositive(value: string): number {
@@ -19,6 +26,13 @@ function formatNumber(value: number, maximumFractionDigits = 2): string {
   }).format(value);
 }
 
+function formatPrice(value: number): string {
+  return new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
@@ -27,10 +41,11 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export function MarketValueCalculator({ defaultPrice }: MarketValueCalculatorProps) {
+export function MarketValueCalculator({ defaultPrice, priceOptions = [] }: MarketValueCalculatorProps) {
   const [oliveKg, setOliveKg] = useState('5000');
   const [yieldPct, setYieldPct] = useState('20');
   const [oilPrice, setOilPrice] = useState(defaultPrice.toFixed(2));
+  const [selectedPriceId, setSelectedPriceId] = useState(priceOptions[0]?.id ?? null);
 
   const result = useMemo(() => {
     const olives = parsePositive(oliveKg);
@@ -47,6 +62,11 @@ export function MarketValueCalculator({ defaultPrice }: MarketValueCalculatorPro
     };
   }, [oliveKg, oilPrice, yieldPct]);
 
+  function useReferencePrice(option: MarketPriceOption) {
+    setOilPrice(option.priceEurKg.toFixed(2));
+    setSelectedPriceId(option.id);
+  }
+
   return (
     <section className={styles.calculator} aria-labelledby="market-calculator-title">
       <div className={styles.sectionHeading}>
@@ -58,8 +78,28 @@ export function MarketValueCalculator({ defaultPrice }: MarketValueCalculatorPro
       </div>
 
       <p className={styles.calculatorIntro}>
-        Introduce tus kilos de aceituna, rendimiento industrial y un precio del aceite para estimar el valor teórico del aceite obtenido.
+        Introduce tus kilos de aceituna y rendimiento. Puedes usar uno de los últimos precios oficiales como referencia o escribir otro precio manualmente.
       </p>
+
+      {priceOptions.length > 0 ? (
+        <div className={styles.pricePresets} aria-label="Precios oficiales rápidos">
+          {priceOptions.map((option) => {
+            const selected = selectedPriceId === option.id;
+            return (
+              <button
+                type="button"
+                key={option.id}
+                className={selected ? styles.pricePresetActive : styles.pricePreset}
+                aria-pressed={selected}
+                onClick={() => useReferencePrice(option)}
+              >
+                <span>{option.label}</span>
+                <strong>{formatPrice(option.priceEurKg)} €/kg</strong>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       <div className={styles.inputGrid}>
         <label>
@@ -103,7 +143,10 @@ export function MarketValueCalculator({ defaultPrice }: MarketValueCalculatorPro
               step="0.01"
               type="number"
               value={oilPrice}
-              onChange={(event) => setOilPrice(event.target.value)}
+              onChange={(event) => {
+                setOilPrice(event.target.value);
+                setSelectedPriceId(null);
+              }}
               aria-label="Precio del aceite por kilogramo"
             />
             <small>€/kg</small>
