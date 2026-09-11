@@ -9,6 +9,7 @@ on:
       - 'apps/web/**'
       - 'database/migrations/0039_professional_delivery_tracking.sql'
       - 'database/migrations/0040_professional_public_share_links.sql'
+      - 'database/migrations/0041_public_quote_decision_audit.sql'
       - '.github/workflows/professional-delivery-check.yml'
   pull_request:
     paths:
@@ -16,6 +17,7 @@ on:
       - 'apps/web/**'
       - 'database/migrations/0039_professional_delivery_tracking.sql'
       - 'database/migrations/0040_professional_public_share_links.sql'
+      - 'database/migrations/0041_public_quote_decision_audit.sql'
       - '.github/workflows/professional-delivery-check.yml'
 
 permissions:
