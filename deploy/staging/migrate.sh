@@ -70,16 +70,22 @@ SQL
     exit 1
   fi
 
-  updated="$(
-    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
-      -v version="$version" <<'SQL'
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -v version="$version" <<'SQL'
 UPDATE public.schema_migrations
 SET status='applied', applied_at=now()
-WHERE version=:'version' AND status='applying'
-RETURNING version;
+WHERE version=:'version' AND status='applying';
+SQL
+
+  updated_status="$(
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
+      -v version="$version" <<'SQL'
+SELECT status
+FROM public.schema_migrations
+WHERE version=:'version';
 SQL
   )"
-  if [ "$updated" != "$version" ]; then
+  if [ "$updated_status" != "applied" ]; then
     echo "Migration registry update failed for $version" >&2
     exit 1
   fi
