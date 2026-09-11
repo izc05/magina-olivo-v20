@@ -18,6 +18,7 @@ export function PermissionCenter() {
 
   useEffect(() => {
     let disposed = false;
+    let removeLocationListener: (() => void) | null = null;
 
     async function hydratePermissions() {
       if (!navigator.geolocation) {
@@ -30,6 +31,7 @@ export function PermissionCenter() {
           };
           syncLocation();
           permission.addEventListener?.('change', syncLocation);
+          removeLocationListener = () => permission.removeEventListener?.('change', syncLocation);
         } catch {
           if (!disposed) setLocation('Sin solicitar');
         }
@@ -56,7 +58,10 @@ export function PermissionCenter() {
     }
 
     void hydratePermissions();
-    return () => { disposed = true; };
+    return () => {
+      disposed = true;
+      removeLocationListener?.();
+    };
   }, []);
 
   function requestLocation() {
