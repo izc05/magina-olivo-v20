@@ -255,20 +255,29 @@ jobs:
           E2E_BASE_URL: http://127.0.0.1:3000
           E2E_WORKSPACE_ID: aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa
           E2E_USER_ID: bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb
+          S3_ENDPOINT: http://127.0.0.1:9000
+          S3_BUCKET: magina-e2e
+          S3_ACCESS_KEY_ID: magina-e2e
+          S3_SECRET_ACCESS_KEY: magina-e2e-secret
+          S3_REGION: us-east-1
+          S3_FORCE_PATH_STYLE: 'true'
         run: |
+          node e2e/s3-fixture-server.mjs >/tmp/magina-s3-e2e.log 2>&1 &
+          STORAGE_PID=$!
           node apps/api/dist/server.js >/tmp/magina-api-e2e.log 2>&1 &
           API_PID=$!
           pnpm --filter @magina/web start --hostname 127.0.0.1 --port 3000 >/tmp/magina-web-e2e.log 2>&1 &
           WEB_PID=$!
-          trap 'kill ${API_PID} ${WEB_PID} 2>/dev/null || true; echo "--- API LOG ---"; cat /tmp/magina-api-e2e.log; echo "--- WEB LOG ---"; cat /tmp/magina-web-e2e.log' EXIT
+          trap 'kill ${API_PID} ${WEB_PID} ${STORAGE_PID} 2>/dev/null || true; echo "--- S3 FIXTURE LOG ---"; cat /tmp/magina-s3-e2e.log; echo "--- API LOG ---"; cat /tmp/magina-api-e2e.log; echo "--- WEB LOG ---"; cat /tmp/magina-web-e2e.log' EXIT
 
           for attempt in $(seq 1 40); do
-            if curl -fsS http://127.0.0.1:3001/health >/dev/null && curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+            if curl -fsS http://127.0.0.1:9000/__health >/dev/null && curl -fsS http://127.0.0.1:3001/health >/dev/null && curl -fsS http://127.0.0.1:3000/ >/dev/null; then
               break
             fi
             sleep 1
           done
 
+          curl -fsS http://127.0.0.1:9000/__health
           curl -fsS http://127.0.0.1:3001/health
           curl -fsS http://127.0.0.1:3000/ >/dev/null
 
