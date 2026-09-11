@@ -123,7 +123,7 @@ Restricciones actuales:
 
 No se exponen las claves privadas de almacenamiento ni se hace público el bucket. Reservar, completar y archivar medios queda auditado.
 
-Desde la biblioteca se puede copiar la URL pública y usarla en el editor de portada, noticias, eventos, cooperativas o promociones.
+Desde la biblioteca se copia una URL pública estable de Mágina y se pega en el campo **Imagen** del editor de portada, noticias, eventos, cooperativas o promociones. El editor ofrece acceso directo a **Multimedia** para que este flujo no dependa de servicios externos.
 
 ## CMS
 
