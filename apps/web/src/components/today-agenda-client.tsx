@@ -90,7 +90,7 @@ function AgendaSection({
 }
 
 export function TodayAgendaClient() {
-  const { apiConfigured, status, selectedWorkspaceId } = useAuth();
+  const { apiConfigured, previewEnabled, status, selectedWorkspaceId } = useAuth();
   const [agenda, setAgenda] = useState<AgendaView>(emptyAgenda());
   const [advisories, setAdvisories] = useState<AdvisoryState>({});
   const [loading, setLoading] = useState(true);
@@ -111,8 +111,13 @@ export function TodayAgendaClient() {
         if (apiConfigured && status === 'authenticated' && selectedWorkspaceId) {
           const data = await loadApiAgenda(selectedWorkspaceId);
           if (!cancelled) setAgenda(data);
+        } else if (previewEnabled) {
+          if (!cancelled) setAgenda(emptyAgenda());
+        } else if (apiConfigured && status === 'loading') {
+          return;
         } else if (!cancelled) {
           setAgenda(emptyAgenda());
+          setError(apiConfigured ? 'Inicia sesión para consultar tu agenda.' : 'La API privada no está configurada en esta instalación.');
         }
       } catch (err) {
         console.error(err);
@@ -123,10 +128,10 @@ export function TodayAgendaClient() {
     }
     void load();
     return () => { cancelled = true; };
-  }, [apiConfigured, revision, selectedWorkspaceId, status]);
+  }, [apiConfigured, previewEnabled, revision, selectedWorkspaceId, status]);
 
   useEffect(() => {
-    if (!selectedWorkspaceId || !weatherSensitiveItems.length) {
+    if (!selectedWorkspaceId || status !== 'authenticated' || !weatherSensitiveItems.length) {
       setAdvisories({});
       return;
     }
@@ -150,7 +155,7 @@ export function TodayAgendaClient() {
     }
     void loadAdvisories();
     return () => { cancelled = true; };
-  }, [selectedWorkspaceId, weatherSensitiveItems]);
+  }, [selectedWorkspaceId, status, weatherSensitiveItems]);
 
   const refresh = () => setRevision((value) => value + 1);
 
@@ -163,15 +168,16 @@ export function TodayAgendaClient() {
       <div className="stat"><b>{agenda.counts.weatherSensitive}</b><span>sensibles al clima</span></div>
     </div></section>
 
+    {previewEnabled && !apiConfigured ? <section className="card"><strong>Modo preview explícito</strong><p>La agenda está vacía porque GitHub Pages no tiene tu workspace privado.</p></section> : null}
     {loading ? <section className="card"><p>Cargando agenda…</p></section> : null}
     {error ? <p className="form-error" role="alert">{error}</p> : null}
-    {!loading ? <>
-      <AgendaSection title="Atrasadas" items={agenda.overdue} advisories={advisories} workspaceId={selectedWorkspaceId ?? undefined} onChanged={refresh} />
-      <AgendaSection title="Para hoy" items={agenda.today} advisories={advisories} workspaceId={selectedWorkspaceId ?? undefined} onChanged={refresh} />
-      <AgendaSection title="Próximos 7 días" items={agenda.upcoming} advisories={advisories} workspaceId={selectedWorkspaceId ?? undefined} onChanged={refresh} />
+    {!loading && !error ? <>
+      <AgendaSection title="Atrasadas" items={agenda.overdue} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />
+      <AgendaSection title="Para hoy" items={agenda.today} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />
+      <AgendaSection title="Próximos 7 días" items={agenda.upcoming} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />
       <section className="card"><strong>Regla de Mágina</strong><p>{agenda.rule}</p><small>La previsión estima condiciones futuras; el radar muestra reflectividad observada. Mágina no deduce una hora de llegada de lluvia a partir de una sola imagen radar.</small></section>
     </> : null}
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">UNA AGENDA, NO OTRA LIBRETA</span><h2>Planifica aquí, registra cuando realmente lo hagas.</h2></div><Link href="/mi-campo/registrar">Registrar</Link></section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">UNA AGENDA, NO OTRA LIBRETA</span><h2>Planifica aquí, registra cuando realmente lo hagas.</h2></div><Link href="/mi-campo">Mi Campo</Link></section>
   </>;
 }
