@@ -5,9 +5,11 @@ on:
   pull_request:
     paths:
       - '.env.example'
+      - 'deploy/staging/**'
       - 'apps/**'
       - 'packages/**'
       - 'scripts/check-env-contract.mjs'
+      - 'scripts/check-staging-contract.mjs'
       - 'package.json'
       - '.nvmrc'
       - '.github/workflows/environment-contract-check.yml'
@@ -33,3 +35,6 @@ jobs:
 
       - name: Verify documented runtime environment
         run: node scripts/check-env-contract.mjs
+
+      - name: Verify staging production-safety contract
+        run: node scripts/check-staging-contract.mjs

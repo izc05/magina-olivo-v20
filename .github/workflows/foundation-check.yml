@@ -11,6 +11,7 @@ on:
       - 'pnpm-workspace.yaml'
       - 'scripts/**'
       - 'database/migrations/**'
+      - 'deploy/staging/**'
       - 'apps/**/package.json'
       - 'apps/web/tsconfig.json'
       - 'tsconfig*.json'
@@ -58,6 +59,9 @@ jobs:
 
       - name: Verify environment contract
         run: pnpm check:env
+
+      - name: Verify staging production-safety contract
+        run: pnpm check:staging
 
       - name: Verify migration sequence contract
         run: pnpm check:migrations
