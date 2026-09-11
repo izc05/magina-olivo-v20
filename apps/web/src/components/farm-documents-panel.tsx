@@ -14,6 +14,8 @@ const kinds: Array<{ value: DocumentKind; label: string }> = [
   { value: 'quote', label: 'Presupuestos' },
   { value: 'delivery_ticket', label: 'Albaranes' },
   { value: 'yield_result', label: 'Rendimientos' },
+  { value: 'settlement_statement', label: 'Liquidaciones' },
+  { value: 'collection_receipt', label: 'Justificantes de cobro' },
   { value: 'treatment', label: 'Tratamientos' },
   { value: 'fertilization', label: 'Abonado' },
   { value: 'irrigation', label: 'Riego' },
@@ -25,7 +27,7 @@ const kinds: Array<{ value: DocumentKind; label: string }> = [
   { value: 'other', label: 'Otros' },
 ];
 
-const ocrKinds = new Set<DocumentKind>(['invoice', 'purchase_receipt', 'quote', 'delivery_ticket', 'yield_result']);
+const ocrKinds = new Set<DocumentKind>(['invoice', 'purchase_receipt', 'quote', 'delivery_ticket', 'yield_result', 'settlement_statement', 'collection_receipt']);
 
 function kindLabel(kind: string) {
   return kinds.find((item) => item.value === kind)?.label.replace(/s$/, '') ?? kind;
@@ -43,31 +45,21 @@ export function FarmDocumentsPanel() {
   const [openingId, setOpeningId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!ready || !found || context.source !== 'api' || !selectedWorkspaceId) {
-      setCampaigns([]);
-      return;
-    }
+    if (!ready || !found || context.source !== 'api' || !selectedWorkspaceId) { setCampaigns([]); return; }
     let cancelled = false;
-    loadApiCampaigns(selectedWorkspaceId)
-      .then((items) => { if (!cancelled) setCampaigns(items); })
-      .catch((cause) => console.warn('Unable to load document campaigns', cause));
+    loadApiCampaigns(selectedWorkspaceId).then((items) => { if (!cancelled) setCampaigns(items); }).catch((cause) => console.warn('Unable to load document campaigns', cause));
     return () => { cancelled = true; };
   }, [context.source, found, ready, selectedWorkspaceId]);
 
   useEffect(() => {
-    if (!ready || !found || context.source !== 'api' || !selectedWorkspaceId) {
-      setDocuments([]);
-      return;
-    }
+    if (!ready || !found || context.source !== 'api' || !selectedWorkspaceId) { setDocuments([]); return; }
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     loadFieldDocuments(selectedWorkspaceId, context.id, {
       kind: kind || undefined,
       campaignId: campaignFilter !== 'all' && campaignFilter !== 'unassigned' ? campaignFilter : undefined,
       unassigned: campaignFilter === 'unassigned',
-    })
-      .then((items) => { if (!cancelled) setDocuments(items); })
+    }).then((items) => { if (!cancelled) setDocuments(items); })
       .catch((cause) => { console.warn('Unable to load farm documents', cause); if (!cancelled) setError('No se han podido cargar los documentos.'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -79,15 +71,10 @@ export function FarmDocumentsPanel() {
     try {
       setOpeningId(documentId);
       const access = await getDocumentReadUrl(selectedWorkspaceId, documentId);
-      if (popup) popup.location.href = access.url;
-      else window.location.href = access.url;
+      if (popup) popup.location.href = access.url; else window.location.href = access.url;
     } catch (cause) {
-      console.error('Unable to open document', cause);
-      popup?.close();
-      setError('El documento no está disponible para lectura en este momento.');
-    } finally {
-      setOpeningId(null);
-    }
+      console.error('Unable to open document', cause); popup?.close(); setError('El documento no está disponible para lectura en este momento.');
+    } finally { setOpeningId(null); }
   }
 
   if (!ready || !found || context.source !== 'api') return null;
