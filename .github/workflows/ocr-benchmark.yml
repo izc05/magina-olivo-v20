@@ -8,10 +8,10 @@ on:
     paths:
       - 'services/ocr-benchmark/**'
       - '.github/workflows/ocr-benchmark.yml'
-  pull_request:
-    paths:
-      - 'services/ocr-benchmark/**'
-      - '.github/workflows/ocr-benchmark.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

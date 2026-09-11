@@ -11,13 +11,10 @@ on:
       - 'services/ocr-benchmark/generate_synthetic.py'
       - 'services/ocr-benchmark/extract_fields.py'
       - 'services/ocr-benchmark/benchmark.py'
-  pull_request:
-    paths:
-      - 'services/ocr-benchmark/providers/paddleocr_v6.py'
-      - '.github/workflows/ocr-benchmark-paddle.yml'
-      - 'services/ocr-benchmark/generate_synthetic.py'
-      - 'services/ocr-benchmark/extract_fields.py'
-      - 'services/ocr-benchmark/benchmark.py'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
