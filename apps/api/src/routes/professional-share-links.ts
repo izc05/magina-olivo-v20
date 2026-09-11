@@ -29,6 +29,39 @@ function publicUserAgent(request: { headers: Record<string, unknown> }) {
   return typeof value === 'string' ? value.slice(0, 512) : null;
 }
 
+type PublicShareAccessState = {
+  id: string;
+  revoked_at: Date | null;
+  expires_at: Date;
+};
+
+async function readPublicShareAccessState(database: DatabaseClient, token: string) {
+  const result = await sql<PublicShareAccessState>`
+    SELECT id, revoked_at, expires_at
+    FROM professional_public_share_links
+    WHERE token_hash=${tokenHash(token)}
+    LIMIT 1
+  `.execute(database);
+  return result.rows[0] ?? null;
+}
+
+async function requireLivePublicShare(database: DatabaseClient, token: string, reply: { code: (status: number) => { send: (payload: unknown) => unknown } }) {
+  const share = await readPublicShareAccessState(database, token);
+  if (!share) {
+    reply.code(404).send({ error: 'share_link_not_found' });
+    return null;
+  }
+  if (share.revoked_at) {
+    reply.code(410).send({ error: 'share_link_revoked' });
+    return null;
+  }
+  if (share.expires_at.getTime() <= Date.now()) {
+    reply.code(410).send({ error: 'share_link_expired' });
+    return null;
+  }
+  return share;
+}
+
 export function registerProfessionalShareLinkRoutes(app: FastifyInstance, db: DatabaseClient | null, storage: StoragePort) {
   app.post('/api/v1/professional/share-links', async (request, reply) => {
     const context = requireContext(request, reply);
@@ -121,6 +154,8 @@ export function registerProfessionalShareLinkRoutes(app: FastifyInstance, db: Da
     if (!database) return;
     const token = z.string().min(30).max(100).safeParse((request.params as { token?: string }).token);
     if (!token.success) return reply.code(404).send({ error: 'share_link_not_found' });
+    const liveShare = await requireLivePublicShare(database, token.data, reply);
+    if (!liveShare) return;
 
     const result = await sql<{
       id: string; entity_type: string; entity_id: string; document_id: string; delivery_id: string | null;
@@ -150,13 +185,11 @@ export function registerProfessionalShareLinkRoutes(app: FastifyInstance, db: Da
         WHERE share_link_id=psl.id AND decision_source='public_link'
         ORDER BY decided_at DESC LIMIT 1
       ) pqd ON true
-      WHERE psl.token_hash=${tokenHash(token.data)}
-        AND psl.revoked_at IS NULL
-        AND psl.expires_at > now()
+      WHERE psl.id=${liveShare.id}::uuid
       LIMIT 1
     `.execute(database);
     const share = result.rows[0];
-    if (!share) return reply.code(404).send({ error: 'share_link_not_found_or_expired' });
+    if (!share) return reply.code(404).send({ error: 'share_document_not_found' });
     return {
       share: {
         entity_type: share.entity_type,
@@ -183,6 +216,8 @@ export function registerProfessionalShareLinkRoutes(app: FastifyInstance, db: Da
     if (!database) return;
     const token = z.string().min(30).max(100).safeParse((request.params as { token?: string }).token);
     if (!token.success) return reply.code(404).send({ error: 'share_link_not_found' });
+    const liveShare = await requireLivePublicShare(database, token.data, reply);
+    if (!liveShare) return;
     const result = await sql<{ id: string; storage_key: string }>`
       SELECT psl.id, dv.storage_key
       FROM professional_public_share_links psl
@@ -192,13 +227,11 @@ export function registerProfessionalShareLinkRoutes(app: FastifyInstance, db: Da
         WHERE document_id=d.id AND upload_status='uploaded' AND integrity_status='verified'
         ORDER BY version_no DESC LIMIT 1
       ) dv ON true
-      WHERE psl.token_hash=${tokenHash(token.data)}
-        AND psl.revoked_at IS NULL
-        AND psl.expires_at > now()
+      WHERE psl.id=${liveShare.id}::uuid
       LIMIT 1
     `.execute(database);
     const share = result.rows[0];
-    if (!share) return reply.code(404).send({ error: 'share_link_not_found_or_expired' });
+    if (!share) return reply.code(404).send({ error: 'share_document_not_found' });
     await sql`UPDATE professional_public_share_links SET access_count=access_count+1, last_accessed_at=now() WHERE id=${share.id}::uuid`.execute(database);
     const readUrl = await storage.createReadUrl(share.storage_key, 300);
     return reply.redirect(readUrl);
@@ -210,6 +243,8 @@ export function registerProfessionalShareLinkRoutes(app: FastifyInstance, db: Da
     const token = z.string().min(30).max(100).safeParse((request.params as { token?: string }).token);
     const body = publicDecisionSchema.safeParse(request.body);
     if (!token.success || !body.success) return reply.code(400).send({ error: 'invalid_public_decision' });
+    const liveShare = await requireLivePublicShare(database, token.data, reply);
+    if (!liveShare) return;
 
     const result = await database.transaction().execute(async (trx) => {
       const locked = await sql<{
@@ -221,13 +256,11 @@ export function registerProfessionalShareLinkRoutes(app: FastifyInstance, db: Da
         FROM professional_public_share_links psl
         LEFT JOIN professional_document_deliveries pdd ON pdd.id=psl.delivery_id AND pdd.workspace_id=psl.workspace_id
         LEFT JOIN professional_quotes pq ON pq.id=psl.entity_id AND pq.workspace_id=psl.workspace_id
-        WHERE psl.token_hash=${tokenHash(token.data)}
-          AND psl.revoked_at IS NULL
-          AND psl.expires_at > now()
+        WHERE psl.id=${liveShare.id}::uuid
         FOR UPDATE OF psl
       `.execute(trx);
       const share = locked.rows[0];
-      if (!share) return { error: 'share_link_not_found_or_expired' as const };
+      if (!share) return { error: 'share_link_not_found' as const };
       if (share.entity_type !== 'professional_quote') return { error: 'decisions_only_supported_for_quotes' as const };
       if (share.delivery_status !== 'confirmed_sent' || !share.delivery_id) return { error: 'delivery_not_confirmed' as const };
       if (share.quote_status === 'converted') return { error: 'converted_quote_is_immutable' as const };
@@ -262,7 +295,7 @@ export function registerProfessionalShareLinkRoutes(app: FastifyInstance, db: Da
     });
 
     if ('error' in result) {
-      const status = result.error === 'share_link_not_found_or_expired' ? 404 : 409;
+      const status = result.error === 'share_link_not_found' ? 404 : 409;
       return reply.code(status).send(result);
     }
     return reply.code(result.replayed ? 200 : 201).send(result);
