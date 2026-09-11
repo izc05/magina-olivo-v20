@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { BottomNav } from './bottom-nav';
 import { Topbar } from './topbar';
@@ -43,7 +44,6 @@ function copyFor(type: PublicEditorialType) {
       intro: 'Campo, pueblos, cooperativas y vida local. Solo contenido publicado desde la administración de Mágina Olivo.',
       search: 'Buscar noticias…',
       empty: 'Todavía no hay noticias publicadas.',
-      icon: '📰',
     };
   }
   return {
@@ -52,7 +52,6 @@ function copyFor(type: PublicEditorialType) {
     intro: 'Ferias, jornadas, encuentros, cultura y actividades del territorio reunidas en una agenda sencilla.',
     search: 'Buscar eventos…',
     empty: 'Todavía no hay eventos publicados.',
-    icon: '📅',
   };
 }
 
@@ -123,17 +122,13 @@ function Detail({ entry, type }: { entry: PublicEditorialEntry; type: PublicEdit
 
 export function PublicEditorialPage({ type }: Props) {
   const copy = copyFor(type);
+  const searchParams = useSearchParams();
+  const slug = searchParams.get('slug');
   const [entries, setEntries] = useState<PublicEditorialEntry[]>([]);
   const [query, setQuery] = useState('');
-  const [slug, setSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setSlug(params.get('slug'));
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
