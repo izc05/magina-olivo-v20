@@ -10,6 +10,7 @@ on:
       - 'apps/web/**'
       - 'packages/contracts/**'
       - 'packages/jobs/**'
+      - 'packages/weather/**'
       - 'database/migrations/0035_commercial_notification_preferences.sql'
       - '.github/workflows/commercial-notifications-check.yml'
   pull_request:
@@ -19,6 +20,7 @@ on:
       - 'apps/web/**'
       - 'packages/contracts/**'
       - 'packages/jobs/**'
+      - 'packages/weather/**'
       - 'database/migrations/0035_commercial_notification_preferences.sql'
       - '.github/workflows/commercial-notifications-check.yml'
 
@@ -53,6 +55,8 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @magina/contracts typecheck
       - run: pnpm --filter @magina/contracts build
+      - run: pnpm --filter @magina/weather typecheck
+      - run: pnpm --filter @magina/weather build
       - run: pnpm --filter @magina/jobs typecheck
       - run: pnpm --filter @magina/jobs build
       - run: pnpm --filter @magina/api typecheck
