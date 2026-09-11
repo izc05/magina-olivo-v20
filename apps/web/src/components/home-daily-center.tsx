@@ -44,6 +44,7 @@ export function HomeDailyCenter() {
   const [agendaError, setAgendaError] = useState(false);
   const [weatherError, setWeatherError] = useState(false);
   const [activityError, setActivityError] = useState(false);
+  const [activityLoading, setActivityLoading] = useState(false);
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
@@ -112,6 +113,7 @@ export function HomeDailyCenter() {
       setRecentActivity([]);
       setWeatherError(false);
       setActivityError(false);
+      setActivityLoading(false);
       return;
     }
     const workspaceId = selectedWorkspaceId;
@@ -121,6 +123,7 @@ export function HomeDailyCenter() {
     setRecentActivity([]);
     setWeatherError(false);
     setActivityError(false);
+    setActivityLoading(true);
 
     async function loadFocusContext() {
       const [weatherResult, activityResult] = await Promise.allSettled([
@@ -146,6 +149,7 @@ export function HomeDailyCenter() {
         setRecentActivity([]);
         setActivityError(true);
       }
+      setActivityLoading(false);
     }
 
     void loadFocusContext();
@@ -212,7 +216,7 @@ export function HomeDailyCenter() {
 
     {focusFarm && !activityError ? <section className="section">
       <div className="section-head"><div><h2>Actividad reciente</h2><small>{focusFarm.name}</small></div><Link href={farmHref(focusFarm)}>Abrir finca <ArrowIcon /></Link></div>
-      {recentActivity.length ? <div className="card feed today-list">
+      {activityLoading ? <div className="card" aria-busy="true"><p>Cargando actividad reciente…</p></div> : recentActivity.length ? <div className="card feed today-list">
         {recentActivity.map((item) => <div className="feed-row" key={item.id}><div className="feed-copy"><strong>{item.title}</strong><small>{formatHomeTimestamp(item.occurredAt) ?? item.occurredAt}</small>{item.summary ? <small>{item.summary}</small> : null}</div></div>)}
       </div> : <div className="card"><p>Todavía no hay actividad registrada en esta finca.</p><Link href={fieldActionHref('/mi-campo/registrar', focusFarm)} className="secondary-action action-link">Registrar primera actividad</Link></div>}
     </section> : null}
