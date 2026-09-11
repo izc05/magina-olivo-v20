@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - '.env.example'
       - '.nvmrc'
       - 'package.json'
       - 'pnpm-lock.yaml'
@@ -15,7 +16,8 @@ on:
       - 'apps/api/src/http/**'
       - 'apps/api/src/auth/**'
       - 'apps/api/src/testing/staging-security-smoke.ts'
-      - 'apps/web/package.json'
+      - 'apps/worker/**'
+      - 'apps/web/**'
       - 'scripts/check-staging-contract.mjs'
       - 'scripts/check-web-bundle-budget.mjs'
       - 'database/migrations/**'
@@ -67,7 +69,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Validate staging production-safety contract
-        run: node scripts/check-staging-contract.mjs
+        run: pnpm check:staging
 
       - name: Restore Next.js build cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -77,16 +79,50 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-next-staging-${{ hashFiles('pnpm-lock.yaml') }}-
 
-      - name: Build API dependencies
+      - name: Build API and worker dependencies
         run: |
+          pnpm --filter @magina/contracts typecheck
           pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather typecheck
           pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs typecheck
           pnpm --filter @magina/jobs build
           pnpm --filter @magina/api typecheck
           pnpm --filter @magina/api build
+          pnpm --filter @magina/worker typecheck
+          pnpm --filter @magina/worker build
 
-      - name: Install PostgreSQL client
-        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+      - name: Install staging runtime tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng poppler-utils
+
+      - name: Validate OCR runtime
+        env:
+          OCR_PROVIDER: tesseract
+          OCR_TESSERACT_LANGUAGES: spa+eng
+          OCR_TESSERACT_TIMEOUT_MS: '120000'
+          OCR_MAX_BYTES: '26214400'
+          OCR_MAX_PDF_PAGES: '12'
+          OCR_TESSERACT_DPI: '250'
+          OCR_TESSERACT_PSM: '6'
+          TESSERACT_BIN: tesseract
+          PDFINFO_BIN: pdfinfo
+          PDFTOPPM_BIN: pdftoppm
+        run: |
+          tesseract --version
+          tesseract --list-langs | grep -Fx 'spa'
+          tesseract --list-langs | grep -Fx 'eng'
+          command -v pdfinfo
+          command -v pdftoppm
+          node --input-type=module <<'NODE'
+          import { createTesseractCliOcrProcessorFromEnv } from './apps/worker/dist/ocr/tesseract-cli.js';
+          const processor = createTesseractCliOcrProcessorFromEnv();
+          if (!processor || processor.constructor.name !== 'TesseractCliOcrProcessor') {
+            throw new Error('Tesseract OCR factory did not initialize the production processor.');
+          }
+          console.log('Tesseract OCR factory initialized:', processor.constructor.name);
+          NODE
 
       - name: Apply staging migrations
         env:

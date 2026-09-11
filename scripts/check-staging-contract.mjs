@@ -58,6 +58,16 @@ const required = [
   'S3_READ_TTL_SECONDS',
   'RADAR_S3_PREFIX',
   'WORKER_MODULES',
+  'OCR_PROVIDER',
+  'OCR_TESSERACT_LANGUAGES',
+  'OCR_MAX_BYTES',
+  'OCR_MAX_PDF_PAGES',
+  'OCR_TESSERACT_TIMEOUT_MS',
+  'OCR_TESSERACT_DPI',
+  'OCR_TESSERACT_PSM',
+  'TESSERACT_BIN',
+  'PDFINFO_BIN',
+  'PDFTOPPM_BIN',
   'VAPID_PUBLIC_KEY',
   'VAPID_PRIVATE_KEY',
   'VAPID_SUBJECT',
@@ -81,6 +91,11 @@ const exactSecurityValues = new Map([
   ['NEXT_PUBLIC_PREVIEW_MODE', 'false'],
   ['AUTH_COOKIE_SECURE', 'true'],
   ['ALLOW_DEV_AUTH_HEADERS', 'false'],
+  ['WORKER_MODULES', 'ocr,radar,notifications'],
+  ['OCR_PROVIDER', 'tesseract'],
+  ['TESSERACT_BIN', 'tesseract'],
+  ['PDFINFO_BIN', 'pdfinfo'],
+  ['PDFTOPPM_BIN', 'pdftoppm'],
 ]);
 for (const [key, expected] of exactSecurityValues) {
   if (staging.get(key) !== expected) {
@@ -124,13 +139,37 @@ const workerModules = new Set(
     .map((module) => module.trim())
     .filter(Boolean),
 );
-if (workerModules.has('ocr')) {
-  failures.push('WORKER_MODULES no puede habilitar ocr en NODE_ENV=production mientras no exista un procesador OCR de producción');
+for (const requiredModule of ['ocr', 'radar', 'notifications']) {
+  if (!workerModules.has(requiredModule)) failures.push(`WORKER_MODULES debe habilitar ${requiredModule} en staging`);
+}
+for (const module of workerModules) {
+  if (!['ocr', 'radar', 'notifications'].includes(module)) failures.push(`WORKER_MODULES contiene un módulo no soportado: ${module}`);
 }
 
-for (const staleKey of ['GOOGLE_CLIENT_SECRET', 'SESSION_SECRET', 'OCR_PROVIDER', 'OCR_PROCESSOR_MODE']) {
+for (const staleKey of ['GOOGLE_CLIENT_SECRET', 'SESSION_SECRET', 'OCR_PROCESSOR_MODE']) {
   if (staging.has(staleKey)) failures.push(`${staleKey} no debe declararse en el contrato de staging actual`);
 }
+
+const languages = staging.get('OCR_TESSERACT_LANGUAGES') ?? '';
+if (!/^[A-Za-z0-9_+.-]+$/.test(languages) || !languages.includes('spa')) {
+  failures.push('OCR_TESSERACT_LANGUAGES debe usar una lista Tesseract válida e incluir spa');
+}
+
+function requireIntegerRange(key, minimum, maximum = Number.MAX_SAFE_INTEGER) {
+  const value = Number(staging.get(key));
+  if (!Number.isInteger(value) || value < minimum || value > maximum) {
+    failures.push(`${key} debe ser un entero entre ${minimum} y ${maximum}`);
+  }
+}
+
+requireIntegerRange('PORT', 1, 65535);
+requireIntegerRange('S3_UPLOAD_TTL_SECONDS', 1);
+requireIntegerRange('S3_READ_TTL_SECONDS', 1);
+requireIntegerRange('OCR_MAX_BYTES', 1048576, 104857600);
+requireIntegerRange('OCR_MAX_PDF_PAGES', 1, 100);
+requireIntegerRange('OCR_TESSERACT_TIMEOUT_MS', 1000, 600000);
+requireIntegerRange('OCR_TESSERACT_DPI', 72, 600);
+requireIntegerRange('OCR_TESSERACT_PSM', 0, 13);
 
 const placeholderPattern = /(change[_-]?me|replace[_-]?me)/i;
 for (const key of [
@@ -150,16 +189,9 @@ for (const key of [
 }
 
 const vapidSubject = staging.get('VAPID_SUBJECT') ?? '';
-if (!vapidSubject.startsWith('mailto:')) {
-  failures.push('VAPID_SUBJECT debe usar formato mailto:');
-}
+if (!vapidSubject.startsWith('mailto:')) failures.push('VAPID_SUBJECT debe usar formato mailto:');
 if (!placeholderPattern.test(vapidSubject) && !/@example\.(com|invalid)$/i.test(vapidSubject)) {
   failures.push('VAPID_SUBJECT debe conservar una dirección de ejemplo en el archivo versionado');
-}
-
-for (const key of ['PORT', 'S3_UPLOAD_TTL_SECONDS', 'S3_READ_TTL_SECONDS']) {
-  const number = Number(staging.get(key));
-  if (!Number.isInteger(number) || number <= 0) failures.push(`${key} debe ser un entero positivo`);
 }
 
 if (failures.length) {
@@ -169,5 +201,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Staging contract OK: ${staging.size} variables, production safety defaults enforced, ${corsOrigins.length} HTTPS CORS origin(s), dev auth/preview disabled, sensitive values kept as placeholders.`,
+  `Staging contract OK: ${staging.size} variables, production safety defaults enforced, ${corsOrigins.length} HTTPS CORS origin(s), dev auth/preview disabled, Tesseract OCR enabled with bounded runtime limits, sensitive values kept as placeholders.`,
 );
