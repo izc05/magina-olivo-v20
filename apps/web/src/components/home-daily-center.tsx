@@ -99,6 +99,7 @@ export function HomeDailyCenter() {
   const summary = summarizeFarms(farms);
   const forecastDay = weather?.forecast.days.find((day) => day.date.slice(0, 10) === todayIso()) ?? weather?.forecast.days[0];
   const nextTask = agenda.overdue[0] ?? agenda.today[0] ?? agenda.upcoming[0];
+  const hasAgendaItems = agenda.counts.overdue + agenda.counts.today + agenda.counts.upcoming > 0;
 
   if (!apiConfigured) {
     return <>
@@ -129,14 +130,14 @@ export function HomeDailyCenter() {
       {weather?.stale ? <small>La previsión disponible está marcada como antigua.</small> : null}
     </div></section>
 
-    <section className="section section-overlap">
+    {hasAgendaItems ? <section className="section section-overlap">
       <div className="section-head"><h2>Hoy en tu campo</h2><Link href="/mi-campo/hoy">Abrir agenda <ArrowIcon /></Link></div>
       <div className="alert-grid">
-        <Link href="/mi-campo/hoy" className="card alert rose"><span className="alert-icon">!</span><strong>{agenda.counts.overdue} atrasada{agenda.counts.overdue === 1 ? '' : 's'}</strong><small>Solo quedan aquí hasta que registres o reprogrames.</small></Link>
-        <Link href="/mi-campo/hoy" className="card alert green"><span className="alert-icon">✓</span><strong>{agenda.counts.today} para hoy</strong><small>{nextTask?.fieldName ?? 'Sin tarea inmediata'}</small></Link>
-        <Link href="/mi-campo/hoy" className="card alert blue"><span className="alert-icon">☁</span><strong>{agenda.counts.weatherSensitive} sensibles al clima</strong><small>AEMET y radar solo aportan contexto.</small></Link>
+        {agenda.counts.overdue > 0 ? <Link href="/mi-campo/hoy" className="card alert rose"><span className="alert-icon">!</span><strong>{agenda.counts.overdue} atrasada{agenda.counts.overdue === 1 ? '' : 's'}</strong><small>Hasta registrar o reprogamar.</small></Link> : null}
+        {agenda.counts.today > 0 ? <Link href="/mi-campo/hoy" className="card alert green"><span className="alert-icon">✓</span><strong>{agenda.counts.today} para hoy</strong><small>{nextTask?.fieldName ?? 'Tareas programadas'}</small></Link> : null}
+        {agenda.counts.weatherSensitive > 0 ? <Link href="/mi-campo/hoy" className="card alert blue"><span className="alert-icon">☁</span><strong>{agenda.counts.weatherSensitive} sensibles al clima</strong><small>AEMET y radar aportan contexto.</small></Link> : null}
       </div>
-    </section>
+    </section> : null}
 
     <section className="section card field-summary premium-summary">
       <div className="field-summary-top"><div className="summary-brand"><span className="summary-mark"><SproutIcon /></span><div><h2>Mi Campo</h2><p>{focusFarm ? `Foco ahora: ${focusFarm.name}` : 'Tus fincas'}</p></div></div><Link href="/mi-campo" className="detail-link">Ver detalle <ArrowIcon /></Link></div>
