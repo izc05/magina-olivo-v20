@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
+import { HomePriorityCard } from '@/components/home-priority-card';
 import { ArrowIcon, MapPinIcon, PlusIcon, SproutIcon } from '@/components/icons';
 import { apiFetch } from '@/lib/api-client';
 import { emptyAgenda, loadApiAgenda, type AgendaView } from '@/lib/agenda-data-source';
@@ -130,10 +131,12 @@ export function HomeDailyCenter() {
       {weather?.stale ? <small>La previsión disponible está marcada como antigua.</small> : null}
     </div></section>
 
+    <HomePriorityCard />
+
     {hasAgendaItems ? <section className="section section-overlap">
       <div className="section-head"><h2>Hoy en tu campo</h2><Link href="/mi-campo/hoy">Abrir agenda <ArrowIcon /></Link></div>
       <div className="alert-grid">
-        {agenda.counts.overdue > 0 ? <Link href="/mi-campo/hoy" className="card alert rose"><span className="alert-icon">!</span><strong>{agenda.counts.overdue} atrasada{agenda.counts.overdue === 1 ? '' : 's'}</strong><small>Hasta registrar o reprogamar.</small></Link> : null}
+        {agenda.counts.overdue > 0 ? <Link href="/mi-campo/hoy" className="card alert rose"><span className="alert-icon">!</span><strong>{agenda.counts.overdue} atrasada{agenda.counts.overdue === 1 ? '' : 's'}</strong><small>Hasta registrar o reprogramar.</small></Link> : null}
         {agenda.counts.today > 0 ? <Link href="/mi-campo/hoy" className="card alert green"><span className="alert-icon">✓</span><strong>{agenda.counts.today} para hoy</strong><small>{nextTask?.fieldName ?? 'Tareas programadas'}</small></Link> : null}
         {agenda.counts.weatherSensitive > 0 ? <Link href="/mi-campo/hoy" className="card alert blue"><span className="alert-icon">☁</span><strong>{agenda.counts.weatherSensitive} sensibles al clima</strong><small>AEMET y radar aportan contexto.</small></Link> : null}
       </div>
