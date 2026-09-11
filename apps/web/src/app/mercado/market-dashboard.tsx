@@ -27,6 +27,15 @@ function formatPublishedOn(value: string): string {
     .format(new Date(Date.UTC(year, month - 1, day)));
 }
 
+function freshnessLabel(value: string): string {
+  const publishedAt = Date.parse(`${value}T00:00:00Z`);
+  if (!Number.isFinite(publishedAt)) return 'Publicación semanal';
+  const ageDays = Math.max(0, Math.floor((Date.now() - publishedAt) / 86_400_000));
+  if (ageDays <= 1) return 'Actualizado recientemente';
+  if (ageDays <= 9) return `Actualizado hace ${ageDays} días`;
+  return `Referencia de hace ${ageDays} días`;
+}
+
 function formatDelta(series: MarketSeries): { label: string; className: string } {
   const delta = marketDelta(series);
   const sign = delta.absolute > 0 ? '+' : '';
@@ -93,6 +102,11 @@ export function MarketDashboard() {
 
   const aove = snapshot.series.find((series) => series.id === 'virgen-extra');
   const defaultPrice = aove ? latestMarketPrice(aove) : 0;
+  const priceOptions = snapshot.series.map((series) => ({
+    id: series.id,
+    label: series.shortName,
+    priceEurKg: latestMarketPrice(series),
+  }));
   const firstWeek = snapshot.series[0]?.points[0];
   const lastWeek = snapshot.series[0]?.points.at(-1);
 
@@ -111,6 +125,7 @@ export function MarketDashboard() {
           <span>{snapshot.marketLevel}</span>
           <span>{snapshot.periodLabel}</span>
           <span>Publicado {formatPublishedOn(snapshot.sourcePublishedOn)}</span>
+          <span>{freshnessLabel(snapshot.sourcePublishedOn)}</span>
         </div>
       </section>
 
@@ -174,7 +189,11 @@ export function MarketDashboard() {
         </div>
       </section>
 
-      <MarketValueCalculator key={snapshot.revision} defaultPrice={defaultPrice} />
+      <MarketValueCalculator
+        key={snapshot.revision}
+        defaultPrice={defaultPrice}
+        priceOptions={priceOptions}
+      />
 
       <section className={styles.sourceCard} aria-labelledby="market-source-title">
         <div>
