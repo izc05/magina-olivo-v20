@@ -23,6 +23,7 @@ const headers = {
 };
 
 async function main() {
+  await sql`INSERT INTO users (id, primary_email, display_name) VALUES (${userId}::uuid, 'financial-attention-ci@example.test', 'Financial Attention CI') ON CONFLICT (id) DO NOTHING`.execute(db);
   await sql`
     INSERT INTO harvest_settlements (
       id, workspace_id, campaign_id, client_operation_id, counterparty_name, settlement_number,

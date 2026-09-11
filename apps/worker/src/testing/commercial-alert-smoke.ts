@@ -16,13 +16,13 @@ const expiredQuoteId = 'c7777777-7777-4777-8777-777777777777';
 const followupQuoteId = 'c8888888-8888-4888-8888-888888888888';
 
 async function main() {
+  await pool.query("INSERT INTO users (id, primary_email, display_name) VALUES ($1, 'commercial-alert-ci@example.test', 'Commercial Alert CI') ON CONFLICT (id) DO NOTHING", [userId]);
+  await pool.query("INSERT INTO workspaces (id, name, type) VALUES ($1, 'Commercial Alert CI', 'professional') ON CONFLICT (id) DO NOTHING", [workspaceId]);
+  await pool.query("INSERT INTO workspace_memberships (workspace_id, user_id, role, status) VALUES ($1, $2, 'owner', 'active') ON CONFLICT (workspace_id, user_id) DO NOTHING", [workspaceId, userId]);
   await pool.query(`
-    INSERT INTO users (id, primary_email, display_name) VALUES ($1, 'commercial-alert-ci@example.test', 'Commercial Alert CI') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO workspaces (id, name, type) VALUES ($2, 'Commercial Alert CI', 'professional') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO workspace_memberships (workspace_id, user_id, role, status) VALUES ($2, $1, 'owner', 'active') ON CONFLICT (workspace_id, user_id) DO NOTHING;
     INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, roles)
-      VALUES ($3, $2, 'c9999999-9999-4999-8999-999999999999', 'person', 'Cliente Alertas CI', ARRAY['customer']) ON CONFLICT (id) DO NOTHING;
-  `, [userId, workspaceId, customerId]);
+      VALUES ($1, $2, 'c9999999-9999-4999-8999-999999999999', 'person', 'Cliente Alertas CI', ARRAY['customer']) ON CONFLICT (id) DO NOTHING
+  `, [customerId, workspaceId]);
 
   await pool.query(`
     INSERT INTO work_records (id, workspace_id, client_operation_id, type, occurred_on, title, performed_for, customer_party_id, charge_eur, collected_eur, payment_status, created_by)

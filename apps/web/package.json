@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && node ../../scripts/check-web-bundle-budget.mjs",
-    "start": "next start",
+    "start": "node ../../scripts/serve-static-export.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

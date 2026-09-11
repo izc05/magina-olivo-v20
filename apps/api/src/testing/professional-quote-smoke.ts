@@ -90,7 +90,11 @@ async function main() {
     title: 'Presupuesto emitido P-CI-001', original_filename: 'P-CI-001.pdf', mime_type: 'application/pdf', byte_size: 128, sha256: checksum,
   }});
   if (document.statusCode !== 201) throw new Error(`Quote document reserve failed: ${document.statusCode} ${document.body}`);
-  const completed = await app.inject({ method: 'POST', url: `/api/v1/documents/${documentId}/versions/${versionId}/complete`, headers });
+  const completed = await app.inject({
+    method: 'POST',
+    url: `/api/v1/documents/${documentId}/versions/${versionId}/complete`,
+    headers: { 'x-workspace-id': workspaceId, 'x-user-id': userId },
+  });
   if (completed.statusCode !== 200) throw new Error(`Quote document complete failed: ${completed.statusCode} ${completed.body}`);
 
   const list = await app.inject({ method: 'GET', url: `/api/v1/professional/quotes?customerId=${customerId}`, headers });
