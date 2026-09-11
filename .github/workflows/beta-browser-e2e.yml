@@ -97,10 +97,11 @@ jobs:
             'Finca Mobile Audit', 80, 'secano'
           );
 
-          INSERT INTO documents (id, workspace_id, kind, title, created_by)
+          INSERT INTO documents (id, workspace_id, client_operation_id, kind, title, created_by)
           VALUES (
             'ffffffff-6666-4666-8666-ffffffffffff',
             'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '0f0f0f0f-6666-4666-8666-0f0f0f0f0f0f',
             'delivery_ticket', 'Albarán OCR E2E',
             'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
           );
@@ -173,10 +174,11 @@ jobs:
             '66666666-cccc-4ccc-8ccc-666666666666', 'Poda y trituración', 1, 'servicio', 100, 100, 0
           );
 
-          INSERT INTO documents (id, workspace_id, kind, title, status, created_by)
+          INSERT INTO documents (id, workspace_id, client_operation_id, kind, title, status, created_by)
           VALUES (
             '88888888-eeee-4eee-8eee-888888888888',
             'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '1f1f1f1f-eeee-4eee-8eee-1f1f1f1f1f1f',
             'sales_quote', 'Presupuesto P-E2E-001', 'active',
             'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
           );
