@@ -35,7 +35,7 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   await expect(page.getByLabel('Referencia catastral')).toBeVisible();
   await expect(page.getByLabel('ID del recinto SIGPAC')).toBeVisible();
 
-  await page.goto(registerHref!);
+  await page.goto(`/mi-campo/registrar?fieldId=${encodeURIComponent(fieldId!)}`);
   await expect(page.getByRole('heading', { name: '¿Qué quieres registrar?' })).toBeVisible();
 
   const workLink = page.getByRole('link').filter({ hasText: 'Trabajo' }).first();
