@@ -21,16 +21,24 @@ const documentId = 'a6999999-9999-4999-8999-999999999999';
 const versionId = 'a6aaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const headers = { 'x-workspace-id': workspaceId, 'x-user-id': userId, 'content-type': 'application/json' };
 
-async function main() {
+async function seed() {
+  await sql`INSERT INTO users (id, primary_email, display_name) VALUES (${userId}::uuid, 'quote-ci@example.test', 'Quote CI') ON CONFLICT (id) DO NOTHING`.execute(db);
+  await sql`INSERT INTO workspaces (id, name, type) VALUES (${workspaceId}::uuid, 'Quote CI Workspace', 'professional') ON CONFLICT (id) DO NOTHING`.execute(db);
+  await sql`INSERT INTO workspace_memberships (workspace_id, user_id, role, status) VALUES (${workspaceId}::uuid, ${userId}::uuid, 'owner', 'active') ON CONFLICT (workspace_id, user_id) DO NOTHING`.execute(db);
   await sql`
-    INSERT INTO users (id, primary_email, display_name) VALUES (${userId}::uuid, 'quote-ci@example.test', 'Quote CI') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO workspaces (id, name, type) VALUES (${workspaceId}::uuid, 'Quote CI Workspace', 'professional') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO workspace_memberships (workspace_id, user_id, role, status) VALUES (${workspaceId}::uuid, ${userId}::uuid, 'owner', 'active') ON CONFLICT (workspace_id, user_id) DO NOTHING;
     INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, roles)
-    VALUES (${customerId}::uuid, ${workspaceId}::uuid, 'a7777777-7777-4777-8777-777777777777'::uuid, 'person', 'Cliente Presupuesto CI', ARRAY['customer']) ON CONFLICT (id) DO NOTHING;
-    INSERT INTO customer_sites (id, workspace_id, client_operation_id, customer_party_id, name, active)
-    VALUES (${siteId}::uuid, ${workspaceId}::uuid, 'a8888888-8888-4888-8888-888888888888'::uuid, ${customerId}::uuid, 'Finca Cliente CI', TRUE) ON CONFLICT (id) DO NOTHING;
+    VALUES (${customerId}::uuid, ${workspaceId}::uuid, 'a7777777-7777-4777-8777-777777777777'::uuid, 'person', 'Cliente Presupuesto CI', ARRAY['customer'])
+    ON CONFLICT (id) DO NOTHING
   `.execute(db);
+  await sql`
+    INSERT INTO customer_sites (id, workspace_id, client_operation_id, customer_party_id, name, active)
+    VALUES (${siteId}::uuid, ${workspaceId}::uuid, 'a8888888-8888-4888-8888-888888888888'::uuid, ${customerId}::uuid, 'Finca Cliente CI', TRUE)
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
+}
+
+async function main() {
+  await seed();
 
   const created = await app.inject({ method: 'POST', url: '/api/v1/professional/quotes', headers, payload: {
     client_operation_id: 'a9999999-9999-4999-8999-999999999999', entity_id: quoteId,
