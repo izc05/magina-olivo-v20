@@ -50,34 +50,40 @@ export function extractDocumentProposal(documentKind: string, rawText: string): 
       /([0-9][0-9.]*[,.][0-9]{2})\s*€/i,
     ]);
     add(data, confidence, 'total_eur', totalRaw ? parseDecimal(totalRaw) : null, totalRaw ? 0.84 : 0);
-    add(data, confidence, 'document_number', firstMatch(text, [
-      /(?:factura|ticket|presupuesto|n[ºo°]\.?|núm(?:ero)?)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/.]{2,})/i,
-    ]), 0.68);
-    add(data, confidence, 'supplier_tax_id', firstMatch(text, [
-      /(?:cif|nif|vat)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-]{7,14})/i,
-    ]), 0.72);
+    add(data, confidence, 'document_number', firstMatch(text, [/(?:factura|ticket|presupuesto|n[ºo°]\.?|núm(?:ero)?)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/.]{2,})/i]), 0.68);
+    add(data, confidence, 'supplier_tax_id', firstMatch(text, [/(?:cif|nif|vat)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-]{7,14})/i]), 0.72);
   }
 
   if (documentKind === 'delivery_ticket') {
-    const kgRaw = firstMatch(text, [
-      /(?:peso\s*neto|neto|kilos?|kg)\s*[:\-]?\s*([0-9][0-9.,]*)\s*(?:kg|kgs?)?/i,
-      /([0-9][0-9.,]*)\s*kg\b/i,
-    ]);
+    const kgRaw = firstMatch(text, [/(?:peso\s*neto|neto|kilos?|kg)\s*[:\-]?\s*([0-9][0-9.,]*)\s*(?:kg|kgs?)?/i, /([0-9][0-9.,]*)\s*kg\b/i]);
     add(data, confidence, 'total_kg', kgRaw ? parseDecimal(kgRaw) : null, kgRaw ? 0.9 : 0);
-    add(data, confidence, 'ticket_number', firstMatch(text, [
-      /(?:albar[aá]n|ticket|entrada|n[ºo°]\.?|núm(?:ero)?)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/.]{2,})/i,
-    ]), 0.68);
+    add(data, confidence, 'ticket_number', firstMatch(text, [/(?:albar[aá]n|ticket|entrada|n[ºo°]\.?|núm(?:ero)?)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/.]{2,})/i]), 0.68);
   }
 
   if (documentKind === 'yield_result') {
-    const yieldRaw = firstMatch(text, [
-      /(?:rendimiento(?:\s*graso)?|rdto\.?|yield)\s*[:\-]?\s*([0-9]{1,2}(?:[,.][0-9]{1,3})?)\s*%?/i,
-    ]);
+    const yieldRaw = firstMatch(text, [/(?:rendimiento(?:\s*graso)?|rdto\.?|yield)\s*[:\-]?\s*([0-9]{1,2}(?:[,.][0-9]{1,3})?)\s*%?/i]);
     add(data, confidence, 'yield_percent', yieldRaw ? parseDecimal(yieldRaw) : null, yieldRaw ? 0.88 : 0);
     const moistureRaw = firstMatch(text, [/(?:humedad)\s*[:\-]?\s*([0-9]{1,2}(?:[,.][0-9]{1,3})?)\s*%?/i]);
     add(data, confidence, 'moisture_percent', moistureRaw ? parseDecimal(moistureRaw) : null, moistureRaw ? 0.8 : 0);
     const acidityRaw = firstMatch(text, [/(?:acidez)\s*[:\-]?\s*([0-9]{1,2}(?:[,.][0-9]{1,3})?)\s*%?/i]);
     add(data, confidence, 'acidity_percent', acidityRaw ? parseDecimal(acidityRaw) : null, acidityRaw ? 0.8 : 0);
+  }
+
+  if (documentKind === 'settlement_statement') {
+    const grossRaw = firstMatch(text, [/(?:importe\s*bruto|bruto)\s*[:€\s]*([0-9][0-9.]*[,.][0-9]{2})/i]);
+    const deductionsRaw = firstMatch(text, [/(?:deducciones|descuentos|retenciones|gastos)\s*[:€\s]*([0-9][0-9.]*[,.][0-9]{2})/i]);
+    const netRaw = firstMatch(text, [/(?:importe\s*neto|neto\s*a\s*percibir|líquido\s*a\s*percibir|total\s*neto)\s*[:€\s]*([0-9][0-9.]*[,.][0-9]{2})/i]);
+    add(data, confidence, 'gross_eur', grossRaw ? parseDecimal(grossRaw) : null, grossRaw ? 0.85 : 0);
+    add(data, confidence, 'deductions_eur', deductionsRaw ? parseDecimal(deductionsRaw) : null, deductionsRaw ? 0.78 : 0);
+    add(data, confidence, 'net_eur', netRaw ? parseDecimal(netRaw) : null, netRaw ? 0.9 : 0);
+    add(data, confidence, 'settlement_number', firstMatch(text, [/(?:liquidaci[oó]n|n[ºo°]\.?\s*liquidaci[oó]n|núm(?:ero)?)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/.]{2,})/i]), 0.68);
+    add(data, confidence, 'counterparty_name', firstMatch(text, [/(?:cooperativa|almazara|entidad)\s*[:\-]?\s*([^\n]{3,80})/i]), 0.56);
+  }
+
+  if (documentKind === 'collection_receipt') {
+    const amountRaw = firstMatch(text, [/(?:importe|abonado|transferencia|ingreso|total)\s*[:€\s]*([0-9][0-9.]*[,.][0-9]{2})/i]);
+    add(data, confidence, 'amount_eur', amountRaw ? parseDecimal(amountRaw) : null, amountRaw ? 0.84 : 0);
+    add(data, confidence, 'reference', firstMatch(text, [/(?:referencia|concepto|operaci[oó]n)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/.]{2,})/i]), 0.64);
   }
 
   if (!Object.keys(data).length) return null;
