@@ -35,6 +35,7 @@ import { registerWorkRoutes } from './routes/work.js';
 import { registerWorkCommercialRoutes } from './routes/work-commercial.js';
 import { registerProfessionalRoutes } from './routes/professional.js';
 import { registerProfessionalInvoiceRoutes } from './routes/professional-invoices.js';
+import { registerProfessionalCustomerRoutes } from './routes/professional-customers.js';
 import type { StoragePort } from './storage/port.js';
 import { UnavailableStorage } from './storage/port.js';
 import type { OcrQueuePort } from './ocr/port.js';
@@ -112,6 +113,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerWorkCommercialRoutes(app, db);
   registerProfessionalRoutes(app, db);
   registerProfessionalInvoiceRoutes(app, db);
+  registerProfessionalCustomerRoutes(app, db);
   registerDocumentRoutes(app, db, storage, ocrQueue);
   registerDocumentAccessRoutes(app, db, storage);
   registerDocumentCatalogRoutes(app, db);
