@@ -49,6 +49,7 @@ try {
   assert.equal(first.statusCode, 200, first.body);
   assert.equal(first.json().balance, 20);
   assert.equal(first.json().missions.find((mission: { id: string }) => mission.id === 'profile').completed, true);
+  assert.equal(first.json().rewards.find((reward: { id: string }) => reward.id === 'sprout-badge').unlocked, true);
 
   const second = await app.inject({ method: 'GET', url: '/api/v1/mi-olivo', headers });
   assert.equal(second.statusCode, 200, second.body);
@@ -61,6 +62,7 @@ try {
   `.execute(db);
 
   for (let index = 0; index < 10; index += 1) {
+    const daysAgo = 9 - index;
     await sql`
       INSERT INTO irrigation_records (
         id, workspace_id, field_id, occurred_at, client_operation_id, created_by
@@ -68,7 +70,7 @@ try {
         ${randomUUID()}::uuid,
         ${workspaceId}::uuid,
         ${fieldId}::uuid,
-        ${new Date(Date.UTC(2026, 8, index + 1)).toISOString()}::timestamptz,
+        now() - (${daysAgo} * interval '1 day'),
         ${randomUUID()}::uuid,
         ${userId}::uuid
       )
@@ -79,6 +81,12 @@ try {
   assert.equal(activity.statusCode, 200, activity.body);
   assert.equal(activity.json().balance, 95);
   assert.equal(activity.json().achievements.find((achievement: { id: string }) => achievement.id === 'constancy').unlocked, true);
+  const constancyMission = activity.json().missions.find((mission: { id: string }) => mission.id === 'constancy');
+  assert.equal(constancyMission.completed, true);
+  assert.equal(constancyMission.progress_current, 10);
+  assert.equal(constancyMission.progress_target, 10);
+  assert.ok(activity.json().rhythm.active_weeks >= 2, 'recent activity should create a multi-week rhythm');
+  assert.equal(activity.json().rhythm.grace_active, false);
 
   const paused = await app.inject({
     method: 'PUT',
@@ -109,7 +117,7 @@ try {
     ) VALUES (
       ${randomUUID()}::uuid,
       ${workspaceId}::uuid,
-      '2026-10-01T08:00:00Z'::timestamptz,
+      now(),
       1250,
       'manual',
       ${randomUUID()}::uuid,
@@ -136,6 +144,8 @@ try {
   assert.equal(final.json().level, 2);
   assert.equal(final.json().progress.current, 50);
   assert.equal(final.json().missions.every((mission: { completed: boolean }) => mission.completed), true);
+  assert.equal(final.json().rewards.find((reward: { id: string }) => reward.id === 'new-branch-badge').unlocked, true);
+  assert.equal(final.json().rewards.find((reward: { id: string }) => reward.id === 'young-olive-badge').unlocked, false);
 
   const ledger = await sql<{ total: number; distinct_keys: number }>`
     SELECT COUNT(*)::int AS total, COUNT(DISTINCT idempotency_key)::int AS distinct_keys

@@ -6,7 +6,9 @@ type MiOlivoApi = {
   enabled: boolean;
   balance: number;
   level: number;
-  missions: Array<{ id: string; completed: boolean }>;
+  rhythm: { active_weeks: number; grace_active: boolean };
+  missions: Array<{ id: string; completed: boolean; progress_current: number; progress_target: number }>;
+  rewards: Array<{ id: string; unlocked: boolean }>;
 };
 
 test.describe.configure({ mode: 'serial' });
@@ -17,6 +19,7 @@ test.beforeAll(async ({ request }) => {
   const firstBody = await first.json() as MiOlivoApi;
   expect(firstBody.enabled).toBe(true);
   expect(firstBody.balance).toBeGreaterThanOrEqual(25);
+  expect(firstBody.rewards.some((reward) => reward.unlocked)).toBe(true);
 
   const repeated = await request.get(`${apiUrl}/api/v1/mi-olivo`);
   expect(repeated.status(), repeated.statusText()).toBe(200);
@@ -50,7 +53,9 @@ for (const width of [360, 390, 430]) {
       await expect(page.getByRole('heading', { name: 'Tu olivo digital' })).toBeVisible();
       await expect(page.getByRole('img', { name: /Olivo digital en fase/ })).toBeVisible();
       await expect(page.getByText('aceitunas', { exact: true })).toBeVisible();
+      await expect(page.getByText(/Ritmo del cuaderno ·/)).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Pequeños pasos útiles' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Distintivos digitales' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Por qué ha crecido' })).toBeVisible();
 
       const dimensions = await page.evaluate(() => ({
