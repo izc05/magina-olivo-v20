@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { sql } from 'kysely';
 import { documentKindSchema, uuidSchema } from '@magina/contracts';
 import type { DatabaseClient } from '../db/client.js';
 import { fieldBelongsToWorkspace, requireContext, requireDatabase } from '../http/helpers.js';
@@ -24,6 +25,19 @@ async function recordBelongsToField(
       .innerJoin('harvest_deliveries as hd', 'hd.id', 'dr.delivery_id')
       .innerJoin('harvest_delivery_fields as hdf', 'hdf.delivery_id', 'hd.id')
       .select('dr.id').where('dr.id', '=', recordId).where('dr.workspace_id', '=', workspaceId).where('hdf.field_id', '=', fieldId).executeTakeFirst());
+  }
+  if (domainType === 'harvest_settlement') {
+    const result = await sql<{ id: string }>`
+      SELECT hs.id
+      FROM harvest_settlements hs
+      JOIN harvest_settlement_deliveries hsd ON hsd.settlement_id = hs.id
+      JOIN harvest_delivery_fields hdf ON hdf.delivery_id = hsd.delivery_id
+      WHERE hs.id = ${recordId}::uuid
+        AND hs.workspace_id = ${workspaceId}::uuid
+        AND hdf.field_id = ${fieldId}::uuid
+      LIMIT 1
+    `.execute(db);
+    return Boolean(result.rows[0]);
   }
   return false;
 }
@@ -119,7 +133,7 @@ export function registerDocumentCatalogRoutes(app: FastifyInstance, db: Database
     const fieldId = uuidSchema.safeParse(body?.field_id);
     const recordId = uuidSchema.safeParse(body?.domain_record_id);
     const domainType = body?.domain_type ?? '';
-    if (!fieldId.success || !recordId.success || !['expense', 'harvest_delivery', 'harvest_result'].includes(domainType)) {
+    if (!fieldId.success || !recordId.success || !['expense', 'harvest_delivery', 'harvest_result', 'harvest_settlement'].includes(domainType)) {
       return reply.code(400).send({ error: 'invalid_document_domain_link' });
     }
 
