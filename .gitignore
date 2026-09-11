@@ -1,12 +1,25 @@
 node_modules
+.pnpm-store
 .next
 out
 dist
+coverage
+.cache
+*.tsbuildinfo
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
 .env
 .env.*
 !.env.example
+
 .DS_Store
-coverage
+
+# Playwright / browser test artifacts.
+playwright-report/
+test-results/
+blob-report/
 
 # OCR benchmark outputs are generated locally/CI.
 services/ocr-benchmark/results/
