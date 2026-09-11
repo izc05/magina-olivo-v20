@@ -11,7 +11,7 @@ on:
       - 'pnpm-workspace.yaml'
       - 'scripts/**'
       - 'apps/**/package.json'
-      - 'packages/**/package.json'
+      - 'apps/web/tsconfig.json'
       - 'tsconfig*.json'
       - '.github/workflows/**'
 
@@ -54,3 +54,10 @@ jobs:
 
       - name: Build workspace
         run: pnpm build
+
+      - name: Verify build leaves tracked files unchanged
+        run: |
+          if ! git diff --exit-code; then
+            echo 'Build modified tracked repository files. Commit the generated/configuration change instead of mutating it in CI.' >&2
+            exit 1
+          fi
