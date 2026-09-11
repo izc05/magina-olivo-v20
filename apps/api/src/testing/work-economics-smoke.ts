@@ -11,6 +11,7 @@ const app = buildApp({ db });
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const userId = '33333333-3333-4333-8333-333333333333';
 const fieldId = '55555555-5555-4555-8555-555555555555';
+const customerId = '25111111-1111-4111-8111-111111111111';
 const headers = { 'x-workspace-id': workspaceId, 'x-user-id': userId, 'content-type': 'application/json' };
 
 async function postWork(body: Record<string, unknown>) {
@@ -19,6 +20,13 @@ async function postWork(body: Record<string, unknown>) {
     throw new Error(`Work create failed: ${response.statusCode} ${response.body}`);
   }
   return response.json();
+}
+
+function near(actual: unknown, expected: number, label: string) {
+  const value = Number(actual);
+  if (!Number.isFinite(value) || Math.abs(value - expected) > 0.001) {
+    throw new Error(`${label}: expected ${expected}, got ${String(actual)}`);
+  }
 }
 
 async function main() {
@@ -55,6 +63,36 @@ async function main() {
     ],
   });
 
+  await sql`
+    INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, roles, active)
+    VALUES (
+      ${customerId}::uuid, ${workspaceId}::uuid,
+      '26111111-1111-4111-8111-111111111111'::uuid,
+      'person', 'Cliente CI', ARRAY['customer']::text[], TRUE
+    ) ON CONFLICT (id) DO NOTHING
+  `.execute(db);
+
+  await postWork({
+    client_operation_id: '27111111-1111-4111-8111-111111111111',
+    entity_id: '28111111-1111-4111-8111-111111111111',
+    field_id: fieldId,
+    campaign_id: '22222222-2222-4222-8222-222222222222',
+    type: 'machinery-work',
+    occurred_on: '2026-10-12',
+    title: 'Trabajo profesional CI',
+    performed_for: 'third-party',
+    customer_party_id: customerId,
+    charge_eur: 500,
+    collected_eur: 200,
+    payment_status: 'partial',
+    participants: [
+      { display_name: 'Operario CI', quantity: 1, unit: 'jornales', rate_eur: 100 },
+    ],
+    resources: [
+      { kind: 'machinery', name: 'Tractor cliente CI', quantity: 1, unit: 'hours', unit_cost_eur: 50 },
+    ],
+  });
+
   const participantZero = await sql<{ cost_eur: number | string | null }>`
     SELECT cost_eur FROM work_participants WHERE work_id = '24111111-1111-4111-8111-111111111111'::uuid LIMIT 1
   `.execute(db);
@@ -72,17 +110,39 @@ async function main() {
   if (response.statusCode !== 200) throw new Error(`Economics summary failed: ${response.statusCode} ${response.body}`);
   const body = response.json();
   const breakdown = body.work_cost_breakdown;
-  if (Math.abs(Number(breakdown.labor_eur) - 160) > 0.001) throw new Error(`Unexpected labor cost: ${breakdown.labor_eur}`);
-  if (Math.abs(Number(breakdown.machinery_eur) - 60) > 0.001) throw new Error(`Unexpected machinery cost: ${breakdown.machinery_eur}`);
-  if (Math.abs(Number(breakdown.materials_eur) - 20) > 0.001) throw new Error(`Unexpected material cost: ${breakdown.materials_eur}`);
-  if (Math.abs(Number(breakdown.services_eur) - 0) > 0.001) throw new Error(`Unexpected service cost: ${breakdown.services_eur}`);
-  if (Math.abs(Number(breakdown.total_work_eur) - 240) > 0.001) throw new Error(`Unexpected total work cost: ${breakdown.total_work_eur}`);
+  near(breakdown.labor_eur, 260, 'labor cost');
+  near(breakdown.machinery_eur, 110, 'machinery cost');
+  near(breakdown.materials_eur, 20, 'material cost');
+  near(breakdown.services_eur, 0, 'service cost');
+  near(breakdown.total_work_eur, 390, 'total work cost');
+
+  near(body.professional_cost_eur, 150, 'professional cost');
+  near(body.professional_work.charged_eur, 500, 'professional charged');
+  near(body.professional_work.collected_eur, 200, 'professional collected');
+  near(body.professional_work.pending_eur, 300, 'professional pending');
+  near(body.professional_work.direct_cost_eur, 150, 'professional direct cost');
+  near(body.professional_work.accrued_margin_eur, 350, 'professional accrued margin');
+  near(Number(body.total_cost_eur) - Number(body.professional_cost_eur), body.production_cost_eur, 'production cost separation');
+  near(
+    Number(body.accrued_income_eur) + Number(body.professional_work.charged_eur) - Number(body.total_cost_eur),
+    body.combined_accrued_margin_eur,
+    'combined accrued margin',
+  );
+  if (Number(body.delivered_kg) > 0) {
+    near(Number(body.production_cost_eur) / Number(body.delivered_kg), body.cost_per_delivered_kg_eur, 'production cost per kg');
+  }
 
   const ledger = await sql<{ amount_eur: number | string }>`
     SELECT amount_eur FROM cost_ledger_projection
     WHERE domain_type = 'work' AND domain_record_id = '22111111-1111-4111-8111-111111111111'::uuid
   `.execute(db);
-  if (Math.abs(Number(ledger.rows[0]?.amount_eur) - 240) > 0.001) throw new Error(`Unexpected work ledger projection: ${ledger.rows[0]?.amount_eur}`);
+  near(ledger.rows[0]?.amount_eur, 240, 'self work ledger projection');
+
+  const professionalLedger = await sql<{ amount_eur: number | string }>`
+    SELECT amount_eur FROM cost_ledger_projection
+    WHERE domain_type = 'work' AND domain_record_id = '28111111-1111-4111-8111-111111111111'::uuid
+  `.execute(db);
+  near(professionalLedger.rows[0]?.amount_eur, 150, 'professional work ledger projection');
 
   console.log('Work economics smoke test passed');
 }
