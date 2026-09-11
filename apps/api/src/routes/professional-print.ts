@@ -28,7 +28,8 @@ export function registerProfessionalPrintRoutes(app: FastifyInstance, db: Databa
     const invoiceResult = await sql`
       SELECT pi.id, pi.invoice_number, pi.issued_on::text, pi.due_on::text, pi.status,
              pi.subtotal_eur::double precision, pi.tax_eur::double precision, pi.total_eur::double precision,
-             pi.notes, p.id AS customer_id, p.display_name AS customer_name, p.legal_name AS customer_legal_name,
+             pi.notes, pi.issuer_snapshot_json, pi.customer_snapshot_json,
+             p.id AS customer_id, p.display_name AS customer_name, p.legal_name AS customer_legal_name,
              p.tax_id AS customer_tax_id, p.phone AS customer_phone, p.email AS customer_email
       FROM professional_invoices pi
       JOIN parties p ON p.id = pi.customer_party_id
@@ -48,18 +49,19 @@ export function registerProfessionalPrintRoutes(app: FastifyInstance, db: Databa
       ORDER BY wr.occurred_on, wr.created_at
     `.execute(database);
 
-    const issuer = await issuerForWorkspace(database, context.workspaceId);
+    const fallbackIssuer = await issuerForWorkspace(database, context.workspaceId);
+    const fallbackCustomer = {
+      id: invoice.customer_id,
+      display_name: invoice.customer_name,
+      legal_name: invoice.customer_legal_name,
+      tax_id: invoice.customer_tax_id,
+      phone: invoice.customer_phone,
+      email: invoice.customer_email,
+    };
     return {
       document_type: 'invoice',
-      issuer,
-      customer: {
-        id: invoice.customer_id,
-        display_name: invoice.customer_name,
-        legal_name: invoice.customer_legal_name,
-        tax_id: invoice.customer_tax_id,
-        phone: invoice.customer_phone,
-        email: invoice.customer_email,
-      },
+      issuer: invoice.issuer_snapshot_json ?? fallbackIssuer,
+      customer: invoice.customer_snapshot_json ?? fallbackCustomer,
       document: {
         id: invoice.id,
         number: invoice.invoice_number,
@@ -72,7 +74,11 @@ export function registerProfessionalPrintRoutes(app: FastifyInstance, db: Databa
         notes: invoice.notes,
       },
       lines: lines.rows.map((line) => ({ ...line, amount_eur: Number(line.amount_eur) })),
-      semantics: { line_amounts: 'gross_amounts_matching_invoice_total', totals: 'stored_invoice_totals_no_client_recalculation' },
+      semantics: {
+        line_amounts: 'gross_amounts_matching_invoice_total',
+        totals: 'stored_invoice_totals_no_client_recalculation',
+        identity: invoice.issuer_snapshot_json && invoice.customer_snapshot_json ? 'captured_at_creation' : 'legacy_fallback',
+      },
     };
   });
 
@@ -86,7 +92,8 @@ export function registerProfessionalPrintRoutes(app: FastifyInstance, db: Databa
     const quoteResult = await sql`
       SELECT pq.id, pq.quote_number, pq.title, pq.issued_on::text, pq.valid_until::text, pq.status,
              pq.subtotal_eur::double precision, pq.tax_eur::double precision, pq.total_eur::double precision,
-             pq.notes, p.id AS customer_id, p.display_name AS customer_name, p.legal_name AS customer_legal_name,
+             pq.notes, pq.issuer_snapshot_json, pq.customer_snapshot_json,
+             p.id AS customer_id, p.display_name AS customer_name, p.legal_name AS customer_legal_name,
              p.tax_id AS customer_tax_id, p.phone AS customer_phone, p.email AS customer_email,
              cs.name AS site_name
       FROM professional_quotes pq
@@ -105,18 +112,19 @@ export function registerProfessionalPrintRoutes(app: FastifyInstance, db: Databa
       ORDER BY sort_order, id
     `.execute(database);
 
-    const issuer = await issuerForWorkspace(database, context.workspaceId);
+    const fallbackIssuer = await issuerForWorkspace(database, context.workspaceId);
+    const fallbackCustomer = {
+      id: quote.customer_id,
+      display_name: quote.customer_name,
+      legal_name: quote.customer_legal_name,
+      tax_id: quote.customer_tax_id,
+      phone: quote.customer_phone,
+      email: quote.customer_email,
+    };
     return {
       document_type: 'quote',
-      issuer,
-      customer: {
-        id: quote.customer_id,
-        display_name: quote.customer_name,
-        legal_name: quote.customer_legal_name,
-        tax_id: quote.customer_tax_id,
-        phone: quote.customer_phone,
-        email: quote.customer_email,
-      },
+      issuer: quote.issuer_snapshot_json ?? fallbackIssuer,
+      customer: quote.customer_snapshot_json ?? fallbackCustomer,
       document: {
         id: quote.id,
         number: quote.quote_number,
@@ -136,7 +144,11 @@ export function registerProfessionalPrintRoutes(app: FastifyInstance, db: Databa
         unit_price_eur: Number(line.unit_price_eur),
         line_total_eur: Number(line.line_total_eur),
       })),
-      semantics: { line_amounts: 'net_before_tax', totals: 'stored_quote_totals_no_client_recalculation' },
+      semantics: {
+        line_amounts: 'net_before_tax',
+        totals: 'stored_quote_totals_no_client_recalculation',
+        identity: quote.issuer_snapshot_json && quote.customer_snapshot_json ? 'captured_at_creation' : 'legacy_fallback',
+      },
     };
   });
 }
