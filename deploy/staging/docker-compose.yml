@@ -2,7 +2,7 @@ name: magina-v20-staging
 
 services:
   postgres:
-    image: postgis/postgis:17-3.5
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -19,7 +19,7 @@ services:
       - backend
 
   migrate:
-    image: postgres:17-bookworm
+    image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
     restart: "no"
     environment:
       DATABASE_URL: ${DATABASE_URL}
