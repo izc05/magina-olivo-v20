@@ -4,7 +4,11 @@
 
 El Admin es el backoffice corporativo de la plataforma. No forma parte de `Mi Campo` y no hereda permisos de los espacios de trabajo de agricultores o profesionales.
 
-Ruta web: `/admin`
+Rutas principales:
+
+- `/admin` — centro de control, usuarios, roles, CMS, ajustes y auditoría;
+- `/admin/web` — editor visual de la web pública;
+- `/admin/media` — biblioteca multimedia corporativa.
 
 ## Acceso corporativo
 
@@ -20,13 +24,11 @@ ADMIN_BOOTSTRAP_EMAILS=admin@empresa.tld
 
 Se admiten varios correos separados por coma. La comparación es exacta y no se concede acceso por dominio completo.
 
-El correo debe iniciar sesión normalmente con Google. Si coincide con `ADMIN_BOOTSTRAP_EMAILS`, la API le concede `super_admin` como acceso bootstrap.
-
-Después puede conceder permisos persistentes desde **Admin > Usuarios**. Esos permisos se guardan en `platform_admins`.
+El correo debe iniciar sesión normalmente con Google. Si coincide con `ADMIN_BOOTSTRAP_EMAILS`, la API le concede `super_admin` como acceso bootstrap. Después puede conceder permisos persistentes desde **Admin > Usuarios**, almacenados en `platform_admins`.
 
 ## Roles
 
-| Rol | Lectura | CMS / ajustes | Suspender usuarios | Conceder roles Admin | Auditoría |
+| Rol | Lectura | CMS / ajustes / media | Suspender usuarios | Conceder roles Admin | Auditoría |
 | --- | --- | --- | --- | --- | --- |
 | `support` | Sí | No | No | No | No |
 | `editor` | Sí | Sí | No | No | No |
@@ -35,13 +37,84 @@ Después puede conceder permisos persistentes desde **Admin > Usuarios**. Esos p
 
 Un `owner` o `admin` de un workspace/finca **no es administrador de plataforma**.
 
-## Módulos del panel
+## Centro de control `/admin`
 
-### Resumen
+Incluye métricas de usuarios, workspaces, fincas activas, contenido gestionado y publicado, actividad administrativa reciente, gestión de usuarios, roles corporativos, CMS genérico, ajustes y auditoría.
 
-Métricas de usuarios, workspaces, fincas activas, contenido gestionado y contenido publicado. Muestra también actividad administrativa reciente.
+Los accesos directos **Editar web** y **Multimedia** llevan a las superficies editoriales especializadas.
 
-### Contenido
+## Editor visual `/admin/web`
+
+Permite modificar la web sin escribir JSON ni desplegar código.
+
+### Inicio
+
+Ajustes estructurados:
+
+- `home.hero`: texto superior, título, descripción, botón, destino e imagen;
+- `home.territory_banner`: título y llamada a la acción territorial;
+- `alerts.banner`: activación, texto y enlace del aviso superior.
+
+La portada consume estos ajustes mediante `/api/v1/public/site-settings`. Si no existe una configuración administrada, mantiene el contenido de respaldo de V20.
+
+### Noticias y eventos
+
+El editor permite crear y modificar noticias y eventos con título, slug, resumen, cuerpo, ubicación, imagen, enlace, destacado y orden.
+
+### Territorio y cooperativas
+
+Permite gestionar pueblos/lugares, almazaras/cooperativas y elementos de directorio con datos como localidad, teléfono, dirección, descripción, imagen y enlace.
+
+### Publicidad y avisos
+
+Permite crear promociones y avisos diferenciados del contenido editorial.
+
+### Programación
+
+Cada entrada puede indicar:
+
+- `starts_at`: fecha/hora desde la que es pública;
+- `ends_at`: fecha/hora hasta la que es pública.
+
+El endpoint público filtra por ambas fechas. Un elemento publicado con inicio futuro no aparece antes de tiempo y uno caducado deja de aparecer automáticamente.
+
+### Configuración pública
+
+El editor dispone de formularios para:
+
+- identidad pública (`site.identity`);
+- contacto (`site.contact`);
+- redes sociales (`site.social`).
+
+Los ajustes privados continúan visibles únicamente en el centro de control.
+
+## Biblioteca multimedia `/admin/media`
+
+La biblioteca usa el mismo `StoragePort` S3-compatible de V20 (por ejemplo R2/S3), pero con un namespace corporativo separado: `platform-media`.
+
+Flujo:
+
+1. el navegador calcula SHA-256 del archivo;
+2. la API reserva una subida firmada;
+3. el navegador sube directamente al almacenamiento;
+4. la API verifica existencia, tamaño, MIME y checksum cuando el proveedor lo expone;
+5. el activo pasa a `uploaded`;
+6. Mágina expone una ruta estable `/api/v1/public/media/:id`, que redirige a una URL temporal del objeto privado.
+
+Restricciones actuales:
+
+- JPEG;
+- PNG;
+- WebP;
+- AVIF;
+- máximo 10 MB;
+- SVG no permitido.
+
+No se exponen las claves privadas de almacenamiento ni se hace público el bucket. Reservar, completar y archivar medios queda auditado.
+
+Desde la biblioteca se puede copiar la URL pública y usarla en el editor de portada, noticias, eventos, cooperativas o promociones.
+
+## CMS
 
 Tipos soportados:
 
@@ -54,15 +127,13 @@ Tipos soportados:
 - promociones;
 - avisos.
 
-Cada entrada admite slug, título, resumen, contenido JSON estructurado, estado, destacado, orden, imagen/media y enlace externo.
+Cada entrada admite slug, título, resumen, contenido JSON estructurado, estado, destacado, orden, imagen/media, enlace externo y ventana temporal.
 
 Estados: `draft`, `published`, `archived`.
 
-El endpoint `/api/v1/public/content` solo devuelve entradas publicadas y dentro de su ventana temporal.
+`/api/v1/public/content` solo devuelve entradas publicadas y vigentes. `/explorar` y la portada ya consumen contenido gestionado.
 
-La pantalla `/explorar` ya consume esta fuente; por tanto, una entrada publicada desde Admin puede aparecer en la web sin un despliegue de código.
-
-### Usuarios
+## Usuarios
 
 - consultar usuarios y último acceso;
 - ver número de workspaces activos;
@@ -72,30 +143,17 @@ La pantalla `/explorar` ya consume esta fuente; por tanto, una entrada publicada
 
 La API impide que el administrador actual se suspenda o revoque a sí mismo.
 
-### Ajustes
+## Auditoría
 
-`site_settings` permite almacenar configuración JSON con una clave estable, por ejemplo:
+`admin_audit_log` registra usuario actor, rol efectivo, acción, tipo de objeto, identificador, metadatos y fecha/hora.
 
-- `home.hero`;
-- `contact.phone`;
-- `explore.banner`;
-- `alerts.banner`.
+Entre otras acciones se auditan:
 
-Cada ajuste se marca explícitamente como público o privado. `/api/v1/public/site-settings` solo expone los marcados como públicos.
-
-### Auditoría
-
-Los cambios administrativos se registran en `admin_audit_log` con:
-
-- usuario actor;
-- rol efectivo;
-- acción;
-- tipo de objeto;
-- identificador;
-- metadatos;
-- fecha/hora.
-
-Actualmente se auditan creación/edición/archivo de contenido, cambios de estado de usuarios, cambios de roles de plataforma y ajustes globales.
+- creación/edición/archivo de contenido;
+- cambios de estado de usuarios;
+- cambios de roles de plataforma;
+- ajustes globales;
+- reserva/subida/archivo de multimedia.
 
 ## Endpoints principales
 
@@ -111,32 +169,46 @@ Privados:
 - `GET /api/v1/admin/settings`
 - `PUT /api/v1/admin/settings/:key`
 - `GET /api/v1/admin/audit`
+- `GET /api/v1/admin/media`
+- `POST /api/v1/admin/media/reserve`
+- `POST /api/v1/admin/media/:id/complete`
+- `DELETE /api/v1/admin/media/:id`
 
 Públicos:
 
 - `GET /api/v1/public/content`
 - `GET /api/v1/public/site-settings`
+- `GET /api/v1/public/media/:id`
 
 ## Base de datos
 
-La migración `0042_platform_admin_cms.sql` crea:
+`0042_platform_admin_cms.sql` crea:
 
 - `platform_admins`;
 - `cms_entries`;
 - `site_settings`;
 - `admin_audit_log`.
 
+`0043_platform_admin_media.sql` crea:
+
+- `platform_media_assets`.
+
 ## Validación
 
-El workflow `V20 platform admin check` realiza typecheck/build, aplica todas las migraciones y ejecuta `admin-smoke`, que comprueba:
+El workflow `V20 platform admin check` realiza typecheck/build, aplica todas las migraciones y ejecuta `admin-smoke`.
 
-1. el correo bootstrap entra como `super_admin`;
+El smoke cubre, entre otros casos:
+
+1. correo bootstrap → `super_admin`;
 2. un propietario de workspace no entra al Admin por ser propietario;
-3. el CMS publica contenido consumible por la API pública;
-4. un ajuste privado no aparece en la API pública;
-5. el superadministrador puede conceder `editor`;
-6. el editor puede editar contenido pero no suspender usuarios;
-7. las acciones sensibles aparecen en auditoría.
+3. CMS publicado visible por API pública;
+4. contenido futuro y caducado no visible fuera de su ventana;
+5. ajustes privados no filtrados a la API pública;
+6. SVG rechazado por la biblioteca multimedia;
+7. imagen válida: reserva → verificación → publicación → acceso público;
+8. concesión de rol `editor`;
+9. editor puede editar contenido pero no suspender usuarios;
+10. acciones sensibles y multimedia aparecen en auditoría.
 
 ## Regla de despliegue
 
