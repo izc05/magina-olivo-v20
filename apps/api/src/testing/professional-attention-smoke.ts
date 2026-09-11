@@ -23,28 +23,40 @@ async function main() {
   await sql`
     INSERT INTO users (id, primary_email, display_name)
     VALUES (${userId}::uuid, 'professional-attention-ci@example.test', 'Professional Attention CI')
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO workspaces (id, name, type)
     VALUES (${workspaceId}::uuid, 'Professional Attention CI', 'professional')
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO workspace_memberships (workspace_id, user_id, role, status)
     VALUES (${workspaceId}::uuid, ${userId}::uuid, 'owner', 'active')
-    ON CONFLICT (workspace_id, user_id) DO NOTHING;
+    ON CONFLICT (workspace_id, user_id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO campaigns (id, workspace_id, name, start_date, status)
     VALUES (${campaignId}::uuid, ${workspaceId}::uuid, 'Professional Attention CI', CURRENT_DATE - 120, 'active')
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO fields (id, workspace_id, client_operation_id, name, crop, status)
     VALUES (${fieldId}::uuid, ${workspaceId}::uuid, '99999999-9999-4999-8999-999999999991'::uuid, 'Professional Attention Field', 'olivar', 'active')
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, roles)
     VALUES (${customerId}::uuid, ${workspaceId}::uuid, '99999999-9999-4999-8999-999999999992'::uuid, 'person', 'Cliente Seguimiento CI', ARRAY['customer'])
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO work_records (
       id, workspace_id, field_id, campaign_id, client_operation_id, type, occurred_on, title,
       performed_for, customer_party_id, charge_eur, collected_eur, payment_status, created_by
@@ -55,12 +67,16 @@ async function main() {
       (${unbilledWorkId}::uuid, ${workspaceId}::uuid, ${fieldId}::uuid, ${campaignId}::uuid,
        '99999999-9999-4999-8999-999999999994'::uuid, 'manual-work', CURRENT_DATE - 40, 'Trabajo sin facturar CI',
        'third-party', ${customerId}::uuid, 300, 0, 'pending', ${userId}::uuid)
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO work_collections (workspace_id, work_id, client_operation_id, collected_on, amount_eur, method, created_by)
     VALUES (${workspaceId}::uuid, ${invoicedWorkId}::uuid, '99999999-9999-4999-8999-999999999995'::uuid, CURRENT_DATE - 20, 100, 'bank', ${userId}::uuid)
-    ON CONFLICT (workspace_id, client_operation_id) DO NOTHING;
+    ON CONFLICT (workspace_id, client_operation_id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO professional_invoices (
       id, workspace_id, customer_party_id, client_operation_id, invoice_number, issued_on, due_on,
       status, subtotal_eur, tax_eur, total_eur, created_by
@@ -68,12 +84,17 @@ async function main() {
       ${invoiceId}::uuid, ${workspaceId}::uuid, ${customerId}::uuid,
       '99999999-9999-4999-8999-999999999996'::uuid, 'ATT-CI-001', CURRENT_DATE - 35, CURRENT_DATE - 10,
       'issued', 413.22, 86.78, 500, ${userId}::uuid
-    ) ON CONFLICT (id) DO NOTHING;
+    )
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO professional_invoice_works (invoice_id, work_id, amount_eur)
     VALUES (${invoiceId}::uuid, ${invoicedWorkId}::uuid, 500)
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO professional_quotes (
       id, workspace_id, customer_party_id, client_operation_id, quote_number, title, issued_on, valid_until,
       status, subtotal_eur, tax_eur, total_eur, created_by
@@ -84,7 +105,7 @@ async function main() {
       (${followupQuoteId}::uuid, ${workspaceId}::uuid, ${customerId}::uuid,
        '98cccccc-cccc-4ccc-8ccc-cccccccccccc'::uuid, 'P-FUP-001', 'Presupuesto seguimiento CI', CURRENT_DATE - 10, CURRENT_DATE + 10,
        'sent', 495.87, 104.13, 600, ${userId}::uuid)
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING
   `.execute(db);
 
   const response = await app.inject({ method: 'GET', url: '/api/v1/professional/attention?limit=8', headers });
