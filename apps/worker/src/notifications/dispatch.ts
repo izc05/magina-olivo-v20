@@ -72,9 +72,20 @@ async function intentStillAllowed(pool: Pool, intent: IntentRow) {
        AND wm.workspace_id = $2
        AND wm.status = 'active'
       LEFT JOIN user_preferences up ON up.user_id = u.id
+      LEFT JOIN financial_notification_preferences fnp
+        ON fnp.user_id = u.id AND fnp.workspace_id = wm.workspace_id
       WHERE u.id = $1
         AND u.status = 'active'
         AND ($3 <> 'radar_observed_echo' OR COALESCE(up.weather_alerts, true) = true)
+        AND (
+          $3 NOT IN ('financial_collection_pending','document_ocr_failed','document_review_pending')
+          OR (
+            COALESCE(fnp.enabled, false) = true
+            AND ($3 <> 'financial_collection_pending' OR COALESCE(fnp.notify_settlements, false) = true)
+            AND ($3 <> 'document_ocr_failed' OR COALESCE(fnp.notify_ocr_failure, false) = true)
+            AND ($3 <> 'document_review_pending' OR COALESCE(fnp.notify_document_review, false) = true)
+          )
+        )
     ) AS allowed
   `, [intent.user_id, intent.workspace_id, intent.kind]);
   return result.rows[0]?.allowed === true;
