@@ -99,42 +99,43 @@ export function ProfessionalDeliveryPanel() {
     setWorking(true); setError(null); setMessage(null);
     try {
       const docId = await ensurePdf();
-      const publicShare = await createProfessionalShareLink({
-        workspaceId: selectedWorkspaceId,
-        entityType,
-        entityId: data.document.id,
-        documentId: docId,
-        expiresInDays: 7,
-      });
-      await prepareCommercialDelivery({
+      const delivery = await prepareCommercialDelivery({
         workspaceId: selectedWorkspaceId,
         entityType,
         entityId: data.document.id,
         documentId: docId,
         channel,
         recipient: recipient || undefined,
-        note: `Enlace Mágina válido hasta ${publicShare.share.expires_at}`,
+      });
+      const publicShare = await createProfessionalShareLink({
+        workspaceId: selectedWorkspaceId,
+        entityType,
+        entityId: data.document.id,
+        documentId: docId,
+        deliveryId: delivery.id,
+        expiresInDays: 7,
       });
       const shareTitle = `${isInvoice ? 'Factura' : 'Presupuesto'} ${number}`;
       const shareText = `${shareTitle} · ${data.customer.legal_name || data.customer.display_name}`;
+      const publicUrl = publicShare.publicPageUrl;
 
       if (channel === 'whatsapp') {
-        window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${publicShare.url}`)}`, '_blank', 'noopener,noreferrer');
+        window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${publicUrl}`)}`, '_blank', 'noopener,noreferrer');
       } else if (channel === 'email') {
         const subject = encodeURIComponent(shareTitle);
-        const body = encodeURIComponent(`${shareText}\n\nEnlace Mágina válido durante 7 días:\n${publicShare.url}`);
+        const body = encodeURIComponent(`${shareText}\n\nEnlace Mágina válido durante 7 días:\n${publicUrl}`);
         window.location.href = `mailto:${encodeURIComponent(recipient || '')}?subject=${subject}&body=${body}`;
       } else if (channel === 'link') {
-        await navigator.clipboard.writeText(publicShare.url);
+        await navigator.clipboard.writeText(publicUrl);
         setMessage('Enlace Mágina copiado. Puedes revocarlo desde esta misma pantalla.');
       } else if (navigator.share) {
-        await navigator.share({ title: shareTitle, text: shareText, url: publicShare.url });
+        await navigator.share({ title: shareTitle, text: shareText, url: publicUrl });
       } else {
-        await navigator.clipboard.writeText(publicShare.url);
+        await navigator.clipboard.writeText(publicUrl);
         setMessage('Tu navegador no ofrece compartir. Se ha copiado el enlace Mágina.');
       }
 
-      setMessage((current) => current ?? 'Compartición preparada. Confirma solo cuando sepas que el documento se envió.');
+      setMessage((current) => current ?? 'Compartición preparada. Confirma el envío para permitir una decisión pública del presupuesto.');
       await reloadTracking(data.document.id);
     } catch (cause) {
       console.error('Unable to prepare commercial delivery', cause);
@@ -149,7 +150,7 @@ export function ProfessionalDeliveryPanel() {
     setWorking(true); setError(null);
     try {
       await confirmCommercialDelivery(selectedWorkspaceId, deliveryId, sent);
-      setMessage(sent ? 'Envío confirmado y registrado.' : 'Compartición cancelada.');
+      setMessage(sent ? 'Envío confirmado y registrado. Si es un presupuesto, el cliente ya puede decidir desde su enlace.' : 'Compartición cancelada.');
       await reloadTracking(data.document.id);
     } catch (cause) {
       console.error('Unable to confirm commercial delivery', cause);
@@ -164,7 +165,7 @@ export function ProfessionalDeliveryPanel() {
     setWorking(true); setError(null);
     try {
       await revokeProfessionalShareLink(selectedWorkspaceId, shareId);
-      setMessage('Enlace revocado. Ya no dará acceso al PDF.');
+      setMessage('Enlace revocado. Ya no dará acceso al PDF ni permitirá decidir el presupuesto.');
       await reloadTracking(data.document.id);
     } catch (cause) {
       console.error('Unable to revoke share link', cause);
@@ -185,7 +186,7 @@ export function ProfessionalDeliveryPanel() {
     <div className="record-actions"><button className="primary" type="button" onClick={() => void prepareAndShare()} disabled={working}>{working ? 'Preparando…' : 'Preparar y compartir PDF'}</button></div>
     {latestPrepared ? <div className="record-save-bar"><small>Preparado {dateTime(latestPrepared.prepared_at)} · {latestPrepared.channel}{latestPrepared.recipient ? ` · ${latestPrepared.recipient}` : ''}</small><div className="record-actions"><button className="primary" type="button" onClick={() => void confirm(latestPrepared.id, true)} disabled={working}>Confirmar enviado</button><button className="secondary-action" type="button" onClick={() => void confirm(latestPrepared.id, false)} disabled={working}>Cancelar</button></div></div> : null}
     {message ? <p className="form-help">{message}</p> : null}{error ? <p className="form-error" role="alert">{error}</p> : null}
-    {shareLinks.length ? <div className="activity-list">{shareLinks.slice(0, 5).map((link) => <article className="activity-item" key={link.id}><div><strong>{link.revoked_at ? 'Enlace revocado' : new Date(link.expires_at).getTime() <= Date.now() ? 'Enlace caducado' : 'Enlace activo'}</strong><small>Caduca {dateTime(link.expires_at)} · {link.access_count} acceso{link.access_count === 1 ? '' : 's'}</small></div>{!link.revoked_at && new Date(link.expires_at).getTime() > Date.now() ? <button className="secondary-action" type="button" onClick={() => void revoke(link.id)} disabled={working}>Revocar</button> : null}</article>)}</div> : null}
+    {shareLinks.length ? <div className="activity-list">{shareLinks.slice(0, 5).map((link) => <article className="activity-item" key={link.id}><div><strong>{link.revoked_at ? 'Enlace revocado' : new Date(link.expires_at).getTime() <= Date.now() ? 'Enlace caducado' : 'Enlace activo'}</strong><small>Caduca {dateTime(link.expires_at)} · {link.access_count} acceso{link.access_count === 1 ? '' : 's'}{link.delivery_id ? ' · ligado a envío' : ''}</small></div>{!link.revoked_at && new Date(link.expires_at).getTime() > Date.now() ? <button className="secondary-action" type="button" onClick={() => void revoke(link.id)} disabled={working}>Revocar</button> : null}</article>)}</div> : null}
     {deliveries.length ? <div className="activity-list">{deliveries.slice(0, 5).map((item) => <article className="activity-item" key={item.id}><div><strong>{item.status === 'confirmed_sent' ? 'Enviado confirmado' : item.status === 'prepared' ? 'Preparado' : 'Cancelado'}</strong><small>{dateTime(item.confirmed_sent_at || item.prepared_at)} · {item.channel}{item.recipient ? ` · ${item.recipient}` : ''}</small></div>{item.document_id ? <small>PDF trazado</small> : <small>Sin PDF vinculado</small>}</article>)}</div> : null}
   </section>;
 }
