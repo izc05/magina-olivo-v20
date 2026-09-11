@@ -46,7 +46,7 @@ export function MarketValueCalculator({ defaultPrice, priceOptions = [] }: Marke
   const [oliveKg, setOliveKg] = useState('5000');
   const [yieldPct, setYieldPct] = useState('20');
   const [oilPrice, setOilPrice] = useState(defaultPrice.toFixed(2));
-  const [selectedPriceId, setSelectedPriceId] = useState(priceOptions[0]?.id ?? null);
+  const [selectedPriceId, setSelectedPriceId] = useState<string | null>(priceOptions[0]?.id ?? null);
 
   const result = useMemo(() => {
     const olives = parsePositive(oliveKg);
