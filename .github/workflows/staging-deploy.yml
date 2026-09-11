@@ -1,0 +1,242 @@
+name: V20 staging deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact 40-character candidate SHA to deploy; all required gates must be green for this SHA
+        required: true
+      confirm:
+        description: Type DEPLOY-STAGING to allow deployment
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: v20-staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm == 'DEPLOY-STAGING' }}
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Validate requested SHA
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -eu
+          printf '%s' "$EXPECTED_SHA" | grep -Eq '^[0-9a-f]{40}$'
+
+      - name: Checkout exact candidate SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.expected_sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Verify exact candidate ancestry
+        id: candidate
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -eu
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$EXPECTED_SHA"
+          git fetch --no-tags origin feat/v20-visual-prototype
+          if ! git merge-base --is-ancestor "$actual" origin/feat/v20-visual-prototype; then
+            echo "$actual is not reachable from feat/v20-visual-prototype; refusing staging deployment." >&2
+            exit 1
+          fi
+          echo "sha=$actual" >> "$GITHUB_OUTPUT"
+
+      - name: Require all candidate staging gates green for exact SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          set -eu
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&per_page=100" > /tmp/v20-runs.json
+          for workflow in 'V20 full candidate check' 'V20 beta browser E2E' 'V20 staging readiness'; do
+            if ! jq -e --arg workflow "$workflow" --arg sha "$SHA" \
+              '[.workflow_runs[] | select(.name == $workflow and .head_sha == $sha and .conclusion == "success")] | length > 0' \
+              /tmp/v20-runs.json >/dev/null; then
+              echo "No successful '$workflow' run found for $SHA" >&2
+              exit 1
+            fi
+          done
+
+      - name: Validate private staging environment
+        env:
+          STAGING_ENV_FILE: ${{ secrets.STAGING_ENV_FILE }}
+          STAGING_WEB_URL: ${{ vars.STAGING_WEB_URL }}
+        run: |
+          set -eu
+          test -n "$STAGING_ENV_FILE"
+          test -n "$STAGING_WEB_URL"
+          umask 077
+          printf '%s' "$STAGING_ENV_FILE" > /tmp/magina-staging.env
+          node scripts/staging-env-preflight.mjs /tmp/magina-staging.env
+
+          node --input-type=module <<'NODE' >> "$GITHUB_ENV"
+          import { readFileSync } from 'node:fs';
+
+          const webRaw = process.env.STAGING_WEB_URL;
+          if (!webRaw || webRaw !== webRaw.trim() || /[\r\n]/.test(webRaw)) {
+            throw new Error('STAGING_WEB_URL must be a single non-empty URL.');
+          }
+          const web = new URL(webRaw);
+          if (web.protocol !== 'https:' || web.username || web.password || web.search || web.hash) {
+            throw new Error('STAGING_WEB_URL must be a clean HTTPS origin.');
+          }
+          const webOrigin = web.origin;
+
+          const source = readFileSync('/tmp/magina-staging.env', 'utf8');
+          const values = new Map();
+          for (const raw of source.split(/\r?\n/)) {
+            const line = raw.trim();
+            if (!line || line.startsWith('#')) continue;
+            const i = line.indexOf('=');
+            if (i < 1) continue;
+            let value = line.slice(i + 1).trim();
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+            values.set(line.slice(0, i).trim(), value);
+          }
+
+          const api = new URL(values.get('NEXT_PUBLIC_API_URL'));
+          const allowedOrigins = (values.get('CORS_ALLOWED_ORIGINS') ?? '')
+            .split(',').map((item) => item.trim()).filter(Boolean)
+            .map((item) => new URL(item).origin);
+          if (!allowedOrigins.includes(webOrigin)) {
+            throw new Error('STAGING_WEB_URL must be included in CORS_ALLOWED_ORIGINS.');
+          }
+          if (api.origin === webOrigin) {
+            throw new Error('Staging web and API must use separate HTTPS origins.');
+          }
+
+          console.log(`STAGING_WEB_URL=${webOrigin}`);
+          console.log(`STAGING_API_URL=${api.origin}`);
+          NODE
+
+      - name: Validate SSH deployment settings
+        env:
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+          SSH_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+        run: |
+          set -eu
+          test -n "$STAGING_HOST"
+          test -n "$STAGING_USER"
+          test -n "$STAGING_PORT"
+          test -n "$STAGING_PATH"
+          test -n "$SSH_KEY"
+          test -n "$KNOWN_HOSTS"
+          printf '%s' "$STAGING_HOST" | grep -Eq '^[A-Za-z0-9.-]+$'
+          printf '%s' "$STAGING_USER" | grep -Eq '^[A-Za-z0-9._-]+$'
+          printf '%s' "$STAGING_PORT" | grep -Eq '^[0-9]{1,5}$'
+          [ "$STAGING_PORT" -ge 1 ] && [ "$STAGING_PORT" -le 65535 ]
+          printf '%s' "$STAGING_PATH" | grep -Eq '^/[A-Za-z0-9._/-]+$'
+          case "/$STAGING_PATH/" in *'/../'*|*'/./'*) echo 'STAGING_PATH may not contain . or .. path segments.' >&2; exit 1;; esac
+
+          install -m 700 -d ~/.ssh
+          umask 077
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+      - name: Verify staging host prerequisites
+        env:
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+        run: |
+          set -eu
+          remote="$STAGING_USER@$STAGING_HOST"
+          ssh -p "$STAGING_PORT" "$remote" 'set -eu; docker version >/dev/null; docker compose version >/dev/null; curl --version >/dev/null; tar --version >/dev/null'
+
+      - name: Upload immutable release
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+        run: |
+          set -eu
+          remote="$STAGING_USER@$STAGING_HOST"
+          release="$STAGING_PATH/releases/$SHA"
+          ssh -p "$STAGING_PORT" "$remote" "mkdir -p '$release' '$STAGING_PATH/backups'"
+          tar \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='deploy/staging/.env' \
+            -czf - . | ssh -p "$STAGING_PORT" "$remote" "tar -xzf - -C '$release'"
+          scp -P "$STAGING_PORT" /tmp/magina-staging.env "$remote:$release/deploy/staging/.env.tmp"
+          ssh -p "$STAGING_PORT" "$remote" \
+            "chmod 600 '$release/deploy/staging/.env.tmp' && mv '$release/deploy/staging/.env.tmp' '$release/deploy/staging/.env'"
+
+      - name: Deploy on staging host
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+        run: |
+          set -eu
+          remote="$STAGING_USER@$STAGING_HOST"
+          release="$STAGING_PATH/releases/$SHA"
+          ssh -p "$STAGING_PORT" "$remote" \
+            "cd '$release' && STAGING_BACKUP_DIR='$STAGING_PATH/backups' ./deploy/staging/deploy-host.sh deploy/staging/.env"
+
+      - name: External HTTPS smoke
+        run: |
+          set -eu
+          web="${STAGING_WEB_URL%/}"
+          curl -fsS "$web/healthz" | grep -Fx 'ok'
+          curl -fsS "$web/" >/tmp/staging-web.html
+          test -s /tmp/staging-web.html
+          curl -fsSI "$web/" | tr -d '\r' | grep -Fi 'X-Frame-Options: DENY'
+          curl -fsSI "$web/" | tr -d '\r' | grep -Fi 'X-Content-Type-Options: nosniff'
+          STAGING_WEB_ORIGIN="$STAGING_WEB_URL" STAGING_API_URL="$STAGING_API_URL" \
+            node scripts/staging-postdeploy-smoke.mjs
+
+      - name: Mark successful release current
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+        run: |
+          set -eu
+          remote="$STAGING_USER@$STAGING_HOST"
+          release="$STAGING_PATH/releases/$SHA"
+          ssh -p "$STAGING_PORT" "$remote" \
+            "ln -sfn '$release' '$STAGING_PATH/current' && printf '%s\n' '$SHA' > '$STAGING_PATH/CURRENT_SHA'"
+
+      - name: Deployment summary
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          {
+            echo '### V20 staging deployment'
+            echo
+            echo "- SHA: \`$SHA\`"
+            echo "- Web: $STAGING_WEB_URL"
+            echo "- API: $STAGING_API_URL"
+            echo '- Exact candidate ancestry and candidate/browser/staging gates were required before deployment.'
+            echo '- A PostgreSQL dump was created immediately before migrations.'
+            echo '- No destructive database rollback is performed automatically.'
+          } >> "$GITHUB_STEP_SUMMARY"
