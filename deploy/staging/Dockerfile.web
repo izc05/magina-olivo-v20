@@ -11,11 +11,14 @@ COPY apps/web apps/web
 COPY scripts/check-web-bundle-budget.mjs scripts/check-web-bundle-budget.mjs
 
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
 ENV NEXT_PUBLIC_PREVIEW_MODE=false
 ENV GITHUB_PAGES=false
 
 RUN test -n "$NEXT_PUBLIC_API_URL" \
+  && test -n "$NEXT_PUBLIC_GOOGLE_CLIENT_ID" \
   && pnpm --filter @magina/web build
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine

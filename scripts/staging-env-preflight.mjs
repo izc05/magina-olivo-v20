@@ -98,7 +98,9 @@ const apiUrl = requireHttps(valueOf(values, 'NEXT_PUBLIC_API_URL'), 'NEXT_PUBLIC
 if (apiUrl.origin === publicWebOrigin) fail('NEXT_PUBLIC_API_URL should use a dedicated API origin in staging');
 requireHttps(valueOf(values, 'S3_ENDPOINT'), 'S3_ENDPOINT');
 
-valueOf(values, 'GOOGLE_CLIENT_ID');
+const googleClientId = valueOf(values, 'GOOGLE_CLIENT_ID');
+const publicGoogleClientId = valueOf(values, 'NEXT_PUBLIC_GOOGLE_CLIENT_ID');
+if (publicGoogleClientId !== googleClientId) fail('NEXT_PUBLIC_GOOGLE_CLIENT_ID must match GOOGLE_CLIENT_ID');
 const sessionSecret = valueOf(values, 'SESSION_SECRET');
 if (Buffer.byteLength(sessionSecret, 'utf8') < 32) fail('SESSION_SECRET must contain at least 32 bytes');
 
@@ -135,4 +137,4 @@ const vapidSubject = valueOf(values, 'VAPID_SUBJECT');
 if (!/^mailto:[^@\s]+@[^@\s]+$/.test(vapidSubject)) fail('VAPID_SUBJECT must be a mailto address');
 valueOf(values, 'AEMET_API_KEY');
 
-console.log(`Staging env preflight passed for ${envPath}. Required production flags, origins, ports, database, storage, OCR and provider settings are coherent.`);
+console.log(`Staging env preflight passed for ${envPath}. Required production flags, origins, ports, database, Google Identity client, storage, OCR and provider settings are coherent.`);
