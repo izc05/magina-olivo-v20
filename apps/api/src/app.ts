@@ -20,6 +20,7 @@ import { registerAgronomyAlertRoutes } from './routes/agronomy-alerts.js';
 import { registerAttentionRoutes } from './routes/attention.js';
 import { registerFinancialAttentionRoutes } from './routes/financial-attention.js';
 import { registerHomePriorityPreferenceRoutes } from './routes/home-priority-preferences.js';
+import { registerFinancialNotificationRoutes } from './routes/financial-notifications.js';
 import { registerPlannedTaskRoutes } from './routes/planned-tasks.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerDocumentAccessRoutes } from './routes/document-access.js';
@@ -104,6 +105,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAttentionRoutes(app, db, weatherProvider);
   registerFinancialAttentionRoutes(app, db);
   registerHomePriorityPreferenceRoutes(app, db);
+  registerFinancialNotificationRoutes(app, db, notificationQueue);
   registerPlannedTaskRoutes(app, db);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);
