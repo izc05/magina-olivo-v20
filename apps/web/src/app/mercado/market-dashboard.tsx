@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { MarketInsights } from '@/components/market-insights';
 import { MarketValueCalculator } from '@/components/market-value-calculator';
 import {
   latestMarketPrice,
@@ -188,6 +189,8 @@ export function MarketDashboard() {
           <span>{lastWeek?.label ?? ''}</span>
         </div>
       </section>
+
+      <MarketInsights snapshot={snapshot} />
 
       <MarketValueCalculator
         key={snapshot.revision}
