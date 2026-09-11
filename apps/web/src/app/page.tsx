@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
 import { HomeDailyCenter } from '@/components/home-daily-center';
-import { HomePriorityCard } from '@/components/home-priority-card';
 import { ArrowIcon } from '@/components/icons';
 import { demoContext } from '@/lib/demo-data';
 
@@ -12,8 +11,6 @@ export default function HomePage() {
       <Topbar />
       <div className="page home-page">
         <HomeDailyCenter />
-
-        <HomePriorityCard />
 
         <section className="section">
           <div className="section-head"><h2>Actualidad y vida local</h2><Link href="/explorar">Ver todo <ArrowIcon /></Link></div>
