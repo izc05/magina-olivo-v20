@@ -133,7 +133,7 @@ export function MiCampoDashboard() {
         {visibleFarms.map((farm) => <article key={`${farm.source}:${farm.id}`} className="card farm-card">
           <div className="farm-image"><span className={`farm-status ${farm.tone ?? 'neutral'}`}>{farm.statusLabel ?? (farm.status === 'archived' ? 'Archivada' : 'Activa')}</span></div>
           <div className="farm-body">
-            <div className="farm-card-head"><div><h3>{farm.name}</h3><div className="farm-meta">{farmMeta(farm)}</div></div><ArrowIcon /></div>
+            <Link href={farmHref(farm)} className="farm-card-head"><div><h3>{farm.name}</h3><div className="farm-meta">{farmMeta(farm)}</div></div><ArrowIcon /></Link>
             <div className="record-actions">
               <Link href={farmHref(farm)} className="secondary-action action-link">Abrir finca</Link>
               {farm.status !== 'archived' ? <Link href={fieldActionHref('/mi-campo/registrar', farm)} className="primary action-link">Registrar</Link> : null}
