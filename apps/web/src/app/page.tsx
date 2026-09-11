@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
@@ -14,8 +15,10 @@ export default function HomePage() {
       <div className="page home-page">
         <HomeDailyCenter />
 
-        <AttentionSummaryCard compact />
-        <FinancialAttentionCard compact />
+        <Suspense fallback={null}>
+          <AttentionSummaryCard compact />
+          <FinancialAttentionCard compact />
+        </Suspense>
 
         <section className="section">
           <div className="section-head"><h2>Actualidad y vida local</h2><Link href="/explorar">Ver todo <ArrowIcon /></Link></div>
