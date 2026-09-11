@@ -1,15 +1,15 @@
 import { apiFetch } from '@/lib/api-client';
 
-export type SupportedApiRecordSlug = 'riego' | 'tratamiento' | 'abono' | 'poda' | 'gasto' | 'jornal' | 'maquinaria';
+export type SupportedApiRecordSlug = 'riego' | 'tratamiento' | 'abono' | 'poda' | 'gasto' | 'jornal' | 'maquinaria' | 'observacion';
 export type SavedApiRecord = {
   recordId: string;
-  domainType: 'irrigation' | 'treatment' | 'fertilization' | 'pruning' | 'expense' | 'work';
+  domainType: 'irrigation' | 'treatment' | 'fertilization' | 'pruning' | 'observation' | 'expense' | 'work';
 };
 
 type RecordEnvelope = Record<string, { id?: string } | boolean | undefined>;
 
 export function supportsApiRecord(slug: string): slug is SupportedApiRecordSlug {
-  return ['riego', 'tratamiento', 'abono', 'poda', 'gasto', 'jornal', 'maquinaria'].includes(slug);
+  return ['riego', 'tratamiento', 'abono', 'poda', 'gasto', 'jornal', 'maquinaria', 'observacion'].includes(slug);
 }
 
 function numberValue(value?: string) {
@@ -111,6 +111,24 @@ export async function saveApiRecord(input: {
       }),
     });
     return identity(response, 'pruning', 'pruning');
+  }
+
+  if (slug === 'observacion') {
+    const severityMap: Record<string, 'low' | 'medium' | 'high'> = {
+      Baja: 'low', Media: 'medium', Alta: 'high',
+    };
+    const response = await apiFetch<RecordEnvelope>(`/api/v1/fields/${encodeURIComponent(fieldId)}/observations`, {
+      method: 'POST', workspaceId,
+      body: JSON.stringify({
+        ...common,
+        occurred_at: occurredAt(data.date),
+        observation_type: data.type || 'Otro',
+        notes: data.notes,
+        severity: data.severity ? severityMap[data.severity] : undefined,
+        follow_up: followUp(data),
+      }),
+    });
+    return identity(response, 'observation', 'observation');
   }
 
   if (slug === 'jornal') {
