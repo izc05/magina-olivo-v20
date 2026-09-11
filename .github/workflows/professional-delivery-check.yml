@@ -8,12 +8,14 @@ on:
       - 'apps/api/**'
       - 'apps/web/**'
       - 'database/migrations/0039_professional_delivery_tracking.sql'
+      - 'database/migrations/0040_professional_public_share_links.sql'
       - '.github/workflows/professional-delivery-check.yml'
   pull_request:
     paths:
       - 'apps/api/**'
       - 'apps/web/**'
       - 'database/migrations/0039_professional_delivery_tracking.sql'
+      - 'database/migrations/0040_professional_public_share_links.sql'
       - '.github/workflows/professional-delivery-check.yml'
 
 permissions:
