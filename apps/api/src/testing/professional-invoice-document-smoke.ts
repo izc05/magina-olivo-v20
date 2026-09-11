@@ -21,20 +21,28 @@ async function main() {
   await sql`
     INSERT INTO users (id, primary_email, display_name)
     VALUES (${userId}::uuid, 'professional-document-ci@example.test', 'Professional Document CI')
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO workspaces (id, name, type)
     VALUES (${workspaceId}::uuid, 'Professional Document CI', 'professional')
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO workspace_memberships (workspace_id, user_id, role, status)
     VALUES (${workspaceId}::uuid, ${userId}::uuid, 'owner', 'active')
-    ON CONFLICT (workspace_id, user_id) DO NOTHING;
+    ON CONFLICT (workspace_id, user_id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, roles)
     VALUES (${customerId}::uuid, ${workspaceId}::uuid, 'a7777777-7777-4777-8777-777777777777'::uuid, 'person', 'Cliente Documento CI', ARRAY['customer'])
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
 
+  await sql`
     INSERT INTO professional_invoices (
       id, workspace_id, customer_party_id, client_operation_id, invoice_number, issued_on,
       status, subtotal_eur, tax_eur, total_eur, created_by
@@ -42,7 +50,8 @@ async function main() {
       ${invoiceId}::uuid, ${workspaceId}::uuid, ${customerId}::uuid,
       'a8888888-8888-4888-8888-888888888888'::uuid, 'DOC-CI-001', CURRENT_DATE,
       'issued', 100, 21, 121, ${userId}::uuid
-    ) ON CONFLICT (id) DO NOTHING;
+    )
+    ON CONFLICT (id) DO NOTHING
   `.execute(db);
 
   const checksum = '0'.repeat(64);
