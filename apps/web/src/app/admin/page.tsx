@@ -8,29 +8,23 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+const shortcutStyle = {
+  borderRadius: 999,
+  padding: '12px 16px',
+  color: '#fff',
+  fontWeight: 800,
+  textDecoration: 'none',
+  boxShadow: '0 12px 30px rgba(37, 74, 44, .24)',
+} as const;
+
 export default function AdminPage() {
   return (
     <>
       <AdminControlCenter />
-      <a
-        href="/admin/web"
-        aria-label="Abrir editor visual de la web"
-        style={{
-          position: 'fixed',
-          right: 18,
-          bottom: 18,
-          zIndex: 50,
-          borderRadius: 999,
-          padding: '12px 16px',
-          background: '#315c3a',
-          color: '#fff',
-          fontWeight: 800,
-          textDecoration: 'none',
-          boxShadow: '0 12px 30px rgba(37, 74, 44, .28)',
-        }}
-      >
-        Editar web
-      </a>
+      <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 50, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <a href="/admin/media" aria-label="Abrir biblioteca multimedia" style={{ ...shortcutStyle, background: '#6b7446' }}>Multimedia</a>
+        <a href="/admin/web" aria-label="Abrir editor visual de la web" style={{ ...shortcutStyle, background: '#315c3a' }}>Editar web</a>
+      </div>
     </>
   );
 }
