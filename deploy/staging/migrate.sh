@@ -61,9 +61,11 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
     exit 1
   fi
 
-  updated="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc \
-    "UPDATE public.schema_migrations SET status='applied', applied_at=now() WHERE version='$version' AND status='applying' RETURNING version;")"
-  if [ "$updated" != "$version" ]; then
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+    "UPDATE public.schema_migrations SET status='applied', applied_at=now() WHERE version='$version' AND status='applying';" >/dev/null
+  updated_status="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc \
+    "SELECT status FROM public.schema_migrations WHERE version='$version';")"
+  if [ "$updated_status" != "applied" ]; then
     echo "Migration registry update failed for $version" >&2
     exit 1
   fi
