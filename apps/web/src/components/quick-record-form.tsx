@@ -142,7 +142,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
             setAttachmentSaved(true);
           } catch (attachmentError) {
             console.warn('Record saved but attachment upload failed', attachmentError);
-            setAttachmentWarning('El registro se ha guardado, pero el archivo no pudo subirse o verificarse. Puedes añadirlo después desde Documentos.');
+            setAttachmentWarning('El registro se ha guardado, pero el archivo no pudo añadirse. Puedes incorporarlo después desde Documentos.');
           }
         }
 
@@ -196,7 +196,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
   }
 
   if (ready && !found) {
-    return <section className="record-success card"><h1>Finca no encontrada</h1><p>No se guardará ningún registro hasta identificar correctamente la finca de destino.</p><Link className="primary action-link" href="/mi-campo">Volver a Mi Campo</Link></section>;
+    return <section className="record-success card"><h1>Finca no encontrada</h1><p>No hemos podido abrir la finca en la que quieres guardar este registro.</p><Link className="primary action-link" href="/mi-campo">Volver a Mi Campo</Link></section>;
   }
 
   if (saved) {
@@ -205,7 +205,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         <div className="success-mark">✓</div>
         <span className="eyebrow dark">{savedRemotely ? 'GUARDADO EN MÁGINA' : 'GUARDADO EN ESTE DISPOSITIVO'}</span>
         <h1>{type.shortLabel} añadido a {context.name}</h1>
-        <p>{savedRemotely ? 'El backend ha guardado el registro y sus proyecciones asociadas.' : context.source === 'api' ? 'Este tipo todavía se conserva como borrador local mientras se conecta al modelo Trabajo.' : 'El registro se ha guardado con la finca seleccionada.'}</p>
+        <p>{savedRemotely ? 'El registro ya forma parte del historial de esta finca.' : context.source === 'api' ? 'Este registro se ha guardado temporalmente en este dispositivo.' : 'El registro se ha guardado con la finca seleccionada.'}</p>
         {sourceDocumentId ? <p>✓ Los datos partieron de un documento revisado; el registro solo se creó después de esta confirmación.</p> : null}
         {sourceLinked ? <p>✓ El documento de origen ha quedado enlazado al registro creado.</p> : null}
         {sourceLinkWarning ? <p className="form-error" role="status">{sourceLinkWarning}</p> : null}
@@ -213,9 +213,9 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         {attachmentWarning ? <p className="form-error" role="status">{attachmentWarning}</p> : null}
         <div className="success-effects">
           <span>✓ Finca correcta: {context.name}</span>
-          {savedRemotely ? <span>✓ Historial y costes derivados en servidor cuando corresponde</span> : <span>✓ Registro local preservado</span>}
-          {attachmentSaved ? <span>✓ Foto/documento subido y verificado</span> : null}
-          {savedRemotely && !completionWarning && params.get('plannedEventId') ? <span>✓ Tarea prevista enlazada al registro real</span> : null}
+          {savedRemotely ? <span>✓ Historial y costes actualizados cuando corresponde</span> : <span>✓ Guardado en este dispositivo</span>}
+          {attachmentSaved ? <span>✓ Foto o documento añadido al registro</span> : null}
+          {savedRemotely && !completionWarning && params.get('plannedEventId') ? <span>✓ Tarea prevista marcada como realizada</span> : null}
           {type.followUp && <span>✓ Seguimiento, si has indicado fecha</span>}
         </div>
         <div className="record-actions">
@@ -248,12 +248,12 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         <div className="record-fields">{type.essential.map((field) => <Field key={field.name} field={field} defaultValue={prefill[field.name]} />)}</div>
       </section>
 
-      {type.details && <details className="card record-details"><summary>Más detalles <span>Opcional</span></summary><div className="record-fields detail-fields">{type.details.map((field) => <Field key={field.name} field={field} defaultValue={prefill[field.name]} />)}<label className="record-field wide photo-field"><span>Foto o documento</span><input className="record-control file-control" name="attachment" type="file" accept="image/*,.pdf" /><small>En servidor se vincula al registro concreto y se verifica tamaño/checksum tras la subida.</small></label></div></details>}
+      {type.details && <details className="card record-details"><summary>Más detalles <span>Opcional</span></summary><div className="record-fields detail-fields">{type.details.map((field) => <Field key={field.name} field={field} defaultValue={prefill[field.name]} />)}<label className="record-field wide photo-field"><span>Foto o documento</span><input className="record-control file-control" name="attachment" type="file" accept="image/*,.pdf" /><small>La foto o documento quedará unido a este registro.</small></label></div></details>}
 
       {type.followUp && <section className="card record-follow-up"><div><span className="eyebrow dark">DESPUÉS</span><h3>¿Quieres dejarlo programado?</h3><p>Si indicas una fecha quedará asociada al seguimiento del registro.</p></div><div className="record-fields follow-up-fields">{type.followUp.map((field) => <Field key={field.name} field={field} defaultValue={prefill[field.name]} />)}</div></section>}
 
       {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
-      <section className="record-save-bar"><small>{context.source === 'api' && supportsApiRecord(type.slug) ? 'Se guardará en el servidor real de Mágina.' : 'Modo local-first para este tipo de registro.'}</small><button className="primary" type="submit" disabled={!ready || !found || saving}>{saving ? 'Guardando…' : `Guardar ${type.shortLabel.toLowerCase()} →`}</button></section>
+      <section className="record-save-bar"><small>{context.source === 'api' && supportsApiRecord(type.slug) ? 'Se guardará en Mi Campo.' : 'Se guardará en este dispositivo.'}</small><button className="primary" type="submit" disabled={!ready || !found || saving}>{saving ? 'Guardando…' : `Guardar ${type.shortLabel.toLowerCase()} →`}</button></section>
     </form>
   );
 }
