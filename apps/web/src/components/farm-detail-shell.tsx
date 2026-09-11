@@ -82,13 +82,14 @@ export function FarmDetailShell() {
               ...emptyDerived(),
               workCount: workItems.length,
               deliveryCount: remoteDetail.harvest.deliveries.length,
-              deliveredKg: remoteDetail.harvest.totalKg,
+              deliveredKg: remoteDetail.economics.deliveredKg,
               weightedYieldPercent: remoteDetail.harvest.weightedYieldPercent,
               estimatedOilKg: remoteDetail.harvest.weightedYieldPercent !== undefined
-                ? remoteDetail.harvest.totalKg * (remoteDetail.harvest.weightedYieldPercent / 100)
+                ? remoteDetail.economics.deliveredKg * (remoteDetail.harvest.weightedYieldPercent / 100)
                 : undefined,
-              totalIncomeEur: remoteDetail.harvest.accruedEur,
-              marginEur: remoteDetail.harvest.accruedEur,
+              totalCostEur: remoteDetail.economics.totalCostEur,
+              totalIncomeEur: remoteDetail.economics.accruedIncomeEur,
+              marginEur: remoteDetail.economics.accruedMarginEur,
               recentActivity: remoteDetail.activity.map((item) => ({
                 id: item.id,
                 date: item.date,
@@ -138,6 +139,16 @@ export function FarmDetailShell() {
   if (!farm) return <section className="card"><h1>Finca no encontrada</h1><p>{detailError ?? 'La finca no está disponible en esta fuente de datos.'}</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
 
   const effectiveArea = detail.data.areaHa ?? farm.areaHa;
+  const isApi = source === 'api';
+  const deliveredKg = isApi ? detail.economics.deliveredKg : detail.harvest.totalKg || derived.deliveredKg;
+  const totalCostEur = isApi ? detail.economics.totalCostEur : derived.totalCostEur;
+  const accruedIncomeEur = isApi ? detail.economics.accruedIncomeEur : derived.totalIncomeEur;
+  const collectedIncomeEur = isApi ? detail.economics.collectedIncomeEur : detail.harvest.collectedEur;
+  const pendingCollectionEur = isApi ? detail.economics.pendingCollectionEur : detail.harvest.pendingEur;
+  const accruedMarginEur = isApi ? detail.economics.accruedMarginEur : derived.marginEur;
+  const costPerKg = isApi
+    ? detail.economics.costPerDeliveredKgEur
+    : deliveredKg > 0 ? totalCostEur / deliveredKg : undefined;
 
   return <>
     <header className="page-title mi-campo-title">
@@ -159,15 +170,24 @@ export function FarmDetailShell() {
 
     {activeSection === 'Resumen' ? <section className="section">
       <div className="section-head"><h2>Resumen</h2><Link href={registerHref} className="detail-link"><PlusIcon /> Registrar</Link></div>
+
+      <h3>Actividad y cosecha</h3>
       <div className="quick-grid">
         <article className="card quick premium-quick"><div><strong>{derived.workCount}</strong><small>trabajos registrados</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{Math.round(detail.harvest.totalKg || derived.deliveredKg).toLocaleString('es-ES')} kg</strong><small>{detail.harvest.deliveries.length || derived.deliveryCount} entregas de cosecha</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{Math.round(deliveredKg).toLocaleString('es-ES')} kg</strong><small>{detail.harvest.deliveries.length || derived.deliveryCount} entregas de cosecha</small></div></article>
         <article className="card quick premium-quick"><div><strong>{(detail.harvest.weightedYieldPercent ?? derived.weightedYieldPercent) !== undefined ? `${formatNumber(detail.harvest.weightedYieldPercent ?? derived.weightedYieldPercent!)} %` : '—'}</strong><small>rendimiento ponderado</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{formatMoney(derived.totalCostEur)}</strong><small>coste registrado</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{formatMoney(source === 'api' ? detail.harvest.accruedEur : derived.totalIncomeEur)}</strong><small>ingreso liquidado</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{formatMoney(detail.harvest.collectedEur)}</strong><small>cobrado de cosecha</small></div></article>
       </div>
-      {source === 'api' ? <p className="subtle">La cosecha distingue ya entregado, liquidado y cobrado. El margen completo se cerrará al conectar la proyección económica total de la finca.</p> : null}
+
+      <div className="section-head"><h3>Economía de la campaña</h3><Link href="/mi-campo/campana" className="detail-link">Ver campaña</Link></div>
+      <div className="quick-grid">
+        <article className="card quick premium-quick"><div><strong>{formatMoney(totalCostEur)}</strong><small>costes registrados</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{costPerKg !== undefined ? `${formatNumber(costPerKg)} €/kg` : '—'}</strong><small>coste por kg entregado</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{formatMoney(accruedIncomeEur)}</strong><small>liquidado atribuible</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{formatMoney(collectedIncomeEur)}</strong><small>cobrado</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{formatMoney(pendingCollectionEur)}</strong><small>pendiente de cobro</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{formatMoney(accruedMarginEur)}</strong><small>margen devengado</small></div></article>
+      </div>
+      {isApi ? <p className="subtle">Margen devengado = liquidado atribuible − costes registrados. El flujo de caja real se mostrará cuando también modelemos pagos efectivos de gastos.</p> : <p className="subtle">Vista de demostración: los importes proceden del almacenamiento local de la preview.</p>}
     </section> : null}
 
     {activeSection === 'Actividad' ? <section className="section">
