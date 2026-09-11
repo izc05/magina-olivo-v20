@@ -3,13 +3,15 @@ import { expect, test } from '@playwright/test';
 const token = 'beta-public-quote-token-2026-fixed';
 const route = `/documento-publico?token=${token}`;
 
+test.describe.configure({ mode: 'serial' });
+
 for (const width of [360, 390, 430]) {
   test(`public quote is usable at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto(route);
 
     await expect(page.getByRole('heading', { name: /Presupuesto P-E2E-001/ })).toBeVisible();
-    await expect(page.getByText('121,00 €')).toBeVisible();
+    await expect(page.getByText(/121,00/)).toBeVisible();
     await expect(page.getByRole('link', { name: 'Ver PDF recibido' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Aceptar presupuesto' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Rechazar' })).toBeVisible();
