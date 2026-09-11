@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import type { RecordField, RecordType } from '@/lib/record-types';
 import { activityLabels, recordSlugToActivityType } from '@/lib/domain';
 import { saveLocalActivity } from '@/lib/local-prototype-store';
@@ -13,12 +14,13 @@ import { uploadDomainAttachment, type DocumentKind } from '@/lib/document-upload
 import { useAuth } from '@/components/auth-provider';
 import { ArrowIcon, MapPinIcon } from '@/components/icons';
 
-function Field({ field }: { field: RecordField }) {
+function Field({ field, defaultValue }: { field: RecordField; defaultValue?: string }) {
   const common = {
     id: field.name,
     name: field.name,
     required: field.required,
     className: 'record-control',
+    defaultValue: defaultValue ?? '',
   };
 
   return (
@@ -26,7 +28,7 @@ function Field({ field }: { field: RecordField }) {
       <span>{field.label}{field.required ? ' *' : ''}</span>
       <div className="record-input-wrap">
         {field.kind === 'select' ? (
-          <select {...common} defaultValue="">
+          <select {...common}>
             <option value="" disabled>Seleccionar</option>
             {field.options?.map((option) => <option key={option}>{option}</option>)}
           </select>
@@ -60,6 +62,7 @@ function attachmentKind(slug: string, file: File): DocumentKind {
 }
 
 export function QuickRecordForm({ type }: { type: RecordType }) {
+  const params = useSearchParams();
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -69,6 +72,15 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
   const [savedRemotely, setSavedRemotely] = useState(false);
   const { context, ready, found } = useFieldContext();
   const { selectedWorkspaceId } = useAuth();
+
+  const prefill: Record<string, string> = {
+    date: params.get('prefillDate') ?? '',
+    amount: params.get('prefillAmount') ?? '',
+    concept: params.get('prefillConcept') ?? '',
+    category: params.get('prefillCategory') ?? '',
+    notes: params.get('prefillNotes') ?? '',
+  };
+  const sourceDocumentId = params.get('sourceDocumentId');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -113,7 +125,7 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
           }
         }
 
-        const plannedEventId = new URLSearchParams(window.location.search).get('plannedEventId');
+        const plannedEventId = params.get('plannedEventId');
         if (plannedEventId && savedRecord.domainType !== 'expense') {
           try {
             await completePlannedTask({
@@ -173,13 +185,14 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         <span className="eyebrow dark">{savedRemotely ? 'GUARDADO EN MÁGINA' : 'GUARDADO EN ESTE DISPOSITIVO'}</span>
         <h1>{type.shortLabel} añadido a {context.name}</h1>
         <p>{savedRemotely ? 'El backend ha guardado el registro y sus proyecciones asociadas.' : context.source === 'api' ? 'Este tipo todavía se conserva como borrador local mientras se conecta al modelo Trabajo.' : 'El registro se ha guardado con la finca seleccionada.'}</p>
+        {sourceDocumentId ? <p>✓ Los datos partieron de un documento revisado; el registro solo se creó después de esta confirmación.</p> : null}
         {completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : null}
         {attachmentWarning ? <p className="form-error" role="status">{attachmentWarning}</p> : null}
         <div className="success-effects">
           <span>✓ Finca correcta: {context.name}</span>
           {savedRemotely ? <span>✓ Historial y costes derivados en servidor cuando corresponde</span> : <span>✓ Registro local preservado</span>}
           {attachmentSaved ? <span>✓ Foto/documento subido y verificado</span> : null}
-          {savedRemotely && !completionWarning && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('plannedEventId') ? <span>✓ Tarea prevista enlazada al registro real</span> : null}
+          {savedRemotely && !completionWarning && params.get('plannedEventId') ? <span>✓ Tarea prevista enlazada al registro real</span> : null}
           {type.followUp && <span>✓ Seguimiento, si has indicado fecha</span>}
         </div>
         <div className="record-actions">
@@ -202,17 +215,19 @@ export function QuickRecordForm({ type }: { type: RecordType }) {
         <Link href="/mi-campo">Cambiar</Link>
       </section>
 
+      {sourceDocumentId ? <section className="card register-principle"><div><strong>Datos prellenados desde un documento revisado</strong><small>Comprueba los campos. Nada se guardará hasta que pulses el botón final.</small></div></section> : null}
+
       <section className="card record-panel">
         <div className="record-panel-head">
           <span className="record-type-symbol">{type.symbol}</span>
           <div><span className="eyebrow dark">REGISTRO RÁPIDO</span><h2>{type.question}</h2><p>Solo lo imprescindible. El resto es opcional.</p></div>
         </div>
-        <div className="record-fields">{type.essential.map((field) => <Field key={field.name} field={field} />)}</div>
+        <div className="record-fields">{type.essential.map((field) => <Field key={field.name} field={field} defaultValue={prefill[field.name]} />)}</div>
       </section>
 
-      {type.details && <details className="card record-details"><summary>Más detalles <span>Opcional</span></summary><div className="record-fields detail-fields">{type.details.map((field) => <Field key={field.name} field={field} />)}<label className="record-field wide photo-field"><span>Foto o documento</span><input className="record-control file-control" name="attachment" type="file" accept="image/*,.pdf" /><small>En servidor se vincula al registro concreto y se verifica tamaño/checksum tras la subida.</small></label></div></details>}
+      {type.details && <details className="card record-details"><summary>Más detalles <span>Opcional</span></summary><div className="record-fields detail-fields">{type.details.map((field) => <Field key={field.name} field={field} defaultValue={prefill[field.name]} />)}<label className="record-field wide photo-field"><span>Foto o documento</span><input className="record-control file-control" name="attachment" type="file" accept="image/*,.pdf" /><small>En servidor se vincula al registro concreto y se verifica tamaño/checksum tras la subida.</small></label></div></details>}
 
-      {type.followUp && <section className="card record-follow-up"><div><span className="eyebrow dark">DESPUÉS</span><h3>¿Quieres dejarlo programado?</h3><p>Si indicas una fecha quedará asociada al seguimiento del registro.</p></div><div className="record-fields follow-up-fields">{type.followUp.map((field) => <Field key={field.name} field={field} />)}</div></section>}
+      {type.followUp && <section className="card record-follow-up"><div><span className="eyebrow dark">DESPUÉS</span><h3>¿Quieres dejarlo programado?</h3><p>Si indicas una fecha quedará asociada al seguimiento del registro.</p></div><div className="record-fields follow-up-fields">{type.followUp.map((field) => <Field key={field.name} field={field} defaultValue={prefill[field.name]} />)}</div></section>}
 
       {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
       <section className="record-save-bar"><small>{context.source === 'api' && supportsApiRecord(type.slug) ? 'Se guardará en el servidor real de Mágina.' : 'Modo local-first para este tipo de registro.'}</small><button className="primary" type="submit" disabled={!ready || !found || saving}>{saving ? 'Guardando…' : `Guardar ${type.shortLabel.toLowerCase()} →`}</button></section>
