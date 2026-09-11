@@ -64,6 +64,26 @@ export type AdminAuditEntry = {
   created_at: string;
 };
 
+export type AdminMediaAsset = {
+  id: string;
+  original_filename: string;
+  mime_type: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/avif';
+  byte_size: number;
+  status: 'reserved' | 'uploaded' | 'failed' | 'archived';
+  created_by: string | null;
+  created_at: string;
+  uploaded_at: string | null;
+  public_path: string;
+};
+
+export type MediaUploadReservation = {
+  storageKey: string;
+  uploadUrl: string;
+  method: 'PUT';
+  headers: Record<string, string>;
+  expiresAt: string;
+};
+
 export const adminApi = {
   session: () => apiFetch<AdminSession>('/api/v1/admin/session'),
   overview: () => apiFetch<AdminOverview>('/api/v1/admin/overview'),
@@ -71,6 +91,12 @@ export const adminApi = {
   content: () => apiFetch<{ entries: CmsEntry[] }>('/api/v1/admin/content'),
   settings: () => apiFetch<{ settings: SiteSetting[] }>('/api/v1/admin/settings'),
   audit: () => apiFetch<{ entries: AdminAuditEntry[] }>('/api/v1/admin/audit'),
+  media: () => apiFetch<{ assets: AdminMediaAsset[] }>('/api/v1/admin/media'),
+  reserveMedia: (payload: { original_filename: string; mime_type: AdminMediaAsset['mime_type']; byte_size: number; sha256: string }) => apiFetch<{ asset: AdminMediaAsset; upload: MediaUploadReservation }>('/api/v1/admin/media/reserve', {
+    method: 'POST', body: JSON.stringify(payload),
+  }),
+  completeMedia: (id: string) => apiFetch<{ replayed: boolean; asset: AdminMediaAsset }>(`/api/v1/admin/media/${id}/complete`, { method: 'POST' }),
+  archiveMedia: (id: string) => apiFetch<void>(`/api/v1/admin/media/${id}`, { method: 'DELETE' }),
   setUserStatus: (userId: string, status: 'active' | 'suspended') => apiFetch(`/api/v1/admin/users/${userId}`, {
     method: 'PATCH', body: JSON.stringify({ status }),
   }),
