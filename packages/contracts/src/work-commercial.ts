@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { moneySchema } from './mi-campo.js';
+import { clientOperationSchema, isoDateSchema, moneySchema } from './mi-campo.js';
 
 export const updateWorkCommercialSchema = z.object({
   quoted_amount_eur: moneySchema.optional(),
@@ -13,4 +13,13 @@ export const updateWorkCommercialSchema = z.object({
   }
 });
 
+export const createWorkCollectionSchema = clientOperationSchema.extend({
+  collected_on: isoDateSchema,
+  amount_eur: moneySchema.refine((value) => value > 0, 'amount_eur must be greater than zero'),
+  method: z.enum(['cash', 'bank', 'card', 'bizum', 'other']).optional(),
+  reference: z.string().trim().max(240).optional(),
+  notes: z.string().trim().max(2000).optional(),
+});
+
 export type UpdateWorkCommercialInput = z.infer<typeof updateWorkCommercialSchema>;
+export type CreateWorkCollectionInput = z.infer<typeof createWorkCollectionSchema>;
