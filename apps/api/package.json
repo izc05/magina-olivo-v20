@@ -12,6 +12,7 @@
     "@aws-sdk/client-s3": "^3.1128.0",
     "@aws-sdk/s3-request-presigner": "^3.1127.0",
     "@fastify/cookie": "^11.1.2",
+    "@fastify/cors": "^11.2.0",
     "@magina/contracts": "workspace:*",
     "@magina/jobs": "workspace:*",
     "@magina/weather": "workspace:*",
