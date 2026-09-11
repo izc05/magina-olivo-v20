@@ -244,6 +244,7 @@ export function MarketDashboard() {
 
         <div className={styles.weeksLegend} aria-hidden="true">
           <span>{firstWeek?.label ?? ''}</span>
+          <span>histórico</span>
           <span>{visibleTrendWeeks} semanas</span>
           <span>{lastWeek?.label ?? ''}</span>
         </div>
