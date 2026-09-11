@@ -102,6 +102,8 @@ export function registerProfessionalCustomerRoutes(app: FastifyInstance, db: Dat
       SELECT d.id, d.kind, d.title, d.created_at,
              al.domain_type,
              al.domain_record_id,
+             CASE WHEN al.domain_type = 'professional_invoice' THEN al.domain_record_id END AS invoice_id,
+             CASE WHEN al.domain_type = 'professional_quote' THEN al.domain_record_id END AS quote_id,
              al.relation
       FROM attachment_links al
       JOIN documents d ON d.id = al.document_id
