@@ -59,21 +59,31 @@ async function main() {
   }});
   if (invoice.statusCode !== 201) throw new Error(`Invoice failed: ${invoice.statusCode} ${invoice.body}`);
 
+  const changedProfile = await app.inject({ method: 'PUT', url: '/api/v1/professional/business-profile', headers, payload: {
+    legal_name: 'Servicios Mágina NUEVO SL', tax_id: 'A99999999', address: 'Otra calle 9', municipality: 'Jimena', province: 'Jaén', payment_terms: 'Contado',
+  }});
+  if (changedProfile.statusCode !== 200) throw new Error(`Profile update failed: ${changedProfile.statusCode}`);
+  await sql`UPDATE parties SET legal_name = 'Cliente Modificado SL', tax_id = 'B99999999' WHERE id = ${customerId}::uuid`.execute(db);
+
   const quotePrint = await app.inject({ method: 'GET', url: `/api/v1/professional/print/quote/${quoteId}`, headers });
   if (quotePrint.statusCode !== 200) throw new Error(`Quote print failed: ${quotePrint.statusCode} ${quotePrint.body}`);
   const q = quotePrint.json();
   if (q.document_type !== 'quote' || q.document.number !== 'P-PRINT-001') throw new Error('Unexpected quote print identity');
-  if (q.issuer.legal_name !== 'Servicios Mágina SL' || q.issuer.tax_id !== 'A12345678') throw new Error('Issuer profile missing in quote print');
-  if (q.customer.legal_name !== 'Cliente Print SL' || q.customer.tax_id !== 'B12345678') throw new Error('Customer identity missing in quote print');
+  if (q.issuer.legal_name !== 'Servicios Mágina SL' || q.issuer.tax_id !== 'A12345678') throw new Error('Quote issuer snapshot was rewritten');
+  if (q.customer.legal_name !== 'Cliente Print SL' || q.customer.tax_id !== 'B12345678') throw new Error('Quote customer snapshot was rewritten');
   if (q.lines.length !== 1 || Math.abs(Number(q.lines[0].line_total_eur) - 1000) > 0.001) throw new Error('Quote line mismatch');
   if (Math.abs(Number(q.document.total_eur) - 1210) > 0.001) throw new Error('Quote total mismatch');
+  if (q.semantics.identity !== 'captured_at_creation') throw new Error('Quote did not report captured identity semantics');
 
   const invoicePrint = await app.inject({ method: 'GET', url: `/api/v1/professional/print/invoice/${invoiceId}`, headers });
   if (invoicePrint.statusCode !== 200) throw new Error(`Invoice print failed: ${invoicePrint.statusCode} ${invoicePrint.body}`);
   const i = invoicePrint.json();
   if (i.document_type !== 'invoice' || i.document.number !== 'F-PRINT-001') throw new Error('Unexpected invoice print identity');
+  if (i.issuer.legal_name !== 'Servicios Mágina SL' || i.issuer.tax_id !== 'A12345678') throw new Error('Invoice issuer snapshot was rewritten');
+  if (i.customer.legal_name !== 'Cliente Print SL' || i.customer.tax_id !== 'B12345678') throw new Error('Invoice customer snapshot was rewritten');
   if (i.lines.length !== 1 || Math.abs(Number(i.lines[0].amount_eur) - 1210) > 0.001) throw new Error('Invoice line mismatch');
   if (Math.abs(Number(i.document.subtotal_eur) - 1000) > 0.001 || Math.abs(Number(i.document.tax_eur) - 210) > 0.001 || Math.abs(Number(i.document.total_eur) - 1210) > 0.001) throw new Error('Invoice totals mismatch');
+  if (i.semantics.identity !== 'captured_at_creation') throw new Error('Invoice did not report captured identity semantics');
 
   console.log('Professional print smoke test passed');
 }
