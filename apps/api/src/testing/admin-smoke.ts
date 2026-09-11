@@ -128,6 +128,55 @@ try {
   assert.equal(createEvent.statusCode, 201, createEvent.body);
   const eventId = String(createEvent.json().entry.id);
 
+  const invalidEventCreate = await app.inject({
+    method: 'POST',
+    url: '/api/v1/admin/content',
+    headers: { cookie: adminLogin.cookie },
+    payload: {
+      type: 'event',
+      slug: 'evento-fechas-invertidas-smoke',
+      title: 'Evento inválido',
+      content_json: {
+        event_start: '2026-10-04T20:00:00.000Z',
+        event_end: '2026-10-04T18:00:00.000Z',
+      },
+      status: 'draft',
+    },
+  });
+  assert.equal(invalidEventCreate.statusCode, 400, invalidEventCreate.body);
+  assert.equal(invalidEventCreate.json().error, 'invalid_event_window');
+
+  const invalidEventUpdate = await app.inject({
+    method: 'PUT',
+    url: `/api/v1/admin/content/${eventId}`,
+    headers: { cookie: adminLogin.cookie },
+    payload: {
+      content_json: {
+        body: 'Agenda pública de prueba',
+        event_start: '2026-10-05T21:00:00.000Z',
+        event_end: '2026-10-05T19:00:00.000Z',
+      },
+    },
+  });
+  assert.equal(invalidEventUpdate.statusCode, 400, invalidEventUpdate.body);
+  assert.equal(invalidEventUpdate.json().error, 'invalid_event_window');
+
+  const invalidPublicationWindow = await app.inject({
+    method: 'POST',
+    url: '/api/v1/admin/content',
+    headers: { cookie: adminLogin.cookie },
+    payload: {
+      type: 'news',
+      slug: 'publicacion-invertida-smoke',
+      title: 'Publicación inválida',
+      status: 'draft',
+      starts_at: '2030-01-02T00:00:00.000Z',
+      ends_at: '2030-01-01T00:00:00.000Z',
+    },
+  });
+  assert.equal(invalidPublicationWindow.statusCode, 400, invalidPublicationWindow.body);
+  assert.equal(invalidPublicationWindow.json().error, 'invalid_publication_window');
+
   const futurePromotion = await app.inject({
     method: 'POST',
     url: '/api/v1/admin/content',

@@ -70,6 +70,8 @@ jobs:
           grep -Fx 'WEB_PORT=8080' deploy/staging/.env.example
           grep -Fx 'API_PORT=3001' deploy/staging/.env.example
           grep -Fx 'NEXT_PUBLIC_PREVIEW_MODE=false' deploy/staging/.env.example
+          grep -Fx 'GOOGLE_CLIENT_ID=CHANGE_ME_GOOGLE_CLIENT_ID' deploy/staging/.env.example
+          grep -Fx 'NEXT_PUBLIC_GOOGLE_CLIENT_ID=CHANGE_ME_GOOGLE_CLIENT_ID' deploy/staging/.env.example
           grep -Fx 'ALLOW_DEV_AUTH_HEADERS=false' deploy/staging/.env.example
           grep -Fx 'WORKER_MODULES=ocr,radar,notifications' deploy/staging/.env.example
           grep -Fx 'OCR_PROVIDER=tesseract' deploy/staging/.env.example
@@ -99,7 +101,7 @@ jobs:
           NEXT_PUBLIC_API_URL=https://api.staging.magina.invalid
           NEXT_PUBLIC_PREVIEW_MODE=false
           GOOGLE_CLIENT_ID=staging-ci-google-client
-          GOOGLE_CLIENT_SECRET=staging-ci-google-secret
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID=staging-ci-google-client
           SESSION_SECRET=staging-ci-session-secret-at-least-32-bytes-long
           ALLOW_DEV_AUTH_HEADERS=false
           S3_ENDPOINT=https://s3.staging.magina.invalid
@@ -124,6 +126,13 @@ jobs:
           EOF
 
           node scripts/staging-env-preflight.mjs /tmp/magina-staging-valid.env
+
+          sed 's/NEXT_PUBLIC_GOOGLE_CLIENT_ID=staging-ci-google-client/NEXT_PUBLIC_GOOGLE_CLIENT_ID=other-client/' /tmp/magina-staging-valid.env > /tmp/magina-staging-google-mismatch.env
+          if node scripts/staging-env-preflight.mjs /tmp/magina-staging-google-mismatch.env >/tmp/google-mismatch.log 2>&1; then
+            echo 'Preflight must reject different browser/API Google client IDs.' >&2
+            exit 1
+          fi
+          grep -F 'NEXT_PUBLIC_GOOGLE_CLIENT_ID must match GOOGLE_CLIENT_ID' /tmp/google-mismatch.log
 
       - name: Build API and worker dependencies
         run: |
@@ -176,6 +185,7 @@ jobs:
       - name: Production web build and bundle budget
         env:
           NEXT_PUBLIC_API_URL: https://api-staging.example.test
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: staging-ci-google-client
           NEXT_PUBLIC_PREVIEW_MODE: 'false'
         run: pnpm --filter @magina/web build
 
@@ -186,6 +196,7 @@ jobs:
             -f deploy/staging/docker-compose.yml \
             config > /tmp/magina-staging-compose.yml
           test -s /tmp/magina-staging-compose.yml
+          grep -F 'NEXT_PUBLIC_GOOGLE_CLIENT_ID: CHANGE_ME_GOOGLE_CLIENT_ID' /tmp/magina-staging-compose.yml
 
       - name: Build staging images
         run: |
@@ -207,13 +218,13 @@ jobs:
               command -v pdftoppm
             '
 
-      - name: Validate API origin embedded in web image
+      - name: Validate web runtime config embedded in image
         run: |
           docker compose \
             --env-file deploy/staging/.env.example \
             -f deploy/staging/docker-compose.yml \
             run --rm --no-deps --entrypoint /bin/sh web -ec \
-            "grep -R -F 'https://api-staging.example.com' /usr/share/nginx/html/_next >/dev/null"
+            "grep -R -F 'https://api-staging.example.com' /usr/share/nginx/html/_next >/dev/null && grep -R -F 'CHANGE_ME_GOOGLE_CLIENT_ID' /usr/share/nginx/html/_next >/dev/null"
 
       - name: Smoke staging containers and migration repeatability
         run: |

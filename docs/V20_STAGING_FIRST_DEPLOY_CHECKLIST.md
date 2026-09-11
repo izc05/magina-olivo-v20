@@ -8,30 +8,21 @@ Estado de partida técnico validado: `a88dde53069b5508eaba4ffbbd0ab9dcc6dd34d9` 
 - `V20 beta browser E2E` #426 ✅
 - `V20 staging readiness` #63 ✅
 
-Los commits posteriores que solo actualicen documentación no cambian ese runtime. Para desplegar otro SHA distinto, el workflow exige que ese SHA tenga sus tres gates verdes.
+Los commits posteriores deben volver a tener sus tres gates verdes antes de desplegarse.
 
 ## 1. Host
 
-Debe existir un host de staging separado de producción con:
-
-- Docker Engine;
-- Docker Compose v2;
-- `curl`;
-- `tar`;
-- SSH con clave dedicada;
-- espacio persistente para PostgreSQL y backups;
-- acceso saliente a S3, Google y AEMET;
-- web/API publicables mediante Cloudflare Tunnel o reverse proxy HTTPS.
+Debe existir un host de staging separado de producción con Docker Engine, Docker Compose v2, `curl`, `tar`, SSH con clave dedicada, almacenamiento persistente para PostgreSQL/backups y salida a S3, Google y AEMET.
 
 No abrir PostgreSQL a Internet.
 
-Ruta recomendada del stack:
+Ruta recomendada:
 
 ```text
 /srv/stacks/magina-olivo-v20-staging
 ```
 
-Estructura creada por el deploy:
+Estructura de releases:
 
 ```text
 /srv/stacks/magina-olivo-v20-staging/
@@ -46,8 +37,8 @@ Estructura creada por el deploy:
 Definir dos orígenes reales y distintos:
 
 ```text
-WEB  = https://<dominio-staging>
-API  = https://<api-dominio-staging>
+WEB = https://<dominio-staging>
+API = https://<api-dominio-staging>
 ```
 
 El proxy/túnel debe resolver:
@@ -57,35 +48,28 @@ WEB → http://127.0.0.1:8080
 API → http://127.0.0.1:3001
 ```
 
-No ejecutar el deploy real mientras los dos dominios sigan siendo placeholders.
-
 ## 3. Bucket de staging
 
-Crear un bucket exclusivo para staging.
+Crear un bucket exclusivo para staging, con credenciales exclusivas y permisos mínimos para uploads, lecturas temporales y OCR. No reutilizar producción.
 
-Requisitos:
+## 4. Google Identity
 
-- no reutilizar producción;
-- credenciales exclusivas de staging;
-- endpoint HTTPS;
-- permisos mínimos necesarios para uploads, reads temporales y OCR;
-- política de retención/revisión definida antes de usar documentos reales.
+El flujo actual usa Google Identity Services: el navegador obtiene un ID token y la API lo valida contra el mismo OAuth client ID.
 
-## 4. Google Auth
-
-El flujo actual usa Google Identity Services y la API verifica directamente el ID token. Solo necesita el identificador público del cliente OAuth:
+Preparar estas dos variables con **el mismo valor**:
 
 ```text
 GOOGLE_CLIENT_ID
+NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ```
 
-No se requiere `GOOGLE_CLIENT_SECRET` en el runtime actual.
+`GOOGLE_CLIENT_ID` llega a la API. `NEXT_PUBLIC_GOOGLE_CLIENT_ID` se embebe en la web durante el build y es necesariamente público. El preflight rechaza que sean distintos.
+
+No se usa `GOOGLE_CLIENT_SECRET` en el flujo actual.
 
 Después del deploy probar login, persistencia de sesión y logout.
 
 ## 5. Web Push / VAPID
-
-Preparar:
 
 ```text
 VAPID_PUBLIC_KEY
@@ -93,11 +77,7 @@ VAPID_PRIVATE_KEY
 VAPID_SUBJECT=mailto:<correo-real>
 ```
 
-El preflight rechaza un `VAPID_SUBJECT` que no sea `mailto:` válido.
-
 ## 6. AEMET
-
-Preparar una clave real de staging/desarrollo:
 
 ```text
 AEMET_API_KEY
@@ -124,7 +104,8 @@ CORS_ALLOWED_ORIGINS=https://<dominio-staging>
 NEXT_PUBLIC_API_URL=https://<api-dominio-staging>
 NEXT_PUBLIC_PREVIEW_MODE=false
 
-GOOGLE_CLIENT_ID=<REAL>
+GOOGLE_CLIENT_ID=<CLIENT_ID_REAL>
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<MISMO_CLIENT_ID_REAL>
 SESSION_SECRET=<MINIMO_32_BYTES_ALEATORIOS>
 ALLOW_DEV_AUTH_HEADERS=false
 
@@ -153,7 +134,7 @@ AEMET_API_KEY=<REAL>
 PUBLIC_WEB_ORIGIN=https://<dominio-staging>
 ```
 
-Antes de subirlo como secret, ejecutar:
+Antes de subirlo como secret:
 
 ```bash
 node scripts/staging-env-preflight.mjs deploy/staging/.env
@@ -163,9 +144,7 @@ Debe terminar con `Staging env preflight passed`.
 
 ## 8. GitHub Environment `staging`
 
-Crear/proteger el Environment `staging`.
-
-### Secrets requeridos
+### Secrets
 
 ```text
 STAGING_ENV_FILE
@@ -173,9 +152,7 @@ STAGING_SSH_PRIVATE_KEY
 STAGING_SSH_KNOWN_HOSTS
 ```
 
-`STAGING_ENV_FILE` contiene el `.env` completo; nunca se versiona.
-
-### Variables requeridas
+### Variables
 
 ```text
 STAGING_HOST
@@ -184,11 +161,11 @@ STAGING_PORT
 STAGING_PATH=/srv/stacks/magina-olivo-v20-staging
 ```
 
-Recomendación mientras siga siendo Beta: approval manual obligatorio para el Environment.
+Mientras V20 siga en Beta, mantener aprobación manual del Environment.
 
 ## 9. SSH
 
-Antes del primer deploy comprobar manualmente:
+Comprobar:
 
 ```bash
 ssh -p <STAGING_PORT> <STAGING_USER>@<STAGING_HOST>
@@ -203,7 +180,7 @@ curl --version
 tar --version
 ```
 
-`STAGING_SSH_KNOWN_HOSTS` debe proceder de una huella verificada, no de aceptar `StrictHostKeyChecking=no`.
+`STAGING_SSH_KNOWN_HOSTS` debe proceder de una huella verificada; no desactivar la comprobación de host.
 
 ## 10. SHA a desplegar
 
@@ -215,8 +192,6 @@ V20 beta browser E2E
 V20 staging readiness
 ```
 
-El workflow rechazará cualquier SHA sin los tres resultados `success`.
-
 ## 11. Lanzar `V20 staging deploy`
 
 Inputs:
@@ -227,28 +202,25 @@ expected_sha=<SHA completo>
 confirm=DEPLOY-STAGING
 ```
 
-El workflow debe pasar, en orden:
+El workflow debe completar:
 
-1. checkout exacto;
-2. comprobación del SHA;
-3. comprobación de los tres gates;
-4. preflight del `.env`;
-5. validación SSH;
-6. prerequisitos del host;
-7. subida de release inmutable;
-8. backup previo si PostgreSQL ya está activo;
-9. build web/API/worker;
-10. migraciones;
-11. health local web/API;
-12. segunda ejecución de migraciones no-op;
-13. smoke HTTPS externo;
-14. actualización de `current` y `CURRENT_SHA`.
+1. checkout y SHA exacto;
+2. tres gates verdes;
+3. preflight del `.env`;
+4. validación SSH;
+5. prerequisitos del host;
+6. release inmutable;
+7. backup previo si PostgreSQL ya está activo;
+8. build web/API/worker;
+9. migraciones;
+10. health local;
+11. segunda migración no-op;
+12. smoke HTTPS externo;
+13. actualización de `current` y `CURRENT_SHA`.
 
-Si el smoke externo falla, la release **no debe marcarse como actual**.
+Si el smoke externo falla, la release no debe marcarse como actual.
 
-## 12. Smoke externo obligatorio
-
-### Web/API
+## 12. Smoke externo
 
 ```text
 GET WEB/healthz → ok
@@ -256,18 +228,9 @@ GET WEB/        → 200
 GET API/health  → 200
 ```
 
-Verificar desde Internet:
-
-- HTTPS válido;
-- `X-Frame-Options: DENY`;
-- `X-Content-Type-Options: nosniff`;
-- CORS permite únicamente la web configurada;
-- API privada usa `Cache-Control: no-store`;
-- no existe acceso externo a PostgreSQL.
+Verificar HTTPS, headers de seguridad, CORS restringido, API privada `no-store` y PostgreSQL no accesible desde Internet.
 
 ## 13. Recorrido Agricultor real
-
-Ejecutar con usuario de staging:
 
 ```text
 Google login
@@ -283,13 +246,7 @@ Google login
 → comprobar tiempo/radar
 ```
 
-Criterios:
-
-- cero datos demo;
-- cero `ALLOW_DEV_AUTH_HEADERS`;
-- finca y registros sobreviven a logout/login;
-- documento se persiste en el bucket de staging;
-- OCR usa el worker desplegado.
+Criterios: cero demo, dev-auth desactivado, persistencia tras logout/login, documento en bucket real de staging y OCR ejecutado por el worker desplegado.
 
 ## 14. Recorrido Profesional real
 
@@ -309,61 +266,21 @@ Verificar que el enlace público no expone sesión privada ni datos ajenos.
 
 ## 15. Móvil real
 
-Repetir las rutas principales en al menos:
-
-```text
-360 px
-390 px
-430 px
-```
-
-Comprobar especialmente:
-
-- teclado móvil;
-- selects/date inputs;
-- mapa;
-- upload cámara/archivo;
-- OCR/revisión;
-- modales y botones inferiores;
-- latencia con red móvil real;
-- ausencia de scroll horizontal.
+Repetir rutas principales en 360 / 390 / 430 px y comprobar teclado, inputs, mapa, upload, OCR, modales, botones inferiores, latencia real y ausencia de overflow horizontal.
 
 ## 16. Backup y restore
 
-El deploy crea backup previo cuando detecta PostgreSQL de staging activo.
-
-Antes de aprobar Beta hay que demostrar también **restore**, al menos una vez, usando un dump de staging verificado.
-
-Nunca probar restore destructivo sobre producción.
+El deploy crea backup previo cuando detecta PostgreSQL de staging activo. Antes de aprobar Beta hay que demostrar también un **restore** de staging al menos una vez.
 
 ## 17. Observabilidad
 
-Antes de declarar staging aprobado:
-
-- conservar logs API/worker/deploy;
-- rotación/persistencia de logs;
-- comprobar errores repetitivos del worker;
-- revisar fallos S3/OCR/AEMET/notificaciones;
-- no registrar cookies, secrets, tokens completos ni contenido sensible.
+Antes de declarar staging aprobado: logs persistentes/rotados para API, worker y deploy; revisión de errores S3/OCR/AEMET/notificaciones; nunca registrar cookies, secretos, tokens completos ni documentos sensibles.
 
 ## 18. Criterio final
 
-Staging real queda aprobado únicamente si:
+Staging real queda aprobado únicamente con workflow remoto, HTTPS/CORS/headers, Google Auth real, bucket+OCR, AEMET/radar, VAPID, recorridos agricultor/profesional, móvil real, PostgreSQL no expuesto, backup+restore y observabilidad básica validados.
 
-- workflow remoto completo ✅
-- HTTPS/CORS/headers ✅
-- Google Auth real ✅
-- bucket + upload + OCR real ✅
-- AEMET/radar real ✅
-- VAPID/notificaciones configuradas ✅
-- Agricultor real ✅
-- Profesional real ✅
-- móvil real ✅
-- PostgreSQL no expuesto ✅
-- backup + restore probado ✅
-- observabilidad básica ✅
-
-Hasta entonces el estado correcto es:
+Hasta entonces:
 
 > **Beta técnicamente preparada para staging externo; staging real pendiente de validación.**
 

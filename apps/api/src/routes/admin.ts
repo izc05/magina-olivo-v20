@@ -13,6 +13,12 @@ const cmsStatusSchema = z.enum(['draft', 'published', 'archived']);
 const slugSchema = z.string().min(1).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const nullableUrl = z.string().url().max(2000).nullable().optional();
 const nullableDateTime = z.string().datetime().nullable().optional();
+const eventDateFieldsSchema = z.object({
+  event_start: nullableDateTime,
+  event_end: nullableDateTime,
+}).passthrough();
+
+type CmsDateValue = string | Date | null | undefined;
 
 const contentCreateSchema = z.object({
   type: cmsTypeSchema,
@@ -38,6 +44,25 @@ const siteSettingSchema = z.object({
 
 function publicContentQuery(input: unknown) {
   return z.object({ type: cmsTypeSchema.optional(), featured: z.enum(['true', 'false']).optional() }).safeParse(input);
+}
+
+function dateValueMs(value: Exclude<CmsDateValue, null | undefined>) {
+  return value instanceof Date ? value.getTime() : new Date(value).getTime();
+}
+
+function isOrderedDateRange(start: CmsDateValue, end: CmsDateValue) {
+  if (!start || !end) return true;
+  return dateValueMs(end) >= dateValueMs(start);
+}
+
+function contentTimingError(type: CmsEntryType, contentJson: unknown, startsAt: CmsDateValue, endsAt: CmsDateValue) {
+  if (!isOrderedDateRange(startsAt, endsAt)) return 'invalid_publication_window';
+  if (type !== 'event') return null;
+
+  const eventDates = eventDateFieldsSchema.safeParse(contentJson ?? {});
+  if (!eventDates.success) return 'invalid_event_dates';
+  if (!isOrderedDateRange(eventDates.data.event_start, eventDates.data.event_end)) return 'invalid_event_window';
+  return null;
 }
 
 async function adminOverview(db: DatabaseClient) {
@@ -189,6 +214,8 @@ export function registerAdminRoutes(app: FastifyInstance, db: DatabaseClient | n
     if (!auth) return;
     const input = parseBody(contentCreateSchema, request.body, reply);
     if (!input) return;
+    const timingError = contentTimingError(input.type as CmsEntryType, input.content_json, input.starts_at, input.ends_at);
+    if (timingError) return reply.code(400).send({ error: timingError });
     const now = new Date();
     try {
       const entry = await auth.database.insertInto('cms_entries').values({
@@ -227,14 +254,21 @@ export function registerAdminRoutes(app: FastifyInstance, db: DatabaseClient | n
     const existing = await auth.database.selectFrom('cms_entries').selectAll().where('id', '=', params.data.id).executeTakeFirst();
     if (!existing) return reply.code(404).send({ error: 'content_not_found' });
 
+    const nextType = (input.type ?? existing.type) as CmsEntryType;
+    const nextContentJson = input.content_json === undefined ? existing.content_json : input.content_json;
+    const nextStartsAt = input.starts_at === undefined ? existing.starts_at : input.starts_at;
+    const nextEndsAt = input.ends_at === undefined ? existing.ends_at : input.ends_at;
+    const timingError = contentTimingError(nextType, nextContentJson, nextStartsAt, nextEndsAt);
+    if (timingError) return reply.code(400).send({ error: timingError });
+
     const status = (input.status ?? existing.status) as CmsEntryStatus;
     const now = new Date();
     const entry = await auth.database.updateTable('cms_entries').set({
-      type: (input.type ?? existing.type) as CmsEntryType,
+      type: nextType,
       slug: input.slug ?? existing.slug,
       title: input.title ?? existing.title,
       summary: input.summary === undefined ? existing.summary : input.summary,
-      content_json: input.content_json === undefined ? existing.content_json : input.content_json,
+      content_json: nextContentJson,
       status,
       featured: input.featured ?? existing.featured,
       starts_at: input.starts_at === undefined ? existing.starts_at : (input.starts_at ? new Date(input.starts_at) : null),
