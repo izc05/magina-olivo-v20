@@ -1,12 +1,32 @@
 import { expect, test } from '@playwright/test';
 
+const fieldId = 'dddddddd-4444-4444-8444-dddddddddddd';
+
 const routes = [
   '/',
   '/mi-campo',
+  `/mi-campo/fincas/ver?id=${fieldId}&source=api`,
+  `/mi-campo/registrar?fieldId=${fieldId}`,
+  `/mi-campo/registrar/trabajo?fieldId=${fieldId}`,
   '/mi-campo/hoy',
   '/mi-campo/campana',
+  '/mi-campo/profesional',
+  '/mi-campo/profesional/presupuestos',
   '/perfil',
 ];
+
+test.beforeAll(async ({ request }) => {
+  const response = await request.post('/api/v1/fields', {
+    data: {
+      client_operation_id: 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee',
+      entity_id: fieldId,
+      name: 'Finca Mobile Audit',
+      tree_count: 80,
+      water_regime: 'secano',
+    },
+  });
+  expect([200, 201]).toContain(response.status());
+});
 
 for (const width of [360, 390, 430]) {
   test.describe(`mobile ${width}px`, () => {
@@ -16,7 +36,7 @@ for (const width of [360, 390, 430]) {
       test(`${route} no desborda horizontalmente`, async ({ page }) => {
         await page.goto(route);
         await expect(page.locator('body')).toBeVisible();
-        await page.waitForTimeout(250);
+        await page.waitForTimeout(350);
 
         const dimensions = await page.evaluate(() => ({
           viewport: document.documentElement.clientWidth,
@@ -26,6 +46,31 @@ for (const width of [360, 390, 430]) {
 
         expect(dimensions.documentWidth, `${route} document overflow at ${width}px`).toBeLessThanOrEqual(dimensions.viewport + 1);
         expect(dimensions.bodyWidth, `${route} body overflow at ${width}px`).toBeLessThanOrEqual(dimensions.viewport + 1);
+      });
+
+      test(`${route} no tiene controles críticos minúsculos`, async ({ page }) => {
+        await page.goto(route);
+        await expect(page.locator('body')).toBeVisible();
+        await page.waitForTimeout(350);
+
+        const tooSmall = await page.locator('button, input:not([type="hidden"]), select, textarea, .primary, .secondary-action').evaluateAll((nodes) =>
+          nodes.flatMap((node) => {
+            const element = node as HTMLElement;
+            const style = getComputedStyle(element);
+            if (style.display === 'none' || style.visibility === 'hidden') return [];
+            const rect = element.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return [];
+            if (rect.width >= 28 && rect.height >= 28) return [];
+            return [{
+              tag: element.tagName,
+              text: (element.textContent || (element as HTMLInputElement).value || '').trim().slice(0, 60),
+              width: Math.round(rect.width),
+              height: Math.round(rect.height),
+            }];
+          }),
+        );
+
+        expect(tooSmall, `${route} has controls below 28px at ${width}px: ${JSON.stringify(tooSmall)}`).toEqual([]);
       });
     }
   });
