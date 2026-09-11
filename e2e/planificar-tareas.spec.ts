@@ -25,7 +25,7 @@ test('planifica una tarea y solo la completa al registrar el trabajo real', asyn
   await expect(page.getByRole('heading', { name: '¿Qué quieres dejar preparado?' })).toBeVisible();
   await expect(page.getByLabel('Finca').first()).toHaveValue(fieldId);
 
-  await page.getByLabel('Tarea').fill(taskTitle);
+  await page.getByRole('textbox', { name: 'Tarea', exact: true }).fill(taskTitle);
   await page.getByLabel('Fecha y hora').fill('2026-09-14T08:00');
   await page.getByLabel('Notas').fill('Linde norte · prueba de planificación');
   await page.getByRole('button', { name: 'Guardar tarea' }).click();
