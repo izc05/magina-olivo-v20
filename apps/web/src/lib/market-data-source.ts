@@ -3,6 +3,15 @@ import type { MarketSeries, OliveMarketSnapshot, OliveOilCategory } from './mark
 
 export type MarketSnapshotOrigin = 'api' | 'fallback';
 
+export type OliveMarketHistory = {
+  revision: string;
+  sourcePublishedOn: string;
+  windowWeeks: number;
+  availableFrom: string;
+  availableThrough: string;
+  series: MarketSeries[];
+};
+
 type ApiMarketPoint = {
   week: number;
   label: string;
@@ -36,8 +45,38 @@ type ApiMarketResponse = {
   };
 };
 
+type ApiMarketHistoryResponse = {
+  history: {
+    schemaVersion: number;
+    origin: 'database' | 'bootstrap';
+    revision: string;
+    source: {
+      publishedOn: string;
+    };
+    windowWeeks: number;
+    availableFrom: string;
+    availableThrough: string;
+    series: ApiMarketSeries[];
+  };
+};
+
 function isFinitePrice(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function validateSeries(series: ApiMarketSeries[]): void {
+  if (!Array.isArray(series) || series.length !== 3) {
+    throw new Error('market_series_invalid');
+  }
+
+  for (const entry of series) {
+    if (!entry.id || !entry.shortName || !Array.isArray(entry.points) || entry.points.length === 0) {
+      throw new Error('market_series_invalid');
+    }
+    if (entry.points.some((point) => !isFinitePrice(point.priceEurKg))) {
+      throw new Error('market_price_invalid');
+    }
+  }
 }
 
 function normalizeSeries(series: ApiMarketSeries[]): MarketSeries[] {
@@ -60,18 +99,7 @@ function validateResponse(payload: ApiMarketResponse): OliveMarketSnapshot {
     throw new Error('market_snapshot_invalid');
   }
 
-  if (!Array.isArray(market.series) || market.series.length !== 3) {
-    throw new Error('market_series_invalid');
-  }
-
-  for (const series of market.series) {
-    if (!series.id || !series.shortName || !Array.isArray(series.points) || series.points.length === 0) {
-      throw new Error('market_series_invalid');
-    }
-    if (series.points.some((point) => !isFinitePrice(point.priceEurKg))) {
-      throw new Error('market_price_invalid');
-    }
-  }
+  validateSeries(market.series);
 
   return {
     revision: market.revision,
@@ -86,7 +114,47 @@ function validateResponse(payload: ApiMarketResponse): OliveMarketSnapshot {
   };
 }
 
+function validateHistoryResponse(payload: ApiMarketHistoryResponse): OliveMarketHistory {
+  const history = payload?.history;
+  if (
+    !history ||
+    history.schemaVersion !== 1 ||
+    typeof history.revision !== 'string' ||
+    !Number.isInteger(history.windowWeeks) ||
+    history.windowWeeks < 1 ||
+    history.windowWeeks > 52
+  ) {
+    throw new Error('market_history_invalid');
+  }
+
+  validateSeries(history.series);
+
+  if (history.series.some((series) => series.points.length !== history.windowWeeks)) {
+    throw new Error('market_history_window_invalid');
+  }
+
+  return {
+    revision: history.revision,
+    sourcePublishedOn: history.source.publishedOn,
+    windowWeeks: history.windowWeeks,
+    availableFrom: history.availableFrom,
+    availableThrough: history.availableThrough,
+    series: normalizeSeries(history.series),
+  };
+}
+
 export async function fetchOliveMarketSnapshot(): Promise<OliveMarketSnapshot> {
   const response = await apiFetch<ApiMarketResponse>('/api/v1/public/market/olive-oil');
   return validateResponse(response);
+}
+
+export async function fetchOliveMarketHistory(weeks: number): Promise<OliveMarketHistory> {
+  if (!Number.isInteger(weeks) || weeks < 1 || weeks > 52) {
+    throw new Error('market_history_weeks_invalid');
+  }
+
+  const response = await apiFetch<ApiMarketHistoryResponse>(
+    `/api/v1/public/market/olive-oil/history?weeks=${weeks}`,
+  );
+  return validateHistoryResponse(response);
 }
