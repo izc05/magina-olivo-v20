@@ -18,9 +18,10 @@
     "check:env": "node scripts/check-env-contract.mjs",
     "check:staging": "node scripts/check-staging-contract.mjs",
     "check:migrations": "node scripts/check-migrations.mjs",
+    "check:containers": "node scripts/check-container-pins.mjs",
     "audit:ci": "node scripts/audit-ci.mjs",
-    "check": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm typecheck && pnpm build",
-    "check:fast": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm typecheck",
+    "check": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm typecheck && pnpm build",
+    "check:fast": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm typecheck",
     "e2e:beta": "playwright test"
   },
   "devDependencies": {
