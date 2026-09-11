@@ -51,9 +51,19 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v6
+        with:
+          path: apps/web/.next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/**') }}
+          restore-keys: |
+            ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium

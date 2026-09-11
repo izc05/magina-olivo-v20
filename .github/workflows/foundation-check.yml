@@ -39,12 +39,21 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Audit CI modernization and permissions
         run: node scripts/audit-ci.mjs --strict
 
       - name: Install exact dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v6
+        with:
+          path: apps/web/.next/cache
+          key: ${{ runner.os }}-next-foundation-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/**') }}
+          restore-keys: |
+            ${{ runner.os }}-next-foundation-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: Verify environment contract
         run: pnpm check:env

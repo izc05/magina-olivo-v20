@@ -8,8 +8,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: v20-visual-pages
@@ -31,9 +29,19 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v6
+        with:
+          path: apps/web/.next/cache
+          key: ${{ runner.os }}-next-pages-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/**') }}
+          restore-keys: |
+            ${{ runner.os }}-next-pages-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: Build static preview
         env:
@@ -44,15 +52,16 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload static artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: apps/web/out
 
   deploy:
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

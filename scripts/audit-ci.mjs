@@ -8,7 +8,11 @@ const expectedMajors = new Map([
   ['actions/checkout', 7],
   ['actions/setup-node', 7],
   ['pnpm/action-setup', 6],
+  ['actions/cache', 6],
   ['actions/upload-artifact', 7],
+  ['actions/configure-pages', 5],
+  ['actions/upload-pages-artifact', 4],
+  ['actions/deploy-pages', 4],
 ]);
 
 const entries = (await readdir(workflowsDir, { withFileTypes: true }))
@@ -40,30 +44,35 @@ function topLevelPermissions(source) {
   return permissions;
 }
 
+function allWritePermissions(source) {
+  return [...source.matchAll(/^\s+([A-Za-z-]+):\s*write\s*$/gm)].map((match) => match[1]);
+}
+
 for (const entry of entries) {
   const file = join(workflowsDir, entry.name);
   const source = await readFile(file, 'utf8');
   const hasPullRequest = /^  pull_request:\s*$/m.test(source);
   const hasPullRequestTarget = /^  pull_request_target:\s*$/m.test(source);
   const permissions = topLevelPermissions(source);
+  const writeScopes = allWritePermissions(source);
 
   if (hasPullRequest) pullRequestWorkflows += 1;
+  if (writeScopes.length) writePermissionWorkflows += 1;
+
   if (hasPullRequestTarget) {
     addFinding('dangerous-trigger', entry.name, 'pull_request_target executes with base-repository privileges');
   }
 
   if (!permissions) {
     addFinding('implicit-permissions', entry.name, 'workflow does not declare an explicit top-level permissions block');
-  } else {
-    const writes = permissions.filter(({ level }) => level === 'write');
-    if (writes.length) writePermissionWorkflows += 1;
-    if (hasPullRequest && writes.length) {
-      addFinding(
-        'pull-request-write-permission',
-        entry.name,
-        `pull_request workflow requests write access: ${writes.map(({ scope }) => scope).join(', ')}`,
-      );
-    }
+  }
+
+  if (hasPullRequest && writeScopes.length) {
+    addFinding(
+      'pull-request-write-permission',
+      entry.name,
+      `pull_request workflow requests write access: ${[...new Set(writeScopes)].join(', ')}`,
+    );
   }
 
   if (hasPullRequest && /\bsecrets\.[A-Za-z0-9_]+/.test(source)) {
