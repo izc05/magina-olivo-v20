@@ -6,6 +6,7 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerMeRoutes } from './routes/me.js';
 import { registerFieldRoutes } from './routes/fields.js';
 import { registerIrrigationRoutes } from './routes/irrigations.js';
+import { registerObservationRoutes } from './routes/observations.js';
 import { registerDomainRecordRoutes } from './routes/domain-records.js';
 import { registerHarvestRoutes } from './routes/harvest.js';
 import { registerHarvestCommercialRoutes } from './routes/harvest-commercial.js';
@@ -83,6 +84,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerPushRoutes(app, db, notificationQueue, pushPublicKey);
   registerFieldRoutes(app, db);
   registerIrrigationRoutes(app, db);
+  registerObservationRoutes(app, db);
   registerDomainRecordRoutes(app, db);
   registerHarvestRoutes(app, db);
   registerHarvestCommercialRoutes(app, db);
