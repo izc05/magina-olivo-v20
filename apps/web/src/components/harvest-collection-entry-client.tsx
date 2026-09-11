@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { apiFetch } from '@/lib/api-client';
 import { linkDocumentToDomain } from '@/lib/document-data-source';
-import { useFieldContext } from '@/lib/use-field-context';
+import { useFieldContext, withFieldQuery } from '@/lib/use-field-context';
 
 type SettlementRow = {
   id: string;
@@ -51,6 +51,7 @@ export function HarvestCollectionEntryClient() {
     }
     let cancelled = false;
     setLoading(true);
+    setError(null);
     apiFetch<SettlementsResponse>(`/api/v1/harvest-settlements?fieldId=${encodeURIComponent(context.id)}`, { workspaceId: selectedWorkspaceId })
       .then((response) => {
         if (cancelled) return;
@@ -60,6 +61,8 @@ export function HarvestCollectionEntryClient() {
         if (first) {
           setSettlementId(first.id);
           if (!prefillAmount) setAmount(String(Number(first.pending_eur).toFixed(2)));
+        } else {
+          setSettlementId('');
         }
       })
       .catch((cause) => {
@@ -72,6 +75,8 @@ export function HarvestCollectionEntryClient() {
 
   const selected = useMemo(() => settlements.find((item) => item.id === settlementId), [settlementId, settlements]);
   const pending = selected ? Number(selected.pending_eur) : 0;
+  const settlementHref = withFieldQuery('/mi-campo/registrar/liquidacion', context.id, context.source);
+  const collectionHref = withFieldQuery('/mi-campo/registrar/cobro', context.id, context.source);
 
   function chooseSettlement(id: string) {
     setSettlementId(id);
@@ -145,12 +150,15 @@ export function HarvestCollectionEntryClient() {
 
   if (!ready || loading) return <section className="card"><p>Cargando liquidaciones pendientes…</p></section>;
   if (!found || context.source !== 'api') return <section className="card"><h1>Finca no disponible</h1><Link href="/mi-campo">Volver a Mi Campo</Link></section>;
-  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Cobro registrado</h1><p>El cobro queda separado de la liquidación y reduce únicamente su saldo pendiente.</p>{sourceDocumentId ? <p>✓ Partía de un justificante revisado y solo se guardó después de tu confirmación.</p> : null}{linkWarning ? <p className="form-error" role="status">{linkWarning}</p> : null}<Link className="primary action-link" href={context.returnHref}>Volver a la finca</Link></section>;
+  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Cobro registrado</h1><p>El cobro queda separado de la liquidación y reduce únicamente su saldo pendiente.</p>{sourceDocumentId ? <p>✓ Partía de un justificante revisado y solo se guardó después de tu confirmación.</p> : null}{linkWarning ? <p className="form-error" role="status">{linkWarning}</p> : null}<div className="record-actions"><Link className="secondary-action action-link" href={collectionHref}>Registrar otro cobro</Link><Link className="secondary-action action-link" href="/mi-campo/campana">Ver campaña</Link><Link className="primary action-link" href={context.returnHref}>Volver a la finca</Link></div></section>;
+
+  if (settlements.length === 0 && !error) return <><header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar cobro</h1><p>El cobro siempre reduce el saldo de una liquidación confirmada.</p></header><section className="card"><h2>No hay liquidaciones pendientes de cobro</h2><p>Cuando guardes una liquidación con saldo pendiente aparecerá aquí para registrar pagos completos o parciales.</p><div className="record-actions"><Link className="primary action-link" href={settlementHref}>Registrar liquidación →</Link><Link className="secondary-action action-link" href="/mi-campo/campana">Ver campaña</Link></div></section></>;
 
   return <>
     <header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar cobro</h1><p>Elige la liquidación de esta finca que realmente has cobrado. Puedes registrar un pago parcial o completar todo lo pendiente.</p></header>
     {sourceDocumentId ? <section className="card register-principle"><div><strong>Datos prellenados desde un justificante revisado</strong><small>Comprueba fecha, importe, referencia y liquidación antes de guardar.</small></div></section> : null}
-    {settlements.length === 0 ? <section className="card"><p>No hay liquidaciones confirmadas de esta finca con saldo pendiente.</p><Link className="secondary-action action-link" href={context.returnHref}>Volver a la finca</Link></section> : <form className="quick-record-form" onSubmit={submit}>
+    {error ? <p className="form-error" role="alert">{error}</p> : null}
+    <form className="quick-record-form" onSubmit={submit}>
       <section className="card record-panel"><div className="record-fields">
         <label className="record-field wide"><span>Liquidación</span><select className="record-control" value={settlementId} onChange={(event) => chooseSettlement(event.target.value)} required><option value="" disabled>Seleccionar liquidación</option>{settlements.map((item) => <option key={item.id} value={item.id}>{item.settlement_number || 'Sin nº'} · {item.counterparty_name || 'Sin contraparte'} · pendiente {money(Number(item.pending_eur))} €</option>)}</select></label>
         {selected ? <div className="record-field wide"><span>Estado</span><div className="card"><strong>Neto {money(Number(selected.net_eur))} €</strong><small>Cobrado {money(Number(selected.collected_eur))} € · pendiente {money(Number(selected.pending_eur))} € · {selected.delivery_count} entregas</small></div></div> : null}
@@ -161,8 +169,7 @@ export function HarvestCollectionEntryClient() {
         <label className="record-field wide"><span>Notas</span><textarea className="record-control" name="notes" rows={3} /></label>
       </div></section>
       <section className="card register-principle"><div><strong>Cobro ≠ liquidación</strong><small>Registrar este movimiento solo reduce el pendiente. No modifica entregas, rendimientos ni el neto de la liquidación.</small></div></section>
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
       <section className="record-save-bar"><small>El servidor volverá a comprobar el saldo pendiente dentro de una transacción.</small><button className="primary" type="submit" disabled={!settlementId || saving}>{saving ? 'Guardando…' : 'Guardar cobro →'}</button></section>
-    </form>}
+    </form>
   </>;
 }
