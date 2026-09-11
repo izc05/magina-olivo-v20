@@ -13,6 +13,7 @@ import './calendar.css';
 import './local-prototype.css';
 import './map-platform.css';
 import './radar-alerts.css';
+import './mobile-hardening.css';
 
 export const metadata: Metadata = {
   title: 'Mágina Olivo V20',
