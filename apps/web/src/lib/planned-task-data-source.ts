@@ -90,7 +90,7 @@ export async function updatePlannedTask(input: {
 export async function completePlannedTask(input: {
   workspaceId: string;
   taskId: string;
-  domainType: 'treatment' | 'irrigation' | 'fertilization' | 'pruning' | 'harvest_delivery' | 'work';
+  domainType: 'treatment' | 'irrigation' | 'fertilization' | 'pruning' | 'observation' | 'harvest_delivery' | 'work';
   domainRecordId: string;
 }): Promise<PlannedTask> {
   const data = await apiFetch<ApiPlannedTask>(`/api/v1/planned-tasks/${encodeURIComponent(input.taskId)}/complete`, {
