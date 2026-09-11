@@ -14,7 +14,7 @@ type AttentionRow = {
   field_id: string;
   field_name: string;
   title: string;
-  scheduled_at: string;
+  scheduled_at: Date | string;
   source_domain_type: string | null;
   municipality_id: string | null;
   municipality_name: string | null;
@@ -53,6 +53,14 @@ function finite(value: unknown) {
   if (value == null) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function serializeDateTime(value: Date | string) {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
+function dateOnly(value: Date | string) {
+  return serializeDateTime(value).slice(0, 10);
 }
 
 export function registerAttentionRoutes(app: FastifyInstance, db: DatabaseClient | null, provider: MunicipalityWeatherProvider) {
@@ -113,7 +121,7 @@ export function registerAttentionRoutes(app: FastifyInstance, db: DatabaseClient
       if (row.municipality_id && row.aemet_code) {
         try {
           const cached = await getCachedMunicipalityForecast(database, provider, row.municipality_id, row.aemet_code);
-          const targetDate = row.scheduled_at.slice(0, 10);
+          const targetDate = dateOnly(row.scheduled_at);
           const day = cached.forecast.days.find((candidate) => candidate.date.slice(0, 10) === targetDate);
           if (day) {
             const forecast = evaluateWeatherDayForTask(day, task);
@@ -156,14 +164,15 @@ export function registerAttentionRoutes(app: FastifyInstance, db: DatabaseClient
         }
       }
 
+      const scheduledAt = serializeDateTime(row.scheduled_at);
       items.push({
         id: row.event_id,
         field_id: row.field_id,
         field_name: row.field_name,
         title: row.title,
-        scheduled_at: row.scheduled_at,
+        scheduled_at: scheduledAt,
         source_domain_type: row.source_domain_type,
-        overdue: new Date(row.scheduled_at).getTime() < Date.now(),
+        overdue: new Date(scheduledAt).getTime() < Date.now(),
         advisory,
       });
     }
