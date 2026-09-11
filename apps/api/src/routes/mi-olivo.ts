@@ -13,6 +13,8 @@ type SourceRow = { source_id: string };
 type CountRow = { total: number };
 type BalanceRow = { balance: number };
 type EventTypeRow = { event_type: string };
+type WeekRow = { week_start: string };
+type CurrentWeekRow = { current_week: string };
 type LedgerRow = {
   id: string;
   event_type: string;
@@ -180,6 +182,48 @@ function levelLabel(level: number) {
   return 'Brote';
 }
 
+function shiftWeek(weekStart: string, days: number) {
+  const [year, month, day] = weekStart.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function projectRhythm(weekStarts: string[], currentWeek: string) {
+  const active = new Set(weekStarts);
+  let cursor = currentWeek;
+  let graceActive = false;
+
+  if (!active.has(cursor)) {
+    const previousWeek = shiftWeek(cursor, -7);
+    if (!active.has(previousWeek)) {
+      return {
+        active_weeks: 0,
+        grace_active: false,
+        label: 'Sin ritmo activo',
+        message: 'Se activa cuando registras una actividad útil. No pierdes puntos por descansar.',
+      };
+    }
+    cursor = previousWeek;
+    graceActive = true;
+  }
+
+  let activeWeeks = 0;
+  while (active.has(cursor) && activeWeeks < 53) {
+    activeWeeks += 1;
+    cursor = shiftWeek(cursor, -7);
+  }
+
+  return {
+    active_weeks: activeWeeks,
+    grace_active: graceActive,
+    label: activeWeeks === 1 ? '1 semana activa' : `${activeWeeks} semanas activas`,
+    message: graceActive
+      ? 'Esta semana tiene margen: tu ritmo continúa sin penalización.'
+      : 'Cuenta semanas con actividad real registrada, sin premiar aperturas de la app.',
+  };
+}
+
 export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/mi-olivo', async (request, reply) => {
     const context = requireContext(request, reply);
@@ -221,6 +265,55 @@ export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient |
     `.execute(database);
     const events = new Set(eventResult.rows.map((row) => row.event_type));
 
+    const activityProgress = await sql<CountRow>`
+      SELECT COUNT(*)::int AS total
+      FROM (
+        SELECT id FROM irrigation_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+        UNION ALL
+        SELECT id FROM treatment_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+        UNION ALL
+        SELECT id FROM fertilization_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+        UNION ALL
+        SELECT id FROM pruning_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+        UNION ALL
+        SELECT id FROM observation_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+        UNION ALL
+        SELECT id FROM expense_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+      ) activity
+    `.execute(database);
+    const activityTotal = activityProgress.rows[0]?.total ?? 0;
+
+    const weekResult = await sql<WeekRow>`
+      SELECT DISTINCT to_char(
+        date_trunc('week', created_at AT TIME ZONE 'Europe/Madrid'),
+        'YYYY-MM-DD'
+      ) AS week_start
+      FROM (
+        SELECT created_at FROM irrigation_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+        UNION ALL
+        SELECT created_at FROM treatment_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+        UNION ALL
+        SELECT created_at FROM fertilization_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+        UNION ALL
+        SELECT created_at FROM pruning_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+        UNION ALL
+        SELECT created_at FROM observation_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+        UNION ALL
+        SELECT created_at FROM expense_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+      ) activity
+      ORDER BY week_start DESC
+      LIMIT 54
+    `.execute(database);
+
+    const currentWeekResult = await sql<CurrentWeekRow>`
+      SELECT to_char(
+        date_trunc('week', now() AT TIME ZONE 'Europe/Madrid'),
+        'YYYY-MM-DD'
+      ) AS current_week
+    `.execute(database);
+    const currentWeek = currentWeekResult.rows[0]?.current_week ?? new Date().toISOString().slice(0, 10);
+    const rhythm = projectRhythm(weekResult.rows.map((row) => row.week_start), currentWeek);
+
     const recentResult = await sql<LedgerRow>`
       SELECT id::text, event_type, points, reason, created_at
       FROM mi_olivo_ledger
@@ -241,17 +334,25 @@ export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient |
         target: 100,
         percent: Math.min(100, progress),
       },
+      rhythm,
       missions: [
-        { id: 'profile', title: 'Prepara tu perfil', detail: 'Añade municipio y tu relación con el campo.', reward: 20, completed: events.has('profile_ready') },
-        { id: 'activity', title: 'Estrena tu cuaderno', detail: 'Registra una actividad real de una finca.', reward: 25, completed: events.has('first_activity') },
-        { id: 'document', title: 'Pon un documento en orden', detail: 'Guarda tu primer documento agrícola.', reward: 25, completed: events.has('first_document') },
-        { id: 'harvest', title: 'Registra una entrega', detail: 'Añade la primera entrega real de cosecha.', reward: 30, completed: events.has('first_harvest_delivery') },
+        { id: 'profile', title: 'Prepara tu perfil', detail: 'Añade municipio y tu relación con el campo.', reward: 20, completed: events.has('profile_ready'), progress_current: events.has('profile_ready') ? 1 : 0, progress_target: 1 },
+        { id: 'activity', title: 'Estrena tu cuaderno', detail: 'Registra una actividad real de una finca.', reward: 25, completed: events.has('first_activity'), progress_current: events.has('first_activity') ? 1 : 0, progress_target: 1 },
+        { id: 'constancy', title: 'Organiza 10 actividades', detail: 'Suma diez registros reales de trabajo, riego, tratamiento, abonado, observación o gasto.', reward: 50, completed: events.has('ten_activities'), progress_current: Math.min(activityTotal, 10), progress_target: 10 },
+        { id: 'document', title: 'Pon un documento en orden', detail: 'Guarda tu primer documento agrícola.', reward: 25, completed: events.has('first_document'), progress_current: events.has('first_document') ? 1 : 0, progress_target: 1 },
+        { id: 'harvest', title: 'Registra una entrega', detail: 'Añade la primera entrega real de cosecha.', reward: 30, completed: events.has('first_harvest_delivery'), progress_current: events.has('first_harvest_delivery') ? 1 : 0, progress_target: 1 },
       ],
       achievements: [
         { id: 'roots', title: 'Primeras raíces', detail: 'Primera actividad registrada.', unlocked: events.has('first_activity') },
         { id: 'order', title: 'Cuaderno en orden', detail: 'Primer documento organizado.', unlocked: events.has('first_document') },
         { id: 'harvest', title: 'Primera cosecha', detail: 'Primera entrega registrada.', unlocked: events.has('first_harvest_delivery') },
         { id: 'constancy', title: 'Constancia', detail: 'Diez actividades reales organizadas.', unlocked: events.has('ten_activities') },
+      ],
+      rewards: [
+        { id: 'sprout-badge', title: 'Distintivo Brote', detail: 'Tu primer progreso verificable en Mi Olivo.', required_level: 1, unlocked: balance > 0 },
+        { id: 'new-branch-badge', title: 'Distintivo Rama nueva', detail: 'Tu olivo alcanza el nivel 2.', required_level: 2, unlocked: level >= 2 },
+        { id: 'young-olive-badge', title: 'Distintivo Olivo joven', detail: 'Tu olivo alcanza el nivel 3.', required_level: 3, unlocked: level >= 3 },
+        { id: 'rooted-olive-badge', title: 'Distintivo Olivo arraigado', detail: 'Tu olivo alcanza el nivel 4.', required_level: 4, unlocked: level >= 4 },
       ],
       recent: recentResult.rows,
     };

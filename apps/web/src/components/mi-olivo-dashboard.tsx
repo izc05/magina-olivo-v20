@@ -12,6 +12,8 @@ type Mission = {
   detail: string;
   reward: number;
   completed: boolean;
+  progress_current: number;
+  progress_target: number;
 };
 
 type Achievement = {
@@ -19,6 +21,17 @@ type Achievement = {
   title: string;
   detail: string;
   unlocked: boolean;
+};
+
+type Reward = Achievement & {
+  required_level: number;
+};
+
+type Rhythm = {
+  active_weeks: number;
+  grace_active: boolean;
+  label: string;
+  message: string;
 };
 
 type LedgerEntry = {
@@ -37,8 +50,10 @@ type MiOlivoPayload = {
   level_label: string;
   tree_stage: number;
   progress: { current: number; target: number; percent: number };
+  rhythm: Rhythm;
   missions: Mission[];
   achievements: Achievement[];
+  rewards: Reward[];
   recent: LedgerEntry[];
 };
 
@@ -170,6 +185,11 @@ export function MiOlivoDashboard() {
         </div>
       </section>
 
+      <section className={styles.notice}>
+        <strong>Ritmo del cuaderno · {data.rhythm.label}</strong>
+        <span>{data.rhythm.message}</span>
+      </section>
+
       {!data.enabled && (
         <section className={styles.notice}>
           <strong>Mi Olivo está pausado.</strong>
@@ -186,7 +206,18 @@ export function MiOlivoDashboard() {
           {data.missions.map((mission) => (
             <article key={mission.id} className={`${styles.missionCard} ${mission.completed ? styles.done : ''}`}>
               <div className={styles.cardIcon}>{mission.completed ? '✓' : '○'}</div>
-              <div><h3>{mission.title}</h3><p>{mission.detail}</p></div>
+              <div>
+                <h3>{mission.title}</h3>
+                <p>{mission.detail}</p>
+                {mission.progress_target > 1 && (
+                  <>
+                    <div className={styles.progressLabel}><span>Progreso</span><span>{mission.progress_current}/{mission.progress_target}</span></div>
+                    <div className={styles.progressTrack} aria-label={`${mission.progress_current} de ${mission.progress_target} en ${mission.title}`}>
+                      <span style={{ width: `${Math.min(100, (mission.progress_current / mission.progress_target) * 100)}%` }} />
+                    </div>
+                  </>
+                )}
+              </div>
               <span className={styles.reward}>+{mission.reward}</span>
             </article>
           ))}
@@ -201,6 +232,19 @@ export function MiOlivoDashboard() {
               <span className={styles.medal}>{achievement.unlocked ? '✦' : '·'}</span>
               <h3>{achievement.title}</h3>
               <p>{achievement.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeading}><div><span className={styles.eyebrow}>DESBLOQUEOS</span><h2>Distintivos digitales</h2></div></div>
+        <div className={styles.achievementGrid}>
+          {data.rewards.map((reward) => (
+            <article key={reward.id} className={`${styles.achievement} ${reward.unlocked ? styles.unlocked : ''}`}>
+              <span className={styles.medal}>{reward.unlocked ? '✦' : reward.required_level}</span>
+              <h3>{reward.title}</h3>
+              <p>{reward.unlocked ? reward.detail : `Se desbloquea en el nivel ${reward.required_level}.`}</p>
             </article>
           ))}
         </div>
