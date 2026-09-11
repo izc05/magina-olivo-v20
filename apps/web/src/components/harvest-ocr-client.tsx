@@ -8,6 +8,7 @@ import { saveLocalActivity } from '@/lib/local-prototype-store';
 import { useFieldContext } from '@/lib/use-field-context';
 import { completePlannedTask } from '@/lib/planned-task-data-source';
 import { apiFetch } from '@/lib/api-client';
+import { linkDocumentToDomain } from '@/lib/document-data-source';
 import { useAuth } from '@/components/auth-provider';
 import { ArrowIcon } from '@/components/icons';
 
@@ -27,6 +28,8 @@ export function HarvestOcrClient() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completionWarning, setCompletionWarning] = useState<string | null>(null);
+  const [sourceLinkWarning, setSourceLinkWarning] = useState<string | null>(null);
+  const [sourceLinked, setSourceLinked] = useState(false);
 
   async function saveRemote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,6 +37,8 @@ export function HarvestOcrClient() {
     setSaving(true);
     setError(null);
     setCompletionWarning(null);
+    setSourceLinkWarning(null);
+    setSourceLinked(false);
     const form = new FormData(event.currentTarget);
     const kg = Number(String(form.get('kg') ?? '').replace(',', '.'));
     const date = String(form.get('date') ?? '');
@@ -57,14 +62,19 @@ export function HarvestOcrClient() {
         }),
       });
 
+      if (sourceDocumentId) {
+        try {
+          await linkDocumentToDomain({ workspaceId: selectedWorkspaceId, documentId: sourceDocumentId, fieldId: context.id, domainType: 'harvest_delivery', domainRecordId: response.delivery.id });
+          setSourceLinked(true);
+        } catch (linkError) {
+          console.warn('Delivery saved but source document link failed', linkError);
+          setSourceLinkWarning('La entrega se ha guardado, pero el albarán no pudo enlazarse automáticamente. El documento sigue conservado en la finca.');
+        }
+      }
+
       if (plannedEventId) {
         try {
-          await completePlannedTask({
-            workspaceId: selectedWorkspaceId,
-            taskId: plannedEventId,
-            domainType: 'harvest_delivery',
-            domainRecordId: response.delivery.id,
-          });
+          await completePlannedTask({ workspaceId: selectedWorkspaceId, taskId: plannedEventId, domainType: 'harvest_delivery', domainRecordId: response.delivery.id });
         } catch (completionError) {
           console.warn('Harvest saved but planned task could not be linked', completionError);
           setCompletionWarning('La entrega se ha guardado, pero la tarea prevista sigue pendiente. Puedes revisarla desde Hoy.');
@@ -85,23 +95,7 @@ export function HarvestOcrClient() {
   function confirmPreview() {
     if (!ready) return;
     const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `harvest-${Date.now()}`;
-    saveLocalActivity({
-      id,
-      fieldId: context.id,
-      campaign: context.campaign,
-      type: 'harvest',
-      occurredOn: '2026-12-12',
-      title: 'Cosecha',
-      summary: `${demoDelivery.kilograms.toLocaleString('es-ES')} kg · ${demoDelivery.cooperative}`,
-      data: {
-        cooperative: demoDelivery.cooperative,
-        ticketNumber: demoDelivery.ticketNumber,
-        kilograms: String(demoDelivery.kilograms),
-        detectedBy: 'ocr-demo',
-      },
-      source: 'ocr',
-      createdAt: new Date().toISOString(),
-    });
+    saveLocalActivity({ id, fieldId: context.id, campaign: context.campaign, type: 'harvest', occurredOn: '2026-12-12', title: 'Cosecha', summary: `${demoDelivery.kilograms.toLocaleString('es-ES')} kg · ${demoDelivery.cooperative}`, data: { cooperative: demoDelivery.cooperative, ticketNumber: demoDelivery.ticketNumber, kilograms: String(demoDelivery.kilograms), detectedBy: 'ocr-demo' }, source: 'ocr', createdAt: new Date().toISOString() });
     setSavedKg(demoDelivery.kilograms);
     setSaved(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -109,51 +103,27 @@ export function HarvestOcrClient() {
 
   if (saved) {
     return <section className="record-success card ocr-success">
-      <div className="success-mark">✓</div>
-      <span className="eyebrow dark">{apiMode ? 'COSECHA GUARDADA EN MÁGINA' : 'COSECHA GUARDADA · PREVIEW'}</span>
-      <h1>{savedKg?.toLocaleString('es-ES')} kg en {context.name}</h1>
+      <div className="success-mark">✓</div><span className="eyebrow dark">{apiMode ? 'COSECHA GUARDADA EN MÁGINA' : 'COSECHA GUARDADA · PREVIEW'}</span><h1>{savedKg?.toLocaleString('es-ES')} kg en {context.name}</h1>
       <p>{apiMode ? 'La entrega estructurada ya forma parte de la finca y de la campaña. El rendimiento podrá llegar después.' : 'El albarán de demostración se ha convertido en un registro local de preview.'}</p>
       {sourceDocumentId && apiMode ? <p>✓ Los datos procedían de un albarán revisado y solo se guardaron después de tu confirmación.</p> : null}
+      {sourceLinked ? <p>✓ El albarán de origen ha quedado enlazado a esta entrega.</p> : null}
+      {sourceLinkWarning ? <p className="form-error" role="status">{sourceLinkWarning}</p> : null}
       {completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : plannedEventId && apiMode ? <p>✓ La tarea prevista ha quedado enlazada a esta entrega.</p> : null}
       <div className="record-actions"><button type="button" className="secondary-action" onClick={() => setSaved(false)}>Registrar otra</button><Link href={context.returnHref} className="primary action-link">Volver a la finca <ArrowIcon/></Link></div>
     </section>;
   }
 
   if (apiMode) {
-    return <>
-      <header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar entrega</h1><p>Primero guardamos peso y albarán. El rendimiento se incorpora cuando lo comunique la cooperativa o almazara.</p></header>
+    return <><header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar entrega</h1><p>Primero guardamos peso y albarán. El rendimiento se incorpora cuando lo comunique la cooperativa o almazara.</p></header>
       {sourceDocumentId ? <section className="card register-principle"><div><strong>Datos prellenados desde un albarán revisado</strong><small>Comprueba fecha, kilos y número de albarán antes de guardar.</small></div></section> : null}
-      <form className="quick-record-form" onSubmit={saveRemote}>
-        <section className="card record-panel"><div className="record-fields">
-          <label className="record-field"><span>Fecha</span><input className="record-control" name="date" type="date" defaultValue={prefillDate} required /></label>
-          <label className="record-field"><span>Peso</span><div className="record-input-wrap"><input className="record-control" name="kg" type="number" step="any" min="0.01" defaultValue={prefillKg} required /><b className="record-suffix">kg</b></div></label>
-          <label className="record-field"><span>Cooperativa / almazara</span><input className="record-control" name="cooperative" defaultValue={prefillCooperative} /></label>
-          <label className="record-field"><span>Nº albarán</span><input className="record-control" name="ticket" defaultValue={prefillTicket} /></label>
-        </div></section>
-        <section className="card register-principle"><div><strong>Entrega ≠ rendimiento ≠ liquidación ≠ cobro</strong><small>Mágina conserva cada momento por separado para no inventar datos económicos o productivos.</small></div></section>
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
-        <section className="record-save-bar"><small>La entrega se guardará en el servidor real.</small><button className="primary" type="submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar entrega →'}</button></section>
-      </form>
-    </>;
+      <form className="quick-record-form" onSubmit={saveRemote}><section className="card record-panel"><div className="record-fields">
+        <label className="record-field"><span>Fecha</span><input className="record-control" name="date" type="date" defaultValue={prefillDate} required /></label>
+        <label className="record-field"><span>Peso</span><div className="record-input-wrap"><input className="record-control" name="kg" type="number" step="any" min="0.01" defaultValue={prefillKg} required /><b className="record-suffix">kg</b></div></label>
+        <label className="record-field"><span>Cooperativa / almazara</span><input className="record-control" name="cooperative" defaultValue={prefillCooperative} /></label>
+        <label className="record-field"><span>Nº albarán</span><input className="record-control" name="ticket" defaultValue={prefillTicket} /></label>
+      </div></section><section className="card register-principle"><div><strong>Entrega ≠ rendimiento ≠ liquidación ≠ cobro</strong><small>Mágina conserva cada momento por separado para no inventar datos económicos o productivos.</small></div></section>{error ? <p className="form-error" role="alert">{error}</p> : null}<section className="record-save-bar"><small>La entrega se guardará en el servidor real.</small><button className="primary" type="submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar entrega →'}</button></section></form></>;
   }
 
-  const fields = [
-    ['Finca', context.name],
-    ['Cooperativa', demoDelivery.cooperative],
-    ['Fecha', demoDelivery.date],
-    ['Nº albarán', demoDelivery.ticketNumber],
-    ['Peso', `${demoDelivery.kilograms.toLocaleString('es-ES')} kg`],
-  ] as const;
-
-  return <>
-    <header className="page-title"><span className="eyebrow dark">REGISTRO INTELIGENTE · PREVIEW</span><h1>Registrar cosecha</h1><p>Demostración del flujo OCR. Los campos críticos siempre requieren confirmación.</p></header>
-    <div className="stepper premium-stepper"><div className="step active"><b>✓</b><span>Foto</span></div><div className="step active"><b>2</b><span>OCR</span></div><div className="step"><b>3</b><span>Confirmar</span></div></div>
-    <section className="card receipt-preview" aria-label="Vista del albarán fotografiado"><div className="receipt-status">✓ Foto leída</div></section>
-    <section className="section card detected-card">
-      <div className="detected-head"><div><span className="eyebrow dark">OCR DE DEMOSTRACIÓN</span><h2>Datos detectados</h2><p>Revisa antes de guardar en {context.name}.</p></div><span className="confidence-pill">Demo</span></div>
-      <div className="data-list clean-list">{fields.map(([label,value])=><div className="data-row" key={label}><span>{label}</span><b>{value}</b></div>)}</div>
-      <div className="validation-note"><span>✓</span><div><strong>Lectura propuesta</strong><small>La preview nunca se utiliza como dato remoto real.</small></div></div>
-    </section>
-    <section className="ocr-actions"><button className="primary" type="button" disabled={!ready} onClick={confirmPreview}>Confirmar demo →</button></section>
-  </>;
+  const fields = [['Finca', context.name], ['Cooperativa', demoDelivery.cooperative], ['Fecha', demoDelivery.date], ['Nº albarán', demoDelivery.ticketNumber], ['Peso', `${demoDelivery.kilograms.toLocaleString('es-ES')} kg`]] as const;
+  return <><header className="page-title"><span className="eyebrow dark">REGISTRO INTELIGENTE · PREVIEW</span><h1>Registrar cosecha</h1><p>Demostración del flujo OCR. Los campos críticos siempre requieren confirmación.</p></header><div className="stepper premium-stepper"><div className="step active"><b>✓</b><span>Foto</span></div><div className="step active"><b>2</b><span>OCR</span></div><div className="step"><b>3</b><span>Confirmar</span></div></div><section className="card receipt-preview" aria-label="Vista del albarán fotografiado"><div className="receipt-status">✓ Foto leída</div></section><section className="section card detected-card"><div className="detected-head"><div><span className="eyebrow dark">OCR DE DEMOSTRACIÓN</span><h2>Datos detectados</h2><p>Revisa antes de guardar en {context.name}.</p></div><span className="confidence-pill">Demo</span></div><div className="data-list clean-list">{fields.map(([label,value])=><div className="data-row" key={label}><span>{label}</span><b>{value}</b></div>)}</div><div className="validation-note"><span>✓</span><div><strong>Lectura propuesta</strong><small>La preview nunca se utiliza como dato remoto real.</small></div></div></section><section className="ocr-actions"><button className="primary" type="button" disabled={!ready} onClick={confirmPreview}>Confirmar demo →</button></section></>;
 }
