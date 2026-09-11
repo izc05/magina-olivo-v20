@@ -58,8 +58,9 @@ test('Inicio y Hoy conectan finca, actividad y tarea real', async ({ page }, tes
   await expect(page.getByText('Tarea planificada.')).toBeVisible();
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Actividad reciente' })).toBeVisible();
-  await expect(page.getByText(workTitle, { exact: true })).toBeVisible();
+  const activitySection = page.getByRole('heading', { name: 'Actividad reciente' }).locator('xpath=ancestor::section');
+  await expect(activitySection).toBeVisible();
+  await expect(activitySection.getByText(workTitle, { exact: true })).toBeVisible();
   await expect(page.getByText(taskTitle, { exact: true }).first()).toBeVisible();
   await expect(page.getByText(farmName, { exact: false }).first()).toBeVisible();
 
