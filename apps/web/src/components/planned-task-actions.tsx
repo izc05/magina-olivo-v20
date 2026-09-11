@@ -4,6 +4,22 @@ import { useState } from 'react';
 import type { AgendaItem } from '@/lib/agenda-data-source';
 import { dateTimeLocalToIso, localDateTimeValue, postponeIso, updatePlannedTask } from '@/lib/planned-task-api';
 
+function taskTypeLabel(value?: string) {
+  const labels: Record<string, string> = {
+    treatment: 'Tratamiento',
+    irrigation: 'Riego',
+    fertilization: 'Abonado',
+    pruning: 'Poda',
+    harvest: 'Cosecha',
+    harvest_delivery: 'Entrega de cosecha',
+    work: 'Trabajo',
+    observation: 'Observación',
+    other: 'Otro',
+  };
+  if (!value) return 'Otro';
+  return labels[value] ?? value.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export function PlannedTaskActions({
   item,
   workspaceId,
@@ -41,7 +57,7 @@ export function PlannedTaskActions({
 
     {open ? <div className="planned-task-review card">
       <p><strong>{item.title}</strong></p>
-      <p><small>Finca: {item.fieldName ?? 'Sin finca'} · Tipo: {item.taskKind ?? item.sourceDomainType ?? 'otro'}</small></p>
+      <p><small>Finca: {item.fieldName ?? 'Sin finca'} · Tipo: {taskTypeLabel(item.taskKind ?? item.sourceDomainType)}</small></p>
       {item.notes ? <p>{item.notes}</p> : <p className="subtle">Sin notas.</p>}
 
       <div className="record-actions">
