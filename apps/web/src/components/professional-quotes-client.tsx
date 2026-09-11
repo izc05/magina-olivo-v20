@@ -59,7 +59,8 @@ export function ProfessionalQuotesClient() {
   async function createQuote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedWorkspaceId || saving) return;
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const title = String(form.get('title') ?? '').trim();
     const quoteNumber = String(form.get('number') ?? '').trim();
     const issuedOn = String(form.get('issued_on') ?? '').trim();
@@ -94,7 +95,7 @@ export function ProfessionalQuotesClient() {
       });
       setCreatedQuoteId(quote.id);
       setSelectedQuoteId(quote.id);
-      event.currentTarget.reset();
+      formElement.reset();
       setCreateSiteId('');
       await reload();
       window.scrollTo({ top: 0, behavior: 'smooth' });
