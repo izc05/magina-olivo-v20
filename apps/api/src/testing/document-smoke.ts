@@ -120,6 +120,19 @@ async function main() {
   const reviewBody = review.json();
   if (reviewBody.extraction.original_data.ticket_number !== 'CI-001') throw new Error('Original extraction was not preserved');
 
+  const analysis = await app.inject({
+    method: 'GET',
+    url: `/api/v1/documents/${payload.entity_id}/analysis`,
+    headers: authHeaders,
+  });
+  if (analysis.statusCode !== 200) throw new Error(`Document analysis failed: ${analysis.statusCode} ${analysis.body}`);
+  const analysisBody = analysis.json();
+  if (analysisBody.document.kind !== 'delivery_ticket') throw new Error('Analysis did not preserve document kind');
+  if (analysisBody.version.id !== payload.version_id) throw new Error('Analysis did not return latest document version');
+  if (analysisBody.ocr.id !== ocrBody.ocr_run_id) throw new Error('Analysis did not return latest OCR run');
+  if (analysisBody.extraction.id !== extractionId) throw new Error('Analysis did not return extraction proposal');
+  if (!analysisBody.review?.id) throw new Error('Analysis did not return human review');
+
   const documentCount = await db.selectFrom('documents').select(({ fn }) => fn.countAll<number>().as('count'))
     .where('id', '=', payload.entity_id).executeTakeFirstOrThrow();
   if (Number(documentCount.count) !== 1) throw new Error('Document idempotency failed');
@@ -139,7 +152,7 @@ async function main() {
     .where('extraction_run_id', '=', extractionId).executeTakeFirstOrThrow();
   if (Number(reviewCount.count) !== 1) throw new Error('Extraction review was not persisted');
 
-  console.log('Document upload/OCR idempotency/review smoke test passed');
+  console.log('Document upload/OCR idempotency/review/analysis smoke test passed');
 }
 
 try {
