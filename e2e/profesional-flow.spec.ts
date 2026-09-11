@@ -95,8 +95,8 @@ test('recorre cliente, presupuesto, trabajo, factura, documento y cobro', async 
   const collectionLink = page.getByRole('link', { name: 'Registrar cobro' });
   const documentHref = await documentLink.getAttribute('href');
   const collectionHref = await collectionLink.getAttribute('href');
-  expect(documentHref).toContain('/mi-campo/profesional/documento?type=invoice&id=');
-  expect(collectionHref).toContain('/mi-campo/profesional/cobrar?workId=');
+  expect(documentHref).toMatch(/\/mi-campo\/profesional\/documento\/?\?type=invoice&id=/);
+  expect(collectionHref).toMatch(/\/mi-campo\/profesional\/cobrar\/?\?workId=/);
 
   await page.goto(documentHref!);
   await expect(page.getByRole('heading', { name: 'Compartir y registrar' })).toBeVisible();
