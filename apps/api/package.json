@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "market:source-check": "tsx src/market/refresh-cli.ts --source-check",
     "market:refresh:dry-run": "tsx src/market/refresh-cli.ts --dry-run",
-    "market:refresh": "tsx src/market/refresh-cli.ts --apply"
+    "market:refresh": "tsx src/market/refresh-cli.ts --apply",
+    "market:refresh:corrections": "tsx src/market/refresh-cli.ts --apply --allow-corrections"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1128.0",
