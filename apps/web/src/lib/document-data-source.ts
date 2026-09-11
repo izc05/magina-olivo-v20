@@ -76,6 +76,24 @@ export async function assignDocumentCampaign(workspaceId: string, documentId: st
   });
 }
 
+export async function linkDocumentToDomain(input: {
+  workspaceId: string;
+  documentId: string;
+  fieldId: string;
+  domainType: 'expense' | 'harvest_delivery' | 'harvest_result';
+  domainRecordId: string;
+}) {
+  return apiFetch(`/api/v1/documents/${encodeURIComponent(input.documentId)}/link-domain`, {
+    method: 'POST',
+    workspaceId: input.workspaceId,
+    body: JSON.stringify({
+      field_id: input.fieldId,
+      domain_type: input.domainType,
+      domain_record_id: input.domainRecordId,
+    }),
+  });
+}
+
 export async function getDocumentReadUrl(workspaceId: string, documentId: string) {
   return apiFetch<{ url: string; title: string; original_filename: string; expires_in_seconds: number }>(
     `/api/v1/documents/${encodeURIComponent(documentId)}/read-url`,
