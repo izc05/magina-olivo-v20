@@ -14,6 +14,7 @@ import {
 } from '@magina/weather';
 
 const ruleVersion = `${AGRONOMY_RULE_VERSION}+${RADAR_AGRONOMY_RULE_VERSION}`;
+export type AgronomyForecastLoader = (municipalityCode: string) => Promise<MunicipalityForecast>;
 
 type PreferenceRow = {
   user_id: string;
@@ -75,7 +76,11 @@ async function latestRadar(pool: Pool, workspaceId: string, fieldId: string): Pr
   };
 }
 
-export async function runAgronomyAlertEvaluationJob(pool: Pool, payload: AgronomyAlertEvaluateJobPayload) {
+export async function runAgronomyAlertEvaluationJob(
+  pool: Pool,
+  payload: AgronomyAlertEvaluateJobPayload,
+  forecastLoader: AgronomyForecastLoader = fetchAemetDailyForecast,
+) {
   const preferences = await pool.query<PreferenceRow>(`
     SELECT aap.user_id, aap.workspace_id, aap.notify_caution, aap.notify_avoid, aap.lead_hours
     FROM agronomy_alert_preferences aap
@@ -118,7 +123,7 @@ export async function runAgronomyAlertEvaluationJob(pool: Pool, payload: Agronom
       let forecast = forecastCache.get(candidate.aemet_code);
       if (forecast === undefined) {
         try {
-          forecast = await fetchAemetDailyForecast(candidate.aemet_code);
+          forecast = await forecastLoader(candidate.aemet_code);
           forecastCache.set(candidate.aemet_code, forecast);
         } catch {
           forecast = null;
