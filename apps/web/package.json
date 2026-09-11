@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node ../../scripts/check-web-bundle-budget.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },
