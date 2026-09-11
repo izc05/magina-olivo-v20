@@ -178,7 +178,7 @@ export function registerProfessionalQuoteRoutes(app: FastifyInstance, db: Databa
       return { work: work.rows[0], total_cost_eur: totalCost };
     });
 
-    if ('error' in saved) {
+    if ('error' in saved && typeof saved.error === 'string') {
       const code = saved.error === 'quote_not_found' || saved.error.endsWith('_not_found') ? 404 : 409;
       return reply.code(code).send(saved);
     }
