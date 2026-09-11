@@ -14,15 +14,19 @@ const quoteId = 'c4444444-4444-4444-8444-444444444444';
 const operationId = 'c5555555-5555-4555-8555-555555555555';
 const documentId = 'c8888888-8888-4888-8888-888888888888';
 const versionId = 'c9999999-9999-4999-8999-999999999999';
+const documentOperationId = 'caaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const headers = { 'x-workspace-id': workspaceId, 'x-user-id': userId, 'content-type': 'application/json' };
 
-async function main() {
+async function seed() {
+  await sql`INSERT INTO users (id, primary_email, display_name) VALUES (${userId}::uuid, 'delivery-ci@example.test', 'Delivery CI') ON CONFLICT (id) DO NOTHING`.execute(db);
+  await sql`INSERT INTO workspaces (id, name, type) VALUES (${workspaceId}::uuid, 'Delivery CI Workspace', 'professional') ON CONFLICT (id) DO NOTHING`.execute(db);
+  await sql`INSERT INTO workspace_memberships (workspace_id, user_id, role, status) VALUES (${workspaceId}::uuid, ${userId}::uuid, 'owner', 'active') ON CONFLICT (workspace_id, user_id) DO NOTHING`.execute(db);
   await sql`
-    INSERT INTO users (id, primary_email, display_name) VALUES (${userId}::uuid, 'delivery-ci@example.test', 'Delivery CI') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO workspaces (id, name, type) VALUES (${workspaceId}::uuid, 'Delivery CI Workspace', 'professional') ON CONFLICT (id) DO NOTHING;
-    INSERT INTO workspace_memberships (workspace_id, user_id, role, status) VALUES (${workspaceId}::uuid, ${userId}::uuid, 'owner', 'active') ON CONFLICT (workspace_id, user_id) DO NOTHING;
     INSERT INTO parties (id, workspace_id, client_operation_id, kind, display_name, legal_name, tax_id, roles)
-    VALUES (${customerId}::uuid, ${workspaceId}::uuid, 'c6666666-6666-4666-8666-666666666666'::uuid, 'person', 'Cliente Envío CI', 'Cliente Envío CI', '12345678Z', ARRAY['customer']) ON CONFLICT (id) DO NOTHING;
+    VALUES (${customerId}::uuid, ${workspaceId}::uuid, 'c6666666-6666-4666-8666-666666666666'::uuid, 'person', 'Cliente Envío CI', 'Cliente Envío CI', '12345678Z', ARRAY['customer'])
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
+  await sql`
     INSERT INTO professional_quotes (
       id, workspace_id, customer_party_id, client_operation_id, quote_number, title,
       issued_on, valid_until, status, subtotal_eur, tax_eur, total_eur,
@@ -34,23 +38,33 @@ async function main() {
       jsonb_build_object('legal_name','Delivery CI Workspace','tax_id','A11111111'),
       jsonb_build_object('display_name','Cliente Envío CI','legal_name','Cliente Envío CI','tax_id','12345678Z'),
       ${userId}::uuid
-    ) ON CONFLICT (id) DO NOTHING;
-    INSERT INTO documents (id, workspace_id, kind, title, status, created_by)
-    VALUES (${documentId}::uuid, ${workspaceId}::uuid, 'sales_quote', 'Presupuesto P-DEL-001', 'active', ${userId}::uuid)
-    ON CONFLICT (id) DO NOTHING;
+    ) ON CONFLICT (id) DO NOTHING
+  `.execute(db);
+  await sql`
+    INSERT INTO documents (id, workspace_id, client_operation_id, kind, title, status, created_by)
+    VALUES (${documentId}::uuid, ${workspaceId}::uuid, ${documentOperationId}::uuid, 'sales_quote', 'Presupuesto P-DEL-001', 'active', ${userId}::uuid)
+    ON CONFLICT (id) DO NOTHING
+  `.execute(db);
+  await sql`
     INSERT INTO document_versions (
       id, document_id, version_no, storage_key, original_filename, mime_type, byte_size, sha256,
       created_by, upload_status, integrity_status, uploaded_at
     ) VALUES (
       ${versionId}::uuid, ${documentId}::uuid, 1, 'ci/p-del-001.pdf', 'P-DEL-001.pdf', 'application/pdf', 123,
       repeat('a',64), ${userId}::uuid, 'uploaded', 'verified', now()
-    ) ON CONFLICT (id) DO NOTHING;
+    ) ON CONFLICT (id) DO NOTHING
+  `.execute(db);
+  await sql`
     INSERT INTO attachment_links (workspace_id, document_id, domain_type, domain_record_id, relation)
     SELECT ${workspaceId}::uuid, ${documentId}::uuid, 'professional_quote', ${quoteId}::uuid, 'generated_pdf'
     WHERE NOT EXISTS (
       SELECT 1 FROM attachment_links WHERE document_id=${documentId}::uuid AND domain_type='professional_quote' AND domain_record_id=${quoteId}::uuid
-    );
+    )
   `.execute(db);
+}
+
+async function main() {
+  await seed();
 
   const prepared = await app.inject({ method: 'POST', url: '/api/v1/professional/deliveries', headers, payload: {
     client_operation_id: operationId,
