@@ -92,8 +92,14 @@ async function main() {
   const detail = await app.inject({ method: 'GET', url: `/api/v1/professional/customers/${customerId}`, headers: authHeaders });
   if (detail.statusCode !== 200) throw new Error(`Customer detail failed: ${detail.statusCode} ${detail.body}`);
   const linked = detail.json().documents.find((item: { id: string }) => item.id === documentId);
-  if (!linked || linked.invoice_id !== invoiceId || linked.kind !== 'sales_invoice') {
-    throw new Error('Professional invoice document missing from customer detail');
+  if (
+    !linked
+    || linked.domain_type !== 'professional_invoice'
+    || linked.domain_record_id !== invoiceId
+    || linked.relation !== 'issued_invoice_pdf'
+    || linked.kind !== 'sales_invoice'
+  ) {
+    throw new Error(`Professional invoice document missing or incorrectly linked in customer detail: ${JSON.stringify(linked ?? null)}`);
   }
 
   console.log('Professional invoice document smoke test passed');
