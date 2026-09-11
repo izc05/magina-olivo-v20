@@ -10,6 +10,7 @@ import { registerObservationRoutes } from './routes/observations.js';
 import { registerDomainRecordRoutes } from './routes/domain-records.js';
 import { registerHarvestRoutes } from './routes/harvest.js';
 import { registerHarvestCommercialRoutes } from './routes/harvest-commercial.js';
+import { registerHarvestSettlementCandidateRoutes } from './routes/harvest-settlement-candidates.js';
 import { registerHarvestFieldCommercialRoutes } from './routes/harvest-field-commercial.js';
 import { registerFarmEconomicsRoutes } from './routes/farm-economics.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
@@ -91,6 +92,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerDomainRecordRoutes(app, db);
   registerHarvestRoutes(app, db);
   registerHarvestCommercialRoutes(app, db);
+  registerHarvestSettlementCandidateRoutes(app, db);
   registerHarvestFieldCommercialRoutes(app, db);
   registerFarmEconomicsRoutes(app, db);
   registerCampaignRoutes(app, db);
