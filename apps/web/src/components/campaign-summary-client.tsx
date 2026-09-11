@@ -20,12 +20,23 @@ function number(value: number) {
   return value.toLocaleString('es-ES', { maximumFractionDigits: 2, useGrouping: 'always' });
 }
 
+function date(value: string) {
+  const [year, month, day] = value.slice(0, 10).split('-');
+  return year && month && day ? `${day}/${month}/${year}` : value;
+}
+
+function campaignStatus(status: CampaignListItem['status']) {
+  if (status === 'active') return 'Activa';
+  if (status === 'planned') return 'Planificada';
+  return 'Cerrada';
+}
+
 function attributionNote(status: string) {
   if (status === 'harvest_income_allocated_by_linked_delivery_kg_share') {
     return 'Los ingresos de cosecha se reparten entre fincas según los kg de las entregas vinculadas.';
   }
   if (status === 'preview_without_harvest_settlement_store') {
-    return 'Vista previa: todavía no hay liquidaciones reales vinculadas a esta campaña.';
+    return 'Datos de ejemplo: todavía no hay liquidaciones reales vinculadas a esta campaña.';
   }
   return 'Los importes se muestran según el criterio de reparto disponible para esta campaña.';
 }
@@ -52,7 +63,7 @@ export function CampaignSummaryClient() {
         } else if (apiConfigured && status === 'loading') {
           return;
         } else {
-          if (!cancelled) setError(apiConfigured ? 'Inicia sesión para consultar tus campañas.' : 'La API privada no está configurada en esta instalación.');
+          if (!cancelled) setError(apiConfigured ? 'Inicia sesión para consultar tus campañas.' : 'Campaña no está disponible en esta instalación.');
         }
         if (cancelled) return;
         setCampaigns(items);
@@ -105,10 +116,10 @@ export function CampaignSummaryClient() {
 
     <section className="card">
       <label><strong>Campaña</strong><select value={campaignId} onChange={(event) => setCampaignId(event.target.value)} disabled={!campaigns.length}>
-        {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name} · {campaign.status}</option>)}
+        {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name} · {campaignStatus(campaign.status)}</option>)}
       </select></label>
-      {selected ? <p className="subtle">{selected.startDate}{selected.endDate ? ` → ${selected.endDate}` : ''}</p> : null}
-      {previewEnabled && !apiConfigured ? <p className="subtle">Modo preview explícito: estos datos no proceden de una explotación real.</p> : null}
+      {selected ? <p className="subtle">{date(selected.startDate)}{selected.endDate ? ` → ${date(selected.endDate)}` : ''}</p> : null}
+      {previewEnabled && !apiConfigured ? <p className="subtle">Demostración: estos datos son de ejemplo y no pertenecen a una explotación real.</p> : null}
     </section>
 
     {error ? <p className="form-error" role="alert">{error}</p> : null}
