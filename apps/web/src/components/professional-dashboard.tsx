@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowIcon, PlusIcon } from '@/components/icons';
 import { useAuth } from '@/components/auth-provider';
 import { loadApiProfessionalSummary, loadPreviewProfessionalSummary, type ProfessionalSummaryView } from '@/lib/professional-data-source';
@@ -17,8 +17,9 @@ const empty: ProfessionalSummaryView = {
   chargedEur: 0,
   collectedEur: 0,
   pendingEur: 0,
-  marginEur: 0,
-  cashMarginEur: 0,
+  accruedMarginEur: 0,
+  collectedLessDirectCostsEur: 0,
+  customers: [],
   recentWork: [],
 };
 
@@ -56,12 +57,17 @@ export function ProfessionalDashboard() {
     };
   }, [apiConfigured, selectedWorkspaceId, status]);
 
+  const pendingCustomers = useMemo(
+    () => data.customers.filter((customer) => customer.pendingEur > 0).sort((a, b) => b.pendingEur - a.pendingEur),
+    [data.customers],
+  );
+
   return <>
     <header className="page-title">
       <div>
         <span className="eyebrow dark">MI CAMPO · ACTIVIDAD PROFESIONAL</span>
         <h1>Trabajos para terceros</h1>
-        <p>Qué has hecho, cuánto te ha costado, cuánto has cobrado y qué queda pendiente.</p>
+        <p>Clientes, trabajos, costes, márgenes y cobros pendientes, separados de tu explotación agrícola.</p>
       </div>
     </header>
 
@@ -74,26 +80,62 @@ export function ProfessionalDashboard() {
     </section>
 
     <section className="section">
-      <div className="section-head"><h2>Resumen económico</h2><span /></div>
+      <div className="section-head"><h2>Resumen profesional</h2><Link href="/mi-campo/registrar/trabajo" className="detail-link"><PlusIcon /> Registrar trabajo</Link></div>
       <div className="quick-grid">
-        <div className="card quick"><div><strong>{money(data.directCostEur)}</strong><small>Coste directo</small></div></div>
-        <div className="card quick"><div><strong>{money(data.chargedEur)}</strong><small>Importe a cobrar</small></div></div>
-        <div className="card quick"><div><strong>{money(data.collectedEur)}</strong><small>Cobrado</small></div></div>
-        <div className="card quick"><div><strong>{money(data.marginEur)}</strong><small>Margen devengado</small></div></div>
+        <div className="card quick"><div><strong>{money(data.chargedEur)}</strong><small>facturado / devengado</small></div></div>
+        <div className="card quick"><div><strong>{money(data.collectedEur)}</strong><small>cobrado</small></div></div>
+        <div className="card quick"><div><strong>{money(data.pendingEur)}</strong><small>pendiente</small></div></div>
+        <div className="card quick"><div><strong>{money(data.directCostEur)}</strong><small>coste directo</small></div></div>
+        <div className="card quick"><div><strong>{money(data.accruedMarginEur)}</strong><small>margen devengado</small></div></div>
       </div>
-      <p className="form-help">Margen devengado = importe a cobrar − coste directo. No es lo mismo que caja: la caja depende de lo realmente cobrado.</p>
+      <p className="form-help">Margen devengado = importe facturado − coste directo. “Cobrado menos costes directos” se conserva como indicador auxiliar, pero no se llama caja porque aún no modelamos pagos efectivos de gastos.</p>
+    </section>
+
+    {pendingCustomers.length ? <section className="section">
+      <div className="section-head"><h2>Clientes con cobros pendientes</h2><span className="subtle">{pendingCustomers.length}</span></div>
+      <div className="activity-list">
+        {pendingCustomers.map((customer) => <article className="card activity-item" key={customer.id}>
+          <div>
+            <h3>{customer.name}</h3>
+            <p>{customer.workCount} trabajo{customer.workCount === 1 ? '' : 's'} · facturado {money(customer.chargedEur)}</p>
+            <small>Margen devengado {money(customer.accruedMarginEur)}</small>
+          </div>
+          <div>
+            <strong>{money(customer.pendingEur)}</strong>
+            <small>pendiente</small>
+          </div>
+        </article>)}
+      </div>
+    </section> : null}
+
+    <section className="section">
+      <div className="section-head"><h2>Rentabilidad por cliente</h2><span className="subtle">{data.customers.length}</span></div>
+      {!loading && data.customers.length === 0 ? <section className="card"><h3>Sin clientes todavía</h3><p>Los clientes aparecerán aquí cuando registres trabajos para terceros.</p></section> : null}
+      <div className="activity-list">
+        {data.customers.map((customer) => <article className="card activity-item" key={customer.id}>
+          <div>
+            <h3>{customer.name}</h3>
+            <p>{customer.workCount} trabajo{customer.workCount === 1 ? '' : 's'} · coste {money(customer.directCostEur)}</p>
+          </div>
+          <div>
+            <strong>{money(customer.accruedMarginEur)}</strong>
+            <small>margen · {money(customer.collectedEur)} cobrado</small>
+          </div>
+        </article>)}
+      </div>
     </section>
 
     <section className="section">
       <div className="section-head"><h2>Trabajos recientes</h2><Link href="/mi-campo/registrar/trabajo" className="detail-link"><PlusIcon /> Registrar trabajo</Link></div>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
-      {!loading && data.recentWork.length === 0 ? <section className="card"><h3>Aún no hay trabajos para terceros</h3><p>Cuando registres un trabajo para un cliente aparecerá aquí con su coste y estado de cobro.</p></section> : null}
+      {!loading && data.recentWork.length === 0 ? <section className="card"><h3>Aún no hay trabajos para terceros</h3><p>Cuando registres un trabajo para un cliente aparecerá aquí con su coste, margen y estado de cobro.</p></section> : null}
       <div className="activity-list">
         {data.recentWork.map((work) => <article className="card activity-item" key={work.id}>
           <div>
             <small>{work.date}</small>
             <h3>{work.title}</h3>
             <p>{[work.customerName, work.siteName].filter(Boolean).join(' · ') || 'Cliente'}</p>
+            <small>Coste {money(work.directCostEur)} · margen {money(work.accruedMarginEur)}</small>
           </div>
           <div>
             <strong>{money(work.chargeEur)}</strong>
@@ -104,7 +146,7 @@ export function ProfessionalDashboard() {
     </section>
 
     <section className="territory-banner compact-banner">
-      <div><span className="eyebrow">TRABAJO PROFESIONAL</span><h2>Una sola ficha para trabajo, coste y cobro.</h2></div>
+      <div><span className="eyebrow">TRABAJO PROFESIONAL</span><h2>Clientes, coste y cobro sin mezclarlo con la cosecha.</h2></div>
       <Link href="/mi-campo/registrar/trabajo">Registrar <ArrowIcon /></Link>
     </section>
   </>;
