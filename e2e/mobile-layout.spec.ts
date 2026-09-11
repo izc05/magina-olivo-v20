@@ -1,18 +1,25 @@
 import { expect, test } from '@playwright/test';
 
 const fieldId = 'dddddddd-4444-4444-8444-dddddddddddd';
+const documentId = 'ffffffff-6666-4666-8666-ffffffffffff';
+const customerId = '44444444-aaaa-4aaa-8aaa-444444444444';
+const quoteId = '66666666-cccc-4ccc-8ccc-666666666666';
 const apiUrl = 'http://127.0.0.1:3001';
 
 const routes = [
   '/',
   '/mi-campo',
   `/mi-campo/fincas/ver?id=${fieldId}&source=api`,
+  `/mi-campo/mapa?fieldId=${fieldId}`,
   `/mi-campo/registrar?fieldId=${fieldId}`,
   `/mi-campo/registrar/trabajo?fieldId=${fieldId}`,
   '/mi-campo/hoy',
   '/mi-campo/campana',
+  `/mi-campo/documentos/revisar?documentId=${documentId}&fieldId=${fieldId}&source=api`,
   '/mi-campo/profesional',
+  `/mi-campo/profesional/cliente?id=${customerId}`,
   '/mi-campo/profesional/presupuestos',
+  `/mi-campo/profesional/presupuestos?quoteId=${quoteId}&customerId=${customerId}`,
   '/perfil',
 ];
 
