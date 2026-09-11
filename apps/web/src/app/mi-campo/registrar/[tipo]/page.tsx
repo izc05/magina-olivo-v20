@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
@@ -24,7 +25,7 @@ export default async function QuickRecordPage({ params }: { params: Promise<{ ti
           <h1>{type.label}</h1>
           <p>{type.description}</p>
         </header>
-        <QuickRecordForm type={type} />
+        <Suspense fallback={<section className="card"><p>Cargando formulario…</p></section>}><QuickRecordForm type={type} /></Suspense>
       </div>
       <BottomNav active="/mi-campo" />
     </main>
