@@ -31,6 +31,15 @@ function buildHref(path: string, values: Record<string, string>) {
   for (const [key, value] of Object.entries(values)) if (value) query.set(key, value);
   return `${path}?${query.toString()}`;
 }
+function reviewedFields(analysis: DocumentAnalysis | null): Record<string, unknown> | null {
+  if (!analysis?.extraction) return null;
+  if (!analysis.review) return analysis.extraction.data_json;
+  return {
+    ...analysis.extraction.data_json,
+    ...analysis.review.confirmed_fields,
+    ...analysis.review.corrections,
+  };
+}
 
 export function DocumentReviewClient() {
   const params = useSearchParams();
@@ -47,7 +56,10 @@ export function DocumentReviewClient() {
 
   const backHref = fieldId ? `/mi-campo/fincas/ver?id=${encodeURIComponent(fieldId)}&source=${encodeURIComponent(source)}` : '/mi-campo';
   const refresh = useCallback(async () => {
-    if (!selectedWorkspaceId || !documentId) return;
+    if (!selectedWorkspaceId || !documentId) {
+      setLoading(false);
+      return;
+    }
     try { setError(null); setAnalysis(await loadDocumentAnalysis(selectedWorkspaceId, documentId)); }
     catch (cause) { console.error('Unable to load document analysis', cause); setError('No se ha podido cargar el análisis del documento.'); }
     finally { setLoading(false); }
@@ -55,7 +67,7 @@ export function DocumentReviewClient() {
 
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
-    const data = analysis?.review?.confirmed_fields ?? analysis?.extraction?.data_json;
+    const data = reviewedFields(analysis);
     if (!data) return;
     const next: Record<string, string> = {};
     for (const [key, value] of Object.entries(data)) next[key] = value == null ? '' : String(value);
@@ -87,11 +99,12 @@ export function DocumentReviewClient() {
   }
 
   if (!documentId) return <section className="card"><h1>Documento no indicado</h1><Link href={backHref}>Volver</Link></section>;
+  if (!selectedWorkspaceId) return <section className="card"><h1>Sesión necesaria</h1><p>Entra en tu espacio para revisar documentos privados.</p><Link href="/perfil">Ir a mi cuenta</Link></section>;
   if (loading) return <section className="card"><p>Cargando análisis…</p></section>;
-  if (!analysis) return <section className="card"><h1>Análisis no disponible</h1><Link href={backHref}>Volver</Link></section>;
+  if (!analysis) return <section className="card"><h1>Análisis no disponible</h1><p>{error ?? 'No se ha encontrado un análisis accesible para este documento.'}</p><Link href={backHref}>Volver</Link></section>;
 
   const ocrBusy = analysis.ocr && ['queued', 'processing'].includes(analysis.ocr.status);
-  const reviewed = analysis.review?.confirmed_fields ?? null;
+  const reviewed = analysis.review ? reviewedFields(analysis) : null;
   const baseParams = { fieldId, source, sourceDocumentId: documentId };
   const expenseHref = reviewed && ['invoice', 'purchase_receipt'].includes(analysis.document.kind) ? buildHref('/mi-campo/registrar/gasto', {
     ...baseParams, prefillDate: stringValue(reviewed, 'date'), prefillAmount: stringValue(reviewed, 'total_eur'), prefillConcept: analysis.document.title,
@@ -120,7 +133,7 @@ export function DocumentReviewClient() {
     </section>
     {analysis.extraction ? <section className="section card"><div className="section-head"><h2>Propuesta para revisar</h2><span>{analysis.review ? 'confirmada' : 'pendiente'}</span></div>
       {editableKeys.map((key) => <label className="form-field" key={key}><span>{fieldLabel(key)}</span><input value={values[key] ?? ''} onChange={(event) => setValues((current) => ({ ...current, [key]: event.target.value }))} disabled={Boolean(analysis.review)} /><small>Confianza OCR: {Math.round((analysis.extraction?.confidence_json[key] ?? 0) * 100)} %</small></label>)}
-      {analysis.review ? <p className="success-note">✓ Revisión humana guardada. Estos son los datos confirmados; aún no se ha creado ningún registro agrícola automáticamente.</p> : <button className="primary" type="button" onClick={() => void confirmReview()} disabled={saving}>{saving ? 'Guardando revisión…' : 'Confirmar datos revisados'}</button>}
+      {analysis.review ? <p className="success-note">✓ Revisión humana guardada. Los campos confirmados/corregidos se aplican sobre la extracción original; aún no se ha creado ningún registro agrícola automáticamente.</p> : <button className="primary" type="button" onClick={() => void confirmReview()} disabled={saving}>{saving ? 'Guardando revisión…' : 'Confirmar datos revisados'}</button>}
     </section> : null}
     {analysis.review && (expenseHref || deliveryHref || resultHref || settlementHref || collectionHref) ? <section className="section card"><div className="section-head"><h2>Usar datos confirmados</h2><span>paso manual</span></div><p>El siguiente formulario se abrirá prellenado. Puedes cambiar cualquier dato y nada se guardará hasta que pulses Guardar.</p><div className="record-actions">
       {expenseHref ? <Link className="primary action-link" href={expenseHref}>Crear gasto con estos datos →</Link> : null}
