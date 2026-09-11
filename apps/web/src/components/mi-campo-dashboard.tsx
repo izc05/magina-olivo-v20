@@ -95,11 +95,11 @@ export function MiCampoDashboard() {
       </div>
     </section>
 
-    <section className="section"><div className="section-head"><h2>Acciones</h2><span /></div><div className="quick-grid">
+    <section className="section"><div className="section-head"><h2>Qué quieres hacer</h2><span /></div><div className="quick-grid">
       {defaultFarm ? <Link href={fieldActionHref('/mi-campo/registrar', defaultFarm)} className="card quick premium-quick"><span className="icon"><PlusIcon /></span><div><strong>Registrar</strong><small>Nueva actividad · {defaultFarm.name}</small></div><ArrowIcon className="quick-arrow" /></Link> : null}
       {quick.map(([icon, title, text, href]) => <Link href={href} className="card quick premium-quick" key={title}><span className="icon">{icon}</span><div><strong>{title}</strong><small>{text}</small></div><ArrowIcon className="quick-arrow" /></Link>)}
     </div></section>
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">ESTRUCTURA V20</span><h2>Finca primero. Campaña y agenda agregan sin duplicar.</h2></div>{defaultFarm ? <Link href={fieldActionHref('/mi-campo/registrar', defaultFarm)}>Registrar <ArrowIcon /></Link> : canCreateFarm ? <Link href="/mi-campo/fincas/nueva">Añadir finca <ArrowIcon /></Link> : <span />}</section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">TU CAMPO, EN UN SOLO LUGAR</span><h2>Consulta tus fincas, registra trabajos y sigue la campaña sin perder el hilo.</h2></div>{defaultFarm ? <Link href={fieldActionHref('/mi-campo/registrar', defaultFarm)}>Registrar <ArrowIcon /></Link> : canCreateFarm ? <Link href="/mi-campo/fincas/nueva">Añadir finca <ArrowIcon /></Link> : <span />}</section>
   </>;
 }
