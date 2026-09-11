@@ -41,7 +41,7 @@ function todayIso() {
 }
 
 export function HomeDailyCenter() {
-  const { apiConfigured, status, selectedWorkspaceId } = useAuth();
+  const { apiConfigured, previewEnabled, status, selectedWorkspaceId } = useAuth();
   const [farms, setFarms] = useState<FarmListItem[]>([]);
   const [agenda, setAgenda] = useState<AgendaView>(emptyAgenda());
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
@@ -61,8 +61,11 @@ export function HomeDailyCenter() {
             setFarms(nextFarms);
             setAgenda(nextAgenda);
           }
-        } else if (!apiConfigured && !cancelled) {
+        } else if (!apiConfigured && previewEnabled && !cancelled) {
           setFarms(getPreviewFarms());
+          setAgenda(emptyAgenda());
+        } else if (!cancelled) {
+          setFarms([]);
           setAgenda(emptyAgenda());
         }
       } catch (error) {
@@ -77,7 +80,7 @@ export function HomeDailyCenter() {
     }
     void load();
     return () => { cancelled = true; };
-  }, [apiConfigured, selectedWorkspaceId, status]);
+  }, [apiConfigured, previewEnabled, selectedWorkspaceId, status]);
 
   const focusFarm = useMemo(() => {
     const priority = [...agenda.overdue, ...agenda.today, ...agenda.upcoming].find((item) => item.fieldId);
@@ -102,16 +105,20 @@ export function HomeDailyCenter() {
   const nextTask = agenda.overdue[0] ?? agenda.today[0] ?? agenda.upcoming[0];
   const hasAgendaItems = agenda.counts.overdue + agenda.counts.today + agenda.counts.upcoming > 0;
 
-  if (!apiConfigured) {
+  if (!apiConfigured && previewEnabled) {
     return <>
       <section className="hero home-hero"><div className="hero-content">
         <div className="location-chip"><MapPinIcon /> {demoContext.municipality} <span>· preview estructural</span></div>
         <div className="hero-spacer" />
         <div className="hero-weather"><div><div className="weather-temp">{demoContext.temperatureC}°</div><strong>{demoContext.condition}</strong></div><div className="weather-meta">Viento {demoContext.windKmh} km/h<br/>Humedad {demoContext.humidityPercent} %</div></div>
-        <div className="hero-rule"/><p className="hero-message">Preview: en servidor este bloque usa tu finca prioritaria y AEMET.</p>
+        <div className="hero-rule"/><p className="hero-message">Preview explícita: en servidor este bloque usa tu finca prioritaria y AEMET.</p>
       </div></section>
       <section className="section card field-summary premium-summary"><div className="field-summary-top"><div className="summary-brand"><span className="summary-mark"><SproutIcon /></span><div><h2>Mi Campo</h2><p>Vista previa del centro diario</p></div></div><Link href="/mi-campo" className="detail-link">Ver detalle <ArrowIcon /></Link></div><div className="stats"><div className="stat"><b>{demoFarmSummary.farms}</b><span>fincas demo</span></div><div className="stat"><b>{demoFarmSummary.oliveTrees}</b><span>olivas demo</span></div><div className="stat"><b>—</b><span>agenda real</span></div></div></section>
     </>;
+  }
+
+  if (!apiConfigured) {
+    return <section className="section card"><h2>Servicio privado no configurado</h2><p>Esta instalación no tiene API configurada y el modo preview está desactivado. No mostraremos datos demo como si fueran reales.</p></section>;
   }
 
   if (status !== 'authenticated') {
