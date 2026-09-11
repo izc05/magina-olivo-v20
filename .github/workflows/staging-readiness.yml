@@ -14,6 +14,7 @@ on:
       - 'apps/worker/package.json'
       - 'apps/web/package.json'
       - 'scripts/check-web-bundle-budget.mjs'
+      - '.dockerignore'
       - 'deploy/staging/**'
       - '.github/workflows/staging-readiness.yml'
 
@@ -62,10 +63,14 @@ jobs:
       - name: Validate safe staging defaults
         run: |
           grep -Fx 'NODE_ENV=production' deploy/staging/.env.example
+          grep -Fx 'POSTGRES_USER=magina_staging' deploy/staging/.env.example
+          grep -Fx 'POSTGRES_DB=magina_staging' deploy/staging/.env.example
+          grep -Fx 'API_PORT=3001' deploy/staging/.env.example
           grep -Fx 'NEXT_PUBLIC_PREVIEW_MODE=false' deploy/staging/.env.example
           grep -Fx 'ALLOW_DEV_AUTH_HEADERS=false' deploy/staging/.env.example
           grep -Fx 'WORKER_MODULES=ocr,radar,notifications' deploy/staging/.env.example
           grep -Fx 'OCR_PROVIDER=tesseract' deploy/staging/.env.example
+          grep -Eq '^DATABASE_URL=postgresql://[^@]+@postgres:5432/' deploy/staging/.env.example
           if grep -Eq '^CORS_ALLOWED_ORIGINS=\*($|,)' deploy/staging/.env.example; then
             echo 'Wildcard CORS is forbidden in staging.' >&2
             exit 1
@@ -125,3 +130,54 @@ jobs:
           NEXT_PUBLIC_API_URL: https://api-staging.example.test
           NEXT_PUBLIC_PREVIEW_MODE: 'false'
         run: pnpm --filter @magina/web build
+
+      - name: Validate staging compose
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            config > /tmp/magina-staging-compose.yml
+          test -s /tmp/magina-staging-compose.yml
+
+      - name: Build staging API and worker images
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            build api worker
+
+      - name: Validate OCR inside worker image
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            run --rm --no-deps --entrypoint /bin/sh worker -ec '
+              tesseract --version >/dev/null
+              tesseract --list-langs | grep -Fx spa
+              tesseract --list-langs | grep -Fx eng
+              command -v pdfinfo
+              command -v pdftoppm
+            '
+
+      - name: Smoke staging API container
+        run: |
+          compose() {
+            docker compose \
+              --env-file deploy/staging/.env.example \
+              -f deploy/staging/docker-compose.yml "$@"
+          }
+          cleanup() { compose down -v --remove-orphans || true; }
+          trap cleanup EXIT
+
+          compose up -d api
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3001/health >/tmp/staging-health.json; then
+              cat /tmp/staging-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+
+          compose ps
+          compose logs --no-color postgres migrate api
+          exit 1
