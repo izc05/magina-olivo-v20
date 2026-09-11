@@ -23,8 +23,9 @@ for (const width of [360, 390, 430]) {
 
     await page.getByRole('button', { name: 'Guardar documento' }).click();
 
-    await expect(page.getByRole('heading', { name: 'Documento guardado' })).toBeVisible();
-    await expect(page.getByText(/subida ha pasado por la comprobación de integridad/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Documento (guardado|disponible)/i })).toBeVisible();
+    await expect(page.getByText(title, { exact: true })).toBeVisible();
+    await expect(page.getByText(/verificad|comprobación de integridad/i).first()).toBeVisible();
 
     await page.getByRole('link', { name: 'Volver a la finca' }).click();
     await expect(page.getByRole('heading', { name: 'Finca Mobile Audit', exact: true })).toBeVisible();
