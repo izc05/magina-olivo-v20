@@ -30,12 +30,20 @@ export function registerProfessionalCustomerRoutes(app: FastifyInstance, db: Dat
                COALESCE((SELECT SUM(COALESCE(wp.cost_eur, 0)) FROM work_participants wp WHERE wp.work_id = wr.id), 0) +
                COALESCE((SELECT SUM(COALESCE(wres.cost_eur, 0)) FROM work_resources wres WHERE wres.work_id = wr.id), 0)
              )::double precision AS direct_cost_eur,
-             pi.id AS invoice_id,
-             pi.invoice_number
+             active_invoice.id AS invoice_id,
+             active_invoice.invoice_number
       FROM work_records wr
       LEFT JOIN customer_sites cs ON cs.id = wr.customer_site_id
-      LEFT JOIN professional_invoice_works piw ON piw.work_id = wr.id
-      LEFT JOIN professional_invoices pi ON pi.id = piw.invoice_id AND pi.status <> 'void'
+      LEFT JOIN LATERAL (
+        SELECT pi.id, pi.invoice_number
+        FROM professional_invoice_works piw
+        JOIN professional_invoices pi ON pi.id = piw.invoice_id
+        WHERE piw.work_id = wr.id
+          AND pi.workspace_id = wr.workspace_id
+          AND pi.status <> 'void'
+        ORDER BY pi.created_at DESC
+        LIMIT 1
+      ) active_invoice ON TRUE
       WHERE wr.workspace_id = ${context.workspaceId}::uuid
         AND wr.customer_party_id = ${parsed.data}::uuid
         AND wr.performed_for = 'third-party'
@@ -68,13 +76,21 @@ export function registerProfessionalCustomerRoutes(app: FastifyInstance, db: Dat
                COALESCE((SELECT SUM(COALESCE(wp.cost_eur, 0)) FROM work_participants wp WHERE wp.work_id = wr.id), 0) +
                COALESCE((SELECT SUM(COALESCE(wres.cost_eur, 0)) FROM work_resources wres WHERE wres.work_id = wr.id), 0)
              )::double precision AS real_cost_eur,
-             pi.id AS invoice_id, pi.invoice_number,
-             COALESCE(piw.amount_eur, 0)::double precision AS invoiced_eur
+             active_invoice.id AS invoice_id, active_invoice.invoice_number,
+             COALESCE(active_invoice.amount_eur, 0)::double precision AS invoiced_eur
       FROM professional_quotes pq
       LEFT JOIN customer_sites cs ON cs.id = pq.customer_site_id
       LEFT JOIN work_records wr ON wr.professional_quote_id = pq.id
-      LEFT JOIN professional_invoice_works piw ON piw.work_id = wr.id
-      LEFT JOIN professional_invoices pi ON pi.id = piw.invoice_id AND pi.status <> 'void'
+      LEFT JOIN LATERAL (
+        SELECT pi.id, pi.invoice_number, piw.amount_eur
+        FROM professional_invoice_works piw
+        JOIN professional_invoices pi ON pi.id = piw.invoice_id
+        WHERE piw.work_id = wr.id
+          AND pi.workspace_id = pq.workspace_id
+          AND pi.status <> 'void'
+        ORDER BY pi.created_at DESC
+        LIMIT 1
+      ) active_invoice ON TRUE
       WHERE pq.workspace_id = ${context.workspaceId}::uuid
         AND pq.customer_party_id = ${parsed.data}::uuid
       ORDER BY pq.created_at DESC
