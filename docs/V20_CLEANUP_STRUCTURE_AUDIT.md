@@ -17,7 +17,8 @@ Esta rama cubre:
 5. higiene de archivos generados;
 6. índice documental;
 7. reglas de trabajo paralelo;
-8. comprobación de coherencia entre documentación y estado real del candidate.
+8. comprobación de coherencia entre documentación y estado real del candidate;
+9. endurecimiento de tests de infraestructura cuando bloqueen el cierre por diferencias de representación y no por comportamiento de producto.
 
 No cubre cambios funcionales de mapa, Catastro/SIGPAC, diseño de pantallas ni ampliación de módulos.
 
@@ -63,6 +64,12 @@ El repositorio tiene varios workstreams y agentes. Sin reglas simples, un refact
 
 **Acción:** añadido `docs/WORKSTREAMS.md` con alcance, tipos de rama y criterio de cierre.
 
+### 8. E2E heredado dependía de una barra final de URL
+
+El candidate de partida tenía el `V20 full candidate check` verde pero su `V20 beta browser E2E` fallaba al comparar de forma literal `/mi-campo/mapa?fieldId=...` con `/mi-campo/mapa/?fieldId=...`. Ambas URLs representan la misma navegación en la configuración actual y la aplicación sí entregaba el `fieldId` correcto.
+
+**Acción:** el test valida ahora semánticamente el `pathname` normalizado y el parámetro `fieldId`, manteniendo después la comprobación real de la pantalla de mapa. No se ha cambiado código GIS ni de producto para satisfacer la prueba.
+
 ## Coherencia comprobada
 
 El código actual confirma:
@@ -96,5 +103,5 @@ La rama queda lista para integrar cuando:
 - los archivos modificados estén revisados;
 - el PR no incluya cambios accidentales de producto;
 - `V20 full candidate check` esté verde para esta rama/PR;
-- si `V20 beta browser E2E` se ejecuta por cambios de `package.json`, también debe quedar verde;
+- `V20 beta browser E2E` esté verde cuando se dispare por los archivos de esta rama;
 - no existan conflictos no resueltos con el HEAD candidato al momento de integrar.
