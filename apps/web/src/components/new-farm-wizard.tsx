@@ -156,6 +156,7 @@ export function NewFarmWizard() {
   if (step === 3) {
     const fieldHref = savedRemotely ? '/mi-campo' : savedId ? `/mi-campo/fincas/local?id=${encodeURIComponent(savedId)}` : '/mi-campo';
     const registerHref = savedId ? `/mi-campo/registrar?fieldId=${encodeURIComponent(savedId)}` : '/mi-campo/registrar';
+    const mapHref = savedRemotely && savedId ? `/mi-campo/mapa?fieldId=${encodeURIComponent(savedId)}` : null;
     return <section className="card new-farm-success">
       <div className="success-mark"><SproutIcon /></div>
       <span className="eyebrow dark">{savedRemotely ? 'FINCA GUARDADA EN MI CAMPO' : 'DEMOSTRACIÓN · GUARDADA EN ESTE DISPOSITIVO'}</span>
@@ -164,9 +165,13 @@ export function NewFarmWizard() {
       <div className="success-effects">
         <span>✓ Finca creada</span>
         <span>{selectedPlace ? `✓ Localidad: ${selectedPlace.name} · ${selectedPlace.municipality_name}` : '○ Localidad pendiente de vincular'}</span>
-        <span>{savedRemotely ? '○ Límites en el mapa pendientes · puedes añadirlos después desde Mi Campo → Mapa' : linked ? '✓ Ubicación de ejemplo asociada' : '○ Ubicación de ejemplo pendiente'}</span>
+        <span>{savedRemotely ? '○ Límites en el mapa pendientes · puedes añadirlos ahora' : linked ? '✓ Ubicación de ejemplo asociada' : '○ Ubicación de ejemplo pendiente'}</span>
       </div>
-      <div className="record-actions"><Link href={fieldHref} className="secondary-action action-link">Volver a Mi Campo</Link><Link href={registerHref} className="primary action-link">Registrar trabajo <ArrowIcon /></Link></div>
+      <div className="record-actions">
+        <Link href={fieldHref} className="secondary-action action-link">Volver a Mi Campo</Link>
+        {mapHref ? <Link href={mapHref} className="secondary-action action-link">Añadir límites <MapPinIcon /></Link> : null}
+        <Link href={registerHref} className="primary action-link">Registrar trabajo <ArrowIcon /></Link>
+      </div>
     </section>;
   }
 
