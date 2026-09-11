@@ -21,7 +21,7 @@ function number(value: number) {
 }
 
 export function CampaignSummaryClient() {
-  const { apiConfigured, status, selectedWorkspaceId } = useAuth();
+  const { apiConfigured, previewEnabled, status, selectedWorkspaceId } = useAuth();
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
   const [campaignId, setCampaignId] = useState<string>('');
   const [summary, setSummary] = useState<CampaignSummaryView | null>(null);
@@ -34,9 +34,16 @@ export function CampaignSummaryClient() {
       setLoading(true);
       setError(null);
       try {
-        const items = apiConfigured && status === 'authenticated' && selectedWorkspaceId
-          ? await loadApiCampaigns(selectedWorkspaceId)
-          : getPreviewCampaigns();
+        let items: CampaignListItem[] = [];
+        if (apiConfigured && status === 'authenticated' && selectedWorkspaceId) {
+          items = await loadApiCampaigns(selectedWorkspaceId);
+        } else if (previewEnabled) {
+          items = getPreviewCampaigns();
+        } else if (apiConfigured && status === 'loading') {
+          return;
+        } else {
+          if (!cancelled) setError(apiConfigured ? 'Inicia sesión para consultar tus campañas.' : 'La API privada no está configurada en esta instalación.');
+        }
         if (cancelled) return;
         setCampaigns(items);
         const active = items.find((item) => item.status === 'active') ?? items[0];
@@ -50,7 +57,7 @@ export function CampaignSummaryClient() {
     }
     void loadList();
     return () => { cancelled = true; };
-  }, [apiConfigured, selectedWorkspaceId, status]);
+  }, [apiConfigured, previewEnabled, selectedWorkspaceId, status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,9 +68,12 @@ export function CampaignSummaryClient() {
       }
       setLoading(true);
       try {
-        const next = apiConfigured && status === 'authenticated' && selectedWorkspaceId
-          ? await loadApiCampaignSummary(campaignId, selectedWorkspaceId)
-          : getPreviewCampaignSummary(campaignId);
+        let next: CampaignSummaryView | null = null;
+        if (apiConfigured && status === 'authenticated' && selectedWorkspaceId) {
+          next = await loadApiCampaignSummary(campaignId, selectedWorkspaceId);
+        } else if (previewEnabled) {
+          next = getPreviewCampaignSummary(campaignId);
+        }
         if (!cancelled) setSummary(next);
       } catch (err) {
         console.error(err);
@@ -74,7 +84,7 @@ export function CampaignSummaryClient() {
     }
     void loadSummary();
     return () => { cancelled = true; };
-  }, [apiConfigured, campaignId, selectedWorkspaceId, status]);
+  }, [apiConfigured, campaignId, previewEnabled, selectedWorkspaceId, status]);
 
   const selected = useMemo(() => campaigns.find((item) => item.id === campaignId), [campaignId, campaigns]);
 
@@ -84,16 +94,17 @@ export function CampaignSummaryClient() {
     </header>
 
     <section className="card">
-      <label><strong>Campaña</strong><select value={campaignId} onChange={(event) => setCampaignId(event.target.value)}>
+      <label><strong>Campaña</strong><select value={campaignId} onChange={(event) => setCampaignId(event.target.value)} disabled={!campaigns.length}>
         {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name} · {campaign.status}</option>)}
       </select></label>
       {selected ? <p className="subtle">{selected.startDate}{selected.endDate ? ` → ${selected.endDate}` : ''}</p> : null}
+      {previewEnabled && !apiConfigured ? <p className="subtle">Modo preview explícito: estos datos no proceden de una explotación real.</p> : null}
     </section>
 
     {error ? <p className="form-error" role="alert">{error}</p> : null}
     {loading ? <section className="card"><p>Calculando campaña…</p></section> : null}
 
-    {!loading && !summary ? <section className="card"><h3>Sin campaña disponible</h3><p>Cuando exista una campaña activa aparecerá aquí su resumen.</p></section> : null}
+    {!loading && !summary && !error ? <section className="card"><h3>Sin campaña disponible</h3><p>Cuando exista una campaña activa aparecerá aquí su resumen.</p></section> : null}
 
     {summary ? <>
       <section className="section"><div className="quick-grid">
@@ -104,11 +115,11 @@ export function CampaignSummaryClient() {
         <article className="card quick premium-quick"><div><strong>{money(summary.collectedIncomeEur)}</strong><small>cobrado</small></div></article>
         <article className="card quick premium-quick"><div><strong>{money(summary.pendingCollectionEur)}</strong><small>pendiente de cobro</small></div></article>
         <article className="card quick premium-quick"><div><strong>{money(summary.accruedMarginEur)}</strong><small>margen devengado</small></div></article>
-        <article className="card quick premium-quick"><div><strong>{money(summary.cashMarginEur)}</strong><small>cobrado − costes registrados</small></div></article>
+        <article className="card quick premium-quick"><div><strong>{money(summary.cashMarginEur)}</strong><small>cobrado − costes registrados · no flujo de caja</small></div></article>
         <article className="card quick premium-quick"><div><strong>{summary.costPerDeliveredKgEur !== undefined ? `${number(summary.costPerDeliveredKgEur)} €/kg` : '—'}</strong><small>coste registrado por kg</small></div></article>
       </div></section>
 
-      <section className="card register-principle"><div><strong>Liquidado, cobrado y caja no son lo mismo</strong><small>Margen devengado = liquidado atribuible − costes registrados. “Cobrado − costes registrados” todavía no es flujo de caja real porque los pagos efectivos de gastos se modelarán por separado.</small></div></section>
+      <section className="card register-principle"><div><strong>Liquidado, cobrado y pagos no son lo mismo</strong><small>Margen devengado = liquidado atribuible − costes registrados. “Cobrado − costes registrados” es solo una comparación informativa: no es flujo de caja porque todavía no modelamos todos los pagos efectivos de gastos.</small></div></section>
 
       <section className="section">
         <div className="section-head"><h2>Por finca</h2><span className="subtle">{summary.fieldCount} con actividad</span></div>
