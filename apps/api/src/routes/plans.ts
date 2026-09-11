@@ -5,6 +5,8 @@ import type { DatabaseClient } from '../db/client.js';
 import { parseBody, requireContext, requireDatabase } from '../http/helpers.js';
 
 const interestSchema = z.object({ target_plan: z.enum(['pro', 'professional']) });
+type PlanCode = 'free' | 'pro' | 'professional';
+type FutureEntitlement = 'advanced_automation' | 'advanced_analysis' | 'professional_commercial_suite';
 
 const planCatalog = [
   {
@@ -14,6 +16,7 @@ const planCatalog = [
     price_label: 'Gratis',
     chargeable: false,
     checkout_available: false,
+    future_entitlements: [] as FutureEntitlement[],
     summary: 'El cuaderno digital de tu olivar durante la Beta.',
     highlights: [
       'Mi Campo, campañas y registro agrícola',
@@ -28,6 +31,7 @@ const planCatalog = [
     price_label: 'Precio por definir',
     chargeable: false,
     checkout_available: false,
+    future_entitlements: ['advanced_automation', 'advanced_analysis'] as FutureEntitlement[],
     summary: 'Para quien quiera más automatización y análisis cuando termine la Beta.',
     highlights: [
       'Todo lo existente en Campo durante la Beta',
@@ -42,6 +46,7 @@ const planCatalog = [
     price_label: 'Precio por definir',
     chargeable: false,
     checkout_available: false,
+    future_entitlements: ['advanced_automation', 'advanced_analysis', 'professional_commercial_suite'] as FutureEntitlement[],
     summary: 'Para trabajos a terceros, clientes y actividad profesional agrícola.',
     highlights: [
       'Herramientas profesionales existentes siguen abiertas en la Beta',
@@ -52,7 +57,7 @@ const planCatalog = [
 ] as const;
 
 type SubscriptionRow = {
-  plan_code: 'free' | 'pro' | 'professional';
+  plan_code: PlanCode;
   status: 'active' | 'trialing' | 'paused' | 'cancelled';
   source: 'internal' | 'manual' | 'billing';
   started_at: Date | string;
@@ -71,10 +76,15 @@ function canManagePlan(role: string) {
   return role === 'owner' || role === 'admin' || role === 'development';
 }
 
+function entitlementsFor(plan: PlanCode): FutureEntitlement[] {
+  return [...(planCatalog.find((entry) => entry.code === plan)?.future_entitlements ?? [])];
+}
+
 export function registerPlanRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/public/plans', async () => ({
     schema_version: 1,
     beta_policy: 'all_existing_beta_features_remain_available',
+    beta_access_override: true,
     billing_enabled: false,
     checkout_available: false,
     plans: planCatalog,
@@ -92,7 +102,7 @@ export function registerPlanRoutes(app: FastifyInstance, db: DatabaseClient | nu
       LIMIT 1
     `.execute(database);
     const subscription = subscriptionResult.rows[0] ?? null;
-    const effectivePlan = subscription && (subscription.status === 'active' || subscription.status === 'trialing')
+    const effectivePlan: PlanCode = subscription && (subscription.status === 'active' || subscription.status === 'trialing')
       ? subscription.plan_code
       : 'free';
 
@@ -108,6 +118,8 @@ export function registerPlanRoutes(app: FastifyInstance, db: DatabaseClient | nu
     return {
       workspace_id: context.workspaceId,
       effective_plan: effectivePlan,
+      future_entitlements: entitlementsFor(effectivePlan),
+      beta_access_override: true,
       subscription: subscription
         ? {
             plan_code: subscription.plan_code,
