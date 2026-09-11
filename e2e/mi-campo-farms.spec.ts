@@ -74,3 +74,40 @@ test('la ficha mantiene sus secciones y acciones sobre la finca seleccionada', a
   await expect(documentsSection).toBeVisible();
   await expect(documentsSection.getByText('Albarán OCR E2E', { exact: true })).toBeVisible();
 });
+
+test('la ficha conserva la finca si falla un agregado y recupera los datos al reintentar', async ({ page }) => {
+  let failEconomicsOnce = true;
+  await page.route(`**/api/v1/fields/${seededFieldId}/economics-summary`, async (route) => {
+    if (failEconomicsOnce) {
+      failEconomicsOnce = false;
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'temporary_economics_outage' }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto(`/mi-campo/fincas/ver?id=${seededFieldId}&source=api`);
+
+  const farmHeader = page.locator('header.page-title');
+  await expect(page.getByRole('heading', { name: 'Finca Mobile Audit', exact: true })).toBeVisible();
+  await expect(farmHeader).toContainText('80 olivas');
+  await expect(page.getByRole('heading', { name: 'Finca no encontrada', exact: true })).toHaveCount(0);
+
+  const degradedHeading = page.getByRole('heading', { name: 'Datos de la finca temporalmente no disponibles', exact: true });
+  await expect(degradedHeading).toBeVisible();
+  await expect(page.getByText(/No mostramos cifras de cosecha o economía/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Economía agrícola', exact: true })).toHaveCount(0);
+
+  const safeRegister = page.locator(`a[href*="/mi-campo/registrar"][href*="fieldId=${seededFieldId}"]`).first();
+  await expect(safeRegister).toBeVisible();
+
+  await page.getByRole('button', { name: 'Reintentar datos', exact: true }).click();
+
+  await expect(degradedHeading).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Resumen', exact: true, level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Economía agrícola', exact: true })).toBeVisible();
+});
