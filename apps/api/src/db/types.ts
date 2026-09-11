@@ -215,6 +215,7 @@ export interface AttachmentLinkTable {
   workspace_id: string;
   document_id: string;
   field_id: string | null;
+  campaign_id: string | null;
   domain_type: string | null;
   domain_record_id: string | null;
   relation: string;
