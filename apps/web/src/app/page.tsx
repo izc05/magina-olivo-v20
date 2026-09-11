@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
 import { AttentionSummaryCard } from '@/components/attention-summary-card';
+import { FinancialAttentionCard } from '@/components/financial-attention-card';
 import { HomeDailyCenter } from '@/components/home-daily-center';
 import { ArrowIcon } from '@/components/icons';
 import { demoContext } from '@/lib/demo-data';
@@ -14,6 +15,7 @@ export default function HomePage() {
         <HomeDailyCenter />
 
         <AttentionSummaryCard compact />
+        <FinancialAttentionCard compact />
 
         <section className="section">
           <div className="section-head"><h2>Actualidad y vida local</h2><Link href="/explorar">Ver todo <ArrowIcon /></Link></div>
