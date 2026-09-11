@@ -26,9 +26,9 @@ export function WorkEntryClient() {
   const fieldId = params.get('fieldId');
   const source = params.get('source');
   const plannedEventId = params.get('plannedEventId');
-  const { apiConfigured, status, selectedWorkspaceId } = useAuth();
-  const apiMode = source === 'api' && apiConfigured && status === 'authenticated' && Boolean(selectedWorkspaceId);
-  const previewFarm = useMemo(() => fieldId ? getPreviewFarms().find((farm) => farm.id === fieldId) : undefined, [fieldId]);
+  const { apiConfigured, previewEnabled, status, selectedWorkspaceId } = useAuth();
+  const apiMode = apiConfigured && status === 'authenticated' && Boolean(selectedWorkspaceId) && source !== 'local' && source !== 'demo';
+  const previewFarm = useMemo(() => previewEnabled && fieldId ? getPreviewFarms().find((farm) => farm.id === fieldId) : undefined, [fieldId, previewEnabled]);
   const [mode, setMode] = useState<'self' | 'third-party'>(fieldId ? 'self' : 'third-party');
   const [parties, setParties] = useState<WorkPartyOption[]>([]);
   const [sites, setSites] = useState<CustomerSiteOption[]>([]);
@@ -114,6 +114,7 @@ export function WorkEntryClient() {
           });
         }
       } else {
+        if (!previewEnabled) throw new Error('api_required');
         if (mode === 'third-party') throw new Error('third_party_requires_api');
         if (!fieldId || !previewFarm) throw new Error('missing_field');
         saveLocalWork({
@@ -129,11 +130,17 @@ export function WorkEntryClient() {
       const code = cause instanceof Error ? cause.message : '';
       setError(code === 'third_party_requires_api'
         ? 'En la preview no creamos fincas falsas de clientes. Este flujo se guarda en el servidor real.'
-        : 'No se ha podido guardar el trabajo. Revisa destino y datos.');
+        : code === 'api_required'
+          ? 'Esta instalación necesita API y sesión activa para registrar trabajos.'
+          : 'No se ha podido guardar el trabajo. Revisa destino y datos.');
     } finally {
       setSaving(false);
     }
   }
+
+  if (!apiConfigured && !previewEnabled) return <section className="card"><h1>Registro no disponible</h1><p>Esta instalación no tiene la API privada configurada.</p><Link href="/mi-campo" className="secondary-action action-link">Volver a Mi Campo</Link></section>;
+  if (apiConfigured && status === 'loading') return <section className="card"><p>Comprobando sesión…</p></section>;
+  if (apiConfigured && status !== 'authenticated') return <section className="card"><h1>Inicia sesión</h1><p>Registrar trabajos modifica datos privados de tu explotación.</p><Link href="/perfil" className="primary action-link">Ir a mi cuenta</Link></section>;
 
   if (saved) return <section className="card record-success"><div className="success-mark">✓</div><h1>Trabajo registrado</h1><p>Mano de obra, maquinaria, coste y contexto comercial han quedado unidos al mismo trabajo.</p>{completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : plannedEventId && mode === 'self' ? <p>✓ La tarea prevista ha quedado enlazada al trabajo realizado.</p> : null}<Link className="primary action-link" href="/mi-campo">Volver a Mi Campo</Link></section>;
 
@@ -172,6 +179,6 @@ export function WorkEntryClient() {
 
     {mode === 'third-party' && !apiMode ? <p className="form-error">La preview muestra el flujo, pero no guardará trabajos de terceros para no crear fincas falsas.</p> : null}
     {error ? <p className="form-error" role="alert">{error}</p> : null}
-    <section className="record-save-bar"><small>{apiMode ? 'Destino, costes y cobro se guardarán en el servidor.' : 'Modo preview estructural.'}</small><button className="primary" type="submit" disabled={saving || (mode === 'self' && !fieldId)}>{saving ? 'Guardando…' : 'Guardar trabajo →'}</button></section>
+    <section className="record-save-bar"><small>{apiMode ? 'Destino, costes y cobro se guardarán en el servidor.' : 'Modo preview explícito.'}</small><button className="primary" type="submit" disabled={saving || (mode === 'self' && !fieldId)}>{saving ? 'Guardando…' : 'Guardar trabajo →'}</button></section>
   </form>;
 }
