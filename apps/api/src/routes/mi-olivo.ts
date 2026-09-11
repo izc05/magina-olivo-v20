@@ -353,6 +353,7 @@ export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient |
         { id: 'new-branch-badge', title: 'Distintivo Rama nueva', detail: 'Tu olivo alcanza el nivel 2.', required_level: 2, unlocked: level >= 2 },
         { id: 'young-olive-badge', title: 'Distintivo Olivo joven', detail: 'Tu olivo alcanza el nivel 3.', required_level: 3, unlocked: level >= 3 },
         { id: 'rooted-olive-badge', title: 'Distintivo Olivo arraigado', detail: 'Tu olivo alcanza el nivel 4.', required_level: 4, unlocked: level >= 4 },
+        { id: 'master-olive-badge', title: 'Distintivo Olivo maestro', detail: 'Tu olivo alcanza el nivel 5.', required_level: 5, unlocked: level >= 5 },
       ],
       recent: recentResult.rows,
     };

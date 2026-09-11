@@ -50,6 +50,7 @@ try {
   assert.equal(first.json().balance, 20);
   assert.equal(first.json().missions.find((mission: { id: string }) => mission.id === 'profile').completed, true);
   assert.equal(first.json().rewards.find((reward: { id: string }) => reward.id === 'sprout-badge').unlocked, true);
+  assert.equal(first.json().rewards.find((reward: { id: string }) => reward.id === 'master-olive-badge').unlocked, false);
 
   const second = await app.inject({ method: 'GET', url: '/api/v1/mi-olivo', headers });
   assert.equal(second.statusCode, 200, second.body);
@@ -65,14 +66,15 @@ try {
     const daysAgo = 9 - index;
     await sql`
       INSERT INTO irrigation_records (
-        id, workspace_id, field_id, occurred_at, client_operation_id, created_by
+        id, workspace_id, field_id, occurred_at, client_operation_id, created_by, created_at
       ) VALUES (
         ${randomUUID()}::uuid,
         ${workspaceId}::uuid,
         ${fieldId}::uuid,
         now() - (${daysAgo} * interval '1 day'),
         ${randomUUID()}::uuid,
-        ${userId}::uuid
+        ${userId}::uuid,
+        now() - (${daysAgo} * interval '1 day')
       )
     `.execute(db);
   }
@@ -85,7 +87,7 @@ try {
   assert.equal(constancyMission.completed, true);
   assert.equal(constancyMission.progress_current, 10);
   assert.equal(constancyMission.progress_target, 10);
-  assert.ok(activity.json().rhythm.active_weeks >= 2, 'recent activity should create a multi-week rhythm');
+  assert.ok(activity.json().rhythm.active_weeks >= 2, 'created_at spread across recent days should create a multi-week rhythm');
   assert.equal(activity.json().rhythm.grace_active, false);
 
   const paused = await app.inject({
@@ -146,6 +148,7 @@ try {
   assert.equal(final.json().missions.every((mission: { completed: boolean }) => mission.completed), true);
   assert.equal(final.json().rewards.find((reward: { id: string }) => reward.id === 'new-branch-badge').unlocked, true);
   assert.equal(final.json().rewards.find((reward: { id: string }) => reward.id === 'young-olive-badge').unlocked, false);
+  assert.equal(final.json().rewards.find((reward: { id: string }) => reward.id === 'master-olive-badge').required_level, 5);
 
   const ledger = await sql<{ total: number; distinct_keys: number }>`
     SELECT COUNT(*)::int AS total, COUNT(DISTINCT idempotency_key)::int AS distinct_keys
