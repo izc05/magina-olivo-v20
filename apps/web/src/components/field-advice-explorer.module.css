@@ -76,12 +76,15 @@
   font-weight: 750;
 }
 
-.searchLabel input {
+.searchInput {
+  box-sizing: border-box;
   width: 100%;
+  height: 48px;
   min-height: 48px;
   border: 1px solid #cbd6cf;
   border-radius: 14px;
   padding: 0 15px;
+  appearance: none;
   background: #fbfcfa;
   color: #17372d;
   font: inherit;
@@ -89,7 +92,7 @@
   outline: none;
 }
 
-.searchLabel input:focus-visible {
+.searchInput:focus-visible {
   border-color: #557243;
   box-shadow: 0 0 0 3px rgba(85, 114, 67, 0.16);
 }
