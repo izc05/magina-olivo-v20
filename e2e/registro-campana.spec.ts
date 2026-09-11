@@ -68,7 +68,7 @@ test('recorre entrega, rendimiento, liquidación y cobro hasta Campaña', async 
 
   await page.getByRole('link', { name: 'Registrar cobro →' }).click();
   await expect(page.getByRole('heading', { name: 'Registrar cobro' })).toBeVisible();
-  await expect(page.getByRole('combobox')).toContainText(settlementNumber);
+  await expect(page.getByLabel('Liquidación')).toContainText(settlementNumber);
   await page.locator('input[name="date"]').fill('2027-01-15');
   await page.getByRole('button', { name: 'Todo lo pendiente' }).click();
   await page.getByRole('button', { name: 'Guardar cobro →' }).click();
