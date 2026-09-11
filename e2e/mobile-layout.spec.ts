@@ -25,6 +25,7 @@ const quickRecordRoutes = [
 const routes = [
   '/',
   '/explorar',
+  `/radar?fieldId=${fieldId}`,
   '/mi-campo',
   '/mi-campo/fincas/nueva',
   `/mi-campo/fincas/ver?id=${fieldId}&source=api`,
@@ -46,7 +47,9 @@ const routes = [
   '/mi-campo/profesional/cliente',
   '/mi-campo/profesional/presupuestos',
   `/mi-campo/profesional/presupuestos?quoteId=${quoteId}&customerId=${customerId}`,
+  `/mi-campo/profesional/presupuestos/documento?quoteId=${quoteId}&customerId=${customerId}&quoteNumber=PRE-E2E-MOBILE-001`,
   `/mi-campo/profesional/facturas/nueva?customerId=${customerId}&workId=${workId}`,
+  `/mi-campo/profesional/facturas/documento?invoiceId=${invoiceId}&customerId=${customerId}&invoiceNumber=F-E2E-MOBILE-001`,
   `/mi-campo/profesional/cobrar?workId=${workId}`,
   `/mi-campo/profesional/documento?type=invoice&id=${invoiceId}`,
   '/mi-campo/profesional/documento',
@@ -56,6 +59,7 @@ const routes = [
 const widerRoutes = [
   '/',
   '/explorar',
+  `/radar?fieldId=${fieldId}`,
   `/mi-campo/fincas/ver?id=${fieldId}&source=api`,
   `/mi-campo/mapa?fieldId=${fieldId}`,
   `/mi-campo/planificar?fieldId=${fieldId}&source=api`,
