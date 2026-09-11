@@ -59,14 +59,15 @@ export function ProfessionalDocumentPrintClient() {
   if (loading) return <section className="card"><p>Preparando documento…</p></section>;
   if (!data || !type || !id) return <section className="card"><h1>Documento no disponible</h1><p>{error ?? 'Faltan datos para abrirlo.'}</p><Link href="/mi-campo/profesional">Volver a Profesional</Link></section>;
 
-  const issuer = data.issuer;
-  const customerName = data.customer.legal_name || data.customer.display_name;
-  const isInvoice = data.document_type === 'invoice';
+  const printData = data;
+  const issuer = printData.issuer;
+  const customerName = printData.customer.legal_name || printData.customer.display_name;
+  const isInvoice = printData.document_type === 'invoice';
   const title = isInvoice ? 'FACTURA' : 'PRESUPUESTO';
-  const number = data.document.number || (isInvoice ? 'Borrador' : 'Sin número');
+  const number = printData.document.number || (isInvoice ? 'Borrador' : 'Sin número');
   const uploadHref = isInvoice
-    ? `/mi-campo/profesional/facturas/documento?${new URLSearchParams({ invoiceId: data.document.id, customerId: data.customer.id, invoiceNumber: number }).toString()}`
-    : `/mi-campo/profesional/presupuestos/documento?${new URLSearchParams({ quoteId: data.document.id, customerId: data.customer.id, quoteNumber: number }).toString()}`;
+    ? `/mi-campo/profesional/facturas/documento?${new URLSearchParams({ invoiceId: printData.document.id, customerId: printData.customer.id, invoiceNumber: number }).toString()}`
+    : `/mi-campo/profesional/presupuestos/documento?${new URLSearchParams({ quoteId: printData.document.id, customerId: printData.customer.id, quoteNumber: number }).toString()}`;
 
   async function generateAndArchive() {
     if (!selectedWorkspaceId || archiving) return;
@@ -74,13 +75,13 @@ export function ProfessionalDocumentPrintClient() {
       setArchiving(true);
       setArchived(false);
       setError(null);
-      const blob = generateProfessionalPdf(data);
+      const blob = generateProfessionalPdf(printData);
       const filename = `${safeFilename(isInvoice ? `factura-${number}` : `presupuesto-${number}`)}.pdf`;
       const file = new File([blob], filename, { type: 'application/pdf', lastModified: Date.now() });
       await uploadDomainAttachment({
         workspaceId: selectedWorkspaceId,
         domainType: isInvoice ? 'professional_invoice' : 'professional_quote',
-        domainRecordId: data.document.id,
+        domainRecordId: printData.document.id,
         file,
         kind: isInvoice ? 'sales_invoice' : 'sales_quote',
         title: `${isInvoice ? 'Factura emitida' : 'Presupuesto emitido'} ${number}`,
@@ -97,7 +98,7 @@ export function ProfessionalDocumentPrintClient() {
 
   return <main className="commercial-print-shell">
     <div className="commercial-print-toolbar no-print">
-      <Link className="secondary-action action-link" href={`/mi-campo/profesional/cliente?id=${encodeURIComponent(data.customer.id)}`}>← Volver al cliente</Link>
+      <Link className="secondary-action action-link" href={`/mi-campo/profesional/cliente?id=${encodeURIComponent(printData.customer.id)}`}>← Volver al cliente</Link>
       <div className="action-row">
         <button className="primary" type="button" onClick={() => void generateAndArchive()} disabled={archiving}>{archiving ? 'Generando…' : archived ? 'PDF archivado ✓' : 'Generar y archivar PDF'}</button>
         <button className="secondary-action" type="button" onClick={() => window.print()}>Imprimir / Guardar manualmente</button>
@@ -109,35 +110,35 @@ export function ProfessionalDocumentPrintClient() {
     <article className="commercial-a4">
       <header className="commercial-doc-head">
         <div className="commercial-brand"><span>MÁGINA</span><strong>{issuer?.legal_name || issuer?.workspace_name || 'Profesional agrícola'}</strong><small>{[issuer?.tax_id, issuer?.phone, issuer?.email].filter(Boolean).join(' · ')}</small></div>
-        <div className="commercial-doc-title"><span>{title}</span><strong>{number}</strong><small>{`Fecha ${dateLabel(data.document.issued_on)}`}</small></div>
+        <div className="commercial-doc-title"><span>{title}</span><strong>{number}</strong><small>{`Fecha ${dateLabel(printData.document.issued_on)}`}</small></div>
       </header>
 
       <section className="commercial-parties">
         <div><small>EMISOR</small><strong>{issuer?.legal_name || issuer?.workspace_name || 'Por configurar'}</strong><p>{[issuer?.address, [issuer?.postal_code, issuer?.municipality].filter(Boolean).join(' '), issuer?.province].filter(Boolean).join(' · ')}</p><p>{issuer?.tax_id ? `NIF/CIF ${issuer.tax_id}` : 'NIF/CIF pendiente de configurar'}</p></div>
-        <div><small>CLIENTE</small><strong>{customerName}</strong><p>{data.customer.tax_id ? `NIF/CIF ${data.customer.tax_id}` : 'NIF/CIF no indicado'}</p><p>{[data.customer.phone, data.customer.email].filter(Boolean).join(' · ')}</p></div>
+        <div><small>CLIENTE</small><strong>{customerName}</strong><p>{printData.customer.tax_id ? `NIF/CIF ${printData.customer.tax_id}` : 'NIF/CIF no indicado'}</p><p>{[printData.customer.phone, printData.customer.email].filter(Boolean).join(' · ')}</p></div>
       </section>
 
       <section className="commercial-meta">
-        {isInvoice ? <><div><small>Vencimiento</small><strong>{dateLabel(data.document.due_on)}</strong></div><div><small>Estado</small><strong>{data.document.status}</strong></div></> : <><div><small>Válido hasta</small><strong>{dateLabel(data.document.valid_until)}</strong></div><div><small>Estado</small><strong>{data.document.status}</strong></div>{data.document.site_name ? <div><small>Finca / sitio</small><strong>{data.document.site_name}</strong></div> : null}</>}
+        {isInvoice ? <><div><small>Vencimiento</small><strong>{dateLabel(printData.document.due_on)}</strong></div><div><small>Estado</small><strong>{printData.document.status}</strong></div></> : <><div><small>Válido hasta</small><strong>{dateLabel(printData.document.valid_until)}</strong></div><div><small>Estado</small><strong>{printData.document.status}</strong></div>{printData.document.site_name ? <div><small>Finca / sitio</small><strong>{printData.document.site_name}</strong></div> : null}</>}
       </section>
 
-      {!isInvoice && data.document.title ? <section className="commercial-intro"><h2>{data.document.title}</h2></section> : null}
+      {!isInvoice && printData.document.title ? <section className="commercial-intro"><h2>{printData.document.title}</h2></section> : null}
 
       <table className="commercial-lines">
         <thead><tr>{isInvoice ? <><th>Trabajo</th><th>Fecha</th><th className="right">Importe IVA incl.</th></> : <><th>Concepto</th><th className="right">Cantidad</th><th>Unidad</th><th className="right">Precio</th><th className="right">Importe</th></>}</tr></thead>
-        <tbody>{data.lines.map((line, index) => isInvoice
+        <tbody>{printData.lines.map((line, index) => isInvoice
           ? <tr key={`${text(line.work_id)}-${index}`}><td><strong>{text(line.title)}</strong>{line.site_name ? <small>{text(line.site_name)}</small> : null}</td><td>{dateLabel(text(line.occurred_on))}</td><td className="right">{money(Number(line.amount_eur ?? 0))}</td></tr>
           : <tr key={`${text(line.description)}-${index}`}><td>{text(line.description)}</td><td className="right">{Number(line.quantity ?? 0).toLocaleString('es-ES')}</td><td>{text(line.unit)}</td><td className="right">{money(Number(line.unit_price_eur ?? 0))}</td><td className="right">{money(Number(line.line_total_eur ?? 0))}</td></tr>
         )}</tbody>
       </table>
 
       <section className="commercial-totals">
-        <div><span>Base</span><strong>{money(data.document.subtotal_eur)}</strong></div>
-        <div><span>Impuestos</span><strong>{money(data.document.tax_eur)}</strong></div>
-        <div className="grand"><span>Total</span><strong>{money(data.document.total_eur)}</strong></div>
+        <div><span>Base</span><strong>{money(printData.document.subtotal_eur)}</strong></div>
+        <div><span>Impuestos</span><strong>{money(printData.document.tax_eur)}</strong></div>
+        <div className="grand"><span>Total</span><strong>{money(printData.document.total_eur)}</strong></div>
       </section>
 
-      {data.document.notes ? <section className="commercial-notes"><small>NOTAS</small><p>{data.document.notes}</p></section> : null}
+      {printData.document.notes ? <section className="commercial-notes"><small>NOTAS</small><p>{printData.document.notes}</p></section> : null}
       {issuer?.payment_terms ? <section className="commercial-notes"><small>CONDICIONES / PAGO</small><p>{issuer.payment_terms}</p></section> : null}
 
       <footer className="commercial-footer"><p>{issuer?.footer_note || 'Documento generado desde datos estructurados de Mágina Olivo.'}</p><small>{isInvoice ? 'La factura y sus cobros se conservan como registros separados.' : 'La aceptación del presupuesto no registra automáticamente un trabajo ni un cobro.'}</small></footer>
