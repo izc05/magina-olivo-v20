@@ -173,6 +173,9 @@ export const recordTypes = [
       { name: 'type', label: 'Tipo', kind: 'select', options: ['Estado del olivo', 'Plaga o enfermedad', 'Suelo', 'Riego', 'Daño', 'Otro'] },
       { name: 'notes', label: 'Observación', kind: 'textarea', placeholder: 'Describe lo que has visto…', required: true },
     ],
+    details: [
+      { name: 'severity', label: 'Severidad', kind: 'select', options: ['Baja', 'Media', 'Alta'] },
+    ],
     followUp: [
       { name: 'reviewDate', label: 'Recordarme revisarlo', kind: 'date' },
     ],
