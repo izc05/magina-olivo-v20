@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const fieldId = 'dddddddd-4444-4444-8444-dddddddddddd';
+const apiUrl = 'http://127.0.0.1:3001';
 
 const routes = [
   '/',
@@ -16,7 +17,7 @@ const routes = [
 ];
 
 test.beforeAll(async ({ request }) => {
-  const response = await request.post('/api/v1/fields', {
+  const response = await request.post(`${apiUrl}/api/v1/fields`, {
     data: {
       client_operation_id: 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee',
       entity_id: fieldId,
