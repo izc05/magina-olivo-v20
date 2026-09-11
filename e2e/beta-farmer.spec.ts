@@ -70,6 +70,8 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   await page.goto('/mi-campo/campana');
   await expect(page.getByRole('heading', { name: 'Campaña' })).toBeVisible();
   await expect(page.getByRole('combobox')).toContainText('2026/27');
-  await expect(page.getByText('1.842 kg', { exact: false })).toBeVisible();
-  await expect(page.getByText('21,4 %', { exact: false })).toBeVisible();
+  const deliveredMetric = page.locator('article').filter({ hasText: 'aceituna entregada' }).first();
+  await expect(deliveredMetric.getByText('1.842 kg', { exact: true })).toBeVisible();
+  const yieldMetric = page.locator('article').filter({ hasText: 'rendimiento ponderado' }).first();
+  await expect(yieldMetric.getByText('21,4 %', { exact: true })).toBeVisible();
 });
