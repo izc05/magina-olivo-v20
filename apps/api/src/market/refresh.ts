@@ -16,6 +16,7 @@ export type MarketRefreshPlan = {
   candidateRevision: string;
   currentThrough: string | null;
   candidateThrough: string;
+  historicalCorrections: number;
   snapshot: OliveOilMarketSnapshot;
 };
 
@@ -37,6 +38,18 @@ function comparablePoints(snapshot: OliveOilMarketSnapshot): Map<string, number>
     }
   }
   return values;
+}
+
+function changedOverlappingPoints(current: OliveOilMarketSnapshot, candidate: OliveOilMarketSnapshot): string[] {
+  const currentValues = comparablePoints(current);
+  const changed: string[] = [];
+  for (const series of candidate.series) {
+    for (const point of series.points) {
+      const key = `${series.id}:${point.periodStart}:${point.periodEnd}`;
+      if (currentValues.has(key) && currentValues.get(key) !== point.priceEurKg) changed.push(key);
+    }
+  }
+  return changed;
 }
 
 function candidateMatchesCurrent(current: OliveOilMarketSnapshot, candidate: OliveOilMarketSnapshot): boolean {
@@ -80,6 +93,7 @@ export function planOliveOilMarketRefresh(
       candidateRevision: candidate.revision,
       currentThrough: null,
       candidateThrough: candidate.period.end,
+      historicalCorrections: 0,
       snapshot: candidate,
     };
   }
@@ -88,6 +102,8 @@ export function planOliveOilMarketRefresh(
     throw new Error(`market_source_regression:${candidate.period.end}:${current.period.end}`);
   }
 
+  const historicalCorrections = changedOverlappingPoints(current, candidate).length;
+
   if (candidate.period.end > current.period.end) {
     return {
       kind: 'new-period',
@@ -95,6 +111,7 @@ export function planOliveOilMarketRefresh(
       candidateRevision: candidate.revision,
       currentThrough: current.period.end,
       candidateThrough: candidate.period.end,
+      historicalCorrections,
       snapshot: candidate,
     };
   }
@@ -106,6 +123,7 @@ export function planOliveOilMarketRefresh(
       candidateRevision: current.revision,
       currentThrough: current.period.end,
       candidateThrough: candidate.period.end,
+      historicalCorrections: 0,
       snapshot: current,
     };
   }
@@ -117,13 +135,26 @@ export function planOliveOilMarketRefresh(
     candidateRevision: corrected.revision,
     currentThrough: current.period.end,
     candidateThrough: corrected.period.end,
+    historicalCorrections,
     snapshot: corrected,
   };
 }
 
+export function assertMarketRefreshApplyAllowed(
+  plan: MarketRefreshPlan,
+  allowCorrections = false,
+): void {
+  const correctionDetected = plan.kind === 'correction' || plan.historicalCorrections > 0;
+  if (correctionDetected && !allowCorrections) {
+    throw new Error(
+      `market_refresh_correction_requires_approval:${plan.kind}:${plan.historicalCorrections}`,
+    );
+  }
+}
+
 export async function refreshOliveOilMarketFromJunta(
   db: DatabaseClient,
-  options: { apply?: boolean; now?: Date } = {},
+  options: { apply?: boolean; now?: Date; allowCorrections?: boolean } = {},
 ): Promise<MarketRefreshPlan & { applied: boolean }> {
   const candidate = await fetchJuntaOliveOilMarketSnapshot();
   const currentHistory = await loadPersistedOliveOilMarketHistory(db, 52);
@@ -131,6 +162,9 @@ export async function refreshOliveOilMarketFromJunta(
   const plan = planOliveOilMarketRefresh(current, candidate, options.now);
   const shouldApply = options.apply === true && plan.kind !== 'unchanged';
 
-  if (shouldApply) await upsertOliveOilMarketSnapshot(db, plan.snapshot);
+  if (shouldApply) {
+    assertMarketRefreshApplyAllowed(plan, options.allowCorrections === true);
+    await upsertOliveOilMarketSnapshot(db, plan.snapshot);
+  }
   return { ...plan, applied: shouldApply };
 }
