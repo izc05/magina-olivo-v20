@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('agricultor crea finca, registra trabajo y lo ve reflejado', async ({ page }) => {
+test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ page }) => {
   await page.goto('/mi-campo/fincas/nueva');
 
   await expect(page.getByRole('heading', { name: '¿Cómo llamáis a esta finca?' })).toBeVisible();
@@ -8,7 +8,6 @@ test('agricultor crea finca, registra trabajo y lo ve reflejado', async ({ page 
   await page.getByLabel('Nº de olivas *').fill('120');
 
   const placeSelect = page.getByLabel('Pueblo / localidad');
-  await expect(placeSelect).toBeEnabled();
   await expect.poll(async () => placeSelect.locator('option').count()).toBeGreaterThan(1);
   await placeSelect.selectOption({ index: 1 });
 
@@ -19,6 +18,11 @@ test('agricultor crea finca, registra trabajo y lo ve reflejado', async ({ page 
   await page.getByRole('button', { name: 'Guardar finca →' }).click();
   await expect(page.getByText('FINCA GUARDADA EN MI CAMPO')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Finca E2E' })).toBeVisible();
+
+  const registerHref = await page.getByRole('link', { name: /Registrar trabajo/ }).getAttribute('href');
+  expect(registerHref).toBeTruthy();
+  const fieldId = new URL(registerHref!, 'http://127.0.0.1:3000').searchParams.get('fieldId');
+  expect(fieldId).toBeTruthy();
 
   await page.getByRole('link', { name: /Registrar trabajo/ }).click();
   await expect(page.getByRole('heading', { name: '¿Qué quieres registrar?' })).toBeVisible();
@@ -35,9 +39,28 @@ test('agricultor crea finca, registra trabajo y lo ve reflejado', async ({ page 
   await page.getByRole('button', { name: 'Guardar trabajo →' }).click();
 
   await expect(page.getByRole('heading', { name: 'Trabajo registrado' })).toBeVisible();
-  await page.getByRole('link', { name: 'Volver a Mi Campo' }).click();
-  await expect(page.getByText('Finca E2E')).toBeVisible();
 
+  await page.goto(`/mi-campo/registrar/cosecha?fieldId=${encodeURIComponent(fieldId!)}&source=api`);
+  await expect(page.getByRole('heading', { name: 'Registrar entrega' })).toBeVisible();
+  await page.locator('input[name="date"]').fill('2026-12-12');
+  await page.locator('input[name="kg"]').fill('1842');
+  await page.locator('input[name="cooperative"]').fill('SCA E2E');
+  await page.locator('input[name="ticket"]').fill('E2E-001');
+  await page.getByRole('button', { name: 'Guardar entrega →' }).click();
+  await expect(page.getByText('COSECHA GUARDADA EN MÁGINA')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /1\.842 kg en Finca E2E/ })).toBeVisible();
+
+  await page.goto(`/mi-campo/registrar/rendimiento?fieldId=${encodeURIComponent(fieldId!)}&source=api`);
+  await expect(page.getByRole('heading', { name: 'Registrar rendimiento' })).toBeVisible();
+  await expect(page.getByRole('combobox')).toContainText('1.842 kg');
+  await page.locator('input[name="date"]').fill('2026-12-15');
+  await page.locator('input[name="yield"]').fill('21.4');
+  await page.locator('input[name="moisture"]').fill('0.2');
+  await page.getByRole('button', { name: 'Guardar rendimiento →' }).click();
+  await expect(page.getByRole('heading', { name: 'Rendimiento guardado' })).toBeVisible();
+
+  await page.goto('/mi-campo');
+  await expect(page.getByText('Finca E2E')).toBeVisible();
   await page.getByRole('link', { name: /Finca E2E/ }).click();
   await expect(page.getByRole('heading', { name: 'Finca E2E' })).toBeVisible();
   const workMetric = page.locator('article').filter({ hasText: 'trabajos registrados' }).first();
@@ -46,4 +69,6 @@ test('agricultor crea finca, registra trabajo y lo ve reflejado', async ({ page 
   await page.goto('/mi-campo/campana');
   await expect(page.getByRole('heading', { name: 'Campaña' })).toBeVisible();
   await expect(page.getByRole('combobox')).toContainText('2026/27');
+  await expect(page.getByText('1.842 kg', { exact: false })).toBeVisible();
+  await expect(page.getByText('21,4 %', { exact: false })).toBeVisible();
 });
