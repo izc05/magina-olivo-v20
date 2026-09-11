@@ -4,6 +4,9 @@ import cors from '@fastify/cors';
 import type { DatabaseClient } from './db/client.js';
 import { hydrateRequestAuthentication, prototypeAuthWarning } from './request-context.js';
 import { registerAuthRoutes } from './routes/auth.js';
+import { registerAdminRoutes } from './routes/admin.js';
+import { registerAdminMediaRoutes } from './routes/admin-media.js';
+import { registerAdminTerritoryRoutes } from './routes/admin-territory.js';
 import { registerMeRoutes } from './routes/me.js';
 import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerFieldRoutes } from './routes/fields.js';
@@ -131,6 +134,9 @@ export function buildApp(dependencies: AppDependencies = {}) {
   }));
 
   registerAuthRoutes(app, db, googleVerifier);
+  registerAdminRoutes(app, db);
+  registerAdminMediaRoutes(app, db, storage);
+  registerAdminTerritoryRoutes(app, db);
   registerMeRoutes(app, db);
   registerMiOlivoRoutes(app, db);
   registerTerritoryRoutes(app, db);
