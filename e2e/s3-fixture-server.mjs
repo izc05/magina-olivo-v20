@@ -9,12 +9,34 @@ function applyCors(request, response) {
   response.setHeader('access-control-allow-origin', request.headers.origin ?? allowedOrigin);
   response.setHeader('access-control-allow-methods', 'PUT, GET, HEAD, OPTIONS');
   response.setHeader('access-control-allow-headers', request.headers['access-control-request-headers'] ?? 'content-type,x-amz-checksum-sha256');
-  response.setHeader('access-control-expose-headers', 'etag,x-amz-checksum-sha256');
+  response.setHeader('access-control-expose-headers', 'etag');
+}
+
+function requestUrl(request) {
+  return new URL(request.url ?? '/', `http://127.0.0.1:${port}`);
 }
 
 function objectKey(request) {
-  const url = new URL(request.url ?? '/', `http://127.0.0.1:${port}`);
-  return decodeURIComponent(url.pathname);
+  return decodeURIComponent(requestUrl(request).pathname);
+}
+
+function objectMetadata(request) {
+  const metadata = {};
+  const url = requestUrl(request);
+
+  for (const [name, value] of url.searchParams.entries()) {
+    const normalizedName = name.toLowerCase();
+    if (normalizedName.startsWith('x-amz-meta-')) {
+      metadata[normalizedName.slice('x-amz-meta-'.length)] = value;
+    }
+  }
+
+  for (const [name, value] of Object.entries(request.headers)) {
+    if (!name.startsWith('x-amz-meta-') || typeof value !== 'string') continue;
+    metadata[name.slice('x-amz-meta-'.length)] = value;
+  }
+
+  return metadata;
 }
 
 const server = createServer((request, response) => {
@@ -51,6 +73,7 @@ const server = createServer((request, response) => {
         body,
         checksum,
         etag,
+        metadata: objectMetadata(request),
         contentType: request.headers['content-type'] ?? 'application/octet-stream',
       });
       response.writeHead(200, {
@@ -73,8 +96,10 @@ const server = createServer((request, response) => {
     'content-length': String(stored.body.length),
     'content-type': stored.contentType,
     etag: `"${stored.etag}"`,
-    'x-amz-checksum-sha256': stored.checksum,
   };
+  for (const [name, value] of Object.entries(stored.metadata)) {
+    headers[`x-amz-meta-${name}`] = value;
+  }
 
   if (request.method === 'HEAD') {
     response.writeHead(200, headers);
@@ -83,7 +108,7 @@ const server = createServer((request, response) => {
   }
 
   if (request.method === 'GET') {
-    response.writeHead(200, headers);
+    response.writeHead(200, { ...headers, 'x-amz-checksum-sha256': stored.checksum });
     response.end(stored.body);
     return;
   }
