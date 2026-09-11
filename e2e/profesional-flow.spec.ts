@@ -73,7 +73,7 @@ test('recorre cliente, presupuesto, trabajo, factura, documento y cobro', async 
   await quoteCard.getByRole('button', { name: 'Convertir a trabajo' }).click();
 
   await expect(page.getByRole('heading', { name: 'Convertir presupuesto aceptado' })).toBeVisible();
-  await page.getByLabel('Finca / sitio', { exact: true }).selectOption(siteId);
+  await page.getByRole('combobox', { name: 'Finca / sitio', exact: true }).selectOption(siteId);
   await page.getByLabel('Fecha trabajo').fill('2026-09-12');
   await page.getByLabel('Coste real mano de obra').fill('20');
   await page.getByLabel('Otros costes reales').fill('5');
