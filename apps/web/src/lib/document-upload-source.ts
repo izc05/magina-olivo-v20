@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 
-export type DocumentKind = 'delivery_ticket' | 'yield_result' | 'invoice' | 'purchase_receipt' | 'quote' | 'treatment' | 'fertilization' | 'irrigation' | 'pruning' | 'observation' | 'work_report' | 'land_reference' | 'photo' | 'other';
+export type DocumentKind = 'delivery_ticket' | 'yield_result' | 'settlement_statement' | 'collection_receipt' | 'invoice' | 'purchase_receipt' | 'quote' | 'treatment' | 'fertilization' | 'irrigation' | 'pruning' | 'observation' | 'work_report' | 'land_reference' | 'photo' | 'other';
 
 type ReserveResponse = {
   document: { id: string };
