@@ -116,6 +116,15 @@ jobs:
 
           curl -fsS http://127.0.0.1:3001/health
           curl -fsS http://127.0.0.1:3000/ >/dev/null
+
+          curl -fsS -D /tmp/private-headers.txt -o /dev/null \
+            -H 'x-workspace-id: aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa' \
+            -H 'x-user-id: bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb' \
+            http://127.0.0.1:3001/api/v1/me
+          grep -Eiq '^cache-control: no-store' /tmp/private-headers.txt
+          grep -Eiq '^x-content-type-options: nosniff' /tmp/private-headers.txt
+          grep -Eiq '^x-frame-options: DENY' /tmp/private-headers.txt
+
           pnpm e2e:beta
 
       - name: Upload Playwright failure traces
