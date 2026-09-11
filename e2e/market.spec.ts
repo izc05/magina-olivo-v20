@@ -37,7 +37,7 @@ test.describe('Aceite y Mercado', () => {
     expect(cached.status()).toBe(304);
   });
 
-  test('muestra precios trazables hidratados desde API y no desborda en móvil', async ({ page, request }) => {
+  test('muestra precios trazables, lectura rápida y no desborda en móvil', async ({ page, request }) => {
     const apiResponse = await request.get(`${apiUrl}/api/v1/public/market/olive-oil`);
     const payload = (await apiResponse.json()) as {
       market: { series: Array<{ latest: { priceEurKg: number } }> };
@@ -57,6 +57,12 @@ test.describe('Aceite y Mercado', () => {
       });
       await expect(page.getByText(formattedPrice, { exact: true }).first()).toBeVisible();
     }
+
+    await expect(page.getByRole('heading', { name: 'Qué dicen los datos' })).toBeVisible();
+    await expect(page.getByText('-7,6%', { exact: true })).toBeVisible();
+    await expect(page.getByText('3,42–3,76 €/kg', { exact: true })).toBeVisible();
+    await expect(page.getByText('0,25 €/kg', { exact: true })).toBeVisible();
+    await expect(page.getByText('No es una previsión de precios.', { exact: false })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Ver fuente oficial' })).toHaveAttribute('href', /juntadeandalucia\.es/);
 
     const dimensions = await page.evaluate(() => ({
