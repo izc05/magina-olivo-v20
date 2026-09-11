@@ -18,6 +18,17 @@ function asData(entry: CmsEntry): PromotionData {
     : {};
 }
 
+function safePublicUrl(value: string | null | undefined) {
+  if (!value) return null;
+  if (value.startsWith('/') && !value.startsWith('//')) return value;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function ManagedAdSlot({ slot }: { slot: ManagedAdSlotName }) {
   const [entries, setEntries] = useState<CmsEntry[]>([]);
 
@@ -35,8 +46,10 @@ export function ManagedAdSlot({ slot }: { slot: ManagedAdSlotName }) {
   if (!promotion) return null;
 
   const data = asData(promotion);
+  const mediaUrl = safePublicUrl(promotion.media_url);
+  const externalUrl = safePublicUrl(promotion.external_url);
   const content = <article className="card managed-ad-slot">
-    {promotion.media_url ? <div className="managed-ad-slot-media" style={{ backgroundImage: `url(${promotion.media_url})` }} /> : null}
+    {mediaUrl ? <div className="managed-ad-slot-media" style={{ backgroundImage: `url(${mediaUrl})` }} /> : null}
     <div className="managed-ad-slot-copy">
       <span>PATROCINADO{data.sponsor ? ` · ${data.sponsor}` : ''}</span>
       <h3>{promotion.title}</h3>
@@ -45,6 +58,6 @@ export function ManagedAdSlot({ slot }: { slot: ManagedAdSlotName }) {
     </div>
   </article>;
 
-  if (promotion.external_url) return <section className="section managed-ad-slot-wrap" aria-label="Publicidad"><a href={promotion.external_url} target="_blank" rel="noreferrer sponsored" className="managed-ad-slot-link">{content}</a></section>;
+  if (externalUrl) return <section className="section managed-ad-slot-wrap" aria-label="Publicidad"><a href={externalUrl} target="_blank" rel="noreferrer sponsored" className="managed-ad-slot-link">{content}</a></section>;
   return <section className="section managed-ad-slot-wrap" aria-label="Publicidad">{content}</section>;
 }
