@@ -74,9 +74,21 @@ async function intentStillAllowed(pool: Pool, intent: IntentRow) {
       LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN financial_notification_preferences fnp
         ON fnp.user_id = u.id AND fnp.workspace_id = wm.workspace_id
+      LEFT JOIN agronomy_alert_preferences aap
+        ON aap.user_id = u.id AND aap.workspace_id = wm.workspace_id
       WHERE u.id = $1
         AND u.status = 'active'
         AND ($3 <> 'radar_observed_echo' OR COALESCE(up.weather_alerts, true) = true)
+        AND (
+          $3 <> 'agronomy_task_warning'
+          OR (
+            COALESCE(aap.enabled, false) = true
+            AND (
+              COALESCE(($4->>'suitability') = 'avoid', false) AND COALESCE(aap.notify_avoid, false) = true
+              OR COALESCE(($4->>'suitability') = 'caution', false) AND COALESCE(aap.notify_caution, false) = true
+            )
+          )
+        )
         AND (
           $3 NOT IN ('financial_collection_pending','document_ocr_failed','document_review_pending')
           OR (
@@ -87,7 +99,7 @@ async function intentStillAllowed(pool: Pool, intent: IntentRow) {
           )
         )
     ) AS allowed
-  `, [intent.user_id, intent.workspace_id, intent.kind]);
+  `, [intent.user_id, intent.workspace_id, intent.kind, intent.payload_json ?? {}]);
   return result.rows[0]?.allowed === true;
 }
 
@@ -175,12 +187,7 @@ async function recordSuccess(pool: Pool, deliveryId: string, statusCode: number 
   `, [deliveryId, statusCode]);
 }
 
-async function recordFailure(
-  pool: Pool,
-  delivery: DeliveryRow,
-  attempt: number,
-  result: PushSendResult,
-) {
+async function recordFailure(pool: Pool, delivery: DeliveryRow, attempt: number, result: PushSendResult) {
   const terminal = result.permanentFailure || attempt >= MAX_ATTEMPTS;
   const nextAttempt = new Date(Date.now() + retryDelaySeconds(attempt, result) * 1000);
   await pool.query(`
@@ -192,13 +199,7 @@ async function recordFailure(
         claimed_at = NULL,
         updated_at = now()
     WHERE id = $1
-  `, [
-    delivery.delivery_id,
-    terminal ? 'permanent_failed' : 'retryable_failed',
-    result.statusCode,
-    terminal && !result.permanentFailure ? 'retries_exhausted' : result.errorCode,
-    nextAttempt,
-  ]);
+  `, [delivery.delivery_id, terminal ? 'permanent_failed' : 'retryable_failed', result.statusCode, terminal && !result.permanentFailure ? 'retries_exhausted' : result.errorCode, nextAttempt]);
 
   if (result.statusCode === 404 || result.statusCode === 410) {
     await pool.query(`
@@ -215,16 +216,11 @@ async function recordFailure(
       WHERE id = $1
     `, [delivery.subscription_id, result.errorCode]);
   }
-
   return terminal;
 }
 
 async function finalizeIntent(pool: Pool, intentId: string) {
-  const counts = await pool.query<{
-    sent: number | string;
-    active: number | string;
-    permanent: number | string;
-  }>(`
+  const counts = await pool.query<{ sent: number | string; active: number | string; permanent: number | string }>(`
     SELECT
       count(*) FILTER (WHERE status = 'sent')::int AS sent,
       count(*) FILTER (WHERE status IN ('pending','sending','retryable_failed'))::int AS active,
@@ -238,23 +234,14 @@ async function finalizeIntent(pool: Pool, intentId: string) {
     await pool.query(`UPDATE notification_intents SET status = 'dispatched', dispatched_at = now() WHERE id = $1`, [intentId]);
     return;
   }
-  if (Number(row?.permanent ?? 0) > 0) {
-    await pool.query(`UPDATE notification_intents SET status = 'failed' WHERE id = $1`, [intentId]);
-  }
+  if (Number(row?.permanent ?? 0) > 0) await pool.query(`UPDATE notification_intents SET status = 'failed' WHERE id = $1`, [intentId]);
 }
 
-export async function runNotificationDispatchJob(
-  pool: Pool,
-  sender: PushSenderPort,
-  rawJob: NotificationDispatchJobPayload,
-): Promise<NotificationDispatchOutcome> {
+export async function runNotificationDispatchJob(pool: Pool, sender: PushSenderPort, rawJob: NotificationDispatchJobPayload): Promise<NotificationDispatchOutcome> {
   const job = notificationDispatchJobPayloadSchema.parse(rawJob);
   const params: unknown[] = [];
   let where = `status = 'pending' AND channel = 'push'`;
-  if (job.intent_id) {
-    params.push(job.intent_id);
-    where += ` AND id = $${params.length}`;
-  }
+  if (job.intent_id) { params.push(job.intent_id); where += ` AND id = $${params.length}`; }
   params.push(job.limit);
 
   const intents = await pool.query<IntentRow>(`
@@ -265,27 +252,12 @@ export async function runNotificationDispatchJob(
     LIMIT $${params.length}
   `, params);
 
-  const outcome: NotificationDispatchOutcome = {
-    intentsScanned: intents.rows.length,
-    deliveriesSent: 0,
-    retryableFailures: 0,
-    permanentFailures: 0,
-    suppressed: 0,
-  };
+  const outcome: NotificationDispatchOutcome = { intentsScanned: intents.rows.length, deliveriesSent: 0, retryableFailures: 0, permanentFailures: 0, suppressed: 0 };
 
   for (const intent of intents.rows) {
-    if (!(await intentStillAllowed(pool, intent))) {
-      await suppressIntent(pool, intent.id);
-      outcome.suppressed += 1;
-      continue;
-    }
-
+    if (!(await intentStillAllowed(pool, intent))) { await suppressIntent(pool, intent.id); outcome.suppressed += 1; continue; }
     const subscriptions = await activeSubscriptions(pool, intent);
-    if (subscriptions.rows.length === 0) {
-      await suppressIntent(pool, intent.id);
-      outcome.suppressed += 1;
-      continue;
-    }
+    if (subscriptions.rows.length === 0) { await suppressIntent(pool, intent.id); outcome.suppressed += 1; continue; }
 
     await createDeliveryRows(pool, intent, subscriptions.rows.map((row) => row.id));
     const due = await dueDeliveries(pool, intent.id);
@@ -295,38 +267,16 @@ export async function runNotificationDispatchJob(
       const claimed = await claimDelivery(pool, delivery.delivery_id);
       const attempt = claimed.rows[0]?.attempt_count;
       if (!attempt) continue;
-
       let result: PushSendResult;
       try {
-        result = await sender.send({
-          id: delivery.subscription_id,
-          endpoint: delivery.endpoint,
-          expirationTime: delivery.expiration_time ? new Date(delivery.expiration_time).getTime() : null,
-          p256dh: delivery.p256dh,
-          auth: delivery.auth_secret,
-        }, message);
+        result = await sender.send({ id: delivery.subscription_id, endpoint: delivery.endpoint, expirationTime: delivery.expiration_time ? new Date(delivery.expiration_time).getTime() : null, p256dh: delivery.p256dh, auth: delivery.auth_secret }, message);
       } catch {
-        result = {
-          ok: false,
-          statusCode: null,
-          permanentFailure: false,
-          errorCode: 'push_network_error',
-          retryAfterSeconds: null,
-        };
+        result = { ok: false, statusCode: null, permanentFailure: false, errorCode: 'push_network_error', retryAfterSeconds: null };
       }
-
-      if (result.ok) {
-        await recordSuccess(pool, delivery.delivery_id, result.statusCode);
-        outcome.deliveriesSent += 1;
-      } else {
-        const terminal = await recordFailure(pool, delivery, attempt, result);
-        if (terminal) outcome.permanentFailures += 1;
-        else outcome.retryableFailures += 1;
-      }
+      if (result.ok) { await recordSuccess(pool, delivery.delivery_id, result.statusCode); outcome.deliveriesSent += 1; }
+      else { const terminal = await recordFailure(pool, delivery, attempt, result); if (terminal) outcome.permanentFailures += 1; else outcome.retryableFailures += 1; }
     }
-
     await finalizeIntent(pool, intent.id);
   }
-
   return outcome;
 }
