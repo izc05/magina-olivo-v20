@@ -31,8 +31,10 @@ test('sube y verifica un documento real contra storage controlado', async ({ pag
   const documentCatalog = page.locator('section.section').filter({
     has: page.getByRole('heading', { name: 'Documentos recientes', exact: true }),
   });
+  const uploadedDocument = documentCatalog.getByText(title, { exact: true });
   await expect(documentCatalog).toBeVisible();
-  await expect(documentCatalog.getByText(title, { exact: true })).toBeVisible();
+  await expect(uploadedDocument).toHaveCount(1);
+  await expect(uploadedDocument).toBeVisible();
 });
 
 test('revisa OCR, corrige kilos y abre entrega prellenada', async ({ page }) => {
