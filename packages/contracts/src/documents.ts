@@ -21,6 +21,7 @@ export const documentKindSchema = z.enum([
 export const createDocumentSchema = clientOperationSchema.extend({
   version_id: uuidSchema.optional(),
   field_id: uuidSchema.optional(),
+  campaign_id: uuidSchema.optional(),
   domain_type: z.string().trim().min(1).max(120).optional(),
   domain_record_id: uuidSchema.optional(),
   relation: z.string().trim().min(1).max(80).default('attachment'),
