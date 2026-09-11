@@ -117,10 +117,15 @@ export function HomeDailyCenter() {
     const workspaceId = selectedWorkspaceId;
     let cancelled = false;
 
+    setWeather(null);
+    setRecentActivity([]);
+    setWeatherError(false);
+    setActivityError(false);
+
     async function loadFocusContext() {
       const [weatherResult, activityResult] = await Promise.allSettled([
-        loadHomeWeather(workspaceId, focusFarm!.id),
-        loadHomeRecentActivity(workspaceId, focusFarm!.id, 4),
+        loadHomeWeather(workspaceId, focusFarm.id),
+        loadHomeRecentActivity(workspaceId, focusFarm.id, 4),
       ]);
       if (cancelled) return;
 
