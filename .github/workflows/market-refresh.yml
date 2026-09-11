@@ -58,7 +58,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Resolve guarded refresh mode
-        id: refresh-mode
+        id: refresh_mode
         shell: bash
         env:
           DISPATCH_MODE: ${{ inputs.mode }}
@@ -110,8 +110,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mode="${{ steps.refresh-mode.outputs.mode }}"
-          allow_corrections="${{ steps.refresh-mode.outputs.allow_corrections }}"
+          mode="${{ steps.refresh_mode.outputs.mode }}"
+          allow_corrections="${{ steps.refresh_mode.outputs.allow_corrections }}"
 
           case "$mode" in
             source-check)
@@ -137,8 +137,8 @@ jobs:
             echo "## Aceite y Mercado · refresh"
             echo
             echo "- Event: \`$GITHUB_EVENT_NAME\`"
-            echo "- Mode: \`${{ steps.refresh-mode.outputs.mode || 'not-resolved' }}\`"
-            echo "- Corrections approved: \`${{ steps.refresh-mode.outputs.allow_corrections || 'false' }}\`"
+            echo "- Mode: \`${{ steps.refresh_mode.outputs.mode || 'not-resolved' }}\`"
+            echo "- Corrections approved: \`${{ steps.refresh_mode.outputs.allow_corrections || 'false' }}\`"
             echo
             if [[ -f market-refresh-result.json ]]; then
               echo '```json'
