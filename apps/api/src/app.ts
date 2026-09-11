@@ -20,6 +20,7 @@ import { registerAttentionRoutes } from './routes/attention.js';
 import { registerPlannedTaskRoutes } from './routes/planned-tasks.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerDocumentAccessRoutes } from './routes/document-access.js';
+import { registerDocumentCatalogRoutes } from './routes/document-catalog.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
 import { registerWeatherRoutes } from './routes/weather.js';
@@ -102,6 +103,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerProfessionalRoutes(app, db);
   registerDocumentRoutes(app, db, storage, ocrQueue);
   registerDocumentAccessRoutes(app, db, storage);
+  registerDocumentCatalogRoutes(app, db);
   registerGisRoutes(app, db, gisProviders);
 
   return app;
