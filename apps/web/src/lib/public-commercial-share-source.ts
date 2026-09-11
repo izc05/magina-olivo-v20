@@ -18,14 +18,45 @@ export type PublicCommercialShare = {
   file_path: string;
 };
 
+export type PublicShareAccessKind = 'missing' | 'expired' | 'revoked' | 'unavailable';
+
+export class PublicShareAccessError extends Error {
+  kind: PublicShareAccessKind;
+  status: number | null;
+
+  constructor(kind: PublicShareAccessKind, status: number | null = null) {
+    super(kind);
+    this.name = 'PublicShareAccessError';
+    this.kind = kind;
+    this.status = status;
+  }
+}
+
+type PublicErrorPayload = { error?: string };
+
+function classifyAccessError(status: number, payload: unknown): PublicShareAccessKind {
+  const error = typeof payload === 'object' && payload !== null && 'error' in payload
+    ? String((payload as PublicErrorPayload).error ?? '')
+    : '';
+  if (error === 'share_link_expired') return 'expired';
+  if (error === 'share_link_revoked') return 'revoked';
+  if (status === 404) return 'missing';
+  return 'unavailable';
+}
+
 async function publicFetch<T>(path: string, init?: RequestInit) {
-  if (!apiBaseUrl) throw new Error('api_unavailable');
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
-  });
+  if (!apiBaseUrl) throw new PublicShareAccessError('unavailable');
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      ...init,
+      headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+    });
+  } catch {
+    throw new PublicShareAccessError('unavailable');
+  }
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw Object.assign(new Error('public_share_request_failed'), { status: response.status, payload });
+  if (!response.ok) throw new PublicShareAccessError(classifyAccessError(response.status, payload), response.status);
   return payload as T;
 }
 
