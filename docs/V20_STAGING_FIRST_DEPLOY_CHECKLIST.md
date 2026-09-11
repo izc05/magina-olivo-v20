@@ -34,7 +34,7 @@ Estructura de releases:
 
 ## 2. Dominios HTTPS
 
-Definir dos orígenes reales y distintos:
+Definir dos orígenes reales y distintos, preferiblemente subdominios del mismo sitio registrable para conservar la protección `SameSite=Lax` de la sesión:
 
 ```text
 WEB = https://<dominio-staging>
@@ -210,10 +210,10 @@ El workflow debe completar:
 4. validación SSH;
 5. prerequisitos del host;
 6. release inmutable;
-7. backup previo si PostgreSQL ya está activo;
+7. arranque aislado de PostgreSQL y **backup obligatorio antes de cualquier migración**, aunque el servicio estuviera parado;
 8. build web/API/worker;
 9. migraciones;
-10. health local;
+10. health local de web/API y worker en ejecución;
 11. segunda migración no-op;
 12. smoke HTTPS externo;
 13. actualización de `current` y `CURRENT_SHA`.
@@ -270,7 +270,11 @@ Repetir rutas principales en 360 / 390 / 430 px y comprobar teclado, inputs, map
 
 ## 16. Backup y restore
 
-El deploy crea backup previo cuando detecta PostgreSQL de staging activo. Antes de aprobar Beta hay que demostrar también un **restore** de staging al menos una vez.
+`deploy-host.sh` arranca PostgreSQL **antes** del servicio de migraciones y genera siempre un dump `pg_dump -Fc` pre-migración. Esto protege también una base persistente que estuviera detenida. En una instalación completamente nueva el dump será del esquema inicial vacío, lo cual es intencionado.
+
+Readiness ejecuta el propio script de host y valida que el dump existe, no está vacío y `pg_restore -l` puede leerlo.
+
+Antes de aprobar Beta hay que demostrar además un **restore** de staging al menos una vez.
 
 ## 17. Observabilidad
 

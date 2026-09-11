@@ -42,19 +42,34 @@ docker run --rm \
   node:22-bookworm-slim \
   node scripts/staging-env-preflight.mjs "${ENV_FILE#$ROOT/}"
 
-if [ -n "$(compose ps --status running -q postgres 2>/dev/null || true)" ]; then
-  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-  backup="$BACKUP_DIR/magina-staging-before-$stamp.dump"
-  echo "Creating PostgreSQL backup at $backup"
-  compose exec -T postgres sh -ec 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > "$backup"
-  test -s "$backup"
-  chmod 600 "$backup" 2>/dev/null || true
+echo "Starting PostgreSQL before any migration..."
+compose up -d postgres
+
+postgres_ready=false
+for attempt in $(seq 1 90); do
+  if compose exec -T postgres sh -ec 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' >/dev/null 2>&1; then
+    postgres_ready=true
+    break
+  fi
+  sleep 1
+done
+
+if [ "$postgres_ready" != true ]; then
+  echo "PostgreSQL did not become ready before backup." >&2
+  exit 1
 fi
+
+stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+backup="$BACKUP_DIR/magina-staging-before-$stamp.dump"
+echo "Creating mandatory pre-migration PostgreSQL backup at $backup"
+compose exec -T postgres sh -ec 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > "$backup"
+test -s "$backup"
+chmod 600 "$backup" 2>/dev/null || true
 
 echo "Building staging images..."
 compose build api worker web
 
-echo "Starting PostgreSQL, migrations, API, worker and web..."
+echo "Starting migrations, API, worker and web..."
 compose up -d web worker
 
 api_address="$(compose port api 3001 | tail -n 1)"
@@ -86,6 +101,11 @@ fi
 
 grep -Fx 'ok' /tmp/magina-staging-web-health.txt >/dev/null
 
+if [ -z "$(compose ps --status running -q worker 2>/dev/null || true)" ]; then
+  echo "Staging worker is not running after deployment." >&2
+  exit 1
+fi
+
 echo "Verifying migration runner is a no-op after successful startup..."
 second_run="$(compose run --rm migrate 2>&1)"
 printf '%s\n' "$second_run"
@@ -95,4 +115,4 @@ if printf '%s\n' "$second_run" | grep -F 'Applying /migrations/'; then
 fi
 
 compose ps
-printf 'Local staging health passed. API: http://%s  Web: http://%s\n' "$api_address" "$web_address"
+printf 'Local staging health passed. API: http://%s  Web: http://%s  Backup: %s\n' "$api_address" "$web_address" "$backup"
