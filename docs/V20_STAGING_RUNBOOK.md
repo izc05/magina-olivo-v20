@@ -4,8 +4,8 @@ Estado: runtime de staging reproducible preparado y validado en CI. El último r
 
 En ese SHA quedaron verdes conjuntamente:
 
-- `V20 full candidate check` #2070;
-- `V20 beta browser E2E` #373;
+- `V20 full candidate check` #2070.
+- `V20 beta browser E2E` #373.
 - `V20 staging readiness` #25.
 
 `staging readiness` ya construye las imágenes Docker de API y worker, valida Tesseract/Poppler dentro de la imagen final, arranca PostGIS, aplica todas las migraciones, levanta la API containerizada y comprueba `/health`.
@@ -88,12 +88,23 @@ Editar **todos** los `CHANGE_ME` y revisar que:
 
 - `POSTGRES_PASSWORD` coincide con la contraseña embebida en `DATABASE_URL`;
 - `CORS_ALLOWED_ORIGINS` contiene únicamente el origen web real de staging;
+- `GOOGLE_CLIENT_ID` y `NEXT_PUBLIC_GOOGLE_CLIENT_ID` son el mismo OAuth Web Client ID;
 - `NEXT_PUBLIC_PREVIEW_MODE=false`;
+- `AUTH_COOKIE_SECURE=true`;
 - `ALLOW_DEV_AUTH_HEADERS=false`;
 - `S3_BUCKET` es exclusivo de staging;
 - las credenciales S3 no son las de producción;
-- Google Auth, AEMET y VAPID pertenecen al entorno de staging;
-- `PUBLIC_WEB_ORIGIN` apunta al dominio HTTPS real.
+- Google Auth, AEMET y VAPID pertenecen al entorno de staging.
+
+No añadir `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `PUBLIC_WEB_ORIGIN` ni `OCR_PROCESSOR_MODE`: no pertenecen al contrato de runtime actual.
+
+Antes de arrancar el stack, ejecutar el preflight sobre el archivo privado:
+
+```bash
+node scripts/staging-env-preflight.mjs deploy/staging/.env
+```
+
+El preflight debe terminar en verde. Comprueba flags de producción, coherencia de PostgreSQL, HTTPS/CORS, Google ID-token, bucket aislado, módulos worker y límites OCR, y rechaza placeholders o claves obsoletas.
 
 Nunca versionar `deploy/staging/.env`.
 
@@ -239,6 +250,16 @@ Controles actuales:
 La CI confirma que el procesador se inicializa y que los binarios existen dentro de la imagen. Staging real debe comprobar además un documento real contra el bucket real.
 
 ## Smoke post-deploy
+
+Con la API ya publicada por HTTPS se puede ejecutar la comprobación automática transversal:
+
+```bash
+STAGING_API_URL=https://api-staging.example.com \
+STAGING_WEB_ORIGIN=https://staging.example.com \
+node scripts/staging-postdeploy-smoke.mjs
+```
+
+El smoke comprueba `/health`, CORS permitido/rechazado, cabeceras de seguridad y que los headers de autenticación de desarrollo no sean aceptados en producción.
 
 ### API y seguridad
 
