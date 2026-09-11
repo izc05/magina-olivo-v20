@@ -36,6 +36,11 @@ function isNotFound(error: unknown) {
   return candidate.name === 'NotFound' || candidate.name === 'NoSuchKey' || candidate.$metadata?.httpStatusCode === 404;
 }
 
+function metadataChecksumToBase64(value?: string) {
+  if (!value || !/^[a-f0-9]{64}$/i.test(value)) return undefined;
+  return Buffer.from(value, 'hex').toString('base64');
+}
+
 export class S3CompatibleStorage implements StoragePort {
   private readonly client: S3Client;
   private readonly bucket: string;
@@ -61,7 +66,8 @@ export class S3CompatibleStorage implements StoragePort {
 
   async reserveUpload(input: ReserveUploadInput): Promise<UploadReservation> {
     const storageKey = objectKey(this.prefix, input);
-    const checksumSha256 = Buffer.from(input.sha256, 'hex').toString('base64');
+    const normalizedSha256 = input.sha256.toLowerCase();
+    const checksumSha256 = Buffer.from(normalizedSha256, 'hex').toString('base64');
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: storageKey,
@@ -70,6 +76,7 @@ export class S3CompatibleStorage implements StoragePort {
       Metadata: {
         documentid: input.documentId,
         versionid: input.versionId,
+        sha256: normalizedSha256,
       },
     });
     const uploadUrl = await getSignedUrl(this.client, command, { expiresIn: this.uploadTtlSeconds });
@@ -90,14 +97,13 @@ export class S3CompatibleStorage implements StoragePort {
       const response = await this.client.send(new HeadObjectCommand({
         Bucket: this.bucket,
         Key: storageKey,
-        ChecksumMode: 'ENABLED',
       }));
       return {
         exists: true,
         byteSize: response.ContentLength,
         mimeType: response.ContentType,
         etag: response.ETag?.replace(/^"|"$/g, ''),
-        checksumSha256: response.ChecksumSHA256,
+        checksumSha256: metadataChecksumToBase64(response.Metadata?.sha256),
       };
     } catch (error) {
       if (isNotFound(error)) return { exists: false };

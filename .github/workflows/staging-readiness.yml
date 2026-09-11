@@ -1,0 +1,271 @@
+name: V20 staging readiness
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/request-context.ts'
+      - 'apps/api/src/http/**'
+      - 'apps/api/src/auth/**'
+      - 'apps/api/src/testing/staging-security-smoke.ts'
+      - 'apps/worker/src/server.ts'
+      - 'apps/worker/src/ocr/**'
+      - 'apps/worker/package.json'
+      - 'apps/web/package.json'
+      - 'scripts/check-web-bundle-budget.mjs'
+      - 'scripts/staging-env-preflight.mjs'
+      - 'scripts/staging-postdeploy-smoke.mjs'
+      - '.dockerignore'
+      - 'deploy/staging/**'
+      - '.github/workflows/staging-readiness.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina_staging
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina_staging"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Validate safe staging defaults
+        run: |
+          grep -Fx 'NODE_ENV=production' deploy/staging/.env.example
+          grep -Fx 'POSTGRES_USER=magina_staging' deploy/staging/.env.example
+          grep -Fx 'POSTGRES_DB=magina_staging' deploy/staging/.env.example
+          grep -Fx 'WEB_PORT=8080' deploy/staging/.env.example
+          grep -Fx 'API_PORT=3001' deploy/staging/.env.example
+          grep -Fx 'NEXT_PUBLIC_PREVIEW_MODE=false' deploy/staging/.env.example
+          grep -Fx 'ALLOW_DEV_AUTH_HEADERS=false' deploy/staging/.env.example
+          grep -Fx 'WORKER_MODULES=ocr,radar,notifications' deploy/staging/.env.example
+          grep -Fx 'OCR_PROVIDER=tesseract' deploy/staging/.env.example
+          grep -Eq '^DATABASE_URL=postgresql://[^@]+@postgres:5432/' deploy/staging/.env.example
+          if grep -Eq '^CORS_ALLOWED_ORIGINS=\*($|,)' deploy/staging/.env.example; then
+            echo 'Wildcard CORS is forbidden in staging.' >&2
+            exit 1
+          fi
+          grep -Eq '^S3_BUCKET=.*staging' deploy/staging/.env.example
+
+      - name: Validate staging env preflight
+        run: |
+          if node scripts/staging-env-preflight.mjs deploy/staging/.env.example >/tmp/example-preflight.log 2>&1; then
+            echo 'The committed example must not pass as a real staging environment.' >&2
+            exit 1
+          fi
+
+          cat >/tmp/magina-staging-valid.env <<'EOF'
+          NODE_ENV=production
+          POSTGRES_USER=magina_staging
+          POSTGRES_PASSWORD=staging-ci-password
+          POSTGRES_DB=magina_staging
+          DATABASE_URL=postgresql://magina_staging:staging-ci-password@postgres:5432/magina_staging
+          WEB_PORT=8080
+          API_PORT=3001
+          CORS_ALLOWED_ORIGINS=https://web.staging.magina.invalid
+          NEXT_PUBLIC_API_URL=https://api.staging.magina.invalid
+          NEXT_PUBLIC_PREVIEW_MODE=false
+          GOOGLE_CLIENT_ID=staging-ci-google-client
+          GOOGLE_CLIENT_SECRET=staging-ci-google-secret
+          SESSION_SECRET=staging-ci-session-secret-at-least-32-bytes-long
+          ALLOW_DEV_AUTH_HEADERS=false
+          S3_ENDPOINT=https://s3.staging.magina.invalid
+          S3_REGION=auto
+          S3_BUCKET=magina-staging-ci
+          S3_ACCESS_KEY_ID=staging-ci-access-key
+          S3_SECRET_ACCESS_KEY=staging-ci-secret-key
+          S3_FORCE_PATH_STYLE=false
+          WORKER_MODULES=ocr,radar,notifications
+          OCR_PROVIDER=tesseract
+          OCR_TESSERACT_LANGUAGES=spa+eng
+          OCR_MAX_BYTES=20971520
+          OCR_MAX_PDF_PAGES=12
+          OCR_TESSERACT_TIMEOUT_MS=120000
+          OCR_TESSERACT_DPI=200
+          OCR_TESSERACT_PSM=3
+          VAPID_PUBLIC_KEY=staging-ci-vapid-public
+          VAPID_PRIVATE_KEY=staging-ci-vapid-private
+          VAPID_SUBJECT=mailto:staging@magina.invalid
+          AEMET_API_KEY=staging-ci-aemet
+          PUBLIC_WEB_ORIGIN=https://web.staging.magina.invalid
+          EOF
+
+          node scripts/staging-env-preflight.mjs /tmp/magina-staging-valid.env
+
+      - name: Build API and worker dependencies
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api build
+          pnpm --filter @magina/worker build
+
+      - name: Install staging runtime tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng poppler-utils
+
+      - name: Validate OCR runtime
+        env:
+          OCR_PROVIDER: tesseract
+          S3_ENDPOINT: http://127.0.0.1:9000
+          S3_BUCKET: magina-staging
+          S3_ACCESS_KEY_ID: staging-readiness
+          S3_SECRET_ACCESS_KEY: staging-readiness-secret
+        run: |
+          tesseract --version
+          tesseract --list-langs | grep -Fx 'spa'
+          tesseract --list-langs | grep -Fx 'eng'
+          command -v pdfinfo
+          command -v pdftoppm
+          node --input-type=module <<'NODE'
+          import { createTesseractCliOcrProcessorFromEnv } from './apps/worker/dist/ocr/tesseract-cli.js';
+          if (!createTesseractCliOcrProcessorFromEnv()) throw new Error('Tesseract OCR factory did not initialize.');
+          NODE
+
+      - name: Apply staging migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina_staging -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Production security smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_staging
+          NODE_ENV: production
+          CORS_ALLOWED_ORIGINS: https://staging.example.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+        run: node apps/api/dist/testing/staging-security-smoke.js
+
+      - name: Production web build and bundle budget
+        env:
+          NEXT_PUBLIC_API_URL: https://api-staging.example.test
+          NEXT_PUBLIC_PREVIEW_MODE: 'false'
+        run: pnpm --filter @magina/web build
+
+      - name: Validate staging compose
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            config > /tmp/magina-staging-compose.yml
+          test -s /tmp/magina-staging-compose.yml
+
+      - name: Build staging images
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            build api worker web
+
+      - name: Validate OCR inside worker image
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            run --rm --no-deps --entrypoint /bin/sh worker -ec '
+              tesseract --version >/dev/null
+              tesseract --list-langs | grep -Fx spa
+              tesseract --list-langs | grep -Fx eng
+              command -v pdfinfo
+              command -v pdftoppm
+            '
+
+      - name: Validate API origin embedded in web image
+        run: |
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            run --rm --no-deps --entrypoint /bin/sh web -ec \
+            "grep -R -F 'https://api-staging.example.com' /usr/share/nginx/html/_next >/dev/null"
+
+      - name: Smoke staging containers and migration repeatability
+        run: |
+          compose() {
+            docker compose \
+              --env-file deploy/staging/.env.example \
+              -f deploy/staging/docker-compose.yml "$@"
+          }
+          cleanup() { compose down -v --remove-orphans || true; }
+          trap cleanup EXIT
+
+          compose up -d web
+          api_ready=false
+          web_ready=false
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:3001/health >/tmp/staging-health.json; then
+              api_ready=true
+            fi
+            if curl -fsS http://127.0.0.1:8080/healthz >/tmp/staging-web-health.txt; then
+              web_ready=true
+            fi
+            if [ "$api_ready" = true ] && [ "$web_ready" = true ]; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$api_ready" != true ] || [ "$web_ready" != true ]; then
+            compose ps
+            compose logs --no-color postgres migrate api web
+            exit 1
+          fi
+
+          cat /tmp/staging-health.json
+          grep -Fx 'ok' /tmp/staging-web-health.txt
+          curl -fsS http://127.0.0.1:8080/ >/tmp/staging-web-index.html
+          test -s /tmp/staging-web-index.html
+          curl -fsSI http://127.0.0.1:8080/ | tr -d '\r' | grep -Fi 'X-Frame-Options: DENY'
+          curl -fsSI http://127.0.0.1:8080/ | tr -d '\r' | grep -Fi 'X-Content-Type-Options: nosniff'
+
+          STAGING_API_URL=http://127.0.0.1:3001 \
+          STAGING_WEB_ORIGIN=https://staging.example.com \
+          STAGING_ALLOW_HTTP=true \
+          node scripts/staging-postdeploy-smoke.mjs
+
+          second_migration_run="$(compose run --rm migrate 2>&1)"
+          printf '%s\n' "$second_migration_run"
+          if printf '%s\n' "$second_migration_run" | grep -F 'Applying /migrations/'; then
+            echo 'Second migration run attempted to reapply an existing migration.' >&2
+            exit 1
+          fi
+
+          expected_count="$(find database/migrations -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')"
+          applied_count="$(compose exec -T postgres psql -U magina_staging -d magina_staging -Atc "SELECT count(*) FROM public.schema_migrations WHERE status='applied';")"
+          test "$applied_count" = "$expected_count"
