@@ -1,16 +1,55 @@
 import { expect, test } from '@playwright/test';
 
+const apiUrl = 'http://127.0.0.1:3001';
+
 test.describe('Aceite y Mercado', () => {
   test.use({ viewport: { width: 360, height: 844 } });
 
-  test('muestra precios trazables y no desborda en móvil', async ({ page }) => {
+  test('expone un snapshot público trazable y cacheable', async ({ request }) => {
+    const response = await request.get(`${apiUrl}/api/v1/public/market/olive-oil`);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['cache-control']).toContain('public');
+    expect(response.headers().etag).toBe('"junta-andalucia-olive-oil-2026-w36-v1"');
+
+    const payload = (await response.json()) as {
+      market: {
+        schemaVersion: number;
+        revision: string;
+        period: { week: number; end: string };
+        source: { publishedOn: string; validatedThrough: string };
+        series: Array<{ id: string; latest: { priceEurKg: number } }>;
+      };
+    };
+
+    expect(payload.market.schemaVersion).toBe(1);
+    expect(payload.market.revision).toBe('junta-andalucia-olive-oil-2026-w36-v1');
+    expect(payload.market.period).toMatchObject({ week: 36, end: '2026-09-06' });
+    expect(payload.market.source).toMatchObject({ publishedOn: '2026-09-09', validatedThrough: '2026-09-06' });
+    expect(payload.market.series.map((entry) => [entry.id, entry.latest.priceEurKg])).toEqual([
+      ['virgen-extra', 3.42],
+      ['virgen', 3.25],
+      ['lampante', 3.17],
+    ]);
+
+    const cached = await request.get(`${apiUrl}/api/v1/public/market/olive-oil`, {
+      headers: { 'if-none-match': response.headers().etag },
+    });
+    expect(cached.status()).toBe(304);
+  });
+
+  test('muestra precios trazables y no desborda en móvil', async ({ page, request }) => {
+    const apiResponse = await request.get(`${apiUrl}/api/v1/public/market/olive-oil`);
+    const payload = (await apiResponse.json()) as {
+      market: { series: Array<{ latest: { priceEurKg: number } }> };
+    };
+
     await page.goto('/mercado');
 
     await expect(page.getByRole('heading', { name: 'El precio del aceite, explicado sin ruido.' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Último dato validado' })).toBeVisible();
-    await expect(page.getByText('3,42', { exact: true })).toBeVisible();
-    await expect(page.getByText('3,25', { exact: true })).toBeVisible();
-    await expect(page.getByText('3,17', { exact: true })).toBeVisible();
+    for (const series of payload.market.series) {
+      await expect(page.getByText(series.latest.priceEurKg.toLocaleString('es-ES', { minimumFractionDigits: 2 }), { exact: true })).toBeVisible();
+    }
     await expect(page.getByRole('link', { name: 'Ver fuente oficial' })).toHaveAttribute('href', /juntadeandalucia\.es/);
 
     const dimensions = await page.evaluate(() => ({
