@@ -32,7 +32,7 @@ type Candidate = {
   field_name: string;
   source_domain_type: string | null;
   title: string;
-  scheduled_at: string;
+  scheduled_at: Date | string;
   municipality_id: string | null;
   municipality_name: string | null;
   aemet_code: string | null;
@@ -52,6 +52,10 @@ function finiteNumber(value: unknown) {
   if (value == null) return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function dateOnly(value: Date | string) {
+  return (value instanceof Date ? value.toISOString() : value).slice(0, 10);
 }
 
 async function latestRadarObservation(database: DatabaseClient, workspaceId: string, fieldId: string): Promise<RadarAgronomyObservation | null> {
@@ -160,7 +164,7 @@ export function registerAgronomyAlertRoutes(
       try {
         const cached = await getCachedMunicipalityForecast(database, provider, candidate.municipality_id, candidate.aemet_code);
         if (cached.cacheStatus !== 'fresh') { skipped += 1; continue; }
-        const targetDate = candidate.scheduled_at.slice(0, 10);
+        const targetDate = dateOnly(candidate.scheduled_at);
         const day = cached.forecast.days.find((item) => item.date.slice(0, 10) === targetDate);
         if (!day) { skipped += 1; continue; }
         const task = normalizeAgronomyTask(candidate.source_domain_type ?? undefined);
