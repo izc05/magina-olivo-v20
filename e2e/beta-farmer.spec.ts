@@ -8,7 +8,8 @@ test('agricultor crea finca, registra trabajo y lo ve reflejado', async ({ page 
   await page.getByLabel('Nº de olivas *').fill('120');
 
   const placeSelect = page.getByLabel('Pueblo / localidad');
-  await expect(placeSelect.locator('option')).not.toHaveCount(1);
+  await expect(placeSelect).toBeEnabled();
+  await expect.poll(async () => placeSelect.locator('option').count()).toBeGreaterThan(1);
   await placeSelect.selectOption({ index: 1 });
 
   await page.getByRole('button', { name: 'Continuar →' }).click();
