@@ -19,6 +19,7 @@ import { registerAgronomyAlertRoutes } from './routes/agronomy-alerts.js';
 import { registerAttentionRoutes } from './routes/attention.js';
 import { registerPlannedTaskRoutes } from './routes/planned-tasks.js';
 import { registerDocumentRoutes } from './routes/documents.js';
+import { registerDocumentAccessRoutes } from './routes/document-access.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
 import { registerWeatherRoutes } from './routes/weather.js';
@@ -100,6 +101,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerWorkCommercialRoutes(app, db);
   registerProfessionalRoutes(app, db);
   registerDocumentRoutes(app, db, storage, ocrQueue);
+  registerDocumentAccessRoutes(app, db, storage);
   registerGisRoutes(app, db, gisProviders);
 
   return app;
