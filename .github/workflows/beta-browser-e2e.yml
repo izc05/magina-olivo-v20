@@ -1,0 +1,119 @@
+name: V20 beta browser E2E
+
+on:
+  push:
+    branches:
+      - feat/v20-visual-prototype
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'apps/api/**'
+      - 'packages/**'
+      - 'database/**'
+      - 'e2e/**'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - '.github/workflows/beta-browser-e2e.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  farmer-browser:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build API and web for E2E
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+          NEXT_PUBLIC_PREVIEW_MODE: 'false'
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api build
+          pnpm --filter @magina/web build
+
+      - name: Apply migrations and seed browser identity
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+          psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO users (id, primary_email, display_name, status)
+          VALUES ('bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb', 'beta-e2e@example.invalid', 'Agricultor E2E', 'active');
+
+          INSERT INTO workspaces (id, name, type)
+          VALUES ('aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', 'Mi Campo E2E', 'family');
+
+          INSERT INTO workspace_memberships (workspace_id, user_id, role, status)
+          VALUES ('aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb', 'owner', 'active');
+
+          INSERT INTO campaigns (id, workspace_id, name, start_date, status)
+          VALUES ('cccccccc-3333-4333-8333-cccccccccccc', 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '2026/27', '2026-09-01', 'active');
+          SQL
+
+      - name: Run farmer browser journey
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+          CORS_ALLOWED_ORIGINS: http://127.0.0.1:3000
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+          NEXT_PUBLIC_PREVIEW_MODE: 'false'
+          E2E_BASE_URL: http://127.0.0.1:3000
+          E2E_WORKSPACE_ID: aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa
+          E2E_USER_ID: bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb
+        run: |
+          node apps/api/dist/server.js >/tmp/magina-api-e2e.log 2>&1 &
+          API_PID=$!
+          pnpm --filter @magina/web start --hostname 127.0.0.1 --port 3000 >/tmp/magina-web-e2e.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill ${API_PID} ${WEB_PID} 2>/dev/null || true; echo "--- API LOG ---"; cat /tmp/magina-api-e2e.log; echo "--- WEB LOG ---"; cat /tmp/magina-web-e2e.log' EXIT
+
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3001/health >/dev/null && curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:3001/health
+          curl -fsS http://127.0.0.1:3000/ >/dev/null
+          pnpm e2e:beta
