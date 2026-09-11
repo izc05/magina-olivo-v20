@@ -51,7 +51,7 @@ export function HarvestCollectionEntryClient() {
     }
     let cancelled = false;
     setLoading(true);
-    apiFetch<SettlementsResponse>('/api/v1/harvest-settlements', { workspaceId: selectedWorkspaceId })
+    apiFetch<SettlementsResponse>(`/api/v1/harvest-settlements?fieldId=${encodeURIComponent(context.id)}`, { workspaceId: selectedWorkspaceId })
       .then((response) => {
         if (cancelled) return;
         const pending = response.settlements.filter((item) => Number(item.pending_eur) > 0.009);
@@ -64,11 +64,11 @@ export function HarvestCollectionEntryClient() {
       })
       .catch((cause) => {
         console.error('Unable to load settlements for collection', cause);
-        if (!cancelled) setError('No se han podido cargar las liquidaciones pendientes.');
+        if (!cancelled) setError('No se han podido cargar las liquidaciones pendientes de esta finca.');
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [context.source, found, prefillAmount, ready, selectedWorkspaceId]);
+  }, [context.id, context.source, found, prefillAmount, ready, selectedWorkspaceId]);
 
   const selected = useMemo(() => settlements.find((item) => item.id === settlementId), [settlementId, settlements]);
   const pending = selected ? Number(selected.pending_eur) : 0;
@@ -148,9 +148,9 @@ export function HarvestCollectionEntryClient() {
   if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Cobro registrado</h1><p>El cobro queda separado de la liquidación y reduce únicamente su saldo pendiente.</p>{sourceDocumentId ? <p>✓ Partía de un justificante revisado y solo se guardó después de tu confirmación.</p> : null}{linkWarning ? <p className="form-error" role="status">{linkWarning}</p> : null}<Link className="primary action-link" href={context.returnHref}>Volver a la finca</Link></section>;
 
   return <>
-    <header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar cobro</h1><p>Elige la liquidación que realmente has cobrado. Puedes registrar un pago parcial o completar todo lo pendiente.</p></header>
+    <header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar cobro</h1><p>Elige la liquidación de esta finca que realmente has cobrado. Puedes registrar un pago parcial o completar todo lo pendiente.</p></header>
     {sourceDocumentId ? <section className="card register-principle"><div><strong>Datos prellenados desde un justificante revisado</strong><small>Comprueba fecha, importe, referencia y liquidación antes de guardar.</small></div></section> : null}
-    {settlements.length === 0 ? <section className="card"><p>No hay liquidaciones confirmadas con saldo pendiente.</p><Link className="secondary-action action-link" href={context.returnHref}>Volver a la finca</Link></section> : <form className="quick-record-form" onSubmit={submit}>
+    {settlements.length === 0 ? <section className="card"><p>No hay liquidaciones confirmadas de esta finca con saldo pendiente.</p><Link className="secondary-action action-link" href={context.returnHref}>Volver a la finca</Link></section> : <form className="quick-record-form" onSubmit={submit}>
       <section className="card record-panel"><div className="record-fields">
         <label className="record-field wide"><span>Liquidación</span><select className="record-control" value={settlementId} onChange={(event) => chooseSettlement(event.target.value)} required><option value="" disabled>Seleccionar liquidación</option>{settlements.map((item) => <option key={item.id} value={item.id}>{item.settlement_number || 'Sin nº'} · {item.counterparty_name || 'Sin contraparte'} · pendiente {money(Number(item.pending_eur))} €</option>)}</select></label>
         {selected ? <div className="record-field wide"><span>Estado</span><div className="card"><strong>Neto {money(Number(selected.net_eur))} €</strong><small>Cobrado {money(Number(selected.collected_eur))} € · pendiente {money(Number(selected.pending_eur))} € · {selected.delivery_count} entregas</small></div></div> : null}
