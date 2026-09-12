@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { sql } from 'kysely';
 import { buildApp } from '../app.js';
 import { createDatabase } from '../db/client.js';
 import type { GoogleIdentityClaims, GoogleIdentityVerifier } from '../auth/google.js';
@@ -42,12 +43,12 @@ try {
     status: 'active',
   }).returningAll().executeTakeFirstOrThrow();
 
-  const interest = await db.insertInto('plan_interest_requests').values({
-    workspace_id: workspace.id,
-    requested_by: userId,
-    target_plan: 'professional',
-    status: 'pending',
-  }).returningAll().executeTakeFirstOrThrow();
+  const interestInsert = await sql<{ id: string }>`
+    INSERT INTO plan_interest_requests (workspace_id, requested_by, target_plan, status)
+    VALUES (${workspace.id}::uuid, ${userId}::uuid, 'professional', 'pending')
+    RETURNING id::text
+  `.execute(db);
+  const interestId = interestInsert.rows[0]!.id;
 
   const campaigns = await app.inject({ method: 'GET', url: `/api/v1/admin/campaigns?workspace_id=${workspace.id}`, headers: { cookie: adminLogin.cookie } });
   assert.equal(campaigns.statusCode, 200, campaigns.body);
@@ -74,7 +75,7 @@ try {
   const plansBefore = await app.inject({ method: 'GET', url: '/api/v1/admin/plans', headers: { cookie: adminLogin.cookie } });
   assert.equal(plansBefore.statusCode, 200, plansBefore.body);
   assert.equal(plansBefore.json().billing_enabled, false);
-  assert.ok(plansBefore.json().interests.some((item: { id: string }) => item.id === interest.id));
+  assert.ok(plansBefore.json().interests.some((item: { id: string }) => item.id === interestId));
 
   const setPlan = await app.inject({
     method: 'PUT',
@@ -89,20 +90,24 @@ try {
 
   const updateInterest = await app.inject({
     method: 'PATCH',
-    url: `/api/v1/admin/plan-interests/${interest.id}`,
+    url: `/api/v1/admin/plan-interests/${interestId}`,
     headers: { cookie: adminLogin.cookie },
     payload: { status: 'contacted' },
   });
   assert.equal(updateInterest.statusCode, 200, updateInterest.body);
   assert.equal(updateInterest.json().interest.status, 'contacted');
 
-  const storedPlan = await db.selectFrom('workspace_plan_subscriptions').selectAll().where('workspace_id', '=', workspace.id).executeTakeFirstOrThrow();
-  assert.equal(storedPlan.plan_code, 'professional');
-  assert.equal(storedPlan.status, 'trialing');
-  assert.equal(storedPlan.source, 'manual');
+  const storedPlan = await sql<{ plan_code: string; status: string; source: string }>`
+    SELECT plan_code, status, source FROM workspace_plan_subscriptions WHERE workspace_id = ${workspace.id}::uuid
+  `.execute(db);
+  assert.equal(storedPlan.rows[0]?.plan_code, 'professional');
+  assert.equal(storedPlan.rows[0]?.status, 'trialing');
+  assert.equal(storedPlan.rows[0]?.source, 'manual');
 
-  const storedInterest = await db.selectFrom('plan_interest_requests').select(['status']).where('id', '=', interest.id).executeTakeFirstOrThrow();
-  assert.equal(storedInterest.status, 'contacted');
+  const storedInterest = await sql<{ status: string }>`
+    SELECT status FROM plan_interest_requests WHERE id = ${interestId}::uuid
+  `.execute(db);
+  assert.equal(storedInterest.rows[0]?.status, 'contacted');
 
   const audit = await app.inject({ method: 'GET', url: '/api/v1/admin/audit', headers: { cookie: adminLogin.cookie } });
   assert.equal(audit.statusCode, 200, audit.body);
