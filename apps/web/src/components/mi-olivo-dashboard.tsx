@@ -34,6 +34,13 @@ type Rhythm = {
   message: string;
 };
 
+type EarningAction = {
+  id: string;
+  title: string;
+  detail: string;
+  reward_label: string;
+};
+
 type LedgerEntry = {
   id: string;
   event_type: string;
@@ -45,12 +52,16 @@ type LedgerEntry = {
 type MiOlivoPayload = {
   enabled: boolean;
   rule_version: string;
+  engagement_rule_version: string;
   balance: number;
   level: number;
   level_label: string;
   tree_stage: number;
   progress: { current: number; target: number; percent: number };
   rhythm: Rhythm;
+  today: { earned: number; cap: number; remaining: number };
+  weekly: { earned: number; goal: number; percent: number };
+  earning_actions: EarningAction[];
   missions: Mission[];
   achievements: Achievement[];
   rewards: Reward[];
@@ -122,6 +133,12 @@ export function MiOlivoDashboard() {
 
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    const refreshAfterAward = () => { void load(); };
+    window.addEventListener('magina:mi-olivo-award', refreshAfterAward);
+    return () => window.removeEventListener('magina:mi-olivo-award', refreshAfterAward);
+  }, [load]);
+
   async function toggleEnabled() {
     if (!data || !selectedWorkspaceId) return;
     setSavingPreference(true);
@@ -164,7 +181,7 @@ export function MiOlivoDashboard() {
         <div>
           <span className={styles.eyebrow}>MI OLIVO</span>
           <h1>Tu olivo digital</h1>
-          <p>Crece cuando organizas de verdad tu actividad en Mágina.</p>
+          <p>Crece con trabajo real, organización y pequeñas acciones útiles dentro de Mágina.</p>
         </div>
         <Link href="/" className={styles.backLink}>Inicio</Link>
       </header>
@@ -181,7 +198,25 @@ export function MiOlivoDashboard() {
           <div className={styles.progressTrack} aria-label={`${data.progress.percent}% hacia el siguiente nivel`}>
             <span style={{ width: `${data.progress.percent}%` }} />
           </div>
-          <p className={styles.helper}>Los puntos proceden de hitos verificables. Repetir una acción no genera puntos ilimitados.</p>
+          <p className={styles.helper}>Las aceitunas proceden de acciones verificables. Recargar páginas o repetir la misma acción no genera premios ilimitados.</p>
+        </div>
+      </section>
+
+      <section className={styles.weeklyPanel} aria-label="Progreso de Mi Olivo esta semana">
+        <div className={styles.weeklyMain}>
+          <div className={styles.sectionHeading}>
+            <div><span className={styles.eyebrow}>ESTA SEMANA</span><h2>{data.weekly.earned} aceitunas conseguidas</h2></div>
+            <strong>{data.weekly.earned}/{data.weekly.goal}</strong>
+          </div>
+          <div className={styles.progressTrack} aria-label={`${data.weekly.percent}% del objetivo semanal`}>
+            <span style={{ width: `${data.weekly.percent}%` }} />
+          </div>
+          <p>El objetivo semanal sirve de guía, no caduca tu saldo ni te penaliza si una semana haces menos.</p>
+        </div>
+        <div className={styles.todayCard}>
+          <span className={styles.eyebrow}>EXPLORACIÓN ÚTIL HOY</span>
+          <strong>{data.today.earned}/{data.today.cap}</strong>
+          <span>{data.today.remaining > 0 ? `Aún puedes sumar hasta ${data.today.remaining} aceitunas explorando contenido útil.` : 'Límite diario alcanzado. Mañana habrá nuevas oportunidades.'}</span>
         </div>
       </section>
 
@@ -196,6 +231,25 @@ export function MiOlivoDashboard() {
           <span>Tu historial se conserva, pero no se reconocen nuevos hitos mientras esté pausado.</span>
         </section>
       )}
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeading}>
+          <div><span className={styles.eyebrow}>CÓMO CRECE</span><h2>Haz crecer tu olivo</h2></div>
+          <span>Acciones útiles</span>
+        </div>
+        <div className={styles.cardGrid}>
+          {data.earning_actions.map((action) => (
+            <article key={action.id} className={styles.earningCard}>
+              <span className={styles.earningIcon}>🫒</span>
+              <div>
+                <h3>{action.title}</h3>
+                <p>{action.detail}</p>
+              </div>
+              <span className={styles.reward}>{action.reward_label}</span>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
