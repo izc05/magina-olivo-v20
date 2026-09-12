@@ -14,7 +14,7 @@ const steps = [
   { n: '2', title: 'Añade una finca sin inventar datos', text: 'Nombre, ubicación y referencias se pueden completar de forma progresiva. Si un vínculo GIS todavía no está confirmado, no hace falta fingirlo.', href: '/mi-campo/fincas/nueva', cta: 'Nueva finca' },
   { n: '3', title: 'Registra lo que realmente ocurrió', text: 'Usa Registrar para trabajos y hechos de campaña. Mantén separados entrega, rendimiento, liquidación y cobro: pueden ocurrir en días distintos.', href: '/mi-campo/registrar', cta: 'Registrar actividad' },
   { n: '4', title: 'Planifica lo que todavía no ha ocurrido', text: 'Planificar sirve para tareas futuras. Una tarea prevista no debe confundirse con un trabajo ya ejecutado.', href: '/mi-campo/planificar', cta: 'Ir a Planificar' },
-  { n: '5', title: 'Guarda documentos y revisa el OCR', text: 'El archivo original se conserva. Si usas OCR, la lectura es una propuesta: revísala antes de convertir cualquier dato en un registro agrícola.', href: '/mi-campo/documentos', cta: 'Ver Documentos' },
+  { n: '5', title: 'Guarda documentos y revisa el OCR', text: 'El archivo original se conserva. Si usas OCR, la lectura es una propuesta: revísala antes de convertir cualquier dato en un registro agrícola.', href: '/mi-campo/documentos/nuevo', cta: 'Añadir documento' },
   { n: '6', title: 'Revisa la campaña con datos confirmados', text: 'Campaña reúne producción, rendimiento y economía a partir de registros reales. Lo pendiente debe seguir apareciendo como pendiente.', href: '/mi-campo/campana', cta: 'Abrir Campaña' },
 ] as const;
 
