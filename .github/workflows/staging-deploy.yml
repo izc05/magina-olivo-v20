@@ -9,6 +9,11 @@ on:
       confirm:
         description: Type DEPLOY-STAGING to allow deployment
         required: true
+  push:
+    branches:
+      - integrate/v20-beta-closure
+    paths:
+      - 'deploy/staging/STAGING_DEPLOY_REQUEST.json'
 
 permissions:
   contents: read
@@ -20,35 +25,73 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ inputs.confirm == 'DEPLOY-STAGING' }}
+    if: ${{ github.event_name == 'push' || inputs.confirm == 'DEPLOY-STAGING' }}
     runs-on: ubuntu-latest
     environment: staging
 
     steps:
-      - name: Validate requested SHA
+      - name: Checkout deployment controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Resolve deployment request
+        id: request
         env:
-          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_SHA: ${{ inputs.expected_sha }}
+          DISPATCH_CONFIRM: ${{ inputs.confirm }}
         run: |
           set -eu
-          printf '%s' "$EXPECTED_SHA" | grep -Eq '^[0-9a-f]{40}$'
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import { readFileSync } from 'node:fs';
+
+          let expectedSha;
+          let confirm;
+
+          if (process.env.EVENT_NAME === 'push') {
+            const request = JSON.parse(readFileSync('deploy/staging/STAGING_DEPLOY_REQUEST.json', 'utf8'));
+            expectedSha = typeof request.expected_sha === 'string' ? request.expected_sha.trim() : '';
+            confirm = typeof request.confirm === 'string' ? request.confirm.trim() : '';
+          } else {
+            expectedSha = (process.env.DISPATCH_SHA ?? '').trim();
+            confirm = (process.env.DISPATCH_CONFIRM ?? '').trim();
+          }
+
+          if (!/^[0-9a-f]{40}$/.test(expectedSha)) {
+            throw new Error('expected_sha must be an exact lowercase 40-character commit SHA.');
+          }
+          if (confirm !== 'DEPLOY-STAGING') {
+            throw new Error('Deployment request must contain confirm=DEPLOY-STAGING.');
+          }
+
+          console.log(`expected_sha=${expectedSha}`);
+          console.log(`confirm=${confirm}`);
+          NODE
 
       - name: Checkout exact V20 SHA
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ inputs.expected_sha }}
+          ref: ${{ steps.request.outputs.expected_sha }}
           fetch-depth: 0
 
       - name: Verify exact V20 ancestry
         id: candidate
         env:
-          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_SHA: ${{ steps.request.outputs.expected_sha }}
         run: |
           set -eu
           actual="$(git rev-parse HEAD)"
           test "$actual" = "$EXPECTED_SHA"
           git fetch --no-tags origin feat/v20-visual-prototype:refs/remotes/origin/feat/v20-visual-prototype
+          git fetch --no-tags origin integrate/v20-beta-closure:refs/remotes/origin/integrate/v20-beta-closure
           if ! git merge-base --is-ancestor origin/feat/v20-visual-prototype "$actual"; then
             echo "$actual does not descend from feat/v20-visual-prototype; refusing staging deployment." >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$actual" origin/integrate/v20-beta-closure; then
+            echo "$actual is not part of integrate/v20-beta-closure history; refusing staging deployment." >&2
             exit 1
           fi
           echo "sha=$actual" >> "$GITHUB_OUTPUT"
@@ -106,7 +149,9 @@ jobs:
             values.set(line.slice(0, i).trim(), value);
           }
 
-          const api = new URL(values.get('NEXT_PUBLIC_API_URL'));
+          const apiRaw = values.get('NEXT_PUBLIC_API_URL');
+          if (!apiRaw) throw new Error('NEXT_PUBLIC_API_URL is missing after staging preflight.');
+          const api = new URL(apiRaw);
           const allowedOrigins = (values.get('CORS_ALLOWED_ORIGINS') ?? '')
             .split(',').map((item) => item.trim()).filter(Boolean)
             .map((item) => new URL(item).origin);
@@ -240,9 +285,10 @@ jobs:
             echo '### V20 staging deployment'
             echo
             echo "- SHA: \`$SHA\`"
+            echo "- Trigger: $GITHUB_EVENT_NAME"
             echo "- Web: $STAGING_WEB_URL"
             echo "- API: $STAGING_API_URL"
-            echo '- Exact V20 ancestry and full/browser/staging gates were required before deployment.'
+            echo '- Exact coordinator ancestry and full/browser/staging gates were required before deployment.'
             echo '- Release archive SHA-256 was verified on the staging host before publication.'
             echo '- A PostgreSQL dump was created immediately before migrations.'
             echo '- No destructive database rollback is performed automatically.'
