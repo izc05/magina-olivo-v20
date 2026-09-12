@@ -14,33 +14,16 @@ on:
       - 'apps/api/src/routes/admin-campaign-plans.ts'
       - 'apps/api/src/routes/admin-agenda.ts'
       - 'apps/api/src/routes/admin-work-activity.ts'
-      - 'apps/api/src/testing/admin-smoke.ts'
-      - 'apps/api/src/testing/admin-territory-smoke.ts'
-      - 'apps/api/src/testing/admin-sources-smoke.ts'
-      - 'apps/api/src/testing/admin-operations-smoke.ts'
-      - 'apps/api/src/testing/admin-management-smoke.ts'
-      - 'apps/api/src/testing/admin-campaign-plans-smoke.ts'
-      - 'apps/api/src/testing/admin-agenda-smoke.ts'
-      - 'apps/api/src/testing/admin-work-activity-smoke.ts'
+      - 'apps/api/src/routes/admin-documents.ts'
+      - 'apps/api/src/testing/admin-*.ts'
       - 'apps/api/src/db/types.ts'
       - 'apps/api/src/app.ts'
       - 'apps/web/src/app/admin/**'
       - 'apps/web/src/app/page.tsx'
-      - 'apps/web/src/components/admin-control-center.tsx'
-      - 'apps/web/src/components/admin-sources-console.tsx'
-      - 'apps/web/src/components/admin-operations-hub.tsx'
-      - 'apps/web/src/components/admin-operations-hub.module.css'
-      - 'apps/web/src/components/admin-management-console.tsx'
-      - 'apps/web/src/components/admin-management-console.module.css'
-      - 'apps/web/src/components/admin-campaign-plan-console.tsx'
-      - 'apps/web/src/components/admin-campaign-plan-console.module.css'
-      - 'apps/web/src/components/admin-agenda-console.tsx'
-      - 'apps/web/src/components/admin-agenda-console.module.css'
-      - 'apps/web/src/components/admin-work-activity-console.tsx'
-      - 'apps/web/src/components/admin-work-activity-console.module.css'
+      - 'apps/web/src/components/admin-*.tsx'
+      - 'apps/web/src/components/admin-*.module.css'
       - 'apps/web/src/components/site-admin-console.tsx'
       - 'apps/web/src/components/site-admin-console-v2.tsx'
-      - 'apps/web/src/components/admin-media-picker.tsx'
       - 'apps/web/src/components/media-library-console.tsx'
       - 'apps/web/src/components/territory-admin-console.tsx'
       - 'apps/web/src/components/managed-ad-slot.tsx'
@@ -58,42 +41,27 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
-
 permissions:
   contents: read
-
 jobs:
   admin:
     runs-on: ubuntu-latest
     services:
       postgres:
         image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: magina_admin
-        ports:
-          - 5432:5432
+        env: { POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres, POSTGRES_DB: magina_admin }
+        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U postgres -d magina_admin"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 8
-
+          --health-interval 10s --health-timeout 5s --health-retries 8
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          run_install: false
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version-file: '.nvmrc'
-
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with: { run_install: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: { node-version-file: '.nvmrc' }
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Typecheck and build administration surfaces
         run: |
           pnpm --filter @magina/contracts build
@@ -103,79 +71,36 @@ jobs:
           pnpm --filter @magina/api build
           pnpm --filter @magina/web typecheck
           pnpm --filter @magina/web build
-
       - name: Install PostgreSQL client
         run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
-
       - name: Apply migrations
-        env:
-          PGPASSWORD: postgres
+        env: { PGPASSWORD: postgres }
         run: |
-          for migration in database/migrations/*.sql; do
-            echo "Applying ${migration}"
-            psql -h 127.0.0.1 -U postgres -d magina_admin -v ON_ERROR_STOP=1 -f "${migration}"
-          done
-
+          for migration in database/migrations/*.sql; do psql -h 127.0.0.1 -U postgres -d magina_admin -v ON_ERROR_STOP=1 -f "${migration}"; done
       - name: Corporate access, scheduling, media, CMS and audit smoke
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
-          ADMIN_BOOTSTRAP_EMAILS: admin@magina.test
-          ALLOW_DEV_AUTH_HEADERS: 'false'
-          AUTH_COOKIE_SECURE: 'false'
+        env: { DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/magina_admin', ADMIN_BOOTSTRAP_EMAILS: 'admin@magina.test', ALLOW_DEV_AUTH_HEADERS: 'false', AUTH_COOKIE_SECURE: 'false' }
         run: node apps/api/dist/testing/admin-smoke.js
-
       - name: Operations metrics, data explorer and App Gateway smoke
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
-          ADMIN_BOOTSTRAP_EMAILS: operations-admin@magina.test
-          ALLOW_DEV_AUTH_HEADERS: 'false'
-          AUTH_COOKIE_SECURE: 'false'
+        env: { DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/magina_admin', ADMIN_BOOTSTRAP_EMAILS: 'operations-admin@magina.test', ALLOW_DEV_AUTH_HEADERS: 'false', AUTH_COOKIE_SECURE: 'false' }
         run: node apps/api/dist/testing/admin-operations-smoke.js
-
       - name: Workspace, membership and field management smoke
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
-          ADMIN_BOOTSTRAP_EMAILS: management-admin@magina.test
-          ALLOW_DEV_AUTH_HEADERS: 'false'
-          AUTH_COOKIE_SECURE: 'false'
+        env: { DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/magina_admin', ADMIN_BOOTSTRAP_EMAILS: 'management-admin@magina.test', ALLOW_DEV_AUTH_HEADERS: 'false', AUTH_COOKIE_SECURE: 'false' }
         run: node apps/api/dist/testing/admin-management-smoke.js
-
       - name: Campaign and plan administration smoke
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
-          ADMIN_BOOTSTRAP_EMAILS: campaign-plan-admin@magina.test
-          ALLOW_DEV_AUTH_HEADERS: 'false'
-          AUTH_COOKIE_SECURE: 'false'
+        env: { DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/magina_admin', ADMIN_BOOTSTRAP_EMAILS: 'campaign-plan-admin@magina.test', ALLOW_DEV_AUTH_HEADERS: 'false', AUTH_COOKIE_SECURE: 'false' }
         run: node apps/api/dist/testing/admin-campaign-plans-smoke.js
-
       - name: Global agenda administration smoke
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
-          ADMIN_BOOTSTRAP_EMAILS: agenda-admin@magina.test
-          ALLOW_DEV_AUTH_HEADERS: 'false'
-          AUTH_COOKIE_SECURE: 'false'
+        env: { DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/magina_admin', ADMIN_BOOTSTRAP_EMAILS: 'agenda-admin@magina.test', ALLOW_DEV_AUTH_HEADERS: 'false', AUTH_COOKIE_SECURE: 'false' }
         run: node apps/api/dist/testing/admin-agenda-smoke.js
-
       - name: Global work activity administration smoke
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
-          ADMIN_BOOTSTRAP_EMAILS: work-activity-admin@magina.test
-          ALLOW_DEV_AUTH_HEADERS: 'false'
-          AUTH_COOKIE_SECURE: 'false'
+        env: { DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/magina_admin', ADMIN_BOOTSTRAP_EMAILS: 'work-activity-admin@magina.test', ALLOW_DEV_AUTH_HEADERS: 'false', AUTH_COOKIE_SECURE: 'false' }
         run: node apps/api/dist/testing/admin-work-activity-smoke.js
-
+      - name: Document and OCR support smoke
+        env: { DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/magina_admin', ADMIN_BOOTSTRAP_EMAILS: 'documents-admin@magina.test', ALLOW_DEV_AUTH_HEADERS: 'false', AUTH_COOKIE_SECURE: 'false' }
+        run: node apps/api/dist/testing/admin-documents-smoke.js
       - name: Canonical territory administration smoke
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
-          ADMIN_BOOTSTRAP_EMAILS: admin@magina.test
-          ALLOW_DEV_AUTH_HEADERS: 'false'
-          AUTH_COOKIE_SECURE: 'false'
+        env: { DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/magina_admin', ADMIN_BOOTSTRAP_EMAILS: 'admin@magina.test', ALLOW_DEV_AUTH_HEADERS: 'false', AUTH_COOKIE_SECURE: 'false' }
         run: node apps/api/dist/testing/admin-territory-smoke.js
-
       - name: Source telemetry semantics smoke
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
-          ADMIN_BOOTSTRAP_EMAILS: admin@magina.test
-          ALLOW_DEV_AUTH_HEADERS: 'false'
-          AUTH_COOKIE_SECURE: 'false'
+        env: { DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/magina_admin', ADMIN_BOOTSTRAP_EMAILS: 'admin@magina.test', ALLOW_DEV_AUTH_HEADERS: 'false', AUTH_COOKIE_SECURE: 'false' }
         run: node apps/api/dist/testing/admin-sources-smoke.js
