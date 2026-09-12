@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { AdminControlCenter } from '../../components/admin-control-center';
 import './admin.css';
 
@@ -22,10 +23,10 @@ export default function AdminPage() {
     <>
       <AdminControlCenter />
       <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 50, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-        <a href="/admin/fuentes" aria-label="Abrir estado de fuentes y datos" style={{ ...shortcutStyle, background: '#46666d' }}>Fuentes</a>
-        <a href="/admin/territorio" aria-label="Abrir administración de territorio y directorio" style={{ ...shortcutStyle, background: '#8a6c2f' }}>Territorio</a>
-        <a href="/admin/media" aria-label="Abrir biblioteca multimedia" style={{ ...shortcutStyle, background: '#6b7446' }}>Multimedia</a>
-        <a href="/admin/web" aria-label="Abrir editor visual de la web" style={{ ...shortcutStyle, background: '#315c3a' }}>Editar web</a>
+        <Link href="/admin/fuentes" aria-label="Abrir estado de fuentes y datos" style={{ ...shortcutStyle, background: '#46666d' }}>Fuentes</Link>
+        <Link href="/admin/territorio" aria-label="Abrir administración de territorio y directorio" style={{ ...shortcutStyle, background: '#8a6c2f' }}>Territorio</Link>
+        <Link href="/admin/media" aria-label="Abrir biblioteca multimedia" style={{ ...shortcutStyle, background: '#6b7446' }}>Multimedia</Link>
+        <Link href="/admin/web" aria-label="Abrir editor visual de la web" style={{ ...shortcutStyle, background: '#315c3a' }}>Editar web</Link>
       </div>
     </>
   );
