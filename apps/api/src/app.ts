@@ -11,6 +11,7 @@ import { registerAdminRoutes } from './routes/admin.js';
 import { registerAdminMediaRoutes } from './routes/admin-media.js';
 import { registerAdminTerritoryRoutes } from './routes/admin-territory.js';
 import { registerAdminSourceRoutes } from './routes/admin-sources.js';
+import { registerAdminOperationsRoutes } from './routes/admin-operations.js';
 import { registerPlanRoutes } from './routes/plans.js';
 import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerFieldRoutes } from './routes/fields.js';
@@ -178,6 +179,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminMediaRoutes(app, db, storage);
   registerAdminTerritoryRoutes(app, db);
   registerAdminSourceRoutes(app, db);
+  registerAdminOperationsRoutes(app, db);
   registerPlanRoutes(app, db);
   registerMiOlivoRoutes(app, db);
   registerTerritoryRoutes(app, db);
