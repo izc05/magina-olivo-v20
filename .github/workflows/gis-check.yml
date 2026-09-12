@@ -175,6 +175,9 @@ jobs:
       - name: Finca create-edit-geometry API smoke
         run: node apps/api/dist/testing/gis-finca-flow-smoke.js
 
+      - name: Finca place unlink cleanup smoke
+        run: node apps/api/dist/testing/gis-location-unlink-smoke.js
+
       - name: Start deterministic GIS browser servers
         run: |
           nohup node apps/api/dist/testing/gis-e2e-server.js >/tmp/magina-gis-api-e2e.log 2>&1 &

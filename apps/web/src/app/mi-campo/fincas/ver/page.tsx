@@ -12,7 +12,7 @@ export default function FarmDetailPage() {
   return (
     <main className="app-shell">
       <Topbar />
-      <div className="page mi-campo-page">
+      <div className="page mi-campo-page farm-detail-page">
         <Suspense fallback={<section className="card"><p>Cargando finca…</p></section>}>
           <FarmDetailShell />
           <FarmEditShortcut />
