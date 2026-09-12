@@ -67,11 +67,11 @@ test('Mi Olivo V6 conserva memoria de campañas reales sin inventar avance', asy
   await expect(memory.getByRole('heading', { name: 'Tu olivo guarda memoria' })).toBeVisible();
   await expect(memory.getByText('MOMENTO DE CAMPAÑA', { exact: true })).toBeVisible();
   await expect(memory.getByText('Campaña activa', { exact: true })).toBeVisible();
-  await expect(memory.getByText('1.842 kg', { exact: true })).toBeVisible();
+  await expect(memory.getByText('1842 kg', { exact: true })).toBeVisible();
 
   const closed = memory.locator('article[aria-label="Memoria de campaña 2025/26"]');
   await expect(closed).toBeVisible();
-  await expect(closed.getByText('6.320 kg', { exact: true })).toBeVisible();
+  await expect(closed.getByText('6320 kg', { exact: true })).toBeVisible();
   await expect(closed.getByText('9', { exact: true })).toBeVisible();
   await expect(closed.getByText('22,1 %', { exact: true })).toBeVisible();
 
