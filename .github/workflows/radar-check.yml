@@ -1,0 +1,126 @@
+name: V20 radar ingest check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/v20-visual-prototype
+    paths:
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/routes/radar.ts'
+      - 'apps/api/src/testing/radar-*.ts'
+      - 'apps/worker/src/radar/**'
+      - 'apps/worker/src/testing/radar-*.ts'
+      - 'apps/worker/src/testing/farm-radar-*.ts'
+      - 'apps/worker/package.json'
+      - 'packages/contracts/src/radar.ts'
+      - 'packages/contracts/src/jobs.ts'
+      - 'packages/contracts/src/index.ts'
+      - 'packages/weather/**'
+      - 'packages/jobs/**'
+      - 'database/migrations/0015_radar_snapshots.sql'
+      - 'database/migrations/0016_farm_radar_observations.sql'
+      - 'database/migrations/0017_radar_alert_rules.sql'
+      - '.github/workflows/radar-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina_radar
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina_radar"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build radar dependency graph
+        run: |
+          pnpm --filter @magina/contracts typecheck
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather typecheck
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs typecheck
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/api build
+          pnpm --filter @magina/worker typecheck
+          pnpm --filter @magina/worker build
+
+      - name: GeoTIFF bundle parser smoke
+        run: node packages/weather/dist/testing/radar-geotiff-smoke.js
+
+      - name: Dynamic AEMET palette smoke
+        run: node packages/weather/dist/testing/radar-palette-smoke.js
+
+      - name: GeoTIFF metadata inspection smoke
+        run: node packages/weather/dist/testing/radar-geotiff-inspection-smoke.js
+
+      - name: Farm-centered radar spatial analysis smoke
+        run: node packages/weather/dist/testing/radar-spatial-analysis-smoke.js
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      - name: Apply migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina_radar -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Idempotent radar worker smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
+        run: node apps/worker/dist/testing/radar-worker-smoke.js
+
+      - name: Private farm radar projection constraints
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
+        run: node apps/worker/dist/testing/farm-radar-observation-schema-smoke.js
+
+      - name: Private farm radar projection behavior
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
+        run: node apps/worker/dist/testing/farm-radar-projection-smoke.js
+
+      - name: Observational radar alert behavior
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
+        run: node apps/worker/dist/testing/radar-alert-rules-smoke.js
+
+      - name: Private latest radar API behavior
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_radar
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+        run: node apps/api/dist/testing/radar-latest-smoke.js

@@ -1,0 +1,291 @@
+name: V20 beta browser E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'apps/api/**'
+      - 'packages/**'
+      - 'database/**'
+      - 'e2e/**'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - '.github/workflows/beta-browser-e2e.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  farmer-browser:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build API and web for E2E
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+          NEXT_PUBLIC_PREVIEW_MODE: 'false'
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api build
+          pnpm --filter @magina/web build
+
+      - name: Apply migrations and seed browser identity
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+          psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO users (id, primary_email, display_name, status)
+          VALUES ('bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb', 'beta-e2e@example.invalid', 'Agricultor E2E', 'active');
+
+          INSERT INTO workspaces (id, name, type)
+          VALUES ('aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', 'Mi Campo E2E', 'family');
+
+          INSERT INTO workspace_memberships (workspace_id, user_id, role, status)
+          VALUES ('aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb', 'owner', 'active');
+
+          INSERT INTO campaigns (id, workspace_id, name, start_date, status)
+          VALUES ('cccccccc-3333-4333-8333-cccccccccccc', 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '2026/27', '2026-09-01', 'active');
+
+          INSERT INTO fields (id, workspace_id, client_operation_id, name, tree_count, water_regime)
+          VALUES (
+            'dddddddd-4444-4444-8444-dddddddddddd',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'eeeeeeee-5555-4555-8555-eeeeeeeeeeee',
+            'Finca Mobile Audit', 80, 'secano'
+          );
+
+          INSERT INTO documents (id, workspace_id, client_operation_id, kind, title, created_by)
+          VALUES (
+            'ffffffff-6666-4666-8666-ffffffffffff',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '0f0f0f0f-6666-4666-8666-0f0f0f0f0f0f',
+            'delivery_ticket', 'Albarán OCR E2E',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          INSERT INTO document_versions (
+            id, document_id, version_no, storage_key, original_filename, mime_type,
+            byte_size, sha256, created_by, upload_status, integrity_status, uploaded_at
+          ) VALUES (
+            '11111111-7777-4777-8777-111111111111',
+            'ffffffff-6666-4666-8666-ffffffffffff', 1,
+            'e2e/albaran-ocr.pdf', 'albaran-ocr.pdf', 'application/pdf', 2048,
+            repeat('0', 64), 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            'uploaded', 'verified', now()
+          );
+
+          INSERT INTO attachment_links (workspace_id, document_id, field_id, relation)
+          VALUES (
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'ffffffff-6666-4666-8666-ffffffffffff',
+            'dddddddd-4444-4444-8444-dddddddddddd', 'source'
+          );
+
+          INSERT INTO ocr_runs (
+            id, workspace_id, client_operation_id, document_version_id,
+            provider, provider_version, status, raw_text,
+            confidence, created_at, started_at, completed_at
+          ) VALUES (
+            '22222222-8888-4888-8888-222222222222',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '2f2f2f2f-8888-4888-8888-2f2f2f2f2f2f',
+            '11111111-7777-4777-8777-111111111111',
+            'e2e-fixture', '1', 'succeeded',
+            '15/12/2026 ALB-TEST-01 1250 kg', 0.96000, now(), now(), now()
+          );
+
+          INSERT INTO extraction_runs (
+            id, ocr_run_id, document_type, schema_version, status,
+            data_json, confidence_json, created_at, completed_at
+          ) VALUES (
+            '33333333-9999-4999-8999-333333333333',
+            '22222222-8888-4888-8888-222222222222',
+            'delivery_ticket', 1, 'needs_review',
+            '{"date":"2026-12-15","total_kg":1250,"ticket_number":"ALB-TEST-01"}'::jsonb,
+            '{"date":0.99,"total_kg":0.95,"ticket_number":0.93}'::jsonb,
+            now(), now()
+          );
+
+          INSERT INTO parties (
+            id, workspace_id, client_operation_id, kind, display_name, legal_name, tax_id, roles
+          ) VALUES (
+            '44444444-aaaa-4aaa-8aaa-444444444444',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '55555555-bbbb-4bbb-8bbb-555555555555',
+            'person', 'Cliente Público E2E', 'Cliente Público E2E', '12345678Z', ARRAY['customer']
+          );
+
+          INSERT INTO professional_quotes (
+            id, workspace_id, customer_party_id, client_operation_id, quote_number, title,
+            issued_on, valid_until, status, subtotal_eur, tax_eur, total_eur, created_by
+          ) VALUES (
+            '66666666-cccc-4ccc-8ccc-666666666666',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '44444444-aaaa-4aaa-8aaa-444444444444',
+            '77777777-dddd-4ddd-8ddd-777777777777',
+            'P-E2E-001', 'Poda y trituración',
+            CURRENT_DATE, CURRENT_DATE + 15, 'sent', 100, 21, 121,
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          INSERT INTO professional_quote_lines (
+            quote_id, description, quantity, unit, unit_price_eur, line_total_eur, sort_order
+          ) VALUES (
+            '66666666-cccc-4ccc-8ccc-666666666666', 'Poda y trituración', 1, 'servicio', 100, 100, 0
+          );
+
+          INSERT INTO documents (id, workspace_id, client_operation_id, kind, title, status, created_by)
+          VALUES (
+            '88888888-eeee-4eee-8eee-888888888888',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '1f1f1f1f-eeee-4eee-8eee-1f1f1f1f1f1f',
+            'sales_quote', 'Presupuesto P-E2E-001', 'active',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          INSERT INTO document_versions (
+            id, document_id, version_no, storage_key, original_filename, mime_type,
+            byte_size, sha256, created_by, upload_status, integrity_status, uploaded_at
+          ) VALUES (
+            '99999999-ffff-4fff-8fff-999999999999',
+            '88888888-eeee-4eee-8eee-888888888888', 1,
+            'e2e/p-e2e-001.pdf', 'P-E2E-001.pdf', 'application/pdf', 1024,
+            repeat('a', 64), 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            'uploaded', 'verified', now()
+          );
+
+          INSERT INTO attachment_links (
+            workspace_id, document_id, domain_type, domain_record_id, relation
+          ) VALUES (
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            '88888888-eeee-4eee-8eee-888888888888',
+            'professional_quote', '66666666-cccc-4ccc-8ccc-666666666666', 'generated_pdf'
+          );
+
+          INSERT INTO professional_document_deliveries (
+            id, workspace_id, entity_type, entity_id, document_id, client_operation_id,
+            channel, recipient, status, confirmed_sent_at, created_by
+          ) VALUES (
+            'aaaaaaaa-1234-4abc-8abc-aaaaaaaaaaaa',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'professional_quote', '66666666-cccc-4ccc-8ccc-666666666666',
+            '88888888-eeee-4eee-8eee-888888888888',
+            'bbbbbbbb-1234-4abc-8abc-bbbbbbbbbbbb',
+            'link', 'cliente@example.invalid', 'confirmed_sent', now(),
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          INSERT INTO professional_public_share_links (
+            id, workspace_id, entity_type, entity_id, document_id, delivery_id,
+            token_hash, expires_at, created_by
+          ) VALUES (
+            'cccccccc-1234-4abc-8abc-cccccccccccc',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'professional_quote', '66666666-cccc-4ccc-8ccc-666666666666',
+            '88888888-eeee-4eee-8eee-888888888888',
+            'aaaaaaaa-1234-4abc-8abc-aaaaaaaaaaaa',
+            '5c6b1c8ebd873b8fa31024e66d2f0d0496c47dd69b67490a241e609f39729b36',
+            now() + interval '7 days',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+          SQL
+
+      - name: Run farmer browser journey
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+          CORS_ALLOWED_ORIGINS: http://127.0.0.1:3000
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+          NEXT_PUBLIC_PREVIEW_MODE: 'false'
+          E2E_BASE_URL: http://127.0.0.1:3000
+          E2E_WORKSPACE_ID: aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa
+          E2E_USER_ID: bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb
+          S3_ENDPOINT: http://127.0.0.1:9000
+          S3_BUCKET: magina-e2e
+          S3_ACCESS_KEY_ID: magina-e2e
+          S3_SECRET_ACCESS_KEY: magina-e2e-secret
+          S3_REGION: us-east-1
+          S3_FORCE_PATH_STYLE: 'true'
+        run: |
+          node e2e/s3-fixture-server.mjs >/tmp/magina-s3-e2e.log 2>&1 &
+          STORAGE_PID=$!
+          node apps/api/dist/server.js >/tmp/magina-api-e2e.log 2>&1 &
+          API_PID=$!
+          pnpm --filter @magina/web start --hostname 127.0.0.1 --port 3000 >/tmp/magina-web-e2e.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill ${API_PID} ${WEB_PID} ${STORAGE_PID} 2>/dev/null || true; echo "--- S3 FIXTURE LOG ---"; cat /tmp/magina-s3-e2e.log; echo "--- API LOG ---"; cat /tmp/magina-api-e2e.log; echo "--- WEB LOG ---"; cat /tmp/magina-web-e2e.log' EXIT
+
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:9000/__health >/dev/null && curl -fsS http://127.0.0.1:3001/health >/dev/null && curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:9000/__health
+          curl -fsS http://127.0.0.1:3001/health
+          curl -fsS http://127.0.0.1:3000/ >/dev/null
+
+          curl -fsS -D /tmp/private-headers.txt -o /dev/null \
+            -H 'x-workspace-id: aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa' \
+            -H 'x-user-id: bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb' \
+            http://127.0.0.1:3001/api/v1/me
+          grep -Eiq '^cache-control: no-store' /tmp/private-headers.txt
+          grep -Eiq '^x-content-type-options: nosniff' /tmp/private-headers.txt
+          grep -Eiq '^x-frame-options: DENY' /tmp/private-headers.txt
+
+          pnpm e2e:beta
+
+      - name: Upload Playwright failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-browser-e2e-debug
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 7

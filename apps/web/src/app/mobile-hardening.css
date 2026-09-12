@@ -1,0 +1,56 @@
+@media (max-width: 819px) {
+  .page,
+  .page > *,
+  .card,
+  .section,
+  .quick,
+  .record-field,
+  .record-input-wrap,
+  .activity-list,
+  .activity-item,
+  .activity-item > *,
+  .feed-row,
+  .feed-row > *,
+  .feed-copy,
+  .territory-banner,
+  .territory-banner > div,
+  .section-head,
+  .section-head > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .quick-grid,
+  .record-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .record-control,
+  select,
+  textarea,
+  input:not([type='hidden']):not([type='checkbox']):not([type='radio']) {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 36px;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+  }
+
+  button {
+    min-height: 32px;
+  }
+
+  .quick strong,
+  .quick small,
+  .feed-row small,
+  .activity-item,
+  .territory-banner h2 {
+    overflow-wrap: anywhere;
+  }
+}

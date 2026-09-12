@@ -1,0 +1,76 @@
+name: V20 professional print check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/v20-visual-prototype
+    paths:
+      - 'apps/api/**'
+      - 'apps/web/src/app/mi-campo/profesional/**'
+      - 'apps/web/src/app/documento-publico/**'
+      - 'apps/web/src/components/professional-*.tsx'
+      - 'apps/web/src/components/public-commercial-share-client.tsx'
+      - 'packages/weather/**'
+      - 'packages/jobs/**'
+      - 'database/migrations/0036_professional_business_profile.sql'
+      - 'database/migrations/0037_professional_document_identity_snapshots.sql'
+      - 'database/migrations/0038_professional_snapshot_triggers.sql'
+      - '.github/workflows/professional-print-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  professional-print:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @magina/contracts typecheck
+      - run: pnpm --filter @magina/contracts build
+      - run: pnpm --filter @magina/weather typecheck
+      - run: pnpm --filter @magina/weather build
+      - run: pnpm --filter @magina/jobs typecheck
+      - run: pnpm --filter @magina/jobs build
+      - run: pnpm --filter @magina/api typecheck
+      - run: pnpm --filter @magina/api build
+      - run: pnpm --filter @magina/web typecheck
+      - name: Apply migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+          for migration in database/migrations/*.sql; do
+            psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Professional print smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+        run: node apps/api/dist/testing/professional-print-smoke.js
+      - run: pnpm --filter @magina/web build

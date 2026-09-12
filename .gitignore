@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+dist
+.env
+.env.*
+!.env.example
+.DS_Store
+coverage
+
+# OCR benchmark outputs are generated locally/CI.
+services/ocr-benchmark/results/
+services/ocr-benchmark/corpus/synthetic/
+
+# Never commit real OCR documents or their truth files.
+services/ocr-benchmark/corpus/real/

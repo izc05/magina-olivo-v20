@@ -1,0 +1,89 @@
+name: V20 OCR benchmark PaddleOCR
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/v20-visual-prototype
+    paths:
+      - 'services/ocr-benchmark/providers/paddleocr_v6.py'
+      - '.github/workflows/ocr-benchmark-paddle.yml'
+      - 'services/ocr-benchmark/generate_synthetic.py'
+      - 'services/ocr-benchmark/extract_fields.py'
+      - 'services/ocr-benchmark/benchmark.py'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  paddleocr-v6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Parser regression checks
+        working-directory: services/ocr-benchmark
+        run: python test_extract_fields.py
+
+      - name: Install image and PaddleOCR tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y librsvg2-bin
+          python -m pip install --upgrade pip
+          python -m pip install paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+          python -m pip install paddleocr==3.7.0
+          python - <<'PY'
+          import paddle
+          import paddleocr
+          print('paddle', paddle.__version__)
+          print('paddleocr', getattr(paddleocr, '__version__', 'unknown'))
+          PY
+
+      - name: Generate and rasterize synthetic corpus
+        run: |
+          python services/ocr-benchmark/generate_synthetic.py
+          for svg in services/ocr-benchmark/corpus/synthetic/*.svg; do
+            png="${svg%.svg}.png"
+            rsvg-convert -w 1200 -h 1000 "$svg" -o "$png"
+          done
+
+      - name: Run PaddleOCR PP-OCRv6 baseline
+        env:
+          PADDLE_PDX_MODEL_SOURCE: BOS
+        run: |
+          mkdir -p services/ocr-benchmark/results
+          python services/ocr-benchmark/providers/paddleocr_v6.py \
+            --manifest services/ocr-benchmark/corpus/synthetic/manifest.json \
+            --images-dir services/ocr-benchmark/corpus/synthetic \
+            --output services/ocr-benchmark/results/paddleocr-v6.jsonl \
+            --device cpu
+
+      - name: Score PaddleOCR
+        run: |
+          python services/ocr-benchmark/benchmark.py \
+            --manifest services/ocr-benchmark/corpus/synthetic/manifest.json \
+            --results services/ocr-benchmark/results/paddleocr-v6.jsonl \
+            --output services/ocr-benchmark/results/paddleocr-v6-report.json
+
+          echo '## OCR benchmark · PaddleOCR PP-OCRv6' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat services/ocr-benchmark/results/paddleocr-v6-report.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload PaddleOCR benchmark evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocr-benchmark-paddleocr-v6
+          path: |
+            services/ocr-benchmark/results/paddleocr-v6.jsonl
+            services/ocr-benchmark/results/paddleocr-v6-report.json
+          retention-days: 14

@@ -1,0 +1,28 @@
+{
+  "name": "@magina/weather",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@magina/contracts": "workspace:*",
+    "geotiff": "3.0.5",
+    "tar-stream": "3.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/tar-stream": "3.1.4",
+    "typescript": "^6.0.0"
+  }
+}

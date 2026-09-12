@@ -1,0 +1,23 @@
+{
+  "name": "@magina/web",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node ../../scripts/check-web-bundle-budget.mjs",
+    "start": "node ../../scripts/serve-static-export.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "maplibre-gl": "6.8.0",
+    "next": "16.3.4",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^6.0.0"
+  }
+}
