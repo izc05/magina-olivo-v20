@@ -14,6 +14,7 @@ import { registerAdminSourceRoutes } from './routes/admin-sources.js';
 import { registerAdminOperationsRoutes } from './routes/admin-operations.js';
 import { registerAdminManagementRoutes } from './routes/admin-management.js';
 import { registerAdminCampaignPlanRoutes } from './routes/admin-campaign-plans.js';
+import { registerAdminAgendaRoutes } from './routes/admin-agenda.js';
 import { registerPlanRoutes } from './routes/plans.js';
 import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerFieldRoutes } from './routes/fields.js';
@@ -184,6 +185,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminOperationsRoutes(app, db);
   registerAdminManagementRoutes(app, db);
   registerAdminCampaignPlanRoutes(app, db);
+  registerAdminAgendaRoutes(app, db);
   registerPlanRoutes(app, db);
   registerMiOlivoRoutes(app, db);
   registerTerritoryRoutes(app, db);
