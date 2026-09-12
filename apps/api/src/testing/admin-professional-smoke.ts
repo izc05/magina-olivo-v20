@@ -7,7 +7,7 @@ import type { GoogleIdentityClaims, GoogleIdentityVerifier } from '../auth/googl
 
 const databaseUrl=process.env.DATABASE_URL;if(!databaseUrl)throw new Error('DATABASE_URL is required for admin professional smoke test.');
 const db=createDatabase(databaseUrl);
-const claims:GoogleIdentityClaims={subject:'professional-admin-subject',email:'professional-admin@magina.test',emailVerified:true,displayName:'Admin Professional',pictureUrl:null,givenName:'Admin',familyName:'Professional',hostedDomain:'magina.test'};
+const claims:GoogleIdentityClaims={subject:'admin-google-subject',email:'admin@magina.test',emailVerified:true,displayName:'Admin Mágina',pictureUrl:null,givenName:'Admin',familyName:'Mágina',hostedDomain:'magina.test'};
 const verifier:GoogleIdentityVerifier={async verify(){return claims;}};
 const app=buildApp({db,googleVerifier:verifier});const credential='synthetic-professional-admin-token-'.padEnd(140,'p');
 async function login(){const r=await app.inject({method:'POST',url:'/api/v1/auth/google',payload:{credential}});assert.ok(r.statusCode===200||r.statusCode===201,r.body);const h=r.headers['set-cookie'];assert.equal(typeof h,'string');return{body:r.json(),cookie:String(h).split(';',1)[0]};}
