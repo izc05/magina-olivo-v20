@@ -183,7 +183,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerTerritoryRoutes(app, db);
   registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
-  registerRadarRoutes(app, db);
+  registerRadarRoutes(app, db, storage);
   registerPushRoutes(app, db, notificationQueue, pushPublicKey);
   registerFieldRoutes(app, db);
   registerIrrigationRoutes(app, db);
