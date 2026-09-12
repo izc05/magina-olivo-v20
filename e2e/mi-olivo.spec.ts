@@ -90,11 +90,11 @@ test.beforeAll(async ({ request }) => {
   expect((await resume.json()).enabled).toBe(true);
 });
 
-test('premia una visita real a una ficha de pueblo', async ({ page }) => {
-  await page.goto('/pueblos?slug=bedmar');
+test('premia una consulta real del radar', async ({ page }) => {
+  await page.goto('/radar');
   const rewardToast = page.getByRole('status');
-  await expect(rewardToast).toContainText('+3 aceitunas', { timeout: 12_000 });
-  await expect(rewardToast).toContainText('Nuevo rincón de Mágina descubierto');
+  await expect(rewardToast).toContainText('+2 aceitunas', { timeout: 12_000 });
+  await expect(rewardToast).toContainText('Clima revisado antes de organizar el campo');
 });
 
 for (const width of [360, 390, 430]) {
