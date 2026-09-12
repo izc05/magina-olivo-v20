@@ -22,6 +22,7 @@ import './visual-farm-detail.css';
 import './visual-today.css';
 import './visual-business.css';
 import './visual-business-mobile.css';
+import './visual-map-radar.css';
 
 export const metadata: Metadata = {
   title: 'Mágina Olivo V20',
