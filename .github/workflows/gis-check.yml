@@ -27,6 +27,8 @@ on:
       - 'e2e/gis-finca.spec.ts'
       - 'e2e/beta-farmer.spec.ts'
       - 'playwright.config.ts'
+      - '.nvmrc'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/gis-check.yml'
   pull_request:
     branches:
@@ -48,6 +50,8 @@ on:
       - 'database/migrations/0012_gis_land_references.sql'
       - 'e2e/gis-finca.spec.ts'
       - 'e2e/beta-farmer.spec.ts'
+      - '.nvmrc'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/gis-check.yml'
 
 concurrency:
@@ -89,18 +93,18 @@ jobs:
       E2E_GIS_FIXTURES: 'true'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           run_install: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
@@ -209,7 +213,7 @@ jobs:
 
       - name: Upload GIS browser failure traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: gis-finca-selector-e2e-debug
           path: test-results
