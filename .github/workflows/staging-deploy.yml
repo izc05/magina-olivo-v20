@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       expected_sha:
-        description: Exact 40-character candidate SHA to deploy; all required gates must be green for this SHA
+        description: Exact 40-character V20 SHA to deploy; all required gates must be green for this SHA
         required: true
       confirm:
         description: Type DEPLOY-STAGING to allow deployment
@@ -32,18 +32,13 @@ jobs:
           set -eu
           printf '%s' "$EXPECTED_SHA" | grep -Eq '^[0-9a-f]{40}$'
 
-      - name: Checkout exact candidate SHA
+      - name: Checkout exact V20 SHA
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ inputs.expected_sha }}
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version-file: '.nvmrc'
-
-      - name: Verify exact candidate ancestry
+      - name: Verify exact V20 ancestry
         id: candidate
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
@@ -51,14 +46,14 @@ jobs:
           set -eu
           actual="$(git rev-parse HEAD)"
           test "$actual" = "$EXPECTED_SHA"
-          git fetch --no-tags origin feat/v20-visual-prototype
-          if ! git merge-base --is-ancestor "$actual" origin/feat/v20-visual-prototype; then
-            echo "$actual is not reachable from feat/v20-visual-prototype; refusing staging deployment." >&2
+          git fetch --no-tags origin feat/v20-visual-prototype:refs/remotes/origin/feat/v20-visual-prototype
+          if ! git merge-base --is-ancestor origin/feat/v20-visual-prototype "$actual"; then
+            echo "$actual does not descend from feat/v20-visual-prototype; refusing staging deployment." >&2
             exit 1
           fi
           echo "sha=$actual" >> "$GITHUB_OUTPUT"
 
-      - name: Require all candidate staging gates green for exact SHA
+      - name: Require all V20 staging gates green for exact SHA
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.candidate.outputs.sha }}
@@ -247,7 +242,7 @@ jobs:
             echo "- SHA: \`$SHA\`"
             echo "- Web: $STAGING_WEB_URL"
             echo "- API: $STAGING_API_URL"
-            echo '- Exact candidate ancestry and candidate/browser/staging gates were required before deployment.'
+            echo '- Exact V20 ancestry and full/browser/staging gates were required before deployment.'
             echo '- Release archive SHA-256 was verified on the staging host before publication.'
             echo '- A PostgreSQL dump was created immediately before migrations.'
             echo '- No destructive database rollback is performed automatically.'
