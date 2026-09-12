@@ -31,7 +31,8 @@ test('Inicio y Hoy conectan finca, actividad y tarea real', async ({ page }, tes
   await expect.poll(async () => placeSelect.locator('option').count()).toBeGreaterThan(1);
   await placeSelect.selectOption({ index: 1 });
   await page.getByRole('button', { name: 'Continuar →' }).click();
-  await page.getByRole('button', { name: 'Guardar finca →' }).click();
+  await expect(page.getByRole('heading', { name: 'Localiza la finca con un límite real' })).toBeVisible();
+  await page.getByRole('button', { name: 'Guardar sin límites' }).click();
   await expect(page.getByText('FINCA GUARDADA EN MI CAMPO')).toBeVisible();
 
   const registerHref = await page.getByRole('link', { name: /Registrar trabajo/ }).getAttribute('href');
