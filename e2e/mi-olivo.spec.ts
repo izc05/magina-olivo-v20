@@ -90,6 +90,13 @@ test.beforeAll(async ({ request }) => {
   expect((await resume.json()).enabled).toBe(true);
 });
 
+test('premia una visita real a una ficha de pueblo', async ({ page }) => {
+  await page.goto('/pueblos?slug=bedmar');
+  const rewardToast = page.getByRole('status');
+  await expect(rewardToast).toContainText('+3 aceitunas', { timeout: 12_000 });
+  await expect(rewardToast).toContainText('Nuevo rincón de Mágina descubierto');
+});
+
 for (const width of [360, 390, 430]) {
   test.describe(`Mi Olivo ${width}px`, () => {
     test.use({ viewport: { width, height: 844 } });
