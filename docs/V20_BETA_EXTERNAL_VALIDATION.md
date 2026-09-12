@@ -4,14 +4,21 @@ Este checklist empieza **después** del cierre funcional interno de `integrate/v
 
 Referencia funcional verde previa:
 
-- integración funcional: `4a04410686eed936b12d359101f1ff2a0faa6fc0`;
-- Full Candidate #2286 ✅;
-- Browser E2E #598 ✅;
-- Staging Readiness #199 ✅;
-- GIS #789 ✅;
-- Weather/Radar #13 ✅.
+- integración funcional: `3a934e979fa6f279316c75a61ac9610432786887`;
+- Full Candidate #2308 ✅;
+- Browser E2E #620 ✅;
+- Staging Readiness #221 ✅;
+- Foundation #110 ✅;
+- Runtime Hardening #60 ✅;
+- Platform Admin #179 ✅;
+- Notification Center #39 ✅;
+- Planes #106 ✅;
+- Mi Olivo #62 ✅;
+- Environment Contract #127 ✅;
+- Lockfile Guard #111 ✅;
+- Visual Preview / GitHub Pages #612 ✅.
 
-Los commits exclusivamente documentales posteriores no invalidan esa referencia funcional.
+Los workflows dedicados GIS y Weather/Radar quedaron verdes tras su absorción en la rama coordinadora. Los commits exclusivamente documentales posteriores no invalidan esta referencia funcional.
 
 Documentación operativa relacionada:
 
