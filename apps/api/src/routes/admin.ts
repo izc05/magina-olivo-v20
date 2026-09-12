@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { DatabaseClient } from '../db/client.js';
 import type { CmsEntryStatus, CmsEntryType, PlatformAdminRole } from '../db/types.js';
 import { parseBody, requireDatabase } from '../http/helpers.js';
-import { auditAdminAction, requirePlatformAccess, resolvePlatformAccess } from '../admin/access.js';
+import { auditAdminAction, requirePlatformAccess, resolvePlatformAccess, roleAtLeast } from '../admin/access.js';
 
 const platformRoleSchema = z.enum(['super_admin', 'admin', 'editor', 'support']);
 const userStatusSchema = z.enum(['active', 'suspended', 'deleted']);
@@ -163,6 +163,12 @@ export function registerAdminRoutes(app: FastifyInstance, db: DatabaseClient | n
 
     const existing = await auth.database.selectFrom('users').select(['id', 'status']).where('id', '=', params.data.userId).executeTakeFirst();
     if (!existing) return reply.code(404).send({ error: 'user_not_found' });
+
+    const targetAccess = await resolvePlatformAccess(auth.database, existing.id);
+    if (targetAccess && !roleAtLeast(auth.access.role, targetAccess.role)) {
+      return reply.code(403).send({ error: 'platform_admin_role_required', minimum_role: targetAccess.role });
+    }
+
     await auth.database.updateTable('users').set({ status: input.status, updated_at: new Date() }).where('id', '=', existing.id).execute();
     await auditAdminAction(auth.database, auth.access, 'user.status_changed', 'user', existing.id, { from: existing.status, to: input.status });
     return { id: existing.id, status: input.status };
