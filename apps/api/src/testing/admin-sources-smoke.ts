@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import { buildApp } from '../app.js';
 import { createDatabase } from '../db/client.js';
@@ -35,8 +36,17 @@ try {
   await app.ready();
 
   const adminLogin = await login();
-  const workspaceId = String(adminLogin.body.workspaces[0].id);
-  const adminUserId = String(adminLogin.body.user.id);
+
+  claims = {
+    ...claims,
+    subject: 'sources-owner-google-subject',
+    email: 'sources-owner@magina.test',
+    displayName: 'Owner sin permisos corporativos',
+  };
+  const ownerLogin = await login();
+  assert.equal(ownerLogin.body.workspaces[0].role, 'owner');
+  const workspaceId = String(ownerLogin.body.workspaces[0].id);
+  const ownerUserId = String(ownerLogin.body.user.id);
 
   const municipality = await sql<{ id: string }>`
     SELECT id FROM territory_municipalities WHERE name = 'Huelma' LIMIT 1
@@ -86,11 +96,11 @@ try {
       (${fieldId}::uuid, 'sigpac', 'SOURCE-SMOKE-SIG', 'linked', now())
   `.execute(db);
 
-  const documentId = crypto.randomUUID();
-  const versionId = crypto.randomUUID();
+  const documentId = randomUUID();
+  const versionId = randomUUID();
   await sql`
     INSERT INTO documents (id, workspace_id, client_operation_id, kind, title, status, created_by)
-    VALUES (${documentId}::uuid, ${workspaceId}::uuid, gen_random_uuid(), 'harvest_ticket', 'Documento OCR telemetry', 'active', ${adminUserId}::uuid)
+    VALUES (${documentId}::uuid, ${workspaceId}::uuid, gen_random_uuid(), 'harvest_ticket', 'Documento OCR telemetry', 'active', ${ownerUserId}::uuid)
   `.execute(db);
   await sql`
     INSERT INTO document_versions (
@@ -98,7 +108,7 @@ try {
       created_by, upload_status, integrity_status, uploaded_at
     ) VALUES (
       ${versionId}::uuid, ${documentId}::uuid, 1, ${`smoke/${versionId}.jpg`}, 'ocr-smoke.jpg', 'image/jpeg', 128,
-      ${'b'.repeat(64)}, ${adminUserId}::uuid, 'uploaded', 'verified', now()
+      ${'b'.repeat(64)}, ${ownerUserId}::uuid, 'uploaded', 'verified', now()
     )
   `.execute(db);
   await sql`
@@ -137,14 +147,6 @@ try {
   assert.ok(catastro.metrics.verified_references >= 1);
   assert.ok(sigpac.metrics.linked_references >= 1);
 
-  claims = {
-    ...claims,
-    subject: 'sources-owner-google-subject',
-    email: 'sources-owner@magina.test',
-    displayName: 'Owner sin permisos corporativos',
-  };
-  const ownerLogin = await login();
-  assert.equal(ownerLogin.body.workspaces[0].role, 'owner');
   const denied = await app.inject({ method: 'GET', url: '/api/v1/admin/sources', headers: { cookie: ownerLogin.cookie } });
   assert.equal(denied.statusCode, 403, denied.body);
   assert.equal(denied.json().error, 'platform_admin_required');
