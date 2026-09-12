@@ -51,6 +51,58 @@ jobs:
           NEXT_PUBLIC_PREVIEW_MODE: 'true'
         run: pnpm --filter @magina/web build
 
+      - name: Validate static links honor Pages base path
+        env:
+          PAGES_BASE_PATH: '/magina-olivo-v20'
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir, readFile } from 'node:fs/promises';
+          import { join, relative } from 'node:path';
+
+          const root = 'apps/web/out';
+          const basePath = process.env.PAGES_BASE_PATH;
+          const htmlFiles = [];
+
+          async function walk(directory) {
+            for (const entry of await readdir(directory, { withFileTypes: true })) {
+              const absolute = join(directory, entry.name);
+              if (entry.isDirectory()) {
+                await walk(absolute);
+              } else if (entry.isFile() && entry.name.endsWith('.html')) {
+                htmlFiles.push(absolute);
+              }
+            }
+          }
+
+          await walk(root);
+          const violations = [];
+          let anchorCount = 0;
+
+          for (const file of htmlFiles) {
+            const html = await readFile(file, 'utf8');
+            for (const match of html.matchAll(/<a\b[^>]*\bhref=(['"])(.*?)\1/gi)) {
+              anchorCount += 1;
+              const href = match[2];
+              if (
+                href.startsWith('/') &&
+                !href.startsWith('//') &&
+                href !== basePath &&
+                !href.startsWith(`${basePath}/`)
+              ) {
+                violations.push(`${relative(root, file)} -> ${href}`);
+              }
+            }
+          }
+
+          if (violations.length > 0) {
+            console.error('Internal links escaping the configured GitHub Pages basePath:');
+            for (const violation of violations) console.error(`- ${violation}`);
+            process.exit(1);
+          }
+
+          console.log(`Validated ${anchorCount} anchors across ${htmlFiles.length} HTML files for ${basePath}.`);
+          NODE
+
       - name: Configure Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
