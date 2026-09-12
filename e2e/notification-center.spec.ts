@@ -66,7 +66,7 @@ test('campana abre el centro de avisos y filtra historial real', async ({ page }
   await expect(page.getByText('Mágina · documento sin leer', { exact: true })).toBeVisible();
   await expect(page.getByText(/no significa que lo hayas leído/i)).toBeVisible();
 
-  const fieldAction = page.getByRole('link', { name: 'Abrir información →' }).filter({ has: page.locator('') }).first();
+  const fieldAction = page.getByRole('link', { name: 'Abrir información →' }).first();
   await expect(fieldAction).toHaveAttribute('href', '/mi-campo/hoy/');
 
   await page.getByLabel('Filtrar avisos por tipo').selectOption('documents');
