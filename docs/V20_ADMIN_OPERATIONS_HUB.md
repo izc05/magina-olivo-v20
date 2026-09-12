@@ -33,37 +33,64 @@ La API `GET /api/v1/admin/operations` calcula en tiempo real una fotografía com
 - workspaces totales y profesionales;
 - fincas activas y superficie registrada;
 - campañas activas y tareas abiertas;
+- trabajos agrícolas registrados;
+- riegos, tratamientos, abonados y podas;
+- gastos de campo y total económico;
 - kilos de cosecha registrados;
+- liquidaciones confirmadas y neto liquidado;
+- cobros de cosecha y total cobrado;
+- personas/empresas activas vinculadas a trabajos;
 - documentos activos y volumen subido;
 - OCR pendiente y fallido;
 - contenido borrador/publicado;
 - facturas emitidas y total facturado;
 - presupuestos abiertos y aceptados;
+- suscripciones Pro y Profesional;
 - histórico de mercado validado y último período;
 - cachés meteorológicas caducadas;
 - acciones administrativas de las últimas 24 horas.
 
-Estas métricas son de operación y soporte. No sustituyen una futura capa analítica histórica con series temporales.
+Estas métricas son de operación y soporte. La arquitectura queda preparada para añadir series temporales e históricos sin cambiar la navegación del Admin.
 
 ## Explorador de datos
 
-`GET /api/v1/admin/data/:dataset` permite inspeccionar hasta 250 registros por petición, con 50 por defecto. Solo admite una allowlist explícita:
+`GET /api/v1/admin/data/:dataset` permite inspeccionar hasta 250 registros por petición, con 50 por defecto. Solo admite una allowlist explícita de 25 dominios:
 
-- `users`
-- `workspaces`
-- `fields`
-- `campaigns`
-- `harvest`
-- `documents`
-- `ocr`
-- `content`
-- `invoices`
-- `quotes`
-- `market`
+- `users` — usuarios;
+- `workspaces` — espacios de trabajo;
+- `fields` — fincas;
+- `campaigns` — campañas;
+- `work` — trabajos agrícolas;
+- `irrigation` — riegos;
+- `treatments` — tratamientos;
+- `fertilization` — abonado;
+- `pruning` — poda;
+- `expenses` — gastos;
+- `harvest` — entregas de cosecha;
+- `settlements` — liquidaciones;
+- `collections` — cobros de cosecha;
+- `agenda` — agenda y tareas;
+- `parties` — personas y empresas;
+- `machinery` — maquinaria;
+- `materials` — materiales;
+- `documents` — documentos;
+- `ocr` — procesos OCR;
+- `content` — contenido público;
+- `invoices` — facturas profesionales;
+- `quotes` — presupuestos profesionales;
+- `plans` — planes y suscripciones;
+- `territory` — catálogo territorial;
+- `market` — histórico de mercado.
 
-La respuesta selecciona columnas útiles para soporte y administración. No existe acceso genérico a nombres de tabla suministrados por el cliente.
+La respuesta selecciona columnas útiles para soporte y administración. No existe acceso genérico a nombres de tabla suministrados por el cliente y no se incluyen secretos, sesiones, credenciales, objetos binarios ni texto OCR bruto.
 
-La primera versión del explorador es **solo lectura**. Las modificaciones de negocio se harán con acciones dedicadas para poder validar permisos, invariantes de dominio y auditoría. Es preferible añadir un editor de finca, campaña, usuario, contenido o plan concreto que permitir `UPDATE` arbitrarios.
+La primera versión del explorador es **solo lectura**. Las modificaciones de negocio se harán con acciones dedicadas para validar permisos, invariantes de dominio y auditoría. Es preferible añadir un editor de finca, campaña, usuario, contenido o plan concreto que permitir `UPDATE` arbitrarios.
+
+## Edición de la web
+
+El centro operativo no sustituye al editor de sitio. `/admin/web` continúa siendo la superficie para cambiar la experiencia pública: portada, contenido editorial, noticias/eventos, territorio visible, publicidad, SEO y recursos gestionados. `/admin/media` gestiona las imágenes y `/admin/territorio` el catálogo geográfico.
+
+La ampliación prevista consiste en ir sustituyendo ajustes JSON por formularios tipados por módulo. Así se podrá gobernar cualquier sección visible sin dar acceso directo a SQL ni mezclar configuración editorial con datos de negocio.
 
 ## App Gateway
 
@@ -222,7 +249,7 @@ El workflow `V20 platform admin check` incluye:
 1. typecheck/build de API y web;
 2. todas las migraciones sobre PostgreSQL/PostGIS real;
 3. smoke existente de acceso corporativo/CMS/media/auditoría;
-4. smoke específico de métricas, explorador de datos y App Gateway;
+4. smoke específico que abre métricas, recorre los 25 datasets y valida el App Gateway;
 5. smokes de territorio y fuentes.
 
 Además, el PR se somete a los gates transversales del candidate: full candidate, browser E2E, staging readiness, environment contract y runtime hardening.
@@ -232,12 +259,12 @@ Además, el PR se somete a los gates transversales del candidate: full candidate
 La arquitectura deja sitio para añadir sin rehacer el panel:
 
 - filtros/paginación/exportación CSV por dataset;
-- fichas administrativas de finca, campaña y workspace;
+- fichas administrativas editables de finca, campaña y workspace;
 - administración de planes y límites;
 - métricas históricas y gráficas por día/semana/mes;
 - estado de jobs/colas y últimos errores;
 - gestor de feature flags;
 - configuración por módulo con formularios en vez de JSON;
-- health check activo del App Gateway desde backend;
+- health check activo del App Gateway desde backend, con protección SSRF;
 - reverse proxy bajo el mismo dominio para la app complementaria;
 - acciones de soporte como reasignación controlada, reintento OCR o refresco de fuentes, siempre auditadas.
