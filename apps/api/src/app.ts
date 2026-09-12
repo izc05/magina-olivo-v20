@@ -31,6 +31,7 @@ import { registerFinancialAttentionRoutes } from './routes/financial-attention.j
 import { registerHomePriorityPreferenceRoutes } from './routes/home-priority-preferences.js';
 import { registerFinancialNotificationRoutes } from './routes/financial-notifications.js';
 import { registerCommercialNotificationRoutes } from './routes/commercial-notifications.js';
+import { registerNotificationCenterRoutes } from './routes/notification-center.js';
 import { registerPlannedTaskRoutes } from './routes/planned-tasks.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerDocumentAccessRoutes } from './routes/document-access.js';
@@ -202,6 +203,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerHomePriorityPreferenceRoutes(app, db);
   registerFinancialNotificationRoutes(app, db, notificationQueue);
   registerCommercialNotificationRoutes(app, db);
+  registerNotificationCenterRoutes(app, db);
   registerPlannedTaskRoutes(app, db);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);
