@@ -252,7 +252,10 @@ jobs:
           test "$backup_count" = '1'
           backup_file="$(find "$backup_dir" -maxdepth 1 -type f -name 'magina-staging-before-*.dump' -print -quit)"
           test -s "$backup_file"
-          pg_restore -l "$backup_file" >/dev/null
+          docker run --rm \
+            -v "$backup_dir:/backups:ro" \
+            postgres:17-bookworm \
+            pg_restore -l "/backups/$(basename "$backup_file")" >/dev/null
 
           curl -fsS http://127.0.0.1:3001/health >/tmp/staging-health.json
           curl -fsS http://127.0.0.1:8080/healthz | grep -Fx 'ok'
