@@ -97,7 +97,7 @@ El host no necesita clonar Git: GitHub Actions puede subir una release inmutable
 
 ## GitHub Environment `staging`
 
-Secrets esperados:
+Secrets usados por el workflow:
 
 ```text
 STAGING_ENV_FILE
@@ -105,14 +105,17 @@ STAGING_SSH_PRIVATE_KEY
 STAGING_SSH_KNOWN_HOSTS
 ```
 
-Variables:
+Variables usadas por `V20 staging deploy`:
 
 ```text
-STAGING_HOST
-STAGING_USER
-STAGING_PORT
+STAGING_WEB_URL=https://<web-staging>
+STAGING_HOST=<host-ssh>
+STAGING_USER=<usuario-ssh>
+STAGING_PORT=<puerto-ssh>
 STAGING_PATH=/srv/stacks/magina-olivo-v20-staging
 ```
+
+`STAGING_WEB_URL` debe ser un origen HTTPS limpio y debe aparecer en `CORS_ALLOWED_ORIGINS` del `.env`. La API se obtiene de `NEXT_PUBLIC_API_URL` y debe ser otro origen HTTPS.
 
 Mantener aprobación manual mientras V20 siga en Beta.
 
@@ -224,36 +227,42 @@ Antes de aprobar Beta debe demostrarse al menos un restore controlado real y com
 
 ## Despliegue remoto
 
-Workflow manual esperado:
+Workflow manual:
 
 ```text
 V20 staging deploy
 ```
 
-Inputs:
+El workflow actual tiene exactamente dos inputs:
 
 ```text
-ref=<rama/tag/SHA>
 expected_sha=<SHA completo de 40 caracteres>
 confirm=DEPLOY-STAGING
 ```
 
-Antes de abrir SSH debe exigir `success` para el mismo SHA exacto de los gates de cierre configurados.
+No hay input `ref`. El workflow hace checkout directo de `expected_sha`, comprueba que descienda de `feat/v20-visual-prototype` y exige para ese mismo SHA:
+
+```text
+V20 full candidate check
+V20 beta browser E2E
+V20 staging readiness
+```
 
 Después:
 
 1. valida SHA y gates;
 2. valida `.env`;
-3. valida SSH/known_hosts y prerequisitos;
-4. sube release inmutable por SHA;
-5. arranca PostgreSQL;
-6. genera backup pre-migración;
-7. construye web/API/worker;
-8. ejecuta migraciones;
-9. arranca stack y comprueba web/API/worker;
-10. exige segunda pasada de migraciones no-op;
-11. ejecuta smoke HTTPS externo;
-12. solo entonces actualiza `current` y `CURRENT_SHA`.
+3. valida `STAGING_WEB_URL` frente a CORS y `NEXT_PUBLIC_API_URL`;
+4. valida SSH/known_hosts y prerequisitos;
+5. sube release inmutable por SHA y verifica su SHA-256;
+6. arranca PostgreSQL;
+7. genera backup pre-migración obligatorio;
+8. construye web/API/worker;
+9. ejecuta migraciones;
+10. arranca stack y comprueba web/API/worker;
+11. exige segunda pasada de migraciones no-op;
+12. ejecuta smoke HTTPS externo;
+13. solo entonces actualiza `current` y `CURRENT_SHA`.
 
 Si falla el smoke externo, la release no se marca como actual.
 
