@@ -101,7 +101,7 @@ for (const width of [360, 390, 430]) {
   test.describe(`Mi Olivo ${width}px`, () => {
     test.use({ viewport: { width, height: 844 } });
 
-    test('muestra progreso real y escena viva sin desbordamiento horizontal', async ({ page }) => {
+    test('muestra progreso, AEMET real y escena viva sin desbordamiento horizontal', async ({ page }) => {
       await page.goto('/mi-olivo');
 
       await expect(page.getByRole('heading', { name: 'Tu olivo digital' })).toBeVisible();
@@ -114,6 +114,14 @@ for (const width of [360, 390, 430]) {
       await expect(page.getByRole('heading', { name: 'Pequeños pasos útiles' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Distintivos digitales' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Por qué ha crecido' })).toBeVisible();
+
+      const forecast = page.getByRole('region', { name: 'Previsión real que ambienta Mi Olivo' });
+      await expect(forecast).toBeVisible();
+      await expect(forecast).toContainText('AEMET · PREVISIÓN DE HOY');
+      await expect(forecast).toContainText('Finca Mobile Audit · Huelma');
+      await expect(forecast).toContainText('35 %');
+      await expect(forecast).toContainText('14° / 27°');
+      await expect(forecast).toContainText('20 km/h');
 
       const dimensions = await page.evaluate(() => ({
         viewport: document.documentElement.clientWidth,
