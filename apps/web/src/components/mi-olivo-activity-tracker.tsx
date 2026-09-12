@@ -1,16 +1,19 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { apiFetch } from '../lib/api-client';
 import { useAuth } from './auth-provider';
 import styles from './mi-olivo-activity-tracker.module.css';
 
-type InteractionType = 'content_read' | 'territory_viewed' | 'weather_checked' | 'learning_completed';
+export type MiOlivoInteractionType = 'content_read' | 'territory_viewed' | 'weather_checked' | 'learning_completed';
 
-type TrackableAction = {
-  eventType: InteractionType;
+export type MiOlivoTrackRequest = {
+  eventType: MiOlivoInteractionType;
   sourceId: string;
+};
+
+type TrackableAction = MiOlivoTrackRequest & {
   delayMs: number;
 };
 
@@ -43,11 +46,13 @@ function actionForRoute(pathname: string, query: string): TrackableAction | null
   if (pathname === '/radar') {
     return { eventType: 'weather_checked', sourceId: 'radar', delayMs: 5_000 };
   }
-  if (pathname === '/consejos') {
-    return { eventType: 'learning_completed', sourceId: 'consejo:cuaderno-practico', delayMs: 12_000 };
-  }
 
   return null;
+}
+
+export function requestMiOlivoTracking(detail: MiOlivoTrackRequest) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<MiOlivoTrackRequest>('magina:mi-olivo-track', { detail }));
 }
 
 export function MiOlivoActivityTracker() {
@@ -59,35 +64,51 @@ export function MiOlivoActivityTracker() {
 
   const action = useMemo(() => actionForRoute(pathname, query), [pathname, query]);
 
-  useEffect(() => {
-    if (!action || status !== 'authenticated' || !selectedWorkspaceId || !apiConfigured) return;
+  const recordAction = useCallback(async (trackRequest: MiOlivoTrackRequest) => {
+    if (status !== 'authenticated' || !selectedWorkspaceId || !apiConfigured) return;
 
-    const sessionKey = `magina:mi-olivo:${selectedWorkspaceId}:${action.eventType}:${action.sourceId}`;
+    const sessionKey = `magina:mi-olivo:${selectedWorkspaceId}:${trackRequest.eventType}:${trackRequest.sourceId}`;
     if (window.sessionStorage.getItem(sessionKey) === 'sent') return;
 
-    const timer = window.setTimeout(async () => {
-      window.sessionStorage.setItem(sessionKey, 'sent');
-      try {
-        const response = await apiFetch<AwardResponse>('/api/v1/mi-olivo/events', {
-          method: 'POST',
-          workspaceId: selectedWorkspaceId,
-          body: JSON.stringify({
-            event_type: action.eventType,
-            source_id: action.sourceId,
-          }),
-        });
+    window.sessionStorage.setItem(sessionKey, 'sent');
+    try {
+      const response = await apiFetch<AwardResponse>('/api/v1/mi-olivo/events', {
+        method: 'POST',
+        workspaceId: selectedWorkspaceId,
+        body: JSON.stringify({
+          event_type: trackRequest.eventType,
+          source_id: trackRequest.sourceId,
+        }),
+      });
 
-        if (response.awarded && response.points > 0) {
-          setToast({ points: response.points, message: response.message });
-          window.dispatchEvent(new CustomEvent('magina:mi-olivo-award', { detail: response }));
-        }
-      } catch (error) {
-        console.debug('Mi Olivo did not record this optional interaction.', error);
+      if (response.awarded && response.points > 0) {
+        setToast({ points: response.points, message: response.message });
+        window.dispatchEvent(new CustomEvent('magina:mi-olivo-award', { detail: response }));
       }
-    }, action.delayMs);
+    } catch (error) {
+      window.sessionStorage.removeItem(sessionKey);
+      console.debug('Mi Olivo did not record this optional interaction.', error);
+    }
+  }, [apiConfigured, selectedWorkspaceId, status]);
 
+  useEffect(() => {
+    if (!action) return;
+    const timer = window.setTimeout(() => {
+      void recordAction({ eventType: action.eventType, sourceId: action.sourceId });
+    }, action.delayMs);
     return () => window.clearTimeout(timer);
-  }, [action, apiConfigured, selectedWorkspaceId, status]);
+  }, [action, recordAction]);
+
+  useEffect(() => {
+    const handleTrackRequest = (event: Event) => {
+      const detail = (event as CustomEvent<MiOlivoTrackRequest>).detail;
+      if (!detail?.eventType || !detail.sourceId) return;
+      void recordAction(detail);
+    };
+
+    window.addEventListener('magina:mi-olivo-track', handleTrackRequest);
+    return () => window.removeEventListener('magina:mi-olivo-track', handleTrackRequest);
+  }, [recordAction]);
 
   useEffect(() => {
     if (!toast) return;
