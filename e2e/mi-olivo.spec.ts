@@ -41,24 +41,32 @@ test.beforeAll(async ({ request }) => {
   const repeatedBody = await repeated.json() as MiOlivoApi;
   expect(repeatedBody.balance).toBe(firstBody.balance);
 
-  const uniqueTerritory = `pueblo:e2e-${Date.now()}`;
+  const learningSource = 'consejo:recorrido-observacion';
   const award = await request.post(`${apiUrl}/api/v1/mi-olivo/events`, {
-    data: { event_type: 'territory_viewed', source_id: uniqueTerritory },
+    data: { event_type: 'learning_completed', source_id: learningSource },
   });
   expect(award.status(), award.statusText()).toBe(200);
   const awardBody = await award.json() as AwardResponse;
   expect(awardBody.awarded).toBe(true);
-  expect(awardBody.points).toBe(3);
+  expect(awardBody.points).toBe(5);
   expect(awardBody.daily.cap).toBe(20);
 
   const duplicate = await request.post(`${apiUrl}/api/v1/mi-olivo/events`, {
-    data: { event_type: 'territory_viewed', source_id: uniqueTerritory },
+    data: { event_type: 'learning_completed', source_id: learningSource },
   });
   expect(duplicate.status(), duplicate.statusText()).toBe(200);
   const duplicateBody = await duplicate.json() as AwardResponse;
   expect(duplicateBody.awarded).toBe(false);
   expect(duplicateBody.points).toBe(0);
   expect(duplicateBody.status).toBe('already_recognized');
+
+  const inventedTerritory = await request.post(`${apiUrl}/api/v1/mi-olivo/events`, {
+    data: { event_type: 'territory_viewed', source_id: 'pueblo:no-existe' },
+  });
+  expect(inventedTerritory.status(), inventedTerritory.statusText()).toBe(200);
+  const inventedTerritoryBody = await inventedTerritory.json() as AwardResponse;
+  expect(inventedTerritoryBody.awarded).toBe(false);
+  expect(inventedTerritoryBody.points).toBe(0);
 
   const invalid = await request.post(`${apiUrl}/api/v1/mi-olivo/events`, {
     data: { event_type: 'territory_viewed', source_id: 'not-a-territory-source' },
