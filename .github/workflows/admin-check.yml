@@ -111,7 +111,7 @@ jobs:
       - name: Operations metrics, data explorer and App Gateway smoke
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
-          ADMIN_BOOTSTRAP_EMAILS: admin@magina.test
+          ADMIN_BOOTSTRAP_EMAILS: operations-admin@magina.test
           ALLOW_DEV_AUTH_HEADERS: 'false'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/admin-operations-smoke.js
