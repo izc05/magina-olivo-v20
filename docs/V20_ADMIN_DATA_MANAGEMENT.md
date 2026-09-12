@@ -7,6 +7,7 @@ Rama: `feat/v20-admin-operations-hub`
 - `/admin/operaciones`: métricas, telemetría, explorador de datos y App Gateway.
 - `/admin/gestion`: espacios de trabajo, miembros y fincas.
 - `/admin/campanas-planes`: campañas agrícolas, planes internos e intereses comerciales.
+- `/admin/agenda`: agenda global y tareas planificadas de todos los workspaces.
 
 El principio común es permitir cambios controlados sobre entidades de negocio mediante APIs tipadas y auditadas, sin introducir un editor SQL genérico.
 
@@ -62,10 +63,27 @@ El principio común es permitir cambios controlados sobre entidades de negocio m
 - modificación por `admin` o `super_admin`;
 - auditoría `plan_interest.updated`.
 
+## Fase 3 implementada — Agenda global
+
+### Visión transversal
+
+- consultar tareas de cualquier workspace y finca;
+- filtros por estado, workspace, finca, fecha y texto;
+- métricas globales de planificadas, pospuestas, atrasadas y completadas en 30 días;
+- lectura del origen manual/automático y del registro de dominio relacionado.
+
+### Gestión
+
+- crear tareas manuales para una finca activa desde Administración;
+- modificar título, fecha/hora, tipo, notas y estado de una tarea no completada;
+- reprogramar, posponer o cancelar sin borrar el histórico;
+- las tareas completadas son inmutables desde Admin para preservar el vínculo con el registro agrícola que las completó;
+- auditoría `scheduled_event.created` y `scheduled_event.updated`.
+
 ## Roles
 
 - `support` y `editor`: consulta en las nuevas superficies de gestión;
-- `admin`: workspaces, miembros, fincas, campañas e intereses comerciales;
+- `admin`: workspaces, miembros, fincas, campañas, intereses comerciales y agenda;
 - `super_admin`: lo anterior más modificación del plan efectivo;
 - la gestión de permisos administrativos de plataforma continúa bajo las reglas existentes de `/admin`.
 
@@ -88,6 +106,12 @@ El principio común es permitir cambios controlados sobre entidades de negocio m
 - `PUT /api/v1/admin/workspaces/:workspaceId/plan`
 - `PATCH /api/v1/admin/plan-interests/:interestId`
 
+### Agenda
+
+- `GET /api/v1/admin/agenda`
+- `POST /api/v1/admin/agenda`
+- `PATCH /api/v1/admin/agenda/:taskId`
+
 Todas las rutas requieren autenticación de plataforma. Las escrituras aplican además el rol mínimo correspondiente.
 
 ## Validación
@@ -96,14 +120,15 @@ Todas las rutas requieren autenticación de plataforma. Las escrituras aplican a
 
 `admin-campaign-plans-smoke.ts` crea una campaña e interés comercial, verifica validación de fechas, edición de campaña, plan manual sin billing, transición del interés y auditoría.
 
-El workflow `V20 platform admin check` ejecuta ambos smokes después de compilar API/web y aplicar todas las migraciones reales.
+`admin-agenda-smoke.ts` crea una tarea administrativa real, comprueba listado global, reprogramación, posposición/cancelación, inmutabilidad de tareas completadas y auditoría.
+
+El workflow `V20 platform admin check` ejecuta estos smokes después de compilar API/web y aplicar todas las migraciones reales.
 
 ## Próximas fases
 
 La misma arquitectura se ampliará sin un editor SQL genérico:
 
-1. agenda y tareas planificadas;
-2. trabajos y actividad agrícola;
-3. documentos/OCR con acciones de soporte;
-4. profesional: clientes, presupuestos, facturas y cobros;
-5. herramientas de soporte como reintentos, reasignaciones y refresco de fuentes, siempre auditadas.
+1. trabajos y actividad agrícola;
+2. documentos/OCR con acciones de soporte;
+3. profesional: clientes, presupuestos, facturas y cobros;
+4. herramientas de soporte como reintentos, reasignaciones y refresco de fuentes, siempre auditadas.
