@@ -69,7 +69,7 @@ test('Mi Olivo V6 conserva memoria de campañas reales sin inventar avance', asy
   await expect(memory.getByText('Campaña activa', { exact: true })).toBeVisible();
   await expect(memory.getByText('1.842 kg', { exact: true })).toBeVisible();
 
-  const closed = memory.getByRole('article', { name: 'Memoria de campaña 2025/26' });
+  const closed = memory.locator('article[aria-label="Memoria de campaña 2025/26"]');
   await expect(closed).toBeVisible();
   await expect(closed.getByText('6.320 kg', { exact: true })).toBeVisible();
   await expect(closed.getByText('9', { exact: true })).toBeVisible();
@@ -87,7 +87,7 @@ test.describe('Mi Olivo V6 móvil', () => {
 
     const memory = page.getByRole('region', { name: 'Memoria real de campañas de Mi Olivo' });
     await expect(memory).toBeVisible();
-    await expect(memory.getByRole('article', { name: 'Memoria de campaña 2025/26' })).toBeVisible();
+    await expect(memory.locator('article[aria-label="Memoria de campaña 2025/26"]')).toBeVisible();
 
     const dimensions = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
