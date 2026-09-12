@@ -13,7 +13,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  campaign_id UUID;
+  reward_campaign_id UUID;
   delivery_count INTEGER := 0;
   delivered_kg DOUBLE PRECISION := 0;
   confirmed_yield_exists BOOLEAN := false;
@@ -30,7 +30,7 @@ BEGIN
   END IF;
 
   BEGIN
-    campaign_id := NEW.source_id::uuid;
+    reward_campaign_id := NEW.source_id::uuid;
   EXCEPTION WHEN invalid_text_representation THEN
     RETURN NULL;
   END;
@@ -38,7 +38,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM campaigns c
-    WHERE c.id = campaign_id
+    WHERE c.id = reward_campaign_id
       AND c.workspace_id = NEW.workspace_id
   ) THEN
     RETURN NULL;
@@ -50,7 +50,7 @@ BEGIN
   INTO delivery_count, delivered_kg
   FROM harvest_deliveries hd
   WHERE hd.workspace_id = NEW.workspace_id
-    AND hd.campaign_id = campaign_id
+    AND hd.campaign_id = reward_campaign_id
     AND hd.created_by = NEW.user_id;
 
   SELECT EXISTS (
@@ -58,7 +58,7 @@ BEGIN
     FROM delivery_results dr
     JOIN harvest_deliveries hd ON hd.id = dr.delivery_id
     WHERE hd.workspace_id = NEW.workspace_id
-      AND hd.campaign_id = campaign_id
+      AND hd.campaign_id = reward_campaign_id
       AND hd.created_by = NEW.user_id
       AND dr.status = 'confirmed'
   ) INTO confirmed_yield_exists;
