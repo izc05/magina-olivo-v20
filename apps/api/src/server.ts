@@ -5,6 +5,9 @@ import { PgBossOcrQueue } from './ocr/pg-boss.js';
 import { PgBossNotificationDispatchQueue } from './notifications/pg-boss.js';
 import { createS3StorageFromEnv } from './storage/s3.js';
 import { createGoogleIdentityVerifierFromEnv } from './auth/google.js';
+import { assertSafeRuntimeEnvironment } from './runtime-security.js';
+
+assertSafeRuntimeEnvironment();
 
 const databaseUrl = process.env.DATABASE_URL;
 const db = databaseUrl ? createDatabase(databaseUrl) : null;
