@@ -85,6 +85,17 @@ async function start() {
 
   if (modules.has('radar')) {
     if (!radarStorage) throw new Error('Radar storage was not initialized');
+    await boss.schedule(
+      RADAR_INGEST_QUEUE_NAME,
+      '*/10 * * * *',
+      {
+        version: 1,
+        source: 'aemet_national_mosaic',
+        product: 'reflectivity',
+        requested_at: new Date().toISOString(),
+      },
+      { key: 'aemet-national-reflectivity-v1', tz: 'UTC' },
+    );
     await boss.work<RadarIngestJobPayload>(RADAR_INGEST_QUEUE_NAME, { batchSize: 1 }, async ([job]) => {
       if (!job) return;
       await runRadarIngestJob(pool, remoteAemetRadarSource, radarStorage, radarIngestJobPayloadSchema.parse(job.data));
