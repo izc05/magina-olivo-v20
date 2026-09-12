@@ -81,6 +81,11 @@ function storyClass(entry: CmsEntry) {
 function ManagedStory({ entry }: { entry: CmsEntry }) {
   const mediaUrl = safeMediaUrl(entry.media_url);
   const externalUrl = safeHref(entry.external_url);
+  const internalUrl = entry.type === 'news'
+    ? `/noticias?slug=${encodeURIComponent(entry.slug)}`
+    : entry.type === 'event'
+      ? `/eventos?slug=${encodeURIComponent(entry.slug)}`
+      : null;
   const card = (
     <article className={`card story-card ${entry.type === 'promotion' ? 'sponsored' : ''}`}>
       <div className={storyClass(entry)} style={mediaUrl ? { backgroundImage: `url(${mediaUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
@@ -92,6 +97,9 @@ function ManagedStory({ entry }: { entry: CmsEntry }) {
 
   if (externalUrl) {
     return <a href={externalUrl} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{card}</a>;
+  }
+  if (internalUrl) {
+    return <Link href={internalUrl} style={{ color: 'inherit', textDecoration: 'none' }}>{card}</Link>;
   }
   return card;
 }
@@ -158,8 +166,8 @@ export function ManagedHomeContent() {
         <div className="story-grid">
           {stories.length ? stories.map((entry) => <ManagedStory key={entry.id} entry={entry} />) : (
             <>
-              <article className="card story-card"><div className="story-image story-olive"/><span className="story-tag">NOTICIAS</span><h3>La campaña del olivar en Sierra Mágina</h3><p>Actualidad agrícola y territorio.</p></article>
-              <article className="card story-card"><div className="story-image story-town"/><span className="story-tag">EVENTOS</span><h3>Agenda local de {demoContext.municipality}</h3><p>Ferias, jornadas y encuentros.</p></article>
+              <Link href="/noticias" style={{ color: 'inherit', textDecoration: 'none' }}><article className="card story-card"><div className="story-image story-olive"/><span className="story-tag">NOTICIAS</span><h3>La campaña del olivar en Sierra Mágina</h3><p>Actualidad agrícola y territorio.</p></article></Link>
+              <Link href="/eventos" style={{ color: 'inherit', textDecoration: 'none' }}><article className="card story-card"><div className="story-image story-town"/><span className="story-tag">EVENTOS</span><h3>Agenda local de {demoContext.municipality}</h3><p>Ferias, jornadas y encuentros.</p></article></Link>
               <article className="card story-card sponsored"><div className="story-image story-oil"/><span className="story-tag gold">PATROCINADO</span><h3>Empresas de nuestra tierra</h3><p>Promoción local integrada y clara.</p></article>
             </>
           )}
