@@ -61,7 +61,6 @@ services:
       RATE_LIMIT_MAX_BUCKETS: ${RATE_LIMIT_MAX_BUCKETS:-10000}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       AUTH_COOKIE_SECURE: "true"
-      SESSION_SECRET: ${SESSION_SECRET:-}
       ALLOW_DEV_AUTH_HEADERS: "false"
       ADMIN_BOOTSTRAP_EMAILS: ${ADMIN_BOOTSTRAP_EMAILS:-}
       S3_ENDPOINT: ${S3_ENDPOINT}
@@ -76,7 +75,6 @@ services:
       RADAR_S3_PREFIX: ${RADAR_S3_PREFIX:-weather/radar}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       AEMET_API_KEY: ${AEMET_API_KEY}
-      PUBLIC_WEB_ORIGIN: ${PUBLIC_WEB_ORIGIN}
     depends_on:
       migrate:
         condition: service_completed_successfully
