@@ -8,6 +8,7 @@ Rama: `feat/v20-admin-operations-hub`
 - `/admin/gestion`: espacios de trabajo, miembros y fincas.
 - `/admin/campanas-planes`: campañas agrícolas, planes internos e intereses comerciales.
 - `/admin/agenda`: agenda global y tareas planificadas de todos los workspaces.
+- `/admin/trabajos`: trabajos y actividad agrícola global, costes, participantes, recursos y cobros.
 
 El principio común es permitir cambios controlados sobre entidades de negocio mediante APIs tipadas y auditadas, sin introducir un editor SQL genérico.
 
@@ -80,10 +81,29 @@ El principio común es permitir cambios controlados sobre entidades de negocio m
 - las tareas completadas son inmutables desde Admin para preservar el vínculo con el registro agrícola que las completó;
 - auditoría `scheduled_event.created` y `scheduled_event.updated`.
 
+## Fase 4 implementada — Trabajos y actividad agrícola
+
+### Visión global
+
+- consultar trabajos de todos los workspaces;
+- buscar por título, workspace, finca, explotación de cliente o cliente;
+- filtrar por trabajo propio/terceros, tipo de trabajo y estado de cobro;
+- ver campaña, destino, cliente y creador;
+- ver participantes, recursos/maquinaria y movimientos de cobro;
+- métricas de trabajos de los últimos 30 días, costes de personal/recursos y cuentas pendientes de trabajos para terceros.
+
+### Correcciones administrativas
+
+- editar título, tipo, fecha, notas y campaña;
+- la campaña debe pertenecer al mismo workspace y la fecha del trabajo debe quedar dentro de su período;
+- auditoría `work.updated` con estado anterior/posterior;
+- no se permite reescribir desde esta pantalla el workspace, finca/destino, cliente, autor, participantes, recursos ni movimientos de cobro;
+- los importes comerciales y cobros siguen bajo sus flujos específicos para conservar sus reglas de integridad y trazabilidad.
+
 ## Roles
 
 - `support` y `editor`: consulta en las nuevas superficies de gestión;
-- `admin`: workspaces, miembros, fincas, campañas, intereses comerciales y agenda;
+- `admin`: workspaces, miembros, fincas, campañas, intereses comerciales, agenda y correcciones de trabajos;
 - `super_admin`: lo anterior más modificación del plan efectivo;
 - la gestión de permisos administrativos de plataforma continúa bajo las reglas existentes de `/admin`.
 
@@ -112,6 +132,12 @@ El principio común es permitir cambios controlados sobre entidades de negocio m
 - `POST /api/v1/admin/agenda`
 - `PATCH /api/v1/admin/agenda/:taskId`
 
+### Trabajos
+
+- `GET /api/v1/admin/works`
+- `GET /api/v1/admin/works/:workId`
+- `PATCH /api/v1/admin/works/:workId`
+
 Todas las rutas requieren autenticación de plataforma. Las escrituras aplican además el rol mínimo correspondiente.
 
 ## Validación
@@ -122,13 +148,14 @@ Todas las rutas requieren autenticación de plataforma. Las escrituras aplican a
 
 `admin-agenda-smoke.ts` crea una tarea administrativa real, comprueba listado global, reprogramación, posposición/cancelación, inmutabilidad de tareas completadas y auditoría.
 
+`admin-work-activity-smoke.ts` crea un trabajo real con campaña, participante y maquinaria, comprueba métricas y detalle, rechaza una campaña incompatible por fecha, permite una corrección válida y verifica que workspace, finca, autor, participantes y recursos no cambian, además de comprobar auditoría.
+
 El workflow `V20 platform admin check` ejecuta estos smokes después de compilar API/web y aplicar todas las migraciones reales.
 
 ## Próximas fases
 
 La misma arquitectura se ampliará sin un editor SQL genérico:
 
-1. trabajos y actividad agrícola;
-2. documentos/OCR con acciones de soporte;
-3. profesional: clientes, presupuestos, facturas y cobros;
-4. herramientas de soporte como reintentos, reasignaciones y refresco de fuentes, siempre auditadas.
+1. documentos/OCR con acciones de soporte;
+2. profesional: clientes, presupuestos, facturas y cobros;
+3. herramientas de soporte como reintentos, reasignaciones y refresco de fuentes, siempre auditadas.
