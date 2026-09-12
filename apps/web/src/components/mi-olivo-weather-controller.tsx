@@ -65,22 +65,25 @@ export function MiOlivoWeatherController() {
         const fieldsPayload = await apiFetch<{ fields: Field[] }>('/api/v1/fields', {
           workspaceId: selectedWorkspaceId,
         });
-        const field = fieldsPayload.fields.find((item) => Boolean(item.municipality_id));
-        if (!field) {
-          if (!cancelled) setContext(null);
-          return;
+        const candidates = fieldsPayload.fields
+          .filter((item) => Boolean(item.municipality_id))
+          .slice(0, 5);
+
+        for (const field of candidates) {
+          try {
+            const weather = await apiFetch<FieldWeather>(`/api/v1/fields/${field.id}/weather/daily`, {
+              workspaceId: selectedWorkspaceId,
+            });
+            const day = weather.forecast.days[0];
+            if (!day) continue;
+            if (!cancelled) setContext({ field, weather, day });
+            return;
+          } catch {
+            // A different active field can still have a valid forecast.
+          }
         }
 
-        const weather = await apiFetch<FieldWeather>(`/api/v1/fields/${field.id}/weather/daily`, {
-          workspaceId: selectedWorkspaceId,
-        });
-        const day = weather.forecast.days[0];
-        if (!day) {
-          if (!cancelled) setContext(null);
-          return;
-        }
-
-        if (!cancelled) setContext({ field, weather, day });
+        if (!cancelled) setContext(null);
       } catch (error) {
         console.warn('Unable to load real weather context for Mi Olivo', error);
         if (!cancelled) setContext(null);
