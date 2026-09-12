@@ -75,7 +75,7 @@ test('Mi Olivo V6 conserva memoria de campañas reales sin inventar avance', asy
   await expect(closed.getByText('9', { exact: true })).toBeVisible();
   await expect(closed.getByText('22,1 %', { exact: true })).toBeVisible();
 
-  await expect(memory.getByText(/porcentaje de avance/i)).toBeVisible();
+  await expect(memory.getByText(/porcentajes? de avance/i)).toBeVisible();
 });
 
 test.describe('Mi Olivo V6 móvil', () => {
