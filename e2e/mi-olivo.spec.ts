@@ -101,11 +101,13 @@ for (const width of [360, 390, 430]) {
   test.describe(`Mi Olivo ${width}px`, () => {
     test.use({ viewport: { width, height: 844 } });
 
-    test('muestra progreso real sin desbordamiento horizontal', async ({ page }) => {
+    test('muestra progreso real y escena viva sin desbordamiento horizontal', async ({ page }) => {
       await page.goto('/mi-olivo');
 
       await expect(page.getByRole('heading', { name: 'Tu olivo digital' })).toBeVisible();
       await expect(page.getByRole('img', { name: /Olivo digital en fase/ })).toBeVisible();
+      await expect(page.getByText('SIERRA MÁGINA · TU PROGRESO', { exact: true })).toBeVisible();
+      await expect(page.getByText(/Fase [1-5]\/5/)).toBeVisible();
       await expect(page.getByText('aceitunas', { exact: true })).toBeVisible();
       await expect(page.getByText(/Ritmo del cuaderno ·/)).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Haz crecer tu olivo' })).toBeVisible();
