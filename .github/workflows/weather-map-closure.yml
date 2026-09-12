@@ -183,10 +183,12 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'true'
           AUTH_COOKIE_SECURE: 'false'
           RADAR_STALE_AFTER_MINUTES: '30'
+          PGPASSWORD: postgres
         run: |
           node apps/api/dist/testing/weather-cache-smoke.js
           node apps/api/dist/testing/radar-latest-smoke.js
           node apps/api/dist/testing/map-context-smoke.js
+          psql -h 127.0.0.1 -U postgres -d magina_weather_map -v ON_ERROR_STOP=1 -c "UPDATE weather_forecast_cache SET fetched_at = now(), expires_at = now() + interval '1 hour', last_error_at = NULL, last_error_code = NULL WHERE municipality_id = (SELECT id FROM territory_municipalities WHERE ine_code = '23044') AND provider = 'aemet_daily';"
 
       - name: Browser and mobile weather-map behavior
         env:
