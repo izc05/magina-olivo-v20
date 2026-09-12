@@ -6,7 +6,32 @@ export type CmsEntryStatus = 'draft' | 'published' | 'archived';
 export type TerritoryPlaceKind = 'municipal_seat' | 'locality' | 'hamlet' | 'other';
 export type AdminSourceState = 'ok' | 'attention' | 'error' | 'unknown' | 'unmonitored';
 export type AdminSourceTelemetryMode = 'cache_health' | 'pipeline_status' | 'usage_only';
-export type AdminDatasetId = 'users' | 'workspaces' | 'fields' | 'campaigns' | 'harvest' | 'documents' | 'ocr' | 'content' | 'invoices' | 'quotes' | 'market';
+export type AdminDatasetId =
+  | 'users'
+  | 'workspaces'
+  | 'fields'
+  | 'campaigns'
+  | 'work'
+  | 'irrigation'
+  | 'treatments'
+  | 'fertilization'
+  | 'pruning'
+  | 'expenses'
+  | 'harvest'
+  | 'settlements'
+  | 'collections'
+  | 'agenda'
+  | 'parties'
+  | 'machinery'
+  | 'materials'
+  | 'documents'
+  | 'ocr'
+  | 'content'
+  | 'invoices'
+  | 'quotes'
+  | 'plans'
+  | 'territory'
+  | 'market';
 
 export type AdminSession = {
   user: { id: string; display_name: string; primary_email: string | null; avatar_url: string | null; status: string };
@@ -28,8 +53,20 @@ export type AdminOperationsMetrics = {
   fields_active: number;
   field_area_ha: number;
   campaigns_active: number;
+  work_records_total: number;
+  irrigation_total: number;
+  treatment_total: number;
+  fertilization_total: number;
+  pruning_total: number;
+  expenses_total: number;
+  expenses_eur: number;
   harvest_kg: number;
+  settlements_total: number;
+  settlements_net_eur: number;
+  collections_total: number;
+  collections_eur: number;
   scheduled_open: number;
+  parties_active: number;
   documents_active: number;
   document_bytes: number;
   ocr_pending: number;
@@ -40,6 +77,8 @@ export type AdminOperationsMetrics = {
   invoiced_eur: number;
   quotes_open: number;
   quotes_accepted: number;
+  plans_pro: number;
+  plans_professional: number;
   market_observations: number;
   market_latest_period: string | null;
   weather_stale: number;
