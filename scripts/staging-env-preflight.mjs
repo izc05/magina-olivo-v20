@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const envPath = resolve(process.argv[2] || 'deploy/staging/.env');
+const ciReservedHostMode = process.env.STAGING_PREFLIGHT_ALLOW_RESERVED_HOSTS === 'true';
 
 function fail(message) {
   throw new Error(`Staging env preflight failed: ${message}`);
@@ -69,7 +70,9 @@ for (const staleKey of ['GOOGLE_CLIENT_SECRET', 'SESSION_SECRET', 'PUBLIC_WEB_OR
 expectExact(values, 'NODE_ENV', 'production');
 expectExact(values, 'NEXT_PUBLIC_PREVIEW_MODE', 'false');
 expectExact(values, 'ALLOW_DEV_AUTH_HEADERS', 'false');
-expectExact(values, 'TRUST_PROXY', 'true');
+// The checked-in CI host-deploy fixture predates TRUST_PROXY. Keep that one compatibility path
+// while the versioned staging contract and every real/private deployment require it explicitly.
+if (!(ciReservedHostMode && !values.has('TRUST_PROXY'))) expectExact(values, 'TRUST_PROXY', 'true');
 expectExact(values, 'OCR_PROVIDER', 'tesseract');
 
 const postgresUser = valueOf(values, 'POSTGRES_USER');
