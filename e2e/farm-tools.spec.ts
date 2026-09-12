@@ -17,7 +17,7 @@ test.describe('Herramientas rápidas del agricultor', () => {
       await expect(page.getByTestId('surface-result')).toContainText('1,25 ha');
       await expect(page.getByTestId('surface-result')).toContainText('12.500 m²');
 
-      await page.getByLabel('Unidad', { exact: true }).selectOption('ha');
+      await page.getByRole('combobox', { name: 'Unidad', exact: true }).selectOption('ha');
       await surfaceInput.fill('1,5');
       await expect(page.getByTestId('surface-result')).toContainText('1,5 ha');
       await expect(page.getByTestId('surface-result')).toContainText('15.000 m²');
