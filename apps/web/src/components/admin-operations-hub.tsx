@@ -290,6 +290,7 @@ export function AdminOperationsHub() {
 
   const metrics = snapshot.metrics;
   const sourceProblems = sources?.sources.filter((source) => source.state === 'error' || source.state === 'attention').length ?? 0;
+  const technicalFieldRecords = metrics.irrigation_total + metrics.treatment_total + metrics.fertilization_total + metrics.pruning_total;
 
   return (
     <main className={styles.shell}>
@@ -317,11 +318,17 @@ export function AdminOperationsHub() {
         <MetricCard label="Usuarios activos" value={number(metrics.users_active)} detail={`${number(metrics.users_new_30d)} nuevos en 30 días`} />
         <MetricCard label="Fincas activas" value={number(metrics.fields_active)} detail={`${number(metrics.field_area_ha, 2)} ha registradas`} />
         <MetricCard label="Campañas activas" value={number(metrics.campaigns_active)} detail={`${number(metrics.scheduled_open)} tareas abiertas`} />
+        <MetricCard label="Trabajos registrados" value={number(metrics.work_records_total)} detail={`${number(metrics.parties_active)} personas/empresas activas`} />
+        <MetricCard label="Labores técnicas" value={number(technicalFieldRecords)} detail={`${number(metrics.irrigation_total)} riegos · ${number(metrics.treatment_total)} tratamientos`} />
+        <MetricCard label="Gastos de campo" value={euro(metrics.expenses_eur)} detail={`${number(metrics.expenses_total)} apuntes`} />
         <MetricCard label="Cosecha registrada" value={`${number(metrics.harvest_kg, 1)} kg`} />
+        <MetricCard label="Liquidaciones" value={euro(metrics.settlements_net_eur)} detail={`${number(metrics.settlements_total)} confirmadas`} />
+        <MetricCard label="Cobros de cosecha" value={euro(metrics.collections_eur)} detail={`${number(metrics.collections_total)} cobros`} />
         <MetricCard label="Documentos" value={number(metrics.documents_active)} detail={bytes(metrics.document_bytes)} />
         <MetricCard label="OCR pendiente" value={number(metrics.ocr_pending)} detail={`${number(metrics.ocr_failed)} fallidos`} />
         <MetricCard label="Facturas emitidas" value={number(metrics.invoices_issued)} detail={euro(metrics.invoiced_eur)} />
         <MetricCard label="Presupuestos" value={number(metrics.quotes_open)} detail={`${number(metrics.quotes_accepted)} aceptados`} />
+        <MetricCard label="Planes superiores" value={number(metrics.plans_pro + metrics.plans_professional)} detail={`${number(metrics.plans_pro)} Pro · ${number(metrics.plans_professional)} Profesional`} />
         <MetricCard label="Contenido publicado" value={number(metrics.content_published)} detail={`${number(metrics.content_draft)} borradores`} />
         <MetricCard label="Mercado validado" value={number(metrics.market_observations)} detail={metrics.market_latest_period ? `hasta ${metrics.market_latest_period}` : 'sin período'} />
         <MetricCard label="Fuentes con atención" value={number(sourceProblems)} detail={`${number(metrics.weather_stale)} cachés de clima caducadas`} />
@@ -354,7 +361,7 @@ export function AdminOperationsHub() {
         <div className={styles.controlGrid}>
           <div><strong>Experiencia pública</strong><span>CMS, Inicio, SEO, promociones, avisos, medios y territorio.</span></div>
           <div><strong>Plataforma</strong><span>Usuarios, roles, workspaces, fincas, campañas, documentos y actividad.</span></div>
-          <div><strong>Negocio</strong><span>Presupuestos, facturas, mercado y métricas agregadas.</span></div>
+          <div><strong>Negocio</strong><span>Trabajos, gastos, liquidaciones, cobros, presupuestos, facturas, planes y mercado.</span></div>
           <div><strong>Operación</strong><span>Fuentes, OCR, clima, auditoría, configuración y aplicación externa.</span></div>
         </div>
         <p className={styles.note}>El centro permite consultar transversalmente la plataforma, pero no muestra claves, tokens, credenciales ni contenido binario. Las modificaciones sensibles siguen APIs tipadas y quedan auditadas.</p>
