@@ -1,10 +1,52 @@
 # Mágina Olivo V20 — Staging Operations
 
-Este documento cubre observabilidad, rate limiting, readiness y recuperación operativa del staging Docker Compose.
+Este documento cubre preflight, despliegue, observabilidad, rate limiting, readiness y recuperación operativa del staging Docker Compose.
+
+## Preflight del `.env` real
+
+Antes de cualquier despliegue externo, validar el fichero privado del host:
+
+```sh
+node scripts/staging-env-preflight.mjs deploy/staging/.env
+```
+
+El contrato actual exige configuración real y coherente de PostgreSQL, orígenes HTTPS, Google Identity, S3-compatible, OCR, VAPID y AEMET. También exige `NODE_ENV=production`, `NEXT_PUBLIC_PREVIEW_MODE=false` y `ALLOW_DEV_AUTH_HEADERS=false`.
+
+No añadir variables obsoletas como `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `PUBLIC_WEB_ORIGIN` u `OCR_PROCESSOR_MODE`: el preflight las rechaza expresamente.
+
+## Smoke externo post-deploy
+
+Cuando web y API ya estén publicados por HTTPS, ejecutar desde una máquina externa al host:
+
+```sh
+STAGING_API_URL=https://<api-staging> \
+STAGING_WEB_ORIGIN=https://<web-staging> \
+STAGING_REJECTED_ORIGIN=https://untrusted.invalid \
+node scripts/staging-postdeploy-smoke.mjs
+```
+
+El smoke valida:
+
+- `/health` con base, Google Auth y web-push configurados;
+- `/ready` con conexión real a PostgreSQL;
+- CORS para el origen permitido y rechazo de un origen ajeno;
+- headers de seguridad;
+- rechazo de cabeceras de identidad de desarrollo en API privada.
+
+No usar `STAGING_ALLOW_HTTP=true` contra el staging externo real; esa excepción existe solo para pruebas locales/CI.
+
+Comprobar además:
+
+```sh
+curl -fsS https://<web-staging>/healthz
+curl -fsSI https://<web-staging>/
+curl -fsS https://<api-staging>/health
+curl -fsS https://<api-staging>/ready
+```
 
 ## Readiness y liveness
 
-- `GET /health` comprueba que el proceso API responde. No valida PostgreSQL.
+- `GET /health` comprueba que el proceso API responde y expone el estado de configuración de dependencias.
 - `GET /ready` ejecuta una consulta real contra PostgreSQL y devuelve `503` si la base no está configurada o no responde.
 - Docker Compose usa `/ready` como healthcheck del servicio `api`, por lo que `web` no se considera listo hasta que la API pueda consultar la base.
 
@@ -103,6 +145,8 @@ Después del restore:
 curl -fsS http://127.0.0.1:${API_PORT:-3001}/ready
 docker compose --env-file deploy/staging/.env -f deploy/staging/docker-compose.yml ps
 ```
+
+El restore debe validarse con PostgreSQL 17, la misma major usada por staging.
 
 ## Secuencia mínima ante incidente
 
