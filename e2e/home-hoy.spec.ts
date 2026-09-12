@@ -50,12 +50,12 @@ test('Inicio y Hoy conectan finca, actividad y tarea real', async ({ page }, tes
   await expect(page.getByRole('heading', { name: 'Trabajo registrado' })).toBeVisible();
 
   await page.goto(`/mi-campo/planificar?fieldId=${encodeURIComponent(fieldId!)}&source=api`);
-  await expect(page.getByRole('heading', { name: '¿Qué quieres hacer?' })).toBeVisible();
-  await page.getByLabel('Tipo de tarea').selectOption('observation');
-  await page.getByLabel('Qué vas a hacer').fill(taskTitle);
+  await expect(page.getByRole('heading', { name: '¿Qué quieres dejar preparado?' })).toBeVisible();
+  await page.getByRole('combobox', { name: /^Tipo\b/ }).selectOption('observation');
+  await page.getByRole('textbox', { name: 'Tarea' }).fill(taskTitle);
   await page.locator('input[type="datetime-local"]').fill(`${today}T12:00`);
-  await page.getByRole('button', { name: 'Planificar tarea' }).click();
-  await expect(page.getByText('Tarea planificada.')).toBeVisible();
+  await page.getByRole('button', { name: 'Guardar tarea' }).click();
+  await expect(page.getByText('Tarea guardada. Ya forma parte de tu planificación.')).toBeVisible();
 
   await page.goto('/');
   const activitySection = page.getByRole('heading', { name: 'Actividad reciente' }).locator('xpath=ancestor::section');
