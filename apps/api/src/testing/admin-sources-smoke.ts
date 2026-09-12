@@ -45,7 +45,7 @@ try {
   };
   const ownerLogin = await login();
   assert.equal(ownerLogin.body.workspaces[0].role, 'owner');
-  const workspaceId = String(ownerLogin.body.workspaces[0].id);
+  const workspaceId = String(ownerLogin.body.workspaces[0].workspace_id);
   const ownerUserId = String(ownerLogin.body.user.id);
 
   const municipality = await sql<{ id: string }>`
