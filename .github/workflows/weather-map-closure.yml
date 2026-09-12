@@ -66,8 +66,12 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version-file: '.nvmrc'
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Bootstrap lockfile for isolated legacy branch
+        run: |
+          if [ ! -f pnpm-lock.yaml ]; then
+            pnpm i --lockfile-only --no-frozen-lockfile
+          fi
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
