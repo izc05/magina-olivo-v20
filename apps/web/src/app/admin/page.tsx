@@ -22,13 +22,14 @@ export default function AdminPage() {
   return (
     <>
       <AdminControlCenter />
-      <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 50, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 'min(1080px, calc(100vw - 36px))' }}>
+      <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 50, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 'min(1180px, calc(100vw - 36px))' }}>
         <Link href="/admin/operaciones" aria-label="Abrir centro operativo de plataforma" style={{ ...shortcutStyle, background: '#173f2a' }}>Operaciones</Link>
         <Link href="/admin/gestion" aria-label="Abrir gestión de workspaces, miembros y fincas" style={{ ...shortcutStyle, background: '#325746' }}>Gestión</Link>
         <Link href="/admin/campanas-planes" aria-label="Abrir administración de campañas y planes" style={{ ...shortcutStyle, background: '#4b5c33' }}>Campañas</Link>
         <Link href="/admin/agenda" aria-label="Abrir agenda global" style={{ ...shortcutStyle, background: '#5c643f' }}>Agenda</Link>
         <Link href="/admin/trabajos" aria-label="Abrir trabajos y actividad agrícola" style={{ ...shortcutStyle, background: '#385f35' }}>Trabajos</Link>
         <Link href="/admin/documentos" aria-label="Abrir soporte de documentos y OCR" style={{ ...shortcutStyle, background: '#3b5867' }}>Documentos/OCR</Link>
+        <Link href="/admin/profesional" aria-label="Abrir soporte comercial profesional" style={{ ...shortcutStyle, background: '#4d4f73' }}>Profesional</Link>
         <Link href="/admin/fuentes" aria-label="Abrir estado de fuentes y datos" style={{ ...shortcutStyle, background: '#46666d' }}>Fuentes</Link>
         <Link href="/admin/territorio" aria-label="Abrir administración de territorio y directorio" style={{ ...shortcutStyle, background: '#8a6c2f' }}>Territorio</Link>
         <Link href="/admin/media" aria-label="Abrir biblioteca multimedia" style={{ ...shortcutStyle, background: '#6b7446' }}>Multimedia</Link>
