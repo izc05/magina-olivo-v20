@@ -364,3 +364,11 @@ Staging externo queda aprobado únicamente con:
 - Profesional real ✅
 - móvil real ✅
 - PostgreSQL no expuesto ✅
+- backup + restore probado ✅
+- observabilidad básica ✅
+
+Hasta entonces:
+
+> **Beta funcionalmente integrada y preparada para staging externo; staging real pendiente de validación.**
+
+`main` permanece fuera de este proceso hasta la decisión final del candidato.
