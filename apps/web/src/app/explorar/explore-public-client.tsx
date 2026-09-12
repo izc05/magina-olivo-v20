@@ -10,12 +10,13 @@ import {
 import styles from './explore-public.module.css';
 
 const areas = [
-  ['📰', 'Noticias', 'Actualidad local con fuente y fecha verificadas.'],
-  ['📅', 'Eventos', 'Agenda con organizador, fechas y estado de verificación.'],
-  ['🫒', 'Aceite y mercado', 'Precios y campaña manteniendo siempre fuente, unidad y fecha.'],
-  ['🏭', 'Almazaras y cooperativas', 'Directorio público con información verificada.'],
-  ['🧭', 'Rutas y experiencias', 'Contenidos territoriales y oleoturismo.'],
-  ['🏪', 'Servicios', 'Negocios y profesionales con patrocinio claramente identificado.'],
+  { icon: '📰', title: 'Noticias', text: 'Actualidad local con fuente y fecha verificadas.', href: '/noticias', badge: 'Disponible' },
+  { icon: '📅', title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
+  { icon: '🫒', title: 'Aceite y mercado', text: 'Precios y campaña manteniendo siempre fuente, unidad y fecha.', href: '/mercado', badge: 'Disponible' },
+  { icon: '🏭', title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
+  { icon: '🏪', title: 'Servicios', text: 'Negocios y profesionales con patrocinio claramente identificado.', href: '/servicios', badge: 'Disponible' },
+  { icon: '🌿', title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
+  { icon: '🧭', title: 'Rutas y experiencias', text: 'Contenidos territoriales y oleoturismo.', href: null, badge: 'En preparación' },
 ] as const;
 
 function placeKindLabel(kind: string) {
@@ -84,8 +85,18 @@ export function ExplorePublicClient() {
     </section>
 
     <section className="section">
-      <div className={styles.sectionIntro}><div><h2>Explorar por temas</h2></div><p>Estas áreas forman parte de la arquitectura pública V20. Se activarán cuando sus fuentes y flujo de verificación estén conectados.</p></div>
-      <div className={styles.areaGrid}>{areas.map(([icon, title, text]) => <article className={styles.areaCard} key={title}><span className={styles.areaIcon} aria-hidden="true">{icon}</span><div><h3>{title}</h3><p>{text}</p><span className={styles.badge}>En preparación · sin datos simulados</span></div></article>)}</div>
+      <div className={styles.sectionIntro}><div><h2>Explorar por temas</h2></div><p>Accede a las áreas públicas que ya están disponibles en V20. Los módulos que todavía no tienen una fuente verificada permanecen claramente marcados como pendientes.</p></div>
+      <div className={styles.areaGrid}>
+        {areas.map((area) => {
+          const content = <>
+            <span className={styles.areaIcon} aria-hidden="true">{area.icon}</span>
+            <div><h3>{area.title}</h3><p>{area.text}</p><span className={`${styles.badge} ${area.href ? styles.badgeLive : ''}`}>{area.badge}</span></div>
+          </>;
+          return area.href
+            ? <Link className={`${styles.areaCard} ${styles.areaCardLink}`} href={area.href} key={area.title}>{content}</Link>
+            : <article className={styles.areaCard} key={area.title}>{content}</article>;
+        })}
+      </div>
     </section>
 
     <section className="section"><div className="section-head"><h2>Tiempo en Mágina</h2><Link href="/radar">Abrir radar</Link></div><Link href="/radar" className="card weather-feature"><span className="weather-feature-icon"><RainIcon/></span><div><strong>Radar y avisos de lluvia</strong><small>Consulta la información meteorológica disponible. La capa pública no revela tus fincas.</small></div></Link></section>
