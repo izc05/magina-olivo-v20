@@ -133,7 +133,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerMeRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
-  registerRadarRoutes(app, db);
+  registerRadarRoutes(app, db, storage);
   registerPushRoutes(app, db, notificationQueue, pushPublicKey);
   registerFieldRoutes(app, db);
   registerIrrigationRoutes(app, db);
@@ -152,7 +152,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerFinancialAttentionRoutes(app, db);
   registerHomePriorityPreferenceRoutes(app, db);
   registerFinancialNotificationRoutes(app, db, notificationQueue);
-  registerCommercialNotificationRoutes(app, db);
+  registerCommercialNotificationRoutes(app, db, notificationQueue);
   registerPlannedTaskRoutes(app, db);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);
