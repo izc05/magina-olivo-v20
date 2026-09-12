@@ -2,7 +2,7 @@
 
 Este checklist empieza **después** del cierre funcional interno de `integrate/v20-beta-closure`.
 
-Referencia interna verde previa:
+Referencia funcional verde previa:
 
 - integración funcional: `4a04410686eed936b12d359101f1ff2a0faa6fc0`;
 - Full Candidate #2286 ✅;
@@ -12,6 +12,12 @@ Referencia interna verde previa:
 - Weather/Radar #13 ✅.
 
 Los commits exclusivamente documentales posteriores no invalidan esa referencia funcional.
+
+Documentación operativa relacionada:
+
+- `docs/V20_STAGING_RUNBOOK.md`;
+- `docs/V20_STAGING_FIRST_DEPLOY_CHECKLIST.md`;
+- `deploy/staging/OPERATIONS.md`.
 
 ## 1. Preflight del host real
 
@@ -23,10 +29,31 @@ Comprobar antes del deploy:
 - reloj/NTP correcto;
 - acceso al registro de imágenes si aplica;
 - variables de entorno cargadas sin secretos en el repositorio;
-- directorios persistentes de PostgreSQL y storage montados;
+- directorios persistentes de PostgreSQL y backups montados;
 - política de backup definida.
 
-**Criterio:** ningún servicio arranca con credenciales de desarrollo ni cabeceras preview inseguras.
+Antes de desplegar ejecutar:
+
+```bash
+node scripts/staging-env-preflight.mjs deploy/staging/.env
+```
+
+El contrato actual de staging exige explícitamente:
+
+- `NODE_ENV=production`;
+- `NEXT_PUBLIC_PREVIEW_MODE=false`;
+- `ALLOW_DEV_AUTH_HEADERS=false`;
+- orígenes web/API HTTPS distintos;
+- Google Identity configurado con el mismo client ID en API y web;
+- S3 compatible real;
+- worker con `ocr,radar,notifications`;
+- OCR Tesseract `spa+eng`;
+- VAPID real;
+- AEMET real.
+
+`SESSION_SECRET`, `PUBLIC_WEB_ORIGIN`, `GOOGLE_CLIENT_SECRET` y `OCR_PROCESSOR_MODE` **no forman parte del runtime actual** y el preflight los rechaza si aparecen.
+
+**Criterio:** `Staging env preflight passed` y ningún secreto versionado.
 
 ## 2. PostgreSQL/PostGIS
 
@@ -51,6 +78,17 @@ Validar desde fuera del contenedor:
 - headers de producción;
 - logs sin secretos;
 - rechazo de cabeceras de identidad de desarrollo.
+
+Smoke automatizado disponible:
+
+```bash
+STAGING_API_URL=https://<api-staging> \
+STAGING_WEB_ORIGIN=https://<web-staging> \
+STAGING_REJECTED_ORIGIN=https://untrusted.invalid \
+node scripts/staging-postdeploy-smoke.mjs
+```
+
+Ese smoke exige además que `/health` confirme base, Google Auth y web-push configurados.
 
 **Criterio:** API utilizable solo con configuración de producción/staging segura.
 
@@ -97,29 +135,32 @@ Validar desde fuera del contenedor:
 
 **Criterio:** finca real visible con geometría y reflectividad observada, sin inventar predicción.
 
-## 7. Auth real
+## 7. Google Auth real
 
-Si Google Auth forma parte de esta Beta:
+Google Identity **forma parte del contrato actual de staging** y no puede omitirse sin cambiar expresamente dicho contrato.
 
-- callback/redirect correcto en staging;
+Validar:
+
+- origen HTTPS registrado en Google Cloud;
+- login real;
 - creación/lectura del usuario;
 - membership/workspace;
+- persistencia de sesión/recarga;
 - logout/login;
 - acceso denegado a recursos de otro workspace.
 
-Si no forma parte del alcance inmediato, dejarlo explícitamente documentado como diferido.
-
 ## 8. Notificaciones / VAPID
 
-Si se habilitan en Beta:
+VAPID **forma parte del contrato actual de staging**.
 
-- claves VAPID del entorno;
+Validar:
+
+- claves VAPID reales del entorno;
+- `/health` reporta web-push configurado;
 - suscripción real;
 - envío de notificación de smoke;
 - aislamiento por usuario/workspace;
 - tolerancia a suscripciones expiradas.
-
-Si se difiere, registrar la decisión de alcance.
 
 ## 9. Admin / CMS / multimedia
 
@@ -142,14 +183,14 @@ Antes de cualquier promoción:
 6. comprobar `/ready`;
 7. confirmar recuperación de los datos.
 
-**Criterio:** restore verificable, no solo creación del archivo de backup.
+**Criterio:** restore verificable con PostgreSQL 17, no solo creación del archivo de backup.
 
-## 11. Smoke post-deploy
+## 11. Smoke post-deploy funcional
 
 Recorrido mínimo externo:
 
 1. abrir web de staging;
-2. autenticar;
+2. autenticar con Google;
 3. entrar en Mi Campo;
 4. crear finca;
 5. seleccionar/vincular geometría GIS real;
@@ -162,7 +203,8 @@ Recorrido mínimo externo:
 12. abrir Campaña;
 13. abrir Profesional;
 14. comprobar una superficie pública/CMS;
-15. revisar Centro de Avisos.
+15. revisar Centro de Avisos;
+16. probar notificación web real.
 
 ## 12. Auditoría visual/manual final
 
@@ -204,9 +246,12 @@ Buscar expresamente:
 
 La Beta puede promoverse al candidate solo cuando:
 
-- el staging externo anterior esté validado o cada integración diferida esté documentada;
+- preflight del `.env` real pase;
+- staging externo esté desplegado;
+- Google Auth, VAPID, S3/R2, OCR y AEMET/radar reales estén validados;
 - backup/restore real esté probado;
-- smoke post-deploy pase;
+- `staging-postdeploy-smoke.mjs` pase contra HTTPS real;
+- recorrido agricultor/profesional pase;
 - auditoría manual no deje P0/P1;
 - la rama coordinadora siga sin regresiones funcionales.
 
