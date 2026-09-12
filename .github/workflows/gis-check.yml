@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - agent/gis-fincas
+      - integrate/v20-beta-closure
       - feat/v20-visual-prototype
     paths:
       - 'apps/api/src/gis/**'
