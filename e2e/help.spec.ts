@@ -11,6 +11,7 @@ for (const width of widths) {
     await expect(page.getByTestId('help-step')).toHaveCount(6);
     await expect(page.getByRole('link', { name: /Abrir Mi Campo/i })).toHaveAttribute('href', /\/mi-campo\/?$/);
     await expect(page.getByRole('link', { name: /Nueva finca/i })).toHaveAttribute('href', /\/mi-campo\/fincas\/nueva\/?$/);
+    await expect(page.getByRole('link', { name: /Añadir documento/i })).toHaveAttribute('href', /\/mi-campo\/documentos\/nuevo\/?$/);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
   });
