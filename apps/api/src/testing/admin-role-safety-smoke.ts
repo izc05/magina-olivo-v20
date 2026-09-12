@@ -8,7 +8,7 @@ if (!databaseUrl) throw new Error('DATABASE_URL is required for admin role safet
 
 const db = createDatabase(databaseUrl);
 let claims: GoogleIdentityClaims = {
-  subject: 'role-safety-super-admin',
+  subject: 'admin-google-subject',
   email: 'admin@magina.test',
   emailVerified: true,
   displayName: 'Super Admin Mágina',
