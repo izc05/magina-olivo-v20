@@ -7,11 +7,21 @@
     "pnpm": ">=10.15.1 <11"
   },
   "scripts": {
+    "preinstall": "node scripts/check-runtime-contract.mjs",
     "dev": "pnpm --filter @magina/web dev",
     "dev:api": "pnpm --filter @magina/api dev",
     "dev:worker": "pnpm --filter @magina/worker dev",
     "build": "pnpm --filter @magina/contracts build && pnpm --filter @magina/weather build && pnpm --filter @magina/jobs build && pnpm --filter @magina/api build && pnpm --filter @magina/worker build && pnpm --filter @magina/web build",
     "typecheck": "pnpm --filter @magina/contracts typecheck && pnpm --filter @magina/contracts build && pnpm --filter @magina/weather typecheck && pnpm --filter @magina/weather build && pnpm --filter @magina/jobs typecheck && pnpm --filter @magina/jobs build && pnpm --filter @magina/api typecheck && pnpm --filter @magina/worker typecheck && pnpm --filter @magina/web typecheck",
+    "check:runtime": "node scripts/check-runtime-contract.mjs",
+    "check:lockfile": "pnpm install --lockfile-only --frozen-lockfile",
+    "check:env": "node scripts/check-env-contract.mjs",
+    "check:staging": "node scripts/check-staging-contract.mjs",
+    "check:migrations": "node scripts/check-migrations.mjs",
+    "check:containers": "node scripts/check-container-pins.mjs",
+    "audit:ci": "node scripts/audit-ci.mjs",
+    "check": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm typecheck && pnpm build",
+    "check:fast": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm typecheck",
     "e2e:beta": "playwright test"
   },
   "devDependencies": {
