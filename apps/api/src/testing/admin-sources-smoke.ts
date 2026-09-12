@@ -21,7 +21,35 @@ let claims: GoogleIdentityClaims = {
 };
 
 const verifier: GoogleIdentityVerifier = { async verify() { return claims; } };
-const app = buildApp({ db, googleVerifier: verifier });
+const weatherRequests: string[] = [];
+const radarJobs: unknown[] = [];
+const notificationJobs: unknown[] = [];
+const weatherProvider = {
+  async dailyForecast(municipalityCode: string) {
+    weatherRequests.push(municipalityCode);
+    return {
+      provider: 'AEMET OpenData' as const,
+      municipalityCode,
+      municipalityName: 'Municipio smoke',
+      province: 'Jaén',
+      elaboratedAt: new Date().toISOString(),
+      days: [],
+    };
+  },
+};
+const radarQueue = {
+  async enqueue(payload: unknown) {
+    radarJobs.push(payload);
+    return 'radar-job-smoke';
+  },
+};
+const notificationQueue = {
+  async enqueue(payload: unknown) {
+    notificationJobs.push(payload);
+    return 'notification-job-smoke';
+  },
+};
+const app = buildApp({ db, googleVerifier: verifier, weatherProvider, radarQueue, notificationQueue });
 const credential = 'synthetic-google-id-token-sources-'.padEnd(140, 'x');
 
 async function login() {
@@ -151,11 +179,84 @@ try {
   assert.equal(denied.statusCode, 403, denied.body);
   assert.equal(denied.json().error, 'platform_admin_required');
 
+  await sql`
+    UPDATE weather_forecast_cache
+    SET expires_at = now() - interval '1 minute'
+    WHERE municipality_id = ${municipalityId}::uuid AND provider = 'aemet_daily'
+  `.execute(db);
+
+  const weatherRefresh = await app.inject({
+    method: 'POST',
+    url: '/api/v1/admin/sources/aemet_forecast/refresh',
+    headers: { cookie: adminLogin.cookie },
+  });
+  assert.equal(weatherRefresh.statusCode, 200, weatherRefresh.body);
+  assert.ok(weatherRefresh.json().processed >= 1);
+  assert.ok(weatherRefresh.json().refreshed >= 1);
+  assert.equal(weatherRefresh.json().failed, 0);
+  assert.ok(weatherRequests.length >= 1);
+
+  const radarIngest = await app.inject({
+    method: 'POST',
+    url: '/api/v1/admin/sources/aemet_radar/ingest',
+    headers: { cookie: adminLogin.cookie },
+  });
+  assert.equal(radarIngest.statusCode, 202, radarIngest.body);
+  assert.equal(radarIngest.json().job_id, 'radar-job-smoke');
+  assert.equal(radarJobs.length, 1);
+  assert.deepEqual(radarJobs[0], {
+    version: 1,
+    source: 'aemet_national_mosaic',
+    product: 'reflectivity',
+    requested_at: radarIngest.json().queued_at,
+  });
+
+  const dispatch = await app.inject({
+    method: 'POST',
+    url: '/api/v1/admin/sources/notifications/dispatch',
+    headers: { cookie: adminLogin.cookie },
+  });
+  assert.equal(dispatch.statusCode, 202, dispatch.body);
+  assert.equal(dispatch.json().job_id, 'notification-job-smoke');
+  assert.equal(dispatch.json().limit, 50);
+  assert.equal(notificationJobs.length, 1);
+  assert.deepEqual(notificationJobs[0], { version: 1, limit: 50 });
+
+  const actions = await db.selectFrom('admin_audit_log')
+    .select(['action'])
+    .where('action', 'in', [
+      'source.weather_refresh',
+      'source.radar_ingest_queued',
+      'source.notification_dispatch_queued',
+    ])
+    .execute();
+  const actionNames = new Set(actions.map((row) => row.action));
+  assert.ok(actionNames.has('source.weather_refresh'));
+  assert.ok(actionNames.has('source.radar_ingest_queued'));
+  assert.ok(actionNames.has('source.notification_dispatch_queued'));
+
+  await db.insertInto('platform_admins').values({
+    user_id: ownerUserId,
+    role: 'editor',
+    status: 'active',
+    granted_by: null,
+  }).onConflict((conflict) => conflict.column('user_id').doUpdateSet({ role: 'editor', status: 'active', updated_at: new Date() })).execute();
+
+  const editorRead = await app.inject({ method: 'GET', url: '/api/v1/admin/sources', headers: { cookie: ownerLogin.cookie } });
+  assert.equal(editorRead.statusCode, 200, editorRead.body);
+  for (const url of [
+    '/api/v1/admin/sources/aemet_forecast/refresh',
+    '/api/v1/admin/sources/aemet_radar/ingest',
+    '/api/v1/admin/sources/notifications/dispatch',
+  ]) {
+    const blocked = await app.inject({ method: 'POST', url, headers: { cookie: ownerLogin.cookie } });
+    assert.equal(blocked.statusCode, 403, blocked.body);
+    assert.equal(blocked.json().error, 'platform_admin_role_required');
+    assert.equal(blocked.json().minimum_role, 'admin');
+  }
+
   console.log('ADMIN_SOURCES_SMOKE_OK');
 } finally {
   await app.close();
   await db.destroy();
 }
-
-await import('./admin-professional-smoke.js');
-await import('./admin-role-safety-smoke.js');

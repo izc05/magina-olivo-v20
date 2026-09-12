@@ -4,9 +4,8 @@ import '../admin.css';
 import './sources-admin.css';
 
 export const metadata: Metadata = {
-  title: 'Fuentes y datos · Administración · Mágina Olivo',
-  description: 'Telemetría administrativa de fuentes de datos y pipelines de Mágina Olivo.',
-  robots: { index: false, follow: false },
+  title: 'Fuentes y datos | Mágina Olivo Admin',
+  description: 'Telemetría y acciones operativas seguras sobre AEMET, radar, OCR, Catastro y SIGPAC.',
 };
 
 export default function AdminSourcesPage() {
