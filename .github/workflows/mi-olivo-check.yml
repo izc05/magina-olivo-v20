@@ -2,9 +2,7 @@ name: V20 Mi Olivo check
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/mi-olivo-gamificacion-isi
+  pull_request:
     paths:
       - 'apps/api/src/routes/mi-olivo.ts'
       - 'apps/api/src/testing/mi-olivo-smoke.ts'
@@ -13,10 +11,12 @@ on:
       - 'apps/web/src/components/mi-olivo-dashboard.tsx'
       - 'apps/web/src/components/mi-olivo-dashboard.module.css'
       - 'database/migrations/0050_mi_olivo_core.sql'
+      - '.nvmrc'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/mi-olivo-check.yml'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgis/postgis:17-3.5
+        image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -41,19 +41,15 @@ jobs:
           --health-retries 8
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           run_install: false
-
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 22
-
+          node-version-file: '.nvmrc'
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
+        run: pnpm install --frozen-lockfile
       - name: Build API and web
         run: |
           pnpm --filter @magina/contracts typecheck
@@ -65,10 +61,8 @@ jobs:
           pnpm --filter @magina/api build
           pnpm --filter @magina/web typecheck
           pnpm --filter @magina/web build
-
       - name: Install PostgreSQL client
         run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
-
       - name: Apply migrations
         env:
           PGPASSWORD: postgres
@@ -77,7 +71,6 @@ jobs:
             echo "Applying ${migration}"
             psql -h 127.0.0.1 -U postgres -d magina_mi_olivo -v ON_ERROR_STOP=1 -f "${migration}"
           done
-
       - name: Mi Olivo ledger + idempotency smoke
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_mi_olivo
