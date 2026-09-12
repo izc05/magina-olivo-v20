@@ -105,6 +105,7 @@ jobs:
           NEXT_PUBLIC_PREVIEW_MODE=false
           GOOGLE_CLIENT_ID=staging-ci.apps.googleusercontent.com
           NEXT_PUBLIC_GOOGLE_CLIENT_ID=staging-ci.apps.googleusercontent.com
+          SESSION_SECRET=staging-ci-session-secret-please-do-not-use-outside-ci-2026
           AUTH_COOKIE_SECURE=true
           ALLOW_DEV_AUTH_HEADERS=false
           S3_ENDPOINT=https://s3.staging.magina.invalid
