@@ -2,23 +2,18 @@
 
 Este checklist empieza **después** del cierre funcional interno de `integrate/v20-beta-closure`.
 
-Referencia funcional verde:
+## Referencia a validar
 
-- integración funcional: `c7acf3c6f049ff55dea1e40542b5dccb0af1aee6`;
-- Full Candidate #2313 ✅;
-- Browser E2E #625 ✅;
-- Staging Readiness #226 ✅;
-- Foundation #115 ✅;
-- Runtime Hardening #65 ✅;
-- Platform Admin #184 ✅;
-- Notification Center #44 ✅;
-- Planes #111 ✅;
-- Mi Olivo #67 ✅;
-- Environment Contract #132 ✅;
-- Lockfile Guard #116 ✅;
-- Visual Preview / GitHub Pages #617 ✅.
+No usar un SHA histórico escrito en documentación como candidato implícito. En cada despliegue se elige de forma explícita un `expected_sha` completo de la rama coordinadora.
 
-Los workflows dedicados GIS y Weather/Radar quedaron verdes tras su absorción en la rama coordinadora. Browser E2E incluye además la matriz móvil y el módulo `/herramientas` integrado desde el PR #57.
+Antes de desplegar, ese mismo SHA debe tener verdes:
+
+- `V20 full candidate check`;
+- `V20 beta browser E2E`;
+- `V20 staging readiness`;
+- `V20 visual preview / GitHub Pages`.
+
+El workflow remoto vuelve a comprobar los tres primeros antes de tocar el host. El estado vivo del cierre se mantiene en PR #58.
 
 Documentación operativa relacionada:
 
@@ -26,67 +21,97 @@ Documentación operativa relacionada:
 - `docs/V20_STAGING_FIRST_DEPLOY_CHECKLIST.md`;
 - `deploy/staging/OPERATIONS.md`.
 
-## 1. Preflight del host real
+## 1. Configuración privada de GitHub Environment `staging`
+
+Secrets requeridos:
+
+```text
+STAGING_ENV_FILE
+STAGING_SSH_PRIVATE_KEY
+STAGING_SSH_KNOWN_HOSTS
+```
+
+Variables requeridas:
+
+```text
+STAGING_WEB_URL
+STAGING_HOST
+STAGING_USER
+STAGING_PORT
+STAGING_PATH
+```
+
+El controlador comprueba primero la presencia de los ocho nombres y, si falta alguno, informa **solo del nombre**, nunca de su valor. Ningún dato privado debe copiarse al repositorio ni a comentarios del PR.
+
+## 2. Preflight del host real
 
 Comprobar antes del deploy:
 
-- Docker/Compose disponibles;
-- DNS/TLS del staging resuelven al host correcto;
-- espacio libre suficiente;
-- reloj/NTP correcto;
-- acceso al registro de imágenes si aplica;
-- variables de entorno cargadas sin secretos en el repositorio;
-- directorios persistentes de PostgreSQL y backups montados;
-- política de backup definida.
+- Docker Engine y Docker Compose v2;
+- DNS/TLS del staging;
+- espacio libre y reloj/NTP;
+- `curl`, `tar` y `sha256sum`;
+- SSH con clave dedicada y `known_hosts` verificado;
+- almacenamiento persistente de PostgreSQL y backups;
+- salida HTTPS hacia S3/R2, Google, AEMET y web-push.
 
-Antes de desplegar ejecutar:
+PostgreSQL no debe publicarse a Internet.
+
+## 3. `.env` privado
+
+Partir de `deploy/staging/.env.example`, completar placeholders y ejecutar:
 
 ```bash
 node scripts/staging-env-preflight.mjs deploy/staging/.env
 ```
 
-El contrato actual de staging exige explícitamente:
+El contrato exige:
 
 - `NODE_ENV=production`;
 - `NEXT_PUBLIC_PREVIEW_MODE=false`;
 - `ALLOW_DEV_AUTH_HEADERS=false`;
-- orígenes web/API HTTPS distintos;
-- Google Identity configurado con el mismo client ID en API y web;
-- S3 compatible real;
+- web/API en HTTPS y orígenes distintos;
+- Google Identity con el mismo client ID en API y web;
+- S3-compatible real y bucket aislado;
 - worker con `ocr,radar,notifications`;
 - OCR Tesseract `spa+eng`;
 - VAPID real;
 - AEMET real.
 
-`SESSION_SECRET`, `PUBLIC_WEB_ORIGIN`, `GOOGLE_CLIENT_SECRET` y `OCR_PROCESSOR_MODE` **no forman parte del runtime actual** y el preflight los rechaza si aparecen.
+Estas variables son obsoletas y el preflight las rechaza:
+
+```text
+GOOGLE_CLIENT_SECRET
+SESSION_SECRET
+PUBLIC_WEB_ORIGIN
+OCR_PROCESSOR_MODE
+```
 
 **Criterio:** `Staging env preflight passed` y ningún secreto versionado.
 
-## 2. PostgreSQL/PostGIS
+## 4. PostgreSQL/PostGIS
 
 - arrancar PostgreSQL/PostGIS real;
-- ejecutar migraciones desde cero en una base vacía;
-- repetir migraciones para comprobar idempotencia del migrador;
+- ejecutar migraciones desde cero y repetirlas;
 - verificar `postgis` y geometrías `EPSG:4326`;
-- crear usuario/workspace/finca de smoke;
+- crear datos de smoke;
 - comprobar persistencia tras reinicio.
 
 **Criterio:** migraciones limpias, checksum válido y datos persistentes.
 
-## 3. API y Runtime
+## 5. API y Runtime
 
 Validar desde fuera del contenedor:
 
-- `/health`;
-- `/ready`;
+- `/health` y `/ready`;
 - request-id;
 - rate limiting;
-- CORS/orígenes permitidos;
+- CORS allow/deny;
 - headers de producción;
 - logs sin secretos;
-- rechazo de cabeceras de identidad de desarrollo.
+- rechazo de cabeceras dev-auth.
 
-Smoke automatizado disponible:
+Smoke automatizado:
 
 ```bash
 STAGING_API_URL=https://<api-staging> \
@@ -95,172 +120,133 @@ STAGING_REJECTED_ORIGIN=https://untrusted.invalid \
 node scripts/staging-postdeploy-smoke.mjs
 ```
 
-Ese smoke exige además que `/health` confirme base, Google Auth y web-push configurados.
+## 6. Storage S3/R2 y OCR/Worker
 
-**Criterio:** API utilizable solo con configuración de producción/staging segura.
+Validar de extremo a extremo:
 
-## 4. Storage S3/R2
+- subida real de PDF/imagen;
+- checksum y confirmación;
+- lectura autenticada/temporal;
+- procesamiento por worker;
+- resultado OCR visible en UI;
+- persistencia tras reinicio;
+- acceso del worker y lectura del asset radar.
 
-- subida real de un documento;
-- lectura real mediante URL/flujo autenticado;
-- persistencia después de reinicio;
-- acceso del worker;
-- asset radar leído desde storage;
-- verificar límites de tamaño y errores upstream.
+**Criterio:** documento → storage → OCR → extracción → UI completo, sin mocks locales.
 
-**Criterio:** escritura/lectura completas sin usar mocks locales.
-
-## 5. OCR / Worker
-
-- subir PDF/imagen real de prueba;
-- confirmar procesamiento por worker;
-- revisar estado de `ocr_runs` / extracción;
-- comprobar documento y resultado desde la web;
-- reiniciar worker y verificar recuperación normal.
-
-**Criterio:** flujo documento → storage → OCR → extracción → UI completo.
-
-## 6. AEMET / Radar real
+## 7. AEMET / Radar real
 
 ### Previsión
 
 - consulta AEMET desde el host;
 - caché `fresh`;
-- simular/observar fallo upstream y comprobar `stale` o `sin datos` según contrato;
-- refresco manual desde la UI.
+- fallo upstream con `stale` o `sin datos` según contrato;
+- refresco manual desde UI.
 
 ### Radar
 
-- ingestión real del producto configurado;
+- ingestión del producto real configurado;
 - snapshot con timestamp real;
 - análisis por finca con geometría canónica;
-- overlay PNG servido por API;
-- georreferenciación correcta por `bbox`;
-- degradación si storage/AEMET/raster falla.
+- overlay PNG por API y `bbox` correcto;
+- degradación segura ante fallo de storage/AEMET/raster.
 
 **No aceptar:** nowcast, ETA o conversión dBZ→mm/h sin metodología validada.
 
-**Criterio:** finca real visible con geometría y reflectividad observada, sin inventar predicción.
-
-## 7. Google Auth real
-
-Google Identity **forma parte del contrato actual de staging** y no puede omitirse sin cambiar expresamente dicho contrato.
-
-Validar:
+## 8. Google Auth real
 
 - origen HTTPS registrado en Google Cloud;
 - login real;
-- creación/lectura del usuario;
-- membership/workspace;
+- usuario + membership/workspace;
 - persistencia de sesión/recarga;
 - logout/login;
-- acceso denegado a recursos de otro workspace.
+- aislamiento entre workspaces.
 
-## 8. Notificaciones / VAPID
+## 9. Notificaciones / VAPID
 
-VAPID **forma parte del contrato actual de staging**.
-
-Validar:
-
-- claves VAPID reales del entorno;
+- claves reales del entorno;
 - `/health` reporta web-push configurado;
 - suscripción real;
-- envío de notificación de smoke;
+- envío de smoke;
 - aislamiento por usuario/workspace;
 - tolerancia a suscripciones expiradas.
 
-## 9. Admin / CMS / multimedia
+## 10. Admin / CMS / multimedia
 
-- acceso Admin solo autorizado;
-- crear/editar/publicar contenido;
+- acceso Admin autorizado;
+- crear/editar/publicar/despublicar contenido;
 - comprobar superficie pública;
 - subir/servir multimedia;
-- revisar auditoría/log de cambios;
-- verificar que contenido despublicado no se expone.
+- revisar auditoría/log de cambios.
 
-## 10. Backup / restore real
-
-Antes de cualquier promoción:
+## 11. Backup / restore real
 
 1. crear datos de smoke identificables;
-2. ejecutar backup en el host;
-3. borrar/modificar deliberadamente esos datos en staging;
-4. restaurar backup;
-5. ejecutar migraciones nuevamente;
-6. comprobar `/ready`;
-7. confirmar recuperación de los datos.
+2. ejecutar backup en host;
+3. alterar esos datos en staging;
+4. restaurar backup con PostgreSQL 17;
+5. ejecutar migraciones otra vez;
+6. comprobar `/ready` y recuperación de datos.
 
-**Criterio:** restore verificable con PostgreSQL 17, no solo creación del archivo de backup.
+**Criterio:** restore probado, no solo existencia de un dump.
 
-## 11. Smoke post-deploy funcional
+## 12. Recorrido Agricultor real
 
-Recorrido mínimo externo:
+```text
+Google login
+→ crear finca
+→ seleccionar/vincular geometría GIS real
+→ volver a editar y recuperar geometría
+→ registrar trabajo
+→ registrar cosecha
+→ añadir rendimiento
+→ Campaña
+→ subir documento
+→ OCR
+→ revisión humana
+→ tiempo/radar real
+```
 
-1. abrir web de staging;
-2. autenticar con Google;
-3. entrar en Mi Campo;
-4. crear finca;
-5. seleccionar/vincular geometría GIS real;
-6. volver a editar y recuperar la geometría;
-7. registrar trabajo;
-8. registrar cosecha;
-9. registrar rendimiento;
-10. abrir clima/radar de la finca;
-11. comprobar documento/OCR;
-12. abrir Campaña;
-13. abrir Profesional;
-14. comprobar una superficie pública/CMS;
-15. revisar Centro de Avisos;
-16. probar notificación web real.
+## 13. Recorrido Profesional real
 
-## 12. Auditoría visual/manual final
+```text
+cliente
+→ presupuesto
+→ PDF
+→ compartir
+→ abrir enlace público en incógnito
+→ aceptar/rechazar
+→ convertir a trabajo
+→ factura
+→ cobro
+```
 
-Revisar en al menos:
+El enlace público no debe exponer sesión privada ni datos ajenos.
+
+## 14. Auditoría visual/manual final
+
+Revisar al menos:
 
 - 360 × 844;
 - 390 × 844;
 - 430 × 932;
 - escritorio ≥ 1280 px.
 
-Superficies críticas:
+Superficies críticas: Inicio/Hoy, Mi Campo, Finca GIS, ficha de Finca, Registrar, Campaña, Clima/Radar/Mapa, Documentos/OCR, Profesional, Perfil, Admin, Explorar/Público, Avisos y Herramientas.
 
-- Inicio/Hoy;
-- Mi Campo;
-- alta/edición de Finca GIS;
-- ficha de Finca;
-- Registrar;
-- Campaña;
-- Clima/Radar/Mapa;
-- Documentos/OCR;
-- Profesional;
-- Perfil;
-- Admin;
-- Explorar/Público;
-- Avisos;
-- Herramientas rápidas.
-
-Buscar expresamente:
-
-- overflow horizontal;
-- textos técnicos visibles al usuario;
-- botones fuera de viewport;
-- modales imposibles de cerrar;
-- estados loading/error/empty/stale ilegibles;
-- contraste/foco/teclado;
-- mapas que oculten controles;
-- navegación inferior/topbar solapada.
+Buscar overflow horizontal, textos técnicos visibles, controles fuera de viewport, modales imposibles de cerrar, estados loading/error/empty/stale ilegibles, problemas de foco/teclado/contraste y mapas que oculten controles.
 
 ## Cierre
 
 La Beta puede promoverse al candidate solo cuando:
 
-- preflight del `.env` real pase;
 - staging externo esté desplegado;
+- HTTPS/CORS/headers pasen;
 - Google Auth, VAPID, S3/R2, OCR y AEMET/radar reales estén validados;
 - backup/restore real esté probado;
-- `staging-postdeploy-smoke.mjs` pase contra HTTPS real;
-- recorrido agricultor/profesional pase;
+- smoke post-deploy pase;
+- recorridos Agricultor/Profesional pasen;
 - auditoría manual no deje P0/P1;
-- la rama coordinadora siga sin regresiones funcionales.
+- la rama coordinadora siga CI-verde.
 
 No fusionar directamente a `main` como parte de este checklist.
