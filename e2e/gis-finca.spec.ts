@@ -20,6 +20,13 @@ async function fillBasics(page: import('@playwright/test').Page, name: string, t
   await expect(page.getByRole('heading', { name: 'Localiza la finca con un límite real' })).toBeVisible();
 }
 
+test('selector GIS aparece tras completar los datos básicos de la finca', async ({ page }, testInfo) => {
+  await fillBasics(page, `Finca GIS entrada ${testInfo.retry + 1}-${Date.now()}`);
+  await expect(page.getByTestId('gis-selector')).toBeVisible();
+  await expect(page.getByLabel('Referencia catastral')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Guardar sin límites' })).toBeEnabled();
+});
+
 test('alta GIS real persiste Catastro y recupera/sustituye geometría en edición', async ({ page }, testInfo) => {
   const farmName = `Finca GIS E2E ${testInfo.retry + 1}-${Date.now()}`;
   await fillBasics(page, farmName);
