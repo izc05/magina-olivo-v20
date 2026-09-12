@@ -20,7 +20,7 @@ El pipeline usa el mosaico nacional AEMET de reflectividad observado en GeoTIFF 
 
 No existe conversión automática dBZ → mm/h, nowcast ni ETA. `nearest_echo_distance_km` y dirección son una descripción espacial de la observación, no una predicción de movimiento o llegada.
 
-El worker, cuando `WORKER_MODULES` incluye `radar`, programa `RADAR_INGEST_QUEUE_NAME` cada 10 minutos (`*/10 * * * *`, UTC). La marca `stale` del radar es solo frescura operativa de la última observación; por defecto se activa al superar 30 minutos y puede configurarse con `RADAR_STALE_AFTER_MINUTES`.
+El worker, cuando `WORKER_MODULES` incluye `radar`, programa `RADAR_INGEST_QUEUE_NAME` cada 10 minutos (`*/10 * * * *`, UTC). Cada ejecución sustituye la marca estática del cron por su hora real antes de ingerir el producto. La marca `stale` del radar es solo frescura operativa de la última observación; por defecto se activa al superar 30 minutos y puede configurarse con `RADAR_STALE_AFTER_MINUTES`.
 
 ## Dependencias operativas
 
@@ -38,13 +38,16 @@ La previsión diaria mantiene la caché existente: una respuesta vigente se sirv
 
 ## Superficies y archivos clave
 
-- `apps/api/src/routes/weather.ts`
+- `apps/api/src/app.ts`
 - `apps/api/src/routes/radar.ts`
 - `apps/api/src/weather/radar-overlay.ts`
 - `apps/worker/src/radar/**`
 - `apps/worker/src/server.ts`
 - `apps/web/src/components/radar-observation-panel.tsx`
 - `apps/web/src/components/farm-map.tsx`
+- `apps/web/src/lib/api-client.ts`
+- `apps/api/src/testing/radar-latest-smoke.ts`
+- `apps/api/src/testing/radar-overlay-smoke.ts`
 - `e2e/weather-radar-map.spec.ts`
 - `.github/workflows/weather-map-closure.yml`
 
@@ -54,4 +57,19 @@ No se añade ninguna migración nueva en este cierre.
 
 Gate específico: **V20 weather radar map closure**. Ejecuta typecheck/build, smokes científicos del GeoTIFF/paleta/análisis espacial, renderer PNG, migraciones sobre PostGIS efímero, pruebas API de caché/radar/map-context y Playwright con matriz móvil 360/390/430 px. No usa staging compartido.
 
-Para absorber en `integrate/v20-beta-closure`, integrar la rama completa (no seleccionar solo UI): API, worker, web, pruebas y workflow forman el contrato cerrado. Después de la absorción, volver a ejecutar los gates generales del candidato integrado. No fusionar este frente directamente en `main`.
+El último commit funcional de código que debe quedar validado por este gate es `fff1915ae1aaf5382af41f1b082c7e8ec379e29f` (`fix(weather): stamp radar ingest execution time`).
+
+## Absorción en `integrate/v20-beta-closure`
+
+**No hacer un merge ciego de esta rama completa sobre integración.** `integrate/v20-beta-closure` ha avanzado en paralelo y ambas ramas divergen desde el ancestro común `28942aad9d0ae500061cdf9ca648da72619c7106`.
+
+El contrato de este frente es el delta de **18 commits** comprendido entre:
+
+- base común: `28942aad9d0ae500061cdf9ca648da72619c7106` (excluido);
+- último commit funcional: `fff1915ae1aaf5382af41f1b082c7e8ec379e29f` (incluido).
+
+Al absorber, preservar siempre la versión más reciente de integración en archivos compartidos y aplicar sobre ella únicamente el comportamiento de clima/radar/mapa descrito aquí. Zonas con mayor probabilidad de conflicto: `apps/api/src/app.ts`, `apps/worker/src/server.ts`, `apps/web/src/components/farm-map.tsx`, `apps/web/src/components/radar-observation-panel.tsx` y `apps/web/src/lib/api-client.ts`.
+
+En `apps/api/src/app.ts`, el cambio de este frente es únicamente que `registerRadarRoutes` recibe `storage`; no debe revertirse trabajo ajeno en otras rutas. En el worker, conservar cualquier módulo añadido por integración y mantener además el schedule/consumer de radar. En el mapa y panel radar, preservar el overlay real, geometría canónica y degradación independiente por fuente.
+
+Después de absorber el delta, ejecutar de nuevo los gates generales del candidato integrado además del gate weather/map. No fusionar este frente directamente en `main`.
