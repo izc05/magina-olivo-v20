@@ -8,13 +8,16 @@ on:
       - 'apps/api/src/routes/admin.ts'
       - 'apps/api/src/routes/admin-media.ts'
       - 'apps/api/src/routes/admin-territory.ts'
+      - 'apps/api/src/routes/admin-sources.ts'
       - 'apps/api/src/testing/admin-smoke.ts'
       - 'apps/api/src/testing/admin-territory-smoke.ts'
+      - 'apps/api/src/testing/admin-sources-smoke.ts'
       - 'apps/api/src/db/types.ts'
       - 'apps/api/src/app.ts'
       - 'apps/web/src/app/admin/**'
       - 'apps/web/src/app/page.tsx'
       - 'apps/web/src/components/admin-control-center.tsx'
+      - 'apps/web/src/components/admin-sources-console.tsx'
       - 'apps/web/src/components/site-admin-console.tsx'
       - 'apps/web/src/components/site-admin-console-v2.tsx'
       - 'apps/web/src/components/admin-media-picker.tsx'
@@ -106,3 +109,11 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'false'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/admin-territory-smoke.js
+
+      - name: Source telemetry semantics smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-sources-smoke.js
