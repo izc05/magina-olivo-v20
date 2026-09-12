@@ -10,6 +10,7 @@ on:
       - 'apps/api/src/routes/admin-territory.ts'
       - 'apps/api/src/routes/admin-sources.ts'
       - 'apps/api/src/testing/admin-smoke.ts'
+      - 'apps/api/src/testing/admin-role-safety-smoke.ts'
       - 'apps/api/src/testing/admin-territory-smoke.ts'
       - 'apps/api/src/testing/admin-sources-smoke.ts'
       - 'apps/api/src/db/types.ts'
@@ -103,6 +104,14 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'false'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/admin-smoke.js
+
+      - name: Privileged account hierarchy smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-role-safety-smoke.js
 
       - name: Canonical territory administration smoke
         env:
