@@ -2,180 +2,319 @@
 
 Rama: `chore/v20-cleanup-structure`
 
-Base inicial: `09299449bb07eab24867c658e63a32350ae7d805`
+Base inicial histórica: `09299449bb07eab24867c658e63a32350ae7d805`
 
-Objetivo: mantener un workstream transversal de V20 para estructura del repositorio, tooling, CI, entorno reproducible y deuda compartida, sin duplicar los frentes de producto que avanzan en ramas paralelas.
+Objetivo: mantener un workstream transversal para estructura del repositorio, tooling, CI, contratos de runtime, staging, seguridad de supply-chain e higiene de integración, sin duplicar los frentes de producto que avanzan en ramas propietarias.
+
+## Estado verificado
+
+Último HEAD técnico completamente verificado antes de esta actualización documental:
+
+- Foundation: `10d61ea01aae9353ba6f344525f74bcacf109468`
+- Candidate integrado: `76a086717236057027f2b24a06d7942546d5e52c`
+- Sincronización en ese punto: **0 commits behind**
+
+Gates sobre ese HEAD:
+
+- ✅ `V20 environment contract` #55
+- ✅ `V20 lockfile guard` #47
+- ✅ `V20 foundation check` #38
+- ✅ `V20 full candidate check` #2174
+- ✅ `V20 beta browser E2E` #483
+- ✅ `V20 staging readiness` #102
+
+`main` permanece fuera de este workstream y PR #10 no se fusiona automáticamente.
 
 ## Naturaleza del workstream
 
-Este frente **no termina después de una única limpieza**. Va cerrando lotes independientes mientras V20 se desarrolla en paralelo. Su función es reducir fricción de integración y detectar deuda que afecta a más de un módulo.
+Foundation no es un módulo funcional. Su función es cerrar deuda compartida y proporcionar garantías que todas las ramas puedan reutilizar:
 
-No cubre cambios funcionales de mapa, Catastro/SIGPAC, diseño de pantallas ni ampliación de módulos cuando ya existe una rama propietaria.
+- repositorio y documentación de entrada coherentes;
+- versiones de runtime reproducibles;
+- dependencias bloqueadas;
+- contratos de entorno;
+- CI segura y mantenible;
+- migraciones verificables;
+- staging reproducible;
+- supply-chain de Actions y contenedores inmutable;
+- sincronización segura con el candidate.
 
-## Lote 1 — entrada al repositorio y cierre del candidate
+No cubre diseño de pantallas ni ampliación funcional de GIS, Mi Campo, Registro/Campaña, Profesional, Documentos/OCR, Weather/Mapa, Inicio/Hoy, Perfil, Planificar, Admin o Público/Explorar cuando ya existe workstream propietario.
 
-### README obsoleto
+## Lote 1 — entrada al repositorio y trabajo paralelo
 
-El README seguía describiendo V20 como un repositorio de arquitectura/documentación previa a implementación, aunque el proyecto ya contiene web, API, worker, PostGIS, OCR, GIS, meteorología, profesional y E2E.
+Se corrigió la documentación inicial, que todavía describía V20 como una arquitectura previa a implementación.
 
-**Acción:** corregido. El README vuelve a ser una puerta de entrada fiable al repositorio.
+Entregables:
 
-### Desarrollo local describía una autenticación ya superada
+- `README.md` actualizado al monorepo real;
+- `docs/INDEX.md` como índice técnico;
+- `docs/LOCAL_DEVELOPMENT.md` reconciliado con auth, memberships, CORS y preview actuales;
+- `AGENTS.md` con reglas de trabajo paralelo;
+- `docs/WORKSTREAMS.md` con ownership de ramas;
+- plantilla de PR con alcance, archivos compartidos y validación;
+- `database/seeds/002_dev_identity.sql` para identidad/membership local reproducible;
+- `.gitignore` ampliado para artifacts, caches, logs, Playwright y TypeScript.
 
-`LOCAL_DEVELOPMENT.md` afirmaba que Auth/Workspace Membership todavía no estaba implementado. En el código actual sí existen sesiones y memberships, y los headers `x-user-id`/`x-workspace-id` solo funcionan cuando `ALLOW_DEV_AUTH_HEADERS=true`.
+Reglas consolidadas:
 
-**Acción:** corregido. Se documenta autenticación real, headers de desarrollo opt-in, CORS y modo preview.
-
-### Seed demo sin identidad reproducible
-
-El seed de demo creaba workspace/campaña/finca pero no una identidad local asociada.
-
-**Acción:** añadido `database/seeds/002_dev_identity.sql` con usuario local y membership owner sobre el workspace demo.
-
-### Validación raíz fragmentada
-
-Existían `typecheck`, `build` y `e2e:beta`, pero faltaba un comando único para la comprobación normal del monorepo.
-
-**Acción:** añadidos `pnpm check` y `pnpm check:fast`.
-
-### Higiene de artefactos
-
-**Acción:** `.gitignore` ampliado para informes Playwright, resultados de tests, logs, caches, store de pnpm y `tsbuildinfo`.
-
-### Documentación y ramas paralelas
-
-**Acción:** añadidos `docs/INDEX.md`, `docs/WORKSTREAMS.md` y `AGENTS.md`. El repositorio mantiene ahora un mapa explícito de ramas activas, ownership y protocolo de handoff.
-
-### E2E heredado dependía de una barra final de URL
-
-El candidate de partida tenía el `V20 full candidate check` verde pero su `V20 beta browser E2E` fallaba al comparar literalmente `/mi-campo/mapa?fieldId=...` con `/mi-campo/mapa/?fieldId=...`.
-
-**Acción:** el test valida ahora semánticamente el `pathname` normalizado y el parámetro `fieldId`, manteniendo la comprobación real de la pantalla de mapa. No se cambió código GIS ni de producto para satisfacer la prueba.
-
-**Resultado del lote 1:** `V20 full candidate check` y `V20 beta browser E2E` verdes.
-
-## Lote 2 — runtime, variables de entorno y dependencias reproducibles
-
-### Node y pnpm declarados
-
-CI usaba Node 22 pero el repositorio no declaraba versión compatible para desarrollo local.
-
-**Acción:**
-
-- añadido `.nvmrc` con Node 22;
-- añadido `engines.node >=22 <23` en `package.json`;
-- declarado el rango de pnpm compatible con `packageManager`.
-
-### Contrato de entorno
-
-El `.env.example` raíz no incluía todas las variables consumidas por API, web, worker y paquetes.
-
-**Acción:** reconciliados `.env.example`, API, worker, infra y staging. `scripts/check-env-contract.mjs` inspecciona `apps/` y `packages/` y falla ante variables `process.env.*` no documentadas.
-
-**Resultado:** 29 variables runtime documentadas y gate `V20 environment contract` verde.
-
-### Lockfile reproducible
-
-El repositorio no tenía `pnpm-lock.yaml` y CI instalaba con `--no-frozen-lockfile`.
-
-**Acción:** generado y versionado `pnpm-lock.yaml` (lockfile v9), añadido `check:lockfile` y gate `V20 lockfile guard`.
-
-`pnpm check`, `pnpm check:fast` y el nuevo `V20 foundation check` usan instalación reproducible y validan entorno + typecheck/build.
-
-**Resultado:** foundation verde con Node 22, pnpm 10.15.1, instalación congelada, contrato de entorno, typecheck y build completo.
-
-## Lote 3 — CI compartida y trabajo paralelo
-
-### Inventario de deuda CI
-
-Se añadió `scripts/audit-ci.mjs` para auditar workflows de forma reproducible.
-
-Primera auditoría objetiva:
-
-- 21 workflows;
-- 66 referencias a Actions;
-- 17 comandos de instalación pnpm;
-- 52 referencias a Actions antiguas;
-- 15 instalaciones mutables (`--no-frozen-lockfile`).
-
-### Modernización controlada de workflows
-
-Se añadió `scripts/modernize-ci.mjs` y se generó un artefacto validado con `audit-ci --strict` antes de publicarlo.
-
-**Aplicado:** 18 workflows actualizados mecánicamente, 67 sustituciones:
-
-- `actions/checkout@v4` → `actions/checkout@v7`;
-- `actions/setup-node@v4` → `actions/setup-node@v7`;
-- `pnpm/action-setup@v4` → `pnpm/action-setup@v6`;
-- `actions/upload-artifact@v4` → `actions/upload-artifact@v7`;
-- `pnpm install --no-frozen-lockfile` → `pnpm install --frozen-lockfile`.
-
-El workflow temporal usado para generar el artefacto se elimina tras publicar el lote. Los archivos grandes (`beta-browser-e2e.yml` y `visual-prototype-check.yml`) se verificaron por SHA contra el artefacto validado antes de ensamblar el commit.
-
-### Protocolo para chats/agentes paralelos
-
-`AGENTS.md` y `docs/WORKSTREAMS.md` consolidan:
-
-- cada chat/agente trabaja en una rama propia y un frente concreto;
-- no se toca `main`;
+- cada chat/agente trabaja en su rama;
+- `main` no se toca durante desarrollo paralelo;
 - no se fusiona automáticamente el candidate;
-- ownership de archivos compartidos;
-- responsive 360/390/430 para pantallas;
 - datos reales por defecto y preview explícita;
-- formato estándar de handoff con SHA, archivos, tests y limitaciones.
+- responsive 360/390/430 cuando cambia UI;
+- handoff con SHA, archivos, pruebas y limitaciones.
 
-Workstreams registrados: Inicio/Hoy, Mi Campo/Finca, Registro/Campaña, Profesional, Documentos/OCR, GIS/Nueva finca, QA móvil/E2E, Público/Explorar, Perfil/Ajustes, Planificar/Tareas, Admin, Weather/Radar y este frente transversal.
+## Lote 2 — runtime y dependencias reproducibles
 
-## Coherencia comprobada
+Runtime acordado:
 
-El código y los gates actuales confirman:
+- Node 22 mediante `.nvmrc`;
+- `engines.node >=22 <23`;
+- pnpm `10.15.1` declarado en `packageManager`;
+- `scripts/check-runtime-contract.mjs` ejecutado también desde `preinstall`.
 
-- sesiones y memberships activas por defecto;
-- headers de desarrollo solo con `ALLOW_DEV_AUTH_HEADERS=true`;
-- CORS con allowlist;
-- headers de seguridad en API privada;
-- `NEXT_PUBLIC_PREVIEW_MODE=false` fuera de demo;
-- Playwright con identidad E2E explícita;
-- Node 22 y pnpm 10.15.1 como runtime/tooling acordados;
-- lockfile versionado;
-- contrato automático de variables de entorno;
-- foundation reproducible;
-- workstreams paralelos documentados por rama.
+Dependencias:
+
+- `pnpm-lock.yaml` v9 versionado;
+- CI usa `pnpm install --frozen-lockfile`;
+- `pnpm-workspace.yaml` permite únicamente el lifecycle script revisado de `esbuild`;
+- `strictDepBuilds: true` evita ejecutar scripts nuevos no revisados silenciosamente.
+
+Comandos raíz relevantes:
+
+```text
+pnpm check:runtime
+pnpm check:lockfile
+pnpm check:env
+pnpm check:staging
+pnpm check:migrations
+pnpm check:containers
+pnpm check:fast
+pnpm check
+```
+
+## Lote 3 — contratos de entorno y seguridad de producción
+
+`scripts/check-env-contract.mjs` mantiene documentadas **39 variables runtime** consumidas por apps/paquetes.
+
+`scripts/check-staging-contract.mjs` controla **41 variables de staging**, de las cuales **5 son deploy-only**.
+
+El contrato de staging exige, entre otras garantías:
+
+- `NODE_ENV=production`;
+- `NEXT_PUBLIC_PREVIEW_MODE=false`;
+- `AUTH_COOKIE_SECURE=true`;
+- `ALLOW_DEV_AUTH_HEADERS=false`;
+- CORS explícito y HTTPS;
+- API y web en orígenes coherentes;
+- `GOOGLE_CLIENT_ID` y `NEXT_PUBLIC_GOOGLE_CLIENT_ID` iguales;
+- bucket claramente aislado de producción;
+- OCR Tesseract con límites explícitos;
+- worker con `ocr,radar,notifications`.
+
+Claves obsoletas rechazadas en staging:
+
+```text
+GOOGLE_CLIENT_SECRET
+SESSION_SECRET
+PUBLIC_WEB_ORIGIN
+OCR_PROCESSOR_MODE
+```
+
+La API además falla cerrado si producción intenta arrancar con `ALLOW_DEV_AUTH_HEADERS=true`, y `request-context` ignora esos headers bajo `NODE_ENV=production` incluso si la app se construye directamente en una prueba.
+
+## Lote 4 — CI y supply-chain de GitHub Actions
+
+`scripts/audit-ci.mjs --strict` audita actualmente:
+
+- **23 workflows**;
+- **75 referencias a Actions**;
+- todas las Actions externas fijadas por SHA completo de 40 caracteres;
+- versión humana conservada como comentario (`# v7`, etc.);
+- runtime Node tomado de `.nvmrc`;
+- instalaciones pnpm congeladas;
+- triggers críticos de candidate/E2E;
+- permisos mínimos de GitHub Actions;
+- Pages con `contents: read` global y write/id-token únicamente en el job de deploy.
+
+Pins centralizados en `scripts/ci-action-pins.mjs` para:
+
+- checkout;
+- setup-node;
+- pnpm setup;
+- cache;
+- upload-artifact;
+- setup-python;
+- configure-pages;
+- upload-pages-artifact;
+- deploy-pages.
+
+`scripts/modernize-ci.mjs` y `scripts/pin-ci-actions.mjs` generan las referencias aprobadas, mientras el auditor impide volver a tags mutables.
+
+## Lote 5 — migraciones persistentes y repetibles
+
+Además del guard estático `scripts/check-migrations.mjs`, staging usa un runner persistente con `schema_migrations`.
+
+Garantías:
+
+- cada SQL queda registrado;
+- checksum SHA-256 por migración;
+- estados `applying` / `applied`;
+- una migración histórica aplicada no se reejecuta;
+- modificar una migración aplicada produce mismatch;
+- estado interrumpido/inconsistente falla cerrado;
+- una segunda pasada correcta es no-op.
+
+`V20 staging readiness` comprueba que el número de filas `applied` coincide con el número de migraciones SQL.
+
+## Lote 6 — staging reproducible
+
+`deploy/staging/` contiene:
+
+```text
+.env.example
+Dockerfile.api
+Dockerfile.worker
+Dockerfile.web
+docker-compose.yml
+migrate.sh
+deploy-host.sh
+nginx.conf
+```
+
+Stack:
+
+```text
+PostGIS 17
+   ↓
+migrate one-shot
+   ↓
+API Fastify + worker + web nginx
+```
+
+Hardening actual:
+
+- PostgreSQL no publica puerto al host;
+- API y web solo publican en loopback;
+- API/worker usan filesystem `read_only`;
+- `tmpfs` explícito;
+- `cap_drop: ALL`;
+- `no-new-privileges`;
+- nginx ejecuta imagen unprivileged;
+- web se construye con preview desactivada;
+- worker incluye Tesseract `spa+eng` y Poppler;
+- OCR se valida también dentro de la imagen final.
+
+## Lote 7 — imágenes Docker inmutables
+
+El siguiente riesgo de supply-chain tras fijar GitHub Actions eran los tags Docker mutables.
+
+Ahora las bases de staging conservan un tag legible y añaden digest SHA-256 inmutable:
+
+- Node 22 Bookworm slim;
+- nginx unprivileged 1.27 Alpine;
+- PostGIS 17 / PostgreSQL 3.5;
+- PostgreSQL 17 Bookworm.
+
+`scripts/check-container-pins.mjs` audita Dockerfiles, Compose y las imágenes auxiliares usadas por `deploy-host.sh`.
+
+Resultado actual:
+
+> `Container pin contract OK: 9 staging image references use explicit tags plus immutable sha256 digests.`
+
+El gate Foundation y Staging Readiness ejecutan `pnpm check:containers`, por lo que reintroducir una base sin digest o con `latest` rompe CI.
+
+## Lote 8 — despliegue de staging y backup previo
+
+`deploy/staging/deploy-host.sh` se usa como recorrido real también desde Staging Readiness.
+
+Flujo validado:
+
+1. preflight del `.env` privado;
+2. build de imágenes;
+3. arranque aislado de PostgreSQL;
+4. espera de readiness;
+5. **backup `pg_dump -Fc` obligatorio antes de cualquier migración**;
+6. arranque de migraciones, API, worker y web;
+7. health local;
+8. worker en ejecución;
+9. segunda pasada de migraciones no-op;
+10. comprobación del registro de migraciones.
+
+Readiness valida además que el dump existe, no está vacío y puede ser leído por `pg_restore` **PostgreSQL 17**, reutilizando el servicio `migrate` fijado por digest. Esto evita validar un dump de PG17 con el cliente PG16 que Ubuntu 24.04 instala por defecto.
+
+## Lote 9 — deploy remoto exact-SHA
+
+`.github/workflows/staging-deploy.yml` es manual y requiere Environment `staging`.
+
+El deploy:
+
+- exige SHA completo;
+- exige confirmación `DEPLOY-STAGING`;
+- comprueba que el SHA pertenece al historial actual del candidate;
+- exige Full Candidate + Browser E2E + Staging Readiness verdes para ese mismo SHA;
+- valida `.env` y URLs;
+- valida SSH/known_hosts;
+- sube una release inmutable;
+- ejecuta `deploy-host.sh`;
+- realiza smoke HTTPS externo;
+- solo después actualiza `current` / `CURRENT_SHA`.
+
+No existe rollback destructivo automático de base de datos.
+
+El staging externo real **no se considera aprobado** hasta disponer de host, dominios HTTPS, bucket, Google Auth, AEMET/radar, VAPID, observabilidad y una prueba real de backup + restore.
+
+## Lote 10 — QA transversal
+
+Foundation conserva y sincroniza los gates del candidate sin apropiarse del workstream QA:
+
+- recorrido Playwright real de agricultor;
+- storage fixture controlado para documento/OCR;
+- responsive 360/390/430;
+- controles críticos en tablet/escritorio;
+- trazas/screenshots ante fallos;
+- Full Candidate con smokes de API, economía, documentos y Profesional.
+
+La regla sigue siendo: si una prueba revela una regresión funcional, se corrige el producto en su workstream; Foundation solo corrige infraestructura, contratos o pruebas transversales que sean de su propiedad.
+
+## Integración segura con el candidate
+
+Cuando `feat/v20-visual-prototype` avanza, Foundation no copia ciegamente archivos compartidos.
+
+Procedimiento:
+
+1. inspeccionar commits nuevos;
+2. distinguir producto de infraestructura transversal;
+3. conservar contratos/hardening más fuertes de Foundation;
+4. absorber la intención compatible;
+5. crear merge de historial con el candidate como segundo padre;
+6. comprobar `behind_by = 0`;
+7. validar el HEAD exacto con los seis gates.
+
+Este procedimiento evitó reintroducir durante la sincronización variables obsoletas, tags Docker mutables y versiones de tooling incompatibles.
 
 ## Deuda transversal pendiente
 
-Backlog de este workstream después de cerrar la modernización CI:
+No bloquea el lote actual:
 
-- vigilar que nuevas ramas no reintroduzcan Actions antiguas o instalaciones mutables;
-- revisar duplicación entre workflows y extraer componentes reutilizables solo cuando reduzca complejidad real;
-- auditar configuración de staging/producción conforme se activen nuevos módulos;
-- mantener foundation sincronizada con el candidate activo;
-- revisar seguridad y permisos de Actions antes del cierre beta;
-- mantener el mapa de workstreams al día durante la integración.
+- staging externo real y restore comprobado en host;
+- observabilidad persistente;
+- CSP/HSTS cuando los dominios definitivos existan;
+- rate limiting según exposición de endpoints;
+- revisar redundancia/coste de CI sin debilitar gates;
+- mantener pins de Actions y contenedores cuando se actualicen versiones;
+- continuar sincronización segura mientras el candidate siga recibiendo workstreams.
 
-## Deuda que pertenece a otros frentes
+No se considera deuda Foundation el desarrollo de pantallas o módulos ya asignados a otros chats.
 
-No se resuelve aquí porque ya tiene workstream propietario:
+## Criterio de cierre de un lote Foundation
 
-- GIS real de alta/edición de finca y Catastro/SIGPAC;
-- experiencia Mi Campo y ficha de finca;
-- registro/campaña/cosecha/rendimiento;
-- profesional y facturación;
-- documentos/OCR funcional;
-- clima/radar/mapa de producto;
-- Inicio/Hoy;
-- Perfil/Ajustes;
-- Planificar/Tareas;
-- Admin;
-- público/explorar;
-- QA móvil y pulido UX.
-
-## Criterio de cierre de cada lote
-
-Cada lote transversal queda listo cuando:
+Un lote transversal se considera cerrado cuando:
 
 - no introduce cambios accidentales de producto;
-- deja automatización preventiva cuando sea razonable;
-- los archivos modificados están revisados;
-- los gates afectados están verdes;
-- cualquier deuda restante tiene propietario claro.
+- deja un guard preventivo cuando es razonable;
+- queda sincronizado con el candidate;
+- los archivos compartidos están reconciliados explícitamente;
+- los seis gates relevantes están verdes sobre el HEAD técnico;
+- la deuda restante tiene propietario y no se presenta como resuelta si depende de staging externo.
