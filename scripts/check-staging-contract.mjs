@@ -53,6 +53,7 @@ const required = [
   'NEXT_PUBLIC_GOOGLE_CLIENT_ID',
   'AUTH_COOKIE_SECURE',
   'ALLOW_DEV_AUTH_HEADERS',
+  'TRUST_PROXY',
   'S3_ENDPOINT',
   'S3_REGION',
   'S3_BUCKET',
@@ -101,6 +102,7 @@ const exactValues = new Map([
   ['NEXT_PUBLIC_PREVIEW_MODE', 'false'],
   ['AUTH_COOKIE_SECURE', 'true'],
   ['ALLOW_DEV_AUTH_HEADERS', 'false'],
+  ['TRUST_PROXY', 'true'],
   ['WORKER_MODULES', 'ocr,radar,notifications'],
   ['OCR_PROVIDER', 'tesseract'],
   ['TESSERACT_BIN', 'tesseract'],
@@ -209,5 +211,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Staging contract OK: ${staging.size} variables (${deploymentOnlyKeys.size} deploy-only), production safety defaults enforced, ${corsOrigins.length} HTTPS CORS origin(s), dev auth/preview disabled, Tesseract OCR enabled with bounded runtime limits, Compose database credentials aligned, sensitive values kept as placeholders.`,
+  `Staging contract OK: ${staging.size} variables (${deploymentOnlyKeys.size} deploy-only), production safety defaults and trusted proxy topology enforced, ${corsOrigins.length} HTTPS CORS origin(s), dev auth/preview disabled, Tesseract OCR enabled with bounded runtime limits, Compose database credentials aligned, sensitive values kept as placeholders.`,
 );
