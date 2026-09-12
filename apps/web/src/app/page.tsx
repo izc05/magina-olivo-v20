@@ -1,30 +1,33 @@
-import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
 import { HomeDailyCenter } from '@/components/home-daily-center';
-import { ArrowIcon } from '@/components/icons';
-import { demoContext } from '@/lib/demo-data';
+import { ManagedHomeContent } from '@/components/managed-home-content';
+import { ManagedAdSlot } from '@/components/managed-ad-slot';
 
 export default function HomePage() {
   return (
     <main className="app-shell">
+      <h1
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: 'hidden',
+          clip: 'rect(0, 0, 0, 0)',
+          whiteSpace: 'nowrap',
+          border: 0,
+        }}
+      >
+        Mágina Olivo · Inicio
+      </h1>
       <Topbar />
       <div className="page home-page">
+        <ManagedAdSlot slot="home_top" />
         <HomeDailyCenter />
-
-        <section className="section">
-          <div className="section-head"><h2>Actualidad y vida local</h2><Link href="/explorar">Ver todo <ArrowIcon /></Link></div>
-          <div className="story-grid">
-            <article className="card story-card"><div className="story-image story-olive"/><span className="story-tag">NOTICIAS</span><h3>La campaña del olivar en Sierra Mágina</h3><p>Actualidad agrícola y territorio.</p></article>
-            <article className="card story-card"><div className="story-image story-town"/><span className="story-tag">EVENTOS</span><h3>Agenda local de {demoContext.municipality}</h3><p>Ferias, jornadas y encuentros.</p></article>
-            <article className="card story-card sponsored"><div className="story-image story-oil"/><span className="story-tag gold">PATROCINADO</span><h3>Empresas de nuestra tierra</h3><p>Promoción local integrada y clara.</p></article>
-          </div>
-        </section>
-
-        <section className="territory-banner">
-          <div><span className="eyebrow">MÁGINA OLIVO</span><h2>Personas que cuidan de un territorio único</h2></div>
-          <Link href="/explorar">Descubrir Mágina <ArrowIcon /></Link>
-        </section>
+        <ManagedAdSlot slot="home_inline" />
+        <ManagedHomeContent />
       </div>
       <BottomNav active="/" />
     </main>

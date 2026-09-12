@@ -54,6 +54,16 @@ if (healthBody?.databaseConfigured !== true) fail('/health reports databaseConfi
 if (healthBody?.googleAuthConfigured !== true) fail('/health reports googleAuthConfigured=false');
 if (healthBody?.webPushConfigured !== true) fail('/health reports webPushConfigured=false');
 
+const ready = await request('/ready', webOrigin);
+if (ready.status !== 200) fail(`/ready expected 200, got ${ready.status}`);
+requireHeader(ready, 'access-control-allow-origin', webOrigin);
+requireHeader(ready, 'x-content-type-options', 'nosniff');
+requireHeader(ready, 'x-frame-options', 'DENY');
+const readyBody = await ready.json().catch(() => fail('/ready did not return JSON'));
+if (readyBody?.ok !== true || readyBody?.database !== 'ready') {
+  fail(`/ready did not report a live database connection: ${JSON.stringify(readyBody)}`);
+}
+
 const rejectedResponse = await request('/health', rejected);
 if (rejectedResponse.status < 400) fail(`untrusted origin was not rejected: ${rejectedResponse.status}`);
 if (rejectedResponse.headers.get('access-control-allow-origin') === rejected) {
@@ -74,4 +84,4 @@ requireHeader(privateResponse, 'x-frame-options', 'DENY');
 requireHeader(privateResponse, 'referrer-policy', 'strict-origin-when-cross-origin');
 requireHeader(privateResponse, 'permissions-policy', 'camera=(), microphone=(), geolocation=(self)');
 
-console.log(`Staging post-deploy smoke passed for ${apiUrl.origin}: health/configuration, CORS allow/deny, production auth boundary and security headers are enforced.`);
+console.log(`Staging post-deploy smoke passed for ${apiUrl.origin}: health/readiness, live database connectivity, CORS allow/deny, production auth boundary and security headers are enforced.`);

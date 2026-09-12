@@ -24,16 +24,19 @@ export type ApiOptions = RequestInit & {
   workspaceId?: string | null;
 };
 
-export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  if (!apiBaseUrl) throw new ApiUnavailableError();
-
+function requestHeaders(options: ApiOptions) {
   const headers = new Headers(options.headers);
   if (options.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   if (options.workspaceId) headers.set('x-workspace-id', options.workspaceId);
+  return headers;
+}
+
+export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
+  if (!apiBaseUrl) throw new ApiUnavailableError();
 
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
-    headers,
+    headers: requestHeaders(options),
     credentials: 'include',
   });
 
@@ -46,4 +49,23 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
 
   if (!response.ok) throw new ApiRequestError(response.status, payload);
   return payload as T;
+}
+
+export async function apiFetchBlob(path: string, options: ApiOptions = {}): Promise<Blob> {
+  if (!apiBaseUrl) throw new ApiUnavailableError();
+
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...options,
+    headers: requestHeaders(options),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type') ?? '';
+    const payload: unknown = contentType.includes('application/json')
+      ? await response.json()
+      : await response.text();
+    throw new ApiRequestError(response.status, payload);
+  }
+  return response.blob();
 }

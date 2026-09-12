@@ -6,9 +6,8 @@ export function Topbar() {
   return (
     <header className="topbar">
       <Brand />
-      <Link href="/perfil" className="icon-button notification-button" aria-label="Notificaciones y perfil">
+      <Link href="/mi-campo/avisos" className="icon-button notification-button" aria-label="Abrir centro de avisos">
         <BellIcon />
-        <span className="notification-dot" />
       </Link>
     </header>
   );

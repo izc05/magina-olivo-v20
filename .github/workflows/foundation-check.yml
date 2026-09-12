@@ -1,0 +1,83 @@
+name: V20 foundation check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.env.example'
+      - '.nvmrc'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'scripts/**'
+      - 'database/migrations/**'
+      - 'deploy/staging/**'
+      - 'apps/**/package.json'
+      - 'apps/web/tsconfig.json'
+      - 'tsconfig*.json'
+      - '.github/workflows/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Audit CI modernization and permissions
+        run: node scripts/audit-ci.mjs --strict
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: apps/web/.next/cache
+          key: ${{ runner.os }}-next-foundation-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/**') }}
+          restore-keys: |
+            ${{ runner.os }}-next-foundation-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - name: Verify environment contract
+        run: pnpm check:env
+
+      - name: Verify staging production-safety contract
+        run: pnpm check:staging
+
+      - name: Verify migration sequence contract
+        run: pnpm check:migrations
+
+      - name: Verify immutable staging container references
+        run: pnpm check:containers
+
+      - name: Typecheck workspace
+        run: pnpm typecheck
+
+      - name: Build workspace
+        run: pnpm build
+
+      - name: Verify build leaves tracked files unchanged
+        run: |
+          if ! git diff --exit-code; then
+            echo 'Build modified tracked repository files. Commit the generated/configuration change instead of mutating it in CI.' >&2
+            exit 1
+          fi

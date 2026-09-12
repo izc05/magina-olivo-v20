@@ -1,4 +1,3 @@
-# Preview refresh: 2026-09-11
 name: V20 visual preview
 
 on:
@@ -6,11 +5,10 @@ on:
   push:
     branches:
       - feat/v20-visual-prototype
+      - integrate/v20-beta-closure
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: v20-visual-pages
@@ -21,20 +19,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           run_install: false
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: apps/web/.next/cache
+          key: ${{ runner.os }}-next-pages-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/**') }}
+          restore-keys: |
+            ${{ runner.os }}-next-pages-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: Build static preview
         env:
@@ -43,17 +51,70 @@ jobs:
           NEXT_PUBLIC_PREVIEW_MODE: 'true'
         run: pnpm --filter @magina/web build
 
+      - name: Validate static links honor Pages base path
+        env:
+          PAGES_BASE_PATH: '/magina-olivo-v20'
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir, readFile } from 'node:fs/promises';
+          import { join, relative } from 'node:path';
+
+          const root = 'apps/web/out';
+          const basePath = process.env.PAGES_BASE_PATH;
+          const htmlFiles = [];
+
+          async function walk(directory) {
+            for (const entry of await readdir(directory, { withFileTypes: true })) {
+              const absolute = join(directory, entry.name);
+              if (entry.isDirectory()) {
+                await walk(absolute);
+              } else if (entry.isFile() && entry.name.endsWith('.html')) {
+                htmlFiles.push(absolute);
+              }
+            }
+          }
+
+          await walk(root);
+          const violations = [];
+          let anchorCount = 0;
+
+          for (const file of htmlFiles) {
+            const html = await readFile(file, 'utf8');
+            for (const match of html.matchAll(/<a\b[^>]*\bhref=(['"])(.*?)\1/gi)) {
+              anchorCount += 1;
+              const href = match[2];
+              if (
+                href.startsWith('/') &&
+                !href.startsWith('//') &&
+                href !== basePath &&
+                !href.startsWith(`${basePath}/`)
+              ) {
+                violations.push(`${relative(root, file)} -> ${href}`);
+              }
+            }
+          }
+
+          if (violations.length > 0) {
+            console.error('Internal links escaping the configured GitHub Pages basePath:');
+            for (const violation of violations) console.error(`- ${violation}`);
+            process.exit(1);
+          }
+
+          console.log(`Validated ${anchorCount} anchors across ${htmlFiles.length} HTML files for ${basePath}.`);
+          NODE
+
       - name: Configure Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
       - name: Upload static artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
           path: apps/web/out
 
   deploy:
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -62,4 +123,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

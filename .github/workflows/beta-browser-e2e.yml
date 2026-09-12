@@ -10,7 +10,10 @@ on:
       - 'database/**'
       - 'e2e/**'
       - 'playwright.config.ts'
+      - '.nvmrc'
       - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/beta-browser-e2e.yml'
 
 concurrency:
@@ -40,20 +43,30 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           run_install: false
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: apps/web/.next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/**') }}
+          restore-keys: |
+            ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
@@ -91,12 +104,55 @@ jobs:
           INSERT INTO campaigns (id, workspace_id, name, start_date, status)
           VALUES ('cccccccc-3333-4333-8333-cccccccccccc', 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '2026/27', '2026-09-01', 'active');
 
-          INSERT INTO fields (id, workspace_id, client_operation_id, name, tree_count, water_regime)
-          VALUES (
+          INSERT INTO fields (
+            id, workspace_id, client_operation_id, name, municipality, province, municipality_id,
+            tree_count, crop, variety, water_regime, status, geometry, calculated_area_ha,
+            geometry_source, geometry_status, geometry_checked_at
+          ) VALUES (
             'dddddddd-4444-4444-8444-dddddddddddd',
             'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
             'eeeeeeee-5555-4555-8555-eeeeeeeeeeee',
-            'Finca Mobile Audit', 80, 'secano'
+            'Finca Mobile Audit', 'Huelma', 'Jaén',
+            (SELECT id FROM territory_municipalities WHERE ine_code = '23044'),
+            80, 'olivar', 'picual', 'secano', 'active',
+            ST_Multi(ST_GeomFromText('POLYGON((-3.505 37.700,-3.495 37.700,-3.495 37.710,-3.505 37.710,-3.505 37.700))', 4326)),
+            1.3, 'manual', 'verified', now()
+          );
+
+          INSERT INTO weather_forecast_cache (
+            municipality_id, provider, payload_json, fetched_at, expires_at, last_error_at, last_error_code
+          ) VALUES (
+            (SELECT id FROM territory_municipalities WHERE ine_code = '23044'),
+            'aemet_daily',
+            '{"provider":"AEMET OpenData","municipalityCode":"23044","municipalityName":"Huelma","province":"Jaén","elaboratedAt":"2026-09-12T06:00:00","days":[{"date":"2026-09-12","precipitationProbabilityPercent":35,"temperatureMinC":14,"temperatureMaxC":27,"windMaxKmh":20}]}'::jsonb,
+            now(), now() + interval '1 hour', NULL, NULL
+          );
+
+          INSERT INTO radar_snapshots (
+            id, source, product, crs, observed_at, fetched_at, asset_format, analysis_ready,
+            content_type, byte_size, sha256, source_url, storage_key, status, metadata_json
+          ) VALUES (
+            '99999999-aaaa-4aaa-8aaa-999999999999',
+            'aemet_national_mosaic', 'reflectivity', 'EPSG:4326', now(), now(), 'geotiff', true,
+            'image/tiff', 100, repeat('d', 64),
+            'https://www.aemet.es/es/api-eltiempo/radar/download/compo',
+            'weather/radar/browser-fixture.tif', 'processed',
+            '{"geotiff_inspection":{"analysisReady":true,"crs":"EPSG:4326","bbox":[-9.5,35.5,4.5,44.5]}}'::jsonb
+          );
+
+          INSERT INTO farm_radar_observations (
+            id, workspace_id, field_id, radar_snapshot_id, analysis_version, observed_at,
+            coverage_status, precipitation_detected, nearest_echo_distance_km, direction_degrees,
+            direction_label, reflectivity_dbz_min, reflectivity_dbz_max, representative_dbz,
+            analysis_radius_km, quality_flags, metadata_json
+          ) VALUES (
+            '88888888-bbbb-4bbb-8bbb-888888888888',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'dddddddd-4444-4444-8444-dddddddddddd',
+            '99999999-aaaa-4aaa-8aaa-999999999999',
+            'aemet-national-palette-v1-spatial-v1', now(),
+            'covered', true, 8.4, 270, 'W', 18, 24, NULL, 80,
+            ARRAY['palette_mapping_v1'], '{}'::jsonb
           );
 
           INSERT INTO documents (id, workspace_id, client_operation_id, kind, title, created_by)
@@ -245,6 +301,7 @@ jobs:
           E2E_BASE_URL: http://127.0.0.1:3000
           E2E_WORKSPACE_ID: aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa
           E2E_USER_ID: bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb
+          RADAR_STALE_AFTER_MINUTES: '30'
           S3_ENDPOINT: http://127.0.0.1:9000
           S3_BUCKET: magina-e2e
           S3_ACCESS_KEY_ID: magina-e2e
@@ -283,7 +340,7 @@ jobs:
 
       - name: Upload Playwright failure traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: beta-browser-e2e-debug
           path: test-results

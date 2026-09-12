@@ -1,8 +1,14 @@
 name: magina-v20-staging
 
+x-runtime-logging: &runtime-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   postgres:
-    image: postgis/postgis:17-3.5
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -19,7 +25,7 @@ services:
       - backend
 
   migrate:
-    image: postgres:17-bookworm
+    image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
     restart: "no"
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -45,25 +51,37 @@ services:
       PORT: 3001
       DATABASE_URL: ${DATABASE_URL}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_AUTH_MAX: ${RATE_LIMIT_AUTH_MAX:-20}
+      RATE_LIMIT_PUBLIC_MAX: ${RATE_LIMIT_PUBLIC_MAX:-120}
+      RATE_LIMIT_PRIVATE_MAX: ${RATE_LIMIT_PRIVATE_MAX:-300}
+      RATE_LIMIT_MAX_BUCKETS: ${RATE_LIMIT_MAX_BUCKETS:-10000}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      SESSION_SECRET: ${SESSION_SECRET}
+      AUTH_COOKIE_SECURE: "true"
       ALLOW_DEV_AUTH_HEADERS: "false"
+      ADMIN_BOOTSTRAP_EMAILS: ${ADMIN_BOOTSTRAP_EMAILS:-}
       S3_ENDPOINT: ${S3_ENDPOINT}
       S3_REGION: ${S3_REGION:-auto}
       S3_BUCKET: ${S3_BUCKET}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+      S3_PREFIX: ${S3_PREFIX:-private-documents}
+      S3_UPLOAD_TTL_SECONDS: ${S3_UPLOAD_TTL_SECONDS:-900}
+      S3_READ_TTL_SECONDS: ${S3_READ_TTL_SECONDS:-600}
+      RADAR_S3_PREFIX: ${RADAR_S3_PREFIX:-weather/radar}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       AEMET_API_KEY: ${AEMET_API_KEY}
-      PUBLIC_WEB_ORIGIN: ${PUBLIC_WEB_ORIGIN}
     depends_on:
       migrate:
         condition: service_completed_successfully
     ports:
       - "127.0.0.1:${API_PORT:-3001}:3001"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -75,6 +93,7 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    logging: *runtime-logging
     networks:
       - backend
       - edge
@@ -95,13 +114,17 @@ services:
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+      RADAR_S3_PREFIX: ${RADAR_S3_PREFIX:-weather/radar}
       OCR_PROVIDER: ${OCR_PROVIDER:-tesseract}
       OCR_TESSERACT_LANGUAGES: ${OCR_TESSERACT_LANGUAGES:-spa+eng}
-      OCR_MAX_BYTES: ${OCR_MAX_BYTES:-20971520}
+      OCR_MAX_BYTES: ${OCR_MAX_BYTES:-26214400}
       OCR_MAX_PDF_PAGES: ${OCR_MAX_PDF_PAGES:-12}
       OCR_TESSERACT_TIMEOUT_MS: ${OCR_TESSERACT_TIMEOUT_MS:-120000}
-      OCR_TESSERACT_DPI: ${OCR_TESSERACT_DPI:-200}
-      OCR_TESSERACT_PSM: ${OCR_TESSERACT_PSM:-3}
+      OCR_TESSERACT_DPI: ${OCR_TESSERACT_DPI:-250}
+      OCR_TESSERACT_PSM: ${OCR_TESSERACT_PSM:-6}
+      TESSERACT_BIN: ${TESSERACT_BIN:-tesseract}
+      PDFINFO_BIN: ${PDFINFO_BIN:-pdfinfo}
+      PDFTOPPM_BIN: ${PDFTOPPM_BIN:-pdftoppm}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT}
@@ -116,6 +139,7 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    logging: *runtime-logging
     networks:
       - backend
 

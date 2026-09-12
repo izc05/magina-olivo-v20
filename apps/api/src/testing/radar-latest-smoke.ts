@@ -38,10 +38,11 @@ try {
   await pool.query(`
     INSERT INTO radar_snapshots (
       id,source,product,crs,observed_at,fetched_at,asset_format,analysis_ready,
-      content_type,byte_size,sha256,source_url,storage_key,status
+      content_type,byte_size,sha256,source_url,storage_key,status,metadata_json
     ) VALUES ($1,'aemet_national_mosaic','reflectivity','EPSG:4326','2026-09-10T08:00:00Z',
       '2026-09-10T08:01:00Z','geotiff',true,'image/tiff',100,$2,
-      'https://www.aemet.es/es/api-eltiempo/radar/download/compo','weather/radar/api-smoke.tif','processed')
+      'https://www.aemet.es/es/api-eltiempo/radar/download/compo','weather/radar/api-smoke.tif','processed',
+      '{"geotiff_inspection":{"analysisReady":true,"crs":"EPSG:4326","bbox":[-9.5,35.5,4.5,44.5]}}'::jsonb)
   `, [snapshotId, 'c'.repeat(64)]);
   await pool.query(`
     INSERT INTO farm_radar_observations (
@@ -70,8 +71,21 @@ try {
   assert.match(echoBody.summary, /8\.4 km al oeste/);
   assert.equal(echoBody.attribution, 'AEMET');
   assert.equal(echoBody.semantics, 'observed_reflectivity_not_forecast');
+  assert.equal(echoBody.freshness.status, 'stale');
+  assert.ok(echoBody.freshness.age_seconds > 0);
+  assert.equal(echoBody.overlay.status, 'ready');
+  assert.deepEqual(echoBody.overlay.bbox, [-9.5, 35.5, 4.5, 44.5]);
+  assert.equal(echoBody.overlay.url, `/api/v1/fields/${fieldEcho}/radar/latest/overlay.png`);
   assert.equal(/llover[aá]/i.test(JSON.stringify(echoBody)), false);
   assert.equal(Object.prototype.hasOwnProperty.call(echoBody.observation, 'representative_dbz'), false);
+
+  const overlayWithoutStorage = await app.inject({
+    method: 'GET',
+    url: `/api/v1/fields/${fieldEcho}/radar/latest/overlay.png`,
+    headers,
+  });
+  assert.equal(overlayWithoutStorage.statusCode, 503, overlayWithoutStorage.body);
+  assert.equal(overlayWithoutStorage.json().error, 'radar_overlay_upstream_unavailable');
 
   const empty = await app.inject({
     method: 'GET',
@@ -80,6 +94,8 @@ try {
   });
   assert.equal(empty.statusCode, 200, empty.body);
   assert.equal(empty.json().observation, null);
+  assert.equal(empty.json().freshness.status, 'unavailable');
+  assert.equal(empty.json().overlay.status, 'unavailable');
 
   const foreign = await app.inject({
     method: 'GET',

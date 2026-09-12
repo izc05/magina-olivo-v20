@@ -20,6 +20,16 @@ export const createFieldSchema = clientOperationSchema.extend({
   water_regime: z.enum(['secano', 'regadio', 'mixto']).optional(),
 });
 
+export const updateFieldSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  place_id: uuidSchema.nullable().optional(),
+  municipality: z.string().trim().min(1).max(120).nullable().optional(),
+  province: z.string().trim().min(1).max(120).nullable().optional(),
+  tree_count: z.number().int().positive().max(1_000_000).nullable().optional(),
+  variety: z.string().trim().max(120).nullable().optional(),
+  water_regime: z.enum(['secano', 'regadio', 'mixto']).nullable().optional(),
+}).refine((value) => Object.keys(value).length > 0, { message: 'At least one field must be provided.' });
+
 export const followUpSchema = z.object({
   scheduled_at: isoDateTimeSchema,
   reminder_offsets_minutes: z.array(z.number().int().positive().max(525_600)).max(8).optional(),
@@ -107,6 +117,7 @@ export const createDeliveryResultSchema = clientOperationSchema.extend({
 });
 
 export type CreateFieldInput = z.infer<typeof createFieldSchema>;
+export type UpdateFieldInput = z.infer<typeof updateFieldSchema>;
 export type CreateIrrigationInput = z.infer<typeof createIrrigationSchema>;
 export type CreateTreatmentInput = z.infer<typeof createTreatmentSchema>;
 export type CreateFertilizationInput = z.infer<typeof createFertilizationSchema>;

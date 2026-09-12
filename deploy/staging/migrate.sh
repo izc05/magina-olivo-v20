@@ -30,8 +30,14 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
     exit 1
   fi
 
-  existing="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc \
-    "SELECT checksum || '|' || status FROM public.schema_migrations WHERE version = '$version';")"
+  existing="$(
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
+      -v version="$version" <<'SQL'
+SELECT checksum || '|' || status
+FROM public.schema_migrations
+WHERE version = :'version';
+SQL
+  )"
 
   if [ -n "$existing" ]; then
     existing_checksum="${existing%%|*}"
@@ -52,8 +58,11 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
     continue
   fi
 
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
-    "INSERT INTO public.schema_migrations(version, checksum, status) VALUES ('$version', '$checksum', 'applying');"
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -v version="$version" -v checksum="$checksum" <<'SQL'
+INSERT INTO public.schema_migrations(version, checksum, status)
+VALUES (:'version', :'checksum', 'applying');
+SQL
 
   echo "Applying $migration"
   if ! psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"; then
@@ -61,10 +70,21 @@ for migration in "$MIGRATIONS_DIR"/*.sql; do
     exit 1
   fi
 
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
-    "UPDATE public.schema_migrations SET status='applied', applied_at=now() WHERE version='$version' AND status='applying';" >/dev/null
-  updated_status="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc \
-    "SELECT status FROM public.schema_migrations WHERE version='$version';")"
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -v version="$version" <<'SQL'
+UPDATE public.schema_migrations
+SET status='applied', applied_at=now()
+WHERE version=:'version' AND status='applying';
+SQL
+
+  updated_status="$(
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
+      -v version="$version" <<'SQL'
+SELECT status
+FROM public.schema_migrations
+WHERE version=:'version';
+SQL
+  )"
   if [ "$updated_status" != "applied" ]; then
     echo "Migration registry update failed for $version" >&2
     exit 1
@@ -76,7 +96,7 @@ if [ "$found" != true ]; then
   exit 1
 fi
 
-pending="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "SELECT count(*) FROM public.schema_migrations WHERE status <> 'applied';")"
+pending="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At -c "SELECT count(*) FROM public.schema_migrations WHERE status <> 'applied';")"
 if [ "$pending" != "0" ]; then
   echo "Migration registry contains $pending non-applied row(s)." >&2
   exit 1
