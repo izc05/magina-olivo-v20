@@ -9,7 +9,7 @@ if (!databaseUrl) throw new Error('DATABASE_URL is required for admin operations
 const db = createDatabase(databaseUrl);
 let claims: GoogleIdentityClaims = {
   subject: 'operations-admin-subject',
-  email: 'admin@magina.test',
+  email: 'operations-admin@magina.test',
   emailVerified: true,
   displayName: 'Admin Operaciones',
   pictureUrl: null,
