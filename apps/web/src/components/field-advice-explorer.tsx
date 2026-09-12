@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { adviceTopics, fieldAdviceCatalog, type AdviceTopic } from '@/lib/field-advice';
+import { requestMiOlivoTracking } from './mi-olivo-activity-tracker';
 import styles from './field-advice-explorer.module.css';
 
 const ALL_TOPICS = 'Todos' as const;
@@ -113,7 +114,16 @@ export function FieldAdviceExplorer() {
                 <h3>{advice.title}</h3>
                 <p>{advice.summary}</p>
 
-                <details className={styles.details}>
+                <details
+                  className={styles.details}
+                  onToggle={(event) => {
+                    if (!event.currentTarget.open) return;
+                    requestMiOlivoTracking({
+                      eventType: 'learning_completed',
+                      sourceId: `consejo:${advice.id}`,
+                    });
+                  }}
+                >
                   <summary aria-label={`Ver guía: ${advice.title}`}>Ver guía práctica</summary>
                   <div className={styles.detailBody}>
                     <section>
