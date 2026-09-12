@@ -13,7 +13,7 @@ type ResolvedPlace = {
 };
 
 async function resolvePlace(database: DatabaseClient, placeId: string): Promise<ResolvedPlace | null> {
-  return database.selectFrom('territory_places as p')
+  const row = await database.selectFrom('territory_places as p')
     .innerJoin('territory_municipalities as m', 'm.id', 'p.municipality_id')
     .select([
       'p.id as place_id',
@@ -25,7 +25,8 @@ async function resolvePlace(database: DatabaseClient, placeId: string): Promise<
     .where('p.id', '=', placeId)
     .where('p.public_enabled', '=', true)
     .where('m.active', '=', true)
-    .executeTakeFirst() ?? null;
+    .executeTakeFirst();
+  return row ?? null;
 }
 
 export function registerFieldRoutes(app: FastifyInstance, db: DatabaseClient | null) {
