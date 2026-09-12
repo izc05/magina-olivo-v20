@@ -1,0 +1,295 @@
+import type { FastifyInstance } from 'fastify';
+import { sql } from 'kysely';
+import { z } from 'zod';
+import { auditAdminAction, requirePlatformAccess } from '../admin/access.js';
+import type { DatabaseClient } from '../db/client.js';
+import { parseBody } from '../http/helpers.js';
+
+const datasetSchema = z.enum([
+  'users',
+  'workspaces',
+  'fields',
+  'campaigns',
+  'harvest',
+  'documents',
+  'ocr',
+  'content',
+  'invoices',
+  'quotes',
+  'market',
+]);
+
+const datasetLabels: Record<z.infer<typeof datasetSchema>, string> = {
+  users: 'Usuarios',
+  workspaces: 'Espacios de trabajo',
+  fields: 'Fincas',
+  campaigns: 'Campañas agrícolas',
+  harvest: 'Entregas de cosecha',
+  documents: 'Documentos',
+  ocr: 'Procesos OCR',
+  content: 'Contenido público',
+  invoices: 'Facturas profesionales',
+  quotes: 'Presupuestos profesionales',
+  market: 'Histórico de mercado',
+};
+
+function isSafeLaunchUrl(value: string) {
+  if (value.startsWith('/') && !value.startsWith('//')) return true;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+const externalAppSchema = z.object({
+  enabled: z.boolean(),
+  name: z.string().trim().min(1).max(100),
+  description: z.string().trim().max(500).nullable().optional(),
+  url: z.string().trim().max(2000).refine(isSafeLaunchUrl, 'invalid_url'),
+  mode: z.enum(['new_tab', 'embedded']),
+  health_url: z.string().trim().max(2000).refine(isSafeLaunchUrl, 'invalid_health_url').nullable().optional(),
+});
+
+export type AdminExternalAppConfig = z.infer<typeof externalAppSchema>;
+
+const defaultExternalApp: AdminExternalAppConfig = {
+  enabled: false,
+  name: 'Aplicación externa',
+  description: 'Acceso administrado a una aplicación complementaria de Mágina Olivo.',
+  url: '/mi-campo',
+  mode: 'new_tab',
+  health_url: null,
+};
+
+type OperationsMetrics = {
+  users_total: number;
+  users_active: number;
+  users_suspended: number;
+  users_new_30d: number;
+  workspaces_total: number;
+  workspaces_professional: number;
+  fields_active: number;
+  field_area_ha: number;
+  campaigns_active: number;
+  harvest_kg: number;
+  scheduled_open: number;
+  documents_active: number;
+  document_bytes: number;
+  ocr_pending: number;
+  ocr_failed: number;
+  content_draft: number;
+  content_published: number;
+  invoices_issued: number;
+  invoiced_eur: number;
+  quotes_open: number;
+  quotes_accepted: number;
+  market_observations: number;
+  market_latest_period: string | null;
+  weather_stale: number;
+  admin_actions_24h: number;
+};
+
+async function operationsMetrics(db: DatabaseClient): Promise<OperationsMetrics> {
+  const result = await sql<OperationsMetrics>`
+    SELECT
+      (SELECT count(*)::int FROM users WHERE status <> 'deleted') AS users_total,
+      (SELECT count(*)::int FROM users WHERE status = 'active') AS users_active,
+      (SELECT count(*)::int FROM users WHERE status = 'suspended') AS users_suspended,
+      (SELECT count(*)::int FROM users WHERE created_at >= now() - interval '30 days' AND status <> 'deleted') AS users_new_30d,
+      (SELECT count(*)::int FROM workspaces) AS workspaces_total,
+      (SELECT count(*)::int FROM workspaces WHERE type = 'professional') AS workspaces_professional,
+      (SELECT count(*)::int FROM fields WHERE status = 'active') AS fields_active,
+      (SELECT coalesce(sum(calculated_area_ha), 0)::float8 FROM fields WHERE status = 'active') AS field_area_ha,
+      (SELECT count(*)::int FROM campaigns WHERE status = 'active') AS campaigns_active,
+      (SELECT coalesce(sum(total_kg), 0)::float8 FROM harvest_deliveries) AS harvest_kg,
+      (SELECT count(*)::int FROM scheduled_events WHERE status IN ('planned', 'postponed')) AS scheduled_open,
+      (SELECT count(*)::int FROM documents WHERE status = 'active') AS documents_active,
+      (SELECT coalesce(sum(byte_size), 0)::float8 FROM document_versions WHERE upload_status = 'uploaded') AS document_bytes,
+      (SELECT count(*)::int FROM ocr_runs WHERE status IN ('queued', 'processing')) AS ocr_pending,
+      (SELECT count(*)::int FROM ocr_runs WHERE status = 'failed') AS ocr_failed,
+      (SELECT count(*)::int FROM cms_entries WHERE status = 'draft') AS content_draft,
+      (SELECT count(*)::int FROM cms_entries WHERE status = 'published') AS content_published,
+      (SELECT count(*)::int FROM professional_invoices WHERE status = 'issued') AS invoices_issued,
+      (SELECT coalesce(sum(total_eur), 0)::float8 FROM professional_invoices WHERE status = 'issued') AS invoiced_eur,
+      (SELECT count(*)::int FROM professional_quotes WHERE status IN ('draft', 'sent')) AS quotes_open,
+      (SELECT count(*)::int FROM professional_quotes WHERE status = 'accepted') AS quotes_accepted,
+      (SELECT count(*)::int FROM market_olive_oil_weekly WHERE status = 'validated') AS market_observations,
+      (SELECT max(period_end)::text FROM market_olive_oil_weekly WHERE status = 'validated') AS market_latest_period,
+      (SELECT count(*)::int FROM weather_forecast_cache WHERE expires_at < now()) AS weather_stale,
+      (SELECT count(*)::int FROM admin_audit_log WHERE created_at >= now() - interval '24 hours') AS admin_actions_24h
+  `.execute(db);
+  return result.rows[0];
+}
+
+async function externalAppConfig(db: DatabaseClient): Promise<AdminExternalAppConfig> {
+  const result = await sql<{ value_json: unknown }>`
+    SELECT value_json FROM site_settings WHERE key = 'platform.external_app' LIMIT 1
+  `.execute(db);
+  const parsed = externalAppSchema.safeParse(result.rows[0]?.value_json);
+  return parsed.success ? parsed.data : defaultExternalApp;
+}
+
+function datasetCatalog(metrics: OperationsMetrics) {
+  return [
+    { id: 'users', label: datasetLabels.users, count: metrics.users_total, sensitivity: 'restricted' },
+    { id: 'workspaces', label: datasetLabels.workspaces, count: metrics.workspaces_total, sensitivity: 'restricted' },
+    { id: 'fields', label: datasetLabels.fields, count: metrics.fields_active, sensitivity: 'restricted' },
+    { id: 'campaigns', label: datasetLabels.campaigns, count: null, sensitivity: 'restricted' },
+    { id: 'harvest', label: datasetLabels.harvest, count: null, sensitivity: 'restricted' },
+    { id: 'documents', label: datasetLabels.documents, count: metrics.documents_active, sensitivity: 'restricted' },
+    { id: 'ocr', label: datasetLabels.ocr, count: metrics.ocr_pending + metrics.ocr_failed, sensitivity: 'restricted' },
+    { id: 'content', label: datasetLabels.content, count: metrics.content_draft + metrics.content_published, sensitivity: 'platform' },
+    { id: 'invoices', label: datasetLabels.invoices, count: metrics.invoices_issued, sensitivity: 'financial' },
+    { id: 'quotes', label: datasetLabels.quotes, count: metrics.quotes_open + metrics.quotes_accepted, sensitivity: 'financial' },
+    { id: 'market', label: datasetLabels.market, count: metrics.market_observations, sensitivity: 'public' },
+  ];
+}
+
+async function readDataset(db: DatabaseClient, dataset: z.infer<typeof datasetSchema>, limit: number) {
+  switch (dataset) {
+    case 'users':
+      return db.selectFrom('users')
+        .select(['id', 'display_name', 'primary_email', 'status', 'created_at', 'last_login_at'])
+        .where('status', '<>', 'deleted')
+        .orderBy('created_at', 'desc')
+        .limit(limit)
+        .execute();
+    case 'workspaces':
+      return db.selectFrom('workspaces')
+        .select(['id', 'name', 'type', 'created_at', 'updated_at'])
+        .orderBy('created_at', 'desc')
+        .limit(limit)
+        .execute();
+    case 'fields':
+      return db.selectFrom('fields')
+        .select(['id', 'workspace_id', 'name', 'municipality', 'province', 'calculated_area_ha', 'geometry_source', 'geometry_status', 'status', 'updated_at'])
+        .orderBy('updated_at', 'desc')
+        .limit(limit)
+        .execute();
+    case 'campaigns':
+      return db.selectFrom('campaigns')
+        .select(['id', 'workspace_id', 'name', 'start_date', 'end_date', 'status', 'created_at'])
+        .orderBy('start_date', 'desc')
+        .limit(limit)
+        .execute();
+    case 'harvest':
+      return db.selectFrom('harvest_deliveries')
+        .select(['id', 'workspace_id', 'campaign_id', 'cooperative_or_mill', 'delivery_at', 'ticket_number', 'total_kg', 'source', 'created_at'])
+        .orderBy('delivery_at', 'desc')
+        .limit(limit)
+        .execute();
+    case 'documents':
+      return db.selectFrom('documents')
+        .select(['id', 'workspace_id', 'kind', 'title', 'status', 'created_at', 'archived_at'])
+        .orderBy('created_at', 'desc')
+        .limit(limit)
+        .execute();
+    case 'ocr':
+      return db.selectFrom('ocr_runs')
+        .select(['id', 'workspace_id', 'provider', 'provider_version', 'status', 'confidence', 'error_code', 'created_at', 'started_at', 'completed_at'])
+        .orderBy('created_at', 'desc')
+        .limit(limit)
+        .execute();
+    case 'content':
+      return db.selectFrom('cms_entries')
+        .select(['id', 'type', 'slug', 'title', 'status', 'featured', 'starts_at', 'ends_at', 'updated_at', 'published_at'])
+        .orderBy('updated_at', 'desc')
+        .limit(limit)
+        .execute();
+    case 'invoices': {
+      const result = await sql`
+        SELECT id, workspace_id, invoice_number, issued_on, due_on, status, subtotal_eur, tax_eur, total_eur, created_at, updated_at
+        FROM professional_invoices
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `.execute(db);
+      return result.rows;
+    }
+    case 'quotes': {
+      const result = await sql`
+        SELECT id, workspace_id, quote_number, title, issued_on, valid_until, status, subtotal_eur, tax_eur, total_eur, accepted_at, rejected_at, created_at, updated_at
+        FROM professional_quotes
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `.execute(db);
+      return result.rows;
+    }
+    case 'market': {
+      const result = await sql`
+        SELECT source_key, category, period_week, period_start, period_end, price_eur_kg, revision, snapshot_published_on, validated_through, source_name, market_level, status, ingested_at
+        FROM market_olive_oil_weekly
+        ORDER BY period_end DESC, category ASC
+        LIMIT ${limit}
+      `.execute(db);
+      return result.rows;
+    }
+  }
+}
+
+export function registerAdminOperationsRoutes(app: FastifyInstance, db: DatabaseClient | null) {
+  app.get('/api/v1/admin/operations', async (request, reply) => {
+    const auth = await requirePlatformAccess(request, reply, db);
+    if (!auth) return;
+    const metrics = await operationsMetrics(auth.database);
+    return {
+      generated_at: new Date().toISOString(),
+      metrics,
+      datasets: datasetCatalog(metrics),
+      external_app: await externalAppConfig(auth.database),
+    };
+  });
+
+  app.get('/api/v1/admin/data/:dataset', async (request, reply) => {
+    const auth = await requirePlatformAccess(request, reply, db);
+    if (!auth) return;
+    const params = z.object({ dataset: datasetSchema }).safeParse(request.params);
+    const query = z.object({ limit: z.coerce.number().int().min(1).max(250).default(50) }).safeParse(request.query);
+    if (!params.success || !query.success) return reply.code(400).send({ error: 'validation_error' });
+    return {
+      dataset: params.data.dataset,
+      label: datasetLabels[params.data.dataset],
+      rows: await readDataset(auth.database, params.data.dataset, query.data.limit),
+      generated_at: new Date().toISOString(),
+    };
+  });
+
+  app.get('/api/v1/admin/external-app', async (request, reply) => {
+    const auth = await requirePlatformAccess(request, reply, db);
+    if (!auth) return;
+    return { config: await externalAppConfig(auth.database) };
+  });
+
+  app.put('/api/v1/admin/external-app', async (request, reply) => {
+    const auth = await requirePlatformAccess(request, reply, db, 'admin');
+    if (!auth) return;
+    const input = parseBody(externalAppSchema, request.body, reply);
+    if (!input) return;
+    const now = new Date();
+    await sql`
+      INSERT INTO site_settings (key, value_json, description, is_public, updated_by, updated_at)
+      VALUES (
+        'platform.external_app',
+        ${JSON.stringify(input)}::jsonb,
+        'Configuración privada del lanzador de aplicación externa en Administración.',
+        false,
+        ${auth.access.userId}::uuid,
+        ${now}
+      )
+      ON CONFLICT (key) DO UPDATE SET
+        value_json = EXCLUDED.value_json,
+        description = EXCLUDED.description,
+        is_public = false,
+        updated_by = EXCLUDED.updated_by,
+        updated_at = EXCLUDED.updated_at
+    `.execute(auth.database);
+    await auditAdminAction(auth.database, auth.access, 'external_app.updated', 'site_setting', 'platform.external_app', {
+      enabled: input.enabled,
+      mode: input.mode,
+      url: input.url,
+      health_url: input.health_url ?? null,
+    });
+    return { config: input, updated_at: now };
+  });
+}
