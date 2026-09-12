@@ -160,8 +160,8 @@ export function registerFieldRoutes(app: FastifyInstance, db: DatabaseClient | n
         water_regime: input.water_regime !== undefined ? input.water_regime : current.water_regime,
         place_id: resolvedPlace?.place_id ?? (placeWasCleared ? null : current.place_id),
         municipality_id: resolvedPlace?.municipality_id ?? (placeWasCleared ? null : current.municipality_id),
-        municipality: resolvedPlace?.place_name ?? (input.municipality !== undefined ? input.municipality : current.municipality),
-        province: resolvedPlace?.province_name ?? (input.province !== undefined ? input.province : current.province),
+        municipality: resolvedPlace?.place_name ?? (input.municipality !== undefined ? input.municipality : (placeWasCleared ? null : current.municipality)),
+        province: resolvedPlace?.province_name ?? (input.province !== undefined ? input.province : (placeWasCleared ? null : current.province)),
         updated_at: new Date(),
       })
       .where('id', '=', parsedFieldId.data)
