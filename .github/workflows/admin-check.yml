@@ -31,6 +31,8 @@ on:
       - 'apps/web/src/lib/public-content-source.ts'
       - 'database/migrations/0042_platform_admin_cms.sql'
       - 'database/migrations/0043_platform_admin_media.sql'
+      - '.nvmrc'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/admin-check.yml'
 
 concurrency:
@@ -45,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgis/postgis:17-3.5
+        image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -59,18 +61,18 @@ jobs:
           --health-retries 8
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           run_install: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Typecheck and build administration surfaces
         run: |
