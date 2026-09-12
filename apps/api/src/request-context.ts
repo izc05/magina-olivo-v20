@@ -21,6 +21,7 @@ declare module 'fastify' {
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function developmentContext(request: FastifyRequest): RequestContext | null {
+  if (process.env.NODE_ENV === 'production') return null;
   if (process.env.ALLOW_DEV_AUTH_HEADERS !== 'true') return null;
   const workspaceId = request.headers['x-workspace-id'];
   const userId = request.headers['x-user-id'];
@@ -81,4 +82,4 @@ export function readAuthenticatedUserId(request: FastifyRequest) {
   return request.authenticatedUserId ?? developmentContext(request)?.userId ?? null;
 }
 
-export const prototypeAuthWarning = 'Authenticated sessions and workspace memberships are enforced by default. Temporary x-user-id/x-workspace-id headers work only when ALLOW_DEV_AUTH_HEADERS=true.';
+export const prototypeAuthWarning = 'Authenticated sessions and workspace memberships are enforced by default. Temporary x-user-id/x-workspace-id headers work only outside production when ALLOW_DEV_AUTH_HEADERS=true.';
