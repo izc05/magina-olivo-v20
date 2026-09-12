@@ -40,6 +40,19 @@ test('si AEMET previsión falla, radar y mapa de finca siguen disponibles', asyn
   await expect(page.getByLabel('Mapa de finca con radar observado')).toBeVisible();
 });
 
+test('si radar falla, AEMET y la geometría de finca siguen disponibles', async ({ page }) => {
+  await page.route(`**/api/v1/fields/${fieldId}/radar/latest`, async (route) => {
+    await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'radar_upstream_unavailable' }) });
+  });
+  await page.goto(`/radar?fieldId=${fieldId}`);
+
+  await expect(page.getByText(/Radar: error/)).toBeVisible();
+  await expect(page.getByText(/La observación radar no está disponible ahora/)).toBeVisible();
+  await expect(page.getByText(/AEMET: actual/)).toBeVisible();
+  await expect(page.getByLabel('Mapa de finca con radar observado')).toBeVisible();
+  await expect(page.getByText(/Finca · radar sin observación/)).toBeVisible();
+});
+
 for (const width of [360, 390, 430]) {
   test(`radar finca no desborda a ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
