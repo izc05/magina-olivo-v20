@@ -9,42 +9,32 @@
 
 La integración funcional interna de V20 queda cerrada y revalidada sobre:
 
-`3a934e979fa6f279316c75a61ac9610432786887`
+`c7acf3c6f049ff55dea1e40542b5dccb0af1aee6`
 
-Este SHA reúne en una única rama el núcleo agricultor, Mi Campo/Campaña, Profesional, Documentos/OCR, superficies públicas, Mercado, Admin/CMS/Territorio, Mi Olivo, Planes, Centro de Avisos, Engineering Foundation, Runtime hardening, QA móvil/browser, selector GIS real y Clima/Radar funcional.
-
-Los commits posteriores que modifiquen exclusivamente documentación no sustituyen esta referencia funcional salvo que se indique expresamente una nueva tanda de validación.
+Este SHA reúne en una única rama el núcleo agricultor, Mi Campo/Campaña, Profesional, Documentos/OCR, superficies públicas, Mercado, Admin/CMS/Territorio, Mi Olivo, Planes, Centro de Avisos, Engineering Foundation, Runtime hardening, QA móvil/browser, selector GIS real, Clima/Radar funcional y Herramientas rápidas.
 
 ## Gates verdes sobre la referencia funcional
 
-- ✅ V20 full candidate check #2308
-- ✅ V20 beta browser E2E #620
-- ✅ V20 staging readiness #221
-- ✅ V20 foundation check #110
-- ✅ V20 runtime hardening check #60
-- ✅ V20 platform admin check #179
-- ✅ V20 notification center check #39
-- ✅ V20 plans check #106
-- ✅ V20 Mi Olivo check #62
-- ✅ V20 environment contract #127
-- ✅ V20 lockfile guard #111
-- ✅ V20 visual preview / GitHub Pages #612
+- ✅ V20 full candidate check #2313
+- ✅ V20 beta browser E2E #625
+- ✅ V20 staging readiness #226
+- ✅ V20 foundation check #115
+- ✅ V20 runtime hardening check #65
+- ✅ V20 platform admin check #184
+- ✅ V20 notification center check #44
+- ✅ V20 plans check #111
+- ✅ V20 Mi Olivo check #67
+- ✅ V20 environment contract #132
+- ✅ V20 lockfile guard #116
+- ✅ V20 visual preview / GitHub Pages #617
 
-Los workflows dedicados GIS y Weather/Radar quedaron verdes tras su absorción en la coordinadora. No se retriggeraron por los últimos cambios, que no tocaron su lógica funcional; Full Candidate y Browser E2E sí revalidaron la convivencia integrada.
+Los workflows dedicados GIS y Weather/Radar quedaron verdes tras su absorción en la coordinadora. Full Candidate y Browser E2E revalidan la convivencia integrada sobre el SHA indicado.
 
-## Auditoría del artefacto Pages
+## Pages y navegación
 
-Se auditó el artefacto exacto desplegado por `V20 visual preview #612`:
+GitHub Pages #617 pasó build, validación de enlaces internos y deploy. El workflow contiene un guard que falla si un enlace interno escapa del `basePath` `/magina-olivo-v20`.
 
-- 70 HTML revisados;
-- 346 enlaces `<a>` revisados;
-- 0 enlaces internos escapando de `/magina-olivo-v20`;
-- 0 destinos internos inexistentes;
-- 0 atributos `src` o `action` root-absolute fuera del `basePath`.
-
-Se corrigieron los cuatro accesos rápidos de Admin (`Fuentes`, `Territorio`, `Multimedia`, `Editar web`) para usar `Link` de Next y respetar el `basePath`. El workflow de Pages contiene ahora un guard que falla si un enlace interno vuelve a escapar del prefijo configurado.
-
-También se endureció el E2E de Explorar para aceptar `/ruta` y `/ruta/`, equivalentes en la exportación estática, sin alterar las rutas del producto.
+Se corrigieron los accesos rápidos de Admin (`Fuentes`, `Territorio`, `Multimedia`, `Editar web`) para usar `Link` de Next y respetar el `basePath`. También se endureció el E2E de Explorar para aceptar `/ruta` y `/ruta/`, equivalentes en la exportación estática, sin alterar las rutas del producto.
 
 ## Cobertura móvil y recorridos clave
 
@@ -57,6 +47,8 @@ La suite móvil cubre además las rutas principales de Mi Campo y Profesional, c
 Profesional conserva el E2E completo:
 
 `cliente → presupuesto → trabajo → factura → documento/compartir → cobro`.
+
+`/herramientas` queda también cubierta a 360/390/430 con cálculos locales, coma decimal, controles táctiles y ausencia de overflow.
 
 ## P0/P1 funcionales internos cerrados
 
@@ -79,6 +71,15 @@ Profesional conserva el E2E completo:
 - degradación segura por fuente;
 - sin nowcast, ETA ni conversión dBZ→mm/h no validada.
 
+### Herramientas rápidas
+
+- conversiones m² ↔ ha;
+- marco rectangular y densidad teórica;
+- estimación opcional de número de olivos;
+- costes €/kg y €/ha a partir de datos introducidos;
+- cálculo completamente local, sin persistencia ni red;
+- sin dosis, mezclas, fitosanitarios, fertilización ni recomendaciones agronómicas sensibles.
+
 ### Integración transversal
 
 - GIS + Radar conviven en `farm-map.tsx`;
@@ -96,8 +97,8 @@ Ya no es un bloqueo de código interno. Queda validación de entorno real:
 3. S3/R2 real y lectura/escritura de documentos/radar;
 4. OCR/worker real;
 5. AEMET/radar real desde el host;
-6. Google Identity si se habilita en Beta;
-7. VAPID/notificaciones reales si se habilitan;
+6. Google Identity real;
+7. VAPID/notificaciones reales;
 8. CMS/multimedia real;
 9. backup/restore real en el host de staging;
 10. smoke post-deploy HTTPS externo;
@@ -111,7 +112,3 @@ El detalle operativo vive en `docs/V20_BETA_EXTERNAL_VALIDATION.md`.
 PR #58 puede considerarse **funcionalmente integrada y CI-verde** sobre la referencia indicada, pero debe permanecer en **Draft** y sin fusionar al candidate hasta completar la validación externa anterior o decidir explícitamente que alguno de esos servicios queda fuera del alcance de la Beta.
 
 No iniciar un rediseño visual global que oculte defectos funcionales. Una vez validado staging real y la auditoría manual, el siguiente frente puede ser el rediseño/pulido visual sobre esta base estable.
-
-## Trabajo no bloqueante
-
-`Herramientas rápidas` y otras mejoras aisladas no forman parte del cierre funcional interno. Pueden integrarse después de congelar esta referencia o pasar a post-Beta para no reabrir el conjunto ahora que está verde.

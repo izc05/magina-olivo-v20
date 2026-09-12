@@ -2,23 +2,23 @@
 
 Este checklist empieza **después** del cierre funcional interno de `integrate/v20-beta-closure`.
 
-Referencia funcional verde previa:
+Referencia funcional verde:
 
-- integración funcional: `3a934e979fa6f279316c75a61ac9610432786887`;
-- Full Candidate #2308 ✅;
-- Browser E2E #620 ✅;
-- Staging Readiness #221 ✅;
-- Foundation #110 ✅;
-- Runtime Hardening #60 ✅;
-- Platform Admin #179 ✅;
-- Notification Center #39 ✅;
-- Planes #106 ✅;
-- Mi Olivo #62 ✅;
-- Environment Contract #127 ✅;
-- Lockfile Guard #111 ✅;
-- Visual Preview / GitHub Pages #612 ✅.
+- integración funcional: `c7acf3c6f049ff55dea1e40542b5dccb0af1aee6`;
+- Full Candidate #2313 ✅;
+- Browser E2E #625 ✅;
+- Staging Readiness #226 ✅;
+- Foundation #115 ✅;
+- Runtime Hardening #65 ✅;
+- Platform Admin #184 ✅;
+- Notification Center #44 ✅;
+- Planes #111 ✅;
+- Mi Olivo #67 ✅;
+- Environment Contract #132 ✅;
+- Lockfile Guard #116 ✅;
+- Visual Preview / GitHub Pages #617 ✅.
 
-Los workflows dedicados GIS y Weather/Radar quedaron verdes tras su absorción en la rama coordinadora. Los commits exclusivamente documentales posteriores no invalidan esta referencia funcional.
+Los workflows dedicados GIS y Weather/Radar quedaron verdes tras su absorción en la rama coordinadora. Browser E2E incluye además la matriz móvil y el módulo `/herramientas` integrado desde el PR #57.
 
 Documentación operativa relacionada:
 
@@ -236,7 +236,8 @@ Superficies críticas:
 - Perfil;
 - Admin;
 - Explorar/Público;
-- Avisos.
+- Avisos;
+- Herramientas rápidas.
 
 Buscar expresamente:
 
