@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const fieldId = 'dddddddd-4444-4444-8444-dddddddddddd';
 const overlayPng = Buffer.from(
@@ -6,8 +6,8 @@ const overlayPng = Buffer.from(
   'base64',
 );
 
-async function serveOverlay(page: Parameters<typeof test>[0] extends never ? never : any) {
-  await page.route(`**/api/v1/fields/${fieldId}/radar/latest/overlay.png`, async (route: any) => {
+async function serveOverlay(page: Page) {
+  await page.route(`**/api/v1/fields/${fieldId}/radar/latest/overlay.png`, async (route) => {
     await route.fulfill({ status: 200, contentType: 'image/png', body: overlayPng });
   });
 }
