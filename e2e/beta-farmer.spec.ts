@@ -14,12 +14,13 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   await placeSelect.selectOption({ index: 1 });
 
   await page.getByRole('button', { name: 'Continuar →' }).click();
-  await expect(page.getByRole('heading', { name: 'Guarda primero la finca' })).toBeVisible();
-  await expect(page.getByText(/No se guardará una localización ficticia/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Localiza la finca con un límite real' })).toBeVisible();
+  await expect(page.getByText('Esta finca todavía no tiene límites guardados.')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Guardar finca →' }).click();
+  await page.getByRole('button', { name: 'Guardar sin límites' }).click();
   await expect(page.getByText('FINCA GUARDADA EN MI CAMPO')).toBeVisible();
   await expect(page.getByRole('heading', { name: farmName, exact: true })).toBeVisible();
+  await expect(page.getByText(/Finca guardada sin geometría/)).toBeVisible();
 
   const registerHref = await page.getByRole('link', { name: /Registrar trabajo/ }).getAttribute('href');
   expect(registerHref).toBeTruthy();
@@ -30,14 +31,13 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   const addBoundariesHref = await addBoundariesLink.getAttribute('href');
   expect(addBoundariesHref).toBeTruthy();
   const addBoundariesUrl = new URL(addBoundariesHref!, 'http://127.0.0.1:3000');
-  expect(addBoundariesUrl.pathname.replace(/\/$/, '')).toBe('/mi-campo/mapa');
+  expect(addBoundariesUrl.pathname.replace(/\/$/, '')).toBe('/mi-campo/fincas/editar');
   expect(addBoundariesUrl.searchParams.get('fieldId')).toBe(fieldId);
   await addBoundariesLink.click();
-  await expect(page.getByRole('heading', { name: 'Tu finca sobre el terreno' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Añade los límites reales' })).toBeVisible();
-  await expect(page.getByRole('combobox', { name: 'Finca', exact: true })).toHaveValue(fieldId!);
+  await expect(page.getByText('MI CAMPO · EDITAR FINCA')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Localiza la finca con un límite real' })).toBeVisible();
+  await expect(page.getByText('Finca sin geometría', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Referencia catastral')).toBeVisible();
-  await expect(page.getByLabel('ID del recinto SIGPAC')).toBeVisible();
 
   await page.goto(`/mi-campo/registrar?fieldId=${encodeURIComponent(fieldId!)}`);
   await expect(page.getByRole('heading', { name: '¿Qué quieres registrar?' })).toBeVisible();
