@@ -20,6 +20,18 @@ async function fillBasics(page: import('@playwright/test').Page, name: string, t
   await expect(page.getByRole('heading', { name: 'Localiza la finca con un límite real' })).toBeVisible();
 }
 
+async function createAndOpenUnlocatedFarm(page: import('@playwright/test').Page, name: string) {
+  await fillBasics(page, name, '40');
+  await expect(page.getByText('Esta finca todavía no tiene límites guardados.')).toBeVisible();
+  await page.getByRole('button', { name: 'Guardar sin límites' }).click();
+  await expect(page.getByText('FINCA GUARDADA EN MI CAMPO')).toBeVisible();
+  await expect(page.getByText(/Finca guardada sin geometría/)).toBeVisible();
+  await page.getByRole('link', { name: /Añadir límites/ }).click();
+  await expect(page.getByText('Finca sin geometría', { exact: true })).toBeVisible();
+  await expect(page.getByText('Esta finca todavía no tiene límites guardados.')).toBeVisible();
+  await expect(page.getByText(/Referencias vinculadas: 0/)).toBeVisible();
+}
+
 test('selector GIS aparece tras completar los datos básicos de la finca', async ({ page }, testInfo) => {
   await fillBasics(page, `Finca GIS entrada ${testInfo.retry + 1}-${Date.now()}`);
   await expect(page.getByTestId('gis-selector')).toBeVisible();
@@ -73,22 +85,16 @@ test('alta GIS real persiste Catastro y recupera/sustituye geometría en edició
   await expect(page.getByText(/Referencias vinculadas: 2/)).toBeVisible();
 });
 
-test('finca sin geometría y error de proveedor quedan en estado recuperable', async ({ page }, testInfo) => {
-  const farmName = `Finca sin geometría E2E ${testInfo.retry + 1}-${Date.now()}`;
-  await fillBasics(page, farmName, '40');
+test('finca sin geometría se guarda y recupera en edición', async ({ page }, testInfo) => {
+  await createAndOpenUnlocatedFarm(page, `Finca sin geometría E2E ${testInfo.retry + 1}-${Date.now()}`);
+});
 
-  await expect(page.getByText('Esta finca todavía no tiene límites guardados.')).toBeVisible();
-  await page.getByRole('button', { name: 'Guardar sin límites' }).click();
-  await expect(page.getByText('FINCA GUARDADA EN MI CAMPO')).toBeVisible();
-  await expect(page.getByText(/Finca guardada sin geometría/)).toBeVisible();
-
-  await page.getByRole('link', { name: /Añadir límites/ }).click();
-  await expect(page.getByText('Finca sin geometría', { exact: true })).toBeVisible();
-  await expect(page.getByText('Esta finca todavía no tiene límites guardados.')).toBeVisible();
-
-  await page.getByLabel('Referencia catastral').fill(failingCadastralReference);
-  await page.getByRole('button', { name: 'Buscar referencia' }).click();
-  await expect(page.getByRole('alert')).toContainText('No se ha podido consultar Catastro');
+test('error de proveedor mantiene finca sin geometría recuperable', async ({ page }, testInfo) => {
+  await createAndOpenUnlocatedFarm(page, `Finca error GIS E2E ${testInfo.retry + 1}-${Date.now()}`);
+  const selector = page.getByTestId('gis-selector');
+  await selector.getByLabel('Referencia catastral').fill(failingCadastralReference);
+  await selector.getByRole('button', { name: 'Buscar referencia' }).click();
+  await expect(selector.getByRole('alert')).toContainText('No se ha podido consultar Catastro');
   await expect(page.getByText('Finca sin geometría', { exact: true })).toBeVisible();
   await expect(page.getByText(/Referencias vinculadas: 0/)).toBeVisible();
 });
