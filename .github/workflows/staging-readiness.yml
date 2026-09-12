@@ -81,6 +81,7 @@ jobs:
             exit 1
           fi
           grep -Eq '^S3_BUCKET=.*staging' deploy/staging/.env.example
+          sh -n deploy/staging/deploy-host.sh
 
       - name: Validate staging env preflight
         run: |
@@ -226,57 +227,64 @@ jobs:
             run --rm --no-deps --entrypoint /bin/sh web -ec \
             "grep -R -F 'https://api-staging.example.com' /usr/share/nginx/html/_next >/dev/null && grep -R -F 'CHANGE_ME_GOOGLE_CLIENT_ID' /usr/share/nginx/html/_next >/dev/null"
 
-      - name: Smoke staging containers and migration repeatability
+      - name: Smoke real host deploy path, backup restore and migration repeatability
         run: |
+          set -eu
+          cp /tmp/magina-staging-valid.env deploy/staging/.ci.env
+          chmod 600 deploy/staging/.ci.env
+          backup_dir=/tmp/magina-staging-backups
+          mkdir -p "$backup_dir"
+
           compose() {
             docker compose \
-              --env-file deploy/staging/.env.example \
+              --env-file deploy/staging/.ci.env \
               -f deploy/staging/docker-compose.yml "$@"
           }
-          cleanup() { compose down -v --remove-orphans || true; }
+          cleanup() {
+            compose down -v --remove-orphans || true
+            rm -f deploy/staging/.ci.env
+          }
           trap cleanup EXIT
 
-          compose up -d web
-          api_ready=false
-          web_ready=false
-          for attempt in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:3001/health >/tmp/staging-health.json; then
-              api_ready=true
-            fi
-            if curl -fsS http://127.0.0.1:8080/healthz >/tmp/staging-web-health.txt; then
-              web_ready=true
-            fi
-            if [ "$api_ready" = true ] && [ "$web_ready" = true ]; then
-              break
-            fi
-            sleep 1
-          done
+          # Simulate an existing staging database whose PostgreSQL container is stopped.
+          # This makes deploy-host.sh prove that it starts the existing database,
+          # backs it up before migrations, and preserves a restorable schema registry.
+          compose up -d postgres
+          compose run --rm migrate
+          compose stop postgres
 
-          if [ "$api_ready" != true ] || [ "$web_ready" != true ]; then
-            compose ps
-            compose logs --no-color postgres migrate api web
-            exit 1
-          fi
+          STAGING_BACKUP_DIR="$backup_dir" ./deploy/staging/deploy-host.sh deploy/staging/.ci.env
 
-          cat /tmp/staging-health.json
-          grep -Fx 'ok' /tmp/staging-web-health.txt
-          curl -fsS http://127.0.0.1:8080/ >/tmp/staging-web-index.html
-          test -s /tmp/staging-web-index.html
+          backup_count="$(find "$backup_dir" -maxdepth 1 -type f -name 'magina-staging-before-*.dump' | wc -l | tr -d ' ')"
+          test "$backup_count" = '1'
+          backup_file="$(find "$backup_dir" -maxdepth 1 -type f -name 'magina-staging-before-*.dump' -print -quit)"
+          test -s "$backup_file"
+          docker run --rm \
+            -v "$backup_dir:/backups:ro" \
+            postgres:17-bookworm \
+            pg_restore -l "/backups/$(basename "$backup_file")" >/dev/null
+
+          curl -fsS http://127.0.0.1:3001/health >/tmp/staging-health.json
+          curl -fsS http://127.0.0.1:8080/healthz | grep -Fx 'ok'
           curl -fsSI http://127.0.0.1:8080/ | tr -d '\r' | grep -Fi 'X-Frame-Options: DENY'
           curl -fsSI http://127.0.0.1:8080/ | tr -d '\r' | grep -Fi 'X-Content-Type-Options: nosniff'
 
           STAGING_API_URL=http://127.0.0.1:3001 \
-          STAGING_WEB_ORIGIN=https://staging.example.com \
+          STAGING_WEB_ORIGIN=https://web.staging.magina.invalid \
           STAGING_ALLOW_HTTP=true \
           node scripts/staging-postdeploy-smoke.mjs
-
-          second_migration_run="$(compose run --rm migrate 2>&1)"
-          printf '%s\n' "$second_migration_run"
-          if printf '%s\n' "$second_migration_run" | grep -F 'Applying /migrations/'; then
-            echo 'Second migration run attempted to reapply an existing migration.' >&2
-            exit 1
-          fi
 
           expected_count="$(find database/migrations -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')"
           applied_count="$(compose exec -T postgres psql -U magina_staging -d magina_staging -Atc "SELECT count(*) FROM public.schema_migrations WHERE status='applied';")"
           test "$applied_count" = "$expected_count"
+
+          # Restore the pre-migration backup into an isolated database and verify
+          # that its migration registry survived the round trip.
+          compose exec -T postgres dropdb --if-exists -U magina_staging magina_restore_ci
+          compose exec -T postgres createdb -U magina_staging magina_restore_ci
+          cat "$backup_file" | compose exec -T postgres \
+            pg_restore --exit-on-error --no-owner --no-privileges \
+            -U magina_staging -d magina_restore_ci
+          restored_count="$(compose exec -T postgres psql -U magina_staging -d magina_restore_ci -Atc "SELECT count(*) FROM public.schema_migrations WHERE status='applied';")"
+          test "$restored_count" = "$expected_count"
+          compose exec -T postgres dropdb -U magina_staging magina_restore_ci
