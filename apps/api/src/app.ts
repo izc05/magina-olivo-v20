@@ -11,6 +11,13 @@ import { registerAdminRoutes } from './routes/admin.js';
 import { registerAdminMediaRoutes } from './routes/admin-media.js';
 import { registerAdminTerritoryRoutes } from './routes/admin-territory.js';
 import { registerAdminSourceRoutes } from './routes/admin-sources.js';
+import { registerAdminOperationsRoutes } from './routes/admin-operations.js';
+import { registerAdminManagementRoutes } from './routes/admin-management.js';
+import { registerAdminCampaignPlanRoutes } from './routes/admin-campaign-plans.js';
+import { registerAdminAgendaRoutes } from './routes/admin-agenda.js';
+import { registerAdminWorkActivityRoutes } from './routes/admin-work-activity.js';
+import { registerAdminDocumentRoutes } from './routes/admin-documents.js';
+import { registerAdminProfessionalRoutes } from './routes/admin-professional.js';
 import { registerPlanRoutes } from './routes/plans.js';
 import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerMiOlivoCampaignRoutes } from './routes/mi-olivo-campaign.js';
@@ -68,161 +75,17 @@ import { remoteGisProviders } from './gis/providers.js';
 import type { MunicipalityWeatherProvider } from './weather/providers.js';
 import { remoteAemetWeatherProvider } from './weather/providers.js';
 
-export type AppDependencies = {
-  db?: DatabaseClient | null;
-  storage?: StoragePort;
-  ocrQueue?: OcrQueuePort;
-  notificationQueue?: NotificationDispatchQueuePort;
-  pushPublicKey?: string | null;
-  googleVerifier?: GoogleIdentityVerifier;
-  gisProviders?: GisProviders;
-  weatherProvider?: MunicipalityWeatherProvider;
-};
-
-function corsOrigins() {
-  const configured = process.env.CORS_ALLOWED_ORIGINS
-    ?.split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-  if (configured?.length) return configured;
-  if (process.env.NODE_ENV === 'production') return [];
-  return ['http://127.0.0.1:3000', 'http://localhost:3000'];
-}
-
-function isPrivateApiPath(url: string) {
-  return url.startsWith('/api/v1/') && !url.startsWith('/api/v1/public/');
-}
-
-function loggerOptions() {
-  return {
-    level: process.env.LOG_LEVEL?.trim() || 'info',
-    redact: {
-      paths: [
-        'req.headers.authorization',
-        'req.headers.cookie',
-        'req.headers["x-user-id"]',
-        'req.headers["x-workspace-id"]',
-        'res.headers["set-cookie"]',
-      ],
-      censor: '[REDACTED]',
-    },
-  };
-}
-
-export function buildApp(dependencies: AppDependencies = {}) {
-  const db = dependencies.db ?? null;
-  const storage = dependencies.storage ?? new UnavailableStorage();
-  const ocrQueue = dependencies.ocrQueue ?? new UnavailableOcrQueue();
-  const notificationQueue = dependencies.notificationQueue ?? new UnavailableNotificationDispatchQueue();
-  const pushPublicKey = dependencies.pushPublicKey ?? null;
-  const googleVerifier = dependencies.googleVerifier ?? new UnavailableGoogleIdentityVerifier();
-  const gisProviders = dependencies.gisProviders ?? remoteGisProviders;
-  const weatherProvider = dependencies.weatherProvider ?? remoteAemetWeatherProvider;
-  const app = Fastify({
-    logger: loggerOptions(),
-    genReqId: () => randomUUID(),
-    trustProxy: process.env.TRUST_PROXY === 'true',
-  });
-  const allowedOrigins = corsOrigins();
-  const rateLimitHook = createRuntimeRateLimitHook();
-
-  app.register(cors, {
-    credentials: true,
-    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['content-type', 'x-workspace-id', 'x-user-id'],
-    exposedHeaders: ['x-request-id', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'retry-after'],
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-      callback(new Error('origin_not_allowed'), false);
-    },
-  });
-  app.register(cookie);
-  app.addHook('onRequest', rateLimitHook);
-  app.addHook('onRequest', async (request) => {
-    await hydrateRequestAuthentication(request, db);
-  });
-  app.addHook('onSend', async (request, reply, payload) => {
-    reply.header('x-request-id', request.id);
-    reply.header('x-content-type-options', 'nosniff');
-    reply.header('referrer-policy', 'strict-origin-when-cross-origin');
-    reply.header('x-frame-options', 'DENY');
-    reply.header('permissions-policy', 'camera=(), microphone=(), geolocation=(self)');
-    if (isPrivateApiPath(request.url)) reply.header('cache-control', 'no-store');
-    return payload;
-  });
-
-  app.get('/health', async () => ({
-    ok: true,
-    service: 'magina-api',
-    databaseConfigured: Boolean(db),
-    googleAuthConfigured: !(googleVerifier instanceof UnavailableGoogleIdentityVerifier),
-    webPushConfigured: Boolean(pushPublicKey),
-    warning: prototypeAuthWarning,
-  }));
-
-  app.get('/ready', async (request, reply) => {
-    const readiness = await checkRuntimeReadiness(db);
-    if (!readiness.ok) {
-      request.log.error({ database: readiness.database }, 'runtime readiness check failed');
-      return reply.code(503).send(readiness);
-    }
-    return readiness;
-  });
-
-  registerAuthRoutes(app, db, googleVerifier);
-  registerMeRoutes(app, db);
-  registerAdminRoutes(app, db);
-  registerAdminMediaRoutes(app, db, storage);
-  registerAdminTerritoryRoutes(app, db);
-  registerAdminSourceRoutes(app, db);
-  registerPlanRoutes(app, db);
-  registerMiOlivoRoutes(app, db);
-  registerMiOlivoCampaignRoutes(app, db);
-  registerTerritoryRoutes(app, db);
-  registerMarketRoutes(app, db);
-  registerWeatherRoutes(app, db, weatherProvider);
-  registerRadarRoutes(app, db, storage);
-  registerPushRoutes(app, db, notificationQueue, pushPublicKey);
-  registerFieldRoutes(app, db);
-  registerIrrigationRoutes(app, db);
-  registerObservationRoutes(app, db);
-  registerDomainRecordRoutes(app, db);
-  registerHarvestRoutes(app, db);
-  registerHarvestCommercialRoutes(app, db);
-  registerHarvestSettlementCandidateRoutes(app, db);
-  registerHarvestFieldCommercialRoutes(app, db);
-  registerFarmEconomicsRoutes(app, db);
-  registerCampaignRoutes(app, db);
-  registerAgendaRoutes(app, db);
-  registerAgronomyRoutes(app, db, weatherProvider);
-  registerAgronomyAlertRoutes(app, db, weatherProvider, notificationQueue);
-  registerAttentionRoutes(app, db, weatherProvider);
-  registerFinancialAttentionRoutes(app, db);
-  registerHomePriorityPreferenceRoutes(app, db);
-  registerFinancialNotificationRoutes(app, db, notificationQueue);
-  registerCommercialNotificationRoutes(app, db);
-  registerNotificationCenterRoutes(app, db);
-  registerPlannedTaskRoutes(app, db);
-  registerWorkRoutes(app, db);
-  registerWorkCommercialRoutes(app, db);
-  registerProfessionalRoutes(app, db);
-  registerProfessionalInvoiceRoutes(app, db);
-  registerProfessionalQuoteRoutes(app, db);
-  registerProfessionalCustomerRoutes(app, db);
-  registerProfessionalAttentionRoutes(app, db);
-  registerProfessionalBusinessProfileRoutes(app, db);
-  registerProfessionalPrintRoutes(app, db);
-  registerProfessionalDeliveryRoutes(app, db);
-  registerProfessionalShareLinkRoutes(app, db, storage);
-  registerDocumentRoutes(app, db, storage, ocrQueue);
-  registerDocumentAccessRoutes(app, db, storage);
-  registerDocumentCatalogRoutes(app, db);
-  registerDocumentAnalysisRoutes(app, db);
-  registerGisRoutes(app, db, gisProviders);
-
-  return app;
+export type AppDependencies = { db?: DatabaseClient|null; storage?: StoragePort; ocrQueue?: OcrQueuePort; notificationQueue?: NotificationDispatchQueuePort; pushPublicKey?: string|null; googleVerifier?: GoogleIdentityVerifier; gisProviders?: GisProviders; weatherProvider?: MunicipalityWeatherProvider; };
+function corsOrigins(){const configured=process.env.CORS_ALLOWED_ORIGINS?.split(',').map((origin)=>origin.trim()).filter(Boolean);if(configured?.length)return configured;if(process.env.NODE_ENV==='production')return[];return['http://127.0.0.1:3000','http://localhost:3000'];}
+function isPrivateApiPath(url:string){return url.startsWith('/api/v1/')&&!url.startsWith('/api/v1/public/');}
+function loggerOptions(){return{level:process.env.LOG_LEVEL?.trim()||'info',redact:{paths:['req.headers.authorization','req.headers.cookie','req.headers["x-user-id"]','req.headers["x-workspace-id"]','res.headers["set-cookie"]'],censor:'[REDACTED]'}};}
+export function buildApp(dependencies:AppDependencies={}){
+ const db=dependencies.db??null; const storage=dependencies.storage??new UnavailableStorage(); const ocrQueue=dependencies.ocrQueue??new UnavailableOcrQueue(); const notificationQueue=dependencies.notificationQueue??new UnavailableNotificationDispatchQueue(); const pushPublicKey=dependencies.pushPublicKey??null; const googleVerifier=dependencies.googleVerifier??new UnavailableGoogleIdentityVerifier(); const gisProviders=dependencies.gisProviders??remoteGisProviders; const weatherProvider=dependencies.weatherProvider??remoteAemetWeatherProvider;
+ const app=Fastify({logger:loggerOptions(),genReqId:()=>randomUUID(),trustProxy:process.env.TRUST_PROXY==='true'}); const allowedOrigins=corsOrigins(); const rateLimitHook=createRuntimeRateLimitHook();
+ app.register(cors,{credentials:true,methods:['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'],allowedHeaders:['content-type','x-workspace-id','x-user-id'],exposedHeaders:['x-request-id','x-ratelimit-limit','x-ratelimit-remaining','x-ratelimit-reset','retry-after'],origin(origin,callback){if(!origin||allowedOrigins.includes(origin)){callback(null,true);return;}callback(new Error('origin_not_allowed'),false);}});
+ app.register(cookie); app.addHook('onRequest',rateLimitHook); app.addHook('onRequest',async(request)=>{await hydrateRequestAuthentication(request,db);}); app.addHook('onSend',async(request,reply,payload)=>{reply.header('x-request-id',request.id);reply.header('x-content-type-options','nosniff');reply.header('referrer-policy','strict-origin-when-cross-origin');reply.header('x-frame-options','DENY');reply.header('permissions-policy','camera=(), microphone=(), geolocation=(self)');if(isPrivateApiPath(request.url))reply.header('cache-control','no-store');return payload;});
+ app.get('/health',async()=>({ok:true,service:'magina-api',databaseConfigured:Boolean(db),googleAuthConfigured:!(googleVerifier instanceof UnavailableGoogleIdentityVerifier),webPushConfigured:Boolean(pushPublicKey),warning:prototypeAuthWarning}));
+ app.get('/ready',async(request,reply)=>{const readiness=await checkRuntimeReadiness(db);if(!readiness.ok){request.log.error({database:readiness.database},'runtime readiness check failed');return reply.code(503).send(readiness);}return readiness;});
+ registerAuthRoutes(app,db,googleVerifier); registerMeRoutes(app,db); registerAdminRoutes(app,db); registerAdminMediaRoutes(app,db,storage); registerAdminTerritoryRoutes(app,db); registerAdminSourceRoutes(app,db); registerAdminOperationsRoutes(app,db); registerAdminManagementRoutes(app,db); registerAdminCampaignPlanRoutes(app,db); registerAdminAgendaRoutes(app,db); registerAdminWorkActivityRoutes(app,db); registerAdminDocumentRoutes(app,db,ocrQueue); registerAdminProfessionalRoutes(app,db);
+ registerPlanRoutes(app,db); registerMiOlivoRoutes(app,db); registerMiOlivoCampaignRoutes(app,db); registerTerritoryRoutes(app,db); registerMarketRoutes(app,db); registerWeatherRoutes(app,db,weatherProvider); registerRadarRoutes(app,db,storage); registerPushRoutes(app,db,notificationQueue,pushPublicKey); registerFieldRoutes(app,db); registerIrrigationRoutes(app,db); registerObservationRoutes(app,db); registerDomainRecordRoutes(app,db); registerHarvestRoutes(app,db); registerHarvestCommercialRoutes(app,db); registerHarvestSettlementCandidateRoutes(app,db); registerHarvestFieldCommercialRoutes(app,db); registerFarmEconomicsRoutes(app,db); registerCampaignRoutes(app,db); registerAgendaRoutes(app,db); registerAgronomyRoutes(app,db,weatherProvider); registerAgronomyAlertRoutes(app,db,weatherProvider,notificationQueue); registerAttentionRoutes(app,db,weatherProvider); registerFinancialAttentionRoutes(app,db); registerHomePriorityPreferenceRoutes(app,db); registerFinancialNotificationRoutes(app,db,notificationQueue); registerCommercialNotificationRoutes(app,db); registerNotificationCenterRoutes(app,db); registerPlannedTaskRoutes(app,db); registerWorkRoutes(app,db); registerWorkCommercialRoutes(app,db); registerProfessionalRoutes(app,db); registerProfessionalInvoiceRoutes(app,db); registerProfessionalQuoteRoutes(app,db); registerProfessionalCustomerRoutes(app,db); registerProfessionalAttentionRoutes(app,db); registerProfessionalBusinessProfileRoutes(app,db); registerProfessionalPrintRoutes(app,db); registerProfessionalDeliveryRoutes(app,db); registerProfessionalShareLinkRoutes(app,db,storage); registerDocumentRoutes(app,db,storage,ocrQueue); registerDocumentAccessRoutes(app,db,storage); registerDocumentCatalogRoutes(app,db); registerDocumentAnalysisRoutes(app,db); registerGisRoutes(app,db,gisProviders); return app;
 }

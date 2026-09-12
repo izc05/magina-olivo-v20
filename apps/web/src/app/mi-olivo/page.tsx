@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { MiOlivoDashboard } from '../../components/mi-olivo-dashboard';
 import { MiOlivoWeatherController } from '../../components/mi-olivo-weather-controller';
-import { MiOlivoCampaignController } from '../../components/mi-olivo-campaign-controller';
 
 export const metadata: Metadata = {
   title: 'Mi Olivo · Mágina Olivo',
@@ -9,10 +8,8 @@ export const metadata: Metadata = {
 };
 
 export default function MiOlivoPage() {
-  return (
-    <MiOlivoCampaignController>
-      <MiOlivoWeatherController />
-      <MiOlivoDashboard />
-    </MiOlivoCampaignController>
-  );
+  return <>
+    <MiOlivoWeatherController />
+    <MiOlivoDashboard />
+  </>;
 }

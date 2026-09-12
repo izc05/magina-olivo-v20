@@ -6,6 +6,32 @@ export type CmsEntryStatus = 'draft' | 'published' | 'archived';
 export type TerritoryPlaceKind = 'municipal_seat' | 'locality' | 'hamlet' | 'other';
 export type AdminSourceState = 'ok' | 'attention' | 'error' | 'unknown' | 'unmonitored';
 export type AdminSourceTelemetryMode = 'cache_health' | 'pipeline_status' | 'usage_only';
+export type AdminDatasetId =
+  | 'users'
+  | 'workspaces'
+  | 'fields'
+  | 'campaigns'
+  | 'work'
+  | 'irrigation'
+  | 'treatments'
+  | 'fertilization'
+  | 'pruning'
+  | 'expenses'
+  | 'harvest'
+  | 'settlements'
+  | 'collections'
+  | 'agenda'
+  | 'parties'
+  | 'machinery'
+  | 'materials'
+  | 'documents'
+  | 'ocr'
+  | 'content'
+  | 'invoices'
+  | 'quotes'
+  | 'plans'
+  | 'territory'
+  | 'market';
 
 export type AdminSession = {
   user: { id: string; display_name: string; primary_email: string | null; avatar_url: string | null; status: string };
@@ -15,6 +41,78 @@ export type AdminSession = {
 export type AdminOverview = {
   metrics: { users: number; workspaces: number; active_fields: number; content_entries: number; published_entries: number };
   recent_audit: AdminAuditEntry[];
+};
+
+export type AdminOperationsMetrics = {
+  users_total: number;
+  users_active: number;
+  users_suspended: number;
+  users_new_30d: number;
+  workspaces_total: number;
+  workspaces_professional: number;
+  fields_active: number;
+  field_area_ha: number;
+  campaigns_active: number;
+  work_records_total: number;
+  irrigation_total: number;
+  treatment_total: number;
+  fertilization_total: number;
+  pruning_total: number;
+  expenses_total: number;
+  expenses_eur: number;
+  harvest_kg: number;
+  settlements_total: number;
+  settlements_net_eur: number;
+  collections_total: number;
+  collections_eur: number;
+  scheduled_open: number;
+  parties_active: number;
+  documents_active: number;
+  document_bytes: number;
+  ocr_pending: number;
+  ocr_failed: number;
+  content_draft: number;
+  content_published: number;
+  invoices_issued: number;
+  invoiced_eur: number;
+  quotes_open: number;
+  quotes_accepted: number;
+  plans_pro: number;
+  plans_professional: number;
+  market_observations: number;
+  market_latest_period: string | null;
+  weather_stale: number;
+  admin_actions_24h: number;
+};
+
+export type AdminExternalAppConfig = {
+  enabled: boolean;
+  name: string;
+  description?: string | null;
+  url: string;
+  mode: 'new_tab' | 'embedded';
+  health_url?: string | null;
+};
+
+export type AdminDatasetDescriptor = {
+  id: AdminDatasetId;
+  label: string;
+  count: number | null;
+  sensitivity: 'restricted' | 'platform' | 'financial' | 'public';
+};
+
+export type AdminOperationsSnapshot = {
+  generated_at: string;
+  metrics: AdminOperationsMetrics;
+  datasets: AdminDatasetDescriptor[];
+  external_app: AdminExternalAppConfig;
+};
+
+export type AdminDatasetResponse = {
+  dataset: AdminDatasetId;
+  label: string;
+  rows: Record<string, unknown>[];
+  generated_at: string;
 };
 
 export type AdminUser = {
@@ -138,6 +236,12 @@ export type AdminSourcesSnapshot = {
 export const adminApi = {
   session: () => apiFetch<AdminSession>('/api/v1/admin/session'),
   overview: () => apiFetch<AdminOverview>('/api/v1/admin/overview'),
+  operations: () => apiFetch<AdminOperationsSnapshot>('/api/v1/admin/operations'),
+  dataset: (dataset: AdminDatasetId, limit = 50) => apiFetch<AdminDatasetResponse>(`/api/v1/admin/data/${dataset}?limit=${limit}`),
+  externalApp: () => apiFetch<{ config: AdminExternalAppConfig }>('/api/v1/admin/external-app'),
+  saveExternalApp: (config: AdminExternalAppConfig) => apiFetch<{ config: AdminExternalAppConfig; updated_at: string }>('/api/v1/admin/external-app', {
+    method: 'PUT', body: JSON.stringify(config),
+  }),
   users: (q = '') => apiFetch<{ users: AdminUser[] }>(`/api/v1/admin/users${q ? `?q=${encodeURIComponent(q)}` : ''}`),
   content: () => apiFetch<{ entries: CmsEntry[] }>('/api/v1/admin/content'),
   settings: () => apiFetch<{ settings: SiteSetting[] }>('/api/v1/admin/settings'),
