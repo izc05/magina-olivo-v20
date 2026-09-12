@@ -1,8 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import type { DatabaseClient } from './db/client.js';
 import { hydrateRequestAuthentication, prototypeAuthWarning } from './request-context.js';
+import { createRuntimeRateLimitHook, checkRuntimeReadiness } from './runtime-hardening.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerMeRoutes } from './routes/me.js';
 import { registerAdminRoutes } from './routes/admin.js';
@@ -90,6 +92,22 @@ function isPrivateApiPath(url: string) {
   return url.startsWith('/api/v1/') && !url.startsWith('/api/v1/public/');
 }
 
+function loggerOptions() {
+  return {
+    level: process.env.LOG_LEVEL?.trim() || 'info',
+    redact: {
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.headers["x-user-id"]',
+        'req.headers["x-workspace-id"]',
+        'res.headers["set-cookie"]',
+      ],
+      censor: '[REDACTED]',
+    },
+  };
+}
+
 export function buildApp(dependencies: AppDependencies = {}) {
   const db = dependencies.db ?? null;
   const storage = dependencies.storage ?? new UnavailableStorage();
@@ -99,13 +117,19 @@ export function buildApp(dependencies: AppDependencies = {}) {
   const googleVerifier = dependencies.googleVerifier ?? new UnavailableGoogleIdentityVerifier();
   const gisProviders = dependencies.gisProviders ?? remoteGisProviders;
   const weatherProvider = dependencies.weatherProvider ?? remoteAemetWeatherProvider;
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: loggerOptions(),
+    genReqId: () => randomUUID(),
+    trustProxy: process.env.TRUST_PROXY === 'true',
+  });
   const allowedOrigins = corsOrigins();
+  const rateLimitHook = createRuntimeRateLimitHook();
 
   app.register(cors, {
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['content-type', 'x-workspace-id', 'x-user-id'],
+    exposedHeaders: ['x-request-id', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'retry-after'],
     origin(origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -115,10 +139,12 @@ export function buildApp(dependencies: AppDependencies = {}) {
     },
   });
   app.register(cookie);
+  app.addHook('onRequest', rateLimitHook);
   app.addHook('onRequest', async (request) => {
     await hydrateRequestAuthentication(request, db);
   });
   app.addHook('onSend', async (request, reply, payload) => {
+    reply.header('x-request-id', request.id);
     reply.header('x-content-type-options', 'nosniff');
     reply.header('referrer-policy', 'strict-origin-when-cross-origin');
     reply.header('x-frame-options', 'DENY');
@@ -135,6 +161,15 @@ export function buildApp(dependencies: AppDependencies = {}) {
     webPushConfigured: Boolean(pushPublicKey),
     warning: prototypeAuthWarning,
   }));
+
+  app.get('/ready', async (request, reply) => {
+    const readiness = await checkRuntimeReadiness(db);
+    if (!readiness.ok) {
+      request.log.error({ database: readiness.database }, 'runtime readiness check failed');
+      return reply.code(503).send(readiness);
+    }
+    return readiness;
+  });
 
   registerAuthRoutes(app, db, googleVerifier);
   registerMeRoutes(app, db);
