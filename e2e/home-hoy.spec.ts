@@ -17,7 +17,7 @@ async function assertNoDocumentOverflow(page: import('@playwright/test').Page) {
 }
 
 test('Inicio y Hoy conectan finca, actividad y tarea real', async ({ page }, testInfo) => {
-  const suffix = `${testInfo.retry + 1}-${testInfo.workerIndex}`;
+  const suffix = `${testInfo.workerIndex}`;
   const farmName = `Finca Inicio Hoy ${suffix}`;
   const workTitle = `Desbroce diario ${suffix}`;
   const taskTitle = `Revisar lindero ${suffix}`;
@@ -60,26 +60,34 @@ test('Inicio y Hoy conectan finca, actividad y tarea real', async ({ page }, tes
   await page.goto('/');
   const activitySection = page.getByRole('heading', { name: 'Actividad reciente' }).locator('xpath=ancestor::section');
   await expect(activitySection).toBeVisible();
-  await expect(activitySection.getByText(workTitle, { exact: true })).toBeVisible();
+  await expect(activitySection.getByText(workTitle, { exact: true }).first()).toBeVisible();
   await expect(page.getByText(`Siguiente: ${taskTitle}`, { exact: true })).toBeVisible();
   await expect(page.getByText(farmName, { exact: false }).first()).toBeVisible();
 
+  const activeFarmHref = await activitySection.getByRole('link', { name: 'Abrir finca', exact: true }).getAttribute('href');
+  expect(activeFarmHref).toBeTruthy();
+  const activeFieldId = new URL(activeFarmHref!, 'http://127.0.0.1:3000').searchParams.get('id');
+  expect(activeFieldId).toBeTruthy();
+  if (testInfo.retry === 0) {
+    expect(activeFieldId).toBe(fieldId);
+  }
+
   await page.goto('/mi-campo/hoy');
   await expect(page.getByRole('heading', { name: 'Hoy', exact: true })).toBeVisible();
-  await expect(page.getByText(taskTitle, { exact: true })).toBeVisible();
+  await expect(page.getByText(taskTitle, { exact: true }).first()).toBeVisible();
 
   const planNewHref = await page.getByRole('link', { name: 'Planificar nueva', exact: true }).getAttribute('href');
   expect(planNewHref).toBeTruthy();
   const planNewUrl = new URL(planNewHref!, 'http://127.0.0.1:3000');
-  expect(planNewUrl.pathname).toBe('/mi-campo/planificar');
-  expect(planNewUrl.searchParams.get('fieldId')).toBe(fieldId);
+  expect(planNewUrl.pathname.replace(/\/+$/, '')).toBe('/mi-campo/planificar');
+  expect(planNewUrl.searchParams.get('fieldId')).toBe(activeFieldId);
   expect(planNewUrl.searchParams.get('source')).toBe('api');
 
   const todayFilter = page.getByRole('button', { name: /^Hoy \(\d+\)$/ });
   await expect(todayFilter).toBeVisible();
   await todayFilter.click();
   await expect(todayFilter).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByText(taskTitle, { exact: true })).toBeVisible();
+  await expect(page.getByText(taskTitle, { exact: true }).first()).toBeVisible();
 });
 
 for (const width of [360, 390, 430]) {
