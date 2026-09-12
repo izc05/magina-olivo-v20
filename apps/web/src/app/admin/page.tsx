@@ -23,6 +23,7 @@ export default function AdminPage() {
     <>
       <AdminControlCenter />
       <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 50, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <Link href="/admin/operaciones" aria-label="Abrir centro operativo de plataforma" style={{ ...shortcutStyle, background: '#173f2a' }}>Operaciones</Link>
         <Link href="/admin/fuentes" aria-label="Abrir estado de fuentes y datos" style={{ ...shortcutStyle, background: '#46666d' }}>Fuentes</Link>
         <Link href="/admin/territorio" aria-label="Abrir administración de territorio y directorio" style={{ ...shortcutStyle, background: '#8a6c2f' }}>Territorio</Link>
         <Link href="/admin/media" aria-label="Abrir biblioteca multimedia" style={{ ...shortcutStyle, background: '#6b7446' }}>Multimedia</Link>
