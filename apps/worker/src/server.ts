@@ -98,7 +98,12 @@ async function start() {
     );
     await boss.work<RadarIngestJobPayload>(RADAR_INGEST_QUEUE_NAME, { batchSize: 1 }, async ([job]) => {
       if (!job) return;
-      await runRadarIngestJob(pool, remoteAemetRadarSource, radarStorage, radarIngestJobPayloadSchema.parse(job.data));
+      const payload = radarIngestJobPayloadSchema.parse(job.data);
+      // pg-boss stores a static cron payload, so stamp the real execution time here.
+      await runRadarIngestJob(pool, remoteAemetRadarSource, radarStorage, {
+        ...payload,
+        requested_at: new Date().toISOString(),
+      });
     });
   }
 
