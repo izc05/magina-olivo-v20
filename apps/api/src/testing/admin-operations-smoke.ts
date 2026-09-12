@@ -39,16 +39,28 @@ try {
   const snapshot = overview.json();
   assert.equal(typeof snapshot.metrics.users_total, 'number');
   assert.equal(typeof snapshot.metrics.fields_active, 'number');
+  assert.equal(typeof snapshot.metrics.work_records_total, 'number');
+  assert.equal(typeof snapshot.metrics.expenses_eur, 'number');
+  assert.equal(typeof snapshot.metrics.settlements_net_eur, 'number');
   assert.equal(typeof snapshot.metrics.invoiced_eur, 'number');
   assert.ok(Array.isArray(snapshot.datasets));
   assert.ok(snapshot.datasets.some((dataset: { id: string }) => dataset.id === 'fields'));
+  assert.ok(snapshot.datasets.some((dataset: { id: string }) => dataset.id === 'work'));
+  assert.ok(snapshot.datasets.some((dataset: { id: string }) => dataset.id === 'plans'));
   assert.ok(snapshot.datasets.some((dataset: { id: string }) => dataset.id === 'market'));
   assert.equal(snapshot.external_app.enabled, false);
 
-  const fields = await app.inject({ method: 'GET', url: '/api/v1/admin/data/fields?limit=10', headers: { cookie: adminLogin.cookie } });
-  assert.equal(fields.statusCode, 200, fields.body);
-  assert.equal(fields.json().dataset, 'fields');
-  assert.ok(Array.isArray(fields.json().rows));
+  for (const dataset of snapshot.datasets as Array<{ id: string }>) {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/admin/data/${encodeURIComponent(dataset.id)}?limit=3`,
+      headers: { cookie: adminLogin.cookie },
+    });
+    assert.equal(response.statusCode, 200, `${dataset.id}: ${response.body}`);
+    assert.equal(response.json().dataset, dataset.id);
+    assert.ok(Array.isArray(response.json().rows), `${dataset.id} rows must be an array`);
+    assert.ok(response.json().rows.length <= 3, `${dataset.id} must honor limit`);
+  }
 
   const invalidDataset = await app.inject({ method: 'GET', url: '/api/v1/admin/data/user_sessions', headers: { cookie: adminLogin.cookie } });
   assert.equal(invalidDataset.statusCode, 400, invalidDataset.body);
