@@ -7,19 +7,25 @@ Objetivo: ejecutar el primer despliegue externo de V20 sin improvisar y sin toca
 Último SHA funcional completamente validado:
 
 ```text
-4a04410686eed936b12d359101f1ff2a0faa6fc0
+3a934e979fa6f279316c75a61ac9610432786887
 ```
 
-Gates verdes del mismo SHA:
+Gates verdes de la misma referencia funcional:
 
-- `V20 full candidate check` #2286 ✅
-- `V20 beta browser E2E` #598 ✅
-- `V20 staging readiness` #199 ✅
-- `V20 GIS finca selector check` #789 ✅
-- `V20 weather radar map closure` #13 ✅
-- Foundation / Runtime / Admin / Planes / Mi Olivo / Avisos / env / lockfile ✅
+- `V20 full candidate check` #2308 ✅
+- `V20 beta browser E2E` #620 ✅
+- `V20 staging readiness` #221 ✅
+- `V20 foundation check` #110 ✅
+- `V20 runtime hardening check` #60 ✅
+- `V20 platform admin check` #179 ✅
+- `V20 notification center check` #39 ✅
+- `V20 plans check` #106 ✅
+- `V20 Mi Olivo check` #62 ✅
+- `V20 environment contract` #127 ✅
+- `V20 lockfile guard` #111 ✅
+- `V20 visual preview / GitHub Pages` #612 ✅
 
-Los commits posteriores de documentación no modifican producto.
+Los workflows dedicados GIS y Weather/Radar quedaron verdes tras su absorción en la rama coordinadora. Los commits posteriores exclusivamente documentales no modifican producto ni sustituyen esta referencia funcional.
 
 ## 1. Host
 
@@ -205,7 +211,7 @@ tar --version
 Usar un SHA completo de 40 caracteres cuyos gates requeridos estén verdes. La referencia funcional cerrada es:
 
 ```text
-4a04410686eed936b12d359101f1ff2a0faa6fc0
+3a934e979fa6f279316c75a61ac9610432786887
 ```
 
 Si se despliega un commit posterior de `integrate/v20-beta-closure`, comprobar que para ese SHA existen en `success` los tres gates que el workflow remoto exige: Full Candidate, Browser E2E y Staging Readiness.
@@ -358,11 +364,3 @@ Staging externo queda aprobado únicamente con:
 - Profesional real ✅
 - móvil real ✅
 - PostgreSQL no expuesto ✅
-- backup + restore probado ✅
-- observabilidad básica ✅
-
-Hasta entonces:
-
-> **Beta funcionalmente integrada y preparada para staging externo; staging real pendiente de validación.**
-
-`main` permanece fuera de este proceso hasta la decisión final del candidato.
