@@ -1,22 +1,29 @@
 # V20 — Staging runbook
 
-Estado: runtime de staging reproducible preparado y validado en CI. El último SHA técnico completamente verificado es `76a086717236057027f2b24a06d7942546d5e52c`.
+Estado: runtime de staging reproducible preparado y validado en CI.
+
+Referencia funcional integrada completamente verificada:
+
+```text
+4a04410686eed936b12d359101f1ff2a0faa6fc0
+```
 
 En ese SHA están verdes conjuntamente:
 
-- `V20 full candidate check` #2173;
-- `V20 beta browser E2E` #482;
-- `V20 staging readiness` #101.
+- `V20 full candidate check` #2286;
+- `V20 beta browser E2E` #598;
+- `V20 staging readiness` #199;
+- `V20 GIS finca selector check` #789;
+- `V20 weather radar map closure` #13;
+- Foundation / Runtime / Admin / Planes / Mi Olivo / Avisos / env / lockfile.
 
-El gate de readiness construye las imágenes Docker de **web + API + worker**, valida Google Identity en el bundle web, Tesseract/Poppler dentro del worker, PostGIS 17, migraciones persistentes, seguridad en producción, health del stack y el camino real de `deploy-host.sh`. También comprueba que el backup pre-migración es un dump PostgreSQL 17 legible y que una segunda ejecución de migraciones es no-op.
-
-Esto no equivale todavía a un staging externo aprobado: siguen pendientes host, dominios HTTPS, secretos y proveedores reales.
+Esto no equivale todavía a staging externo aprobado: siguen pendientes host, dominios HTTPS, secretos y proveedores reales.
 
 ## Objetivo
 
-Validar la Beta V20 en un entorno externo antes de cualquier merge a `main`:
+Validar la Beta V20 en un entorno externo antes de cualquier promoción al candidate o merge a `main`:
 
-- web estática sin preview servida por nginx no-root;
+- web estática sin preview servida por nginx;
 - API Fastify real;
 - PostgreSQL 17 + PostGIS;
 - worker OCR/radar/notificaciones;
@@ -40,6 +47,10 @@ Dockerfile.worker
 Dockerfile.web
 docker-compose.yml
 deploy-host.sh
+backup-postgres.sh
+restore-postgres.sh
+migrate.sh
+OPERATIONS.md
 ```
 
 Seguridad base:
@@ -47,10 +58,12 @@ Seguridad base:
 - PostgreSQL no publica puerto al host;
 - web y API solo publican en loopback;
 - HTTPS se coloca delante mediante Cloudflare Tunnel o reverse proxy;
-- API/worker usan filesystem de solo lectura, `tmpfs`, `cap_drop: ALL` y `no-new-privileges`;
+- API/worker usan restricciones de contenedor y logs rotados;
 - web se compila con `NEXT_PUBLIC_PREVIEW_MODE=false`;
 - `NEXT_PUBLIC_API_URL` y `NEXT_PUBLIC_GOOGLE_CLIENT_ID` quedan embebidos en el build;
-- API y navegador deben usar el mismo Google OAuth client ID.
+- API y navegador deben usar el mismo Google OAuth client ID;
+- `/ready` valida conexión real a PostgreSQL;
+- cabeceras de identidad de desarrollo se rechazan en producción.
 
 ## Migraciones
 
@@ -61,7 +74,7 @@ Las migraciones se registran con checksum SHA-256:
 3. migración histórica modificada → error de checksum;
 4. ejecución interrumpida/inconsistente → error antes de continuar.
 
-Readiness #101 valida la primera ejecución y una segunda pasada no-op usando el camino real de despliegue.
+Staging Readiness #199 valida primera ejecución, repetibilidad, backup y restore sobre el camino real de despliegue.
 
 ## Host
 
@@ -72,7 +85,7 @@ Requisitos:
 - `curl` y `tar`;
 - SSH con clave dedicada;
 - almacenamiento persistente para PostgreSQL y backups;
-- salida HTTPS hacia S3, Google, AEMET y proveedores web-push.
+- salida HTTPS hacia S3/R2, Google, AEMET y web-push.
 
 Ruta recomendada:
 
@@ -80,11 +93,11 @@ Ruta recomendada:
 /srv/stacks/magina-olivo-v20-staging
 ```
 
-El host no necesita clonar Git: GitHub Actions sube una release inmutable por SHA.
+El host no necesita clonar Git: GitHub Actions puede subir una release inmutable por SHA.
 
 ## GitHub Environment `staging`
 
-Secrets:
+Secrets esperados:
 
 ```text
 STAGING_ENV_FILE
@@ -111,19 +124,27 @@ Partir de `deploy/staging/.env.example`, completar todos los placeholders y ejec
 node scripts/staging-env-preflight.mjs deploy/staging/.env
 ```
 
-El preflight exige, entre otros controles:
+El preflight actual exige:
 
 - `NODE_ENV=production`;
 - `NEXT_PUBLIC_PREVIEW_MODE=false`;
 - `ALLOW_DEV_AUTH_HEADERS=false`;
-- `SESSION_SECRET` de al menos 32 bytes;
 - web/API en HTTPS y orígenes distintos;
-- `PUBLIC_WEB_ORIGIN` incluido en `CORS_ALLOWED_ORIGINS`;
 - `GOOGLE_CLIENT_ID === NEXT_PUBLIC_GOOGLE_CLIENT_ID`;
-- bucket exclusivo de staging;
-- `WORKER_MODULES=ocr,radar,notifications`;
-- OCR `spa+eng`;
-- VAPID y AEMET configurados.
+- storage S3-compatible real y bucket aislado de staging;
+- `WORKER_MODULES` con `ocr,radar,notifications`;
+- OCR Tesseract `spa+eng`;
+- VAPID configurado;
+- AEMET configurado.
+
+Estas variables son obsoletas y deben **no aparecer** porque el preflight las rechaza:
+
+```text
+GOOGLE_CLIENT_SECRET
+SESSION_SECRET
+PUBLIC_WEB_ORIGIN
+OCR_PROCESSOR_MODE
+```
 
 Nunca versionar el `.env` real.
 
@@ -138,36 +159,42 @@ GOOGLE_CLIENT_ID=<id-real>
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=<mismo-id-real>
 ```
 
-No se usa `GOOGLE_CLIENT_SECRET` en el flujo actual.
+No se usa `GOOGLE_CLIENT_SECRET`.
 
-En Google Cloud, registrar el origen web HTTPS real de staging entre los **Authorized JavaScript origins** del cliente usado por staging. Tras el despliegue comprobar login, recarga con sesión persistente y logout.
+En Google Cloud, registrar el origen web HTTPS real de staging entre los **Authorized JavaScript origins**. Tras el despliegue comprobar login, recarga con sesión persistente y logout.
 
 ## Dominios / sesión
 
-Usar preferiblemente web y API como subdominios del mismo sitio registrable, por ejemplo:
+Usar web y API como orígenes HTTPS distintos, preferiblemente subdominios del mismo dominio registrable:
 
 ```text
-https://staging.example.com      → http://127.0.0.1:8080
-https://api-staging.example.com  → http://127.0.0.1:3001
+https://<web-staging>      → http://127.0.0.1:8080
+https://<api-staging>      → http://127.0.0.1:3001
 ```
 
-Esto conserva el diseño actual de cookie `Secure` + `SameSite=Lax` y `credentials: include` sin relajarla a `SameSite=None`.
+Configurar:
 
-`PUBLIC_WEB_ORIGIN`, `NEXT_PUBLIC_API_URL` y `CORS_ALLOWED_ORIGINS` deben coincidir con los orígenes definitivos.
+```text
+CORS_ALLOWED_ORIGINS=https://<web-staging>
+NEXT_PUBLIC_API_URL=https://<api-staging>
+AUTH_COOKIE_SECURE=true
+```
+
+No existe `PUBLIC_WEB_ORIGIN` en el contrato actual.
 
 ## Storage S3-compatible
 
 Usar un bucket exclusivo de staging y credenciales exclusivas.
 
-La subida documental es directa desde el navegador mediante URL prefirmada. El bucket debe tener una regla CORS restringida al origen web real de staging con:
+La subida documental es directa desde navegador mediante URL prefirmada. El bucket debe tener CORS restringido al origen web real:
 
 ```text
-AllowedOrigin: https://<dominio-web-staging>
+AllowedOrigin: https://<web-staging>
 AllowedMethod: PUT
 AllowedHeaders: Content-Type, x-amz-checksum-sha256
 ```
 
-No abrir el bucket con `*` salvo que el proveedor lo obligue y se haya revisado el impacto. Verificar además:
+Verificar:
 
 - upload prefirmado;
 - confirmación/complete upload;
@@ -175,21 +202,16 @@ No abrir el bucket con `*` salvo que el proveedor lo obligue y se haya revisado 
 - URL temporal de lectura;
 - OCR real de PDF/imagen;
 - PDF comercial archivado;
-- enlaces públicos revocables.
+- enlaces públicos revocables;
+- lectura del asset radar por el worker/API.
 
 ## Backup antes de migrar
 
-`deploy-host.sh` arranca primero PostgreSQL 17 y espera `pg_isready`. **Antes de cualquier migración** crea siempre:
+`deploy-host.sh` arranca PostgreSQL 17 y espera `pg_isready`. Antes de migrar crea un backup `pg_dump -Fc` cuando corresponde.
 
-```text
-pg_dump -Fc
-```
+Los backups viven fuera de la release inmutable. Validar/restaurar con PostgreSQL **17**.
 
-El dump se guarda fuera de la release inmutable en `STAGING_BACKUP_DIR`. Esto protege también una base persistente cuyo contenedor estuviera detenido. En una instalación nueva el backup corresponde al estado inicial vacío, de forma intencionada.
-
-Readiness #101 ejecuta el propio script de host y valida el dump con **`pg_restore` PostgreSQL 17**, la misma major que genera el backup. No validar/restaurar estos dumps con un cliente PostgreSQL más antiguo; CI detectó correctamente que un `pg_restore` 16 no puede leer el header generado por PostgreSQL 17.
-
-Para inspección portable:
+Inspección portable:
 
 ```bash
 docker run --rm \
@@ -198,11 +220,11 @@ docker run --rm \
   pg_restore -l /backups/<backup>.dump
 ```
 
-No existe restore destructivo automático. Antes de aprobar Beta debe demostrarse al menos un restore controlado de staging usando cliente PostgreSQL 17.
+Antes de aprobar Beta debe demostrarse al menos un restore controlado real y comprobar `/ready` después.
 
 ## Despliegue remoto
 
-Workflow manual:
+Workflow manual esperado:
 
 ```text
 V20 staging deploy
@@ -216,13 +238,7 @@ expected_sha=<SHA completo de 40 caracteres>
 confirm=DEPLOY-STAGING
 ```
 
-Antes de abrir SSH exige `success` para el mismo SHA exacto de:
-
-```text
-V20 full candidate check
-V20 beta browser E2E
-V20 staging readiness
-```
+Antes de abrir SSH debe exigir `success` para el mismo SHA exacto de los gates de cierre configurados.
 
 Después:
 
@@ -231,7 +247,7 @@ Después:
 3. valida SSH/known_hosts y prerequisitos;
 4. sube release inmutable por SHA;
 5. arranca PostgreSQL;
-6. genera backup pre-migración obligatorio;
+6. genera backup pre-migración;
 7. construye web/API/worker;
 8. ejecuta migraciones;
 9. arranca stack y comprueba web/API/worker;
@@ -241,42 +257,54 @@ Después:
 
 Si falla el smoke externo, la release no se marca como actual.
 
-## Smoke externo
+## Smoke externo automatizado
 
-Comprobar desde Internet:
+Ejecutar desde una máquina externa al host:
+
+```bash
+STAGING_API_URL=https://<api-staging> \
+STAGING_WEB_ORIGIN=https://<web-staging> \
+STAGING_REJECTED_ORIGIN=https://untrusted.invalid \
+node scripts/staging-postdeploy-smoke.mjs
+```
+
+Valida:
+
+- `/health`;
+- `/ready` con base viva;
+- Google Auth configurado;
+- web-push configurado;
+- CORS allow/deny;
+- headers de seguridad;
+- rechazo de dev-auth.
+
+Además comprobar:
 
 ```text
 GET WEB/healthz → ok
 GET WEB/        → 200
-GET API/health  → 200
 ```
 
-Y verificar:
-
-- certificado HTTPS válido;
-- CORS solo para la web configurada;
-- `X-Frame-Options: DENY`;
-- `X-Content-Type-Options: nosniff`;
-- API privada `Cache-Control: no-store`;
-- PostgreSQL no accesible externamente.
+Y confirmar que PostgreSQL no es accesible externamente.
 
 ## Recorrido Agricultor
 
 ```text
 Google login
 → crear finca
-→ añadir/gestionar límites
+→ seleccionar/vincular geometría GIS real
+→ volver a editar y recuperar geometría
 → registrar trabajo
 → registrar cosecha
 → añadir rendimiento
-→ comprobar Campaña
+→ Campaña
 → subir documento
 → OCR
 → revisión humana
-→ tiempo/radar
+→ tiempo/radar real
 ```
 
-Criterios: cero datos demo, persistencia real, documento en bucket de staging y OCR ejecutado por el worker desplegado.
+Criterios: cero datos demo, persistencia real, documento en bucket real y OCR ejecutado por el worker desplegado.
 
 ## Recorrido Profesional
 
@@ -296,7 +324,7 @@ El enlace público no debe exponer sesión privada ni datos ajenos.
 
 ## Móvil
 
-Repetir las rutas principales en 360 / 390 / 430 px y comprobar teclado, inputs, mapa, upload, OCR, modales, barras inferiores, latencia de red y ausencia de scroll horizontal.
+Repetir rutas principales en 360 / 390 / 430 px y comprobar teclado, inputs, mapa, upload, OCR, modales, barras inferiores, latencia real y ausencia de scroll horizontal.
 
 ## Observabilidad
 
@@ -304,6 +332,7 @@ Antes de aprobar staging:
 
 - conservar/rotar logs API, worker y deploy;
 - revisar errores S3/OCR/AEMET/notificaciones;
+- usar `X-Request-Id` para correlación;
 - no registrar cookies, secretos, tokens completos ni contenido sensible.
 
 ## Criterio de salida
@@ -314,7 +343,7 @@ Staging externo se considera aprobado solo cuando estén validados:
 - HTTPS/CORS/headers;
 - Google Auth real;
 - bucket + upload + OCR real;
-- AEMET/radar;
+- AEMET/radar real;
 - VAPID/notificaciones;
 - Agricultor real;
 - Profesional real;
@@ -325,6 +354,6 @@ Staging externo se considera aprobado solo cuando estén validados:
 
 Hasta entonces:
 
-> **Beta técnicamente preparada para staging externo; staging real pendiente de validación.**
+> **Beta funcionalmente integrada y preparada para staging externo; staging real pendiente de validación.**
 
 `main` permanece fuera de este proceso hasta la decisión final del candidato.
