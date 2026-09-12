@@ -112,14 +112,45 @@ jobs:
             fi
           done
 
+      - name: Validate staging configuration presence
+        env:
+          STAGING_ENV_FILE: ${{ secrets.STAGING_ENV_FILE }}
+          STAGING_SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          STAGING_SSH_KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+          STAGING_WEB_URL: ${{ vars.STAGING_WEB_URL }}
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
+        run: |
+          set -eu
+          missing=0
+
+          for name in STAGING_ENV_FILE STAGING_SSH_PRIVATE_KEY STAGING_SSH_KNOWN_HOSTS; do
+            if [ -z "$(printenv "$name" || true)" ]; then
+              echo "::error title=Missing staging secret::$name is not configured in GitHub Environment 'staging'."
+              missing=1
+            fi
+          done
+
+          for name in STAGING_WEB_URL STAGING_HOST STAGING_USER STAGING_PORT STAGING_PATH; do
+            if [ -z "$(printenv "$name" || true)" ]; then
+              echo "::error title=Missing staging variable::$name is not configured in GitHub Environment 'staging'."
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "Configure every missing name in GitHub Environment 'staging' before retrying. No secret values were printed." >&2
+            exit 1
+          fi
+
       - name: Validate private staging environment
         env:
           STAGING_ENV_FILE: ${{ secrets.STAGING_ENV_FILE }}
           STAGING_WEB_URL: ${{ vars.STAGING_WEB_URL }}
         run: |
           set -eu
-          test -n "$STAGING_ENV_FILE"
-          test -n "$STAGING_WEB_URL"
           umask 077
           printf '%s' "$STAGING_ENV_FILE" > /tmp/magina-staging.env
           node scripts/staging-env-preflight.mjs /tmp/magina-staging.env
@@ -176,12 +207,6 @@ jobs:
           KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
         run: |
           set -eu
-          test -n "$STAGING_HOST"
-          test -n "$STAGING_USER"
-          test -n "$STAGING_PORT"
-          test -n "$STAGING_PATH"
-          test -n "$SSH_KEY"
-          test -n "$KNOWN_HOSTS"
           printf '%s' "$STAGING_HOST" | grep -Eq '^[A-Za-z0-9.-]+$'
           printf '%s' "$STAGING_USER" | grep -Eq '^[A-Za-z0-9._-]+$'
           printf '%s' "$STAGING_PORT" | grep -Eq '^[0-9]{1,5}$'
