@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - feat/v20-visual-prototype
+      - integrate/v20-beta-closure
 
 permissions:
   contents: read
