@@ -60,6 +60,60 @@ export interface UserSessionTable {
   user_agent: string | null;
 }
 
+export type PlatformAdminRole = 'super_admin' | 'admin' | 'editor' | 'support';
+
+export interface PlatformAdminTable {
+  user_id: string;
+  role: PlatformAdminRole;
+  status: 'active' | 'revoked';
+  granted_by: string | null;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
+}
+
+export type CmsEntryType = 'page' | 'news' | 'event' | 'place' | 'mill' | 'directory' | 'promotion' | 'alert';
+export type CmsEntryStatus = 'draft' | 'published' | 'archived';
+
+export interface CmsEntryTable {
+  id: Generated<string>;
+  type: CmsEntryType;
+  slug: string;
+  title: string;
+  summary: string | null;
+  content_json: unknown;
+  status: CmsEntryStatus;
+  featured: Defaulted<boolean>;
+  starts_at: Timestamp | null;
+  ends_at: Timestamp | null;
+  media_url: string | null;
+  external_url: string | null;
+  sort_order: Defaulted<number>;
+  created_by: string;
+  updated_by: string;
+  created_at: GeneratedTimestamp;
+  updated_at: GeneratedTimestamp;
+  published_at: Timestamp | null;
+}
+
+export interface SiteSettingTable {
+  key: string;
+  value_json: unknown;
+  description: string | null;
+  updated_by: string;
+  updated_at: GeneratedTimestamp;
+}
+
+export interface AdminAuditLogTable {
+  id: Generated<string>;
+  actor_user_id: string | null;
+  actor_role: PlatformAdminRole | 'bootstrap';
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  metadata: unknown;
+  created_at: GeneratedTimestamp;
+}
+
 export interface TerritoryMunicipalityTable {
   id: Generated<string>;
   ine_code: string;
@@ -313,6 +367,10 @@ export interface Database {
   auth_identities: AuthIdentityTable;
   workspace_memberships: WorkspaceMembershipTable;
   user_sessions: UserSessionTable;
+  platform_admins: PlatformAdminTable;
+  cms_entries: CmsEntryTable;
+  site_settings: SiteSettingTable;
+  admin_audit_log: AdminAuditLogTable;
   territory_municipalities: TerritoryMunicipalityTable;
   territory_places: TerritoryPlaceTable;
   weather_forecast_cache: WeatherForecastCacheTable;
