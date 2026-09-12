@@ -156,3 +156,5 @@ try {
   await app.close();
   await db.destroy();
 }
+
+await import('./admin-professional-smoke.js');
