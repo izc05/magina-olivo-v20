@@ -37,10 +37,13 @@ test('Mi Olivo expone misiones de campaña y personalización segura', async ({ 
 
   await page.goto('/mi-olivo');
   await expect(page.getByRole('heading', { name: 'Tu olivo digital' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Lo que ya haces, contado mejor' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Distintivo de tu olivo' })).toBeVisible();
-  await expect(page.getByText('2026/27', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Sin distintivo/ })).toBeVisible();
+
+  const v5Panel = page.getByRole('region', { name: 'Misiones y personalización de Mi Olivo' });
+  await expect(v5Panel).toBeVisible();
+  await expect(v5Panel.getByRole('heading', { name: 'Lo que ya haces, contado mejor' })).toBeVisible();
+  await expect(v5Panel.getByRole('heading', { name: 'Distintivo de tu olivo' })).toBeVisible();
+  await expect(v5Panel.getByText('2026/27', { exact: true })).toBeVisible();
+  await expect(v5Panel.getByRole('button', { name: /Sin distintivo/ })).toBeVisible();
 });
 
 test.describe('Mi Olivo V5 móvil', () => {
@@ -48,7 +51,10 @@ test.describe('Mi Olivo V5 móvil', () => {
 
   test('misiones y distintivos no desbordan y mantienen objetivos táctiles', async ({ page }) => {
     await page.goto('/mi-olivo');
-    await expect(page.getByRole('heading', { name: 'Lo que ya haces, contado mejor' })).toBeVisible();
+
+    const v5Panel = page.getByRole('region', { name: 'Misiones y personalización de Mi Olivo' });
+    await expect(v5Panel).toBeVisible();
+    await expect(v5Panel.getByRole('heading', { name: 'Lo que ya haces, contado mejor' })).toBeVisible();
 
     const dimensions = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
@@ -58,7 +64,7 @@ test.describe('Mi Olivo V5 móvil', () => {
     expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewport + 1);
     expect(dimensions.bodyWidth).toBeLessThanOrEqual(dimensions.viewport + 1);
 
-    const badge = page.getByRole('button', { name: /Sin distintivo/ });
+    const badge = v5Panel.getByRole('button', { name: /Sin distintivo/ });
     const box = await badge.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   });
