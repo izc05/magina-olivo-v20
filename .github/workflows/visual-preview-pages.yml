@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - feat/v20-visual-prototype
+      - preview/v20-pages-current
 
 permissions:
   contents: read
