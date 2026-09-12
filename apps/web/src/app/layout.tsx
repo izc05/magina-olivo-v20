@@ -16,6 +16,13 @@ import './map-platform.css';
 import './radar-alerts.css';
 import './mobile-hardening.css';
 import './managed-content.css';
+import './visual-final.css';
+import './visual-mi-campo.css';
+import './visual-farm-detail.css';
+import './visual-today.css';
+import './visual-business.css';
+import './visual-business-mobile.css';
+import './visual-map-radar.css';
 
 export const metadata: Metadata = {
   title: 'Mágina Olivo V20',
