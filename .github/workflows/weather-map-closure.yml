@@ -5,6 +5,32 @@ on:
   push:
     branches:
       - feat/v20-weather-map
+      - integrate/v20-beta-closure
+    paths:
+      - 'apps/api/src/routes/radar.ts'
+      - 'apps/api/src/routes/weather.ts'
+      - 'apps/api/src/weather/**'
+      - 'apps/api/src/testing/radar-*.ts'
+      - 'apps/api/src/testing/weather-*.ts'
+      - 'apps/api/src/testing/map-context-smoke.ts'
+      - 'apps/worker/src/radar/**'
+      - 'apps/worker/src/server.ts'
+      - 'apps/web/src/components/farm-map.tsx'
+      - 'apps/web/src/components/radar-observation-panel.tsx'
+      - 'apps/web/src/lib/api-client.ts'
+      - 'packages/weather/**'
+      - 'packages/contracts/**'
+      - 'packages/jobs/**'
+      - 'database/migrations/**'
+      - 'e2e/weather-radar-map.spec.ts'
+      - 'playwright.config.ts'
+      - '.env.example'
+      - '.nvmrc'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/weather-map-closure.yml'
+  pull_request:
+    branches:
+      - integrate/v20-beta-closure
     paths:
       - 'apps/api/src/routes/radar.ts'
       - 'apps/api/src/routes/weather.ts'
