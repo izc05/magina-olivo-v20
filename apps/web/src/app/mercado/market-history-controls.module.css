@@ -1,0 +1,70 @@
+.controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #dfe4da;
+  border-radius: 999px;
+  background: #f6f7f2;
+}
+
+.button {
+  min-width: 44px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: transparent;
+  color: #677260;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.button:hover:not(:disabled) {
+  color: #304329;
+}
+
+.button:focus-visible {
+  outline: 3px solid rgba(87, 112, 73, 0.24);
+  outline-offset: 2px;
+}
+
+.button[aria-pressed='true'] {
+  background: #405c32;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(64, 92, 50, 0.18);
+}
+
+.button:disabled {
+  cursor: progress;
+  opacity: 0.68;
+}
+
+.status {
+  min-height: 1.2em;
+  margin: 6px 0 0;
+  color: #8a9186;
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+@media (max-width: 540px) {
+  .controls {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .button {
+    flex: 1 1 0;
+  }
+
+  .status {
+    text-align: left;
+  }
+}

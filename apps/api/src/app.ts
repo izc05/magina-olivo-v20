@@ -36,6 +36,7 @@ import { registerDocumentCatalogRoutes } from './routes/document-catalog.js';
 import { registerDocumentAnalysisRoutes } from './routes/document-analysis.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
+import { registerMarketRoutes } from './routes/market.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
 import { registerPushRoutes } from './routes/push.js';
@@ -144,6 +145,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerPlanRoutes(app, db);
   registerMiOlivoRoutes(app, db);
   registerTerritoryRoutes(app, db);
+  registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db);
   registerPushRoutes(app, db, notificationQueue, pushPublicKey);

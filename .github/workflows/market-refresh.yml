@@ -1,0 +1,159 @@
+name: V20 market refresh
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Market refresh mode
+        required: true
+        type: choice
+        default: dry-run
+        options:
+          - source-check
+          - dry-run
+          - apply
+      confirm_apply:
+        description: Type APPLY when mode=apply
+        required: false
+        type: string
+        default: ''
+      allow_corrections:
+        description: Allow overwriting already persisted official periods after manual review
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: '47 7 * * 4'
+
+concurrency:
+  group: market-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.MARKET_AUTO_APPLY == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.MARKET_DATABASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Resolve guarded refresh mode
+        id: refresh_mode
+        shell: bash
+        env:
+          DISPATCH_MODE: ${{ inputs.mode }}
+          APPLY_CONFIRMATION: ${{ inputs.confirm_apply }}
+          ALLOW_CORRECTIONS_INPUT: ${{ inputs.allow_corrections }}
+          AUTO_APPLY: ${{ vars.MARKET_AUTO_APPLY }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+            if [[ "$AUTO_APPLY" != "true" ]]; then
+              echo "Scheduled apply is disabled. Set MARKET_AUTO_APPLY=true explicitly to enable it." >&2
+              exit 1
+            fi
+            mode="apply"
+            allow_corrections="false"
+          else
+            mode="${DISPATCH_MODE:-dry-run}"
+            allow_corrections="${ALLOW_CORRECTIONS_INPUT:-false}"
+          fi
+
+          case "$mode" in
+            source-check|dry-run|apply) ;;
+            *)
+              echo "Unsupported market refresh mode: $mode" >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ "$mode" == "apply" && "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$APPLY_CONFIRMATION" != "APPLY" ]]; then
+            echo "Manual apply requires confirm_apply=APPLY." >&2
+            exit 1
+          fi
+
+          if [[ "$allow_corrections" == "true" && "$mode" != "apply" ]]; then
+            echo "allow_corrections can only be used with mode=apply." >&2
+            exit 1
+          fi
+
+          if [[ "$mode" != "source-check" && -z "${DATABASE_URL:-}" ]]; then
+            echo "MARKET_DATABASE_URL is required for $mode." >&2
+            exit 1
+          fi
+
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "allow_corrections=$allow_corrections" >> "$GITHUB_OUTPUT"
+
+      - name: Execute market refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          mode="${{ steps.refresh_mode.outputs.mode }}"
+          allow_corrections="${{ steps.refresh_mode.outputs.allow_corrections }}"
+
+          case "$mode" in
+            source-check)
+              pnpm --filter @magina/api market:source-check | tee market-refresh-result.json
+              ;;
+            dry-run)
+              pnpm --filter @magina/api market:refresh:dry-run | tee market-refresh-result.json
+              ;;
+            apply)
+              if [[ "$allow_corrections" == "true" ]]; then
+                pnpm --filter @magina/api market:refresh:corrections | tee market-refresh-result.json
+              else
+                pnpm --filter @magina/api market:refresh | tee market-refresh-result.json
+              fi
+              ;;
+          esac
+
+      - name: Publish refresh summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Aceite y Mercado · refresh"
+            echo
+            echo "- Event: \`$GITHUB_EVENT_NAME\`"
+            echo "- Mode: \`${{ steps.refresh_mode.outputs.mode || 'not-resolved' }}\`"
+            echo "- Corrections approved: \`${{ steps.refresh_mode.outputs.allow_corrections || 'false' }}\`"
+            echo
+            if [[ -f market-refresh-result.json ]]; then
+              echo '```json'
+              cat market-refresh-result.json
+              echo '```'
+            else
+              echo "No refresh result was produced. Review the failed guard or command step."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload refresh audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-refresh-${{ github.run_id }}
+          path: market-refresh-result.json
+          if-no-files-found: ignore
+          retention-days: 90
