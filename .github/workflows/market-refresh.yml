@@ -42,21 +42,17 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           run_install: false
-
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 22
-
+          node-version-file: '.nvmrc'
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
+        run: pnpm install --frozen-lockfile
       - name: Resolve guarded refresh mode
         id: refresh_mode
         shell: bash
@@ -67,7 +63,6 @@ jobs:
           AUTO_APPLY: ${{ vars.MARKET_AUTO_APPLY }}
         run: |
           set -euo pipefail
-
           if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
             if [[ "$AUTO_APPLY" != "true" ]]; then
               echo "Scheduled apply is disabled. Set MARKET_AUTO_APPLY=true explicitly to enable it." >&2
@@ -79,47 +74,33 @@ jobs:
             mode="${DISPATCH_MODE:-dry-run}"
             allow_corrections="${ALLOW_CORRECTIONS_INPUT:-false}"
           fi
-
           case "$mode" in
             source-check|dry-run|apply) ;;
-            *)
-              echo "Unsupported market refresh mode: $mode" >&2
-              exit 1
-              ;;
+            *) echo "Unsupported market refresh mode: $mode" >&2; exit 1 ;;
           esac
-
           if [[ "$mode" == "apply" && "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$APPLY_CONFIRMATION" != "APPLY" ]]; then
             echo "Manual apply requires confirm_apply=APPLY." >&2
             exit 1
           fi
-
           if [[ "$allow_corrections" == "true" && "$mode" != "apply" ]]; then
             echo "allow_corrections can only be used with mode=apply." >&2
             exit 1
           fi
-
           if [[ "$mode" != "source-check" && -z "${DATABASE_URL:-}" ]]; then
             echo "MARKET_DATABASE_URL is required for $mode." >&2
             exit 1
           fi
-
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "allow_corrections=$allow_corrections" >> "$GITHUB_OUTPUT"
-
       - name: Execute market refresh
         shell: bash
         run: |
           set -euo pipefail
           mode="${{ steps.refresh_mode.outputs.mode }}"
           allow_corrections="${{ steps.refresh_mode.outputs.allow_corrections }}"
-
           case "$mode" in
-            source-check)
-              pnpm --filter @magina/api market:source-check | tee market-refresh-result.json
-              ;;
-            dry-run)
-              pnpm --filter @magina/api market:refresh:dry-run | tee market-refresh-result.json
-              ;;
+            source-check) pnpm --filter @magina/api market:source-check | tee market-refresh-result.json ;;
+            dry-run) pnpm --filter @magina/api market:refresh:dry-run | tee market-refresh-result.json ;;
             apply)
               if [[ "$allow_corrections" == "true" ]]; then
                 pnpm --filter @magina/api market:refresh:corrections | tee market-refresh-result.json
@@ -128,7 +109,6 @@ jobs:
               fi
               ;;
           esac
-
       - name: Publish refresh summary
         if: always()
         shell: bash
@@ -148,10 +128,9 @@ jobs:
               echo "No refresh result was produced. Review the failed guard or command step."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
-
       - name: Upload refresh audit artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: market-refresh-${{ github.run_id }}
           path: market-refresh-result.json
