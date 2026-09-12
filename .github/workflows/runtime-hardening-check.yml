@@ -1,0 +1,135 @@
+name: V20 runtime hardening check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/server.ts'
+      - 'apps/api/src/runtime-hardening.ts'
+      - 'apps/api/src/runtime-security.ts'
+      - 'apps/api/src/testing/staging-security-smoke.ts'
+      - 'deploy/staging/**'
+      - '.env.example'
+      - '.nvmrc'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/runtime-hardening-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-hardening:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina_runtime
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina_runtime"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build API runtime
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/api build
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+      - name: Apply migrations to runtime smoke database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            psql -h 127.0.0.1 -U postgres -d magina_runtime -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+          done
+      - name: Runtime security and observability smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_runtime
+          NODE_ENV: production
+          CORS_ALLOWED_ORIGINS: https://staging.example.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          RATE_LIMIT_ENABLED: 'true'
+        run: node apps/api/dist/testing/staging-security-smoke.js
+      - name: Validate staging operations syntax and compose
+        run: |
+          sh -n deploy/staging/backup-postgres.sh
+          sh -n deploy/staging/restore-postgres.sh
+          docker compose \
+            --env-file deploy/staging/.env.example \
+            -f deploy/staging/docker-compose.yml \
+            config >/tmp/runtime-hardening-compose.yml
+          test -s /tmp/runtime-hardening-compose.yml
+          grep -F "fetch('http://127.0.0.1:3001/ready')" /tmp/runtime-hardening-compose.yml
+      - name: Backup and restore PostgreSQL end to end
+        run: |
+          compose() {
+            docker compose \
+              --env-file deploy/staging/.env.example \
+              -f deploy/staging/docker-compose.yml "$@"
+          }
+          cleanup() { compose down -v --remove-orphans >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+
+          compose up -d postgres
+          postgres_container="$(compose ps -q postgres)"
+          test -n "$postgres_container"
+          for attempt in $(seq 1 45); do
+            health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$postgres_container")"
+            if [ "$health" = 'healthy' ]; then break; fi
+            if [ "$health" = 'unhealthy' ] || [ "$attempt" -eq 45 ]; then
+              compose logs --no-color postgres
+              exit 1
+            fi
+            sleep 1
+          done
+
+          compose exec -T postgres \
+            psql -U magina_staging -d magina_staging -v ON_ERROR_STOP=1 \
+            -c "CREATE TABLE public.runtime_restore_baseline (id integer primary key, value text not null); INSERT INTO public.runtime_restore_baseline VALUES (1, 'before-backup');"
+
+          COMPOSE_ENV_FILE=deploy/staging/.env.example \
+          sh deploy/staging/backup-postgres.sh /tmp/magina-runtime-backup.dump
+          test -s /tmp/magina-runtime-backup.dump
+
+          compose exec -T postgres \
+            psql -U magina_staging -d magina_staging -v ON_ERROR_STOP=1 \
+            -c "UPDATE public.runtime_restore_baseline SET value='after-backup' WHERE id=1; CREATE TABLE public.runtime_restore_probe (id integer);"
+
+          COMPOSE_ENV_FILE=deploy/staging/.env.example \
+          CONFIRM_RESTORE=magina_staging \
+          sh deploy/staging/restore-postgres.sh /tmp/magina-runtime-backup.dump
+
+          restored_value="$(compose exec -T postgres psql -U magina_staging -d magina_staging -Atc "SELECT value FROM public.runtime_restore_baseline WHERE id=1;")"
+          test "$restored_value" = 'before-backup'
+          restored_probe="$(compose exec -T postgres psql -U magina_staging -d magina_staging -Atc "SELECT to_regclass('public.runtime_restore_probe') IS NULL;")"
+          test "$restored_probe" = 't'
+          compose exec -T postgres psql -U magina_staging -d magina_staging -Atc 'SELECT 1;' | grep -Fx '1'
