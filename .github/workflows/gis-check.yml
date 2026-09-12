@@ -191,8 +191,11 @@ jobs:
       - name: Browser checkpoint — Catastro to SIGPAC persistence
         run: pnpm exec playwright test e2e/gis-finca.spec.ts --grep "alta GIS real persiste"
 
-      - name: Browser checkpoint — unlocated and provider error
-        run: pnpm exec playwright test e2e/gis-finca.spec.ts --grep "finca sin geometría"
+      - name: Browser checkpoint — unlocated recovery
+        run: pnpm exec playwright test e2e/gis-finca.spec.ts --grep "finca sin geometría se guarda"
+
+      - name: Browser checkpoint — provider error preserves state
+        run: pnpm exec playwright test e2e/gis-finca.spec.ts --grep "error de proveedor mantiene"
 
       - name: Stop GIS browser servers
         if: always()
