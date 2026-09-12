@@ -1,0 +1,153 @@
+.flowCard {
+  display: grid;
+  gap: 16px;
+}
+
+.flowHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.flowHeader h2,
+.flowHeader h3,
+.flowHeader p {
+  margin: 0;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid rgba(44, 83, 58, .18);
+  border-radius: 999px;
+  background: rgba(242, 247, 238, .9);
+  color: #2f5a3d;
+  font-size: .78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.step {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(42, 55, 36, .12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .6);
+}
+
+.step strong,
+.step span {
+  display: block;
+}
+
+.step strong {
+  margin-bottom: 2px;
+  font-size: .8rem;
+}
+
+.step span {
+  color: #687163;
+  font-size: .73rem;
+  line-height: 1.35;
+}
+
+.stepDone {
+  border-color: rgba(58, 111, 69, .24);
+  background: rgba(235, 245, 232, .86);
+}
+
+.stepCurrent {
+  border-color: rgba(153, 118, 45, .35);
+  background: rgba(251, 246, 225, .9);
+}
+
+.notice {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(245, 247, 241, .92);
+  color: #465142;
+  font-size: .88rem;
+  line-height: 1.45;
+}
+
+.notice strong {
+  color: #263b2b;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.originalMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+
+.originalMeta span {
+  display: block;
+  color: #70766c;
+  font-size: .74rem;
+}
+
+.originalMeta strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: .86rem;
+}
+
+.catalogMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.catalogTag {
+  display: inline-flex;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(239, 242, 234, .9);
+  color: #586451;
+  font-size: .7rem;
+  font-weight: 650;
+}
+
+@media (max-width: 640px) {
+  .flowHeader {
+    display: grid;
+  }
+
+  .statusPill {
+    width: fit-content;
+  }
+
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .originalMeta {
+    grid-template-columns: 1fr;
+  }
+
+  .actions > * {
+    width: 100%;
+  }
+}
+
+@media (max-width: 390px) {
+  .steps {
+    grid-template-columns: 1fr;
+  }
+}

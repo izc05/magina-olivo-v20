@@ -1,10 +1,18 @@
+import { randomUUID } from 'node:crypto';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import type { DatabaseClient } from './db/client.js';
 import { hydrateRequestAuthentication, prototypeAuthWarning } from './request-context.js';
+import { createRuntimeRateLimitHook, checkRuntimeReadiness } from './runtime-hardening.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerMeRoutes } from './routes/me.js';
+import { registerAdminRoutes } from './routes/admin.js';
+import { registerAdminMediaRoutes } from './routes/admin-media.js';
+import { registerAdminTerritoryRoutes } from './routes/admin-territory.js';
+import { registerAdminSourceRoutes } from './routes/admin-sources.js';
+import { registerPlanRoutes } from './routes/plans.js';
+import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerFieldRoutes } from './routes/fields.js';
 import { registerIrrigationRoutes } from './routes/irrigations.js';
 import { registerObservationRoutes } from './routes/observations.js';
@@ -23,6 +31,7 @@ import { registerFinancialAttentionRoutes } from './routes/financial-attention.j
 import { registerHomePriorityPreferenceRoutes } from './routes/home-priority-preferences.js';
 import { registerFinancialNotificationRoutes } from './routes/financial-notifications.js';
 import { registerCommercialNotificationRoutes } from './routes/commercial-notifications.js';
+import { registerNotificationCenterRoutes } from './routes/notification-center.js';
 import { registerPlannedTaskRoutes } from './routes/planned-tasks.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerDocumentAccessRoutes } from './routes/document-access.js';
@@ -30,6 +39,7 @@ import { registerDocumentCatalogRoutes } from './routes/document-catalog.js';
 import { registerDocumentAnalysisRoutes } from './routes/document-analysis.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
+import { registerMarketRoutes } from './routes/market.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
 import { registerPushRoutes } from './routes/push.js';
@@ -83,6 +93,22 @@ function isPrivateApiPath(url: string) {
   return url.startsWith('/api/v1/') && !url.startsWith('/api/v1/public/');
 }
 
+function loggerOptions() {
+  return {
+    level: process.env.LOG_LEVEL?.trim() || 'info',
+    redact: {
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.headers["x-user-id"]',
+        'req.headers["x-workspace-id"]',
+        'res.headers["set-cookie"]',
+      ],
+      censor: '[REDACTED]',
+    },
+  };
+}
+
 export function buildApp(dependencies: AppDependencies = {}) {
   const db = dependencies.db ?? null;
   const storage = dependencies.storage ?? new UnavailableStorage();
@@ -92,13 +118,19 @@ export function buildApp(dependencies: AppDependencies = {}) {
   const googleVerifier = dependencies.googleVerifier ?? new UnavailableGoogleIdentityVerifier();
   const gisProviders = dependencies.gisProviders ?? remoteGisProviders;
   const weatherProvider = dependencies.weatherProvider ?? remoteAemetWeatherProvider;
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: loggerOptions(),
+    genReqId: () => randomUUID(),
+    trustProxy: process.env.TRUST_PROXY === 'true',
+  });
   const allowedOrigins = corsOrigins();
+  const rateLimitHook = createRuntimeRateLimitHook();
 
   app.register(cors, {
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['content-type', 'x-workspace-id', 'x-user-id'],
+    exposedHeaders: ['x-request-id', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'retry-after'],
     origin(origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -108,10 +140,12 @@ export function buildApp(dependencies: AppDependencies = {}) {
     },
   });
   app.register(cookie);
+  app.addHook('onRequest', rateLimitHook);
   app.addHook('onRequest', async (request) => {
     await hydrateRequestAuthentication(request, db);
   });
   app.addHook('onSend', async (request, reply, payload) => {
+    reply.header('x-request-id', request.id);
     reply.header('x-content-type-options', 'nosniff');
     reply.header('referrer-policy', 'strict-origin-when-cross-origin');
     reply.header('x-frame-options', 'DENY');
@@ -129,9 +163,25 @@ export function buildApp(dependencies: AppDependencies = {}) {
     warning: prototypeAuthWarning,
   }));
 
+  app.get('/ready', async (request, reply) => {
+    const readiness = await checkRuntimeReadiness(db);
+    if (!readiness.ok) {
+      request.log.error({ database: readiness.database }, 'runtime readiness check failed');
+      return reply.code(503).send(readiness);
+    }
+    return readiness;
+  });
+
   registerAuthRoutes(app, db, googleVerifier);
   registerMeRoutes(app, db);
+  registerAdminRoutes(app, db);
+  registerAdminMediaRoutes(app, db, storage);
+  registerAdminTerritoryRoutes(app, db);
+  registerAdminSourceRoutes(app, db);
+  registerPlanRoutes(app, db);
+  registerMiOlivoRoutes(app, db);
   registerTerritoryRoutes(app, db);
+  registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db);
   registerPushRoutes(app, db, notificationQueue, pushPublicKey);
@@ -153,6 +203,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerHomePriorityPreferenceRoutes(app, db);
   registerFinancialNotificationRoutes(app, db, notificationQueue);
   registerCommercialNotificationRoutes(app, db);
+  registerNotificationCenterRoutes(app, db);
   registerPlannedTaskRoutes(app, db);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);

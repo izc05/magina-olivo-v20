@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { demoDelivery } from '@/lib/demo-data';
 import { saveLocalActivity } from '@/lib/local-prototype-store';
-import { useFieldContext } from '@/lib/use-field-context';
+import { useFieldContext, withFieldQuery } from '@/lib/use-field-context';
 import { completePlannedTask } from '@/lib/planned-task-data-source';
 import { apiFetch } from '@/lib/api-client';
 import { linkDocumentToDomain } from '@/lib/document-data-source';
@@ -113,7 +113,7 @@ export function HarvestOcrClient() {
       {sourceLinked ? <p>✓ El albarán de origen ha quedado enlazado a esta entrega.</p> : null}
       {sourceLinkWarning ? <p className="form-error" role="status">{sourceLinkWarning}</p> : null}
       {completionWarning ? <p className="form-error" role="status">{completionWarning}</p> : plannedEventId && apiMode ? <p>✓ La tarea prevista ha quedado enlazada a esta entrega.</p> : null}
-      <div className="record-actions"><button type="button" className="secondary-action" onClick={() => setSaved(false)}>Registrar otra</button><Link href={context.returnHref} className="primary action-link">Volver a la finca <ArrowIcon/></Link></div>
+      <div className="record-actions"><button type="button" className="secondary-action" onClick={() => setSaved(false)}>Registrar otra entrega</button>{apiMode ? <Link className="secondary-action action-link" href={withFieldQuery('/mi-campo/registrar/rendimiento', context.id, context.source)}>Añadir rendimiento</Link> : null}<Link className="secondary-action action-link" href="/mi-campo/campana">Ver campaña</Link><Link href={context.returnHref} className="primary action-link">Volver a la finca <ArrowIcon/></Link></div>
     </section>;
   }
 

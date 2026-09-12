@@ -1,0 +1,159 @@
+.shell {
+  min-height: 100vh;
+  padding: 18px;
+  background: #f1f1ec;
+  color: #263126;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.card {
+  max-width: 720px;
+  margin: 0 auto 14px;
+  padding: 22px;
+  border: 1px solid #dfe4dc;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 34px rgba(30, 45, 30, .07);
+}
+
+.hero {
+  padding-top: 28px;
+}
+
+.eyebrow {
+  color: #687768;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.card h1 {
+  margin: 8px 0;
+  font-size: 30px;
+}
+
+.card h2 {
+  margin: 0 0 8px;
+}
+
+.card p {
+  color: #5e6a5e;
+  line-height: 1.55;
+}
+
+.total {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  margin: 26px 0 12px;
+  padding: 16px 0;
+  border-top: 1px solid #dfe4dc;
+  border-bottom: 1px solid #dfe4dc;
+}
+
+.total small {
+  color: #6b766b;
+}
+
+.total strong {
+  font-size: 26px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 12px 0 18px;
+  color: #697469;
+  font-size: 12px;
+}
+
+.status {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #f4f7f1;
+  color: #45604a;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.action {
+  display: inline-flex;
+  text-decoration: none;
+}
+
+.decisionActions {
+  margin-top: 16px;
+}
+
+.decisionResult {
+  padding: 16px;
+  border-radius: 12px;
+  background: #f4f7f1;
+}
+
+.accessState {
+  display: grid;
+  gap: 12px;
+  min-height: 260px;
+  align-content: center;
+}
+
+.accessMark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 50%;
+  background: #edf1e8;
+  color: #50614f;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.accessActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.footer {
+  max-width: 720px;
+  margin: 22px auto;
+  color: #788178;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding: 10px;
+  }
+
+  .card {
+    padding: 17px;
+    border-radius: 14px;
+  }
+
+  .card h1 {
+    font-size: 24px;
+  }
+
+  .total strong {
+    font-size: 22px;
+  }
+
+  .decisionActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .decisionActions button,
+  .accessActions > * {
+    width: 100%;
+  }
+}
