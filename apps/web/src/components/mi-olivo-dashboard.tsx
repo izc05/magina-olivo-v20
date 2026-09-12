@@ -49,6 +49,26 @@ type LedgerEntry = {
   created_at: string;
 };
 
+type Campaign = {
+  id: string;
+  name: string;
+  status: string;
+  start_date: string;
+  end_date?: string | null;
+};
+
+type CampaignSummary = {
+  campaign: Campaign;
+  delivered_kg: number;
+  weighted_yield_percent: number | null;
+  pending_result_kg: number;
+  total_cost_eur: number;
+  accrued_income_eur: number;
+  collected_income_eur: number;
+  delivery_count: number;
+  field_count: number;
+};
+
 type MiOlivoPayload = {
   enabled: boolean;
   rule_version: string;
@@ -68,22 +88,40 @@ type MiOlivoPayload = {
   recent: LedgerEntry[];
 };
 
-function OliveTree({ stage }: { stage: number }) {
+const OLIVE_POSITIONS = [
+  [92, 128], [112, 102], [129, 143], [148, 91], [164, 121], [181, 98], [199, 132], [218, 105],
+  [77, 151], [104, 165], [137, 167], [170, 154], [205, 161], [235, 143], [125, 78], [191, 74],
+  [151, 137], [185, 139], [228, 124], [86, 111], [114, 126], [208, 87], [151, 72], [173, 82],
+] as const;
+
+function OliveTree({ stage, balance }: { stage: number; balance: number }) {
+  const visibleOlives = Math.min(
+    OLIVE_POSITIONS.length,
+    balance > 0 ? Math.max(stage, Math.ceil(balance / 25)) : 0,
+  );
+
   return (
     <svg className={styles.tree} viewBox="0 0 320 320" role="img" aria-label={`Olivo digital en fase ${stage} de 5`}>
       <defs>
         <linearGradient id="trunk" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#8c6746" />
-          <stop offset="1" stopColor="#5d4635" />
+          <stop offset="0" stopColor="#9a714c" />
+          <stop offset="0.55" stopColor="#725238" />
+          <stop offset="1" stopColor="#4e392c" />
         </linearGradient>
         <radialGradient id="crown" cx="45%" cy="35%" r="70%">
-          <stop offset="0" stopColor="#a4b872" />
-          <stop offset="1" stopColor="#5f7546" />
+          <stop offset="0" stopColor="#b7c783" />
+          <stop offset="0.55" stopColor="#78925b" />
+          <stop offset="1" stopColor="#4b643c" />
+        </radialGradient>
+        <radialGradient id="oliveFruit" cx="32%" cy="28%" r="75%">
+          <stop offset="0" stopColor="#9aaa56" />
+          <stop offset="0.5" stopColor="#576735" />
+          <stop offset="1" stopColor="#263221" />
         </radialGradient>
       </defs>
-      <ellipse cx="160" cy="282" rx="82" ry="15" className={styles.shadow} />
-      <path d="M144 276c15-42 11-77 8-107 18 20 27 42 29 74 10-29 23-49 42-64-16 28-25 58-27 97z" fill="url(#trunk)" />
-      <path d="M154 198c-23-27-39-43-66-58M174 190c17-29 35-46 65-62M164 164c2-29-3-49-14-72" className={styles.branch} />
+      <ellipse cx="160" cy="284" rx="90" ry="16" className={styles.shadow} />
+      <path d="M142 278c14-42 13-73 10-104 17 15 28 39 31 70 11-30 25-50 43-65-16 29-25 61-27 99z" fill="url(#trunk)" />
+      <path d="M155 203c-25-29-43-47-73-61M175 193c19-31 38-48 67-64M164 168c1-31-4-53-16-78M148 225c-16-14-31-22-48-28M185 221c17-13 34-22 52-28" className={styles.branch} />
       <g className={stage >= 1 ? styles.grown : styles.future}>
         <circle cx="151" cy="116" r="45" fill="url(#crown)" />
       </g>
@@ -99,16 +137,42 @@ function OliveTree({ stage }: { stage: number }) {
         <circle cx="72" cy="121" r="31" fill="url(#crown)" />
         <circle cx="248" cy="113" r="33" fill="url(#crown)" />
       </g>
-      <g className={stage >= 5 ? styles.grown : styles.future}>
-        {[91, 126, 164, 198, 229].map((x, index) => <circle key={x} cx={x} cy={index % 2 ? 105 : 135} r="5" className={styles.olive} />)}
+      <g className={styles.fruitLayer}>
+        {OLIVE_POSITIONS.map(([cx, cy], index) => (
+          <circle
+            key={`${cx}-${cy}`}
+            cx={cx}
+            cy={cy}
+            r={index < visibleOlives ? 5 : 3.5}
+            className={index < visibleOlives ? styles.olive : styles.futureOlive}
+            fill={index < visibleOlives ? 'url(#oliveFruit)' : undefined}
+          />
+        ))}
       </g>
     </svg>
   );
 }
 
+function campaignStatusLabel(status: string) {
+  if (status === 'active') return 'Campaña activa';
+  if (status === 'closed') return 'Campaña cerrada';
+  if (status === 'planned') return 'Campaña planificada';
+  return 'Campaña';
+}
+
+function formatKg(value: number) {
+  return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(value);
+}
+
+function formatYield(value: number | null) {
+  if (value === null) return 'Pendiente';
+  return `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(value)} %`;
+}
+
 export function MiOlivoDashboard() {
   const { status, selectedWorkspaceId, apiConfigured } = useAuth();
   const [data, setData] = useState<MiOlivoPayload | null>(null);
+  const [campaignSummary, setCampaignSummary] = useState<CampaignSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingPreference, setSavingPreference] = useState(false);
@@ -123,6 +187,20 @@ export function MiOlivoDashboard() {
     try {
       const payload = await apiFetch<MiOlivoPayload>('/api/v1/mi-olivo', { workspaceId: selectedWorkspaceId });
       setData(payload);
+
+      try {
+        const campaignPayload = await apiFetch<{ campaigns: Campaign[] }>('/api/v1/campaigns', { workspaceId: selectedWorkspaceId });
+        const campaign = campaignPayload.campaigns.find((item) => item.status === 'active') ?? campaignPayload.campaigns[0] ?? null;
+        if (campaign) {
+          const summary = await apiFetch<CampaignSummary>(`/api/v1/campaigns/${campaign.id}/summary`, { workspaceId: selectedWorkspaceId });
+          setCampaignSummary(summary);
+        } else {
+          setCampaignSummary(null);
+        }
+      } catch (campaignError) {
+        console.warn('Unable to load campaign context for Mi Olivo', campaignError);
+        setCampaignSummary(null);
+      }
     } catch (loadError) {
       console.error('Unable to load Mi Olivo', loadError);
       setError('No hemos podido cargar tu olivo. Tus datos de campo no se han modificado.');
@@ -181,26 +259,64 @@ export function MiOlivoDashboard() {
         <div>
           <span className={styles.eyebrow}>MI OLIVO</span>
           <h1>Tu olivo digital</h1>
-          <p>Crece con trabajo real, organización y pequeñas acciones útiles dentro de Mágina.</p>
+          <p>Un reflejo visual de tu trabajo, tu organización y lo que vas descubriendo en Mágina.</p>
         </div>
         <Link href="/" className={styles.backLink}>Inicio</Link>
       </header>
 
       <section className={styles.hero} aria-labelledby="tree-title">
-        <div className={styles.treePanel}>
-          <OliveTree stage={data.tree_stage} />
+        <div className={styles.scene}>
+          <div className={styles.skyGlow} aria-hidden="true" />
+          <div className={styles.sun} aria-hidden="true" />
+          <div className={styles.distantSierra} aria-hidden="true" />
+          <div className={styles.nearSierra} aria-hidden="true" />
+          <div className={styles.ground} aria-hidden="true" />
+          <span className={styles.sceneLabel}>SIERRA MÁGINA · TU PROGRESO</span>
+          <div className={styles.treePanel}>
+            <OliveTree stage={data.tree_stage} balance={data.balance} />
+          </div>
+          <div className={styles.sceneStats}>
+            <div><span>Esta semana</span><strong>{data.weekly.earned} 🫒</strong></div>
+            <div><span>Ritmo</span><strong>{data.rhythm.active_weeks || '—'}{data.rhythm.active_weeks ? ' sem.' : ''}</strong></div>
+          </div>
         </div>
+
         <div className={styles.heroCopy}>
-          <span className={styles.levelPill}>Nivel {data.level}</span>
+          <div className={styles.levelRow}>
+            <span className={styles.levelPill}>Nivel {data.level}</span>
+            <span className={styles.stagePill}>Fase {data.tree_stage}/5</span>
+          </div>
           <h2 id="tree-title">{data.level_label}</h2>
           <div className={styles.balance}><strong>{data.balance}</strong><span>aceitunas</span></div>
+          <p className={styles.heroLead}>Cada fruto visible representa progreso acumulado. El saldo real sigue estando en tu ledger y nunca depende de recargar la web.</p>
           <div className={styles.progressLabel}><span>Próximo nivel</span><span>{data.progress.current}/{data.progress.target}</span></div>
           <div className={styles.progressTrack} aria-label={`${data.progress.percent}% hacia el siguiente nivel`}>
             <span style={{ width: `${data.progress.percent}%` }} />
           </div>
-          <p className={styles.helper}>Las aceitunas proceden de acciones verificables. Recargar páginas o repetir la misma acción no genera premios ilimitados.</p>
+          <div className={styles.nextMilestone}>
+            <span>Te faltan</span>
+            <strong>{Math.max(0, data.progress.target - data.progress.current)} 🫒</strong>
+            <span>para la siguiente etapa.</span>
+          </div>
         </div>
       </section>
+
+      {campaignSummary ? (
+        <section className={styles.campaignCard} aria-label="Progreso real de la campaña">
+          <div className={styles.campaignIntro}>
+            <span className={styles.eyebrow}>{campaignStatusLabel(campaignSummary.campaign.status)}</span>
+            <h2>{campaignSummary.campaign.name}</h2>
+            <p>Contexto real de tu campaña agrícola. Estos datos vienen del registro de entregas y resultados, no de la gamificación.</p>
+          </div>
+          <div className={styles.campaignStats}>
+            <div><span>Entregado</span><strong>{formatKg(campaignSummary.delivered_kg)} kg</strong></div>
+            <div><span>Entregas</span><strong>{campaignSummary.delivery_count}</strong></div>
+            <div><span>Fincas</span><strong>{campaignSummary.field_count}</strong></div>
+            <div><span>Rendimiento</span><strong>{formatYield(campaignSummary.weighted_yield_percent)}</strong></div>
+          </div>
+          <Link href="/mi-campo/campana" className={styles.campaignLink}>Ver campaña completa →</Link>
+        </section>
+      ) : null}
 
       <section className={styles.weeklyPanel} aria-label="Progreso de Mi Olivo esta semana">
         <div className={styles.weeklyMain}>
