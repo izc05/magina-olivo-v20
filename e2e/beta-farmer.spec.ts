@@ -1,7 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
-test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ page }, testInfo) => {
-  const farmName = `Finca E2E ${testInfo.retry + 1}`;
+async function runFarmerJourney(page: Page, testInfo: TestInfo, width: number) {
+  const farmName = `Finca E2E ${width} ${testInfo.retry + 1}`;
 
   await page.goto('/mi-campo/fincas/nueva');
 
@@ -47,7 +47,7 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   await expect(page.getByRole('heading', { name: 'Registrar trabajo' })).toBeVisible();
 
   await page.locator('input[name="date"]').fill('2026-09-11');
-  await page.locator('input[name="title"]').fill('Desbroce E2E');
+  await page.locator('input[name="title"]').fill(`Desbroce E2E ${width}`);
   await page.locator('input[name="workerName"]').fill('Cuadrilla E2E');
   await page.locator('input[name="quantity"]').fill('1');
   await page.locator('input[name="laborCost"]').fill('90');
@@ -60,7 +60,7 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   await page.locator('input[name="date"]').fill('2026-12-12');
   await page.locator('input[name="kg"]').fill('1842');
   await page.locator('input[name="cooperative"]').fill('SCA E2E');
-  await page.locator('input[name="ticket"]').fill(`E2E-${testInfo.retry + 1}`);
+  await page.locator('input[name="ticket"]').fill(`E2E-${width}-${testInfo.retry + 1}`);
   await page.getByRole('button', { name: 'Guardar entrega →' }).click();
   await expect(page.getByText('COSECHA GUARDADA EN MÁGINA')).toBeVisible();
   await expect(page.getByRole('heading', { name: `1.842 kg en ${farmName}`, exact: true })).toBeVisible();
@@ -82,6 +82,16 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   const workMetric = page.locator('article').filter({ hasText: 'trabajos registrados' }).first();
   await expect(workMetric).toContainText('1');
 
+  const editFarmLink = page.getByRole('link', { name: 'Editar finca', exact: true });
+  const editFarmHref = await editFarmLink.getAttribute('href');
+  expect(editFarmHref).toBeTruthy();
+  const editFarmUrl = new URL(editFarmHref!, 'http://127.0.0.1:3000');
+  expect(editFarmUrl.pathname.replace(/\/$/, '')).toBe('/mi-campo/fincas/editar');
+  expect(editFarmUrl.searchParams.get('fieldId')).toBe(fieldId);
+  await editFarmLink.click();
+  await expect(page.getByText('MI CAMPO · EDITAR FINCA')).toBeVisible();
+  await expect(page.getByText('Finca sin geometría', { exact: true })).toBeVisible();
+
   await page.goto('/mi-campo/campana');
   await expect(page.getByRole('heading', { name: 'Campaña', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox')).toContainText('2026/27');
@@ -89,4 +99,11 @@ test('agricultor crea finca, registra trabajo, cosecha y rendimiento', async ({ 
   await expect(farmCampaignRow).toContainText('1.842 kg');
   const yieldMetric = page.locator('article').filter({ hasText: 'rendimiento ponderado' }).first();
   await expect(yieldMetric.getByText('21,4 %', { exact: true })).toBeVisible();
-});
+}
+
+for (const width of [360, 390, 430]) {
+  test(`agricultor completa finca, trabajo, cosecha y rendimiento a ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
+    await runFarmerJourney(page, testInfo, width);
+  });
+}
