@@ -164,7 +164,7 @@ Debe terminar con `Staging env preflight passed`.
 
 ## 8. GitHub Environment `staging`
 
-Secrets esperados por el despliegue remoto:
+Secrets usados por `V20 staging deploy`:
 
 ```text
 STAGING_ENV_FILE
@@ -172,14 +172,17 @@ STAGING_SSH_PRIVATE_KEY
 STAGING_SSH_KNOWN_HOSTS
 ```
 
-Variables:
+Variables usadas por el workflow:
 
 ```text
-STAGING_HOST
-STAGING_USER
-STAGING_PORT
+STAGING_WEB_URL=https://<dominio-web-staging>
+STAGING_HOST=<host-ssh>
+STAGING_USER=<usuario-ssh>
+STAGING_PORT=<puerto-ssh>
 STAGING_PATH=/srv/stacks/magina-olivo-v20-staging
 ```
+
+`STAGING_WEB_URL` debe ser un origen HTTPS limpio y debe estar incluido en `CORS_ALLOWED_ORIGINS` del `.env`. La API se deriva de `NEXT_PUBLIC_API_URL` y debe usar otro origen HTTPS.
 
 Mantener aprobación manual mientras siga siendo Beta.
 
@@ -205,34 +208,36 @@ Usar un SHA completo de 40 caracteres cuyos gates requeridos estén verdes. La r
 4a04410686eed936b12d359101f1ff2a0faa6fc0
 ```
 
-Si se despliega un commit documental posterior de `integrate/v20-beta-closure`, volver a comprobar los gates que se hayan disparado para ese HEAD.
+Si se despliega un commit posterior de `integrate/v20-beta-closure`, comprobar que para ese SHA existen en `success` los tres gates que el workflow remoto exige: Full Candidate, Browser E2E y Staging Readiness.
 
 ## 11. Lanzar `V20 staging deploy`
 
-Inputs:
+El workflow actual tiene exactamente dos inputs:
 
 ```text
-ref=<rama/tag/SHA>
-expected_sha=<SHA completo>
+expected_sha=<SHA completo de 40 caracteres>
 confirm=DEPLOY-STAGING
 ```
 
-Debe completar:
+No existe input `ref`: el checkout se hace directamente al `expected_sha` y además se comprueba que descienda de `feat/v20-visual-prototype`.
 
-1. checkout exacto;
-2. validación de gates del SHA;
+El workflow debe completar:
+
+1. checkout exacto del SHA;
+2. validación de Full Candidate + Browser E2E + Staging Readiness para ese SHA;
 3. preflight del `.env`;
-4. SSH/known_hosts;
-5. prerequisitos del host;
-6. release inmutable;
-7. arranque aislado de PostgreSQL;
-8. backup obligatorio **antes de migrar**;
-9. build web/API/worker;
-10. migraciones;
-11. health local de web/API y worker;
-12. segunda migración no-op;
-13. smoke HTTPS externo;
-14. actualización de `current` y `CURRENT_SHA` solo si todo pasa.
+4. validación de `STAGING_WEB_URL` y separación web/API;
+5. SSH/known_hosts;
+6. prerequisitos del host;
+7. release inmutable con SHA-256 verificado;
+8. arranque aislado de PostgreSQL;
+9. backup obligatorio **antes de migrar**;
+10. build web/API/worker;
+11. migraciones;
+12. health local de web/API/worker;
+13. segunda migración no-op;
+14. smoke HTTPS externo;
+15. actualización de `current` y `CURRENT_SHA` solo si todo pasa.
 
 Si falla el smoke externo, la release no se marca como actual.
 
