@@ -1,0 +1,86 @@
+name: V20 Mi Olivo check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/mi-olivo-gamificacion-isi
+    paths:
+      - 'apps/api/src/routes/mi-olivo.ts'
+      - 'apps/api/src/testing/mi-olivo-smoke.ts'
+      - 'apps/api/src/app.ts'
+      - 'apps/web/src/app/mi-olivo/**'
+      - 'apps/web/src/components/mi-olivo-dashboard.tsx'
+      - 'apps/web/src/components/mi-olivo-dashboard.module.css'
+      - 'database/migrations/0050_mi_olivo_core.sql'
+      - '.github/workflows/mi-olivo-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mi-olivo:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina_mi_olivo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina_mi_olivo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build API and web
+        run: |
+          pnpm --filter @magina/contracts typecheck
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather typecheck
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/api build
+          pnpm --filter @magina/web typecheck
+          pnpm --filter @magina/web build
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      - name: Apply migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina_mi_olivo -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Mi Olivo ledger + idempotency smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_mi_olivo
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/mi-olivo-smoke.js
