@@ -69,6 +69,7 @@ for (const staleKey of ['GOOGLE_CLIENT_SECRET', 'SESSION_SECRET', 'PUBLIC_WEB_OR
 expectExact(values, 'NODE_ENV', 'production');
 expectExact(values, 'NEXT_PUBLIC_PREVIEW_MODE', 'false');
 expectExact(values, 'ALLOW_DEV_AUTH_HEADERS', 'false');
+expectExact(values, 'TRUST_PROXY', 'true');
 expectExact(values, 'OCR_PROVIDER', 'tesseract');
 
 const postgresUser = valueOf(values, 'POSTGRES_USER');
@@ -136,4 +137,4 @@ const vapidSubject = valueOf(values, 'VAPID_SUBJECT');
 if (!/^mailto:[^@\s]+@[^@\s]+$/.test(vapidSubject)) fail('VAPID_SUBJECT must be a mailto address');
 valueOf(values, 'AEMET_API_KEY');
 
-console.log(`Staging env preflight passed for ${envPath}. Required production flags, origins, ports, database, Google Identity client, storage, OCR and provider settings are coherent.`);
+console.log(`Staging env preflight passed for ${envPath}. Required production flags, trusted proxy topology, origins, ports, database, Google Identity client, storage, OCR and provider settings are coherent.`);
