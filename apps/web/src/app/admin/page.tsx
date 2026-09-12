@@ -24,6 +24,7 @@ export default function AdminPage() {
       <AdminControlCenter />
       <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 50, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 'min(1180px, calc(100vw - 36px))' }}>
         <Link href="/admin/operaciones" aria-label="Abrir centro operativo de plataforma" style={{ ...shortcutStyle, background: '#173f2a' }}>Operaciones</Link>
+        <Link href="/admin/analitica" aria-label="Abrir analítica histórica de plataforma" style={{ ...shortcutStyle, background: '#245e4a' }}>Analítica</Link>
         <Link href="/admin/gestion" aria-label="Abrir gestión de workspaces, miembros y fincas" style={{ ...shortcutStyle, background: '#325746' }}>Gestión</Link>
         <Link href="/admin/campanas-planes" aria-label="Abrir administración de campañas y planes" style={{ ...shortcutStyle, background: '#4b5c33' }}>Campañas</Link>
         <Link href="/admin/agenda" aria-label="Abrir agenda global" style={{ ...shortcutStyle, background: '#5c643f' }}>Agenda</Link>

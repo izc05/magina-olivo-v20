@@ -9,6 +9,8 @@ on:
       - 'apps/api/src/routes/admin-media.ts'
       - 'apps/api/src/routes/admin-territory.ts'
       - 'apps/api/src/routes/admin-sources.ts'
+      - 'apps/api/src/routes/admin-source-operations.ts'
+      - 'apps/api/src/routes/admin-analytics.ts'
       - 'apps/api/src/routes/admin-operations.ts'
       - 'apps/api/src/routes/admin-management.ts'
       - 'apps/api/src/routes/admin-campaign-plans.ts'
@@ -32,6 +34,8 @@ on:
       - 'apps/web/src/components/managed-explore-content.tsx'
       - 'apps/web/src/components/site-seo-runtime.tsx'
       - 'apps/web/src/lib/admin-data-source.ts'
+      - 'apps/web/src/lib/admin-source-operations.ts'
+      - 'apps/web/src/lib/admin-analytics.ts'
       - 'apps/web/src/lib/public-content-source.ts'
       - 'database/migrations/0042_platform_admin_cms.sql'
       - 'database/migrations/0043_platform_admin_media.sql'
@@ -123,6 +127,14 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'false'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/admin-operations-smoke.js
+
+      - name: Historical analytics and aggregate CSV smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: analytics-admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-analytics-smoke.js
 
       - name: Workspace, membership and field management smoke
         env:
