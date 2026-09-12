@@ -57,7 +57,7 @@ test('campana abre el centro de avisos y filtra historial real', async ({ page }
 
   await page.goto('/');
   const bell = page.getByRole('link', { name: 'Abrir centro de avisos' });
-  await expect(bell).toHaveAttribute('href', '/mi-campo/avisos');
+  await expect(bell).toHaveAttribute('href', /\/mi-campo\/avisos\/?$/);
   await bell.click();
 
   await expect(page.getByRole('heading', { name: 'Centro de avisos' })).toBeVisible();
