@@ -11,11 +11,13 @@ on:
       - 'apps/api/src/routes/admin-sources.ts'
       - 'apps/api/src/routes/admin-operations.ts'
       - 'apps/api/src/routes/admin-management.ts'
+      - 'apps/api/src/routes/admin-campaign-plans.ts'
       - 'apps/api/src/testing/admin-smoke.ts'
       - 'apps/api/src/testing/admin-territory-smoke.ts'
       - 'apps/api/src/testing/admin-sources-smoke.ts'
       - 'apps/api/src/testing/admin-operations-smoke.ts'
       - 'apps/api/src/testing/admin-management-smoke.ts'
+      - 'apps/api/src/testing/admin-campaign-plans-smoke.ts'
       - 'apps/api/src/db/types.ts'
       - 'apps/api/src/app.ts'
       - 'apps/web/src/app/admin/**'
@@ -26,6 +28,8 @@ on:
       - 'apps/web/src/components/admin-operations-hub.module.css'
       - 'apps/web/src/components/admin-management-console.tsx'
       - 'apps/web/src/components/admin-management-console.module.css'
+      - 'apps/web/src/components/admin-campaign-plan-console.tsx'
+      - 'apps/web/src/components/admin-campaign-plan-console.module.css'
       - 'apps/web/src/components/site-admin-console.tsx'
       - 'apps/web/src/components/site-admin-console-v2.tsx'
       - 'apps/web/src/components/admin-media-picker.tsx'
@@ -127,6 +131,14 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'false'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/admin-management-smoke.js
+
+      - name: Campaign and plan administration smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: campaign-plan-admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-campaign-plans-smoke.js
 
       - name: Canonical territory administration smoke
         env:
