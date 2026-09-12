@@ -4,6 +4,8 @@ export type PlatformAdminRole = 'super_admin' | 'admin' | 'editor' | 'support';
 export type CmsEntryType = 'page' | 'news' | 'event' | 'place' | 'mill' | 'directory' | 'promotion' | 'alert';
 export type CmsEntryStatus = 'draft' | 'published' | 'archived';
 export type TerritoryPlaceKind = 'municipal_seat' | 'locality' | 'hamlet' | 'other';
+export type AdminSourceState = 'ok' | 'attention' | 'error' | 'unknown' | 'unmonitored';
+export type AdminSourceTelemetryMode = 'cache_health' | 'pipeline_status' | 'usage_only';
 
 export type AdminSession = {
   user: { id: string; display_name: string; primary_email: string | null; avatar_url: string | null; status: string };
@@ -116,6 +118,23 @@ export type AdminTerritoryPlace = {
   editorial_count: number;
 };
 
+export type AdminSourceTelemetry = {
+  id: 'aemet_forecast' | 'aemet_radar' | 'ocr' | 'catastro' | 'sigpac';
+  name: string;
+  provider: string;
+  telemetry: AdminSourceTelemetryMode;
+  state: AdminSourceState;
+  state_reason: string;
+  metrics: Record<string, number>;
+  timestamps: Record<string, string | null>;
+  last_error_code: string | null;
+};
+
+export type AdminSourcesSnapshot = {
+  generated_at: string;
+  sources: AdminSourceTelemetry[];
+};
+
 export const adminApi = {
   session: () => apiFetch<AdminSession>('/api/v1/admin/session'),
   overview: () => apiFetch<AdminOverview>('/api/v1/admin/overview'),
@@ -124,6 +143,7 @@ export const adminApi = {
   settings: () => apiFetch<{ settings: SiteSetting[] }>('/api/v1/admin/settings'),
   audit: () => apiFetch<{ entries: AdminAuditEntry[] }>('/api/v1/admin/audit'),
   media: () => apiFetch<{ assets: AdminMediaAsset[] }>('/api/v1/admin/media'),
+  sources: () => apiFetch<AdminSourcesSnapshot>('/api/v1/admin/sources'),
   territoryCatalog: () => apiFetch<{ municipalities: AdminTerritoryMunicipality[]; places: AdminTerritoryPlace[] }>('/api/v1/admin/territory/catalog'),
   updateTerritoryPlace: (id: string, payload: { public_enabled?: boolean; kind?: TerritoryPlaceKind }) => apiFetch<{ place: AdminTerritoryPlace | null }>(`/api/v1/admin/territory/places/${id}`, {
     method: 'PATCH', body: JSON.stringify(payload),
