@@ -152,7 +152,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerFinancialAttentionRoutes(app, db);
   registerHomePriorityPreferenceRoutes(app, db);
   registerFinancialNotificationRoutes(app, db, notificationQueue);
-  registerCommercialNotificationRoutes(app, db, notificationQueue);
+  registerCommercialNotificationRoutes(app, db);
   registerPlannedTaskRoutes(app, db);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);
