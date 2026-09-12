@@ -9,19 +9,22 @@ on:
       - 'apps/api/src/routes/admin-media.ts'
       - 'apps/api/src/routes/admin-territory.ts'
       - 'apps/api/src/routes/admin-sources.ts'
-      - 'apps/api/src/testing/admin-smoke.ts'
-      - 'apps/api/src/testing/admin-role-safety-smoke.ts'
-      - 'apps/api/src/testing/admin-territory-smoke.ts'
-      - 'apps/api/src/testing/admin-sources-smoke.ts'
+      - 'apps/api/src/routes/admin-operations.ts'
+      - 'apps/api/src/routes/admin-management.ts'
+      - 'apps/api/src/routes/admin-campaign-plans.ts'
+      - 'apps/api/src/routes/admin-agenda.ts'
+      - 'apps/api/src/routes/admin-work-activity.ts'
+      - 'apps/api/src/routes/admin-documents.ts'
+      - 'apps/api/src/routes/admin-professional.ts'
+      - 'apps/api/src/testing/admin-*.ts'
       - 'apps/api/src/db/types.ts'
       - 'apps/api/src/app.ts'
       - 'apps/web/src/app/admin/**'
       - 'apps/web/src/app/page.tsx'
-      - 'apps/web/src/components/admin-control-center.tsx'
-      - 'apps/web/src/components/admin-sources-console.tsx'
+      - 'apps/web/src/components/admin-*.tsx'
+      - 'apps/web/src/components/admin-*.module.css'
       - 'apps/web/src/components/site-admin-console.tsx'
       - 'apps/web/src/components/site-admin-console-v2.tsx'
-      - 'apps/web/src/components/admin-media-picker.tsx'
       - 'apps/web/src/components/media-library-console.tsx'
       - 'apps/web/src/components/territory-admin-console.tsx'
       - 'apps/web/src/components/managed-ad-slot.tsx'
@@ -112,6 +115,62 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'false'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/admin-role-safety-smoke.js
+
+      - name: Operations metrics, data explorer and App Gateway smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: operations-admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-operations-smoke.js
+
+      - name: Workspace, membership and field management smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: management-admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-management-smoke.js
+
+      - name: Campaign and plan administration smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: campaign-plan-admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-campaign-plans-smoke.js
+
+      - name: Global agenda administration smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: agenda-admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-agenda-smoke.js
+
+      - name: Global work activity administration smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: work-activity-admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-work-activity-smoke.js
+
+      - name: Document and OCR support smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: documents-admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-documents-smoke.js
+
+      - name: Professional clients, quotes, invoices and collections smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_admin
+          ADMIN_BOOTSTRAP_EMAILS: admin@magina.test
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/admin-professional-smoke.js
 
       - name: Canonical territory administration smoke
         env:
