@@ -4,6 +4,10 @@ const cadastralReference = '23044A00100001';
 const failingCadastralReference = '23044A00100099';
 const sigpacFeatureId = '233788127';
 
+// The regular beta browser suite uses production GIS providers. This focused suite
+// is enabled only by GIS Check, which starts the deterministic fixture API server.
+test.skip(process.env.E2E_GIS_FIXTURES !== 'true', 'Requires deterministic GIS fixture providers.');
+
 async function fillBasics(page: import('@playwright/test').Page, name: string, trees = '120') {
   await page.goto('/mi-campo/fincas/nueva');
   await expect(page.getByRole('heading', { name: '¿Cómo llamáis a esta finca?' })).toBeVisible();
@@ -22,7 +26,7 @@ test('alta GIS real persiste Catastro y recupera/sustituye geometría en edició
 
   await page.getByLabel('Referencia catastral').fill(cadastralReference);
   await page.getByRole('button', { name: 'Buscar referencia' }).click();
-  await expect(page.getByText('Parcela Catastro E2E', { exact: true })).toBeVisible();
+  await expect(page.getByText('Parcela Catastro E2E', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Límite seleccionado', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Usar este límite como geometría principal de la finca')).toBeChecked();
 
@@ -53,7 +57,7 @@ test('alta GIS real persiste Catastro y recupera/sustituye geometría en edició
   await page.getByRole('button', { name: /SIGPAC/ }).click();
   await page.getByLabel('ID del recinto SIGPAC').fill(sigpacFeatureId);
   await page.getByRole('button', { name: 'Buscar referencia' }).click();
-  await expect(page.getByText('Pol. 12 · Parc. 345 · Rec. 2', { exact: true })).toBeVisible();
+  await expect(page.getByText('Pol. 12 · Parc. 345 · Rec. 2', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Guardar límite seleccionado' }).click();
   await expect(page.getByText('Límite vinculado y guardado como geometría principal de la finca.')).toBeVisible();
 
