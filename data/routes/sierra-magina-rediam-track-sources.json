@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "verified_at": "2026-09-13",
   "authority": "Junta de Andalucia - REDIAM",
   "service": "REDIAM_WFS_Patrimonio_Natural",
@@ -11,8 +11,11 @@
     "track_validated_remains_false_until_geometry_is_fetched_and_inspected": true
   },
   "routes": [
+    {"slug":"adelfal-de-cuadros","codigoequi":"727","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/adelfal-de-cuadros/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
+    {"slug":"castillo-de-mata-bejid","codigoequi":"1675","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/castillo-de-mata-bejid/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"el-peralejo","codigoequi":"1051","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/el-peralejo/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"gibralberca","codigoequi":"722","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/gibralberca-1/","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
+    {"slug":"hoyalinos","codigoequi":"1726","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/hoyalinos/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"la-cueva-de-la-graja","codigoequi":"721","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/la-cueva-de-la-graja/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"las-vinas","codigoequi":"724","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/las-vi%C3%B1as/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"pinar-de-canava","codigoequi":"1116","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/pinar-de-c%C3%81nava/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
