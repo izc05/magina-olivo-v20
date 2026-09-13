@@ -24,6 +24,7 @@ import './visual-today.css';
 import './visual-business.css';
 import './visual-business-mobile.css';
 import './visual-map-radar.css';
+import './responsive-beta.css';
 
 const DEFAULT_TITLE = 'Mágina Olivo V20';
 const DEFAULT_DESCRIPTION = 'Territorio, personas y futuro. Gestión sencilla del olivar y guía de Sierra Mágina.';

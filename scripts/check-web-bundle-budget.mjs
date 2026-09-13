@@ -1,7 +1,8 @@
 import { readdir, stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('../apps/web/out/', import.meta.url).pathname;
+const root = fileURLToPath(new URL('../apps/web/out/', import.meta.url));
 const maxSingleBytes = 2.5 * 1024 * 1024;
 const maxTotalBytes = 10 * 1024 * 1024;
 

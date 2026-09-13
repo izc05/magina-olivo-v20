@@ -25,9 +25,10 @@ export default function HomePage() {
       <Topbar />
       <div className="page home-page">
         <ManagedAdSlot slot="home_top" />
-        <HomeDailyCenter />
-        <ManagedAdSlot slot="home_inline" />
-        <ManagedHomeContent />
+        <ManagedHomeContent>
+          <HomeDailyCenter />
+          <ManagedAdSlot slot="home_inline" />
+        </ManagedHomeContent>
       </div>
       <BottomNav active="/" />
     </main>
