@@ -73,13 +73,14 @@ export function RouteElevationProfile({ samples }: { samples: PublicRouteDetail[
     <p>No hay cotas georreferenciadas suficientes en el GPX validado. No se han inventado altitudes.</p>
   </section>;
 
+  const resolvedMetrics = metrics;
   const active = activeIndex == null ? null : usable[activeIndex] ?? null;
-  const activePoint = activeIndex == null ? null : metrics.points[activeIndex] ?? null;
+  const activePoint = activeIndex == null ? null : resolvedMetrics.points[activeIndex] ?? null;
 
   function selectFromPointer(clientX: number, element: SVGSVGElement) {
     const bounds = element.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (clientX - bounds.left) / Math.max(bounds.width, 1)));
-    const targetDistance = ratio * metrics.maxDistance;
+    const targetDistance = ratio * resolvedMetrics.maxDistance;
     let bestIndex = 0;
     let bestDistance = Number.POSITIVE_INFINITY;
     usable.forEach((sample, index) => {
@@ -93,7 +94,7 @@ export function RouteElevationProfile({ samples }: { samples: PublicRouteDetail[
   return <section className={styles.profileCard}>
     <div style={{ display: 'flex', gap: 16, justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap' }}>
       <div><h2>Perfil de elevación interactivo</h2><p style={{ margin: 0 }}>Mueve el cursor o toca el perfil para localizar ese punto sobre el mapa.</p></div>
-      <small>{Math.round(metrics.minElevation)}–{Math.round(metrics.maxElevation)} m · {(metrics.maxDistance / 1000).toFixed(1)} km</small>
+      <small>{Math.round(resolvedMetrics.minElevation)}–{Math.round(resolvedMetrics.maxElevation)} m · {(resolvedMetrics.maxDistance / 1000).toFixed(1)} km</small>
     </div>
     <div style={{ position: 'relative', marginTop: 14 }}>
       <svg
@@ -107,8 +108,8 @@ export function RouteElevationProfile({ samples }: { samples: PublicRouteDetail[
         onPointerLeave={() => { setActiveIndex(null); }}
         style={{ touchAction: 'pan-y', cursor: 'crosshair' }}
       >
-        <path d={`${metrics.path} L${width - padding},${height - padding} L${padding},${height - padding} Z`} fill="rgba(56,98,65,.14)" />
-        <path d={metrics.path} fill="none" stroke="currentColor" strokeWidth="4" vectorEffect="non-scaling-stroke" />
+        <path d={`${resolvedMetrics.path} L${width - padding},${height - padding} L${padding},${height - padding} Z`} fill="rgba(56,98,65,.14)" />
+        <path d={resolvedMetrics.path} fill="none" stroke="currentColor" strokeWidth="4" vectorEffect="non-scaling-stroke" />
         {activePoint ? <>
           <line x1={activePoint.x} x2={activePoint.x} y1={padding} y2={height - padding} stroke="currentColor" strokeWidth="2" strokeDasharray="7 7" vectorEffect="non-scaling-stroke" />
           <circle cx={activePoint.x} cy={activePoint.y} r="7" fill="currentColor" vectorEffect="non-scaling-stroke" />
