@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "verified_at": "2026-09-13",
   "authority": "Junta de Andalucia - REDIAM",
   "service": "REDIAM_WFS_Patrimonio_Natural",
@@ -13,6 +13,7 @@
   "routes": [
     {"slug":"adelfal-de-cuadros","codigoequi":"727","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/adelfal-de-cuadros/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"cano-del-aguadero","codigoequi":"725","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/ca%C3%B1o-del-aguadero/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
+    {"slug":"castillo-de-albanchez","codigoequi":"728","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/fr/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/castillo-de-albanchez/255035","formats_exposed":["KML","GML","GPX"],"track_found":true,"track_validated":false},
     {"slug":"castillo-de-mata-bejid","codigoequi":"1675","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/castillo-de-mata-bejid/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"el-peralejo","codigoequi":"1051","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/el-peralejo/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"fuenmayor","codigoequi":"723","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/fuenmayor/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
