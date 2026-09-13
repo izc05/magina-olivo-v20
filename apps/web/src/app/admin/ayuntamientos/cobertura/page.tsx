@@ -6,6 +6,7 @@ import { GoogleSignInButton } from '@/components/google-sign-in-button';
 import { adminApi, type CmsEntry } from '@/lib/admin-data-source';
 import { apiFetch } from '@/lib/api-client';
 import '../../admin.css';
+import styles from './coverage.module.css';
 
 type Directory = {
   official_website: string;
@@ -33,23 +34,12 @@ type Municipality = {
 };
 
 type Counts = Record<'place' | 'mill' | 'directory' | 'news' | 'event', number>;
-
-type CoverageRow = {
-  municipality: Municipality;
-  counts: Counts;
-  checks: Array<{ key: string; label: string; ok: boolean }>;
-  completed: number;
-};
+type CoverageRow = { municipality: Municipality; counts: Counts; checks: Array<{ key: string; label: string; ok: boolean }>; completed: number };
 
 function asObject(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
-
-function municipalityId(entry: CmsEntry) {
-  const value = asObject(entry.content_json).municipality_id;
-  return typeof value === 'string' ? value : '';
-}
-
+function municipalityId(entry: CmsEntry) { const value = asObject(entry.content_json).municipality_id; return typeof value === 'string' ? value : ''; }
 function visibleNow(entry: CmsEntry) {
   if (entry.status !== 'published') return false;
   const now = Date.now();
@@ -57,7 +47,6 @@ function visibleNow(entry: CmsEntry) {
   if (entry.ends_at && new Date(entry.ends_at).getTime() < now) return false;
   return true;
 }
-
 function entryCounts(entries: CmsEntry[], id: string): Counts {
   const result: Counts = { place: 0, mill: 0, directory: 0, news: 0, event: 0 };
   for (const entry of entries) {
@@ -66,7 +55,6 @@ function entryCounts(entries: CmsEntry[], id: string): Counts {
   }
   return result;
 }
-
 function buildChecks(municipality: Municipality, counts: Counts) {
   const directory = municipality.directory;
   return [
@@ -92,18 +80,12 @@ export default function AdminMunicipalityCoveragePage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [territory, content] = await Promise.all([
-      apiFetch<{ municipalities: Municipality[] }>('/api/v1/admin/territory/catalog'),
-      adminApi.content(),
-    ]);
+    const [territory, content] = await Promise.all([apiFetch<{ municipalities: Municipality[] }>('/api/v1/admin/territory/catalog'), adminApi.content()]);
     setMunicipalities(territory.municipalities.filter((municipality) => municipality.active));
     setEntries(content.entries);
   }, []);
 
-  useEffect(() => {
-    if (auth.status !== 'authenticated') return;
-    void load().catch(() => setError('No se ha podido calcular la cobertura municipal.'));
-  }, [auth.status, load]);
+  useEffect(() => { if (auth.status === 'authenticated') void load().catch(() => setError('No se ha podido calcular la cobertura municipal.')); }, [auth.status, load]);
 
   const allRows = useMemo<CoverageRow[]>(() => municipalities.map((municipality) => {
     const counts = entryCounts(entries, municipality.id);
@@ -129,32 +111,20 @@ export default function AdminMunicipalityCoveragePage() {
   if (auth.status === 'anonymous') return <main className="admin-login"><div><h1>Cobertura municipal</h1><p>Acceso corporativo requerido.</p><GoogleSignInButton /></div></main>;
 
   return <main className="admin-shell">
-    <header className="admin-topbar"><div><a href="/admin/ayuntamientos">← Ayuntamientos</a><h1>Cobertura municipal</h1><p>Control operativo de los 16 municipios. Son diez comprobaciones explícitas, no una puntuación editorial subjetiva.</p></div><div style={{display:'flex',gap:'.75rem',flexWrap:'wrap'}}><a href="/admin/ayuntamientos/actualidad">Actualidad</a><a href="/admin/web">CMS ↗</a></div></header>
+    <header className="admin-topbar"><div><a href="/admin/ayuntamientos">← Ayuntamientos</a><h1>Cobertura municipal</h1><p>Control operativo de los 16 municipios. Son diez comprobaciones explícitas, no una puntuación editorial subjetiva.</p></div><div className={styles.actions}><a href="/admin/ayuntamientos/actualidad">Actualidad</a><a href="/admin/web">CMS ↗</a></div></header>
     {error ? <div className="admin-notice error">{error}</div> : null}
-
-    <section style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(0,1fr))',gap:'.75rem',marginBottom:'1rem'}}>
+    <section className={styles.summaryGrid}>
       <article className="admin-card"><small>COBERTURA 10/10</small><h2>{summary.complete}</h2><p>Municipios con las diez señales.</p></article>
       <article className="admin-card"><small>ECONOMÍA LOCAL</small><h2>{summary.withEconomy}</h2><p>Con cooperativas, almazaras o servicios publicados.</p></article>
       <article className="admin-card"><small>ACTUALIDAD LOCAL</small><h2>{summary.withCurrent}</h2><p>Con noticias o eventos publicados y vinculados.</p></article>
       <article className="admin-card"><small>TURISMO</small><h2>{summary.missingTourism}</h2><p>Municipios aún sin enlace turístico institucional.</p></article>
     </section>
-
     <section className="admin-card">
-      <div style={{display:'flex',gap:'.8rem',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap'}}>
-        <div><h2>Estado por municipio ({rows.length}/{allRows.length})</h2><p>El contenido editorial solo cuenta si está publicado, vigente y vinculado con `municipality_id`.</p></div>
-        <div style={{display:'flex',gap:'.8rem',alignItems:'center',flexWrap:'wrap'}}>
-          <label style={{display:'flex',gap:'.45rem',alignItems:'center'}}><input type="checkbox" checked={onlyIncomplete} onChange={(event)=>setOnlyIncomplete(event.target.checked)}/> Solo con huecos</label>
-          <input type="search" value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Buscar municipio o INE…" style={{minWidth:'240px'}} />
-        </div>
-      </div>
-
-      <div style={{display:'grid',gap:'.8rem',marginTop:'1rem'}}>{rows.map((row) => <article key={row.municipality.id} style={{padding:'1rem',border:'1px solid #d8ded8',borderRadius:'.9rem',background:'#fff'}}>
-        <div style={{display:'flex',justifyContent:'space-between',gap:'1rem',alignItems:'flex-start',flexWrap:'wrap'}}>
-          <div><small>INE {row.municipality.ine_code}</small><h3 style={{margin:'.2rem 0'}}>{row.municipality.name}</h3><p style={{margin:0}}>{row.completed}/10 comprobaciones · {row.municipality.public_place_count} localidades públicas</p></div>
-          <div style={{display:'flex',gap:'.55rem',flexWrap:'wrap'}}><a href={`/admin/ayuntamientos#${row.municipality.slug}`}>Ficha institucional</a><a href="/admin/web">Contenido</a><a href={`/ayuntamientos/${row.municipality.slug}`} target="_blank">Ver público ↗</a></div>
-        </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(5,minmax(0,1fr))',gap:'.45rem',marginTop:'.8rem'}}>{row.checks.map((check) => <div key={check.key} style={{padding:'.55rem .65rem',borderRadius:'.65rem',background:check.ok?'#eef7ee':'#fff3e6',border:`1px solid ${check.ok?'#cae0ca':'#ecd2b2'}`}}><strong>{check.ok ? '✓' : '·'} {check.label}</strong></div>)}</div>
-        <div style={{display:'flex',gap:'.8rem',flexWrap:'wrap',marginTop:'.75rem'}}><small>Perfil: {row.counts.place}</small><small>Cooperativas/almazaras: {row.counts.mill}</small><small>Empresas/servicios: {row.counts.directory}</small><small>Noticias: {row.counts.news}</small><small>Eventos: {row.counts.event}</small></div>
+      <div className={styles.toolbar}><div><h2>Estado por municipio ({rows.length}/{allRows.length})</h2><p>El contenido editorial solo cuenta si está publicado, vigente y vinculado con `municipality_id`.</p></div><div className={styles.filters}><label className={styles.checkbox}><input type="checkbox" checked={onlyIncomplete} onChange={(event)=>setOnlyIncomplete(event.target.checked)}/> Solo con huecos</label><input className={styles.search} type="search" value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Buscar municipio o INE…" /></div></div>
+      <div className={styles.rows}>{rows.map((row) => <article key={row.municipality.id} className={styles.row}>
+        <div className={styles.rowHeader}><div><small>INE {row.municipality.ine_code}</small><h3 className={styles.rowTitle}>{row.municipality.name}</h3><p className={styles.rowText}>{row.completed}/10 comprobaciones · {row.municipality.public_place_count} localidades públicas</p></div><div className={styles.actions}><a href={`/admin/ayuntamientos#${row.municipality.slug}`}>Ficha institucional</a><a href="/admin/web">Contenido</a><a href={`/ayuntamientos/${row.municipality.slug}`} target="_blank">Ver público ↗</a></div></div>
+        <div className={styles.signals}>{row.checks.map((check) => <div key={check.key} className={`${styles.signal} ${check.ok ? styles.signalOk : styles.signalMissing}`}><strong>{check.ok ? '✓' : '·'} {check.label}</strong></div>)}</div>
+        <div className={styles.meta}><small>Perfil: {row.counts.place}</small><small>Cooperativas/almazaras: {row.counts.mill}</small><small>Empresas/servicios: {row.counts.directory}</small><small>Noticias: {row.counts.news}</small><small>Eventos: {row.counts.event}</small></div>
       </article>)}{!rows.length ? <p>No hay municipios que coincidan con los filtros.</p> : null}</div>
     </section>
   </main>;
