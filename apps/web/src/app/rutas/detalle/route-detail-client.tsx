@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { loadPublicRoute, type PublicRouteDetail } from '../../../lib/public-routes-source';
 import { RouteMap } from './route-map';
 import { RouteCommunityPanel } from './route-community-panel';
+import { RouteElevationProfile } from './route-elevation-profile';
 import styles from '../routes-public.module.css';
 
 function km(value: number | null) { return value === null ? '—' : `${(value / 1000).toFixed(1)} km`; }
@@ -12,19 +13,6 @@ function duration(value: number | null) {
   if (value === null) return '—';
   const h = Math.floor(value / 60); const m = value % 60;
   return h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`;
-}
-
-function elevationPath(samples: PublicRouteDetail['elevation'], width: number, height: number, padding = 18) {
-  if (samples.length < 2) return '';
-  const maxDistance = Math.max(...samples.map((sample) => Number(sample.distance_m)), 1);
-  const elevations = samples.map((sample) => Number(sample.elevation_m));
-  const minElevation = Math.min(...elevations); const maxElevation = Math.max(...elevations);
-  const range = Math.max(maxElevation - minElevation, 1);
-  return samples.map((sample, index) => {
-    const x = padding + (Number(sample.distance_m) / maxDistance) * (width - padding * 2);
-    const y = height - padding - ((Number(sample.elevation_m) - minElevation) / range) * (height - padding * 2);
-    return `${index ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
 }
 
 export function RouteDetailClient() {
@@ -50,8 +38,6 @@ export function RouteDetailClient() {
     return () => { cancelled = true; };
   }, []);
 
-  const profilePath = useMemo(() => elevationPath(detail?.elevation ?? [], 1100, 210), [detail?.elevation]);
-
   if (loading) return <main className={styles.detailShell}><section className={styles.state}><h1>Cargando ruta…</h1><p>Comprobando track y datos publicados.</p></section></main>;
   if (error || !detail || !slug) return <main className={styles.detailShell}><section className={styles.state}><h1>Ruta no disponible</h1><p>Puede estar en revisión, no disponer de track validado o faltar el identificador de ruta.</p><Link href="/rutas">Volver a rutas</Link></section></main>;
 
@@ -70,15 +56,12 @@ export function RouteDetailClient() {
           <article><span>Altitud</span><strong>{route.min_altitude_m ?? '—'}–{route.max_altitude_m ?? '—'} m</strong></article>
         </div>
       </article>
-      <article className={styles.mapCard} aria-label="Mapa del trazado de la ruta">
+      <article className={styles.mapCard} aria-label="Mapa inteligente del trazado de la ruta">
         <RouteMap detail={detail} />
       </article>
     </section>
 
-    <section className={styles.profileCard}>
-      <h2>Perfil de elevación</h2>
-      {profilePath ? <svg className={styles.profileSvg} viewBox="0 0 1100 210" preserveAspectRatio="none" role="img" aria-label="Perfil de elevación calculado a partir de las cotas GPX"><path d={`${profilePath} L1082,192 L18,192 Z`} fill="rgba(56,98,65,.14)" /><path d={profilePath} fill="none" stroke="currentColor" strokeWidth="4" vectorEffect="non-scaling-stroke" /></svg> : <p>No hay cotas de elevación en el GPX validado. No se han inventado altitudes.</p>}
-    </section>
+    <RouteElevationProfile samples={detail.elevation} />
 
     <section className={styles.infoGrid}>
       <article className={styles.infoCard}><h2>Acceso y seguridad</h2><p>{route.access_notes ?? 'Sin notas específicas de acceso.'}</p><p>{route.safety_notes ?? 'Sin avisos adicionales publicados.'}</p></article>
