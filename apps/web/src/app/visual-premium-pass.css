@@ -51,6 +51,11 @@ body {
 .brand { font-size: 27px; letter-spacing: -.045em; }
 .brand small { color: #6d735f; letter-spacing: .3em; }
 
+.desktop-primary-nav,
+.desktop-profile-link { display: none; }
+
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
+
 .card {
   border-color: var(--line);
   box-shadow: var(--shadow-sm);
@@ -110,12 +115,32 @@ body {
 }
 .home-editorial-hero p { max-width: 610px; font-size: clamp(1rem, 1.45vw, 1.18rem) !important; }
 .home-editorial-hero .action-link {
-  width: min(390px, 100%);
+  width: auto;
   min-height: 56px;
-  margin-top: 28px;
+  margin-top: 0;
   border: 1px solid rgba(255,255,255,.3);
   background: rgba(30, 62, 38, .82);
   backdrop-filter: blur(12px);
+}
+.home-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+.home-hero-secondary {
+  display: inline-flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  border: 1px solid rgba(255,255,255,.68);
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 780;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
 }
 
 .home-stories .story-grid { gap: 16px; }
@@ -286,11 +311,79 @@ body .admin-gate-card {
 }
 
 @media (min-width: 1024px) {
-  .topbar { padding-inline: clamp(36px, 4vw, 70px); }
-  .bottom-nav { background: rgba(255,254,250,.93); }
+  body { padding: 18px; }
+  .app-shell {
+    width: min(1540px, 100%);
+    min-height: calc(100dvh - 36px);
+    padding-left: 0;
+    border-radius: 26px;
+  }
+  .topbar {
+    height: 76px;
+    padding-inline: clamp(26px, 3.2vw, 52px);
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
+    gap: 24px;
+  }
+  .topbar .brand { justify-self: start; font-size: 24px; }
+  .topbar .brand small { display: none; }
+  .desktop-primary-nav {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: clamp(12px, 2vw, 30px);
+    height: 100%;
+  }
+  .desktop-primary-nav a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    color: #313b31;
+    font-size: .84rem;
+    font-weight: 680;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    padding-inline: 4px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .desktop-primary-nav a::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 14px;
+    left: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--olive-700);
+    opacity: 0;
+    transform: scaleX(.35);
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  .desktop-primary-nav a:hover::after,
+  .desktop-primary-nav a.active::after { opacity: 1; transform: scaleX(1); }
+  .topbar-actions { justify-self: end; }
+  .desktop-profile-link {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid rgba(41,65,40,.15);
+    border-radius: 50%;
+    background: var(--olive-900);
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-decoration: none;
+  }
+  .bottom-nav { display: none; }
+  .page { padding-bottom: 70px; }
   .home-page { column-gap: 24px; }
   .home-editorial-hero { margin-top: 0; }
-  .home-editorial-hero > .card > div { min-height: 410px !important; }
+  .home-editorial-hero > .card { border-radius: 18px !important; }
+  .home-editorial-hero > .card > div { min-height: 430px !important; }
   .home-editorial-hero h2 { font-size: clamp(3.2rem, 4.6vw, 4.35rem) !important; }
   .home-stories { margin-top: 54px; }
   .field-dashboard { column-gap: 38px; row-gap: 32px; }
@@ -300,6 +393,7 @@ body .admin-gate-card {
 }
 
 @media (min-width: 1280px) {
+  .page { padding-inline: clamp(42px, 4vw, 68px); }
   .home-editorial-hero > .card > div { min-height: 420px !important; }
   .home-stories .story-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
   .home-stories .story-grid > * { grid-column: span 4; }
@@ -318,6 +412,8 @@ body .admin-gate-card {
   }
   .home-editorial-hero h2 { max-width: 11ch; font-size: clamp(2.55rem, 12vw, 3.25rem) !important; }
   .home-editorial-hero .action-link { width: 100%; }
+  .home-hero-actions { display: grid; grid-template-columns: 1fr; }
+  .home-hero-secondary { width: 100%; }
   .home-stories .story-card { min-height: 150px; }
   .home-stories .story-image { min-height: 136px; }
   .territory-banner { align-items: flex-start; gap: 18px; }
