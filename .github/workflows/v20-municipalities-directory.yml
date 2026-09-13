@@ -11,6 +11,7 @@ on:
       - 'apps/web/src/app/explorar/explore-public-client.tsx'
       - 'apps/web/src/lib/public-territory-source.ts'
       - 'scripts/check-municipalities-directory.mjs'
+      - 'scripts/check-municipality-discovery-experience.mjs'
       - '.github/workflows/v20-municipalities-directory.yml'
   workflow_dispatch:
 
@@ -29,6 +30,8 @@ jobs:
       - run: corepack enable
       - name: Directory contract
         run: node scripts/check-municipalities-directory.mjs
+      - name: Public discovery experience contract
+        run: node scripts/check-municipality-discovery-experience.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck
