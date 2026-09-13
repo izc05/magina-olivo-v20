@@ -1,5 +1,5 @@
 {
-  "catalog_version": 1,
+  "catalog_version": 2,
   "audited_at": "2026-09-13",
   "source_name": "Diputacion de Jaen - Jaen Paraiso Interior",
   "scope": "Official Sierra Magina intermodal hiking routes",
@@ -11,6 +11,8 @@
       "name": "Cueva de la Graja - Los Caracoles - Pinar de Canava",
       "municipalities": ["Jimena"],
       "source_url": "https://www.jaenparaisointerior.es/es/w/semantica/r1",
+      "source_verified_at": "2026-09-13",
+      "source_validation_status": "official_page_verified",
       "distance_m": 8900,
       "duration_minutes": 190,
       "elevation_gain_m": 590,
@@ -22,6 +24,7 @@
       "track_url": "https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r1-kmz",
       "track_found": true,
       "track_validated": false,
+      "track_validation_state": "linked_not_geometry_validated",
       "overlaps_core": ["la-cueva-de-la-graja", "pinar-de-canava"]
     },
     {
@@ -30,6 +33,8 @@
       "name": "Albanchez de Magina - Cima del Aznaitin",
       "municipalities": ["Albanchez de Magina"],
       "source_url": "https://www.jaenparaisointerior.es/es/w/semantica/r2",
+      "source_verified_at": "2026-09-13",
+      "source_validation_status": "official_page_verified",
       "distance_m": 9800,
       "duration_minutes": 355,
       "elevation_gain_m": 1030,
@@ -41,6 +46,7 @@
       "track_url": "https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r2-kmz",
       "track_found": true,
       "track_validated": false,
+      "track_validation_state": "linked_not_geometry_validated",
       "overlaps_core": ["castillo-de-albanchez"]
     },
     {
@@ -49,6 +55,8 @@
       "name": "Columpio Gigante de Torres - Barranco del Arroyuelo - Portillo de la Zarzadilla",
       "municipalities": ["Torres"],
       "source_url": "https://www.jaenparaisointerior.es/es/w/sm/senderimso/r3",
+      "source_verified_at": "2026-09-13",
+      "source_validation_status": "official_page_verified",
       "distance_m": 7000,
       "duration_minutes": 200,
       "elevation_gain_m": 488,
@@ -60,6 +68,7 @@
       "track_url": "https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r3-kmz",
       "track_found": true,
       "track_validated": false,
+      "track_validation_state": "linked_not_geometry_validated",
       "overlaps_core": []
     },
     {
@@ -68,9 +77,12 @@
       "name": "Area Recreativa Fuenmayor - Albanchez de Magina",
       "municipalities": ["Torres", "Albanchez de Magina"],
       "source_url": "https://www.jaenparaisointerior.es/es/w/sm/senderismo/r4",
+      "source_verified_at": "2026-09-13",
+      "source_validation_status": "official_page_verified",
       "route_shape": "linear",
       "track_found": false,
       "track_validated": false,
+      "track_validation_state": "official_track_not_located",
       "overlaps_core": ["fuenmayor"]
     },
     {
@@ -79,9 +91,13 @@
       "name": "Area Recreativa El Peralejo - Area Recreativa Fuenmayor",
       "municipalities": ["Cambil", "Torres"],
       "source_url": "https://www.jaenparaisointerior.es/es/w/sm/senderismo/r5",
+      "source_verified_at": "2026-09-13",
+      "source_validation_status": "official_page_verified",
+      "distance_m": 16700,
       "route_shape": "linear",
       "track_found": false,
       "track_validated": false,
+      "track_validation_state": "official_track_not_located",
       "overlaps_core": ["el-peralejo", "puerto-de-la-mata", "fuenmayor"]
     },
     {
@@ -90,6 +106,8 @@
       "name": "Area Recreativa El Peralejo - Pico Magina - Miramundos",
       "municipalities": ["Cambil"],
       "source_url": "https://www.jaenparaisointerior.es/es/w/sm/senderismo/r6",
+      "source_verified_at": "2026-09-13",
+      "source_validation_status": "official_page_verified",
       "distance_m": 22800,
       "duration_minutes": 870,
       "elevation_gain_m": 2560,
@@ -101,6 +119,7 @@
       "track_url": "https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r6-kmz",
       "track_found": true,
       "track_validated": false,
+      "track_validation_state": "linked_not_geometry_validated",
       "overlaps_core": ["subida-a-pico-magina-y-miramundos", "el-peralejo"]
     },
     {
@@ -109,6 +128,8 @@
       "name": "Barranco del Garganton",
       "municipalities": ["Belmez de la Moraleda"],
       "source_url": "https://www.jaenparaisointerior.es/es/w/semantica/r7",
+      "source_verified_at": "2026-09-13",
+      "source_validation_status": "official_page_verified",
       "distance_m": 2900,
       "duration_minutes": 80,
       "elevation_gain_m": 197,
@@ -120,6 +141,7 @@
       "track_url": "https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r7-kmz",
       "track_found": true,
       "track_validated": false,
+      "track_validation_state": "linked_not_geometry_validated",
       "overlaps_core": []
     },
     {
@@ -128,10 +150,13 @@
       "name": "Area Recreativa Rio Cuadros - Cano del Aguadero - Belmez de la Moraleda",
       "municipalities": ["Bedmar y Garciez", "Belmez de la Moraleda"],
       "source_url": "https://www.jaenparaisointerior.es/es/w/sm/senderismo/r8",
+      "source_verified_at": "2026-09-13",
+      "source_validation_status": "official_page_verified",
       "distance_m": 20900,
       "route_shape": "linear",
       "track_found": false,
       "track_validated": false,
+      "track_validation_state": "official_track_not_located",
       "overlaps_core": ["cano-del-aguadero"]
     },
     {
@@ -140,6 +165,8 @@
       "name": "Piedra del Palo",
       "municipalities": ["Carcheles"],
       "source_url": "https://www.jaenparaisointerior.es/de/w/semantica/r9",
+      "source_verified_at": "2026-09-13",
+      "source_validation_status": "official_page_verified",
       "distance_m": 12000,
       "duration_minutes": 325,
       "elevation_gain_m": 692,
@@ -151,6 +178,7 @@
       "track_url": "https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r9-kmz",
       "track_found": true,
       "track_validated": false,
+      "track_validation_state": "linked_not_geometry_validated",
       "overlaps_core": []
     }
   ]
