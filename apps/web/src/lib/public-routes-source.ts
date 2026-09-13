@@ -132,6 +132,22 @@ export type ExplorerProfile = {
     available: number;
     unlocked: number;
   }>;
+  territory: {
+    available_checkpoints: number;
+    unlocked_checkpoints: number;
+    explored_percent: number;
+    municipalities_available: number;
+    municipalities_discovered: number;
+    municipalities: Array<{
+      municipality_id: string;
+      municipality_name: string;
+      municipality_slug: string;
+      adventure_count: number;
+      available: number;
+      unlocked: number;
+      percent: number;
+    }>;
+  };
   recent_runs: Array<{
     id: string;
     route_id: string;
