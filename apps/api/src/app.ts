@@ -11,6 +11,7 @@ import { registerAdminRoutes } from './routes/admin.js';
 import { registerAdminMediaRoutes } from './routes/admin-media.js';
 import { registerAdminTerritoryRoutes } from './routes/admin-territory.js';
 import { registerAdminBusinessDirectoryRoutes } from './routes/admin-business-directory.js';
+import { registerAdminBusinessCategoryRoutes } from './routes/admin-business-categories.js';
 import { registerAdminSourceRoutes } from './routes/admin-sources.js';
 import { registerAdminSourceOperationRoutes } from './routes/admin-source-operations.js';
 import { registerAdminAnalyticsRoutes } from './routes/admin-analytics.js';
@@ -194,6 +195,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminMediaRoutes(app, db, storage);
   registerAdminTerritoryRoutes(app, db);
   registerAdminBusinessDirectoryRoutes(app, db);
+  registerAdminBusinessCategoryRoutes(app, db);
   registerAdminSourceRoutes(app, db);
   registerAdminSourceOperationRoutes(app, db, weatherProvider, radarQueue, notificationQueue);
   registerAdminAnalyticsRoutes(app, db);
