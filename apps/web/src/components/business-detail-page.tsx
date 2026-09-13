@@ -3,7 +3,16 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { loadBusiness, submitBusinessClaim, type BusinessDetail } from '@/lib/business-directory-source';
+import {
+  loadBusiness,
+  loadBusinessOffers,
+  submitBusinessClaim,
+  submitBusinessLead,
+  trackBusinessEvent,
+  type BusinessDetail,
+  type BusinessEventType,
+  type BusinessOffer,
+} from '@/lib/business-directory-source';
 import { BusinessDirectoryMap } from './business-directory-map';
 import styles from './business-directory.module.css';
 
@@ -43,6 +52,35 @@ function openingHoursText(value: Record<string, unknown>) {
   return rows.length ? rows.map(([day, hours]) => `${day}: ${hours}`).join(' · ') : null;
 }
 
+function anonymousBusinessId() {
+  try {
+    const key = 'magina-business-anonymous-id';
+    const existing = window.localStorage.getItem(key);
+    if (existing) return existing;
+    const created = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    window.localStorage.setItem(key, created);
+    return created;
+  } catch {
+    return undefined;
+  }
+}
+
+function recordBusinessEvent(slug: string, eventType: BusinessEventType, offerId?: string) {
+  void trackBusinessEvent(slug, {
+    eventType,
+    offerId,
+    anonymousId: anonymousBusinessId(),
+    sourceContext: 'business_detail',
+  }).catch(() => undefined);
+}
+
+function formatMoney(cents: number | null, currency: string) {
+  if (cents === null) return null;
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency }).format(cents / 100);
+}
+
 function Gallery({ business }: { business: BusinessDetail }) {
   const media = business.media.filter((item) => ['photo', 'cover', 'logo'].includes(item.kind) && safeUrl(item.url));
   if (!media.length) return null;
@@ -56,6 +94,107 @@ function Gallery({ business }: { business: BusinessDetail }) {
         </figcaption> : null}
       </figure>)}
     </div>
+  </section>;
+}
+
+function Offers({ business, offers, onChoose }: { business: BusinessDetail; offers: BusinessOffer[]; onChoose: (id: string) => void }) {
+  if (!offers.length) return null;
+  return <section>
+    <p className={styles.eyebrow}>OFERTAS Y EXPERIENCIAS</p>
+    <h2>Ahora en {business.name}</h2>
+    <div className={styles.detailGrid}>
+      {offers.map((offer) => {
+        const original = formatMoney(offer.pricing.originalPriceCents, offer.pricing.currency);
+        const price = formatMoney(offer.pricing.offerPriceCents, offer.pricing.currency);
+        const external = safeUrl(offer.redemption.url);
+        return <article key={offer.id} className={styles.infoBox}>
+          <small>{offer.offerType.replace('_', ' ')}</small>
+          <strong>{offer.title}</strong>
+          {offer.summary ? <p>{offer.summary}</p> : null}
+          {price ? <p><strong>{price}</strong>{original && original !== price ? ` · antes ${original}` : ''}</p> : null}
+          {offer.promoCode ? <p>Código: <strong>{offer.promoCode}</strong></p> : null}
+          {offer.validUntil ? <small>Disponible hasta {new Date(offer.validUntil).toLocaleDateString('es-ES')}</small> : null}
+          <div className={styles.actionRow}>
+            {offer.redemption.mode === 'external_link' && external
+              ? <a className={styles.secondaryButton} href={external} target="_blank" rel="noopener noreferrer" onClick={() => recordBusinessEvent(business.slug, 'offer_redeem', offer.id)}>Ver / reservar ↗</a>
+              : <a className={styles.secondaryButton} href="#business-lead" onClick={() => { recordBusinessEvent(business.slug, 'offer_redeem', offer.id); onChoose(offer.id); }}>Me interesa</a>}
+          </div>
+          {offer.terms ? <small>{offer.terms}</small> : null}
+        </article>;
+      })}
+    </div>
+  </section>;
+}
+
+function LeadForm({ business, offers, selectedOfferId, onOfferChange }: {
+  business: BusinessDetail;
+  offers: BusinessOffer[];
+  selectedOfferId: string;
+  onOfferChange: (id: string) => void;
+}) {
+  const [kind, setKind] = useState<'contact' | 'quote' | 'booking' | 'availability' | 'order'>('quote');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [requestedFor, setRequestedFor] = useState('');
+  const [partySize, setPartySize] = useState('');
+  const [message, setMessage] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!email.trim() && !phone.trim()) {
+      setError('Indica al menos un email o un teléfono para que la empresa pueda responderte.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await submitBusinessLead(business.slug, {
+        kind,
+        contactName: name,
+        contactEmail: email.trim() || undefined,
+        contactPhone: phone.trim() || undefined,
+        message: message.trim() || undefined,
+        requestedFor: requestedFor ? new Date(requestedFor).toISOString() : null,
+        partySize: partySize ? Number(partySize) : null,
+        offerId: selectedOfferId || undefined,
+        anonymousId: anonymousBusinessId(),
+        sourceContext: 'business_detail',
+        sourceKey: selectedOfferId ? 'offer' : 'profile',
+        consentBusinessContact: true,
+      });
+      setSuccess(result.message);
+    } catch (cause) {
+      console.error('Unable to submit business lead', cause);
+      setError('No hemos podido enviar la solicitud. Comprueba los datos o inténtalo de nuevo.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return <section id="business-lead" className={styles.claimCard}>
+    <div>
+      <p className={styles.eyebrow}>CONTACTO DESDE MÁGINA OLIVO</p>
+      <h2>Solicita información a {business.name}</h2>
+      <p>Envía una consulta, pide presupuesto o pregunta por disponibilidad. La empresa recibe tus datos únicamente para responder a esta solicitud.</p>
+    </div>
+    {success ? <div className={styles.success}>{success}</div> : <form className={styles.claimForm} onSubmit={submit}>
+      <div className={styles.claimField}><label htmlFor="lead-kind">¿Qué necesitas?</label><select id="lead-kind" value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}><option value="quote">Pedir presupuesto</option><option value="availability">Consultar disponibilidad</option><option value="booking">Solicitar reserva</option><option value="order">Consultar pedido / compra</option><option value="contact">Información general</option></select></div>
+      {offers.length ? <div className={styles.claimField}><label htmlFor="lead-offer">Oferta relacionada</label><select id="lead-offer" value={selectedOfferId} onChange={(event) => onOfferChange(event.target.value)}><option value="">Ninguna en concreto</option>{offers.map((offer) => <option key={offer.id} value={offer.id}>{offer.title}</option>)}</select></div> : null}
+      <div className={styles.claimField}><label htmlFor="lead-name">Nombre</label><input id="lead-name" required minLength={2} maxLength={140} value={name} onChange={(event) => setName(event.target.value)} /></div>
+      <div className={styles.claimField}><label htmlFor="lead-email">Email</label><input id="lead-email" type="email" maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} /></div>
+      <div className={styles.claimField}><label htmlFor="lead-phone">Teléfono</label><input id="lead-phone" inputMode="tel" maxLength={40} value={phone} onChange={(event) => setPhone(event.target.value)} /></div>
+      <div className={styles.claimField}><label htmlFor="lead-date">Fecha / momento deseado</label><input id="lead-date" type="datetime-local" value={requestedFor} onChange={(event) => setRequestedFor(event.target.value)} /></div>
+      <div className={styles.claimField}><label htmlFor="lead-party">Personas / unidades</label><input id="lead-party" type="number" min="1" max="500" value={partySize} onChange={(event) => setPartySize(event.target.value)} /></div>
+      <div className={`${styles.claimField} ${styles.claimWide}`}><label htmlFor="lead-message">Mensaje</label><textarea id="lead-message" maxLength={2500} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Cuéntale a la empresa qué necesitas…" /></div>
+      <label className={`${styles.claimField} ${styles.claimWide}`}><span><input type="checkbox" required checked={consent} onChange={(event) => setConsent(event.target.checked)} /> Autorizo a compartir estos datos con {business.name} para que responda a mi solicitud.</span></label>
+      {error ? <div className={`${styles.error} ${styles.claimWide}`} role="alert">{error}</div> : null}
+      <div className={styles.claimWide}><button className={styles.button} type="submit" disabled={submitting || !consent}>{submitting ? 'Enviando…' : 'Enviar solicitud'}</button></div>
+    </form>}
   </section>;
 }
 
@@ -112,6 +251,8 @@ export function BusinessDetailPage() {
   const params = useSearchParams();
   const slug = params.get('slug')?.trim() ?? '';
   const [business, setBusiness] = useState<BusinessDetail | null>(null);
+  const [offers, setOffers] = useState<BusinessOffer[]>([]);
+  const [selectedOfferId, setSelectedOfferId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<'missing' | 'unavailable' | null>(null);
 
@@ -124,12 +265,19 @@ export function BusinessDetailPage() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    loadBusiness(slug).then((value) => {
-      if (!cancelled) setBusiness(value);
+    Promise.all([
+      loadBusiness(slug),
+      loadBusinessOffers(slug).catch(() => [] as BusinessOffer[]),
+    ]).then(([value, activeOffers]) => {
+      if (!cancelled) {
+        setBusiness(value);
+        setOffers(activeOffers);
+      }
     }).catch((cause) => {
       console.error('Unable to load business', cause);
       if (!cancelled) {
         setBusiness(null);
+        setOffers([]);
         setError('unavailable');
       }
     }).finally(() => {
@@ -137,6 +285,32 @@ export function BusinessDetailPage() {
     });
     return () => { cancelled = true; };
   }, [slug]);
+
+  useEffect(() => {
+    if (!business) return;
+    try {
+      const key = `magina-business-profile-view:${business.slug}`;
+      if (window.sessionStorage.getItem(key)) return;
+      window.sessionStorage.setItem(key, '1');
+    } catch {
+      // Measurement is best-effort; the public profile must continue working without storage.
+    }
+    recordBusinessEvent(business.slug, 'profile_view');
+  }, [business]);
+
+  useEffect(() => {
+    if (!business || !offers.length) return;
+    for (const offer of offers) {
+      try {
+        const key = `magina-business-offer-view:${offer.id}`;
+        if (window.sessionStorage.getItem(key)) continue;
+        window.sessionStorage.setItem(key, '1');
+      } catch {
+        // Best-effort analytics only.
+      }
+      recordBusinessEvent(business.slug, 'offer_view', offer.id);
+    }
+  }, [business, offers]);
 
   const openingHours = useMemo(() => business ? openingHoursText(business.openingHours) : null, [business]);
 
@@ -152,6 +326,9 @@ export function BusinessDetailPage() {
   const whatsapp = whatsappHref(business.contact.whatsapp);
   const email = emailHref(business.contact.email);
   const territory = business.territory.placeName ?? business.territory.municipalityName ?? 'Sierra Mágina';
+  const directions = business.location
+    ? `https://www.google.com/maps/dir/?api=1&destination=${business.location.latitude},${business.location.longitude}`
+    : null;
 
   return <main className={styles.page}>
     <Link className={styles.backLink} href="/explorar/empresas">← Empresas de Sierra Mágina</Link>
@@ -175,16 +352,19 @@ export function BusinessDetailPage() {
           <div className={styles.infoBox}><small>Actualización</small><strong>{new Date(business.updatedAt).toLocaleDateString('es-ES')}</strong></div>
         </section>
 
-        {phone || whatsapp || email || website ? <section>
+        {phone || whatsapp || email || website || directions ? <section>
           <h2>Contacto</h2>
           <div className={styles.actionRow}>
-            {phone ? <a className={styles.button} href={phone}>Llamar</a> : null}
-            {whatsapp ? <a className={styles.secondaryButton} href={whatsapp} target="_blank" rel="noopener noreferrer">WhatsApp ↗</a> : null}
-            {email ? <a className={styles.secondaryButton} href={email}>Email</a> : null}
-            {website ? <a className={styles.secondaryButton} href={website} target="_blank" rel="noopener noreferrer">Web ↗</a> : null}
+            {phone ? <a className={styles.button} href={phone} onClick={() => recordBusinessEvent(business.slug, 'phone_click')}>Llamar</a> : null}
+            {whatsapp ? <a className={styles.secondaryButton} href={whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => recordBusinessEvent(business.slug, 'whatsapp_click')}>WhatsApp ↗</a> : null}
+            {email ? <a className={styles.secondaryButton} href={email} onClick={() => recordBusinessEvent(business.slug, 'email_click')}>Email</a> : null}
+            {website ? <a className={styles.secondaryButton} href={website} target="_blank" rel="noopener noreferrer" onClick={() => recordBusinessEvent(business.slug, 'website_click')}>Web ↗</a> : null}
+            {directions ? <a className={styles.secondaryButton} href={directions} target="_blank" rel="noopener noreferrer" onClick={() => recordBusinessEvent(business.slug, 'directions_click')}>Cómo llegar ↗</a> : null}
+            <a className={styles.secondaryButton} href="#business-lead">Pedir información</a>
           </div>
         </section> : null}
 
+        <Offers business={business} offers={offers} onChoose={setSelectedOfferId} />
         <Gallery business={business} />
 
         {business.location ? <section>
@@ -200,6 +380,7 @@ export function BusinessDetailPage() {
         </section> : null}
       </div>
     </article>
+    <LeadForm business={business} offers={offers} selectedOfferId={selectedOfferId} onOfferChange={setSelectedOfferId} />
     <ClaimForm business={business} />
   </main>;
 }
