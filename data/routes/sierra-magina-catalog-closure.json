@@ -1,5 +1,5 @@
 {
-  "status_version": 3,
+  "status_version": 4,
   "audited_at": "2026-09-13",
   "scope": "Sierra Magina hiking catalog closure status",
   "official_park_inventory": {
@@ -25,12 +25,17 @@
     "status": "identified",
     "expected_routes": 9,
     "catalogued_routes": 9,
+    "tracks_located": 6,
+    "tracks_geometry_validated": 6,
+    "tracks_not_located": ["R4", "R5", "R8"],
     "source_name": "Diputacion de Jaen - Jaen Paraiso Interior",
-    "validation_note": "Track existence and geometry validation are tracked separately."
+    "validation_note": "R1, R2, R3, R6, R7 and R9 official KMZ files were downloaded and geometry-reviewed. R2 and R6 use explicit repeated-segment semantics for out-and-back routes rather than duplicating shared geometry."
   },
   "homologated_network": {
     "status": "identified_current_baseline",
     "records": ["GR-7", "PR-A 350", "SL-A 135"],
+    "geometry_validated_records": ["PR-A 350", "SL-A 135"],
+    "geometry_pending_records": ["GR-7"],
     "source_name": "Federacion Andaluza de Deportes de Montana, Escalada y Senderismo",
     "verified_at": "2026-09-13",
     "safety_note": "GR-7 remains homologated in the federation listing, while the Jaen route page warns that no maintenance has been notified since 1998 and describes scarce/deteriorated signage."
@@ -40,9 +45,14 @@
     "authority": "Junta de Andalucia - REDIAM",
     "official_core_with_confirmed_codigoequi": 17,
     "official_core_total": 17,
-    "geometry_validated": 0,
+    "rediam_geometry_validated": 0,
+    "rediam_access_blocker": "Both direct GML and browser-like KML requests returned HTTP 403 for all 17 routes from GitHub Actions.",
+    "canonical_geometry_validated_via_federation": ["cano-del-aguadero", "fuenmayor"],
+    "external_official_kmz_targets": 8,
+    "external_official_kmz_fetch_success": 8,
+    "external_official_kmz_geometry_validated": 8,
     "verified_at": "2026-09-13",
-    "validation_note": "All 17 official-core routes now have a confirmed REDIAM CODIGOEQUI from an official download link. This proves an authoritative geometry source exists; it does not prove the geometry has been fetched, parsed or validated."
+    "validation_note": "All 17 official-core routes have a confirmed REDIAM CODIGOEQUI. REDIAM is blocked from GitHub runners, while eight official Diputacion/FAM KMZ tracks were successfully downloaded, hashed, parsed and geometry-reviewed."
   },
   "operational_safety": {
     "status": "tracked_separately",
@@ -60,6 +70,6 @@
       "Current closures/incidents must remain independent from catalog publication state.",
       "Duplicate or overlapping Junta/Diputacion/GR-PR-SL records must preserve provenance and canonical relationships instead of being silently merged."
     ],
-    "reason_not_closed": "REDIAM source identification is closed 17/17 for the official core, but those geometries still require fetch/parse/CRS/length validation; some municipal and provincial routes also lack complete authoritative downloadable tracks."
+    "reason_not_closed": "Official-core REDIAM source identification is closed 17/17 and eight external official KMZ geometries are validated, but REDIAM geometry fetch remains blocked from GitHub runners; R4/R5/R8 tracks, GR-7 stage geometry and several municipal authoritative tracks remain incomplete."
   }
 }
