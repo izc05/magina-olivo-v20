@@ -98,20 +98,24 @@ export function TownHubClient() {
       <h1>{place.name}</h1>
       <p>{subtitle}. Esta ficha reúne únicamente contenido público relacionado con este territorio; no muestra datos privados de fincas.</p>
       <div className={styles.meta}><span>{place.kind === 'municipal_seat' ? 'Cabecera municipal' : 'Localidad'}</span><span>INE {place.ine_code}</span>{place.aemet_code ? <span>AEMET disponible</span> : null}</div>
-      <div className={styles.actions}><Link className={`${styles.action} ${styles.primary}`} href={contextualHref('/rutas', place)}>Ver rutas</Link><Link className={styles.action} href={contextualHref('/explorar/empresas', place)}>Ver empresas</Link><Link className={styles.action} href="/radar">Tiempo y radar</Link></div>
+      <div className={styles.actions}><a className={`${styles.action} ${styles.primary}`} href="#rutas">Ver rutas</a><a className={styles.action} href="#empresas">Ver empresas</a><Link className={styles.action} href="/radar">Tiempo y radar</Link></div>
     </header>
 
-    <section className={styles.section}>
+    <section id="rutas" className={styles.section}>
       <div className={styles.sectionHead}><div><h2>Rutas y experiencias</h2><p>Recorridos publicados con track validado relacionados con {place.name}.</p></div><Link href="/rutas">Todas las rutas →</Link></div>
       {routes.length ? <div className={styles.grid}>{routes.map((route) => <Link className={styles.card} key={route.id} href={contextualHref(`/rutas/detalle?slug=${encodeURIComponent(route.slug)}`, place)}><small>{route.route_type} · {route.difficulty ?? 'sin dificultad publicada'}</small><h3>{route.name}</h3><p>{route.short_description ?? 'Ruta publicada de Sierra Mágina.'}</p><strong>{route.distance_m === null ? 'Distancia no publicada' : `${(route.distance_m / 1000).toFixed(1)} km`}</strong></Link>)}</div> : <div className={styles.empty}>No hay rutas publicadas y validadas vinculadas a este territorio.</div>}
     </section>
 
-    <section className={styles.section}>
+    <section id="empresas" className={styles.section}>
       <div className={styles.sectionHead}><div><h2>Empresas y servicios</h2><p>Negocios publicados del pueblo o de su municipio según el nivel territorial de la ficha.</p></div><Link href="/explorar/empresas">Directorio completo →</Link></div>
-      {businesses.length ? <div className={styles.grid}>{businesses.map((business) => <Link className={styles.card} key={business.id} href={contextualHref(`/empresas?slug=${encodeURIComponent(business.slug)}`, place)}><small>{business.placement.label ?? (business.verified ? 'Ficha verificada' : 'Servicio local')}</small><h3>{business.name}</h3><p>{business.shortDescription ?? business.categories.map((category) => category.name).slice(0, 3).join(' · ') || 'Empresa publicada en Mágina Olivo.'}</p></Link>)}</div> : <div className={styles.empty}>No hay empresas publicadas vinculadas a este territorio.</div>}
+      {businesses.length ? <div className={styles.grid}>{businesses.map((business) => {
+        const categoryText = business.categories.map((category) => category.name).slice(0, 3).join(' · ');
+        const description = business.shortDescription ?? (categoryText || 'Empresa publicada en Mágina Olivo.');
+        return <Link className={styles.card} key={business.id} href={contextualHref(`/empresas?slug=${encodeURIComponent(business.slug)}`, place)}><small>{business.placement.label ?? (business.verified ? 'Ficha verificada' : 'Servicio local')}</small><h3>{business.name}</h3><p>{description}</p></Link>;
+      })}</div> : <div className={styles.empty}>No hay empresas publicadas vinculadas a este territorio.</div>}
     </section>
 
-    <section className={styles.section}>
+    <section id="actualidad" className={styles.section}>
       <div className={styles.sectionHead}><div><h2>Agenda y actualidad</h2><p>Noticias y eventos publicados cuyo territorio coincide con {place.name} o su municipio.</p></div></div>
       {(news.length || events.length) ? <div className={styles.grid}>
         {events.map((entry) => <Link className={styles.card} key={`event-${entry.id}`} href={contextualHref(`/eventos?slug=${encodeURIComponent(entry.slug)}`, place)}><small>Evento</small><h3>{entry.title}</h3>{entry.summary ? <p>{entry.summary}</p> : null}</Link>)}
@@ -119,7 +123,7 @@ export function TownHubClient() {
       </div> : <div className={styles.empty}>No hay noticias o eventos territoriales publicados ahora mismo.</div>}
     </section>
 
-    <section className={styles.section}>
+    <section id="cooperativas" className={styles.section}>
       <div className={styles.sectionHead}><div><h2>Cooperativas y almazaras</h2><p>Entidades del aceite publicadas para este territorio.</p></div><Link href="/cooperativas">Directorio completo →</Link></div>
       {mills.length ? <div className={styles.grid}>{mills.map((mill) => <Link className={styles.card} key={mill.id} href={contextualHref(`/cooperativas?slug=${encodeURIComponent(mill.slug)}`, place)}><small>Cooperativa / almazara</small><h3>{mill.title}</h3>{mill.summary ? <p>{mill.summary}</p> : null}</Link>)}</div> : <div className={styles.empty}>No hay cooperativas o almazaras publicadas con este pueblo asignado.</div>}
     </section>
