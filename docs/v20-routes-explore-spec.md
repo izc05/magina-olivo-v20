@@ -95,4 +95,6 @@ La publicidad utiliza disclosure explícito (`Patrocinado` por defecto). El pago
 - patrocinios con disclosure;
 - superficies públicas de mapa, comunidad y descarga GPX compilables.
 
+El mapa fotográfico comunitario fue cerrado con `V20 routes closure check`, `V20 full candidate check` y `V20 platform admin check` verdes sobre el mismo código funcional antes de este ajuste documental.
+
 El handoff de esta rama es `integrate/v20-beta-closure`. No se fusiona directamente a `main`.
