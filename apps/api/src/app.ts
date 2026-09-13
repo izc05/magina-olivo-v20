@@ -55,6 +55,7 @@ import { registerTerritoryRoutes } from './routes/territory.js';
 import { registerBusinessDirectoryRoutes } from './routes/business-directory.js';
 import { registerBusinessRevenueRoutes } from './routes/business-revenue.js';
 import { registerBusinessPortalRoutes } from './routes/business-portal.js';
+import { registerBusinessExperienceRoutes } from './routes/business-experiences.js';
 import { registerMarketRoutes } from './routes/market.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
@@ -217,6 +218,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerBusinessDirectoryRoutes(app, db);
   registerBusinessRevenueRoutes(app, db);
   registerBusinessPortalRoutes(app, db);
+  registerBusinessExperienceRoutes(app, db);
   registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db, storage);
