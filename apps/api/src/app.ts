@@ -56,6 +56,7 @@ import { registerDocumentAnalysisRoutes } from './routes/document-analysis.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
 import { registerBusinessDirectoryRoutes } from './routes/business-directory.js';
+import { registerBusinessNearbyRouteRoutes } from './routes/business-nearby-routes.js';
 import { registerBusinessRevenueRoutes } from './routes/business-revenue.js';
 import { registerBusinessPortalRoutes } from './routes/business-portal.js';
 import { registerMarketRoutes } from './routes/market.js';
@@ -224,6 +225,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerMiOlivoCampaignRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerBusinessDirectoryRoutes(app, db);
+  registerBusinessNearbyRouteRoutes(app, db);
   registerBusinessRevenueRoutes(app, db);
   registerBusinessPortalRoutes(app, db);
   registerMarketRoutes(app, db);
