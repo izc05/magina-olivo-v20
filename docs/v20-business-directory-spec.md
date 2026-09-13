@@ -4,55 +4,101 @@
 
 Crear un directorio territorial de empresas y servicios de Sierra Mágina que sea útil aunque ninguna empresa pague, y que pueda evolucionar a monetización transparente mediante fichas destacadas, campañas y patrocinio contextual.
 
-La presencia básica y la relevancia orgánica no deben depender del pago. Toda promoción comercial debe identificarse como `Patrocinado` o `Destacado`.
+La presencia básica y la relevancia orgánica no dependen del pago. Toda promoción comercial activa se identifica públicamente como `Patrocinado` o `Destacado`.
 
-## Alcance de la rama
+## Rama y estado
 
 Rama: `feat/v20-business-directory`.
+PR: `#80`, contra `integrate/v20-beta-closure`.
+
+Estado funcional de esta rama:
+- Foundation de datos: completada.
+- API pública: completada.
+- API Admin: completada.
+- búsqueda y filtros geográficos: completados.
+- ficha pública: completada.
+- mapa interactivo: completado.
+- reclamación y verificación: completadas.
+- administración visual de empresas: completada.
+- administración visual de categorías: completada.
+- fuentes y multimedia por empresa: completadas.
+- preparación comercial y disclosure: completados.
+- check CI específico con PostGIS: incluido.
+
+Queda deliberadamente fuera de esta rama:
+- cobros reales;
+- facturación de campañas;
+- ranking oculto por pago, que está prohibido por diseño;
+- importaciones masivas automáticas de fuentes externas;
+- integración directa con Rutas;
+- fusión a `main`;
+- rediseño visual global de toda V20.
+
+## Arquitectura pública implementada
+
+### Explorar empresas
+
+Ruta: `/explorar/empresas`.
 
 Incluye:
-- modelo de datos del directorio;
-- categorías jerárquicas y multietiqueta;
-- empresa, ubicación, contacto y medios;
-- fuentes externas y trazabilidad de importación;
-- reclamación/verificación de fichas;
-- preparación de planes comerciales futuros;
-- contratos de administración y publicación;
-- especificación de páginas públicas y Admin.
+- búsqueda textual;
+- categorías;
+- filtro por municipio a partir de los resultados;
+- geolocalización opcional `Cerca de mí`;
+- consulta por radio usando PostGIS;
+- ordenación que conserva el disclosure comercial;
+- tarjetas con estado de verificación;
+- mapa MapLibre sobre cartografía OpenStreetMap;
+- estados loading, vacío y error sin inventar contenido.
 
-No incluye todavía:
-- cobros reales;
-- facturación;
-- ranking oculto por pago;
-- importaciones masivas automáticas;
-- integración directa con Rutas;
-- rediseño visual global.
-
-## Arquitectura de información
-
-### Público
-
-- `/explorar/empresas`: buscador, categorías, municipio/localidad, mapa y filtros.
-- `/empresas/[slug]`: ficha completa de empresa.
-- colecciones contextuales futuras: comer y beber, alojamientos, AOVE, agricultura, servicios, turismo activo.
+La tarjeta `Empresas y servicios` de `/explorar` enlaza ya con este directorio estructurado. El módulo histórico `/servicios` se conserva como superficie editorial heredada y no es la fuente canónica del nuevo directorio.
 
 ### Ficha pública
 
-Debe poder mostrar:
+Por la configuración actual de exportación estática de Next.js, la ficha se expone como:
+
+`/empresas?slug=<slug>`
+
+No se usa todavía `/empresas/[slug]`, porque esa ruta dinámica requeriría conocer los slugs en build o cambiar la estrategia de runtime/exportación.
+
+La ficha puede mostrar, cuando existen datos reales:
 - nombre y marca;
-- categoría/s;
-- municipio y localidad;
+- categorías;
+- municipio/localidad;
 - descripción corta y ampliada;
 - dirección y coordenadas;
 - teléfono, WhatsApp, email y web;
-- redes sociales;
 - horario estructurado;
 - logo, portada y galería;
-- servicios/productos;
-- procedencia y fecha de actualización cuando sea relevante;
+- procedencia de medios y disclosure de IA cuando corresponda;
+- fuentes y estado de sincronización;
 - estado de verificación;
-- CTA para reclamar la ficha;
-- distintivo `Patrocinado` cuando proceda.
+- etiqueta comercial `Patrocinado` / `Destacado`;
+- mapa de ubicación;
+- CTA para reclamar la ficha.
+
+No se inventan horarios, servicios, imágenes ni datos de contacto ausentes.
+
+## API pública implementada
+
+- `GET /api/v1/public/business-categories`
+- `GET /api/v1/public/businesses`
+- `GET /api/v1/public/businesses/:slug`
+- `POST /api/v1/public/businesses/:slug/claims`
+
+Filtros soportados por listado:
+- `q`
+- `municipalityId`
+- `placeId`
+- `category`
+- `featured`
+- `sponsored`
+- `lat` + `lng`
+- `radiusKm`
+- `limit`
+- `offset`
+
+Las búsquedas por proximidad usan PostGIS y nunca calculan una distancia ficticia en cliente.
 
 ## Categorías iniciales
 
@@ -68,9 +114,21 @@ Debe poder mostrar:
 - Construcción y mantenimiento
 - Servicios profesionales
 
-Las categorías son jerárquicas y una empresa puede pertenecer a varias.
+Las categorías son jerárquicas y una empresa puede pertenecer a varias, con una categoría principal opcional.
 
-## Modelo comercial preparado, no activado
+## Modelo de datos
+
+La migración `0070_business_directory_foundation.sql` crea el subsistema canónico:
+- `business_categories`
+- `businesses`
+- `business_category_links`
+- `business_media`
+- `business_sources`
+- `business_claims`
+
+Las empresas reutilizan `territory_municipalities` y `territory_places`. La ubicación usa `geometry(Point, 4326)` e índice GIST.
+
+## Modelo comercial preparado, no cobrado
 
 Planes:
 - `free`
@@ -78,7 +136,7 @@ Planes:
 - `premium`
 - `sponsor`
 
-Campos preparados:
+Campos:
 - `commercial_plan`
 - `featured`
 - `sponsored`
@@ -86,93 +144,127 @@ Campos preparados:
 - `campaign_start`
 - `campaign_end`
 
-Reglas:
-1. `priority` nunca debe ocultar que una posición es patrocinada.
-2. La ordenación orgánica debe seguir funcionando sin campañas.
-3. Una campaña caducada no debe seguir obteniendo ventajas.
-4. El Admin debe poder ver historial/auditoría de cambios comerciales.
+Reglas implementadas:
+1. una ventaja comercial activa nunca se presenta como orgánica;
+2. `sponsor` / `sponsored` se muestran como `Patrocinado`;
+3. `featured` se muestra como `Destacado`;
+4. inicio y fin de campaña limitan la ventaja de ordenación y el distintivo activo;
+5. la verificación de la empresa es independiente del plan comercial;
+6. los cambios comerciales desde Admin quedan auditados.
 
-## Fuentes y sincronización
+No hay pago real ni facturación en esta rama.
 
-Fuentes candidatas:
+## Fuentes, medios y trazabilidad
+
+Fuentes candidatas futuras:
 - OpenRTA / Registro de Turismo de Andalucía;
 - Diputación Provincial de Jaén / Jaén Paraíso Interior;
 - ayuntamientos y organismos públicos;
 - alta directa por la empresa;
 - edición editorial propia.
 
-Los datos externos se almacenan en `business_sources`; no deben sobrescribir silenciosamente datos revisados manualmente. Cada registro conserva `source_name`, `external_id`, URL de origen, payload original y fecha de sincronización.
+Los datos externos se registran en `business_sources` con origen, identificador externo cuando existe, URL, payload, fecha y estado de sincronización.
 
-## Verificación y reclamación
+Los medios viven en `business_media` y permiten distinguir contenido:
+- propio;
+- oficial;
+- licenciado;
+- referencia externa;
+- generado con IA.
 
-Flujo:
+Si un medio está marcado como generado con IA, el Admin exige disclosure asociado. La UI pública muestra ese disclosure cuando procede.
 
-`importada -> sin reclamar -> solicitud -> revisión Admin -> verificada/rechazada`
+## Reclamación y verificación
 
-Una reclamación guarda identidad del solicitante, canal de contacto, evidencia, notas internas y resolución.
+Flujo implementado:
 
-## Admin
+`publicada sin reclamar -> solicitud -> revisión Admin -> aprobada/verificada | necesita información | rechazada | cancelada`
 
-Secciones previstas:
-- Todas
-- Pendientes de revisión
-- Verificadas
-- Destacadas
-- Patrocinadas
-- Reclamaciones
-- Categorías
-- Fuentes / sincronización
+La API evita una segunda reclamación activa de la misma dirección de correo para la misma empresa.
 
-Operaciones:
-- alta, edición, publicación y archivo;
-- asignación de categorías;
-- moderación de medios;
-- verificación;
-- revisión de fuente externa;
-- activación manual de campaña futura;
-- auditoría.
+La aprobación en Admin cambia la ficha a `verified` en la misma transacción. Pagar o tener un plan comercial no verifica una empresa.
+
+## Admin implementado
+
+### `/admin/empresas`
+
+Incluye:
+- métricas de total, publicadas, verificadas, comerciales y reclamaciones pendientes;
+- alta y edición;
+- publicación, borrador y archivo;
+- asignación territorial;
+- coordenadas;
+- contacto;
+- categorías múltiples y categoría principal;
+- verificación manual;
+- plan comercial;
+- destacado/patrocinado;
+- prioridad;
+- vigencia de campaña;
+- alta de multimedia;
+- alta/actualización de fuentes;
+- revisión de reclamaciones;
+- enlace a vista pública.
+
+### `/admin/empresas/categorias`
+
+Incluye:
+- alta de categorías;
+- edición de nombre, slug y descripción;
+- jerarquía padre/hija;
+- orden;
+- activación/desactivación;
+- contador de empresas vinculadas.
+
+Las operaciones Admin pasan por control de acceso de plataforma y generan auditoría donde corresponde.
 
 ## Privacidad y calidad
 
 - No publicar datos personales no destinados a contacto empresarial.
 - No inferir horarios ni servicios.
-- Mantener URL de procedencia de datos públicos.
-- Las imágenes importadas requieren licencia/permiso compatible; de lo contrario solo se conserva la referencia, no una copia.
-- Las fichas deben admitir estados incompletos sin inventar contenido.
+- Mantener URL de procedencia cuando exista.
+- No copiar imágenes externas sin licencia/permiso compatible.
+- Admitir fichas incompletas sin rellenarlas con datos ficticios.
+- No confundir verificación editorial con patrocinio.
+- No solicitar geolocalización del visitante hasta que pulse `Cerca de mí`.
 
-## Fases
+## Calidad y pruebas
 
-### Fase 1 — Foundation
-- tablas y contratos de datos;
-- categorías;
-- trazabilidad de fuentes;
-- reclamaciones;
-- tipos/servicios básicos.
+La rama incluye `.github/workflows/business-directory-check.yml`, que valida específicamente:
+- instalación reproducible;
+- typecheck de API y web;
+- build del API;
+- PostgreSQL 17 + PostGIS;
+- aplicación completa de migraciones;
+- fixture de empresa publicada y geolocalizada;
+- categorías públicas;
+- búsqueda pública;
+- filtro de radio/distancia PostGIS;
+- disclosure `Destacado`;
+- ficha individual;
+- estado verificado;
+- creación y persistencia de una reclamación.
 
-### Fase 2 — API + Admin
-- CRUD Admin;
-- filtros;
-- revisión y verificación;
-- importación controlada.
+Este check debe quedar verde antes del handoff de la rama.
 
-### Fase 3 — Público
-- listado, ficha, mapa, SEO y datos estructurados;
-- estados vacío/error/loading.
+## Integraciones posteriores
 
-### Fase 4 — Monetización
-- campañas, métricas y planes;
-- pagos solo cuando el negocio lo requiera.
+La unión con Rutas debe realizarse en una rama de integración posterior, sin acoplar `feat/v20-business-directory` con `feat/v20-routes-explore`. La relación futura puede cubrir:
+- empresas cerca de una ruta;
+- comer/dormir/servicios próximos;
+- experiencias y turismo activo;
+- patrocinio contextual claramente identificado.
 
-### Fase 5 — Integración Explorar
-- empresas cercanas a rutas, pueblos, eventos y patrimonio mediante una rama de integración posterior.
+## Criterios de aceptación
 
-## Criterios de aceptación Foundation
-
-- Ninguna dependencia con `main`.
-- El modelo reutiliza `territory_municipalities` y `territory_places`.
+- Ninguna modificación de `main`.
+- Modelo territorial reutilizado, no duplicado.
 - Coordenadas geográficas nativas PostGIS.
 - Empresa con múltiples categorías.
-- Fuente externa separada de contenido editorial.
-- Flujo de reclamación modelado.
-- Monetización preparada pero inactiva.
+- Fuente externa separada del contenido editorial.
+- Flujo de reclamación operativo.
+- Admin operativo para empresas, categorías y reclamaciones.
+- Listado, ficha y mapa públicos operativos.
+- Monetización preparada pero sin cobros reales.
 - Ninguna promoción puede representarse como orgánica sin disclosure.
+- CI específico de Empresas verde antes de considerar el módulo cerrado.
