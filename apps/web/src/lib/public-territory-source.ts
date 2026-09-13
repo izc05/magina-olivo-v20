@@ -1,5 +1,14 @@
 import { apiBaseUrl } from '@/lib/api-client';
 
+export type PublicMunicipalityOfficialLink = {
+  id: string;
+  kind: 'town_hall' | 'electronic_office' | 'transparency' | 'tourism' | 'other_official' | string;
+  label: string;
+  url: string;
+  source_url: string | null;
+  verified_at: string;
+};
+
 export type PublicTerritoryPlace = {
   id: string;
   name: string;
@@ -13,6 +22,7 @@ export type PublicTerritoryPlace = {
   ine_code: string;
   aemet_code: string | null;
   province_name: string;
+  official_links?: PublicMunicipalityOfficialLink[];
 };
 
 export class PublicTerritoryUnavailableError extends Error {
