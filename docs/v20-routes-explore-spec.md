@@ -84,6 +84,26 @@ Métricas previstas:
 
 La publicidad utiliza disclosure explícito (`Patrocinado` por defecto). El pago nunca puede modificar track, distancia, desnivel, dificultad, seguridad, restricciones ni fuentes oficiales.
 
+## Navegación circular Empresa ↔ Ruta
+La integración territorial funciona en ambos sentidos.
+
+### Ruta → Empresa
+- empresa con ubicación: distancia PostGIS desde el punto del negocio al track validado, con radio de 15 km;
+- empresa sin coordenadas: fallback por localidad o municipio;
+- orgánicos y patrocinados separados;
+- los kilómetros solo aparecen cuando existe geometría real.
+
+### Empresa → Ruta
+Cada ficha pública de empresa incorpora `Rutas cerca de esta empresa`:
+- con coordenadas: hasta 8 rutas publicadas y validadas dentro de 15 km, ordenadas por distancia real al trazado;
+- sin coordenadas: rutas de la misma localidad o municipio sin inventar una distancia;
+- cada resultado enlaza a `/rutas/detalle?slug=...`;
+- la UI aclara que la distancia espacial al track no representa distancia por carretera;
+- si no existe relación defendible, se enlaza al catálogo general de rutas sin fabricar recomendaciones.
+
+Esto deja navegación circular real:
+`Explorar → Ruta → Empresa → Ruta`.
+
 ## QA mínimo
 `V20 routes closure check` debe permanecer verde para:
 - parser GPX;
@@ -95,6 +115,12 @@ La publicidad utiliza disclosure explícito (`Patrocinado` por defecto). El pago
 - patrocinios con disclosure;
 - superficies públicas de mapa, comunidad y descarga GPX compilables.
 
+`V20 explore hub check` valida además:
+- Ruta → Empresa con distancia espacial real;
+- Empresa → Ruta con distancia espacial real;
+- Empresa sin coordenadas → Ruta por territorio sin distancia inventada;
+- datos técnicos de ruta intactos.
+
 ## Cierre del objetivo mapa fotográfico
 El código funcional del mapa fotográfico quedó validado en el commit `16f0ce128dffec0ab8b75e369669644e1d359efe` con:
 - `V20 routes closure check` verde;
@@ -102,7 +128,5 @@ El código funcional del mapa fotográfico quedó validado en el commit `16f0ce1
 - `V20 platform admin check` verde;
 - TypeScript y build web/API verdes;
 - todas las migraciones y smokes de Rutas verdes.
-
-Los commits posteriores a ese SHA son exclusivamente documentación de este cierre.
 
 El handoff de esta rama es `integrate/v20-beta-closure`. No se fusiona directamente a `main`.
