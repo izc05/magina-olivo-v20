@@ -1,4 +1,4 @@
-import { apiFetch } from './api-client';
+import { apiBaseUrl, apiFetch } from './api-client';
 
 export type PublicRouteSummary = {
   id: string;
@@ -64,6 +64,30 @@ export type PublicRouteDetail = {
   segments: Array<Record<string, unknown>>;
 };
 
+export type PublicRouteCommunity = {
+  route: { id: string; name: string };
+  summary: { review_count: number; rating_average: number | string; completed_reviews: number };
+  reviews: Array<{
+    id: string; rating: number; title: string | null; body: string | null; visited_on: string | null;
+    completed: boolean; difficulty_vote: string | null; helpful_count: number; published_at: string | null;
+    created_at: string; display_name: string | null;
+  }>;
+  conditions: Array<{
+    id: string; condition_kind: string; severity: string; note: string | null; observed_at: string;
+    expires_at: string | null; latitude: number | null; longitude: number | null;
+  }>;
+  photos: Array<{
+    id: string; review_id: string; media_asset_id: string; caption: string | null; captured_at: string | null;
+    latitude: number | null; longitude: number | null; mime_type: string; url: string;
+  }>;
+  sponsorships: Array<{
+    id: string; sponsor_name: string; sponsor_logo_url: string | null; sponsor_url: string | null;
+    headline: string | null; description: string | null; cta_label: string | null; cta_url: string | null;
+    promo_code: string | null; placement: string; billing_model: string; disclosure: string;
+  }>;
+  notices: { community_conditions: string; sponsored_content: string };
+};
+
 export async function loadPublicRoutes(query = '') {
   const suffix = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
   const response = await apiFetch<{ routes: PublicRouteSummary[] }>(`/api/v1/public/routes${suffix}`);
@@ -72,4 +96,17 @@ export async function loadPublicRoutes(query = '') {
 
 export async function loadPublicRoute(slug: string) {
   return apiFetch<PublicRouteDetail>(`/api/v1/public/routes/${encodeURIComponent(slug)}`);
+}
+
+export async function loadPublicRouteCommunity(slug: string) {
+  return apiFetch<PublicRouteCommunity>(`/api/v1/public/routes/${encodeURIComponent(slug)}/community`);
+}
+
+export function routeGpxUrl(slug: string) {
+  return `${apiBaseUrl}/api/v1/public/routes/${encodeURIComponent(slug)}/gpx`;
+}
+
+export function publicRouteMediaUrl(path: string) {
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${apiBaseUrl}${path}`;
 }
