@@ -12,6 +12,7 @@ on:
       - 'apps/web/src/lib/public-territory-source.ts'
       - 'scripts/check-municipalities-directory.mjs'
       - 'scripts/check-municipality-discovery-experience.mjs'
+      - 'scripts/check-municipality-public-landing.mjs'
       - '.github/workflows/v20-municipalities-directory.yml'
   workflow_dispatch:
 
@@ -32,6 +33,8 @@ jobs:
         run: node scripts/check-municipalities-directory.mjs
       - name: Public discovery experience contract
         run: node scripts/check-municipality-discovery-experience.mjs
+      - name: Public municipality landing contract
+        run: node scripts/check-municipality-public-landing.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck
