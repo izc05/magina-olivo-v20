@@ -7,6 +7,7 @@ import { RouteMap } from './route-map';
 import { RouteCommunityPanel } from './route-community-panel';
 import { RouteElevationProfile } from './route-elevation-profile';
 import { RouteExperience } from './route-experience';
+import { RouteNearbyBusinesses } from './route-nearby-businesses';
 import styles from '../routes-public.module.css';
 
 function km(value: number | null) { return value === null ? '—' : `${(value / 1000).toFixed(1)} km`; }
@@ -46,6 +47,7 @@ export function RouteDetailClient() {
         <Link href="/rutas">← Todas las rutas</Link>
         <h1>{route.name}</h1>
         <p>{route.short_description ?? route.description ?? 'Ruta territorial de Sierra Mágina.'}</p>
+        {(route.place_name || route.municipality_name) ? <p><Link href="/explorar">{route.place_name ?? route.municipality_name} · explorar territorio →</Link></p> : null}
         <div className={styles.detailStats}>
           <article><span>Distancia</span><strong>{km(route.distance_m)}</strong></article>
           <article><span>Duración</span><strong>{duration(route.duration_minutes)}</strong></article>
@@ -65,6 +67,7 @@ export function RouteDetailClient() {
     </section>
 
     <RouteExperience detail={detail} />
+    <RouteNearbyBusinesses detail={detail} />
     <RouteCommunityPanel routeId={route.id} slug={slug} />
   </main>;
 }
