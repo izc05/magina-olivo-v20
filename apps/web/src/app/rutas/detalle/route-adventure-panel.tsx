@@ -116,6 +116,7 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
 
   if (loading) return null;
   if (!definition?.enabled || !definition.adventure) return null;
+  const adventure = definition.adventure;
 
   async function start() {
     setBusy('start'); setMessage(null);
@@ -158,7 +159,7 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
     try {
       const result = await completeRouteAdventure(routeId);
       setProgress(result.progress);
-      setMessage(definition.adventure?.completion_message ?? '¡Aventura completada! Has superado los checkpoints obligatorios.');
+      setMessage(adventure.completion_message ?? '¡Aventura completada! Has superado los checkpoints obligatorios.');
     } catch (error) {
       setMessage(apiMessage(error));
     } finally { setBusy(null); }
@@ -169,8 +170,8 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
 
   return <section className={styles.communitySection} aria-labelledby="route-adventure-title">
     <div className={styles.communityHeader}>
-      <div><span className={styles.eyebrow}>Explora jugando</span><h2 id="route-adventure-title">{definition.adventure.title}</h2></div>
-      <p>{definition.adventure.intro ?? 'Recorre la ruta real, descubre puntos del territorio y desbloquea pequeños retos por el camino.'}</p>
+      <div><span className={styles.eyebrow}>Explora jugando</span><h2 id="route-adventure-title">{adventure.title}</h2></div>
+      <p>{adventure.intro ?? 'Recorre la ruta real, descubre puntos del territorio y desbloquea pequeños retos por el camino.'}</p>
     </div>
 
     <div className={styles.notice}>{definition.notice ?? 'El juego no sustituye la navegación ni los avisos oficiales.'}</div>
@@ -231,7 +232,7 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
     </div> : null}
 
     {completed ? <div className={styles.infoCard}>
-      <h3>Recorrido lúdico completado</h3><p>{definition.adventure.completion_message ?? 'Has desbloqueado todos los checkpoints necesarios de esta aventura.'}</p>
+      <h3>Recorrido lúdico completado</h3><p>{adventure.completion_message ?? 'Has desbloqueado todos los checkpoints necesarios de esta aventura.'}</p>
       <p><small>Esto certifica el progreso del mini‑juego, no una validación oficial de actividad deportiva ni del estado del sendero.</small></p>
     </div> : null}
   </section>;
