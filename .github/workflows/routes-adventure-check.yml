@@ -11,6 +11,7 @@ on:
       - 'apps/api/src/routes/route-device-export.ts'
       - 'apps/web/src/app/rutas/detalle/route-adventure-panel.tsx'
       - 'apps/web/src/app/rutas/detalle/route-detail-client.tsx'
+      - 'apps/web/src/app/rutas/detalle/route-map.tsx'
       - 'apps/web/src/components/route-adventure-admin.tsx'
       - 'apps/web/src/components/route-content-admin.tsx'
       - 'apps/web/src/lib/public-routes-source.ts'
