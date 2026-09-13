@@ -1,5 +1,5 @@
 {
-  "status_version": 1,
+  "status_version": 2,
   "audited_at": "2026-09-13",
   "scope": "Sierra Magina hiking catalog closure status",
   "official_park_inventory": {
@@ -21,11 +21,20 @@
     ]
   },
   "provincial_hiking_network": {
-    "status": "identified",
+    "status": "identified_and_source_audited",
     "expected_routes": 9,
     "catalogued_routes": 9,
     "source_name": "Diputacion de Jaen - Jaen Paraiso Interior",
-    "validation_note": "Track existence and geometry validation are tracked separately."
+    "verified_at": "2026-09-13",
+    "validation_note": "R1-R9 official pages are recorded independently from track geometry validation. R5 is source-documented to km 16.7 and R8 to km 20.9; R4/R5/R8 still lack an authoritative downloadable track in the current audit."
+  },
+  "official_programmed_hikes_2026": {
+    "status": "preserved_as_separate_layer",
+    "records": 14,
+    "source_name": "Diputacion de Jaen - Jaen Paraiso Interior",
+    "source_url": "https://www.jaenparaisointerior.es/es/sm/actividades-deportivas",
+    "verified_at": "2026-09-13",
+    "note": "Programmed hikes are official curated activities but are not automatically treated as permanent signposted trails. Canonical overlaps are recorded where known."
   },
   "homologated_network": {
     "status": "identified_current_baseline",
@@ -34,16 +43,22 @@
     "verified_at": "2026-09-13",
     "safety_note": "GR-7 remains homologated in the federation listing, while the Jaen route page warns that no maintenance has been notified since 1998 and describes scarce/deteriorated signage."
   },
+  "track_validation": {
+    "status": "open",
+    "evidence_file": "data/routes/sierra-magina-track-validation-log.json",
+    "rule": "track_found is not track_validated; geometry validation requires inspectable geometry, identity match, sanity checks, method and date evidence."
+  },
   "publication_gate": {
     "status": "open",
     "complete": false,
     "requirements": [
       "Every publishable route must have a real track.",
       "Every publishable route track must be geometry-validated.",
+      "Every validated track must have an evidence log with validation method and date.",
       "Technical distance/elevation/duration values must be sourced or derived from validated geometry with documented methodology.",
       "Current closures/incidents must remain independent from catalog publication state.",
       "Duplicate or overlapping Junta/Diputacion/GR-PR-SL records must preserve provenance and canonical relationships instead of being silently merged."
     ],
-    "reason_not_closed": "Several official, municipal and provincial tracks are located but not geometry-validated; some municipal routes still lack complete technical sheets or authoritative downloadable tracks."
+    "reason_not_closed": "Several official, municipal and provincial tracks are located but not geometry-validated; R4/R5/R8 still lack an authoritative downloadable track in the current audit; some municipal routes still lack complete technical sheets or authoritative downloadable tracks."
   }
 }
