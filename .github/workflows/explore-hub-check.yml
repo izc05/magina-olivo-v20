@@ -201,3 +201,23 @@ jobs:
           if (!nearby.distanceNote?.includes('no representa distancia por carretera')) throw new Error('Distance methodology disclosure missing');
           if (!nearby.disclosure?.includes('no modifican los datos técnicos')) throw new Error('Commercial independence disclosure missing');
           NODE
+
+          BUSINESS_ROUTES=$(curl -fsS http://127.0.0.1:3001/api/v1/public/businesses/restaurante-cerca-ci/nearby-routes)
+          BUSINESS_ROUTES="${BUSINESS_ROUTES}" node <<'NODE'
+          const payload = JSON.parse(process.env.BUSINESS_ROUTES);
+          const route = payload.routes?.find((item) => item.slug === 'ruta-explore-ci');
+          if (!route) throw new Error('Business to nearby route relation missing');
+          if (route.distanceBasis !== 'spatial') throw new Error('Business route relation should be spatial');
+          if (!(route.businessDistanceMeters >= 0)) throw new Error('Business route true spatial distance missing');
+          if (!payload.meta?.distanceNote?.includes('No representa distancia por carretera')) throw new Error('Business route distance methodology disclosure missing');
+          NODE
+
+          FALLBACK_ROUTES=$(curl -fsS http://127.0.0.1:3001/api/v1/public/businesses/servicio-municipio-ci/nearby-routes)
+          FALLBACK_ROUTES="${FALLBACK_ROUTES}" node <<'NODE'
+          const payload = JSON.parse(process.env.FALLBACK_ROUTES);
+          const route = payload.routes?.find((item) => item.slug === 'ruta-explore-ci');
+          if (!route) throw new Error('Territorial business to route fallback missing');
+          if (route.distanceBasis !== 'same_municipality') throw new Error('Business route fallback basis incorrect');
+          if (route.businessDistanceMeters !== null) throw new Error('Business route fallback invented spatial distance');
+          if (!payload.meta?.distanceNote?.includes('no se muestra una distancia inventada')) throw new Error('Business route fallback disclosure missing');
+          NODE
