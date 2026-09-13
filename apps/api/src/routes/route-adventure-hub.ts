@@ -76,7 +76,7 @@ export function registerRouteAdventureHubRoutes(app: FastifyInstance, db: Databa
     const userId = readAuthenticatedUserId(request);
     if (!userId) return reply.code(401).send({ error: 'authentication_required' });
 
-    const [runsResult, discoveriesResult, collectionsResult, albumResult, territoryResult, recentResult] = await Promise.all([
+    const [runsResult, discoveriesResult, journeyResult, collectionsResult, albumResult, territoryResult, recentResult] = await Promise.all([
       sql<{ adventures_started: number; adventures_completed: number }>`
         SELECT COUNT(DISTINCT route_id)::int AS adventures_started,
                COUNT(DISTINCT route_id) FILTER (WHERE status = 'completed')::int AS adventures_completed
@@ -94,6 +94,27 @@ export function registerRouteAdventureHubRoutes(app: FastifyInstance, db: Databa
         SELECT COUNT(*)::int AS discoveries,
                COALESCE(SUM(points), 0)::int AS total_score
         FROM user_checkpoint
+      `.execute(db),
+      sql<{
+        completed_routes: number;
+        completed_distance_m: number | string;
+        completed_elevation_gain_m: number | string;
+        completed_duration_minutes: number | string;
+        longest_route_m: number | string;
+      }>`
+        WITH completed_routes AS (
+          SELECT DISTINCT ar.route_id
+          FROM route_adventure_runs ar
+          WHERE ar.user_id = ${userId}::uuid
+            AND ar.status = 'completed'
+        )
+        SELECT COUNT(*)::int AS completed_routes,
+               COALESCE(SUM(r.distance_m), 0) AS completed_distance_m,
+               COALESCE(SUM(r.elevation_gain_m), 0) AS completed_elevation_gain_m,
+               COALESCE(SUM(r.duration_minutes), 0) AS completed_duration_minutes,
+               COALESCE(MAX(r.distance_m), 0) AS longest_route_m
+        FROM completed_routes cr
+        JOIN routes r ON r.id = cr.route_id
       `.execute(db),
       sql<{ kind: string; available: number; unlocked: number }>`
         WITH user_checkpoint AS (
@@ -192,6 +213,20 @@ export function registerRouteAdventureHubRoutes(app: FastifyInstance, db: Databa
 
     const runs = runsResult.rows[0] ?? { adventures_started: 0, adventures_completed: 0 };
     const discoveries = discoveriesResult.rows[0] ?? { discoveries: 0, total_score: 0 };
+    const journeyRaw = journeyResult.rows[0] ?? {
+      completed_routes: 0,
+      completed_distance_m: 0,
+      completed_elevation_gain_m: 0,
+      completed_duration_minutes: 0,
+      longest_route_m: 0,
+    };
+    const journey = {
+      completed_routes: Number(journeyRaw.completed_routes),
+      completed_distance_m: Number(journeyRaw.completed_distance_m),
+      completed_elevation_gain_m: Number(journeyRaw.completed_elevation_gain_m),
+      completed_duration_minutes: Number(journeyRaw.completed_duration_minutes),
+      longest_route_m: Number(journeyRaw.longest_route_m),
+    };
     const albumUnlocked = albumResult.rows.reduce((sum, row) => sum + Number(row.unlocked), 0);
     const legendaryUnlocked = albumResult.rows
       .filter((row) => row.rarity === 'legendary')
@@ -201,6 +236,8 @@ export function registerRouteAdventureHubRoutes(app: FastifyInstance, db: Databa
     if (runs.adventures_completed > 0) badges.push('aventurero_magina');
     if (runs.adventures_completed >= 3) badges.push('caminante_de_la_sierra');
     if (discoveries.total_score >= 1000) badges.push('mil_puntos');
+    if (journey.completed_distance_m >= 25000) badges.push('veinticinco_km');
+    if (journey.completed_distance_m >= 100000) badges.push('cien_km_magina');
     if (albumUnlocked >= 10) badges.push('coleccionista_de_magina');
     if (legendaryUnlocked > 0) badges.push('hallazgo_legendario');
 
@@ -216,6 +253,7 @@ export function registerRouteAdventureHubRoutes(app: FastifyInstance, db: Databa
 
     return {
       summary: { ...runs, ...discoveries },
+      journey,
       collections: collectionsResult.rows,
       album: albumResult.rows.map((row) => ({
         ...row,
@@ -232,7 +270,7 @@ export function registerRouteAdventureHubRoutes(app: FastifyInstance, db: Databa
       },
       recent_runs: recentResult.rows,
       badges,
-      privacy: 'El perfil guarda progreso de juego, no un historial de coordenadas GPS.',
+      privacy: 'El perfil guarda progreso de juego y kilómetros derivados de rutas completadas; no guarda un historial continuo de coordenadas GPS.',
     };
   });
 }
