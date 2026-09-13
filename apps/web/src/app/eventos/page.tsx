@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PublicEditorialPage } from '../../components/public-editorial-page';
+import { TerritoryReturnLink } from '../../components/territory-return-link';
 
 export const metadata: Metadata = {
   title: 'Eventos · Mágina Olivo',
@@ -8,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function EventsPage() {
-  return <Suspense fallback={null}><PublicEditorialPage type="event" /></Suspense>;
+  return <Suspense fallback={null}><TerritoryReturnLink /><PublicEditorialPage type="event" /></Suspense>;
 }
