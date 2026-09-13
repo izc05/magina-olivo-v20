@@ -120,6 +120,35 @@ export type PublicAdventureHub = {
   notice: string;
 };
 
+export type ExplorerProfile = {
+  summary: {
+    adventures_started: number;
+    adventures_completed: number;
+    discoveries: number;
+    total_score: number;
+  };
+  collections: Array<{
+    kind: RouteAdventureCheckpoint['kind'];
+    available: number;
+    unlocked: number;
+  }>;
+  recent_runs: Array<{
+    id: string;
+    route_id: string;
+    slug: string;
+    route_name: string;
+    adventure_title: string;
+    status: 'active' | 'completed' | 'abandoned';
+    score: number;
+    started_at: string;
+    completed_at: string | null;
+    unlocked_checkpoints: number;
+    total_checkpoints: number;
+  }>;
+  badges: string[];
+  privacy: string;
+};
+
 export type RouteAdventureProgress = {
   run: null | {
     id: string;
@@ -160,6 +189,7 @@ export async function loadPublicRoutes(query = '') {
 }
 
 export async function loadPublicAdventures() { return apiFetch<PublicAdventureHub>('/api/v1/public/adventures'); }
+export async function loadExplorerProfile() { return apiFetch<ExplorerProfile>('/api/v1/adventures/me'); }
 export async function loadPublicRoute(slug: string) { return apiFetch<PublicRouteDetail>(`/api/v1/public/routes/${encodeURIComponent(slug)}`); }
 export async function loadPublicRouteCommunity(slug: string) { return apiFetch<PublicRouteCommunity>(`/api/v1/public/routes/${encodeURIComponent(slug)}/community`); }
 export async function loadPublicRouteAdventure(slug: string) { return apiFetch<PublicRouteAdventure>(`/api/v1/public/routes/${encodeURIComponent(slug)}/adventure`); }
