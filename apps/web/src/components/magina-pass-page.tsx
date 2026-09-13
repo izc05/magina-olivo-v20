@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from './auth-provider';
 import { GoogleSignInButton } from './google-sign-in-button';
@@ -12,6 +12,18 @@ import {
   type MaginaPassStop,
 } from '@/lib/business-pass-source';
 import styles from './business-directory.module.css';
+
+type BarcodeResult = { rawValue?: string };
+type BarcodeDetectorInstance = { detect(source: ImageBitmapSource): Promise<BarcodeResult[]> };
+type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance;
+
+function barcodeDetectorConstructor() {
+  return (globalThis as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector ?? null;
+}
+
+function normalizePassCode(value: string) {
+  return value.trim().replace(/^MAGINA_PASS:/i, '');
+}
 
 function moneyPoints(value: number) {
   return new Intl.NumberFormat('es-ES').format(value);
@@ -38,9 +50,33 @@ export function MaginaPassPage() {
   const [passState, setPassState] = useState<MaginaPassState | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scannerAvailable, setScannerAvailable] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [redemptionCode, setRedemptionCode] = useState<{ title: string; code: string } | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const scanFrameRef = useRef<number | null>(null);
+  const scannerGenerationRef = useRef(0);
+
+  useEffect(() => {
+    setScannerAvailable(Boolean(barcodeDetectorConstructor() && navigator.mediaDevices?.getUserMedia));
+  }, []);
+
+  function stopScanner() {
+    scannerGenerationRef.current += 1;
+    if (scanFrameRef.current !== null) {
+      cancelAnimationFrame(scanFrameRef.current);
+      scanFrameRef.current = null;
+    }
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setScanning(false);
+  }
+
+  useEffect(() => () => stopScanner(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,10 +133,73 @@ export function MaginaPassPage() {
   const programCheckins = useMemo(() => passState?.checkins.filter((item) => item.program_id === program?.id) ?? [], [passState, program]);
   const programRedemptions = useMemo(() => passState?.redemptions.filter((item) => item.program_id === program?.id) ?? [], [passState, program]);
 
+  async function startScanner() {
+    const Detector = barcodeDetectorConstructor();
+    if (!Detector || !navigator.mediaDevices?.getUserMedia) {
+      setScannerAvailable(false);
+      setError('Este navegador no admite el escaneo QR local. Puedes introducir el código manualmente.');
+      return;
+    }
+    stopScanner();
+    setError(null);
+    setMessage(null);
+    const generation = scannerGenerationRef.current;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+      if (generation !== scannerGenerationRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      cameraStreamRef.current = stream;
+      const video = videoRef.current;
+      if (!video) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      video.srcObject = stream;
+      await video.play();
+      setScanning(true);
+      const detector = new Detector({ formats: ['qr_code'] });
+
+      const scan = async () => {
+        if (generation !== scannerGenerationRef.current || !videoRef.current) return;
+        try {
+          if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+            const results = await detector.detect(video);
+            const raw = results.find((result) => result.rawValue?.trim())?.rawValue?.trim();
+            if (raw) {
+              const normalized = normalizePassCode(raw);
+              if (!normalized) {
+                setError('El QR detectado no contiene un código Mágina Pass válido.');
+              } else {
+                setCode(raw);
+                setMessage('QR detectado. Comprueba el código y pulsa “Validar visita”.');
+              }
+              stopScanner();
+              return;
+            }
+          }
+        } catch (cause) {
+          console.error('QR detector error', cause);
+        }
+        if (generation === scannerGenerationRef.current) scanFrameRef.current = requestAnimationFrame(() => void scan());
+      };
+      scanFrameRef.current = requestAnimationFrame(() => void scan());
+    } catch (cause) {
+      console.error('Camera unavailable', cause);
+      stopScanner();
+      setError('No hemos podido abrir la cámara. Revisa el permiso del navegador o introduce el código manualmente.');
+    }
+  }
+
   async function submitCheckin(event: FormEvent) {
     event.preventDefault();
-    const normalized = code.trim().replace(/^MAGINA_PASS:/i, '');
+    const normalized = normalizePassCode(code);
     if (!normalized) return;
+    stopScanner();
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -161,10 +260,18 @@ export function MaginaPassPage() {
       {auth.status === 'anonymous' ? <section className={styles.claimCard}><div><p className={styles.eyebrow}>GUARDA TU PROGRESO</p><h2>Entra para empezar tu pasaporte</h2><p>Necesitamos una cuenta para evitar duplicados y conservar tus puntos entre dispositivos.</p></div><GoogleSignInButton /></section> : null}
 
       {auth.status === 'authenticated' ? <section className={styles.claimCard}>
-        <div><p className={styles.eyebrow}>VALIDAR PARADA</p><h2>Escanea o introduce el código del establecimiento</h2><p>El QR de una parada contiene un código Mágina Pass. Puedes pegarlo aquí si tu dispositivo no abre directamente el enlace.</p></div>
+        <div><p className={styles.eyebrow}>VALIDAR PARADA</p><h2>Escanea o introduce el código del establecimiento</h2><p>El QR de una parada contiene un código Mágina Pass. El escáner se ejecuta en tu navegador: la imagen de cámara no se envía a servicios externos.</p></div>
         <form className={styles.claimForm} onSubmit={submitCheckin}>
           <div className={`${styles.claimField} ${styles.claimWide}`}><label htmlFor="pass-code">Código QR / Mágina Pass</label><input id="pass-code" autoComplete="off" value={code} onChange={(event) => setCode(event.target.value)} placeholder="MAGINA_PASS:…" /></div>
-          <div className={styles.claimWide}><button className={styles.button} disabled={busy || !code.trim()} type="submit">{busy ? 'Validando…' : 'Validar visita'}</button></div>
+          {scanning ? <div className={styles.claimWide}>
+            <video ref={videoRef} muted playsInline aria-label="Cámara para escanear el QR de Mágina Pass" style={{ width: '100%', maxHeight: 360, borderRadius: 16, objectFit: 'cover', background: '#111' }} />
+            <div className={styles.actionRow}><button className={styles.secondaryButton} type="button" onClick={stopScanner}>Cerrar cámara</button></div>
+          </div> : <video ref={videoRef} muted playsInline style={{ display: 'none' }} aria-hidden="true" />}
+          <div className={`${styles.actionRow} ${styles.claimWide}`}>
+            {scannerAvailable ? <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void startScanner()}>{scanning ? 'Escaneando…' : 'Escanear QR con cámara'}</button> : null}
+            <button className={styles.button} disabled={busy || !code.trim()} type="submit">{busy ? 'Validando…' : 'Validar visita'}</button>
+          </div>
+          {!scannerAvailable ? <small className={styles.claimWide}>Si tu navegador no dispone de lector QR nativo, introduce el código manualmente.</small> : null}
         </form>
       </section> : null}
 
