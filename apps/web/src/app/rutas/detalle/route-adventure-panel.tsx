@@ -23,9 +23,24 @@ function km(value: number | string | null) {
 
 function checkpointKind(kind: RouteAdventureCheckpoint['kind']) {
   return ({
-    landmark: 'Lugar', trivia: 'Reto', observation: 'Observación', photo: 'Foto',
-    collection: 'Coleccionable', rest: 'Descanso',
+    landmark: 'Lugares', trivia: 'Retos', observation: 'Observaciones', photo: 'Recuerdos',
+    collection: 'Coleccionables', rest: 'Descansos',
   } satisfies Record<RouteAdventureCheckpoint['kind'], string>)[kind];
+}
+
+function checkpointIcon(kind: RouteAdventureCheckpoint['kind']) {
+  return ({
+    landmark: '⌖', trivia: '?', observation: '◉', photo: '▣', collection: '✦', rest: '⌂',
+  } satisfies Record<RouteAdventureCheckpoint['kind'], string>)[kind];
+}
+
+function explorerRank(percent: number, completed: boolean) {
+  if (completed && percent >= 100) return 'Guardián de la ruta';
+  if (percent >= 75) return 'Explorador avanzado';
+  if (percent >= 50) return 'Explorador de Mágina';
+  if (percent >= 25) return 'Caminante curioso';
+  if (percent > 0) return 'Primeros pasos';
+  return 'Aventura por comenzar';
 }
 
 function badgeLabel(code: string) {
@@ -170,6 +185,19 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
 
   const active = progress?.run?.status === 'active';
   const completed = progress?.run?.status === 'completed';
+  const effectiveUnlocked = progress?.stats.unlocked_checkpoints ?? 0;
+  const effectiveTotal = progress?.stats.total_checkpoints ?? definition.checkpoints.length;
+  const effectivePercent = effectiveTotal > 0 ? Math.round((effectiveUnlocked / effectiveTotal) * 100) : 0;
+  const collectionKinds = (['landmark', 'trivia', 'observation', 'photo', 'collection', 'rest'] as const)
+    .map((kind) => {
+      const checkpoints = definition.checkpoints.filter((checkpoint) => checkpoint.kind === kind);
+      return {
+        kind,
+        total: checkpoints.length,
+        unlocked: checkpoints.filter((checkpoint) => unlocked.has(checkpoint.id)).length,
+      };
+    })
+    .filter((entry) => entry.total > 0);
 
   return <section className={styles.communitySection} aria-labelledby="route-adventure-title">
     <div className={styles.communityHeader}>
@@ -184,6 +212,37 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
       <article className={styles.infoCard}><h3>Puntuación</h3><strong>{progress.run.score}/{progress.stats.total_points}</strong><p>Puntos conseguidos en esta aventura</p></article>
       <article className={styles.infoCard}><h3>Obligatorios</h3><strong>{progress.stats.required_remaining}</strong><p>{progress.stats.required_remaining === 0 ? 'Ya puedes cerrar la aventura.' : 'Aún pendientes para completar el recorrido lúdico.'}</p></article>
     </div> : null}
+
+    <article className={styles.infoCard} aria-labelledby="route-adventure-journal-title">
+      <div className={styles.reviewMeta}>
+        <strong id="route-adventure-journal-title">Cuaderno del Explorador</strong>
+        <span>{effectivePercent}% descubierto</span>
+      </div>
+      <h3>{explorerRank(effectivePercent, completed)}</h3>
+      <p>{progress?.run
+        ? `Has descubierto ${effectiveUnlocked} de ${effectiveTotal} elementos de esta aventura.`
+        : `Esta ruta guarda ${effectiveTotal} descubrimientos. Inicia la aventura para ir incorporándolos a tu cuaderno.`}</p>
+      <div className={styles.infoGrid}>
+        {collectionKinds.map((entry) => <div className={styles.infoCard} key={entry.kind}>
+          <strong>{checkpointIcon(entry.kind)} {entry.unlocked}/{entry.total}</strong>
+          <p>{checkpointKind(entry.kind)}</p>
+        </div>)}
+      </div>
+      <div className={styles.actionRow} aria-label="Colección de esta ruta">
+        {definition.checkpoints.map((checkpoint, index) => {
+          const done = unlocked.has(checkpoint.id);
+          return <button
+            key={checkpoint.id}
+            type="button"
+            className={styles.secondaryAction}
+            title={done ? checkpoint.title : `Etapa ${index + 1} todavía bloqueada`}
+            onClick={() => focusCheckpoint(checkpoint)}
+          >
+            {done ? `✓ ${checkpoint.title}` : `🔒 Etapa ${index + 1}`}
+          </button>;
+        })}
+      </div>
+    </article>
 
     {progress?.badges.length ? <div className={styles.actionRow} aria-label="Insignias conseguidas">
       {progress.badges.map((badge) => <span key={badge} className={styles.secondaryAction}>{badgeLabel(badge)}</span>)}
