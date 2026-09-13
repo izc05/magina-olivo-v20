@@ -111,6 +111,14 @@ BEGIN
           SELECT 1 FROM route_adventure_checkpoints cp
           WHERE cp.route_id = r.id AND cp.active = true AND cp.is_required = true
         )
+        AND NOT EXISTS (
+          SELECT 1 FROM route_condition_reports rc
+          WHERE rc.route_id = r.id
+            AND rc.moderation_status = 'approved'
+            AND rc.severity = 'critical'
+            AND rc.condition_kind IN ('closed','blocked','fire_risk','flooded')
+            AND (rc.expires_at IS NULL OR rc.expires_at > now())
+        )
     ) INTO publish_ready;
 
     IF NOT publish_ready THEN
@@ -129,7 +137,7 @@ CREATE TRIGGER route_adventures_publish_ready_trg
 COMMENT ON TABLE route_adventures IS 'Optional gamified layer for a validated published route. progression_mode free allows any checkpoint order; linear requires previous mandatory stages.';
 COMMENT ON TABLE route_adventure_checkpoints IS 'Geolocated adventure checkpoints; answers and unlocks are validated by the API. Public payloads must never expose correct_answer_key.';
 COMMENT ON INDEX route_adventure_checkpoints_route_point_unique_idx IS 'A real route POI can seed at most one adventure checkpoint per route, making bulk POI import idempotent.';
-COMMENT ON FUNCTION enforce_route_adventure_publish_ready() IS 'Prevents enabling an adventure unless its route is published, has a real validated track, and has at least one active required checkpoint.';
+COMMENT ON FUNCTION enforce_route_adventure_publish_ready() IS 'Prevents enabling an adventure unless its route is published, has a real validated track, at least one active required checkpoint, and no approved active critical closure/block/fire/flood safety hold.';
 COMMENT ON TABLE route_adventure_runs IS 'User game sessions kept separate from route_completions so game progress cannot be mistaken for verified physical completion.';
 COMMENT ON TABLE route_adventure_unlocks IS 'Stores checkpoint result and proximity distance only; the user GPS coordinate used for validation is not retained.';
 
