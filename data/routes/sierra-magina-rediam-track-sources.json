@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "verified_at": "2026-09-13",
   "authority": "Junta de Andalucia - REDIAM",
   "service": "REDIAM_WFS_Patrimonio_Natural",
@@ -15,6 +15,7 @@
     {"slug":"cano-del-aguadero","codigoequi":"725","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/ca%C3%B1o-del-aguadero/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"castillo-de-mata-bejid","codigoequi":"1675","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/castillo-de-mata-bejid/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"el-peralejo","codigoequi":"1051","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/el-peralejo/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
+    {"slug":"fuenmayor","codigoequi":"723","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/fuenmayor/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"gibralberca","codigoequi":"722","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/gibralberca-1/","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"hoyalinos","codigoequi":"1726","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/hoyalinos/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"la-cueva-de-la-graja","codigoequi":"721","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/la-cueva-de-la-graja/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
@@ -23,6 +24,7 @@
     {"slug":"sierra-de-la-cruz","codigoequi":"1676","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/sierra-de-la-cruz/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"subida-al-hoyo-de-la-laguna","codigoequi":"1552","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/subida-al-hoyo-de-la-laguna/","formats_exposed":["KML","GML","GPX"],"track_found":true,"track_validated":false},
     {"slug":"subida-a-pico-magina-y-miramundos","codigoequi":"726","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/subida-a-pico-m%C3%A1gina-y-miramundos/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
+    {"slug":"umbria-de-los-corzos","codigoequi":"1674","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/sierra-m%C3%81gina-2/","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"veredon-mojon-blanco","codigoequi":"1561","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/vered%C3%93n-moj%C3%93n-blanco/255035","formats_exposed":["KML","GML","GPX"],"track_found":true,"track_validated":false}
   ],
   "wfs_request_template": "https://www.juntadeandalucia.es/medioambiente/mapwms/REDIAM_WFS_Patrimonio_Natural?service=WFS&version=1.0.0&request=GetFeature&typename=senderos:senderos&srsname=EPSG:25830&outputFormat={OUTPUT_FORMAT}&Filter=<Filter xmlns=\"http://www.opengis.net/ogc\" xmlns:gml=\"http://www.opengis.net/gml\"><PropertyIsEqualTo><PropertyName>CODIGOEQUI</PropertyName><Literal>{CODIGOEQUI}</Literal></PropertyIsEqualTo></Filter>"
