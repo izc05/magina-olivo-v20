@@ -95,6 +95,14 @@ La publicidad utiliza disclosure explícito (`Patrocinado` por defecto). El pago
 - patrocinios con disclosure;
 - superficies públicas de mapa, comunidad y descarga GPX compilables.
 
-El mapa fotográfico comunitario fue cerrado con `V20 routes closure check`, `V20 full candidate check` y `V20 platform admin check` verdes sobre el mismo código funcional antes de este ajuste documental.
+## Cierre del objetivo mapa fotográfico
+El código funcional del mapa fotográfico quedó validado en el commit `16f0ce128dffec0ab8b75e369669644e1d359efe` con:
+- `V20 routes closure check` verde;
+- `V20 full candidate check` verde;
+- `V20 platform admin check` verde;
+- TypeScript y build web/API verdes;
+- todas las migraciones y smokes de Rutas verdes.
+
+Los commits posteriores a ese SHA son exclusivamente documentación de este cierre.
 
 El handoff de esta rama es `integrate/v20-beta-closure`. No se fusiona directamente a `main`.
