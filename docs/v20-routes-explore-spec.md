@@ -24,7 +24,7 @@ La rama ya contiene la cadena completa necesaria para gestionar y publicar rutas
 - integración de Rutas en `/explorar`;
 - check CI específico con PostGIS 17, typecheck, build, todas las migraciones y smoke de publicación/invalidation.
 
-El workflow `V20 routes closure check` pasa completo en el HEAD de cierre funcional.
+El workflow `V20 routes closure check` quedó verde sobre el último HEAD funcional antes de este ajuste exclusivamente documental; los checks se reejecutan normalmente cuando cambia la documentación del PR.
 
 ## Visión
 
@@ -239,11 +239,11 @@ Comprueba:
 - publicación correcta tras validar track;
 - despublicación automática al rechazar el track validado.
 
-En el cierre funcional, los trece pasos principales del job han finalizado correctamente sobre el mismo HEAD.
+El último HEAD funcional validado completó correctamente todos los pasos del job; un commit posterior que solo modifica este documento puede volver a disparar los checks sin alterar el resultado funcional esperado.
 
 ## Handoff
 
-La rama queda preparada para absorberse en `integrate/v20-beta-closure` cuando terminen verdes los checks transversales del mismo HEAD.
+La rama queda preparada para absorberse en `integrate/v20-beta-closure` cuando terminen verdes los checks transversales del mismo HEAD final.
 
 No fusionar directamente a `main`.
 No mezclar con Empresas en este PR.
