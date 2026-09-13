@@ -4,17 +4,17 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { FieldRecord } from '@/lib/domain';
 import { getLocalActivities, getLocalFields } from '@/lib/local-prototype-store';
-import { ArrowIcon, MapPinIcon, PlusIcon, SproutIcon } from '@/components/icons';
+import { ArrowIcon, CalendarIcon, CampaignIcon, CostIcon, MapPinIcon, PlusIcon, PruningIcon, SproutIcon, TreatmentIcon, WaterIcon } from '@/components/icons';
 
 const modules = [
-  ['🫒','Cosecha','Producción e histórico','cosechas'],
-  ['💧','Riegos','Próximo e histórico','riegos'],
-  ['🌿','Tratamientos','Productos y aplicaciones','tratamientos'],
-  ['🧪','Abonos','Productos y cantidades','abonos'],
-  ['✂','Poda','Trabajos e histórico','poda'],
-  ['€','Gastos','Costes de la finca','gastos'],
-  ['📅','Calendario','Próximos trabajos','calendario'],
-  ['◷','Historia','Todo lo realizado','historia'],
+  [CampaignIcon,'Cosecha','Producción e histórico','cosechas'],
+  [WaterIcon,'Riegos','Próximo e histórico','riegos'],
+  [TreatmentIcon,'Tratamientos','Productos y aplicaciones','tratamientos'],
+  [SproutIcon,'Abonos','Productos y cantidades','abonos'],
+  [PruningIcon,'Poda','Trabajos e histórico','poda'],
+  [CostIcon,'Gastos','Costes de la finca','gastos'],
+  [CalendarIcon,'Calendario','Próximos trabajos','calendario'],
+  [CalendarIcon,'Historia','Todo lo realizado','historia'],
 ] as const;
 
 export function LocalFieldPage() {
@@ -76,7 +76,7 @@ export function LocalFieldPage() {
 
     <section className="section">
       <div className="module-grid living-modules">
-        {modules.map(([icon,label,summary,view]) => <Link href={`/mi-campo/fincas/local/modulo?${fieldQuery}&view=${view}`} className="card module living-module" key={view}><span className="module-symbol">{icon}</span><div><strong>{label}</strong><small>{summary}</small></div><ArrowIcon/></Link>)}
+        {modules.map(([Icon,label,summary,view]) => <Link href={`/mi-campo/fincas/local/modulo?${fieldQuery}&view=${view}`} className="card module living-module" key={view}><span className="module-symbol"><Icon /></span><div><strong>{label}</strong><small>{summary}</small></div><ArrowIcon/></Link>)}
       </div>
     </section>
 

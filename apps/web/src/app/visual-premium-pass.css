@@ -109,6 +109,13 @@ body {
   flex: none;
   stroke-width: 1.85;
 }
+.explore-icon svg { width: 24px; height: 24px; }
+.module-page-symbol svg { width: 34px; height: 34px; }
+.permission-row strong { display: inline-flex; align-items: center; gap: 9px; }
+.permission-row strong svg { width: 21px; height: 21px; color: var(--olive-700); }
+[class*='cardPlaceholder'] svg { width: 46px; height: 46px; }
+[class*='heroPlaceholder'] svg { width: 76px; height: 76px; }
+[class*='mediaPlaceholder'] svg { width: 58px; height: 58px; }
 :is(.quick .icon, .module-symbol, .summary-mark, .title-mark, .farm-avatar, .olivo-mark, .weather-feature-icon) {
   border: 1px solid rgba(48, 78, 49, .11);
   background: #e7eddf;

@@ -5,19 +5,20 @@ import Link from 'next/link';
 import type { ActivityType, FieldRecord } from '@/lib/domain';
 import { getLocalActivities, getLocalFields } from '@/lib/local-prototype-store';
 import { LocalRecordsPanel } from '@/components/local-records-panel';
-import { ArrowIcon, PlusIcon } from '@/components/icons';
+import type { ComponentType } from 'react';
+import { ArrowIcon, CalendarIcon, CampaignIcon, CostIcon, PlusIcon, PruningIcon, SproutIcon, TreatmentIcon, WaterIcon } from '@/components/icons';
 
 type ViewKey = 'cosechas' | 'riegos' | 'tratamientos' | 'abonos' | 'poda' | 'gastos' | 'calendario' | 'historia';
 
-const views: Record<ViewKey, { title: string; symbol: string; subtitle: string; type?: ActivityType; register?: string }> = {
-  cosechas: { title: 'Cosechas', symbol: '🫒', subtitle: 'Producción registrada para esta finca', type: 'harvest' },
-  riegos: { title: 'Riegos', symbol: '💧', subtitle: 'Riegos realizados y próximos avisos', type: 'irrigation', register: 'riego' },
-  tratamientos: { title: 'Tratamientos', symbol: '🌿', subtitle: 'Curas y seguimientos', type: 'treatment', register: 'tratamiento' },
-  abonos: { title: 'Abonos', symbol: '🧪', subtitle: 'Productos, cantidades y costes', type: 'fertilization', register: 'abono' },
-  poda: { title: 'Poda', symbol: '✂', subtitle: 'Trabajos de poda registrados', type: 'pruning', register: 'poda' },
-  gastos: { title: 'Gastos', symbol: '€', subtitle: 'Costes derivados de tus registros', register: 'gasto' },
-  calendario: { title: 'Calendario', symbol: '📅', subtitle: 'Seguimientos y trabajos programados' },
-  historia: { title: 'Historia', symbol: '◷', subtitle: 'La memoria real de esta finca' },
+const views: Record<ViewKey, { title: string; Icon: ComponentType; subtitle: string; type?: ActivityType; register?: string }> = {
+  cosechas: { title: 'Cosechas', Icon: CampaignIcon, subtitle: 'Producción registrada para esta finca', type: 'harvest' },
+  riegos: { title: 'Riegos', Icon: WaterIcon, subtitle: 'Riegos realizados y próximos avisos', type: 'irrigation', register: 'riego' },
+  tratamientos: { title: 'Tratamientos', Icon: TreatmentIcon, subtitle: 'Curas y seguimientos', type: 'treatment', register: 'tratamiento' },
+  abonos: { title: 'Abonos', Icon: SproutIcon, subtitle: 'Productos, cantidades y costes', type: 'fertilization', register: 'abono' },
+  poda: { title: 'Poda', Icon: PruningIcon, subtitle: 'Trabajos de poda registrados', type: 'pruning', register: 'poda' },
+  gastos: { title: 'Gastos', Icon: CostIcon, subtitle: 'Costes derivados de tus registros', register: 'gasto' },
+  calendario: { title: 'Calendario', Icon: CalendarIcon, subtitle: 'Seguimientos y trabajos programados' },
+  historia: { title: 'Historia', Icon: CalendarIcon, subtitle: 'La memoria real de esta finca' },
 };
 
 export function LocalFieldModulePage() {
@@ -53,7 +54,7 @@ export function LocalFieldModulePage() {
   const registerHref = current.register ? `/mi-campo/registrar/${current.register}?${fieldQuery}` : view === 'cosechas' ? `/mi-campo/registrar/cosecha?${fieldQuery}` : null;
 
   return <>
-    <header className="module-page-title local-module-title"><Link href={`/mi-campo/fincas/local?id=${encodeURIComponent(field.id)}`}>‹ {field.name}</Link><span className="module-page-symbol">{current.symbol}</span><div><span className="eyebrow dark">FICHA LOCAL</span><h1>{current.title}</h1><p>{current.subtitle}</p></div></header>
+    <header className="module-page-title local-module-title"><Link href={`/mi-campo/fincas/local?id=${encodeURIComponent(field.id)}`}>‹ {field.name}</Link><span className="module-page-symbol"><current.Icon /></span><div><span className="eyebrow dark">FICHA LOCAL</span><h1>{current.title}</h1><p>{current.subtitle}</p></div></header>
     {view === 'gastos' && <section className="card module-highlight cost-highlight"><span>COSTE REGISTRADO EN ESTE DISPOSITIVO</span><strong>{summary.costs.toLocaleString('es-ES')} €</strong><p>Solo suma actividades de esta finca que tengan un importe.</p></section>}
     {view === 'calendario' && <section className="card module-highlight calendar-highlight"><span>TRABAJOS PROGRAMADOS</span><strong>{summary.planned}</strong><p>Se crean al indicar una fecha de seguimiento en un registro.</p></section>}
     {view === 'historia' && <section className="card module-highlight harvest-highlight"><span>MEMORIA DE LA FINCA</span><strong>{summary.activities}</strong><p>registros guardados localmente.</p></section>}

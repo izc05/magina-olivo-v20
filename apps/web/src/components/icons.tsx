@@ -3,25 +3,34 @@ import {
   ArrowRight,
   BellSimple,
   Briefcase,
+  Camera,
   CalendarDots,
   ChartLineUp,
   CloudRain,
+  CloudArrowDown,
   CompassRose,
   CurrencyEur,
   DotsThreeCircle,
   Drop,
   FileText,
+  Factory,
   Flask,
   HouseLine,
   MapTrifold,
+  Megaphone,
+  Mountains,
+  Newspaper,
   MapPinLine,
   Plant,
   PlusCircle,
   Scissors,
   SealCheck,
+  Sparkle,
+  Storefront,
   SunHorizon,
   Tree,
   WarningCircle,
+  Wrench,
 } from '@phosphor-icons/react/dist/ssr';
 
 type Props = ComponentProps<typeof HouseLine>;
@@ -55,3 +64,13 @@ export function ProfessionalIcon(props: Props) { return <Briefcase {...defaults}
 export function CalendarIcon(props: Props) { return <CalendarDots {...defaults} {...props} />; }
 export function CostIcon(props: Props) { return <CurrencyEur {...defaults} {...props} />; }
 export function TreatmentIcon(props: Props) { return <Flask {...defaults} {...props} />; }
+export function NewsIcon(props: Props) { return <Newspaper {...defaults} {...props} />; }
+export function EventIcon(props: Props) { return <CalendarDots {...defaults} {...props} />; }
+export function MillIcon(props: Props) { return <Factory {...defaults} {...props} />; }
+export function ServiceIcon(props: Props) { return <Wrench {...defaults} {...props} />; }
+export function PlaceIcon(props: Props) { return <Mountains {...defaults} {...props} />; }
+export function DirectoryIcon(props: Props) { return <Storefront {...defaults} {...props} />; }
+export function PromotionIcon(props: Props) { return <Sparkle {...defaults} {...props} />; }
+export function AnnouncementIcon(props: Props) { return <Megaphone {...defaults} {...props} />; }
+export function CameraIcon(props: Props) { return <Camera {...defaults} {...props} />; }
+export function OfflineIcon(props: Props) { return <CloudArrowDown {...defaults} {...props} />; }

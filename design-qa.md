@@ -45,6 +45,7 @@ No actionable P0, P1, or P2 discrepancy remains.
 8. Post-fix evidence — combined reference/Profile and mobile Profile/Admin comparisons show no remaining P0/P1/P2 visual issue. The full responsive suite passes 115/115 across 360, 390, 430, 768, 1024, 1280, 1440, and 1920 px.
 9. P2 — Navigation and agricultural modules depended on nine very simple monoline SVGs plus emoji/symbol fallbacks. Replaced the shared core with Phosphor duotone SSR icons, added domain-specific symbols, and visually rechecked Explorar and Finca at 390 px.
 10. Post-fix evidence — icon silhouettes remain legible at mobile navigation size and gain depth at card size. Typecheck, production build, bundle budget, and the complete 115-test responsive matrix pass after the replacement.
+11. Phase 2 — Extended the same icon family to local-farm modules, CMS cards, editorial fallbacks, towns, mills, services, and device permissions. A second production build and 115/115 responsive run passed with the final 2.73 MiB bundle.
 
 ## Follow-up polish
 
