@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "audited_at": "2026-09-13",
+  "authority": "Federacion Andaluza de Deportes de Montana, Escalada y Senderismo",
+  "source_page": "https://www.fedamon.com/index.php/home-6/2013-04-16-17-25-48/11-federacion/186-gr7-jaen",
+  "discovery_workflow_run_id": 34779854434,
+  "scope": "GR-7 stages intersecting Sierra Magina",
+  "policy": {
+    "urls_must_be_published_by_source_page": true,
+    "archive_located_is_not_geometry_validated": true,
+    "maintenance_warning_is_independent_from_geometry_validation": true
+  },
+  "stages": [
+    {"stage":8,"from":"Jodar","to":"Bedmar y Garciez","official_distance_km":8.0,"archive_url":"https://www.fedamon.com/senderos/grs/traks/jaen/08%20Jodar-Bedmar.rar","track_found":true,"track_validated":false},
+    {"stage":9,"from":"Bedmar y Garciez","to":"Albanchez de Magina","official_distance_km":10.7,"archive_url":"https://www.fedamon.com/senderos/grs/traks/jaen/09%20Bedmar-Albanchez.rar","track_found":true,"track_validated":false},
+    {"stage":10,"from":"Albanchez de Magina","to":"Torres","official_distance_km":4.5,"archive_url":"https://www.fedamon.com/senderos/grs/traks/jaen/10%20Albanchez-Torres.rar","track_found":true,"track_validated":false},
+    {"stage":11,"from":"Torres","to":"Cambil","official_distance_km":26.9,"archive_url":"https://www.fedamon.com/senderos/grs/traks/jaen/11%20Torres-Cambil.rar","track_found":true,"track_validated":false},
+    {"stage":12,"from":"Cambil","to":"Carcheles","official_distance_km":11.8,"archive_url":"https://www.fedamon.com/senderos/grs/traks/jaen/12%20Cambil-Carchelejo.rar","track_found":true,"track_validated":false}
+  ],
+  "maintenance_note": "FAM states that the Jaen GR-7 section has had no maintenance notified since 1998 and warns of scarce/deteriorated signage; stage-specific warnings remain mandatory even if geometry validates."
+}
