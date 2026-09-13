@@ -11,6 +11,9 @@ on:
       - 'apps/api/src/routes/routes-explore.ts'
       - 'apps/api/src/routes/admin-routes-explore.ts'
       - 'apps/api/src/routes/admin-route-content.ts'
+      - 'apps/api/src/routes/admin-route-community.ts'
+      - 'apps/api/src/routes/route-community.ts'
+      - 'apps/api/src/routes/route-device-export.ts'
       - 'apps/api/src/domain/routes-explore.ts'
       - 'apps/api/src/app.ts'
       - 'apps/api/package.json'
@@ -19,9 +22,11 @@ on:
       - 'apps/web/src/app/admin/rutas/**'
       - 'apps/web/src/components/routes-admin-console.tsx'
       - 'apps/web/src/components/route-content-admin.tsx'
+      - 'apps/web/src/components/routes-community-admin.tsx'
       - 'apps/web/src/lib/public-routes-source.ts'
       - 'database/migrations/0080_routes_explore_foundation.sql'
       - 'database/migrations/0081_routes_track_consistency.sql'
+      - 'database/migrations/0082_routes_community_monetization.sql'
       - '.github/workflows/routes-check.yml'
       - '.nvmrc'
       - 'pnpm-lock.yaml'
@@ -181,6 +186,53 @@ jobs:
                 AND status = 'review' AND track_status = 'rejected' AND published_at IS NULL
             ) THEN
               RAISE EXCEPTION 'rejected track did not unpublish route';
+            END IF;
+          END $$;
+          SQL
+
+      - name: Route community and sponsorship smoke
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d magina_routes -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO route_reviews (id, route_id, user_id, rating, body)
+          VALUES (
+            'dddddddd-4444-4444-8444-dddddddddddd',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            5,
+            'Experiencia CI pendiente de moderación'
+          );
+
+          INSERT INTO route_condition_reports (
+            id, route_id, user_id, condition_kind, severity, observed_at
+          ) VALUES (
+            'eeeeeeee-5555-4555-8555-eeeeeeeeeeee',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            'muddy', 'caution', now()
+          );
+
+          INSERT INTO route_sponsorships (
+            id, route_id, sponsor_name, placement, billing_model, status, created_by, updated_by
+          ) VALUES (
+            'ffffffff-6666-4666-8666-ffffffffffff',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'Sponsor CI', 'route_sidebar', 'flat', 'active',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM route_reviews WHERE id = 'dddddddd-4444-4444-8444-dddddddddddd' AND moderation_status = 'pending') THEN
+              RAISE EXCEPTION 'route review did not default to moderation pending';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM route_condition_reports WHERE id = 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee' AND moderation_status = 'pending') THEN
+              RAISE EXCEPTION 'condition report did not default to moderation pending';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM route_sponsorships WHERE id = 'ffffffff-6666-4666-8666-ffffffffffff' AND disclosure = 'Patrocinado') THEN
+              RAISE EXCEPTION 'sponsorship disclosure missing';
             END IF;
           END $$;
           SQL
