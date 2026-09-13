@@ -48,6 +48,12 @@
     "evidence_file": "data/routes/sierra-magina-track-validation-log.json",
     "rule": "track_found is not track_validated; geometry validation requires inspectable geometry, identity match, sanity checks, method and date evidence."
   },
+  "technical_sheet_audit": {
+    "status": "open",
+    "matrix_file": "data/routes/sierra-magina-official-core-technical-audit.json",
+    "expected_routes": 17,
+    "note": "The 17-route matrix distinguishes verified technical sheets, partial sheets and pending technical fields without inventing missing values."
+  },
   "publication_gate": {
     "status": "open",
     "complete": false,
@@ -59,6 +65,6 @@
       "Current closures/incidents must remain independent from catalog publication state.",
       "Duplicate or overlapping Junta/Diputacion/GR-PR-SL records must preserve provenance and canonical relationships instead of being silently merged."
     ],
-    "reason_not_closed": "Several official, municipal and provincial tracks are located but not geometry-validated; R4/R5/R8 still lack an authoritative downloadable track in the current audit; some municipal routes still lack complete technical sheets or authoritative downloadable tracks."
+    "reason_not_closed": "Several official, municipal and provincial tracks are located but not geometry-validated; R4/R5/R8 still lack an authoritative downloadable track in the current audit; some official and municipal routes still lack complete technical fields or authoritative downloadable tracks."
   }
 }
