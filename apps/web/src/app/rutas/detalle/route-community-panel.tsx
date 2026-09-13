@@ -12,12 +12,12 @@ import {
 import styles from '../routes-public.module.css';
 
 type Props = { routeId: string; slug: string };
-
 type ReviewResponse = { review: { id: string }; moderation: 'pending' };
 type ReserveResponse = {
   media: { id: string };
   upload: { uploadUrl: string; method: 'PUT'; headers: Record<string, string> };
 };
+type PhotoLocation = { latitude: number; longitude: number; accuracy: number };
 
 const conditionLabels: Record<string, string> = {
   clear: 'Despejado / normal', muddy: 'Barro', wet: 'Mojado', snow: 'Nieve', ice: 'Hielo', blocked: 'Paso bloqueado',
@@ -33,6 +33,11 @@ function stars(value: number) {
   return `${'★'.repeat(Math.max(0, Math.min(5, Math.round(value))))}${'☆'.repeat(Math.max(0, 5 - Math.min(5, Math.round(value))))}`;
 }
 
+function hasPhotoLocation(photo: PublicRouteCommunity['photos'][number]) {
+  return photo.latitude != null && photo.longitude != null
+    && Number.isFinite(Number(photo.latitude)) && Number.isFinite(Number(photo.longitude));
+}
+
 export function RouteCommunityPanel({ routeId, slug }: Props) {
   const [community, setCommunity] = useState<PublicRouteCommunity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +47,9 @@ export function RouteCommunityPanel({ routeId, slug }: Props) {
   const [reviewBody, setReviewBody] = useState('');
   const [visitedOn, setVisitedOn] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
+  const [photoCaption, setPhotoCaption] = useState('');
+  const [photoLocation, setPhotoLocation] = useState<PhotoLocation | null>(null);
+  const [locationBusy, setLocationBusy] = useState(false);
   const [conditionKind, setConditionKind] = useState('clear');
   const [conditionNote, setConditionNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,6 +65,43 @@ export function RouteCommunityPanel({ routeId, slug }: Props) {
   useEffect(() => { void refresh(); }, [slug]);
 
   const ratingAverage = useMemo(() => Number(community?.summary.rating_average ?? 0), [community]);
+  const mappedPhotos = useMemo(() => community?.photos.filter(hasPhotoLocation).length ?? 0, [community]);
+
+  function capturePhotoLocation() {
+    setMessage(null);
+    if (!navigator.geolocation) {
+      setMessage('Este navegador no permite obtener la ubicación. Puedes subir la foto sin geolocalizar.');
+      return;
+    }
+    setLocationBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setPhotoLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        });
+        setLocationBusy(false);
+      },
+      () => {
+        setPhotoLocation(null);
+        setLocationBusy(false);
+        setMessage('No se ha podido obtener la ubicación. La foto puede enviarse igualmente sin posición.');
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
+    );
+  }
+
+  function focusPhotoOnMap(photoItem: PublicRouteCommunity['photos'][number]) {
+    if (!hasPhotoLocation(photoItem)) return;
+    window.dispatchEvent(new CustomEvent('magina:route-photo-focus', {
+      detail: {
+        photoId: photoItem.id,
+        latitude: Number(photoItem.latitude),
+        longitude: Number(photoItem.longitude),
+      },
+    }));
+  }
 
   async function submitReview() {
     setBusy(true); setMessage(null);
@@ -74,14 +119,17 @@ export function RouteCommunityPanel({ routeId, slug }: Props) {
             mime_type: photo.type,
             byte_size: photo.size,
             sha256: checksum,
+            caption: photoCaption || null,
             captured_at: null,
+            latitude: photoLocation?.latitude ?? null,
+            longitude: photoLocation?.longitude ?? null,
           }),
         });
         const uploadResponse = await fetch(reserved.upload.uploadUrl, { method: reserved.upload.method, headers: reserved.upload.headers, body: photo });
         if (!uploadResponse.ok) throw new Error('photo_upload_failed');
         await apiFetch(`/api/v1/routes/${routeId}/reviews/${response.review.id}/photos/${reserved.media.id}/complete`, { method: 'POST' });
       }
-      setReviewBody(''); setVisitedOn(''); setPhoto(null);
+      setReviewBody(''); setVisitedOn(''); setPhoto(null); setPhotoCaption(''); setPhotoLocation(null);
       setMessage('Gracias. Tu experiencia y las fotos quedan pendientes de revisión antes de publicarse.');
     } catch (cause) {
       const status = typeof cause === 'object' && cause && 'status' in cause ? Number((cause as { status?: number }).status) : 0;
@@ -121,7 +169,7 @@ export function RouteCommunityPanel({ routeId, slug }: Props) {
         <span className={styles.eyebrow}>Comunidad</span>
         <h2>{loading ? 'Cargando experiencias…' : `${ratingAverage.toFixed(1)} / 5`}</h2>
         <p className={styles.ratingLine}>{stars(ratingAverage)} · {community?.summary.review_count ?? 0} valoraciones aprobadas</p>
-        <p>Fotos, comentarios y estado reciente del sendero, siempre separados de la información oficial.</p>
+        <p>{mappedPhotos} foto{mappedPhotos === 1 ? '' : 's'} de la comunidad situada{mappedPhotos === 1 ? '' : 's'} sobre el mapa.</p>
       </article>
     </section>
 
@@ -155,7 +203,15 @@ export function RouteCommunityPanel({ routeId, slug }: Props) {
           <label>Valoración<select value={rating} onChange={(event) => setRating(Number(event.target.value))}>{[5,4,3,2,1].map((value) => <option key={value} value={value}>{value} estrellas</option>)}</select></label>
           <label>Fecha de la ruta<input type="date" value={visitedOn} onChange={(event) => setVisitedOn(event.target.value)} /></label>
           <label>Comentario<textarea value={reviewBody} onChange={(event) => setReviewBody(event.target.value)} maxLength={8000} placeholder="Estado, dificultad real, señalización, agua, sombra, consejos…" /></label>
-          <label>Foto opcional<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} /></label>
+          <label>Foto opcional<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => { setPhoto(event.target.files?.[0] ?? null); setPhotoLocation(null); }} /></label>
+          {photo ? <>
+            <label>Pie de foto<input value={photoCaption} onChange={(event) => setPhotoCaption(event.target.value)} maxLength={1500} placeholder="Ej.: Mirador después de la subida al collado" /></label>
+            <div className={styles.actionRow}>
+              <button type="button" disabled={locationBusy} onClick={capturePhotoLocation}>{locationBusy ? 'Localizando…' : photoLocation ? 'Actualizar ubicación' : 'Situar foto en el mapa'}</button>
+              {photoLocation ? <button type="button" onClick={() => setPhotoLocation(null)}>Quitar ubicación</button> : null}
+            </div>
+            <small>{photoLocation ? `Ubicación añadida voluntariamente (precisión aproximada ±${Math.round(photoLocation.accuracy)} m). Solo será pública si la foto es aprobada.` : 'La ubicación es opcional. Solo se solicita cuando pulsas “Situar foto en el mapa”.'}</small>
+          </> : null}
           <button disabled={busy} type="submit">{busy ? 'Enviando…' : 'Enviar para revisión'}</button>
           <small>Las aportaciones no aparecen automáticamente: pasan primero por moderación.</small>
         </form>
@@ -172,9 +228,20 @@ export function RouteCommunityPanel({ routeId, slug }: Props) {
     </section>
 
     <section className={styles.communitySection}>
-      <div className={styles.communityHeader}><div><span className={styles.eyebrow}>Galería real</span><h2>Fotos de la comunidad</h2></div><p>Solo imágenes aprobadas por moderación.</p></div>
+      <div className={styles.communityHeader}><div><span className={styles.eyebrow}>Galería real</span><h2>Fotos de la comunidad</h2></div><p>Solo imágenes aprobadas por moderación. Pulsa una geolocalizada para verla sobre el recorrido.</p></div>
       <div className={styles.communityPhotos}>
-        {community?.photos.length ? community.photos.map((photo) => <figure key={photo.id}><img loading="lazy" src={publicRouteMediaUrl(photo.url)} alt={photo.caption ?? 'Foto aportada por la comunidad de esta ruta'} />{photo.caption ? <figcaption>{photo.caption}</figcaption> : null}</figure>) : <p>Aún no hay fotografías de usuarios publicadas. Puedes ser la primera persona en aportar una.</p>}
+        {community?.photos.length ? community.photos.map((photoItem) => <figure key={photoItem.id}>
+          <button
+            type="button"
+            onClick={() => focusPhotoOnMap(photoItem)}
+            disabled={!hasPhotoLocation(photoItem)}
+            title={hasPhotoLocation(photoItem) ? 'Ver esta foto sobre el mapa' : 'Esta foto no tiene ubicación'}
+            style={{ display: 'block', padding: 0, border: 0, background: 'transparent', width: '100%', cursor: hasPhotoLocation(photoItem) ? 'pointer' : 'default' }}
+          >
+            <img loading="lazy" src={publicRouteMediaUrl(photoItem.url)} alt={photoItem.caption ?? 'Foto aportada por la comunidad de esta ruta'} />
+          </button>
+          <figcaption>{photoItem.caption ?? 'Foto de la comunidad'}{hasPhotoLocation(photoItem) ? ' · 📍 Ver en mapa' : ''}</figcaption>
+        </figure>) : <p>Aún no hay fotografías de usuarios publicadas. Puedes ser la primera persona en aportar una.</p>}
       </div>
     </section>
 
