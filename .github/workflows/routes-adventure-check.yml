@@ -15,12 +15,14 @@ on:
       - 'apps/api/src/routes/admin-route-adventure-progression.ts'
       - 'apps/api/src/routes/route-device-export.ts'
       - 'apps/web/src/app/aventura/**'
+      - 'apps/web/src/app/perfil/page.tsx'
       - 'apps/web/src/app/explorar/explore-public-client.tsx'
       - 'apps/web/src/app/admin/rutas/page.tsx'
       - 'apps/web/src/app/admin/rutas/aventuras/**'
       - 'apps/web/src/app/rutas/detalle/route-adventure-panel.tsx'
       - 'apps/web/src/app/rutas/detalle/route-detail-client.tsx'
       - 'apps/web/src/app/rutas/detalle/route-map.tsx'
+      - 'apps/web/src/components/adventure-explorer-profile.tsx'
       - 'apps/web/src/components/route-adventure-admin.tsx'
       - 'apps/web/src/components/route-adventure-candidates.tsx'
       - 'apps/web/src/components/route-adventure-progression-admin.tsx'
@@ -114,7 +116,7 @@ jobs:
             psql -h 127.0.0.1 -U postgres -d magina_adventure -v ON_ERROR_STOP=1 -f "${migration}"
           done
 
-      - name: Adventure persistence safety and album smoke
+      - name: Adventure persistence safety album and journey smoke
         env:
           PGPASSWORD: postgres
         run: |
@@ -243,6 +245,7 @@ jobs:
 
           UPDATE routes
           SET track_status = 'validated', status = 'published', validation_status = 'editorial',
+              distance_m = 5200, elevation_gain_m = 340, duration_minutes = 135,
               published_at = now(), last_verified_at = now()
           WHERE id = '22222222-2222-4222-8222-222222222222';
 
@@ -250,13 +253,44 @@ jobs:
           SET enabled = true
           WHERE route_id = '22222222-2222-4222-8222-222222222222';
 
+          UPDATE route_adventure_runs
+          SET status = 'completed', completed_at = now(), score = 120
+          WHERE id = '44444444-4444-4444-8444-444444444444';
+
+          INSERT INTO route_adventure_runs(id, route_id, user_id, status, score, completed_at)
+          VALUES (
+            '88888888-8888-4888-8888-888888888888',
+            '22222222-2222-4222-8222-222222222222',
+            '11111111-1111-4111-8111-111111111111',
+            'completed', 120, now()
+          );
+
           DO $$
+          DECLARE
+            journey_distance BIGINT;
+            journey_elevation BIGINT;
+            journey_routes INTEGER;
           BEGIN
             IF NOT EXISTS (
               SELECT 1 FROM route_adventures
               WHERE route_id = '22222222-2222-4222-8222-222222222222' AND enabled = true
             ) THEN
               RAISE EXCEPTION 'ready adventure could not be enabled';
+            END IF;
+
+            WITH completed_routes AS (
+              SELECT DISTINCT ar.route_id
+              FROM route_adventure_runs ar
+              WHERE ar.user_id = '11111111-1111-4111-8111-111111111111'::uuid
+                AND ar.status = 'completed'
+            )
+            SELECT COUNT(*)::int, COALESCE(SUM(r.distance_m), 0), COALESCE(SUM(r.elevation_gain_m), 0)
+            INTO journey_routes, journey_distance, journey_elevation
+            FROM completed_routes cr
+            JOIN routes r ON r.id = cr.route_id;
+
+            IF journey_routes <> 1 OR journey_distance <> 5200 OR journey_elevation <> 340 THEN
+              RAISE EXCEPTION 'journey metrics must count each completed route once: routes %, distance %, elevation %', journey_routes, journey_distance, journey_elevation;
             END IF;
           END $$;
 
