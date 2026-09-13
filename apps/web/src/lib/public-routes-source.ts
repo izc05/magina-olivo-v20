@@ -69,7 +69,7 @@ export type PublicRouteCommunity = {
 };
 
 export type RouteAdventureAnswerOption = { key: string; label: string };
-export type AdventureCollectionCategory = 'flora' | 'fauna' | 'heritage' | 'olive_culture' | 'tradition' | 'landscape';
+export type AdventureCollectionCategory = 'flora' | 'fauna' | 'heritage' | 'olive' | 'tradition' | 'landscape';
 export type AdventureRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 
 export type RouteAdventureCheckpoint = {
@@ -130,6 +130,13 @@ export type ExplorerProfile = {
     adventures_completed: number;
     discoveries: number;
     total_score: number;
+  };
+  journey: {
+    completed_routes: number;
+    completed_distance_m: number;
+    completed_elevation_gain_m: number;
+    completed_duration_minutes: number;
+    longest_route_m: number;
   };
   collections: Array<{
     kind: RouteAdventureCheckpoint['kind'];
