@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { DatabaseClient } from '../db/client.js';
 
 const booleanQuery = z.enum(['true', 'false']).transform((value) => value === 'true');
+const nearbyBusinessRadiusM = 15_000;
 
 const publicRouteQuery = z.object({
   q: z.string().trim().min(1).max(120).optional(),
@@ -15,6 +16,66 @@ const publicRouteQuery = z.object({
   family_friendly: booleanQuery.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
 });
+
+type NearbyBusinessRow = {
+  id: string;
+  slug: string;
+  name: string;
+  short_description: string | null;
+  address: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  website: string | null;
+  logo_url: string | null;
+  cover_image_url: string | null;
+  verification_status: string;
+  municipality_id: string | null;
+  municipality_name: string | null;
+  municipality_slug: string | null;
+  place_id: string | null;
+  place_name: string | null;
+  place_slug: string | null;
+  longitude: number | null;
+  latitude: number | null;
+  distance_m: number | null;
+  distance_basis: 'spatial' | 'same_place' | 'same_municipality';
+  active_featured: boolean;
+  active_sponsored: boolean;
+  categories: unknown;
+};
+
+function serializeNearbyBusiness(row: NearbyBusinessRow) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    shortDescription: row.short_description,
+    address: row.address,
+    contact: { phone: row.phone, whatsapp: row.whatsapp, website: row.website },
+    territory: {
+      municipalityId: row.municipality_id,
+      municipalityName: row.municipality_name,
+      municipalitySlug: row.municipality_slug,
+      placeId: row.place_id,
+      placeName: row.place_name,
+      placeSlug: row.place_slug,
+    },
+    location: row.longitude === null || row.latitude === null
+      ? null
+      : { longitude: Number(row.longitude), latitude: Number(row.latitude) },
+    distanceMeters: row.distance_m === null ? null : Number(row.distance_m),
+    distanceBasis: row.distance_basis,
+    categories: Array.isArray(row.categories) ? row.categories : [],
+    verified: row.verification_status === 'verified',
+    logoUrl: row.logo_url,
+    coverImageUrl: row.cover_image_url,
+    placement: {
+      sponsored: row.active_sponsored,
+      featured: row.active_featured,
+      label: row.active_sponsored ? 'Patrocinado' : row.active_featured ? 'Destacado' : null,
+    },
+  };
+}
 
 export function registerRoutesExploreRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/public/routes', async (request, reply) => {
@@ -99,9 +160,10 @@ export function registerRoutesExploreRoutes(app: FastifyInstance, db: DatabaseCl
     if (!route) return reply.code(404).send({ error: 'route_not_found' });
     const routeId = route.id as string;
     const municipalityId = typeof route.municipality_id === 'string' ? route.municipality_id : null;
+    const placeId = typeof route.place_id === 'string' ? route.place_id : null;
     const routeType = typeof route.route_type === 'string' ? route.route_type : null;
 
-    const [trackResult, elevationResult, pointsResult, mediaResult, sourcesResult, segmentsResult, relatedResult] = await Promise.all([
+    const [trackResult, elevationResult, pointsResult, mediaResult, sourcesResult, segmentsResult, relatedResult, nearbyBusinessResult] = await Promise.all([
       sql<Record<string, unknown>>`
         SELECT id, version, geometry_type, original_format, distance_m, source_name, source_url,
                validation_status, validated_at, ST_AsGeoJSON(geometry)::json AS geometry, bbox
@@ -175,7 +237,74 @@ export function registerRoutesExploreRoutes(app: FastifyInstance, db: DatabaseCl
           rr.name
         LIMIT 4
       `.execute(db),
+      sql<NearbyBusinessRow>`
+        WITH validated_track AS (
+          SELECT geometry
+          FROM route_tracks
+          WHERE route_id = ${routeId}::uuid AND validation_status = 'validated'
+          LIMIT 1
+        )
+        SELECT b.id, b.slug, b.name, b.short_description, b.address,
+               b.phone, b.whatsapp, b.website, b.logo_url, b.cover_image_url,
+               b.verification_status,
+               b.municipality_id, tm.name AS municipality_name, tm.slug AS municipality_slug,
+               b.place_id, tp.name AS place_name, tp.slug AS place_slug,
+               CASE WHEN b.location IS NULL THEN NULL ELSE ST_X(b.location) END AS longitude,
+               CASE WHEN b.location IS NULL THEN NULL ELSE ST_Y(b.location) END AS latitude,
+               CASE
+                 WHEN b.location IS NOT NULL AND ST_DWithin(b.location::geography, vt.geometry::geography, ${nearbyBusinessRadiusM})
+                   THEN ST_Distance(b.location::geography, vt.geometry::geography)
+                 ELSE NULL
+               END AS distance_m,
+               CASE
+                 WHEN b.location IS NOT NULL AND ST_DWithin(b.location::geography, vt.geometry::geography, ${nearbyBusinessRadiusM}) THEN 'spatial'
+                 WHEN ${placeId}::uuid IS NOT NULL AND b.place_id = ${placeId}::uuid THEN 'same_place'
+                 ELSE 'same_municipality'
+               END AS distance_basis,
+               (b.featured
+                 AND (b.campaign_start IS NULL OR b.campaign_start <= now())
+                 AND (b.campaign_end IS NULL OR b.campaign_end >= now())) AS active_featured,
+               ((b.sponsored OR b.commercial_plan = 'sponsor')
+                 AND (b.campaign_start IS NULL OR b.campaign_start <= now())
+                 AND (b.campaign_end IS NULL OR b.campaign_end >= now())) AS active_sponsored,
+               COALESCE((
+                 SELECT jsonb_agg(
+                   jsonb_build_object('slug', bc.slug, 'name', bc.name, 'primary', bcl.is_primary)
+                   ORDER BY bcl.is_primary DESC, bc.sort_order, bc.name
+                 )
+                 FROM business_category_links bcl
+                 JOIN business_categories bc ON bc.id = bcl.category_id AND bc.active = true
+                 WHERE bcl.business_id = b.id
+               ), '[]'::jsonb) AS categories
+        FROM businesses b
+        CROSS JOIN validated_track vt
+        LEFT JOIN territory_municipalities tm ON tm.id = b.municipality_id
+        LEFT JOIN territory_places tp ON tp.id = b.place_id
+        WHERE b.status = 'published'
+          AND (
+            (b.location IS NOT NULL AND ST_DWithin(b.location::geography, vt.geometry::geography, ${nearbyBusinessRadiusM}))
+            OR (${placeId}::uuid IS NOT NULL AND b.place_id = ${placeId}::uuid)
+            OR (${municipalityId}::uuid IS NOT NULL AND b.municipality_id = ${municipalityId}::uuid)
+          )
+        ORDER BY
+          CASE
+            WHEN b.location IS NOT NULL AND ST_DWithin(b.location::geography, vt.geometry::geography, ${nearbyBusinessRadiusM}) THEN 0
+            WHEN ${placeId}::uuid IS NOT NULL AND b.place_id = ${placeId}::uuid THEN 1
+            ELSE 2
+          END,
+          CASE WHEN b.location IS NOT NULL AND ST_DWithin(b.location::geography, vt.geometry::geography, ${nearbyBusinessRadiusM})
+            THEN ST_Distance(b.location::geography, vt.geometry::geography)
+            ELSE NULL
+          END NULLS LAST,
+          b.priority DESC,
+          b.name
+        LIMIT 40
+      `.execute(db),
     ]);
+
+    const nearbyBusinesses = nearbyBusinessResult.rows.map(serializeNearbyBusiness);
+    const organicBusinesses = nearbyBusinesses.filter((business) => !business.placement.sponsored).slice(0, 12);
+    const sponsoredBusinesses = nearbyBusinesses.filter((business) => business.placement.sponsored).slice(0, 4);
 
     return {
       route,
@@ -186,6 +315,13 @@ export function registerRoutesExploreRoutes(app: FastifyInstance, db: DatabaseCl
       sources: sourcesResult.rows,
       segments: segmentsResult.rows,
       related: relatedResult.rows,
+      nearbyBusinesses: {
+        radiusMeters: nearbyBusinessRadiusM,
+        organic: organicBusinesses,
+        sponsored: sponsoredBusinesses,
+        disclosure: 'Los negocios patrocinados se muestran por separado y no modifican los datos técnicos, de seguridad ni las fuentes de la ruta.',
+        distanceNote: 'La distancia espacial mide la separación más corta entre la ubicación del negocio y el trazado validado; no representa distancia por carretera.',
+      },
     };
   });
 }
