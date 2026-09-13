@@ -182,10 +182,10 @@ export function ManagedHomeContent({ children }: { children?: ReactNode }) {
       <section className="section home-territory-links" aria-label="Consultar el territorio">
         <div className="section-head"><div><h2>Vive Sierra Mágina</h2><small>Planes, caminos y negocios para descubrir el territorio.</small></div><Link href="/explorar">Ver todo <ArrowIcon /></Link></div>
         <div className="quick-grid">
-          <Link className="card quick" href="/rutas"><span className="icon"><CompassIcon /></span><div><strong>Rutas y aventuras</strong><small>Camina senderos verificados y descubre sus hitos.</small></div><ArrowIcon className="quick-arrow" /></Link>
-          <Link className="card quick" href="/explorar/empresas"><span className="icon"><DirectoryIcon /></span><div><strong>Empresas locales</strong><small>Servicios, comercio y profesionales de Mágina.</small></div><ArrowIcon className="quick-arrow" /></Link>
-          <Link className="card quick" href="/experiencias"><span className="icon"><EventIcon /></span><div><strong>Experiencias</strong><small>Catas, visitas, talleres y actividades para compartir.</small></div><ArrowIcon className="quick-arrow" /></Link>
-          <Link className="card quick" href="/magina-pass"><span className="icon"><PromotionIcon /></span><div><strong>Mágina Pass</strong><small>Tu pasaporte para apoyar y redescubrir lo local.</small></div><ArrowIcon className="quick-arrow" /></Link>
+          <Link className="card quick discovery-routes" href="/rutas"><span className="icon"><CompassIcon /></span><div><strong>Rutas y aventuras</strong><small>Camina senderos verificados y descubre sus hitos.</small></div><ArrowIcon className="quick-arrow" /></Link>
+          <Link className="card quick discovery-businesses" href="/explorar/empresas"><span className="icon"><DirectoryIcon /></span><div><strong>Empresas locales</strong><small>Servicios, comercio y profesionales de Mágina.</small></div><ArrowIcon className="quick-arrow" /></Link>
+          <Link className="card quick discovery-experiences" href="/experiencias"><span className="icon"><EventIcon /></span><div><strong>Experiencias</strong><small>Catas, visitas, talleres y actividades para compartir.</small></div><ArrowIcon className="quick-arrow" /></Link>
+          <Link className="card quick discovery-pass" href="/magina-pass"><span className="icon"><PromotionIcon /></span><div><strong>Mágina Pass</strong><small>Tu pasaporte para apoyar y redescubrir lo local.</small></div><ArrowIcon className="quick-arrow" /></Link>
         </div>
       </section>
 

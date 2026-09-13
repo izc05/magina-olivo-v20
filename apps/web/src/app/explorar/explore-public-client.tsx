@@ -10,16 +10,16 @@ import {
 import styles from './explore-public.module.css';
 
 const areas = [
-  { icon: NewsIcon, title: 'Noticias', text: 'Actualidad local con fuente y fecha verificadas.', href: '/noticias', badge: 'Disponible' },
-  { icon: EventIcon, title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
-  { icon: HomeIcon, title: 'Ayuntamientos', text: 'Webs oficiales, contacto y sedes institucionales de Sierra Mágina.', href: '/ayuntamientos', badge: '16 municipios' },
-  { icon: SproutIcon, title: 'Aceite y mercado', text: 'Precios y campaña manteniendo siempre fuente, unidad y fecha.', href: '/mercado', badge: 'Disponible' },
-  { icon: HomeIcon, title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
-  { icon: DirectoryIcon, title: 'Empresas y servicios', text: 'Encuentra comercios, profesionales y servicios cerca de ti.', href: '/explorar/empresas', badge: 'Directorio local' },
-  { icon: SproutIcon, title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
-  { icon: CompassIcon, title: 'Rutas y aventuras', text: 'Descubre senderos y explora sus puntos de interés. Modo Aventura en las rutas habilitadas.', href: '/rutas', badge: 'Explora a pie' },
-  { icon: EventIcon, title: 'Experiencias', text: 'Catas de aceite, visitas, talleres y actividades para conocer Mágina.', href: '/experiencias', badge: 'Descubre y reserva' },
-  { icon: PromotionIcon, title: 'Mágina Pass', text: 'Tu pasaporte para descubrir negocios participantes y consultar sus recompensas.', href: '/magina-pass', badge: 'Pasaporte local' },
+  { icon: NewsIcon, tone: 'news', title: 'Noticias', text: 'Actualidad local con fuente y fecha verificadas.', href: '/noticias', badge: 'Disponible' },
+  { icon: EventIcon, tone: 'events', title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
+  { icon: HomeIcon, tone: 'municipalities', title: 'Ayuntamientos', text: 'Webs oficiales, contacto y sedes institucionales de Sierra Mágina.', href: '/ayuntamientos', badge: '16 municipios' },
+  { icon: SproutIcon, tone: 'market', title: 'Aceite y mercado', text: 'Precios y campaña manteniendo siempre fuente, unidad y fecha.', href: '/mercado', badge: 'Disponible' },
+  { icon: HomeIcon, tone: 'mills', title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
+  { icon: DirectoryIcon, tone: 'businesses', title: 'Empresas y servicios', text: 'Encuentra comercios, profesionales y servicios cerca de ti.', href: '/explorar/empresas', badge: 'Directorio local' },
+  { icon: SproutIcon, tone: 'advice', title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
+  { icon: CompassIcon, tone: 'routes', title: 'Rutas y aventuras', text: 'Descubre senderos y explora sus puntos de interés. Modo Aventura en las rutas habilitadas.', href: '/rutas', badge: 'Explora a pie' },
+  { icon: EventIcon, tone: 'experiences', title: 'Experiencias', text: 'Catas de aceite, visitas, talleres y actividades para conocer Mágina.', href: '/experiencias', badge: 'Descubre y reserva' },
+  { icon: PromotionIcon, tone: 'pass', title: 'Mágina Pass', text: 'Tu pasaporte para descubrir negocios participantes y consultar sus recompensas.', href: '/magina-pass', badge: 'Pasaporte local' },
 ] as const;
 
 function placeKindLabel(kind: string) {
@@ -92,7 +92,7 @@ export function ExplorePublicClient() {
       <div className={styles.areaGrid}>
         {areas.map((area) => {
           const AreaIcon = area.icon;
-          return <Link className={`${styles.areaCard} ${styles.areaCardLink}`} href={area.href} key={area.title}>
+          return <Link className={`${styles.areaCard} ${styles.areaCardLink} ${styles[area.tone]}`} href={area.href} key={area.title}>
             <span className={styles.areaIcon} aria-hidden="true"><AreaIcon /></span>
             <div><h3>{area.title}</h3><p>{area.text}</p><span className={`${styles.badge} ${styles.badgeLive}`}>{area.badge}</span></div>
           </Link>;

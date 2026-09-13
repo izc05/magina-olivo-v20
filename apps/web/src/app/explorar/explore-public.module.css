@@ -252,6 +252,9 @@
 }
 
 .areaCard {
+  --category-ink: #315b38;
+  --category-surface: #e7f2e5;
+  --category-glow: rgba(49, 91, 56, .12);
   position: relative;
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
@@ -261,7 +264,7 @@
   min-height: 148px;
   padding: 16px;
   overflow: hidden;
-  border: 1px solid rgba(48, 71, 47, .11);
+  border: 1px solid color-mix(in srgb, var(--category-ink) 18%, white);
   border-radius: 19px;
   background: rgba(255, 255, 255, .88);
   color: inherit;
@@ -277,7 +280,7 @@
   right: -30px;
   bottom: -32px;
   border-radius: 50%;
-  background: rgba(108, 132, 89, .07);
+  background: var(--category-glow);
 }
 
 .areaCardLink {
@@ -287,8 +290,8 @@
 
 .areaCardLink:hover,
 .areaCardLink:focus-visible {
-  border-color: rgba(62, 105, 68, .36);
-  background: #f7f9f4;
+  border-color: color-mix(in srgb, var(--category-ink) 46%, white);
+  background: color-mix(in srgb, var(--category-surface) 35%, white);
   outline: none;
   transform: translateY(-2px);
   box-shadow: 0 14px 30px rgba(40, 54, 36, .08);
@@ -300,7 +303,8 @@
   display: grid;
   place-items: center;
   border-radius: 14px;
-  background: linear-gradient(145deg, #edf2e8, #fafbf7);
+  background: linear-gradient(145deg, var(--category-surface), #fff);
+  color: var(--category-ink);
   font-size: 1.25rem;
 }
 
@@ -341,9 +345,20 @@
 }
 
 .badgeLive {
-  background: #e7f2e5;
-  color: #315b38;
+  background: var(--category-surface);
+  color: var(--category-ink);
 }
+
+.news { --category-ink: #2e607b; --category-surface: #e0f1f8; --category-glow: rgba(46, 96, 123, .12); }
+.events { --category-ink: #985527; --category-surface: #fff0da; --category-glow: rgba(152, 85, 39, .14); }
+.municipalities { --category-ink: #784f7c; --category-surface: #f3e8f5; --category-glow: rgba(120, 79, 124, .12); }
+.market { --category-ink: #8a651b; --category-surface: #fff3c9; --category-glow: rgba(138, 101, 27, .14); }
+.mills { --category-ink: #5f6240; --category-surface: #eff0d8; --category-glow: rgba(95, 98, 64, .13); }
+.businesses { --category-ink: #1d6670; --category-surface: #dff3f2; --category-glow: rgba(29, 102, 112, .12); }
+.advice { --category-ink: #477034; --category-surface: #e6f2db; --category-glow: rgba(71, 112, 52, .12); }
+.routes { --category-ink: #386c83; --category-surface: #e0eff5; --category-glow: rgba(56, 108, 131, .13); }
+.experiences { --category-ink: #9a4d62; --category-surface: #fae5eb; --category-glow: rgba(154, 77, 98, .12); }
+.pass { --category-ink: #a04c2d; --category-surface: #fbe8dd; --category-glow: rgba(160, 76, 45, .13); }
 
 .stateCard {
   display: grid;

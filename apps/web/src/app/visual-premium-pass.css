@@ -218,6 +218,13 @@ body {
   transition: background-color .2s ease, transform .2s ease;
 }
 .home-territory-links .quick:hover { background: var(--sage-100); transform: translateY(-3px); }
+.home-territory-links .quick { --discovery-ink: var(--olive-700); --discovery-surface: var(--sage-100); border-color: color-mix(in srgb, var(--discovery-ink) 22%, white); }
+.home-territory-links .quick .icon { background: var(--discovery-surface); color: var(--discovery-ink); }
+.home-territory-links .quick:hover { background: color-mix(in srgb, var(--discovery-surface) 45%, white); }
+.home-territory-links .discovery-routes { --discovery-ink: #386c83; --discovery-surface: #e0eff5; }
+.home-territory-links .discovery-businesses { --discovery-ink: #1d6670; --discovery-surface: #dff3f2; }
+.home-territory-links .discovery-experiences { --discovery-ink: #9a4d62; --discovery-surface: #fae5eb; }
+.home-territory-links .discovery-pass { --discovery-ink: #a04c2d; --discovery-surface: #fbe8dd; }
 
 .territory-banner {
   border: 1px solid rgba(255,255,255,.09);
