@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import type { DatabaseClient } from '../db/client.js';
+import { registerRouteAdventureRoutes } from './route-adventure.js';
+import { registerAdminRouteAdventureRoutes } from './admin-route-adventure.js';
 
 const slugParams = z.object({ slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/) });
 
@@ -12,6 +14,11 @@ function xml(value: string) {
 type TrackPoint = { segment: number; point_order: number; latitude: number | string; longitude: number | string };
 
 export function registerRouteDeviceExportRoutes(app: FastifyInstance, db: DatabaseClient | null) {
+  // Adventure belongs to the same route feature bundle. Keeping registration here
+  // avoids touching the shared app bootstrap while this branch stays isolated.
+  registerRouteAdventureRoutes(app, db);
+  registerAdminRouteAdventureRoutes(app, db);
+
   app.get('/api/v1/public/routes/:slug/gpx', async (request, reply) => {
     if (!db) return reply.code(503).send({ error: 'database_unavailable' });
     const params = slugParams.safeParse(request.params);

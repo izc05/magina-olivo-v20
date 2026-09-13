@@ -97,6 +97,69 @@ export type PublicRouteCommunity = {
   notices: { community_conditions: string; sponsored_content: string };
 };
 
+export type RouteAdventureAnswerOption = { key: string; label: string };
+
+export type RouteAdventureCheckpoint = {
+  id: string;
+  route_point_id: string | null;
+  title: string;
+  description: string | null;
+  kind: 'landmark' | 'trivia' | 'observation' | 'photo' | 'collection' | 'rest';
+  distance_m: number | string | null;
+  unlock_radius_m: number;
+  points: number;
+  is_required: boolean;
+  question: string | null;
+  answer_options: RouteAdventureAnswerOption[];
+  hint: string | null;
+  sort_order: number;
+  latitude: number | string;
+  longitude: number | string;
+};
+
+export type PublicRouteAdventure = {
+  enabled: boolean;
+  route: { id: string; slug: string; name: string };
+  adventure: null | { title: string; intro: string | null; completion_message: string | null };
+  checkpoints: RouteAdventureCheckpoint[];
+  notice?: string;
+};
+
+export type RouteAdventureProgress = {
+  run: null | {
+    id: string;
+    route_id: string;
+    status: 'active' | 'completed' | 'abandoned';
+    score: number;
+    started_at: string;
+    completed_at: string | null;
+    updated_at: string;
+    last_distance_m: number | string | null;
+    last_latitude: number | string | null;
+    last_longitude: number | string | null;
+  };
+  stats: {
+    total_checkpoints: number;
+    required_checkpoints: number;
+    total_points: number;
+    unlocked_checkpoints: number;
+    required_unlocked: number;
+    required_remaining: number;
+  };
+  unlocks: Array<{
+    checkpoint_id: string;
+    unlocked_at: string;
+    answer_key: string | null;
+    is_correct: boolean | null;
+    awarded_points: number;
+    distance_to_checkpoint_m: number | string | null;
+    title: string;
+    kind: string;
+    is_required: boolean;
+  }>;
+  badges: string[];
+};
+
 export async function loadPublicRoutes(query = '') {
   const suffix = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
   const response = await apiFetch<{ routes: PublicRouteSummary[] }>(`/api/v1/public/routes${suffix}`);
@@ -105,5 +168,22 @@ export async function loadPublicRoutes(query = '') {
 
 export async function loadPublicRoute(slug: string) { return apiFetch<PublicRouteDetail>(`/api/v1/public/routes/${encodeURIComponent(slug)}`); }
 export async function loadPublicRouteCommunity(slug: string) { return apiFetch<PublicRouteCommunity>(`/api/v1/public/routes/${encodeURIComponent(slug)}/community`); }
+export async function loadPublicRouteAdventure(slug: string) { return apiFetch<PublicRouteAdventure>(`/api/v1/public/routes/${encodeURIComponent(slug)}/adventure`); }
+export async function loadRouteAdventureProgress(routeId: string) { return apiFetch<RouteAdventureProgress>(`/api/v1/routes/${encodeURIComponent(routeId)}/adventure/progress`); }
+export async function startRouteAdventure(routeId: string) { return apiFetch<RouteAdventureProgress>(`/api/v1/routes/${encodeURIComponent(routeId)}/adventure/start`, { method: 'POST' }); }
+export async function unlockRouteAdventureCheckpoint(routeId: string, checkpointId: string, input: { latitude: number; longitude: number; answer_key?: string | null }) {
+  return apiFetch<
+    | { unlocked: false; correct: false; checkpoint_id: string; distance_m: number }
+    | { unlocked: true; correct: boolean | null; progress: RouteAdventureProgress }
+  >(`/api/v1/routes/${encodeURIComponent(routeId)}/adventure/checkpoints/${encodeURIComponent(checkpointId)}/unlock`, {
+    method: 'POST', body: JSON.stringify(input),
+  });
+}
+export async function completeRouteAdventure(routeId: string) {
+  return apiFetch<{ completed: true; progress: RouteAdventureProgress }>(`/api/v1/routes/${encodeURIComponent(routeId)}/adventure/complete`, { method: 'POST' });
+}
+export async function abandonRouteAdventure(routeId: string) {
+  return apiFetch<void>(`/api/v1/routes/${encodeURIComponent(routeId)}/adventure/abandon`, { method: 'POST' });
+}
 export function routeGpxUrl(slug: string) { return `${apiBaseUrl}/api/v1/public/routes/${encodeURIComponent(slug)}/gpx`; }
 export function publicRouteMediaUrl(path: string) { if (/^https?:\/\//i.test(path)) return path; return `${apiBaseUrl}${path}`; }
