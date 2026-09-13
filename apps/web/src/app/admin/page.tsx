@@ -26,6 +26,7 @@ export default function AdminPage() {
         <Link href="/admin/territorio" aria-label="Abrir administración de territorio y directorio editorial">Territorio</Link>
         <Link href="/admin/empresas" aria-label="Abrir directorio estructurado de empresas y servicios">Empresas</Link>
         <Link href="/admin/empresas/rendimiento" aria-label="Abrir rendimiento comercial, leads y ofertas de empresas">Rendimiento empresas</Link>
+        <Link href="/admin/empresas/magina-pass" aria-label="Administrar Mágina Pass, QR y recompensas">Mágina Pass</Link>
         <Link href="/admin/empresas/categorias" aria-label="Abrir categorías del directorio de empresas">Categorías empresas</Link>
         <Link href="/admin/media" aria-label="Abrir biblioteca multimedia">Multimedia</Link>
         <Link href="/admin/web" aria-label="Abrir editor visual de la web">Editar web</Link>
