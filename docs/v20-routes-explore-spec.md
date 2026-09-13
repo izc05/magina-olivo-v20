@@ -1,88 +1,185 @@
-# Mágina Olivo V20 — Rutas y senderismo premium
+# Mágina Olivo V20 — Rutas como plataforma territorial
 
-## Estado de implementación
+## Visión
 
-**Cierre funcional alcanzado en `feat/v20-routes-explore`.**
+Rutas no es un catálogo de senderos. Es una plataforma territorial que combina track validado, cartografía, desnivel, puntos de interés, seguridad, fuentes, comunidad, fotografía, dispositivos y monetización contextual sin mezclar información oficial con opiniones o publicidad.
 
-La rama contiene la cadena completa necesaria para gestionar y publicar rutas verificadas:
-
-- modelo PostGIS de rutas, tracks, elevación, POI, multimedia, fuentes y tramos;
-- importación GPX con validación de tamaño, coordenadas y longitud mínima;
-- distancia calculada sobre coordenadas reales mediante Haversine;
-- desnivel positivo/negativo y altitudes solo cuando el GPX aporta elevación;
-- checksum SHA-256, versionado, bbox y geometría `LineString` canónica;
-- validación/rechazo editorial de tracks;
-- invariante de base de datos que impide publicar una ruta sin track validado;
-- invalidación automática: si el track publicado deja de ser válido, la ruta vuelve a `review` y pierde `published_at`;
-- API pública de listado y ficha;
-- API Admin de ficha, GPX, validación, POI, fuentes y multimedia;
-- panel `/admin/rutas` para operar el módulo sin SQL manual;
-- superficie pública `/rutas`;
-- ficha pública compatible con export estático en `/rutas/detalle?slug=<slug>`;
-- mapa MapLibre interactivo sobre el track validado y POI reales;
-- perfil de elevación derivado de las cotas del GPX;
-- integración de Rutas en `/explorar`;
-- check CI específico con PostGIS 17, typecheck, build, todas las migraciones y smoke de publicación/invalidation.
-
-## Alcance cerrado
-
-Incluye modelo y geometría real, GPX, elevación, POI, media con procedencia, fuentes auditables, seguridad, mapa interactivo, Admin, APIs, reglas de publicación y CI específico.
-
-No incluye deliberadamente navegación GPS turn-by-turn, generación de tracks por IA, recomendaciones meteorológicas sin metodología, dependencia directa de Empresas, rediseño visual global, sincronización avanzada mapa/perfil ni distribución pública GPX.
+Los datos técnicos nunca se inventan. El pago nunca altera seguridad, track, dificultad oficial ni fuentes.
 
 ## Arquitectura pública
 
-- `/explorar`: entrada territorial; Rutas figura como módulo disponible.
-- `/rutas`: descubrimiento y búsqueda sobre rutas publicadas con track validado.
-- `/rutas/detalle?slug=<slug>`: ficha completa compatible con Next.js `output: 'export'` y contenido publicado después del build.
+- `/rutas`: descubrimiento de rutas publicadas.
+- `/rutas/detalle?slug=...`: ficha completa compatible con el export estático de V20.
+- cada ficha concentra mapa, perfil, datos, fuentes, comunidad, galería, estado reciente, dispositivo y patrocinios relacionados.
+- una futura portada `Comunidad` será un agregado de contenido ya moderado; la conversación original vive siempre ligada a su ruta.
 
-## Contrato GPX
+## Núcleo técnico
 
-La importación limita el fichero a 5 MiB y 100.000 puntos, exige al menos dos coordenadas válidas, calcula distancia con Haversine, conserva elevación ausente como `NULL`, calcula desnivel solo con cotas existentes, genera `LineString`, bbox y SHA-256, versiona tracks y produce hasta aproximadamente 2.000 muestras para el perfil web.
+- PostGIS como geometría canónica.
+- GPX validado como fuente del track.
+- distancia y desnivel calculados solo desde datos presentes.
+- perfil de elevación sin fabricar cotas ausentes.
+- POI georreferenciados.
+- fuentes auditables.
+- procedencia de multimedia explícita: real, oficial, licenciada o IA.
+- una ruta publicada necesita track validado.
+- invalidar el track despublica la ruta automáticamente.
 
-No se crea un track a partir de imágenes, texto o IA.
+## Comunidad por ruta
 
-## Invariantes
+Cada ruta puede contener:
+- valoración de 1 a 5;
+- reseña del usuario;
+- fecha de visita;
+- dificultad percibida;
+- fotografías reales;
+- avisos sobre barro, nieve, hielo, bloqueo, daños, inundación, riesgo de incendio u otras condiciones;
+- favoritos;
+- historial de completadas;
+- denuncias de contenido.
 
-Ruta: `draft`, `review`, `published`, `archived`.
-Track: `missing`, `uploaded`, `validated`, `rejected`.
+La ficha distingue siempre:
+1. información oficial;
+2. información editorial de Mágina Olivo;
+3. información aportada por la comunidad.
 
-- La API bloquea publicación sin track validado.
-- PostgreSQL vuelve a comprobar la regla.
-- El estado de ruta se deriva del track persistido.
-- Invalidar/eliminar el único track validado despublica automáticamente la ruta.
-- Desde Admin se mantiene un track validado canónico por ruta.
+Una observación comunitaria nunca se presenta como cierre o restricción oficial.
 
-## Contenido editorial
+## Moderación
 
-POI iniciales: `start`, `finish`, `viewpoint`, `water`, `parking`, `recreation_area`, `heritage`, `cave`, `bridge`, `rest`, `photo_spot`, `warning`, `other`.
+Todo el contenido comunitario nace en estado `pending`.
 
-Multimedia: `photo`, `hero_image`, `real_video`, `drone_video`, `ai_image`, `ai_video`, `map_animation`, `elevation_animation`, `thumbnail`.
+Admin dispone de `/admin/rutas/comunidad` con colas separadas para:
+- reseñas;
+- fotos;
+- estado del sendero;
+- denuncias.
 
-Orígenes: `real`, `official`, `licensed`, `ai_generated`. El contenido IA exige `ai_disclosure` y nunca se presenta como prueba visual del estado real del sendero.
+Acciones:
+- aprobar;
+- rechazar;
+- ocultar;
+- resolver o descartar denuncias.
 
-Fuentes: `official`, `reference`, `track`, `media`, `editorial`, con URL y metadatos auditables.
+La web pública solo consume aportaciones aprobadas.
 
-## Admin
+## Fotografías de usuarios
 
-`/admin/rutas` permite listar/buscar, crear/editar, importar GPX, inspeccionar métricas, validar/rechazar tracks, gestionar POI/fuentes/multimedia y publicar solo cuando existe un track validado. Las mutaciones relevantes se auditan.
+Se reutiliza `platform_media_assets` y el StoragePort existente:
+- reserva de subida;
+- tamaño máximo;
+- MIME permitido;
+- SHA-256;
+- comprobación del objeto almacenado;
+- publicación solo tras completar subida y moderación.
 
-## API pública
+Las fotos pueden guardar fecha, pie y coordenada opcional para una futura capa fotográfica sobre el mapa.
 
-`GET /api/v1/public/routes` devuelve únicamente rutas `published` + track `validated`, con filtros.
+## Dispositivos
 
-`GET /api/v1/public/routes/:slug` devuelve ficha, GeoJSON, elevación, POI, multimedia, fuentes y tramos.
+Endpoint público:
+- `GET /api/v1/public/routes/:slug/gpx`
 
-No se devuelven rutas ficticias ante fallos de fuente.
+Genera GPX 1.1 desde la geometría PostGIS validada y preserva segmentos de MultiLineString. No inventa elevación.
 
-## CI
+Esto permite un flujo universal hacia aplicaciones y dispositivos compatibles con GPX. Integraciones directas con proveedores como Garmin deben usar sus programas/API oficiales y OAuth cuando exista autorización.
 
-`.github/workflows/routes-check.yml` — `V20 routes closure check` verifica frozen-lockfile, migraciones, tests GPX, typecheck API/web, build API/web, PostGIS 17, aplicación de todas las migraciones y smoke de invariantes de publicación/invalidación.
+Las completadas ya admiten procedencia:
+- manual;
+- recorded_gpx;
+- garmin;
+- suunto;
+- coros;
+- apple_watch;
+- other.
 
-## Handoff
+## Monetización
 
-Destino: `integrate/v20-beta-closure`.
+El patrocinio es contextual y visible, no publicidad encubierta.
 
-No fusionar directamente a `main`.
-No mezclar con Empresas en este PR.
-Cualquier evolución visual posterior debe respetar este contrato de datos e invariantes.
+Ubicaciones soportadas:
+- `route_hero`;
+- `route_sidebar`;
+- `after_map`;
+- `nearby_services`;
+- `route_download`;
+- `collection`.
+
+Modelos comerciales:
+- cuota fija;
+- CPM;
+- CPC;
+- afiliación.
+
+Cada campaña puede definir:
+- ruta concreta o ámbito global;
+- patrocinador;
+- logo y web;
+- titular y descripción;
+- CTA;
+- código promocional;
+- prioridad;
+- periodo de actividad;
+- precio y moneda;
+- etiqueta de disclosure, por defecto `Patrocinado`.
+
+Eventos medibles:
+- impresión;
+- clic;
+- visita web;
+- llamada;
+- WhatsApp;
+- indicaciones;
+- reserva;
+- conversión de afiliación (servidor/integración futura).
+
+Admin dispone de `/admin/rutas/patrocinios` para gestionar campañas y consultar impresiones, clics y acciones.
+
+## Seguridad comercial
+
+El patrocinio nunca puede:
+- modificar track o GPX;
+- modificar desnivel/distancia;
+- esconder restricciones;
+- desplazar una fuente oficial;
+- convertir una observación comunitaria en información oficial.
+
+Los espacios pagados deben renderizar disclosure explícito.
+
+## Evolución recomendada
+
+Siguientes capas compatibles con este contrato:
+- mapa de fotografías geolocalizadas;
+- sincronización mapa ↔ perfil de elevación;
+- colecciones y retos de rutas;
+- rutas guardadas/planificadas/completadas en el perfil;
+- navegación offline PWA;
+- seguimiento en vivo compartible;
+- QR en inicio de senderos;
+- notificaciones cuando cambie el estado oficial de una ruta;
+- empresas cercanas mediante integración espacial con el directorio comercial;
+- integración oficial Garmin Courses cuando se apruebe acceso;
+- reputación de colaboradores/guías locales;
+- recorridos 3D/flyover como capa editorial, nunca como sustituto del track real.
+
+## Gate de calidad
+
+`V20 routes closure check` cubre:
+- secuencia de migraciones;
+- parser GPX;
+- typecheck API + web;
+- build API + web;
+- PostGIS 17;
+- todas las migraciones;
+- invariante publicación/track;
+- defaults de moderación de comunidad;
+- disclosure obligatorio de patrocinio.
+
+## Límites deliberados
+
+No se implementa en esta fase:
+- navegación turn-by-turn propia;
+- generación de tracks por IA;
+- recomendaciones meteorológicas inventadas;
+- integración directa con la rama Empresas;
+- merge directo a `main`.
