@@ -69,6 +69,7 @@ import { registerProfessionalDeliveryRoutes } from './routes/professional-delive
 import { registerProfessionalShareLinkRoutes } from './routes/professional-share-links.js';
 import { registerRoutesExploreRoutes } from './routes/routes-explore.js';
 import { registerRouteCommunityRoutes } from './routes/route-community.js';
+import { registerRouteDeviceExportRoutes } from './routes/route-device-export.js';
 import type { StoragePort } from './storage/port.js';
 import { UnavailableStorage } from './storage/port.js';
 import type { OcrQueuePort } from './ocr/port.js';
@@ -255,6 +256,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerGisRoutes(app, db, gisProviders);
   registerRoutesExploreRoutes(app, db);
   registerRouteCommunityRoutes(app, db, storage);
+  registerRouteDeviceExportRoutes(app, db);
 
   return app;
 }
