@@ -33,7 +33,7 @@ CREATE TABLE route_activity_points (
   id BIGSERIAL PRIMARY KEY,
   recording_id UUID NOT NULL REFERENCES route_activity_recordings(id) ON DELETE CASCADE,
   segment INTEGER NOT NULL CHECK (segment >= 1),
-  sequence INTEGER NOT NULL CHECK (sequence >= 1),
+  sequence BIGINT NOT NULL CHECK (sequence >= 1),
   recorded_at TIMESTAMPTZ NOT NULL,
   received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   location geometry(Point, 4326) NOT NULL,
