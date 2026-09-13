@@ -98,8 +98,10 @@ export function registerRoutesExploreRoutes(app: FastifyInstance, db: DatabaseCl
     const route = routeResult.rows[0];
     if (!route) return reply.code(404).send({ error: 'route_not_found' });
     const routeId = route.id as string;
+    const municipalityId = typeof route.municipality_id === 'string' ? route.municipality_id : null;
+    const routeType = typeof route.route_type === 'string' ? route.route_type : null;
 
-    const [trackResult, elevationResult, pointsResult, mediaResult, sourcesResult, segmentsResult] = await Promise.all([
+    const [trackResult, elevationResult, pointsResult, mediaResult, sourcesResult, segmentsResult, relatedResult] = await Promise.all([
       sql<Record<string, unknown>>`
         SELECT id, version, geometry_type, original_format, distance_m, source_name, source_url,
                validation_status, validated_at, ST_AsGeoJSON(geometry)::json AS geometry, bbox
@@ -144,6 +146,35 @@ export function registerRoutesExploreRoutes(app: FastifyInstance, db: DatabaseCl
         WHERE route_id = ${routeId}::uuid
         ORDER BY sort_order, start_distance_m NULLS LAST
       `.execute(db),
+      sql<Record<string, unknown>>`
+        SELECT rr.id, rr.slug, rr.name, rr.route_type, rr.difficulty, rr.distance_m,
+               rr.duration_minutes, rr.elevation_gain_m, rr.short_description,
+               tm.name AS municipality_name,
+               (
+                 SELECT rm.url
+                 FROM route_media rm
+                 WHERE rm.route_id = rr.id AND rm.active = true
+                   AND rm.kind IN ('hero_image', 'photo', 'thumbnail')
+                 ORDER BY CASE rm.kind WHEN 'hero_image' THEN 0 WHEN 'thumbnail' THEN 1 ELSE 2 END,
+                          rm.sort_order, rm.created_at
+                 LIMIT 1
+               ) AS hero_url
+        FROM routes rr
+        LEFT JOIN territory_municipalities tm ON tm.id = rr.municipality_id
+        WHERE rr.id <> ${routeId}::uuid
+          AND rr.status = 'published'
+          AND rr.track_status = 'validated'
+          AND (
+            (${municipalityId}::uuid IS NOT NULL AND rr.municipality_id = ${municipalityId}::uuid)
+            OR (${routeType}::text IS NOT NULL AND rr.route_type = ${routeType})
+          )
+        ORDER BY
+          CASE WHEN ${municipalityId}::uuid IS NOT NULL AND rr.municipality_id = ${municipalityId}::uuid THEN 0 ELSE 1 END,
+          CASE WHEN ${routeType}::text IS NOT NULL AND rr.route_type = ${routeType} THEN 0 ELSE 1 END,
+          rr.published_at DESC NULLS LAST,
+          rr.name
+        LIMIT 4
+      `.execute(db),
     ]);
 
     return {
@@ -154,6 +185,7 @@ export function registerRoutesExploreRoutes(app: FastifyInstance, db: DatabaseCl
       media: mediaResult.rows,
       sources: sourcesResult.rows,
       segments: segmentsResult.rows,
+      related: relatedResult.rows,
     };
   });
 }
