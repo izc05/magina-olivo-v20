@@ -1,0 +1,58 @@
+name: V20 routes REDIAM geometry audit
+
+on:
+  push:
+    branches:
+      - feat/v20-routes-catalog-completion
+    paths:
+      - 'data/routes/sierra-magina-rediam-track-sources.json'
+      - 'data/routes/sierra-magina-official-core-technical-audit.json'
+      - 'data/routes/sierra-magina-master-catalog.json'
+      - 'scripts/audit-rediam-geometries.mjs'
+      - '.github/workflows/routes-rediam-geometry-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Audit REDIAM geometries
+        id: audit
+        continue-on-error: true
+        run: node scripts/audit-rediam-geometries.mjs --write data/routes/sierra-magina-rediam-geometry-audit.json
+
+      - name: Print audit summary
+        if: always()
+        run: |
+          if [ -f data/routes/sierra-magina-rediam-geometry-audit.json ]; then
+            node -e "const r=require('./data/routes/sierra-magina-rediam-geometry-audit.json'); console.log(JSON.stringify(r.summary,null,2))"
+          else
+            echo 'Audit report was not generated.'
+          fi
+
+      - name: Upload REDIAM audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sierra-magina-rediam-geometry-audit
+          path: data/routes/sierra-magina-rediam-geometry-audit.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Record external-source outcome
+        if: always()
+        run: |
+          echo 'The REDIAM audit is intentionally non-blocking.'
+          echo 'A remote fetch failure must not make the application CI red; it remains visible in the uploaded report.'
