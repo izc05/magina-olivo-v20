@@ -6,6 +6,8 @@ const adminApi = fs.readFileSync(new URL('../apps/api/src/routes/admin-territory
 const explore = fs.readFileSync(new URL('../apps/web/src/app/explorar/explore-public-client.tsx', import.meta.url), 'utf8');
 const municipalityDetail = fs.readFileSync(new URL('../apps/web/src/app/ayuntamientos/[slug]/municipality-detail-client.tsx', import.meta.url), 'utf8');
 const publicSource = fs.readFileSync(new URL('../apps/web/src/lib/public-territory-source.ts', import.meta.url), 'utf8');
+const currentAffairsAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/actualidad/page.tsx', import.meta.url), 'utf8');
+const municipalitiesAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/page.tsx', import.meta.url), 'utf8');
 
 const expected = [
   ['23001','Albanchez de Mágina','https://www.albanchezdemagina.es/'],
@@ -49,5 +51,9 @@ for (const section of ['Descubre el municipio', 'Ayuntamiento', 'Olivar y econom
   if (!municipalityDetail.includes(section)) throw new Error(`Municipality detail is missing section: ${section}`);
 }
 if (!municipalityDetail.includes('No mostramos contenido por coincidencias de texto')) throw new Error('Municipality detail must document explicit-only news/event linkage');
+if (!municipalitiesAdmin.includes('/admin/ayuntamientos/actualidad')) throw new Error('Municipality admin must expose the current-affairs linker');
+if (!currentAffairsAdmin.includes("entry.type === 'news' || entry.type === 'event'")) throw new Error('Current-affairs linker must be restricted to news/events');
+if (!currentAffairsAdmin.includes('municipality_id') || !currentAffairsAdmin.includes('municipality_name') || !currentAffairsAdmin.includes('municipality_slug')) throw new Error('Current-affairs linker must persist the canonical municipality identity');
+if (!currentAffairsAdmin.includes('Ámbito general')) throw new Error('Current-affairs linker must support removing the municipality relation');
 
-console.log('Municipality directory contract OK: 16 canonical municipalities, verified websites, public/admin API, CMS hub aggregation and public municipality experience.');
+console.log('Municipality directory contract OK: 16 canonical municipalities, verified websites, public/admin API, CMS hub aggregation, public municipality experience and explicit news/event administration.');
