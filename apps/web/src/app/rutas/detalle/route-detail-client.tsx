@@ -8,6 +8,7 @@ import { RouteCommunityPanel } from './route-community-panel';
 import { RouteElevationProfile } from './route-elevation-profile';
 import { RouteExperience } from './route-experience';
 import { RouteAdventurePanel } from './route-adventure-panel';
+import { RouteActivityRecorder } from './route-activity-recorder';
 import styles from '../routes-public.module.css';
 
 function km(value: number | null) { return value === null ? '—' : `${(value / 1000).toFixed(1)} km`; }
@@ -65,6 +66,7 @@ export function RouteDetailClient() {
       <article className={styles.infoCard}><h2>Fuentes oficiales y editoriales</h2>{detail.sources.length ? <ul className={styles.sourceList}>{detail.sources.map((source, index) => <li key={String(source.id ?? index)}>{typeof source.source_url === 'string' ? <a href={source.source_url} target="_blank" rel="noreferrer">{String(source.source_name ?? 'Fuente')}</a> : String(source.source_name ?? 'Fuente')}</li>)}</ul> : <p>La ficha no publica fuentes adicionales.</p>}</article>
     </section>
 
+    <RouteActivityRecorder routeId={route.id} slug={slug} />
     <RouteAdventurePanel routeId={route.id} slug={slug} />
     <RouteExperience detail={detail} />
     <RouteCommunityPanel routeId={route.id} slug={slug} />
