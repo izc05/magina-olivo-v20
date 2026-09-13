@@ -9,6 +9,7 @@ on:
       - 'apps/web/src/lib/public-territory-source.ts'
       - 'database/migrations/0083_territory_municipality_official_links.sql'
       - 'database/migrations/0084_sierra_magina_full_municipality_catalog.sql'
+      - 'database/migrations/0085_sierra_magina_aemet_enablement.sql'
       - 'e2e/public-editorial.spec.ts'
       - '.github/workflows/territory-official-links-check.yml'
 
@@ -101,6 +102,12 @@ jobs:
             exit 1
           fi
 
+          WEATHER_READY_COUNT=$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM territory_municipalities WHERE active = true AND weather_enabled = true AND aemet_code = ine_code AND ine_code IN ('23001','23902','23015','23017','23018','23019','23901','23044','23052','23053','23038','23054','23058','23064','23067','23090');")
+          if [ "${WEATHER_READY_COUNT}" -ne 16 ]; then
+            echo "Expected all 16 Sierra Magina municipalities with verified AEMET codes, found ${WEATHER_READY_COUNT}"
+            exit 1
+          fi
+
           DEFAULT_PLACE_COUNT=$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM territory_places p JOIN territory_municipalities m ON m.id = p.municipality_id WHERE p.is_default_for_municipality = true AND p.public_enabled = true AND m.active = true AND m.ine_code IN ('23001','23902','23015','23017','23018','23019','23901','23044','23052','23053','23038','23054','23058','23064','23067','23090');")
           if [ "${DEFAULT_PLACE_COUNT}" -ne 16 ]; then
             echo "Expected one public default place for each of 16 Sierra Magina municipalities, found ${DEFAULT_PLACE_COUNT}"
@@ -145,6 +152,7 @@ jobs:
           PEGALAJAR="${PEGALAJAR}" node <<'NODE'
           const payload = JSON.parse(process.env.PEGALAJAR);
           if (payload.place?.ine_code !== '23067') throw new Error('Pegalajar canonical territory missing');
+          if (payload.place?.aemet_code !== '23067') throw new Error('Pegalajar verified AEMET code missing');
           const links = payload.place?.official_links;
           if (!Array.isArray(links) || links.length < 2) throw new Error('Pegalajar verified official links missing');
           if (!links.some((item) => item.kind === 'town_hall' && item.url === 'https://ayto-pegalajar.es/')) throw new Error('Pegalajar town hall URL mismatch');
@@ -156,4 +164,5 @@ jobs:
           const payload = JSON.parse(process.env.CARCHELEJO);
           if (payload.place?.municipality_name !== 'Cárcheles') throw new Error('Carchelejo must resolve to municipality Cárcheles');
           if (payload.place?.ine_code !== '23901') throw new Error('Cárcheles INE code mismatch');
+          if (payload.place?.aemet_code !== '23901') throw new Error('Cárcheles verified AEMET code missing');
           NODE
