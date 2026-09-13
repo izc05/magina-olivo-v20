@@ -36,6 +36,27 @@ export type PublicRouteMedia = {
   ai_model: string | null; ai_disclosure: string | null; sort_order: number;
 };
 
+export type PublicRouteNearbyBusiness = {
+  id: string;
+  slug: string;
+  name: string;
+  shortDescription: string | null;
+  address: string | null;
+  contact: { phone: string | null; whatsapp: string | null; website: string | null };
+  territory: {
+    municipalityId: string | null; municipalityName: string | null; municipalitySlug: string | null;
+    placeId: string | null; placeName: string | null; placeSlug: string | null;
+  };
+  location: { longitude: number; latitude: number } | null;
+  distanceMeters: number | null;
+  distanceBasis: 'spatial' | 'same_place' | 'same_municipality';
+  categories: Array<{ slug: string; name: string; primary?: boolean }>;
+  verified: boolean;
+  logoUrl: string | null;
+  coverImageUrl: string | null;
+  placement: { sponsored: boolean; featured: boolean; label: 'Patrocinado' | 'Destacado' | null };
+};
+
 export type PublicRouteDetail = {
   route: Record<string, unknown> & {
     id: string; slug: string; name: string; route_type: PublicRouteSummary['route_type']; difficulty: PublicRouteSummary['difficulty'];
@@ -44,7 +65,8 @@ export type PublicRouteDetail = {
     short_description: string | null; description: string | null; safety_notes: string | null; access_notes: string | null;
     water_notes: string | null; shade_level: string | null; mobile_coverage: string | null; recommended_seasons: string[] | null;
     restrictions: string | null; source_summary: string | null; last_verified_at: string | null;
-    municipality_id: string | null; municipality_name: string | null; place_name: string | null;
+    municipality_id: string | null; municipality_name: string | null; municipality_slug: string | null;
+    place_id: string | null; place_name: string | null; place_slug: string | null;
   };
   track: null | {
     id: string; version: number; geometry: { type: 'LineString' | 'MultiLineString'; coordinates: unknown };
@@ -56,6 +78,13 @@ export type PublicRouteDetail = {
   sources: Array<Record<string, unknown>>;
   segments: PublicRouteSegment[];
   related: Array<Pick<PublicRouteSummary, 'id' | 'slug' | 'name' | 'route_type' | 'difficulty' | 'distance_m' | 'duration_minutes' | 'elevation_gain_m' | 'short_description' | 'municipality_name' | 'hero_url'>>;
+  nearbyBusinesses: {
+    radiusMeters: number;
+    organic: PublicRouteNearbyBusiness[];
+    sponsored: PublicRouteNearbyBusiness[];
+    disclosure: string;
+    distanceNote: string;
+  };
 };
 
 export type PublicRouteCommunity = {
