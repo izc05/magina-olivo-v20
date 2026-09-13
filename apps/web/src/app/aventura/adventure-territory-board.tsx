@@ -5,6 +5,9 @@ import { apiFetch } from '../../lib/api-client';
 import styles from './adventure.module.css';
 
 type TerritoryProfile = {
+  summary: {
+    total_score: number;
+  };
   territory: {
     available_checkpoints: number;
     unlocked_checkpoints: number;
@@ -23,6 +26,15 @@ type TerritoryProfile = {
   };
 };
 
+const XP_PER_LEVEL = 500;
+
+function explorerRank(level: number) {
+  if (level >= 10) return 'Guardián de Sierra Mágina';
+  if (level >= 6) return 'Aventurero de Mágina';
+  if (level >= 3) return 'Explorador de Mágina';
+  return 'Caminante de Mágina';
+}
+
 export function AdventureTerritoryBoard() {
   const [profile, setProfile] = useState<TerritoryProfile | null>(null);
 
@@ -36,6 +48,10 @@ export function AdventureTerritoryBoard() {
 
   if (!profile || profile.territory.municipalities_available === 0) return null;
   const territory = profile.territory;
+  const totalXp = Number(profile.summary.total_score || 0);
+  const level = Math.floor(totalXp / XP_PER_LEVEL) + 1;
+  const levelXp = totalXp % XP_PER_LEVEL;
+  const rank = explorerRank(level);
 
   return <section className={styles.profilePanel} aria-labelledby="magina-passport-title">
     <div className={styles.profileHeading}>
@@ -47,6 +63,8 @@ export function AdventureTerritoryBoard() {
     </div>
 
     <div className={styles.profileStats}>
+      <article><strong>Nivel {level}</strong><span>{rank}</span></article>
+      <article><strong>{totalXp} XP</strong><span>{levelXp}/{XP_PER_LEVEL} hacia el siguiente nivel</span></article>
       <article><strong>{territory.unlocked_checkpoints}/{territory.available_checkpoints}</strong><span>Descubrimientos</span></article>
       <article><strong>{territory.municipalities_discovered}/{territory.municipalities_available}</strong><span>Municipios descubiertos</span></article>
       <article><strong>{territory.explored_percent}%</strong><span>Territorio de aventura</span></article>
