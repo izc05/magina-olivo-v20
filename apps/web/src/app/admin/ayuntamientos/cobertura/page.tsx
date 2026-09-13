@@ -105,23 +105,25 @@ export default function AdminMunicipalityCoveragePage() {
     void load().catch(() => setError('No se ha podido calcular la cobertura municipal.'));
   }, [auth.status, load]);
 
-  const rows = useMemo<CoverageRow[]>(() => municipalities.map((municipality) => {
+  const allRows = useMemo<CoverageRow[]>(() => municipalities.map((municipality) => {
     const counts = entryCounts(entries, municipality.id);
     const checks = buildChecks(municipality, counts);
     return { municipality, counts, checks, completed: checks.filter((check) => check.ok).length };
-  }).filter((row) => {
+  }).sort((a, b) => a.completed - b.completed || a.municipality.name.localeCompare(b.municipality.name, 'es')), [municipalities, entries]);
+
+  const rows = useMemo(() => allRows.filter((row) => {
     const needle = query.trim().toLocaleLowerCase('es');
     if (onlyIncomplete && row.completed === row.checks.length) return false;
     if (!needle) return true;
     return `${row.municipality.name} ${row.municipality.ine_code}`.toLocaleLowerCase('es').includes(needle);
-  }).sort((a, b) => a.completed - b.completed || a.municipality.name.localeCompare(b.municipality.name, 'es')), [municipalities, entries, query, onlyIncomplete]);
+  }), [allRows, query, onlyIncomplete]);
 
   const summary = useMemo(() => ({
-    complete: rows.filter((row) => row.completed === 10).length,
-    withEconomy: rows.filter((row) => row.counts.mill + row.counts.directory > 0).length,
-    withCurrent: rows.filter((row) => row.counts.news + row.counts.event > 0).length,
-    missingTourism: rows.filter((row) => !row.municipality.directory?.tourism_url).length,
-  }), [rows]);
+    complete: allRows.filter((row) => row.completed === 10).length,
+    withEconomy: allRows.filter((row) => row.counts.mill + row.counts.directory > 0).length,
+    withCurrent: allRows.filter((row) => row.counts.news + row.counts.event > 0).length,
+    missingTourism: allRows.filter((row) => !row.municipality.directory?.tourism_url).length,
+  }), [allRows]);
 
   if (auth.status === 'loading') return <main className="admin-login"><div>Comprobando acceso…</div></main>;
   if (auth.status === 'anonymous') return <main className="admin-login"><div><h1>Cobertura municipal</h1><p>Acceso corporativo requerido.</p><GoogleSignInButton /></div></main>;
@@ -139,7 +141,7 @@ export default function AdminMunicipalityCoveragePage() {
 
     <section className="admin-card">
       <div style={{display:'flex',gap:'.8rem',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap'}}>
-        <div><h2>Estado por municipio ({rows.length})</h2><p>El contenido editorial solo cuenta si está publicado, vigente y vinculado con `municipality_id`.</p></div>
+        <div><h2>Estado por municipio ({rows.length}/{allRows.length})</h2><p>El contenido editorial solo cuenta si está publicado, vigente y vinculado con `municipality_id`.</p></div>
         <div style={{display:'flex',gap:'.8rem',alignItems:'center',flexWrap:'wrap'}}>
           <label style={{display:'flex',gap:'.45rem',alignItems:'center'}}><input type="checkbox" checked={onlyIncomplete} onChange={(event)=>setOnlyIncomplete(event.target.checked)}/> Solo con huecos</label>
           <input type="search" value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Buscar municipio o INE…" style={{minWidth:'240px'}} />
