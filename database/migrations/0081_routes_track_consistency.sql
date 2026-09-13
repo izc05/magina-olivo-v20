@@ -39,13 +39,13 @@ BEGIN
       updated_at = now()
   WHERE id = target_route_id;
 
-  RETURN COALESCE(NEW, OLD);
+  RETURN NULL;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS route_tracks_sync_route_status ON route_tracks;
 CREATE TRIGGER route_tracks_sync_route_status
-AFTER INSERT OR UPDATE OF validation_status OR DELETE ON route_tracks
+AFTER INSERT OR DELETE OR UPDATE OF validation_status ON route_tracks
 FOR EACH ROW EXECUTE FUNCTION sync_route_track_status();
 
 CREATE OR REPLACE FUNCTION enforce_route_publication_track()
