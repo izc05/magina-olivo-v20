@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { DatabaseClient } from '../db/client.js';
 import { registerRouteAdventureRoutes } from './route-adventure.js';
 import { registerRouteAdventureHubRoutes } from './route-adventure-hub.js';
+import { registerRouteActivityRoutes } from './route-activity.js';
 import { registerAdminRouteAdventureRoutes } from './admin-route-adventure.js';
 import { registerAdminRouteAdventureBulkRoutes } from './admin-route-adventure-bulk.js';
 import { registerAdminRouteAdventureReadinessRoutes } from './admin-route-adventure-readiness.js';
@@ -19,10 +20,11 @@ function xml(value: string) {
 type TrackPoint = { segment: number; point_order: number; latitude: number | string; longitude: number | string };
 
 export function registerRouteDeviceExportRoutes(app: FastifyInstance, db: DatabaseClient | null) {
-  // Adventure belongs to the same route feature bundle. Keeping registration here
-  // avoids touching the shared app bootstrap while this branch stays isolated.
+  // Adventure and opt-in route recording belong to the same route feature bundle.
+  // Keeping registration here avoids touching the shared app bootstrap while these branches stay isolated.
   registerRouteAdventureRoutes(app, db);
   registerRouteAdventureHubRoutes(app, db);
+  registerRouteActivityRoutes(app, db);
   registerAdminRouteAdventureRoutes(app, db);
   registerAdminRouteAdventureBulkRoutes(app, db);
   registerAdminRouteAdventureReadinessRoutes(app, db);
