@@ -147,13 +147,11 @@ jobs:
           );
 
           INSERT INTO route_adventure_unlocks(
-            run_id, checkpoint_id, answer_key, is_correct, awarded_points,
-            observed_location, distance_to_checkpoint_m
+            run_id, checkpoint_id, answer_key, is_correct, awarded_points, distance_to_checkpoint_m
           ) VALUES (
             '44444444-4444-4444-8444-444444444444',
             '33333333-3333-4333-8333-333333333333',
-            'a', true, 120,
-            ST_SetSRID(ST_MakePoint(-3.5, 37.7), 4326), 0
+            'a', true, 120, 0
           );
 
           DO $$
@@ -167,6 +165,12 @@ jobs:
                 AND u.awarded_points = 120
             ) THEN
               RAISE EXCEPTION 'adventure persistence smoke failed';
+            END IF;
+            IF EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_name = 'route_adventure_unlocks' AND column_name = 'observed_location'
+            ) THEN
+              RAISE EXCEPTION 'exact user GPS storage must not exist';
             END IF;
           END $$;
           SQL
