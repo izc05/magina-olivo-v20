@@ -1,10 +1,36 @@
 # Mágina Olivo V20 — Rutas y senderismo premium
 
+## Estado de implementación
+
+**Cierre funcional alcanzado en `feat/v20-routes-explore`.**
+
+La rama ya contiene la cadena completa necesaria para gestionar y publicar rutas verificadas:
+
+- modelo PostGIS de rutas, tracks, elevación, POI, multimedia, fuentes y tramos;
+- importación GPX con validación de tamaño, coordenadas y longitud mínima;
+- distancia calculada sobre coordenadas reales mediante Haversine;
+- desnivel positivo/negativo y altitudes solo cuando el GPX aporta elevación;
+- checksum SHA-256, versionado, bbox y geometría `LineString` canónica;
+- validación/rechazo editorial de tracks;
+- invariante de base de datos que impide publicar una ruta sin track validado;
+- invalidación automática: si el track publicado deja de ser válido, la ruta vuelve a `review` y pierde `published_at`;
+- API pública de listado y ficha;
+- API Admin de ficha, GPX, validación, POI, fuentes y multimedia;
+- panel `/admin/rutas` para operar el módulo sin SQL manual;
+- superficie pública `/rutas`;
+- ficha pública runtime-compatible con export estático en `/rutas/detalle?slug=<slug>`;
+- mapa MapLibre interactivo sobre el track validado y POI reales;
+- perfil de elevación derivado de las cotas del GPX;
+- integración de Rutas en `/explorar`;
+- check CI específico con PostGIS 17, typecheck, build, todas las migraciones y smoke de publicación/invalidation.
+
+El workflow `V20 routes closure check` pasa completo en el HEAD de cierre funcional.
+
 ## Visión
 
-Construir una experiencia territorial de rutas, no una simple ficha técnica. Cada ruta debe combinar información oficial/validada, cartografía real, perfil altimétrico, puntos de interés, seguridad, clima, fotografía y vídeo para ayudar al usuario a decidir, entender y recorrer el itinerario.
+Construir una experiencia territorial de rutas, no una simple ficha técnica. Cada ruta debe combinar información oficial/validada, cartografía real, perfil altimétrico, puntos de interés, seguridad, fotografía y vídeo para ayudar al usuario a decidir, entender y recorrer el itinerario.
 
-La capa visual puede ser espectacular; los datos técnicos nunca se inventan.
+La capa visual puede evolucionar; los datos técnicos nunca se inventan.
 
 ## Alcance de la rama
 
@@ -16,74 +42,89 @@ Incluye:
 - perfil de elevación;
 - puntos de interés;
 - media real/IA con procedencia explícita;
-- fuentes oficiales;
+- fuentes oficiales/editoriales auditables;
 - seguridad y estacionalidad;
-- base para mapa interactivo y sincronización mapa/desnivel;
-- estructura de Admin;
+- mapa interactivo;
+- Admin funcional;
+- API pública y Admin;
+- importación/validación GPX;
+- reglas de publicación en API y base de datos;
 - contratos para integración posterior con clima y empresas.
 
-No incluye todavía:
+No incluye deliberadamente:
 - navegación GPS turn-by-turn;
-- generación automática de tracks;
-- recomendaciones meteorológicas inventadas;
+- generación automática de tracks por IA;
+- recomendaciones meteorológicas sin metodología validada;
 - vídeos generados automáticamente en producción;
 - dependencia directa del módulo Empresas;
-- rediseño visual global.
+- rediseño visual global;
+- sincronización avanzada hover/tap entre mapa y gráfica de elevación;
+- motor de descarga/distribución GPX pública.
 
 ## Arquitectura pública
 
-- `/explorar/rutas`: descubrimiento, búsqueda y filtros.
-- `/rutas/[slug]`: experiencia completa de ruta.
-- colecciones futuras: familiares, miradores, agua, patrimonio, olivares, MTB, trail, imprescindibles.
+- `/explorar`: entrada territorial; Rutas figura como módulo disponible.
+- `/rutas`: descubrimiento y búsqueda pública sobre rutas publicadas con track validado.
+- `/rutas/detalle?slug=<slug>`: ficha completa de ruta.
 
-## Estructura de una ficha premium
+La ficha utiliza query param de forma intencionada porque `apps/web` funciona con Next.js `output: 'export'`. De esta manera una ruta creada y publicada después del build puede abrirse desde la misma página estática sin generar una página `[slug]` nueva por cada contenido.
 
-1. Hero con imagen o vídeo.
-2. Resumen técnico: distancia, duración, dificultad, desnivel, tipo y época.
-3. Mapa interactivo grande.
-4. Perfil de elevación sincronizable con el mapa.
-5. Galería fotográfica y vídeo.
-6. Descripción editorial.
-7. Itinerario por tramos.
-8. Puntos de interés y servicios del recorrido.
-9. Seguridad, acceso, agua, sombra, cobertura y restricciones.
-10. Condiciones meteorológicas procedentes del sistema V20 cuando se integre.
-11. Empresas y servicios cercanos mediante integración posterior.
-12. Rutas relacionadas.
-13. Descarga GPX / fuentes / avisos.
+## Estructura de la ficha implementada
 
-## Tipos de ruta
+1. Resumen editorial.
+2. Distancia, duración, desnivel y altitudes.
+3. Mapa MapLibre con el track validado.
+4. POI georreferenciados sobre el mapa.
+5. Perfil de elevación.
+6. Acceso y seguridad.
+7. Agua y características del recorrido.
+8. Fuentes públicas trazables.
 
-- hiking
-- mtb
-- cycling
-- trail
-- family
-- mixed
+La base de datos y API ya soportan además multimedia y tramos para elevar la composición visual en una fase posterior sin rehacer el modelo.
 
-Una ruta puede tener un tipo principal y etiquetas editoriales complementarias.
+## Geometría y GPX
 
-## Geometría y track
+El track canónico se almacena en PostGIS. La importación GPX:
 
-V20 ya dispone de PostGIS. El track canónico se almacena como `geometry(LineString, 4326)` o `geometry(MultiLineString, 4326)` según el caso y se acompaña de:
-- GeoJSON derivable;
-- GPX original cuando exista y pueda distribuirse;
-- checksum/versionado;
-- bounding box;
-- distancia calculada/validada;
-- perfil de elevación como muestras ordenadas por distancia.
+- limita el fichero a 5 MiB;
+- limita el track a 100.000 puntos;
+- exige al menos dos puntos válidos;
+- valida latitud y longitud;
+- calcula distancia acumulada con Haversine;
+- conserva elevación ausente como `NULL`;
+- calcula subida/bajada solo sobre pares de elevación existentes;
+- genera `LineString` GeoJSON;
+- calcula bounding box;
+- calcula checksum SHA-256;
+- almacena versiones independientes del track;
+- genera hasta aproximadamente 2.000 muestras de perfil para consumo web eficiente.
 
-No se debe crear un track a partir de una imagen o de texto descriptivo.
+No se crea un track a partir de imágenes, texto descriptivo o IA.
+
+## Estados e invariantes
+
+Ruta: `draft`, `review`, `published`, `archived`.
+Validación editorial: `unverified`, `editorial`, `official`.
+Track: `missing`, `uploaded`, `validated`, `rejected`.
+
+Reglas:
+
+- una ruta puede existir sin track mientras sea borrador/revisión;
+- la API bloquea `published` si no hay track validado;
+- PostgreSQL vuelve a comprobar la misma regla para impedir bypass de API;
+- el estado de track de la ruta se deriva de `route_tracks`;
+- invalidar/eliminar el único track validado despublica automáticamente la ruta;
+- solo se mantiene un track validado como canónico por ruta desde el flujo Admin.
 
 ## Perfil de elevación
 
 Cada muestra puede contener:
 - distancia acumulada en metros;
 - elevación en metros;
-- coordenada opcional;
-- pendiente derivada opcional.
+- coordenada;
+- pendiente derivada cuando hay distancia y dos elevaciones comparables.
 
-La UI futura debe permitir que hover/tap sobre el gráfico resalte el punto equivalente del mapa.
+Si el GPX no aporta elevación, la UI lo indica expresamente y no genera cotas artificiales.
 
 ## Puntos de interés
 
@@ -102,9 +143,9 @@ Tipos iniciales:
 - warning
 - other
 
-Cada POI guarda posición real, orden/kilómetro aproximado, descripción y opcionalmente media asociada.
+Cada POI guarda posición real, orden/kilómetro aproximado, descripción y nota de seguridad. El Admin permite crearlos y eliminarlos.
 
-## Media
+## Multimedia y procedencia
 
 Tipos:
 - photo
@@ -123,77 +164,56 @@ Orígenes:
 - `licensed`
 - `ai_generated`
 
-Para IA se almacenan `ai_generated=true`, modelo/proveedor si procede y texto de disclosure. Una imagen o vídeo generado por IA no puede presentarse como prueba visual exacta del estado actual del sendero.
-
-## Vídeo
-
-La plataforma debe poder alojar/referenciar:
-- teaser de 10–20 s;
-- pieza narrativa de 30–60 s;
-- vuelo animado sobre track/mapa;
-- animación de perfil altimétrico;
-- vídeo real/dron si existe licencia.
-
-Los vídeos son recursos editoriales; no forman parte del contrato técnico de seguridad de la ruta.
-
-## Seguridad
-
-Campos previstos:
-- access_notes;
-- safety_notes;
-- water_notes;
-- shade_level;
-- mobile_coverage;
-- recommended_seasons;
-- restrictions;
-- official_status;
-- last_verified_at.
-
-La interfaz debe distinguir claramente información oficial, editorial y no verificada.
+El API acepta URL externa o ruta interna de la biblioteca. El contenido IA exige que tipo/origen sean coherentes y requiere `ai_disclosure`. Una imagen o vídeo generado por IA nunca se presenta como evidencia visual del estado actual del sendero.
 
 ## Fuentes
 
-Candidatas:
-- Diputación Provincial de Jaén / portal turístico de Sierra Mágina;
-- Junta de Andalucía / Ventana del Visitante;
-- ayuntamientos;
-- entidades gestoras de senderos;
-- tracks propios validados y fuentes con licencia compatible.
+Cada ruta puede registrar fuentes de tipo:
+- `official`;
+- `reference`;
+- `track`;
+- `media`;
+- `editorial`.
 
-Cada fuente guarda URL, identificador externo, licencia/notas de uso, fecha de consulta y payload/metadatos necesarios para auditoría.
+Se almacenan URL, identificador externo opcional, licencia/notas, fecha de consulta y metadatos para auditoría.
 
-## Admin
+## Admin implementado
 
-Secciones previstas:
-- Rutas
-- Borradores
-- Publicadas
-- Pendientes de validación
-- Tracks
-- POI
-- Multimedia
-- Fuentes
-- Colecciones (fase posterior)
+Ruta: `/admin/rutas`.
 
-Editor de ruta:
-- identidad y SEO;
-- datos técnicos;
-- mapa/track;
+Permite:
+- listar y buscar rutas;
+- crear/editar ficha;
+- pasar a revisión/publicar;
+- importar GPX;
+- ver métricas derivadas del GPX;
+- validar/rechazar tracks versionados;
+- crear/eliminar POI;
+- crear/eliminar fuentes;
+- crear/eliminar multimedia;
+- etiquetar procedencia IA;
+- bloquear publicación desde la UI mientras no exista track validado.
+
+Las mutaciones relevantes generan entradas en `admin_audit_log`.
+
+## API pública implementada
+
+### `GET /api/v1/public/routes`
+
+Solo devuelve rutas `published` + track `validated`. Soporta filtros por búsqueda, municipio, localidad, tipo, dificultad, circular/familiar y límite.
+
+### `GET /api/v1/public/routes/:slug`
+
+Devuelve:
+- ficha;
+- track validado en GeoJSON;
 - perfil de elevación;
-- tramos/itinerario;
 - POI;
-- media;
-- seguridad;
-- fuente y validación;
-- publicación.
+- multimedia;
+- fuentes;
+- tramos.
 
-## Estados
-
-Ruta: `draft`, `review`, `published`, `archived`.
-Validación: `unverified`, `editorial`, `official`.
-Track: `missing`, `uploaded`, `validated`, `rejected`.
-
-Una ruta sin track válido puede existir como borrador, pero no debe publicarse como experiencia navegable.
+No existen fixtures ni rutas públicas inventadas cuando la fuente no responde.
 
 ## Integraciones posteriores
 
@@ -201,44 +221,30 @@ Una ruta sin track válido puede existir como borrador, pero no debe publicarse 
 Se consumirá el subsistema meteorológico existente, sin duplicar AEMET/radar. La recomendación de horario o aptitud solo se mostrará cuando exista metodología explícita y datos suficientes.
 
 ### Empresas
-La relación con restaurantes, alojamientos, AOVE y servicios se hará en una rama de integración posterior por consultas espaciales/proximidad. Esta rama no depende del directorio comercial.
+La relación con restaurantes, alojamientos, AOVE y servicios se hará en una rama de integración posterior por consultas espaciales/proximidad. Esta rama no depende de `feat/v20-business-directory`.
 
-## Fases
+## Verificación CI
 
-### Fase 1 — Foundation
-- tablas de rutas, tracks, elevación, POI, media y fuentes;
-- índices PostGIS;
-- estados y validaciones.
+Workflow dedicado: `.github/workflows/routes-check.yml` — `V20 routes closure check`.
 
-### Fase 2 — API + Admin
-- CRUD;
-- subida/validación GPX;
-- generación segura de geometría;
-- editor POI/media.
+Comprueba:
+- instalación frozen-lockfile;
+- secuencia de migraciones;
+- tests deterministas GPX;
+- typecheck API + web;
+- build API + web;
+- arranque de PostGIS 17;
+- aplicación de todas las migraciones del repositorio;
+- rechazo de publicación sin track validado;
+- publicación correcta tras validar track;
+- despublicación automática al rechazar el track validado.
 
-### Fase 3 — Público
-- listado y ficha;
-- mapa y desnivel;
-- galería y vídeo;
-- SEO y responsive.
+En el cierre funcional, los trece pasos principales del job han finalizado correctamente sobre el mismo HEAD.
 
-### Fase 4 — Enriquecimiento
-- sincronización mapa/desnivel;
-- clima contextual;
-- colecciones;
-- recorridos animados.
+## Handoff
 
-### Fase 5 — Explorar Mágina
-- empresas cercanas;
-- pueblos, patrimonio, eventos y experiencias.
+La rama queda preparada para absorberse en `integrate/v20-beta-closure` cuando terminen verdes los checks transversales del mismo HEAD.
 
-## Criterios de aceptación Foundation
-
-- Reutiliza `territory_municipalities` y `territory_places`.
-- Track real en PostGIS con índice espacial.
-- Perfil de elevación versionable.
-- POI georreferenciados.
-- Media con procedencia y disclosure IA.
-- Fuentes auditables.
-- Ningún dato técnico generado por IA.
-- Ninguna dependencia con `main` ni con la rama Empresas.
+No fusionar directamente a `main`.
+No mezclar con Empresas en este PR.
+El siguiente frente visual puede mejorar hero, galería, interacción mapa/perfil y composición responsive sin cambiar el contrato de datos ni las invariantes ya cerradas.
