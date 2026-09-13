@@ -5,6 +5,7 @@ import { useAuth } from '@/components/auth-provider';
 import { GoogleSignInButton } from '@/components/google-sign-in-button';
 import { adminApi, type AdminTerritoryMunicipality, type CmsEntry } from '@/lib/admin-data-source';
 import { MUNICIPALITY_HERITAGE_CATALOG, type MunicipalityHeritageSeed } from '@/lib/municipality-heritage-catalog';
+import { MUNICIPALITY_DISCOVERY_CATALOG } from '@/lib/municipality-discovery-catalog';
 import '../../admin.css';
 import styles from './patrimonio.module.css';
 
@@ -37,6 +38,8 @@ const ROLE_LABELS: Record<MunicipalityRole, string> = {
   nature: 'Naturaleza',
   tourism: 'Lugar / recurso turístico',
 };
+
+const OFFICIAL_DISCOVERY_CATALOG = [...MUNICIPALITY_HERITAGE_CATALOG, ...MUNICIPALITY_DISCOVERY_CATALOG];
 
 export default function AdminMunicipalityHeritagePage() {
   const auth = useAuth();
@@ -71,7 +74,10 @@ export default function AdminMunicipalityHeritagePage() {
   }), [entries, municipalities, query]);
 
   const existingBySlug = useMemo(() => new Map(entries.map((entry) => [entry.slug, entry])), [entries]);
-  const importedCount = MUNICIPALITY_HERITAGE_CATALOG.filter((seed) => existingBySlug.has(seed.slug)).length;
+  const importedCount = OFFICIAL_DISCOVERY_CATALOG.filter((seed) => existingBySlug.has(seed.slug)).length;
+  const heritageCount = OFFICIAL_DISCOVERY_CATALOG.filter((seed) => seed.role === 'heritage').length;
+  const natureCount = OFFICIAL_DISCOVERY_CATALOG.filter((seed) => seed.role === 'nature').length;
+  const tourismCount = OFFICIAL_DISCOVERY_CATALOG.filter((seed) => seed.role === 'tourism').length;
 
   async function save(entry: CmsEntry, nextMunicipalityId: string, nextRole: MunicipalityRole) {
     setBusyId(entry.id); setMessage(null); setError(null);
@@ -179,12 +185,12 @@ export default function AdminMunicipalityHeritagePage() {
     setImportingAll(true); setMessage(null); setError(null);
     let completed = 0;
     try {
-      for (const seed of MUNICIPALITY_HERITAGE_CATALOG) {
+      for (const seed of OFFICIAL_DISCOVERY_CATALOG) {
         await importSeed(seed, false);
         completed += 1;
       }
       await load();
-      setMessage(`Catálogo oficial importado/actualizado: ${completed} de ${MUNICIPALITY_HERITAGE_CATALOG.length} recursos.`);
+      setMessage(`Catálogo oficial importado/actualizado: ${completed} de ${OFFICIAL_DISCOVERY_CATALOG.length} recursos.`);
     } catch {
       await load().catch(() => undefined);
       setError(`La importación se detuvo tras ${completed} recursos. Revisa el registro y vuelve a ejecutar: es idempotente.`);
@@ -199,7 +205,7 @@ export default function AdminMunicipalityHeritagePage() {
 
   return <main className="admin-shell">
     <header className="admin-topbar">
-      <div><a href="/admin/ayuntamientos">← Ayuntamientos</a><h1>Patrimonio y turismo municipal</h1><p>Clasifica lugares existentes e importa un primer recurso patrimonial oficial por municipio con fuente y fecha de verificación.</p></div>
+      <div><a href="/admin/ayuntamientos">← Ayuntamientos</a><h1>Patrimonio y turismo municipal</h1><p>Clasifica lugares existentes e importa recursos oficiales de patrimonio y naturaleza con fuente y fecha de verificación.</p></div>
       <div><a href="/admin/web">Abrir CMS ↗</a></div>
     </header>
     {message ? <div className="admin-notice success">{message}</div> : null}
@@ -209,17 +215,17 @@ export default function AdminMunicipalityHeritagePage() {
       <div className={styles.toolbar}>
         <div>
           <span className={styles.kicker}>CATÁLOGO VERIFICADO · 16 MUNICIPIOS</span>
-          <h2>Primera capa de patrimonio real</h2>
-          <p>{importedCount}/{MUNICIPALITY_HERITAGE_CATALOG.length} recursos ya existen en el CMS. Importar no crea duplicados: actualiza por slug y conserva texto/imagen editados cuando ya existen.</p>
+          <h2>Descubrimientos oficiales</h2>
+          <p>{importedCount}/{OFFICIAL_DISCOVERY_CATALOG.length} recursos ya existen en el CMS · {heritageCount} patrimonio · {natureCount} naturaleza · {tourismCount} turismo. Importar no crea duplicados: actualiza por slug y conserva texto/imagen editados cuando ya existen.</p>
         </div>
-        <button type="button" disabled={importingAll || Boolean(busyId)} onClick={() => void importAll()}>{importingAll ? 'Importando…' : 'Importar / actualizar los 16'}</button>
+        <button type="button" disabled={importingAll || Boolean(busyId)} onClick={() => void importAll()}>{importingAll ? 'Importando…' : `Importar / actualizar los ${OFFICIAL_DISCOVERY_CATALOG.length}`}</button>
       </div>
       <div className={styles.seedGrid}>
-        {MUNICIPALITY_HERITAGE_CATALOG.map((seed) => {
+        {OFFICIAL_DISCOVERY_CATALOG.map((seed) => {
           const existing = existingBySlug.get(seed.slug);
           const busy = busyId === `seed:${seed.slug}`;
           return <article key={seed.slug} className={styles.seedItem}>
-            <div className={styles.seedMeta}><span>{seed.municipalityName}</span><strong>{existing ? `CMS · ${existing.status}` : 'Pendiente'}</strong></div>
+            <div className={styles.seedMeta}><span>{seed.municipalityName} · {ROLE_LABELS[seed.role]}</span><strong>{existing ? `CMS · ${existing.status}` : 'Pendiente'}</strong></div>
             <h3>{seed.title}</h3>
             <p>{seed.summary}</p>
             <div className={styles.seedActions}>
