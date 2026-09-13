@@ -70,14 +70,11 @@ function focusCheckpoint(checkpoint: RouteAdventureCheckpoint) {
   const latitude = Number(checkpoint.latitude);
   const longitude = Number(checkpoint.longitude);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-  window.dispatchEvent(new CustomEvent('magina:route-elevation-focus', { detail: {
+  window.dispatchEvent(new CustomEvent('magina:route-adventure-focus', { detail: {
+    checkpointId: checkpoint.id,
     latitude,
     longitude,
-    distance_m: Number(checkpoint.distance_m ?? 0),
-    elevation_m: 0,
-    grade_percent: null,
   } }));
-  document.querySelector('[aria-label="Mapa inteligente del trazado de la ruta"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: string }) {
@@ -108,6 +105,12 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [routeId, slug]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('magina:route-adventure-progress', { detail: {
+      unlockedCheckpointIds: progress?.unlocks.map((item) => item.checkpoint_id) ?? [],
+    } }));
+  }, [progress]);
 
   const unlocked = useMemo(() => new Set(progress?.unlocks.map((item) => item.checkpoint_id) ?? []), [progress]);
   const percent = progress?.stats.total_checkpoints
