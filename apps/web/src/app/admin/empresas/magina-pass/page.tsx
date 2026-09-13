@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { MaginaPassAdmin } from '@/components/magina-pass-admin';
-import '../../../admin.css';
+import '../../admin.css';
 
 export const metadata: Metadata = {
   title: 'Mágina Pass · Empresas · Administración',
