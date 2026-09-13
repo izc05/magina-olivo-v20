@@ -6,9 +6,10 @@ import {
   loadExplorerProfile,
   loadPublicAdventures,
   publicRouteMediaUrl,
+  type AdventureCollectionCategory,
+  type AdventureRarity,
   type ExplorerProfile,
   type PublicAdventureSummary,
-  type RouteAdventureCheckpoint,
 } from '../../lib/public-routes-source';
 import styles from './adventure.module.css';
 
@@ -31,11 +32,15 @@ function duration(value: number | null) {
   return hours > 0 ? `${hours} h${minutes ? ` ${minutes} min` : ''}` : `${minutes} min`;
 }
 
-function collectionLabel(kind: RouteAdventureCheckpoint['kind']) {
+function albumCategoryLabel(category: AdventureCollectionCategory) {
   return ({
-    landmark: 'Lugares', trivia: 'Retos', observation: 'Observaciones', photo: 'Recuerdos',
-    collection: 'Coleccionables', rest: 'Descansos',
-  } satisfies Record<RouteAdventureCheckpoint['kind'], string>)[kind];
+    flora: 'Flora', fauna: 'Fauna', heritage: 'Patrimonio', olive_culture: 'Olivar',
+    tradition: 'Tradiciones', landscape: 'Paisaje',
+  } satisfies Record<AdventureCollectionCategory, string>)[category];
+}
+
+function rarityLabel(rarity: AdventureRarity) {
+  return ({ common: 'Común', uncommon: 'Poco común', rare: 'Raro', legendary: 'Legendario' } satisfies Record<AdventureRarity, string>)[rarity];
 }
 
 function badgeLabel(code: string) {
@@ -43,6 +48,8 @@ function badgeLabel(code: string) {
   if (code === 'aventurero_magina') return 'Aventurero de Mágina';
   if (code === 'caminante_de_la_sierra') return 'Caminante de la Sierra';
   if (code === 'mil_puntos') return '1.000 puntos';
+  if (code === 'coleccionista_de_magina') return 'Coleccionista de Mágina';
+  if (code === 'hallazgo_legendario') return 'Hallazgo legendario';
   return code.replaceAll('_', ' ');
 }
 
@@ -86,6 +93,19 @@ export function AdventureHubClient() {
     points: current.points + Number(adventure.total_points || 0),
   }), { checkpoints: 0, points: 0 }), [adventures]);
 
+  const albumCategories = useMemo(() => {
+    if (!profile) return [];
+    const categories = new Map<AdventureCollectionCategory, { available: number; unlocked: number; rarities: string[] }>();
+    for (const item of profile.album) {
+      const current = categories.get(item.category) ?? { available: 0, unlocked: 0, rarities: [] };
+      current.available += Number(item.available);
+      current.unlocked += Number(item.unlocked);
+      if (item.unlocked > 0) current.rarities.push(`${rarityLabel(item.rarity)} ${item.unlocked}/${item.available}`);
+      categories.set(item.category, current);
+    }
+    return [...categories.entries()].map(([category, stats]) => ({ category, ...stats }));
+  }, [profile]);
+
   return <main className={styles.shell}>
     <section className={styles.hero}>
       <div>
@@ -100,7 +120,7 @@ export function AdventureHubClient() {
       <div className={styles.heroStats} aria-label="Resumen público de Mágina Aventura">
         <article><strong>{adventures.length}</strong><span>Aventuras disponibles</span></article>
         <article><strong>{totals.checkpoints}</strong><span>Descubrimientos</span></article>
-        <article><strong>{totals.points}</strong><span>Puntos posibles</span></article>
+        <article><strong>{totals.points}</strong><span>XP posibles</span></article>
       </div>
     </section>
 
@@ -113,29 +133,23 @@ export function AdventureHubClient() {
         <article><strong>{profile.summary.adventures_started}</strong><span>Iniciadas</span></article>
         <article><strong>{profile.summary.adventures_completed}</strong><span>Completadas</span></article>
         <article><strong>{profile.summary.discoveries}</strong><span>Descubrimientos</span></article>
-        <article><strong>{profile.summary.total_score}</strong><span>Puntos</span></article>
+        <article><strong>{profile.summary.total_score}</strong><span>XP</span></article>
       </div>
       {profile.badges.length > 0 ? <div className={styles.badges} aria-label="Insignias globales">{profile.badges.map((badge) => <span key={badge}>✦ {badgeLabel(badge)}</span>)}</div> : null}
 
-      {profile.territory.municipalities_available > 0 ? <div className={styles.recent}>
-        <h3>Sierra Mágina explorada · {profile.territory.explored_percent}%</h3>
-        <p>{profile.territory.unlocked_checkpoints}/{profile.territory.available_checkpoints} descubrimientos · {profile.territory.municipalities_discovered}/{profile.territory.municipalities_available} municipios con progreso</p>
-        <progress max={Math.max(profile.territory.available_checkpoints, 1)} value={profile.territory.unlocked_checkpoints} aria-label={`Sierra Mágina explorada ${profile.territory.explored_percent}%`} />
-        <div className={styles.collectionGrid}>{profile.territory.municipalities.map((municipality) => <article key={municipality.municipality_id}>
-          <div><strong>{municipality.municipality_name}</strong><span>{municipality.unlocked}/{municipality.available}</span></div>
-          <progress max={Math.max(municipality.available, 1)} value={municipality.unlocked} aria-label={`${municipality.municipality_name} ${municipality.percent}%`} />
-          <small>{municipality.percent}% · {municipality.adventure_count} {municipality.adventure_count === 1 ? 'aventura' : 'aventuras'}</small>
-        </article>)}</div>
+      {albumCategories.length > 0 ? <div className={styles.recent}>
+        <h3>Álbum de Sierra Mágina</h3>
+        <p>Solo aparecen categorías asignadas y revisadas por un editor. Importar un POI no inventa automáticamente flora, fauna o patrimonio.</p>
+        <div className={styles.collectionGrid}>{albumCategories.map((entry) => {
+          const percent = entry.available > 0 ? Math.round((entry.unlocked / entry.available) * 100) : 0;
+          return <article key={entry.category}>
+            <div><strong>{albumCategoryLabel(entry.category)}</strong><span>{entry.unlocked}/{entry.available}</span></div>
+            <progress max={Math.max(entry.available, 1)} value={entry.unlocked} aria-label={`${albumCategoryLabel(entry.category)} ${percent}%`} />
+            <small>{percent}% descubierto{entry.rarities.length ? ` · ${entry.rarities.join(' · ')}` : ''}</small>
+          </article>;
+        })}</div>
       </div> : null}
 
-      {profile.collections.length > 0 ? <div className={styles.collectionGrid}>{profile.collections.map((collection) => {
-        const percent = collection.available > 0 ? Math.round((collection.unlocked / collection.available) * 100) : 0;
-        return <article key={collection.kind}>
-          <div><strong>{collectionLabel(collection.kind)}</strong><span>{collection.unlocked}/{collection.available}</span></div>
-          <progress max={Math.max(collection.available, 1)} value={collection.unlocked} aria-label={`${collectionLabel(collection.kind)} ${percent}%`} />
-          <small>{percent}% descubierto</small>
-        </article>;
-      })}</div> : null}
       {profile.recent_runs.length > 0 ? <div className={styles.recent}>
         <h3>Últimas expediciones</h3>
         {profile.recent_runs.map((run) => <Link href={`/rutas/detalle?slug=${encodeURIComponent(run.slug)}`} key={run.id}>
@@ -150,8 +164,8 @@ export function AdventureHubClient() {
       <div className={styles.sectionHeading}><span className={styles.eyebrow}>CÓMO FUNCIONA</span><h2 id="como-funciona">El sendero se convierte en aventura</h2></div>
       <div className={styles.howGrid}>
         <article><strong>01</strong><h3>Elige una ruta</h3><p>Solo usamos rutas públicas con track validado. Antes de salir, revisa siempre sus datos técnicos y avisos.</p></article>
-        <article><strong>02</strong><h3>Descubre puntos</h3><p>En cada etapa puedes encontrar lugares, preguntas, observaciones y coleccionables configurados desde Mágina Olivo.</p></article>
-        <article><strong>03</strong><h3>Completa tu cuaderno</h3><p>Tu progreso suma puntos, insignias y descubrimientos. La posición exacta no se guarda como un recorrido continuo.</p></article>
+        <article><strong>02</strong><h3>Descubre puntos</h3><p>Encuentra lugares, retos y coleccionables. Algunos hallazgos alimentan tu álbum de flora, fauna, patrimonio, olivar, tradiciones o paisaje.</p></article>
+        <article><strong>03</strong><h3>Sube de nivel</h3><p>Tu progreso suma XP, insignias y descubrimientos territoriales. La posición exacta no se guarda como un recorrido continuo.</p></article>
       </div>
     </section>
 
@@ -174,7 +188,7 @@ export function AdventureHubClient() {
           <div className={styles.cardStats}>
             <span><strong>{km(adventure.distance_m)}</strong>Recorrido</span>
             <span><strong>{duration(adventure.duration_minutes)}</strong>Duración</span>
-            <span><strong>{adventure.total_points}</strong>Puntos</span>
+            <span><strong>{adventure.total_points}</strong>XP</span>
           </div>
           <Link className={styles.primaryAction} href={`/rutas/detalle?slug=${encodeURIComponent(adventure.slug)}`}>Entrar en la aventura</Link>
           <small>Ruta base: {adventure.route_name}{adventure.place_name ? ` · ${adventure.place_name}` : ''}</small>
