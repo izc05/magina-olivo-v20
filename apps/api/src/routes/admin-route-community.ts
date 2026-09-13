@@ -136,7 +136,7 @@ export function registerAdminRouteCommunityRoutes(app: FastifyInstance, db: Data
   });
 
   app.post('/api/v1/admin/routes/sponsorships', async (request, reply) => {
-    const auth = await requirePlatformAccess(request, reply, db, 'manager');
+    const auth = await requirePlatformAccess(request, reply, db, 'admin');
     if (!auth) return;
     const input = parseBody(sponsorshipSchema, request.body, reply); if (!input) return;
     if (input.route_id) {
@@ -162,7 +162,7 @@ export function registerAdminRouteCommunityRoutes(app: FastifyInstance, db: Data
   });
 
   app.put('/api/v1/admin/routes/sponsorships/:id', async (request, reply) => {
-    const auth = await requirePlatformAccess(request, reply, db, 'manager');
+    const auth = await requirePlatformAccess(request, reply, db, 'admin');
     if (!auth) return;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_sponsorship_id' });
