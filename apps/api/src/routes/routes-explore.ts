@@ -3,14 +3,16 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import type { DatabaseClient } from '../db/client.js';
 
+const booleanQuery = z.enum(['true', 'false']).transform((value) => value === 'true');
+
 const publicRouteQuery = z.object({
   q: z.string().trim().min(1).max(120).optional(),
   municipality_id: z.string().uuid().optional(),
   place_id: z.string().uuid().optional(),
   type: z.enum(['hiking', 'mtb', 'cycling', 'trail', 'family', 'mixed']).optional(),
   difficulty: z.enum(['easy', 'moderate', 'hard', 'very_hard']).optional(),
-  circular: z.coerce.boolean().optional(),
-  family_friendly: z.coerce.boolean().optional(),
+  circular: booleanQuery.optional(),
+  family_friendly: booleanQuery.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
 });
 
