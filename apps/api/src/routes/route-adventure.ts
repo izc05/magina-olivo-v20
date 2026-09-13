@@ -24,8 +24,9 @@ function requireUser(request: FastifyRequest, reply: any) {
 }
 
 async function adventureRoute(db: DatabaseClient, routeId: string) {
-  const result = await sql<{ id: string; name: string; enabled: boolean }>`
-    SELECT r.id, r.name, COALESCE(a.enabled, false) AS enabled
+  const result = await sql<{ id: string; name: string; enabled: boolean; progression_mode: 'free' | 'linear' }>`
+    SELECT r.id, r.name, COALESCE(a.enabled, false) AS enabled,
+           COALESCE(a.progression_mode, 'free') AS progression_mode
     FROM routes r
     LEFT JOIN route_adventures a ON a.route_id = r.id
     WHERE r.id = ${routeId}::uuid
@@ -115,7 +116,7 @@ export function registerRouteAdventureRoutes(app: FastifyInstance, db: DatabaseC
 
     const routeResult = await sql<Record<string, unknown>>`
       SELECT r.id, r.slug, r.name, COALESCE(a.enabled, false) AS enabled,
-             a.title, a.intro, a.completion_message
+             a.title, a.intro, a.completion_message, COALESCE(a.progression_mode, 'free') AS progression_mode
       FROM routes r
       LEFT JOIN route_adventures a ON a.route_id = r.id
       WHERE r.slug = ${params.data.slug}
@@ -144,6 +145,7 @@ export function registerRouteAdventureRoutes(app: FastifyInstance, db: DatabaseC
         title: route.title,
         intro: route.intro,
         completion_message: route.completion_message,
+        progression_mode: route.progression_mode,
       },
       checkpoints: checkpoints.rows,
       notice: 'El Modo Aventura es una capa lúdica. No sustituye el track, la señalización, los avisos oficiales ni las recomendaciones de seguridad.',
@@ -204,8 +206,8 @@ export function registerRouteAdventureRoutes(app: FastifyInstance, db: DatabaseC
     if (!params.success) return reply.code(400).send({ error: 'invalid_adventure_checkpoint' });
     const input = parseBody(unlockSchema, request.body, reply); if (!input) return;
 
-    const runResult = await sql<{ id: string }>`
-      SELECT ar.id
+    const runResult = await sql<{ id: string; progression_mode: 'free' | 'linear' }>`
+      SELECT ar.id, a.progression_mode
       FROM route_adventure_runs ar
       JOIN route_adventures a ON a.route_id = ar.route_id AND a.enabled = true
       JOIN routes r ON r.id = ar.route_id AND r.status = 'published' AND r.track_status = 'validated'
@@ -224,9 +226,11 @@ export function registerRouteAdventureRoutes(app: FastifyInstance, db: DatabaseC
       distance_m: number | null;
       unlock_radius_m: number;
       distance_to_checkpoint_m: number;
+      sort_order: number;
+      is_required: boolean;
     }>`
       SELECT cp.id, cp.title, cp.question, cp.correct_answer_key, cp.points, cp.distance_m,
-             cp.unlock_radius_m,
+             cp.unlock_radius_m, cp.sort_order, cp.is_required,
              ST_DistanceSphere(
                cp.location,
                ST_SetSRID(ST_MakePoint(${input.longitude}, ${input.latitude}), 4326)
@@ -239,6 +243,26 @@ export function registerRouteAdventureRoutes(app: FastifyInstance, db: DatabaseC
     `.execute(db);
     const checkpoint = checkpointResult.rows[0];
     if (!checkpoint) return reply.code(404).send({ error: 'checkpoint_not_found' });
+
+    if (run.progression_mode === 'linear') {
+      const previousRequired = await sql<{ remaining: number }>`
+        SELECT COUNT(*)::int AS remaining
+        FROM route_adventure_checkpoints previous
+        WHERE previous.route_id = ${params.data.id}::uuid
+          AND previous.active = true
+          AND previous.is_required = true
+          AND previous.sort_order < ${checkpoint.sort_order}
+          AND NOT EXISTS (
+            SELECT 1 FROM route_adventure_unlocks unlocked
+            WHERE unlocked.run_id = ${run.id}::uuid
+              AND unlocked.checkpoint_id = previous.id
+          )
+      `.execute(db);
+      const remaining = previousRequired.rows[0]?.remaining ?? 0;
+      if (remaining > 0) {
+        return reply.code(409).send({ error: 'checkpoint_locked', required_previous_remaining: remaining });
+      }
+    }
 
     const distance = Number(checkpoint.distance_to_checkpoint_m);
     if (!Number.isFinite(distance) || distance > checkpoint.unlock_radius_m) {
