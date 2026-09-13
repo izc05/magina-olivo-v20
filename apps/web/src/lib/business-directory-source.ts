@@ -80,6 +80,29 @@ export type BusinessDetail = BusinessDirectoryItem & {
   updatedAt: string;
 };
 
+export type BusinessOffer = {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  description: string | null;
+  offerType: 'promotion' | 'discount' | 'fixed_price' | 'bundle' | 'gift' | 'experience' | 'seasonal';
+  pricing: {
+    originalPriceCents: number | null;
+    offerPriceCents: number | null;
+    currency: string;
+  };
+  promoCode: string | null;
+  redemption: {
+    mode: 'contact' | 'request' | 'external_link' | 'show_code';
+    url: string | null;
+  };
+  terms: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  maxRedemptions: number | null;
+};
+
 export type BusinessDirectoryFilters = {
   q?: string;
   municipalityId?: string;
@@ -93,6 +116,17 @@ export type BusinessDirectoryFilters = {
   limit?: number;
   offset?: number;
 };
+
+export type BusinessEventType =
+  | 'directory_impression'
+  | 'profile_view'
+  | 'phone_click'
+  | 'whatsapp_click'
+  | 'email_click'
+  | 'website_click'
+  | 'directions_click'
+  | 'offer_view'
+  | 'offer_redeem';
 
 function queryString(filters: BusinessDirectoryFilters) {
   const params = new URLSearchParams();
@@ -126,6 +160,45 @@ export async function loadBusinesses(filters: BusinessDirectoryFilters = {}) {
 export async function loadBusiness(slug: string) {
   const payload = await apiFetch<{ business: BusinessDetail }>(`/api/v1/public/businesses/${encodeURIComponent(slug)}`);
   return payload.business;
+}
+
+export async function loadBusinessOffers(slug: string) {
+  const payload = await apiFetch<{ offers: BusinessOffer[] }>(`/api/v1/public/businesses/${encodeURIComponent(slug)}/offers`);
+  return payload.offers;
+}
+
+export async function trackBusinessEvent(slug: string, input: {
+  eventType: BusinessEventType;
+  offerId?: string;
+  anonymousId?: string;
+  sourceContext?: string;
+  sourceKey?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  return apiFetch<{ accepted: boolean }>(`/api/v1/public/businesses/${encodeURIComponent(slug)}/events`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function submitBusinessLead(slug: string, input: {
+  kind: 'contact' | 'quote' | 'booking' | 'availability' | 'order';
+  contactName: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  message?: string;
+  requestedFor?: string | null;
+  partySize?: number | null;
+  offerId?: string;
+  anonymousId?: string;
+  sourceContext?: string;
+  sourceKey?: string;
+  consentBusinessContact: true;
+}) {
+  return apiFetch<{ lead: { id: string; status: string; createdAt: string }; message: string }>(
+    `/api/v1/public/businesses/${encodeURIComponent(slug)}/leads`,
+    { method: 'POST', body: JSON.stringify(input) },
+  );
 }
 
 export async function submitBusinessClaim(slug: string, input: {
