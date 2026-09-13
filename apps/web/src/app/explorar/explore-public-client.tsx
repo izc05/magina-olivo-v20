@@ -12,6 +12,7 @@ import styles from './explore-public.module.css';
 const areas = [
   { icon: CompassIcon, title: 'Noticias', text: 'Actualidad local con fuente y fecha verificadas.', href: '/noticias', badge: 'Disponible' },
   { icon: PlusIcon, title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
+  { icon: HomeIcon, title: 'Ayuntamientos', text: 'Webs oficiales, contacto y sedes institucionales de Sierra Mágina.', href: '/ayuntamientos', badge: '16 municipios' },
   { icon: SproutIcon, title: 'Aceite y mercado', text: 'Precios y campaña manteniendo siempre fuente, unidad y fecha.', href: '/mercado', badge: 'Disponible' },
   { icon: HomeIcon, title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
   { icon: MoreIcon, title: 'Empresas y servicios', text: 'Directorio territorial con mapa, categorías, fichas verificables y patrocinio siempre identificado.', href: '/explorar/empresas', badge: 'Disponible' },
