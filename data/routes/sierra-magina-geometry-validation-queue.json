@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "created_at": "2026-09-13",
   "scope": "Geometry validation queue for Sierra Magina hiking sources",
   "policy": {
@@ -19,11 +19,10 @@
   },
   "rediam": {
     "expected_core_routes": 17,
-    "sources_located": 15,
+    "sources_located": 16,
     "geometry_validated": 0,
     "pending_source_identification": [
-      "castillo-de-albanchez",
-      "puerto-de-la-mata"
+      "castillo-de-albanchez"
     ],
     "queue": [
       {"slug":"adelfal-de-cuadros","codigoequi":"727","status":"source_located","next":"fetch_wfs_geometry"},
@@ -36,6 +35,7 @@
       {"slug":"la-cueva-de-la-graja","codigoequi":"721","status":"source_located","next":"fetch_wfs_geometry"},
       {"slug":"las-vinas","codigoequi":"724","status":"source_located","next":"fetch_wfs_geometry"},
       {"slug":"pinar-de-canava","codigoequi":"1116","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"puerto-de-la-mata","codigoequi":"1224","status":"source_located","next":"fetch_wfs_geometry"},
       {"slug":"sierra-de-la-cruz","codigoequi":"1676","status":"source_located","next":"fetch_wfs_geometry"},
       {"slug":"subida-al-hoyo-de-la-laguna","codigoequi":"1552","status":"source_located","next":"fetch_wfs_geometry"},
       {"slug":"subida-a-pico-magina-y-miramundos","codigoequi":"726","status":"source_located","next":"fetch_wfs_geometry"},
