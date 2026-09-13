@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "verified_at": "2026-09-13",
   "authority": "Junta de Andalucia - REDIAM",
   "service": "REDIAM_WFS_Patrimonio_Natural",
@@ -21,6 +21,7 @@
     {"slug":"la-cueva-de-la-graja","codigoequi":"721","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/la-cueva-de-la-graja/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"las-vinas","codigoequi":"724","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/las-vi%C3%B1as/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"pinar-de-canava","codigoequi":"1116","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/pinar-de-c%C3%81nava/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
+    {"slug":"puerto-de-la-mata","codigoequi":"1224","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/en/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/puerto-de-la-mata/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"sierra-de-la-cruz","codigoequi":"1676","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/sierra-de-la-cruz/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"subida-al-hoyo-de-la-laguna","codigoequi":"1552","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/subida-al-hoyo-de-la-laguna/","formats_exposed":["KML","GML","GPX"],"track_found":true,"track_validated":false},
     {"slug":"subida-a-pico-magina-y-miramundos","codigoequi":"726","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/subida-a-pico-m%C3%A1gina-y-miramundos/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
