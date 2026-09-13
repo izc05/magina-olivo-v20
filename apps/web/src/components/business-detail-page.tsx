@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   loadBusiness,
@@ -52,26 +52,10 @@ function openingHoursText(value: Record<string, unknown>) {
   return rows.length ? rows.map(([day, hours]) => `${day}: ${hours}`).join(' · ') : null;
 }
 
-function anonymousBusinessId() {
-  try {
-    const key = 'magina-business-anonymous-id';
-    const existing = window.localStorage.getItem(key);
-    if (existing) return existing;
-    const created = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    window.localStorage.setItem(key, created);
-    return created;
-  } catch {
-    return undefined;
-  }
-}
-
 function recordBusinessEvent(slug: string, eventType: BusinessEventType, offerId?: string) {
   void trackBusinessEvent(slug, {
     eventType,
     offerId,
-    anonymousId: anonymousBusinessId(),
     sourceContext: 'business_detail',
   }).catch(() => undefined);
 }
@@ -162,7 +146,6 @@ function LeadForm({ business, offers, selectedOfferId, onOfferChange }: {
         requestedFor: requestedFor ? new Date(requestedFor).toISOString() : null,
         partySize: partySize ? Number(partySize) : null,
         offerId: selectedOfferId || undefined,
-        anonymousId: anonymousBusinessId(),
         sourceContext: 'business_detail',
         sourceKey: selectedOfferId ? 'offer' : 'profile',
         consentBusinessContact: true,
@@ -255,6 +238,8 @@ export function BusinessDetailPage() {
   const [selectedOfferId, setSelectedOfferId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<'missing' | 'unavailable' | null>(null);
+  const viewedBusinessesRef = useRef(new Set<string>());
+  const viewedOffersRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (!slug) {
@@ -287,27 +272,16 @@ export function BusinessDetailPage() {
   }, [slug]);
 
   useEffect(() => {
-    if (!business) return;
-    try {
-      const key = `magina-business-profile-view:${business.slug}`;
-      if (window.sessionStorage.getItem(key)) return;
-      window.sessionStorage.setItem(key, '1');
-    } catch {
-      // Measurement is best-effort; the public profile must continue working without storage.
-    }
+    if (!business || viewedBusinessesRef.current.has(business.slug)) return;
+    viewedBusinessesRef.current.add(business.slug);
     recordBusinessEvent(business.slug, 'profile_view');
   }, [business]);
 
   useEffect(() => {
     if (!business || !offers.length) return;
     for (const offer of offers) {
-      try {
-        const key = `magina-business-offer-view:${offer.id}`;
-        if (window.sessionStorage.getItem(key)) continue;
-        window.sessionStorage.setItem(key, '1');
-      } catch {
-        // Best-effort analytics only.
-      }
+      if (viewedOffersRef.current.has(offer.id)) continue;
+      viewedOffersRef.current.add(offer.id);
       recordBusinessEvent(business.slug, 'offer_view', offer.id);
     }
   }, [business, offers]);
