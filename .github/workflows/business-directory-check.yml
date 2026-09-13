@@ -1,0 +1,161 @@
+name: V20 business directory check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/api/src/domain/business-directory.ts'
+      - 'apps/api/src/routes/business-directory.ts'
+      - 'apps/api/src/routes/admin-business-directory.ts'
+      - 'apps/api/src/routes/admin-business-categories.ts'
+      - 'apps/api/src/app.ts'
+      - 'apps/web/src/app/empresas/**'
+      - 'apps/web/src/app/explorar/empresas/**'
+      - 'apps/web/src/app/admin/empresas/**'
+      - 'apps/web/src/components/business-**'
+      - 'apps/web/src/lib/business-**'
+      - 'database/migrations/0070_business_directory_foundation.sql'
+      - '.github/workflows/business-directory-check.yml'
+
+concurrency:
+  group: business-directory-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  directory:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API dependencies
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+
+      - name: Typecheck business surfaces
+        run: |
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/web typecheck
+
+      - name: Build API
+        run: pnpm --filter @magina/api build
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      - name: Apply migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Seed business fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO businesses (
+            id, slug, name, short_description, description, address, location,
+            phone, website, verification_status, status, commercial_plan,
+            featured, sponsored, priority, published_at
+          ) VALUES (
+            '71000000-0000-4000-8000-000000000001',
+            'empresa-ci-magina',
+            'Empresa CI Mágina',
+            'Ficha de prueba del directorio.',
+            'Empresa creada exclusivamente por el smoke test.',
+            'Sierra Mágina, Jaén',
+            ST_SetSRID(ST_MakePoint(-3.45, 37.75), 4326),
+            '+34953000000',
+            'https://example.com',
+            'verified',
+            'published',
+            'featured',
+            true,
+            false,
+            5,
+            now()
+          );
+
+          INSERT INTO business_category_links (business_id, category_id, is_primary)
+          SELECT '71000000-0000-4000-8000-000000000001', id, true
+          FROM business_categories
+          WHERE slug = 'servicios-profesionales';
+          SQL
+
+      - name: Public API smoke test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          PGPASSWORD: postgres
+        run: |
+          node apps/api/dist/server.js >/tmp/magina-business-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill ${API_PID} || true; cat /tmp/magina-business-api.log' EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3001/health >/dev/null; then break; fi
+            sleep 1
+          done
+
+          CATEGORIES=$(curl -fsS http://127.0.0.1:3001/api/v1/public/business-categories)
+          BUSINESSES=$(curl -fsS 'http://127.0.0.1:3001/api/v1/public/businesses?q=Empresa%20CI&lat=37.75&lng=-3.45&radiusKm=5')
+          DETAIL=$(curl -fsS http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina)
+          CLAIM=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina/claims \
+            -H 'content-type: application/json' \
+            -d '{"claimantName":"Responsable CI","claimantEmail":"ci@example.com","relationship":"Gerencia","message":"Solicitud smoke test"}')
+
+          CATEGORIES="${CATEGORIES}" BUSINESSES="${BUSINESSES}" DETAIL="${DETAIL}" CLAIM="${CLAIM}" node <<'NODE'
+          const categories = JSON.parse(process.env.CATEGORIES);
+          const list = JSON.parse(process.env.BUSINESSES);
+          const detail = JSON.parse(process.env.DETAIL);
+          const claim = JSON.parse(process.env.CLAIM);
+
+          if (!Array.isArray(categories.categories) || categories.categories.length < 1) throw new Error('Business categories unavailable');
+          if (list.businesses?.length !== 1) throw new Error(`Expected one business, got ${list.businesses?.length}`);
+          if (list.businesses[0].name !== 'Empresa CI Mágina') throw new Error('Unexpected business list payload');
+          if (Math.abs(list.businesses[0].distanceKm ?? 999) > 0.01) throw new Error('PostGIS distance filter failed');
+          if (list.businesses[0].placement?.label !== 'Destacado') throw new Error('Featured disclosure missing');
+          if (detail.business?.slug !== 'empresa-ci-magina') throw new Error('Business detail unavailable');
+          if (detail.business?.verified !== true) throw new Error('Verification state missing');
+          if (claim.claim?.status !== 'pending') throw new Error('Claim flow failed');
+          NODE
+
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM business_claims WHERE business_id='71000000-0000-4000-8000-000000000001' AND claimant_email='ci@example.com' AND status='pending'")" = "1"
