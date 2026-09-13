@@ -143,6 +143,7 @@ export default function AdminMunicipalitiesPage() {
         <p>Gobierno, contenido y publicación de los 16 municipios de Sierra Mágina.</p>
       </div>
       <div className={styles.headerActions}>
+        <a href="/admin/ayuntamientos/editorial">Portada editorial</a>
         <a href="/admin/ayuntamientos/cobertura">Cobertura</a>
         <a href="/admin/ayuntamientos/patrimonio">Patrimonio y turismo</a>
         <a href="/admin/ayuntamientos/actualidad">Noticias y eventos</a>
@@ -217,6 +218,7 @@ export default function AdminMunicipalitiesPage() {
 
           <section className={styles.quickActions} aria-label={`Gestionar ${selected.name}`}>
             <a className="admin-card" href={`/ayuntamientos/${selected.slug}`} target="_blank" rel="noreferrer"><strong>Ver ficha pública ↗</strong><span>Comprueba cómo ve el usuario este municipio.</span></a>
+            <a className="admin-card" href="/admin/ayuntamientos/editorial"><strong>Portada editorial</strong><span>Elige perfil, hero y hasta tres imprescindibles.</span></a>
             <a className="admin-card" href={`/admin/ayuntamientos/cobertura#${selected.slug}`}><strong>Revisar cobertura</strong><span>Detecta datos y contenido que todavía faltan.</span></a>
             <a className="admin-card" href="/admin/ayuntamientos/patrimonio"><strong>Patrimonio y turismo</strong><span>Gestiona perfil, patrimonio, naturaleza y turismo.</span></a>
             <a className="admin-card" href="/admin/ayuntamientos/actualidad"><strong>Noticias y eventos</strong><span>Vincula actualidad al municipio canónico.</span></a>
