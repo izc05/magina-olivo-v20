@@ -6,9 +6,14 @@ export function Brand({ compact = false }: { compact?: boolean }) {
 
   return (
     <Link href="/" className={compact ? 'brand brand-compact' : 'brand'} aria-label="Mágina Olivo, inicio">
-      <Image src={`${basePath}/assets/olive-sprig.svg`} width={60} height={25} alt="" className="brand-sprig" priority />
-      <span>Mágina Olivo</span>
-      {!compact && <small>TERRITORIO · PERSONAS · FUTURO</small>}
+      <Image
+        src={`${basePath}${compact ? '/assets/brand/magina-olivo-symbol.png' : '/assets/brand/magina-olivo-horizontal.png'}`}
+        width={compact ? 460 : 1100}
+        height={compact ? 415 : 325}
+        alt=""
+        className={compact ? 'brand-symbol' : 'brand-lockup'}
+        priority
+      />
     </Link>
   );
 }

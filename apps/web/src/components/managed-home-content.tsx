@@ -149,12 +149,15 @@ export function ManagedHomeContent({ children }: { children?: ReactNode }) {
 
         <section className="section home-editorial-hero">
           <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
-            <div style={{ minHeight: 220, display: 'flex', alignItems: 'flex-end', padding: 24, background: heroMediaUrl ? `linear-gradient(90deg, rgba(18,38,22,.78), rgba(18,38,22,.22)), url(${heroMediaUrl}) center/cover` : 'linear-gradient(135deg, #244b31, #78936b)', color: '#fff' }}>
+            <div style={{ minHeight: 220, display: 'flex', alignItems: 'flex-end', padding: 24, background: heroMediaUrl ? `linear-gradient(90deg, rgba(18,38,22,.78), rgba(18,38,22,.22)), url(${heroMediaUrl}) center/cover` : 'linear-gradient(90deg, rgba(17,36,23,.94) 0%, rgba(24,48,30,.74) 44%, rgba(24,48,30,.12) 76%), var(--asset-premium-hero) center/cover', color: '#fff' }}>
               <div style={{ maxWidth: 720 }}>
                 <span className="eyebrow" style={{ color: 'inherit' }}>{hero?.eyebrow ?? 'MÁGINA OLIVO'}</span>
-                <h2 style={{ fontSize: 'clamp(1.8rem,4vw,3rem)', margin: '8px 0' }}>{hero?.title ?? 'Personas que cuidan de un territorio único'}</h2>
-                <p style={{ fontSize: '1.05rem', opacity: .92 }}>{hero?.subtitle ?? 'El olivar, sus pueblos y su gente. Descubre Sierra Mágina y organiza el día a día de tu campo.'}</p>
-                <Link className="primary action-link" href={heroHref ?? '/explorar'}>{hero?.cta_label ?? 'Descubrir Mágina'} <ArrowIcon /></Link>
+                <h2 style={{ fontSize: 'clamp(1.8rem,4vw,3rem)', margin: '8px 0' }}>{hero?.title ?? 'La fuerza de un gran territorio'}</h2>
+                <p style={{ fontSize: '1.05rem', opacity: .92 }}>{hero?.subtitle ?? 'Información, herramientas y conocimiento para un olivar más sostenible, rentable y vivo.'}</p>
+                <div className="home-hero-actions">
+                  <Link className="primary action-link" href={heroHref ?? '/explorar'}>{hero?.cta_label ?? 'Explorar el territorio'} <ArrowIcon /></Link>
+                  <Link className="home-hero-secondary" href="/mi-campo">Ir a Mi Campo</Link>
+                </div>
               </div>
             </div>
           </div>

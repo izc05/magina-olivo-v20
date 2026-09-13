@@ -304,6 +304,11 @@
   font-size: 1.25rem;
 }
 
+.areaIcon svg {
+  width: 22px;
+  height: 22px;
+}
+
 .areaCard h3,
 .areaCard p {
   margin: 0;

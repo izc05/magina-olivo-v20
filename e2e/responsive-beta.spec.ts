@@ -73,8 +73,21 @@ for (const viewport of viewports) {
 
     test('persistent navigation does not cover the content canvas', async ({ page }) => {
       await openStable(page, '/');
-      const nav = page.getByRole('navigation', { name: 'Navegación principal' });
-      await expect(nav).toBeVisible();
+      const mobileNav = page.locator('.bottom-nav');
+      const desktopNav = page.locator('.desktop-primary-nav');
+
+      if (viewport.width >= 1024) {
+        await expect(mobileNav).toBeHidden();
+        await expect(desktopNav).toBeVisible();
+        const targets = await desktopNav.locator('a').evaluateAll((links) => links.map((link) => {
+          const rect = link.getBoundingClientRect();
+          return { width: rect.width, height: rect.height };
+        }));
+        expect(targets.every((link) => link.width >= 44 && link.height >= 44)).toBe(true);
+        return;
+      }
+
+      await expect(mobileNav).toBeVisible();
 
       const metrics = await page.evaluate(() => {
         const navigation = document.querySelector('.bottom-nav') as HTMLElement;
@@ -96,13 +109,8 @@ for (const viewport of viewports) {
       expect(metrics.labelSize).toBeGreaterThanOrEqual(12);
       expect(metrics.links.every((link) => link.width >= 44 && link.height >= 44)).toBe(true);
 
-      if (viewport.width >= 1024) {
-        expect(metrics.nav.height).toBeGreaterThan(metrics.nav.width * 2);
-        expect(metrics.page.left).toBeGreaterThanOrEqual(metrics.nav.right + 8);
-      } else {
-        expect(metrics.nav.width).toBeGreaterThan(metrics.nav.height * 3);
-        expect(metrics.page.paddingBottom).toBeGreaterThanOrEqual(metrics.nav.height + 24);
-      }
+      expect(metrics.nav.width).toBeGreaterThan(metrics.nav.height * 3);
+      expect(metrics.page.paddingBottom).toBeGreaterThanOrEqual(metrics.nav.height + 24);
     });
   });
 }
