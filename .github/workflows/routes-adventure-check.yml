@@ -7,11 +7,15 @@ on:
       - integrate/v20-beta-closure
     paths:
       - 'apps/api/src/routes/route-adventure.ts'
+      - 'apps/api/src/routes/admin-route-adventure.ts'
       - 'apps/api/src/routes/route-device-export.ts'
       - 'apps/web/src/app/rutas/detalle/route-adventure-panel.tsx'
       - 'apps/web/src/app/rutas/detalle/route-detail-client.tsx'
+      - 'apps/web/src/components/route-adventure-admin.tsx'
+      - 'apps/web/src/components/route-content-admin.tsx'
       - 'apps/web/src/lib/public-routes-source.ts'
       - 'database/migrations/0083_routes_adventure.sql'
+      - 'docs/v20-routes-adventure-spec.md'
       - '.github/workflows/routes-adventure-check.yml'
       - 'pnpm-lock.yaml'
       - '.nvmrc'
