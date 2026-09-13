@@ -76,7 +76,7 @@ export function registerRouteAdventureHubRoutes(app: FastifyInstance, db: Databa
     const userId = readAuthenticatedUserId(request);
     if (!userId) return reply.code(401).send({ error: 'authentication_required' });
 
-    const [runsResult, discoveriesResult, collectionsResult, recentResult] = await Promise.all([
+    const [runsResult, discoveriesResult, collectionsResult, territoryResult, recentResult] = await Promise.all([
       sql<{ adventures_started: number; adventures_completed: number }>`
         SELECT COUNT(DISTINCT route_id)::int AS adventures_started,
                COUNT(DISTINCT route_id) FILTER (WHERE status = 'completed')::int AS adventures_completed
@@ -114,6 +114,35 @@ export function registerRouteAdventureHubRoutes(app: FastifyInstance, db: Databa
         ORDER BY cp.kind
       `.execute(db),
       sql<{
+        municipality_id: string;
+        municipality_name: string;
+        municipality_slug: string;
+        adventure_count: number;
+        available: number;
+        unlocked: number;
+      }>`
+        WITH user_checkpoint AS (
+          SELECT DISTINCT u.checkpoint_id
+          FROM route_adventure_unlocks u
+          JOIN route_adventure_runs ar ON ar.id = u.run_id
+          WHERE ar.user_id = ${userId}::uuid
+        )
+        SELECT m.id AS municipality_id,
+               m.name AS municipality_name,
+               m.slug AS municipality_slug,
+               COUNT(DISTINCT r.id)::int AS adventure_count,
+               COUNT(cp.id)::int AS available,
+               COUNT(uc.checkpoint_id)::int AS unlocked
+        FROM route_adventure_checkpoints cp
+        JOIN route_adventures a ON a.route_id = cp.route_id AND a.enabled = true
+        JOIN routes r ON r.id = cp.route_id AND r.status = 'published' AND r.track_status = 'validated'
+        JOIN territory_municipalities m ON m.id = r.municipality_id
+        LEFT JOIN user_checkpoint uc ON uc.checkpoint_id = cp.id
+        WHERE cp.active = true
+        GROUP BY m.id, m.name, m.slug
+        ORDER BY unlocked DESC, available DESC, m.name
+      `.execute(db),
+      sql<{
         id: string;
         route_id: string;
         slug: string;
@@ -149,9 +178,27 @@ export function registerRouteAdventureHubRoutes(app: FastifyInstance, db: Databa
     if (runs.adventures_completed >= 3) badges.push('caminante_de_la_sierra');
     if (discoveries.total_score >= 1000) badges.push('mil_puntos');
 
+    const territory = territoryResult.rows.map((row) => ({
+      ...row,
+      adventure_count: Number(row.adventure_count),
+      available: Number(row.available),
+      unlocked: Number(row.unlocked),
+      percent: Number(row.available) > 0 ? Math.round((Number(row.unlocked) / Number(row.available)) * 100) : 0,
+    }));
+    const territoryAvailable = territory.reduce((sum, row) => sum + row.available, 0);
+    const territoryUnlocked = territory.reduce((sum, row) => sum + row.unlocked, 0);
+
     return {
       summary: { ...runs, ...discoveries },
       collections: collectionsResult.rows,
+      territory: {
+        available_checkpoints: territoryAvailable,
+        unlocked_checkpoints: territoryUnlocked,
+        explored_percent: territoryAvailable > 0 ? Math.round((territoryUnlocked / territoryAvailable) * 100) : 0,
+        municipalities_available: territory.length,
+        municipalities_discovered: territory.filter((row) => row.unlocked > 0).length,
+        municipalities: territory,
+      },
       recent_runs: recentResult.rows,
       badges,
       privacy: 'El perfil guarda progreso de juego, no un historial de coordenadas GPS.',
