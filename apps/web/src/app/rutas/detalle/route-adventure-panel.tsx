@@ -9,6 +9,8 @@ import {
   loadRouteAdventureProgress,
   startRouteAdventure,
   unlockRouteAdventureCheckpoint,
+  type AdventureCollectionCategory,
+  type AdventureRarity,
   type PublicRouteAdventure,
   type RouteAdventureCheckpoint,
   type RouteAdventureProgress,
@@ -32,6 +34,17 @@ function checkpointIcon(kind: RouteAdventureCheckpoint['kind']) {
   return ({
     landmark: '⌖', trivia: '?', observation: '◉', photo: '▣', collection: '✦', rest: '⌂',
   } satisfies Record<RouteAdventureCheckpoint['kind'], string>)[kind];
+}
+
+function albumCategoryLabel(category: AdventureCollectionCategory) {
+  return ({
+    flora: 'Flora', fauna: 'Fauna', heritage: 'Patrimonio', olive_culture: 'Olivar',
+    tradition: 'Tradiciones', landscape: 'Paisaje',
+  } satisfies Record<AdventureCollectionCategory, string>)[category];
+}
+
+function rarityLabel(rarity: AdventureRarity) {
+  return ({ common: 'Común', uncommon: 'Poco común', rare: 'Raro', legendary: 'Legendario' } satisfies Record<AdventureRarity, string>)[rarity];
 }
 
 function explorerRank(percent: number, completed: boolean) {
@@ -141,7 +154,7 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
   if (loading) return null;
   if (!definition?.enabled || !definition.adventure) return null;
   const adventure = definition.adventure;
-  const progressionMode = (adventure as typeof adventure & { progression_mode?: 'free' | 'linear' }).progression_mode ?? 'free';
+  const progressionMode = adventure.progression_mode;
   const isLocked = (index: number) => progressionMode === 'linear'
     && definition.checkpoints.slice(0, index).some((item) => item.is_required && !unlocked.has(item.id));
 
@@ -176,7 +189,10 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
         return;
       }
       setProgress(result.progress);
-      setMessage(`¡${checkpoint.title} desbloqueado! +${checkpoint.points} puntos.`);
+      const albumText = checkpoint.collection_category
+        ? ` · ${albumCategoryLabel(checkpoint.collection_category)} · ${rarityLabel(checkpoint.rarity)}`
+        : '';
+      setMessage(`¡${checkpoint.title} desbloqueado! +${checkpoint.points} XP${albumText}.`);
     } catch (error) {
       if (error instanceof ApiRequestError && error.status === 401) setAuthRequired(true);
       setMessage(apiMessage(error));
@@ -209,6 +225,16 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
       };
     })
     .filter((entry) => entry.total > 0);
+  const albumCategories = (['flora', 'fauna', 'heritage', 'olive_culture', 'tradition', 'landscape'] as const)
+    .map((category) => {
+      const checkpoints = definition.checkpoints.filter((checkpoint) => checkpoint.collection_category === category);
+      return {
+        category,
+        total: checkpoints.length,
+        unlocked: checkpoints.filter((checkpoint) => unlocked.has(checkpoint.id)).length,
+      };
+    })
+    .filter((entry) => entry.total > 0);
 
   return <section className={styles.communitySection} aria-labelledby="route-adventure-title">
     <div className={styles.communityHeader}>
@@ -221,7 +247,7 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
 
     {progress?.run ? <div className={styles.infoGrid}>
       <article className={styles.infoCard}><h3>Progreso</h3><strong>{progress.stats.unlocked_checkpoints}/{progress.stats.total_checkpoints}</strong><p>{percent}% de checkpoints descubiertos</p></article>
-      <article className={styles.infoCard}><h3>Puntuación</h3><strong>{progress.run.score}/{progress.stats.total_points}</strong><p>Puntos conseguidos en esta aventura</p></article>
+      <article className={styles.infoCard}><h3>Experiencia</h3><strong>{progress.run.score}/{progress.stats.total_points} XP</strong><p>XP conseguido en esta aventura</p></article>
       <article className={styles.infoCard}><h3>Obligatorios</h3><strong>{progress.stats.required_remaining}</strong><p>{progress.stats.required_remaining === 0 ? 'Ya puedes cerrar la aventura.' : 'Aún pendientes para completar el recorrido lúdico.'}</p></article>
     </div> : null}
 
@@ -240,6 +266,12 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
           <p>{checkpointKind(entry.kind)}</p>
         </div>)}
       </div>
+      {albumCategories.length ? <><h3>Álbum de esta ruta</h3><div className={styles.infoGrid}>
+        {albumCategories.map((entry) => <div className={styles.infoCard} key={entry.category}>
+          <strong>{entry.unlocked}/{entry.total}</strong>
+          <p>{albumCategoryLabel(entry.category)}</p>
+        </div>)}
+      </div></> : null}
       <div className={styles.actionRow} aria-label="Colección de esta ruta">
         {definition.checkpoints.map((checkpoint, index) => {
           const done = unlocked.has(checkpoint.id);
@@ -249,7 +281,7 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
             type="button"
             className={styles.secondaryAction}
             title={done ? checkpoint.title : locked ? `Etapa ${index + 1} bloqueada por progresión` : checkpoint.title}
-            onClick={() => focusCheckpoint(checkpoint)}
+            onClick={() => { if (!locked) focusCheckpoint(checkpoint); }}
           >
             {done ? `✓ ${checkpoint.title}` : locked ? `🔒 Etapa ${index + 1}` : `✦ Etapa ${index + 1}`}
           </button>;
@@ -262,7 +294,7 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
     </div> : null}
 
     {authRequired ? <div className={styles.infoCard}>
-      <h3>Guarda tu aventura</h3><p>Puedes ver los retos sin cuenta, pero para iniciar el recorrido y conservar puntos necesitas iniciar sesión.</p>
+      <h3>Guarda tu aventura</h3><p>Puedes ver los retos sin cuenta, pero para iniciar el recorrido y conservar XP necesitas iniciar sesión.</p>
       <Link className={styles.primaryAction} href={`/login?next=${encodeURIComponent(`/rutas/detalle?slug=${slug}`)}`}>Iniciar sesión</Link>
     </div> : null}
 
@@ -282,9 +314,10 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
         return <article className={styles.reviewCard} key={checkpoint.id} aria-disabled={locked}>
           <div className={styles.reviewMeta}>
             <strong>{done ? '✓ ' : locked ? '🔒 ' : ''}Etapa {index + 1} · {checkpointKind(checkpoint.kind)}</strong>
-            <span>{checkpoint.is_required ? 'Obligatorio' : 'Extra'} · {checkpoint.points} pt</span>
+            <span>{checkpoint.is_required ? 'Obligatorio' : 'Extra'} · {checkpoint.points} XP</span>
           </div>
           <h3>{locked ? `Etapa ${index + 1} bloqueada` : checkpoint.title}</h3>
+          {!locked && checkpoint.collection_category ? <p><strong>{albumCategoryLabel(checkpoint.collection_category)} · {rarityLabel(checkpoint.rarity)}</strong></p> : null}
           {locked ? <p>Completa primero las etapas obligatorias anteriores para revelar este reto.</p> : checkpoint.description ? <p>{checkpoint.description}</p> : null}
           {!locked ? <small>{km(checkpoint.distance_m) ? `${km(checkpoint.distance_m)} · ` : ''}radio de desbloqueo {checkpoint.unlock_radius_m} m</small> : null}
           {checkpoint.question && !done && !locked ? <fieldset style={{ border: 0, padding: 0, margin: '16px 0 0' }}>
