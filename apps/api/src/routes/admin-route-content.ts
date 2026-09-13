@@ -7,6 +7,9 @@ import { parseBody } from '../http/helpers.js';
 
 const routeParams = z.object({ id: z.string().uuid() });
 const childParams = z.object({ id: z.string().uuid(), childId: z.string().uuid() });
+const mediaLocation = z.string().max(3000).refine((value) => value.startsWith('/') || URL.canParse(value), {
+  message: 'invalid_media_location',
+});
 
 const pointSchema = z.object({
   name: z.string().trim().min(1).max(180),
@@ -24,8 +27,8 @@ const mediaSchema = z.object({
   route_point_id: z.string().uuid().nullable().optional(),
   kind: z.enum(['photo','hero_image','real_video','drone_video','ai_image','ai_video','map_animation','elevation_animation','thumbnail']),
   origin: z.enum(['real','official','licensed','ai_generated']),
-  url: z.string().url().max(3000),
-  poster_url: z.string().url().max(3000).nullable().optional(),
+  url: mediaLocation,
+  poster_url: mediaLocation.nullable().optional(),
   alt_text: z.string().trim().max(500).nullable().optional(),
   caption: z.string().trim().max(2000).nullable().optional(),
   credit: z.string().trim().max(500).nullable().optional(),
@@ -58,6 +61,39 @@ async function routeExists(database: DatabaseClient, id: string) {
 }
 
 export function registerAdminRouteContentRoutes(app: FastifyInstance, db: DatabaseClient | null) {
+  app.get('/api/v1/admin/routes/:id/content', async (request, reply) => {
+    const auth = await requirePlatformAccess(request, reply, db, 'support');
+    if (!auth) return;
+    const params = routeParams.safeParse(request.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_route_id' });
+    if (!await routeExists(auth.database, params.data.id)) return reply.code(404).send({ error: 'route_not_found' });
+
+    const [points, media, sources] = await Promise.all([
+      sql<Record<string, unknown>>`
+        SELECT id, name, kind, distance_m, elevation_m, description, safety_note, sort_order,
+               ST_Y(location) AS latitude, ST_X(location) AS longitude
+        FROM route_points
+        WHERE route_id = ${params.data.id}::uuid AND active = true
+        ORDER BY sort_order, distance_m NULLS LAST, name
+      `.execute(auth.database),
+      sql<Record<string, unknown>>`
+        SELECT id, route_point_id, kind, origin, url, poster_url, alt_text, caption, credit,
+               source_url, license_notes, ai_generated, ai_provider, ai_model, ai_disclosure, sort_order
+        FROM route_media
+        WHERE route_id = ${params.data.id}::uuid AND active = true
+        ORDER BY sort_order, created_at
+      `.execute(auth.database),
+      sql<Record<string, unknown>>`
+        SELECT id, source_name, external_id, source_url, source_kind, license_notes, retrieved_at, raw_metadata
+        FROM route_sources
+        WHERE route_id = ${params.data.id}::uuid AND active = true
+        ORDER BY source_kind, source_name
+      `.execute(auth.database),
+    ]);
+
+    return { points: points.rows, media: media.rows, sources: sources.rows };
+  });
+
   app.post('/api/v1/admin/routes/:id/points', async (request, reply) => {
     const auth = await requirePlatformAccess(request, reply, db, 'editor');
     if (!auth) return;
