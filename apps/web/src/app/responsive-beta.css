@@ -1,0 +1,397 @@
+/*
+ * V20 responsive beta polish.
+ * Loaded after the existing visual layers so layout improvements stay
+ * independent from product, GIS, weather and data contracts.
+ */
+
+:root {
+  --v20-mobile-nav-height: 78px;
+  --v20-page-gutter: clamp(14px, 4vw, 22px);
+}
+
+html {
+  min-width: 320px;
+
+  scroll-padding-bottom: calc(var(--v20-mobile-nav-height) + 28px + env(safe-area-inset-bottom));
+}
+
+body {
+  min-width: 320px;
+
+}
+
+.page {
+  min-width: 0;
+  padding-inline: var(--v20-page-gutter);
+  padding-bottom: calc(var(--v20-mobile-nav-height) + 42px + env(safe-area-inset-bottom));
+}
+
+.page > * {
+  min-width: 0;
+}
+
+.page > :last-child {
+  scroll-margin-bottom: calc(var(--v20-mobile-nav-height) + 32px + env(safe-area-inset-bottom));
+}
+
+.bottom-nav {
+  padding-bottom: max(7px, env(safe-area-inset-bottom));
+}
+
+.bottom-nav a {
+  min-width: 44px;
+  min-height: 56px;
+}
+
+.nav-label {
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.icon-button,
+.primary,
+.secondary-action,
+.outline-action,
+.profile-edit,
+button:not(.maplibregl-ctrl button),
+input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  min-height: 44px;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.eyebrow.dark,
+.story-tag.gold {
+  color: #695414;
+}
+
+.hero .eyebrow,
+.explore-hero .eyebrow,
+.profile-hero .eyebrow,
+.farm-detail-hero .eyebrow {
+  color: #fff0b8;
+  text-shadow: 0 1px 8px rgba(13, 24, 12, .42);
+}
+
+.alert small,
+.stat span,
+.story-card p,
+.territory-banner a,
+.record-field > span {
+  font-size: max(12px, 0.75rem);
+}
+
+.admin-shortcuts {
+  position: relative;
+  z-index: 60;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: min(1180px, calc(100% - 24px));
+  max-width: calc(100vw - 24px);
+  gap: 7px;
+  margin: 16px auto 24px;
+  padding: 8px;
+  border: 1px solid rgba(36, 62, 40, .14);
+  border-radius: 18px;
+  background: rgba(250, 250, 246, .94);
+  box-shadow: 0 16px 42px rgba(24, 43, 27, .18);
+  backdrop-filter: blur(20px);
+}
+
+.admin-shortcuts a {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 44px;
+  align-items: center;
+  border-radius: 12px;
+  padding: 10px 13px;
+  background: #294a31;
+  color: white;
+  font-size: .82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.admin-shortcuts a:nth-child(2n) { background: #3d5e48; }
+.admin-shortcuts a:nth-child(3n) { background: #5b623b; }
+
+@media (max-width: 699px) and (max-height: 560px) {
+  body:has(input:focus, textarea:focus, select:focus) .bottom-nav {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, calc(100% + 24px));
+  }
+}
+
+@media (min-width: 700px) {
+  :root {
+    --v20-page-gutter: clamp(24px, 4vw, 42px);
+  }
+
+  body {
+    padding: 16px;
+  }
+
+  .app-shell {
+    width: min(100%, 960px);
+    min-height: calc(100dvh - 32px);
+    margin: 0 auto;
+    overflow: clip;
+    border: 1px solid rgba(255, 255, 255, .62);
+    border-radius: 30px;
+  }
+
+  .page {
+    padding-bottom: calc(var(--v20-mobile-nav-height) + 48px);
+  }
+
+  .topbar {
+    height: 78px;
+    padding-inline: var(--v20-page-gutter);
+  }
+
+  .bottom-nav {
+    width: min(620px, calc(100% - 64px));
+    bottom: 28px;
+  }
+
+  .quick-grid,
+  .module-grid,
+  .mi-campo-page .quick-grid,
+  .story-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .farm-row,
+  .profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .alert-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hero.home-hero,
+  .explore-hero,
+  .farm-detail-hero {
+    min-height: clamp(430px, 62vh, 590px);
+  }
+
+  .radar-map,
+  .radar-observation-map,
+  .map-platform-shell,
+  .map-shell {
+    min-height: 480px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --v20-page-gutter: clamp(32px, 4vw, 64px);
+  }
+
+  html {
+    scroll-padding-bottom: 40px;
+  }
+
+  body {
+    padding: 24px;
+  }
+
+  .app-shell {
+    width: min(1520px, 100%);
+    min-height: calc(100dvh - 48px);
+    padding-left: 104px;
+    border-radius: 36px;
+  }
+
+  .page {
+    padding-bottom: 64px;
+  }
+
+  .page > :last-child {
+    scroll-margin-bottom: 40px;
+  }
+
+  .topbar {
+    height: 86px;
+  }
+
+  .bottom-nav {
+    top: 36px;
+    bottom: 36px;
+    left: max(36px, calc((100vw - 1520px) / 2 + 36px));
+    width: 80px;
+    height: auto;
+    transform: none;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, minmax(72px, auto));
+    align-content: center;
+    padding: 10px;
+    border-radius: 24px;
+  }
+
+  .bottom-nav a {
+    min-height: 72px;
+    gap: 6px;
+    padding: 8px 4px;
+  }
+
+  .bottom-nav a.active {
+    box-shadow: inset 3px 0 #526943;
+  }
+
+  .nav-icon {
+    width: 38px;
+    height: 34px;
+  }
+
+  .nav-label {
+    font-size: 12px;
+  }
+
+  .home-page .story-grid,
+  .home-page .quick-grid,
+  .mi-campo-page .quick-grid,
+  .module-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .farm-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .farm-detail-page .living-modules {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-shortcuts {
+    max-width: min(1180px, calc(100% - 40px));
+  }
+}
+
+@media (min-width: 1280px) {
+  .home-page .quick-grid,
+  .mi-campo-page .quick-grid,
+  .farm-detail-page .living-modules {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .profile-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .radar-page,
+  .professional-page,
+  .campaign-page,
+  .today-page,
+  .farm-detail-page {
+    max-width: 1320px;
+    margin-inline: auto;
+  }
+}
+
+@media (min-width: 1600px) {
+  .home-page,
+  .explore-page,
+  .mi-campo-page,
+  .profile-page {
+    max-width: 1360px;
+    margin-inline: auto;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav,
+  .bottom-nav *,
+  .admin-shortcuts,
+  .admin-shortcuts * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Named regions keep the editorial layout stable as live data appears. */
+.home-editorial-hero > .card > div {
+  min-height: 340px !important;
+  padding: clamp(24px, 5vw, 64px) !important;
+}
+.home-editorial-hero p { max-width: 52ch; line-height: 1.65; }
+.home-editorial-hero .action-link { margin-top: 16px; }
+.home-stories .story-card { height: 100%; }
+.home-territory-links .quick { align-items: flex-start; }
+.home-territory-links small { display: block; margin-top: 8px; line-height: 1.5; }
+
+.eyebrow, .mi-campo-title .eyebrow { font-size: .75rem; }
+.quick small, .premium-quick small, .farm-meta, .profile-line,
+.profile-card-head > span { font-size: .8125rem; line-height: 1.5; }
+.section-head a, .detail-link, a.profile-line { min-height: 44px; display: inline-flex; align-items: center; }
+.page :is(input, select, textarea) { font-size: max(16px, 1rem); }
+.page :is(.section-head, .record-actions) { flex-wrap: wrap; }
+.page :is(.card, .feed-copy, .quick, .record-field) { min-width: 0; overflow-wrap: anywhere; }
+.page :is(input, select, textarea) { min-width: 0; max-width: 100%; }
+
+@media (min-width: 1024px) {
+  .home-page { display: grid; align-items: start; grid-template-columns: minmax(0, 1fr) minmax(280px, .7fr); }
+  .home-page > .section:nth-of-type(n),
+  .home-page > :is(.hero, .territory-banner, [data-managed-slot]) { grid-column: 1 / -1; }
+  .home-editorial-hero { margin-top: 28px; }
+  .home-page .story-grid, .home-page .home-territory-links .quick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .home-page .story-image { height: 210px; }
+  .home-page .story-card h3 { font-size: 1.5rem; }
+  .home-page .story-card p { font-size: .9375rem; line-height: 1.6; }
+  .field-dashboard { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .7fr); gap: 24px; align-items: start; }
+  .field-dashboard > .mi-campo-title { grid-column: 1; }
+  .field-dashboard > .campaign-summary { grid-column: 2; align-self: center; max-width: none; }
+  .field-dashboard > #mis-fincas { grid-column: 1; margin-top: 0; }
+  .field-dashboard > .field-actions { grid-column: 2; margin-top: 0; }
+  .field-dashboard > .territory-banner { grid-column: 1 / -1; }
+  .field-dashboard .farm-row { grid-template-columns: 1fr; }
+  .field-dashboard .field-actions .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .field-dashboard .record-fields { grid-template-columns: minmax(0, 1fr) minmax(0, .65fr); }
+  .campaign-page .quick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .campaign-page .quick strong { font-size: 1.6rem; }
+  .profile-page .profile-hero { min-height: 300px; padding: 40px; }
+  .profile-page .profile-grid { gap: 22px; }
+  .profile-page .profile-card { padding: 24px; }
+}
+@media (min-width: 1280px) {
+  .field-dashboard { grid-template-columns: minmax(0, 1.5fr) minmax(320px, .8fr); }
+  .field-dashboard .farm-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 699px) {
+  .home-page .home-stories .story-grid { grid-template-columns: 1fr; gap: 16px; }
+  .home-stories .story-card { display: grid; grid-template-columns: 100px minmax(0, 1fr); column-gap: 14px; padding: 12px; }
+  .home-stories .story-image { grid-row: 1 / 4; height: 100%; min-height: 128px; border-radius: 12px; margin: 0; }
+  .home-stories .story-tag { justify-self: start; align-self: start; }
+  .home-stories .story-card h3, .home-stories .story-card p { margin: 6px 0 0; }
+  .home-stories .story-card h3 { font-size: 1.2rem; }
+}
+.page .premium-quick small, .page .living-module small,
+.page .timeline-row small, .page .timeline-row time,
+.page .farm-identity-facts small, .page .farm-kpis small,
+.page .profile-card p, .page .olivo-level small { font-size: .8125rem; line-height: 1.5; }
+.field-dashboard #mis-fincas > .card { padding: 20px; }
+@media (min-width: 1024px) {
+  .page .sticky-register-wrap { position: static; width: min(360px, 100%); margin: 28px 0 0 auto; transform: none; padding: 0; }
+}
+/* The session card has no progress ring before sign-in. */
+.profile-page .profile-progress { grid-template-columns: minmax(0, 1fr) auto; padding: 24px; }
+.profile-page .profile-progress:has(.progress-ring) { grid-template-columns: 62px minmax(0, 1fr); }
+.profile-page .profile-progress p { font-size: .9375rem; line-height: 1.6; max-width: 72ch; }
+.profile-page .profile-progress h2 { font-size: 1.5rem; }
+.profile-page .profile-line { display: flex; width: 100%; justify-content: space-between; gap: 12px; }

@@ -143,7 +143,7 @@ export function MiCampoDashboard() {
       </div>
     </section>
 
-    <section className="section"><div className="section-head"><h2>Qué quieres hacer</h2><span /></div><div className="quick-grid">
+    <section className="section field-actions"><div className="section-head"><h2>Qué quieres hacer</h2><span /></div><div className="quick-grid">
       {singleActiveFarm ? <Link href={fieldActionHref('/mi-campo/registrar', singleActiveFarm)} className="card quick premium-quick"><span className="icon"><PlusIcon /></span><div><strong>Registrar</strong><small>Nueva actividad · {singleActiveFarm.name}</small></div><ArrowIcon className="quick-arrow" /></Link> : activeFarms.length > 1 ? <a href="#mis-fincas" className="card quick premium-quick"><span className="icon"><PlusIcon /></span><div><strong>Registrar</strong><small>Elige primero la finca</small></div><ArrowIcon className="quick-arrow" /></a> : null}
       {quick.map(([icon, title, text, href]) => <Link href={href} className="card quick premium-quick" key={title}><span className="icon">{icon}</span><div><strong>{title}</strong><small>{text}</small></div><ArrowIcon className="quick-arrow" /></Link>)}
     </div></section>
