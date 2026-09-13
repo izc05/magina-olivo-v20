@@ -1,0 +1,354 @@
+/*
+ * Mágina Olivo V20 · visual premium pass
+ * A presentation-only layer: domain behaviour and data states remain untouched.
+ */
+
+:root {
+  --bg: #eee9de;
+  --surface: rgba(255, 254, 250, .94);
+  --surface-strong: #fffefa;
+  --ink: #182219;
+  --muted: #667066;
+  --olive-950: #17281c;
+  --olive-900: #203a27;
+  --olive-800: #315238;
+  --olive-700: #4e6b49;
+  --olive-600: #718267;
+  --sage-100: #edf1e7;
+  --sage-200: #dfe7d7;
+  --cream: #f8f4eb;
+  --gold: #b99545;
+  --gold-soft: #f4ead1;
+  --line: rgba(28, 47, 31, .11);
+  --line-strong: rgba(28, 47, 31, .2);
+  --shadow-sm: 0 12px 32px rgba(28, 39, 28, .065);
+  --shadow: 0 28px 72px rgba(28, 39, 28, .13);
+  --radius-xl: 28px;
+  --radius-lg: 18px;
+  --radius-md: 13px;
+}
+
+body {
+  background:
+    radial-gradient(circle at 4% 1%, rgba(94, 113, 75, .2), transparent 30rem),
+    radial-gradient(circle at 97% 62%, rgba(185, 149, 69, .09), transparent 28rem),
+    #e9e4d9;
+}
+
+::selection { background: #d9c58b; color: #17281c; }
+
+.app-shell {
+  background: rgba(250, 248, 241, .975);
+  border-color: rgba(255, 255, 255, .76);
+  box-shadow: 0 30px 90px rgba(31, 40, 28, .16);
+}
+
+.topbar {
+  background: rgba(250, 248, 241, .86);
+  border-bottom-color: rgba(32, 53, 35, .08);
+}
+
+.brand { font-size: 27px; letter-spacing: -.045em; }
+.brand small { color: #6d735f; letter-spacing: .3em; }
+
+.card {
+  border-color: var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.section { margin-top: clamp(30px, 4vw, 52px); }
+.section-head { margin-bottom: 17px; }
+.section-head h2 { font-size: clamp(1.75rem, 3vw, 2.35rem); line-height: .98; }
+.section-head > a,
+.detail-link { color: var(--olive-800); font-weight: 750; }
+
+.eyebrow {
+  letter-spacing: .19em;
+  font-size: .72rem;
+  font-weight: 850;
+}
+
+.primary,
+.secondary-action,
+.outline-action {
+  border-radius: 12px;
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease, border-color .2s ease;
+}
+
+.primary:hover,
+.secondary-action:hover,
+.outline-action:hover { transform: translateY(-2px); }
+
+.primary:active,
+.secondary-action:active,
+.outline-action:active { transform: translateY(0); }
+
+.bottom-nav {
+  border-color: rgba(31, 53, 34, .13);
+  box-shadow: 0 20px 55px rgba(28, 41, 27, .16);
+}
+
+.bottom-nav a { transition: background-color .2s ease, color .2s ease, transform .2s ease; }
+.bottom-nav a:hover { color: var(--olive-900); transform: translateY(-1px); }
+
+/* Home · selected Cuaderno de Olivar direction */
+.home-editorial-hero { margin-top: 20px; }
+.home-editorial-hero > .card { border-radius: 24px !important; box-shadow: 0 28px 60px rgba(21, 37, 23, .2); }
+.home-editorial-hero > .card > div {
+  min-height: clamp(410px, 59vh, 590px) !important;
+  align-items: center !important;
+  padding: clamp(28px, 6vw, 82px) !important;
+  background-position: center !important;
+}
+.home-editorial-hero h2 {
+  max-width: 820px;
+  margin-block: 14px !important;
+  font-size: clamp(2.55rem, 5.1vw, 5.15rem) !important;
+  line-height: .91 !important;
+  letter-spacing: -.048em;
+  text-wrap: balance;
+}
+.home-editorial-hero p { max-width: 610px; font-size: clamp(1rem, 1.45vw, 1.18rem) !important; }
+.home-editorial-hero .action-link {
+  width: min(390px, 100%);
+  min-height: 56px;
+  margin-top: 28px;
+  border: 1px solid rgba(255,255,255,.3);
+  background: rgba(30, 62, 38, .82);
+  backdrop-filter: blur(12px);
+}
+
+.home-stories .story-grid { gap: 16px; }
+.home-stories .story-card {
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: none;
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.home-stories a:hover .story-card { transform: translateY(-5px); box-shadow: 0 22px 44px rgba(26, 40, 28, .12); }
+.home-stories .story-image { filter: saturate(.78) contrast(1.04); }
+.home-stories .story-olive { background: var(--asset-premium-olive) center / cover no-repeat; }
+.home-stories .story-town { background: var(--asset-premium-village) center / cover no-repeat; }
+.home-stories .story-oil { background: var(--asset-premium-stone) center / cover no-repeat; }
+.home-stories .story-tag { margin-top: 14px; background: var(--olive-800); }
+.home-stories .story-card h3 { margin-top: 8px; }
+
+.home-territory-links .quick {
+  min-height: 112px;
+  border-radius: 16px;
+  box-shadow: none;
+  transition: background-color .2s ease, transform .2s ease;
+}
+.home-territory-links .quick:hover { background: var(--sage-100); transform: translateY(-3px); }
+
+.territory-banner {
+  border: 1px solid rgba(255,255,255,.09);
+  background:
+    linear-gradient(90deg, rgba(20,39,24,.97), rgba(30,57,33,.9)),
+    var(--asset-premium-olive) center 56% / cover;
+  box-shadow: 0 24px 52px rgba(25, 42, 27, .16);
+}
+
+/* Public discovery and editorial surfaces */
+.explore-hero {
+  background:
+    linear-gradient(90deg, rgba(18,38,23,.94), rgba(24,48,29,.52) 52%, rgba(24,48,29,.18)),
+    var(--asset-premium-village) center / cover !important;
+  border-radius: 24px !important;
+}
+.explore-hero h1 { font-size: clamp(3rem, 6vw, 5.8rem) !important; line-height: .87 !important; }
+.explore-hero p { font-size: .95rem !important; }
+.explore-hero input { border-radius: 12px !important; }
+.explore-page [class*='placeButton'],
+.explore-page [class*='areaCard'] { box-shadow: none; }
+.explore-page [class*='placeButton']:hover,
+.explore-page [class*='areaCardLink']:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); }
+
+.public-editorial-hero,
+.public-places-hero,
+.public-mills-hero,
+.public-services-hero {
+  border-radius: 0 0 24px 24px;
+}
+
+/* Mi Campo and operational product surfaces */
+.mi-campo-title,
+.campaign-page > .page-title {
+  position: relative;
+  isolation: isolate;
+}
+.mi-campo-title::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -18px -22px;
+  border-radius: 24px;
+  background:
+    linear-gradient(90deg, rgba(248,246,238,.96) 42%, rgba(248,246,238,.35)),
+    var(--asset-premium-olive) right center / 52% auto no-repeat;
+  opacity: .94;
+}
+.mi-campo-title h1 { font-size: clamp(3rem, 6vw, 5.3rem); line-height: .88; }
+.campaign-summary {
+  border-radius: 18px;
+  background: rgba(255,254,250,.88);
+  box-shadow: none;
+}
+.field-dashboard .farm-card,
+.field-dashboard .quick,
+.campaign-page .premium-quick {
+  box-shadow: none;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.field-dashboard :is(.farm-card, .quick):hover,
+.campaign-page .premium-quick:hover { transform: translateY(-3px); border-color: rgba(44,78,47,.22); box-shadow: var(--shadow-sm); }
+
+.campaign-page > .card:first-of-type {
+  border-left: 4px solid var(--gold);
+  box-shadow: none;
+}
+.campaign-page .premium-quick { min-height: 132px; align-items: flex-end; }
+.campaign-page .premium-quick strong { font-size: clamp(1.65rem, 3vw, 2.35rem); }
+.campaign-page .register-principle { border-radius: 15px; box-shadow: none; }
+
+/* Finca: stronger photographic identity, calmer information rhythm */
+.farm-detail-hero {
+  min-height: clamp(430px, 58vh, 610px) !important;
+  border-radius: 24px !important;
+  background-image:
+    linear-gradient(180deg, rgba(18,29,18,.06), rgba(17,31,19,.78)),
+    var(--asset-premium-hero) !important;
+  background-position: center !important;
+}
+.farm-detail-hero h1 { font-size: clamp(3rem, 6vw, 5.4rem); line-height: .9; }
+.farm-identity-card { border-radius: 18px; box-shadow: 0 20px 45px rgba(27, 42, 28, .12); }
+.farm-kpis .card,
+.living-module { box-shadow: none; }
+.living-module { transition: transform .2s ease, border-color .2s ease; }
+.living-module:hover { transform: translateY(-3px); border-color: rgba(45, 78, 47, .24); }
+.timeline-row { border-color: rgba(30, 48, 31, .1); }
+
+/* Forms, feeds, dashboards and secondary routes */
+.page-title h1 { font-size: clamp(2.7rem, 5vw, 4.75rem); line-height: .92; }
+.feed-row { padding-block: 17px; }
+.record-field,
+.profile-card,
+.weather-feature,
+.register-principle { box-shadow: none; }
+.record-field:focus-within { border-color: var(--olive-700); box-shadow: 0 0 0 4px rgba(78,107,73,.12); }
+
+/* Admin: same product, denser operational expression */
+.admin-shell,
+.admin-page,
+[class*='adminPage'] { --radius-lg: 15px; }
+.admin-shortcuts {
+  justify-content: flex-start;
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(25, 42, 28, .11);
+}
+.admin-shortcuts a {
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 9px;
+  background: var(--olive-900) !important;
+}
+.admin-shortcuts a:hover { background: var(--olive-800) !important; transform: translateY(-1px); }
+.admin-page :is(.card, article, section),
+[class*='adminPage'] :is(.card, article) { border-color: var(--line); }
+.admin-page table,
+[class*='adminPage'] table { border-collapse: collapse; }
+.admin-page th,
+[class*='adminPage'] th {
+  color: #687166;
+  font-size: .72rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+body .admin-gate {
+  place-items: center end;
+  padding: clamp(24px, 6vw, 92px);
+  background:
+    linear-gradient(90deg, rgba(19,39,24,.12), rgba(19,39,24,.74)),
+    var(--asset-premium-stone) center / cover no-repeat;
+}
+body .admin-gate-card {
+  margin-right: clamp(0px, 4vw, 64px);
+  border-color: rgba(255,255,255,.64);
+  background: rgba(255,254,250,.94);
+  box-shadow: 0 30px 80px rgba(17, 29, 19, .28);
+  backdrop-filter: blur(18px);
+}
+
+@media (min-width: 700px) {
+  .home-editorial-hero > .card > div { min-height: 410px !important; }
+  .home-stories .story-image { height: 230px; }
+  .campaign-page .quick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .topbar { padding-inline: clamp(36px, 4vw, 70px); }
+  .bottom-nav { background: rgba(255,254,250,.93); }
+  .home-page { column-gap: 24px; }
+  .home-editorial-hero { margin-top: 0; }
+  .home-editorial-hero > .card > div { min-height: 410px !important; }
+  .home-editorial-hero h2 { font-size: clamp(3.2rem, 4.6vw, 4.35rem) !important; }
+  .home-stories { margin-top: 54px; }
+  .field-dashboard { column-gap: 38px; row-gap: 32px; }
+  .field-dashboard > .territory-banner { margin-top: 18px; }
+  .campaign-page .quick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .farm-detail-page .living-modules { gap: 14px; }
+}
+
+@media (min-width: 1280px) {
+  .home-editorial-hero > .card > div { min-height: 420px !important; }
+  .home-stories .story-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .home-stories .story-grid > * { grid-column: span 4; }
+  .campaign-page .quick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 699px) {
+  .section { margin-top: 32px; }
+  .home-editorial-hero { margin-inline: -4px; }
+  .home-editorial-hero > .card { border-radius: 22px !important; }
+  .home-editorial-hero > .card > div {
+    min-height: 490px !important;
+    align-items: flex-end !important;
+    padding: 28px 24px !important;
+    background-position: 61% center !important;
+  }
+  .home-editorial-hero h2 { max-width: 11ch; font-size: clamp(2.55rem, 12vw, 3.25rem) !important; }
+  .home-editorial-hero .action-link { width: 100%; }
+  .home-stories .story-card { min-height: 150px; }
+  .home-stories .story-image { min-height: 136px; }
+  .territory-banner { align-items: flex-start; gap: 18px; }
+  .explore-hero { min-height: 500px !important; background-position: 61% center !important; }
+  .explore-hero h1 { font-size: 3.5rem !important; }
+  .mi-campo-title::after { inset: -12px -8px; background-size: auto 100%; opacity: .48; }
+  .mi-campo-title h1 { font-size: 3.65rem; }
+  .campaign-page .premium-quick { min-height: 106px; }
+  .farm-detail-hero { min-height: 480px !important; background-position: 62% center !important; }
+}
+
+@media (max-width: 760px) {
+  body .admin-gate {
+    place-items: end center;
+    padding: 20px;
+    background-position: 58% center;
+  }
+  body .admin-gate-card {
+    width: 100%;
+    margin: 0;
+    padding: 28px 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-stories .story-card,
+  .home-territory-links .quick,
+  .field-dashboard :is(.farm-card, .quick),
+  .campaign-page .premium-quick,
+  .living-module,
+  .primary,
+  .secondary-action,
+  .outline-action { transition: none !important; transform: none !important; }
+}

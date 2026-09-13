@@ -25,6 +25,7 @@ import './visual-business.css';
 import './visual-business-mobile.css';
 import './visual-map-radar.css';
 import './responsive-beta.css';
+import './visual-premium-pass.css';
 
 const DEFAULT_TITLE = 'Mágina Olivo V20';
 const DEFAULT_DESCRIPTION = 'Territorio, personas y futuro. Gestión sencilla del olivar y guía de Sierra Mágina.';
@@ -122,6 +123,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     '--asset-farm-las-cenillas': `url("${basePath}/assets/farm-las-cenillas-concept.svg")`,
     '--asset-delivery-ticket': `url("${basePath}/assets/delivery-ticket-concept.svg")`,
     '--asset-olive-sprig': `url("${basePath}/assets/olive-sprig.svg")`,
+    '--asset-premium-hero': `url("${basePath}/assets/premium/sierra-magina-hero.webp")`,
+    '--asset-premium-olive': `url("${basePath}/assets/premium/olive-branch-editorial.webp")`,
+    '--asset-premium-village': `url("${basePath}/assets/premium/sierra-village-editorial.webp")`,
+    '--asset-premium-stone': `url("${basePath}/assets/premium/stone-door-editorial.webp")`,
   } as CSSProperties;
 
   return (
