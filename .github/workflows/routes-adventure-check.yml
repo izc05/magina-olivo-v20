@@ -10,6 +10,7 @@ on:
       - 'apps/api/src/routes/route-adventure-hub.ts'
       - 'apps/api/src/routes/admin-route-adventure.ts'
       - 'apps/api/src/routes/admin-route-adventure-bulk.ts'
+      - 'apps/api/src/routes/admin-route-adventure-readiness.ts'
       - 'apps/api/src/routes/route-device-export.ts'
       - 'apps/web/src/app/aventura/**'
       - 'apps/web/src/app/explorar/explore-public-client.tsx'
