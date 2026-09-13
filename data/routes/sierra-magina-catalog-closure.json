@@ -1,5 +1,5 @@
 {
-  "status_version": 2,
+  "status_version": 3,
   "audited_at": "2026-09-13",
   "scope": "Sierra Magina hiking catalog closure status",
   "official_park_inventory": {
@@ -36,11 +36,13 @@
     "safety_note": "GR-7 remains homologated in the federation listing, while the Jaen route page warns that no maintenance has been notified since 1998 and describes scarce/deteriorated signage."
   },
   "geometry_sources": {
-    "status": "in_progress",
+    "status": "source_identification_closed",
     "authority": "Junta de Andalucia - REDIAM",
-    "official_core_with_confirmed_codigoequi": 7,
+    "official_core_with_confirmed_codigoequi": 17,
     "official_core_total": 17,
-    "validation_note": "A REDIAM CODIGOEQUI proves an authoritative downloadable geometry source exists; it does not prove the geometry has been fetched, parsed or validated."
+    "geometry_validated": 0,
+    "verified_at": "2026-09-13",
+    "validation_note": "All 17 official-core routes now have a confirmed REDIAM CODIGOEQUI from an official download link. This proves an authoritative geometry source exists; it does not prove the geometry has been fetched, parsed or validated."
   },
   "operational_safety": {
     "status": "tracked_separately",
@@ -58,6 +60,6 @@
       "Current closures/incidents must remain independent from catalog publication state.",
       "Duplicate or overlapping Junta/Diputacion/GR-PR-SL records must preserve provenance and canonical relationships instead of being silently merged."
     ],
-    "reason_not_closed": "Authoritative geometry sources are increasingly located, but tracks still require fetch/parse/geometry validation; some municipal and provincial routes also lack complete authoritative downloadable tracks."
+    "reason_not_closed": "REDIAM source identification is closed 17/17 for the official core, but those geometries still require fetch/parse/CRS/length validation; some municipal and provincial routes also lack complete authoritative downloadable tracks."
   }
 }
