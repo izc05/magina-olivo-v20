@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "audited_at": "2026-09-13",
+  "workflow_run_id": 34779458490,
+  "scope": "Durable evidence extracted from official provincial and federation KMZ audit",
+  "methodology": {
+    "download": "Official track URL over HTTPS using source-page referer and browser-like user agent.",
+    "archive": "KMZ opened as ZIP and doc.kml parsed.",
+    "geometry": "KML LineString coordinates parsed as WGS84.",
+    "length": "Haversine segment sum in metres.",
+    "hash": "SHA-256 of downloaded KMZ payload.",
+    "promotion_rule": "Only non-empty geometry with reviewed route identity and acceptable distance semantics is promoted to geometry_validated."
+  },
+  "summary": {
+    "targets": 8,
+    "fetch_success": 8,
+    "fetch_failed": 0,
+    "geometry_validated_after_review": 6,
+    "manual_review_required": 2
+  },
+  "routes": [
+    {"route_ref":"R1","status":"geometry_validated","http_status":200,"download_size_bytes":5808,"sha256":"0b4f8e2f0510e4dd19ddd6896dca0c6f32116a03b94a3650b54fc2248c21e806","kml_member":"doc.kml","line_parts":1,"point_count":351,"calculated_length_m":8871,"official_distance_m":8900,"length_ratio":0.9967},
+    {"route_ref":"R2","status":"manual_review_required","http_status":200,"download_size_bytes":6126,"sha256":"85e3cd3e97d516c4e2d7532252881a206d8de3f0e3adc71f073f314e3a6006fb","kml_member":"doc.kml","line_parts":1,"point_count":223,"calculated_length_m":4750,"official_distance_m":9800,"length_ratio":0.4847,"review_reason":"Official route is out-and-back and KMZ length is approximately one direction; full-route geometry semantics are not yet resolved."},
+    {"route_ref":"R3","status":"geometry_validated","http_status":200,"download_size_bytes":6472,"sha256":"7a4228b61067a540baf3dd66929302dc0f096f4f3ed6a7964cc772bc9c6bf745","kml_member":"doc.kml","line_parts":1,"point_count":289,"calculated_length_m":6951,"official_distance_m":7000,"length_ratio":0.993},
+    {"route_ref":"R6","status":"manual_review_required","http_status":200,"download_size_bytes":5837,"sha256":"abc9a5535dfbe0d6ca829d714666f748cc726e636c4ee71da0923b9f46f0314f","kml_member":"doc.kml","line_parts":1,"point_count":239,"calculated_length_m":14514,"official_distance_m":22800,"length_ratio":0.6366,"review_reason":"Downloaded official geometry differs materially from the published route distance; extent/route semantics need manual review."},
+    {"route_ref":"R7","status":"geometry_validated","http_status":200,"download_size_bytes":4537,"sha256":"0a70837d6a6c1ff52b6a0433f60ec435a3a4ca9b7d635588e8f5b375a392d545","kml_member":"doc.kml","line_parts":1,"point_count":155,"calculated_length_m":2811,"official_distance_m":2900,"length_ratio":0.9693},
+    {"route_ref":"R9","status":"geometry_validated","http_status":200,"download_size_bytes":12064,"sha256":"f9b717797826049800470dc3858c898df36ca39b49c7d3f5e427e170ea3e48d6","kml_member":"doc.kml","line_parts":1,"point_count":625,"calculated_length_m":12683,"official_distance_m":12000,"length_ratio":1.0569},
+    {"route_ref":"PR-A 350","status":"geometry_validated","http_status":200,"download_size_bytes":12988,"sha256":"1321e33100e8f7c0e8f33312ed849d23672eba49edd494c282bb3590e08770a5","kml_member":"doc.kml","line_parts":1,"point_count":694,"calculated_length_m":14305,"official_distance_m":14300,"length_ratio":1.0003,"canonical_route_slug":"cano-del-aguadero"},
+    {"route_ref":"SL-A 135","status":"geometry_validated","http_status":200,"download_size_bytes":4849,"sha256":"4be9574dff8d9b50728ef77bb9bfa3a991d240aee4b2758e737145ef65ae37a2","kml_member":"doc.kml","line_parts":1,"point_count":243,"calculated_length_m":6316,"official_distance_m":6400,"length_ratio":0.9869,"canonical_route_slug":"fuenmayor"}
+  ]
+}
