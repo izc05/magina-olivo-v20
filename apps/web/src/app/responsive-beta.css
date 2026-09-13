@@ -342,7 +342,7 @@ input[type='radio'] {
 .page :is(input, select, textarea) { font-size: max(16px, 1rem); }
 .page :is(.section-head, .record-actions) { flex-wrap: wrap; }
 .page :is(.card, .feed-copy, .quick, .record-field) { min-width: 0; overflow-wrap: anywhere; }
-.page :is(input, select, textarea) { min-width: 0; max-width: 100%; }
+.page :is(input:not([type='checkbox']):not([type='radio']), select, textarea) { min-width: 0; max-width: 100%; }
 
 @media (min-width: 1024px) {
   .home-page { display: grid; align-items: start; grid-template-columns: minmax(0, 1fr) minmax(280px, .7fr); }
