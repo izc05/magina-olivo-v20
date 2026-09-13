@@ -12,6 +12,7 @@ type ReadinessRow = {
   validated_track_count: number;
   active_checkpoint_count: number;
   required_checkpoint_count: number;
+  critical_safety_hold_count: number;
 };
 
 export type AdventureReadiness = {
@@ -22,6 +23,7 @@ export type AdventureReadiness = {
   validated_track_count: number;
   active_checkpoint_count: number;
   required_checkpoint_count: number;
+  critical_safety_hold_count: number;
 };
 
 export async function loadAdventureReadiness(database: DatabaseClient, routeId: string): Promise<AdventureReadiness | null> {
@@ -34,7 +36,13 @@ export async function loadAdventureReadiness(database: DatabaseClient, routeId: 
       (SELECT COUNT(*)::int FROM route_adventure_checkpoints cp
         WHERE cp.route_id = r.id AND cp.active = true) AS active_checkpoint_count,
       (SELECT COUNT(*)::int FROM route_adventure_checkpoints cp
-        WHERE cp.route_id = r.id AND cp.active = true AND cp.is_required = true) AS required_checkpoint_count
+        WHERE cp.route_id = r.id AND cp.active = true AND cp.is_required = true) AS required_checkpoint_count,
+      (SELECT COUNT(*)::int FROM route_condition_reports rc
+        WHERE rc.route_id = r.id
+          AND rc.moderation_status = 'approved'
+          AND rc.severity = 'critical'
+          AND rc.condition_kind IN ('closed','blocked','fire_risk','flooded')
+          AND (rc.expires_at IS NULL OR rc.expires_at > now())) AS critical_safety_hold_count
     FROM routes r
     WHERE r.id = ${routeId}::uuid
     LIMIT 1
@@ -48,6 +56,7 @@ export async function loadAdventureReadiness(database: DatabaseClient, routeId: 
   if (row.track_status !== 'validated' || Number(row.validated_track_count) < 1) blockers.push('validated_track_missing');
   if (Number(row.active_checkpoint_count) < 1) blockers.push('active_checkpoint_missing');
   if (Number(row.required_checkpoint_count) < 1) blockers.push('required_checkpoint_missing');
+  if (Number(row.critical_safety_hold_count) > 0) blockers.push('critical_route_safety_hold');
 
   return {
     ready: blockers.length === 0,
@@ -57,6 +66,7 @@ export async function loadAdventureReadiness(database: DatabaseClient, routeId: 
     validated_track_count: Number(row.validated_track_count),
     active_checkpoint_count: Number(row.active_checkpoint_count),
     required_checkpoint_count: Number(row.required_checkpoint_count),
+    critical_safety_hold_count: Number(row.critical_safety_hold_count),
   };
 }
 
