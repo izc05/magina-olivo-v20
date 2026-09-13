@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "created_at": "2026-09-13",
+  "scope": "Geometry validation queue for Sierra Magina hiking sources",
+  "policy": {
+    "source_located_is_not_validated": true,
+    "validation_requires_parsed_geometry": true,
+    "required_checks": [
+      "source_fetch_succeeds",
+      "geometry_is_non_empty",
+      "geometry_type_is_line_compatible",
+      "source_crs_is_known",
+      "geometry_is_transformable_to_wgs84",
+      "calculated_length_is_plausible_against_authoritative_sheet",
+      "route_identity_matches_source",
+      "validation_evidence_is_recorded"
+    ],
+    "length_tolerance_policy": "Do not auto-accept a route only because lengths are close; material discrepancies require manual review because official sheets may report one-way distance while geometry may be full/circular."
+  },
+  "rediam": {
+    "expected_core_routes": 17,
+    "sources_located": 13,
+    "geometry_validated": 0,
+    "pending_source_identification": [
+      "castillo-de-albanchez",
+      "fuenmayor",
+      "puerto-de-la-mata",
+      "umbria-de-los-corzos"
+    ],
+    "queue": [
+      {"slug":"adelfal-de-cuadros","codigoequi":"727","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"cano-del-aguadero","codigoequi":"725","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"castillo-de-mata-bejid","codigoequi":"1675","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"el-peralejo","codigoequi":"1051","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"gibralberca","codigoequi":"722","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"hoyalinos","codigoequi":"1726","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"la-cueva-de-la-graja","codigoequi":"721","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"las-vinas","codigoequi":"724","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"pinar-de-canava","codigoequi":"1116","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"sierra-de-la-cruz","codigoequi":"1676","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"subida-al-hoyo-de-la-laguna","codigoequi":"1552","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"subida-a-pico-magina-y-miramundos","codigoequi":"726","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"veredon-mojon-blanco","codigoequi":"1561","status":"source_located","next":"fetch_wfs_geometry"}
+    ]
+  },
+  "external_official_tracks": {
+    "provincial": ["R1","R2","R3","R6","R7","R9"],
+    "federative": ["PR-A 350","SL-A 135"],
+    "status": "located_not_geometry_validated"
+  }
+}
