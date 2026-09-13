@@ -19,6 +19,7 @@ type AdventureReadiness = {
   validated_track_count: number;
   active_checkpoint_count: number;
   required_checkpoint_count: number;
+  critical_safety_hold_count: number;
 };
 
 type RoutePoint = {
@@ -31,6 +32,8 @@ type RoutePoint = {
 };
 
 type AnswerOption = { key: string; label: string };
+type CollectionCategory = 'flora' | 'fauna' | 'heritage' | 'olive_culture' | 'tradition' | 'landscape';
+type Rarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 
 type Checkpoint = {
   id: string;
@@ -38,6 +41,8 @@ type Checkpoint = {
   title: string;
   description: string | null;
   kind: 'landmark' | 'trivia' | 'observation' | 'photo' | 'collection' | 'rest';
+  collection_category: CollectionCategory | null;
+  rarity: Rarity;
   distance_m: number | string | null;
   unlock_radius_m: number;
   points: number;
@@ -65,6 +70,8 @@ type CheckpointForm = {
   title: string;
   description: string;
   kind: Checkpoint['kind'];
+  collection_category: '' | CollectionCategory;
+  rarity: Rarity;
   latitude: string;
   longitude: string;
   distance_m: string;
@@ -85,6 +92,8 @@ const emptyCheckpoint: CheckpointForm = {
   title: '',
   description: '',
   kind: 'landmark',
+  collection_category: '',
+  rarity: 'common',
   latitude: '',
   longitude: '',
   distance_m: '',
@@ -115,11 +124,21 @@ function kindLabel(kind: Checkpoint['kind']) {
   return ({ landmark: 'Lugar', trivia: 'Pregunta', observation: 'Observación', photo: 'Foto', collection: 'Coleccionable', rest: 'Descanso' })[kind];
 }
 
+function categoryLabel(category: CollectionCategory | null) {
+  if (!category) return 'Sin categoría de álbum';
+  return ({ flora: 'Flora', fauna: 'Fauna', heritage: 'Patrimonio', olive_culture: 'Olivar', tradition: 'Tradiciones', landscape: 'Paisaje' })[category];
+}
+
+function rarityLabel(rarity: Rarity) {
+  return ({ common: 'Común', uncommon: 'Poco común', rare: 'Raro', legendary: 'Legendario' })[rarity];
+}
+
 function blockerLabel(blocker: string) {
   if (blocker === 'route_not_published') return 'Publicar la ruta';
   if (blocker === 'validated_track_missing') return 'Validar el track real';
   if (blocker === 'active_checkpoint_missing') return 'Añadir un checkpoint activo';
   if (blocker === 'required_checkpoint_missing') return 'Marcar al menos un checkpoint obligatorio';
+  if (blocker === 'critical_route_safety_hold') return 'Resolver el bloqueo crítico de seguridad moderado';
   return blocker;
 }
 
@@ -162,7 +181,7 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
   async function execute(task: () => Promise<void>, success: string) {
     setLocalBusy(true); setError(null); setMessage(null);
     try { await task(); await load(); setMessage(success); }
-    catch (cause) { console.error(cause); setError('No se ha podido guardar el Modo Aventura. Revisa coordenadas, opciones y respuesta correcta.'); }
+    catch (cause) { console.error(cause); setError('No se ha podido guardar el Modo Aventura. Revisa coordenadas, opciones, clasificación y respuesta correcta.'); }
     finally { setLocalBusy(false); }
   }
 
@@ -211,6 +230,8 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
       title: item.title,
       description: item.description ?? '',
       kind: item.kind,
+      collection_category: item.collection_category ?? '',
+      rarity: item.rarity ?? 'common',
       latitude: String(item.latitude),
       longitude: String(item.longitude),
       distance_m: item.distance_m == null ? '' : String(item.distance_m),
@@ -244,6 +265,8 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
       title: checkpoint.title.trim(),
       description: checkpoint.description.trim() || null,
       kind: checkpoint.kind,
+      collection_category: checkpoint.collection_category || null,
+      rarity: checkpoint.rarity,
       latitude,
       longitude,
       distance_m: checkpoint.distance_m ? Number(checkpoint.distance_m) : null,
@@ -283,7 +306,7 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
 
     {readiness ? <div className={`routes-admin-notice ${readiness.ready ? 'ok' : ''}`}>
       <strong>{readiness.ready ? 'Lista para publicar' : 'Aventura todavía no publicable'}</strong>
-      <div>{readiness.ready ? 'Ruta, track y checkpoints superan el preflight.' : readiness.blockers.map(blockerLabel).join(' · ')}</div>
+      <div>{readiness.ready ? 'Ruta, track, checkpoints y seguridad superan el preflight.' : readiness.blockers.map(blockerLabel).join(' · ')}</div>
     </div> : null}
 
     <div className="routes-admin-metrics">
@@ -291,6 +314,7 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
       <article><span>Track</span><strong>{readiness?.validated_track_count ? 'Validado' : 'Pendiente'}</strong></article>
       <article><span>Checkpoints activos</span><strong>{readiness?.active_checkpoint_count ?? 0}</strong></article>
       <article><span>Obligatorios</span><strong>{readiness?.required_checkpoint_count ?? 0}</strong></article>
+      <article><span>Safety hold</span><strong>{readiness?.critical_safety_hold_count ? 'BLOQUEADA' : 'Sin bloqueo crítico'}</strong></article>
     </div>
 
     <div className="routes-admin-form-grid">
@@ -303,7 +327,7 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
       <button disabled={disabled} onClick={() => void saveConfig()}>Guardar aventura</button>
       <button className="secondary" disabled={disabled || unusedRoutePointCount === 0} onClick={() => void importRoutePoints()}>Crear etapas desde {unusedRoutePointCount} POI reales</button>
     </div>
-    <p className="routes-admin-help">La importación copia nombre, descripción, posición, distancia y orden de los POI activos. No genera historias ni respuestas: después puedes convertir cada etapa en pregunta, observación o coleccionable sin alterar el POI original.</p>
+    <p className="routes-admin-help">La importación copia nombre, descripción, posición, distancia y orden de los POI activos. No inventa historias, respuestas ni categorías del álbum: Flora/Fauna/Patrimonio/Olivar/etc. deben asignarse después con revisión editorial.</p>
 
     <div className="routes-admin-metrics">
       <article><span>Partidas</span><strong>{data?.metrics.total_runs ?? 0}</strong></article>
@@ -324,11 +348,17 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
           <select value={checkpoint.kind} onChange={(event) => setCheckpoint((current) => ({ ...current, kind: event.target.value as Checkpoint['kind'] }))}>
             <option value="landmark">Lugar / patrimonio</option><option value="trivia">Pregunta</option><option value="observation">Observación</option><option value="photo">Reto fotográfico</option><option value="collection">Coleccionable</option><option value="rest">Descanso narrativo</option>
           </select>
+          <select value={checkpoint.collection_category} onChange={(event) => setCheckpoint((current) => ({ ...current, collection_category: event.target.value as CheckpointForm['collection_category'] }))}>
+            <option value="">Sin categoría de álbum</option><option value="flora">Flora</option><option value="fauna">Fauna</option><option value="heritage">Patrimonio</option><option value="olive_culture">Olivar</option><option value="tradition">Tradiciones</option><option value="landscape">Paisaje</option>
+          </select>
+          <select value={checkpoint.rarity} onChange={(event) => setCheckpoint((current) => ({ ...current, rarity: event.target.value as Rarity }))}>
+            <option value="common">Común</option><option value="uncommon">Poco común</option><option value="rare">Raro</option><option value="legendary">Legendario</option>
+          </select>
           <input placeholder="Latitud" value={checkpoint.latitude} onChange={(event) => setCheckpoint((current) => ({ ...current, latitude: event.target.value }))} />
           <input placeholder="Longitud" value={checkpoint.longitude} onChange={(event) => setCheckpoint((current) => ({ ...current, longitude: event.target.value }))} />
           <input placeholder="Distancia sobre ruta (m)" value={checkpoint.distance_m} onChange={(event) => setCheckpoint((current) => ({ ...current, distance_m: event.target.value }))} />
           <input type="number" min="10" max="500" placeholder="Radio GPS m" value={checkpoint.unlock_radius_m} onChange={(event) => setCheckpoint((current) => ({ ...current, unlock_radius_m: event.target.value }))} />
-          <input type="number" min="0" max="10000" placeholder="Puntos" value={checkpoint.points} onChange={(event) => setCheckpoint((current) => ({ ...current, points: event.target.value }))} />
+          <input type="number" min="0" max="10000" placeholder="XP" value={checkpoint.points} onChange={(event) => setCheckpoint((current) => ({ ...current, points: event.target.value }))} />
           <input type="number" placeholder="Orden" value={checkpoint.sort_order} onChange={(event) => setCheckpoint((current) => ({ ...current, sort_order: event.target.value }))} />
           <textarea placeholder="Descripción / historia del punto" value={checkpoint.description} onChange={(event) => setCheckpoint((current) => ({ ...current, description: event.target.value }))} />
           <textarea placeholder="Pregunta (opcional)" value={checkpoint.question} onChange={(event) => setCheckpoint((current) => ({ ...current, question: event.target.value }))} />
@@ -337,6 +367,7 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
           <label className="routes-admin-check"><input type="checkbox" checked={checkpoint.active} onChange={(event) => setCheckpoint((current) => ({ ...current, active: event.target.checked }))} /> Visible/activo</label>
           <button disabled={disabled} onClick={() => void saveCheckpoint()}>{checkpoint.id ? 'Actualizar etapa' : 'Añadir etapa'}</button>
           {checkpoint.id ? <button className="secondary" disabled={disabled} onClick={() => setCheckpoint(emptyCheckpoint)}>Cancelar edición</button> : null}
+          <small>La categoría y rareza son datos editoriales. No las asignes por intuición si el hallazgo no está verificado.</small>
         </div>
       </section>
 
@@ -344,7 +375,7 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
         <h3>Recorrido jugable</h3>
         <div className="routes-admin-tracks">
           {ordered.map((item, index) => <article key={item.id}>
-            <div><strong>{index + 1}. {item.title}</strong><span>{kindLabel(item.kind)} · {item.points} pt · radio {item.unlock_radius_m} m · {item.is_required ? 'obligatorio' : 'extra'}{item.active ? '' : ' · oculto'}</span></div>
+            <div><strong>{index + 1}. {item.title}</strong><span>{kindLabel(item.kind)} · {item.points} XP · radio {item.unlock_radius_m} m · {item.is_required ? 'obligatorio' : 'extra'}{item.collection_category ? ` · ${categoryLabel(item.collection_category)} · ${rarityLabel(item.rarity)}` : ''}{item.active ? '' : ' · oculto'}</span></div>
             <div><button disabled={disabled} onClick={() => editCheckpoint(item)}>Editar</button><button className="danger" disabled={disabled} onClick={() => void deleteCheckpoint(item.id)}>Eliminar</button></div>
           </article>)}
           {!ordered.length ? <p>Aún no hay etapas. Puedes crear todas las etapas base desde los POI reales de la ruta o introducir coordenadas verificadas manualmente.</p> : null}
