@@ -91,9 +91,9 @@ Y una rareza:
 - `rare`;
 - `legendary`.
 
-La importación masiva desde POI **no infiere categorías ni rareza**. Un editor debe confirmarlas en Admin. Esto evita etiquetar automáticamente un POI como flora, fauna o patrimonio sin evidencia.
+La importación masiva desde POI **no infiere categorías ni rareza**. Un editor debe confirmarlas en Admin. El formulario conserva categoría/rareza al reeditar un checkpoint para evitar degradar accidentalmente un hallazgo raro a `common`.
 
-El perfil global agrupa el álbum por categoría y rareza y deriva insignias como `coleccionista_de_magina` y `hallazgo_legendario`.
+El perfil global agrupa el álbum por categoría y rareza y deriva insignias como `coleccionista_de_magina` y `hallazgo_legendario`. La ficha de cada ruta muestra también su miniálbum y la categoría/rareza de un hallazgo cuando la etapa ya es visible.
 
 ## Modos de progresión
 
@@ -125,6 +125,7 @@ En modo lineal la API impone la secuencia antes de ejecutar la comprobación GPS
 - XP conseguido/posible;
 - checkpoints desbloqueados;
 - categorías del álbum presentes en la ruta;
+- rareza del hallazgo visible;
 - insignias;
 - mapa sincronizado pendiente/desbloqueado.
 
@@ -172,7 +173,7 @@ Dentro de Admin → Rutas se puede:
 - importar masivamente POI activos de forma idempotente;
 - editar/eliminar/ordenar checkpoints;
 - configurar radio GPS, XP, obligatoriedad, trivia, pista y visibilidad;
-- asignar categoría territorial y rareza editorial;
+- asignar y preservar categoría territorial y rareza editorial;
 - ver partidas y puntuación media;
 - consultar preflight y safety hold;
 - abrir la pantalla de candidatas para priorizar rutas reales con track/POI adecuados.
