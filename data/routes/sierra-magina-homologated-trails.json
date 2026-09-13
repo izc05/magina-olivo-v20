@@ -1,5 +1,5 @@
 {
-  "catalog_version": 2,
+  "catalog_version": 3,
   "audited_at": "2026-09-13",
   "source_name": "Federacion Andaluza de Deportes de Montana, Escalada y Senderismo",
   "source_url": "https://fedamon.com/",
@@ -40,7 +40,10 @@
       "track_kmz_url": "https://www.fedamon.com/senderos/prs/track/jaen/pr-a%20350.kmz",
       "municipalities": ["Bedmar y Garciez"],
       "track_found": true,
-      "track_validated": false,
+      "track_validated": true,
+      "track_validated_at": "2026-09-13",
+      "track_validation_state": "geometry_validated",
+      "track_audit": {"calculated_length_m":14305,"point_count":694,"sha256":"1321e33100e8f7c0e8f33312ed849d23672eba49edd494c282bb3590e08770a5"},
       "publishable": false,
       "canonical_route_slug": "cano-del-aguadero"
     },
@@ -57,7 +60,10 @@
       "track_kmz_url": "https://fedamon.com/senderos/sl/jaen/sl-a%20135.kmz",
       "municipalities": ["Torres"],
       "track_found": true,
-      "track_validated": false,
+      "track_validated": true,
+      "track_validated_at": "2026-09-13",
+      "track_validation_state": "geometry_validated",
+      "track_audit": {"calculated_length_m":6316,"point_count":243,"sha256":"4be9574dff8d9b50728ef77bb9bfa3a991d240aee4b2758e737145ef65ae37a2"},
       "publishable": false,
       "canonical_route_slug": "fuenmayor"
     }
