@@ -2,6 +2,7 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, join, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const option = (long, short, fallback) => {
@@ -10,7 +11,7 @@ const option = (long, short, fallback) => {
 };
 const hostname = option('--hostname', '-H', '127.0.0.1');
 const port = Number(option('--port', '-p', '3000'));
-const root = new URL('../apps/web/out/', import.meta.url).pathname;
+const root = fileURLToPath(new URL('../apps/web/out/', import.meta.url));
 const mime = { '.css': 'text/css', '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml' };
 
 createServer(async (request, response) => {

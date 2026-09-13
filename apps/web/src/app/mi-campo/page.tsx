@@ -6,7 +6,7 @@ export default function MiCampoPage() {
   return (
     <main className="app-shell">
       <Topbar />
-      <div className="page mi-campo-page">
+      <div className="page mi-campo-page field-dashboard">
         <MiCampoDashboard />
       </div>
       <BottomNav active="/mi-campo" />
