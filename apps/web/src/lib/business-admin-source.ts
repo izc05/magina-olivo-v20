@@ -112,6 +112,16 @@ export type BusinessWriteInput = {
   primaryCategorySlug?: string | null;
 };
 
+export type BusinessCategoryWriteInput = {
+  slug?: string;
+  name?: string;
+  description?: string | null;
+  iconKey?: string | null;
+  parentId?: string | null;
+  sortOrder?: number;
+  active?: boolean;
+};
+
 export const businessAdminApi = {
   catalog: () => apiFetch<BusinessAdminCatalog>('/api/v1/admin/business-directory'),
   territory: () => apiFetch<TerritoryCatalog>('/api/v1/admin/territory/catalog'),
@@ -141,4 +151,8 @@ export const businessAdminApi = {
     rawData?: Record<string, unknown>;
     fetchedAt?: string | null;
   }) => apiFetch<{ source: { id: string } }>(`/api/v1/admin/businesses/${encodeURIComponent(businessId)}/sources`, { method: 'POST', body: JSON.stringify(input) }),
+  createCategory: (input: Required<Pick<BusinessCategoryWriteInput, 'slug' | 'name'>> & BusinessCategoryWriteInput) =>
+    apiFetch<{ category: { id: string } & BusinessCategoryWriteInput }>('/api/v1/admin/business-categories', { method: 'POST', body: JSON.stringify(input) }),
+  updateCategory: (id: string, input: BusinessCategoryWriteInput) =>
+    apiFetch<{ ok: true; categoryId: string }>(`/api/v1/admin/business-categories/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }),
 };
