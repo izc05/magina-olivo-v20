@@ -6,15 +6,19 @@ on:
     paths:
       - 'apps/api/src/domain/business-directory.ts'
       - 'apps/api/src/routes/business-directory.ts'
+      - 'apps/api/src/routes/business-revenue.ts'
       - 'apps/api/src/routes/admin-business-directory.ts'
       - 'apps/api/src/routes/admin-business-categories.ts'
+      - 'apps/api/src/routes/admin-business-revenue.ts'
       - 'apps/api/src/app.ts'
+      - 'apps/api/src/server.ts'
       - 'apps/web/src/app/empresas/**'
       - 'apps/web/src/app/explorar/empresas/**'
       - 'apps/web/src/app/admin/empresas/**'
       - 'apps/web/src/components/business-**'
       - 'apps/web/src/lib/business-**'
       - 'database/migrations/0070_business_directory_foundation.sql'
+      - 'database/migrations/0071_business_revenue_engine.sql'
       - '.github/workflows/business-directory-check.yml'
 
 concurrency:
@@ -119,9 +123,29 @@ jobs:
           SELECT '71000000-0000-4000-8000-000000000001', id, true
           FROM business_categories
           WHERE slug = 'servicios-profesionales';
+
+          INSERT INTO business_offers (
+            id, business_id, slug, title, summary, offer_type,
+            original_price_cents, offer_price_cents, currency,
+            redemption_mode, status, published_at, valid_until
+          ) VALUES (
+            '72000000-0000-4000-8000-000000000001',
+            '71000000-0000-4000-8000-000000000001',
+            'oferta-ci',
+            'Oferta CI',
+            'Promoción de prueba del embudo comercial.',
+            'discount',
+            5000,
+            4000,
+            'EUR',
+            'request',
+            'published',
+            now(),
+            now() + interval '7 days'
+          );
           SQL
 
-      - name: Public API smoke test
+      - name: Public API and revenue funnel smoke test
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
           PGPASSWORD: postgres
@@ -138,14 +162,24 @@ jobs:
           CATEGORIES=$(curl -fsS http://127.0.0.1:3001/api/v1/public/business-categories)
           BUSINESSES=$(curl -fsS 'http://127.0.0.1:3001/api/v1/public/businesses?q=Empresa%20CI&lat=37.75&lng=-3.45&radiusKm=5')
           DETAIL=$(curl -fsS http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina)
+          OFFERS=$(curl -fsS http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina/offers)
+          EVENT=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina/events \
+            -H 'content-type: application/json' \
+            -d '{"eventType":"profile_view","anonymousId":"ci-anon","sourceContext":"ci"}')
+          LEAD=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina/leads \
+            -H 'content-type: application/json' \
+            -d '{"kind":"quote","contactName":"Cliente CI","contactEmail":"cliente@example.com","message":"Quiero presupuesto","offerId":"72000000-0000-4000-8000-000000000001","anonymousId":"ci-anon","sourceContext":"ci","consentBusinessContact":true}')
           CLAIM=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina/claims \
             -H 'content-type: application/json' \
             -d '{"claimantName":"Responsable CI","claimantEmail":"ci@example.com","relationship":"Gerencia","message":"Solicitud smoke test"}')
 
-          CATEGORIES="${CATEGORIES}" BUSINESSES="${BUSINESSES}" DETAIL="${DETAIL}" CLAIM="${CLAIM}" node <<'NODE'
+          CATEGORIES="${CATEGORIES}" BUSINESSES="${BUSINESSES}" DETAIL="${DETAIL}" OFFERS="${OFFERS}" EVENT="${EVENT}" LEAD="${LEAD}" CLAIM="${CLAIM}" node <<'NODE'
           const categories = JSON.parse(process.env.CATEGORIES);
           const list = JSON.parse(process.env.BUSINESSES);
           const detail = JSON.parse(process.env.DETAIL);
+          const offers = JSON.parse(process.env.OFFERS);
+          const event = JSON.parse(process.env.EVENT);
+          const lead = JSON.parse(process.env.LEAD);
           const claim = JSON.parse(process.env.CLAIM);
 
           if (!Array.isArray(categories.categories) || categories.categories.length < 1) throw new Error('Business categories unavailable');
@@ -155,7 +189,13 @@ jobs:
           if (list.businesses[0].placement?.label !== 'Destacado') throw new Error('Featured disclosure missing');
           if (detail.business?.slug !== 'empresa-ci-magina') throw new Error('Business detail unavailable');
           if (detail.business?.verified !== true) throw new Error('Verification state missing');
+          if (offers.offers?.length !== 1 || offers.offers[0].title !== 'Oferta CI') throw new Error('Public offers unavailable');
+          if (event.accepted !== true) throw new Error('Conversion event rejected');
+          if (lead.lead?.status !== 'new') throw new Error('Lead flow failed');
           if (claim.claim?.status !== 'pending') throw new Error('Claim flow failed');
           NODE
 
           test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM business_claims WHERE business_id='71000000-0000-4000-8000-000000000001' AND claimant_email='ci@example.com' AND status='pending'")" = "1"
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM business_leads WHERE business_id='71000000-0000-4000-8000-000000000001' AND contact_email='cliente@example.com' AND status='new'")" = "1"
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM business_events WHERE business_id='71000000-0000-4000-8000-000000000001' AND event_type='profile_view'")" = "1"
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM business_events WHERE business_id='71000000-0000-4000-8000-000000000001' AND event_type='lead_submit'")" = "1"
