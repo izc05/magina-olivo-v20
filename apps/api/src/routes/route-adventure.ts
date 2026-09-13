@@ -66,10 +66,7 @@ async function progressPayload(db: DatabaseClient, routeId: string, userId: stri
 
   const [runResult, unlockResult, unlockedStatsResult] = await Promise.all([
     sql<Record<string, unknown>>`
-      SELECT id, route_id, status, score, started_at, completed_at, updated_at,
-             last_distance_m,
-             CASE WHEN last_location IS NULL THEN NULL ELSE ST_Y(last_location) END AS last_latitude,
-             CASE WHEN last_location IS NULL THEN NULL ELSE ST_X(last_location) END AS last_longitude
+      SELECT id, route_id, status, score, started_at, completed_at, updated_at, last_distance_m
       FROM route_adventure_runs
       WHERE id = ${runId}::uuid AND route_id = ${routeId}::uuid AND user_id = ${userId}::uuid
       LIMIT 1
@@ -259,14 +256,14 @@ export function registerRouteAdventureRoutes(app: FastifyInstance, db: DatabaseC
       }
     }
 
-    const point = sql`ST_SetSRID(ST_MakePoint(${input.longitude}, ${input.latitude}), 4326)`;
+    // The supplied GPS coordinate is used only inside the PostGIS proximity calculation
+    // above. We intentionally do not persist exact user coordinates.
     await sql`
       INSERT INTO route_adventure_unlocks(
-        run_id, checkpoint_id, answer_key, is_correct, awarded_points,
-        observed_location, distance_to_checkpoint_m
+        run_id, checkpoint_id, answer_key, is_correct, awarded_points, distance_to_checkpoint_m
       ) VALUES (
         ${run.id}::uuid, ${checkpoint.id}::uuid, ${input.answer_key ?? null},
-        ${checkpoint.question ? true : null}, ${checkpoint.points}, ${point}, ${distance}
+        ${checkpoint.question ? true : null}, ${checkpoint.points}, ${distance}
       )
       ON CONFLICT (run_id, checkpoint_id) DO NOTHING
     `.execute(db);
@@ -279,7 +276,6 @@ export function registerRouteAdventureRoutes(app: FastifyInstance, db: DatabaseC
             WHERE run_id = ${run.id}::uuid
           ),
           last_distance_m = COALESCE(${checkpoint.distance_m}, last_distance_m),
-          last_location = ${point},
           updated_at = now()
       WHERE id = ${run.id}::uuid
     `.execute(db);
