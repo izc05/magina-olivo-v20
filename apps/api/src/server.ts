@@ -10,6 +10,8 @@ import { assertSafeRuntimeEnvironment } from './runtime-security.js';
 import { registerBusinessRevenueRoutes } from './routes/business-revenue.js';
 import { registerAdminBusinessRevenueRoutes } from './routes/admin-business-revenue.js';
 import { registerBusinessPortalRoutes } from './routes/business-portal.js';
+import { registerBusinessPassRoutes } from './routes/business-pass.js';
+import { registerAdminBusinessPassRoutes } from './routes/admin-business-pass.js';
 
 assertSafeRuntimeEnvironment();
 
@@ -26,6 +28,8 @@ const app = buildApp({ db, storage, ocrQueue, notificationQueue, radarQueue, goo
 registerBusinessRevenueRoutes(app, db);
 registerAdminBusinessRevenueRoutes(app, db);
 registerBusinessPortalRoutes(app, db);
+registerBusinessPassRoutes(app, db);
+registerAdminBusinessPassRoutes(app, db);
 
 const port = Number(process.env.PORT ?? 3001);
 const host = process.env.HOST ?? '0.0.0.0';
