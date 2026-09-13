@@ -21,6 +21,7 @@ import { registerAdminWorkActivityRoutes } from './routes/admin-work-activity.js
 import { registerAdminDocumentRoutes } from './routes/admin-documents.js';
 import { registerAdminProfessionalRoutes } from './routes/admin-professional.js';
 import { registerAdminRoutesExploreRoutes } from './routes/admin-routes-explore.js';
+import { registerAdminRouteContentRoutes } from './routes/admin-route-content.js';
 import { registerPlanRoutes } from './routes/plans.js';
 import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerMiOlivoCampaignRoutes } from './routes/mi-olivo-campaign.js';
@@ -204,6 +205,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminDocumentRoutes(app, db, ocrQueue);
   registerAdminProfessionalRoutes(app, db);
   registerAdminRoutesExploreRoutes(app, db);
+  registerAdminRouteContentRoutes(app, db);
   registerPlanRoutes(app, db);
   registerMiOlivoRoutes(app, db);
   registerMiOlivoCampaignRoutes(app, db);
