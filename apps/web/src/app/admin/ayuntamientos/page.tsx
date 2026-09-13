@@ -42,7 +42,10 @@ export default function AdminMunicipalitiesPage() {
     const payload = await apiFetch<{ municipalities: Municipality[] }>('/api/v1/admin/territory/catalog');
     setItems(payload.municipalities);
     setSelected((current) => {
-      const municipality = payload.municipalities.find((item) => item.id === current?.id) ?? payload.municipalities[0];
+      const requestedSlug = typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : '';
+      const municipality = payload.municipalities.find((item) => requestedSlug && item.slug === requestedSlug)
+        ?? payload.municipalities.find((item) => item.id === current?.id)
+        ?? payload.municipalities[0];
       if (!municipality?.directory) return null;
       return { id: municipality.id, name: municipality.name, ...municipality.directory };
     });
@@ -53,6 +56,7 @@ export default function AdminMunicipalitiesPage() {
   function choose(item: Municipality) {
     if (!item.directory) return;
     setSelected({ id: item.id, name: item.name, ...item.directory });
+    if (typeof window !== 'undefined') window.history.replaceState(null, '', `#${item.slug}`);
     setMessage(null); setError(null);
   }
 
@@ -76,7 +80,7 @@ export default function AdminMunicipalitiesPage() {
     <header className="admin-topbar"><div><a href="/admin/territorio">← Territorio</a><h1>Ayuntamientos de Sierra Mágina</h1><p>Directorio institucional verificado de los 16 municipios.</p></div><div style={{display:'flex',gap:'.75rem',flexWrap:'wrap'}}><a href="/admin/ayuntamientos/cobertura">Ver cobertura municipal</a><a href="/admin/ayuntamientos/actualidad">Vincular noticias y eventos</a><a href="/ayuntamientos" target="_blank">Ver directorio público ↗</a></div></header>
     {message ? <div className="admin-notice success">{message}</div> : null}{error ? <div className="admin-notice error">{error}</div> : null}
     <section style={{display:'grid',gridTemplateColumns:'minmax(240px,.8fr) minmax(0,1.8fr)',gap:'1rem',alignItems:'start'}}>
-      <article className="admin-card"><h2>Municipios ({items.length})</h2><div style={{display:'grid',gap:'.45rem'}}>{items.map((item) => <button key={item.id} type="button" onClick={() => choose(item)} style={{textAlign:'left',padding:'.75rem',borderRadius:'.75rem',border:'1px solid #d8ded8',background:selected?.id===item.id?'#e9f2e9':'#fff'}}><strong>{item.name}</strong><br/><small>INE {item.ine_code} · {item.directory?.public_enabled ? 'Público' : 'Oculto'}</small></button>)}</div></article>
+      <article className="admin-card"><h2>Municipios ({items.length})</h2><div style={{display:'grid',gap:'.45rem'}}>{items.map((item) => <button id={item.slug} key={item.id} type="button" onClick={() => choose(item)} style={{textAlign:'left',padding:'.75rem',borderRadius:'.75rem',border:'1px solid #d8ded8',background:selected?.id===item.id?'#e9f2e9':'#fff'}}><strong>{item.name}</strong><br/><small>INE {item.ine_code} · {item.directory?.public_enabled ? 'Público' : 'Oculto'}</small></button>)}</div></article>
       <article className="admin-card">{selected ? <><h2>{selected.name}</h2><p>Los cambios quedan registrados en la auditoría de plataforma.</p><div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:'.8rem'}}>
         <label>Web oficial<input value={selected.official_website} onChange={(e)=>setSelected({...selected,official_website:e.target.value})}/></label>
         <label>Sede electrónica<input value={selected.electronic_office_url??''} onChange={(e)=>setSelected({...selected,electronic_office_url:e.target.value||null})}/></label>
