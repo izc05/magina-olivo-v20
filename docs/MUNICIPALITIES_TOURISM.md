@@ -54,6 +54,29 @@ Esto evita que, al publicar un castillo, una fuente, un mirador o un museo, esa 
 
 Las tarjetas distinguen visualmente Patrimonio, Naturaleza y Turismo y reutilizan título, resumen, imagen, enlace externo y demás datos ya presentes en el CMS.
 
+## URLs turísticas institucionales
+
+La migración `0062_municipality_tourism_urls.sql` incorpora referencias turísticas verificadas para 14 de los 16 municipios:
+
+- Albanchez de Mágina;
+- Bedmar y Garcíez;
+- Bélmez de la Moraleda;
+- Cambil;
+- Campillo de Arenas;
+- Cárcheles;
+- La Guardia de Jaén;
+- Jimena;
+- Jódar;
+- Larva;
+- Mancha Real;
+- Noalejo;
+- Pegalajar;
+- Torres.
+
+`Cabra del Santo Cristo` y `Huelma` permanecen deliberadamente con `tourism_url = NULL` mientras no exista una referencia turística oficial suficientemente clara y verificable. El sistema debe mostrar ese hueco en Administración en lugar de fabricar o inferir una URL.
+
+Las referencias pueden ser una sección turística del portal municipal o un portal turístico específico cuando está identificado como servicio del propio Ayuntamiento.
+
 ## Reglas de publicación
 
 El hub sigue usando la API pública municipal existente. Por tanto, un lugar solo llega al cliente cuando:
@@ -85,4 +108,6 @@ Una futura integración con Rutas o Empresas debe consumir sus fuentes canónica
 - clasificación `profile / heritage / nature / tourism`;
 - persistencia explícita de `municipality_id` y `municipality_role`;
 - preferencia del perfil explícito;
-- sección pública “Patrimonio, naturaleza y lugares para descubrir”.
+- sección pública “Patrimonio, naturaleza y lugares para descubrir”;
+- las 14 URLs turísticas verificadas;
+- la decisión explícita de mantener Cabra del Santo Cristo y Huelma sin URL hasta verificar una referencia oficial.
