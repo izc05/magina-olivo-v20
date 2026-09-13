@@ -116,6 +116,18 @@ export function AdventureHubClient() {
         <article><strong>{profile.summary.total_score}</strong><span>Puntos</span></article>
       </div>
       {profile.badges.length > 0 ? <div className={styles.badges} aria-label="Insignias globales">{profile.badges.map((badge) => <span key={badge}>✦ {badgeLabel(badge)}</span>)}</div> : null}
+
+      {profile.territory.municipalities_available > 0 ? <div className={styles.recent}>
+        <h3>Sierra Mágina explorada · {profile.territory.explored_percent}%</h3>
+        <p>{profile.territory.unlocked_checkpoints}/{profile.territory.available_checkpoints} descubrimientos · {profile.territory.municipalities_discovered}/{profile.territory.municipalities_available} municipios con progreso</p>
+        <progress max={Math.max(profile.territory.available_checkpoints, 1)} value={profile.territory.unlocked_checkpoints} aria-label={`Sierra Mágina explorada ${profile.territory.explored_percent}%`} />
+        <div className={styles.collectionGrid}>{profile.territory.municipalities.map((municipality) => <article key={municipality.municipality_id}>
+          <div><strong>{municipality.municipality_name}</strong><span>{municipality.unlocked}/{municipality.available}</span></div>
+          <progress max={Math.max(municipality.available, 1)} value={municipality.unlocked} aria-label={`${municipality.municipality_name} ${municipality.percent}%`} />
+          <small>{municipality.percent}% · {municipality.adventure_count} {municipality.adventure_count === 1 ? 'aventura' : 'aventuras'}</small>
+        </article>)}</div>
+      </div> : null}
+
       {profile.collections.length > 0 ? <div className={styles.collectionGrid}>{profile.collections.map((collection) => {
         const percent = collection.available > 0 ? Math.round((collection.unlocked / collection.available) * 100) : 0;
         return <article key={collection.kind}>
