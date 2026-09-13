@@ -23,6 +23,10 @@ function strings(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
+function municipalityRole(entry: PublicMunicipalityContent) {
+  return text(asObject(entry.content_json).municipality_role);
+}
+
 function dateLabel(value: string | null) {
   if (!value) return null;
   const date = new Date(value);
@@ -36,8 +40,10 @@ function ContentCard({ entry }: { entry: PublicMunicipalityContent }) {
   const services = strings(data.services);
   const eventStart = text(data.event_start) || entry.starts_at;
   const href = entry.external_url || null;
+  const role = municipalityRole(entry);
+  const placeLabel = role === 'heritage' ? 'Patrimonio' : role === 'nature' ? 'Naturaleza' : role === 'tourism' ? 'Turismo' : 'Pueblo';
   const labels: Record<PublicMunicipalityContent['type'], string> = {
-    place: 'Pueblo',
+    place: placeLabel,
     mill: 'Cooperativa / almazara',
     directory: 'Empresa / servicio',
     news: 'Noticia',
@@ -73,7 +79,9 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
   }, [slug]);
 
   const content = item?.related_content ?? [];
-  const profile = useMemo(() => content.find((entry) => entry.type === 'place') ?? null, [content]);
+  const places = useMemo(() => content.filter((entry) => entry.type === 'place'), [content]);
+  const profile = useMemo(() => places.find((entry) => municipalityRole(entry) === 'profile') ?? places.find((entry) => !municipalityRole(entry)) ?? null, [places]);
+  const discoveries = useMemo(() => places.filter((entry) => ['heritage', 'nature', 'tourism'].includes(municipalityRole(entry))), [places]);
   const mills = useMemo(() => content.filter((entry) => entry.type === 'mill'), [content]);
   const directory = useMemo(() => content.filter((entry) => entry.type === 'directory'), [content]);
   const news = useMemo(() => content.filter((entry) => entry.type === 'news'), [content]);
@@ -95,6 +103,7 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
             <p>{profile?.summary || `Información institucional y contenido local verificado de ${item.name}. Código INE ${item.ine_code} · ${item.province_name}.`}</p>
             <div className={styles.heroFacts}>
               <span>{item.places.length} {item.places.length === 1 ? 'localidad' : 'localidades'}</span>
+              <span>{discoveries.length} lugares para descubrir</span>
               <span>{item.content_counts?.mill ?? 0} cooperativas / almazaras</span>
               <span>{item.content_counts?.directory ?? 0} servicios</span>
             </div>
@@ -106,7 +115,7 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
         </section>
 
         <nav className={styles.quickNav} aria-label="Secciones de la ficha municipal">
-          <a href="#municipio">Municipio</a><a href="#ayuntamiento">Ayuntamiento</a><a href="#economia-local">Economía local</a><a href="#actualidad">Actualidad</a>
+          <a href="#municipio">Municipio</a><a href="#descubrir">Qué descubrir</a><a href="#ayuntamiento">Ayuntamiento</a><a href="#economia-local">Economía local</a><a href="#actualidad">Actualidad</a>
         </nav>
 
         <section className="section" id="municipio">
@@ -121,6 +130,11 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
               <div className={styles.placeList}>{item.places.map((place) => <span key={place.id}>{place.name}</span>)}</div>
             </article>
           </div>
+        </section>
+
+        <section className="section" id="descubrir">
+          <div className={styles.heading}><div><h2>Patrimonio, naturaleza y lugares para descubrir</h2><p>Contenido turístico vinculado explícitamente al municipio y publicado desde el CMS de Mágina Olivo.</p></div>{item.tourism_url ? <a href={item.tourism_url} target="_blank" rel="noreferrer">Turismo oficial ↗</a> : null}</div>
+          {discoveries.length ? <div className={styles.contentGrid}>{discoveries.map((entry) => <ContentCard key={entry.id} entry={entry} />)}</div> : <div className={styles.emptySection}><strong>Catálogo turístico preparado</strong><p>Aún no hay patrimonio, naturaleza o recursos turísticos publicados para {item.name}. No se generan lugares ficticios: aparecerán aquí cuando se clasifiquen explícitamente desde Administración.</p></div>}
         </section>
 
         <section className="section" id="ayuntamiento">
