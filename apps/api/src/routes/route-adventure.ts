@@ -74,7 +74,7 @@ async function progressPayload(db: DatabaseClient, routeId: string, userId: stri
     `.execute(db),
     sql<Record<string, unknown>>`
       SELECT u.checkpoint_id, u.unlocked_at, u.answer_key, u.is_correct, u.awarded_points,
-             u.distance_to_checkpoint_m, cp.title, cp.kind, cp.is_required
+             u.distance_to_checkpoint_m, cp.title, cp.kind, cp.collection_category, cp.rarity, cp.is_required
       FROM route_adventure_unlocks u
       JOIN route_adventure_checkpoints cp ON cp.id = u.checkpoint_id
       WHERE u.run_id = ${runId}::uuid
@@ -129,7 +129,7 @@ export function registerRouteAdventureRoutes(app: FastifyInstance, db: DatabaseC
     if (!route.enabled) return { enabled: false, route: { id: route.id, slug: route.slug, name: route.name }, adventure: null, checkpoints: [] };
 
     const checkpoints = await sql<Record<string, unknown>>`
-      SELECT cp.id, cp.route_point_id, cp.title, cp.description, cp.kind, cp.distance_m,
+      SELECT cp.id, cp.route_point_id, cp.title, cp.description, cp.kind, cp.collection_category, cp.rarity, cp.distance_m,
              cp.unlock_radius_m, cp.points, cp.is_required, cp.question, cp.answer_options,
              cp.hint, cp.sort_order,
              ST_Y(cp.location) AS latitude, ST_X(cp.location) AS longitude
