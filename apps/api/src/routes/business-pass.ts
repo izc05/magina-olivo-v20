@@ -88,7 +88,7 @@ export function registerBusinessPassRoutes(app: FastifyInstance, db: DatabaseCli
         SELECT b.id AS business_id, b.slug, b.name, b.short_description,
                tp.name AS place_name, tm.name AS municipality_name, b.logo_url,
                pb.featured_stop,
-               COALESCE(pb.checkin_points, ${current.id}::uuid IS NOT NULL AND p.default_checkin_points) AS checkin_points
+               COALESCE(pb.checkin_points, p.default_checkin_points)::int AS checkin_points
         FROM magina_pass_businesses pb
         JOIN magina_pass_programs p ON p.id=pb.program_id
         JOIN businesses b ON b.id=pb.business_id
