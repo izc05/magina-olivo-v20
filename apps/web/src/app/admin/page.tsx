@@ -27,6 +27,7 @@ export default function AdminPage() {
         <Link href="/admin/rutas" aria-label="Abrir administración de rutas y tracks GPX">Rutas</Link>
         <Link href="/admin/empresas" aria-label="Abrir directorio estructurado de empresas y servicios">Empresas</Link>
         <Link href="/admin/empresas/rendimiento" aria-label="Abrir rendimiento comercial, leads y ofertas de empresas">Rendimiento empresas</Link>
+        <Link href="/admin/empresas/experiencias" aria-label="Administrar experiencias, sesiones y reservas">Experiencias empresas</Link>
         <Link href="/admin/empresas/categorias" aria-label="Abrir categorías del directorio de empresas">Categorías empresas</Link>
         <Link href="/admin/media" aria-label="Abrir biblioteca multimedia">Multimedia</Link>
         <Link href="/admin/web" aria-label="Abrir editor visual de la web">Editar web</Link>
