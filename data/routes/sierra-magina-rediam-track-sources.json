@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "verified_at": "2026-09-13",
   "authority": "Junta de Andalucia - REDIAM",
   "service": "REDIAM_WFS_Patrimonio_Natural",
@@ -12,6 +12,7 @@
   },
   "routes": [
     {"slug":"adelfal-de-cuadros","codigoequi":"727","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/adelfal-de-cuadros/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
+    {"slug":"cano-del-aguadero","codigoequi":"725","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/ca%C3%B1o-del-aguadero/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"castillo-de-mata-bejid","codigoequi":"1675","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/castillo-de-mata-bejid/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"el-peralejo","codigoequi":"1051","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/el-peralejo/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"gibralberca","codigoequi":"722","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/gibralberca-1/","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
@@ -20,7 +21,8 @@
     {"slug":"las-vinas","codigoequi":"724","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/las-vi%C3%B1as/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"pinar-de-canava","codigoequi":"1116","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/pinar-de-c%C3%81nava/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
     {"slug":"sierra-de-la-cruz","codigoequi":"1676","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/sierra-de-la-cruz/255035","formats_exposed":["KML","GML"],"track_found":true,"track_validated":false},
-    {"slug":"subida-al-hoyo-de-la-laguna","codigoequi":"1552","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/subida-al-hoyo-de-la-laguna/","formats_exposed":["KML","GML","GPX"],"track_found":true,"track_validated":false}
+    {"slug":"subida-al-hoyo-de-la-laguna","codigoequi":"1552","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/subida-al-hoyo-de-la-laguna/","formats_exposed":["KML","GML","GPX"],"track_found":true,"track_validated":false},
+    {"slug":"veredon-mojon-blanco","codigoequi":"1561","source_page":"https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/vered%C3%93n-moj%C3%93n-blanco/255035","formats_exposed":["KML","GML","GPX"],"track_found":true,"track_validated":false}
   ],
   "wfs_request_template": "https://www.juntadeandalucia.es/medioambiente/mapwms/REDIAM_WFS_Patrimonio_Natural?service=WFS&version=1.0.0&request=GetFeature&typename=senderos:senderos&srsname=EPSG:25830&outputFormat={OUTPUT_FORMAT}&Filter=<Filter xmlns=\"http://www.opengis.net/ogc\" xmlns:gml=\"http://www.opengis.net/gml\"><PropertyIsEqualTo><PropertyName>CODIGOEQUI</PropertyName><Literal>{CODIGOEQUI}</Literal></PropertyIsEqualTo></Filter>"
 }
