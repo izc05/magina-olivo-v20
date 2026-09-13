@@ -74,6 +74,12 @@ function apiMessage(error: unknown) {
         ? `Aún estás a unos ${distance} m del punto. Acércate a menos de ${radius} m para desbloquearlo.`
         : 'Todavía no estás suficientemente cerca de este punto.';
     }
+    if (payload.error === 'checkpoint_locked') {
+      const remaining = typeof payload.required_previous_remaining === 'number' ? payload.required_previous_remaining : null;
+      return remaining && remaining > 1
+        ? `Esta etapa está bloqueada. Completa antes las ${remaining} etapas obligatorias anteriores.`
+        : 'Esta etapa está bloqueada. Completa primero la etapa obligatoria anterior.';
+    }
     if (payload.error === 'adventure_incomplete') return 'Todavía quedan checkpoints obligatorios por completar.';
     if (payload.error === 'authentication_required') return 'Necesitas iniciar sesión para guardar el progreso.';
   }
@@ -135,13 +141,18 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
   if (loading) return null;
   if (!definition?.enabled || !definition.adventure) return null;
   const adventure = definition.adventure;
+  const progressionMode = (adventure as typeof adventure & { progression_mode?: 'free' | 'linear' }).progression_mode ?? 'free';
+  const isLocked = (index: number) => progressionMode === 'linear'
+    && definition.checkpoints.slice(0, index).some((item) => item.is_required && !unlocked.has(item.id));
 
   async function start() {
     setBusy('start'); setMessage(null);
     try {
       const next = await startRouteAdventure(routeId);
       setProgress(next); setAuthRequired(false);
-      setMessage('Aventura iniciada. Los checkpoints se desbloquean cuando estés físicamente cerca.');
+      setMessage(progressionMode === 'linear'
+        ? 'Aventura iniciada. Avanza por etapas: cada reto obligatorio abre el siguiente tramo.'
+        : 'Aventura iniciada. Los checkpoints se desbloquean cuando estés físicamente cerca.');
     } catch (error) {
       if (error instanceof ApiRequestError && error.status === 401) setAuthRequired(true);
       setMessage(apiMessage(error));
@@ -201,11 +212,12 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
 
   return <section className={styles.communitySection} aria-labelledby="route-adventure-title">
     <div className={styles.communityHeader}>
-      <div><span className={styles.eyebrow}>Explora jugando</span><h2 id="route-adventure-title">{adventure.title}</h2></div>
+      <div><span className={styles.eyebrow}>Explora jugando · {progressionMode === 'linear' ? 'Por etapas' : 'Modo libre'}</span><h2 id="route-adventure-title">{adventure.title}</h2></div>
       <p>{adventure.intro ?? 'Recorre la ruta real, descubre puntos del territorio y desbloquea pequeños retos por el camino.'}</p>
     </div>
 
     <div className={styles.notice}>{definition.notice ?? 'El juego no sustituye la navegación ni los avisos oficiales.'}</div>
+    {progressionMode === 'linear' ? <div className={styles.notice}>Esta aventura avanza por etapas. Completa los retos obligatorios anteriores para abrir los siguientes; los retos extra no bloquean el avance.</div> : null}
 
     {progress?.run ? <div className={styles.infoGrid}>
       <article className={styles.infoCard}><h3>Progreso</h3><strong>{progress.stats.unlocked_checkpoints}/{progress.stats.total_checkpoints}</strong><p>{percent}% de checkpoints descubiertos</p></article>
@@ -231,14 +243,15 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
       <div className={styles.actionRow} aria-label="Colección de esta ruta">
         {definition.checkpoints.map((checkpoint, index) => {
           const done = unlocked.has(checkpoint.id);
+          const locked = isLocked(index);
           return <button
             key={checkpoint.id}
             type="button"
             className={styles.secondaryAction}
-            title={done ? checkpoint.title : `Etapa ${index + 1} todavía bloqueada`}
+            title={done ? checkpoint.title : locked ? `Etapa ${index + 1} bloqueada por progresión` : checkpoint.title}
             onClick={() => focusCheckpoint(checkpoint)}
           >
-            {done ? `✓ ${checkpoint.title}` : `🔒 Etapa ${index + 1}`}
+            {done ? `✓ ${checkpoint.title}` : locked ? `🔒 Etapa ${index + 1}` : `✦ Etapa ${index + 1}`}
           </button>;
         })}
       </div>
@@ -262,18 +275,19 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
     <div className={styles.reviewGrid}>
       {definition.checkpoints.map((checkpoint, index) => {
         const done = unlocked.has(checkpoint.id);
+        const locked = isLocked(index);
         const options = Array.isArray(checkpoint.answer_options)
           ? checkpoint.answer_options.filter((option) => option && typeof option.key === 'string' && typeof option.label === 'string')
           : [];
-        return <article className={styles.reviewCard} key={checkpoint.id}>
+        return <article className={styles.reviewCard} key={checkpoint.id} aria-disabled={locked}>
           <div className={styles.reviewMeta}>
-            <strong>{done ? '✓ ' : ''}Etapa {index + 1} · {checkpointKind(checkpoint.kind)}</strong>
+            <strong>{done ? '✓ ' : locked ? '🔒 ' : ''}Etapa {index + 1} · {checkpointKind(checkpoint.kind)}</strong>
             <span>{checkpoint.is_required ? 'Obligatorio' : 'Extra'} · {checkpoint.points} pt</span>
           </div>
-          <h3>{checkpoint.title}</h3>
-          {checkpoint.description ? <p>{checkpoint.description}</p> : null}
-          <small>{km(checkpoint.distance_m) ? `${km(checkpoint.distance_m)} · ` : ''}radio de desbloqueo {checkpoint.unlock_radius_m} m</small>
-          {checkpoint.question && !done ? <fieldset style={{ border: 0, padding: 0, margin: '16px 0 0' }}>
+          <h3>{locked ? `Etapa ${index + 1} bloqueada` : checkpoint.title}</h3>
+          {locked ? <p>Completa primero las etapas obligatorias anteriores para revelar este reto.</p> : checkpoint.description ? <p>{checkpoint.description}</p> : null}
+          {!locked ? <small>{km(checkpoint.distance_m) ? `${km(checkpoint.distance_m)} · ` : ''}radio de desbloqueo {checkpoint.unlock_radius_m} m</small> : null}
+          {checkpoint.question && !done && !locked ? <fieldset style={{ border: 0, padding: 0, margin: '16px 0 0' }}>
             <legend><strong>{checkpoint.question}</strong></legend>
             {options.map((option) => <label key={option.key} style={{ display: 'block', marginTop: 8 }}>
               <input type="radio" name={`answer-${checkpoint.id}`} value={option.key} checked={answers[checkpoint.id] === option.key} onChange={() => setAnswers((current) => ({ ...current, [checkpoint.id]: option.key }))} />{' '}{option.label}
@@ -281,9 +295,9 @@ export function RouteAdventurePanel({ routeId, slug }: { routeId: string; slug: 
             {checkpoint.hint ? <small style={{ display: 'block', marginTop: 8 }}>Pista: {checkpoint.hint}</small> : null}
           </fieldset> : null}
           <div className={styles.actionRow} style={{ marginTop: 12 }}>
-            <button className={styles.secondaryAction} type="button" onClick={() => focusCheckpoint(checkpoint)}>Ver punto en mapa</button>
-            {active && !done ? <button className={styles.primaryAction} type="button" disabled={busy !== null} onClick={() => unlock(checkpoint)}>{busy === checkpoint.id ? 'Comprobando…' : 'Estoy aquí'}</button> : null}
-            {done ? <span>Desbloqueado</span> : null}
+            {!locked ? <button className={styles.secondaryAction} type="button" onClick={() => focusCheckpoint(checkpoint)}>Ver punto en mapa</button> : null}
+            {active && !done && !locked ? <button className={styles.primaryAction} type="button" disabled={busy !== null} onClick={() => unlock(checkpoint)}>{busy === checkpoint.id ? 'Comprobando…' : 'Estoy aquí'}</button> : null}
+            {done ? <span>Desbloqueado</span> : locked ? <span>Bloqueado</span> : null}
           </div>
         </article>;
       })}
