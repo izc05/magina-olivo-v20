@@ -2,15 +2,15 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowIcon, PlusIcon, SproutIcon } from '@/components/icons';
+import { ArrowIcon, CampaignIcon, PlusIcon, ProfessionalIcon, SproutIcon, TerritoryMapIcon, TodayIcon } from '@/components/icons';
 import { useAuth } from '@/components/auth-provider';
 import { getPreviewFarms, loadWorkspaceFarms, summarizeFarms, type FarmListItem } from '@/lib/farm-data-source';
 
 const quick = [
-  ['☀', 'Hoy', 'Pendientes y próximos trabajos', '/mi-campo/hoy'],
-  ['🫒', 'Campaña', 'Producción, costes y cobros', '/mi-campo/campana'],
-  ['▱', 'Mapa', 'Fincas y referencias', '/mi-campo/mapa'],
-  ['€', 'Profesional', 'Clientes, trabajos y cobros', '/mi-campo/profesional'],
+  [TodayIcon, 'Hoy', 'Pendientes y próximos trabajos', '/mi-campo/hoy'],
+  [CampaignIcon, 'Campaña', 'Producción, costes y cobros', '/mi-campo/campana'],
+  [TerritoryMapIcon, 'Mapa', 'Fincas y referencias', '/mi-campo/mapa'],
+  [ProfessionalIcon, 'Profesional', 'Clientes, trabajos y cobros', '/mi-campo/profesional'],
 ] as const;
 
 type FarmStatusFilter = 'active' | 'all' | 'archived';
@@ -145,7 +145,7 @@ export function MiCampoDashboard() {
 
     <section className="section field-actions"><div className="section-head"><h2>Qué quieres hacer</h2><span /></div><div className="quick-grid">
       {singleActiveFarm ? <Link href={fieldActionHref('/mi-campo/registrar', singleActiveFarm)} className="card quick premium-quick"><span className="icon"><PlusIcon /></span><div><strong>Registrar</strong><small>Nueva actividad · {singleActiveFarm.name}</small></div><ArrowIcon className="quick-arrow" /></Link> : activeFarms.length > 1 ? <a href="#mis-fincas" className="card quick premium-quick"><span className="icon"><PlusIcon /></span><div><strong>Registrar</strong><small>Elige primero la finca</small></div><ArrowIcon className="quick-arrow" /></a> : null}
-      {quick.map(([icon, title, text, href]) => <Link href={href} className="card quick premium-quick" key={title}><span className="icon">{icon}</span><div><strong>{title}</strong><small>{text}</small></div><ArrowIcon className="quick-arrow" /></Link>)}
+      {quick.map(([Icon, title, text, href]) => <Link href={href} className="card quick premium-quick" key={title}><span className="icon"><Icon /></span><div><strong>{title}</strong><small>{text}</small></div><ArrowIcon className="quick-arrow" /></Link>)}
     </div></section>
 
     <section className="territory-banner compact-banner"><div><span className="eyebrow">TU CAMPO, EN UN SOLO LUGAR</span><h2>Consulta tus fincas, registra trabajos y sigue la campaña sin perder el hilo.</h2></div>{singleActiveFarm ? <Link href={fieldActionHref('/mi-campo/registrar', singleActiveFarm)}>Registrar <ArrowIcon /></Link> : activeFarms.length > 1 ? <a href="#mis-fincas">Elegir finca <ArrowIcon /></a> : canCreateFarm ? <Link href="/mi-campo/fincas/nueva">Añadir finca <ArrowIcon /></Link> : <span />}</section>

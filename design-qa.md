@@ -11,6 +11,7 @@
 - Mobile viewport: 390 × 844 CSS px, device scale factor 1; full-page capture 390 × 2057.
 - Profile implementation: `C:\Users\ISICIO\Documents\ChatGPT\MAGINA V20\artifacts\visual-premium-pass-2\profile-390.jpg` and `profile-1440.jpg`.
 - Admin implementation: `C:\Users\ISICIO\Documents\ChatGPT\MAGINA V20\artifacts\visual-premium-pass-2\admin-390.jpg` and `admin-1440.jpg`.
+- Icon-system implementation: `C:\Users\ISICIO\Documents\ChatGPT\MAGINA V20\artifacts\visual-premium-pass-2\icons-explore-390.jpg` and `icons-farm-390.jpg`.
 - Combined comparison evidence: `C:\Users\ISICIO\Documents\ChatGPT\MAGINA V20\artifacts\visual-premium-pass-2\reference-profile-comparison.jpg` (1440 × 500) and `mobile-profile-admin-comparison.jpg` (780 × 844).
 - Second-pass CSS viewports: 390 × 844 and 1440 × 1000 CSS px, device scale factor 1; captures were normalized to those viewport dimensions.
 - State: public fallback state with the local API unavailable. No mock farm, user, weather, campaign, or market values were introduced.
@@ -27,6 +28,7 @@ No actionable P0, P1, or P2 discrepancy remains.
 - Image quality: existing generated Sierra Mágina photography supplies the correct subject, crop, depth, and rural-premium direction. The supplied official logo is used as a transparent raster lockup in the header and as source for the PWA icons. No placeholder, emoji, CSS illustration, or fake image substitutes remain in the compared surfaces.
 - Copy and content: the hero copy follows the supplied reference. Operational cards keep repository-backed states rather than copying the fictional “Ana Torres”, “Finca Los Llanos”, weather, price, or harvest values from the mockup.
 - Icons and interactions: the repository icon set remains consistent; desktop navigation has active, hover, keyboard-focus, and 44 px target behavior. Mobile dock and primary CTAs remain functional.
+- Icon system: the former hand-drawn monoline set has been replaced by one SSR-safe duotone family. Navigation, weather, location, actions and the principal agricultural modules now have richer silhouettes, controlled optical weight, semantic color frames, hover treatment, and reduced-motion coverage. Major Finca and Mi Campo emoji/symbol substitutes were removed.
 - Accessibility and responsiveness: navigation semantics, current-page state, reduced motion, focus visibility, mobile touch targets, zoom-safe text, and overflow protections remain intact.
 - Profile: the personal area now has a photographic territorial identity, legible identity chips, an asymmetric desktop settings grid, stronger progress treatment, and differentiated Mi Olivo/professional cards without changing account state.
 - Admin: protected entry, classic control center, operational console, analytics, web editor, territory, media, sources, plans, agenda, work, documents, and professional consoles now share the same surface, focus, metric, form, table, and navigation language. The access gate remains deliberately honest when no authorized session is available.
@@ -41,6 +43,8 @@ No actionable P0, P1, or P2 discrepancy remains.
 6. P2 — Profile identity chips inherited dark text against a dark translucent background. Corrected the contrast and visually rechecked at 390 px.
 7. P2 — The persistent Admin shortcut bar covered the lower portion of the mobile access card. Reserved bottom space, centered the gate, and fixed the shortcut dock within the safe viewport. The 360/390/430 navigation coverage tests pass after the fix.
 8. Post-fix evidence — combined reference/Profile and mobile Profile/Admin comparisons show no remaining P0/P1/P2 visual issue. The full responsive suite passes 115/115 across 360, 390, 430, 768, 1024, 1280, 1440, and 1920 px.
+9. P2 — Navigation and agricultural modules depended on nine very simple monoline SVGs plus emoji/symbol fallbacks. Replaced the shared core with Phosphor duotone SSR icons, added domain-specific symbols, and visually rechecked Explorar and Finca at 390 px.
+10. Post-fix evidence — icon silhouettes remain legible at mobile navigation size and gain depth at card size. Typecheck, production build, bundle budget, and the complete 115-test responsive matrix pass after the replacement.
 
 ## Follow-up polish
 
