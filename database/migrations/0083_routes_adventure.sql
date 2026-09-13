@@ -57,11 +57,9 @@ CREATE TABLE route_adventure_runs (
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','completed','abandoned')),
   score INTEGER NOT NULL DEFAULT 0 CHECK (score >= 0),
   last_distance_m NUMERIC(12,2) CHECK (last_distance_m IS NULL OR last_distance_m >= 0),
-  last_location geometry(Point, 4326),
   started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CHECK (last_location IS NULL OR ST_SRID(last_location) = 4326),
   CHECK ((status = 'completed' AND completed_at IS NOT NULL) OR status <> 'completed')
 );
 
@@ -80,10 +78,8 @@ CREATE TABLE route_adventure_unlocks (
   answer_key TEXT,
   is_correct BOOLEAN,
   awarded_points INTEGER NOT NULL DEFAULT 0 CHECK (awarded_points >= 0),
-  observed_location geometry(Point, 4326),
   distance_to_checkpoint_m NUMERIC(12,2) CHECK (distance_to_checkpoint_m IS NULL OR distance_to_checkpoint_m >= 0),
-  PRIMARY KEY (run_id, checkpoint_id),
-  CHECK (observed_location IS NULL OR ST_SRID(observed_location) = 4326)
+  PRIMARY KEY (run_id, checkpoint_id)
 );
 
 CREATE INDEX route_adventure_unlocks_checkpoint_idx
@@ -92,5 +88,6 @@ CREATE INDEX route_adventure_unlocks_checkpoint_idx
 COMMENT ON TABLE route_adventures IS 'Optional gamified layer for a validated published route. It never replaces technical navigation or official safety information.';
 COMMENT ON TABLE route_adventure_checkpoints IS 'Geolocated adventure checkpoints; answers and unlocks are validated by the API. Public payloads must never expose correct_answer_key.';
 COMMENT ON TABLE route_adventure_runs IS 'User game sessions kept separate from route_completions so game progress cannot be mistaken for verified physical completion.';
+COMMENT ON TABLE route_adventure_unlocks IS 'Stores checkpoint result and proximity distance only; the user GPS coordinate used for validation is not retained.';
 
 COMMIT;
