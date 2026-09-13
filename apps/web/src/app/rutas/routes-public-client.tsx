@@ -56,7 +56,7 @@ export function RoutesPublicClient() {
     {!loading && error ? <section className={styles.state}><h2>Rutas no disponibles</h2><p>No mostramos rutas de sustitución inventadas. Vuelve a intentarlo más tarde.</p></section> : null}
     {!loading && !error && visible.length === 0 ? <section className={styles.state}><h2>No hay rutas publicadas</h2><p>Cuando una ruta termine su validación aparecerá aquí.</p></section> : null}
 
-    {!loading && !error && visible.length > 0 ? <section className={styles.grid}>{visible.map((route) => <Link className={styles.card} href={`/rutas/${route.slug}`} key={route.id}>
+    {!loading && !error && visible.length > 0 ? <section className={styles.grid}>{visible.map((route) => <Link className={styles.card} href={`/rutas/detalle?slug=${encodeURIComponent(route.slug)}`} key={route.id}>
       <div className={styles.image}>{route.hero_url ? <img src={route.hero_url} alt="" /> : <span>Track validado</span>}</div>
       <div className={styles.cardBody}>
         <div className={styles.meta}><span>{route.place_name ?? route.municipality_name ?? 'Sierra Mágina'}</span><span>{route.route_type}</span></div>
