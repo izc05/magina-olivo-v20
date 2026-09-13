@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const migration = fs.readFileSync(new URL('../database/migrations/0061_municipalities_directory.sql', import.meta.url), 'utf8');
+const tourismMigration = fs.readFileSync(new URL('../database/migrations/0062_municipality_tourism_urls.sql', import.meta.url), 'utf8');
 const publicApi = fs.readFileSync(new URL('../apps/api/src/routes/territory.ts', import.meta.url), 'utf8');
 const adminApi = fs.readFileSync(new URL('../apps/api/src/routes/admin-territory.ts', import.meta.url), 'utf8');
 const explore = fs.readFileSync(new URL('../apps/web/src/app/explorar/explore-public-client.tsx', import.meta.url), 'utf8');
@@ -30,16 +31,41 @@ const expected = [
   ['23090','Torres','https://www.ayuntamientodetorres.com/'],
 ];
 
+const expectedTourism = [
+  ['23001','https://www.albanchezdemagina.es/turismo/'],
+  ['23902','https://www.bedmargarciez.es/turismo/servicios-turisticos/'],
+  ['23015','https://www.belmezdelamoraleda.es/turismo/servicios-turisticos/'],
+  ['23018','https://cambil-arbuniel.es/turismo/'],
+  ['23019','https://www.campillodearenas.es/turismo/servicios-turisticos/'],
+  ['23901','https://www.carcheles.es/turismo/'],
+  ['23038','https://laguardiadejaen.com/tu-ciudad/informacion-turistica/'],
+  ['23052','https://jimenaturismo.grupofortalezas.com/'],
+  ['23053','https://www.jodar.es/turismo/'],
+  ['23054','https://www.larva.es/turismo/'],
+  ['23058','https://mancharealturismo.es/'],
+  ['23064','https://www.noalejo.es/turismo/'],
+  ['23067','https://ayto-pegalajar.org/descubre-pegalajar/'],
+  ['23090','https://www.torresturismo.es/'],
+];
+
 for (const [ine, name, website] of expected) {
   if (!migration.includes(`'${ine}'`) || !migration.includes(`'${name}'`) || !migration.includes(`'${website}'`)) {
     throw new Error(`Missing canonical municipality seed: ${ine} ${name}`);
   }
 }
 
+for (const [ine, url] of expectedTourism) {
+  if (!tourismMigration.includes(`'${ine}'`) || !tourismMigration.includes(`'${url}'`)) {
+    throw new Error(`Missing verified tourism URL seed: ${ine} ${url}`);
+  }
+}
+if (expectedTourism.length !== 14) throw new Error(`Expected 14 verified tourism URL seeds, got ${expectedTourism.length}`);
+if (!tourismMigration.includes('Cabra del Santo Cristo and Huelma intentionally remain NULL')) throw new Error('Tourism migration must document intentionally unverified municipalities');
+
 const uniqueCodes = new Set(expected.map(([ine]) => ine));
 if (uniqueCodes.size !== 16) throw new Error(`Expected 16 unique INE codes, got ${uniqueCodes.size}`);
 if (!migration.includes('territory_municipality_directory')) throw new Error('Directory table is missing');
-if (!migration.includes("DATE '2026-09-13'")) throw new Error('Verification date is missing');
+if (!migration.includes("DATE '2026-09-13'") || !tourismMigration.includes("DATE '2026-09-13'")) throw new Error('Verification date is missing');
 if (!publicApi.includes('/api/v1/public/territory/municipalities')) throw new Error('Public municipality collection endpoint is missing');
 if (!publicApi.includes('/api/v1/public/territory/municipalities/:slug')) throw new Error('Public municipality detail endpoint is missing');
 if (!publicApi.includes("c.content_json->>'municipality_id' = m.id::text")) throw new Error('Municipality CMS aggregation must use the explicit canonical municipality link');
@@ -76,4 +102,4 @@ if (!coverageAdmin.includes("entry.status !== 'published'")) throw new Error('Co
 if (!coverageAdmin.includes('entry.starts_at') || !coverageAdmin.includes('entry.ends_at')) throw new Error('Coverage dashboard must respect CMS publication windows');
 if (!coverageAdmin.includes('Solo con huecos')) throw new Error('Coverage dashboard must allow filtering incomplete municipalities');
 
-console.log('Municipality directory contract OK: 16 canonical municipalities, public/admin API, CMS hub aggregation, explicit news/event administration, heritage-tourism taxonomy and ten-signal coverage dashboard.');
+console.log('Municipality directory contract OK: 16 canonical municipalities, 14 verified tourism URLs, public/admin API, CMS hub aggregation, explicit news/event administration, heritage-tourism taxonomy and ten-signal coverage dashboard.');
