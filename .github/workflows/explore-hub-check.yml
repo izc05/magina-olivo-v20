@@ -1,0 +1,199 @@
+name: V20 explore hub check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/api/src/routes/routes-explore.ts'
+      - 'apps/api/src/routes/business-**'
+      - 'apps/api/src/routes/admin-business-**'
+      - 'apps/api/src/domain/business-directory.ts'
+      - 'apps/api/src/app.ts'
+      - 'apps/web/src/app/rutas/**'
+      - 'apps/web/src/app/empresas/**'
+      - 'apps/web/src/app/explorar/**'
+      - 'apps/web/src/components/business-**'
+      - 'apps/web/src/lib/business-**'
+      - 'apps/web/src/lib/public-routes-source.ts'
+      - 'database/migrations/007*.sql'
+      - 'database/migrations/008*.sql'
+      - '.github/workflows/explore-hub-check.yml'
+
+concurrency:
+  group: explore-hub-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+
+      - name: Typecheck integrated API and web
+        run: |
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/web typecheck
+
+      - name: Build integrated API and web
+        run: |
+          pnpm --filter @magina/api build
+          pnpm --filter @magina/web build
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      - name: Apply all migrations together
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Seed route and contextual business fixtures
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            municipality_uuid uuid;
+            place_uuid uuid;
+          BEGIN
+            SELECT id INTO municipality_uuid FROM territory_municipalities ORDER BY name LIMIT 1;
+            SELECT id INTO place_uuid FROM territory_places WHERE municipality_id = municipality_uuid ORDER BY name LIMIT 1;
+
+            INSERT INTO routes (
+              id, slug, name, municipality_id, place_id, route_type, short_description,
+              distance_m, duration_minutes, elevation_gain_m, difficulty,
+              status, validation_status, track_status, published_at
+            ) VALUES (
+              '81000000-0000-4000-8000-000000000001', 'ruta-explore-ci', 'Ruta Explore CI',
+              municipality_uuid, place_uuid, 'hiking', 'Ruta para validar la integración territorial.',
+              1200, 35, 80, 'easy', 'published', 'editorial', 'validated', now()
+            );
+
+            INSERT INTO route_tracks (
+              id, route_id, version, geometry, geometry_type, original_format,
+              distance_m, source_name, validation_status, validated_at
+            ) VALUES (
+              '81000000-0000-4000-8000-000000000002',
+              '81000000-0000-4000-8000-000000000001', 1,
+              ST_GeomFromText('LINESTRING(-3.5000 37.7000,-3.4900 37.7100)', 4326),
+              'LineString', 'manual', 1200, 'Fixture CI', 'validated', now()
+            );
+
+            INSERT INTO businesses (
+              id, slug, name, short_description, municipality_id, place_id, address, location,
+              phone, whatsapp, website, verification_status, status, commercial_plan,
+              featured, sponsored, priority, published_at
+            ) VALUES
+              ('82000000-0000-4000-8000-000000000001', 'restaurante-cerca-ci', 'Restaurante Cerca CI',
+               'Negocio orgánico geolocalizado.', municipality_uuid, place_uuid, 'Sierra Mágina',
+               ST_SetSRID(ST_MakePoint(-3.4990, 37.7007), 4326), '+34953000001', '+34600000001',
+               'https://example.com/organic', 'verified', 'published', 'free', false, false, 1, now()),
+              ('82000000-0000-4000-8000-000000000002', 'alojamiento-patrocinado-ci', 'Alojamiento Patrocinado CI',
+               'Negocio patrocinado geolocalizado.', municipality_uuid, place_uuid, 'Sierra Mágina',
+               ST_SetSRID(ST_MakePoint(-3.4970, 37.7020), 4326), '+34953000002', null,
+               'https://example.com/sponsor', 'verified', 'published', 'sponsor', false, true, 20, now()),
+              ('82000000-0000-4000-8000-000000000003', 'servicio-municipio-ci', 'Servicio Municipio CI',
+               'Negocio del municipio sin coordenadas.', municipality_uuid, null, 'Sierra Mágina',
+               null, null, null, null, 'unverified', 'published', 'free', false, false, 0, now()),
+              ('82000000-0000-4000-8000-000000000004', 'borrador-cerca-ci', 'Borrador Cerca CI',
+               'No debe ser público.', municipality_uuid, place_uuid, 'Sierra Mágina',
+               ST_SetSRID(ST_MakePoint(-3.4995, 37.7003), 4326), null, null, null,
+               'unverified', 'draft', 'free', false, false, 99, null);
+
+            INSERT INTO business_category_links (business_id, category_id, is_primary)
+            SELECT '82000000-0000-4000-8000-000000000001', id, true FROM business_categories WHERE slug = 'restauracion';
+            INSERT INTO business_category_links (business_id, category_id, is_primary)
+            SELECT '82000000-0000-4000-8000-000000000002', id, true FROM business_categories WHERE slug = 'alojamientos';
+            INSERT INTO business_category_links (business_id, category_id, is_primary)
+            SELECT '82000000-0000-4000-8000-000000000003', id, true FROM business_categories WHERE slug = 'servicios-profesionales';
+          END $$;
+          SQL
+
+      - name: Route x business x territory smoke test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+        run: |
+          node apps/api/dist/server.js >/tmp/magina-explore-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill ${API_PID} || true; cat /tmp/magina-explore-api.log' EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3001/health >/dev/null; then break; fi
+            sleep 1
+          done
+
+          DETAIL=$(curl -fsS http://127.0.0.1:3001/api/v1/public/routes/ruta-explore-ci)
+          DETAIL="${DETAIL}" node <<'NODE'
+          const detail = JSON.parse(process.env.DETAIL);
+          if (detail.route?.slug !== 'ruta-explore-ci') throw new Error('Integrated route detail unavailable');
+          if (Number(detail.route?.distance_m) !== 1200) throw new Error('Route technical distance was modified by commercial integration');
+
+          const nearby = detail.nearbyBusinesses;
+          if (!nearby || !Array.isArray(nearby.organic) || !Array.isArray(nearby.sponsored)) throw new Error('Nearby business payload unavailable');
+
+          const organic = nearby.organic.find((item) => item.slug === 'restaurante-cerca-ci');
+          if (!organic) throw new Error('Spatial organic business missing');
+          if (organic.distanceBasis !== 'spatial' || !(organic.distanceMeters >= 0)) throw new Error('True track distance missing');
+          if (organic.placement?.sponsored) throw new Error('Organic business incorrectly sponsored');
+
+          const sponsor = nearby.sponsored.find((item) => item.slug === 'alojamiento-patrocinado-ci');
+          if (!sponsor) throw new Error('Sponsored business missing');
+          if (sponsor.placement?.label !== 'Patrocinado' || sponsor.placement?.sponsored !== true) throw new Error('Sponsored disclosure missing');
+          if (nearby.organic.some((item) => item.slug === 'alojamiento-patrocinado-ci')) throw new Error('Sponsored business leaked into organic results');
+
+          const municipalityFallback = nearby.organic.find((item) => item.slug === 'servicio-municipio-ci');
+          if (!municipalityFallback) throw new Error('Same-municipality fallback missing');
+          if (municipalityFallback.distanceBasis !== 'same_municipality') throw new Error('Territorial fallback basis incorrect');
+          if (municipalityFallback.distanceMeters !== null) throw new Error('Fallback invented a distance without geometry');
+
+          const all = [...nearby.organic, ...nearby.sponsored];
+          if (all.some((item) => item.slug === 'borrador-cerca-ci')) throw new Error('Draft business exposed publicly');
+          if (!nearby.distanceNote?.includes('no representa distancia por carretera')) throw new Error('Distance methodology disclosure missing');
+          if (!nearby.disclosure?.includes('no modifican los datos técnicos')) throw new Error('Commercial independence disclosure missing');
+          NODE
