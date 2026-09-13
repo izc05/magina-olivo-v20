@@ -6,6 +6,7 @@ CREATE TABLE route_adventures (
   title TEXT NOT NULL DEFAULT 'Modo Aventura',
   intro TEXT,
   completion_message TEXT,
+  progression_mode TEXT NOT NULL DEFAULT 'free' CHECK (progression_mode IN ('free','linear')),
   created_by UUID REFERENCES users(id) ON DELETE SET NULL,
   updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -125,7 +126,7 @@ CREATE TRIGGER route_adventures_publish_ready_trg
   BEFORE INSERT OR UPDATE OF enabled, route_id ON route_adventures
   FOR EACH ROW EXECUTE FUNCTION enforce_route_adventure_publish_ready();
 
-COMMENT ON TABLE route_adventures IS 'Optional gamified layer for a validated published route. It never replaces technical navigation or official safety information.';
+COMMENT ON TABLE route_adventures IS 'Optional gamified layer for a validated published route. progression_mode free allows any checkpoint order; linear requires previous mandatory stages.';
 COMMENT ON TABLE route_adventure_checkpoints IS 'Geolocated adventure checkpoints; answers and unlocks are validated by the API. Public payloads must never expose correct_answer_key.';
 COMMENT ON INDEX route_adventure_checkpoints_route_point_unique_idx IS 'A real route POI can seed at most one adventure checkpoint per route, making bulk POI import idempotent.';
 COMMENT ON FUNCTION enforce_route_adventure_publish_ready() IS 'Prevents enabling an adventure unless its route is published, has a real validated track, and has at least one active required checkpoint.';
