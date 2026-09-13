@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "audited_at": "2026-09-13",
   "scope": "Non-destructive technical enrichment for the 17-route Junta core catalog",
   "policy": {
@@ -10,9 +10,9 @@
   },
   "overrides": [
     {"slug":"el-peralejo","distance_m_approx":2300,"difficulty":"easy","documentation_level":"partial_official","documented":true,"verified_at":"2026-09-13"},
-    {"slug":"gibralberca","distance_m":5653,"duration_minutes":120,"difficulty":"moderate","circular":true,"road_type":"track","shade_level":"medium","documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
-    {"slug":"la-cueva-de-la-graja","distance_m_approx":600,"difficulty":"moderate","official_kml_available":true,"documentation_level":"partial_official","documented":true,"verified_at":"2026-09-13"},
-    {"slug":"pinar-de-canava","distance_m_approx":2400,"difficulty":"hard","official_kml_available":true,"official_gml_available":true,"documentation_level":"partial_official","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"gibralberca","distance_m":5653,"duration_minutes":120,"difficulty":"moderate","circular":true,"road_type":"track","shade_level":"medium","official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"la-cueva-de-la-graja","distance_m":575,"duration_minutes":30,"difficulty":"moderate","circular":false,"official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"pinar-de-canava","distance_m":2350,"duration_minutes":60,"difficulty":"hard","circular":false,"official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
     {"slug":"puerto-de-la-mata","distance_m":13170,"duration_minutes":290,"difficulty":"moderate","circular":false,"road_type":"track","shade_level":"medium","documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
     {"slug":"sierra-de-la-cruz","distance_m_approx":7300,"difficulty":"moderate","documentation_level":"partial_official","documented":true,"verified_at":"2026-09-13"},
     {"slug":"subida-a-pico-magina-y-miramundos","distance_m":14773,"duration_minutes":300,"difficulty":"hard","circular":false,"official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
