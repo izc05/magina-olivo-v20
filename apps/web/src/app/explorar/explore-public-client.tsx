@@ -16,7 +16,7 @@ const areas = [
   { icon: HomeIcon, title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
   { icon: MoreIcon, title: 'Servicios', text: 'Negocios y profesionales con patrocinio claramente identificado.', href: '/servicios', badge: 'Disponible' },
   { icon: SproutIcon, title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
-  { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Contenidos territoriales y oleoturismo.', href: null, badge: 'En preparación' },
+  { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Rutas con track GPX validado, desnivel y fuentes trazables.', href: '/rutas', badge: 'Disponible' },
 ] as const;
 
 function placeKindLabel(kind: string) {
@@ -85,7 +85,7 @@ export function ExplorePublicClient() {
     </section>
 
     <section className="section">
-      <div className={styles.sectionIntro}><div><h2>Explorar por temas</h2></div><p>Accede a las áreas públicas que ya están disponibles en V20. Los módulos que todavía no tienen una fuente verificada permanecen claramente marcados como pendientes.</p></div>
+      <div className={styles.sectionIntro}><div><h2>Explorar por temas</h2></div><p>Accede a las áreas públicas disponibles en V20. Cada módulo mantiene sus propias reglas de verificación y procedencia.</p></div>
       <div className={styles.areaGrid}>
         {areas.map((area) => {
           const AreaIcon = area.icon;
