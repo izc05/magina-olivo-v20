@@ -69,6 +69,8 @@ export type PublicRouteCommunity = {
 };
 
 export type RouteAdventureAnswerOption = { key: string; label: string };
+export type AdventureCollectionCategory = 'flora' | 'fauna' | 'heritage' | 'olive_culture' | 'tradition' | 'landscape';
+export type AdventureRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 
 export type RouteAdventureCheckpoint = {
   id: string;
@@ -76,6 +78,8 @@ export type RouteAdventureCheckpoint = {
   title: string;
   description: string | null;
   kind: 'landmark' | 'trivia' | 'observation' | 'photo' | 'collection' | 'rest';
+  collection_category: AdventureCollectionCategory | null;
+  rarity: AdventureRarity;
   distance_m: number | string | null;
   unlock_radius_m: number;
   points: number;
@@ -91,7 +95,7 @@ export type RouteAdventureCheckpoint = {
 export type PublicRouteAdventure = {
   enabled: boolean;
   route: { id: string; slug: string; name: string };
-  adventure: null | { title: string; intro: string | null; completion_message: string | null };
+  adventure: null | { title: string; intro: string | null; completion_message: string | null; progression_mode: 'free' | 'linear' };
   checkpoints: RouteAdventureCheckpoint[];
   notice?: string;
 };
@@ -129,6 +133,12 @@ export type ExplorerProfile = {
   };
   collections: Array<{
     kind: RouteAdventureCheckpoint['kind'];
+    available: number;
+    unlocked: number;
+  }>;
+  album: Array<{
+    category: AdventureCollectionCategory;
+    rarity: AdventureRarity;
     available: number;
     unlocked: number;
   }>;
@@ -193,6 +203,8 @@ export type RouteAdventureProgress = {
     distance_to_checkpoint_m: number | string | null;
     title: string;
     kind: string;
+    collection_category: AdventureCollectionCategory | null;
+    rarity: AdventureRarity;
     is_required: boolean;
   }>;
   badges: string[];
