@@ -6,6 +6,7 @@ import { loadPublicRoute, type PublicRouteDetail } from '../../../lib/public-rou
 import { RouteMap } from './route-map';
 import { RouteCommunityPanel } from './route-community-panel';
 import { RouteElevationProfile } from './route-elevation-profile';
+import { RouteExperience } from './route-experience';
 import styles from '../routes-public.module.css';
 
 function km(value: number | null) { return value === null ? '—' : `${(value / 1000).toFixed(1)} km`; }
@@ -24,11 +25,7 @@ export function RouteDetailClient() {
   useEffect(() => {
     const nextSlug = new URLSearchParams(window.location.search).get('slug');
     setSlug(nextSlug);
-    if (!nextSlug) {
-      setError(true);
-      setLoading(false);
-      return;
-    }
+    if (!nextSlug) { setError(true); setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
     loadPublicRoute(nextSlug)
@@ -56,9 +53,7 @@ export function RouteDetailClient() {
           <article><span>Altitud</span><strong>{route.min_altitude_m ?? '—'}–{route.max_altitude_m ?? '—'} m</strong></article>
         </div>
       </article>
-      <article className={styles.mapCard} aria-label="Mapa inteligente del trazado de la ruta">
-        <RouteMap detail={detail} />
-      </article>
+      <article className={styles.mapCard} aria-label="Mapa inteligente del trazado de la ruta"><RouteMap detail={detail} /></article>
     </section>
 
     <RouteElevationProfile samples={detail.elevation} />
@@ -69,6 +64,7 @@ export function RouteDetailClient() {
       <article className={styles.infoCard}><h2>Fuentes oficiales y editoriales</h2>{detail.sources.length ? <ul className={styles.sourceList}>{detail.sources.map((source, index) => <li key={String(source.id ?? index)}>{typeof source.source_url === 'string' ? <a href={source.source_url} target="_blank" rel="noreferrer">{String(source.source_name ?? 'Fuente')}</a> : String(source.source_name ?? 'Fuente')}</li>)}</ul> : <p>La ficha no publica fuentes adicionales.</p>}</article>
     </section>
 
+    <RouteExperience detail={detail} />
     <RouteCommunityPanel routeId={route.id} slug={slug} />
   </main>;
 }
