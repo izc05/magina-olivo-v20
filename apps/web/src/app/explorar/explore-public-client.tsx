@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { CompassIcon, HomeIcon, MapPinIcon, MoreIcon, PlusIcon, RainIcon, SproutIcon } from '@/components/icons';
+import { CompassIcon, HomeIcon, MapPinIcon, DirectoryIcon, EventIcon, NewsIcon, PromotionIcon, RainIcon, SproutIcon } from '@/components/icons';
 import {
   loadPublicTerritoryPlaces,
   type PublicTerritoryPlace,
@@ -10,14 +10,16 @@ import {
 import styles from './explore-public.module.css';
 
 const areas = [
-  { icon: CompassIcon, title: 'Noticias', text: 'Actualidad local con fuente y fecha verificadas.', href: '/noticias', badge: 'Disponible' },
-  { icon: PlusIcon, title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
+  { icon: NewsIcon, title: 'Noticias', text: 'Actualidad local con fuente y fecha verificadas.', href: '/noticias', badge: 'Disponible' },
+  { icon: EventIcon, title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
   { icon: HomeIcon, title: 'Ayuntamientos', text: 'Webs oficiales, contacto y sedes institucionales de Sierra Mágina.', href: '/ayuntamientos', badge: '16 municipios' },
   { icon: SproutIcon, title: 'Aceite y mercado', text: 'Precios y campaña manteniendo siempre fuente, unidad y fecha.', href: '/mercado', badge: 'Disponible' },
   { icon: HomeIcon, title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
-  { icon: MoreIcon, title: 'Empresas y servicios', text: 'Directorio territorial con mapa, categorías, fichas verificables y patrocinio siempre identificado.', href: '/explorar/empresas', badge: 'Disponible' },
+  { icon: DirectoryIcon, title: 'Empresas y servicios', text: 'Encuentra comercios, profesionales y servicios cerca de ti.', href: '/explorar/empresas', badge: 'Directorio local' },
   { icon: SproutIcon, title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
-  { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Rutas con track GPX validado, desnivel, comunidad moderada y fuentes trazables.', href: '/rutas', badge: 'Disponible' },
+  { icon: CompassIcon, title: 'Rutas y aventuras', text: 'Descubre senderos y explora sus puntos de interés. Modo Aventura en las rutas habilitadas.', href: '/rutas', badge: 'Explora a pie' },
+  { icon: EventIcon, title: 'Experiencias', text: 'Catas de aceite, visitas, talleres y actividades para conocer Mágina.', href: '/experiencias', badge: 'Descubre y reserva' },
+  { icon: PromotionIcon, title: 'Mágina Pass', text: 'Tu pasaporte para descubrir negocios participantes y consultar sus recompensas.', href: '/magina-pass', badge: 'Pasaporte local' },
 ] as const;
 
 function placeKindLabel(kind: string) {
@@ -63,7 +65,7 @@ export function ExplorePublicClient() {
   return <>
     <section className={`explore-hero ${styles.hero}`}>
       <div className={styles.heroTop}>
-        <div><span className="eyebrow">DESCUBRE EL TERRITORIO</span><h1>Sierra Mágina,<br/>en tu mano</h1><p>Explora el territorio público sin mezclarlo con la ubicación ni los datos privados de tus fincas.</p></div>
+        <div><span className="eyebrow">DESCUBRE EL TERRITORIO</span><h1>Sierra Mágina,<br/>en tu mano</h1><p>Pueblos con historia, caminos entre olivos y experiencias para vivir lo nuestro.</p></div>
         <span className={styles.contextPill}><MapPinIcon/> Sierra Mágina · Jaén</span>
       </div>
       <label>
