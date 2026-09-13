@@ -7,6 +7,7 @@ const explore = fs.readFileSync(new URL('../apps/web/src/app/explorar/explore-pu
 const municipalityDetail = fs.readFileSync(new URL('../apps/web/src/app/ayuntamientos/[slug]/municipality-detail-client.tsx', import.meta.url), 'utf8');
 const publicSource = fs.readFileSync(new URL('../apps/web/src/lib/public-territory-source.ts', import.meta.url), 'utf8');
 const currentAffairsAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/actualidad/page.tsx', import.meta.url), 'utf8');
+const heritageAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/patrimonio/page.tsx', import.meta.url), 'utf8');
 const municipalitiesAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/page.tsx', import.meta.url), 'utf8');
 const coverageAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/cobertura/page.tsx', import.meta.url), 'utf8');
 
@@ -48,16 +49,26 @@ if (!adminApi.includes('/api/v1/admin/territory/municipalities/:id/directory')) 
 if (!adminApi.includes('territory.municipality_directory_changed')) throw new Error('Admin audit event is missing');
 if (!explore.includes("href: '/ayuntamientos'")) throw new Error('Explore does not link the municipality directory');
 if (!publicSource.includes('related_content') || !publicSource.includes('content_counts')) throw new Error('Public municipality client contract is incomplete');
-for (const section of ['Descubre el municipio', 'Ayuntamiento', 'Olivar y economía local', 'Actualidad local']) {
+for (const section of ['Descubre el municipio', 'Patrimonio, naturaleza y lugares para descubrir', 'Ayuntamiento', 'Olivar y economía local', 'Actualidad local']) {
   if (!municipalityDetail.includes(section)) throw new Error(`Municipality detail is missing section: ${section}`);
+}
+if (!municipalityDetail.includes("municipalityRole(entry) === 'profile'")) throw new Error('Municipality profile must prefer an explicitly classified profile entry');
+for (const role of ['heritage', 'nature', 'tourism']) {
+  if (!municipalityDetail.includes(`'${role}'`)) throw new Error(`Municipality detail is missing discovery role: ${role}`);
 }
 if (!municipalityDetail.includes('No mostramos contenido por coincidencias de texto')) throw new Error('Municipality detail must document explicit-only news/event linkage');
 if (!municipalitiesAdmin.includes('/admin/ayuntamientos/actualidad')) throw new Error('Municipality admin must expose the current-affairs linker');
 if (!municipalitiesAdmin.includes('/admin/ayuntamientos/cobertura')) throw new Error('Municipality admin must expose the coverage dashboard');
+if (!municipalitiesAdmin.includes('/admin/ayuntamientos/patrimonio')) throw new Error('Municipality admin must expose heritage and tourism administration');
 if (!municipalitiesAdmin.includes('window.location.hash')) throw new Error('Municipality admin must support direct municipality anchors');
 if (!currentAffairsAdmin.includes("entry.type === 'news' || entry.type === 'event'")) throw new Error('Current-affairs linker must be restricted to news/events');
 if (!currentAffairsAdmin.includes('municipality_id') || !currentAffairsAdmin.includes('municipality_name') || !currentAffairsAdmin.includes('municipality_slug')) throw new Error('Current-affairs linker must persist the canonical municipality identity');
 if (!currentAffairsAdmin.includes('Ámbito general')) throw new Error('Current-affairs linker must support removing the municipality relation');
+if (!heritageAdmin.includes("entry.type === 'place'")) throw new Error('Heritage administration must reuse CMS place entries');
+for (const role of ['profile', 'heritage', 'nature', 'tourism']) {
+  if (!heritageAdmin.includes(`'${role}'`)) throw new Error(`Heritage administration is missing municipality_role: ${role}`);
+}
+if (!heritageAdmin.includes('municipality_id') || !heritageAdmin.includes('municipality_role')) throw new Error('Heritage administration must persist explicit municipality identity and role');
 for (const signal of ['Ficha pública', 'Web oficial', 'Teléfono', 'Email', 'Dirección', 'Sede / transparencia / turismo', 'Localidades públicas', 'Perfil editorial', 'Cooperativas / empresas', 'Noticias / eventos']) {
   if (!coverageAdmin.includes(signal)) throw new Error(`Coverage dashboard is missing signal: ${signal}`);
 }
@@ -65,4 +76,4 @@ if (!coverageAdmin.includes("entry.status !== 'published'")) throw new Error('Co
 if (!coverageAdmin.includes('entry.starts_at') || !coverageAdmin.includes('entry.ends_at')) throw new Error('Coverage dashboard must respect CMS publication windows');
 if (!coverageAdmin.includes('Solo con huecos')) throw new Error('Coverage dashboard must allow filtering incomplete municipalities');
 
-console.log('Municipality directory contract OK: 16 canonical municipalities, public/admin API, CMS hub aggregation, explicit news/event administration and ten-signal coverage dashboard.');
+console.log('Municipality directory contract OK: 16 canonical municipalities, public/admin API, CMS hub aggregation, explicit news/event administration, heritage-tourism taxonomy and ten-signal coverage dashboard.');
