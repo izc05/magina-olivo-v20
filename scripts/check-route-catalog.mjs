@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const catalogPath = path.resolve('data/routes/sierra-magina-master-catalog.json');
+const auditPath = path.resolve('data/routes/sierra-magina-municipality-audit.json');
 const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+const municipalityAudit = JSON.parse(fs.readFileSync(auditPath, 'utf8'));
 
 const errors = [];
 const warnings = [];
@@ -10,6 +12,7 @@ const warnings = [];
 const requiredMunicipalityCount = catalog?.completeness_policy?.municipalities_required ?? 16;
 const requiredOfficialCoreCount = catalog?.completeness_policy?.official_core_minimum ?? 17;
 const municipalities = Array.isArray(catalog.municipalities) ? catalog.municipalities : [];
+const auditedMunicipalities = Array.isArray(municipalityAudit.municipalities) ? municipalityAudit.municipalities : [];
 const routes = Array.isArray(catalog.routes) ? catalog.routes : [];
 
 if (municipalities.length !== requiredMunicipalityCount) {
@@ -19,6 +22,32 @@ if (municipalities.length !== requiredMunicipalityCount) {
 const normalizedMunicipalities = new Set(municipalities.map((name) => name.trim().toLowerCase()));
 if (normalizedMunicipalities.size !== municipalities.length) {
   errors.push('Municipality catalog contains duplicates.');
+}
+
+if (auditedMunicipalities.length !== requiredMunicipalityCount) {
+  errors.push(`Expected ${requiredMunicipalityCount} municipality audit rows, found ${auditedMunicipalities.length}.`);
+}
+
+const auditedNames = new Set();
+for (const row of auditedMunicipalities) {
+  const normalizedName = String(row.name ?? '').trim().toLowerCase();
+  if (!normalizedName || !row.status || !row.source_url) {
+    errors.push('Every municipality audit row requires name, status and source_url.');
+    continue;
+  }
+  if (!normalizedMunicipalities.has(normalizedName)) {
+    errors.push(`Municipality audit contains unknown municipality "${row.name}".`);
+  }
+  if (auditedNames.has(normalizedName)) {
+    errors.push(`Municipality audit contains duplicate municipality "${row.name}".`);
+  }
+  auditedNames.add(normalizedName);
+}
+
+for (const municipality of municipalities) {
+  if (!auditedNames.has(municipality.trim().toLowerCase())) {
+    errors.push(`Municipality has not been audited: ${municipality}.`);
+  }
 }
 
 const slugs = new Set();
@@ -68,6 +97,7 @@ if (officialCore.length < requiredOfficialCoreCount) {
 
 const covered = new Set(routes.flatMap((route) => route.municipalities ?? []).map((name) => name.trim().toLowerCase()));
 const coveragePercent = municipalities.length ? Math.round((covered.size / municipalities.length) * 100) : 0;
+const missingRouteCoverage = municipalities.filter((name) => !covered.has(name.trim().toLowerCase()));
 const documentedCount = routes.filter((route) => route.documented).length;
 const tracksFoundCount = routes.filter((route) => route.track_found).length;
 const validatedCount = routes.filter((route) => route.track_validated).length;
@@ -76,7 +106,9 @@ const publishableCount = routes.filter((route) => route.publishable).length;
 console.log('Sierra Mágina route catalog');
 console.log(`- routes: ${routes.length}`);
 console.log(`- official core: ${officialCore.length}/${requiredOfficialCoreCount}`);
-console.log(`- municipalities represented by current routes: ${covered.size}/${municipalities.length} (${coveragePercent}%)`);
+console.log(`- municipalities audited: ${auditedNames.size}/${municipalities.length}`);
+console.log(`- municipalities represented by current route records: ${covered.size}/${municipalities.length} (${coveragePercent}%)`);
+if (missingRouteCoverage.length) console.log(`- municipalities without a current route record: ${missingRouteCoverage.join(', ')}`);
 console.log(`- documented: ${documentedCount}/${routes.length}`);
 console.log(`- tracks found: ${tracksFoundCount}/${routes.length}`);
 console.log(`- validated tracks: ${validatedCount}/${routes.length}`);
