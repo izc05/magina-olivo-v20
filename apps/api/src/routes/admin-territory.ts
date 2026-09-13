@@ -6,10 +6,33 @@ import { auditAdminAction, requirePlatformAccess } from '../admin/access.js';
 import { parseBody } from '../http/helpers.js';
 
 const placeKindSchema = z.enum(['municipal_seat', 'locality', 'hamlet', 'other']);
+const officialLinkKindSchema = z.enum(['town_hall', 'electronic_office', 'transparency', 'tourism', 'other_official']);
+const httpUrlSchema = z.string().trim().url().refine((value) => value.startsWith('https://') || value.startsWith('http://'), 'http_url_required');
 
 const updatePlaceSchema = z.object({
   public_enabled: z.boolean().optional(),
   kind: placeKindSchema.optional(),
+}).refine((value) => Object.keys(value).length > 0, { message: 'at_least_one_change_required' });
+
+const createOfficialLinkSchema = z.object({
+  municipality_id: z.string().uuid(),
+  kind: officialLinkKindSchema,
+  label: z.string().trim().min(1).max(180),
+  url: httpUrlSchema,
+  source_url: httpUrlSchema.nullable().optional(),
+  verified: z.boolean().default(false),
+  active: z.boolean().default(true),
+  sort_order: z.number().int().min(-10000).max(10000).default(0),
+});
+
+const updateOfficialLinkSchema = z.object({
+  kind: officialLinkKindSchema.optional(),
+  label: z.string().trim().min(1).max(180).optional(),
+  url: httpUrlSchema.optional(),
+  source_url: httpUrlSchema.nullable().optional(),
+  verified: z.boolean().optional(),
+  active: z.boolean().optional(),
+  sort_order: z.number().int().min(-10000).max(10000).optional(),
 }).refine((value) => Object.keys(value).length > 0, { message: 'at_least_one_change_required' });
 
 type MunicipalityRow = {
@@ -41,6 +64,22 @@ type PlaceRow = {
   hero_asset_key: string | null;
   field_count: number;
   editorial_count: number;
+};
+
+type OfficialLinkRow = {
+  id: string;
+  municipality_id: string;
+  municipality_name: string;
+  municipality_slug: string;
+  kind: string;
+  label: string;
+  url: string;
+  source_url: string | null;
+  verified_at: Date | null;
+  active: boolean;
+  sort_order: number;
+  created_at: Date;
+  updated_at: Date;
 };
 
 async function territoryCatalog(database: DatabaseClient) {
@@ -75,11 +114,137 @@ async function territoryCatalog(database: DatabaseClient) {
   return { municipalities: municipalities.rows, places: places.rows };
 }
 
+async function officialLinks(database: DatabaseClient) {
+  const result = await sql<OfficialLinkRow>`
+    SELECT l.id, l.municipality_id, m.name AS municipality_name, m.slug AS municipality_slug,
+           l.kind, l.label, l.url, l.source_url, l.verified_at, l.active, l.sort_order,
+           l.created_at, l.updated_at
+    FROM territory_municipality_official_links l
+    JOIN territory_municipalities m ON m.id = l.municipality_id
+    ORDER BY m.name, l.sort_order, l.label
+  `.execute(database);
+  return result.rows;
+}
+
 export function registerAdminTerritoryRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/admin/territory/catalog', async (request, reply) => {
     const auth = await requirePlatformAccess(request, reply, db);
     if (!auth) return;
     return territoryCatalog(auth.database);
+  });
+
+  app.get('/api/v1/admin/territory/official-links', async (request, reply) => {
+    const auth = await requirePlatformAccess(request, reply, db);
+    if (!auth) return;
+    const catalog = await territoryCatalog(auth.database);
+    return { municipalities: catalog.municipalities, links: await officialLinks(auth.database) };
+  });
+
+  app.post('/api/v1/admin/territory/official-links', async (request, reply) => {
+    const auth = await requirePlatformAccess(request, reply, db, 'admin');
+    if (!auth) return;
+    const input = parseBody(createOfficialLinkSchema, request.body, reply);
+    if (!input) return;
+
+    const municipality = await sql<{ id: string; name: string }>`
+      SELECT id, name FROM territory_municipalities WHERE id = ${input.municipality_id} LIMIT 1
+    `.execute(auth.database);
+    if (!municipality.rows[0]) return reply.code(404).send({ error: 'municipality_not_found' });
+
+    const result = await sql<OfficialLinkRow>`
+      INSERT INTO territory_municipality_official_links (
+        municipality_id, kind, label, url, source_url, verified_at, active, sort_order
+      ) VALUES (
+        ${input.municipality_id}, ${input.kind}, ${input.label}, ${input.url}, ${input.source_url ?? null},
+        ${input.verified ? new Date() : null}, ${input.active}, ${input.sort_order}
+      )
+      RETURNING id, municipality_id,
+        ${municipality.rows[0].name}::text AS municipality_name,
+        (SELECT slug FROM territory_municipalities WHERE id = ${input.municipality_id}) AS municipality_slug,
+        kind, label, url, source_url, verified_at, active, sort_order, created_at, updated_at
+    `.execute(auth.database);
+    const link = result.rows[0];
+
+    await auditAdminAction(auth.database, auth.access, 'territory.official_link_created', 'territory_municipality_official_link', link.id, {
+      municipality_id: input.municipality_id,
+      kind: input.kind,
+      url: input.url,
+      verified: input.verified,
+    });
+    return reply.code(201).send({ link });
+  });
+
+  app.patch('/api/v1/admin/territory/official-links/:id', async (request, reply) => {
+    const auth = await requirePlatformAccess(request, reply, db, 'admin');
+    if (!auth) return;
+    const params = z.object({ id: z.string().uuid() }).safeParse(request.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_official_link_id' });
+    const input = parseBody(updateOfficialLinkSchema, request.body, reply);
+    if (!input) return;
+
+    const existingResult = await sql<OfficialLinkRow>`
+      SELECT l.id, l.municipality_id, m.name AS municipality_name, m.slug AS municipality_slug,
+             l.kind, l.label, l.url, l.source_url, l.verified_at, l.active, l.sort_order,
+             l.created_at, l.updated_at
+      FROM territory_municipality_official_links l
+      JOIN territory_municipalities m ON m.id = l.municipality_id
+      WHERE l.id = ${params.data.id}
+      LIMIT 1
+    `.execute(auth.database);
+    const existing = existingResult.rows[0];
+    if (!existing) return reply.code(404).send({ error: 'official_link_not_found' });
+
+    const verifiedAt = input.verified === undefined
+      ? existing.verified_at
+      : input.verified ? new Date() : null;
+    const result = await sql<OfficialLinkRow>`
+      UPDATE territory_municipality_official_links
+      SET kind = ${input.kind ?? existing.kind},
+          label = ${input.label ?? existing.label},
+          url = ${input.url ?? existing.url},
+          source_url = ${input.source_url === undefined ? existing.source_url : input.source_url},
+          verified_at = ${verifiedAt},
+          active = ${input.active ?? existing.active},
+          sort_order = ${input.sort_order ?? existing.sort_order},
+          updated_at = now()
+      WHERE id = ${existing.id}
+      RETURNING id, municipality_id,
+        ${existing.municipality_name}::text AS municipality_name,
+        ${existing.municipality_slug}::text AS municipality_slug,
+        kind, label, url, source_url, verified_at, active, sort_order, created_at, updated_at
+    `.execute(auth.database);
+    const link = result.rows[0];
+
+    await auditAdminAction(auth.database, auth.access, 'territory.official_link_updated', 'territory_municipality_official_link', existing.id, {
+      from: { kind: existing.kind, label: existing.label, url: existing.url, source_url: existing.source_url, verified_at: existing.verified_at, active: existing.active, sort_order: existing.sort_order },
+      to: { kind: link.kind, label: link.label, url: link.url, source_url: link.source_url, verified_at: link.verified_at, active: link.active, sort_order: link.sort_order },
+    });
+    return { link };
+  });
+
+  app.delete('/api/v1/admin/territory/official-links/:id', async (request, reply) => {
+    const auth = await requirePlatformAccess(request, reply, db, 'admin');
+    if (!auth) return;
+    const params = z.object({ id: z.string().uuid() }).safeParse(request.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_official_link_id' });
+
+    const result = await sql<OfficialLinkRow>`
+      DELETE FROM territory_municipality_official_links l
+      USING territory_municipalities m
+      WHERE l.id = ${params.data.id} AND m.id = l.municipality_id
+      RETURNING l.id, l.municipality_id, m.name AS municipality_name, m.slug AS municipality_slug,
+                l.kind, l.label, l.url, l.source_url, l.verified_at, l.active, l.sort_order,
+                l.created_at, l.updated_at
+    `.execute(auth.database);
+    const link = result.rows[0];
+    if (!link) return reply.code(404).send({ error: 'official_link_not_found' });
+
+    await auditAdminAction(auth.database, auth.access, 'territory.official_link_deleted', 'territory_municipality_official_link', link.id, {
+      municipality_id: link.municipality_id,
+      kind: link.kind,
+      url: link.url,
+    });
+    return { deleted: true };
   });
 
   app.patch('/api/v1/admin/territory/places/:id', async (request, reply) => {
