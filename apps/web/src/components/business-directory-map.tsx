@@ -19,14 +19,14 @@ export function BusinessDirectoryMap({ businesses }: Props) {
     let disposed = false;
     let map: import('maplibre-gl').Map | null = null;
 
-    void import('maplibre-gl').then((module) => {
-      if (disposed || !containerRef.current) return;
-      const maplibregl = module.default;
+    void import('maplibre-gl').then((maplibregl) => {
+      const mapContainer = containerRef.current;
+      if (disposed || !mapContainer) return;
       const first = points[0]?.location;
       if (!first) return;
 
-      map = new maplibregl.Map({
-        container: containerRef.current,
+      const currentMap = new maplibregl.Map({
+        container: mapContainer,
         center: [first.longitude, first.latitude],
         zoom: 10,
         attributionControl: false,
@@ -43,6 +43,7 @@ export function BusinessDirectoryMap({ businesses }: Props) {
           layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
         },
       });
+      map = currentMap;
 
       const bounds = new maplibregl.LngLatBounds();
       for (const business of points) {
@@ -77,11 +78,11 @@ export function BusinessDirectoryMap({ businesses }: Props) {
         new maplibregl.Marker({ element: markerElement })
           .setLngLat([location.longitude, location.latitude])
           .setPopup(popup)
-          .addTo(map);
+          .addTo(currentMap);
       }
 
       if (points.length > 1) {
-        map.fitBounds(bounds, { padding: 54, maxZoom: 13, duration: 0 });
+        currentMap.fitBounds(bounds, { padding: 54, maxZoom: 13, duration: 0 });
       }
     });
 
