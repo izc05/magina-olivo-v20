@@ -72,6 +72,22 @@ La ruta debe sentirse como una pequeña aventura sobre el territorio real:
 5. **Colección** — recuerdos virtuales de la ruta.
 6. **Cierre** — mensaje final, puntuación e insignias.
 
+## Administración implementada
+
+El editor vive dentro de la gestión existente de Rutas y permite:
+
+- activar/desactivar Aventura por ruta;
+- definir título, introducción y mensaje de cierre;
+- crear checkpoints mediante coordenadas reales;
+- reutilizar POI existentes copiando su posición y distancia;
+- editar y eliminar etapas;
+- ordenar etapas;
+- definir radio GPS, puntos, obligatoriedad y visibilidad;
+- configurar preguntas, opciones, respuesta correcta y pista;
+- consultar partidas totales, activas y completadas y puntuación media.
+
+Las acciones administrativas requieren permisos de plataforma y quedan auditadas. La respuesta correcta solo se entrega al administrador y nunca al endpoint público del juego.
+
 ## Evolución compatible con la V1
 
 ### Álbum territorial
@@ -111,16 +127,6 @@ Se podrán activar colecciones o retos temporales por fiestas, campañas de acei
 
 Una futura versión PWA podrá precargar track, checkpoints y contenido editorial antes de salir. Los desbloqueos offline deberán guardar evidencia local mínima y sincronizarse posteriormente con reglas anti-duplicado.
 
-## Administración pendiente del siguiente corte
+## Límites deliberados
 
-La V1 deja listo el modelo y la experiencia de usuario. El siguiente bloque natural es un editor visual en Admin para:
-
-- activar/desactivar Aventura por ruta;
-- crear checkpoints pulsando sobre el mapa;
-- vincularlos a POI existentes;
-- ordenar etapas;
-- definir radio, puntos, obligatoriedad y reto;
-- previsualizar la aventura como usuario;
-- consultar métricas agregadas de inicio, avance y finalización.
-
-No se deben crear rankings públicos basados en velocidad sin una revisión específica de seguridad y diseño: la app no debe incentivar correr o asumir riesgos en senderos para mejorar una posición.
+La V1 no incorpora seguimiento GPS continuo, validación automática de fotografías ni rankings públicos por velocidad. Estas funciones requieren una revisión específica de privacidad, moderación y seguridad. La app no debe incentivar correr o asumir riesgos en senderos para mejorar una posición.
