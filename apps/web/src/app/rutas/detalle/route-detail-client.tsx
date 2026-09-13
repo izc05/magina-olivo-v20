@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { loadPublicRoute, type PublicRouteDetail } from '../../../lib/public-routes-source';
+import { RouteMap } from './route-map';
 import styles from '../routes-public.module.css';
 
 function km(value: number | null) { return value === null ? '—' : `${(value / 1000).toFixed(1)} km`; }
@@ -10,25 +11,6 @@ function duration(value: number | null) {
   if (value === null) return '—';
   const h = Math.floor(value / 60); const m = value % 60;
   return h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`;
-}
-
-function lineCoordinates(detail: PublicRouteDetail | null): [number, number][] {
-  const geometry = detail?.track?.geometry;
-  if (!geometry || geometry.type !== 'LineString' || !Array.isArray(geometry.coordinates)) return [];
-  return geometry.coordinates.filter((coordinate): coordinate is [number, number] =>
-    Array.isArray(coordinate) && coordinate.length >= 2 && Number.isFinite(coordinate[0]) && Number.isFinite(coordinate[1]));
-}
-
-function normalizedPolyline(coordinates: [number, number][], width: number, height: number, padding = 18) {
-  if (coordinates.length < 2) return '';
-  const xs = coordinates.map(([x]) => x); const ys = coordinates.map(([, y]) => y);
-  const minX = Math.min(...xs); const maxX = Math.max(...xs); const minY = Math.min(...ys); const maxY = Math.max(...ys);
-  const dx = Math.max(maxX - minX, 1e-9); const dy = Math.max(maxY - minY, 1e-9);
-  return coordinates.map(([x, y], index) => {
-    const px = padding + ((x - minX) / dx) * (width - padding * 2);
-    const py = height - padding - ((y - minY) / dy) * (height - padding * 2);
-    return `${index ? 'L' : 'M'}${px.toFixed(1)},${py.toFixed(1)}`;
-  }).join(' ');
 }
 
 function elevationPath(samples: PublicRouteDetail['elevation'], width: number, height: number, padding = 18) {
@@ -67,8 +49,6 @@ export function RouteDetailClient() {
     return () => { cancelled = true; };
   }, []);
 
-  const coordinates = useMemo(() => lineCoordinates(detail), [detail]);
-  const trackPath = useMemo(() => normalizedPolyline(coordinates, 600, 340), [coordinates]);
   const profilePath = useMemo(() => elevationPath(detail?.elevation ?? [], 1100, 210), [detail?.elevation]);
 
   if (loading) return <main className={styles.detailShell}><section className={styles.state}><h1>Cargando ruta…</h1><p>Comprobando track y datos publicados.</p></section></main>;
@@ -89,8 +69,8 @@ export function RouteDetailClient() {
           <article><span>Altitud</span><strong>{route.min_altitude_m ?? '—'}–{route.max_altitude_m ?? '—'} m</strong></article>
         </div>
       </article>
-      <article className={styles.mapCard} aria-label="Vista del trazado de la ruta">
-        {trackPath ? <svg className={styles.mapSvg} viewBox="0 0 600 340" role="img" aria-label="Trazado proporcional del track GPX"><path d={trackPath} fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity=".85" /></svg> : <div className={styles.emptyMap}>No hay geometría pública disponible.</div>}
+      <article className={styles.mapCard} aria-label="Mapa del trazado de la ruta">
+        <RouteMap detail={detail} />
       </article>
     </section>
 
