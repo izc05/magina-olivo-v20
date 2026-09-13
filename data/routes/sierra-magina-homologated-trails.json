@@ -1,5 +1,5 @@
 {
-  "catalog_version": 1,
+  "catalog_version": 2,
   "audited_at": "2026-09-13",
   "source_name": "Federacion Andaluza de Deportes de Montana, Escalada y Senderismo",
   "source_url": "https://fedamon.com/",
@@ -11,8 +11,9 @@
       "type": "GR",
       "homologation_status": "homologated",
       "source_url": "https://www.fedamon.com/index.php/home-6/2013-04-16-17-25-48/11-federacion/186-gr7-jaen",
+      "source_verified_at": "2026-09-13",
       "maintenance_status": "warning_stale",
-      "maintenance_note": "FAM reports no maintenance notified since 1998; signage is described as scarce and deteriorated. Consult current incidents before use.",
+      "maintenance_note": "FAM states that the Jaen section has had no maintenance notified since 1998; signage is scarce/deteriorated and users should consult current FAM incidents and warnings before use.",
       "municipalities": ["Carcheles", "Cambil", "Torres", "Albanchez de Magina", "Bedmar y Garciez", "Jodar"],
       "stages": [
         {"stage":8,"from":"Jodar","to":"Bedmar y Garciez","distance_km":8.0},
@@ -21,6 +22,7 @@
         {"stage":11,"from":"Torres","to":"Cambil","distance_km":26.9},
         {"stage":12,"from":"Cambil","to":"Carcheles","distance_km":11.8}
       ],
+      "track_source": "FAM publishes downloadable stage tracks and a reverse-direction track on the official GR-7 Jaen page.",
       "track_found": true,
       "track_validated": false,
       "publishable": false
@@ -32,7 +34,10 @@
       "homologation_status": "homologated",
       "homologation_year": 2012,
       "distance_km_one_way": 14.3,
-      "source_url": "https://fedamon.com/index.php/home-6/2013-04-16-17-25-18",
+      "source_url": "https://www.fedamon.com/index.php/home-6/2013-04-16-17-25-18",
+      "source_verified_at": "2026-09-13",
+      "track_archive_url": "https://www.fedamon.com/senderos/prs/track/jaen/PR-A%20350_Trazado.rar",
+      "track_kmz_url": "https://www.fedamon.com/senderos/prs/track/jaen/pr-a%20350.kmz",
       "municipalities": ["Bedmar y Garciez"],
       "track_found": true,
       "track_validated": false,
@@ -47,6 +52,9 @@
       "homologation_year": 2012,
       "distance_km_one_way": 6.4,
       "source_url": "https://fedamon.com/index.php/home-6/senderos-sl-a",
+      "source_verified_at": "2026-09-13",
+      "track_archive_url": "https://fedamon.com/senderos/prs/track/jaen/SL-A%20135_Trazado.rar",
+      "track_kmz_url": "https://fedamon.com/senderos/sl/jaen/sl-a%20135.kmz",
       "municipalities": ["Torres"],
       "track_found": true,
       "track_validated": false,
