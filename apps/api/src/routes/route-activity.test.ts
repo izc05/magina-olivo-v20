@@ -12,7 +12,7 @@ const routeId = '94444444-4444-4444-8444-444444444444';
 const trackId = '95555555-5555-4555-8555-555555555555';
 
 function headers(user = userId) {
-  return { 'x-user-id': user, 'x-workspace-id': workspaceId, 'content-type': 'application/json' };
+  return { 'x-user-id': user, 'x-workspace-id': workspaceId };
 }
 
 test('route activity recording is explicit, segmented, private, exportable and deletable', { skip: !DATABASE_URL }, async () => {
