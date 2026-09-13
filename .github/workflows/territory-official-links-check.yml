@@ -8,6 +8,7 @@ on:
       - 'apps/web/src/app/pueblos/**'
       - 'apps/web/src/lib/public-territory-source.ts'
       - 'database/migrations/0083_territory_municipality_official_links.sql'
+      - 'database/migrations/0084_sierra_magina_full_municipality_catalog.sql'
       - 'e2e/public-editorial.spec.ts'
       - '.github/workflows/territory-official-links-check.yml'
 
@@ -88,11 +89,36 @@ jobs:
           ON CONFLICT (municipality_id, kind, url) DO NOTHING;
           SQL
 
-      - name: Public API exposes only verified official links
+      - name: Public API exposes complete verified Sierra Magina catalog
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
           ALLOW_DEV_AUTH_HEADERS: 'true'
+          PGPASSWORD: postgres
         run: |
+          MUNICIPALITY_COUNT=$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM territory_municipalities WHERE active = true AND ine_code IN ('23001','23902','23015','23017','23018','23019','23901','23044','23052','23053','23038','23054','23058','23064','23067','23090');")
+          if [ "${MUNICIPALITY_COUNT}" -ne 16 ]; then
+            echo "Expected exactly 16 active Sierra Magina municipalities, found ${MUNICIPALITY_COUNT}"
+            exit 1
+          fi
+
+          DEFAULT_PLACE_COUNT=$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM territory_places p JOIN territory_municipalities m ON m.id = p.municipality_id WHERE p.is_default_for_municipality = true AND p.public_enabled = true AND m.active = true AND m.ine_code IN ('23001','23902','23015','23017','23018','23019','23901','23044','23052','23053','23038','23054','23058','23064','23067','23090');")
+          if [ "${DEFAULT_PLACE_COUNT}" -ne 16 ]; then
+            echo "Expected one public default place for each of 16 Sierra Magina municipalities, found ${DEFAULT_PLACE_COUNT}"
+            exit 1
+          fi
+
+          VERIFIED_COUNT=$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM territory_municipality_official_links l JOIN territory_municipalities m ON m.id = l.municipality_id WHERE l.verified_at IS NOT NULL AND l.active = true AND m.ine_code IN ('23001','23902','23015','23017','23018','23019','23901','23044','23052','23053','23038','23054','23058','23064','23067','23090');")
+          if [ "${VERIFIED_COUNT}" -lt 32 ]; then
+            echo "Expected at least 32 verified municipal links (website + e-office for 16 municipalities), found ${VERIFIED_COUNT}"
+            exit 1
+          fi
+
+          MISSING_LINKS=$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM territory_municipalities m WHERE m.ine_code IN ('23001','23902','23015','23017','23018','23019','23901','23044','23052','23053','23038','23054','23058','23064','23067','23090') AND NOT EXISTS (SELECT 1 FROM territory_municipality_official_links l WHERE l.municipality_id = m.id AND l.active = true AND l.verified_at IS NOT NULL AND l.kind = 'town_hall') OR m.ine_code IN ('23001','23902','23015','23017','23018','23019','23901','23044','23052','23053','23038','23054','23058','23064','23067','23090') AND NOT EXISTS (SELECT 1 FROM territory_municipality_official_links l WHERE l.municipality_id = m.id AND l.active = true AND l.verified_at IS NOT NULL AND l.kind = 'electronic_office');")
+          if [ "${MISSING_LINKS}" -ne 0 ]; then
+            echo "One or more Sierra Magina municipalities lack a verified website or electronic office"
+            exit 1
+          fi
+
           node apps/api/dist/server.js >/tmp/magina-territory-api.log 2>&1 &
           API_PID=$!
           trap 'kill ${API_PID} || true; cat /tmp/magina-territory-api.log' EXIT
@@ -102,21 +128,32 @@ jobs:
             sleep 1
           done
 
-          PAYLOAD=$(curl -fsS http://127.0.0.1:3001/api/v1/public/territory/places/bedmar)
-          PAYLOAD="${PAYLOAD}" node <<'NODE'
-          const payload = JSON.parse(process.env.PAYLOAD);
+          BEDMAR=$(curl -fsS http://127.0.0.1:3001/api/v1/public/territory/places/bedmar)
+          BEDMAR="${BEDMAR}" node <<'NODE'
+          const payload = JSON.parse(process.env.BEDMAR);
           const links = payload.place?.official_links;
-          if (!Array.isArray(links)) throw new Error('official_links missing from territory detail');
+          if (!Array.isArray(links)) throw new Error('official_links missing from Bedmar territory detail');
           const website = links.find((item) => item.kind === 'town_hall');
-          if (!website || website.url !== 'https://www.bedmargarciez.es/') throw new Error('Verified town hall link missing');
+          if (!website || website.url !== 'https://www.bedmargarciez.es/') throw new Error('Verified Bedmar town hall link missing');
           const office = links.find((item) => item.kind === 'electronic_office');
-          if (!office || office.url !== 'https://bedmargarciez.sedelectronica.es/info.0') throw new Error('Verified electronic office link missing');
+          if (!office || office.url !== 'https://bedmargarciez.sedelectronica.es/info.0') throw new Error('Verified Bedmar electronic office link missing');
           if (links.some((item) => item.label === 'Enlace sin verificar CI')) throw new Error('Unverified official link leaked publicly');
           if (links.some((item) => !item.verified_at)) throw new Error('Public official link lacks verification timestamp');
           NODE
 
-          VERIFIED_COUNT=$(PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM territory_municipality_official_links WHERE verified_at IS NOT NULL AND active = true;")
-          if [ "${VERIFIED_COUNT}" -lt 10 ]; then
-            echo "Expected at least 10 seeded verified official links, found ${VERIFIED_COUNT}"
-            exit 1
-          fi
+          PEGALAJAR=$(curl -fsS http://127.0.0.1:3001/api/v1/public/territory/places/pegalajar)
+          PEGALAJAR="${PEGALAJAR}" node <<'NODE'
+          const payload = JSON.parse(process.env.PEGALAJAR);
+          if (payload.place?.ine_code !== '23067') throw new Error('Pegalajar canonical territory missing');
+          const links = payload.place?.official_links;
+          if (!Array.isArray(links) || links.length < 2) throw new Error('Pegalajar verified official links missing');
+          if (!links.some((item) => item.kind === 'town_hall' && item.url === 'https://ayto-pegalajar.es/')) throw new Error('Pegalajar town hall URL mismatch');
+          if (!links.some((item) => item.kind === 'electronic_office' && item.url === 'https://pegalajar.sedelectronica.es/info.0')) throw new Error('Pegalajar electronic office URL mismatch');
+          NODE
+
+          CARCHELEJO=$(curl -fsS http://127.0.0.1:3001/api/v1/public/territory/places/carchelejo)
+          CARCHELEJO="${CARCHELEJO}" node <<'NODE'
+          const payload = JSON.parse(process.env.CARCHELEJO);
+          if (payload.place?.municipality_name !== 'Cárcheles') throw new Error('Carchelejo must resolve to municipality Cárcheles');
+          if (payload.place?.ine_code !== '23901') throw new Error('Cárcheles INE code mismatch');
+          NODE
