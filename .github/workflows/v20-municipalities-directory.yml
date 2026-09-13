@@ -16,6 +16,7 @@ on:
       - 'scripts/check-municipality-explore-directory.mjs'
       - 'scripts/check-municipality-admin-control-center.mjs'
       - 'scripts/check-municipality-editorial-control.mjs'
+      - 'scripts/check-municipality-content-editor.mjs'
       - '.github/workflows/v20-municipalities-directory.yml'
   workflow_dispatch:
 
@@ -44,6 +45,8 @@ jobs:
         run: node scripts/check-municipality-admin-control-center.mjs
       - name: Municipality editorial control contract
         run: node scripts/check-municipality-editorial-control.mjs
+      - name: Municipality content editor contract
+        run: node scripts/check-municipality-content-editor.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck
