@@ -7,6 +7,8 @@ import { PgBossRadarIngestQueue } from './radar/pg-boss.js';
 import { createS3StorageFromEnv } from './storage/s3.js';
 import { createGoogleIdentityVerifierFromEnv } from './auth/google.js';
 import { assertSafeRuntimeEnvironment } from './runtime-security.js';
+import { registerBusinessRevenueRoutes } from './routes/business-revenue.js';
+import { registerAdminBusinessRevenueRoutes } from './routes/admin-business-revenue.js';
 
 assertSafeRuntimeEnvironment();
 
@@ -20,6 +22,8 @@ const radarQueue = boss ? new PgBossRadarIngestQueue(boss) : undefined;
 const googleVerifier = createGoogleIdentityVerifierFromEnv() ?? undefined;
 const pushPublicKey = process.env.VAPID_PUBLIC_KEY?.trim() || null;
 const app = buildApp({ db, storage, ocrQueue, notificationQueue, radarQueue, googleVerifier, pushPublicKey });
+registerBusinessRevenueRoutes(app, db);
+registerAdminBusinessRevenueRoutes(app, db);
 
 const port = Number(process.env.PORT ?? 3001);
 const host = process.env.HOST ?? '0.0.0.0';
