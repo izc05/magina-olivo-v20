@@ -15,6 +15,24 @@ export type PublicTerritoryPlace = {
   province_name: string;
 };
 
+export type PublicMunicipalityContentType = 'place' | 'mill' | 'directory' | 'news' | 'event';
+
+export type PublicMunicipalityContent = {
+  id: string;
+  type: PublicMunicipalityContentType;
+  slug: string;
+  title: string;
+  summary: string | null;
+  content_json: Record<string, unknown> | null;
+  featured: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  media_url: string | null;
+  external_url: string | null;
+  sort_order: number;
+  published_at: string | null;
+};
+
 export type PublicMunicipalityDirectory = {
   id: string;
   ine_code: string;
@@ -34,6 +52,8 @@ export type PublicMunicipalityDirectory = {
   source_url: string;
   verified_at: string;
   places: Array<{ id: string; name: string; slug: string; kind: string }>;
+  content_counts: Record<PublicMunicipalityContentType, number>;
+  related_content?: PublicMunicipalityContent[];
 };
 
 export class PublicTerritoryUnavailableError extends Error {
