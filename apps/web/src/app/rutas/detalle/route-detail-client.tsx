@@ -40,6 +40,7 @@ export function RouteDetailClient() {
   if (error || !detail || !slug) return <main className={styles.detailShell}><section className={styles.state}><h1>Ruta no disponible</h1><p>Puede estar en revisión, no disponer de track validado o faltar el identificador de ruta.</p><Link href="/rutas">Volver a rutas</Link></section></main>;
 
   const route = detail.route;
+  const territoryHref = route.place_slug ? `/pueblos/territorio?slug=${encodeURIComponent(route.place_slug)}` : '/explorar';
   return <main className={styles.detailShell}>
     <div className={styles.notice}>Track validado · los datos técnicos proceden del recorrido almacenado, no de una ruta generada por IA.</div>
     <section className={styles.detailHero}>
@@ -47,7 +48,7 @@ export function RouteDetailClient() {
         <Link href="/rutas">← Todas las rutas</Link>
         <h1>{route.name}</h1>
         <p>{route.short_description ?? route.description ?? 'Ruta territorial de Sierra Mágina.'}</p>
-        {(route.place_name || route.municipality_name) ? <p><Link href="/explorar">{route.place_name ?? route.municipality_name} · explorar territorio →</Link></p> : null}
+        {(route.place_name || route.municipality_name) ? <p><Link href={territoryHref}>{route.place_name ?? route.municipality_name} · explorar territorio →</Link></p> : null}
         <div className={styles.detailStats}>
           <article><span>Distancia</span><strong>{km(route.distance_m)}</strong></article>
           <article><span>Duración</span><strong>{duration(route.duration_minutes)}</strong></article>
