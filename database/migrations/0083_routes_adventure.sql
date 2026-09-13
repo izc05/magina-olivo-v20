@@ -88,9 +88,47 @@ CREATE TABLE route_adventure_unlocks (
 CREATE INDEX route_adventure_unlocks_checkpoint_idx
   ON route_adventure_unlocks(checkpoint_id, unlocked_at DESC);
 
+CREATE FUNCTION enforce_route_adventure_publish_ready()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  publish_ready BOOLEAN;
+BEGIN
+  IF NEW.enabled THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM routes r
+      WHERE r.id = NEW.route_id
+        AND r.status = 'published'
+        AND r.track_status = 'validated'
+        AND EXISTS (
+          SELECT 1 FROM route_tracks rt
+          WHERE rt.route_id = r.id AND rt.validation_status = 'validated'
+        )
+        AND EXISTS (
+          SELECT 1 FROM route_adventure_checkpoints cp
+          WHERE cp.route_id = r.id AND cp.active = true AND cp.is_required = true
+        )
+    ) INTO publish_ready;
+
+    IF NOT publish_ready THEN
+      RAISE EXCEPTION 'route_adventure_not_ready_for_publication'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER route_adventures_publish_ready_trg
+  BEFORE INSERT OR UPDATE OF enabled, route_id ON route_adventures
+  FOR EACH ROW EXECUTE FUNCTION enforce_route_adventure_publish_ready();
+
 COMMENT ON TABLE route_adventures IS 'Optional gamified layer for a validated published route. It never replaces technical navigation or official safety information.';
 COMMENT ON TABLE route_adventure_checkpoints IS 'Geolocated adventure checkpoints; answers and unlocks are validated by the API. Public payloads must never expose correct_answer_key.';
 COMMENT ON INDEX route_adventure_checkpoints_route_point_unique_idx IS 'A real route POI can seed at most one adventure checkpoint per route, making bulk POI import idempotent.';
+COMMENT ON FUNCTION enforce_route_adventure_publish_ready() IS 'Prevents enabling an adventure unless its route is published, has a real validated track, and has at least one active required checkpoint.';
 COMMENT ON TABLE route_adventure_runs IS 'User game sessions kept separate from route_completions so game progress cannot be mistaken for verified physical completion.';
 COMMENT ON TABLE route_adventure_unlocks IS 'Stores checkpoint result and proximity distance only; the user GPS coordinate used for validation is not retained.';
 
