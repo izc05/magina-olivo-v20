@@ -48,8 +48,15 @@ body {
   border-bottom-color: rgba(32, 53, 35, .08);
 }
 
-.brand { font-size: 27px; letter-spacing: -.045em; }
-.brand small { color: #6d735f; letter-spacing: .3em; }
+.brand {
+  display: inline-flex;
+  width: clamp(178px, 48vw, 224px);
+  align-items: center;
+  padding: 0;
+  line-height: 1;
+}
+.brand-lockup { display: block; width: 100%; height: auto; }
+.brand-symbol { display: block; width: 44px; height: 44px; object-fit: contain; }
 
 .desktop-primary-nav,
 .desktop-profile-link { display: none; }
@@ -325,8 +332,7 @@ body .admin-gate-card {
     grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
     gap: 24px;
   }
-  .topbar .brand { justify-self: start; font-size: 24px; }
-  .topbar .brand small { display: none; }
+  .topbar .brand { width: clamp(190px, 17vw, 236px); justify-self: start; }
   .desktop-primary-nav {
     display: flex;
     align-items: stretch;
