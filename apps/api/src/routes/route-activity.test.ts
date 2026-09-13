@@ -135,7 +135,7 @@ test('route activity recording is explicit, segmented, private, exportable and d
     assert.equal(gpx.statusCode, 200, gpx.body);
     assert.match(gpx.body, /<gpx/);
     assert.equal((gpx.body.match(/<trkseg>/g) ?? []).length, 2, 'pause/resume must export two GPX segments');
-    assert.match(String(gpx.headers['cache-control']), /private/);
+    assert.equal(String(gpx.headers['cache-control']), 'no-store', 'all private API responses must follow the global no-store cache policy');
 
     const remove = await app.inject({ method: 'DELETE', url: `/api/v1/activities/${activityId}`, headers: headers() });
     assert.equal(remove.statusCode, 204);
