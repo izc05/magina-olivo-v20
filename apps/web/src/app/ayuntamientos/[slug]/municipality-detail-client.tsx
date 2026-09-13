@@ -35,6 +35,10 @@ function discoveryRole(entry: PublicMunicipalityContent): DiscoveryRole | null {
   return role === 'heritage' || role === 'nature' || role === 'tourism' ? role : null;
 }
 
+function discoveryRoleLabel(role: DiscoveryRole | null) {
+  return role === 'heritage' ? 'Patrimonio' : role === 'nature' ? 'Naturaleza' : role === 'tourism' ? 'Turismo' : 'Descubrimiento';
+}
+
 function dateLabel(value: string | null) {
   if (!value) return null;
   const date = new Date(value);
@@ -125,6 +129,19 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
   const filteredDiscoveries = useMemo(() => discoveryFilter === 'all'
     ? discoveries
     : discoveries.filter((entry) => discoveryRole(entry) === discoveryFilter), [discoveries, discoveryFilter]);
+  const essentialDiscoveries = useMemo(() => {
+    const picks: PublicMunicipalityContent[] = [];
+    const picked = new Set<string>();
+    const add = (entry: PublicMunicipalityContent | undefined) => {
+      if (!entry || picked.has(entry.id) || picks.length >= 3) return;
+      picks.push(entry);
+      picked.add(entry.id);
+    };
+    discoveries.filter((entry) => entry.featured).forEach(add);
+    (['heritage', 'nature', 'tourism'] as DiscoveryRole[]).forEach((role) => add(discoveries.find((entry) => discoveryRole(entry) === role)));
+    discoveries.forEach(add);
+    return picks;
+  }, [discoveries]);
   const mills = useMemo(() => content.filter((entry) => entry.type === 'mill'), [content]);
   const directory = useMemo(() => content.filter((entry) => entry.type === 'directory'), [content]);
   const news = useMemo(() => content.filter((entry) => entry.type === 'news'), [content]);
@@ -132,6 +149,8 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
   const profileData = asObject(profile?.content_json);
   const profileBody = text(profileData.body);
   const profileServices = strings(profileData.services);
+  const heroMedia = profile?.media_url || discoveries.find((entry) => entry.media_url)?.media_url || null;
+  const heroStyle = heroMedia ? { backgroundImage: `linear-gradient(110deg, rgba(24, 58, 37, .96) 0%, rgba(32, 73, 46, .88) 48%, rgba(32, 73, 46, .42) 100%), url("${heroMedia.replace(/"/g, '%22')}")` } : undefined;
 
   return <main className="app-shell">
     <Topbar />
@@ -139,7 +158,7 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
       {loading ? <div className={styles.state}><strong>Cargando ficha municipal…</strong></div> : null}
       {!loading && error ? <div className={styles.state}><strong>No se ha podido cargar este ayuntamiento.</strong><p>La ficha no existe o el directorio no está disponible.</p><Link href="/ayuntamientos">Volver al directorio</Link></div> : null}
       {item ? <>
-        <section className={`${styles.hero} ${styles.detailHero}`}>
+        <section className={`${styles.hero} ${styles.detailHero} ${heroMedia ? styles.detailHeroWithMedia : ''}`} style={heroStyle}>
           <div>
             <span className="eyebrow">MUNICIPIO · SIERRA MÁGINA</span>
             <h1>{item.name}</h1>
@@ -152,14 +171,42 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
             </div>
           </div>
           <div className={styles.actions}>
+            {item.tourism_url ? <a href={item.tourism_url} target="_blank" rel="noreferrer">Turismo oficial ↗</a> : null}
             <a href={item.official_website} target="_blank" rel="noreferrer">Web oficial ↗</a>
             {item.electronic_office_url ? <a href={item.electronic_office_url} target="_blank" rel="noreferrer">Sede electrónica ↗</a> : null}
           </div>
         </section>
 
         <nav className={styles.quickNav} aria-label="Secciones de la ficha municipal">
-          <a href="#municipio">Municipio</a><a href="#descubrir">Qué descubrir</a><a href="#ayuntamiento">Ayuntamiento</a><a href="#economia-local">Economía local</a><a href="#actualidad">Actualidad</a>
+          <a href="#imprescindibles">Imprescindibles</a><a href="#municipio">Municipio</a><a href="#descubrir">Qué descubrir</a><a href="#ayuntamiento">Ayuntamiento</a><a href="#economia-local">Economía local</a><a href="#actualidad">Actualidad</a>
         </nav>
+
+        {essentialDiscoveries.length ? <section className={styles.essentialsSection} id="imprescindibles" aria-labelledby="essentials-title">
+          <div className={styles.essentialsIntro}>
+            <span className={styles.sectionKicker}>PRIMERA MIRADA</span>
+            <h2 id="essentials-title">Lo imprescindible de {item.name}</h2>
+            <p>Una selección automática de contenido ya publicado: respeta los destacados editoriales y, después, busca variedad entre patrimonio, naturaleza y turismo.</p>
+            <div className={styles.discoveryOverview} aria-label="Resumen de descubrimientos publicados">
+              <a href="#descubrir" onClick={() => setDiscoveryFilter('heritage')}><strong>{discoveryCounts.heritage}</strong><span>Patrimonio</span></a>
+              <a href="#descubrir" onClick={() => setDiscoveryFilter('nature')}><strong>{discoveryCounts.nature}</strong><span>Naturaleza</span></a>
+              <a href="#descubrir" onClick={() => setDiscoveryFilter('tourism')}><strong>{discoveryCounts.tourism}</strong><span>Turismo</span></a>
+            </div>
+          </div>
+          <div className={styles.essentialsGrid}>
+            {essentialDiscoveries.map((entry, index) => {
+              const role = discoveryRole(entry);
+              return <a key={entry.id} className={styles.essentialCard} href="#descubrir" onClick={() => setDiscoveryFilter(role ?? 'all')}>
+                {entry.media_url ? <div className={styles.essentialMedia} style={{ backgroundImage: `url("${entry.media_url.replace(/"/g, '%22')}")` }} aria-hidden="true" /> : <div className={styles.essentialFallback} aria-hidden="true">{String(index + 1).padStart(2, '0')}</div>}
+                <div className={styles.essentialBody}>
+                  <span>{discoveryRoleLabel(role)}</span>
+                  <h3>{entry.title}</h3>
+                  {entry.summary ? <p>{entry.summary}</p> : null}
+                  <strong>Ver en el catálogo ↓</strong>
+                </div>
+              </a>;
+            })}
+          </div>
+        </section> : null}
 
         <section className="section" id="municipio">
           <div className={styles.heading}><div><h2>Descubre el municipio</h2><p>La ficha territorial crece con el contenido publicado desde Mágina Olivo.</p></div><Link href="/explorar">Explorar Mágina →</Link></div>
