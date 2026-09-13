@@ -23,6 +23,7 @@ on:
       - 'apps/web/src/components/routes-admin-console.tsx'
       - 'apps/web/src/components/route-content-admin.tsx'
       - 'apps/web/src/components/routes-community-admin.tsx'
+      - 'apps/web/src/components/routes-sponsorship-admin.tsx'
       - 'apps/web/src/lib/public-routes-source.ts'
       - 'database/migrations/0080_routes_explore_foundation.sql'
       - 'database/migrations/0081_routes_track_consistency.sql'
