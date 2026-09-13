@@ -1,0 +1,125 @@
+name: V20 business experiences check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/api/src/routes/business-experiences.ts'
+      - 'apps/api/src/app.ts'
+      - 'apps/web/src/app/experiencias/**'
+      - 'apps/web/src/app/admin/empresas/experiencias/**'
+      - 'apps/web/src/app/mi-negocio/experiencias/**'
+      - 'apps/web/src/components/business-experiences*'
+      - 'apps/web/src/components/my-business-experiences.tsx'
+      - 'apps/web/src/lib/business-experience-source.ts'
+      - 'database/migrations/0073_business_experiences.sql'
+      - '.github/workflows/business-experiences-check.yml'
+
+concurrency:
+  group: business-experiences-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  experiences:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Build dependencies
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+      - name: Typecheck and build
+        run: |
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/web typecheck
+          pnpm --filter @magina/api build
+          pnpm --filter @magina/web build
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+      - name: Apply all migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+      - name: Seed owner and business
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO users (id, primary_email, display_name, status)
+          VALUES ('72000000-0000-4000-8000-000000000001','owner@example.com','Owner CI','active');
+          INSERT INTO businesses (id,slug,name,status,verification_status,published_at)
+          VALUES ('72000000-0000-4000-8000-000000000002','almazara-experiencias-ci','Almazara Experiencias CI','published','verified',now());
+          INSERT INTO business_memberships (business_id,user_id,role,status)
+          VALUES ('72000000-0000-4000-8000-000000000002','72000000-0000-4000-8000-000000000001','owner','active');
+          SQL
+      - name: Experience and capacity smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          PGPASSWORD: postgres
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+        run: |
+          node apps/api/dist/server.js >/tmp/magina-experiences-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill ${API_PID} || true; cat /tmp/magina-experiences-api.log' EXIT
+          for attempt in $(seq 1 30); do if curl -fsS http://127.0.0.1:3001/health >/dev/null; then break; fi; sleep 1; done
+
+          AUTH=(-H 'x-user-id: 72000000-0000-4000-8000-000000000001' -H 'x-workspace-id: 72000000-0000-4000-8000-000000000099' -H 'content-type: application/json')
+          CREATED=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/my/businesses/72000000-0000-4000-8000-000000000002/experiences "${AUTH[@]}" -d '{"slug":"cata-aove-ci","title":"Cata AOVE CI","summary":"Experiencia de prueba","experienceType":"aove_tasting","durationMinutes":90,"minPartySize":1,"maxPartySize":8,"priceCents":1500,"currency":"EUR","bookingMode":"request","status":"published"}')
+          EXPERIENCE_ID=$(CREATED="$CREATED" node -e "console.log(JSON.parse(process.env.CREATED).experience.id)")
+          START=$(date -u -d '+2 days' '+%Y-%m-%dT%H:%M:%SZ')
+          SLOT=$(curl -fsS -X POST "http://127.0.0.1:3001/api/v1/my/businesses/72000000-0000-4000-8000-000000000002/experiences/${EXPERIENCE_ID}/slots" "${AUTH[@]}" -d "{\"startsAt\":\"${START}\",\"capacity\":4,\"status\":\"open\"}")
+          SLOT_ID=$(SLOT="$SLOT" node -e "console.log(JSON.parse(process.env.SLOT).slot.id)")
+
+          LIST=$(curl -fsS 'http://127.0.0.1:3001/api/v1/public/experiences?businessSlug=almazara-experiencias-ci')
+          DETAIL=$(curl -fsS http://127.0.0.1:3001/api/v1/public/businesses/almazara-experiencias-ci/experiences/cata-aove-ci)
+          BOOK1=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/public/businesses/almazara-experiencias-ci/experiences/cata-aove-ci/bookings -H 'content-type: application/json' -d "{\"slotId\":\"${SLOT_ID}\",\"contactName\":\"Grupo Uno\",\"contactEmail\":\"uno@example.com\",\"partySize\":3,\"consentBusinessContact\":true}")
+          BOOK2=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/public/businesses/almazara-experiencias-ci/experiences/cata-aove-ci/bookings -H 'content-type: application/json' -d "{\"slotId\":\"${SLOT_ID}\",\"contactName\":\"Grupo Dos\",\"contactEmail\":\"dos@example.com\",\"partySize\":2,\"consentBusinessContact\":true}")
+          BOOK1_ID=$(BOOK1="$BOOK1" node -e "console.log(JSON.parse(process.env.BOOK1).booking.id)")
+          BOOK2_ID=$(BOOK2="$BOOK2" node -e "console.log(JSON.parse(process.env.BOOK2).booking.id)")
+
+          curl -fsS -X PATCH "http://127.0.0.1:3001/api/v1/my/businesses/72000000-0000-4000-8000-000000000002/experience-bookings/${BOOK1_ID}" "${AUTH[@]}" -d '{"status":"confirmed"}' >/dev/null
+          STATUS=$(curl -sS -o /tmp/confirm2.json -w '%{http_code}' -X PATCH "http://127.0.0.1:3001/api/v1/my/businesses/72000000-0000-4000-8000-000000000002/experience-bookings/${BOOK2_ID}" "${AUTH[@]}" -d '{"status":"confirmed"}')
+          test "$STATUS" = "409"
+
+          LIST="$LIST" DETAIL="$DETAIL" BOOK1="$BOOK1" BOOK2="$BOOK2" node <<'NODE'
+          const list=JSON.parse(process.env.LIST); const detail=JSON.parse(process.env.DETAIL); const b1=JSON.parse(process.env.BOOK1); const b2=JSON.parse(process.env.BOOK2);
+          if(list.experiences?.length!==1) throw new Error('Experience list failed');
+          if(detail.experience?.slug!=='cata-aove-ci') throw new Error('Experience detail failed');
+          if(detail.experience?.slots?.[0]?.availablePlaces!==4) throw new Error('Initial capacity failed');
+          if(b1.booking?.status!=='pending'||b2.booking?.status!=='pending') throw new Error('Booking request failed');
+          NODE
+
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT confirmed_count FROM business_experience_slots WHERE id='${SLOT_ID}'")" = "3"
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM business_leads WHERE experience_id='${EXPERIENCE_ID}' AND kind='booking'")" = "2"
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM business_events WHERE experience_id='${EXPERIENCE_ID}' AND event_type='experience_booking_submit'")" = "2"
