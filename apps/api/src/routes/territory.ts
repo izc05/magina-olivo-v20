@@ -20,6 +20,15 @@ type TerritoryPlaceRow = {
   province_name: string;
 };
 
+type MunicipalityOfficialLinkRow = {
+  id: string;
+  kind: string;
+  label: string;
+  url: string;
+  source_url: string | null;
+  verified_at: string;
+};
+
 export function registerTerritoryRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/public/territory/places', async (_request, reply) => {
     const database = requireDatabase(db, reply);
@@ -58,6 +67,16 @@ export function registerTerritoryRoutes(app: FastifyInstance, db: DatabaseClient
 
     const place = result.rows[0];
     if (!place) return reply.code(404).send({ error: 'place_not_found' });
-    return { place };
+
+    const links = await sql<MunicipalityOfficialLinkRow>`
+      SELECT id, kind, label, url, source_url, verified_at
+      FROM territory_municipality_official_links
+      WHERE municipality_id = ${place.municipality_id}
+        AND active = true
+        AND verified_at IS NOT NULL
+      ORDER BY sort_order ASC, label ASC
+    `.execute(database);
+
+    return { place: { ...place, official_links: links.rows } };
   });
 }

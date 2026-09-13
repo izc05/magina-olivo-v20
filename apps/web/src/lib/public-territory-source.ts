@@ -1,5 +1,14 @@
 import { apiBaseUrl } from '@/lib/api-client';
 
+export type PublicMunicipalityOfficialLink = {
+  id: string;
+  kind: 'town_hall' | 'electronic_office' | 'transparency' | 'tourism' | 'other_official' | string;
+  label: string;
+  url: string;
+  source_url: string | null;
+  verified_at: string;
+};
+
 export type PublicTerritoryPlace = {
   id: string;
   name: string;
@@ -13,6 +22,7 @@ export type PublicTerritoryPlace = {
   ine_code: string;
   aemet_code: string | null;
   province_name: string;
+  official_links?: PublicMunicipalityOfficialLink[];
 };
 
 export class PublicTerritoryUnavailableError extends Error {
@@ -22,17 +32,27 @@ export class PublicTerritoryUnavailableError extends Error {
   }
 }
 
-export async function loadPublicTerritoryPlaces() {
+async function publicTerritoryFetch<T>(path: string): Promise<T> {
   if (!apiBaseUrl) throw new PublicTerritoryUnavailableError();
   let response: Response;
   try {
-    response = await fetch(`${apiBaseUrl}/api/v1/public/territory/places`, {
-      headers: { accept: 'application/json' },
-    });
+    response = await fetch(`${apiBaseUrl}${path}`, { headers: { accept: 'application/json' } });
   } catch {
     throw new PublicTerritoryUnavailableError();
   }
   if (!response.ok) throw new PublicTerritoryUnavailableError();
-  const payload = await response.json() as { places?: PublicTerritoryPlace[] };
+  return response.json() as Promise<T>;
+}
+
+export async function loadPublicTerritoryPlaces() {
+  const payload = await publicTerritoryFetch<{ places?: PublicTerritoryPlace[] }>('/api/v1/public/territory/places');
   return Array.isArray(payload.places) ? payload.places : [];
+}
+
+export async function loadPublicTerritoryPlace(slug: string) {
+  const normalized = slug.trim().toLocaleLowerCase('es-ES');
+  if (!normalized) throw new PublicTerritoryUnavailableError();
+  const payload = await publicTerritoryFetch<{ place?: PublicTerritoryPlace }>(`/api/v1/public/territory/places/${encodeURIComponent(normalized)}`);
+  if (!payload.place) throw new PublicTerritoryUnavailableError();
+  return payload.place;
 }

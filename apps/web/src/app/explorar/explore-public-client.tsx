@@ -14,9 +14,9 @@ const areas = [
   { icon: PlusIcon, title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
   { icon: SproutIcon, title: 'Aceite y mercado', text: 'Precios y campaña manteniendo siempre fuente, unidad y fecha.', href: '/mercado', badge: 'Disponible' },
   { icon: HomeIcon, title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
-  { icon: MoreIcon, title: 'Servicios', text: 'Negocios y profesionales con patrocinio claramente identificado.', href: '/servicios', badge: 'Disponible' },
+  { icon: MoreIcon, title: 'Empresas y servicios', text: 'Directorio territorial con mapa, categorías, fichas verificables y patrocinio siempre identificado.', href: '/explorar/empresas', badge: 'Disponible' },
   { icon: SproutIcon, title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
-  { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Contenidos territoriales y oleoturismo.', href: null, badge: 'En preparación' },
+  { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Rutas con track GPX validado, desnivel, comunidad moderada y fuentes trazables.', href: '/rutas', badge: 'Disponible' },
 ] as const;
 
 function placeKindLabel(kind: string) {
@@ -79,23 +79,20 @@ export function ExplorePublicClient() {
       {!loading && !error && filteredPlaces.length > 0 ? <div className={styles.placeGrid}>{filteredPlaces.map((place) => <button key={place.id} type="button" className={`${styles.placeButton} ${selectedPlace?.id === place.id ? styles.placeButtonActive : ''}`} onClick={() => setSelectedSlug(place.slug)} aria-pressed={selectedPlace?.id === place.id}><strong>{place.name}</strong><span>{placeKindLabel(place.kind)} · {place.province_name}</span></button>)}</div> : null}
 
       {selectedPlace && !error ? <div className={styles.detail}>
-        <div><span className="eyebrow dark">CONTEXTO TERRITORIAL</span><h3>{selectedPlace.name}</h3><p>{selectedPlace.name === selectedPlace.municipality_name ? `Municipio oficial de ${selectedPlace.province_name}.` : `${selectedPlace.name} pertenece al municipio oficial de ${selectedPlace.municipality_name}.`} Este contexto es público y no identifica ninguna finca.</p></div>
+        <div><span className="eyebrow dark">CONTEXTO TERRITORIAL</span><h3>{selectedPlace.name}</h3><p>{selectedPlace.name === selectedPlace.municipality_name ? `Municipio oficial de ${selectedPlace.province_name}.` : `${selectedPlace.name} pertenece al municipio oficial de ${selectedPlace.municipality_name}.`} Este contexto es público y no identifica ninguna finca.</p><p><Link href={`/pueblos/territorio?slug=${encodeURIComponent(selectedPlace.slug)}`}>Abrir ficha conectada de {selectedPlace.name} →</Link></p></div>
         <div className={styles.detailMeta}><span>{placeKindLabel(selectedPlace.kind)}</span><span>Municipio: {selectedPlace.municipality_name}</span><span>INE: {selectedPlace.ine_code}</span>{selectedPlace.aemet_code ? <span>AEMET: disponible</span> : null}</div>
       </div> : null}
     </section>
 
     <section className="section">
-      <div className={styles.sectionIntro}><div><h2>Explorar por temas</h2></div><p>Accede a las áreas públicas que ya están disponibles en V20. Los módulos que todavía no tienen una fuente verificada permanecen claramente marcados como pendientes.</p></div>
+      <div className={styles.sectionIntro}><div><h2>Explorar por temas</h2></div><p>Accede a las áreas públicas disponibles en V20. Cada módulo mantiene sus propias reglas de verificación y procedencia.</p></div>
       <div className={styles.areaGrid}>
         {areas.map((area) => {
           const AreaIcon = area.icon;
-          const content = <>
+          return <Link className={`${styles.areaCard} ${styles.areaCardLink}`} href={area.href} key={area.title}>
             <span className={styles.areaIcon} aria-hidden="true"><AreaIcon /></span>
-            <div><h3>{area.title}</h3><p>{area.text}</p><span className={`${styles.badge} ${area.href ? styles.badgeLive : ''}`}>{area.badge}</span></div>
-          </>;
-          return area.href
-            ? <Link className={`${styles.areaCard} ${styles.areaCardLink}`} href={area.href} key={area.title}>{content}</Link>
-            : <article className={styles.areaCard} key={area.title}>{content}</article>;
+            <div><h3>{area.title}</h3><p>{area.text}</p><span className={`${styles.badge} ${styles.badgeLive}`}>{area.badge}</span></div>
+          </Link>;
         })}
       </div>
     </section>
