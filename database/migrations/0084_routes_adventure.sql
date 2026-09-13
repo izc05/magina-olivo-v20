@@ -134,10 +134,33 @@ CREATE TRIGGER route_adventures_publish_ready_trg
   BEFORE INSERT OR UPDATE OF enabled, route_id ON route_adventures
   FOR EACH ROW EXECUTE FUNCTION enforce_route_adventure_publish_ready();
 
+CREATE FUNCTION hold_route_adventure_for_critical_condition()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.moderation_status = 'approved'
+     AND NEW.severity = 'critical'
+     AND NEW.condition_kind IN ('closed','blocked','fire_risk','flooded')
+     AND (NEW.expires_at IS NULL OR NEW.expires_at > now()) THEN
+    UPDATE route_adventures
+    SET enabled = false, updated_at = now()
+    WHERE route_id = NEW.route_id AND enabled = true;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER route_condition_reports_adventure_hold_trg
+  AFTER INSERT OR UPDATE OF moderation_status, severity, condition_kind, expires_at
+  ON route_condition_reports
+  FOR EACH ROW EXECUTE FUNCTION hold_route_adventure_for_critical_condition();
+
 COMMENT ON TABLE route_adventures IS 'Optional gamified layer for a validated published route. progression_mode free allows any checkpoint order; linear requires previous mandatory stages.';
 COMMENT ON TABLE route_adventure_checkpoints IS 'Geolocated adventure checkpoints; answers and unlocks are validated by the API. Public payloads must never expose correct_answer_key.';
 COMMENT ON INDEX route_adventure_checkpoints_route_point_unique_idx IS 'A real route POI can seed at most one adventure checkpoint per route, making bulk POI import idempotent.';
 COMMENT ON FUNCTION enforce_route_adventure_publish_ready() IS 'Prevents enabling an adventure unless its route is published, has a real validated track, at least one active required checkpoint, and no approved active critical closure/block/fire/flood safety hold.';
+COMMENT ON FUNCTION hold_route_adventure_for_critical_condition() IS 'Automatically disables an enabled adventure when a moderator approves an active critical closure, blockage, fire-risk or flood report. Reactivation is intentionally manual after review.';
 COMMENT ON TABLE route_adventure_runs IS 'User game sessions kept separate from route_completions so game progress cannot be mistaken for verified physical completion.';
 COMMENT ON TABLE route_adventure_unlocks IS 'Stores checkpoint result and proximity distance only; the user GPS coordinate used for validation is not retained.';
 
