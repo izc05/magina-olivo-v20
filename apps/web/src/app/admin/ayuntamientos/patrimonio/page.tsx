@@ -5,6 +5,7 @@ import { useAuth } from '@/components/auth-provider';
 import { GoogleSignInButton } from '@/components/google-sign-in-button';
 import { adminApi, type AdminTerritoryMunicipality, type CmsEntry } from '@/lib/admin-data-source';
 import '../../admin.css';
+import styles from './patrimonio.module.css';
 
 type MunicipalityRole = '' | 'profile' | 'heritage' | 'nature' | 'tourism';
 
@@ -123,13 +124,13 @@ export default function AdminMunicipalityHeritagePage() {
     {message ? <div className="admin-notice success">{message}</div> : null}
     {error ? <div className="admin-notice error">{error}</div> : null}
     <section className="admin-card">
-      <div style={{display:'flex',gap:'.8rem',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap'}}>
+      <div className={styles.toolbar}>
         <div><h2>Lugares CMS ({entries.length})</h2><p>`profile` identifica la ficha editorial principal. Patrimonio, naturaleza y turismo alimentan la sección pública “Qué descubrir”.</p></div>
-        <input type="search" value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Buscar lugar, municipio o función…" style={{minWidth:'280px'}} />
+        <input className={styles.search} type="search" value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Buscar lugar, municipio o función…" />
       </div>
-      <div style={{display:'grid',gap:'.7rem',marginTop:'1rem'}}>
-        {rows.map(({ entry, municipalityId, role }) => <article key={entry.id} style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(220px,.45fr) minmax(220px,.45fr)',gap:'.8rem',alignItems:'end',padding:'1rem',border:'1px solid #d8ded8',borderRadius:'.9rem'}}>
-          <div><small>LUGAR · {entry.status}</small><h3 style={{margin:'.25rem 0'}}>{entry.title}</h3>{entry.summary ? <p style={{margin:0}}>{entry.summary}</p> : null}</div>
+      <div className={styles.list}>
+        {rows.map(({ entry, municipalityId, role }) => <article key={entry.id} className={styles.row}>
+          <div><small>LUGAR · {entry.status}</small><h3>{entry.title}</h3>{entry.summary ? <p>{entry.summary}</p> : null}</div>
           <label>Municipio<select disabled={busyId===entry.id} value={municipalityId} onChange={(event)=>void save(entry,event.target.value,role)}><option value="">Sin municipio</option>{municipalities.map((municipality)=><option key={municipality.id} value={municipality.id}>{municipality.name}</option>)}</select></label>
           <label>Función<select disabled={busyId===entry.id} value={role} onChange={(event)=>void save(entry,municipalityId,event.target.value as MunicipalityRole)}><option value="">Sin función municipal</option><option value="profile">Perfil principal</option><option value="heritage">Patrimonio</option><option value="nature">Naturaleza</option><option value="tourism">Recurso turístico</option></select></label>
         </article>)}
