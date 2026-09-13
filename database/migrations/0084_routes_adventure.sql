@@ -24,6 +24,11 @@ CREATE TABLE route_adventure_checkpoints (
   description TEXT,
   kind TEXT NOT NULL DEFAULT 'landmark'
     CHECK (kind IN ('landmark','trivia','observation','photo','collection','rest')),
+  collection_category TEXT CHECK (collection_category IS NULL OR collection_category IN (
+    'flora','fauna','heritage','olive_culture','tradition','landscape'
+  )),
+  rarity TEXT NOT NULL DEFAULT 'common'
+    CHECK (rarity IN ('common','uncommon','rare','legendary')),
   location geometry(Point, 4326) NOT NULL,
   distance_m NUMERIC(12,2) CHECK (distance_m IS NULL OR distance_m >= 0),
   unlock_radius_m INTEGER NOT NULL DEFAULT 60 CHECK (unlock_radius_m BETWEEN 10 AND 500),
@@ -50,6 +55,9 @@ CREATE INDEX route_adventure_checkpoints_route_idx
   ON route_adventure_checkpoints(route_id, active, sort_order, distance_m);
 CREATE INDEX route_adventure_checkpoints_location_gist
   ON route_adventure_checkpoints USING GIST(location);
+CREATE INDEX route_adventure_checkpoints_album_idx
+  ON route_adventure_checkpoints(collection_category, rarity, active)
+  WHERE collection_category IS NOT NULL;
 CREATE UNIQUE INDEX route_adventure_checkpoints_route_point_unique_idx
   ON route_adventure_checkpoints(route_id, route_point_id)
   WHERE route_point_id IS NOT NULL;
@@ -157,7 +165,8 @@ CREATE TRIGGER route_condition_reports_adventure_hold_trg
   FOR EACH ROW EXECUTE FUNCTION hold_route_adventure_for_critical_condition();
 
 COMMENT ON TABLE route_adventures IS 'Optional gamified layer for a validated published route. progression_mode free allows any checkpoint order; linear requires previous mandatory stages.';
-COMMENT ON TABLE route_adventure_checkpoints IS 'Geolocated adventure checkpoints; answers and unlocks are validated by the API. Public payloads must never expose correct_answer_key.';
+COMMENT ON TABLE route_adventure_checkpoints IS 'Geolocated adventure checkpoints with optional verified territorial album category and rarity; public payloads must never expose correct_answer_key.';
+COMMENT ON INDEX route_adventure_checkpoints_album_idx IS 'Supports the territorial album by verified category and rarity without deriving content classifications automatically.';
 COMMENT ON INDEX route_adventure_checkpoints_route_point_unique_idx IS 'A real route POI can seed at most one adventure checkpoint per route, making bulk POI import idempotent.';
 COMMENT ON FUNCTION enforce_route_adventure_publish_ready() IS 'Prevents enabling an adventure unless its route is published, has a real validated track, at least one active required checkpoint, and no approved active critical closure/block/fire/flood safety hold.';
 COMMENT ON FUNCTION hold_route_adventure_for_critical_condition() IS 'Automatically disables an enabled adventure when a moderator approves an active critical closure, blockage, fire-risk or flood report. Reactivation is intentionally manual after review.';
