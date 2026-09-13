@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api-client';
 import { RouteAdventureAdmin } from './route-adventure-admin';
+import { RouteAdventureProgressionAdmin } from './route-adventure-progression-admin';
 
 type Point = { id: string; name: string; kind: string; latitude: number; longitude: number; distance_m: number | null };
 type Media = { id: string; kind: string; origin: string; url: string; caption: string | null; ai_disclosure: string | null };
@@ -95,6 +96,7 @@ export function RouteContentAdmin({ routeId, editable, busy }: { routeId: string
       </div>
     </div>
 
+    <RouteAdventureProgressionAdmin routeId={routeId} editable={editable} busy={busy || localBusy} />
     <RouteAdventureAdmin routeId={routeId} editable={editable} busy={busy || localBusy} />
   </>;
 }
