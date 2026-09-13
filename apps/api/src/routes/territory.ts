@@ -20,6 +20,27 @@ type TerritoryPlaceRow = {
   province_name: string;
 };
 
+type MunicipalityDirectoryRow = {
+  id: string;
+  ine_code: string;
+  aemet_code: string | null;
+  name: string;
+  slug: string;
+  province_name: string;
+  center: unknown | null;
+  official_website: string;
+  electronic_office_url: string | null;
+  transparency_url: string | null;
+  tourism_url: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  postal_code: string | null;
+  source_url: string;
+  verified_at: string;
+  places: unknown;
+};
+
 export function registerTerritoryRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/public/territory/places', async (_request, reply) => {
     const database = requireDatabase(db, reply);
@@ -59,5 +80,55 @@ export function registerTerritoryRoutes(app: FastifyInstance, db: DatabaseClient
     const place = result.rows[0];
     if (!place) return reply.code(404).send({ error: 'place_not_found' });
     return { place };
+  });
+
+  app.get('/api/v1/public/territory/municipalities', async (_request, reply) => {
+    const database = requireDatabase(db, reply);
+    if (!database) return;
+    const result = await sql<MunicipalityDirectoryRow>`
+      SELECT m.id, m.ine_code, m.aemet_code, m.name, m.slug, m.province_name,
+             CASE WHEN m.center IS NULL THEN NULL ELSE ST_AsGeoJSON(m.center)::json END AS center,
+             d.official_website, d.electronic_office_url, d.transparency_url, d.tourism_url,
+             d.phone, d.email, d.address, d.postal_code, d.source_url,
+             d.verified_at::text,
+             COALESCE((
+               SELECT json_agg(json_build_object('id', p.id, 'name', p.name, 'slug', p.slug, 'kind', p.kind) ORDER BY p.is_default_for_municipality DESC, p.name)
+               FROM territory_places p
+               WHERE p.municipality_id = m.id AND p.public_enabled = true
+             ), '[]'::json) AS places
+      FROM territory_municipalities m
+      JOIN territory_municipality_directory d ON d.municipality_id = m.id
+      WHERE m.active = true AND d.public_enabled = true
+      ORDER BY m.name
+    `.execute(database);
+    return { municipalities: result.rows };
+  });
+
+  app.get('/api/v1/public/territory/municipalities/:slug', async (request, reply) => {
+    const database = requireDatabase(db, reply);
+    if (!database) return;
+    const slug = (request.params as { slug?: string }).slug?.trim().toLowerCase();
+    if (!slug || !placeSlugPattern.test(slug)) return reply.code(400).send({ error: 'invalid_municipality_slug' });
+
+    const result = await sql<MunicipalityDirectoryRow>`
+      SELECT m.id, m.ine_code, m.aemet_code, m.name, m.slug, m.province_name,
+             CASE WHEN m.center IS NULL THEN NULL ELSE ST_AsGeoJSON(m.center)::json END AS center,
+             d.official_website, d.electronic_office_url, d.transparency_url, d.tourism_url,
+             d.phone, d.email, d.address, d.postal_code, d.source_url,
+             d.verified_at::text,
+             COALESCE((
+               SELECT json_agg(json_build_object('id', p.id, 'name', p.name, 'slug', p.slug, 'kind', p.kind) ORDER BY p.is_default_for_municipality DESC, p.name)
+               FROM territory_places p
+               WHERE p.municipality_id = m.id AND p.public_enabled = true
+             ), '[]'::json) AS places
+      FROM territory_municipalities m
+      JOIN territory_municipality_directory d ON d.municipality_id = m.id
+      WHERE m.slug = ${slug} AND m.active = true AND d.public_enabled = true
+      LIMIT 1
+    `.execute(database);
+
+    const municipality = result.rows[0];
+    if (!municipality) return reply.code(404).send({ error: 'municipality_not_found' });
+    return { municipality };
   });
 }
