@@ -13,6 +13,7 @@ El Modo Aventura convierte una ruta real y validada en una experiencia de explor
 - La respuesta correcta de un reto nunca sale en el payload público.
 - El desbloqueo geográfico se valida en servidor con PostGIS.
 - La V1 no realiza seguimiento GPS continuo: solicita posición al pulsar `Estoy aquí`.
+- La coordenada GPS del usuario se usa solo para calcular proximidad y no se conserva; se guarda únicamente la distancia al checkpoint necesaria para auditar el desbloqueo.
 
 ## V1 implementada
 
@@ -50,6 +51,7 @@ Cada checkpoint puede definir:
 4. La API calcula la distancia al checkpoint con PostGIS.
 5. Si está dentro del radio, valida el reto cuando exista.
 6. El desbloqueo y la puntuación se guardan una sola vez.
+7. La coordenada exacta se descarta después del cálculo y no forma un historial de localización.
 
 ### Progreso e insignias
 
