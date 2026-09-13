@@ -131,6 +131,10 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
 
   const disabled = !editable || busy || localBusy;
   const ordered = useMemo(() => [...(data?.checkpoints ?? [])].sort((a, b) => a.sort_order - b.sort_order), [data]);
+  const unusedRoutePointCount = useMemo(() => {
+    const used = new Set((data?.checkpoints ?? []).map((item) => item.route_point_id).filter(Boolean));
+    return (data?.route_points ?? []).filter((point) => !used.has(point.id)).length;
+  }, [data]);
 
   async function execute(task: () => Promise<void>, success: string) {
     setLocalBusy(true); setError(null); setMessage(null);
@@ -149,6 +153,15 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
         completion_message: config.completion_message.trim() || null,
       }),
     }), config.enabled ? 'Modo Aventura guardado y activado.' : 'Configuración guardada; la aventura permanece oculta al público.');
+  }
+
+  async function importRoutePoints() {
+    await execute(async () => {
+      await apiFetch(`/api/v1/admin/routes/${routeId}/adventure/import-route-points`, {
+        method: 'POST',
+        body: JSON.stringify({ unlock_radius_m: 60, points: 100, is_required: true }),
+      });
+    }, 'POI reales convertidos en etapas base. Los puntos ya usados se han omitido automáticamente.');
   }
 
   function useRoutePoint(pointId: string) {
@@ -247,7 +260,11 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
       <label className="wide">Introducción<textarea value={config.intro} onChange={(event) => setConfig((current) => ({ ...current, intro: event.target.value }))} placeholder="La misión o historia que presenta el recorrido…" /></label>
       <label className="wide">Mensaje final<textarea value={config.completion_message} onChange={(event) => setConfig((current) => ({ ...current, completion_message: event.target.value }))} placeholder="Texto al completar los checkpoints obligatorios…" /></label>
     </div>
-    <div className="routes-admin-actions"><button disabled={disabled} onClick={() => void saveConfig()}>Guardar aventura</button></div>
+    <div className="routes-admin-actions">
+      <button disabled={disabled} onClick={() => void saveConfig()}>Guardar aventura</button>
+      <button className="secondary" disabled={disabled || unusedRoutePointCount === 0} onClick={() => void importRoutePoints()}>Crear etapas desde {unusedRoutePointCount} POI reales</button>
+    </div>
+    <p className="routes-admin-help">La importación copia nombre, descripción, posición, distancia y orden de los POI activos. No genera historias ni respuestas: después puedes convertir cada etapa en pregunta, observación o coleccionable sin alterar el POI original.</p>
 
     <div className="routes-admin-metrics">
       <article><span>Partidas</span><strong>{data?.metrics.total_runs ?? 0}</strong></article>
@@ -291,7 +308,7 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
             <div><strong>{index + 1}. {item.title}</strong><span>{kindLabel(item.kind)} · {item.points} pt · radio {item.unlock_radius_m} m · {item.is_required ? 'obligatorio' : 'extra'}{item.active ? '' : ' · oculto'}</span></div>
             <div><button disabled={disabled} onClick={() => editCheckpoint(item)}>Editar</button><button className="danger" disabled={disabled} onClick={() => void deleteCheckpoint(item.id)}>Eliminar</button></div>
           </article>)}
-          {!ordered.length ? <p>Aún no hay etapas. Puedes reutilizar un POI existente o introducir coordenadas reales.</p> : null}
+          {!ordered.length ? <p>Aún no hay etapas. Puedes crear todas las etapas base desde los POI reales de la ruta o introducir coordenadas verificadas manualmente.</p> : null}
         </div>
       </section>
     </div>
