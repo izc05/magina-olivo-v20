@@ -1,4 +1,4 @@
-import { apiBaseUrl, apiFetch } from './api-client';
+import { apiBaseUrl, apiFetch, apiFetchBlob } from './api-client';
 
 export type RouteActivity = {
   id: string;
@@ -78,4 +78,8 @@ export async function loadRecordedJourneySummary() {
 
 export function activityGpxUrl(activityId: string) {
   return `${apiBaseUrl}/api/v1/activities/${encodeURIComponent(activityId)}/gpx`;
+}
+
+export async function downloadRouteActivityGpx(activityId: string) {
+  return apiFetchBlob(`/api/v1/activities/${encodeURIComponent(activityId)}/gpx`);
 }
