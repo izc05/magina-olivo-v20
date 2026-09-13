@@ -53,7 +53,7 @@ function categoryLabel(category: ExplorerProfile['album'][number]['category']) {
     flora: 'Flora',
     fauna: 'Fauna',
     heritage: 'Patrimonio',
-    olive: 'Olivar',
+    olive_culture: 'Olivar',
     tradition: 'Tradiciones',
     landscape: 'Paisaje',
   } as const)[category];
