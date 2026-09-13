@@ -8,6 +8,7 @@ const errors = [];
 const warnings = [];
 
 const requiredMunicipalityCount = catalog?.completeness_policy?.municipalities_required ?? 16;
+const requiredOfficialCoreCount = catalog?.completeness_policy?.official_core_minimum ?? 17;
 const municipalities = Array.isArray(catalog.municipalities) ? catalog.municipalities : [];
 const routes = Array.isArray(catalog.routes) ? catalog.routes : [];
 
@@ -61,21 +62,23 @@ for (const route of routes) {
 }
 
 const officialCore = routes.filter((route) => route.layer === 'official_core');
-if (officialCore.length < 15) {
-  errors.push(`Official Parque Natural baseline is incomplete: expected at least 15 routes, found ${officialCore.length}.`);
+if (officialCore.length < requiredOfficialCoreCount) {
+  errors.push(`Official Parque Natural baseline is incomplete: expected at least ${requiredOfficialCoreCount} routes, found ${officialCore.length}.`);
 }
 
 const covered = new Set(routes.flatMap((route) => route.municipalities ?? []).map((name) => name.trim().toLowerCase()));
 const coveragePercent = municipalities.length ? Math.round((covered.size / municipalities.length) * 100) : 0;
 const documentedCount = routes.filter((route) => route.documented).length;
+const tracksFoundCount = routes.filter((route) => route.track_found).length;
 const validatedCount = routes.filter((route) => route.track_validated).length;
 const publishableCount = routes.filter((route) => route.publishable).length;
 
 console.log('Sierra Mágina route catalog');
 console.log(`- routes: ${routes.length}`);
-console.log(`- official core: ${officialCore.length}`);
+console.log(`- official core: ${officialCore.length}/${requiredOfficialCoreCount}`);
 console.log(`- municipalities represented by current routes: ${covered.size}/${municipalities.length} (${coveragePercent}%)`);
 console.log(`- documented: ${documentedCount}/${routes.length}`);
+console.log(`- tracks found: ${tracksFoundCount}/${routes.length}`);
 console.log(`- validated tracks: ${validatedCount}/${routes.length}`);
 console.log(`- publishable: ${publishableCount}/${routes.length}`);
 
