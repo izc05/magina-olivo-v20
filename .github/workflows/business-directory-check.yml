@@ -7,6 +7,7 @@ on:
       - 'apps/api/src/domain/business-directory.ts'
       - 'apps/api/src/routes/business-directory.ts'
       - 'apps/api/src/routes/business-revenue.ts'
+      - 'apps/api/src/routes/business-portal.ts'
       - 'apps/api/src/routes/admin-business-directory.ts'
       - 'apps/api/src/routes/admin-business-categories.ts'
       - 'apps/api/src/routes/admin-business-revenue.ts'
@@ -15,10 +16,12 @@ on:
       - 'apps/web/src/app/empresas/**'
       - 'apps/web/src/app/explorar/empresas/**'
       - 'apps/web/src/app/admin/empresas/**'
+      - 'apps/web/src/app/mi-negocio/**'
       - 'apps/web/src/components/business-**'
       - 'apps/web/src/lib/business-**'
       - 'database/migrations/0070_business_directory_foundation.sql'
       - 'database/migrations/0071_business_revenue_engine.sql'
+      - 'database/migrations/0072_business_memberships.sql'
       - '.github/workflows/business-directory-check.yml'
 
 concurrency:
@@ -91,11 +94,14 @@ jobs:
             psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 -f "${migration}"
           done
 
-      - name: Seed business fixture
+      - name: Seed business, offer and owner fixtures
         env:
           PGPASSWORD: postgres
         run: |
           psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO users (id, primary_email, display_name, status)
+          VALUES ('73000000-0000-4000-8000-000000000001', 'owner-ci@example.com', 'Owner CI', 'active');
+
           INSERT INTO businesses (
             id, slug, name, short_description, description, address, location,
             phone, website, verification_status, status, commercial_plan,
@@ -143,12 +149,30 @@ jobs:
             now(),
             now() + interval '7 days'
           );
+
+          INSERT INTO business_claims (
+            id, business_id, claimant_user_id, claimant_name, claimant_email,
+            evidence, status, reviewed_by, reviewed_at
+          ) VALUES (
+            '74000000-0000-4000-8000-000000000001',
+            '71000000-0000-4000-8000-000000000001',
+            '73000000-0000-4000-8000-000000000001',
+            'Owner CI',
+            'owner-ci@example.com',
+            '{"relationship":"owner"}'::jsonb,
+            'approved',
+            '73000000-0000-4000-8000-000000000001',
+            now()
+          );
           SQL
 
-      - name: Public API and revenue funnel smoke test
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM business_memberships WHERE business_id='71000000-0000-4000-8000-000000000001' AND user_id='73000000-0000-4000-8000-000000000001' AND role='owner' AND status='active'")" = "1"
+
+      - name: Public API, revenue funnel and owner portal smoke test
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
           PGPASSWORD: postgres
+          ALLOW_DEV_AUTH_HEADERS: 'true'
         run: |
           node apps/api/dist/server.js >/tmp/magina-business-api.log 2>&1 &
           API_PID=$!
@@ -165,15 +189,22 @@ jobs:
           OFFERS=$(curl -fsS http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina/offers)
           EVENT=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina/events \
             -H 'content-type: application/json' \
-            -d '{"eventType":"profile_view","anonymousId":"ci-anon","sourceContext":"ci"}')
+            -d '{"eventType":"profile_view","sourceContext":"ci"}')
           LEAD=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina/leads \
             -H 'content-type: application/json' \
-            -d '{"kind":"quote","contactName":"Cliente CI","contactEmail":"cliente@example.com","message":"Quiero presupuesto","offerId":"72000000-0000-4000-8000-000000000001","anonymousId":"ci-anon","sourceContext":"ci","consentBusinessContact":true}')
+            -d '{"kind":"quote","contactName":"Cliente CI","contactEmail":"cliente@example.com","message":"Quiero presupuesto","offerId":"72000000-0000-4000-8000-000000000001","sourceContext":"ci","consentBusinessContact":true}')
           CLAIM=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/public/businesses/empresa-ci-magina/claims \
             -H 'content-type: application/json' \
             -d '{"claimantName":"Responsable CI","claimantEmail":"ci@example.com","relationship":"Gerencia","message":"Solicitud smoke test"}')
 
-          CATEGORIES="${CATEGORIES}" BUSINESSES="${BUSINESSES}" DETAIL="${DETAIL}" OFFERS="${OFFERS}" EVENT="${EVENT}" LEAD="${LEAD}" CLAIM="${CLAIM}" node <<'NODE'
+          MY_BUSINESSES=$(curl -fsS http://127.0.0.1:3001/api/v1/my/businesses \
+            -H 'x-user-id: 73000000-0000-4000-8000-000000000001' \
+            -H 'x-workspace-id: 75000000-0000-4000-8000-000000000001')
+          MY_DASHBOARD=$(curl -fsS http://127.0.0.1:3001/api/v1/my/businesses/71000000-0000-4000-8000-000000000001/dashboard?days=30 \
+            -H 'x-user-id: 73000000-0000-4000-8000-000000000001' \
+            -H 'x-workspace-id: 75000000-0000-4000-8000-000000000001')
+
+          CATEGORIES="${CATEGORIES}" BUSINESSES="${BUSINESSES}" DETAIL="${DETAIL}" OFFERS="${OFFERS}" EVENT="${EVENT}" LEAD="${LEAD}" CLAIM="${CLAIM}" MY_BUSINESSES="${MY_BUSINESSES}" MY_DASHBOARD="${MY_DASHBOARD}" node <<'NODE'
           const categories = JSON.parse(process.env.CATEGORIES);
           const list = JSON.parse(process.env.BUSINESSES);
           const detail = JSON.parse(process.env.DETAIL);
@@ -181,6 +212,8 @@ jobs:
           const event = JSON.parse(process.env.EVENT);
           const lead = JSON.parse(process.env.LEAD);
           const claim = JSON.parse(process.env.CLAIM);
+          const myBusinesses = JSON.parse(process.env.MY_BUSINESSES);
+          const myDashboard = JSON.parse(process.env.MY_DASHBOARD);
 
           if (!Array.isArray(categories.categories) || categories.categories.length < 1) throw new Error('Business categories unavailable');
           if (list.businesses?.length !== 1) throw new Error(`Expected one business, got ${list.businesses?.length}`);
@@ -193,6 +226,9 @@ jobs:
           if (event.accepted !== true) throw new Error('Conversion event rejected');
           if (lead.lead?.status !== 'new') throw new Error('Lead flow failed');
           if (claim.claim?.status !== 'pending') throw new Error('Claim flow failed');
+          if (myBusinesses.businesses?.length !== 1 || myBusinesses.businesses[0].role !== 'owner') throw new Error('Business membership unavailable');
+          if (myDashboard.business?.id !== '71000000-0000-4000-8000-000000000001') throw new Error('Owner dashboard unavailable');
+          if (myDashboard.role !== 'owner') throw new Error('Owner dashboard role missing');
           NODE
 
           test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM business_claims WHERE business_id='71000000-0000-4000-8000-000000000001' AND claimant_email='ci@example.com' AND status='pending'")" = "1"
