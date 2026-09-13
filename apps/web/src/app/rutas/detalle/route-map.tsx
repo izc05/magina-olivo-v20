@@ -38,7 +38,7 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
         style: 'https://tiles.openfreemap.org/styles/liberty',
         bounds,
         fitBoundsOptions: { padding: 42, maxZoom: 15 },
-        attributionControl: true,
+        attributionControl: {},
       });
 
       map.on('load', () => {
