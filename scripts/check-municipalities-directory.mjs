@@ -10,6 +10,7 @@ const publicSource = fs.readFileSync(new URL('../apps/web/src/lib/public-territo
 const currentAffairsAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/actualidad/page.tsx', import.meta.url), 'utf8');
 const heritageAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/patrimonio/page.tsx', import.meta.url), 'utf8');
 const heritageCatalog = fs.readFileSync(new URL('../apps/web/src/lib/municipality-heritage-catalog.ts', import.meta.url), 'utf8');
+const discoveryCatalog = fs.readFileSync(new URL('../apps/web/src/lib/municipality-discovery-catalog.ts', import.meta.url), 'utf8');
 const municipalitiesAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/page.tsx', import.meta.url), 'utf8');
 const coverageAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/cobertura/page.tsx', import.meta.url), 'utf8');
 
@@ -68,28 +69,50 @@ const expectedHeritage = [
   ['torres','palacio-marqueses-de-camarasa'],
 ];
 
+const expectedDiscovery = [
+  ['albanchez-de-magina','fuente-de-la-seda-albanchez'],
+  ['bedmar-y-garciez','nacimiento-del-rio-cuadros'],
+  ['belmez-de-la-moraleda','barranco-del-arroyo-garganton'],
+  ['cabra-del-santo-cristo','puente-arroyo-salado'],
+  ['cambil','mata-bejid-y-chopos-singulares'],
+  ['campillo-de-arenas','desfiladero-de-puerta-arenas'],
+  ['carcheles','paraje-cazalla-carcheles'],
+  ['la-guardia-de-jaen','plaza-monumental-isabel-ii'],
+  ['huelma','iglesia-inmaculada-concepcion-huelma'],
+  ['jimena','pinar-de-canava'],
+  ['jodar','las-quebradas-jodar'],
+  ['larva','pozuelo-laguna-cueva-del-joso'],
+  ['mancha-real','pena-del-aguila-mancha-real'],
+  ['noalejo','navalcan-noalejo'],
+  ['pegalajar','cueva-de-aro-pegalajar'],
+  ['torres','manantial-de-fuenmayor'],
+];
+
 for (const [ine, name, website] of expected) {
   if (!migration.includes(`'${ine}'`) || !migration.includes(`'${name}'`) || !migration.includes(`'${website}'`)) {
     throw new Error(`Missing canonical municipality seed: ${ine} ${name}`);
   }
 }
-
 for (const [ine, url] of expectedTourism) {
-  if (!tourismMigration.includes(`'${ine}'`) || !tourismMigration.includes(`'${url}'`)) {
-    throw new Error(`Missing verified tourism URL seed: ${ine} ${url}`);
-  }
+  if (!tourismMigration.includes(`'${ine}'`) || !tourismMigration.includes(`'${url}'`)) throw new Error(`Missing verified tourism URL seed: ${ine} ${url}`);
 }
 if (expectedTourism.length !== 14) throw new Error(`Expected 14 verified tourism URL seeds, got ${expectedTourism.length}`);
 if (!tourismMigration.includes('Cabra del Santo Cristo and Huelma intentionally remain NULL')) throw new Error('Tourism migration must document intentionally unverified municipalities');
 
 for (const [municipalitySlug, resourceSlug] of expectedHeritage) {
-  if (!heritageCatalog.includes(`municipalitySlug: '${municipalitySlug}'`) || !heritageCatalog.includes(`slug: '${resourceSlug}'`)) {
-    throw new Error(`Missing verified heritage catalog item: ${municipalitySlug} ${resourceSlug}`);
-  }
+  if (!heritageCatalog.includes(`municipalitySlug: '${municipalitySlug}'`) || !heritageCatalog.includes(`slug: '${resourceSlug}'`)) throw new Error(`Missing verified heritage catalog item: ${municipalitySlug} ${resourceSlug}`);
 }
 if (expectedHeritage.length !== 16) throw new Error(`Expected 16 heritage catalog items, got ${expectedHeritage.length}`);
 if (!heritageCatalog.includes("const VERIFIED_AT = '2026-09-13'")) throw new Error('Heritage catalog verification date is missing');
 if (!heritageCatalog.includes('sourceUrl:') || !heritageCatalog.includes('sourceLabel:')) throw new Error('Heritage catalog must preserve source provenance');
+
+for (const [municipalitySlug, resourceSlug] of expectedDiscovery) {
+  if (!discoveryCatalog.includes(`municipalitySlug: '${municipalitySlug}'`) || !discoveryCatalog.includes(`slug: '${resourceSlug}'`)) throw new Error(`Missing verified discovery catalog item: ${municipalitySlug} ${resourceSlug}`);
+}
+if (expectedDiscovery.length !== 16) throw new Error(`Expected 16 second-layer discovery items, got ${expectedDiscovery.length}`);
+if (!discoveryCatalog.includes("const VERIFIED_AT = '2026-09-13'")) throw new Error('Discovery catalog verification date is missing');
+if (!discoveryCatalog.includes("role: 'nature'") || !discoveryCatalog.includes("role: 'heritage'")) throw new Error('Discovery catalog must contain nature and heritage classifications');
+if (!discoveryCatalog.includes('sourceUrl:') || !discoveryCatalog.includes('sourceLabel:')) throw new Error('Discovery catalog must preserve source provenance');
 
 const uniqueCodes = new Set(expected.map(([ine]) => ine));
 if (uniqueCodes.size !== 16) throw new Error(`Expected 16 unique INE codes, got ${uniqueCodes.size}`);
@@ -124,7 +147,8 @@ for (const role of ['profile', 'heritage', 'nature', 'tourism']) {
   if (!heritageAdmin.includes(`'${role}'`)) throw new Error(`Heritage administration is missing municipality_role: ${role}`);
 }
 if (!heritageAdmin.includes('municipality_id') || !heritageAdmin.includes('municipality_role')) throw new Error('Heritage administration must persist explicit municipality identity and role');
-if (!heritageAdmin.includes('MUNICIPALITY_HERITAGE_CATALOG')) throw new Error('Heritage administration must expose the verified seed catalog');
+if (!heritageAdmin.includes('MUNICIPALITY_HERITAGE_CATALOG') || !heritageAdmin.includes('MUNICIPALITY_DISCOVERY_CATALOG')) throw new Error('Heritage administration must combine both verified catalogs');
+if (!heritageAdmin.includes('OFFICIAL_DISCOVERY_CATALOG')) throw new Error('Admin importer must operate on the combined official discovery catalog');
 if (!heritageAdmin.includes("status: 'published'")) throw new Error('New verified heritage imports must be published explicitly');
 if (!heritageAdmin.includes('existingBySlug')) throw new Error('Heritage importer must be idempotent by CMS slug');
 if (!heritageAdmin.includes('source_url') || !heritageAdmin.includes('verified_at')) throw new Error('Heritage importer must persist provenance fields');
@@ -136,4 +160,4 @@ if (!coverageAdmin.includes("entry.status !== 'published'")) throw new Error('Co
 if (!coverageAdmin.includes('entry.starts_at') || !coverageAdmin.includes('entry.ends_at')) throw new Error('Coverage dashboard must respect CMS publication windows');
 if (!coverageAdmin.includes('Solo con huecos')) throw new Error('Coverage dashboard must allow filtering incomplete municipalities');
 
-console.log('Municipality directory contract OK: 16 canonical municipalities, 14 verified tourism URLs, 16 audited heritage seeds, authenticated idempotent CMS importer, public/admin API, CMS hub aggregation and coverage dashboard.');
+console.log('Municipality directory contract OK: 16 canonical municipalities, 14 verified tourism URLs, 32 audited discovery seeds across two layers, authenticated idempotent CMS importer, public/admin API, CMS hub aggregation and coverage dashboard.');
