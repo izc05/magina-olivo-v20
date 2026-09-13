@@ -114,7 +114,7 @@ jobs:
             psql -h 127.0.0.1 -U postgres -d magina_adventure -v ON_ERROR_STOP=1 -f "${migration}"
           done
 
-      - name: Adventure persistence and safety smoke
+      - name: Adventure persistence safety and album smoke
         env:
           PGPASSWORD: postgres
         run: |
@@ -149,12 +149,14 @@ jobs:
           );
 
           INSERT INTO route_adventure_checkpoints(
-            id, route_id, route_point_id, title, kind, location, distance_m, unlock_radius_m, points
+            id, route_id, route_point_id, title, kind, collection_category, rarity,
+            location, distance_m, unlock_radius_m, points
           ) VALUES (
             '33333333-3333-4333-8333-333333333333',
             '22222222-2222-4222-8222-222222222222',
             '55555555-5555-4555-8555-555555555555',
-            'Reto CI', 'landmark', ST_SetSRID(ST_MakePoint(-3.5, 37.7), 4326),
+            'Reto CI', 'landmark', 'heritage', 'rare',
+            ST_SetSRID(ST_MakePoint(-3.5, 37.7), 4326),
             500, 80, 120
           );
 
@@ -184,6 +186,20 @@ jobs:
                 AND u.awarded_points = 120
             ) THEN
               RAISE EXCEPTION 'adventure persistence smoke failed';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM route_adventure_checkpoints
+              WHERE id = '33333333-3333-4333-8333-333333333333'
+                AND collection_category = 'heritage'
+                AND rarity = 'rare'
+            ) THEN
+              RAISE EXCEPTION 'territorial album metadata was not persisted';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_indexes
+              WHERE indexname = 'route_adventure_checkpoints_album_idx'
+            ) THEN
+              RAISE EXCEPTION 'territorial album index missing';
             END IF;
             IF EXISTS (
               SELECT 1 FROM information_schema.columns
