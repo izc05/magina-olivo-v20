@@ -164,6 +164,24 @@ test('editorial regions span the desktop canvas and profile sign-in copy stays r
   if (await copy.count()) expect(await copy.evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(240);
 });
 
+test('home connects the public discovery modules', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openStable(page, '/');
+
+  const discovery = page.locator('.home-territory-links');
+  await expect(discovery.getByRole('heading', { name: 'Vive Sierra Mágina' })).toBeVisible();
+  for (const [name, href] of [
+    ['Rutas y aventuras', '/rutas/'],
+    ['Empresas locales', '/explorar/empresas/'],
+    ['Experiencias', '/experiencias/'],
+    ['Mágina Pass', '/magina-pass/'],
+  ] as const) {
+    const link = discovery.getByRole('link', { name: new RegExp(name) });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', href);
+  }
+});
+
 test('last home action can scroll above the mobile dock and receive keyboard focus', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openStable(page, '/');

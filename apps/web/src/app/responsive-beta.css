@@ -302,6 +302,12 @@ input[type='radio'] {
   }
 }
 
+@media (min-width: 1024px) {
+  .home-page .home-territory-links .quick-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (min-width: 1600px) {
   .home-page,
   .explore-page,
