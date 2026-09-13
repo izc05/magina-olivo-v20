@@ -11,6 +11,16 @@ type AdventureConfig = {
   completion_message: string | null;
 };
 
+type AdventureReadiness = {
+  ready: boolean;
+  blockers: string[];
+  route_status: string;
+  track_status: string;
+  validated_track_count: number;
+  active_checkpoint_count: number;
+  required_checkpoint_count: number;
+};
+
 type RoutePoint = {
   id: string;
   name: string;
@@ -105,8 +115,17 @@ function kindLabel(kind: Checkpoint['kind']) {
   return ({ landmark: 'Lugar', trivia: 'Pregunta', observation: 'Observación', photo: 'Foto', collection: 'Coleccionable', rest: 'Descanso' })[kind];
 }
 
+function blockerLabel(blocker: string) {
+  if (blocker === 'route_not_published') return 'Publicar la ruta';
+  if (blocker === 'validated_track_missing') return 'Validar el track real';
+  if (blocker === 'active_checkpoint_missing') return 'Añadir un checkpoint activo';
+  if (blocker === 'required_checkpoint_missing') return 'Marcar al menos un checkpoint obligatorio';
+  return blocker;
+}
+
 export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: string; editable: boolean; busy: boolean }) {
   const [data, setData] = useState<AdventureAdminPayload | null>(null);
+  const [readiness, setReadiness] = useState<AdventureReadiness | null>(null);
   const [config, setConfig] = useState({ enabled: false, title: 'Modo Aventura', intro: '', completion_message: '' });
   const [checkpoint, setCheckpoint] = useState<CheckpointForm>(emptyCheckpoint);
   const [localBusy, setLocalBusy] = useState(false);
@@ -114,8 +133,12 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
   const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const response = await apiFetch<AdventureAdminPayload>(`/api/v1/admin/routes/${routeId}/adventure`);
+    const [response, readinessResponse] = await Promise.all([
+      apiFetch<AdventureAdminPayload>(`/api/v1/admin/routes/${routeId}/adventure`),
+      apiFetch<AdventureReadiness>(`/api/v1/admin/routes/${routeId}/adventure/readiness`),
+    ]);
     setData(response);
+    setReadiness(readinessResponse);
     setConfig({
       enabled: Boolean(response.adventure.enabled),
       title: response.adventure.title || 'Modo Aventura',
@@ -145,6 +168,10 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
 
   async function saveConfig() {
     if (!config.title.trim()) { setError('El Modo Aventura necesita un título.'); return; }
+    if (config.enabled && !readiness?.ready) {
+      setError(`La aventura todavía no puede publicarse: ${(readiness?.blockers ?? []).map(blockerLabel).join(' · ') || 'revisa la preparación de la ruta'}.`);
+      return;
+    }
     await execute(() => apiFetch(`/api/v1/admin/routes/${routeId}/adventure`, {
       method: 'PUT', body: JSON.stringify({
         enabled: config.enabled,
@@ -254,8 +281,20 @@ export function RouteAdventureAdmin({ routeId, editable, busy }: { routeId: stri
     {message ? <div className="routes-admin-notice ok">{message}</div> : null}
     {error ? <div className="routes-admin-notice error">{error}</div> : null}
 
+    {readiness ? <div className={`routes-admin-notice ${readiness.ready ? 'ok' : ''}`}>
+      <strong>{readiness.ready ? 'Lista para publicar' : 'Aventura todavía no publicable'}</strong>
+      <div>{readiness.ready ? 'Ruta, track y checkpoints superan el preflight.' : readiness.blockers.map(blockerLabel).join(' · ')}</div>
+    </div> : null}
+
+    <div className="routes-admin-metrics">
+      <article><span>Ruta</span><strong>{readiness?.route_status === 'published' ? 'Publicada' : readiness?.route_status ?? '—'}</strong></article>
+      <article><span>Track</span><strong>{readiness?.validated_track_count ? 'Validado' : 'Pendiente'}</strong></article>
+      <article><span>Checkpoints activos</span><strong>{readiness?.active_checkpoint_count ?? 0}</strong></article>
+      <article><span>Obligatorios</span><strong>{readiness?.required_checkpoint_count ?? 0}</strong></article>
+    </div>
+
     <div className="routes-admin-form-grid">
-      <label className="routes-admin-check"><input type="checkbox" checked={config.enabled} onChange={(event) => setConfig((current) => ({ ...current, enabled: event.target.checked }))} /> Activar en la ficha pública</label>
+      <label className="routes-admin-check"><input type="checkbox" checked={config.enabled} disabled={disabled || (!config.enabled && !readiness?.ready)} onChange={(event) => setConfig((current) => ({ ...current, enabled: event.target.checked }))} /> Activar en la ficha pública</label>
       <label>Título<input value={config.title} onChange={(event) => setConfig((current) => ({ ...current, title: event.target.value }))} /></label>
       <label className="wide">Introducción<textarea value={config.intro} onChange={(event) => setConfig((current) => ({ ...current, intro: event.target.value }))} placeholder="La misión o historia que presenta el recorrido…" /></label>
       <label className="wide">Mensaje final<textarea value={config.completion_message} onChange={(event) => setConfig((current) => ({ ...current, completion_message: event.target.value }))} placeholder="Texto al completar los checkpoints obligatorios…" /></label>
