@@ -38,6 +38,14 @@ function contextualHref(path: string, place: PublicTerritoryPlace) {
   return `${path}${join}fromPlace=${encodeURIComponent(place.slug)}&fromName=${encodeURIComponent(place.name)}`;
 }
 
+function officialLinkKindLabel(kind: string) {
+  if (kind === 'town_hall') return 'Web municipal';
+  if (kind === 'electronic_office') return 'Sede electrónica';
+  if (kind === 'transparency') return 'Transparencia';
+  if (kind === 'tourism') return 'Turismo oficial';
+  return 'Servicio público';
+}
+
 export function TownHubClient() {
   const params = useSearchParams();
   const slug = params.get('slug')?.trim() ?? '';
@@ -91,6 +99,8 @@ export function TownHubClient() {
   if (loading) return <main className={styles.page}><section className={styles.state}><strong>Cargando pueblo…</strong><p>Conectando rutas, empresas y contenido territorial publicado.</p></section></main>;
   if (error || !place) return <main className={styles.page}><Link className={styles.back} href="/explorar">← Volver a Explorar</Link><section className={styles.state}><strong>No podemos mostrar este pueblo.</strong><p>Puede no estar publicado o el catálogo territorial estar temporalmente no disponible.</p></section></main>;
 
+  const officialLinks = place.official_links ?? [];
+
   return <main className={styles.page}>
     <Link className={styles.back} href="/explorar">← Explorar Sierra Mágina</Link>
     <header className={styles.hero}>
@@ -98,8 +108,13 @@ export function TownHubClient() {
       <h1>{place.name}</h1>
       <p>{subtitle}. Esta ficha reúne únicamente contenido público relacionado con este territorio; no muestra datos privados de fincas.</p>
       <div className={styles.meta}><span>{place.kind === 'municipal_seat' ? 'Cabecera municipal' : 'Localidad'}</span><span>INE {place.ine_code}</span>{place.aemet_code ? <span>AEMET disponible</span> : null}</div>
-      <div className={styles.actions}><a className={`${styles.action} ${styles.primary}`} href="#rutas">Ver rutas</a><a className={styles.action} href="#empresas">Ver empresas</a><Link className={styles.action} href="/radar">Tiempo y radar</Link></div>
+      <div className={styles.actions}><a className={`${styles.action} ${styles.primary}`} href="#rutas">Ver rutas</a><a className={styles.action} href="#empresas">Ver empresas</a><a className={styles.action} href="#ayuntamiento">Ayuntamiento</a><Link className={styles.action} href="/radar">Tiempo y radar</Link></div>
     </header>
+
+    <section id="ayuntamiento" className={styles.section}>
+      <div className={styles.sectionHead}><div><h2>Ayuntamiento y servicios públicos</h2><p>Enlaces oficiales del municipio de {place.municipality_name}. Solo mostramos destinos con verificación registrada.</p></div></div>
+      {officialLinks.length ? <div className={styles.grid}>{officialLinks.map((link) => <a className={styles.card} key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"><small>{officialLinkKindLabel(link.kind)} · verificado</small><h3>{link.label}</h3><p>Acceso al servicio oficial del municipio. Se abrirá en una pestaña nueva.</p><strong>Abrir sitio oficial ↗</strong></a>)}</div> : <div className={styles.empty}>Los enlaces oficiales de este municipio están pendientes de verificación. No mostramos direcciones deducidas o no confirmadas.</div>}
+    </section>
 
     <section id="rutas" className={styles.section}>
       <div className={styles.sectionHead}><div><h2>Rutas y experiencias</h2><p>Recorridos publicados con track validado relacionados con {place.name}.</p></div><Link href="/rutas">Todas las rutas →</Link></div>
