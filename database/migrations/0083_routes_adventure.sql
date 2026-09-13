@@ -49,6 +49,9 @@ CREATE INDEX route_adventure_checkpoints_route_idx
   ON route_adventure_checkpoints(route_id, active, sort_order, distance_m);
 CREATE INDEX route_adventure_checkpoints_location_gist
   ON route_adventure_checkpoints USING GIST(location);
+CREATE UNIQUE INDEX route_adventure_checkpoints_route_point_unique_idx
+  ON route_adventure_checkpoints(route_id, route_point_id)
+  WHERE route_point_id IS NOT NULL;
 
 CREATE TABLE route_adventure_runs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -87,6 +90,7 @@ CREATE INDEX route_adventure_unlocks_checkpoint_idx
 
 COMMENT ON TABLE route_adventures IS 'Optional gamified layer for a validated published route. It never replaces technical navigation or official safety information.';
 COMMENT ON TABLE route_adventure_checkpoints IS 'Geolocated adventure checkpoints; answers and unlocks are validated by the API. Public payloads must never expose correct_answer_key.';
+COMMENT ON INDEX route_adventure_checkpoints_route_point_unique_idx IS 'A real route POI can seed at most one adventure checkpoint per route, making bulk POI import idempotent.';
 COMMENT ON TABLE route_adventure_runs IS 'User game sessions kept separate from route_completions so game progress cannot be mistaken for verified physical completion.';
 COMMENT ON TABLE route_adventure_unlocks IS 'Stores checkpoint result and proximity distance only; the user GPS coordinate used for validation is not retained.';
 
