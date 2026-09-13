@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { loadPublicRoute, type PublicRouteDetail } from '../../../lib/public-routes-source';
 import { RouteMap } from './route-map';
+import { RouteCommunityPanel } from './route-community-panel';
 import styles from '../routes-public.module.css';
 
 function km(value: number | null) { return value === null ? '—' : `${(value / 1000).toFixed(1)} km`; }
@@ -82,7 +83,9 @@ export function RouteDetailClient() {
     <section className={styles.infoGrid}>
       <article className={styles.infoCard}><h2>Acceso y seguridad</h2><p>{route.access_notes ?? 'Sin notas específicas de acceso.'}</p><p>{route.safety_notes ?? 'Sin avisos adicionales publicados.'}</p></article>
       <article className={styles.infoCard}><h2>Agua y recorrido</h2><p>{route.water_notes ?? 'No hay información verificada sobre puntos de agua.'}</p><p>{route.circular ? 'Ruta circular.' : 'Ruta lineal o de ida y vuelta según el track.'} {route.family_friendly ? 'Marcada como apta para familias.' : ''}</p></article>
-      <article className={styles.infoCard}><h2>Fuentes</h2>{detail.sources.length ? <ul className={styles.sourceList}>{detail.sources.map((source, index) => <li key={String(source.id ?? index)}>{typeof source.source_url === 'string' ? <a href={source.source_url} target="_blank" rel="noreferrer">{String(source.source_name ?? 'Fuente')}</a> : String(source.source_name ?? 'Fuente')}</li>)}</ul> : <p>La ficha no publica fuentes adicionales.</p>}</article>
+      <article className={styles.infoCard}><h2>Fuentes oficiales y editoriales</h2>{detail.sources.length ? <ul className={styles.sourceList}>{detail.sources.map((source, index) => <li key={String(source.id ?? index)}>{typeof source.source_url === 'string' ? <a href={source.source_url} target="_blank" rel="noreferrer">{String(source.source_name ?? 'Fuente')}</a> : String(source.source_name ?? 'Fuente')}</li>)}</ul> : <p>La ficha no publica fuentes adicionales.</p>}</article>
     </section>
+
+    <RouteCommunityPanel routeId={route.id} slug={slug} />
   </main>;
 }
