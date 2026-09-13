@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "created_at": "2026-09-13",
   "scope": "Geometry validation queue for Sierra Magina hiking sources",
   "policy": {
@@ -19,14 +19,13 @@
   },
   "rediam": {
     "expected_core_routes": 17,
-    "sources_located": 16,
+    "sources_located": 17,
     "geometry_validated": 0,
-    "pending_source_identification": [
-      "castillo-de-albanchez"
-    ],
+    "pending_source_identification": [],
     "queue": [
       {"slug":"adelfal-de-cuadros","codigoequi":"727","status":"source_located","next":"fetch_wfs_geometry"},
       {"slug":"cano-del-aguadero","codigoequi":"725","status":"source_located","next":"fetch_wfs_geometry"},
+      {"slug":"castillo-de-albanchez","codigoequi":"728","status":"source_located","next":"fetch_wfs_geometry"},
       {"slug":"castillo-de-mata-bejid","codigoequi":"1675","status":"source_located","next":"fetch_wfs_geometry"},
       {"slug":"el-peralejo","codigoequi":"1051","status":"source_located","next":"fetch_wfs_geometry"},
       {"slug":"fuenmayor","codigoequi":"723","status":"source_located","next":"fetch_wfs_geometry"},
