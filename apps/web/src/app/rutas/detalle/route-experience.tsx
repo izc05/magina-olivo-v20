@@ -9,7 +9,10 @@ function minutes(value: number | null) { if (value == null) return '—'; const 
 function label(value: string | null) { return value ? value.replaceAll('_', ' ') : 'Sin dato verificado'; }
 
 function focusPoint(point: PublicRoutePoint) {
-  window.dispatchEvent(new CustomEvent('magina:route-point-focus', { detail: { pointId: point.id, latitude: Number(point.latitude), longitude: Number(point.longitude) } }));
+  window.dispatchEvent(new CustomEvent('magina:route-elevation-focus', { detail: {
+    latitude: Number(point.latitude), longitude: Number(point.longitude), distance_m: Number(point.distance_m ?? 0),
+    elevation_m: Number(point.elevation_m ?? 0), grade_percent: null,
+  } }));
 }
 
 function focusDistance(detail: PublicRouteDetail, distance: number | null) {
