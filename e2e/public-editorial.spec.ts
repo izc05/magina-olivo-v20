@@ -103,11 +103,9 @@ test('Explore links to public modules that are already available', async ({ page
   await expect(page.getByRole('link', { name: /Eventos/ })).toHaveAttribute('href', /^\/eventos\/?$/);
   await expect(page.getByRole('link', { name: /Aceite y mercado/ })).toHaveAttribute('href', /^\/mercado\/?$/);
   await expect(page.getByRole('link', { name: /Almazaras y cooperativas/ })).toHaveAttribute('href', /^\/cooperativas\/?$/);
-  await expect(page.getByRole('link', { name: /Servicios/ })).toHaveAttribute('href', /^\/servicios\/?$/);
+  await expect(page.getByRole('link', { name: /Empresas y servicios/ })).toHaveAttribute('href', /^\/explorar\/empresas\/?$/);
+  await expect(page.getByRole('link', { name: /Rutas y experiencias/ })).toHaveAttribute('href', /^\/rutas\/?$/);
   await expect(page.getByRole('link', { name: /Consejos del campo/ })).toHaveAttribute('href', /^\/consejos\/?$/);
-
-  const pending = page.locator('article').filter({ hasText: 'Rutas y experiencias' });
-  await expect(pending).toContainText('En preparación');
   await expectNoHorizontalOverflow(page);
 });
 
