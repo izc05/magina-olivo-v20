@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "audited_at": "2026-09-13",
+  "policy": {
+    "found_does_not_mean_validated": true,
+    "validated_requires_geometry_inspection": true,
+    "validated_requires_route_identity_match": true,
+    "validated_requires_basic_geometry_sanity": true
+  },
+  "records": [
+    {"route_ref":"R1","source":"Diputacion de Jaen - Jaen Paraiso Interior","track_url":"https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r1-kmz","status":"linked_not_geometry_validated","notes":"Official route page exposes a KMZ link. Binary geometry could not be inspected from the current execution environment; do not promote to validated."},
+    {"route_ref":"R2","source":"Diputacion de Jaen - Jaen Paraiso Interior","track_url":"https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r2-kmz","status":"linked_not_geometry_validated","notes":"Official route page exposes a KMZ link. Binary geometry could not be inspected from the current execution environment; do not promote to validated."},
+    {"route_ref":"R3","source":"Diputacion de Jaen - Jaen Paraiso Interior","track_url":"https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r3-kmz","status":"linked_not_geometry_validated","notes":"Official route page exposes a KMZ link in the current catalog; pending binary inspection."},
+    {"route_ref":"R4","source":"Diputacion de Jaen - Jaen Paraiso Interior","status":"official_track_not_located","notes":"Official route page verified, but no authoritative downloadable track has been located in this audit."},
+    {"route_ref":"R5","source":"Diputacion de Jaen - Jaen Paraiso Interior","status":"official_track_not_located","notes":"Official route page and rutometer verified to km 16.7, but no authoritative downloadable track has been located in this audit."},
+    {"route_ref":"R6","source":"Diputacion de Jaen - Jaen Paraiso Interior","track_url":"https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r6-kmz","status":"linked_not_geometry_validated","notes":"Official KMZ link located; pending geometry inspection."},
+    {"route_ref":"R7","source":"Diputacion de Jaen - Jaen Paraiso Interior","track_url":"https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r7-kmz","status":"linked_not_geometry_validated","notes":"Official KMZ link verified from current route page; pending geometry inspection."},
+    {"route_ref":"R8","source":"Diputacion de Jaen - Jaen Paraiso Interior","status":"official_track_not_located","notes":"Official route page and rutometer verified to km 20.9, but no authoritative downloadable track has been located in this audit."},
+    {"route_ref":"R9","source":"Diputacion de Jaen - Jaen Paraiso Interior","track_url":"https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r9-kmz","status":"linked_not_geometry_validated","notes":"Official KMZ link verified from current route page; pending geometry inspection."},
+    {"route_ref":"PR-A 350","source":"Federacion Andaluza de Deportes de Montana, Escalada y Senderismo","status":"linked_not_geometry_validated","notes":"Federation lists downloadable track and KMZ for Cano del Aguadero. Pending binary inspection and identity/length checks."},
+    {"route_ref":"SL-A 135","source":"Federacion Andaluza de Deportes de Montana, Escalada y Senderismo","status":"linked_not_geometry_validated","notes":"Federation lists downloadable track and KMZ for Fuenmayor. Pending binary inspection and identity/length checks."},
+    {"route_ref":"GR-7","source":"Federacion Andaluza de Deportes de Montana, Escalada y Senderismo","status":"linked_not_geometry_validated","notes":"Federation route baseline located. Current Jaen maintenance warning must remain visible independently of geometry validation."}
+  ]
+}
