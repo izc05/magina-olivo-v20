@@ -23,7 +23,8 @@ export default function AdminPage() {
         <Link href="/admin/documentos" aria-label="Abrir soporte de documentos y OCR">Documentos/OCR</Link>
         <Link href="/admin/profesional" aria-label="Abrir soporte comercial profesional">Profesional</Link>
         <Link href="/admin/fuentes" aria-label="Abrir estado de fuentes y datos">Fuentes</Link>
-        <Link href="/admin/territorio" aria-label="Abrir administración de territorio y directorio">Territorio</Link>
+        <Link href="/admin/territorio" aria-label="Abrir administración de territorio y directorio editorial">Territorio</Link>
+        <Link href="/admin/empresas" aria-label="Abrir directorio estructurado de empresas y servicios">Empresas</Link>
         <Link href="/admin/media" aria-label="Abrir biblioteca multimedia">Multimedia</Link>
         <Link href="/admin/web" aria-label="Abrir editor visual de la web">Editar web</Link>
       </nav>
