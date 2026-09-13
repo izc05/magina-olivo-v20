@@ -13,6 +13,7 @@ on:
       - 'scripts/check-municipalities-directory.mjs'
       - 'scripts/check-municipality-discovery-experience.mjs'
       - 'scripts/check-municipality-public-landing.mjs'
+      - 'scripts/check-municipality-explore-directory.mjs'
       - '.github/workflows/v20-municipalities-directory.yml'
   workflow_dispatch:
 
@@ -35,6 +36,8 @@ jobs:
         run: node scripts/check-municipality-discovery-experience.mjs
       - name: Public municipality landing contract
         run: node scripts/check-municipality-public-landing.mjs
+      - name: Municipality explore directory contract
+        run: node scripts/check-municipality-explore-directory.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck
