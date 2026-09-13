@@ -8,6 +8,7 @@ const municipalityDetail = fs.readFileSync(new URL('../apps/web/src/app/ayuntami
 const publicSource = fs.readFileSync(new URL('../apps/web/src/lib/public-territory-source.ts', import.meta.url), 'utf8');
 const currentAffairsAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/actualidad/page.tsx', import.meta.url), 'utf8');
 const municipalitiesAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/page.tsx', import.meta.url), 'utf8');
+const coverageAdmin = fs.readFileSync(new URL('../apps/web/src/app/admin/ayuntamientos/cobertura/page.tsx', import.meta.url), 'utf8');
 
 const expected = [
   ['23001','Albanchez de Mágina','https://www.albanchezdemagina.es/'],
@@ -52,8 +53,16 @@ for (const section of ['Descubre el municipio', 'Ayuntamiento', 'Olivar y econom
 }
 if (!municipalityDetail.includes('No mostramos contenido por coincidencias de texto')) throw new Error('Municipality detail must document explicit-only news/event linkage');
 if (!municipalitiesAdmin.includes('/admin/ayuntamientos/actualidad')) throw new Error('Municipality admin must expose the current-affairs linker');
+if (!municipalitiesAdmin.includes('/admin/ayuntamientos/cobertura')) throw new Error('Municipality admin must expose the coverage dashboard');
+if (!municipalitiesAdmin.includes('window.location.hash')) throw new Error('Municipality admin must support direct municipality anchors');
 if (!currentAffairsAdmin.includes("entry.type === 'news' || entry.type === 'event'")) throw new Error('Current-affairs linker must be restricted to news/events');
 if (!currentAffairsAdmin.includes('municipality_id') || !currentAffairsAdmin.includes('municipality_name') || !currentAffairsAdmin.includes('municipality_slug')) throw new Error('Current-affairs linker must persist the canonical municipality identity');
 if (!currentAffairsAdmin.includes('Ámbito general')) throw new Error('Current-affairs linker must support removing the municipality relation');
+for (const signal of ['Ficha pública', 'Web oficial', 'Teléfono', 'Email', 'Dirección', 'Sede / transparencia / turismo', 'Localidades públicas', 'Perfil editorial', 'Cooperativas / empresas', 'Noticias / eventos']) {
+  if (!coverageAdmin.includes(signal)) throw new Error(`Coverage dashboard is missing signal: ${signal}`);
+}
+if (!coverageAdmin.includes("entry.status !== 'published'")) throw new Error('Coverage dashboard must ignore unpublished CMS entries');
+if (!coverageAdmin.includes('entry.starts_at') || !coverageAdmin.includes('entry.ends_at')) throw new Error('Coverage dashboard must respect CMS publication windows');
+if (!coverageAdmin.includes('Solo con huecos')) throw new Error('Coverage dashboard must allow filtering incomplete municipalities');
 
-console.log('Municipality directory contract OK: 16 canonical municipalities, verified websites, public/admin API, CMS hub aggregation, public municipality experience and explicit news/event administration.');
+console.log('Municipality directory contract OK: 16 canonical municipalities, public/admin API, CMS hub aggregation, explicit news/event administration and ten-signal coverage dashboard.');
