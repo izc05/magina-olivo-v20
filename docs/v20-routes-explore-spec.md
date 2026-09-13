@@ -1,109 +1,70 @@
-# Mágina Olivo V20 — Rutas como plataforma territorial
+# Mágina Olivo V20 · Rutas
 
-## Visión
+## Objetivo
+Rutas es una plataforma territorial para descubrir, preparar y disfrutar recorridos de Sierra Mágina con datos técnicos verificables, comunidad moderada, soporte para dispositivos y monetización contextual sin contaminar la información de seguridad.
 
-Rutas no es un catálogo de senderos. Es una plataforma territorial que combina track validado, cartografía, desnivel, puntos de interés, seguridad, fuentes, comunidad, fotografía, dispositivos y monetización contextual sin mezclar información oficial con opiniones o publicidad.
+## Contrato técnico de ruta
+- Los tracks públicos deben proceder de geometría real validada.
+- Una ruta no puede publicarse sin `track_status = validated`.
+- Distancia, desnivel y altitud se calculan desde el track y las cotas disponibles; nunca se inventan.
+- PostGIS mantiene la geometría canónica EPSG:4326.
+- GPX es el formato universal de salida para dispositivos y apps compatibles.
 
-Los datos técnicos nunca se inventan. El pago nunca altera seguridad, track, dificultad oficial ni fuentes.
+## Capas de información
+La ficha debe distinguir siempre:
+1. Información oficial y sus fuentes.
+2. Información editorial de Mágina Olivo.
+3. Comunidad moderada.
+4. Contenido patrocinado, siempre etiquetado.
 
-## Arquitectura pública
-
-- `/rutas`: descubrimiento de rutas publicadas.
-- `/rutas/detalle?slug=...`: ficha completa compatible con el export estático de V20.
-- cada ficha concentra mapa, perfil, datos, fuentes, comunidad, galería, estado reciente, dispositivo y patrocinios relacionados.
-- una futura portada `Comunidad` será un agregado de contenido ya moderado; la conversación original vive siempre ligada a su ruta.
-
-## Núcleo técnico
-
-- PostGIS como geometría canónica.
-- GPX validado como fuente del track.
-- distancia y desnivel calculados solo desde datos presentes.
-- perfil de elevación sin fabricar cotas ausentes.
-- POI georreferenciados.
-- fuentes auditables.
-- procedencia de multimedia explícita: real, oficial, licenciada o IA.
-- una ruta publicada necesita track validado.
-- invalidar el track despublica la ruta automáticamente.
+Una observación comunitaria no equivale a una restricción o cierre oficial.
 
 ## Comunidad por ruta
+Cada aportación pertenece a una ruta concreta. No existe un muro global que pierda el contexto del recorrido.
 
-Cada ruta puede contener:
-- valoración de 1 a 5;
-- reseña del usuario;
-- fecha de visita;
-- dificultad percibida;
-- fotografías reales;
-- avisos sobre barro, nieve, hielo, bloqueo, daños, inundación, riesgo de incendio u otras condiciones;
-- favoritos;
-- historial de completadas;
-- denuncias de contenido.
+Incluye:
+- valoraciones y reseñas;
+- fecha de visita y dificultad percibida;
+- fotos de usuarios;
+- condiciones recientes del sendero;
+- favoritos y completadas;
+- denuncias;
+- moderación previa a publicación.
 
-La ficha distingue siempre:
-1. información oficial;
-2. información editorial de Mágina Olivo;
-3. información aportada por la comunidad.
+Admin agrega todas las colas en `/admin/rutas/comunidad`, pero el contenido público se consume dentro de su ruta.
 
-Una observación comunitaria nunca se presenta como cierre o restricción oficial.
+## Mapa fotográfico comunitario
+Las fotografías pueden incluir ubicación de forma voluntaria.
 
-## Moderación
+Reglas:
+- la aplicación solo solicita geolocalización cuando el usuario pulsa expresamente `Situar foto en el mapa`;
+- denegar la geolocalización no impide subir la fotografía;
+- no se inventan coordenadas ni se deducen silenciosamente;
+- la posición se almacena como `geometry(Point, 4326)` asociada a `route_review_media`;
+- una fotografía y su posición solo aparecen públicamente tras aprobarse tanto la reseña como la fotografía;
+- el mapa muestra miniaturas únicamente de fotos aprobadas y geolocalizadas;
+- al pulsar una miniatura se abre una ficha contextual sobre el mapa;
+- al pulsar una foto geolocalizada en la galería, el mapa centra el recorrido en ese punto;
+- una foto sin posición sigue siendo válida y aparece en la galería aprobada sin marcador cartográfico.
 
-Todo el contenido comunitario nace en estado `pending`.
-
-Admin dispone de `/admin/rutas/comunidad` con colas separadas para:
-- reseñas;
-- fotos;
-- estado del sendero;
-- denuncias.
-
-Acciones:
-- aprobar;
-- rechazar;
-- ocultar;
-- resolver o descartar denuncias.
-
-La web pública solo consume aportaciones aprobadas.
-
-## Fotografías de usuarios
-
-Se reutiliza `platform_media_assets` y el StoragePort existente:
-- reserva de subida;
-- tamaño máximo;
-- MIME permitido;
-- SHA-256;
-- comprobación del objeto almacenado;
-- publicación solo tras completar subida y moderación.
-
-Las fotos pueden guardar fecha, pie y coordenada opcional para una futura capa fotográfica sobre el mapa.
+La ubicación comunitaria es orientativa y nunca sustituye un POI editorial u oficial.
 
 ## Dispositivos
-
-Endpoint público:
-- `GET /api/v1/public/routes/:slug/gpx`
-
-Genera GPX 1.1 desde la geometría PostGIS validada y preserva segmentos de MultiLineString. No inventa elevación.
-
-Esto permite un flujo universal hacia aplicaciones y dispositivos compatibles con GPX. Integraciones directas con proveedores como Garmin deben usar sus programas/API oficiales y OAuth cuando exista autorización.
-
-Las completadas ya admiten procedencia:
-- manual;
-- recorded_gpx;
-- garmin;
-- suunto;
-- coros;
-- apple_watch;
-- other.
+- Exportación GPX 1.1 desde la geometría PostGIS validada.
+- Compatible con el flujo de importación de aplicaciones y GPS que aceptan GPX.
+- El modelo de completadas contempla `manual`, `recorded_gpx`, `garmin`, `suunto`, `coros`, `apple_watch` y `other`.
+- Integraciones directas con proveedores deben utilizar sus APIs/OAuth oficiales.
 
 ## Monetización
+Las campañas pueden ser globales o estar asociadas a una ruta.
 
-El patrocinio es contextual y visible, no publicidad encubierta.
-
-Ubicaciones soportadas:
-- `route_hero`;
-- `route_sidebar`;
-- `after_map`;
-- `nearby_services`;
-- `route_download`;
-- `collection`.
+Placements disponibles:
+- `route_hero`
+- `route_sidebar`
+- `after_map`
+- `nearby_services`
+- `route_download`
+- `collection`
 
 Modelos comerciales:
 - cuota fija;
@@ -111,19 +72,7 @@ Modelos comerciales:
 - CPC;
 - afiliación.
 
-Cada campaña puede definir:
-- ruta concreta o ámbito global;
-- patrocinador;
-- logo y web;
-- titular y descripción;
-- CTA;
-- código promocional;
-- prioridad;
-- periodo de actividad;
-- precio y moneda;
-- etiqueta de disclosure, por defecto `Patrocinado`.
-
-Eventos medibles:
+Métricas previstas:
 - impresión;
 - clic;
 - visita web;
@@ -131,55 +80,19 @@ Eventos medibles:
 - WhatsApp;
 - indicaciones;
 - reserva;
-- conversión de afiliación (servidor/integración futura).
+- conversión de afiliación.
 
-Admin dispone de `/admin/rutas/patrocinios` para gestionar campañas y consultar impresiones, clics y acciones.
+La publicidad utiliza disclosure explícito (`Patrocinado` por defecto). El pago nunca puede modificar track, distancia, desnivel, dificultad, seguridad, restricciones ni fuentes oficiales.
 
-## Seguridad comercial
-
-El patrocinio nunca puede:
-- modificar track o GPX;
-- modificar desnivel/distancia;
-- esconder restricciones;
-- desplazar una fuente oficial;
-- convertir una observación comunitaria en información oficial.
-
-Los espacios pagados deben renderizar disclosure explícito.
-
-## Evolución recomendada
-
-Siguientes capas compatibles con este contrato:
-- mapa de fotografías geolocalizadas;
-- sincronización mapa ↔ perfil de elevación;
-- colecciones y retos de rutas;
-- rutas guardadas/planificadas/completadas en el perfil;
-- navegación offline PWA;
-- seguimiento en vivo compartible;
-- QR en inicio de senderos;
-- notificaciones cuando cambie el estado oficial de una ruta;
-- empresas cercanas mediante integración espacial con el directorio comercial;
-- integración oficial Garmin Courses cuando se apruebe acceso;
-- reputación de colaboradores/guías locales;
-- recorridos 3D/flyover como capa editorial, nunca como sustituto del track real.
-
-## Gate de calidad
-
-`V20 routes closure check` cubre:
-- secuencia de migraciones;
+## QA mínimo
+`V20 routes closure check` debe permanecer verde para:
 - parser GPX;
-- typecheck API + web;
-- build API + web;
-- PostGIS 17;
-- todas las migraciones;
-- invariante publicación/track;
-- defaults de moderación de comunidad;
-- disclosure obligatorio de patrocinio.
+- TypeScript API/web;
+- build API/web;
+- todas las migraciones PostGIS;
+- invariante de publicación;
+- comunidad pendiente de moderación por defecto;
+- patrocinios con disclosure;
+- superficies públicas de mapa, comunidad y descarga GPX compilables.
 
-## Límites deliberados
-
-No se implementa en esta fase:
-- navegación turn-by-turn propia;
-- generación de tracks por IA;
-- recomendaciones meteorológicas inventadas;
-- integración directa con la rama Empresas;
-- merge directo a `main`.
+El handoff de esta rama es `integrate/v20-beta-closure`. No se fusiona directamente a `main`.
