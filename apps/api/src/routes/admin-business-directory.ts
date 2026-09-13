@@ -15,7 +15,7 @@ const locationSchema = z.object({
   longitude: z.number().min(-180).max(180),
 }).nullable();
 
-const businessCreateSchema = z.object({
+const businessBaseSchema = z.object({
   slug: z.string().trim().regex(slugPattern),
   name: z.string().trim().min(2).max(180),
   legalName: nullableText(220),
@@ -43,7 +43,9 @@ const businessCreateSchema = z.object({
   campaignEnd: z.coerce.date().nullable().optional(),
   categorySlugs: z.array(z.string().regex(slugPattern)).max(20).default([]),
   primaryCategorySlug: z.string().regex(slugPattern).nullable().optional(),
-}).superRefine((value, context) => {
+});
+
+const businessCreateSchema = businessBaseSchema.superRefine((value, context) => {
   if (value.campaignStart && value.campaignEnd && value.campaignEnd < value.campaignStart) {
     context.addIssue({ code: 'custom', path: ['campaignEnd'], message: 'campaign_end_before_start' });
   }
@@ -52,7 +54,7 @@ const businessCreateSchema = z.object({
   }
 });
 
-const businessPatchSchema = businessCreateSchema.partial().superRefine((value, context) => {
+const businessPatchSchema = businessBaseSchema.partial().superRefine((value, context) => {
   if (Object.keys(value).length === 0) {
     context.addIssue({ code: 'custom', message: 'at_least_one_change_required' });
   }
