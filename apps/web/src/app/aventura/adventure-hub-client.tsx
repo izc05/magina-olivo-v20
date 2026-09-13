@@ -3,9 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  loadExplorerProfile,
   loadPublicAdventures,
   publicRouteMediaUrl,
+  type ExplorerProfile,
   type PublicAdventureSummary,
+  type RouteAdventureCheckpoint,
 } from '../../lib/public-routes-source';
 import styles from './adventure.module.css';
 
@@ -28,9 +31,31 @@ function duration(value: number | null) {
   return hours > 0 ? `${hours} h${minutes ? ` ${minutes} min` : ''}` : `${minutes} min`;
 }
 
+function collectionLabel(kind: RouteAdventureCheckpoint['kind']) {
+  return ({
+    landmark: 'Lugares', trivia: 'Retos', observation: 'Observaciones', photo: 'Recuerdos',
+    collection: 'Coleccionables', rest: 'Descansos',
+  } satisfies Record<RouteAdventureCheckpoint['kind'], string>)[kind];
+}
+
+function badgeLabel(code: string) {
+  if (code === 'primer_descubrimiento') return 'Primer descubrimiento';
+  if (code === 'aventurero_magina') return 'Aventurero de Mágina';
+  if (code === 'caminante_de_la_sierra') return 'Caminante de la Sierra';
+  if (code === 'mil_puntos') return '1.000 puntos';
+  return code.replaceAll('_', ' ');
+}
+
+function runStatus(value: ExplorerProfile['recent_runs'][number]['status']) {
+  if (value === 'completed') return 'Completada';
+  if (value === 'active') return 'En curso';
+  return 'Abandonada';
+}
+
 export function AdventureHubClient() {
   const [adventures, setAdventures] = useState<PublicAdventureSummary[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [profile, setProfile] = useState<ExplorerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -48,6 +73,11 @@ export function AdventureHubClient() {
         if (!cancelled) setError(true);
       })
       .finally(() => { if (!cancelled) setLoading(false); });
+
+    loadExplorerProfile()
+      .then((value) => { if (!cancelled) setProfile(value); })
+      .catch(() => { if (!cancelled) setProfile(null); });
+
     return () => { cancelled = true; };
   }, []);
 
@@ -73,6 +103,36 @@ export function AdventureHubClient() {
         <article><strong>{totals.points}</strong><span>Puntos posibles</span></article>
       </div>
     </section>
+
+    {profile ? <section className={styles.profilePanel} aria-labelledby="explorer-profile-title">
+      <div className={styles.profileHeading}>
+        <div><span className={styles.eyebrow}>MI EXPEDICIÓN</span><h2 id="explorer-profile-title">Cuaderno global del Explorador</h2></div>
+        <p>Tu progreso une todas las aventuras de Mágina sin guardar una traza continua de tu posición.</p>
+      </div>
+      <div className={styles.profileStats}>
+        <article><strong>{profile.summary.adventures_started}</strong><span>Iniciadas</span></article>
+        <article><strong>{profile.summary.adventures_completed}</strong><span>Completadas</span></article>
+        <article><strong>{profile.summary.discoveries}</strong><span>Descubrimientos</span></article>
+        <article><strong>{profile.summary.total_score}</strong><span>Puntos</span></article>
+      </div>
+      {profile.badges.length > 0 ? <div className={styles.badges} aria-label="Insignias globales">{profile.badges.map((badge) => <span key={badge}>✦ {badgeLabel(badge)}</span>)}</div> : null}
+      {profile.collections.length > 0 ? <div className={styles.collectionGrid}>{profile.collections.map((collection) => {
+        const percent = collection.available > 0 ? Math.round((collection.unlocked / collection.available) * 100) : 0;
+        return <article key={collection.kind}>
+          <div><strong>{collectionLabel(collection.kind)}</strong><span>{collection.unlocked}/{collection.available}</span></div>
+          <progress max={Math.max(collection.available, 1)} value={collection.unlocked} aria-label={`${collectionLabel(collection.kind)} ${percent}%`} />
+          <small>{percent}% descubierto</small>
+        </article>;
+      })}</div> : null}
+      {profile.recent_runs.length > 0 ? <div className={styles.recent}>
+        <h3>Últimas expediciones</h3>
+        {profile.recent_runs.map((run) => <Link href={`/rutas/detalle?slug=${encodeURIComponent(run.slug)}`} key={run.id}>
+          <span><strong>{run.adventure_title}</strong><small>{run.route_name}</small></span>
+          <span><strong>{run.unlocked_checkpoints}/{run.total_checkpoints}</strong><small>{runStatus(run.status)}</small></span>
+        </Link>)}
+      </div> : null}
+      <small className={styles.privacy}>{profile.privacy}</small>
+    </section> : null}
 
     <section className={styles.how} aria-labelledby="como-funciona">
       <div className={styles.sectionHeading}><span className={styles.eyebrow}>CÓMO FUNCIONA</span><h2 id="como-funciona">El sendero se convierte en aventura</h2></div>
