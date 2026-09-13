@@ -89,13 +89,10 @@ export function ExplorePublicClient() {
       <div className={styles.areaGrid}>
         {areas.map((area) => {
           const AreaIcon = area.icon;
-          const content = <>
+          return <Link className={`${styles.areaCard} ${styles.areaCardLink}`} href={area.href} key={area.title}>
             <span className={styles.areaIcon} aria-hidden="true"><AreaIcon /></span>
-            <div><h3>{area.title}</h3><p>{area.text}</p><span className={`${styles.badge} ${area.href ? styles.badgeLive : ''}`}>{area.badge}</span></div>
-          </>;
-          return area.href
-            ? <Link className={`${styles.areaCard} ${styles.areaCardLink}`} href={area.href} key={area.title}>{content}</Link>
-            : <article className={styles.areaCard} key={area.title}>{content}</article>;
+            <div><h3>{area.title}</h3><p>{area.text}</p><span className={`${styles.badge} ${styles.badgeLive}`}>{area.badge}</span></div>
+          </Link>;
         })}
       </div>
     </section>
