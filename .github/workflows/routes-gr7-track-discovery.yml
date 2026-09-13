@@ -1,0 +1,55 @@
+name: V20 routes GR7 track discovery
+
+on:
+  push:
+    branches:
+      - feat/v20-routes-catalog-completion
+    paths:
+      - 'scripts/discover-gr7-stage-tracks.py'
+      - '.github/workflows/routes-gr7-track-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Discover published GR-7 stage track links
+        continue-on-error: true
+        run: python scripts/discover-gr7-stage-tracks.py --write data/routes/sierra-magina-gr7-stage-track-discovery.json
+
+      - name: Print discovery summary
+        if: always()
+        run: |
+          if [ -f data/routes/sierra-magina-gr7-stage-track-discovery.json ]; then
+            python - <<'PY'
+          import json
+          with open('data/routes/sierra-magina-gr7-stage-track-discovery.json', encoding='utf-8') as handle:
+              report = json.load(handle)
+          print('candidate_links:', len(report.get('candidate_links', [])))
+          for row in report.get('candidate_links', []):
+              print(row.get('index'), row.get('text'), row.get('absolute_url'))
+          PY
+          else
+            echo 'Discovery report was not generated.'
+          fi
+
+      - name: Upload GR-7 discovery report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sierra-magina-gr7-stage-track-discovery
+          path: data/routes/sierra-magina-gr7-stage-track-discovery.json
+          if-no-files-found: warn
+          retention-days: 14
