@@ -7,8 +7,11 @@ on:
       - integrate/v20-beta-closure
     paths:
       - 'apps/api/src/routes/route-adventure.ts'
+      - 'apps/api/src/routes/route-adventure-hub.ts'
       - 'apps/api/src/routes/admin-route-adventure.ts'
       - 'apps/api/src/routes/route-device-export.ts'
+      - 'apps/web/src/app/aventura/**'
+      - 'apps/web/src/app/explorar/explore-public-client.tsx'
       - 'apps/web/src/app/rutas/detalle/route-adventure-panel.tsx'
       - 'apps/web/src/app/rutas/detalle/route-detail-client.tsx'
       - 'apps/web/src/app/rutas/detalle/route-map.tsx'

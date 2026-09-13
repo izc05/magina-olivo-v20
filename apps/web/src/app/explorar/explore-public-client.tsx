@@ -10,6 +10,7 @@ import {
 import styles from './explore-public.module.css';
 
 const areas = [
+  { icon: CompassIcon, title: 'Mágina Aventura', text: 'Explora rutas reales, desbloquea retos geolocalizados y completa tu Cuaderno del Explorador.', href: '/aventura', badge: 'Nuevo' },
   { icon: CompassIcon, title: 'Noticias', text: 'Actualidad local con fuente y fecha verificadas.', href: '/noticias', badge: 'Disponible' },
   { icon: PlusIcon, title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
   { icon: SproutIcon, title: 'Aceite y mercado', text: 'Precios y campaña manteniendo siempre fuente, unidad y fecha.', href: '/mercado', badge: 'Disponible' },
