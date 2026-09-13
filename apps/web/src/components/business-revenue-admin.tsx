@@ -87,7 +87,7 @@ export function BusinessRevenueAdmin() {
     activeOffers: acc.activeOffers + row.activeOffers,
   }), { profileViews: 0, contactClicks: 0, leads: 0, wonLeads: 0, wonValueCents: 0, activeOffers: 0 }), [visibleMetrics]);
 
-  async function run(task: () => Promise<void>, success: string) {
+  async function run(task: () => Promise<unknown>, success: string) {
     setBusy(true);
     setMessage(null);
     setError(null);
