@@ -19,7 +19,7 @@
     "check:staging": "node scripts/check-staging-contract.mjs",
     "check:migrations": "node scripts/check-migrations.mjs",
     "check:containers": "node scripts/check-container-pins.mjs",
-    "check:routes-catalog": "node scripts/check-route-catalog.mjs && node scripts/check-route-track-validation.mjs && node scripts/check-route-technical-audit.mjs",
+    "check:routes-catalog": "node scripts/check-route-catalog.mjs && node scripts/check-route-track-validation.mjs && node scripts/check-route-technical-audit.mjs && node scripts/check-route-core-enrichment.mjs",
     "audit:ci": "node scripts/audit-ci.mjs",
     "check": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm check:routes-catalog && pnpm typecheck && pnpm build",
     "check:fast": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm check:routes-catalog && pnpm typecheck",
