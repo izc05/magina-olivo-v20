@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, ApiRequestError } from '../lib/api-client';
 import { useAuth } from './auth-provider';
 import { GoogleSignInButton } from './google-sign-in-button';
+import { RouteContentAdmin } from './route-content-admin';
 
- type AdminRoute = {
+type AdminRoute = {
   id: string;
   slug: string;
   name: string;
@@ -261,6 +262,8 @@ export function RoutesAdminConsole() {
           <div className="routes-admin-tracks">{detail?.tracks.map((track) => <article key={track.id}><div><strong>Versión {track.version}</strong><span>{track.source_name ?? 'GPX'} · {km(track.distance_m)} · {track.validation_status}</span></div><div><button disabled={!editable || busy || track.validation_status === 'validated'} onClick={() => void validateTrack(track.id, 'validated')}>Validar</button><button className="danger" disabled={!editable || busy || track.validation_status === 'rejected'} onClick={() => void validateTrack(track.id, 'rejected')}>Rechazar</button></div></article>) ?? null}</div>
           <p className="routes-admin-help">Publicar solo se habilita cuando existe un track validado. Invalidarlo devuelve automáticamente la ruta a revisión.</p>
         </div> : null}
+
+        {selectedId ? <RouteContentAdmin routeId={selectedId} editable={editable} busy={busy} /> : null}
       </section>
     </section>
   </main>;
