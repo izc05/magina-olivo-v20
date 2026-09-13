@@ -4,7 +4,7 @@
 
 **Cierre funcional alcanzado en `feat/v20-routes-explore`.**
 
-La rama ya contiene la cadena completa necesaria para gestionar y publicar rutas verificadas:
+La rama contiene la cadena completa necesaria para gestionar y publicar rutas verificadas:
 
 - modelo PostGIS de rutas, tracks, elevación, POI, multimedia, fuentes y tramos;
 - importación GPX con validación de tamaño, coordenadas y longitud mínima;
@@ -18,17 +18,15 @@ La rama ya contiene la cadena completa necesaria para gestionar y publicar rutas
 - API Admin de ficha, GPX, validación, POI, fuentes y multimedia;
 - panel `/admin/rutas` para operar el módulo sin SQL manual;
 - superficie pública `/rutas`;
-- ficha pública runtime-compatible con export estático en `/rutas/detalle?slug=<slug>`;
+- ficha pública compatible con export estático en `/rutas/detalle?slug=<slug>`;
 - mapa MapLibre interactivo sobre el track validado y POI reales;
 - perfil de elevación derivado de las cotas del GPX;
 - integración de Rutas en `/explorar`;
 - check CI específico con PostGIS 17, typecheck, build, todas las migraciones y smoke de publicación/invalidation.
 
-El workflow `V20 routes closure check` quedó verde sobre el último HEAD funcional antes de este ajuste exclusivamente documental; los checks se reejecutan normalmente cuando cambia la documentación del PR.
-
 ## Visión
 
-Construir una experiencia territorial de rutas, no una simple ficha técnica. Cada ruta debe combinar información oficial/validada, cartografía real, perfil altimétrico, puntos de interés, seguridad, fotografía y vídeo para ayudar al usuario a decidir, entender y recorrer el itinerario.
+Construir una experiencia territorial de rutas, no una simple ficha técnica. Cada ruta combina información validada, cartografía real, perfil altimétrico, puntos de interés, seguridad, fotografía/vídeo y fuentes auditables para ayudar al usuario a entender y recorrer el itinerario.
 
 La capa visual puede evolucionar; los datos técnicos nunca se inventan.
 
@@ -67,7 +65,7 @@ No incluye deliberadamente:
 - `/rutas`: descubrimiento y búsqueda pública sobre rutas publicadas con track validado.
 - `/rutas/detalle?slug=<slug>`: ficha completa de ruta.
 
-La ficha utiliza query param de forma intencionada porque `apps/web` funciona con Next.js `output: 'export'`. De esta manera una ruta creada y publicada después del build puede abrirse desde la misma página estática sin generar una página `[slug]` nueva por cada contenido.
+La ficha utiliza query param de forma intencionada porque `apps/web` funciona con Next.js `output: 'export'`. Así, una ruta creada y publicada después del build puede abrirse desde la misma página estática sin generar una página `[slug]` nueva por cada contenido.
 
 ## Estructura de la ficha implementada
 
@@ -80,7 +78,7 @@ La ficha utiliza query param de forma intencionada porque `apps/web` funciona co
 7. Agua y características del recorrido.
 8. Fuentes públicas trazables.
 
-La base de datos y API ya soportan además multimedia y tramos para elevar la composición visual en una fase posterior sin rehacer el modelo.
+La base de datos y API soportan además multimedia y tramos para elevar la composición visual posteriormente sin rehacer el modelo.
 
 ## Geometría y GPX
 
@@ -108,74 +106,35 @@ Validación editorial: `unverified`, `editorial`, `official`.
 Track: `missing`, `uploaded`, `validated`, `rejected`.
 
 Reglas:
-
 - una ruta puede existir sin track mientras sea borrador/revisión;
 - la API bloquea `published` si no hay track validado;
 - PostgreSQL vuelve a comprobar la misma regla para impedir bypass de API;
 - el estado de track de la ruta se deriva de `route_tracks`;
 - invalidar/eliminar el único track validado despublica automáticamente la ruta;
-- solo se mantiene un track validado como canónico por ruta desde el flujo Admin.
+- desde Admin solo se mantiene un track validado como canónico por ruta.
 
 ## Perfil de elevación
 
-Cada muestra puede contener:
-- distancia acumulada en metros;
-- elevación en metros;
-- coordenada;
-- pendiente derivada cuando hay distancia y dos elevaciones comparables.
-
-Si el GPX no aporta elevación, la UI lo indica expresamente y no genera cotas artificiales.
+Cada muestra puede contener distancia acumulada, elevación, coordenada y pendiente derivada cuando existen datos suficientes. Si el GPX no aporta elevación, la UI lo indica expresamente y no genera cotas artificiales.
 
 ## Puntos de interés
 
 Tipos iniciales:
-- start
-- finish
-- viewpoint
-- water
-- parking
-- recreation_area
-- heritage
-- cave
-- bridge
-- rest
-- photo_spot
-- warning
-- other
+`start`, `finish`, `viewpoint`, `water`, `parking`, `recreation_area`, `heritage`, `cave`, `bridge`, `rest`, `photo_spot`, `warning`, `other`.
 
 Cada POI guarda posición real, orden/kilómetro aproximado, descripción y nota de seguridad. El Admin permite crearlos y eliminarlos.
 
 ## Multimedia y procedencia
 
-Tipos:
-- photo
-- hero_image
-- real_video
-- drone_video
-- ai_image
-- ai_video
-- map_animation
-- elevation_animation
-- thumbnail
+Tipos: `photo`, `hero_image`, `real_video`, `drone_video`, `ai_image`, `ai_video`, `map_animation`, `elevation_animation`, `thumbnail`.
 
-Orígenes:
-- `real`
-- `official`
-- `licensed`
-- `ai_generated`
+Orígenes: `real`, `official`, `licensed`, `ai_generated`.
 
 El API acepta URL externa o ruta interna de la biblioteca. El contenido IA exige que tipo/origen sean coherentes y requiere `ai_disclosure`. Una imagen o vídeo generado por IA nunca se presenta como evidencia visual del estado actual del sendero.
 
 ## Fuentes
 
-Cada ruta puede registrar fuentes de tipo:
-- `official`;
-- `reference`;
-- `track`;
-- `media`;
-- `editorial`.
-
-Se almacenan URL, identificador externo opcional, licencia/notas, fecha de consulta y metadatos para auditoría.
+Cada ruta puede registrar fuentes `official`, `reference`, `track`, `media` o `editorial`, almacenando URL, identificador externo opcional, licencia/notas, fecha de consulta y metadatos para auditoría.
 
 ## Admin implementado
 
@@ -199,19 +158,10 @@ Las mutaciones relevantes generan entradas en `admin_audit_log`.
 ## API pública implementada
 
 ### `GET /api/v1/public/routes`
-
 Solo devuelve rutas `published` + track `validated`. Soporta filtros por búsqueda, municipio, localidad, tipo, dificultad, circular/familiar y límite.
 
 ### `GET /api/v1/public/routes/:slug`
-
-Devuelve:
-- ficha;
-- track validado en GeoJSON;
-- perfil de elevación;
-- POI;
-- multimedia;
-- fuentes;
-- tramos.
+Devuelve ficha, track validado en GeoJSON, perfil de elevación, POI, multimedia, fuentes y tramos.
 
 No existen fixtures ni rutas públicas inventadas cuando la fuente no responde.
 
@@ -221,7 +171,7 @@ No existen fixtures ni rutas públicas inventadas cuando la fuente no responde.
 Se consumirá el subsistema meteorológico existente, sin duplicar AEMET/radar. La recomendación de horario o aptitud solo se mostrará cuando exista metodología explícita y datos suficientes.
 
 ### Empresas
-La relación con restaurantes, alojamientos, AOVE y servicios se hará en una rama de integración posterior por consultas espaciales/proximidad. Esta rama no depende de `feat/v20-business-directory`.
+La relación con restaurantes, alojamientos, AOVE y servicios se hará en una rama de integración posterior mediante consultas espaciales/proximidad. Esta rama no depende de `feat/v20-business-directory`.
 
 ## Verificación CI
 
@@ -239,11 +189,11 @@ Comprueba:
 - publicación correcta tras validar track;
 - despublicación automática al rechazar el track validado.
 
-El último HEAD funcional validado completó correctamente todos los pasos del job; un commit posterior que solo modifica este documento puede volver a disparar los checks sin alterar el resultado funcional esperado.
+El cierre solo debe promoverse a integración cuando el HEAD final tenga verdes este check y los controles transversales aplicables.
 
 ## Handoff
 
-La rama queda preparada para absorberse en `integrate/v20-beta-closure` cuando terminen verdes los checks transversales del mismo HEAD final.
+Destino: `integrate/v20-beta-closure`.
 
 No fusionar directamente a `main`.
 No mezclar con Empresas en este PR.
