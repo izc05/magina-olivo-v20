@@ -111,7 +111,7 @@ jobs:
             ) VALUES (
               '81000000-0000-4000-8000-000000000001', 'ruta-explore-ci', 'Ruta Explore CI',
               municipality_uuid, place_uuid, 'hiking', 'Ruta para validar la integración territorial.',
-              1200, 35, 80, 'easy', 'published', 'editorial', 'validated', now()
+              1200, 35, 80, 'easy', 'draft', 'editorial', 'missing', null
             );
 
             INSERT INTO route_tracks (
@@ -123,6 +123,10 @@ jobs:
               ST_GeomFromText('LINESTRING(-3.5000 37.7000,-3.4900 37.7100)', 4326),
               'LineString', 'manual', 1200, 'Fixture CI', 'validated', now()
             );
+
+            UPDATE routes
+            SET track_status = 'validated', status = 'published', published_at = now()
+            WHERE id = '81000000-0000-4000-8000-000000000001';
 
             INSERT INTO businesses (
               id, slug, name, short_description, municipality_id, place_id, address, location,
