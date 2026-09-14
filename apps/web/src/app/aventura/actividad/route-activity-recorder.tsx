@@ -55,6 +55,10 @@ function requestPosition() {
   });
 }
 
+function isGeolocationError(error: unknown): error is GeolocationPositionError {
+  return typeof error === 'object' && error !== null && 'code' in error && typeof (error as { code?: unknown }).code === 'number';
+}
+
 function activityError(error: unknown) {
   if (error instanceof ApiRequestError) {
     const payload = error.payload && typeof error.payload === 'object' ? error.payload as Record<string, unknown> : null;
@@ -63,10 +67,10 @@ function activityError(error: unknown) {
     if (payload?.error === 'route_not_recordable') return 'Esa ruta no está publicada con track validado y no puede asociarse a la grabación.';
     if (payload?.error === 'activity_not_active') return 'El recorrido ya no está activo. Actualiza el estado antes de continuar.';
   }
-  if (error instanceof GeolocationPositionError) {
-    if (error.code === error.PERMISSION_DENIED) return 'No has concedido permiso de ubicación. No se ha iniciado ninguna grabación.';
-    if (error.code === error.POSITION_UNAVAILABLE) return 'El dispositivo no puede obtener una posición GPS fiable ahora mismo.';
-    if (error.code === error.TIMEOUT) return 'La ubicación está tardando demasiado. Prueba de nuevo en una zona con mejor cobertura.';
+  if (isGeolocationError(error)) {
+    if (error.code === 1) return 'No has concedido permiso de ubicación. No se ha iniciado ninguna grabación.';
+    if (error.code === 2) return 'El dispositivo no puede obtener una posición GPS fiable ahora mismo.';
+    if (error.code === 3) return 'La ubicación está tardando demasiado. Prueba de nuevo en una zona con mejor cobertura.';
   }
   if (error instanceof Error && error.message === 'geolocation_unavailable') return 'Este dispositivo no ofrece geolocalización.';
   return 'No se ha podido completar la operación. Comprueba la conexión y vuelve a intentarlo.';
