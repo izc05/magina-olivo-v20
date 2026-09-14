@@ -48,7 +48,7 @@ must(publicPage.includes('generateStaticParams()'), 'Falta generateStaticParams 
 must(publicPage.includes('MUNICIPALITY_STATIC_CATALOG.map'), 'generateStaticParams no deriva del catálogo canónico');
 must(publicPage.includes('generateMetadata'), 'Falta generateMetadata municipal');
 must(publicPage.includes('municipalityMetadata(slug'), 'La metadata municipal no reutiliza el helper canónico');
-must(seo.includes("robots:"), 'La metadata municipal no define robots');
+must(seo.includes('robots:'), 'La metadata municipal no define robots');
 must(seo.includes('openGraph:'), 'La metadata municipal no define Open Graph');
 must(seo.includes('twitter:'), 'La metadata municipal no define Twitter Card');
 must(!seo.includes('Math.random'), 'La metadata municipal no puede depender de aleatoriedad');
@@ -87,7 +87,7 @@ for (const [name, source] of [['Preview', preview], ['Historial', history], ['Hu
   must(!source.includes('adminApi.updateTerritoryPlace('), `${name} no debe modificar territorio`);
   must(!source.includes('fetch('), `${name} no debe saltarse adminApi con fetch directo`);
 }
-must(preview.includes('Resultado público actual'), 'Preview debe distinguir el resultado público real');
+must(preview.toLocaleLowerCase('es').includes('resultado público actual'), 'Preview debe distinguir el resultado público real');
 must(history.includes('adminApi.audit()'), 'Historial debe reutilizar adminApi.audit()');
 must(!history.includes('JSON.stringify(entry.metadata'), 'Historial no debe renderizar metadata bruta');
 must(gaps.includes('Solo huecos'), 'Huecos debe permitir filtrar señales ausentes');
