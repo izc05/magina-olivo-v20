@@ -98,6 +98,8 @@ export type PublicRouteCommunity = {
 };
 
 export type RouteAdventureAnswerOption = { key: string; label: string };
+export type AdventureCollectionCategory = 'flora' | 'fauna' | 'heritage' | 'olive_culture' | 'tradition' | 'landscape';
+export type AdventureRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 
 export type RouteAdventureCheckpoint = {
   id: string;
@@ -105,6 +107,8 @@ export type RouteAdventureCheckpoint = {
   title: string;
   description: string | null;
   kind: 'landmark' | 'trivia' | 'observation' | 'photo' | 'collection' | 'rest';
+  collection_category: AdventureCollectionCategory | null;
+  rarity: AdventureRarity;
   distance_m: number | string | null;
   unlock_radius_m: number;
   points: number;
@@ -120,9 +124,91 @@ export type RouteAdventureCheckpoint = {
 export type PublicRouteAdventure = {
   enabled: boolean;
   route: { id: string; slug: string; name: string };
-  adventure: null | { title: string; intro: string | null; completion_message: string | null };
+  adventure: null | { title: string; intro: string | null; completion_message: string | null; progression_mode: 'free' | 'linear' };
   checkpoints: RouteAdventureCheckpoint[];
   notice?: string;
+};
+
+export type PublicAdventureSummary = {
+  route_id: string;
+  slug: string;
+  route_name: string;
+  route_type: PublicRouteSummary['route_type'];
+  difficulty: PublicRouteSummary['difficulty'];
+  distance_m: number | null;
+  duration_minutes: number | null;
+  municipality_name: string | null;
+  place_name: string | null;
+  short_description: string | null;
+  title: string;
+  intro: string | null;
+  checkpoint_count: number;
+  required_count: number;
+  total_points: number;
+  hero_url: string | null;
+};
+
+export type PublicAdventureHub = {
+  adventures: PublicAdventureSummary[];
+  notice: string;
+};
+
+export type ExplorerProfile = {
+  summary: {
+    adventures_started: number;
+    adventures_completed: number;
+    discoveries: number;
+    total_score: number;
+  };
+  journey: {
+    completed_routes: number;
+    completed_distance_m: number;
+    completed_elevation_gain_m: number;
+    completed_duration_minutes: number;
+    longest_route_m: number;
+  };
+  collections: Array<{
+    kind: RouteAdventureCheckpoint['kind'];
+    available: number;
+    unlocked: number;
+  }>;
+  album: Array<{
+    category: AdventureCollectionCategory;
+    rarity: AdventureRarity;
+    available: number;
+    unlocked: number;
+  }>;
+  territory: {
+    available_checkpoints: number;
+    unlocked_checkpoints: number;
+    explored_percent: number;
+    municipalities_available: number;
+    municipalities_discovered: number;
+    municipalities: Array<{
+      municipality_id: string;
+      municipality_name: string;
+      municipality_slug: string;
+      adventure_count: number;
+      available: number;
+      unlocked: number;
+      percent: number;
+    }>;
+  };
+  recent_runs: Array<{
+    id: string;
+    route_id: string;
+    slug: string;
+    route_name: string;
+    adventure_title: string;
+    status: 'active' | 'completed' | 'abandoned';
+    score: number;
+    started_at: string;
+    completed_at: string | null;
+    unlocked_checkpoints: number;
+    total_checkpoints: number;
+  }>;
+  badges: string[];
+  privacy: string;
 };
 
 export type RouteAdventureProgress = {
@@ -135,8 +221,6 @@ export type RouteAdventureProgress = {
     completed_at: string | null;
     updated_at: string;
     last_distance_m: number | string | null;
-    last_latitude: number | string | null;
-    last_longitude: number | string | null;
   };
   stats: {
     total_checkpoints: number;
@@ -155,6 +239,8 @@ export type RouteAdventureProgress = {
     distance_to_checkpoint_m: number | string | null;
     title: string;
     kind: string;
+    collection_category: AdventureCollectionCategory | null;
+    rarity: AdventureRarity;
     is_required: boolean;
   }>;
   badges: string[];
@@ -175,6 +261,8 @@ export async function loadPublicRoutesByTerritory(filters: { placeId?: string | 
   return response.routes;
 }
 
+export async function loadPublicAdventures() { return apiFetch<PublicAdventureHub>('/api/v1/public/adventures'); }
+export async function loadExplorerProfile() { return apiFetch<ExplorerProfile>('/api/v1/adventures/me'); }
 export async function loadPublicRoute(slug: string) { return apiFetch<PublicRouteDetail>(`/api/v1/public/routes/${encodeURIComponent(slug)}`); }
 export async function loadPublicRouteCommunity(slug: string) { return apiFetch<PublicRouteCommunity>(`/api/v1/public/routes/${encodeURIComponent(slug)}/community`); }
 export async function loadPublicRouteAdventure(slug: string) { return apiFetch<PublicRouteAdventure>(`/api/v1/public/routes/${encodeURIComponent(slug)}/adventure`); }

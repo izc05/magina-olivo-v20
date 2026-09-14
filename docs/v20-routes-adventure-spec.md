@@ -1,134 +1,101 @@
-# Mágina Olivo V20 — Modo Aventura de Rutas
+# Mágina Olivo V20 — Mágina Aventura
 
 ## Propósito
 
-El Modo Aventura convierte una ruta real y validada en una experiencia de exploración territorial. La capa lúdica se apoya en el track y en puntos geográficos reales, pero nunca sustituye la navegación técnica, la señalización sobre el terreno, las restricciones oficiales ni la evaluación personal de seguridad.
+Mágina Aventura convierte rutas reales de Sierra Mágina en una experiencia de exploración territorial dentro de Mágina Olivo. La capa lúdica se apoya en tracks, POI y contenido editorial reales, pero nunca sustituye la navegación técnica, la señalización, las restricciones, los avisos oficiales ni la evaluación personal de seguridad.
+
+La experiencia se integra en V20 mediante `/aventura`, las fichas de Rutas y el Admin existente. No es una web ni una cuenta separada.
 
 ## Contrato de confianza
 
-- Solo puede existir sobre una ruta publicada con track validado.
+- Una aventura pública solo puede vivir sobre una ruta `published` con track real `validated`.
+- Debe existir al menos un checkpoint activo y obligatorio.
 - El progreso del juego no se guarda en `route_completions`.
 - Completar el juego no certifica una actividad deportiva ni el estado del sendero.
-- Los avisos oficiales, restricciones y datos técnicos conservan prioridad visual y semántica.
-- La respuesta correcta de un reto nunca sale en el payload público.
+- Las respuestas correctas de trivia nunca salen en payload público.
 - El desbloqueo geográfico se valida en servidor con PostGIS.
-- La V1 no realiza seguimiento GPS continuo: solicita posición al pulsar `Estoy aquí`.
-- La coordenada GPS del usuario se usa solo para calcular proximidad y no se conserva; se guarda únicamente la distancia al checkpoint necesaria para auditar el desbloqueo.
+- No existe seguimiento GPS continuo.
+- La coordenada exacta enviada al pulsar `Estoy aquí` se usa únicamente para calcular proximidad y se descarta; la base conserva la distancia al checkpoint, no un historial de coordenadas.
+- No hay ranking por velocidad ni incentivos para correr o asumir riesgos.
 
-## V1 implementada
+## Seguridad operacional
 
-### Partida
-- una partida activa por usuario y ruta;
-- estados `active`, `completed`, `abandoned`;
-- puntuación persistente;
-- progreso recuperable al volver a abrir la ruta.
+El preflight de publicación comprueba ruta publicada, track validado y presente, checkpoint activo, checkpoint obligatorio y ausencia de un safety hold crítico vigente.
 
-### Checkpoints
-Tipos disponibles:
+Un **safety hold** se activa únicamente para un `route_condition_report` que sea simultáneamente `approved`, `critical`, de tipo `closed`, `blocked`, `fire_risk` o `flooded`, y que no esté caducado. Un reporte de comunidad pendiente o no moderado no se trata como orden oficial.
 
-- `landmark`: lugar o hito del territorio;
-- `trivia`: pregunta contextual;
-- `observation`: reto de observación;
-- `photo`: punto preparado para reto fotográfico;
-- `collection`: coleccionable territorial;
-- `rest`: parada o pausa narrativa.
+Si una aventura estaba activa y posteriormente un editor aprueba un safety hold crítico, un trigger de base de datos la desactiva automáticamente. Al desaparecer o caducar el problema **no se reactiva sola**: un administrador debe revisar la ruta y activarla manualmente.
 
-Cada checkpoint puede definir:
+## Persistencia
 
-- posición real;
-- distancia aproximada sobre la ruta;
-- radio de desbloqueo;
-- puntos;
-- obligatorio u opcional;
-- texto, pista y pregunta;
-- opciones de respuesta.
+Migración: `database/migrations/0086_routes_adventure.sql`.
 
-### Desbloqueo
+Tablas: `route_adventures`, `route_adventure_checkpoints`, `route_adventure_runs` y `route_adventure_unlocks`.
 
-1. El usuario inicia la aventura autenticado.
-2. En un checkpoint pulsa `Estoy aquí`.
-3. El navegador solicita una posición puntual.
-4. La API calcula la distancia al checkpoint con PostGIS.
-5. Si está dentro del radio, valida el reto cuando exista.
-6. El desbloqueo y la puntuación se guardan una sola vez.
-7. La coordenada exacta se descarta después del cálculo y no forma un historial de localización.
+La numeración `0086` preserva las migraciones territoriales ya integradas: enlaces institucionales, catálogo completo de municipios y validación AEMET.
 
-### Progreso e insignias
+## Partida y checkpoints
 
-La primera versión expone tres insignias derivadas del progreso:
+La partida mantiene una sesión activa por usuario y ruta, estados `active`, `completed` y `abandoned`, XP persistente y progreso recuperable. La finalización exige completar los checkpoints obligatorios.
 
-- `primer_paso`;
-- `explorador_magina`;
-- `ruta_100`.
+Mecánicas disponibles: `landmark`, `trivia`, `observation`, `photo`, `collection` y `rest`. Cada checkpoint puede definir posición, distancia, radio de desbloqueo, XP, obligatoriedad, texto, pista, pregunta, opciones y orden.
 
-Son insignias lúdicas, no certificados.
+## Álbum territorial
 
-## Experiencia objetivo
+La mecánica del checkpoint y el contenido territorial son conceptos separados. Un checkpoint puede recibir una **categoría editorial verificada**: `flora`, `fauna`, `heritage`, `olive_culture`, `tradition` o `landscape`.
 
-La ruta debe sentirse como una pequeña aventura sobre el territorio real:
+La rareza puede ser `common`, `uncommon`, `rare` o `legendary`.
 
-1. **Inicio** — presentación del recorrido y de la misión.
-2. **Etapas** — checkpoints colocados en lugares con sentido.
-3. **Descubrimiento** — patrimonio, paisaje, olivar, agua, flora, fauna o cultura local.
-4. **Retos** — observar, responder, localizar o recopilar.
-5. **Colección** — recuerdos virtuales de la ruta.
-6. **Cierre** — mensaje final, puntuación e insignias.
+La importación masiva desde POI **no infiere categoría ni rareza**. Un editor debe confirmarlas en Admin. El formulario conserva ambos campos al reeditar para evitar degradar accidentalmente un hallazgo raro a `common`.
 
-## Administración implementada
+El perfil global agrupa el álbum por categoría y rareza y deriva insignias como `coleccionista_de_magina` y `hallazgo_legendario`. La ficha de cada ruta muestra su miniálbum y la categoría/rareza cuando la etapa ya es visible.
 
-El editor vive dentro de la gestión existente de Rutas y permite:
+## Modos de progresión
 
-- activar/desactivar Aventura por ruta;
-- definir título, introducción y mensaje de cierre;
-- crear checkpoints mediante coordenadas reales;
-- reutilizar POI existentes copiando su posición y distancia;
-- editar y eliminar etapas;
-- ordenar etapas;
-- definir radio GPS, puntos, obligatoriedad y visibilidad;
-- configurar preguntas, opciones, respuesta correcta y pista;
-- consultar partidas totales, activas y completadas y puntuación media.
+Cada aventura puede funcionar como `free` o `linear`. En modo lineal la API exige completar los checkpoints obligatorios anteriores antes de avanzar. La interfaz oculta el contenido de etapas futuras, no muestra su acción GPS y explica el bloqueo. Los retos extra no frenan el avance.
 
-Las acciones administrativas requieren permisos de plataforma y quedan auditadas. La respuesta correcta solo se entrega al administrador y nunca al endpoint público del juego.
+## Desbloqueo
 
-## Evolución compatible con la V1
+El usuario inicia la aventura, pulsa `Estoy aquí`, el navegador solicita una posición puntual, la API valida progresión y proximidad con PostGIS y, si aplica, valida la trivia. El desbloqueo se guarda una sola vez, la coordenada exacta se descarta y el usuario recibe XP y, cuando corresponda, categoría + rareza del hallazgo.
 
-### Álbum territorial
+## Cuaderno, Pasaporte y niveles
 
-Los checkpoints `collection` pueden evolucionar a un álbum de:
+Por ruta se muestran porcentaje descubierto, rango, XP conseguido/posible, checkpoints, miniálbum, rareza e insignias.
 
-- árboles y plantas;
-- aves y fauna;
-- castillos, torres y patrimonio;
-- fuentes y elementos hidráulicos;
-- cultura del olivar;
-- paisajes y miradores;
-- leyendas e historias locales.
+El perfil global `GET /api/v1/adventures/me` incluye aventuras iniciadas/completadas, descubrimientos únicos, XP acumulado sin duplicar un mismo checkpoint, álbum territorial, insignias, últimas expediciones y Pasaporte territorial.
 
-### Retos fotográficos
+`/aventura` muestra Sierra Mágina explorada, descubrimientos disponibles/desbloqueados, municipios con aventuras, municipios con progreso y avance por municipio.
 
-Los checkpoints `photo` podrán reutilizar la infraestructura de medios y moderación ya existente en Rutas. La validación automática por IA no debe asumirse como verdad; la primera versión debería basarse en subida, moderación y reglas explícitas.
+Los niveles se derivan del XP existente, a razón de 500 XP por nivel: Caminante de Mágina, Explorador de Mágina desde nivel 3, Aventurero de Mágina desde nivel 6 y Guardián de Sierra Mágina desde nivel 10.
 
-### Narrativa por capítulos
+## Administración
 
-Una aventura podrá agrupar checkpoints en capítulos o misiones sin modificar el track técnico. Ejemplo:
+Admin → Rutas permite activar/desactivar Aventura, configurar presentación/cierre, elegir progresión libre/lineal, crear etapas manuales, reutilizar/importar POI de forma idempotente, editar/eliminar/ordenar checkpoints, configurar GPS/XP/trivia/pistas, asignar y preservar categoría territorial y rareza, consultar métricas, preflight y safety hold, y usar la pantalla de candidatas para priorizar rutas con mejores datos reales.
 
-- Capítulo 1 — El agua;
-- Capítulo 2 — El olivar;
-- Capítulo 3 — La montaña;
-- Capítulo 4 — El patrimonio.
+Las acciones administrativas están protegidas por permisos y auditadas.
 
-### Modo familiar
+## Catálogo y candidatas
 
-Futura capa de equipo para familias o grupos, con una partida compartida y retos adaptados a niños. No debe modificar dificultad técnica ni recomendaciones de seguridad de la ruta.
+Aventura está sincronizada con el catálogo territorial actual de `feat/v20-routes-explore`. El catálogo ayuda a priorizar contenido, pero **no convierte automáticamente una ruta en publicable**. Una ruta sin track real validado o con bloqueo de seguridad no se activa.
 
-### Eventos y temporadas
+## QA
 
-Se podrán activar colecciones o retos temporales por fiestas, campañas de aceite, floración, otoño o actividades municipales, siempre diferenciando contenido editorial de información oficial.
+`V20 routes adventure check` valida secuencia de migraciones, TypeScript y build de API/web, migraciones reales sobre PostGIS 17, persistencia de partida/desbloqueo, índice idempotente de POI, progresión lineal, categoría/rareza e índice del Álbum, ausencia de almacenamiento GPS exacto, rechazo de publicación no preparada, activación de ruta preparada, auto-desactivación ante safety hold crítico moderado y bloqueo de reactivación mientras siga vigente.
 
-### Offline
+También se ejecutan full candidate, foundation, environment, platform admin, staging readiness y browser E2E.
 
-Una futura versión PWA podrá precargar track, checkpoints y contenido editorial antes de salir. Los desbloqueos offline deberán guardar evidencia local mínima y sincronizarse posteriormente con reglas anti-duplicado.
+## Criterio de cierre 10/10 técnico
+
+No se considera cerrado por cantidad de funciones. Para marcar la base como 10/10 técnico deben cumplirse simultáneamente:
+
+1. Aventura sincronizada con el HEAD vigente de Rutas sin quedar commits por detrás;
+2. PR mergeable y mantenido como Draft hasta handoff;
+3. todos los gates verdes sobre el mismo HEAD;
+4. privacidad GPS y safety hold cubiertos por pruebas;
+5. Admin → API → DB → UI coherentes para progresión y Álbum;
+6. ninguna aventura ficticia publicada para rellenar el catálogo;
+7. primera aventura real solo cuando exista una ruta publicable con track validado y checkpoints verificados.
 
 ## Límites deliberados
 
-La V1 no incorpora seguimiento GPS continuo, validación automática de fotografías ni rankings públicos por velocidad. Estas funciones requieren una revisión específica de privacidad, moderación y seguridad. La app no debe incentivar correr o asumir riesgos en senderos para mejorar una posición.
+No se implementan seguimiento GPS continuo, validación automática de fotografías como verdad, rankings por velocidad, AR que afirme reconocer flora/fauna sin metodología validada ni generación automática de hechos territoriales. Estas decisiones mantienen Aventura divertida sin convertir la capa lúdica en una fuente de riesgo, privacidad invasiva o información inventada.

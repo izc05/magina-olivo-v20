@@ -99,12 +99,13 @@ test('Explore links to public modules that are already available', async ({ page
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/explorar');
 
+  await expect(page.getByRole('link', { name: /Mágina Aventura/ })).toHaveAttribute('href', /^\/aventura\/?$/);
   await expect(page.getByRole('link', { name: /Noticias/ })).toHaveAttribute('href', /^\/noticias\/?$/);
   await expect(page.getByRole('link', { name: /Eventos/ })).toHaveAttribute('href', /^\/eventos\/?$/);
   await expect(page.getByRole('link', { name: /Aceite y mercado/ })).toHaveAttribute('href', /^\/mercado\/?$/);
   await expect(page.getByRole('link', { name: /Almazaras y cooperativas/ })).toHaveAttribute('href', /^\/cooperativas\/?$/);
   await expect(page.getByRole('link', { name: /Empresas y servicios/ })).toHaveAttribute('href', /^\/explorar\/empresas\/?$/);
-  await expect(page.getByRole('link', { name: /Rutas y experiencias/ })).toHaveAttribute('href', /^\/rutas\/?$/);
+  await expect(page.getByRole('link', { name: /Rutas y aventuras/ })).toHaveAttribute('href', /^\/rutas\/?$/);
   await expect(page.getByRole('link', { name: /Consejos del campo/ })).toHaveAttribute('href', /^\/consejos\/?$/);
   await expectNoHorizontalOverflow(page);
 });

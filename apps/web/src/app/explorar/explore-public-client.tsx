@@ -10,6 +10,7 @@ import {
 import styles from './explore-public.module.css';
 
 const areas = [
+  { icon: CompassIcon, tone: 'routes', title: 'Mágina Aventura', text: 'Explora rutas reales, desbloquea retos geolocalizados y completa tu Cuaderno del Explorador.', href: '/aventura', badge: 'Nuevo' },
   { icon: NewsIcon, tone: 'news', title: 'Noticias', text: 'Actualidad local con fuente y fecha verificadas.', href: '/noticias', badge: 'Disponible' },
   { icon: EventIcon, tone: 'events', title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
   { icon: HomeIcon, tone: 'municipalities', title: 'Ayuntamientos', text: 'Webs oficiales, contacto y sedes institucionales de Sierra Mágina.', href: '/ayuntamientos', badge: '16 municipios' },

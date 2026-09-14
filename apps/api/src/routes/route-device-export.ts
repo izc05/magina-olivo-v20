@@ -3,7 +3,12 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import type { DatabaseClient } from '../db/client.js';
 import { registerRouteAdventureRoutes } from './route-adventure.js';
+import { registerRouteAdventureHubRoutes } from './route-adventure-hub.js';
 import { registerAdminRouteAdventureRoutes } from './admin-route-adventure.js';
+import { registerAdminRouteAdventureBulkRoutes } from './admin-route-adventure-bulk.js';
+import { registerAdminRouteAdventureReadinessRoutes } from './admin-route-adventure-readiness.js';
+import { registerAdminRouteAdventureCandidateRoutes } from './admin-route-adventure-candidates.js';
+import { registerAdminRouteAdventureProgressionRoutes } from './admin-route-adventure-progression.js';
 
 const slugParams = z.object({ slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/) });
 
@@ -17,7 +22,12 @@ export function registerRouteDeviceExportRoutes(app: FastifyInstance, db: Databa
   // Adventure belongs to the same route feature bundle. Keeping registration here
   // avoids touching the shared app bootstrap while this branch stays isolated.
   registerRouteAdventureRoutes(app, db);
+  registerRouteAdventureHubRoutes(app, db);
   registerAdminRouteAdventureRoutes(app, db);
+  registerAdminRouteAdventureBulkRoutes(app, db);
+  registerAdminRouteAdventureReadinessRoutes(app, db);
+  registerAdminRouteAdventureCandidateRoutes(app, db);
+  registerAdminRouteAdventureProgressionRoutes(app, db);
 
   app.get('/api/v1/public/routes/:slug/gpx', async (request, reply) => {
     if (!db) return reply.code(503).send({ error: 'database_unavailable' });

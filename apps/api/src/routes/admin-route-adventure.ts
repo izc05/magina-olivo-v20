@@ -25,6 +25,8 @@ const checkpointSchema = z.object({
   title: z.string().trim().min(1).max(180),
   description: z.string().trim().max(4000).nullable().optional(),
   kind: z.enum(['landmark','trivia','observation','photo','collection','rest']).default('landmark'),
+  collection_category: z.enum(['flora','fauna','heritage','olive_culture','tradition','landscape']).nullable().optional(),
+  rarity: z.enum(['common','uncommon','rare','legendary']).default('common'),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   distance_m: z.number().min(0).nullable().optional(),
@@ -73,11 +75,11 @@ export function registerAdminRouteAdventureRoutes(app: FastifyInstance, db: Data
 
     const [configResult, checkpointsResult, pointsResult, metricsResult] = await Promise.all([
       sql<Record<string, unknown>>`
-        SELECT route_id, enabled, title, intro, completion_message, created_at, updated_at
+        SELECT route_id, enabled, title, intro, completion_message, progression_mode, created_at, updated_at
         FROM route_adventures WHERE route_id = ${params.data.id}::uuid LIMIT 1
       `.execute(auth.database),
       sql<Record<string, unknown>>`
-        SELECT cp.id, cp.route_point_id, cp.title, cp.description, cp.kind, cp.distance_m,
+        SELECT cp.id, cp.route_point_id, cp.title, cp.description, cp.kind, cp.collection_category, cp.rarity, cp.distance_m,
                cp.unlock_radius_m, cp.points, cp.is_required, cp.question, cp.answer_options,
                cp.correct_answer_key, cp.hint, cp.sort_order, cp.active,
                ST_Y(cp.location) AS latitude, ST_X(cp.location) AS longitude
@@ -110,6 +112,7 @@ export function registerAdminRouteAdventureRoutes(app: FastifyInstance, db: Data
         title: 'Modo Aventura',
         intro: null,
         completion_message: null,
+        progression_mode: 'free',
       },
       checkpoints: checkpointsResult.rows,
       route_points: pointsResult.rows,
@@ -138,7 +141,7 @@ export function registerAdminRouteAdventureRoutes(app: FastifyInstance, db: Data
         completion_message = EXCLUDED.completion_message,
         updated_by = EXCLUDED.updated_by,
         updated_at = now()
-      RETURNING route_id, enabled, title, intro, completion_message, created_at, updated_at
+      RETURNING route_id, enabled, title, intro, completion_message, progression_mode, created_at, updated_at
     `.execute(auth.database);
     await auditAdminAction(auth.database, auth.access, 'route.adventure_updated', 'route', params.data.id, { enabled: input.enabled });
     return { adventure: result.rows[0] };
@@ -155,22 +158,25 @@ export function registerAdminRouteAdventureRoutes(app: FastifyInstance, db: Data
 
     const result = await sql<Record<string, unknown>>`
       INSERT INTO route_adventure_checkpoints(
-        route_id, route_point_id, title, description, kind, location, distance_m,
+        route_id, route_point_id, title, description, kind, collection_category, rarity, location, distance_m,
         unlock_radius_m, points, is_required, question, answer_options, correct_answer_key,
         hint, sort_order, active
       ) VALUES (
         ${params.data.id}::uuid, ${input.route_point_id ?? null}::uuid, ${input.title}, ${input.description ?? null},
-        ${input.kind}, ST_SetSRID(ST_MakePoint(${input.longitude}, ${input.latitude}), 4326), ${input.distance_m ?? null},
+        ${input.kind}, ${input.collection_category ?? null}, ${input.rarity},
+        ST_SetSRID(ST_MakePoint(${input.longitude}, ${input.latitude}), 4326), ${input.distance_m ?? null},
         ${input.unlock_radius_m}, ${input.points}, ${input.is_required}, ${input.question ?? null},
         ${JSON.stringify(input.answer_options)}::jsonb, ${input.correct_answer_key ?? null}, ${input.hint ?? null},
         ${input.sort_order}, ${input.active}
       )
-      RETURNING id, route_id, route_point_id, title, description, kind, distance_m, unlock_radius_m,
+      RETURNING id, route_id, route_point_id, title, description, kind, collection_category, rarity, distance_m, unlock_radius_m,
                 points, is_required, question, answer_options, correct_answer_key, hint, sort_order, active,
                 ST_Y(location) AS latitude, ST_X(location) AS longitude
     `.execute(auth.database);
     const checkpoint = result.rows[0];
-    await auditAdminAction(auth.database, auth.access, 'route.adventure_checkpoint_created', 'route_adventure_checkpoint', String(checkpoint.id), { route_id: params.data.id, kind: input.kind });
+    await auditAdminAction(auth.database, auth.access, 'route.adventure_checkpoint_created', 'route_adventure_checkpoint', String(checkpoint.id), {
+      route_id: params.data.id, kind: input.kind, collection_category: input.collection_category ?? null, rarity: input.rarity,
+    });
     return reply.code(201).send({ checkpoint });
   });
 
@@ -186,6 +192,7 @@ export function registerAdminRouteAdventureRoutes(app: FastifyInstance, db: Data
       UPDATE route_adventure_checkpoints SET
         route_point_id = ${input.route_point_id ?? null}::uuid,
         title = ${input.title}, description = ${input.description ?? null}, kind = ${input.kind},
+        collection_category = ${input.collection_category ?? null}, rarity = ${input.rarity},
         location = ST_SetSRID(ST_MakePoint(${input.longitude}, ${input.latitude}), 4326),
         distance_m = ${input.distance_m ?? null}, unlock_radius_m = ${input.unlock_radius_m},
         points = ${input.points}, is_required = ${input.is_required}, question = ${input.question ?? null},
@@ -193,13 +200,15 @@ export function registerAdminRouteAdventureRoutes(app: FastifyInstance, db: Data
         correct_answer_key = ${input.correct_answer_key ?? null}, hint = ${input.hint ?? null},
         sort_order = ${input.sort_order}, active = ${input.active}, updated_at = now()
       WHERE id = ${params.data.checkpointId}::uuid AND route_id = ${params.data.id}::uuid
-      RETURNING id, route_id, route_point_id, title, description, kind, distance_m, unlock_radius_m,
+      RETURNING id, route_id, route_point_id, title, description, kind, collection_category, rarity, distance_m, unlock_radius_m,
                 points, is_required, question, answer_options, correct_answer_key, hint, sort_order, active,
                 ST_Y(location) AS latitude, ST_X(location) AS longitude
     `.execute(auth.database);
     const checkpoint = result.rows[0];
     if (!checkpoint) return reply.code(404).send({ error: 'checkpoint_not_found' });
-    await auditAdminAction(auth.database, auth.access, 'route.adventure_checkpoint_updated', 'route_adventure_checkpoint', params.data.checkpointId, { route_id: params.data.id, kind: input.kind });
+    await auditAdminAction(auth.database, auth.access, 'route.adventure_checkpoint_updated', 'route_adventure_checkpoint', params.data.checkpointId, {
+      route_id: params.data.id, kind: input.kind, collection_category: input.collection_category ?? null, rarity: input.rarity,
+    });
     return { checkpoint };
   });
 

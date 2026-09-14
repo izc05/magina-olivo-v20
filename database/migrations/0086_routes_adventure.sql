@@ -6,6 +6,7 @@ CREATE TABLE route_adventures (
   title TEXT NOT NULL DEFAULT 'Modo Aventura',
   intro TEXT,
   completion_message TEXT,
+  progression_mode TEXT NOT NULL DEFAULT 'free' CHECK (progression_mode IN ('free','linear')),
   created_by UUID REFERENCES users(id) ON DELETE SET NULL,
   updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -23,6 +24,11 @@ CREATE TABLE route_adventure_checkpoints (
   description TEXT,
   kind TEXT NOT NULL DEFAULT 'landmark'
     CHECK (kind IN ('landmark','trivia','observation','photo','collection','rest')),
+  collection_category TEXT CHECK (collection_category IS NULL OR collection_category IN (
+    'flora','fauna','heritage','olive_culture','tradition','landscape'
+  )),
+  rarity TEXT NOT NULL DEFAULT 'common'
+    CHECK (rarity IN ('common','uncommon','rare','legendary')),
   location geometry(Point, 4326) NOT NULL,
   distance_m NUMERIC(12,2) CHECK (distance_m IS NULL OR distance_m >= 0),
   unlock_radius_m INTEGER NOT NULL DEFAULT 60 CHECK (unlock_radius_m BETWEEN 10 AND 500),
@@ -49,6 +55,12 @@ CREATE INDEX route_adventure_checkpoints_route_idx
   ON route_adventure_checkpoints(route_id, active, sort_order, distance_m);
 CREATE INDEX route_adventure_checkpoints_location_gist
   ON route_adventure_checkpoints USING GIST(location);
+CREATE INDEX route_adventure_checkpoints_album_idx
+  ON route_adventure_checkpoints(collection_category, rarity, active)
+  WHERE collection_category IS NOT NULL;
+CREATE UNIQUE INDEX route_adventure_checkpoints_route_point_unique_idx
+  ON route_adventure_checkpoints(route_id, route_point_id)
+  WHERE route_point_id IS NOT NULL;
 
 CREATE TABLE route_adventure_runs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -85,8 +97,79 @@ CREATE TABLE route_adventure_unlocks (
 CREATE INDEX route_adventure_unlocks_checkpoint_idx
   ON route_adventure_unlocks(checkpoint_id, unlocked_at DESC);
 
-COMMENT ON TABLE route_adventures IS 'Optional gamified layer for a validated published route. It never replaces technical navigation or official safety information.';
-COMMENT ON TABLE route_adventure_checkpoints IS 'Geolocated adventure checkpoints; answers and unlocks are validated by the API. Public payloads must never expose correct_answer_key.';
+CREATE FUNCTION enforce_route_adventure_publish_ready()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  publish_ready BOOLEAN;
+BEGIN
+  IF NEW.enabled THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM routes r
+      WHERE r.id = NEW.route_id
+        AND r.status = 'published'
+        AND r.track_status = 'validated'
+        AND EXISTS (
+          SELECT 1 FROM route_tracks rt
+          WHERE rt.route_id = r.id AND rt.validation_status = 'validated'
+        )
+        AND EXISTS (
+          SELECT 1 FROM route_adventure_checkpoints cp
+          WHERE cp.route_id = r.id AND cp.active = true AND cp.is_required = true
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM route_condition_reports rc
+          WHERE rc.route_id = r.id
+            AND rc.moderation_status = 'approved'
+            AND rc.severity = 'critical'
+            AND rc.condition_kind IN ('closed','blocked','fire_risk','flooded')
+            AND (rc.expires_at IS NULL OR rc.expires_at > now())
+        )
+    ) INTO publish_ready;
+
+    IF NOT publish_ready THEN
+      RAISE EXCEPTION 'route_adventure_not_ready_for_publication'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER route_adventures_publish_ready_trg
+  BEFORE INSERT OR UPDATE OF enabled, route_id ON route_adventures
+  FOR EACH ROW EXECUTE FUNCTION enforce_route_adventure_publish_ready();
+
+CREATE FUNCTION hold_route_adventure_for_critical_condition()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.moderation_status = 'approved'
+     AND NEW.severity = 'critical'
+     AND NEW.condition_kind IN ('closed','blocked','fire_risk','flooded')
+     AND (NEW.expires_at IS NULL OR NEW.expires_at > now()) THEN
+    UPDATE route_adventures
+    SET enabled = false, updated_at = now()
+    WHERE route_id = NEW.route_id AND enabled = true;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER route_condition_reports_adventure_hold_trg
+  AFTER INSERT OR UPDATE OF moderation_status, severity, condition_kind, expires_at
+  ON route_condition_reports
+  FOR EACH ROW EXECUTE FUNCTION hold_route_adventure_for_critical_condition();
+
+COMMENT ON TABLE route_adventures IS 'Optional gamified layer for a validated published route. progression_mode free allows any checkpoint order; linear requires previous mandatory stages.';
+COMMENT ON TABLE route_adventure_checkpoints IS 'Geolocated adventure checkpoints with optional verified territorial album category and rarity; public payloads must never expose correct_answer_key.';
+COMMENT ON INDEX route_adventure_checkpoints_album_idx IS 'Supports the territorial album by verified category and rarity without deriving content classifications automatically.';
+COMMENT ON INDEX route_adventure_checkpoints_route_point_unique_idx IS 'A real route POI can seed at most one adventure checkpoint per route, making bulk POI import idempotent.';
+COMMENT ON FUNCTION enforce_route_adventure_publish_ready() IS 'Prevents enabling an adventure unless its route is published, has a real validated track, at least one active required checkpoint, and no approved active critical closure/block/fire/flood safety hold.';
+COMMENT ON FUNCTION hold_route_adventure_for_critical_condition() IS 'Automatically disables an enabled adventure when a moderator approves an active critical closure, blockage, fire-risk or flood report. Reactivation is intentionally manual after review.';
 COMMENT ON TABLE route_adventure_runs IS 'User game sessions kept separate from route_completions so game progress cannot be mistaken for verified physical completion.';
 COMMENT ON TABLE route_adventure_unlocks IS 'Stores checkpoint result and proximity distance only; the user GPS coordinate used for validation is not retained.';
 
