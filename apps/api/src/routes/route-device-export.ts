@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { DatabaseClient } from '../db/client.js';
 import { registerRouteAdventureRoutes } from './route-adventure.js';
 import { registerRouteAdventureHubRoutes } from './route-adventure-hub.js';
+import { registerRouteAdventureRewardRoutes } from './route-adventure-rewards.js';
 import { registerRouteActivityRoutes } from './route-activity.js';
 import { registerRouteActivityInsightRoutes } from './route-activity-insights.js';
 import { registerRouteActivityAchievementRoutes } from './route-activity-achievements.js';
@@ -26,6 +27,7 @@ export function registerRouteDeviceExportRoutes(app: FastifyInstance, db: Databa
   // Keeping registration here avoids touching the shared app bootstrap while this branch stays isolated.
   registerRouteAdventureRoutes(app, db);
   registerRouteAdventureHubRoutes(app, db);
+  registerRouteAdventureRewardRoutes(app, db);
   registerRouteActivityRoutes(app, db);
   registerRouteActivityInsightRoutes(app, db);
   registerRouteActivityAchievementRoutes(app, db);
