@@ -1,0 +1,239 @@
+name: V20 routes closure check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - integrate/v20-beta-closure
+    paths:
+      - 'apps/api/src/routes/gpx.ts'
+      - 'apps/api/src/routes/gpx.test.ts'
+      - 'apps/api/src/routes/routes-explore.ts'
+      - 'apps/api/src/routes/admin-routes-explore.ts'
+      - 'apps/api/src/routes/admin-route-content.ts'
+      - 'apps/api/src/routes/admin-route-community.ts'
+      - 'apps/api/src/routes/route-community.ts'
+      - 'apps/api/src/routes/route-device-export.ts'
+      - 'apps/api/src/domain/routes-explore.ts'
+      - 'apps/api/src/app.ts'
+      - 'apps/api/package.json'
+      - 'apps/web/src/app/rutas/**'
+      - 'apps/web/src/app/explorar/explore-public-client.tsx'
+      - 'apps/web/src/app/admin/rutas/**'
+      - 'apps/web/src/components/routes-admin-console.tsx'
+      - 'apps/web/src/components/route-content-admin.tsx'
+      - 'apps/web/src/components/routes-community-admin.tsx'
+      - 'apps/web/src/components/routes-sponsorship-admin.tsx'
+      - 'apps/web/src/lib/public-routes-source.ts'
+      - 'database/migrations/0080_routes_explore_foundation.sql'
+      - 'database/migrations/0081_routes_track_consistency.sql'
+      - 'database/migrations/0082_routes_community_monetization.sql'
+      - '.github/workflows/routes-check.yml'
+      - '.nvmrc'
+      - 'pnpm-lock.yaml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  routes:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina_routes
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina_routes"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_routes
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+      NEXT_PUBLIC_PREVIEW_MODE: 'false'
+      ALLOW_DEV_AUTH_HEADERS: 'true'
+      AUTH_COOKIE_SECURE: 'false'
+      BACKGROUND_JOBS_ENABLED: 'false'
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:3000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify migration sequence
+        run: pnpm check:migrations
+
+      - name: GPX parser tests
+        run: pnpm --filter @magina/api test:routes
+
+      - name: Typecheck API and web
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/web typecheck
+
+      - name: Build API and web
+        run: |
+          pnpm --filter @magina/api build
+          pnpm --filter @magina/web build
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      - name: Apply all migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina_routes -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Route publication invariant smoke
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d magina_routes -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO users (id, primary_email, display_name, status)
+          VALUES ('bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb', 'routes-ci@example.invalid', 'Routes CI', 'active')
+          ON CONFLICT (id) DO NOTHING;
+
+          INSERT INTO routes (id, slug, name, route_type, created_by, updated_by)
+          VALUES (
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'ruta-ci',
+            'Ruta CI',
+            'hiking',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          INSERT INTO route_tracks (
+            id, route_id, version, geometry, geometry_type, original_format,
+            checksum, distance_m, validation_status
+          ) VALUES (
+            'cccccccc-3333-4333-8333-cccccccccccc',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            1,
+            ST_GeomFromText('LINESTRING(-3.9 37.7,-3.89 37.71)', 4326),
+            'LineString', 'gpx', repeat('a', 64), 1500, 'uploaded'
+          );
+
+          DO $$
+          BEGIN
+            BEGIN
+              UPDATE routes SET status = 'published'
+              WHERE id = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+              RAISE EXCEPTION 'route published without validated track';
+            EXCEPTION WHEN check_violation THEN
+              NULL;
+            END;
+          END $$;
+
+          UPDATE route_tracks
+          SET validation_status = 'validated'
+          WHERE id = 'cccccccc-3333-4333-8333-cccccccccccc';
+
+          UPDATE routes SET status = 'published', published_at = now()
+          WHERE id = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM routes
+              WHERE id = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa'
+                AND status = 'published' AND track_status = 'validated'
+            ) THEN
+              RAISE EXCEPTION 'validated route did not publish';
+            END IF;
+          END $$;
+
+          UPDATE route_tracks
+          SET validation_status = 'rejected'
+          WHERE id = 'cccccccc-3333-4333-8333-cccccccccccc';
+
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM routes
+              WHERE id = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa'
+                AND status = 'review' AND track_status = 'rejected' AND published_at IS NULL
+            ) THEN
+              RAISE EXCEPTION 'rejected track did not unpublish route';
+            END IF;
+          END $$;
+          SQL
+
+      - name: Route community and sponsorship smoke
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d magina_routes -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO route_reviews (id, route_id, user_id, rating, body)
+          VALUES (
+            'dddddddd-4444-4444-8444-dddddddddddd',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            5,
+            'Experiencia CI pendiente de moderación'
+          );
+
+          INSERT INTO route_condition_reports (
+            id, route_id, user_id, condition_kind, severity, observed_at
+          ) VALUES (
+            'eeeeeeee-5555-4555-8555-eeeeeeeeeeee',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            'muddy', 'caution', now()
+          );
+
+          INSERT INTO route_sponsorships (
+            id, route_id, sponsor_name, placement, billing_model, status, created_by, updated_by
+          ) VALUES (
+            'ffffffff-6666-4666-8666-ffffffffffff',
+            'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
+            'Sponsor CI', 'route_sidebar', 'flat', 'active',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
+            'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'
+          );
+
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM route_reviews WHERE id = 'dddddddd-4444-4444-8444-dddddddddddd' AND moderation_status = 'pending') THEN
+              RAISE EXCEPTION 'route review did not default to moderation pending';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM route_condition_reports WHERE id = 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee' AND moderation_status = 'pending') THEN
+              RAISE EXCEPTION 'condition report did not default to moderation pending';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM route_sponsorships WHERE id = 'ffffffff-6666-4666-8666-ffffffffffff' AND disclosure = 'Patrocinado') THEN
+              RAISE EXCEPTION 'sponsorship disclosure missing';
+            END IF;
+          END $$;
+          SQL

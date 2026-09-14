@@ -20,6 +20,9 @@ import { registerAdminAgendaRoutes } from './routes/admin-agenda.js';
 import { registerAdminWorkActivityRoutes } from './routes/admin-work-activity.js';
 import { registerAdminDocumentRoutes } from './routes/admin-documents.js';
 import { registerAdminProfessionalRoutes } from './routes/admin-professional.js';
+import { registerAdminRoutesExploreRoutes } from './routes/admin-routes-explore.js';
+import { registerAdminRouteContentRoutes } from './routes/admin-route-content.js';
+import { registerAdminRouteCommunityRoutes } from './routes/admin-route-community.js';
 import { registerPlanRoutes } from './routes/plans.js';
 import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerMiOlivoCampaignRoutes } from './routes/mi-olivo-campaign.js';
@@ -64,6 +67,9 @@ import { registerProfessionalBusinessProfileRoutes } from './routes/professional
 import { registerProfessionalPrintRoutes } from './routes/professional-print.js';
 import { registerProfessionalDeliveryRoutes } from './routes/professional-deliveries.js';
 import { registerProfessionalShareLinkRoutes } from './routes/professional-share-links.js';
+import { registerRoutesExploreRoutes } from './routes/routes-explore.js';
+import { registerRouteCommunityRoutes } from './routes/route-community.js';
+import { registerRouteDeviceExportRoutes } from './routes/route-device-export.js';
 import type { StoragePort } from './storage/port.js';
 import { UnavailableStorage } from './storage/port.js';
 import type { OcrQueuePort } from './ocr/port.js';
@@ -201,6 +207,9 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminWorkActivityRoutes(app, db);
   registerAdminDocumentRoutes(app, db, ocrQueue);
   registerAdminProfessionalRoutes(app, db);
+  registerAdminRoutesExploreRoutes(app, db);
+  registerAdminRouteContentRoutes(app, db);
+  registerAdminRouteCommunityRoutes(app, db);
   registerPlanRoutes(app, db);
   registerMiOlivoRoutes(app, db);
   registerMiOlivoCampaignRoutes(app, db);
@@ -245,6 +254,9 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerDocumentCatalogRoutes(app, db);
   registerDocumentAnalysisRoutes(app, db);
   registerGisRoutes(app, db, gisProviders);
+  registerRoutesExploreRoutes(app, db);
+  registerRouteCommunityRoutes(app, db, storage);
+  registerRouteDeviceExportRoutes(app, db);
 
   return app;
 }
