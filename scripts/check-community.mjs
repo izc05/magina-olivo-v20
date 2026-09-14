@@ -18,6 +18,11 @@ requireText(migration, "status IN ('published','hidden','deleted')", 'community 
 requireText(migration, 'Exact farm geometry', 'community privacy contract');
 requireText(migration, 'community_reports_moderation_queue_idx', 'community moderation queue index');
 
+const socialMigration = requireFile('database/migrations/0064_community_activity_replies.sql');
+requireText(socialMigration, 'parent_comment_id', 'community replies migration');
+requireText(socialMigration, 'CREATE TABLE community_activity_state', 'community activity state');
+requireText(socialMigration, 'independent from workspaces, farms', 'community activity privacy contract');
+
 const routes = requireFile('apps/api/src/routes/community.ts');
 for (const endpoint of [
   '/api/v1/public/community',
@@ -31,8 +36,25 @@ requireText(routes, 'requireAuthenticatedUser', 'community authenticated writes'
 requireText(routes, "CASE WHEN up.visibility = 'public' THEN u.id::text ELSE NULL END AS author_id", 'community author id privacy');
 requireText(routes, "ELSE 'Miembro de Mágina'", 'community private author alias');
 requireText(routes, "CASE WHEN up.visibility = 'public' THEN u.avatar_url ELSE NULL END AS author_avatar_url", 'community profile privacy');
+requireText(routes, 'community_reply_parent_invalid', 'community reply parent validation');
+requireText(routes, 'community_reply_depth_exceeded', 'community one-level reply contract');
+requireText(routes, 'parent_comment_id', 'community reply persistence');
 if (routes.includes('workspace_id') || routes.includes('field_id') || routes.includes('geometry')) {
   fail('community API must not copy private workspace, field or geometry identifiers into the public feed');
+}
+
+const activityRoute = requireFile('apps/api/src/routes/community-activity.ts');
+for (const endpoint of [
+  '/api/v1/community/activity',
+  '/api/v1/community/activity/read',
+  '/api/v1/public/community/highlights',
+]) requireText(activityRoute, endpoint, 'community social activity API');
+requireText(activityRoute, "'reply'::text AS type", 'community reply activity');
+requireText(activityRoute, 'community_activity_state', 'community read marker');
+requireText(activityRoute, "now() - interval '30 days'", 'community territorial highlights freshness');
+requireText(activityRoute, "ELSE 'Miembro de Mágina'", 'community activity private actor alias');
+for (const privateToken of ['workspace_id', 'field_id', 'geometry', 'primary_email']) {
+  if (activityRoute.includes(privateToken)) fail(`community social activity must not expose ${privateToken}`);
 }
 
 const bookmarksRoute = requireFile('apps/api/src/routes/community-bookmarks.ts');
@@ -66,10 +88,12 @@ const app = requireFile('apps/api/src/app.ts');
 requireText(app, 'registerCommunityRoutes(app, db)', 'community API registration');
 requireText(app, 'registerCommunityBookmarkRoutes(app, db)', 'community saved-post registration');
 requireText(app, 'registerCommunityDiscoveryRoutes(app, db)', 'community discovery registration');
+requireText(app, 'registerCommunityActivityRoutes(app, db)', 'community social activity registration');
 requireText(app, 'registerAdminCommunityRoutes(app, db)', 'community admin API registration');
 
 const communityPage = requireFile('apps/web/src/app/comunidad/page.tsx');
 requireText(communityPage, '/comunidad/descubrir', 'community discovery navigation');
+requireText(communityPage, '/comunidad/actividad', 'community activity navigation');
 const client = requireFile('apps/web/src/app/comunidad/community-client.tsx');
 for (const behavior of [
   'createCommunityPost',
@@ -77,19 +101,34 @@ for (const behavior of [
   'setCommunityBookmark',
   'loadCommunityBookmarks',
   'createCommunityComment',
+  'loadCommunityHighlights',
   'reportCommunityTarget',
   'loadPublicMunicipalities',
   'sharePost',
+  'startReply',
 ]) requireText(client, behavior, 'community UI');
 requireText(client, "reportTarget('comment', comment.id)", 'community comment reporting');
 requireText(client, 'composerMunicipality', 'community municipality context');
 requireText(client, "mode === 'saved'", 'community saved-post view');
+requireText(client, 'replyTargets', 'community threaded reply UI');
+requireText(client, 'Ahora en ${activeMunicipalityName}', 'community municipal highlights UI');
 const source = requireFile('apps/web/src/lib/community-source.ts');
 requireText(source, '/api/v1/community/bookmarks', 'community saved-post client');
+requireText(source, '/api/v1/community/activity', 'community social activity client');
+requireText(source, '/api/v1/public/community/highlights', 'community highlights client');
+requireText(source, 'parent_comment_id: string | null', 'community reply client type');
 requireText(source, 'author_id: string | null', 'community private author client type');
 const explore = requireFile('apps/web/src/app/explorar/explore-public-client.tsx');
 requireText(explore, "href: '/comunidad'", 'Explore community entry');
 requireFile('apps/web/src/app/comunidad/community.module.css');
+
+const activityPage = requireFile('apps/web/src/app/comunidad/actividad/page.tsx');
+requireText(activityPage, 'CommunityActivityClient', 'community activity page');
+const activityClient = requireFile('apps/web/src/app/comunidad/actividad/activity-client.tsx');
+requireText(activityClient, 'loadCommunityActivity', 'community activity UI');
+requireText(activityClient, 'markCommunityActivityRead', 'community activity read action');
+requireText(activityClient, '/comunidad#post-', 'community activity deep link');
+requireFile('apps/web/src/app/comunidad/actividad/activity.module.css');
 
 const discoveryClient = requireFile('apps/web/src/app/comunidad/descubrir/discovery-client.tsx');
 requireText(discoveryClient, '/api/v1/public/community/discover', 'community discovery UI');
