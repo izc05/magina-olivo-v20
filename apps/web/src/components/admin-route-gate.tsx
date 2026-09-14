@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiRequestError } from '../lib/api-client';
 import { adminApi } from '../lib/admin-data-source';
 import { useAuth } from './auth-provider';
@@ -11,8 +11,11 @@ type GateState = 'checking' | 'authorized' | 'denied' | 'expired' | 'error';
 export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) {
   const auth = useAuth();
   const [state, setState] = useState<GateState>('checking');
+  const validatingRef = useRef(false);
 
   const validate = useCallback(async () => {
+    if (validatingRef.current) return;
+    validatingRef.current = true;
     setState('checking');
     try {
       await adminApi.session();
@@ -28,6 +31,8 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
         return;
       }
       setState('error');
+    } finally {
+      validatingRef.current = false;
     }
   }, [auth.refreshSession]);
 
