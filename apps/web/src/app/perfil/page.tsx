@@ -15,6 +15,7 @@ import { CommercialNotificationSettings } from '@/components/commercial-notifica
 import { ProfessionalBusinessProfileSettings } from '@/components/professional-business-profile-settings';
 import { AdventureExplorerProfile } from '@/components/adventure-explorer-profile';
 import { RecordedActivityProfileCard } from '@/components/recorded-activity-profile-card';
+import { ActivityAchievementsProfileCard } from '@/components/activity-achievements-profile-card';
 import { useAuth } from '@/components/auth-provider';
 
 const roleLabels: Record<string, string> = {
@@ -87,6 +88,7 @@ export default function ProfilePage() {
       {authenticated ? <ProfileSettingsEditor user={user} profile={profile} preferences={preferences} onSaved={refreshMe} /> : null}
       {authenticated ? <AdventureExplorerProfile /> : null}
       {authenticated ? <RecordedActivityProfileCard /> : null}
+      {authenticated ? <ActivityAchievementsProfileCard /> : null}
 
       <AgronomyAlertSettings />
       <HomePrioritySettings />
