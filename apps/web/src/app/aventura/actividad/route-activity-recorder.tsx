@@ -76,9 +76,9 @@ function activityError(error: unknown) {
   return 'No se ha podido completar la operación. Comprueba la conexión y vuelve a intentarlo.';
 }
 
-export function RouteActivityRecorder() {
+export function RouteActivityRecorder({ initialRouteId = '' }: { initialRouteId?: string }) {
   const [routes, setRoutes] = useState<PublicRouteSummary[]>([]);
-  const [selectedRouteId, setSelectedRouteId] = useState('');
+  const [selectedRouteId, setSelectedRouteId] = useState(initialRouteId);
   const [activity, setActivity] = useState<RouteActivity | null>(null);
   const [summary, setSummary] = useState<RouteActivitySummary | null>(null);
   const [authRequired, setAuthRequired] = useState(false);

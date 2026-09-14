@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ApiRequestError } from '../../../lib/api-client';
 import { loadPublicRoute, type PublicRouteDetail } from '../../../lib/public-routes-source';
-import { loadActiveRouteActivity } from '../../../lib/route-activity-source';
-import { RouteActivityRecorder } from '../../rutas/detalle/route-activity-recorder';
+import { loadCurrentRouteActivity } from '../../../lib/route-activity-source';
+import { RouteActivityRecorder } from '../../actividad/route-activity-recorder';
 import { RouteAdventurePanel } from '../../rutas/detalle/route-adventure-panel';
 import { RouteMap } from '../../rutas/detalle/route-map';
 import styles from './live.module.css';
@@ -48,7 +48,7 @@ export function AdventureLiveClient() {
       }
 
       try {
-        const { activity } = await loadActiveRouteActivity();
+        const { activity } = await loadCurrentRouteActivity();
         if (cancelled) return;
         if (activity?.route_slug) {
           setSlug(activity.route_slug);
@@ -141,7 +141,7 @@ export function AdventureLiveClient() {
       {route.restrictions ? <p>{route.restrictions}</p> : null}
     </section> : null}
 
-    <section id="gps" className={styles.block}><RouteActivityRecorder routeId={route.id} slug={slug} /></section>
+    <section id="gps" className={styles.block}><RouteActivityRecorder initialRouteId={route.id} /></section>
     <section id="retos" className={styles.block}><RouteAdventurePanel routeId={route.id} slug={slug} /></section>
 
     <footer className={styles.footer}>
