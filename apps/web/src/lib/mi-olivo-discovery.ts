@@ -125,8 +125,6 @@ const SECTION_SOURCES: Readonly<Record<string, string>> = {
   '/pueblos': 'section:pueblos',
   '/ayuntamientos': 'section:ayuntamientos',
   '/servicios': 'section:servicios',
-  '/noticias': 'section:noticias',
-  '/eventos': 'section:eventos',
 };
 
 function normalizePath(pathname: string) {
