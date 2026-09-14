@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { MiOlivoCampaignComparison } from '../../components/mi-olivo-campaign-comparison';
+import { MiOlivoCareController } from '../../components/mi-olivo-care-controller';
 import { MiOlivoDashboard } from '../../components/mi-olivo-dashboard';
 import { MiOlivoWeatherController } from '../../components/mi-olivo-weather-controller';
 import { MiOlivoCampaignController } from '../../components/mi-olivo-campaign-controller';
@@ -20,6 +21,7 @@ export default function MiOlivoPage() {
       <MiOlivoDashboard />
       <MiOlivoSeasonsController />
       <MiOlivoCampaignComparison />
+      <MiOlivoCareController />
       <MiOlivoTimelineController />
     </MiOlivoCampaignController>
   );
