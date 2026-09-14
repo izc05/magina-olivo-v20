@@ -3,6 +3,7 @@ import { MiOlivoDashboard } from '../../components/mi-olivo-dashboard';
 import { MiOlivoWeatherController } from '../../components/mi-olivo-weather-controller';
 import { MiOlivoCampaignController } from '../../components/mi-olivo-campaign-controller';
 import { MiOlivoSeasonsController } from '../../components/mi-olivo-seasons-controller';
+import { MiOlivoTimelineController } from '../../components/mi-olivo-timeline-controller';
 import { MiOlivoWelcomeController } from '../../components/mi-olivo-welcome-controller';
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function MiOlivoPage() {
       <MiOlivoWeatherController />
       <MiOlivoWelcomeController />
       <MiOlivoDashboard />
+      <MiOlivoTimelineController />
       <MiOlivoSeasonsController />
     </MiOlivoCampaignController>
   );
