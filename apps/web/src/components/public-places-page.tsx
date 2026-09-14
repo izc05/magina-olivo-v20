@@ -112,23 +112,23 @@ export function PublicPlacesPage() {
     return needle ? items.filter((item) => searchableText(item).includes(needle)) : items;
   }, [items, query]);
 
-  if (loading) return <main className={styles.page}>
+  if (loading) return <div className={styles.page}>
     <section className={styles.stateCard} aria-live="polite"><strong>Cargando pueblos de Sierra Mágina…</strong><p>Consultando las fichas públicas mantenidas por Mágina Olivo.</p></section>
-  </main>;
+  </div>;
 
-  if (error) return <main className={styles.page}>
+  if (error) return <div className={styles.page}>
     <header className={styles.header}><span>SIERRA MÁGINA</span><h1>Pueblos y lugares</h1></header>
     <section className={styles.stateCard} role="alert"><strong>Las fichas territoriales no están disponibles ahora</strong><p>No mostramos pueblos ni descripciones inventadas. Vuelve a intentarlo cuando el servicio público esté disponible.</p><button type="button" onClick={() => window.location.reload()}>Reintentar</button></section>
-  </main>;
+  </div>;
 
-  if (slug && !selected) return <main className={styles.page}>
+  if (slug && !selected) return <div className={styles.page}>
     <header className={styles.header}><span>SIERRA MÁGINA</span><h1>Pueblos y lugares</h1></header>
     <section className={styles.stateCard}><strong>No encontramos este pueblo o lugar</strong><p>La ficha puede haber sido retirada o el enlace haber cambiado.</p><Link href="/pueblos">Volver a pueblos</Link></section>
-  </main>;
+  </div>;
 
-  if (selected) return <main className={styles.page}><PlaceDetail item={selected} /></main>;
+  if (selected) return <div className={styles.page}><PlaceDetail item={selected} /></div>;
 
-  return <main className={styles.page}>
+  return <div className={styles.page}>
     <header className={styles.header}>
       <span>SIERRA MÁGINA · TERRITORIO</span>
       <h1>Pueblos y lugares</h1>
@@ -150,5 +150,5 @@ export function PublicPlacesPage() {
     <section className={styles.grid} aria-label="Pueblos y lugares publicados">
       {filtered.map((item) => <PlaceCard key={item.id} item={item} />)}
     </section>
-  </main>;
+  </div>;
 }
