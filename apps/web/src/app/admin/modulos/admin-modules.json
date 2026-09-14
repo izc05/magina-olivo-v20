@@ -107,63 +107,56 @@
     "id": "businesses",
     "title": "Empresas",
     "description": "Directorio, rendimiento, reclamaciones, ofertas, leads y gobierno comercial.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-business-directory",
-    "targetHref": "/admin/empresas",
+    "status": "available",
+    "href": "/admin/empresas",
     "area": "Negocio"
   },
   {
     "id": "experiences",
     "title": "Experiencias y reservas",
     "description": "Sesiones, aforo, solicitudes y reservas empresariales.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-business-experiences",
-    "targetHref": "/admin/empresas/experiencias",
+    "status": "available",
+    "href": "/admin/empresas/experiencias",
     "area": "Experiencia"
   },
   {
     "id": "magina-pass",
     "title": "Mágina Pass",
     "description": "Programas, negocios participantes, QR, puntos y recompensas.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-business-magina-pass",
-    "targetHref": "/admin/empresas/magina-pass",
+    "status": "available",
+    "href": "/admin/empresas/magina-pass",
     "area": "Experiencia"
   },
   {
     "id": "routes",
     "title": "Rutas",
     "description": "Gestión editorial y técnica de rutas y catálogo senderista.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-routes-explore",
-    "targetHref": "/admin/rutas",
+    "status": "available",
+    "href": "/admin/rutas",
     "area": "Territorio"
   },
   {
     "id": "route-community",
     "title": "Comunidad de rutas",
     "description": "Moderación de reseñas, fotos, condiciones y denuncias.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-routes-explore",
-    "targetHref": "/admin/rutas/comunidad",
+    "status": "available",
+    "href": "/admin/rutas/comunidad",
     "area": "Experiencia"
   },
   {
     "id": "route-sponsorships",
     "title": "Patrocinios de rutas",
     "description": "Campañas, posiciones patrocinadas y rendimiento sin alterar información técnica.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-routes-explore",
-    "targetHref": "/admin/rutas/patrocinios",
+    "status": "available",
+    "href": "/admin/rutas/patrocinios",
     "area": "Negocio"
   },
   {
     "id": "adventure",
     "title": "Mágina Aventura",
     "description": "Progreso, retos, colecciones y misiones del modo aventura.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-routes-adventure",
-    "targetHref": "/admin/rutas/aventuras",
+    "status": "available",
+    "href": "/admin/rutas/aventuras",
     "area": "Experiencia"
   }
 ]
