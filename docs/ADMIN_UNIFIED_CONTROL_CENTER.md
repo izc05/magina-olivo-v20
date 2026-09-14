@@ -8,13 +8,13 @@ La superficie visible es `/admin/modulos` y su fuente de verdad es `apps/web/src
 
 ## Registro canónico
 
-`admin-modules.json` es el inventario único de módulos administrativos. La UI y el contrato automático leen el mismo registro, por lo que no deben mantenerse listas paralelas de estados, rutas o ramas.
+`admin-modules.json` es el inventario único de módulos administrativos. La UI y el contrato automático leen el mismo registro, por lo que no deben mantenerse listas paralelas de estados, rutas, ramas o PR de handoff.
 
 Cada módulo declara:
 
 - `id`, `title`, `description` y `area`;
 - `status: available` + `href` cuando su código ya está absorbido;
-- o `status: implemented` + `sourceBranch` + `targetHref` cuando su Admin existe en una rama funcional pero todavía no forma parte de esta base.
+- o `status: implemented` + `sourceBranch` + `sourcePr` + `targetHref` cuando su Admin existe en una rama funcional pero todavía no forma parte de esta base.
 
 La lista mínima de los 20 dominios críticos auditados permanece protegida en CI para impedir borrados accidentales, pero el contrato admite módulos adicionales sin tener que reprogramar conteos fijos.
 
@@ -25,7 +25,7 @@ Un módulo nuevo que requiera gestión administrativa no se considera cerrado pa
 1. declare su superficie Admin en el registro canónico;
 2. aparezca automáticamente en el directorio unificado;
 3. tenga una ruta física real antes de marcarse como `available`;
-4. declare rama fuente y ruta objetivo cuando su Admin ya exista pero todavía no haya sido absorbido;
+4. declare rama fuente, PR fuente y ruta objetivo cuando su Admin ya exista pero todavía no haya sido absorbido;
 5. permanezca sin `href` mientras su rama funcional no haya sido absorbida;
 6. mantenga su información técnica/comercial en su dominio original, evitando duplicar modelos o backends.
 
@@ -33,11 +33,11 @@ Un módulo nuevo que requiera gestión administrativa no se considera cerrado pa
 
 ### `available` — Disponible aquí
 
-La superficie Admin existe dentro de la base de esta rama y puede enlazarse directamente. Debe declarar `href`; CI confirma además que la `page.tsx` correspondiente existe realmente.
+La superficie Admin existe dentro de la base de esta rama y puede enlazarse directamente. Debe declarar `href`; CI confirma además que la `page.tsx` correspondiente existe realmente. No conserva `sourceBranch`, `sourcePr` ni `targetHref`, porque ya no es un handoff externo.
 
 ### `implemented` — Implementado en rama
 
-La superficie Admin real ya ha sido verificada en una rama funcional, pero ese código todavía no forma parte de esta base. Debe declarar `sourceBranch` y `targetHref`, pero no debe exponer `href` para evitar enlaces rotos.
+La superficie Admin real ya ha sido verificada en una rama funcional, pero ese código todavía no forma parte de esta base. Debe declarar `sourceBranch`, `sourcePr` y `targetHref`, pero no debe exponer `href` para evitar enlaces rotos.
 
 ## Cobertura auditada
 
@@ -53,7 +53,7 @@ Tener cobertura 20/20 no significa que los 20 módulos estén ya integrados en e
 
 `/admin/modulos` ya no es una lista estática. Mantiene la vista por áreas y añade una capa ligera de exploración para que el inventario siga siendo utilizable al crecer:
 
-- búsqueda por nombre, descripción, identificador, rama fuente o ruta prevista;
+- búsqueda por nombre, descripción, identificador, rama fuente, PR fuente o ruta prevista;
 - filtro por estado `available / implemented`;
 - filtro por área Plataforma / Territorio / Negocio / Experiencia;
 - contador de resultados anunciado mediante `aria-live`;
@@ -80,15 +80,15 @@ La portada `/admin` mantiene un lanzador visible **antes** del centro de control
 
 ## Implementados en ramas funcionales
 
-| Módulo | Rama fuente verificada | Ruta Admin objetivo |
-| --- | --- | --- |
-| Empresas | `feat/v20-business-directory` | `/admin/empresas` |
-| Experiencias y reservas | `feat/v20-business-experiences` | `/admin/empresas/experiencias` |
-| Mágina Pass | `feat/v20-business-magina-pass` | `/admin/empresas/magina-pass` |
-| Rutas | `feat/v20-routes-explore` | `/admin/rutas` |
-| Comunidad de rutas | `feat/v20-routes-explore` | `/admin/rutas/comunidad` |
-| Patrocinios de rutas | `feat/v20-routes-explore` | `/admin/rutas/patrocinios` |
-| Mágina Aventura | `feat/v20-routes-adventure` | `/admin/rutas/aventuras` |
+| Módulo | Rama fuente verificada | PR fuente | Ruta Admin objetivo |
+| --- | --- | ---: | --- |
+| Empresas | `feat/v20-business-directory` | #80 | `/admin/empresas` |
+| Experiencias y reservas | `feat/v20-business-experiences` | #84 | `/admin/empresas/experiencias` |
+| Mágina Pass | `feat/v20-business-magina-pass` | #82 | `/admin/empresas/magina-pass` |
+| Rutas | `feat/v20-routes-explore` | #81 | `/admin/rutas` |
+| Comunidad de rutas | `feat/v20-routes-explore` | #81 | `/admin/rutas/comunidad` |
+| Patrocinios de rutas | `feat/v20-routes-explore` | #81 | `/admin/rutas/patrocinios` |
+| Mágina Aventura | `feat/v20-routes-adventure` | #87 | `/admin/rutas/aventuras` |
 
 Estas rutas objetivo son información de gobierno y no enlaces activos desde esta rama. Solo pasarán a `href` cuando el código funcional correspondiente haya sido absorbido y validado en la base común.
 
@@ -105,11 +105,41 @@ El gate:
 - trata `403` como cuenta autenticada sin permiso corporativo Admin;
 - ante error de validación mantiene la UI administrativa cerrada y ofrece reintento;
 - vuelve a validar al recuperar foco o visibilidad de la pestaña, evitando mantener una sesión Admin visualmente abierta después de caducar;
-- bloquea validaciones concurrentes para que `focus` y `visibilitychange` no generen dos comprobaciones que compitan entre sí.
+- bloquea validaciones concurrentes para que `focus` y `visibilitychange` no generen dos comprobaciones que compitan entre sí;
+- revalida en segundo plano sin desmontar una pantalla autorizada solo por volver a la pestaña, evitando perder estado local de formularios.
 
 Este gate es una **capa común de experiencia y defensa adicional**, no la frontera de seguridad de los datos. La autorización real sigue siendo responsabilidad obligatoria de cada endpoint `/api/v1/admin/...`, que recibe la sesión mediante `credentials: include` y debe rechazar en servidor a quien no tenga permiso de plataforma. No deben almacenarse secretos en páginas estáticas ni en `admin-modules.json`.
 
 El layout aplica también de forma centralizada `robots: noindex`, `nofollow` y `nocache` a todo el árbol Admin. Las páginas pueden conservar metadata específica de título/descripción sin depender de recordar individualmente la política de indexación.
+
+## Protección del propio acceso administrativo
+
+Una sesión `super_admin` no puede degradar ni revocar su propio acceso desde `PUT /api/v1/admin/platform-access/:userId`.
+
+La API responde `409 cannot_change_current_admin_access` cuando el `userId` objetivo coincide con el administrador actual. Esto evita que un superadministrador se convierta accidentalmente en `admin`, `editor`, `support` o se revoque a sí mismo y pierda capacidad de recuperación.
+
+La consola refleja la misma regla: la fila de la cuenta actual se muestra como **acceso protegido**, sin selector de rol ni acción de revocación. Los handlers de UI también rechazan esos intentos antes de llamar a la API. La seguridad no depende de esa UI: el backend mantiene siempre el bloqueo definitivo.
+
+## Política de settings públicos
+
+`site_settings` sigue admitiendo claves internas flexibles, pero **ser privada o pública no es una decisión arbitraria del formulario**.
+
+Solo estas claves pueden publicarse mediante `/api/v1/public/site-settings`:
+
+- `alerts.banner`
+- `home.hero`
+- `home.territory_banner`
+- `site.contact`
+- `site.identity`
+- `site.seo`
+- `site.social`
+
+La API aplica la allowlist en dos puntos:
+
+1. `PUT /api/v1/admin/settings/:key` rechaza `is_public=true` para cualquier otra clave con `400 setting_not_publicable`;
+2. `/api/v1/public/site-settings` vuelve a filtrar por la misma política para no exponer accidentalmente una fila antigua que hubiera quedado marcada pública.
+
+La consola mantiene el checkbox **Disponible para la web pública** deshabilitado cuando la clave no pertenece a esta allowlist y fuerza el estado a privado al cambiar a una clave interna. De este modo UI y servidor comunican la misma política, sin confiar exclusivamente en el cliente.
 
 ## Autorización de API
 
@@ -123,7 +153,7 @@ Cada endpoint detectado debe:
 
 Esto permite que futuros módulos como Empresas o Rutas queden cubiertos aunque sus routers no se llamen `admin-*.ts`. El check imprime en cada ejecución el número de endpoints Admin protegidos y de routers auditados.
 
-La jerarquía actual queda además ejercitada por smoke tests reales con PostgreSQL para `support`, `editor`, `admin` y `super_admin`, verificando que lectura y mutaciones respetan los mínimos ya declarados por el backend.
+La jerarquía actual queda además ejercitada por smoke tests reales con PostgreSQL para `support`, `editor`, `admin` y `super_admin`, verificando que lectura y mutaciones respetan los mínimos ya declarados por el backend. El smoke de seguridad verifica también que la propia cuenta superadmin no puede degradarse, que una clave pública reconocida sí puede publicarse y que una clave interna no puede cruzar a la API pública.
 
 ## Detección de rutas huérfanas
 
@@ -157,11 +187,13 @@ La actividad GPS privada de Rutas no añade una superficie administrativa separa
 - semántica `available` / `implemented`;
 - `page.tsx` física para cada `href` disponible;
 - ausencia de enlaces activos en módulos aún no absorbidos;
-- rama fuente y ruta objetivo de módulos externos;
+- rama fuente, PR fuente y ruta objetivo de módulos externos;
 - rutas Admin huérfanas y duplicados de rutas;
 - uso del registro canónico por la UI;
 - existencia del directorio filtrable y sus controles básicos accesibles;
 - gate corporativo común, tratamiento explícito de `401/403` y fail-closed;
+- protección de la propia cuenta tanto en API como en consola;
+- allowlist de settings públicos tanto en API como en consola;
 - autorización de servidor en todos los endpoints `/api/v1/admin/...` detectados;
 - política transversal `noindex/nofollow/nocache`;
 - acceso al directorio desde `/admin`;
@@ -176,7 +208,7 @@ Cuando una rama funcional esté lista para entrar en el Admin unificado:
 1. integrar primero su código real en la base coordinada;
 2. confirmar que su ruta Admin existe y compila;
 3. cambiar en `admin-modules.json` su `status` de `implemented` a `available`;
-4. retirar `sourceBranch` y `targetHref` y añadir el `href` real;
+4. retirar `sourceBranch`, `sourcePr` y `targetHref` y añadir el `href` real;
 5. ejecutar el contrato: la ruta física, la navegación y sus endpoints Admin se validarán automáticamente;
 6. ejecutar typecheck, build, smokes de rol y checks de dominio antes del handoff.
 
