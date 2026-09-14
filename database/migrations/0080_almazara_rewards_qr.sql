@@ -87,6 +87,29 @@ CREATE TABLE mill_reward_redemption_audit (
 CREATE INDEX mill_reward_redemption_audit_idx
   ON mill_reward_redemption_audit(redemption_id, created_at);
 
+CREATE OR REPLACE FUNCTION refund_mill_reward_olives()
+RETURNS trigger AS $$
+BEGIN
+  IF OLD.status = 'reserved' AND NEW.status IN ('cancelled', 'expired') THEN
+    INSERT INTO mi_olivo_ledger (
+      user_id, workspace_id, event_type, source_type, source_id,
+      points, reason, rule_version, idempotency_key
+    ) VALUES (
+      NEW.user_id, NULL, 'reward_refund', 'mill_reward_redemption', NEW.id::text,
+      NEW.olives_spent,
+      CASE WHEN NEW.status = 'expired' THEN 'Devolución por premio caducado' ELSE 'Devolución por premio cancelado' END,
+      'mi-olivo-rewards-v1',
+      'mi-olivo-rewards-v1:refund:' || NEW.id::text
+    ) ON CONFLICT (user_id, idempotency_key) DO NOTHING;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER mill_reward_refund_olives_trigger
+AFTER UPDATE OF status ON mill_reward_redemptions
+FOR EACH ROW EXECUTE FUNCTION refund_mill_reward_olives();
+
 COMMENT ON TABLE business_mill_profiles IS 'Almazara/cooperative specific public profile layered on the shared business directory.';
 COMMENT ON TABLE mill_reward_products IS 'Physical AOVE rewards exchangeable for Mi Olivo olives. Stock is controlled by the participating business.';
 COMMENT ON TABLE mill_reward_redemptions IS 'Single-use redemption token represented as QR payload. Reserved tokens expire and can only be redeemed once.';
