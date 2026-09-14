@@ -50,6 +50,16 @@ const fullSheets = (audit.routes ?? []).filter((route) => route.status === 'veri
 const partialOfficial = (audit.routes ?? []).filter((route) => String(route.status).startsWith('partial')).length;
 const unresolved = (audit.routes ?? []).filter((route) => String(route.status).startsWith('pending')).map((route) => route.slug);
 
+if (fullSheets !== 17) {
+  errors.push(`Official Junta technical-sheet closure regressed: expected 17/17 verified_technical_sheet rows, found ${fullSheets}/17.`);
+}
+if (partialOfficial !== 0) {
+  errors.push(`Official Junta technical-sheet closure cannot contain partial rows; found ${partialOfficial}.`);
+}
+if (unresolved.length) {
+  errors.push(`Official Junta technical-sheet closure contains unresolved rows: ${unresolved.join(', ')}.`);
+}
+
 console.log('Sierra Mágina official-core enrichment');
 console.log(`- official core: ${core.length}/17`);
 console.log(`- effective documented: ${documented}/17`);
@@ -63,4 +73,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('\nOfficial-core enrichment structure is valid.');
+console.log('\nOfficial-core enrichment structure is valid and the Junta technical-sheet baseline is closed 17/17.');
