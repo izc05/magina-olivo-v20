@@ -23,6 +23,7 @@ on:
       - 'scripts/check-municipality-content-editor.mjs'
       - 'scripts/check-municipality-admin-navigation.mjs'
       - 'scripts/check-municipality-seo-readiness.mjs'
+      - 'scripts/check-municipality-editorial-preview.mjs'
       - '.github/workflows/v20-municipalities-directory.yml'
   workflow_dispatch:
 
@@ -57,6 +58,8 @@ jobs:
         run: node scripts/check-municipality-admin-navigation.mjs
       - name: Municipality SEO readiness contract
         run: node scripts/check-municipality-seo-readiness.mjs
+      - name: Municipality editorial preview contract
+        run: node scripts/check-municipality-editorial-preview.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck
