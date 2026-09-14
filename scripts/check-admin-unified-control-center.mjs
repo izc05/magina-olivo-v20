@@ -105,6 +105,15 @@ if (!adminRouteGate) {
   if (!adminRouteGate.includes('await adminApi.session()')) {
     failures.push('AdminRouteGate debe validar la sesión administrativa contra el servidor.');
   }
+  if (!adminRouteGate.includes('caught instanceof ApiRequestError && caught.status === 401')) {
+    failures.push('AdminRouteGate debe distinguir explícitamente una sesión expirada (401).');
+  }
+  if (!adminRouteGate.includes('await auth.refreshSession()')) {
+    failures.push('AdminRouteGate debe resincronizar AuthProvider cuando la sesión administrativa haya expirado.');
+  }
+  if (!adminRouteGate.includes("'expired'")) {
+    failures.push('AdminRouteGate debe mantener un estado específico para sesión administrativa caducada.');
+  }
   if (!adminRouteGate.includes('caught instanceof ApiRequestError && caught.status === 403')) {
     failures.push('AdminRouteGate debe tratar explícitamente el rechazo 403.');
   }
@@ -251,5 +260,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers).`,
+  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed).`,
 );
