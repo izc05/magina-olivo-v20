@@ -9,7 +9,7 @@ import { municipalityAdminHref, readMunicipalitySlug, replaceMunicipalityContext
 import '../../admin.css';
 import styles from './gaps.module.css';
 
-// This read-only Admin surface is included in the final municipal 16/16 QA matrix.
+// This read-only Admin surface is covered by QA 16/16 and the integration handoff matrix.
 type GapCategory = 'all' | 'editorial' | 'discovery' | 'current' | 'economy';
 type Signal = { key: string; label: string; category: Exclude<GapCategory, 'all'>; ok: boolean; fixHref: string; fixLabel: string };
 
