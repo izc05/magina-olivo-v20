@@ -25,6 +25,7 @@ on:
       - 'scripts/check-municipality-seo-readiness.mjs'
       - 'scripts/check-municipality-editorial-preview.mjs'
       - 'scripts/check-municipality-audit-history.mjs'
+      - 'scripts/check-municipality-gap-matrix.mjs'
       - '.github/workflows/v20-municipalities-directory.yml'
   workflow_dispatch:
 
@@ -63,6 +64,8 @@ jobs:
         run: node scripts/check-municipality-editorial-preview.mjs
       - name: Municipality audit history contract
         run: node scripts/check-municipality-audit-history.mjs
+      - name: Municipality gap matrix contract
+        run: node scripts/check-municipality-gap-matrix.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck
