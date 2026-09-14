@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   loadMillRewards,
+  loadMyMillRewardUnlocks,
   loadPublicMills,
   redeemMillReward,
+  type MillRewardUnlockState,
   type PublicMill,
   type PublicMillReward,
 } from '@/lib/public-mills-source';
@@ -60,6 +62,7 @@ function MillCard({ item, basePath }: { item: PublicMill; basePath: string }) {
 
 function RewardCatalog({ slug }: { slug: string }) {
   const [items, setItems] = useState<PublicMillReward[]>([]);
+  const [unlockState, setUnlockState] = useState<MillRewardUnlockState | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState<string | null>(null);
@@ -68,10 +71,14 @@ function RewardCatalog({ slug }: { slug: string }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setUnlockState(null);
     loadMillRewards(slug)
       .then((rows) => { if (!cancelled) setItems(rows); })
       .catch(() => { if (!cancelled) setMessage('No se pudieron cargar los premios de esta almazara.'); })
       .finally(() => { if (!cancelled) setLoading(false); });
+    loadMyMillRewardUnlocks(slug)
+      .then((state) => { if (!cancelled) setUnlockState(state); })
+      .catch(() => { if (!cancelled) setUnlockState(null); });
     return () => { cancelled = true; };
   }, [slug]);
 
@@ -84,7 +91,13 @@ function RewardCatalog({ slug }: { slug: string }) {
       setItems((current) => current.map((row) => row.id === item.id ? { ...row, availableStock: Math.max(0, row.availableStock - 1) } : row));
     } catch (error) {
       const text = error instanceof Error ? error.message : '';
-      setMessage(text.includes('409') ? 'No tienes aceitunas suficientes, se agotó el premio o ya alcanzaste el límite de canjes.' : 'No ha sido posible realizar el canje. Inicia sesión y vuelve a intentarlo.');
+      if (text.includes('reward_level_locked')) {
+        setMessage('Este premio todavía está bloqueado para tu nivel de Mi Olivo. Sigue acumulando XP para desbloquearlo.');
+      } else if (text.includes('409')) {
+        setMessage('No tienes aceitunas suficientes, se agotó el premio o ya alcanzaste el límite de canjes.');
+      } else {
+        setMessage('No ha sido posible realizar el canje. Inicia sesión y vuelve a intentarlo.');
+      }
     } finally {
       setRedeeming(null);
     }
@@ -94,7 +107,8 @@ function RewardCatalog({ slug }: { slug: string }) {
 
   return <section className={styles.stateCard} aria-label="Premios de la almazara">
     <h2>Premios con Mi Olivo</h2>
-    <p>Canjea tus aceitunas por productos reales. Al confirmar se reservan durante 7 días y recibirás un QR único para recogerlos en la almazara.</p>
+    <p>Canjea tus aceitunas por productos reales. Algunos premios se desbloquean al alcanzar un nivel permanente de Mi Olivo. Al confirmar se reservan durante 7 días y recibirás un QR único para recogerlos en la almazara.</p>
+    {unlockState ? <p><strong>Tu nivel:</strong> {unlockState.currentLevel} · {unlockState.currentLevelName} · {unlockState.xp} XP</p> : <p><small>Inicia sesión para ver qué premios tienes ya desbloqueados.</small></p>}
     {message ? <p role="alert">{message}</p> : null}
     {credential ? <div className={styles.cardBody}>
       <strong>✅ Premio reservado: {credential.productTitle}</strong>
@@ -106,18 +120,24 @@ function RewardCatalog({ slug }: { slug: string }) {
     </div> : null}
     {!items.length ? <p>Esta almazara todavía no tiene premios activos.</p> : null}
     <div className={styles.grid}>
-      {items.map((item) => <article className={styles.card} key={item.id}>
-        {safeMediaUrl(item.imageUrl) ? <img className={styles.cardImage} src={safeMediaUrl(item.imageUrl) ?? ''} alt="" /> : <div className={styles.cardPlaceholder}>🫒</div>}
-        <div className={styles.cardBody}>
-          <h3>{item.title}</h3>
-          {item.volumeMl ? <small>{item.volumeMl} ml</small> : null}
-          {item.description ? <p>{item.description}</p> : null}
-          <p><strong>{item.oliveCost} aceitunas</strong> · {item.availableStock > 0 ? `${item.availableStock} disponibles` : 'Agotado'}</p>
-          <button className={styles.primaryLink} type="button" disabled={item.availableStock < 1 || redeeming === item.id} onClick={() => redeem(item)}>
-            {redeeming === item.id ? 'Reservando…' : 'Canjear premio'}
-          </button>
-        </div>
-      </article>)}
+      {items.map((item) => {
+        const personal = unlockState?.rewards.find((entry) => entry.rewardId === item.id) ?? null;
+        const locked = personal ? !personal.unlocked : false;
+        return <article className={styles.card} key={item.id}>
+          {safeMediaUrl(item.imageUrl) ? <img className={styles.cardImage} src={safeMediaUrl(item.imageUrl) ?? ''} alt="" /> : <div className={styles.cardPlaceholder}>🫒</div>}
+          <div className={styles.cardBody}>
+            <h3>{item.title}</h3>
+            {item.volumeMl ? <small>{item.volumeMl} ml</small> : null}
+            {item.description ? <p>{item.description}</p> : null}
+            <p><strong>{item.oliveCost} aceitunas</strong> · {item.availableStock > 0 ? `${item.availableStock} disponibles` : 'Agotado'}</p>
+            <p><strong>Nivel {item.requiredLevel} · {item.requiredLevelName}</strong><br /><small>Se desbloquea desde {item.minXp} XP históricos.</small></p>
+            {personal ? <p>{personal.unlocked ? `✅ Desbloqueado con tu nivel ${unlockState?.currentLevel}` : `🔒 Bloqueado: necesitas nivel ${personal.requiredLevel}`}</p> : null}
+            <button className={styles.primaryLink} type="button" disabled={item.availableStock < 1 || redeeming === item.id || locked} onClick={() => redeem(item)}>
+              {redeeming === item.id ? 'Reservando…' : locked ? `Nivel ${item.requiredLevel} requerido` : 'Canjear premio'}
+            </button>
+          </div>
+        </article>;
+      })}
     </div>
   </section>;
 }

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const SIGNED_REWARD_TOKEN = '61000000-0000-4000-8000-000000000001.AbcdefghijkLMN12';
+const REWARD_ID = '41000000-0000-4000-8000-000000000001';
 
 const mills = {
   almazaras: [
@@ -44,7 +45,7 @@ const mills = {
 const rewards = {
   rewards: [
     {
-      id: '41000000-0000-4000-8000-000000000001',
+      id: REWARD_ID,
       businessId: '31000000-0000-4000-8000-000000000001',
       businessName: 'Cooperativa del Olivar E2E',
       slug: 'aove-500-e2e',
@@ -61,12 +62,36 @@ const rewards = {
   ],
 };
 
-async function mockMills(page: Page) {
+const publicUnlocks = {
+  rewards: [{
+    rewardId: REWARD_ID,
+    requiredLevel: 6,
+    requiredLevelName: 'Olivo de cosecha',
+    minXp: 1000,
+  }],
+};
+
+async function mockMills(page: Page, unlocked = true) {
   await page.route(/\/api\/v1\/public\/almazaras(?:\?.*)?$/, async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mills) });
   });
   await page.route(/\/api\/v1\/public\/almazaras\/[^/]+\/rewards$/, async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rewards) });
+  });
+  await page.route(/\/api\/v1\/public\/almazaras\/[^/]+\/reward-unlocks$/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(publicUnlocks) });
+  });
+  await page.route(/\/api\/v1\/my\/almazaras\/[^/]+\/reward-unlocks$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        xp: unlocked ? 1200 : 700,
+        currentLevel: unlocked ? 6 : 5,
+        currentLevelName: unlocked ? 'Olivo de cosecha' : 'Olivo en flor',
+        rewards: [{ ...publicUnlocks.rewards[0], unlocked }],
+      }),
+    });
   });
   await page.route(/\/api\/v1\/almazara-rewards\/[^/]+\/redeem$/, async (route) => {
     await route.fulfill({
@@ -119,6 +144,8 @@ test('cooperatives directory searches, opens a business-backed mill and exposes 
   await expect(page.getByRole('heading', { name: 'Premios con Mi Olivo' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Botella AOVE 500 ml' })).toBeVisible();
   await expect(page.getByText('500 aceitunas')).toBeVisible();
+  await expect(page.getByText('Nivel 6 · Olivo de cosecha')).toBeVisible();
+  await expect(page.getByText('✅ Desbloqueado con tu nivel 6')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
@@ -129,6 +156,14 @@ test('reward redemption displays a signed single-use collection credential', asy
   await expect(page.getByText('✅ Premio reservado: Botella AOVE 500 ml')).toBeVisible();
   await expect(page.getByText(SIGNED_REWARD_TOKEN)).toBeVisible();
   await expect(page.getByRole('img', { name: 'Código QR firmado de recogida' })).toBeVisible();
+});
+
+test('reward remains visibly locked when permanent Mi Olivo level is too low', async ({ page }) => {
+  await mockMills(page, false);
+  await page.goto('/almazaras?slug=cooperativa-bedmar-e2e');
+  await expect(page.getByText('Tu nivel:')).toBeVisible();
+  await expect(page.getByText('🔒 Bloqueado: necesitas nivel 6')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nivel 6 requerido' })).toBeDisabled();
 });
 
 test('almazaras alias preserves its route and business-backed detail', async ({ page }) => {
