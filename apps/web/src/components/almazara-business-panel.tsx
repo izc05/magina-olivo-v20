@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import { apiFetch } from '@/lib/api-client';
 
 type MyBusiness = {
@@ -33,7 +34,7 @@ type Redemption = {
 };
 
 type BarcodeDetectorLike = {
-  detect(source: ImageBitmapSource): Promise<Array<{ rawValue: string }>>;
+  detect(source: HTMLVideoElement): Promise<Array<{ rawValue: string }>>;
 };
 
 type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorLike;
