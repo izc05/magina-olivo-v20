@@ -1,0 +1,118 @@
+import type { MunicipalityHeritageSeed } from './municipality-heritage-catalog';
+
+const VERIFIED_AT = '2026-09-13';
+
+export const MUNICIPALITY_DISCOVERY_CATALOG: MunicipalityHeritageSeed[] = [
+  {
+    municipalitySlug: 'albanchez-de-magina', municipalityName: 'Albanchez de Mágina',
+    slug: 'fuente-de-la-seda-albanchez', title: 'Fuente de la Seda', role: 'heritage',
+    summary: 'Fuente histórica con lavadero público y vínculo con la antigua producción y comercio de seda de Albanchez.',
+    body: 'El Ayuntamiento sitúa la Fuente de la Seda en la parte baja del municipio. Sus dos caños abastecen un lavadero público y las huertas del entorno; su nombre recuerda el cultivo de moreras ligado a la producción de seda, actividad introducida en época musulmana y relevante para la economía local hasta el siglo XVIII.',
+    sourceUrl: 'https://www.albanchezdemagina.es/turismo/patrimonio-historico/', sourceLabel: 'Ayuntamiento de Albanchez de Mágina', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'bedmar-y-garciez', municipalityName: 'Bedmar y Garcíez',
+    slug: 'nacimiento-del-rio-cuadros', title: 'Nacimiento del Río Cuadros', role: 'nature',
+    summary: 'Bosque en galería de adelfas junto al nacimiento del río Cuadros, uno de los enclaves naturales más destacados de Bedmar.',
+    body: 'El Ayuntamiento describe el Nacimiento del Río Cuadros, también conocido por la Senda de los Adelfares, como un bosque en galería desarrollado a lo largo del río. Destaca la extensión y conservación de sus formaciones de adelfas y su proximidad al Santuario de la Virgen de Cuadros.',
+    sourceUrl: 'https://bedmargarciez.es/turismo/patrimonio-natural/', sourceLabel: 'Ayuntamiento de Bedmar y Garcíez', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'belmez-de-la-moraleda', municipalityName: 'Bélmez de la Moraleda',
+    slug: 'barranco-del-arroyo-garganton', title: 'Barranco del Arroyo Gargantón', role: 'nature',
+    summary: 'Vertiente de montaña del Parque Natural de Sierra Mágina con formaciones vegetales y paredes rocosas de interés para la avifauna.',
+    body: 'El Ayuntamiento destaca el Barranco del Arroyo Gargantón como un enclave natural al oeste del casco urbano, dentro del Parque Natural de Sierra Mágina. Sus formaciones vegetales y paredes rocosas sirven de refugio a diversas aves.',
+    sourceUrl: 'https://www.belmezdelamoraleda.es/turismo/patrimonio-natural/', sourceLabel: 'Ayuntamiento de Bélmez de la Moraleda', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'cabra-del-santo-cristo', municipalityName: 'Cabra del Santo Cristo',
+    slug: 'puente-arroyo-salado', title: 'Puente Arroyo Salado', role: 'heritage',
+    summary: 'Viaducto ferroviario histórico de 1899 y una de las grandes obras de ingeniería vinculadas al paisaje de Cabra del Santo Cristo.',
+    body: 'El Ayuntamiento presenta el Puente Arroyo Salado como una obra emblemática de la red ferroviaria española. Con 318 metros de longitud y 110 metros de altura máxima sobre el barranco, forma parte de la línea Linares-Almería y entró en servicio en 1899.',
+    sourceUrl: 'https://aytocabradelsantocristo.com/video/puente-arroyo-salado/', sourceLabel: 'Ayuntamiento de Cabra del Santo Cristo', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'cambil', municipalityName: 'Cambil',
+    slug: 'mata-bejid-y-chopos-singulares', title: 'Mata-Bejid y sus chopos singulares', role: 'nature',
+    summary: 'Enclave natural de Cambil ligado al Parque Natural de Sierra Mágina, con dehesa histórica y arboleda singular.',
+    body: 'La información municipal destaca la antigua dehesa de Mata-Bejid y sus grandes chopos como uno de los paisajes naturales singulares de Cambil. El entorno forma parte de la riqueza ecológica del término y de la entrada meridional al Parque Natural de Sierra Mágina.',
+    sourceUrl: 'https://cambil-arbuniel.es/geografia-historia/', sourceLabel: 'Ayuntamiento de Cambil', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'campillo-de-arenas', municipalityName: 'Campillo de Arenas',
+    slug: 'desfiladero-de-puerta-arenas', title: 'Desfiladero de Puerta Arenas', role: 'nature',
+    summary: 'Desfiladero calizo modelado por la erosión fluvial, con grandes paredes rocosas y sendero didáctico de botánica.',
+    body: 'El Ayuntamiento describe Puerta Arenas como un desfiladero originado por la erosión fluvial, con un gran murallón de calizas y un sendero didáctico dedicado a la botánica local. Se sitúa en el límite de los términos de Campillo, Cárcheles y Cambil.',
+    sourceUrl: 'https://www.campillodearenas.es/turismo/patrimonio-natural/', sourceLabel: 'Ayuntamiento de Campillo de Arenas', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'carcheles', municipalityName: 'Cárcheles',
+    slug: 'paraje-cazalla-carcheles', title: 'Paraje de Cazalla', role: 'nature',
+    summary: 'Paraje natural de Cárcheles integrado en un entorno de barrancos, cuevas, monte mediterráneo y antiguos caminos rurales.',
+    body: 'El Ayuntamiento incluye Cazalla entre los parajes naturales más destacados de Cárcheles, junto a otros enclaves como el Barranco del Monasterio o la Cueva del Puerto de las Palomas. El entorno conserva vegetación mediterránea y espacios tradicionales de paseo y excursión.',
+    sourceUrl: 'https://www.carcheles.es/turismo/patrimonio-natural/', sourceLabel: 'Ayuntamiento de Cárcheles', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'la-guardia-de-jaen', municipalityName: 'La Guardia de Jaén',
+    slug: 'plaza-monumental-isabel-ii', title: 'Plaza Monumental de Isabel II', role: 'heritage',
+    summary: 'Conjunto urbano monumental con fuentes históricas y arquitectura vinculada a la evolución señorial de La Guardia.',
+    body: 'La información turística municipal identifica la Plaza Monumental de Isabel II como un enclave patrimonial destacado. En ella se reúnen fuentes históricas, una casa solariega y elementos que ayudan a leer la evolución urbana y social de La Guardia de Jaén.',
+    sourceUrl: 'https://laguardiadejaen.com/tu-ciudad/informacion-turistica/', sourceLabel: 'Ayuntamiento de La Guardia de Jaén', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'huelma', municipalityName: 'Huelma',
+    slug: 'iglesia-inmaculada-concepcion-huelma', title: 'Iglesia de la Inmaculada Concepción', role: 'heritage',
+    summary: 'Templo renacentista de Huelma vinculado a grandes maestros de la arquitectura jiennense del siglo XVI.',
+    body: 'El Ayuntamiento presenta la Iglesia de la Inmaculada Concepción como una de las grandes referencias del Renacimiento en Huelma. En su construcción participaron maestros como Diego de Siloé, Juan de Maeda, Andrés de Vandelvira y Francisco del Castillo el Mozo.',
+    sourceUrl: 'https://www.aytohuelma.es/historia-de-huelma/', sourceLabel: 'Ayuntamiento de Huelma', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'jimena', municipalityName: 'Jimena',
+    slug: 'pinar-de-canava', title: 'Pinar de Cánava', role: 'nature',
+    summary: 'Bosquete de pinos carrascos centenarios declarado Monumento Natural y uno de los enclaves naturales emblemáticos de Jimena.',
+    body: 'El portal turístico municipal describe el Pinar de Cánava como un conjunto de pinos carrascos de dimensiones excepcionales, con ejemplares de más de dos siglos. Fue declarado Monumento Natural por la Junta de Andalucía en 2001 y se integra en Sierra Mágina.',
+    sourceUrl: 'https://jimenaturismo.grupofortalezas.com/pinar-de-canava', sourceLabel: 'Ayuntamiento de Jimena · Portal de Turismo', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'jodar', municipalityName: 'Jódar',
+    slug: 'las-quebradas-jodar', title: 'Las Quebradas', role: 'nature',
+    summary: 'Extenso espartal de llanura que conserva una muestra singular del paisaje estepario y de la tradición espartera de Jódar.',
+    body: 'El Ayuntamiento señala Las Quebradas como uno de los grandes enclaves naturales de Jódar. El paraje conserva un importante atochal de llanura y recuerda la relevancia histórica que tuvo el aprovechamiento y la manufactura del esparto en el municipio.',
+    sourceUrl: 'https://www.jodar.es/turismo/patrimonio-natural/', sourceLabel: 'Ayuntamiento de Jódar', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'larva', municipalityName: 'Larva',
+    slug: 'pozuelo-laguna-cueva-del-joso', title: 'El Pozuelo, La Laguna y Cueva del Joso', role: 'nature',
+    summary: 'Conjunto natural de Larva con zona inundable, manantiales y una formación geológica utilizada tradicionalmente como abrigo.',
+    body: 'El portal turístico enlazado por el Ayuntamiento reúne el paraje del Pozuelo, La Laguna y la Cueva del Joso como un conjunto natural destacado. La Laguna puede inundarse en años húmedos y el Pozuelo conserva manantiales y un paisaje apropiado para conocer la naturaleza local.',
+    sourceUrl: 'https://turismolarva.es/patrimonio-natural-larva/', sourceLabel: 'Turismo de Larva · enlazado por el Ayuntamiento', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'mancha-real', municipalityName: 'Mancha Real',
+    slug: 'pena-del-aguila-mancha-real', title: 'Peña del Águila', role: 'nature',
+    summary: 'Paraje natural próximo a Mancha Real y al Parque Natural de Sierra Mágina, con miradores, senderos y cuevas.',
+    body: 'El portal turístico municipal presenta la Peña del Águila como uno de los principales espacios naturales de Mancha Real. Se sitúa a pocos kilómetros del casco urbano, junto a Sierra Mágina, y reúne miradores, senderos y enclaves como la Cueva de los Murciélagos.',
+    sourceUrl: 'https://mancharealturismo.es/', sourceLabel: 'Ayuntamiento de Mancha Real · Turismo Mancha Real', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'noalejo', municipalityName: 'Noalejo',
+    slug: 'navalcan-noalejo', title: 'Navalcán', role: 'nature',
+    summary: 'Depresión kárstica de las estribaciones de Sierra Sur con tajos, cuevas, cursos fluviales y paisaje mediterráneo.',
+    body: 'El Ayuntamiento describe Navalcán como una depresión de origen kárstico integrada en el paisaje de monte mediterráneo. El enclave reúne tajos, cuevas, cursos fluviales y formaciones de flora y fauna características del entorno de Noalejo.',
+    sourceUrl: 'https://www.noalejo.es/turismo/patrimonio-natural/', sourceLabel: 'Ayuntamiento de Noalejo', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'pegalajar', municipalityName: 'Pegalajar',
+    slug: 'cueva-de-aro-pegalajar', title: 'Cueva de Aro', role: 'nature',
+    summary: 'Cavidad de la Serrezuela de Pegalajar con formaciones de calcita y evidencias arqueológicas prehistóricas.',
+    body: 'El Ayuntamiento incluye la Cueva de Aro entre los enclaves naturales de Pegalajar. La cavidad conserva estalactitas, estalagmitas y otras formaciones de calcita, además de materiales arqueológicos que apuntan a distintos usos humanos en la Prehistoria.',
+    sourceUrl: 'https://ayto-pegalajar.org/descubre-pegalajar/patrimonio-natural/', sourceLabel: 'Ayuntamiento de Pegalajar', verifiedAt: VERIFIED_AT,
+  },
+  {
+    municipalitySlug: 'torres', municipalityName: 'Torres',
+    slug: 'manantial-de-fuenmayor', title: 'Manantial de Fuenmayor', role: 'nature',
+    summary: 'Área natural y recreativa junto a uno de los manantiales del Parque Natural de Sierra Mágina, muy vinculada a la identidad de Torres.',
+    body: 'El portal turístico municipal destaca el Manantial de Fuenmayor como uno de los espacios naturales imprescindibles de Torres. El área recreativa se organiza junto a un estanque alimentado por el manantial y está rodeada por vegetación característica de Sierra Mágina.',
+    sourceUrl: 'https://www.torresturismo.es/turismo/torres-en-48-horas/', sourceLabel: 'Ayuntamiento de Torres · Torres Turismo', verifiedAt: VERIFIED_AT,
+  },
+];
