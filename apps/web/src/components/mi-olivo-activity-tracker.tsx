@@ -3,18 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { apiFetch } from '../lib/api-client';
+import {
+  miOlivoDiscoveryActionForRoute,
+  type MiOlivoInteractionType,
+} from '../lib/mi-olivo-discovery';
 import { useAuth } from './auth-provider';
 import styles from './mi-olivo-activity-tracker.module.css';
 
-export type MiOlivoInteractionType = 'content_read' | 'territory_viewed' | 'weather_checked' | 'learning_completed';
+export type { MiOlivoInteractionType } from '../lib/mi-olivo-discovery';
 
 export type MiOlivoTrackRequest = {
   eventType: MiOlivoInteractionType;
   sourceId: string;
-};
-
-type TrackableAction = MiOlivoTrackRequest & {
-  delayMs: number;
 };
 
 type AwardResponse = {
@@ -30,26 +30,6 @@ type ToastState = {
   message: string;
 };
 
-function actionForRoute(pathname: string, query: string): TrackableAction | null {
-  const params = new URLSearchParams(query);
-  const slug = params.get('slug')?.trim();
-
-  if (pathname === '/noticias' && slug) {
-    return { eventType: 'content_read', sourceId: `noticia:${slug}`, delayMs: 8_000 };
-  }
-  if (pathname === '/eventos' && slug) {
-    return { eventType: 'content_read', sourceId: `evento:${slug}`, delayMs: 8_000 };
-  }
-  if (pathname === '/pueblos' && slug) {
-    return { eventType: 'territory_viewed', sourceId: `pueblo:${slug}`, delayMs: 6_000 };
-  }
-  if (pathname === '/radar') {
-    return { eventType: 'weather_checked', sourceId: 'radar', delayMs: 5_000 };
-  }
-
-  return null;
-}
-
 export function requestMiOlivoTracking(detail: MiOlivoTrackRequest) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent<MiOlivoTrackRequest>('magina:mi-olivo-track', { detail }));
@@ -62,7 +42,7 @@ export function MiOlivoActivityTracker() {
   const { status, selectedWorkspaceId, apiConfigured } = useAuth();
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const action = useMemo(() => actionForRoute(pathname, query), [pathname, query]);
+  const action = useMemo(() => miOlivoDiscoveryActionForRoute(pathname, query), [pathname, query]);
 
   const recordAction = useCallback(async (trackRequest: MiOlivoTrackRequest) => {
     if (status !== 'authenticated' || !selectedWorkspaceId || !apiConfigured) return;
