@@ -91,32 +91,7 @@
 
 @media (min-width: 1024px) {
   .root {
-    top: 36px;
-    bottom: 36px;
-    left: max(36px, calc((100vw - 1520px) / 2 + 36px));
-    width: 80px;
-    height: auto;
-    grid-template-columns: 1fr;
-    grid-template-rows: repeat(4, minmax(72px, auto));
-    align-content: center;
-    padding: 10px;
-    transform: none;
-    border-radius: 24px;
-  }
-
-  .link {
-    min-height: 72px;
-    gap: 6px;
-    padding: 8px 4px;
-  }
-
-  .active {
-    box-shadow: inset 3px 0 var(--ui-color-olive-700);
-  }
-
-  .icon {
-    width: 38px;
-    height: 34px;
+    display: none;
   }
 }
 
