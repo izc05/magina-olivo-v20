@@ -51,12 +51,38 @@ async function ownedActivity(db: DatabaseClient, userId: string, id: string) {
   return result.rows[0] ?? null;
 }
 
+async function touchActivityHeartbeat(db: DatabaseClient, userId: string, id: string) {
+  await sql`
+    UPDATE route_activity_sessions
+    SET updated_at = now()
+    WHERE id = ${id}::uuid AND user_id = ${userId}::uuid AND status = 'active'
+  `.execute(db);
+}
+
+async function autoPauseStaleActivity(db: DatabaseClient, userId: string) {
+  await sql`
+    UPDATE route_activity_sessions
+    SET active_seconds = active_seconds + GREATEST(
+          0,
+          EXTRACT(EPOCH FROM (updated_at - active_started_at))::int
+        ),
+        active_started_at = NULL,
+        status = 'paused',
+        updated_at = now()
+    WHERE user_id = ${userId}::uuid
+      AND status = 'active'
+      AND active_started_at IS NOT NULL
+      AND updated_at < now() - interval '2 minutes'
+  `.execute(db);
+}
+
 export function registerRouteActivityRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/activities/current', async (request, reply) => {
     if (!db) return reply.code(503).send({ error: 'database_unavailable' });
     const userId = readAuthenticatedUserId(request);
     if (!userId) return reply.code(401).send({ error: 'authentication_required' });
 
+    await autoPauseStaleActivity(db, userId);
     const result = await sql<ActivityRow>`
       SELECT s.id, s.route_id, r.slug AS route_slug, r.name AS route_name,
              s.status, s.distance_m, s.active_seconds, s.active_started_at,
@@ -168,13 +194,6 @@ export function registerRouteActivityRoutes(app: FastifyInstance, db: DatabaseCl
     const parsed = startBody.safeParse(request.body ?? {});
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_activity_payload' });
 
-    const existing = await sql<{ id: string }>`
-      SELECT id FROM route_activity_sessions
-      WHERE user_id = ${userId}::uuid AND status IN ('active','paused')
-      LIMIT 1
-    `.execute(db);
-    if (existing.rows[0]) return reply.code(409).send({ error: 'activity_already_open', activity_id: existing.rows[0].id });
-
     const routeId = parsed.data.route_id ?? null;
     if (routeId) {
       const routeResult = await sql<{ id: string }>`
@@ -188,9 +207,19 @@ export function registerRouteActivityRoutes(app: FastifyInstance, db: DatabaseCl
     const inserted = await sql<{ id: string }>`
       INSERT INTO route_activity_sessions(user_id, route_id, status, active_started_at)
       VALUES (${userId}::uuid, ${routeId}::uuid, 'active', now())
+      ON CONFLICT (user_id) WHERE status IN ('active','paused') DO NOTHING
       RETURNING id
     `.execute(db);
-    const activity = await ownedActivity(db, userId, inserted.rows[0]!.id);
+    if (!inserted.rows[0]) {
+      const existing = await sql<{ id: string }>`
+        SELECT id FROM route_activity_sessions
+        WHERE user_id = ${userId}::uuid AND status IN ('active','paused')
+        ORDER BY started_at DESC
+        LIMIT 1
+      `.execute(db);
+      return reply.code(409).send({ error: 'activity_already_open', activity_id: existing.rows[0]?.id ?? null });
+    }
+    const activity = await ownedActivity(db, userId, inserted.rows[0].id);
     return reply.code(201).send({ activity: normalizeActivity(activity!) });
   });
 
@@ -212,7 +241,9 @@ export function registerRouteActivityRoutes(app: FastifyInstance, db: DatabaseCl
       return reply.code(400).send({ error: 'activity_point_time_out_of_range' });
     }
     if (parsed.data.accuracy_m > 80) {
-      return { accepted: false, reason: 'low_accuracy', activity: normalizeActivity(activity) };
+      await touchActivityHeartbeat(db, userId, params.data.id);
+      const current = await ownedActivity(db, userId, params.data.id);
+      return { accepted: false, reason: 'low_accuracy', activity: normalizeActivity(current!) };
     }
 
     const previousResult = await sql<{
@@ -236,7 +267,9 @@ export function registerRouteActivityRoutes(app: FastifyInstance, db: DatabaseCl
         ? previousAt < new Date(activity.active_started_at).getTime()
         : false;
       if (!resumedAfterPrevious && deltaSeconds < 5) {
-        return { accepted: false, reason: 'sample_too_soon', activity: normalizeActivity(activity) };
+        await touchActivityHeartbeat(db, userId, params.data.id);
+        const current = await ownedActivity(db, userId, params.data.id);
+        return { accepted: false, reason: 'sample_too_soon', activity: normalizeActivity(current!) };
       }
 
       const distanceResult = await sql<{ distance_m: number | string }>`
@@ -247,8 +280,15 @@ export function registerRouteActivityRoutes(app: FastifyInstance, db: DatabaseCl
       `.execute(db);
       const measured = Number(distanceResult.rows[0]?.distance_m ?? 0);
       if (!resumedAfterPrevious && deltaSeconds <= 180) {
-        if (measured < 3) return { accepted: false, reason: 'stationary', activity: normalizeActivity(activity) };
-        if (measured > 1000) return { accepted: false, reason: 'implausible_jump', activity: normalizeActivity(activity) };
+        if (measured < 3 || measured > 1000) {
+          await touchActivityHeartbeat(db, userId, params.data.id);
+          const current = await ownedActivity(db, userId, params.data.id);
+          return {
+            accepted: false,
+            reason: measured < 3 ? 'stationary' : 'implausible_jump',
+            activity: normalizeActivity(current!),
+          };
+        }
         segmentDistance = measured;
       }
     }
