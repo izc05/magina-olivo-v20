@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { apiFetch } from '@/lib/api-client';
 import { loadPublicMunicipalities, type PublicMunicipalityDirectory } from '@/lib/public-territory-source';
 import styles from './discovery.module.css';
