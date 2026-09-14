@@ -12,7 +12,7 @@ const workflow = read('.github/workflows/v20-municipalities-directory.yml');
 const orderedPrs = [83, 88, 89, 90, 91, 92, 94, 95, 96, 97, 98, 100, 101, 102, 103, 104, 106];
 let cursor = -1;
 for (const pr of orderedPrs) {
-  const index = handoff.indexOf(`#${pr} `);
+  const index = handoff.indexOf(`#${pr} `, cursor + 1);
   must(index > cursor, `El handoff no conserva el orden municipal en #${pr}`);
   cursor = index;
 }
