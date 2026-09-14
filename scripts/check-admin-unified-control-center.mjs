@@ -5,6 +5,8 @@ const root = process.cwd();
 const adminDir = resolve(root, 'apps/web/src/app/admin');
 const apiRoutesDir = resolve(root, 'apps/api/src/routes');
 const modulesPage = readFileSync(resolve(adminDir, 'modulos/page.tsx'), 'utf8');
+const modulesDirectoryPath = resolve(adminDir, 'modulos/admin-modules-directory.tsx');
+const modulesDirectory = existsSync(modulesDirectoryPath) ? readFileSync(modulesDirectoryPath, 'utf8') : '';
 const adminPage = readFileSync(resolve(adminDir, 'page.tsx'), 'utf8');
 const registryPath = resolve(adminDir, 'modulos/admin-modules.json');
 const adminLayoutPath = resolve(adminDir, 'layout.tsx');
@@ -124,6 +126,17 @@ if (!adminRouteGate) {
 
 if (!modulesPage.includes("import moduleRegistry from './admin-modules.json'")) {
   failures.push('La UI de módulos debe leer el registro canónico admin-modules.json.');
+}
+if (!modulesPage.includes('<AdminModulesDirectory modules={modules} />')) {
+  failures.push('La página de módulos debe delegar exploración y filtros en AdminModulesDirectory.');
+}
+if (!modulesDirectory) {
+  failures.push('Falta el directorio interactivo admin-modules-directory.tsx.');
+} else {
+  if (!modulesDirectory.includes('type="search"')) failures.push('El directorio Admin debe ofrecer búsqueda accesible.');
+  if (!modulesDirectory.includes("useState<'all' | ModuleStatus>")) failures.push('El directorio Admin debe filtrar por estado.');
+  if (!modulesDirectory.includes("useState<'all' | ModuleArea>")) failures.push('El directorio Admin debe filtrar por área.');
+  if (!modulesDirectory.includes('aria-live="polite"')) failures.push('El contador de resultados del directorio debe anunciar cambios de forma accesible.');
 }
 
 if (!adminPage.includes("import moduleRegistry from './modulos/admin-modules.json'")) {
@@ -260,5 +273,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed).`,
+  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed; directorio filtrable).`,
 );
