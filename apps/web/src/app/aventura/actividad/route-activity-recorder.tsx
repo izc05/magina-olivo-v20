@@ -346,7 +346,10 @@ export function RouteActivityRecorder() {
       {summary.recent.length ? <div className={styles.history}>{summary.recent.map((item) => <article className={styles.historyItem} key={item.id}>
         <div className={styles.historyHead}><strong>{item.route_name ?? 'Recorrido libre'}</strong><span>{dateLabel(item.ended_at ?? item.started_at)}</span></div>
         <div className={styles.historyMeta}><span>{km(item.distance_m)}</span><span>{duration(item.active_seconds)}</span><span>{item.point_count} puntos GPS</span></div>
-        <button type="button" className={styles.tinyDanger} disabled={busy} onClick={() => void removeHistory(item.id)}>Eliminar track y actividad</button>
+        <div className={styles.historyActions}>
+          <Link className={styles.historyLink} href={`/aventura/actividad/${encodeURIComponent(item.id)}`}>Ver mapa privado →</Link>
+          <button type="button" className={styles.tinyDanger} disabled={busy} onClick={() => void removeHistory(item.id)}>Eliminar track y actividad</button>
+        </div>
       </article>)}</div> : <p className={styles.empty}>Cuando finalices tu primer recorrido aparecerá aquí.</p>}
     </section> : null}
   </main>;
