@@ -39,6 +39,22 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
     setState('checking');
   }, [auth.status, validate]);
 
+  useEffect(() => {
+    if (auth.status !== 'authenticated') return;
+
+    const revalidateOnFocus = () => void validate();
+    const revalidateOnVisibility = () => {
+      if (document.visibilityState === 'visible') void validate();
+    };
+
+    window.addEventListener('focus', revalidateOnFocus);
+    document.addEventListener('visibilitychange', revalidateOnVisibility);
+    return () => {
+      window.removeEventListener('focus', revalidateOnFocus);
+      document.removeEventListener('visibilitychange', revalidateOnVisibility);
+    };
+  }, [auth.status, validate]);
+
   if (auth.status === 'loading' || (auth.status === 'authenticated' && state === 'checking')) {
     return (
       <main className="admin-gate">
