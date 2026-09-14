@@ -1,0 +1,37 @@
+name: V20 Mágina Pass UI check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/web/src/app/magina-pass/**'
+      - 'apps/web/src/app/admin/empresas/magina-pass/**'
+      - 'apps/web/src/components/magina-pass-**'
+      - 'apps/web/src/lib/business-pass-**'
+      - '.github/workflows/business-pass-ui-check.yml'
+
+concurrency:
+  group: magina-pass-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck passport UI
+        run: pnpm --filter @magina/web typecheck
+      - name: Build passport UI
+        run: pnpm --filter @magina/web build
