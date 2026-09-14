@@ -15,7 +15,8 @@ const areas = [
   { icon: HomeIcon, title: 'Ayuntamientos', text: 'Webs oficiales, contacto y sedes institucionales de Sierra Mágina.', href: '/ayuntamientos', badge: '16 municipios' },
   { icon: SproutIcon, title: 'Aceite y mercado', text: 'Precios y campaña manteniendo siempre fuente, unidad y fecha.', href: '/mercado', badge: 'Disponible' },
   { icon: HomeIcon, title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
-  { icon: MoreIcon, title: 'Empresas y servicios', text: 'Directorio territorial con mapa, categorías, fichas verificables y patrocinio siempre identificado.', href: '/explorar/empresas', badge: 'Disponible' },
+  { icon: MoreIcon, title: 'Servicios', text: 'Negocios y profesionales con patrocinio claramente identificado.', href: '/servicios', badge: 'Disponible' },
+  { icon: MoreIcon, title: 'Empresas y negocios', text: 'Directorio territorial con mapa, categorías, fichas verificables y patrocinio siempre identificado.', href: '/explorar/empresas', badge: 'Nuevo' },
   { icon: SproutIcon, title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
   { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Contenidos territoriales y oleoturismo.', href: null, badge: 'En preparación' },
 ] as const;
