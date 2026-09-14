@@ -1,0 +1,168 @@
+[
+  {
+    "id": "operations",
+    "title": "Operaciones",
+    "description": "Salud operativa, actividad y control transversal de plataforma.",
+    "status": "available",
+    "href": "/admin/operaciones",
+    "area": "Plataforma"
+  },
+  {
+    "id": "analytics",
+    "title": "Analítica",
+    "description": "Histórico, métricas agregadas y lectura de actividad.",
+    "status": "available",
+    "href": "/admin/analitica",
+    "area": "Plataforma"
+  },
+  {
+    "id": "management",
+    "title": "Gestión",
+    "description": "Workspaces, miembros, fincas y soporte de cuentas.",
+    "status": "available",
+    "href": "/admin/gestion",
+    "area": "Plataforma"
+  },
+  {
+    "id": "campaigns",
+    "title": "Campañas y planes",
+    "description": "Planes, campañas y gobierno comercial ya integrado.",
+    "status": "available",
+    "href": "/admin/campanas-planes",
+    "area": "Plataforma"
+  },
+  {
+    "id": "agenda",
+    "title": "Agenda",
+    "description": "Agenda global y coordinación editorial/operativa.",
+    "status": "available",
+    "href": "/admin/agenda",
+    "area": "Plataforma"
+  },
+  {
+    "id": "jobs",
+    "title": "Trabajos",
+    "description": "Actividad agrícola y trabajos gestionados desde Admin.",
+    "status": "available",
+    "href": "/admin/trabajos",
+    "area": "Plataforma"
+  },
+  {
+    "id": "documents",
+    "title": "Documentos / OCR",
+    "description": "Soporte documental, cargas y procesos OCR.",
+    "status": "available",
+    "href": "/admin/documentos",
+    "area": "Plataforma"
+  },
+  {
+    "id": "professional",
+    "title": "Profesional",
+    "description": "Soporte comercial y superficies profesionales.",
+    "status": "available",
+    "href": "/admin/profesional",
+    "area": "Negocio"
+  },
+  {
+    "id": "sources",
+    "title": "Fuentes",
+    "description": "Estado de fuentes, trazabilidad y calidad de datos.",
+    "status": "available",
+    "href": "/admin/fuentes",
+    "area": "Plataforma"
+  },
+  {
+    "id": "territory",
+    "title": "Territorio",
+    "description": "Catálogo territorial y directorio canónico.",
+    "status": "available",
+    "href": "/admin/territorio",
+    "area": "Territorio"
+  },
+  {
+    "id": "media",
+    "title": "Multimedia",
+    "description": "Biblioteca corporativa de imágenes y recursos.",
+    "status": "available",
+    "href": "/admin/media",
+    "area": "Plataforma"
+  },
+  {
+    "id": "web",
+    "title": "Web / CMS",
+    "description": "Contenido editorial y configuración pública de la web.",
+    "status": "available",
+    "href": "/admin/web",
+    "area": "Plataforma"
+  },
+  {
+    "id": "municipalities",
+    "title": "Ayuntamientos",
+    "description": "Ficha, contenido, portada, patrimonio, actualidad, cobertura y vista pública por municipio.",
+    "status": "available",
+    "href": "/admin/ayuntamientos",
+    "area": "Territorio"
+  },
+  {
+    "id": "businesses",
+    "title": "Empresas",
+    "description": "Directorio, rendimiento, reclamaciones, ofertas, leads y gobierno comercial.",
+    "status": "available",
+    "href": "/admin/empresas",
+    "area": "Negocio"
+  },
+  {
+    "id": "experiences",
+    "title": "Experiencias y reservas",
+    "description": "Sesiones, aforo, solicitudes y reservas empresariales.",
+    "status": "implemented",
+    "sourceBranch": "feat/v20-business-experiences",
+    "targetHref": "/admin/empresas/experiencias",
+    "area": "Experiencia"
+  },
+  {
+    "id": "magina-pass",
+    "title": "Mágina Pass",
+    "description": "Programas, negocios participantes, QR, puntos y recompensas.",
+    "status": "implemented",
+    "sourceBranch": "feat/v20-business-magina-pass",
+    "targetHref": "/admin/empresas/magina-pass",
+    "area": "Experiencia"
+  },
+  {
+    "id": "routes",
+    "title": "Rutas",
+    "description": "Gestión editorial y técnica de rutas y catálogo senderista.",
+    "status": "implemented",
+    "sourceBranch": "feat/v20-routes-explore",
+    "targetHref": "/admin/rutas",
+    "area": "Territorio"
+  },
+  {
+    "id": "route-community",
+    "title": "Comunidad de rutas",
+    "description": "Moderación de reseñas, fotos, condiciones y denuncias.",
+    "status": "implemented",
+    "sourceBranch": "feat/v20-routes-explore",
+    "targetHref": "/admin/rutas/comunidad",
+    "area": "Experiencia"
+  },
+  {
+    "id": "route-sponsorships",
+    "title": "Patrocinios de rutas",
+    "description": "Campañas, posiciones patrocinadas y rendimiento sin alterar información técnica.",
+    "status": "implemented",
+    "sourceBranch": "feat/v20-routes-explore",
+    "targetHref": "/admin/rutas/patrocinios",
+    "area": "Negocio"
+  },
+  {
+    "id": "adventure",
+    "title": "Mágina Aventura",
+    "description": "Progreso, retos, colecciones y misiones del modo aventura.",
+    "status": "implemented",
+    "sourceBranch": "feat/v20-routes-adventure",
+    "targetHref": "/admin/rutas/aventuras",
+    "area": "Experiencia"
+  }
+]

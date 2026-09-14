@@ -1,0 +1,33 @@
+name: V20 Admin governance contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/api/src/routes/**'
+      - 'apps/api/src/admin/access.ts'
+      - 'apps/web/src/app/admin/**'
+      - 'apps/web/src/components/admin-route-gate.tsx'
+      - 'scripts/check-admin-unified-control-center.mjs'
+      - 'package.json'
+      - '.github/workflows/admin-governance-contract.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Verify unified Admin governance
+        run: node scripts/check-admin-unified-control-center.mjs
