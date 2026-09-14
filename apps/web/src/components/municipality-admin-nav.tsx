@@ -5,6 +5,7 @@ import styles from './municipality-admin-nav.module.css';
 
 type Section = 'ficha' | 'contenido' | 'portada' | 'preview' | 'patrimonio' | 'actualidad' | 'cobertura' | 'huecos' | 'historial';
 
+// Final municipal QA validates this shared workspace navigation end to end.
 const SECTIONS: Array<{ key: Section; label: string; path: string }> = [
   { key: 'ficha', label: 'Ficha', path: '/admin/ayuntamientos' },
   { key: 'contenido', label: 'Contenido', path: '/admin/ayuntamientos/contenido' },
