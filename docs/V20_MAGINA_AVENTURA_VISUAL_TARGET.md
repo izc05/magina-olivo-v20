@@ -45,7 +45,7 @@ La referencia visual es una guía de jerarquía, densidad, ritmo, composición y
 
 ### 6. Comunidad
 - Integración visual con la comunidad existente de rutas/V20.
-- Actividad y logros reales cuando existan datos.
+- Actividad, valoraciones, fotografías y avisos reales cuando existan datos.
 - Sin inventar usuarios, números ni publicaciones.
 - Acceso coherente desde Mágina Aventura.
 
@@ -63,7 +63,12 @@ La referencia visual es una guía de jerarquía, densidad, ritmo, composición y
 - Mobile: navegación y acciones táctiles, sin scroll horizontal accidental ni elementos diminutos.
 - No se considera terminado si una de las tres experiencias parece una adaptación secundaria.
 
-### 9. Calidad técnica
+### 9. Navegación del producto
+- Las seis áreas deben ser accesibles de forma explícita: Inicio, Rutas, En curso, Mi Aventura, Colecciones y Comunidad.
+- Escritorio: navegación superior contextual y composiciones amplias.
+- Móvil: dock y navegación táctil coherentes con el uso sobre el terreno.
+
+### 10. Calidad técnica
 - No tocar `main`.
 - Trabajar en `feat/v20-routes-adventure-premium-mobile` y PR #142.
 - Mantener APIs, privacidad GPS, seguridad de rutas y lógica de progreso actuales.
