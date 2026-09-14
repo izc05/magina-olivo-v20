@@ -6,6 +6,10 @@ import type { DatabaseClient } from './db/client.js';
 import { hydrateRequestAuthentication, prototypeAuthWarning } from './request-context.js';
 import { createRuntimeRateLimitHook, checkRuntimeReadiness } from './runtime-hardening.js';
 import { registerAuthRoutes } from './routes/auth.js';
+import { registerAdminRoutes } from './routes/admin.js';
+import { registerAdminMediaRoutes } from './routes/admin-media.js';
+import { registerAdminTerritoryRoutes } from './routes/admin-territory.js';
+import { registerAdminSourceRoutes } from './routes/admin-sources.js';
 import { registerMeRoutes } from './routes/me.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerAdminMediaRoutes } from './routes/admin-media.js';
@@ -204,6 +208,10 @@ export function buildApp(dependencies: AppDependencies = {}) {
   });
 
   registerAuthRoutes(app, db, googleVerifier);
+  registerAdminRoutes(app, db);
+  registerAdminMediaRoutes(app, db, storage);
+  registerAdminTerritoryRoutes(app, db);
+  registerAdminSourceRoutes(app, db);
   registerMeRoutes(app, db);
   registerAdminRoutes(app, db);
   registerAdminMediaRoutes(app, db, storage);
