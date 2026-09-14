@@ -173,7 +173,7 @@ export function registerMeRoutes(app: FastifyInstance, db: DatabaseClient | null
     if (!userId) return;
 
     const municipality = await database.selectFrom('territory_municipalities')
-      .select(['id'])
+      .select(['id', 'slug', 'name'])
       .where('slug', '=', request.params.slug.trim().toLowerCase())
       .executeTakeFirst();
     if (!municipality) return reply.code(404).send({ error: 'municipality_not_found' });
@@ -182,6 +182,6 @@ export function registerMeRoutes(app: FastifyInstance, db: DatabaseClient | null
       .where('user_id', '=', userId)
       .where('municipality_id', '=', municipality.id)
       .execute();
-    return reply.code(204).send();
+    return { town: municipality, followed: false };
   });
 }
