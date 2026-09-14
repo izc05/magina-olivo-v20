@@ -11,18 +11,18 @@ const items = [
 
 export function BottomNav({ active }: { active: string }) {
   return (
-    <nav className={styles.root} aria-label="Navegación principal">
+    <nav className={`${styles.root} bottom-nav`} aria-label="Navegación principal">
       {items.map(([href, Icon, label]) => {
         const current = active === href;
         return (
           <Link
             key={href}
             href={href}
-            className={`${styles.link} ${current ? styles.active : ''}`.trim()}
+            className={`${styles.link} ${current ? styles.active : ''} ${current ? 'active' : ''}`.trim()}
             aria-current={current ? 'page' : undefined}
           >
-            <span className={styles.icon} aria-hidden><Icon /></span>
-            <span className={styles.label}>{label}</span>
+            <span className={`${styles.icon} nav-icon`} aria-hidden><Icon /></span>
+            <span className={`${styles.label} nav-label`}>{label}</span>
           </Link>
         );
       })}
