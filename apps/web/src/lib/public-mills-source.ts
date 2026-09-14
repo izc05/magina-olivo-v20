@@ -16,6 +16,19 @@ export type PublicMillReward = {
   endsAt: string | null;
 };
 
+export type MillRedemption = {
+  id: string;
+  code: string;
+  status: string;
+  olivesSpent: number;
+  expiresAt: string;
+  redeemedAt: string | null;
+  createdAt: string;
+  productTitle: string;
+  businessName: string;
+  qrPayload: string | null;
+};
+
 export type PublicMill = {
   id: string;
   slug: string;
@@ -100,5 +113,12 @@ export async function redeemMillReward(id: string) {
 }
 
 export async function loadMyMillRedemptions() {
-  return apiFetch<{ redemptions: Array<{ id: string; code: string; status: string; olivesSpent: number; expiresAt: string; redeemedAt: string | null; createdAt: string; productTitle: string; businessName: string; qrPayload: string | null }> }>('/api/v1/my/almazara-redemptions');
+  return apiFetch<{ redemptions: MillRedemption[] }>('/api/v1/my/almazara-redemptions');
+}
+
+export async function cancelMyMillRedemption(id: string) {
+  return apiFetch<{ redemption: { id: string; status: 'cancelled'; refunded: boolean } }>(
+    `/api/v1/my/almazara-redemptions/${encodeURIComponent(id)}/cancel`,
+    { method: 'POST' },
+  );
 }
