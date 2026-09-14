@@ -34,15 +34,17 @@ Comunidad Mágina es el feed social público de Mágina Olivo. Une conversacione
 - paginación temporal;
 - autor, fecha y municipio público opcional;
 - recuento de me gusta y comentarios;
-- estado personal de `like` y guardado cuando existe sesión.
+- estado personal de `like` y guardado cuando existe sesión;
+- enlaces compartibles mediante Web Share API o copia al portapapeles.
 
 ### Participación autenticada
 
 - crear y borrar publicaciones propias;
+- asociar opcionalmente la publicación a un municipio público, nunca a una finca;
 - comentar y borrar comentarios propios;
 - marcar/desmarcar `like`;
 - guardar/quitar de guardados;
-- reportar publicaciones o comentarios.
+- reportar publicaciones y comentarios.
 
 ### Moderación
 
@@ -82,7 +84,7 @@ V1 permite únicamente rutas internas `/media/...` ya gestionadas por la platafo
 
 Superficie pública: `/comunidad`.
 
-La entrada se añade a `Explorar`. La pantalla tiene estados reales de carga, vacío y error y no utiliza publicaciones ficticias como fallback.
+La entrada se añade a `Explorar`. La pantalla tiene estados reales de carga, vacío y error y no utiliza publicaciones ficticias como fallback. Puede filtrar por temática y por municipio oficial; además permite compartir publicaciones y reportar tanto publicaciones como comentarios.
 
 Superficie administrativa: `/admin/comunidad`.
 
@@ -92,12 +94,12 @@ El módulo está incluido en `admin/modulos/admin-modules.json`, por lo que qued
 
 `pnpm check:community`
 
-El contrato verifica tablas, endpoints, autorización, moderación, auditoría, privacidad del avatar, superficie pública, superficie Admin y registro en el centro unificado. Además impide introducir identificadores privados de finca/workspace en el API de comunidad.
+El contrato verifica tablas, endpoints, autorización, moderación, auditoría, privacidad del avatar, superficie pública, filtros territoriales, compartición, reportes de comentarios, superficie Admin y registro en el centro unificado. Además impide introducir identificadores privados de finca/workspace en el API de comunidad.
 
 ## Siguiente evolución
 
 - subida de imágenes desde el media manager;
-- reportes sobre comentarios desde la UI pública;
+- recuperar y navegar las publicaciones guardadas;
 - perfiles públicos y logros de Mi Olivo/Mágina Aventura compartibles de forma explícita;
 - notificaciones de respuestas/reacciones con un modelo que no dependa de workspace;
 - herramientas anti-spam y límites específicos por usuario;

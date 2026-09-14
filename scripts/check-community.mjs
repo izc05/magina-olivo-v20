@@ -45,9 +45,17 @@ requireText(app, 'registerAdminCommunityRoutes(app, db)', 'community admin API r
 
 requireFile('apps/web/src/app/comunidad/page.tsx');
 const client = requireFile('apps/web/src/app/comunidad/community-client.tsx');
-for (const behavior of ['createCommunityPost','setCommunityLike','setCommunityBookmark','createCommunityComment','reportCommunityTarget']) {
-  requireText(client, behavior, 'community UI');
-}
+for (const behavior of [
+  'createCommunityPost',
+  'setCommunityLike',
+  'setCommunityBookmark',
+  'createCommunityComment',
+  'reportCommunityTarget',
+  'loadPublicMunicipalities',
+  'sharePost',
+]) requireText(client, behavior, 'community UI');
+requireText(client, "reportTarget('comment', comment.id)", 'community comment reporting');
+requireText(client, 'composerMunicipality', 'community municipality context');
 const explore = requireFile('apps/web/src/app/explorar/explore-public-client.tsx');
 requireText(explore, "href: '/comunidad'", 'Explore community entry');
 requireFile('apps/web/src/lib/community-source.ts');

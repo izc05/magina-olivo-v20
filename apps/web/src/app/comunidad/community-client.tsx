@@ -15,6 +15,7 @@ import {
   type CommunityComment,
   type CommunityPost,
 } from '@/lib/community-source';
+import { loadPublicMunicipalities, type PublicMunicipalityDirectory } from '@/lib/public-territory-source';
 import styles from './community.module.css';
 
 const reportReasons = [
@@ -47,12 +48,15 @@ function authMessage(error: unknown) {
 export function CommunityClient() {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [category, setCategory] = useState<CommunityCategory | 'all'>('all');
+  const [municipality, setMunicipality] = useState<string>('all');
+  const [municipalities, setMunicipalities] = useState<PublicMunicipalityDirectory[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [composerBody, setComposerBody] = useState('');
   const [composerCategory, setComposerCategory] = useState<CommunityCategory>('campo');
+  const [composerMunicipality, setComposerMunicipality] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, CommunityComment[]>>({});
@@ -61,12 +65,21 @@ export function CommunityClient() {
   const [reportReason, setReportReason] = useState<Record<string, ReportReason>>({});
 
   const activeCategory = category === 'all' ? null : category;
+  const activeMunicipality = municipality === 'all' ? null : municipality;
+
+  useEffect(() => {
+    let cancelled = false;
+    loadPublicMunicipalities()
+      .then((items) => { if (!cancelled) setMunicipalities(items); })
+      .catch(() => { if (!cancelled) setMunicipalities([]); });
+    return () => { cancelled = true; };
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
-      const feed = await loadCommunityFeed({ category: activeCategory, limit: 20 });
+      const feed = await loadCommunityFeed({ category: activeCategory, municipality: activeMunicipality, limit: 20 });
       setPosts(feed.items);
       setNextCursor(feed.next_cursor);
     } catch (cause) {
@@ -77,14 +90,14 @@ export function CommunityClient() {
     } finally {
       setLoading(false);
     }
-  }, [activeCategory]);
+  }, [activeCategory, activeMunicipality]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
   const postCountLabel = useMemo(() => {
     if (loading) return 'Cargando conversación…';
     if (error) return 'Comunidad temporalmente no disponible';
-    if (posts.length === 0) return 'Todavía no hay publicaciones en esta categoría';
+    if (posts.length === 0) return 'Todavía no hay publicaciones con estos filtros';
     return `${posts.length}${nextCursor ? '+' : ''} publicaciones recientes`;
   }, [error, loading, nextCursor, posts.length]);
 
@@ -94,9 +107,14 @@ export function CommunityClient() {
     setSubmitting(true);
     setNotice(null);
     try {
-      await createCommunityPost({ category: composerCategory, body });
+      await createCommunityPost({
+        category: composerCategory,
+        body,
+        municipality_slug: composerMunicipality || null,
+      });
       setComposerBody('');
       setCategory(composerCategory);
+      if (composerMunicipality) setMunicipality(composerMunicipality);
       await refresh();
       setNotice('Publicación compartida con la comunidad.');
     } catch (cause) {
@@ -159,17 +177,33 @@ export function CommunityClient() {
     }
   }
 
-  async function reportPost(post: CommunityPost) {
-    const reason = reportReason[post.id] ?? 'other';
+  async function reportTarget(targetType: 'post' | 'comment', targetId: string) {
+    const key = `${targetType}:${targetId}`;
+    const reason = reportReason[key] ?? 'other';
     try {
-      await reportCommunityTarget({ target_type: 'post', target_id: post.id, reason });
+      await reportCommunityTarget({ target_type: targetType, target_id: targetId, reason });
       setNotice('Gracias. El aviso ha entrado en la cola de moderación.');
     } catch (cause) {
       if (cause instanceof ApiRequestError && cause.status === 409) {
-        setNotice('Ya tienes un aviso abierto sobre esta publicación.');
+        setNotice('Ya tienes un aviso abierto sobre este contenido.');
       } else {
         setNotice(authMessage(cause));
       }
+    }
+  }
+
+  async function sharePost(post: CommunityPost) {
+    const url = `${window.location.origin}${window.location.pathname}#post-${post.id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Comunidad Mágina · ${categoryLabel(post.category)}`, text: post.body.slice(0, 180), url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setNotice('Enlace de la publicación copiado.');
+      }
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === 'AbortError') return;
+      setNotice('No se ha podido compartir la publicación desde este dispositivo.');
     }
   }
 
@@ -177,7 +211,12 @@ export function CommunityClient() {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const feed = await loadCommunityFeed({ category: activeCategory, before: nextCursor, limit: 20 });
+      const feed = await loadCommunityFeed({
+        category: activeCategory,
+        municipality: activeMunicipality,
+        before: nextCursor,
+        limit: 20,
+      });
       setPosts((items) => [...items, ...feed.items.filter((post) => !items.some((item) => item.id === post.id))]);
       setNextCursor(feed.next_cursor);
     } catch (cause) {
@@ -194,7 +233,7 @@ export function CommunityClient() {
       <div className={styles.heroGrid}>
         <div>
           <h1>El campo y los pueblos,<br/>contados por su gente</h1>
-          <p>Comparte una duda, una fotografía, una experiencia del olivar o un rincón de Sierra Mágina. La comunidad nunca publica por defecto la ubicación exacta de una finca.</p>
+          <p>Comparte una duda, una experiencia del olivar o un rincón de Sierra Mágina. La comunidad nunca publica por defecto la ubicación exacta de una finca.</p>
         </div>
         <div className={styles.principles} aria-label="Principios de la comunidad">
           <strong>Una comunidad útil y cercana</strong>
@@ -217,11 +256,19 @@ export function CommunityClient() {
         rows={4}
       />
       <div className={styles.composerActions}>
-        <label>Temática
-          <select value={composerCategory} onChange={(event) => setComposerCategory(event.target.value as CommunityCategory)}>
-            {communityCategories.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </select>
-        </label>
+        <div className={styles.composerSelectors}>
+          <label>Temática
+            <select value={composerCategory} onChange={(event) => setComposerCategory(event.target.value as CommunityCategory)}>
+              {communityCategories.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+          </label>
+          <label>Municipio público
+            <select value={composerMunicipality} onChange={(event) => setComposerMunicipality(event.target.value)}>
+              <option value="">Sin municipio</option>
+              {municipalities.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}
+            </select>
+          </label>
+        </div>
         <button type="button" className={styles.primaryButton} onClick={() => void publish()} disabled={!composerBody.trim() || submitting}>
           {submitting ? 'Publicando…' : 'Publicar'}
         </button>
@@ -232,10 +279,18 @@ export function CommunityClient() {
     <section className={styles.feedSection}>
       <div className={styles.feedHead}>
         <div><span className="eyebrow dark">AHORA EN MÁGINA</span><h2>Conversaciones</h2><p>{postCountLabel}</p></div>
-        <div className={styles.filters} aria-label="Filtrar comunidad por temática">
-          <button type="button" className={category === 'all' ? styles.filterActive : ''} onClick={() => setCategory('all')}>Todo</button>
-          {communityCategories.map((item) => <button type="button" key={item.value} className={category === item.value ? styles.filterActive : ''} onClick={() => setCategory(item.value)}>{item.label}</button>)}
+        <div className={styles.territoryFilter}>
+          <label>Municipio
+            <select value={municipality} onChange={(event) => setMunicipality(event.target.value)}>
+              <option value="all">Toda Sierra Mágina</option>
+              {municipalities.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}
+            </select>
+          </label>
         </div>
+      </div>
+      <div className={styles.filters} aria-label="Filtrar comunidad por temática">
+        <button type="button" className={category === 'all' ? styles.filterActive : ''} onClick={() => setCategory('all')}>Todo</button>
+        {communityCategories.map((item) => <button type="button" key={item.value} className={category === item.value ? styles.filterActive : ''} onClick={() => setCategory(item.value)}>{item.label}</button>)}
       </div>
 
       {loading ? <div className={styles.stateCard}>Cargando publicaciones reales…</div> : null}
@@ -243,7 +298,7 @@ export function CommunityClient() {
       {!loading && !error && posts.length === 0 ? <div className={styles.stateCard}><strong>Aún no hay publicaciones aquí.</strong><span>Puedes ser la primera persona en abrir esta conversación.</span></div> : null}
 
       <div className={styles.feed}>
-        {posts.map((post) => <article className={styles.post} key={post.id}>
+        {posts.map((post) => <article className={styles.post} id={`post-${post.id}`} key={post.id}>
           <header className={styles.postHeader}>
             <div className={styles.avatar} aria-hidden="true">{post.author_name.slice(0, 1).toLocaleUpperCase('es')}</div>
             <div><strong>{post.author_name}</strong><span>{post.municipality_name ? `${post.municipality_name} · ` : ''}{formatDate(post.created_at)}</span></div>
@@ -255,13 +310,28 @@ export function CommunityClient() {
             <button type="button" className={post.viewer_liked ? styles.actionActive : ''} onClick={() => void toggleLike(post)}>♥ {post.reaction_count}</button>
             <button type="button" onClick={() => void toggleComments(post)}>💬 {post.comment_count}</button>
             <button type="button" className={post.viewer_bookmarked ? styles.actionActive : ''} onClick={() => void toggleBookmark(post)}>{post.viewer_bookmarked ? '★ Guardado' : '☆ Guardar'}</button>
+            <button type="button" onClick={() => void sharePost(post)}>↗ Compartir</button>
           </div>
 
           {commentsOpen[post.id] ? <div className={styles.comments}>
             <div className={styles.commentList}>
               {!comments[post.id] ? <span>Cargando comentarios…</span> : null}
               {comments[post.id]?.length === 0 ? <span>Todavía no hay respuestas.</span> : null}
-              {comments[post.id]?.map((comment) => <div className={styles.comment} key={comment.id}><strong>{comment.author_name}</strong><p>{comment.body}</p><small>{formatDate(comment.created_at)}</small></div>)}
+              {comments[post.id]?.map((comment) => {
+                const reportKey = `comment:${comment.id}`;
+                return <div className={styles.comment} key={comment.id}>
+                  <strong>{comment.author_name}</strong><p>{comment.body}</p><small>{formatDate(comment.created_at)}</small>
+                  <details className={styles.commentReport}>
+                    <summary>Reportar</summary>
+                    <div>
+                      <select value={reportReason[reportKey] ?? 'other'} onChange={(event) => setReportReason((state) => ({ ...state, [reportKey]: event.target.value as ReportReason }))}>
+                        {reportReasons.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                      </select>
+                      <button type="button" onClick={() => void reportTarget('comment', comment.id)}>Enviar aviso</button>
+                    </div>
+                  </details>
+                </div>;
+              })}
             </div>
             <div className={styles.commentComposer}>
               <input value={commentDrafts[post.id] ?? ''} onChange={(event) => setCommentDrafts((state) => ({ ...state, [post.id]: event.target.value.slice(0, 1000) }))} placeholder="Escribe una respuesta…" />
@@ -270,12 +340,12 @@ export function CommunityClient() {
           </div> : null}
 
           <details className={styles.reportBox}>
-            <summary>Reportar contenido</summary>
+            <summary>Reportar publicación</summary>
             <div>
-              <select value={reportReason[post.id] ?? 'other'} onChange={(event) => setReportReason((state) => ({ ...state, [post.id]: event.target.value as ReportReason }))}>
+              <select value={reportReason[`post:${post.id}`] ?? 'other'} onChange={(event) => setReportReason((state) => ({ ...state, [`post:${post.id}`]: event.target.value as ReportReason }))}>
                 {reportReasons.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
-              <button type="button" onClick={() => void reportPost(post)}>Enviar aviso</button>
+              <button type="button" onClick={() => void reportTarget('post', post.id)}>Enviar aviso</button>
             </div>
           </details>
         </article>)}
