@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ApiRequestError } from '../../../../lib/api-client';
+import { loadPublicRoute, type PublicRouteDetail } from '../../../../lib/public-routes-source';
 import {
   loadRouteActivityInsights,
   loadRouteActivityTrack,
@@ -68,9 +69,22 @@ function dateLabel(value: string) {
   }).format(new Date(value));
 }
 
-function TrackMap({ track }: { track: RouteActivityTrack }) {
+function officialGeometry(detail: PublicRouteDetail | null) {
+  const geometry = detail?.track?.geometry;
+  if (!geometry || !Array.isArray(geometry.coordinates)) return null;
+  if (geometry.type === 'LineString') {
+    return { type: 'LineString' as const, coordinates: geometry.coordinates as number[][] };
+  }
+  if (geometry.type === 'MultiLineString') {
+    return { type: 'MultiLineString' as const, coordinates: geometry.coordinates as number[][][] };
+  }
+  return null;
+}
+
+function TrackMap({ track, officialRoute }: { track: RouteActivityTrack; officialRoute: PublicRouteDetail | null }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const coordinates = useMemo(() => track.points.map((point) => [point.longitude, point.latitude] as [number, number]), [track.points]);
+  const officialTrack = useMemo(() => officialGeometry(officialRoute), [officialRoute]);
 
   useEffect(() => {
     const container = ref.current;
@@ -96,6 +110,16 @@ function TrackMap({ track }: { track: RouteActivityTrack }) {
 
       map.on('load', () => {
         if (!map || disposed) return;
+        if (officialTrack) {
+          map.addSource('official-route-track', {
+            type: 'geojson',
+            data: { type: 'Feature', properties: {}, geometry: officialTrack },
+          });
+          map.addLayer({
+            id: 'official-route-line', type: 'line', source: 'official-route-track',
+            paint: { 'line-color': '#b48b35', 'line-width': 4, 'line-opacity': 0.9, 'line-dasharray': [2, 2] },
+          });
+        }
         if (coordinates.length > 1) {
           map.addSource('private-activity-track', {
             type: 'geojson',
@@ -130,9 +154,52 @@ function TrackMap({ track }: { track: RouteActivityTrack }) {
       for (const marker of markers) marker.remove();
       map?.remove();
     };
-  }, [coordinates]);
+  }, [coordinates, officialTrack]);
 
-  return <div className={styles.trackMap} ref={ref} aria-label="Mapa privado del recorrido grabado" />;
+  return <div className={styles.trackMap} ref={ref} aria-label="Mapa privado del recorrido grabado y su ruta oficial asociada" />;
+}
+
+function ElevationProfile({ track }: { track: RouteActivityTrack }) {
+  const samples = useMemo(() => {
+    let distance = 0;
+    const values: Array<{ distance: number; altitude: number }> = [];
+    for (const point of track.points) {
+      distance += Math.max(0, point.segment_distance_m);
+      if (point.altitude_m != null && Number.isFinite(point.altitude_m)) values.push({ distance, altitude: point.altitude_m });
+    }
+    return values;
+  }, [track.points]);
+
+  if (samples.length < 2) return null;
+  const smoothed = samples.map((sample, index) => {
+    const from = Math.max(0, index - 1);
+    const to = Math.min(samples.length, index + 2);
+    const window = samples.slice(from, to);
+    return { distance: sample.distance, altitude: window.reduce((sum, item) => sum + item.altitude, 0) / window.length };
+  });
+  const minAltitude = Math.min(...smoothed.map((item) => item.altitude));
+  const maxAltitude = Math.max(...smoothed.map((item) => item.altitude));
+  const maxDistance = Math.max(smoothed.at(-1)?.distance ?? 0, 1);
+  const altitudeRange = Math.max(maxAltitude - minAltitude, 1);
+  const width = 900;
+  const height = 230;
+  const padX = 28;
+  const padY = 24;
+  const points = smoothed.map((item) => {
+    const x = padX + (item.distance / maxDistance) * (width - padX * 2);
+    const y = height - padY - ((item.altitude - minAltitude) / altitudeRange) * (height - padY * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+
+  return <section className={styles.card} style={{ marginTop: 18 }}>
+    <div className={styles.historyHead}><div><h2>Perfil de elevación GPS</h2><p>Vista suavizada de la altitud registrada por el dispositivo.</p></div><span>{Math.round(minAltitude)}–{Math.round(maxAltitude)} m</span></div>
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Perfil estimado de elevación del recorrido" style={{ width: '100%', height: 'auto', display: 'block', marginTop: 14 }}>
+      <line x1={padX} y1={height - padY} x2={width - padX} y2={height - padY} stroke="currentColor" opacity="0.16" />
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+    <div className={styles.historyMeta}><span>0 km</span><span>{km(maxDistance)}</span><span>Perfil suavizado · ventana 3 muestras</span></div>
+    <p className={styles.note}>El perfil procede del sensor de altitud del dispositivo cuando está disponible. Puede tener más error que la elevación oficial de una ruta validada.</p>
+  </section>;
 }
 
 export function RouteActivityDetailClient() {
@@ -140,6 +207,7 @@ export function RouteActivityDetailClient() {
   const activityId = searchParams.get('id')?.trim() ?? '';
   const [track, setTrack] = useState<RouteActivityTrack | null>(null);
   const [insights, setInsights] = useState<RouteActivityInsights | null>(null);
+  const [officialRoute, setOfficialRoute] = useState<PublicRouteDetail | null>(null);
   const [loading, setLoading] = useState(Boolean(activityId));
   const [error, setError] = useState<'missing' | 'auth' | 'not_found' | 'generic' | null>(activityId ? null : 'missing');
 
@@ -147,20 +215,23 @@ export function RouteActivityDetailClient() {
     if (!activityId) {
       setTrack(null);
       setInsights(null);
+      setOfficialRoute(null);
       setLoading(false);
       setError('missing');
       return;
     }
     let cancelled = false;
     setLoading(true);
-    Promise.all([
-      loadRouteActivityTrack(activityId),
-      loadRouteActivityInsights(activityId).catch(() => null),
-    ])
-      .then(([value, nextInsights]) => {
+    loadRouteActivityTrack(activityId)
+      .then(async (value) => {
+        const [nextInsights, nextOfficialRoute] = await Promise.all([
+          loadRouteActivityInsights(activityId).catch(() => null),
+          value.activity.route_slug ? loadPublicRoute(value.activity.route_slug).catch(() => null) : Promise.resolve(null),
+        ]);
         if (cancelled) return;
         setTrack(value);
         setInsights(nextInsights);
+        setOfficialRoute(nextOfficialRoute);
         setError(null);
       })
       .catch((cause) => {
@@ -207,7 +278,8 @@ export function RouteActivityDetailClient() {
 
     <section className={styles.card}>
       <div className={styles.historyHead}><div><h2>Mapa del recorrido</h2><p>Salida y final se muestran únicamente dentro de tu sesión privada.</p></div><span>{averageAccuracy == null ? 'Sin precisión' : `Precisión media ±${Math.round(averageAccuracy)} m`}</span></div>
-      {track.points.length ? <TrackMap track={track} /> : <p className={styles.empty}>Este recorrido no contiene puntos GPS válidos para dibujar un mapa.</p>}
+      <div className={styles.historyMeta}><span>● Tu recorrido</span>{officialRoute?.track ? <span>– – Ruta oficial asociada</span> : null}</div>
+      {track.points.length ? <TrackMap track={track} officialRoute={officialRoute} /> : <p className={styles.empty}>Este recorrido no contiene puntos GPS válidos para dibujar un mapa.</p>}
       <p className={styles.note}>El trazado procede de las muestras aceptadas por el grabador. Es una referencia de actividad personal y no sustituye un track oficial de navegación ni la señalización del sendero.</p>
     </section>
 
@@ -221,6 +293,8 @@ export function RouteActivityDetailClient() {
       </div>
       <p className={styles.note}>El desnivel GPS filtra cambios menores de 3 m, saltos verticales mayores de 80 m y el primer punto después de una pausa. Sigue siendo una estimación: para navegación y ficha técnica manda el perfil oficial.</p>
     </section> : null}
+
+    <ElevationProfile track={track} />
 
     {official ? <section className={styles.card} style={{ marginTop: 18 }}>
       <h2>Tu recorrido frente a la ruta oficial</h2>
