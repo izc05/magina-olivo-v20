@@ -14,6 +14,7 @@ on:
       - 'apps/web/src/lib/municipality-seo.ts'
       - 'apps/web/src/app/explorar/explore-public-client.tsx'
       - 'apps/web/src/lib/public-territory-source.ts'
+      - 'docs/V20_MUNICIPAL_INTEGRATION_HANDOFF.md'
       - 'scripts/check-municipalities-directory.mjs'
       - 'scripts/check-municipality-discovery-experience.mjs'
       - 'scripts/check-municipality-public-landing.mjs'
@@ -27,6 +28,7 @@ on:
       - 'scripts/check-municipality-audit-history.mjs'
       - 'scripts/check-municipality-gap-matrix.mjs'
       - 'scripts/check-municipality-qa-16.mjs'
+      - 'scripts/check-municipality-integration-handoff.mjs'
       - '.github/workflows/v20-municipalities-directory.yml'
   workflow_dispatch:
 
@@ -69,6 +71,8 @@ jobs:
         run: node scripts/check-municipality-gap-matrix.mjs
       - name: Municipality final QA 16/16 contract
         run: node scripts/check-municipality-qa-16.mjs
+      - name: Municipality integration handoff contract
+        run: node scripts/check-municipality-integration-handoff.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck
