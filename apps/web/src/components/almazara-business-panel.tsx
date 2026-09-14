@@ -315,9 +315,9 @@ export function AlmazaraBusinessPanel() {
     <section className="card" style={{ marginTop: 20 }}><h2>Últimos canjes</h2>{!redemptions.length ? <p>No hay canjes todavía.</p> : <div style={{ overflowX: 'auto' }}><table><thead><tr><th>Premio</th><th>Aceitunas</th><th>Estado</th><th>Creado</th><th>Trazabilidad</th></tr></thead><tbody>{redemptions.map((item) => <tr key={item.id}><td>{item.product_title}</td><td>{item.olives_spent}</td><td>{item.status}</td><td>{new Date(item.created_at).toLocaleString('es-ES')}</td><td><button type="button" onClick={() => void loadHistory(item.id)}>Ver historial</button></td></tr>)}</tbody></table></div>}</section>
 
     {history ? <section className="card" style={{ marginTop: 20 }}><h2>Trazabilidad del canje</h2><p><code>{history.redemptionId}</code></p><div style={{ display: 'grid', gap: 8 }}>
-      {[...history.events.map((event) => ({ ...event, source: 'canje' })), ...history.stockEvents.map((event) => ({ ...event, source: 'stock' }))]
+      {[...history.events.map((event) => ({ ...event, source: 'canje' as const })), ...history.stockEvents.map((event) => ({ ...event, source: 'stock' as const }))]
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-        .map((event) => <div key={`${event.source}-${event.id}`} style={{ borderBottom: '1px solid rgba(0,0,0,.08)', paddingBottom: 8 }}><strong>{eventLabel(event.event_type)}</strong><span style={{ marginLeft: 8 }}>{new Date(event.created_at).toLocaleString('es-ES')}</span>{event.source === 'stock' && 'delta_reserved' in event ? <small style={{ display: 'block' }}>Δ reservado {event.delta_reserved} · Δ entregado {event.delta_redeemed}</small> : null}</div>)}
+        .map((event) => <div key={`${event.source}-${event.id}`} style={{ borderBottom: '1px solid rgba(0,0,0,.08)', paddingBottom: 8 }}><strong>{eventLabel(event.event_type)}</strong><span style={{ marginLeft: 8 }}>{new Date(event.created_at).toLocaleString('es-ES')}</span>{event.source === 'stock' ? <small style={{ display: 'block' }}>Δ reservado {event.delta_reserved} · Δ entregado {event.delta_redeemed}</small> : null}</div>)}
     </div></section> : null}
   </main>;
 }
