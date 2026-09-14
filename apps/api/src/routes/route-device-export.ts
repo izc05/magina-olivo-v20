@@ -5,6 +5,7 @@ import type { DatabaseClient } from '../db/client.js';
 import { registerRouteAdventureRoutes } from './route-adventure.js';
 import { registerRouteAdventureHubRoutes } from './route-adventure-hub.js';
 import { registerRouteActivityRoutes } from './route-activity.js';
+import { registerRouteActivityInsightRoutes } from './route-activity-insights.js';
 import { registerAdminRouteAdventureRoutes } from './admin-route-adventure.js';
 import { registerAdminRouteAdventureBulkRoutes } from './admin-route-adventure-bulk.js';
 import { registerAdminRouteAdventureReadinessRoutes } from './admin-route-adventure-readiness.js';
@@ -25,6 +26,7 @@ export function registerRouteDeviceExportRoutes(app: FastifyInstance, db: Databa
   registerRouteAdventureRoutes(app, db);
   registerRouteAdventureHubRoutes(app, db);
   registerRouteActivityRoutes(app, db);
+  registerRouteActivityInsightRoutes(app, db);
   registerAdminRouteAdventureRoutes(app, db);
   registerAdminRouteAdventureBulkRoutes(app, db);
   registerAdminRouteAdventureReadinessRoutes(app, db);
