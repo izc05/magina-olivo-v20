@@ -4,6 +4,13 @@ const TOKEN_A = '71000000-0000-4000-8000-000000000001.AbcdefghijkLMN12';
 const TOKEN_B = '71000000-0000-4000-8000-000000000002.AbcdefghijkLMN34';
 
 async function mockRedemptions(page: Page) {
+  const now = Date.now();
+  const expiresSoon = new Date(now + 2 * 24 * 60 * 60 * 1000).toISOString();
+  const expiresLater = new Date(now + 6 * 24 * 60 * 60 * 1000).toISOString();
+  const createdRecently = new Date(now - 60 * 60 * 1000).toISOString();
+  const createdEarlier = new Date(now - 2 * 60 * 60 * 1000).toISOString();
+  const historyCreated = new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString();
+
   await page.route(/\/api\/v1\/my\/almazara-redemptions$/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -15,10 +22,10 @@ async function mockRedemptions(page: Page) {
             code: TOKEN_B,
             status: 'reserved',
             olivesSpent: 700,
-            expiresAt: '2026-09-20T12:00:00.000Z',
+            expiresAt: expiresLater,
             redeemedAt: null,
             cancelledAt: null,
-            createdAt: '2026-09-14T10:00:00.000Z',
+            createdAt: createdEarlier,
             productTitle: 'Caja AOVE selección',
             businessName: 'Almazara Sierra E2E',
             qrPayload: TOKEN_B,
@@ -29,10 +36,10 @@ async function mockRedemptions(page: Page) {
             code: null,
             status: 'cancelled',
             olivesSpent: 300,
-            expiresAt: '2026-09-18T12:00:00.000Z',
+            expiresAt: new Date(now + 4 * 24 * 60 * 60 * 1000).toISOString(),
             redeemedAt: null,
-            cancelledAt: '2026-09-13T13:00:00.000Z',
-            createdAt: '2026-09-12T10:00:00.000Z',
+            cancelledAt: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            createdAt: historyCreated,
             productTitle: 'Botella cancelada',
             businessName: 'Cooperativa Histórica E2E',
             qrPayload: null,
@@ -43,10 +50,10 @@ async function mockRedemptions(page: Page) {
             code: TOKEN_A,
             status: 'reserved',
             olivesSpent: 500,
-            expiresAt: '2026-09-16T12:00:00.000Z',
+            expiresAt: expiresSoon,
             redeemedAt: null,
             cancelledAt: null,
-            createdAt: '2026-09-14T11:00:00.000Z',
+            createdAt: createdRecently,
             productTitle: 'Botella AOVE urgente',
             businessName: 'Cooperativa del Olivar E2E',
             qrPayload: TOKEN_A,
