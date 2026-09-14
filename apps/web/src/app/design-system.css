@@ -57,6 +57,9 @@
   --ui-space-10: 40px;
   --ui-space-12: 48px;
   --ui-space-16: 64px;
+  --ui-page-gutter-mobile: clamp(14px, 4vw, 22px);
+  --ui-page-gutter-tablet: clamp(24px, 4vw, 42px);
+  --ui-page-gutter-desktop: clamp(26px, 3.2vw, 52px);
 
   /* Touch / control geometry */
   --ui-control-min: 44px;
@@ -68,7 +71,11 @@
   --ui-shell-desktop-max: 1540px;
   --ui-content-readable: 760px;
   --ui-content-wide: 1180px;
-  --ui-topbar-height: 76px;
+  --ui-topbar-mobile-height: 72px;
+  --ui-topbar-tablet-height: 78px;
+  --ui-topbar-desktop-height: 76px;
+  --ui-topbar-height: var(--ui-topbar-desktop-height);
+  --ui-mobile-nav-height: 78px;
   --ui-mobile-nav-reserve: 116px;
 
   /* Typography */
