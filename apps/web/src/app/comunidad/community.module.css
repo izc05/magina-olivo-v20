@@ -1,0 +1,83 @@
+.hero {
+  margin: 0 0 24px;
+  padding: clamp(28px, 5vw, 54px);
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(34,76,53,.98), rgba(74,102,64,.94));
+  color: #fff;
+  box-shadow: 0 22px 70px rgba(25,48,34,.18);
+}
+
+.hero h1 { margin: 10px 0 14px; max-width: 760px; font-size: clamp(2rem, 5vw, 4.3rem); line-height: .98; letter-spacing: -.045em; }
+.hero p { max-width: 760px; margin: 0; color: rgba(255,255,255,.82); font-size: 1.02rem; line-height: 1.65; }
+.heroGrid { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(250px,.7fr); gap: 34px; align-items: end; }
+.principles { display: grid; gap: 10px; padding: 18px; border: 1px solid rgba(255,255,255,.18); border-radius: 20px; background: rgba(255,255,255,.08); backdrop-filter: blur(10px); }
+.principles strong { font-size: 1.05rem; }
+.principles span { color: rgba(255,255,255,.78); font-size: .92rem; }
+
+.composer, .feedSection { margin: 0 0 24px; padding: clamp(18px, 3vw, 28px); border: 1px solid var(--border, #e5e7e2); border-radius: 24px; background: var(--surface, #fff); box-shadow: 0 12px 34px rgba(41,52,43,.06); }
+.composerHeader, .feedHead, .composerActions, .postHeader, .postActions, .commentComposer { display: flex; align-items: center; }
+.composerHeader, .feedHead { justify-content: space-between; gap: 18px; }
+.composerHeader h2, .feedHead h2 { margin: 4px 0 0; font-size: clamp(1.35rem, 3vw, 2rem); }
+.counter { color: var(--muted, #66716a); font-size: .85rem; }
+.composer textarea { width: 100%; min-height: 112px; margin: 18px 0 14px; resize: vertical; border: 1px solid #dce2dc; border-radius: 18px; padding: 16px; font: inherit; background: #fbfcfa; color: inherit; }
+.composer textarea:focus, .composer select:focus, .commentComposer input:focus, .reportBox select:focus { outline: 3px solid rgba(78,116,83,.18); border-color: #5f8768; }
+.composerActions { justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.composerActions label { display: flex; gap: 9px; align-items: center; font-size: .9rem; color: var(--muted, #66716a); }
+.composer select, .reportBox select { border: 1px solid #dce2dc; background: #fff; border-radius: 12px; padding: 9px 12px; color: inherit; }
+.primaryButton, .moreButton, .commentComposer button, .reportBox button { border: 0; border-radius: 14px; background: #2e633d; color: #fff; padding: 11px 17px; font: inherit; font-weight: 700; cursor: pointer; }
+.primaryButton:disabled, .moreButton:disabled, .commentComposer button:disabled { opacity: .5; cursor: default; }
+.notice { margin: 14px 0 0; padding: 10px 12px; border-radius: 12px; background: #f1f6ef; color: #34533b; }
+
+.feedHead { align-items: flex-start; margin-bottom: 18px; }
+.feedHead p { margin: 7px 0 0; color: var(--muted, #68736b); }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: 650px; }
+.filters button { border: 1px solid #dde3dd; background: #fff; color: #445047; padding: 8px 11px; border-radius: 999px; cursor: pointer; }
+.filters .filterActive { background: #315f3e; color: #fff; border-color: #315f3e; }
+.stateCard { display: flex; flex-direction: column; gap: 4px; margin: 16px 0; padding: 22px; border-radius: 18px; background: #f6f8f5; color: #5b665e; }
+.feed { display: grid; gap: 16px; }
+.post { border: 1px solid #e1e6e0; border-radius: 22px; padding: clamp(16px, 2.5vw, 22px); background: linear-gradient(180deg, #fff, #fcfdfb); }
+.postHeader { gap: 11px; }
+.postHeader > div:nth-child(2) { min-width: 0; display: grid; gap: 2px; }
+.postHeader span { color: #737d75; font-size: .82rem; }
+.avatar { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #e6efe5; color: #315f3e; font-weight: 800; flex: 0 0 auto; }
+.category { margin-left: auto; padding: 7px 10px; border-radius: 999px; background: #f1f5ef; color: #41604a !important; font-weight: 700; }
+.postBody { white-space: pre-wrap; margin: 18px 0; color: #27322b; line-height: 1.65; font-size: 1rem; }
+.postImage { display: block; width: 100%; max-height: 620px; object-fit: cover; border-radius: 18px; margin: 0 0 16px; background: #eef1ed; }
+.postActions { gap: 8px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid #edf0ec; }
+.postActions button { border: 0; background: transparent; color: #59645c; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.postActions button:hover { background: #f1f5ef; }
+.postActions .actionActive { color: #2f683f; background: #eef5ec; font-weight: 700; }
+
+.comments { margin-top: 12px; padding: 14px; border-radius: 16px; background: #f7f9f6; }
+.commentList { display: grid; gap: 9px; color: #677168; }
+.comment { padding: 11px 12px; border-radius: 12px; background: #fff; border: 1px solid #e7ebe6; }
+.comment p { margin: 5px 0; color: #303b33; line-height: 1.5; }
+.comment small { color: #7a847c; }
+.commentComposer { gap: 8px; margin-top: 12px; }
+.commentComposer input { min-width: 0; flex: 1; border: 1px solid #dce2dc; border-radius: 12px; padding: 11px 12px; font: inherit; }
+.commentComposer button { padding: 10px 14px; }
+.reportBox { margin-top: 8px; color: #7a827b; font-size: .85rem; }
+.reportBox summary { cursor: pointer; width: fit-content; }
+.reportBox > div { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.reportBox button { background: #6b544c; padding: 9px 12px; }
+.moreWrap { display: flex; justify-content: center; padding-top: 20px; }
+.moreButton { background: #f0f4ef; color: #315f3e; border: 1px solid #d7e0d7; }
+
+@media (max-width: 820px) {
+  .heroGrid { grid-template-columns: 1fr; gap: 22px; }
+  .feedHead { flex-direction: column; }
+  .filters { justify-content: flex-start; max-width: none; }
+}
+
+@media (max-width: 560px) {
+  .hero { border-radius: 22px; padding: 24px 20px; }
+  .composer, .feedSection { border-radius: 20px; padding: 16px; }
+  .composerActions { align-items: stretch; }
+  .composerActions label { width: 100%; justify-content: space-between; }
+  .primaryButton { width: 100%; }
+  .postHeader { align-items: flex-start; }
+  .category { font-size: .74rem !important; }
+  .postActions { justify-content: space-between; }
+  .commentComposer { align-items: stretch; flex-direction: column; }
+  .reportBox > div { align-items: stretch; flex-direction: column; }
+}

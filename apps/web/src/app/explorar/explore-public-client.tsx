@@ -18,6 +18,7 @@ const areas = [
   { icon: HomeIcon, tone: 'mills', title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
   { icon: DirectoryIcon, tone: 'businesses', title: 'Empresas y servicios', text: 'Encuentra comercios, profesionales y servicios cerca de ti.', href: '/explorar/empresas', badge: 'Directorio local' },
   { icon: SproutIcon, tone: 'advice', title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
+  { icon: EventIcon, tone: 'community', title: 'Comunidad Mágina', text: 'Comparte fotos, preguntas y conversaciones sobre campo, pueblos, cosecha, gastronomía y rutas.', href: '/comunidad', badge: 'Nuevo' },
   { icon: CompassIcon, tone: 'routes', title: 'Rutas y aventuras', text: 'Descubre senderos y explora sus puntos de interés. Modo Aventura en las rutas habilitadas.', href: '/rutas', badge: 'Explora a pie' },
   { icon: EventIcon, tone: 'experiences', title: 'Experiencias', text: 'Catas de aceite, visitas, talleres y actividades para conocer Mágina.', href: '/experiencias', badge: 'Descubre y reserva' },
   { icon: PromotionIcon, tone: 'pass', title: 'Mágina Pass', text: 'Tu pasaporte para descubrir negocios participantes y consultar sus recompensas.', href: '/magina-pass', badge: 'Pasaporte local' },

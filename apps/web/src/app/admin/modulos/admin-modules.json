@@ -104,6 +104,14 @@
     "area": "Territorio"
   },
   {
+    "id": "community",
+    "title": "Comunidad Mágina",
+    "description": "Reportes, moderación auditada y gobierno del feed social público.",
+    "status": "available",
+    "href": "/admin/comunidad",
+    "area": "Experiencia"
+  },
+  {
     "id": "businesses",
     "title": "Empresas",
     "description": "Directorio, rendimiento, reclamaciones, ofertas, leads y gobierno comercial.",

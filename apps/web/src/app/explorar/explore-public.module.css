@@ -358,6 +358,7 @@
 .advice { --category-ink: #477034; --category-surface: #e6f2db; --category-glow: rgba(71, 112, 52, .12); }
 .routes { --category-ink: #386c83; --category-surface: #e0eff5; --category-glow: rgba(56, 108, 131, .13); }
 .experiences { --category-ink: #9a4d62; --category-surface: #fae5eb; --category-glow: rgba(154, 77, 98, .12); }
+.community { --category-ink: #68558e; --category-surface: #ece7f7; --category-glow: rgba(104, 85, 142, .12); }
 .pass { --category-ink: #a04c2d; --category-surface: #fbe8dd; --category-glow: rgba(160, 76, 45, .13); }
 
 .stateCard {

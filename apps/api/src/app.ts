@@ -27,9 +27,11 @@ import { registerAdminProfessionalRoutes } from './routes/admin-professional.js'
 import { registerAdminRoutesExploreRoutes } from './routes/admin-routes-explore.js';
 import { registerAdminRouteContentRoutes } from './routes/admin-route-content.js';
 import { registerAdminRouteCommunityRoutes } from './routes/admin-route-community.js';
+import { registerAdminCommunityRoutes } from './routes/admin-community.js';
 import { registerPlanRoutes } from './routes/plans.js';
 import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerMiOlivoCampaignRoutes } from './routes/mi-olivo-campaign.js';
+import { registerCommunityRoutes } from './routes/community.js';
 import { registerFieldRoutes } from './routes/fields.js';
 import { registerIrrigationRoutes } from './routes/irrigations.js';
 import { registerObservationRoutes } from './routes/observations.js';
@@ -209,14 +211,10 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminTerritoryRoutes(app, db);
   registerAdminSourceRoutes(app, db);
   registerMeRoutes(app, db);
-  registerAdminRoutes(app, db);
-  registerAdminMediaRoutes(app, db, storage);
-  registerAdminTerritoryRoutes(app, db);
   registerAdminBusinessDirectoryRoutes(app, db);
   registerAdminBusinessCategoryRoutes(app, db);
   registerAdminBusinessRevenueRoutes(app, db);
   registerAdminBusinessPassRoutes(app, db);
-  registerAdminSourceRoutes(app, db);
   registerAdminSourceOperationRoutes(app, db, weatherProvider, radarQueue, notificationQueue);
   registerAdminAnalyticsRoutes(app, db);
   registerAdminOperationsRoutes(app, db);
@@ -229,9 +227,11 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminRoutesExploreRoutes(app, db);
   registerAdminRouteContentRoutes(app, db);
   registerAdminRouteCommunityRoutes(app, db);
+  registerAdminCommunityRoutes(app, db);
   registerPlanRoutes(app, db);
   registerMiOlivoRoutes(app, db);
   registerMiOlivoCampaignRoutes(app, db);
+  registerCommunityRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerBusinessDirectoryRoutes(app, db);
   registerBusinessNearbyRouteRoutes(app, db);
