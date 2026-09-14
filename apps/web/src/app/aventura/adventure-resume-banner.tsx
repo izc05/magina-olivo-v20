@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { loadExplorerProfile, type ExplorerProfile } from '../../lib/public-routes-source';
-import { loadActiveRouteActivity, type RouteActivity } from '../../lib/route-activity-source';
+import { loadCurrentRouteActivity, type RouteActivity } from '../../lib/route-activity-source';
 import styles from './adventure.module.css';
 
 export function AdventureResumeBanner() {
@@ -12,7 +12,7 @@ export function AdventureResumeBanner() {
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.allSettled([loadExplorerProfile(), loadActiveRouteActivity()]).then(([profileResult, activityResult]) => {
+    void Promise.allSettled([loadExplorerProfile(), loadCurrentRouteActivity()]).then(([profileResult, activityResult]) => {
       if (cancelled) return;
       if (profileResult.status === 'fulfilled') setProfile(profileResult.value);
       if (activityResult.status === 'fulfilled') setActivity(activityResult.value.activity);
