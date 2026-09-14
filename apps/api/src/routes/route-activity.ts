@@ -230,8 +230,14 @@ export function registerRouteActivityRoutes(app: FastifyInstance, db: DatabaseCl
 
     let segmentDistance = 0;
     if (previous) {
-      const deltaSeconds = (recordedAt.getTime() - new Date(previous.recorded_at).getTime()) / 1000;
-      if (deltaSeconds < 5) return { accepted: false, reason: 'sample_too_soon', activity: normalizeActivity(activity) };
+      const previousAt = new Date(previous.recorded_at).getTime();
+      const deltaSeconds = (recordedAt.getTime() - previousAt) / 1000;
+      const resumedAfterPrevious = activity.active_started_at
+        ? previousAt < new Date(activity.active_started_at).getTime()
+        : false;
+      if (!resumedAfterPrevious && deltaSeconds < 5) {
+        return { accepted: false, reason: 'sample_too_soon', activity: normalizeActivity(activity) };
+      }
 
       const distanceResult = await sql<{ distance_m: number | string }>`
         SELECT ST_DistanceSphere(
@@ -240,7 +246,7 @@ export function registerRouteActivityRoutes(app: FastifyInstance, db: DatabaseCl
         ) AS distance_m
       `.execute(db);
       const measured = Number(distanceResult.rows[0]?.distance_m ?? 0);
-      if (deltaSeconds <= 180) {
+      if (!resumedAfterPrevious && deltaSeconds <= 180) {
         if (measured < 3) return { accepted: false, reason: 'stationary', activity: normalizeActivity(activity) };
         if (measured > 1000) return { accepted: false, reason: 'implausible_jump', activity: normalizeActivity(activity) };
         segmentDistance = measured;
