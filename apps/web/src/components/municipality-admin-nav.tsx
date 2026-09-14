@@ -3,12 +3,13 @@
 import { municipalityAdminHref, publicMunicipalityHref } from '@/lib/municipality-admin-context';
 import styles from './municipality-admin-nav.module.css';
 
-type Section = 'ficha' | 'contenido' | 'portada' | 'patrimonio' | 'actualidad' | 'cobertura';
+type Section = 'ficha' | 'contenido' | 'portada' | 'preview' | 'patrimonio' | 'actualidad' | 'cobertura';
 
 const SECTIONS: Array<{ key: Section; label: string; path: string }> = [
   { key: 'ficha', label: 'Ficha', path: '/admin/ayuntamientos' },
   { key: 'contenido', label: 'Contenido', path: '/admin/ayuntamientos/contenido' },
   { key: 'portada', label: 'Portada', path: '/admin/ayuntamientos/editorial' },
+  { key: 'preview', label: 'Preview', path: '/admin/ayuntamientos/preview' },
   { key: 'patrimonio', label: 'Patrimonio', path: '/admin/ayuntamientos/patrimonio' },
   { key: 'actualidad', label: 'Actualidad', path: '/admin/ayuntamientos/actualidad' },
   { key: 'cobertura', label: 'Cobertura', path: '/admin/ayuntamientos/cobertura' },
