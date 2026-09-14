@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { AdminRouteGate } from '../../components/admin-route-gate';
+import './admin.css';
 
 export const metadata: Metadata = {
   robots: {
@@ -15,5 +17,5 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return children;
+  return <AdminRouteGate>{children}</AdminRouteGate>;
 }
