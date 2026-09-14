@@ -11,6 +11,9 @@ import {
 } from '@/lib/public-territory-source';
 import styles from '../municipalities.module.css';
 
+type DiscoveryRole = 'heritage' | 'nature' | 'tourism';
+type DiscoveryFilter = 'all' | DiscoveryRole;
+
 function asObject(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
@@ -23,10 +26,31 @@ function strings(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
+function municipalityRole(entry: PublicMunicipalityContent) {
+  return text(asObject(entry.content_json).municipality_role);
+}
+
+function discoveryRole(entry: PublicMunicipalityContent): DiscoveryRole | null {
+  const role = municipalityRole(entry);
+  return role === 'heritage' || role === 'nature' || role === 'tourism' ? role : null;
+}
+
+function discoveryRoleLabel(role: DiscoveryRole | null) {
+  return role === 'heritage' ? 'Patrimonio' : role === 'nature' ? 'Naturaleza' : role === 'tourism' ? 'Turismo' : 'Descubrimiento';
+}
+
 function dateLabel(value: string | null) {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+}
+
+function verifiedLabel(value: unknown) {
+  const raw = text(value);
+  if (!raw) return null;
+  const date = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return raw;
   return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
@@ -36,8 +60,13 @@ function ContentCard({ entry }: { entry: PublicMunicipalityContent }) {
   const services = strings(data.services);
   const eventStart = text(data.event_start) || entry.starts_at;
   const href = entry.external_url || null;
+  const role = municipalityRole(entry);
+  const sourceUrl = text(data.source_url);
+  const sourceLabel = text(data.source_label);
+  const sourceVerified = verifiedLabel(data.verified_at);
+  const placeLabel = role === 'heritage' ? 'Patrimonio' : role === 'nature' ? 'Naturaleza' : role === 'tourism' ? 'Turismo' : 'Pueblo';
   const labels: Record<PublicMunicipalityContent['type'], string> = {
-    place: 'Pueblo',
+    place: placeLabel,
     mill: 'Cooperativa / almazara',
     directory: 'Empresa / servicio',
     news: 'Noticia',
@@ -53,15 +82,28 @@ function ContentCard({ entry }: { entry: PublicMunicipalityContent }) {
       {entry.summary ? <p>{entry.summary}</p> : null}
       {entry.type === 'event' && dateLabel(eventStart) ? <div className={styles.contentFact}>📅 {dateLabel(eventStart)}</div> : null}
       {services.length ? <div className={styles.tags}>{services.slice(0, 4).map((service) => <span key={service}>{service}</span>)}</div> : null}
+      {entry.type === 'place' && sourceUrl ? <div className={styles.provenance}>
+        <span>Fuente verificada</span>
+        <a href={sourceUrl} target="_blank" rel="noreferrer">{sourceLabel || 'Fuente oficial'} ↗</a>
+        {sourceVerified ? <small>Verificada {sourceVerified}</small> : null}
+      </div> : null}
       {href ? <a className={styles.textLink} href={href} target="_blank" rel="noreferrer">Más información ↗</a> : null}
     </div>
   </article>;
 }
 
+const DISCOVERY_FILTERS: Array<{ value: DiscoveryFilter; label: string }> = [
+  { value: 'all', label: 'Todo' },
+  { value: 'heritage', label: 'Patrimonio' },
+  { value: 'nature', label: 'Naturaleza' },
+  { value: 'tourism', label: 'Turismo' },
+];
+
 export function MunicipalityDetailClient({ slug }: { slug: string }) {
   const [item, setItem] = useState<PublicMunicipalityDirectory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [discoveryFilter, setDiscoveryFilter] = useState<DiscoveryFilter>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -72,8 +114,34 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
     return () => { cancelled = true; };
   }, [slug]);
 
+  useEffect(() => setDiscoveryFilter('all'), [slug]);
+
   const content = item?.related_content ?? [];
-  const profile = useMemo(() => content.find((entry) => entry.type === 'place') ?? null, [content]);
+  const places = useMemo(() => content.filter((entry) => entry.type === 'place'), [content]);
+  const profile = useMemo(() => places.find((entry) => municipalityRole(entry) === 'profile') ?? places.find((entry) => !municipalityRole(entry)) ?? null, [places]);
+  const discoveries = useMemo(() => places.filter((entry) => discoveryRole(entry)), [places]);
+  const discoveryCounts = useMemo(() => ({
+    all: discoveries.length,
+    heritage: discoveries.filter((entry) => discoveryRole(entry) === 'heritage').length,
+    nature: discoveries.filter((entry) => discoveryRole(entry) === 'nature').length,
+    tourism: discoveries.filter((entry) => discoveryRole(entry) === 'tourism').length,
+  }), [discoveries]);
+  const filteredDiscoveries = useMemo(() => discoveryFilter === 'all'
+    ? discoveries
+    : discoveries.filter((entry) => discoveryRole(entry) === discoveryFilter), [discoveries, discoveryFilter]);
+  const essentialDiscoveries = useMemo(() => {
+    const picks: PublicMunicipalityContent[] = [];
+    const picked = new Set<string>();
+    const add = (entry: PublicMunicipalityContent | undefined) => {
+      if (!entry || picked.has(entry.id) || picks.length >= 3) return;
+      picks.push(entry);
+      picked.add(entry.id);
+    };
+    discoveries.filter((entry) => entry.featured).forEach(add);
+    (['heritage', 'nature', 'tourism'] as DiscoveryRole[]).forEach((role) => add(discoveries.find((entry) => discoveryRole(entry) === role)));
+    discoveries.forEach(add);
+    return picks;
+  }, [discoveries]);
   const mills = useMemo(() => content.filter((entry) => entry.type === 'mill'), [content]);
   const directory = useMemo(() => content.filter((entry) => entry.type === 'directory'), [content]);
   const news = useMemo(() => content.filter((entry) => entry.type === 'news'), [content]);
@@ -81,6 +149,8 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
   const profileData = asObject(profile?.content_json);
   const profileBody = text(profileData.body);
   const profileServices = strings(profileData.services);
+  const heroMedia = profile?.media_url || discoveries.find((entry) => entry.media_url)?.media_url || null;
+  const heroStyle = heroMedia ? { backgroundImage: `linear-gradient(110deg, rgba(24, 58, 37, .96) 0%, rgba(32, 73, 46, .88) 48%, rgba(32, 73, 46, .42) 100%), url("${heroMedia.replace(/"/g, '%22')}")` } : undefined;
 
   return <main className="app-shell">
     <Topbar />
@@ -88,26 +158,55 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
       {loading ? <div className={styles.state}><strong>Cargando ficha municipal…</strong></div> : null}
       {!loading && error ? <div className={styles.state}><strong>No se ha podido cargar este ayuntamiento.</strong><p>La ficha no existe o el directorio no está disponible.</p><Link href="/ayuntamientos">Volver al directorio</Link></div> : null}
       {item ? <>
-        <section className={`${styles.hero} ${styles.detailHero}`}>
+        <section className={`${styles.hero} ${styles.detailHero} ${heroMedia ? styles.detailHeroWithMedia : ''}`} style={heroStyle}>
           <div>
             <span className="eyebrow">MUNICIPIO · SIERRA MÁGINA</span>
             <h1>{item.name}</h1>
             <p>{profile?.summary || `Información institucional y contenido local verificado de ${item.name}. Código INE ${item.ine_code} · ${item.province_name}.`}</p>
             <div className={styles.heroFacts}>
               <span>{item.places.length} {item.places.length === 1 ? 'localidad' : 'localidades'}</span>
+              <span>{discoveries.length} lugares para descubrir</span>
               <span>{item.content_counts?.mill ?? 0} cooperativas / almazaras</span>
               <span>{item.content_counts?.directory ?? 0} servicios</span>
             </div>
           </div>
           <div className={styles.actions}>
+            {item.tourism_url ? <a href={item.tourism_url} target="_blank" rel="noreferrer">Turismo oficial ↗</a> : null}
             <a href={item.official_website} target="_blank" rel="noreferrer">Web oficial ↗</a>
             {item.electronic_office_url ? <a href={item.electronic_office_url} target="_blank" rel="noreferrer">Sede electrónica ↗</a> : null}
           </div>
         </section>
 
         <nav className={styles.quickNav} aria-label="Secciones de la ficha municipal">
-          <a href="#municipio">Municipio</a><a href="#ayuntamiento">Ayuntamiento</a><a href="#economia-local">Economía local</a><a href="#actualidad">Actualidad</a>
+          <a href="#imprescindibles">Imprescindibles</a><a href="#municipio">Municipio</a><a href="#descubrir">Qué descubrir</a><a href="#ayuntamiento">Ayuntamiento</a><a href="#economia-local">Economía local</a><a href="#actualidad">Actualidad</a>
         </nav>
+
+        {essentialDiscoveries.length ? <section className={styles.essentialsSection} id="imprescindibles" aria-labelledby="essentials-title">
+          <div className={styles.essentialsIntro}>
+            <span className={styles.sectionKicker}>PRIMERA MIRADA</span>
+            <h2 id="essentials-title">Lo imprescindible de {item.name}</h2>
+            <p>Una selección automática de contenido ya publicado: respeta los destacados editoriales y, después, busca variedad entre patrimonio, naturaleza y turismo.</p>
+            <div className={styles.discoveryOverview} aria-label="Resumen de descubrimientos publicados">
+              <a href="#descubrir" onClick={() => setDiscoveryFilter('heritage')}><strong>{discoveryCounts.heritage}</strong><span>Patrimonio</span></a>
+              <a href="#descubrir" onClick={() => setDiscoveryFilter('nature')}><strong>{discoveryCounts.nature}</strong><span>Naturaleza</span></a>
+              <a href="#descubrir" onClick={() => setDiscoveryFilter('tourism')}><strong>{discoveryCounts.tourism}</strong><span>Turismo</span></a>
+            </div>
+          </div>
+          <div className={styles.essentialsGrid}>
+            {essentialDiscoveries.map((entry, index) => {
+              const role = discoveryRole(entry);
+              return <a key={entry.id} className={styles.essentialCard} href="#descubrir" onClick={() => setDiscoveryFilter(role ?? 'all')}>
+                {entry.media_url ? <div className={styles.essentialMedia} style={{ backgroundImage: `url("${entry.media_url.replace(/"/g, '%22')}")` }} aria-hidden="true" /> : <div className={styles.essentialFallback} aria-hidden="true">{String(index + 1).padStart(2, '0')}</div>}
+                <div className={styles.essentialBody}>
+                  <span>{discoveryRoleLabel(role)}</span>
+                  <h3>{entry.title}</h3>
+                  {entry.summary ? <p>{entry.summary}</p> : null}
+                  <strong>Ver en el catálogo ↓</strong>
+                </div>
+              </a>;
+            })}
+          </div>
+        </section> : null}
 
         <section className="section" id="municipio">
           <div className={styles.heading}><div><h2>Descubre el municipio</h2><p>La ficha territorial crece con el contenido publicado desde Mágina Olivo.</p></div><Link href="/explorar">Explorar Mágina →</Link></div>
@@ -121,6 +220,27 @@ export function MunicipalityDetailClient({ slug }: { slug: string }) {
               <div className={styles.placeList}>{item.places.map((place) => <span key={place.id}>{place.name}</span>)}</div>
             </article>
           </div>
+        </section>
+
+        <section className="section" id="descubrir">
+          <div className={styles.heading}><div><h2>Patrimonio, naturaleza y lugares para descubrir</h2><p>Recursos publicados, vinculados explícitamente al municipio y acompañados de su procedencia cuando existe.</p></div>{item.tourism_url ? <a href={item.tourism_url} target="_blank" rel="noreferrer">Turismo oficial ↗</a> : null}</div>
+          {discoveries.length ? <>
+            <div className={styles.discoveryToolbar} aria-label="Filtrar lugares para descubrir">
+              {DISCOVERY_FILTERS.map((filter) => <button
+                key={filter.value}
+                type="button"
+                className={discoveryFilter === filter.value ? styles.discoveryFilterActive : styles.discoveryFilter}
+                aria-pressed={discoveryFilter === filter.value}
+                onClick={() => setDiscoveryFilter(filter.value)}
+              >
+                <span>{filter.label}</span><strong>{discoveryCounts[filter.value]}</strong>
+              </button>)}
+            </div>
+            <div className={styles.discoverySummary} aria-live="polite">
+              Mostrando <strong>{filteredDiscoveries.length}</strong> de <strong>{discoveries.length}</strong> lugares verificados para descubrir en {item.name}.
+            </div>
+            {filteredDiscoveries.length ? <div className={styles.contentGrid}>{filteredDiscoveries.map((entry) => <ContentCard key={entry.id} entry={entry} />)}</div> : <div className={styles.emptySection}><strong>Sin recursos en esta categoría</strong><p>No hay lugares publicados como {discoveryFilter === 'heritage' ? 'patrimonio' : discoveryFilter === 'nature' ? 'naturaleza' : 'turismo'} para {item.name}. Puedes volver a “Todo” para ver el catálogo completo.</p></div>}
+          </> : <div className={styles.emptySection}><strong>Catálogo turístico preparado</strong><p>Aún no hay patrimonio, naturaleza o recursos turísticos publicados para {item.name}. No se generan lugares ficticios: aparecerán aquí cuando se clasifiquen explícitamente desde Administración.</p></div>}
         </section>
 
         <section className="section" id="ayuntamiento">

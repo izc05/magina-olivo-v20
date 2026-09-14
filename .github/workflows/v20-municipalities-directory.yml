@@ -11,6 +11,12 @@ on:
       - 'apps/web/src/app/explorar/explore-public-client.tsx'
       - 'apps/web/src/lib/public-territory-source.ts'
       - 'scripts/check-municipalities-directory.mjs'
+      - 'scripts/check-municipality-discovery-experience.mjs'
+      - 'scripts/check-municipality-public-landing.mjs'
+      - 'scripts/check-municipality-explore-directory.mjs'
+      - 'scripts/check-municipality-admin-control-center.mjs'
+      - 'scripts/check-municipality-editorial-control.mjs'
+      - 'scripts/check-municipality-content-editor.mjs'
       - '.github/workflows/v20-municipalities-directory.yml'
   workflow_dispatch:
 
@@ -29,6 +35,18 @@ jobs:
       - run: corepack enable
       - name: Directory contract
         run: node scripts/check-municipalities-directory.mjs
+      - name: Public discovery experience contract
+        run: node scripts/check-municipality-discovery-experience.mjs
+      - name: Public municipality landing contract
+        run: node scripts/check-municipality-public-landing.mjs
+      - name: Municipality explore directory contract
+        run: node scripts/check-municipality-explore-directory.mjs
+      - name: Municipality Admin control center contract
+        run: node scripts/check-municipality-admin-control-center.mjs
+      - name: Municipality editorial control contract
+        run: node scripts/check-municipality-editorial-control.mjs
+      - name: Municipality content editor contract
+        run: node scripts/check-municipality-content-editor.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck

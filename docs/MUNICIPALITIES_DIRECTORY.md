@@ -85,6 +85,7 @@ Los estados vacíos son explícitos. Si no existe contenido publicado para una s
 ## Administración
 
 - `/admin/ayuntamientos` — editor dedicado de información institucional.
+- `/admin/ayuntamientos/cobertura` — panel de control de completitud operativa por municipio.
 - `/admin/ayuntamientos/actualidad` — vinculación explícita de noticias y eventos con uno de los 16 municipios canónicos, o vuelta a `Ámbito general`.
 - `/admin/territorio` — fuente editorial para fichas de pueblo, cooperativas/almazaras y empresas/servicios.
 - `GET /api/v1/admin/territory/catalog` — incluye el bloque `directory` de cada municipio.
@@ -92,11 +93,30 @@ Los estados vacíos son explícitos. Si no existe contenido publicado para una s
 
 El endpoint institucional valida URLs HTTPS, email y fecha ISO. Cada cambio genera el evento de auditoría `territory.municipality_directory_changed` con estado anterior y posterior.
 
-El editor institucional no permite modificar desde esta superficie el INE, AEMET, geometría, centro GIS ni la relación municipio/localidad.
+El editor institucional no permite modificar desde esta superficie el INE, AEMET, geometría, centro GIS ni la relación municipio/localidad. Además acepta enlaces con hash (`/admin/ayuntamientos#slug`) para abrir directamente el municipio solicitado desde el panel de cobertura.
 
 El editor de actualidad reutiliza el API CMS existente. Conserva el `content_json` de cada noticia/evento y únicamente añade o elimina `municipality_id`, `municipality_name` y `municipality_slug`. De esta forma una noticia/evento puede ser de ámbito general o aparecer en exactamente el municipio seleccionado sin duplicar la entrada.
 
 Para que una entrada editorial aparezca en un hub municipal debe conservar el `municipality_id` canónico. Para noticias y eventos este vínculo debe ser explícito; la API no intenta adivinarlo.
+
+## Panel de cobertura municipal
+
+`/admin/ayuntamientos/cobertura` no calcula una nota subjetiva. Presenta diez señales binarias y auditables por municipio:
+
+1. ficha institucional visible públicamente;
+2. web oficial;
+3. teléfono;
+4. email;
+5. dirección;
+6. al menos un enlace entre sede electrónica, transparencia o turismo;
+7. al menos una localidad pública;
+8. perfil editorial publicado (`place`);
+9. economía local publicada (`mill` o `directory`);
+10. actualidad local publicada (`news` o `event`).
+
+El contenido CMS solo suma a cobertura cuando está `published`, dentro de su ventana `starts_at` / `ends_at` y enlazado por `municipality_id`. El panel ofrece búsqueda por municipio/INE, filtro `Solo con huecos`, resumen global y acceso directo a la ficha institucional, CMS y ficha pública.
+
+El objetivo del panel es responder de forma operativa a preguntas como: qué ayuntamientos tienen datos de contacto incompletos, qué municipios aún no tienen turismo institucional, dónde falta contenido económico o qué municipios no tienen todavía noticias/eventos locales publicados.
 
 ## Verificación y mantenimiento
 
@@ -128,6 +148,11 @@ El contenido editorial sigue el flujo normal de `cms_entries` y solo entra en el
 - secciones principales de la experiencia municipal;
 - acceso al editor de actualidad municipal;
 - persistencia de `municipality_id`, `municipality_name` y `municipality_slug`;
-- soporte para devolver una noticia/evento a `Ámbito general`.
+- soporte para devolver una noticia/evento a `Ámbito general`;
+- acceso al panel de cobertura;
+- presencia de las diez señales de cobertura;
+- exclusión de borradores/caducados/programados de los conteos editoriales;
+- filtro para mostrar únicamente municipios con huecos;
+- navegación directa desde cobertura a la ficha institucional mediante slug.
 
 La validación específica se ejecuta además desde el workflow `V20 municipalities directory`.
