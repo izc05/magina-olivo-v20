@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { loadPublicRoutes, type PublicRouteSummary } from '../../lib/public-routes-source';
+import { RoutesOverviewMap } from './routes-overview-map';
 import styles from './routes-public.module.css';
 
 function km(value: number | null) {
@@ -56,14 +57,17 @@ export function RoutesPublicClient() {
     {!loading && error ? <section className={styles.state}><h2>Rutas no disponibles</h2><p>No mostramos rutas de sustitución inventadas. Vuelve a intentarlo más tarde.</p></section> : null}
     {!loading && !error && visible.length === 0 ? <section className={styles.state}><h2>No hay rutas publicadas</h2><p>Cuando una ruta termine su validación aparecerá aquí.</p></section> : null}
 
-    {!loading && !error && visible.length > 0 ? <section className={styles.grid}>{visible.map((route) => <Link className={styles.card} href={`/rutas/detalle?slug=${encodeURIComponent(route.slug)}`} key={route.id}>
-      <div className={styles.image}>{route.hero_url ? <img src={route.hero_url} alt="" /> : <span>Track validado</span>}</div>
-      <div className={styles.cardBody}>
-        <div className={styles.meta}><span>{route.place_name ?? route.municipality_name ?? 'Sierra Mágina'}</span><span>{route.route_type}</span></div>
-        <h2>{route.name}</h2>
-        <p>{route.short_description ?? 'Ruta territorial verificada por Mágina Olivo.'}</p>
-        <div className={styles.stats}><span><strong>{km(route.distance_m)}</strong>distancia</span><span><strong>{duration(route.duration_minutes)}</strong>duración</span><span><strong>{route.elevation_gain_m ?? '—'} m</strong>desnivel +</span><span><strong>{route.difficulty ? difficultyLabel[route.difficulty] : '—'}</strong>dificultad</span></div>
-      </div>
-    </Link>)}</section> : null}
+    {!loading && !error && visible.length > 0 ? <>
+      <RoutesOverviewMap routes={visible} />
+      <section className={styles.grid}>{visible.map((route) => <Link className={styles.card} href={`/rutas/detalle?slug=${encodeURIComponent(route.slug)}`} key={route.id}>
+        <div className={styles.image}>{route.hero_url ? <img src={route.hero_url} alt="" /> : <span>Track validado</span>}</div>
+        <div className={styles.cardBody}>
+          <div className={styles.meta}><span>{route.place_name ?? route.municipality_name ?? 'Sierra Mágina'}</span><span>{route.route_type}</span></div>
+          <h2>{route.name}</h2>
+          <p>{route.short_description ?? 'Ruta territorial verificada por Mágina Olivo.'}</p>
+          <div className={styles.stats}><span><strong>{km(route.distance_m)}</strong>distancia</span><span><strong>{duration(route.duration_minutes)}</strong>duración</span><span><strong>{route.elevation_gain_m ?? '—'} m</strong>desnivel +</span><span><strong>{route.difficulty ? difficultyLabel[route.difficulty] : '—'}</strong>dificultad</span></div>
+        </div>
+      </Link>)}</section>
+    </> : null}
   </main>;
 }
