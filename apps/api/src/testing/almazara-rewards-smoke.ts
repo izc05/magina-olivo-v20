@@ -124,7 +124,7 @@ try {
   const token = String(reserved.token);
   assert.match(token, /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{16}$/i);
   assert.equal(token.length, 53);
-  assert.equal(String(reserved.qrPayload), `magina-olivo://reward/${token}`);
+  assert.equal(String(reserved.qrPayload), token, 'QR payload must be the signed single-use token');
 
   const credentialRow = await sql<{
     redemption_code: string;
