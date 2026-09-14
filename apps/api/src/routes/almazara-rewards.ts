@@ -74,11 +74,7 @@ async function lockWallet(database: DatabaseClient, userId: string) {
 function redemptionPayload(code: string) {
   const signed = createRewardQrToken(code);
   if (!signed) return null;
-  return {
-    token: signed.token,
-    hash: signed.hash,
-    qrPayload: signed.token,
-  };
+  return { token: signed.token, hash: signed.hash, qrPayload: signed.token };
 }
 
 function rewardErrorStatus(message: string) {
@@ -564,9 +560,8 @@ export function registerAlmazaraRewardRoutes(app: FastifyInstance, db: DatabaseC
         `.execute(trx);
         if (current.stock_total !== value.stockTotal) {
           await sql`
-            INSERT INTO mill_reward_stock_audit (
-              product_id, actor_user_id, event_type, metadata
-            ) VALUES (
+            INSERT INTO mill_reward_stock_audit (product_id, actor_user_id, event_type, metadata)
+            VALUES (
               ${current.id}::uuid, ${userId}::uuid, 'manual_adjustment',
               ${JSON.stringify({ previousStockTotal: current.stock_total, nextStockTotal: value.stockTotal })}::jsonb
             )
@@ -589,7 +584,7 @@ export function registerAlmazaraRewardRoutes(app: FastifyInstance, db: DatabaseC
     if (!rewardQrConfigured()) return reply.code(503).send({ error: 'reward_qr_not_configured' });
     const params = z.object({
       id: z.string().uuid(),
-      token: z.string().trim().min(53).max(80),
+      token: z.string().trim().length(53),
     }).safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_redemption_token' });
     const verified = verifyRewardQrToken(params.data.token);
@@ -635,7 +630,7 @@ export function registerAlmazaraRewardRoutes(app: FastifyInstance, db: DatabaseC
               '{"reason":"expired_at_scan"}'::jsonb
             )
           `.execute(trx);
-          throw new Error('redemption_expired');
+          return { expired: true as const, id: row.id, productTitle: row.title };
         }
 
         await sql`
@@ -659,8 +654,9 @@ export function registerAlmazaraRewardRoutes(app: FastifyInstance, db: DatabaseC
             ${row.product_id}::uuid, ${row.id}::uuid, ${userId}::uuid, 'redeemed', -1, 1
           )
         `.execute(trx);
-        return { id: row.id, productTitle: row.title };
+        return { expired: false as const, id: row.id, productTitle: row.title };
       });
+      if (result.expired) return reply.code(409).send({ error: 'redemption_expired' });
       return { redemption: { id: result.id, productTitle: result.productTitle, status: 'redeemed' } };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'redemption_failed';
