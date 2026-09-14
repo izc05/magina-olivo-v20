@@ -20,10 +20,11 @@
     "check:migrations": "node scripts/check-migrations.mjs",
     "check:containers": "node scripts/check-container-pins.mjs",
     "check:admin-unified": "node scripts/check-admin-unified-control-center.mjs",
+    "check:routes-catalog": "node scripts/check-route-catalog.mjs",
     "check:community": "node scripts/check-community.mjs",
     "audit:ci": "node scripts/audit-ci.mjs",
-    "check": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm check:admin-unified && pnpm check:community && pnpm typecheck && pnpm build",
-    "check:fast": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm check:admin-unified && pnpm check:community && pnpm typecheck",
+    "check": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm check:admin-unified && pnpm check:routes-catalog && pnpm check:community && pnpm typecheck && pnpm build",
+    "check:fast": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm check:admin-unified && pnpm check:routes-catalog && pnpm check:community && pnpm typecheck",
     "e2e:beta": "playwright test"
   },
   "devDependencies": {
