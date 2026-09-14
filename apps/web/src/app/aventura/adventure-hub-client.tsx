@@ -106,7 +106,7 @@ export function AdventureHubClient() {
     return [...categories.entries()].map(([category, stats]) => ({ category, ...stats }));
   }, [profile]);
 
-  return <main className={styles.shell}>
+  return <div className={styles.shell}>
     <section className={styles.hero}>
       <div>
         <span className={styles.eyebrow}>MÁGINA OLIVO · EXPLORACIÓN</span>
@@ -197,5 +197,5 @@ export function AdventureHubClient() {
     </section>
 
     {notice ? <p className={styles.notice}>{notice}</p> : null}
-  </main>;
+  </div>;
 }
