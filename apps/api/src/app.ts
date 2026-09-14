@@ -13,6 +13,7 @@ import { registerAdminTerritoryRoutes } from './routes/admin-territory.js';
 import { registerAdminBusinessDirectoryRoutes } from './routes/admin-business-directory.js';
 import { registerAdminBusinessCategoryRoutes } from './routes/admin-business-categories.js';
 import { registerAdminBusinessRevenueRoutes } from './routes/admin-business-revenue.js';
+import { registerAdminAlmazaraRewardRoutes } from './routes/admin-almazara-rewards.js';
 import { registerAdminSourceRoutes } from './routes/admin-sources.js';
 import { registerAdminSourceOperationRoutes } from './routes/admin-source-operations.js';
 import { registerAdminAnalyticsRoutes } from './routes/admin-analytics.js';
@@ -203,6 +204,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminBusinessDirectoryRoutes(app, db);
   registerAdminBusinessCategoryRoutes(app, db);
   registerAdminBusinessRevenueRoutes(app, db);
+  registerAdminAlmazaraRewardRoutes(app, db);
   registerAdminSourceRoutes(app, db);
   registerAdminSourceOperationRoutes(app, db, weatherProvider, radarQueue, notificationQueue);
   registerAdminAnalyticsRoutes(app, db);
