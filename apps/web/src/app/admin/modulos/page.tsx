@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-type ModuleStatus = 'available' | 'integration';
+type ModuleStatus = 'available' | 'implemented';
 
 type AdminModule = {
   id: string;
@@ -17,6 +17,8 @@ type AdminModule = {
   description: string;
   status: ModuleStatus;
   href?: string;
+  sourceBranch?: string;
+  targetHref?: string;
   area: 'Plataforma' | 'Territorio' | 'Negocio' | 'Experiencia';
 };
 
@@ -34,20 +36,21 @@ const modules: AdminModule[] = [
   { id: 'media', title: 'Multimedia', description: 'Biblioteca corporativa de imágenes y recursos.', status: 'available', href: '/admin/media', area: 'Plataforma' },
   { id: 'web', title: 'Web / CMS', description: 'Contenido editorial y configuración pública de la web.', status: 'available', href: '/admin/web', area: 'Plataforma' },
   { id: 'municipalities', title: 'Ayuntamientos', description: 'Ficha, contenido, portada, patrimonio, actualidad, cobertura y vista pública por municipio.', status: 'available', href: '/admin/ayuntamientos', area: 'Territorio' },
-  { id: 'businesses', title: 'Empresas', description: 'Directorio, rendimiento, reclamaciones, ofertas, leads y gobierno comercial. Rama funcional pendiente de absorción.', status: 'integration', area: 'Negocio' },
-  { id: 'experiences', title: 'Experiencias y reservas', description: 'Sesiones, aforo, solicitudes y reservas empresariales. Pendiente de absorción desde su rama funcional.', status: 'integration', area: 'Experiencia' },
-  { id: 'magina-pass', title: 'Mágina Pass', description: 'Programas, negocios participantes, QR, puntos y recompensas. Pendiente de absorción.', status: 'integration', area: 'Experiencia' },
-  { id: 'routes', title: 'Rutas', description: 'Gestión editorial/técnica de rutas y catálogo senderista. Pendiente de absorción desde Rutas V20.', status: 'integration', area: 'Territorio' },
-  { id: 'route-community', title: 'Comunidad de rutas', description: 'Moderación de reseñas, fotos, condiciones y denuncias.', status: 'integration', area: 'Experiencia' },
-  { id: 'route-sponsorships', title: 'Patrocinios de rutas', description: 'Campañas, posiciones patrocinadas y rendimiento sin alterar información técnica.', status: 'integration', area: 'Negocio' },
-  { id: 'adventure', title: 'Mágina Aventura', description: 'Progreso, retos, colecciones y misiones del modo aventura. Se incorporará cuando cierre su contrato Admin.', status: 'integration', area: 'Experiencia' },
+  { id: 'businesses', title: 'Empresas', description: 'Directorio, rendimiento, reclamaciones, ofertas, leads y gobierno comercial.', status: 'implemented', sourceBranch: 'feat/v20-business-directory', targetHref: '/admin/empresas', area: 'Negocio' },
+  { id: 'experiences', title: 'Experiencias y reservas', description: 'Sesiones, aforo, solicitudes y reservas empresariales.', status: 'implemented', sourceBranch: 'feat/v20-business-experiences', targetHref: '/admin/empresas/experiencias', area: 'Experiencia' },
+  { id: 'magina-pass', title: 'Mágina Pass', description: 'Programas, negocios participantes, QR, puntos y recompensas.', status: 'implemented', sourceBranch: 'feat/v20-business-magina-pass', targetHref: '/admin/empresas/magina-pass', area: 'Experiencia' },
+  { id: 'routes', title: 'Rutas', description: 'Gestión editorial y técnica de rutas y catálogo senderista.', status: 'implemented', sourceBranch: 'feat/v20-routes-explore', targetHref: '/admin/rutas', area: 'Territorio' },
+  { id: 'route-community', title: 'Comunidad de rutas', description: 'Moderación de reseñas, fotos, condiciones y denuncias.', status: 'implemented', sourceBranch: 'feat/v20-routes-explore', targetHref: '/admin/rutas/comunidad', area: 'Experiencia' },
+  { id: 'route-sponsorships', title: 'Patrocinios de rutas', description: 'Campañas, posiciones patrocinadas y rendimiento sin alterar información técnica.', status: 'implemented', sourceBranch: 'feat/v20-routes-explore', targetHref: '/admin/rutas/patrocinios', area: 'Negocio' },
+  { id: 'adventure', title: 'Mágina Aventura', description: 'Progreso, retos, colecciones y misiones del modo aventura.', status: 'implemented', sourceBranch: 'feat/v20-routes-adventure', targetHref: '/admin/rutas/aventuras', area: 'Experiencia' },
 ];
 
 const areas: AdminModule['area'][] = ['Plataforma', 'Territorio', 'Negocio', 'Experiencia'];
 
 export default function AdminModulesPage() {
   const available = modules.filter((module) => module.status === 'available').length;
-  const integration = modules.length - available;
+  const implemented = modules.filter((module) => module.status === 'implemented').length;
+  const covered = available + implemented;
 
   return (
     <main className="admin-modules-shell">
@@ -55,20 +58,21 @@ export default function AdminModulesPage() {
         <div>
           <span className="admin-eyebrow">Mágina Olivo V20 · Gobierno Admin</span>
           <h1>Centro unificado de módulos</h1>
-          <p>Una sola vista para saber qué puede administrarse hoy y qué módulos siguen todavía en ramas funcionales antes de su absorción.</p>
+          <p>Los {modules.length} módulos registrados ya tienen superficie administrativa: {available} están absorbidos y disponibles en esta rama y {implemented} ya están implementados en sus ramas funcionales, pendientes únicamente de integración.</p>
         </div>
         <Link className="admin-modules-back" href="/admin">Volver al centro de control</Link>
       </header>
 
-      <section className="admin-modules-summary" aria-label="Resumen de integración">
+      <section className="admin-modules-summary" aria-label="Resumen de cobertura e integración">
         <article><strong>{modules.length}</strong><span>Módulos registrados</span></article>
-        <article><strong>{available}</strong><span>Disponibles en esta rama</span></article>
-        <article><strong>{integration}</strong><span>En integración</span></article>
+        <article><strong>{covered}/{modules.length}</strong><span>Con superficie Admin</span></article>
+        <article><strong>{available}</strong><span>Disponibles aquí</span></article>
+        <article><strong>{implemented}</strong><span>Implementados en ramas</span></article>
       </section>
 
       <div className="admin-modules-rule">
         <strong>Regla de integración</strong>
-        <p>Un módulo nuevo no se considera cerrado para V20 hasta que declare su superficie administrativa y aparezca en este directorio. Los módulos no absorbidos no generan enlaces rotos.</p>
+        <p>Un módulo nuevo no se considera cerrado para V20 hasta que declare su superficie administrativa y aparezca en este directorio. Que esté implementado en otra rama demuestra cobertura, pero no habilita su enlace aquí hasta que su código real sea absorbido.</p>
       </div>
 
       {areas.map((area) => (
@@ -84,10 +88,16 @@ export default function AdminModulesPage() {
                   <div className="admin-module-card-heading">
                     <h3>{module.title}</h3>
                     <span className={`admin-module-status ${module.status}`}>
-                      {module.status === 'available' ? 'Disponible' : 'En integración'}
+                      {module.status === 'available' ? 'Disponible aquí' : 'Implementado en rama'}
                     </span>
                   </div>
                   <p>{module.description}</p>
+                  {module.status === 'implemented' ? (
+                    <div className="admin-module-meta" aria-label={`Origen de ${module.title}`}>
+                      <span>Rama <code>{module.sourceBranch}</code></span>
+                      <span>Ruta prevista <code>{module.targetHref}</code></span>
+                    </div>
+                  ) : null}
                   <small>{module.status === 'available' ? 'Abrir módulo →' : 'Sin enlace hasta su absorción'}</small>
                 </>
               );
