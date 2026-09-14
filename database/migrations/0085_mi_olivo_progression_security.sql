@@ -64,8 +64,8 @@ CREATE TABLE mi_olivo_user_achievements (
 CREATE INDEX mi_olivo_user_achievements_date_idx
   ON mi_olivo_user_achievements(user_id, unlocked_at DESC);
 
--- New QR reservations use a high-entropy opaque token. Only the SHA-256 hash
--- is persisted, so a database read cannot be turned directly into a valid QR.
+-- New QR reservations may use a high-entropy opaque token. Only its digest is
+-- persisted so the raw token never needs to be stored in the database.
 ALTER TABLE mill_reward_redemptions
   ADD COLUMN qr_token_hash TEXT,
   ADD COLUMN product_title_snapshot TEXT,
@@ -93,8 +93,88 @@ CREATE INDEX mill_reward_stock_audit_redemption_idx
   ON mill_reward_stock_audit(redemption_id, created_at DESC)
   WHERE redemption_id IS NOT NULL;
 
+-- Defense in depth for olive spending. The API performs a friendly balance
+-- check, but this trigger is authoritative and serializes concurrent spends
+-- even when they target different reward products.
+CREATE OR REPLACE FUNCTION guard_mi_olivo_reward_spend()
+RETURNS trigger AS $$
+DECLARE
+  current_balance INTEGER;
+BEGIN
+  IF NEW.event_type = 'reward_redemption' AND NEW.points < 0 THEN
+    INSERT INTO mi_olivo_wallet_guards (user_id)
+    VALUES (NEW.user_id)
+    ON CONFLICT (user_id) DO NOTHING;
+
+    PERFORM 1
+    FROM mi_olivo_wallet_guards
+    WHERE user_id = NEW.user_id
+    FOR UPDATE;
+
+    SELECT COALESCE(SUM(points), 0)::int
+      INTO current_balance
+    FROM mi_olivo_ledger
+    WHERE user_id = NEW.user_id;
+
+    IF current_balance + NEW.points < 0 THEN
+      RAISE EXCEPTION 'insufficient_olives';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER mi_olivo_reward_spend_guard_trigger
+BEFORE INSERT ON mi_olivo_ledger
+FOR EACH ROW EXECUTE FUNCTION guard_mi_olivo_reward_spend();
+
+-- Batch expiry is callable from API/worker/admin surfaces. It locks rows with
+-- SKIP LOCKED so multiple workers can safely run it. The refund trigger from
+-- 0084 returns the olives; this function releases physical stock atomically.
+CREATE OR REPLACE FUNCTION expire_stale_mill_reward_reservations(p_limit INTEGER DEFAULT 500)
+RETURNS INTEGER AS $$
+DECLARE
+  item RECORD;
+  expired_count INTEGER := 0;
+  safe_limit INTEGER := GREATEST(1, LEAST(COALESCE(p_limit, 500), 5000));
+BEGIN
+  FOR item IN
+    SELECT r.id, r.product_id
+    FROM mill_reward_redemptions r
+    WHERE r.status = 'reserved' AND r.expires_at < now()
+    ORDER BY r.expires_at ASC
+    LIMIT safe_limit
+    FOR UPDATE OF r SKIP LOCKED
+  LOOP
+    UPDATE mill_reward_redemptions
+      SET status = 'expired', updated_at = now()
+      WHERE id = item.id AND status = 'reserved';
+
+    IF FOUND THEN
+      UPDATE mill_reward_products
+        SET stock_reserved = GREATEST(0, stock_reserved - 1), updated_at = now()
+        WHERE id = item.product_id;
+
+      INSERT INTO mill_reward_redemption_audit (redemption_id, actor_user_id, event_type, metadata)
+        VALUES (item.id, NULL, 'expired', '{"source":"expiry_sweep"}'::jsonb);
+
+      INSERT INTO mill_reward_stock_audit (
+        product_id, redemption_id, actor_user_id, event_type, delta_reserved, metadata
+      ) VALUES (
+        item.product_id, item.id, NULL, 'released', -1, '{"reason":"expired"}'::jsonb
+      );
+
+      expired_count := expired_count + 1;
+    END IF;
+  END LOOP;
+
+  RETURN expired_count;
+END;
+$$ LANGUAGE plpgsql;
+
 COMMENT ON TABLE mi_olivo_levels IS 'Mi Olivo thresholds. Level depends on lifetime positive XP, never spendable balance.';
 COMMENT ON TABLE mi_olivo_wallet_guards IS 'Per-user transaction mutex for all olive-spending operations.';
-COMMENT ON COLUMN mill_reward_redemptions.qr_token_hash IS 'SHA-256 hex hash of the opaque QR bearer token; raw token is never stored.';
+COMMENT ON COLUMN mill_reward_redemptions.qr_token_hash IS 'Optional SHA-256 hex hash of the opaque QR bearer token; raw token is never stored.';
+COMMENT ON FUNCTION expire_stale_mill_reward_reservations(INTEGER) IS 'Atomically expires stale reward reservations, refunds olives through the 0084 trigger and releases physical stock.';
 
 COMMIT;
