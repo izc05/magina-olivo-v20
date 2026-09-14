@@ -13,10 +13,10 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
   const [state, setState] = useState<GateState>('checking');
   const validatingRef = useRef(false);
 
-  const validate = useCallback(async () => {
+  const validate = useCallback(async (showChecking = true) => {
     if (validatingRef.current) return;
     validatingRef.current = true;
-    setState('checking');
+    if (showChecking) setState('checking');
     try {
       await adminApi.session();
       setState('authorized');
@@ -38,7 +38,7 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
-      void validate();
+      void validate(true);
       return;
     }
     setState('checking');
@@ -47,9 +47,9 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
   useEffect(() => {
     if (auth.status !== 'authenticated') return;
 
-    const revalidateOnFocus = () => void validate();
+    const revalidateOnFocus = () => void validate(false);
     const revalidateOnVisibility = () => {
-      if (document.visibilityState === 'visible') void validate();
+      if (document.visibilityState === 'visible') void validate(false);
     };
 
     window.addEventListener('focus', revalidateOnFocus);
@@ -115,7 +115,7 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
           <span className="admin-eyebrow">Administración</span>
           <h1>No se ha podido validar el acceso</h1>
           <p>La sesión no se da por autorizada mientras el servidor no confirme los permisos.</p>
-          <button className="admin-button secondary" onClick={() => void validate()}>Reintentar</button>
+          <button className="admin-button secondary" onClick={() => void validate(true)}>Reintentar</button>
         </div>
       </main>
     );

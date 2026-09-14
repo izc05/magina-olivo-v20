@@ -117,6 +117,7 @@
     "description": "Sesiones, aforo, solicitudes y reservas empresariales.",
     "status": "implemented",
     "sourceBranch": "feat/v20-business-experiences",
+    "sourcePr": 84,
     "targetHref": "/admin/empresas/experiencias",
     "area": "Experiencia"
   },
@@ -126,6 +127,7 @@
     "description": "Programas, negocios participantes, QR, puntos y recompensas.",
     "status": "implemented",
     "sourceBranch": "feat/v20-business-magina-pass",
+    "sourcePr": 82,
     "targetHref": "/admin/empresas/magina-pass",
     "area": "Experiencia"
   },
@@ -135,6 +137,7 @@
     "description": "Gestión editorial y técnica de rutas y catálogo senderista.",
     "status": "implemented",
     "sourceBranch": "feat/v20-routes-explore",
+    "sourcePr": 81,
     "targetHref": "/admin/rutas",
     "area": "Territorio"
   },
@@ -144,6 +147,7 @@
     "description": "Moderación de reseñas, fotos, condiciones y denuncias.",
     "status": "implemented",
     "sourceBranch": "feat/v20-routes-explore",
+    "sourcePr": 81,
     "targetHref": "/admin/rutas/comunidad",
     "area": "Experiencia"
   },
@@ -153,6 +157,7 @@
     "description": "Campañas, posiciones patrocinadas y rendimiento sin alterar información técnica.",
     "status": "implemented",
     "sourceBranch": "feat/v20-routes-explore",
+    "sourcePr": 81,
     "targetHref": "/admin/rutas/patrocinios",
     "area": "Negocio"
   },
@@ -162,6 +167,7 @@
     "description": "Progreso, retos, colecciones y misiones del modo aventura.",
     "status": "implemented",
     "sourceBranch": "feat/v20-routes-adventure",
+    "sourcePr": 87,
     "targetHref": "/admin/rutas/aventuras",
     "area": "Experiencia"
   }

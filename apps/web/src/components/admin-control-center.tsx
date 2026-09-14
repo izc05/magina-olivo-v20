@@ -33,6 +33,20 @@ const contentLabels: Record<CmsEntryType, string> = {
 
 const statusLabels: Record<CmsEntryStatus, string> = { draft: 'Borrador', published: 'Publicado', archived: 'Archivado' };
 
+const publicSettingKeys = new Set([
+  'alerts.banner',
+  'home.hero',
+  'home.territory_banner',
+  'site.contact',
+  'site.identity',
+  'site.seo',
+  'site.social',
+]);
+
+function canPublishSetting(key: string) {
+  return publicSettingKeys.has(key.trim());
+}
+
 type ContentDraft = {
   id: string | null;
   type: CmsEntryType;
@@ -111,6 +125,7 @@ export function AdminControlCenter() {
   const [error, setError] = useState<string | null>(null);
 
   const role = session?.platform_access.role ?? null;
+  const settingCanBePublic = canPublishSetting(settingKey);
 
   const loadData = useCallback(async (adminSession: AdminSession) => {
     const [overviewPayload, contentPayload, usersPayload, settingsPayload] = await Promise.all([
@@ -226,6 +241,11 @@ export function AdminControlCenter() {
   }
 
   async function changePlatformRole(userId: string, nextRole: PlatformAdminRole) {
+    if (userId === session?.user.id) {
+      setMessage(null);
+      setError('Tu propio rol administrativo está protegido. Usa otra cuenta superadministradora para cambiarlo.');
+      return;
+    }
     await run(async () => {
       await adminApi.setPlatformAccess(userId, nextRole, 'active');
       await refresh();
@@ -233,6 +253,11 @@ export function AdminControlCenter() {
   }
 
   async function revokePlatformRole(user: AdminUser) {
+    if (user.id === session?.user.id) {
+      setMessage(null);
+      setError('No puedes revocar tu propio acceso administrativo desde esta sesión.');
+      return;
+    }
     const currentRole = user.platform_access?.role ?? 'support';
     await run(async () => {
       await adminApi.setPlatformAccess(user.id, currentRole, 'revoked');
@@ -241,6 +266,11 @@ export function AdminControlCenter() {
   }
 
   async function saveSetting() {
+    if (settingPublic && !canPublishSetting(settingKey)) {
+      setMessage(null);
+      setError('Esta clave es interna y no puede exponerse por la API pública.');
+      return;
+    }
     let parsedValue: unknown;
     try {
       parsedValue = JSON.parse(settingValue || '{}');
@@ -381,7 +411,7 @@ export function AdminControlCenter() {
             <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Usuario</th><th>Fincas/espacios</th><th>Último acceso</th><th>Estado</th><th>Plataforma</th><th>Acción</th></tr></thead><tbody>
               {filteredUsers.map((user) => <tr key={user.id}>
                 <td><strong>{user.display_name}</strong><small>{user.primary_email ?? 'Sin correo'}</small></td><td>{user.workspace_count}</td><td>{formatDate(user.last_login_at)}</td><td><span className={`admin-status ${user.status === 'active' ? 'published' : 'archived'}`}>{user.status === 'active' ? 'Activo' : 'Suspendido'}</span></td>
-                <td>{role === 'super_admin' ? <div className="admin-inline"><select value={user.platform_access?.role ?? 'support'} onChange={(e) => void changePlatformRole(user.id, e.target.value as PlatformAdminRole)}>{Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{user.platform_access?.status === 'active' ? <button className="admin-link danger-text" onClick={() => void revokePlatformRole(user)}>Revocar</button> : null}</div> : (user.platform_access?.status === 'active' ? roleLabels[user.platform_access.role] : '—')}</td>
+                <td>{role === 'super_admin' ? (user.id === session.user.id ? <div className="admin-inline"><strong>{roleLabels[role]}</strong><small>Tu cuenta · acceso protegido</small></div> : <div className="admin-inline"><select value={user.platform_access?.role ?? 'support'} onChange={(e) => void changePlatformRole(user.id, e.target.value as PlatformAdminRole)}>{Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{user.platform_access?.status === 'active' ? <button className="admin-link danger-text" onClick={() => void revokePlatformRole(user)}>Revocar</button> : null}</div>) : (user.platform_access?.status === 'active' ? roleLabels[user.platform_access.role] : '—')}</td>
                 <td>{canManageUsers(role) ? <button className="admin-link" disabled={busy || user.id === session.user.id} onClick={() => void changeUserStatus(user)}>{user.status === 'active' ? 'Suspender' : 'Reactivar'}</button> : 'Consulta'}</td>
               </tr>)}
             </tbody></table></div>
@@ -390,8 +420,8 @@ export function AdminControlCenter() {
 
         {tab === 'ajustes' ? (
           <div className="admin-grid-two">
-            <div className="admin-card"><div className="admin-card-title"><div><h3>Ajustes globales</h3><p>Variables editables de la web. Solo los marcados públicos salen por la API pública.</p></div></div><div className="admin-setting-list">{settings.map((setting) => <button key={setting.key} className="admin-setting-row" onClick={() => { setSettingKey(setting.key); setSettingDescription(setting.description ?? ''); setSettingValue(JSON.stringify(setting.value_json, null, 2)); setSettingPublic(setting.is_public); }}><span><strong>{setting.key}</strong><small>{setting.description ?? 'Sin descripción'}</small></span><span>{setting.is_public ? 'Público' : 'Privado'}</span></button>)}{!settings.length ? <p className="admin-muted">No hay ajustes definidos.</p> : null}</div></div>
-            <div className="admin-card admin-form-card"><div className="admin-card-title"><div><h3>Editar ajuste</h3><p>Ejemplos: home.hero, contact.phone, alerts.banner.</p></div></div><label>Clave<input disabled={!canEdit(role)} value={settingKey} onChange={(e) => setSettingKey(e.target.value.toLowerCase().replace(/\s+/g, '-'))} /></label><label>Descripción<input disabled={!canEdit(role)} value={settingDescription} onChange={(e) => setSettingDescription(e.target.value)} /></label><label>Valor JSON<textarea className="admin-code" disabled={!canEdit(role)} rows={10} value={settingValue} onChange={(e) => setSettingValue(e.target.value)} /></label><label className="admin-check"><input disabled={!canEdit(role)} type="checkbox" checked={settingPublic} onChange={(e) => setSettingPublic(e.target.checked)} /> Disponible para la web pública</label>{canEdit(role) ? <button className="admin-button" disabled={busy || !settingKey.trim()} onClick={() => void saveSetting()}>Guardar ajuste</button> : null}</div>
+            <div className="admin-card"><div className="admin-card-title"><div><h3>Ajustes globales</h3><p>Variables editables de la web. Solo las claves públicas reconocidas pueden salir por la API pública.</p></div></div><div className="admin-setting-list">{settings.map((setting) => <button key={setting.key} className="admin-setting-row" onClick={() => { setSettingKey(setting.key); setSettingDescription(setting.description ?? ''); setSettingValue(JSON.stringify(setting.value_json, null, 2)); setSettingPublic(setting.is_public && canPublishSetting(setting.key)); }}><span><strong>{setting.key}</strong><small>{setting.description ?? 'Sin descripción'}</small></span><span>{setting.is_public && canPublishSetting(setting.key) ? 'Público' : 'Privado'}</span></button>)}{!settings.length ? <p className="admin-muted">No hay ajustes definidos.</p> : null}</div></div>
+            <div className="admin-card admin-form-card"><div className="admin-card-title"><div><h3>Editar ajuste</h3><p>Ejemplos publicables: home.hero, site.contact, alerts.banner.</p></div></div><label>Clave<input disabled={!canEdit(role)} value={settingKey} onChange={(e) => { const nextKey = e.target.value.toLowerCase().replace(/\s+/g, '-'); setSettingKey(nextKey); if (!canPublishSetting(nextKey)) setSettingPublic(false); }} /></label><label>Descripción<input disabled={!canEdit(role)} value={settingDescription} onChange={(e) => setSettingDescription(e.target.value)} /></label><label>Valor JSON<textarea className="admin-code" disabled={!canEdit(role)} rows={10} value={settingValue} onChange={(e) => setSettingValue(e.target.value)} /></label><label className="admin-check"><input disabled={!canEdit(role) || !settingCanBePublic} type="checkbox" checked={settingPublic} onChange={(e) => setSettingPublic(e.target.checked)} /> Disponible para la web pública</label><small className="admin-muted">{settingCanBePublic ? 'Esta clave puede publicarse.' : 'Esta clave se mantiene privada por política de seguridad.'}</small>{canEdit(role) ? <button className="admin-button" disabled={busy || !settingKey.trim()} onClick={() => void saveSetting()}>Guardar ajuste</button> : null}</div>
           </div>
         ) : null}
 

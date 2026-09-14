@@ -18,6 +18,17 @@ const eventDateFieldsSchema = z.object({
   event_end: nullableDateTime,
 }).passthrough();
 
+const publicSiteSettingKeys = [
+  'alerts.banner',
+  'home.hero',
+  'home.territory_banner',
+  'site.contact',
+  'site.identity',
+  'site.seo',
+  'site.social',
+] as const;
+const publicSiteSettingKeySet = new Set<string>(publicSiteSettingKeys);
+
 type CmsDateValue = string | Date | null | undefined;
 
 const contentCreateSchema = z.object({
@@ -181,8 +192,8 @@ export function registerAdminRoutes(app: FastifyInstance, db: DatabaseClient | n
     if (!params.success) return reply.code(400).send({ error: 'invalid_user_id' });
     const input = parseBody(z.object({ role: platformRoleSchema, status: z.enum(['active', 'revoked']).default('active') }), request.body, reply);
     if (!input) return;
-    if (params.data.userId === auth.access.userId && input.status === 'revoked') {
-      return reply.code(409).send({ error: 'cannot_revoke_current_admin' });
+    if (params.data.userId === auth.access.userId && (input.status !== 'active' || input.role !== auth.access.role)) {
+      return reply.code(409).send({ error: 'cannot_change_current_admin_access' });
     }
     const target = await auth.database.selectFrom('users').select(['id']).where('id', '=', params.data.userId).executeTakeFirst();
     if (!target) return reply.code(404).send({ error: 'user_not_found' });
@@ -321,6 +332,9 @@ export function registerAdminRoutes(app: FastifyInstance, db: DatabaseClient | n
     const input = parseBody(siteSettingSchema, request.body, reply);
     if (!input) return;
     const isPublic = input.is_public ?? false;
+    if (isPublic && !publicSiteSettingKeySet.has(params.data.key)) {
+      return reply.code(400).send({ error: 'setting_not_publicable' });
+    }
     const description = input.description ?? null;
     const now = new Date();
     await sql`
@@ -372,7 +386,11 @@ export function registerAdminRoutes(app: FastifyInstance, db: DatabaseClient | n
     const database = requireDatabase(db, reply);
     if (!database) return;
     const result = await sql<{ key: string; value_json: unknown }>`
-      SELECT key, value_json FROM site_settings WHERE is_public = true ORDER BY key ASC
+      SELECT key, value_json
+      FROM site_settings
+      WHERE is_public = true
+        AND key IN ('alerts.banner','home.hero','home.territory_banner','site.contact','site.identity','site.seo','site.social')
+      ORDER BY key ASC
     `.execute(database);
     return { settings: Object.fromEntries(result.rows.map((row) => [row.key, row.value_json])) };
   });

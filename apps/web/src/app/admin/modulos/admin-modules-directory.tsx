@@ -13,6 +13,7 @@ export type AdminModule = {
   status: ModuleStatus;
   href?: string;
   sourceBranch?: string;
+  sourcePr?: number;
   targetHref?: string;
   area: ModuleArea;
 };
@@ -39,6 +40,7 @@ function ModuleCard({ module }: { module: AdminModule }) {
       {module.status === 'implemented' ? (
         <div className="admin-module-meta" aria-label={`Origen de ${module.title}`}>
           <span>Rama <code>{module.sourceBranch}</code></span>
+          <span>PR fuente <code>#{module.sourcePr}</code></span>
           <span>Ruta prevista <code>{module.targetHref}</code></span>
         </div>
       ) : null}
@@ -70,6 +72,7 @@ export function AdminModulesDirectory({ modules }: { modules: AdminModule[] }) {
         module.description,
         module.area,
         module.sourceBranch,
+        module.sourcePr ? `pr ${module.sourcePr} #${module.sourcePr}` : '',
         module.targetHref,
       ].filter(Boolean).join(' '));
       return haystack.includes(normalizedQuery);
@@ -90,7 +93,7 @@ export function AdminModulesDirectory({ modules }: { modules: AdminModule[] }) {
         <div className="admin-modules-filter-heading">
           <div>
             <h2 id="admin-modules-filter-title">Encontrar un módulo</h2>
-            <p>Busca por nombre, función, rama o ruta y filtra por disponibilidad o área.</p>
+            <p>Busca por nombre, función, rama, PR o ruta y filtra por disponibilidad o área.</p>
           </div>
           <span className="admin-modules-result-count" aria-live="polite">
             {filtered.length} de {modules.length}
@@ -103,7 +106,7 @@ export function AdminModulesDirectory({ modules }: { modules: AdminModule[] }) {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Ej. empresas, rutas, documentos…"
+              placeholder="Ej. empresas, rutas, PR 81…"
               autoComplete="off"
             />
           </label>

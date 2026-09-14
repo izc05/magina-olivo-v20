@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { AdminRouteGate } from '../../components/admin-route-gate';
 import './admin.css';
+import './admin-polish.css';
 
 export const metadata: Metadata = {
   robots: {
