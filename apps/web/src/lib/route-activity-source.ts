@@ -75,8 +75,11 @@ export function appendRouteActivityPoint(id: string, point: {
   });
 }
 
-export function pauseRouteActivity(id: string) {
-  return apiFetch<{ activity: RouteActivity }>(`/api/v1/activities/${encodeURIComponent(id)}/pause`, { method: 'POST' });
+export function pauseRouteActivity(id: string, keepalive = false) {
+  return apiFetch<{ activity: RouteActivity }>(`/api/v1/activities/${encodeURIComponent(id)}/pause`, {
+    method: 'POST',
+    keepalive,
+  });
 }
 
 export function resumeRouteActivity(id: string) {
