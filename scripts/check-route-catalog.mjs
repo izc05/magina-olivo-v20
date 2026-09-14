@@ -7,6 +7,8 @@ const catalog = readJson('data/routes/sierra-magina-master-catalog.json');
 const municipalityAudit = readJson('data/routes/sierra-magina-municipality-audit.json');
 const intermodal = readJson('data/routes/sierra-magina-intermodal-hiking.json');
 const homologated = readJson('data/routes/sierra-magina-homologated-trails.json');
+const sourceRegistry = readJson('data/routes/sierra-magina-official-source-registry.json');
+const closure = readJson('data/routes/sierra-magina-catalog-closure.json');
 
 const errors = [];
 const warnings = [];
@@ -18,6 +20,7 @@ const auditedMunicipalities = Array.isArray(municipalityAudit.municipalities) ? 
 const routes = Array.isArray(catalog.routes) ? catalog.routes : [];
 const intermodalRoutes = Array.isArray(intermodal.routes) ? intermodal.routes : [];
 const homologatedRoutes = Array.isArray(homologated.routes) ? homologated.routes : [];
+const officialSources = Array.isArray(sourceRegistry.sources) ? sourceRegistry.sources : [];
 
 if (municipalities.length !== requiredMunicipalityCount) {
   errors.push(`Expected ${requiredMunicipalityCount} municipalities, found ${municipalities.length}.`);
@@ -63,6 +66,23 @@ for (const row of auditedMunicipalities) {
 for (const municipality of municipalities) {
   if (!auditedNames.has(municipality.trim().toLowerCase())) {
     errors.push(`Municipality has not been audited: ${municipality}.`);
+  }
+}
+
+const sourceCoveredMunicipalities = new Set();
+for (const source of officialSources) {
+  if (!source.authority || !source.authority_kind || !source.source_url || !source.finding) {
+    errors.push('Every official source registry row requires authority, authority_kind, source_url and finding.');
+    continue;
+  }
+  checkMunicipalityReferences(`source:${source.authority}`, source.municipalities);
+  for (const municipality of source.municipalities ?? []) {
+    sourceCoveredMunicipalities.add(String(municipality).trim().toLowerCase());
+  }
+}
+for (const municipality of municipalities) {
+  if (!sourceCoveredMunicipalities.has(municipality.trim().toLowerCase())) {
+    errors.push(`Municipality lacks an auditable official/institutional source: ${municipality}.`);
   }
 }
 
@@ -135,6 +155,31 @@ for (const requiredCode of ['GR-7', 'PR-A 350', 'SL-A 135']) {
   if (!homologatedCodes.has(requiredCode)) errors.push(`Missing known Sierra Mágina homologated route: ${requiredCode}.`);
 }
 
+if (closure?.official_park_inventory?.status !== 'closed') {
+  errors.push('Official Parque Natural inventory must remain explicitly closed once the authoritative 17-route baseline is verified.');
+}
+if (closure?.official_park_inventory?.expected_signposted_trails !== requiredOfficialCoreCount ||
+    closure?.official_park_inventory?.catalogued_signposted_trails !== officialCore.length) {
+  errors.push('Official Parque Natural closure counts are out of sync with the master catalog.');
+}
+if (closure?.territorial_scope?.municipalities_expected !== requiredMunicipalityCount ||
+    closure?.territorial_scope?.municipalities_audited !== auditedNames.size ||
+    closure?.territorial_scope?.official_or_institutional_source_coverage !== sourceCoveredMunicipalities.size) {
+  errors.push('Territorial closure counts are out of sync with municipality audit/source coverage.');
+}
+if (closure?.provincial_hiking_network?.expected_routes !== expectedIntermodal ||
+    closure?.provincial_hiking_network?.catalogued_routes !== intermodalRoutes.length) {
+  errors.push('Provincial R1-R9 closure counts are out of sync with the intermodal catalog.');
+}
+if (closure?.publication_gate?.complete === true) {
+  const unsafeForClosure = [
+    ...routes.filter((route) => route.publishable && !route.track_validated),
+    ...intermodalRoutes.filter((route) => route.publishable && !route.track_validated),
+    ...homologatedRoutes.filter((route) => route.publishable && !route.track_validated),
+  ];
+  if (unsafeForClosure.length) errors.push('Publication gate cannot be complete while a publishable route lacks a validated track.');
+}
+
 const covered = new Set(routes.flatMap((route) => route.municipalities ?? []).map((name) => name.trim().toLowerCase()));
 const coveragePercent = municipalities.length ? Math.round((covered.size / municipalities.length) * 100) : 0;
 const missingRouteCoverage = municipalities.filter((name) => !covered.has(name.trim().toLowerCase()));
@@ -151,6 +196,7 @@ console.log(`- official Parque Natural core: ${officialCore.length}/${requiredOf
 console.log(`- official intermodal hiking network: ${intermodalRoutes.length}/${expectedIntermodal}`);
 console.log(`- homologated GR/PR/SL records: ${homologatedRoutes.length}`);
 console.log(`- municipalities audited: ${auditedNames.size}/${municipalities.length}`);
+console.log(`- municipalities backed by official/institutional sources: ${sourceCoveredMunicipalities.size}/${municipalities.length}`);
 console.log(`- municipalities represented by current canonical route records: ${covered.size}/${municipalities.length} (${coveragePercent}%)`);
 if (missingRouteCoverage.length) console.log(`- municipalities without a current canonical route record: ${missingRouteCoverage.join(', ')}`);
 console.log(`- canonical routes documented: ${documentedCount}/${routes.length}`);
@@ -159,6 +205,8 @@ console.log(`- canonical validated tracks: ${validatedCount}/${routes.length}`);
 console.log(`- canonical publishable: ${publishableCount}/${routes.length}`);
 console.log(`- intermodal tracks found: ${intermodalTracksFound}/${intermodalRoutes.length}`);
 console.log(`- homologated tracks found: ${homologatedTracksFound}/${homologatedRoutes.length}`);
+console.log(`- official inventory closure: ${closure.official_park_inventory.status}`);
+console.log(`- publication gate complete: ${closure.publication_gate.complete}`);
 
 if (warnings.length) console.log(`- pending warnings: ${warnings.length}`);
 

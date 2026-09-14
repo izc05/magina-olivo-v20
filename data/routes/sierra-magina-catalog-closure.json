@@ -1,0 +1,79 @@
+{
+  "status_version": 5,
+  "audited_at": "2026-09-13",
+  "scope": "Sierra Magina hiking catalog closure status",
+  "official_park_inventory": {
+    "status": "closed",
+    "expected_signposted_trails": 17,
+    "catalogued_signposted_trails": 17,
+    "source_name": "Junta de Andalucia - Ventana del Visitante",
+    "source_url": "https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/sierra-m%C3%A1gina-3/255035",
+    "verified_at": "2026-09-13",
+    "technical_audit_status": "basic_technical_identity_closed_17_of_17",
+    "note": "Closed means the official signposted-trail inventory and basic technical identity are identified. It does not mean every route track is geometry-validated or currently open to users."
+  },
+  "territorial_scope": {
+    "status": "audited",
+    "municipalities_expected": 16,
+    "municipalities_audited": 16,
+    "official_or_institutional_source_coverage": 16,
+    "exception_notes": [
+      "Larva is audited, but no named official pedestrian route with a dedicated technical sheet/track was located. No route is invented to force 16/16 route presence."
+    ]
+  },
+  "provincial_hiking_network": {
+    "status": "identified",
+    "expected_routes": 9,
+    "catalogued_routes": 9,
+    "tracks_located": 6,
+    "tracks_geometry_validated": 6,
+    "tracks_not_located": ["R4", "R5", "R8"],
+    "source_name": "Diputacion de Jaen - Jaen Paraiso Interior",
+    "validation_note": "R1, R2, R3, R6, R7 and R9 official KMZ files were downloaded and geometry-reviewed. R2 and R6 use explicit repeated-segment semantics for out-and-back routes rather than duplicating shared geometry."
+  },
+  "homologated_network": {
+    "status": "geometry_baseline_closed",
+    "records": ["GR-7", "PR-A 350", "SL-A 135"],
+    "geometry_validated_records": ["GR-7", "PR-A 350", "SL-A 135"],
+    "geometry_pending_records": [],
+    "gr7_validated_stages": [8, 9, 10, 11, 12],
+    "source_name": "Federacion Andaluza de Deportes de Montana, Escalada y Senderismo",
+    "verified_at": "2026-09-13",
+    "safety_note": "GR-7 remains homologated and its Sierra Magina stages 8-12 are geometry-validated, but the Jaen route page warns that no maintenance has been notified since 1998 and describes scarce/deteriorated signage. Geometry validation is not a safety clearance."
+  },
+  "geometry_sources": {
+    "status": "source_identification_closed",
+    "authority": "Junta de Andalucia - REDIAM",
+    "official_core_with_confirmed_codigoequi": 17,
+    "official_core_total": 17,
+    "rediam_geometry_validated": 0,
+    "rediam_access_blocker": "Both direct GML and browser-like KML requests returned HTTP 403 for all 17 routes from GitHub Actions.",
+    "canonical_geometry_validated_via_federation": ["cano-del-aguadero", "fuenmayor"],
+    "external_official_kmz_targets": 8,
+    "external_official_kmz_fetch_success": 8,
+    "external_official_kmz_geometry_validated": 8,
+    "gr7_stage_targets": 5,
+    "gr7_stage_fetch_success": 5,
+    "gr7_stage_geometry_validated": 5,
+    "verified_at": "2026-09-13",
+    "validation_note": "All 17 official-core routes have a confirmed REDIAM CODIGOEQUI. REDIAM is blocked from GitHub runners. Eight Diputacion/FAM KMZ targets and five Sierra Magina GR-7 stage archives were downloaded, hashed, parsed and geometry-reviewed successfully."
+  },
+  "operational_safety": {
+    "status": "tracked_separately",
+    "temporarily_closed_verified": ["adelfal-de-cuadros", "las-vinas"],
+    "verified_at": "2026-09-13",
+    "note": "Operational closure does not delete a catalog record and is independent from editorial publication/track validation."
+  },
+  "publication_gate": {
+    "status": "open",
+    "complete": false,
+    "requirements": [
+      "Every publishable route must have a real track.",
+      "Every publishable route track must be geometry-validated.",
+      "Technical distance/elevation/duration values must be sourced or derived from validated geometry with documented methodology.",
+      "Current closures/incidents must remain independent from catalog publication state.",
+      "Duplicate or overlapping Junta/Diputacion/GR-PR-SL records must preserve provenance and canonical relationships instead of being silently merged."
+    ],
+    "reason_not_closed": "Official-core REDIAM source identification is closed 17/17, the current GR/PR/SL baseline is geometry-validated, and six provincial routes have validated official KMZ tracks. Remaining blockers are REDIAM geometry access from an allowed environment, R4/R5/R8 authoritative tracks, and incomplete municipal authoritative tracks."
+  }
+}
