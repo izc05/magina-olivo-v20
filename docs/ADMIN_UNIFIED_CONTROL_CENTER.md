@@ -201,6 +201,10 @@ La actividad GPS privada de Rutas no añade una superficie administrativa separa
 
 El contrato forma parte de `pnpm check` y `pnpm check:fast`, se ejecuta dentro de `V20 platform admin check` y dispone además del workflow ligero `V20 Admin governance contract`, que no necesita levantar PostgreSQL para detectar regresiones estructurales.
 
+## Validación reciente
+
+Antes del ajuste visual final de la consola, el HEAD `1da57869c3f91e5c25a1213909d0535fa55daf4a` superó `V20 platform admin check`, `V20 full candidate check`, `V20 foundation check`, `V20 environment contract`, `V20 Admin governance contract` y `V20 lockfile guard`. Los cambios posteriores mantienen el mismo contrato y vuelven a ejecutar todos los gates; este documento no debe interpretarse como sustituto del estado de Actions del HEAD actual.
+
 ## Próxima absorción
 
 Cuando una rama funcional esté lista para entrar en el Admin unificado:
