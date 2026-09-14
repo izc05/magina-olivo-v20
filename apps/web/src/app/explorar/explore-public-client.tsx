@@ -9,17 +9,54 @@ import {
 } from '@/lib/public-territory-source';
 import styles from './explore-public.module.css';
 
-const areas = [
-  { icon: CompassIcon, title: 'Mágina Aventura', text: 'Explora rutas reales, desbloquea retos geolocalizados y completa tu Cuaderno del Explorador.', href: '/aventura', badge: 'Nuevo' },
-  { icon: CompassIcon, title: 'Noticias', text: 'Actualidad local con fuente y fecha verificadas.', href: '/noticias', badge: 'Disponible' },
-  { icon: PlusIcon, title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
-  { icon: HomeIcon, title: 'Ayuntamientos', text: 'Webs oficiales, contacto y sedes institucionales de Sierra Mágina.', href: '/ayuntamientos', badge: '16 municipios' },
-  { icon: SproutIcon, title: 'Aceite y mercado', text: 'Precios y campaña manteniendo siempre fuente, unidad y fecha.', href: '/mercado', badge: 'Disponible' },
-  { icon: HomeIcon, title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
-  { icon: MoreIcon, title: 'Servicios', text: 'Negocios y profesionales con patrocinio claramente identificado.', href: '/servicios', badge: 'Disponible' },
-  { icon: MoreIcon, title: 'Empresas y negocios', text: 'Directorio territorial con mapa, categorías, fichas verificables y patrocinio siempre identificado.', href: '/explorar/empresas', badge: 'Nuevo' },
-  { icon: SproutIcon, title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
-  { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Rutas con track GPX validado, desnivel y fuentes trazables.', href: '/rutas', badge: 'Disponible' },
+type ExploreArea = {
+  icon: typeof CompassIcon;
+  title: string;
+  text: string;
+  href: string;
+  badge: string;
+  featured?: boolean;
+};
+
+type ExploreGroup = {
+  eyebrow: string;
+  title: string;
+  text: string;
+  areas: ExploreArea[];
+};
+
+const groups: ExploreGroup[] = [
+  {
+    eyebrow: 'DESCUBRE',
+    title: 'Territorio y aventura',
+    text: 'Muévete por Sierra Mágina, conoce sus rutas y entra en experiencias ligadas al territorio real.',
+    areas: [
+      { icon: CompassIcon, title: 'Mágina Aventura', text: 'Explora rutas reales, desbloquea retos geolocalizados y completa tu Cuaderno del Explorador.', href: '/aventura', badge: 'Nuevo', featured: true },
+      { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Rutas con track GPX validado, desnivel y fuentes trazables.', href: '/rutas', badge: 'Disponible' },
+      { icon: HomeIcon, title: 'Ayuntamientos', text: 'Webs oficiales, contacto y sedes institucionales de Sierra Mágina.', href: '/ayuntamientos', badge: '16 municipios' },
+    ],
+  },
+  {
+    eyebrow: 'VIVE MÁGINA',
+    title: 'Actualidad y vida local',
+    text: 'Una lectura más cercana del territorio: agenda, noticias y conocimiento práctico del campo.',
+    areas: [
+      { icon: CompassIcon, title: 'Noticias', text: 'Actualidad local con fuente y fecha verificadas.', href: '/noticias', badge: 'Disponible' },
+      { icon: PlusIcon, title: 'Eventos', text: 'Agenda con organizador, fechas y estado de verificación.', href: '/eventos', badge: 'Disponible' },
+      { icon: SproutIcon, title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
+    ],
+  },
+  {
+    eyebrow: 'OLIVAR Y ECONOMÍA',
+    title: 'Aceite, almazaras y servicios',
+    text: 'Conecta la vida del olivar con mercado, cooperativas, empresas y profesionales del territorio.',
+    areas: [
+      { icon: SproutIcon, title: 'Aceite y mercado', text: 'Precios y campaña manteniendo siempre fuente, unidad y fecha.', href: '/mercado', badge: 'Disponible' },
+      { icon: HomeIcon, title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
+      { icon: MoreIcon, title: 'Empresas y negocios', text: 'Directorio territorial con mapa, categorías, fichas verificables y patrocinio siempre identificado.', href: '/explorar/empresas', badge: 'Nuevo' },
+      { icon: MoreIcon, title: 'Servicios', text: 'Negocios y profesionales con patrocinio claramente identificado.', href: '/servicios', badge: 'Disponible' },
+    ],
+  },
 ];
 
 function placeKindLabel(kind: string) {
@@ -75,7 +112,7 @@ export function ExplorePublicClient() {
     </section>
 
     <section className="section">
-      <div className={styles.sectionIntro}><div><h2>Pueblos y localidades</h2></div><p>Catálogo territorial publicado por Mágina Olivo. Solo aparecen lugares habilitados públicamente en la base de datos.</p></div>
+      <div className={styles.sectionIntro}><div><span className={styles.sectionEyebrow}>16 MUNICIPIOS</span><h2>Pueblos y localidades</h2></div><p>Catálogo territorial publicado por Mágina Olivo. Solo aparecen lugares habilitados públicamente en la base de datos.</p></div>
       {loading ? <div className={styles.stateCard} aria-live="polite"><h3>Cargando territorio…</h3><p>Consultando el catálogo público.</p></div> : null}
       {!loading && error ? <div className={styles.stateCard}><h3>El catálogo territorial no está disponible</h3><p>No mostramos datos de sustitución inventados. Puedes seguir consultando el radar público y volver a intentarlo más tarde.</p></div> : null}
       {!loading && !error && filteredPlaces.length === 0 ? <div className={styles.stateCard}><h3>No hay coincidencias</h3><p>No encontramos un lugar público con “{query.trim()}”.</p></div> : null}
@@ -87,22 +124,34 @@ export function ExplorePublicClient() {
       </div> : null}
     </section>
 
-    <section className="section">
-      <div className={styles.sectionIntro}><div><h2>Explorar por temas</h2></div><p>Accede a las áreas públicas que ya están disponibles en V20. Los módulos que todavía no tienen una fuente verificada permanecen claramente marcados como pendientes.</p></div>
-      <div className={styles.areaGrid}>
-        {areas.map((area) => {
-          const AreaIcon = area.icon;
-          const content = <>
-            <span className={styles.areaIcon} aria-hidden="true"><AreaIcon /></span>
-            <div><h3>{area.title}</h3><p>{area.text}</p><span className={`${styles.badge} ${area.href ? styles.badgeLive : ''}`}>{area.badge}</span></div>
-          </>;
-          return area.href
-            ? <Link className={`${styles.areaCard} ${styles.areaCardLink}`} href={area.href} key={area.title}>{content}</Link>
-            : <article className={styles.areaCard} key={area.title}>{content}</article>;
-        })}
+    <section className={`section ${styles.discoverySection}`}>
+      <div className={styles.discoveryHeading}>
+        <div><span className={styles.sectionEyebrow}>EXPLORA A TU MANERA</span><h2>Todo Mágina, sin perderte</h2></div>
+        <p>Hemos organizado los accesos por intención para que descubrir el territorio sea más natural que recorrer un menú de funciones.</p>
+      </div>
+      <div className={styles.groupStack}>
+        {groups.map((group) => (
+          <section className={styles.group} key={group.title} aria-labelledby={`explore-${group.eyebrow.replaceAll(' ', '-').toLocaleLowerCase('es-ES')}`}>
+            <header className={styles.groupHeader}>
+              <span className={styles.groupEyebrow}>{group.eyebrow}</span>
+              <h3 id={`explore-${group.eyebrow.replaceAll(' ', '-').toLocaleLowerCase('es-ES')}`}>{group.title}</h3>
+              <p>{group.text}</p>
+            </header>
+            <div className={styles.areaGrid}>
+              {group.areas.map((area) => {
+                const AreaIcon = area.icon;
+                return <Link className={`${styles.areaCard} ${styles.areaCardLink} ${area.featured ? styles.areaCardFeatured : ''}`} href={area.href} key={area.title}>
+                  <span className={styles.areaIcon} aria-hidden="true"><AreaIcon /></span>
+                  <div className={styles.areaCopy}><h4>{area.title}</h4><p>{area.text}</p><span className={styles.badge}>{area.badge}</span></div>
+                  <span className={styles.areaArrow} aria-hidden="true">↗</span>
+                </Link>;
+              })}
+            </div>
+          </section>
+        ))}
       </div>
     </section>
 
-    <section className="section"><div className="section-head"><h2>Tiempo en Mágina</h2><Link href="/radar">Abrir radar</Link></div><Link href="/radar" className="card weather-feature"><span className="weather-feature-icon"><RainIcon/></span><div><strong>Radar y avisos de lluvia</strong><small>Consulta la información meteorológica disponible. La capa pública no revela tus fincas.</small></div></Link></section>
+    <section className={`section ${styles.weatherSection}`}><div className="section-head"><div><span className={styles.sectionEyebrow}>ANTES DE SALIR</span><h2>Tiempo en Mágina</h2></div><Link href="/radar">Abrir radar</Link></div><Link href="/radar" className={`card weather-feature ${styles.weatherCard}`}><span className="weather-feature-icon"><RainIcon/></span><div><strong>Radar y avisos de lluvia</strong><small>Consulta la información meteorológica disponible. La capa pública no revela tus fincas.</small></div><span className={styles.weatherArrow} aria-hidden="true">↗</span></Link></section>
   </>;
 }
