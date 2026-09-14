@@ -3,7 +3,7 @@
 import { municipalityAdminHref, publicMunicipalityHref } from '@/lib/municipality-admin-context';
 import styles from './municipality-admin-nav.module.css';
 
-type Section = 'ficha' | 'contenido' | 'portada' | 'preview' | 'patrimonio' | 'actualidad' | 'cobertura';
+type Section = 'ficha' | 'contenido' | 'portada' | 'preview' | 'patrimonio' | 'actualidad' | 'cobertura' | 'historial';
 
 const SECTIONS: Array<{ key: Section; label: string; path: string }> = [
   { key: 'ficha', label: 'Ficha', path: '/admin/ayuntamientos' },
@@ -13,6 +13,7 @@ const SECTIONS: Array<{ key: Section; label: string; path: string }> = [
   { key: 'patrimonio', label: 'Patrimonio', path: '/admin/ayuntamientos/patrimonio' },
   { key: 'actualidad', label: 'Actualidad', path: '/admin/ayuntamientos/actualidad' },
   { key: 'cobertura', label: 'Cobertura', path: '/admin/ayuntamientos/cobertura' },
+  { key: 'historial', label: 'Historial', path: '/admin/ayuntamientos/historial' },
 ];
 
 export function MunicipalityAdminNav({ slug, name, active }: { slug?: string | null; name?: string | null; active: Section }) {
@@ -22,12 +23,7 @@ export function MunicipalityAdminNav({ slug, name, active }: { slug?: string | n
       <strong>{name || 'Selecciona un municipio'}</strong>
     </div>
     <nav className={styles.nav}>
-      {SECTIONS.map((section) => <a
-        key={section.key}
-        href={municipalityAdminHref(section.path, slug)}
-        aria-current={active === section.key ? 'page' : undefined}
-        data-active={active === section.key ? 'true' : 'false'}
-      >{section.label}</a>)}
+      {SECTIONS.map((section) => <a key={section.key} href={municipalityAdminHref(section.path, slug)} aria-current={active === section.key ? 'page' : undefined} data-active={active === section.key ? 'true' : 'false'}>{section.label}</a>)}
       <a className={styles.publicLink} href={publicMunicipalityHref(slug)} target="_blank" rel="noreferrer">Ver público ↗</a>
     </nav>
   </section>;
