@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api-client';
 import { useAuth } from './auth-provider';
 import styles from './mi-olivo-dashboard.module.css';
@@ -178,10 +178,8 @@ export function MiOlivoProgressionDashboard() {
   const currentLevel = data.levels.find((level) => level.level === data.level);
   const nextLevel = data.next_level ? data.levels.find((level) => level.level === data.next_level?.level) : null;
   const xpMissing = data.next_level ? Math.max(0, data.next_level.min_xp - data.xp) : 0;
-  const visibleLevels = useMemo(() => {
-    const start = Math.max(0, Math.min(data.levels.length - 5, data.level - 3));
-    return data.levels.slice(start, start + 5);
-  }, [data.level, data.levels]);
+  const visibleStart = Math.max(0, Math.min(Math.max(0, data.levels.length - 5), data.level - 3));
+  const visibleLevels = data.levels.slice(visibleStart, visibleStart + 5);
 
   return <main className={styles.shell}>
     <header className={styles.mobileHeader}>
