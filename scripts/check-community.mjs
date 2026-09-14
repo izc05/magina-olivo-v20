@@ -28,6 +28,8 @@ for (const endpoint of [
   '/api/v1/community/reports',
 ]) requireText(routes, endpoint, 'community API');
 requireText(routes, 'requireAuthenticatedUser', 'community authenticated writes');
+requireText(routes, "CASE WHEN up.visibility = 'public' THEN u.id::text ELSE NULL END AS author_id", 'community author id privacy');
+requireText(routes, "ELSE 'Miembro de Mágina'", 'community private author alias');
 requireText(routes, "CASE WHEN up.visibility = 'public' THEN u.avatar_url ELSE NULL END AS author_avatar_url", 'community profile privacy');
 if (routes.includes('workspace_id') || routes.includes('field_id') || routes.includes('geometry')) {
   fail('community API must not copy private workspace, field or geometry identifiers into the public feed');
@@ -37,6 +39,8 @@ const bookmarksRoute = requireFile('apps/api/src/routes/community-bookmarks.ts')
 requireText(bookmarksRoute, '/api/v1/community/bookmarks', 'community saved-post API');
 requireText(bookmarksRoute, 'requireAuthenticatedUser', 'community saved-post authentication');
 requireText(bookmarksRoute, 'JOIN community_bookmarks', 'community saved-post source');
+requireText(bookmarksRoute, "CASE WHEN up.visibility = 'public' THEN u.id::text ELSE NULL END AS author_id", 'saved-post author id privacy');
+requireText(bookmarksRoute, "ELSE 'Miembro de Mágina'", 'saved-post private author alias');
 if (bookmarksRoute.includes('workspace_id') || bookmarksRoute.includes('field_id') || bookmarksRoute.includes('geometry')) {
   fail('community saved-post API must remain account-scoped and independent from private farm geometry');
 }
@@ -69,6 +73,7 @@ requireText(client, 'composerMunicipality', 'community municipality context');
 requireText(client, "mode === 'saved'", 'community saved-post view');
 const source = requireFile('apps/web/src/lib/community-source.ts');
 requireText(source, '/api/v1/community/bookmarks', 'community saved-post client');
+requireText(source, 'author_id: string | null', 'community private author client type');
 const explore = requireFile('apps/web/src/app/explorar/explore-public-client.tsx');
 requireText(explore, "href: '/comunidad'", 'Explore community entry');
 requireFile('apps/web/src/app/comunidad/community.module.css');
