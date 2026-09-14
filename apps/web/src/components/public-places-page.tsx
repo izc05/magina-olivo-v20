@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { loadPublicPlaces, type PublicPlace } from '@/lib/public-places-source';
 import { PlaceIcon } from '@/components/icons';
+import { findMaginaTown, MAGINA_TOWNS, townModuleHref } from '@/lib/towns';
 import styles from './public-places.module.css';
 
 function safeExternalUrl(value: string | null): string | null {
@@ -30,8 +31,18 @@ function searchableText(item: PublicPlace) {
     .toLocaleLowerCase('es');
 }
 
+const townModules = [
+  { href: '/explorar', icon: '🥾', title: 'Explorar y rutas', description: 'Naturaleza, lugares y experiencias para descubrir el territorio.' },
+  { href: '/eventos', icon: '📅', title: 'Agenda y eventos', description: 'Fiestas, actividades y citas publicadas en Mágina Olivo.' },
+  { href: '/noticias', icon: '📰', title: 'Noticias', description: 'Actualidad local y contenidos del territorio.' },
+  { href: '/empresas', icon: '🏪', title: 'Empresas y servicios', description: 'Negocios, profesionales, comercio y servicios cercanos.' },
+  { href: '/almazaras', icon: '🫒', title: 'Almazaras y AOVE', description: 'Cooperativas, almazaras, aceite y cultura del olivar.' },
+  { href: '/ayuntamientos', icon: '🏛️', title: 'Ayuntamiento', description: 'Información municipal y acceso a los recursos oficiales disponibles.' },
+] as const;
+
 function PlaceCard({ item }: { item: PublicPlace }) {
   const image = safeMediaUrl(item.mediaUrl);
+  const canonicalTown = findMaginaTown(item.town || item.title);
   return <article className={styles.card}>
     {image
       ? <img className={styles.cardImage} src={image} alt="" loading="lazy" />
@@ -39,6 +50,7 @@ function PlaceCard({ item }: { item: PublicPlace }) {
     <div className={styles.cardBody}>
       <div className={styles.metaRow}>
         <span>{item.featured ? 'Destacado' : 'Pueblo / lugar'}</span>
+        {canonicalTown?.inNaturalPark ? <span>Parque Natural</span> : null}
         {item.town && item.town !== item.title ? <span>{item.town}</span> : null}
       </div>
       <h2>{item.title}</h2>
@@ -52,6 +64,7 @@ function PlaceCard({ item }: { item: PublicPlace }) {
 function PlaceDetail({ item }: { item: PublicPlace }) {
   const image = safeMediaUrl(item.mediaUrl);
   const externalUrl = safeExternalUrl(item.externalUrl);
+  const canonicalTown = findMaginaTown(item.town || item.title);
   return <>
     <Link className={styles.backLink} href="/pueblos">← Pueblos de Sierra Mágina</Link>
     <article className={styles.detail}>
@@ -59,7 +72,11 @@ function PlaceDetail({ item }: { item: PublicPlace }) {
         ? <img className={styles.heroImage} src={image} alt="" />
         : <div className={styles.heroPlaceholder} aria-hidden="true"><PlaceIcon /></div>}
       <div className={styles.detailBody}>
-        <div className={styles.metaRow}><span>Pueblo / lugar</span>{item.town && item.town !== item.title ? <span>{item.town}</span> : null}</div>
+        <div className={styles.metaRow}>
+          <span>Pueblo / lugar</span>
+          {canonicalTown?.inNaturalPark ? <span>Parque Natural Sierra Mágina</span> : <span>Comarca Sierra Mágina</span>}
+          {item.town && item.town !== item.title ? <span>{item.town}</span> : null}
+        </div>
         <h1>{item.title}</h1>
         {item.summary ? <p className={styles.lead}>{item.summary}</p> : null}
         {item.body ? <p className={styles.bodyText}>{item.body}</p> : null}
@@ -75,6 +92,24 @@ function PlaceDetail({ item }: { item: PublicPlace }) {
         </div> : null}
       </div>
     </article>
+
+    <section className={styles.townHub} aria-labelledby="town-hub-title">
+      <div className={styles.sectionHeading}>
+        <span>TODO EN UN MISMO PUEBLO</span>
+        <h2 id="town-hub-title">Descubre {item.title}</h2>
+        <p>Esta ficha funciona como puerta de entrada al resto de Mágina Olivo. Los enlaces conservan el municipio para que cada módulo pueda mostrar su información local sin duplicar datos.</p>
+      </div>
+      <div className={styles.moduleGrid}>
+        {townModules.map((module) => <Link key={module.href} className={styles.moduleCard} href={townModuleHref(module.href, canonicalTown)}>
+          <span className={styles.moduleIcon} aria-hidden="true">{module.icon}</span>
+          <span className={styles.moduleCopy}>
+            <strong>{module.title}</strong>
+            <small>{module.description}</small>
+          </span>
+          <span className={styles.moduleArrow} aria-hidden="true">→</span>
+        </Link>)}
+      </div>
+    </section>
   </>;
 }
 
@@ -131,9 +166,9 @@ export function PublicPlacesPage() {
 
   return <main className={styles.page}>
     <header className={styles.header}>
-      <span>SIERRA MÁGINA · TERRITORIO</span>
-      <h1>Pueblos y lugares</h1>
-      <p>Descubre las localidades y rincones publicados desde Mágina Olivo. Las fichas se muestran tal como han sido revisadas y publicadas desde Administración.</p>
+      <span>SIERRA MÁGINA · {MAGINA_TOWNS.length} MUNICIPIOS</span>
+      <h1>Pueblos de Mágina</h1>
+      <p>Descubre cada municipio desde una única ficha territorial y entra desde ella a rutas, agenda, noticias, empresas, almazaras y recursos municipales de Mágina Olivo.</p>
     </header>
 
     <section className={styles.toolbar} aria-label="Buscar pueblos y lugares">
@@ -142,7 +177,7 @@ export function PublicPlacesPage() {
         <input id="place-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ej. Bedmar, Jimena…" />
         {query ? <button type="button" onClick={() => setQuery('')}>Limpiar</button> : null}
       </div>
-      <small>{filtered.length} {filtered.length === 1 ? 'resultado' : 'resultados'}</small>
+      <small>{filtered.length} {filtered.length === 1 ? 'ficha publicada' : 'fichas publicadas'} · catálogo territorial de {MAGINA_TOWNS.length} municipios</small>
     </section>
 
     {!items.length ? <section className={styles.stateCard}><strong>Todavía no hay fichas publicadas</strong><p>Los pueblos y lugares aparecerán aquí cuando el equipo publique sus fichas desde Administración.</p></section> : null}
