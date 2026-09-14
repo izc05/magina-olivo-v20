@@ -12,6 +12,7 @@ type BusinessRole = 'owner' | 'manager' | 'editor' | 'analyst';
 
 type LevelState = {
   xp: number;
+  balance: number;
   current_level: number;
   current_level_name: string;
 };
@@ -31,7 +32,11 @@ async function membership(database: DatabaseClient, businessId: string, userId: 
 async function levelState(database: DatabaseClient, userId: string): Promise<LevelState> {
   const result = await sql<LevelState>`
     WITH progress AS (
-      SELECT mi_olivo_lifetime_xp(${userId}::uuid)::int AS xp
+      SELECT
+        mi_olivo_lifetime_xp(${userId}::uuid)::int AS xp,
+        GREATEST(COALESCE(SUM(points), 0), 0)::int AS balance
+      FROM mi_olivo_ledger
+      WHERE user_id=${userId}::uuid
     ), current_level AS (
       SELECT l.level, l.name
       FROM mi_olivo_levels l, progress p
@@ -41,12 +46,13 @@ async function levelState(database: DatabaseClient, userId: string): Promise<Lev
     )
     SELECT
       p.xp,
+      p.balance,
       COALESCE(c.level, 1)::int AS current_level,
       COALESCE(c.name, 'Brote') AS current_level_name
     FROM progress p
     LEFT JOIN current_level c ON true
   `.execute(database);
-  return result.rows[0] ?? { xp: 0, current_level: 1, current_level_name: 'Brote' };
+  return result.rows[0] ?? { xp: 0, balance: 0, current_level: 1, current_level_name: 'Brote' };
 }
 
 export function registerMiOlivoRewardUnlockRoutes(app: FastifyInstance, db: DatabaseClient | null) {
@@ -155,6 +161,7 @@ export function registerMiOlivoRewardUnlockRoutes(app: FastifyInstance, db: Data
 
     return {
       xp: current.xp,
+      balance: current.balance,
       currentLevel: current.current_level,
       currentLevelName: current.current_level_name,
       rewards: rewards.rows.map((row) => ({
