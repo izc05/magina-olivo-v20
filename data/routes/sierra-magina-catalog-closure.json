@@ -1,5 +1,5 @@
 {
-  "status_version": 7,
+  "status_version": 8,
   "audited_at": "2026-09-14",
   "scope": "Sierra Magina hiking catalog closure status",
   "official_park_inventory": {
@@ -62,20 +62,25 @@
     "validation_note": "All 17 official-core routes have a confirmed REDIAM CODIGOEQUI. REDIAM is blocked from GitHub runners. Eight Diputacion/FAM KMZ targets and five Sierra Magina GR-7 stage archives were downloaded, hashed, parsed and geometry-reviewed successfully."
   },
   "municipal_comarca_tracks": {
-    "status": "partial_authoritative_track_discovery",
+    "status": "public_track_discovery_closed_13_of_13",
+    "canonical_official_comarca_routes": 13,
+    "discovery_disposition_covered": 13,
     "authoritative_tracks_located": 3,
+    "audited_no_public_authoritative_track": 10,
     "geometry_validated": 0,
     "located_route_slugs": [
       "mancha-real-el-puerto-los-llanos-pena-del-aguila",
       "mancha-real-circular-pena-del-aguila",
       "mancha-real-pena-aguila-morron-mojon-blanco-refugio-cueva-murcielagos"
     ],
-    "source_name": "Ayuntamiento de Mancha Real - Turismo Mancha Real",
+    "located_source_name": "Ayuntamiento de Mancha Real - Turismo Mancha Real",
     "source_registry": "data/routes/sierra-magina-municipal-track-sources.json",
     "access_audit": "data/routes/sierra-magina-municipal-kml-access-audit.json",
+    "absence_audit": "data/routes/sierra-magina-municipal-track-discovery-audit.json",
     "access_blocker": "The three official KML links resolve to archivos.campusfortalezas.com, whose HTTPS certificate fails strict hostname verification for that hostname. TLS verification is not disabled to force geometry validation.",
-    "remaining_discovery_targets": ["Noalejo", "Carcheles", "La Guardia de Jaen", "Campillo de Arenas", "Cabra del Santo Cristo"],
-    "verified_at": "2026-09-14"
+    "absence_scope": ["Noalejo", "Carcheles", "La Guardia de Jaen", "Campillo de Arenas", "Cabra del Santo Cristo"],
+    "verified_at": "2026-09-14",
+    "note": "Public-source discovery is closed for all 13 current official_comarca route records: three have explicit authoritative KML links and ten have an audited no-public-authoritative-track disposition. This does not prove that authorities hold no internal GIS geometry."
   },
   "operational_safety": {
     "status": "tracked_separately",
@@ -93,6 +98,6 @@
       "Current closures/incidents must remain independent from catalog publication state.",
       "Duplicate or overlapping Junta/Diputacion/GR-PR-SL records must preserve provenance and canonical relationships instead of being silently merged."
     ],
-    "reason_not_closed": "The official Junta inventory and live technical-sheet baseline are closed 17/17, REDIAM source identification is closed 17/17, the current GR/PR/SL baseline is geometry-validated, six provincial routes have validated official KMZ tracks, R4/R5/R8 have an explicit audited no-public-track state, and three Mancha Real municipal KML artifacts are authoritatively linked but blocked by a TLS hostname mismatch. Remaining blockers are REDIAM geometry access from an allowed environment and incomplete municipal authoritative geometry validation/discovery."
+    "reason_not_closed": "The official Junta inventory and live technical-sheet baseline are closed 17/17; municipal/comarca public track discovery is closed 13/13; REDIAM source identification is closed 17/17; the current GR/PR/SL baseline is geometry-validated; six provincial routes have validated official KMZ tracks; R4/R5/R8 have an explicit audited no-public-track state; and three Mancha Real municipal KML artifacts are authoritatively linked but blocked by a TLS hostname mismatch. Remaining blockers are geometry validation where official geometry is inaccessible or not publicly published, plus current operational-safety compatibility before publication."
   }
 }
