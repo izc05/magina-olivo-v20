@@ -6,6 +6,7 @@ import {
   communityCategories,
   createCommunityComment,
   createCommunityPost,
+  loadCommunityBookmarks,
   loadCommunityComments,
   loadCommunityFeed,
   reportCommunityTarget,
@@ -28,6 +29,7 @@ const reportReasons = [
 ] as const;
 
 type ReportReason = (typeof reportReasons)[number][0];
+type FeedMode = 'recent' | 'saved';
 
 function categoryLabel(value: string) {
   return communityCategories.find((category) => category.value === value)?.label ?? value;
@@ -47,12 +49,14 @@ function authMessage(error: unknown) {
 
 export function CommunityClient() {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [mode, setMode] = useState<FeedMode>('recent');
   const [category, setCategory] = useState<CommunityCategory | 'all'>('all');
   const [municipality, setMunicipality] = useState<string>('all');
   const [municipalities, setMunicipalities] = useState<PublicMunicipalityDirectory[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
+  const [savedNeedsLogin, setSavedNeedsLogin] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [composerBody, setComposerBody] = useState('');
   const [composerCategory, setComposerCategory] = useState<CommunityCategory>('campo');
@@ -78,28 +82,43 @@ export function CommunityClient() {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(false);
+    setSavedNeedsLogin(false);
     try {
-      const feed = await loadCommunityFeed({ category: activeCategory, municipality: activeMunicipality, limit: 20 });
-      setPosts(feed.items);
-      setNextCursor(feed.next_cursor);
+      if (mode === 'saved') {
+        const saved = await loadCommunityBookmarks({ category: activeCategory, municipality: activeMunicipality, limit: 100 });
+        setPosts(saved.items);
+        setNextCursor(null);
+      } else {
+        const feed = await loadCommunityFeed({ category: activeCategory, municipality: activeMunicipality, limit: 20 });
+        setPosts(feed.items);
+        setNextCursor(feed.next_cursor);
+      }
     } catch (cause) {
-      console.warn('Unable to load community feed', cause);
-      setError(true);
-      setPosts([]);
-      setNextCursor(null);
+      if (mode === 'saved' && cause instanceof ApiRequestError && cause.status === 401) {
+        setSavedNeedsLogin(true);
+        setPosts([]);
+        setNextCursor(null);
+      } else {
+        console.warn('Unable to load community feed', cause);
+        setError(true);
+        setPosts([]);
+        setNextCursor(null);
+      }
     } finally {
       setLoading(false);
     }
-  }, [activeCategory, activeMunicipality]);
+  }, [activeCategory, activeMunicipality, mode]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
   const postCountLabel = useMemo(() => {
-    if (loading) return 'Cargando conversación…';
+    if (loading) return mode === 'saved' ? 'Cargando tus guardados…' : 'Cargando conversación…';
+    if (savedNeedsLogin) return 'Tus guardados están vinculados a tu cuenta';
     if (error) return 'Comunidad temporalmente no disponible';
-    if (posts.length === 0) return 'Todavía no hay publicaciones con estos filtros';
+    if (posts.length === 0) return mode === 'saved' ? 'No tienes publicaciones guardadas con estos filtros' : 'Todavía no hay publicaciones con estos filtros';
+    if (mode === 'saved') return `${posts.length} publicaciones guardadas`;
     return `${posts.length}${nextCursor ? '+' : ''} publicaciones recientes`;
-  }, [error, loading, nextCursor, posts.length]);
+  }, [error, loading, mode, nextCursor, posts.length, savedNeedsLogin]);
 
   async function publish() {
     const body = composerBody.trim();
@@ -113,8 +132,9 @@ export function CommunityClient() {
         municipality_slug: composerMunicipality || null,
       });
       setComposerBody('');
+      setMode('recent');
       setCategory(composerCategory);
-      if (composerMunicipality) setMunicipality(composerMunicipality);
+      setMunicipality(composerMunicipality || 'all');
       await refresh();
       setNotice('Publicación compartida con la comunidad.');
     } catch (cause) {
@@ -144,6 +164,9 @@ export function CommunityClient() {
     setPosts((items) => items.map((item) => item.id === post.id ? { ...item, viewer_bookmarked: next } : item));
     try {
       await setCommunityBookmark(post.id, next);
+      if (mode === 'saved' && !next) {
+        setPosts((items) => items.filter((item) => item.id !== post.id));
+      }
     } catch (cause) {
       setPosts((items) => items.map((item) => item.id === post.id ? post : item));
       setNotice(authMessage(cause));
@@ -208,7 +231,7 @@ export function CommunityClient() {
   }
 
   async function loadMore() {
-    if (!nextCursor || loadingMore) return;
+    if (mode !== 'recent' || !nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
       const feed = await loadCommunityFeed({
@@ -288,14 +311,21 @@ export function CommunityClient() {
           </label>
         </div>
       </div>
+
+      <div className={styles.viewTabs} aria-label="Vista de comunidad">
+        <button type="button" className={mode === 'recent' ? styles.viewTabActive : ''} onClick={() => setMode('recent')}>Recientes</button>
+        <button type="button" className={mode === 'saved' ? styles.viewTabActive : ''} onClick={() => setMode('saved')}>★ Guardados</button>
+      </div>
+
       <div className={styles.filters} aria-label="Filtrar comunidad por temática">
         <button type="button" className={category === 'all' ? styles.filterActive : ''} onClick={() => setCategory('all')}>Todo</button>
         {communityCategories.map((item) => <button type="button" key={item.value} className={category === item.value ? styles.filterActive : ''} onClick={() => setCategory(item.value)}>{item.label}</button>)}
       </div>
 
-      {loading ? <div className={styles.stateCard}>Cargando publicaciones reales…</div> : null}
+      {loading ? <div className={styles.stateCard}>{mode === 'saved' ? 'Cargando tus publicaciones guardadas…' : 'Cargando publicaciones reales…'}</div> : null}
+      {!loading && savedNeedsLogin ? <div className={styles.stateCard}><strong>Inicia sesión para ver tus guardados.</strong><span>La colección guardada es privada y está vinculada a tu cuenta.</span></div> : null}
       {!loading && error ? <div className={styles.stateCard}><strong>La comunidad no está disponible ahora mismo.</strong><span>No mostramos contenido ficticio como sustitución.</span></div> : null}
-      {!loading && !error && posts.length === 0 ? <div className={styles.stateCard}><strong>Aún no hay publicaciones aquí.</strong><span>Puedes ser la primera persona en abrir esta conversación.</span></div> : null}
+      {!loading && !error && !savedNeedsLogin && posts.length === 0 ? <div className={styles.stateCard}><strong>{mode === 'saved' ? 'No tienes publicaciones guardadas aquí.' : 'Aún no hay publicaciones aquí.'}</strong><span>{mode === 'saved' ? 'Pulsa Guardar en cualquier publicación para añadirla a esta colección.' : 'Puedes ser la primera persona en abrir esta conversación.'}</span></div> : null}
 
       <div className={styles.feed}>
         {posts.map((post) => <article className={styles.post} id={`post-${post.id}`} key={post.id}>
@@ -351,7 +381,7 @@ export function CommunityClient() {
         </article>)}
       </div>
 
-      {nextCursor && !loading ? <div className={styles.moreWrap}><button type="button" className={styles.moreButton} onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? 'Cargando…' : 'Ver más publicaciones'}</button></div> : null}
+      {mode === 'recent' && nextCursor && !loading ? <div className={styles.moreWrap}><button type="button" className={styles.moreButton} onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? 'Cargando…' : 'Ver más publicaciones'}</button></div> : null}
     </section>
   </>;
 }
