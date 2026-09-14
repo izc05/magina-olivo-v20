@@ -25,6 +25,7 @@ import { registerPlanRoutes } from './routes/plans.js';
 import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerMiOlivoCampaignRoutes } from './routes/mi-olivo-campaign.js';
 import { registerCommunityRoutes } from './routes/community.js';
+import { registerCommunityBookmarkRoutes } from './routes/community-bookmarks.js';
 import { registerFieldRoutes } from './routes/fields.js';
 import { registerIrrigationRoutes } from './routes/irrigations.js';
 import { registerObservationRoutes } from './routes/observations.js';
@@ -208,6 +209,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerMiOlivoRoutes(app, db);
   registerMiOlivoCampaignRoutes(app, db);
   registerCommunityRoutes(app, db);
+  registerCommunityBookmarkRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
