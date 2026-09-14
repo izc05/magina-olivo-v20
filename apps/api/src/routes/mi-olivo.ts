@@ -22,7 +22,6 @@ type BooleanRow = { complete: boolean };
 type SourceRow = { source_id: string };
 type ActivitySourceRow = { source_id: string; source_type: string };
 type CountRow = { total: number };
-type BalanceRow = { balance: number };
 type ProgressTotalsRow = { balance: number; xp: number };
 type EventTypeRow = { event_type: string };
 type WeekRow = { week_start: string };
@@ -297,6 +296,15 @@ function projectRhythm(weekStarts: string[], currentWeek: string) {
   };
 }
 
+function legacyRewardId(level: number) {
+  if (level === 1) return 'sprout-badge';
+  if (level === 2) return 'new-branch-badge';
+  if (level === 3) return 'young-olive-badge';
+  if (level === 4) return 'rooted-olive-badge';
+  if (level === 5) return 'master-olive-badge';
+  return `level-${level}`;
+}
+
 export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/mi-olivo', async (request, reply) => {
     const context = requireContext(request, reply);
@@ -416,7 +424,7 @@ export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient |
         { id: 'xp-1000', title: 'Olivo de cosecha', detail: '1.000 XP históricos.', unlocked: xp >= 1000 },
       ],
       rewards: levels.map((item) => ({
-        id: `level-${item.level}`,
+        id: legacyRewardId(item.level),
         title: item.badge_title,
         detail: item.description,
         required_level: item.level,
