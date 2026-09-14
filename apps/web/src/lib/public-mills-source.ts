@@ -1,18 +1,50 @@
 import { apiFetch } from './api-client';
 
-type CmsMillEntry = {
+export type PublicMillReward = {
   id: string;
-  type: string;
+  businessId: string;
+  businessName: string;
   slug: string;
   title: string;
-  summary: string | null;
-  content_json: unknown;
-  featured: boolean;
-  media_url: string | null;
-  external_url: string | null;
-  sort_order: number;
-  updated_at: string;
-  published_at: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  volumeMl: number | null;
+  oliveCost: number;
+  availableStock: number;
+  maxPerUser: number | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  requiredLevel: number;
+  requiredLevelName: string;
+  minXp: number;
+};
+
+export type MillRewardUnlockState = {
+  xp: number;
+  currentLevel: number;
+  currentLevelName: string;
+  rewards: Array<{
+    rewardId: string;
+    requiredLevel: number;
+    requiredLevelName: string;
+    minXp: number;
+    unlocked: boolean;
+  }>;
+};
+
+export type MillRedemption = {
+  id: string;
+  code: string | null;
+  status: string;
+  olivesSpent: number;
+  expiresAt: string;
+  redeemedAt: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+  productTitle: string;
+  businessName: string;
+  qrPayload: string | null;
+  qrReady: boolean;
 };
 
 export type PublicMill = {
@@ -32,42 +64,104 @@ export type PublicMill = {
   sortOrder: number;
   updatedAt: string;
   publishedAt: string | null;
+  millKind: string | null;
+  oliveVarieties: string[];
+  hasShop: boolean;
+  acceptsVisits: boolean;
+  rewardCount: number;
 };
 
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-}
+type AlmazaraPayload = {
+  almazaras: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    shortDescription: string | null;
+    municipalityName: string | null;
+    address: string | null;
+    phone: string | null;
+    website: string | null;
+    logoUrl: string | null;
+    coverImageUrl: string | null;
+    millKind: string | null;
+    oliveVarieties: string[];
+    hasShop: boolean;
+    acceptsVisits: boolean;
+    rewardCount: number;
+  }>;
+};
 
-function text(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function toPublicMill(entry: CmsMillEntry): PublicMill {
-  const content = asRecord(entry.content_json);
-  return {
-    id: entry.id,
-    slug: entry.slug,
-    title: entry.title,
-    summary: entry.summary,
-    body: text(content.body),
-    location: text(content.location),
-    town: text(content.town),
-    phone: text(content.phone),
-    address: text(content.address),
-    ctaLabel: text(content.cta_label),
-    mediaUrl: entry.media_url,
-    externalUrl: entry.external_url,
-    featured: Boolean(entry.featured),
-    sortOrder: Number(entry.sort_order) || 0,
-    updatedAt: entry.updated_at,
-    publishedAt: entry.published_at,
-  };
-}
+type RewardUnlockPayload = {
+  rewards: Array<{
+    rewardId: string;
+    requiredLevel: number;
+    requiredLevelName: string;
+    minXp: number;
+  }>;
+};
 
 export async function loadPublicMills(): Promise<PublicMill[]> {
-  const payload = await apiFetch<{ entries: CmsMillEntry[] }>('/api/v1/public/content?type=mill');
-  return payload.entries
-    .filter((entry) => entry.type === 'mill' && entry.slug && entry.title)
-    .map(toPublicMill)
-    .sort((a, b) => Number(b.featured) - Number(a.featured) || a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'es'));
+  const payload = await apiFetch<AlmazaraPayload>('/api/v1/public/almazaras');
+  return payload.almazaras.map((item, index) => ({
+    id: item.id,
+    slug: item.slug,
+    title: item.name,
+    summary: item.shortDescription,
+    body: null,
+    location: item.municipalityName,
+    town: item.municipalityName,
+    phone: item.phone,
+    address: item.address,
+    ctaLabel: item.website ? 'Web oficial' : null,
+    mediaUrl: item.coverImageUrl || item.logoUrl,
+    externalUrl: item.website,
+    featured: false,
+    sortOrder: index,
+    updatedAt: '',
+    publishedAt: null,
+    millKind: item.millKind,
+    oliveVarieties: item.oliveVarieties ?? [],
+    hasShop: item.hasShop,
+    acceptsVisits: item.acceptsVisits,
+    rewardCount: item.rewardCount,
+  }));
+}
+
+export async function loadMillRewards(slug: string): Promise<PublicMillReward[]> {
+  const [payload, unlockPayload] = await Promise.all([
+    apiFetch<{ rewards: Omit<PublicMillReward, 'requiredLevel' | 'requiredLevelName' | 'minXp'>[] }>(`/api/v1/public/almazaras/${encodeURIComponent(slug)}/rewards`),
+    apiFetch<RewardUnlockPayload>(`/api/v1/public/almazaras/${encodeURIComponent(slug)}/reward-unlocks`),
+  ]);
+  const unlocks = new Map(unlockPayload.rewards.map((item) => [item.rewardId, item]));
+  return payload.rewards.map((reward) => {
+    const unlock = unlocks.get(reward.id);
+    return {
+      ...reward,
+      requiredLevel: unlock?.requiredLevel ?? 1,
+      requiredLevelName: unlock?.requiredLevelName ?? 'Brote',
+      minXp: unlock?.minXp ?? 0,
+    };
+  });
+}
+
+export async function loadMyMillRewardUnlocks(slug: string): Promise<MillRewardUnlockState> {
+  return apiFetch<MillRewardUnlockState>(`/api/v1/my/almazaras/${encodeURIComponent(slug)}/reward-unlocks`);
+}
+
+export async function redeemMillReward(id: string) {
+  return apiFetch<{ redemption: { id: string; token: string; status: string; qrPayload: string; expiresAt: string; productTitle: string; businessName: string; olivesSpent: number } }>(
+    `/api/v1/almazara-rewards/${encodeURIComponent(id)}/redeem`,
+    { method: 'POST' },
+  );
+}
+
+export async function loadMyMillRedemptions() {
+  return apiFetch<{ redemptions: MillRedemption[] }>('/api/v1/my/almazara-redemptions');
+}
+
+export async function cancelMyMillRedemption(id: string) {
+  return apiFetch<{ redemption: { id: string; status: 'cancelled'; refunded: boolean } }>(
+    `/api/v1/my/almazara-redemptions/${encodeURIComponent(id)}/cancel`,
+    { method: 'POST' },
+  );
 }
