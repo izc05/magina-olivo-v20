@@ -106,8 +106,9 @@ test('Explore links to public modules that are already available', async ({ page
   await expect(page.getByRole('link', { name: /Servicios/ })).toHaveAttribute('href', /^\/servicios\/?$/);
   await expect(page.getByRole('link', { name: /Consejos del campo/ })).toHaveAttribute('href', /^\/consejos\/?$/);
 
-  const pending = page.locator('article').filter({ hasText: 'Rutas y experiencias' });
-  await expect(pending).toContainText('En preparación');
+  const routes = page.getByRole('link', { name: /Rutas y experiencias/ });
+  await expect(routes).toHaveAttribute('href', /^\/rutas\/?$/);
+  await expect(routes).toContainText('Disponible');
   await expectNoHorizontalOverflow(page);
 });
 
