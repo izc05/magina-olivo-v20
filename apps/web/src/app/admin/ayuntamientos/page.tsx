@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { GoogleSignInButton } from '@/components/google-sign-in-button';
+import { MunicipalityAdminNav } from '@/components/municipality-admin-nav';
 import { apiFetch } from '@/lib/api-client';
+import { municipalityAdminHref, readMunicipalitySlug, replaceMunicipalityContext } from '@/lib/municipality-admin-context';
 import '../admin.css';
 import styles from './municipalities-admin.module.css';
 
@@ -63,11 +65,12 @@ export default function AdminMunicipalitiesPage() {
     const payload = await apiFetch<{ municipalities: Municipality[] }>('/api/v1/admin/territory/catalog');
     setItems(payload.municipalities);
     setSelected((current) => {
-      const requestedSlug = typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : '';
+      const requestedSlug = readMunicipalitySlug();
       const municipality = payload.municipalities.find((item) => requestedSlug && item.slug === requestedSlug)
         ?? payload.municipalities.find((item) => item.id === current?.id)
         ?? payload.municipalities[0];
       if (!municipality?.directory) return null;
+      replaceMunicipalityContext(municipality.slug);
       return {
         id: municipality.id,
         name: municipality.name,
@@ -107,7 +110,7 @@ export default function AdminMunicipalitiesPage() {
   function choose(item: Municipality) {
     if (!item.directory) return;
     setSelected({ id: item.id, name: item.name, slug: item.slug, ine_code: item.ine_code, ...item.directory });
-    if (typeof window !== 'undefined') window.history.replaceState(null, '', `#${item.slug}`);
+    replaceMunicipalityContext(item.slug);
     setMessage(null);
     setError(null);
   }
@@ -143,16 +146,17 @@ export default function AdminMunicipalitiesPage() {
         <p>Gobierno, contenido y publicación de los 16 municipios de Sierra Mágina.</p>
       </div>
       <div className={styles.headerActions}>
-        <a href="/admin/ayuntamientos/editorial">Portada editorial</a>
-        <a href="/admin/ayuntamientos/cobertura">Cobertura</a>
-        <a href="/admin/ayuntamientos/patrimonio">Patrimonio y turismo</a>
-        <a href="/admin/ayuntamientos/actualidad">Noticias y eventos</a>
-        <a href="/ayuntamientos" target="_blank" rel="noreferrer">Vista pública ↗</a>
+        <a href={municipalityAdminHref('/admin/ayuntamientos/contenido', selected?.slug)}>Contenido</a>
+        <a href={municipalityAdminHref('/admin/ayuntamientos/editorial', selected?.slug)}>Portada editorial</a>
+        <a href={municipalityAdminHref('/admin/ayuntamientos/cobertura', selected?.slug)}>Cobertura</a>
+        <a href={municipalityAdminHref('/admin/ayuntamientos/patrimonio', selected?.slug)}>Patrimonio y turismo</a>
+        <a href={municipalityAdminHref('/admin/ayuntamientos/actualidad', selected?.slug)}>Noticias y eventos</a>
       </div>
     </header>
 
     {message ? <div className="admin-notice success">{message}</div> : null}
     {error ? <div className="admin-notice error">{error}</div> : null}
+    <MunicipalityAdminNav slug={selected?.slug} name={selected?.name} active="ficha" />
 
     <section className={styles.summaryGrid} aria-label="Resumen municipal">
       <article className="admin-card"><span>Publicados</span><strong>{stats.publicCount}</strong><small>de {items.length || 16} municipios</small></article>
@@ -163,37 +167,15 @@ export default function AdminMunicipalitiesPage() {
 
     <section className={styles.controlLayout}>
       <aside className={`admin-card ${styles.sidebar}`}>
-        <div className={styles.sidebarHeading}>
-          <div><h2>Municipios</h2><p>{visibleItems.length} visibles en este filtro</p></div>
-        </div>
-        <label className={styles.searchLabel}>
-          <span>Buscar municipio o INE</span>
-          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Bedmar, 23902…" />
-        </label>
+        <div className={styles.sidebarHeading}><div><h2>Municipios</h2><p>{visibleItems.length} visibles en este filtro</p></div></div>
+        <label className={styles.searchLabel}><span>Buscar municipio o INE</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Bedmar, 23902…" /></label>
         <div className={styles.filters} aria-label="Filtrar municipios">
-          {([
-            ['all', 'Todos'],
-            ['public', 'Públicos'],
-            ['hidden', 'Ocultos'],
-            ['incomplete', 'Con huecos'],
-          ] as Array<[ListFilter, string]>).map(([value, label]) => <button
-            key={value}
-            type="button"
-            aria-pressed={listFilter === value}
-            className={listFilter === value ? styles.filterActive : styles.filter}
-            onClick={() => setListFilter(value)}
-          >{label}</button>)}
+          {([['all', 'Todos'], ['public', 'Públicos'], ['hidden', 'Ocultos'], ['incomplete', 'Con huecos']] as Array<[ListFilter, string]>).map(([value, label]) => <button key={value} type="button" aria-pressed={listFilter === value} className={listFilter === value ? styles.filterActive : styles.filter} onClick={() => setListFilter(value)}>{label}</button>)}
         </div>
         <div className={styles.municipalityList}>
           {visibleItems.map((item) => {
             const status = completion(item.directory);
-            return <button
-              id={item.slug}
-              key={item.id}
-              type="button"
-              onClick={() => choose(item)}
-              className={selected?.id === item.id ? styles.municipalityActive : styles.municipalityButton}
-            >
+            return <button id={item.slug} key={item.id} type="button" onClick={() => choose(item)} className={selected?.id === item.id ? styles.municipalityActive : styles.municipalityButton}>
               <span><strong>{item.name}</strong><small>INE {item.ine_code}</small></span>
               <span className={styles.listMeta}><b>{item.directory?.public_enabled ? 'Público' : 'Oculto'}</b><small>{status.percent}%</small></span>
             </button>;
@@ -205,34 +187,23 @@ export default function AdminMunicipalitiesPage() {
       <div className={styles.mainColumn}>
         {selected ? <>
           <section className={`admin-card ${styles.selectedHeader}`}>
-            <div>
-              <span className={styles.kicker}>MUNICIPIO · INE {selected.ine_code}</span>
-              <h2>{selected.name}</h2>
-              <p>Desde aquí controlas la ficha institucional y accedes a todas las capas editoriales del municipio.</p>
-            </div>
-            <div className={styles.publicState} data-enabled={selected.public_enabled ? 'true' : 'false'}>
-              <strong>{selected.public_enabled ? 'Publicado' : 'Oculto'}</strong>
-              <span>{selected.public_enabled ? 'Visible en la web pública' : 'No aparece públicamente'}</span>
-            </div>
+            <div><span className={styles.kicker}>MUNICIPIO · INE {selected.ine_code}</span><h2>{selected.name}</h2><p>Desde aquí controlas la ficha institucional y accedes a todas las capas editoriales del municipio.</p></div>
+            <div className={styles.publicState} data-enabled={selected.public_enabled ? 'true' : 'false'}><strong>{selected.public_enabled ? 'Publicado' : 'Oculto'}</strong><span>{selected.public_enabled ? 'Visible en la web pública' : 'No aparece públicamente'}</span></div>
           </section>
 
           <section className={styles.quickActions} aria-label={`Gestionar ${selected.name}`}>
             <a className="admin-card" href={`/ayuntamientos/${selected.slug}`} target="_blank" rel="noreferrer"><strong>Ver ficha pública ↗</strong><span>Comprueba cómo ve el usuario este municipio.</span></a>
-            <a className="admin-card" href="/admin/ayuntamientos/editorial"><strong>Portada editorial</strong><span>Elige perfil, hero y hasta tres imprescindibles.</span></a>
-            <a className="admin-card" href={`/admin/ayuntamientos/cobertura#${selected.slug}`}><strong>Revisar cobertura</strong><span>Detecta datos y contenido que todavía faltan.</span></a>
-            <a className="admin-card" href="/admin/ayuntamientos/patrimonio"><strong>Patrimonio y turismo</strong><span>Gestiona perfil, patrimonio, naturaleza y turismo.</span></a>
-            <a className="admin-card" href="/admin/ayuntamientos/actualidad"><strong>Noticias y eventos</strong><span>Vincula actualidad al municipio canónico.</span></a>
+            <a className="admin-card" href={municipalityAdminHref('/admin/ayuntamientos/contenido', selected.slug)}><strong>Editar contenido</strong><span>Crea y modifica perfil, patrimonio, naturaleza y turismo.</span></a>
+            <a className="admin-card" href={municipalityAdminHref('/admin/ayuntamientos/editorial', selected.slug)}><strong>Portada editorial</strong><span>Elige perfil, hero y hasta tres imprescindibles.</span></a>
+            <a className="admin-card" href={municipalityAdminHref('/admin/ayuntamientos/cobertura', selected.slug)}><strong>Revisar cobertura</strong><span>Detecta datos y contenido que todavía faltan.</span></a>
+            <a className="admin-card" href={municipalityAdminHref('/admin/ayuntamientos/patrimonio', selected.slug)}><strong>Patrimonio y turismo</strong><span>Gestiona perfil, patrimonio, naturaleza y turismo.</span></a>
+            <a className="admin-card" href={municipalityAdminHref('/admin/ayuntamientos/actualidad', selected.slug)}><strong>Noticias y eventos</strong><span>Vincula actualidad al municipio canónico.</span></a>
           </section>
 
           <section className={`admin-card ${styles.completeness}`}>
-            <div className={styles.completenessHeader}>
-              <div><h3>Calidad de la ficha institucional</h3><p>{selectedCompletion.done} de {selectedCompletion.total} señales disponibles.</p></div>
-              <strong>{selectedCompletion.percent}%</strong>
-            </div>
+            <div className={styles.completenessHeader}><div><h3>Calidad de la ficha institucional</h3><p>{selectedCompletion.done} de {selectedCompletion.total} señales disponibles.</p></div><strong>{selectedCompletion.percent}%</strong></div>
             <div className={styles.progress}><span style={{ width: `${selectedCompletion.percent}%` }} /></div>
-            <div className={styles.signalGrid}>
-              {completenessFields.map(({ key, label }) => <span key={key} data-complete={Boolean(selected[key]) ? 'true' : 'false'}>{Boolean(selected[key]) ? '✓' : '–'} {label}</span>)}
-            </div>
+            <div className={styles.signalGrid}>{completenessFields.map(({ key, label }) => <span key={key} data-complete={Boolean(selected[key]) ? 'true' : 'false'}>{Boolean(selected[key]) ? '✓' : '–'} {label}</span>)}</div>
           </section>
 
           <section className={`admin-card ${styles.formCard}`}>
@@ -249,10 +220,7 @@ export default function AdminMunicipalitiesPage() {
               <label>Fuente de verificación<input value={selected.source_url} onChange={(e) => setSelected({ ...selected, source_url: e.target.value })} /></label>
               <label>Fecha verificación<input type="date" value={selected.verified_at.slice(0, 10)} onChange={(e) => setSelected({ ...selected, verified_at: e.target.value })} /></label>
             </div>
-            <div className={styles.saveBar}>
-              <label className={styles.visibilityToggle}><input type="checkbox" checked={selected.public_enabled} onChange={(e) => setSelected({ ...selected, public_enabled: e.target.checked })} /><span>Visible públicamente</span></label>
-              <button type="button" disabled={busy} onClick={() => void save()}>{busy ? 'Guardando…' : 'Guardar cambios'}</button>
-            </div>
+            <div className={styles.saveBar}><label className={styles.visibilityToggle}><input type="checkbox" checked={selected.public_enabled} onChange={(e) => setSelected({ ...selected, public_enabled: e.target.checked })} /><span>Visible públicamente</span></label><button type="button" disabled={busy} onClick={() => void save()}>{busy ? 'Guardando…' : 'Guardar cambios'}</button></div>
           </section>
         </> : <section className="admin-card"><p>No hay ficha seleccionada.</p></section>}
       </div>
