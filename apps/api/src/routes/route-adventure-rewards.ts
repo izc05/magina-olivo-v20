@@ -58,13 +58,15 @@ export function registerRouteAdventureRewardRoutes(app: FastifyInstance, db: Dat
         AND s.status = 'active'
         AND (s.starts_at IS NULL OR s.starts_at <= now())
         AND (s.ends_at IS NULL OR s.ends_at > now())
+        AND (s.starts_at IS NULL OR cr.completed_at >= s.starts_at)
+        AND (s.ends_at IS NULL OR cr.completed_at <= s.ends_at)
       ORDER BY cr.completed_at DESC, s.priority DESC, s.created_at DESC
       LIMIT 24
     `.execute(db);
 
     return {
       rewards: result.rows,
-      notice: 'Las recompensas comerciales aparecen siempre como patrocinadas. Se desbloquean por completar una aventura, nunca por velocidad, posición en rankings ni cantidad de GPS compartido.',
+      notice: 'Las recompensas comerciales aparecen siempre como patrocinadas y solo se desbloquean si la aventura se completa durante la campaña vigente. Nunca dependen de velocidad, rankings ni cantidad de GPS compartido.',
     };
   });
 }
