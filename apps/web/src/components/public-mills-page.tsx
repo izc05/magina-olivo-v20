@@ -80,7 +80,7 @@ function RewardCatalog({ slug }: { slug: string }) {
     setMessage(null);
     try {
       const result = await redeemMillReward(item.id);
-      setCredential({ code: result.redemption.code, productTitle: result.redemption.productTitle, expiresAt: result.redemption.expiresAt });
+      setCredential({ code: result.redemption.token, productTitle: result.redemption.productTitle, expiresAt: result.redemption.expiresAt });
       setItems((current) => current.map((row) => row.id === item.id ? { ...row, availableStock: Math.max(0, row.availableStock - 1) } : row));
     } catch (error) {
       const text = error instanceof Error ? error.message : '';
@@ -98,7 +98,7 @@ function RewardCatalog({ slug }: { slug: string }) {
     {message ? <p role="alert">{message}</p> : null}
     {credential ? <div className={styles.cardBody}>
       <strong>✅ Premio reservado: {credential.productTitle}</strong>
-      <p>Presenta este QR en la almazara. Solo puede utilizarse una vez.</p>
+      <p>Presenta este QR firmado en la almazara. Solo puede utilizarse una vez.</p>
       <RewardQr code={credential.code} />
       <code style={{ overflowWrap: 'anywhere', fontSize: '0.8rem' }}>{credential.code}</code>
       <small>Caduca: {new Date(credential.expiresAt).toLocaleString('es-ES')}</small>
