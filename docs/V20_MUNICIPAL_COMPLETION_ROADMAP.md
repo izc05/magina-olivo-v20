@@ -34,51 +34,56 @@ Incluye comparación `Borrador editorial` vs `Resultado público actual`, estado
 
 ## Fase 3 — Historial y auditoría municipal legible
 
-Estado: IMPLEMENTADA en PR #103 / `feat/v20-municipalities-audit-history`.
+Estado: COMPLETADA funcionalmente en PR #103 / `feat/v20-municipalities-audit-history` y cubierta por el QA final #106.
 
 Incluye reutilización de `adminApi.audit()`, correlación por identidad canónica/targets CMS, actor abreviado, metadata bruta oculta, solo lectura y contexto municipal. No crea backend paralelo ni consulta el directorio de usuarios.
 
 ## Fase 4 — Matriz de huecos de contenido
 
-Estado: IMPLEMENTADA en PR #104 / `feat/v20-municipalities-gap-matrix`.
+Estado: COMPLETADA funcionalmente en PR #104 / `feat/v20-municipalities-gap-matrix` y cubierta por el QA final #106.
 
 Incluye matriz alfabética 16×9, señales binarias de perfil/resumen/hero/procedencia/patrimonio/naturaleza/turismo/actualidad/economía, ventanas de publicación, filtros y CTAs directos. Sin puntuaciones subjetivas ni ranking.
 
 ## Fase 5 — QA municipal final 16/16
 
-Estado: EN VALIDACIÓN en `feat/v20-municipalities-qa-16`.
+Estado: COMPLETADA en PR #106 / `feat/v20-municipalities-qa-16`.
 
-Objetivos:
-- validar exactamente los 16 slugs canónicos;
-- comprobar generación estática y metadata por slug;
-- verificar secciones públicas, estados vacíos y fuente municipal canónica;
-- verificar el workspace Admin completo;
-- confirmar contexto `?municipio=` en todas las herramientas;
-- asegurar que Preview, Historial y Huecos siguen siendo de solo lectura;
-- ejecutar todos los contratos municipales históricos más el agregador final 16/16;
-- superar typecheck, build, Admin, Candidate, Staging y Browser E2E sobre el mismo HEAD.
+HEAD validado: `a9e250a9a6c54462dcffce24d4a42993618e90fb`.
 
-Cierre:
-- contrato `scripts/check-municipality-qa-16.mjs` verde;
-- workflow municipal verde;
-- matriz global de 7 gates verde sobre el mismo commit.
+Cierre validado:
+- exactamente 16 slugs canónicos;
+- generación estática y metadata por slug;
+- secciones públicas y estados vacíos;
+- workspace Admin completo;
+- contexto `?municipio=`;
+- Preview, Historial y Huecos protegidos como solo lectura;
+- todos los contratos municipales históricos + agregador final 16/16;
+- V20 municipalities directory #46 verde;
+- V20 environment contract #795 verde;
+- V20 foundation check #744 verde;
+- V20 platform admin check #642 verde;
+- V20 full candidate check #2976 verde;
+- V20 staging readiness #889 verde;
+- V20 beta browser E2E #1288 verde.
 
 ## Fase 6 — Handoff de integración
 
-Estado: PENDIENTE tras cerrar la Fase 5.
+Estado: COMPLETADA EN ESTA RAMA mediante `docs/V20_MUNICIPAL_INTEGRATION_HANDOFF.md` y `scripts/check-municipality-integration-handoff.mjs`.
 
-Objetivos:
-- verificar cadena de bases desde #83 hasta el último PR municipal;
-- comprobar `behind_by=0` respecto a su padre inmediato;
-- documentar orden de absorción;
-- revalidar colisiones con Rutas, Empresas, GIS/Clima y Admin global;
-- preparar handoff hacia `integrate/v20-beta-closure`.
+Verificaciones realizadas:
+- cadena municipal #83 → #88 → #89 → #90 → #91 → #92 → #94 → #95 → #96 → #97 → #98 → #100 → #101 → #102 → #103 → #104 → #106;
+- cada hijo está `behind_by=0` respecto a su padre inmediato;
+- #83 está `behind_by=0` respecto a `integrate/v20-beta-closure`;
+- orden de absorción documentado;
+- #105 Admin unificado identificado como trabajo paralelo;
+- #66, Rutas, Empresas, GIS/Clima y demás frentes paralelos excluidos del handoff;
+- importadores #90/#91 explícitamente no ejecutados contra staging/live;
+- `main` permanece fuera de alcance;
+- no se autoriza merge automático.
 
-Reglas:
-- no merge automático;
-- no tocar `main`;
-- no ejecutar importadores #90/#91 contra staging/live durante el handoff;
-- no absorber ramas ajenas al bloque municipal.
+Cierre de esta fase:
+- contrato de handoff conectado al workflow municipal;
+- handoff final debe pasar CI sobre el HEAD exacto antes de considerarse listo para absorción coordinada.
 
 ## Definición de terminado del bloque municipal
 
@@ -90,3 +95,5 @@ El bloque municipal se considera funcionalmente cerrado cuando:
 5. existen preview, trazabilidad y matriz objetiva de huecos;
 6. las 16 fichas pasan QA público/Admin;
 7. la cadena queda lista para integración coordinada sin invadir otros módulos.
+
+Todos estos puntos están implementados. La última condición pendiente de cada ejecución es que el HEAD del handoff conserve CI verde antes de su absorción coordinada.
