@@ -192,8 +192,8 @@ export function registerAdminRoutes(app: FastifyInstance, db: DatabaseClient | n
     if (!params.success) return reply.code(400).send({ error: 'invalid_user_id' });
     const input = parseBody(z.object({ role: platformRoleSchema, status: z.enum(['active', 'revoked']).default('active') }), request.body, reply);
     if (!input) return;
-    if (params.data.userId === auth.access.userId && input.status === 'revoked') {
-      return reply.code(409).send({ error: 'cannot_revoke_current_admin' });
+    if (params.data.userId === auth.access.userId && (input.status !== 'active' || input.role !== auth.access.role)) {
+      return reply.code(409).send({ error: 'cannot_change_current_admin_access' });
     }
     const target = await auth.database.selectFrom('users').select(['id']).where('id', '=', params.data.userId).executeTakeFirst();
     if (!target) return reply.code(404).send({ error: 'user_not_found' });
