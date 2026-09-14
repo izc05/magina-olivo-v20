@@ -47,8 +47,9 @@ test.beforeAll(async ({ request }) => {
   });
   expect(award.status(), award.statusText()).toBe(200);
   const awardBody = await award.json() as AwardResponse;
-  expect(awardBody.awarded).toBe(true);
-  expect(awardBody.points).toBe(5);
+  expect(['awarded', 'already_recognized']).toContain(awardBody.status);
+  expect(awardBody.points).toBe(awardBody.status === 'awarded' ? 5 : 0);
+  expect(awardBody.awarded).toBe(awardBody.status === 'awarded');
   expect(awardBody.daily.cap).toBe(20);
 
   const duplicate = await request.post(`${apiUrl}/api/v1/mi-olivo/events`, {
@@ -106,14 +107,15 @@ for (const width of [360, 390, 430]) {
 
       await expect(page.getByRole('heading', { name: 'Tu olivo digital' })).toBeVisible();
       await expect(page.getByRole('img', { name: /Olivo digital en fase/ })).toBeVisible();
-      await expect(page.getByText('SIERRA MÁGINA · TU PROGRESO', { exact: true })).toBeVisible();
-      await expect(page.getByText(/Fase [1-5]\/5/)).toBeVisible();
-      await expect(page.getByText('aceitunas', { exact: true })).toBeVisible();
+      await expect(page.getByText('SIERRA MÁGINA · XP PERMANENTE', { exact: true })).toBeVisible();
+      await expect(page.getByText(/Fase (?:[1-9]|10)\/10/)).toBeVisible();
+      await expect(page.getByText('aceitunas disponibles', { exact: true })).toBeVisible();
       await expect(page.getByText(/Ritmo del cuaderno ·/)).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Haz crecer tu olivo' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Gana aceitunas y XP' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Pequeños pasos útiles' })).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Distintivos digitales' })).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Por qué ha crecido' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Tu colección' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Evolución del olivo' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Movimientos de aceitunas' })).toBeVisible();
 
       const forecast = page.getByRole('region', { name: 'Previsión real que ambienta Mi Olivo' });
       await expect(forecast).toBeVisible();
