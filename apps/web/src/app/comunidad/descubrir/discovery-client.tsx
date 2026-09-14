@@ -117,7 +117,7 @@ export function CommunityDiscoveryClient() {
         <p>{post.body}</p>
         <footer>
           <span>♥ {post.reaction_count} · 💬 {post.comment_count}</span>
-          {post.author_id ? <Link href={`/comunidad/persona/${post.author_id}`}>{post.author_name}</Link> : <span>{post.author_name}</span>}
+          {post.author_id ? <Link href={`/comunidad/persona?id=${encodeURIComponent(post.author_id)}`}>{post.author_name}</Link> : <span>{post.author_name}</span>}
         </footer>
       </article>)}
     </div>
