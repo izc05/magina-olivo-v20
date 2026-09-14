@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CompassIcon, HomeIcon, MoreIcon, SproutIcon } from '@/components/icons';
+import styles from './bottom-nav.module.css';
 
 const items = [
   ['/', HomeIcon, 'Inicio'],
@@ -10,18 +11,18 @@ const items = [
 
 export function BottomNav({ active }: { active: string }) {
   return (
-    <nav className="bottom-nav" aria-label="Navegación principal">
+    <nav className={styles.root} aria-label="Navegación principal">
       {items.map(([href, Icon, label]) => {
         const current = active === href;
         return (
           <Link
             key={href}
             href={href}
-            className={current ? 'active' : undefined}
+            className={`${styles.link} ${current ? styles.active : ''}`.trim()}
             aria-current={current ? 'page' : undefined}
           >
-            <span className="nav-icon" aria-hidden><Icon /></span>
-            <span className="nav-label">{label}</span>
+            <span className={styles.icon} aria-hidden><Icon /></span>
+            <span className={styles.label}>{label}</span>
           </Link>
         );
       })}
