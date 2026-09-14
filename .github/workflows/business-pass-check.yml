@@ -1,0 +1,187 @@
+name: V20 Mágina Pass check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/api/src/routes/business-pass.ts'
+      - 'apps/api/src/routes/admin-business-pass.ts'
+      - 'apps/api/src/server.ts'
+      - 'database/migrations/0074_business_magina_pass.sql'
+      - '.github/workflows/business-pass-check.yml'
+
+concurrency:
+  group: magina-pass-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pass:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API dependencies
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+
+      - name: Typecheck and build API
+        run: |
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/api build
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+
+      - name: Apply all migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Seed pass program, business, QR and reward
+        env:
+          PGPASSWORD: postgres
+        run: |
+          RAW_TOKEN='magina-pass-ci-token-123456789'
+          TOKEN_HASH=$(node -e "const c=require('crypto'); console.log(c.createHash('sha256').update(process.argv[1]).digest('hex'))" "$RAW_TOKEN")
+          echo "RAW_TOKEN=${RAW_TOKEN}" >> "$GITHUB_ENV"
+          psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO users (id, primary_email, display_name, status)
+          VALUES ('76000000-0000-4000-8000-000000000001', 'pass-ci@example.com', 'Pass CI', 'active');
+
+          INSERT INTO businesses (
+            id, slug, name, short_description, location, verification_status, status, commercial_plan, published_at
+          ) VALUES (
+            '76100000-0000-4000-8000-000000000001', 'almazara-pass-ci', 'Almazara Pass CI',
+            'Parada de prueba Mágina Pass', ST_SetSRID(ST_MakePoint(-3.46,37.76),4326),
+            'verified', 'published', 'premium', now()
+          );
+
+          INSERT INTO magina_pass_programs (
+            id, slug, name, description, program_type, status, default_checkin_points,
+            default_cooldown_hours, published_at
+          ) VALUES (
+            '76200000-0000-4000-8000-000000000001', 'descubre-magina-ci', 'Descubre Mágina CI',
+            'Pasaporte territorial de prueba', 'points', 'published', 15, 20, now()
+          );
+
+          INSERT INTO magina_pass_businesses (
+            program_id, business_id, checkin_points, cooldown_hours, featured_stop, active
+          ) VALUES (
+            '76200000-0000-4000-8000-000000000001',
+            '76100000-0000-4000-8000-000000000001', 15, 20, true, true
+          );
+
+          INSERT INTO magina_pass_qr_tokens (
+            id, program_id, business_id, token_hash, label, active, valid_from
+          ) VALUES (
+            '76300000-0000-4000-8000-000000000001',
+            '76200000-0000-4000-8000-000000000001',
+            '76100000-0000-4000-8000-000000000001',
+            '${TOKEN_HASH}', 'QR mostrador CI', true, now()
+          );
+
+          INSERT INTO magina_pass_rewards (
+            id, program_id, business_id, title, points_cost, reward_type,
+            redemption_instructions, status
+          ) VALUES (
+            '76400000-0000-4000-8000-000000000001',
+            '76200000-0000-4000-8000-000000000001',
+            '76100000-0000-4000-8000-000000000001',
+            'Detalle Mágina CI', 10, 'gift', 'Mostrar el código al establecimiento', 'published'
+          );
+          SQL
+
+      - name: Mágina Pass end-to-end API smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+          PGPASSWORD: postgres
+          ALLOW_DEV_AUTH_HEADERS: 'true'
+        run: |
+          node apps/api/dist/server.js >/tmp/magina-pass-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill ${API_PID} || true; cat /tmp/magina-pass-api.log' EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3001/health >/dev/null; then break; fi
+            sleep 1
+          done
+
+          AUTH=(-H 'x-user-id: 76000000-0000-4000-8000-000000000001' -H 'x-workspace-id: 76500000-0000-4000-8000-000000000001')
+
+          PROGRAMS=$(curl -fsS http://127.0.0.1:3001/api/v1/public/magina-pass/programs)
+          PROGRAM=$(curl -fsS http://127.0.0.1:3001/api/v1/public/magina-pass/programs/descubre-magina-ci)
+          CHECKIN=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/my/magina-pass/checkins \
+            "${AUTH[@]}" -H 'content-type: application/json' -d "{\"code\":\"${RAW_TOKEN}\"}")
+
+          COOLDOWN_STATUS=$(curl -sS -o /tmp/pass-cooldown.json -w '%{http_code}' -X POST http://127.0.0.1:3001/api/v1/my/magina-pass/checkins \
+            "${AUTH[@]}" -H 'content-type: application/json' -d "{\"code\":\"${RAW_TOKEN}\"}")
+          test "${COOLDOWN_STATUS}" = '409'
+          COOLDOWN=$(cat /tmp/pass-cooldown.json)
+
+          WALLET=$(curl -fsS http://127.0.0.1:3001/api/v1/my/magina-pass "${AUTH[@]}")
+          REDEEM=$(curl -fsS -X POST http://127.0.0.1:3001/api/v1/my/magina-pass/rewards/76400000-0000-4000-8000-000000000001/redeem "${AUTH[@]}")
+          WALLET_AFTER=$(curl -fsS http://127.0.0.1:3001/api/v1/my/magina-pass "${AUTH[@]}")
+
+          PROGRAMS="$PROGRAMS" PROGRAM="$PROGRAM" CHECKIN="$CHECKIN" COOLDOWN="$COOLDOWN" WALLET="$WALLET" REDEEM="$REDEEM" WALLET_AFTER="$WALLET_AFTER" node <<'NODE'
+          const programs = JSON.parse(process.env.PROGRAMS);
+          const program = JSON.parse(process.env.PROGRAM);
+          const checkin = JSON.parse(process.env.CHECKIN);
+          const cooldown = JSON.parse(process.env.COOLDOWN);
+          const wallet = JSON.parse(process.env.WALLET);
+          const redeem = JSON.parse(process.env.REDEEM);
+          const walletAfter = JSON.parse(process.env.WALLET_AFTER);
+
+          if (programs.programs?.length !== 1) throw new Error('Pass program listing failed');
+          if (program.program?.slug !== 'descubre-magina-ci') throw new Error('Pass program detail failed');
+          if (program.stops?.length !== 1 || program.rewards?.length !== 1) throw new Error('Pass stops/rewards failed');
+          if (checkin.checkin?.pointsAwarded !== 15 || checkin.wallet?.points_balance !== 15) throw new Error('Pass checkin failed');
+          if (cooldown.error !== 'pass_checkin_cooldown') throw new Error('Pass cooldown guard failed');
+          if (wallet.wallets?.[0]?.points_balance !== 15 || wallet.wallets?.[0]?.total_checkins !== 1) throw new Error('Pass wallet failed');
+          if (!redeem.redemption?.code || redeem.redemption?.pointsSpent !== 10 || redeem.redemption?.pointsBalance !== 5) throw new Error('Pass reward redemption failed');
+          if (walletAfter.wallets?.[0]?.points_balance !== 5) throw new Error('Pass balance deduction failed');
+          NODE
+
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM magina_pass_checkins WHERE user_id='76000000-0000-4000-8000-000000000001'")" = '1'
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM magina_pass_redemptions WHERE user_id='76000000-0000-4000-8000-000000000001' AND status='issued'")" = '1'
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT points_balance FROM magina_pass_wallets WHERE user_id='76000000-0000-4000-8000-000000000001'")" = '5'
+          test "$(psql -h 127.0.0.1 -U postgres -d magina -Atc "SELECT count(*) FROM magina_pass_qr_tokens WHERE token_hash='${RAW_TOKEN}'")" = '0'
