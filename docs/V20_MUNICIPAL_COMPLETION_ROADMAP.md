@@ -1,6 +1,6 @@
 # V20 Ayuntamientos — roadmap de cierre
 
-Este documento define el cierre del bloque municipal de Mágina Olivo V20 sobre la cadena que culmina en PR #100.
+Este documento define el cierre del bloque municipal de Mágina Olivo V20 sobre la cadena municipal apilada.
 
 Principio: cada fase debe ser integrable, auditable y no invadir Rutas, Empresas, GIS/Clima ni el Admin global.
 
@@ -22,34 +22,40 @@ Completado antes de este roadmap:
 
 ## Fase 1 — SEO y preparación editorial
 
-Estado: EN IMPLEMENTACIÓN en `feat/v20-municipalities-seo-readiness`.
+Estado: COMPLETADA en PR #101 / `feat/v20-municipalities-seo-readiness`.
 
-Objetivos:
+Incluye:
 - metadata específica por municipio;
 - título y descripción propios;
 - Open Graph y Twitter Card;
-- imagen social solo cuando procede de media real publicada;
+- imagen social solo desde media real HTTP(S);
 - fallback determinista si la API no está disponible durante build;
 - diagnóstico Admin 5/5: perfil principal, resumen, imagen, fuente/verificación y descubrimiento publicado.
 
-Cierre:
+Cierre validado:
 - contrato específico verde;
 - typecheck/build verde;
 - 16 slugs siguen exportándose;
-- ningún contenido inventado para rellenar metadata.
+- ningún contenido inventado para rellenar metadata;
+- matriz completa de CI verde sobre el mismo HEAD.
 
 ## Fase 2 — Preview editorial antes de publicar
 
+Estado: EN IMPLEMENTACIÓN en `feat/v20-municipalities-editorial-preview`.
+
 Objetivos:
-- vista previa desde Admin del hero, resumen y destacados;
-- distinguir claramente borrador vs resultado público;
-- acceso contextual con `?municipio=`;
-- preflight visual con avisos de huecos, sin publicación automática.
+- vista previa desde Admin del hero, resumen y hasta tres imprescindibles;
+- distinguir claramente `Borrador editorial` de `Resultado público actual`;
+- mostrar el estado real draft/published/archived de cada pieza;
+- mantener contexto `?municipio=`;
+- preflight visual 5/5 sin publicación automática;
+- comparar el borrador CMS con la ficha pública real embebida.
 
 Cierre:
 - preview usa únicamente contenido real del CMS;
+- la columna pública carga la ruta pública real, no una simulación;
 - responsive y accesible;
-- no duplica el renderer público ni crea una fuente editorial paralela.
+- no crea tablas, endpoints ni una fuente editorial paralela.
 
 ## Fase 3 — Historial y auditoría municipal legible
 
