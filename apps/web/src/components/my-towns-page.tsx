@@ -31,14 +31,19 @@ export function MyTownsPage() {
     let cancelled = false;
     setLoadingFollowed(true);
     loadFollowedTowns()
-      .then((towns) => { if (!cancelled) setFollowedSlugs(towns.map((town) => town.slug)); })
+      .then((towns) => {
+        if (cancelled) return;
+        const slugs = towns.map((town) => town.slug);
+        if (preferredTown && !slugs.includes(preferredTown.slug)) slugs.push(preferredTown.slug);
+        setFollowedSlugs(slugs);
+      })
       .catch((cause) => {
         console.error('Unable to load followed towns', cause);
         if (!cancelled) setError('No se han podido cargar tus pueblos seguidos.');
       })
       .finally(() => { if (!cancelled) setLoadingFollowed(false); });
     return () => { cancelled = true; };
-  }, [status]);
+  }, [preferredTown, status]);
 
   async function setPrimaryTown(town: MaginaTown) {
     if (status !== 'authenticated') return;
