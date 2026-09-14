@@ -38,9 +38,11 @@ function formatNumber(value: number, digits = 0) {
 }
 
 function deltaLabel(value: number, suffix = '') {
-  if (value === 0) return `Sin cambio${suffix ? ` ${suffix}` : ''}`;
+  const separator = suffix && suffix !== '%' ? ' ' : '';
+  const unit = suffix ? `${separator}${suffix}` : '';
+  if (value === 0) return `Sin cambio${unit}`;
   const sign = value > 0 ? '+' : '−';
-  return `${sign}${formatNumber(Math.abs(value), suffix === '%' ? 2 : 0)}${suffix}`;
+  return `${sign}${formatNumber(Math.abs(value), suffix === '%' ? 2 : 0)}${unit}`;
 }
 
 export function MiOlivoCampaignComparison() {
@@ -134,7 +136,7 @@ export function MiOlivoCampaignComparison() {
       </div>
 
       <div className={styles.deltas} aria-label={`Diferencias de ${metrics.latest.campaign.name} respecto a ${metrics.previous.campaign.name}`}>
-        <div><span>Kg entregados</span><strong>{deltaLabel(metrics.kgDelta, ' kg')}</strong></div>
+        <div><span>Kg entregados</span><strong>{deltaLabel(metrics.kgDelta, 'kg')}</strong></div>
         <div><span>Entregas</span><strong>{deltaLabel(metrics.deliveryDelta)}</strong></div>
         <div><span>Fincas</span><strong>{deltaLabel(metrics.fieldDelta)}</strong></div>
         <div><span>Rendimiento</span><strong>{metrics.yieldDelta === null ? 'Sin comparación' : deltaLabel(metrics.yieldDelta, '%')}</strong></div>
