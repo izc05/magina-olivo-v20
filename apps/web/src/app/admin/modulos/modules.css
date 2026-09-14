@@ -25,7 +25,7 @@
 }
 
 .admin-modules-hero p {
-  max-width: 760px;
+  max-width: 800px;
   margin: 0;
   color: #5e675f;
   line-height: 1.6;
@@ -43,7 +43,7 @@
 
 .admin-modules-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
   max-width: 1400px;
   margin: 0 auto 1.5rem;
@@ -134,7 +134,7 @@
 }
 
 .admin-module-card.pending {
-  background: rgba(255, 253, 247, 0.58);
+  background: rgba(255, 253, 247, 0.68);
   border-style: dashed;
 }
 
@@ -168,6 +168,7 @@
   font-size: .72rem;
   font-weight: 800;
   letter-spacing: .01em;
+  white-space: nowrap;
 }
 
 .admin-module-status.available {
@@ -175,12 +176,37 @@
   color: #35572f;
 }
 
-.admin-module-status.integration {
+.admin-module-status.implemented {
   background: rgba(153, 113, 42, 0.13);
   color: #765719;
 }
 
-@media (max-width: 980px) {
+.admin-module-meta {
+  display: grid;
+  gap: .4rem;
+  padding: .7rem .75rem;
+  border-radius: .7rem;
+  background: rgba(31, 42, 34, 0.045);
+  color: #5b655d;
+  font-size: .76rem;
+  line-height: 1.35;
+}
+
+.admin-module-meta span {
+  display: grid;
+  gap: .15rem;
+}
+
+.admin-module-meta code {
+  width: fit-content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: #2c4535;
+  font-size: .73rem;
+}
+
+@media (max-width: 1100px) {
+  .admin-modules-summary,
   .admin-modules-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -207,5 +233,9 @@
 
   .admin-module-card {
     min-height: auto;
+  }
+
+  .admin-module-card-heading {
+    flex-direction: column;
   }
 }
