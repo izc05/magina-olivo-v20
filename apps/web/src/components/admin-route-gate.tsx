@@ -48,9 +48,9 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
         <div className="admin-gate-card">
           <span className="admin-eyebrow">Mágina Olivo · Administración</span>
           <h1>Acceso corporativo</h1>
-          <p>Entra con una cuenta corporativa autorizada. El servidor valida los permisos antes de mostrar cualquier superficie de administración.</p>
+          <p>Entra con una cuenta corporativa autorizada. El servidor valida los permisos antes de habilitar las operaciones administrativas.</p>
           <GoogleSignInButton />
-          <small>Conocer una URL de Admin no concede acceso a su contenido.</small>
+          <small>Los datos y acciones sensibles siguen protegidos por autorización de servidor; este gate unifica también la experiencia de acceso.</small>
         </div>
       </main>
     );
