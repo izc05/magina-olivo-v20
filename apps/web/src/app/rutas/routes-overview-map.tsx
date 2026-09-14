@@ -20,7 +20,7 @@ function geometryLines(detail: PublicRouteDetail): Coordinate[][] {
       && coordinate.length >= 2
       && Number.isFinite(Number(coordinate[0]))
       && Number.isFinite(Number(coordinate[1]))
-    ).map((coordinate) => [Number(coordinate[0]), Number(coordinate[1])]);
+    ).map((coordinate) => [Number(coordinate[0]), Number(coordinate[1])] as Coordinate);
     return line.length >= 2 ? [line] : [];
   }
   if (geometry.type === 'MultiLineString') {
