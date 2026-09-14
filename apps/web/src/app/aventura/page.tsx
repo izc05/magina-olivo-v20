@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AdventureCommunityShowcase } from './adventure-community-showcase';
 import { AdventureHubClient } from './adventure-hub-client';
 import { AdventureResumeBanner } from './adventure-resume-banner';
 import { AdventureTerritoryBoard } from './adventure-territory-board';
@@ -14,5 +15,6 @@ export default function AdventurePage() {
     <AdventureHubClient />
     <AdventureResumeBanner />
     <AdventureTerritoryBoard />
+    <AdventureCommunityShowcase />
   </div>;
 }
