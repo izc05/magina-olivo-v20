@@ -1,5 +1,15 @@
 BEGIN;
 
+ALTER TABLE mi_olivo_ledger
+  DROP CONSTRAINT mi_olivo_ledger_reversal_check;
+
+ALTER TABLE mi_olivo_ledger
+  ADD CONSTRAINT mi_olivo_ledger_reversal_check CHECK (
+    (points > 0 AND reversal_of IS NULL) OR
+    (points < 0 AND reversal_of IS NOT NULL) OR
+    (points < 0 AND reversal_of IS NULL AND event_type = 'reward_redemption')
+  );
+
 CREATE TABLE business_mill_profiles (
   business_id UUID PRIMARY KEY REFERENCES businesses(id) ON DELETE CASCADE,
   mill_kind TEXT NOT NULL DEFAULT 'almazara' CHECK (mill_kind IN ('cooperativa','almazara','productor')),
@@ -80,5 +90,6 @@ CREATE INDEX mill_reward_redemption_audit_idx
 COMMENT ON TABLE business_mill_profiles IS 'Almazara/cooperative specific public profile layered on the shared business directory.';
 COMMENT ON TABLE mill_reward_products IS 'Physical AOVE rewards exchangeable for Mi Olivo olives. Stock is controlled by the participating business.';
 COMMENT ON TABLE mill_reward_redemptions IS 'Single-use redemption token represented as QR payload. Reserved tokens expire and can only be redeemed once.';
+COMMENT ON CONSTRAINT mi_olivo_ledger_reversal_check ON mi_olivo_ledger IS 'Negative ledger entries remain reversals except for explicit reward_redemption spends.';
 
 COMMIT;
