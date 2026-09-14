@@ -23,10 +23,21 @@ for (const row of locatedRows) {
   }
   if (locatedSlugs.has(row.slug)) errors.push(`Duplicate located municipal track slug: ${row.slug}.`);
   locatedSlugs.add(row.slug);
-  if (!comarcaBySlug.has(row.slug)) errors.push(`Located municipal track references non-comarca route: ${row.slug}.`);
+  const masterRoute = comarcaBySlug.get(row.slug);
+  if (!masterRoute) errors.push(`Located municipal track references non-comarca route: ${row.slug}.`);
   if (row.track_found !== true) errors.push(`${row.slug}: authoritative located artifact requires track_found=true in the municipal source registry.`);
   if (row.track_validated !== false) errors.push(`${row.slug}: geometry must remain unvalidated until strict-TLS fetch and parse succeeds.`);
   if (!/^https:\/\/.+\.(kml|kmz|gpx)$/i.test(row.artifact_url)) errors.push(`${row.slug}: artifact URL is not an explicit HTTPS GPX/KML/KMZ resource.`);
+
+  if (masterRoute) {
+    if (masterRoute.track_found !== true) errors.push(`${row.slug}: master catalog must preserve track_found=true for the located authoritative artifact.`);
+    if (masterRoute.track_url !== row.artifact_url) errors.push(`${row.slug}: master catalog track_url must match the authoritative municipal registry artifact URL.`);
+    if (masterRoute.track_validated !== false) errors.push(`${row.slug}: master catalog must remain track_validated=false until geometry audit succeeds.`);
+    if (masterRoute.track_validation_state !== 'official_kml_located_pending_external_fetch') {
+      errors.push(`${row.slug}: master catalog must preserve official_kml_located_pending_external_fetch while strict-TLS fetch is blocked.`);
+    }
+    if (masterRoute.publishable !== false) errors.push(`${row.slug}: master catalog cannot be publishable before municipal KML geometry validation succeeds.`);
+  }
 }
 
 if (locatedSlugs.size !== 3) errors.push(`Expected 3 located Mancha Real municipal KML artifacts, found ${locatedSlugs.size}.`);
@@ -60,6 +71,8 @@ for (const source of absenceSources) {
     const route = comarcaBySlug.get(slug);
     if (!route) errors.push(`Municipal absence audit references non-comarca route: ${slug}.`);
     if (locatedSlugs.has(slug)) errors.push(`${slug}: cannot be both located and not_located.`);
+    if (route?.track_found) errors.push(`${slug}: route with audited no-public-authoritative-track disposition cannot have track_found=true in master catalog.`);
+    if (route?.track_url) errors.push(`${slug}: route with audited no-public-authoritative-track disposition cannot have track_url in master catalog.`);
     if (route?.publishable) errors.push(`${slug}: route with no authoritative public track artifact cannot be publishable.`);
     if (route?.track_validated) errors.push(`${slug}: route with no authoritative public track artifact cannot have track_validated=true.`);
   }
@@ -85,6 +98,7 @@ console.log(`- official_comarca routes: ${comarcaRoutes.length}`);
 console.log(`- authoritative track artifacts located: ${locatedSlugs.size}`);
 console.log(`- audited no-public-authoritative-track routes: ${absentSlugs.size}`);
 console.log(`- discovery disposition coverage: ${covered.size}/${comarcaRoutes.length}`);
+console.log(`- master/registry located-track sync: ${locatedSlugs.size}/${locatedSlugs.size}`);
 console.log(`- municipal geometries validated: 0/${locatedSlugs.size}`);
 console.log('- current located-artifact blocker: strict TLS hostname mismatch on archivos.campusfortalezas.com');
 
@@ -94,4 +108,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('\nMunicipal/comarca public track-discovery coverage is closed 13/13 without promoting community tracks or guessed URLs.');
+console.log('\nMunicipal/comarca public track-discovery coverage is closed 13/13 and master/registry state is synchronized.');
