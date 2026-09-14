@@ -24,53 +24,32 @@ Completado antes de este roadmap:
 
 Estado: COMPLETADA en PR #101 / `feat/v20-municipalities-seo-readiness`.
 
-Incluye:
-- metadata específica por municipio;
-- título y descripción propios;
-- Open Graph y Twitter Card;
-- imagen social solo desde media real HTTP(S);
-- fallback determinista si la API no está disponible durante build;
-- diagnóstico Admin 5/5: perfil principal, resumen, imagen, fuente/verificación y descubrimiento publicado.
-
-Cierre validado:
-- contrato específico verde;
-- typecheck/build verde;
-- 16 slugs siguen exportándose;
-- ningún contenido inventado para rellenar metadata;
-- matriz completa de CI verde sobre el mismo HEAD.
+Incluye metadata por municipio, Open Graph/Twitter, media real, fallback seguro y diagnóstico editorial 5/5. Matriz CI completa verde sobre el mismo HEAD.
 
 ## Fase 2 — Preview editorial antes de publicar
 
-Estado: EN IMPLEMENTACIÓN en `feat/v20-municipalities-editorial-preview`.
+Estado: COMPLETADA en PR #102 / `feat/v20-municipalities-editorial-preview`.
 
-Objetivos:
-- vista previa desde Admin del hero, resumen y hasta tres imprescindibles;
-- distinguir claramente `Borrador editorial` de `Resultado público actual`;
-- mostrar el estado real draft/published/archived de cada pieza;
-- mantener contexto `?municipio=`;
-- preflight visual 5/5 sin publicación automática;
-- comparar el borrador CMS con la ficha pública real embebida.
-
-Cierre:
-- preview usa únicamente contenido real del CMS;
-- la columna pública carga la ruta pública real, no una simulación;
-- responsive y accesible;
-- no crea tablas, endpoints ni una fuente editorial paralela.
+Incluye comparación `Borrador editorial` vs `Resultado público actual`, estados CMS visibles, máximo tres imprescindibles, preflight 5/5, contexto municipal y pantalla de solo lectura. Matriz CI completa verde sobre el mismo HEAD.
 
 ## Fase 3 — Historial y auditoría municipal legible
 
+Estado: EN IMPLEMENTACIÓN en `feat/v20-municipalities-audit-history`.
+
 Objetivos:
-- reutilizar auditoría existente;
-- filtrar eventos por municipio y dominio municipal;
-- mostrar quién cambió qué, cuándo y sobre qué entidad;
-- accesos desde el contexto municipal.
+- reutilizar `adminApi.audit()` sin crear backend paralelo;
+- correlacionar por ID municipal, IDs de piezas CMS y metadata con identidad canónica;
+- mostrar qué cambió, cuándo y qué objetivo municipal afectó;
+- mostrar actor solo como rol + identificador abreviado;
+- ocultar metadata bruta y limitar los detalles visibles a campos seguros;
+- mantener `?municipio=<slug>`.
 
 Cierre:
-- no crear un segundo sistema de auditoría;
-- no exponer datos sensibles;
-- permisos iguales al Admin existente.
-
-Nota: antes de ejecutar esta fase se debe volver a comprobar colisión con PR #66 / Admin global.
+- solo lectura;
+- sin endpoint/tabla nuevos;
+- sin directorio de usuarios;
+- no exponer metadata sensible;
+- contratos y matriz CI verdes.
 
 ## Fase 4 — Matriz de huecos de contenido
 
