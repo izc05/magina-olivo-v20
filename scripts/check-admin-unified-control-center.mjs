@@ -1,9 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = process.cwd();
-const modulesPage = readFileSync(resolve(root, 'apps/web/src/app/admin/modulos/page.tsx'), 'utf8');
-const adminPage = readFileSync(resolve(root, 'apps/web/src/app/admin/page.tsx'), 'utf8');
+const adminDir = resolve(root, 'apps/web/src/app/admin');
+const modulesPage = readFileSync(resolve(adminDir, 'modulos/page.tsx'), 'utf8');
+const adminPage = readFileSync(resolve(adminDir, 'page.tsx'), 'utf8');
 
 const requiredModuleIds = [
   'operations',
@@ -55,14 +56,25 @@ const implementedModules = [
 ];
 
 const failures = [];
+const lines = modulesPage.split('\n');
+
+function countOccurrences(text, needle) {
+  return text.split(needle).length - 1;
+}
+
+function routeToPagePath(href) {
+  const segments = href.split('/').filter(Boolean);
+  return resolve(root, 'apps/web/src/app', ...segments, 'page.tsx');
+}
 
 for (const id of requiredModuleIds) {
-  if (!modulesPage.includes(`id: '${id}'`)) failures.push(`Falta el módulo ${id}.`);
+  const occurrences = countOccurrences(modulesPage, `id: '${id}'`);
+  if (occurrences !== 1) failures.push(`El módulo ${id} debe aparecer exactamente una vez; aparece ${occurrences}.`);
 }
 
 const moduleRows = requiredModuleIds.map((id) => ({
   id,
-  row: modulesPage.split('\n').find((line) => line.includes(`id: '${id}'`)) ?? '',
+  row: lines.find((line) => line.includes(`id: '${id}'`)) ?? '',
 }));
 
 if (moduleRows.filter(({ row }) => row.includes("status: 'available'")).length !== 13) {
@@ -76,6 +88,9 @@ if (moduleRows.filter(({ row }) => row.includes("status: 'implemented'")).length
 for (const href of requiredAvailableRoutes) {
   const row = moduleRows.find(({ row }) => row.includes(`href: '${href}'`))?.row;
   if (!row?.includes("status: 'available'")) failures.push(`La ruta ${href} debe pertenecer a un módulo disponible.`);
+
+  const pagePath = routeToPagePath(href);
+  if (!existsSync(pagePath)) failures.push(`La ruta disponible ${href} no tiene una page.tsx real (${pagePath}).`);
 }
 
 for (const { id, sourceBranch, targetHref } of implementedModules) {
@@ -91,6 +106,34 @@ for (const { id, row } of moduleRows) {
   if (row.includes("status: 'available'") && !row.includes('href:')) failures.push(`${id} está disponible pero no tiene href.`);
 }
 
+const availableRouteRoots = new Set(
+  requiredAvailableRoutes.map((href) => href.split('/').filter(Boolean)[1]),
+);
+availableRouteRoots.add('modulos');
+
+const topLevelAdminRoutes = readdirSync(adminDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && existsSync(resolve(adminDir, entry.name, 'page.tsx')))
+  .map((entry) => entry.name)
+  .sort();
+
+for (const routeRoot of topLevelAdminRoutes) {
+  if (!availableRouteRoots.has(routeRoot)) {
+    failures.push(`Ruta Admin huérfana: /admin/${routeRoot} tiene page.tsx pero no está registrada en el centro unificado.`);
+  }
+}
+
+for (const routeRoot of availableRouteRoots) {
+  if (routeRoot === 'modulos') continue;
+  if (!topLevelAdminRoutes.includes(routeRoot)) {
+    failures.push(`Módulo disponible sin superficie Admin raíz: falta /admin/${routeRoot}/page.tsx.`);
+  }
+}
+
+const targetHrefs = implementedModules.map(({ targetHref }) => targetHref);
+if (new Set(targetHrefs).size !== targetHrefs.length) {
+  failures.push('Las rutas objetivo de módulos implementados deben ser únicas.');
+}
+
 if (!adminPage.includes('href="/admin/modulos"')) failures.push('El centro Admin no enlaza al directorio unificado.');
 if (!adminPage.includes('href="/admin/ayuntamientos"')) failures.push('El centro Admin no enlaza directamente a Ayuntamientos.');
 
@@ -104,4 +147,6 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Contrato Admin unificado: OK (${requiredModuleIds.length}/${requiredModuleIds.length} superficies Admin registradas; 13 disponibles y 7 implementadas en ramas).`);
+console.log(
+  `Contrato Admin unificado: OK (${requiredModuleIds.length}/${requiredModuleIds.length} superficies Admin registradas; 13 disponibles, 7 implementadas en ramas y ${topLevelAdminRoutes.length} rutas raíz verificadas).`,
+);
