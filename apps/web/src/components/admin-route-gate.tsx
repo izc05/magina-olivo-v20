@@ -6,7 +6,7 @@ import { adminApi } from '../lib/admin-data-source';
 import { useAuth } from './auth-provider';
 import { GoogleSignInButton } from './google-sign-in-button';
 
-type GateState = 'checking' | 'authorized' | 'denied' | 'error';
+type GateState = 'checking' | 'authorized' | 'denied' | 'expired' | 'error';
 
 export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) {
   const auth = useAuth();
@@ -18,13 +18,18 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
       await adminApi.session();
       setState('authorized');
     } catch (caught) {
+      if (caught instanceof ApiRequestError && caught.status === 401) {
+        await auth.refreshSession();
+        setState('expired');
+        return;
+      }
       if (caught instanceof ApiRequestError && caught.status === 403) {
         setState('denied');
         return;
       }
       setState('error');
     }
-  }, []);
+  }, [auth.refreshSession]);
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
@@ -51,6 +56,19 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
           <p>Entra con una cuenta corporativa autorizada. El servidor valida los permisos antes de habilitar las operaciones administrativas.</p>
           <GoogleSignInButton />
           <small>Los datos y acciones sensibles siguen protegidos por autorización de servidor; este gate unifica también la experiencia de acceso.</small>
+        </div>
+      </main>
+    );
+  }
+
+  if (state === 'expired') {
+    return (
+      <main className="admin-gate">
+        <div className="admin-gate-card">
+          <span className="admin-eyebrow">Sesión administrativa</span>
+          <h1>La sesión ha caducado</h1>
+          <p>Vuelve a iniciar sesión para continuar. Ninguna superficie administrativa se habilita hasta que el servidor confirme de nuevo tu identidad y permisos.</p>
+          <button className="admin-button secondary" onClick={() => void auth.logout()}>Volver a iniciar sesión</button>
         </div>
       </main>
     );
