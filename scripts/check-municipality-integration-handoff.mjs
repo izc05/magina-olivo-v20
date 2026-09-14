@@ -29,6 +29,7 @@ for (const text of [
   'V20 staging readiness #889',
   'V20 beta browser E2E #1288',
   'No se han ejecutado como parte de este handoff contra una base staging/live',
+  'No debe afirmarse que las 32 piezas están cargadas en una base real',
   '#105 `feat/v20-admin-unified-control-center`',
   '#66 Admin transversal/Analítica/Fuentes',
   '#80 `feat/v20-business-directory`',
@@ -39,7 +40,6 @@ for (const text of [
 
 must(handoff.includes('No existe un PR municipal #99'), 'El handoff debe dejar claro que #99 no pertenece a la cadena municipal');
 must(handoff.includes('32 piezas'), 'El handoff debe explicar el estado de los catálogos importables');
-must(!handoff.includes('32 piezas están cargadas'), 'El handoff no debe afirmar que los catálogos ya fueron importados a una base real');
 
 must(roadmap.includes('Fase 5'), 'El roadmap perdió la Fase 5');
 must(roadmap.includes('Fase 6'), 'El roadmap perdió la Fase 6');
