@@ -3,7 +3,7 @@
 import { municipalityAdminHref, publicMunicipalityHref } from '@/lib/municipality-admin-context';
 import styles from './municipality-admin-nav.module.css';
 
-type Section = 'ficha' | 'contenido' | 'portada' | 'preview' | 'patrimonio' | 'actualidad' | 'cobertura' | 'huecos' | 'historial';
+type Section = 'ficha' | 'contenido' | 'portada' | 'preview' | 'patrimonio' | 'actualidad' | 'cobertura' | 'huecos' | 'historial' | 'avisos';
 
 // Final municipal QA validates this shared workspace navigation end to end.
 const SECTIONS: Array<{ key: Section; label: string; path: string }> = [
@@ -16,6 +16,7 @@ const SECTIONS: Array<{ key: Section; label: string; path: string }> = [
   { key: 'cobertura', label: 'Cobertura', path: '/admin/ayuntamientos/cobertura' },
   { key: 'huecos', label: 'Huecos', path: '/admin/ayuntamientos/huecos' },
   { key: 'historial', label: 'Historial', path: '/admin/ayuntamientos/historial' },
+  { key: 'avisos', label: 'Avisos', path: '/admin/ayuntamientos/avisos' },
 ];
 
 export function MunicipalityAdminNav({ slug, name, active }: { slug?: string | null; name?: string | null; active: Section }) {

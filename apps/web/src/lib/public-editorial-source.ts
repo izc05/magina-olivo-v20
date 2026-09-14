@@ -29,6 +29,9 @@ export type EditorialDetails = {
   address: string;
   eventStart: string | null;
   eventEnd: string | null;
+  municipalitySlug: string;
+  municipalNotice: boolean;
+  noticePriority: 'now' | 'soon' | 'info' | 'urgent' | 'important' | 'normal' | null;
 };
 
 function asObject(value: unknown): Record<string, unknown> {
@@ -57,8 +60,15 @@ export function editorialDetails(entry: PublicEditorialEntry): EditorialDetails 
     address: stringValue(content.address),
     eventStart: nullableDate(content.event_start),
     eventEnd: nullableDate(content.event_end),
+    municipalitySlug: stringValue(content.municipality_slug),
+    municipalNotice: content.municipal_notice === true,
+    noticePriority: ['now', 'soon', 'info', 'urgent', 'important', 'normal'].includes(String(content.notice_priority))
+      ? content.notice_priority as EditorialDetails['noticePriority']
+      : null,
   };
 }
+
+export type MunicipalNoticePriority = NonNullable<EditorialDetails['noticePriority']>;
 
 export async function loadPublicEditorial(type: PublicEditorialType) {
   const payload = await apiFetch<PublicEditorialPayload>(`/api/v1/public/content?type=${type}`);

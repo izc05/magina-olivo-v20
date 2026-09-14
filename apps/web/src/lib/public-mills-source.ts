@@ -34,6 +34,19 @@ export type PublicMill = {
   publishedAt: string | null;
 };
 
+export type MillRedemption = {
+  id: string;
+  code: string;
+  status: string;
+  olivesSpent: number;
+  expiresAt: string;
+  redeemedAt: string | null;
+  createdAt: string;
+  productTitle: string;
+  businessName: string;
+  qrPayload: string | null;
+};
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
@@ -70,4 +83,15 @@ export async function loadPublicMills(): Promise<PublicMill[]> {
     .filter((entry) => entry.type === 'mill' && entry.slug && entry.title)
     .map(toPublicMill)
     .sort((a, b) => Number(b.featured) - Number(a.featured) || a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'es'));
+}
+
+export async function loadMyMillRedemptions() {
+  return apiFetch<{ redemptions: MillRedemption[] }>('/api/v1/my/almazara-redemptions');
+}
+
+export async function cancelMyMillRedemption(id: string) {
+  return apiFetch<{ redemption: { id: string; status: 'cancelled'; refunded: boolean } }>(
+    `/api/v1/my/almazara-redemptions/${encodeURIComponent(id)}/cancel`,
+    { method: 'POST' },
+  );
 }

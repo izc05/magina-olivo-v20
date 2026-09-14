@@ -31,6 +31,7 @@ import { registerAdminRouteCommunityRoutes } from './routes/admin-route-communit
 import { registerAdminCommunityRoutes } from './routes/admin-community.js';
 import { registerPlanRoutes } from './routes/plans.js';
 import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
+import { registerMiOlivoDiscoveryRoutes } from './routes/mi-olivo-discovery.js';
 import { registerMiOlivoCampaignRoutes } from './routes/mi-olivo-campaign.js';
 import { registerMiOlivoProgressionRoutes } from './routes/mi-olivo-progression.js';
 import { registerCommunityRoutes } from './routes/community.js';
@@ -67,7 +68,7 @@ import { registerBusinessPortalRoutes } from './routes/business-portal.js';
 import { registerBusinessExperienceRoutes } from './routes/business-experiences.js';
 import { registerBusinessExperienceManagementRoutes } from './routes/business-experience-management.js';
 import { registerBusinessPassRoutes } from './routes/business-pass.js';
-import { registerAlmazaraRewardRoute } from './routes/almazara-rewards.js';
+import { registerAlmazaraRewardRoutes } from './routes/almazara-rewards.js';
 import { registerMarketRoutes } from './routes/market.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
@@ -234,6 +235,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminCommunityRoutes(app, db);
   registerPlanRoutes(app, db);
   registerMiOlivoRoutes(app, db);
+  registerMiOlivoDiscoveryRoutes(app, db);
   registerMiOlivoCampaignRoutes(app, db);
   registerMiOlivoProgressionRoutes(app, db);
   registerCommunityRoutes(app, db);
@@ -245,7 +247,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerBusinessExperienceRoutes(app, db);
   registerBusinessExperienceManagementRoutes(app, db);
   registerBusinessPassRoutes(app, db);
-  registerAlmazaraRewardRoute(app, db);
+  registerAlmazaraRewardRoutes(app, db);
   registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db, storage);

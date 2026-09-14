@@ -5,8 +5,10 @@ on:
   pull_request:
     paths:
       - 'apps/api/src/routes/mi-olivo.ts'
+      - 'apps/api/src/routes/mi-olivo-discovery.ts'
       - 'apps/api/src/routes/mi-olivo-campaign.ts'
       - 'apps/api/src/testing/mi-olivo-smoke.ts'
+      - 'apps/api/src/testing/mi-olivo-discovery-smoke.ts'
       - 'apps/api/src/testing/mi-olivo-campaign-smoke.ts'
       - 'apps/api/src/app.ts'
       - 'apps/web/src/app/mi-olivo/**'
@@ -16,6 +18,12 @@ on:
       - 'apps/web/src/components/mi-olivo-campaign-controller.module.css'
       - 'apps/web/src/components/mi-olivo-weather-controller.tsx'
       - 'apps/web/src/components/mi-olivo-weather-controller.module.css'
+      - 'apps/web/src/components/mi-olivo-activity-tracker.tsx'
+      - 'apps/web/src/components/mi-olivo-activity-tracker.module.css'
+      - 'apps/web/src/components/mi-olivo-discovery-compass.tsx'
+      - 'apps/web/src/components/mi-olivo-discovery-compass.module.css'
+      - 'apps/web/src/components/mi-olivo-discovery-progress.tsx'
+      - 'apps/web/src/lib/mi-olivo-discovery.ts'
       - 'database/migrations/0050_mi_olivo_core.sql'
       - 'database/migrations/0051_mi_olivo_v2_source_validation.sql'
       - 'database/migrations/0052_mi_olivo_appearance.sql'
@@ -85,6 +93,12 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'false'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/mi-olivo-smoke.js
+      - name: Mi Olivo Discovery V3 smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_mi_olivo
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/mi-olivo-discovery-smoke.js
       - name: Mi Olivo campaign + appearance smoke
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_mi_olivo
