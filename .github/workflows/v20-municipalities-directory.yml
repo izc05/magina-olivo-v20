@@ -8,6 +8,9 @@ on:
       - 'apps/api/src/routes/admin-territory.ts'
       - 'apps/web/src/app/ayuntamientos/**'
       - 'apps/web/src/app/admin/ayuntamientos/**'
+      - 'apps/web/src/components/municipality-admin-nav.tsx'
+      - 'apps/web/src/components/municipality-admin-nav.module.css'
+      - 'apps/web/src/lib/municipality-admin-context.ts'
       - 'apps/web/src/app/explorar/explore-public-client.tsx'
       - 'apps/web/src/lib/public-territory-source.ts'
       - 'scripts/check-municipalities-directory.mjs'
@@ -17,6 +20,7 @@ on:
       - 'scripts/check-municipality-admin-control-center.mjs'
       - 'scripts/check-municipality-editorial-control.mjs'
       - 'scripts/check-municipality-content-editor.mjs'
+      - 'scripts/check-municipality-admin-navigation.mjs'
       - '.github/workflows/v20-municipalities-directory.yml'
   workflow_dispatch:
 
@@ -47,6 +51,8 @@ jobs:
         run: node scripts/check-municipality-editorial-control.mjs
       - name: Municipality content editor contract
         run: node scripts/check-municipality-content-editor.mjs
+      - name: Municipality Admin navigation contract
+        run: node scripts/check-municipality-admin-navigation.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck
