@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+const SIGNED_REWARD_TOKEN = '61000000-0000-4000-8000-000000000001.AbcdefghijkLMN12';
+
 const mills = {
   almazaras: [
     {
@@ -72,9 +74,9 @@ async function mockMills(page: Page) {
       contentType: 'application/json',
       body: JSON.stringify({ redemption: {
         id: '51000000-0000-4000-8000-000000000001',
-        code: '61000000-0000-4000-8000-000000000001',
+        token: SIGNED_REWARD_TOKEN,
         status: 'reserved',
-        qrPayload: 'magina-olivo://reward/61000000-0000-4000-8000-000000000001',
+        qrPayload: SIGNED_REWARD_TOKEN,
         expiresAt: '2026-09-21T12:00:00.000Z',
         productTitle: 'Botella AOVE 500 ml',
         businessName: 'Cooperativa del Olivar E2E',
@@ -120,12 +122,13 @@ test('cooperatives directory searches, opens a business-backed mill and exposes 
   await expectNoHorizontalOverflow(page);
 });
 
-test('reward redemption displays the single-use collection credential', async ({ page }) => {
+test('reward redemption displays a signed single-use collection credential', async ({ page }) => {
   await mockMills(page);
   await page.goto('/almazaras?slug=cooperativa-bedmar-e2e');
   await page.getByRole('button', { name: 'Canjear premio' }).click();
   await expect(page.getByText('✅ Premio reservado: Botella AOVE 500 ml')).toBeVisible();
-  await expect(page.getByText('61000000-0000-4000-8000-000000000001')).toBeVisible();
+  await expect(page.getByText(SIGNED_REWARD_TOKEN)).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Código QR firmado de recogida' })).toBeVisible();
 });
 
 test('almazaras alias preserves its route and business-backed detail', async ({ page }) => {
