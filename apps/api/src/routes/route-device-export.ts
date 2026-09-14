@@ -20,8 +20,8 @@ function xml(value: string) {
 type TrackPoint = { segment: number; point_order: number; latitude: number | string; longitude: number | string };
 
 export function registerRouteDeviceExportRoutes(app: FastifyInstance, db: DatabaseClient | null) {
-  // Adventure and opt-in route recording belong to the same route feature bundle.
-  // Keeping registration here avoids touching the shared app bootstrap while these branches stay isolated.
+  // Adventure and its explicit activity recorder belong to the same route feature bundle.
+  // Keeping registration here avoids touching the shared app bootstrap while this branch stays isolated.
   registerRouteAdventureRoutes(app, db);
   registerRouteAdventureHubRoutes(app, db);
   registerRouteActivityRoutes(app, db);

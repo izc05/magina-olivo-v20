@@ -48,6 +48,8 @@ function badgeLabel(code: string) {
   if (code === 'aventurero_magina') return 'Aventurero de Mágina';
   if (code === 'caminante_de_la_sierra') return 'Caminante de la Sierra';
   if (code === 'mil_puntos') return '1.000 puntos';
+  if (code === 'veinticinco_km') return '25 km conquistados';
+  if (code === 'cien_km_magina') return '100 km por Mágina';
   if (code === 'coleccionista_de_magina') return 'Coleccionista de Mágina';
   if (code === 'hallazgo_legendario') return 'Hallazgo legendario';
   return code.replaceAll('_', ' ');
@@ -114,6 +116,7 @@ export function AdventureHubClient() {
         <p>Camina por rutas reales de Sierra Mágina, acércate a los puntos de descubrimiento y completa retos para llenar tu Cuaderno del Explorador.</p>
         <div className={styles.heroActions}>
           <a href="#aventuras" className={styles.primaryAction}>Ver aventuras</a>
+          <Link href="/aventura/actividad" className={styles.secondaryAction}>Grabar recorrido</Link>
           <Link href="/rutas" className={styles.secondaryAction}>Ver rutas</Link>
         </div>
       </div>
@@ -127,7 +130,7 @@ export function AdventureHubClient() {
     {profile ? <section className={styles.profilePanel} aria-labelledby="explorer-profile-title">
       <div className={styles.profileHeading}>
         <div><span className={styles.eyebrow}>MI EXPEDICIÓN</span><h2 id="explorer-profile-title">Cuaderno global del Explorador</h2></div>
-        <p>Tu progreso une todas las aventuras de Mágina sin guardar una traza continua de tu posición.</p>
+        <p>Tu progreso une todas las aventuras de Mágina. El GPS continuo solo existe si tú entras en «Grabar recorrido» y lo inicias expresamente.</p>
       </div>
       <div className={styles.profileStats}>
         <article><strong>{profile.summary.adventures_started}</strong><span>Iniciadas</span></article>
@@ -165,7 +168,7 @@ export function AdventureHubClient() {
       <div className={styles.howGrid}>
         <article><strong>01</strong><h3>Elige una ruta</h3><p>Solo usamos rutas públicas con track validado. Antes de salir, revisa siempre sus datos técnicos y avisos.</p></article>
         <article><strong>02</strong><h3>Descubre puntos</h3><p>Encuentra lugares, retos y coleccionables. Algunos hallazgos alimentan tu álbum de flora, fauna, patrimonio, olivar, tradiciones o paisaje.</p></article>
-        <article><strong>03</strong><h3>Sube de nivel</h3><p>Tu progreso suma XP, insignias y descubrimientos territoriales. La posición exacta no se guarda como un recorrido continuo.</p></article>
+        <article><strong>03</strong><h3>Sube de nivel</h3><p>Tu progreso suma XP, insignias y descubrimientos territoriales. Si quieres medir tu recorrido real, el grabador GPS es una función privada y voluntaria aparte.</p></article>
       </div>
     </section>
 

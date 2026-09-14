@@ -1,85 +1,95 @@
-import { apiBaseUrl, apiFetch, apiFetchBlob } from './api-client';
+import { apiFetch } from './api-client';
 
 export type RouteActivity = {
   id: string;
-  user_id: string;
   route_id: string | null;
   route_slug: string | null;
   route_name: string | null;
-  status: 'recording' | 'paused' | 'completed';
-  visibility: 'private';
-  current_segment: number;
-  started_at: string;
-  completed_at: string | null;
+  status: 'active' | 'paused' | 'completed';
   distance_m: number;
-  elevation_gain_m: number | null;
-  duration_seconds: number;
-  points_count: number;
+  active_seconds: number;
+  active_started_at: string | null;
+  point_count: number;
+  started_at: string;
+  ended_at: string | null;
   updated_at: string;
 };
 
-export type RouteActivityPointInput = {
-  sequence: number;
-  recorded_at: string;
-  latitude: number;
-  longitude: number;
-  altitude_m?: number | null;
-  horizontal_accuracy_m?: number | null;
-  vertical_accuracy_m?: number | null;
+export type RouteActivitySummary = {
+  summary: {
+    completed_activities: number;
+    recorded_distance_m: number;
+    recorded_active_seconds: number;
+    longest_activity_m: number;
+  };
+  recent: RouteActivity[];
+  privacy: string;
 };
 
-export type RecordedJourneySummary = {
-  activity_count: number;
-  recorded_distance_m: number;
-  recorded_duration_seconds: number;
-  recorded_elevation_gain_m: number;
-  longest_activity_m: number;
+export type RouteActivityTrack = {
+  activity: RouteActivity;
+  points: Array<{
+    recorded_at: string;
+    latitude: number;
+    longitude: number;
+    accuracy_m: number;
+    altitude_m: number | null;
+    segment_distance_m: number;
+  }>;
 };
 
-export async function loadActiveRouteActivity() {
-  return apiFetch<{ activity: RouteActivity | null }>('/api/v1/activities/active');
+export function loadCurrentRouteActivity() {
+  return apiFetch<{ activity: RouteActivity | null }>('/api/v1/activities/current');
 }
 
-export async function startRouteActivity(routeId: string) {
-  return apiFetch<{ activity: RouteActivity; resumed_existing?: boolean }>(`/api/v1/routes/${encodeURIComponent(routeId)}/activities/start`, { method: 'POST' });
+export function loadRouteActivitySummary() {
+  return apiFetch<RouteActivitySummary>('/api/v1/activities/me');
 }
 
-export async function appendRouteActivityPoints(activityId: string, points: RouteActivityPointInput[]) {
-  return apiFetch<{ accepted: number; ignored_duplicates: number }>(`/api/v1/activities/${encodeURIComponent(activityId)}/points`, {
+export function loadRouteActivityTrack(id: string) {
+  return apiFetch<RouteActivityTrack>(`/api/v1/activities/${encodeURIComponent(id)}/track`);
+}
+
+export function startRouteActivity(routeId: string | null) {
+  return apiFetch<{ activity: RouteActivity }>('/api/v1/activities/start', {
     method: 'POST',
-    body: JSON.stringify({ points }),
+    body: JSON.stringify({ route_id: routeId }),
   });
 }
 
-export async function pauseRouteActivity(activityId: string) {
-  return apiFetch<{ activity: RouteActivity }>(`/api/v1/activities/${encodeURIComponent(activityId)}/pause`, { method: 'POST' });
+export function appendRouteActivityPoint(id: string, point: {
+  latitude: number;
+  longitude: number;
+  accuracy_m: number;
+  altitude_m?: number | null;
+  recorded_at: string;
+}) {
+  return apiFetch<{
+    accepted: boolean;
+    reason?: 'low_accuracy' | 'sample_too_soon' | 'stationary' | 'implausible_jump';
+    segment_distance_m?: number;
+    activity: RouteActivity;
+  }>(`/api/v1/activities/${encodeURIComponent(id)}/points`, {
+    method: 'POST',
+    body: JSON.stringify(point),
+  });
 }
 
-export async function resumeRouteActivity(activityId: string) {
-  return apiFetch<{ activity: RouteActivity }>(`/api/v1/activities/${encodeURIComponent(activityId)}/resume`, { method: 'POST' });
+export function pauseRouteActivity(id: string, keepalive = false) {
+  return apiFetch<{ activity: RouteActivity }>(`/api/v1/activities/${encodeURIComponent(id)}/pause`, {
+    method: 'POST',
+    keepalive,
+  });
 }
 
-export async function finishRouteActivity(activityId: string) {
-  return apiFetch<{ activity: RouteActivity; already_completed?: boolean }>(`/api/v1/activities/${encodeURIComponent(activityId)}/finish`, { method: 'POST' });
+export function resumeRouteActivity(id: string) {
+  return apiFetch<{ activity: RouteActivity }>(`/api/v1/activities/${encodeURIComponent(id)}/resume`, { method: 'POST' });
 }
 
-export async function loadRouteActivities(limit = 20) {
-  return apiFetch<{ activities: RouteActivity[] }>(`/api/v1/activities/me?limit=${Math.max(1, Math.min(100, Math.round(limit)))}`);
+export function finishRouteActivity(id: string) {
+  return apiFetch<{ activity: RouteActivity }>(`/api/v1/activities/${encodeURIComponent(id)}/finish`, { method: 'POST' });
 }
 
-export async function deleteRouteActivity(activityId: string) {
-  return apiFetch<void>(`/api/v1/activities/${encodeURIComponent(activityId)}`, { method: 'DELETE' });
-}
-
-export async function loadRecordedJourneySummary() {
-  const profile = await apiFetch<{ recorded: RecordedJourneySummary }>('/api/v1/adventures/me');
-  return profile.recorded;
-}
-
-export function activityGpxUrl(activityId: string) {
-  return `${apiBaseUrl}/api/v1/activities/${encodeURIComponent(activityId)}/gpx`;
-}
-
-export async function downloadRouteActivityGpx(activityId: string) {
-  return apiFetchBlob(`/api/v1/activities/${encodeURIComponent(activityId)}/gpx`);
+export function deleteRouteActivity(id: string) {
+  return apiFetch<void>(`/api/v1/activities/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

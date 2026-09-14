@@ -16,7 +16,7 @@ on:
       - 'apps/web/src/app/perfil/page.tsx'
       - 'apps/web/src/components/route-activity-history.tsx'
       - 'apps/web/src/lib/route-activity-source.ts'
-      - 'database/migrations/0087_route_activity_recordings.sql'
+      - 'database/migrations/0087_route_activity_recording.sql'
       - 'docs/v20-route-activity-recording.md'
       - '.github/workflows/routes-activity-check.yml'
       - 'pnpm-lock.yaml'
