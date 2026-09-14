@@ -105,6 +105,6 @@ test('Aventura en curso has a dedicated mobile expedition screen', async ({ page
   await expect(page.getByRole('heading', { level: 2, name: 'Mapa de expedición' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Grabar recorrido' })).toBeVisible();
   await expect(page.getByText('Revisa meteorología y lleva agua suficiente.')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Ficha completa' })).toHaveAttribute('href', /\/rutas\/detalle\?slug=ruta-demo/);
+  await expect(page.getByRole('link', { name: 'Ficha completa', exact: true })).toHaveAttribute('href', /\/rutas\/detalle\/?\?slug=ruta-demo$/);
   await expectNoHorizontalOverflow(page);
 });
