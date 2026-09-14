@@ -1,0 +1,85 @@
+.panel {
+  padding: clamp(20px, 4vw, 34px);
+  border: 1px solid var(--border, #e5e7e2);
+  border-radius: 26px;
+  background: var(--surface, #fff);
+  box-shadow: 0 16px 44px rgba(41,52,43,.07);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.head h1 {
+  max-width: 720px;
+  margin: 6px 0 8px;
+  font-size: clamp(1.7rem, 4vw, 2.8rem);
+  line-height: 1.05;
+  letter-spacing: -.03em;
+}
+
+.head p { margin: 0; color: #68736b; }
+.head button, .state button {
+  border: 1px solid #d4dfd4;
+  border-radius: 13px;
+  background: #eef5ec;
+  color: #315f3e;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+.head button:disabled { opacity: .48; cursor: default; }
+
+.list { display: grid; gap: 10px; }
+.item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(0,1fr) 10px;
+  gap: 12px;
+  align-items: start;
+  padding: 15px;
+  border: 1px solid #e5e9e4;
+  border-radius: 17px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+}
+.item:hover { border-color: #b9ccb9; background: #fbfdf9; }
+.unread { border-color: #bed1bc; background: #f3f8f1; }
+.icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #e7f0e4;
+  color: #2e633d;
+  font-weight: 900;
+}
+.body { min-width: 0; display: grid; gap: 5px; line-height: 1.4; }
+.excerpt { color: #566158; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.body small { color: #7a847c; }
+.dot { width: 9px; height: 9px; margin-top: 8px; border-radius: 50%; background: #3b7448; }
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 24px;
+  border-radius: 18px;
+  background: #f5f7f4;
+  color: #5f6961;
+}
+.state button { width: fit-content; margin-top: 8px; }
+
+@media (max-width: 650px) {
+  .panel { padding: 16px; border-radius: 20px; }
+  .head { flex-direction: column; }
+  .head button { width: 100%; }
+  .item { grid-template-columns: 38px minmax(0,1fr) 9px; padding: 13px; }
+  .icon { width: 38px; height: 38px; }
+}
