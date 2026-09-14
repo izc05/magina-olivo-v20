@@ -1,0 +1,129 @@
+.shell {
+  width: min(1160px, 100%);
+  margin: 22px auto 0;
+  padding: 0 20px;
+}
+
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.heading h2 {
+  margin: 5px 0 7px;
+  color: #253522;
+}
+
+.heading p {
+  max-width: 760px;
+  margin: 0;
+  color: #687064;
+  line-height: 1.55;
+}
+
+.eyebrow {
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .17em;
+  color: #75855d;
+}
+
+.link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: #315238;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.campaigns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.campaign,
+.deltas {
+  border: 1px solid rgba(77, 98, 61, .13);
+  background: rgba(255, 254, 250, .94);
+  box-shadow: 0 12px 34px rgba(43, 55, 39, .065);
+}
+
+.campaign {
+  padding: 22px;
+  border-radius: 20px;
+}
+
+.campaign > span {
+  color: #75855d;
+  font-size: .75rem;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.campaign h3 {
+  margin: 7px 0 16px;
+  color: #273927;
+  font-size: 1.35rem;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stats div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: #f4f5ef;
+}
+
+.stats small { color: #7a8177; }
+.stats strong { color: #2c412c; }
+
+.deltas {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin-top: 12px;
+  border-radius: 18px;
+}
+
+.deltas div {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  background: #f8f6ef;
+}
+
+.deltas span {
+  color: #777e73;
+  font-size: .82rem;
+}
+
+.deltas strong { color: #315238; }
+
+@media (max-width: 760px) {
+  .shell { padding: 0 14px; }
+  .heading { display: grid; gap: 8px; }
+  .link { width: fit-content; }
+  .campaigns { grid-template-columns: 1fr; }
+  .deltas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 380px) {
+  .campaign { padding: 18px; }
+  .stats,
+  .deltas { grid-template-columns: 1fr; }
+}
