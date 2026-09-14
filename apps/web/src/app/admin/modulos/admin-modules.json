@@ -120,6 +120,14 @@
     "area": "Negocio"
   },
   {
+    "id": "almazaras",
+    "title": "Almazaras y recompensas",
+    "description": "Catálogo AOVE, stock, reservas, QR de un solo uso y auditoría de canjes.",
+    "status": "available",
+    "href": "/admin/empresas/almazaras",
+    "area": "Negocio"
+  },
+  {
     "id": "experiences",
     "title": "Experiencias y reservas",
     "description": "Sesiones, aforo, solicitudes y reservas empresariales.",
