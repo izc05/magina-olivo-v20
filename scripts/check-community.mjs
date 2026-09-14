@@ -49,7 +49,7 @@ const discoveryRoute = requireFile('apps/api/src/routes/community-discovery.ts')
 requireText(discoveryRoute, '/api/v1/public/community/discover', 'community discovery API');
 requireText(discoveryRoute, '/api/v1/public/community/members/:id', 'community public profile API');
 requireText(discoveryRoute, "z.enum(sortModes).default('recent')", 'community discovery sorting');
-requireText(discoveryRoute, "p.body ILIKE", 'community safe text search');
+requireText(discoveryRoute, 'p.body ILIKE', 'community safe text search');
 requireText(discoveryRoute, "up.visibility = 'public'", 'community public profile visibility gate');
 requireText(discoveryRoute, "ELSE 'Miembro de Mágina'", 'community discovery private author alias');
 for (const privateToken of ['primary_email', 'workspace_id', 'field_id', 'geometry']) {
@@ -95,12 +95,16 @@ const discoveryClient = requireFile('apps/web/src/app/comunidad/descubrir/discov
 requireText(discoveryClient, '/api/v1/public/community/discover', 'community discovery UI');
 requireText(discoveryClient, 'most_commented', 'community most-commented ranking UI');
 requireText(discoveryClient, 'most_liked', 'community most-liked ranking UI');
-requireText(discoveryClient, '/comunidad/persona/', 'community member navigation');
+requireText(discoveryClient, '/comunidad/persona?id=', 'community static member navigation');
 requireFile('apps/web/src/app/comunidad/descubrir/discovery.module.css');
-const publicMemberPage = requireFile('apps/web/src/app/comunidad/persona/[id]/page.tsx');
+const publicMemberPage = requireFile('apps/web/src/app/comunidad/persona/page.tsx');
 requireText(publicMemberPage, '/api/v1/public/community/members/', 'community public member UI');
+requireText(publicMemberPage, 'window.location.search', 'community static-export profile routing');
 requireText(publicMemberPage, 'Perfil no público', 'community private profile state');
-requireFile('apps/web/src/app/comunidad/persona/[id]/profile.module.css');
+requireFile('apps/web/src/app/comunidad/persona/profile.module.css');
+if (fs.existsSync(`${root}/apps/web/src/app/comunidad/persona/[id]/page.tsx`)) {
+  fail('community member profile must remain static-export compatible and cannot use a dynamic [id] route');
+}
 
 requireFile('apps/web/src/app/admin/comunidad/page.tsx');
 const adminConsole = requireFile('apps/web/src/components/admin-community-console.tsx');
