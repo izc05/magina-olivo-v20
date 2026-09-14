@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import moduleRegistry from './admin-modules.json';
+import { AdminModulesDirectory, type AdminModule } from './admin-modules-directory';
 import '../admin.css';
 import './modules.css';
 
@@ -10,22 +11,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-type ModuleStatus = 'available' | 'implemented';
-type ModuleArea = 'Plataforma' | 'Territorio' | 'Negocio' | 'Experiencia';
-
-type AdminModule = {
-  id: string;
-  title: string;
-  description: string;
-  status: ModuleStatus;
-  href?: string;
-  sourceBranch?: string;
-  targetHref?: string;
-  area: ModuleArea;
-};
-
 const modules = moduleRegistry as AdminModule[];
-const areas: ModuleArea[] = ['Plataforma', 'Territorio', 'Negocio', 'Experiencia'];
 
 export default function AdminModulesPage() {
   const available = modules.filter((module) => module.status === 'available').length;
@@ -55,42 +41,7 @@ export default function AdminModulesPage() {
         <p>Un módulo nuevo no se considera cerrado para V20 hasta que declare su superficie administrativa y aparezca en este directorio. Que esté implementado en otra rama demuestra cobertura, pero no habilita su enlace aquí hasta que su código real sea absorbido.</p>
       </div>
 
-      {areas.map((area) => (
-        <section className="admin-modules-area" key={area}>
-          <div className="admin-modules-area-heading">
-            <h2>{area}</h2>
-            <span>{modules.filter((module) => module.area === area).length} módulos</span>
-          </div>
-          <div className="admin-modules-grid">
-            {modules.filter((module) => module.area === area).map((module) => {
-              const content = (
-                <>
-                  <div className="admin-module-card-heading">
-                    <h3>{module.title}</h3>
-                    <span className={`admin-module-status ${module.status}`}>
-                      {module.status === 'available' ? 'Disponible aquí' : 'Implementado en rama'}
-                    </span>
-                  </div>
-                  <p>{module.description}</p>
-                  {module.status === 'implemented' ? (
-                    <div className="admin-module-meta" aria-label={`Origen de ${module.title}`}>
-                      <span>Rama <code>{module.sourceBranch}</code></span>
-                      <span>Ruta prevista <code>{module.targetHref}</code></span>
-                    </div>
-                  ) : null}
-                  <small>{module.status === 'available' ? 'Abrir módulo →' : 'Sin enlace hasta su absorción'}</small>
-                </>
-              );
-
-              return module.href ? (
-                <Link className="admin-module-card" href={module.href} key={module.id}>{content}</Link>
-              ) : (
-                <article className="admin-module-card pending" key={module.id}>{content}</article>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+      <AdminModulesDirectory modules={modules} />
     </main>
   );
 }

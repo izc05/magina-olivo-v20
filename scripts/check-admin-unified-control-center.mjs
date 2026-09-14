@@ -5,7 +5,11 @@ const root = process.cwd();
 const adminDir = resolve(root, 'apps/web/src/app/admin');
 const apiRoutesDir = resolve(root, 'apps/api/src/routes');
 const modulesPage = readFileSync(resolve(adminDir, 'modulos/page.tsx'), 'utf8');
+const modulesDirectoryPath = resolve(adminDir, 'modulos/admin-modules-directory.tsx');
+const modulesDirectory = existsSync(modulesDirectoryPath) ? readFileSync(modulesDirectoryPath, 'utf8') : '';
 const adminPage = readFileSync(resolve(adminDir, 'page.tsx'), 'utf8');
+const adminCssPath = resolve(adminDir, 'admin.css');
+const adminCss = existsSync(adminCssPath) ? readFileSync(adminCssPath, 'utf8') : '';
 const registryPath = resolve(adminDir, 'modulos/admin-modules.json');
 const adminLayoutPath = resolve(adminDir, 'layout.tsx');
 const adminRouteGatePath = resolve(root, 'apps/web/src/components/admin-route-gate.tsx');
@@ -120,10 +124,31 @@ if (!adminRouteGate) {
   if (!adminRouteGate.includes("state !== 'authorized'")) {
     failures.push('AdminRouteGate no debe renderizar contenido antes de confirmar autorización.');
   }
+  if (!adminRouteGate.includes("window.addEventListener('focus'")) {
+    failures.push('AdminRouteGate debe revalidar acceso al recuperar foco.');
+  }
+  if (!adminRouteGate.includes("document.addEventListener('visibilitychange'")) {
+    failures.push('AdminRouteGate debe revalidar acceso al volver visible la pestaña.');
+  }
+  if (!adminRouteGate.includes('validatingRef.current')) {
+    failures.push('AdminRouteGate debe impedir validaciones de acceso concurrentes.');
+  }
 }
 
 if (!modulesPage.includes("import moduleRegistry from './admin-modules.json'")) {
   failures.push('La UI de módulos debe leer el registro canónico admin-modules.json.');
+}
+if (!modulesPage.includes('<AdminModulesDirectory modules={modules} />')) {
+  failures.push('La página de módulos debe delegar exploración y filtros en AdminModulesDirectory.');
+}
+if (!modulesDirectory) {
+  failures.push('Falta el directorio interactivo admin-modules-directory.tsx.');
+} else {
+  if (!modulesDirectory.includes('type="search"')) failures.push('El directorio Admin debe ofrecer búsqueda accesible.');
+  if (!modulesDirectory.includes("useState<'all' | ModuleStatus>")) failures.push('El directorio Admin debe filtrar por estado.');
+  if (!modulesDirectory.includes("useState<'all' | ModuleArea>")) failures.push('El directorio Admin debe filtrar por área.');
+  if (!modulesDirectory.includes('aria-live="polite"')) failures.push('El contador de resultados del directorio debe anunciar cambios de forma accesible.');
+  if (!modulesDirectory.includes('PR fuente')) failures.push('El directorio Admin debe mostrar el PR fuente de los handoffs pendientes.');
 }
 
 if (!adminPage.includes("import moduleRegistry from './modulos/admin-modules.json'")) {
@@ -134,6 +159,14 @@ if (!adminPage.includes("module.status === 'available' && module.href")) {
 }
 if (!adminPage.includes('href="/admin/modulos"')) {
   failures.push('El centro Admin no enlaza al directorio unificado.');
+}
+const launcherIndex = adminPage.indexOf('className="admin-shortcuts"');
+const controlCenterIndex = adminPage.indexOf('<AdminControlCenter />');
+if (launcherIndex < 0 || controlCenterIndex < 0 || launcherIndex > controlCenterIndex) {
+  failures.push('El lanzador de módulos debe aparecer antes del AdminControlCenter para ser descubrible al entrar.');
+}
+if (!adminCss.includes('.admin-shortcuts') || !adminCss.includes('.admin-shortcuts-list')) {
+  failures.push('El lanzador de módulos debe tener estilos propios responsive en admin.css.');
 }
 
 const ids = modules.map((module) => module?.id);
@@ -165,7 +198,7 @@ for (const module of modules) {
 
   if (module.status === 'available') {
     if (!isAdminHref(module.href)) failures.push(`${label} está disponible pero no declara href bajo /admin/.`);
-    if (module.sourceBranch || module.targetHref) failures.push(`${label} está disponible y no debe conservar metadatos de integración externa.`);
+    if (module.sourceBranch || module.sourcePr || module.targetHref) failures.push(`${label} está disponible y no debe conservar metadatos de integración externa.`);
     if (isAdminHref(module.href) && !existsSync(routeToPagePath(module.href))) {
       failures.push(`La ruta disponible ${module.href} no tiene una page.tsx real.`);
     }
@@ -174,6 +207,7 @@ for (const module of modules) {
   if (module.status === 'implemented') {
     if (module.href) failures.push(`${label} no debe exponer href antes de su absorción.`);
     if (typeof module.sourceBranch !== 'string' || !module.sourceBranch.trim()) failures.push(`${label} debe declarar sourceBranch.`);
+    if (!Number.isInteger(module.sourcePr) || module.sourcePr <= 0) failures.push(`${label} debe declarar sourcePr como número de PR válido.`);
     if (!isAdminHref(module.targetHref)) failures.push(`${label} debe declarar targetHref bajo /admin/.`);
   }
 }
@@ -260,5 +294,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed).`,
+  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas con PR fuente, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed; directorio filtrable; lanzador visible).`,
 );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiRequestError } from '../lib/api-client';
 import { adminApi } from '../lib/admin-data-source';
 import { useAuth } from './auth-provider';
@@ -11,9 +11,12 @@ type GateState = 'checking' | 'authorized' | 'denied' | 'expired' | 'error';
 export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) {
   const auth = useAuth();
   const [state, setState] = useState<GateState>('checking');
+  const validatingRef = useRef(false);
 
-  const validate = useCallback(async () => {
-    setState('checking');
+  const validate = useCallback(async (showChecking = true) => {
+    if (validatingRef.current) return;
+    validatingRef.current = true;
+    if (showChecking) setState('checking');
     try {
       await adminApi.session();
       setState('authorized');
@@ -28,15 +31,33 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
         return;
       }
       setState('error');
+    } finally {
+      validatingRef.current = false;
     }
   }, [auth.refreshSession]);
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
-      void validate();
+      void validate(true);
       return;
     }
     setState('checking');
+  }, [auth.status, validate]);
+
+  useEffect(() => {
+    if (auth.status !== 'authenticated') return;
+
+    const revalidateOnFocus = () => void validate(false);
+    const revalidateOnVisibility = () => {
+      if (document.visibilityState === 'visible') void validate(false);
+    };
+
+    window.addEventListener('focus', revalidateOnFocus);
+    document.addEventListener('visibilitychange', revalidateOnVisibility);
+    return () => {
+      window.removeEventListener('focus', revalidateOnFocus);
+      document.removeEventListener('visibilitychange', revalidateOnVisibility);
+    };
   }, [auth.status, validate]);
 
   if (auth.status === 'loading' || (auth.status === 'authenticated' && state === 'checking')) {
@@ -94,7 +115,7 @@ export function AdminRouteGate({ children }: Readonly<{ children: ReactNode }>) 
           <span className="admin-eyebrow">Administración</span>
           <h1>No se ha podido validar el acceso</h1>
           <p>La sesión no se da por autorizada mientras el servidor no confirme los permisos.</p>
-          <button className="admin-button secondary" onClick={() => void validate()}>Reintentar</button>
+          <button className="admin-button secondary" onClick={() => void validate(true)}>Reintentar</button>
         </div>
       </main>
     );
