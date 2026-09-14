@@ -13,6 +13,10 @@ import { HomePrioritySettings } from '@/components/home-priority-settings';
 import { FinancialNotificationSettings } from '@/components/financial-notification-settings';
 import { CommercialNotificationSettings } from '@/components/commercial-notification-settings';
 import { ProfessionalBusinessProfileSettings } from '@/components/professional-business-profile-settings';
+import { AdventureExplorerProfile } from '@/components/adventure-explorer-profile';
+import { RecordedActivityProfileCard } from '@/components/recorded-activity-profile-card';
+import { ActivityAchievementsProfileCard } from '@/components/activity-achievements-profile-card';
+import { AdventureRewardsProfileCard } from '@/components/adventure-rewards-profile-card';
 import { useAuth } from '@/components/auth-provider';
 
 const roleLabels: Record<string, string> = {
@@ -83,6 +87,10 @@ export default function ProfilePage() {
       <section className="card profile-card premium-profile-card"><div className="profile-card-head"><h3>Mi cuenta</h3><span>{authenticated ? 'Estado' : 'Acceder'}</span></div>{accountRows.map(([a,b])=><div className="profile-line" key={a}><span>{a}</span><span>{b}</span></div>)}</section>
 
       {authenticated ? <ProfileSettingsEditor user={user} profile={profile} preferences={preferences} onSaved={refreshMe} /> : null}
+      {authenticated ? <AdventureExplorerProfile /> : null}
+      {authenticated ? <RecordedActivityProfileCard /> : null}
+      {authenticated ? <ActivityAchievementsProfileCard /> : null}
+      {authenticated ? <AdventureRewardsProfileCard /> : null}
 
       <AgronomyAlertSettings />
       <HomePrioritySettings />
