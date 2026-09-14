@@ -59,6 +59,13 @@ test.describe('Mi Olivo · primera cuenta', () => {
     await expect(welcome.getByRole('link', { name: /Añade tu primera finca/ })).toHaveAttribute('href', '/mi-campo/fincas/nueva');
     await expect(welcome.getByRole('link', { name: /Explora Sierra Mágina/ })).toHaveAttribute('href', '/explorar');
 
+    const timeline = page.getByRole('region', { name: 'Línea temporal real de Mi Olivo' });
+    await expect(timeline).toBeVisible();
+    await expect(timeline.getByRole('heading', { name: 'Lo que ya ha pasado' })).toBeVisible();
+    await expect(timeline.getByText('Tu historia empieza aquí.', { exact: true })).toBeVisible();
+    await expect(timeline.getByRole('link', { name: 'Ir a Mi Campo' })).toHaveAttribute('href', '/mi-campo');
+    await expect(timeline.getByRole('link', { name: 'Explorar Mágina' })).toHaveAttribute('href', '/explorar');
+
     const dimensions = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       documentWidth: document.documentElement.scrollWidth,
