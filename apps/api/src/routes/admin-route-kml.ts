@@ -24,7 +24,7 @@ function profileSamples(points: ReturnType<typeof parseKmlTrack>['points']) {
 }
 
 export function registerAdminRouteKmlRoutes(app: FastifyInstance, db: DatabaseClient | null) {
-  app.post('/api/v1/admin/routes/:id/kml', async (request, reply) => {
+  app.post('/api/v1/admin/routes/:id/kml', { bodyLimit: 5 * 1024 * 1024 + 256 * 1024 }, async (request, reply) => {
     const auth = await requirePlatformAccess(request, reply, db, 'editor');
     if (!auth) return;
     const params = routeParams.safeParse(request.params);
@@ -32,8 +32,17 @@ export function registerAdminRouteKmlRoutes(app: FastifyInstance, db: DatabaseCl
     const input = parseBody(kmlUploadSchema, request.body, reply);
     if (!input) return;
 
-    const routeResult = await sql<{ id: string; slug: string; name: string }>`
-      SELECT id, slug, name FROM routes WHERE id = ${params.data.id}::uuid LIMIT 1
+    const routeResult = await sql<{
+      id: string;
+      slug: string;
+      name: string;
+      status: 'draft' | 'review' | 'published' | 'archived';
+      distance_m: number | null;
+    }>`
+      SELECT id, slug, name, status, distance_m
+      FROM routes
+      WHERE id = ${params.data.id}::uuid
+      LIMIT 1
     `.execute(auth.database);
     const route = routeResult.rows[0];
     if (!route) return reply.code(404).send({ error: 'route_not_found' });
@@ -46,7 +55,13 @@ export function registerAdminRouteKmlRoutes(app: FastifyInstance, db: DatabaseCl
       return reply.code(400).send({ error: code });
     }
 
+    const previousDistance = route.distance_m == null ? null : Number(route.distance_m);
+    const distanceDeltaM = previousDistance == null ? null : parsed.distanceM - previousDistance;
+    const distanceDeltaPercent = previousDistance && previousDistance > 0
+      ? Math.round((Math.abs(distanceDeltaM ?? 0) / previousDistance) * 10_000) / 100
+      : null;
     const samples = profileSamples(parsed.points);
+
     const track = await auth.database.transaction().execute(async (trx) => {
       const versionResult = await sql<{ version: number }>`
         SELECT coalesce(max(version), 0)::int + 1 AS version
@@ -103,6 +118,8 @@ export function registerAdminRouteKmlRoutes(app: FastifyInstance, db: DatabaseCl
       await sql`
         UPDATE routes
         SET track_status = 'uploaded',
+            status = CASE WHEN status = 'published' THEN 'review' ELSE status END,
+            published_at = CASE WHEN status = 'published' THEN NULL ELSE published_at END,
             distance_m = ${parsed.distanceM},
             elevation_gain_m = ${parsed.elevationGainM},
             elevation_loss_m = ${parsed.elevationLossM},
@@ -123,6 +140,10 @@ export function registerAdminRouteKmlRoutes(app: FastifyInstance, db: DatabaseCl
       point_count: parsed.points.length,
       profile_sample_count: samples.filter((point) => point.elevationM !== null).length,
       distance_m: parsed.distanceM,
+      previous_distance_m: previousDistance,
+      distance_delta_m: distanceDeltaM,
+      distance_delta_percent: distanceDeltaPercent,
+      previous_status: route.status,
       source_name: input.source_name ?? parsed.name,
       source_url: input.source_url ?? null,
     });
@@ -132,6 +153,13 @@ export function registerAdminRouteKmlRoutes(app: FastifyInstance, db: DatabaseCl
       track,
       validation_status: 'uploaded',
       requires_editor_validation: true,
+      route_moved_to_review: route.status === 'published',
+      comparison: {
+        previous_distance_m: previousDistance,
+        imported_distance_m: parsed.distanceM,
+        distance_delta_m: distanceDeltaM,
+        distance_delta_percent: distanceDeltaPercent,
+      },
       metrics: {
         point_count: parsed.points.length,
         distance_m: parsed.distanceM,
@@ -141,7 +169,7 @@ export function registerAdminRouteKmlRoutes(app: FastifyInstance, db: DatabaseCl
         max_altitude_m: parsed.maxAltitudeM,
         bbox: parsed.bbox,
       },
-      notice: 'El KML se ha importado como track subido. Debe revisarse y validarse explícitamente antes de que la ruta pueda publicarse o activar Mágina Aventura.',
+      notice: 'El KML se ha importado como track subido. Si la ruta estaba publicada vuelve a revisión. Debe validarse explícitamente antes de poder publicarse o activar Mágina Aventura.',
     });
   });
 }
