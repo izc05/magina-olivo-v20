@@ -109,6 +109,10 @@ test('Explore links to public modules that are already available', async ({ page
   const routes = page.getByRole('link', { name: /Rutas y experiencias/ });
   await expect(routes).toHaveAttribute('href', /^\/rutas\/?$/);
   await expect(routes).toContainText('Disponible');
+
+  const adventure = page.getByRole('link', { name: /Mágina Aventura/ });
+  await expect(adventure).toHaveAttribute('href', /^\/aventura\/?$/);
+  await expect(adventure).toContainText('Nuevo');
   await expectNoHorizontalOverflow(page);
 });
 
