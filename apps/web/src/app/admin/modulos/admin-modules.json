@@ -155,9 +155,8 @@
     "id": "adventure",
     "title": "Mágina Aventura",
     "description": "Progreso, retos, colecciones y misiones del modo aventura.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-routes-adventure",
-    "targetHref": "/admin/rutas/aventuras",
+    "status": "available",
+    "href": "/admin/rutas/aventuras",
     "area": "Experiencia"
   }
 ]
