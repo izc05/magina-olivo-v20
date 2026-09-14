@@ -77,8 +77,9 @@ for (const [key, route] of expectedAdminSections) {
   must(nav.includes(`path: '${route}'`), `Falta la ruta Admin ${route}`);
 }
 must(nav.includes("aria-current={active === section.key ? 'page'"), 'La navegación Admin debe exponer aria-current');
-must(context.includes("searchParams.set('municipio'"), 'El contexto municipal debe persistir con ?municipio=');
-must(context.includes("searchParams.get('municipio')"), 'El contexto municipal debe poder leerse desde ?municipio=');
+must(context.includes("MUNICIPALITY_QUERY_KEY = 'municipio'"), 'El contexto municipal debe usar la clave canónica municipio');
+must(context.includes('params.get(MUNICIPALITY_QUERY_KEY)'), 'El contexto municipal debe poder leerse desde ?municipio=');
+must(context.includes('url.searchParams.set(MUNICIPALITY_QUERY_KEY, slug)'), 'El contexto municipal debe persistir ?municipio=');
 
 for (const [name, source] of [['Preview', preview], ['Historial', history], ['Huecos', gaps]]) {
   must(!source.includes('adminApi.createContent('), `${name} no debe crear contenido`);
@@ -90,7 +91,7 @@ must(preview.includes('Resultado público actual'), 'Preview debe distinguir el 
 must(history.includes('adminApi.audit()'), 'Historial debe reutilizar adminApi.audit()');
 must(!history.includes('JSON.stringify(entry.metadata'), 'Historial no debe renderizar metadata bruta');
 must(gaps.includes('Solo huecos'), 'Huecos debe permitir filtrar señales ausentes');
-must(gaps.includes("municipality_id"), 'Huecos debe vincular contenido por municipality_id');
+must(gaps.includes('municipality_id'), 'Huecos debe vincular contenido por municipality_id');
 
 const priorContracts = [
   'check-municipalities-directory.mjs',
