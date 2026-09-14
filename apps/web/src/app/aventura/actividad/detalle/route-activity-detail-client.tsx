@@ -4,11 +4,32 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ApiRequestError } from '../../../../lib/api-client';
-import { loadRouteActivityTrack, type RouteActivityTrack } from '../../../../lib/route-activity-source';
+import {
+  loadRouteActivityInsights,
+  loadRouteActivityTrack,
+  type RouteActivityInsights,
+  type RouteActivityTrack,
+} from '../../../../lib/route-activity-source';
 import styles from '../activity.module.css';
 
 function km(value: number) {
   return `${(Math.max(0, value) / 1000).toFixed(value >= 100000 ? 0 : 2)} km`;
+}
+
+function signedKm(value: number | null) {
+  if (value == null) return '—';
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${(value / 1000).toFixed(2)} km`;
+}
+
+function metres(value: number | null, suffix = ' m') {
+  return value == null ? '—' : `${Math.round(value).toLocaleString('es-ES')}${suffix}`;
+}
+
+function signedMetres(value: number | null) {
+  if (value == null) return '—';
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${Math.round(value).toLocaleString('es-ES')} m`;
 }
 
 function duration(seconds: number) {
@@ -18,6 +39,27 @@ function duration(seconds: number) {
   const secs = safe % 60;
   if (hours) return `${hours} h ${String(minutes).padStart(2, '0')} min`;
   return `${minutes}:${String(secs).padStart(2, '0')}`;
+}
+
+function durationMinutes(minutes: number | null) {
+  if (minutes == null) return '—';
+  const safe = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(safe / 60);
+  const remainder = safe % 60;
+  return hours ? `${hours} h${remainder ? ` ${remainder} min` : ''}` : `${remainder} min`;
+}
+
+function signedMinutes(minutes: number | null) {
+  if (minutes == null) return '—';
+  const rounded = Math.round(minutes);
+  const sign = rounded > 0 ? '+' : '';
+  return `${sign}${rounded} min`;
+}
+
+function signedPercent(value: number | null) {
+  if (value == null) return '—';
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${value.toFixed(1)} %`;
 }
 
 function dateLabel(value: string) {
@@ -97,22 +139,28 @@ export function RouteActivityDetailClient() {
   const searchParams = useSearchParams();
   const activityId = searchParams.get('id')?.trim() ?? '';
   const [track, setTrack] = useState<RouteActivityTrack | null>(null);
+  const [insights, setInsights] = useState<RouteActivityInsights | null>(null);
   const [loading, setLoading] = useState(Boolean(activityId));
   const [error, setError] = useState<'missing' | 'auth' | 'not_found' | 'generic' | null>(activityId ? null : 'missing');
 
   useEffect(() => {
     if (!activityId) {
       setTrack(null);
+      setInsights(null);
       setLoading(false);
       setError('missing');
       return;
     }
     let cancelled = false;
     setLoading(true);
-    loadRouteActivityTrack(activityId)
-      .then((value) => {
+    Promise.all([
+      loadRouteActivityTrack(activityId),
+      loadRouteActivityInsights(activityId).catch(() => null),
+    ])
+      .then(([value, nextInsights]) => {
         if (cancelled) return;
         setTrack(value);
+        setInsights(nextInsights);
         setError(null);
       })
       .catch((cause) => {
@@ -135,9 +183,12 @@ export function RouteActivityDetailClient() {
 
   if (!track) return null;
   const activity = track.activity;
-  const avgSpeed = activity.active_seconds > 0 ? (activity.distance_m / 1000) / (activity.active_seconds / 3600) : 0;
+  const avgSpeed = insights?.recorded.average_speed_kmh ?? (activity.active_seconds > 0 ? (activity.distance_m / 1000) / (activity.active_seconds / 3600) : 0);
   const accuracyValues = track.points.map((point) => point.accuracy_m).filter(Number.isFinite);
-  const averageAccuracy = accuracyValues.length ? accuracyValues.reduce((sum, value) => sum + value, 0) / accuracyValues.length : null;
+  const fallbackAccuracy = accuracyValues.length ? accuracyValues.reduce((sum, value) => sum + value, 0) / accuracyValues.length : null;
+  const averageAccuracy = insights?.quality.average_accuracy_m ?? fallbackAccuracy;
+  const quality = insights?.quality ?? null;
+  const official = insights?.official_route ?? null;
 
   return <main className={styles.shell}>
     <Link href="/aventura/actividad" className={styles.back}>← Historial de actividad</Link>
@@ -160,7 +211,35 @@ export function RouteActivityDetailClient() {
       <p className={styles.note}>El trazado procede de las muestras aceptadas por el grabador. Es una referencia de actividad personal y no sustituye un track oficial de navegación ni la señalización del sendero.</p>
     </section>
 
-    {activity.route_slug ? <section className={styles.card} style={{ marginTop: 18 }}>
+    {quality ? <section className={styles.card} style={{ marginTop: 18 }}>
+      <h2>Desnivel y calidad del track</h2>
+      <div className={styles.detailMetrics}>
+        <div className={styles.metric}><strong>{quality.altitude_samples >= 2 ? metres(quality.elevation_gain_m, ' m+') : '—'}</strong><span>Desnivel positivo GPS</span></div>
+        <div className={styles.metric}><strong>{quality.altitude_samples >= 2 ? metres(quality.elevation_loss_m, ' m−') : '—'}</strong><span>Desnivel negativo GPS</span></div>
+        <div className={styles.metric}><strong>{quality.min_altitude_m == null || quality.max_altitude_m == null ? '—' : `${Math.round(quality.min_altitude_m)}–${Math.round(quality.max_altitude_m)} m`}</strong><span>Rango de altitud</span></div>
+        <div className={styles.metric}><strong>{quality.average_accuracy_m == null ? '—' : `±${Math.round(quality.average_accuracy_m)} m`}</strong><span>Precisión GPS media</span></div>
+      </div>
+      <p className={styles.note}>El desnivel GPS filtra cambios menores de 3 m, saltos verticales mayores de 80 m y el primer punto después de una pausa. Sigue siendo una estimación: para navegación y ficha técnica manda el perfil oficial.</p>
+    </section> : null}
+
+    {official ? <section className={styles.card} style={{ marginTop: 18 }}>
+      <h2>Tu recorrido frente a la ruta oficial</h2>
+      <p>Comparamos únicamente magnitudes. Una distancia parecida no demuestra que hayas seguido exactamente el trazado.</p>
+      <div className={styles.detailMetrics}>
+        <div className={styles.metric}><strong>{official.distance_m == null ? '—' : km(official.distance_m)}</strong><span>Distancia oficial</span></div>
+        <div className={styles.metric}><strong>{signedKm(official.distance_delta_m)}</strong><span>Diferencia registrada</span></div>
+        <div className={styles.metric}><strong>{signedPercent(official.distance_delta_percent)}</strong><span>Diferencia de distancia</span></div>
+        <div className={styles.metric}><strong>{durationMinutes(official.duration_minutes)}</strong><span>Tiempo oficial estimado</span></div>
+      </div>
+      <div className={styles.detailMetrics}>
+        <div className={styles.metric}><strong>{official.elevation_gain_m == null ? '—' : metres(official.elevation_gain_m, ' m+')}</strong><span>Desnivel oficial</span></div>
+        <div className={styles.metric}><strong>{quality && quality.altitude_samples >= 2 ? metres(quality.elevation_gain_m, ' m+') : '—'}</strong><span>Desnivel GPS</span></div>
+        <div className={styles.metric}><strong>{quality && quality.altitude_samples >= 2 ? signedMetres(official.elevation_delta_m) : '—'}</strong><span>Diferencia de desnivel</span></div>
+        <div className={styles.metric}><strong>{signedMinutes(official.active_time_delta_minutes)}</strong><span>Diferencia de tiempo activo</span></div>
+      </div>
+      <p className={styles.note}>{insights?.notice}</p>
+      {official.slug ? <Link className={styles.login} href={`/rutas/detalle?slug=${encodeURIComponent(official.slug)}`}>Abrir ficha oficial de la ruta →</Link> : null}
+    </section> : activity.route_slug ? <section className={styles.card} style={{ marginTop: 18 }}>
       <h2>Ruta asociada</h2><p>Este recorrido se grabó sobre una ruta publicada de Mágina Olivo.</p>
       <Link className={styles.login} href={`/rutas/detalle?slug=${encodeURIComponent(activity.route_slug)}`}>Abrir ficha oficial de la ruta →</Link>
     </section> : null}
