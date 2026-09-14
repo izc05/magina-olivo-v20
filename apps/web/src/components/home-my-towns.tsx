@@ -4,14 +4,31 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { loadFollowedTowns, type FollowedTown } from '@/lib/my-towns-source';
+import { loadTerritorialFeed, type TerritorialFeedItem } from '@/lib/territorial-feed-source';
 import { findMaginaTown, townModuleHref } from '@/lib/towns';
 import styles from './home-my-towns.module.css';
+
+function feedKindLabel(kind: TerritorialFeedItem['kind']) {
+  if (kind === 'news') return 'Noticia';
+  if (kind === 'event') return 'Evento';
+  return 'Empresa';
+}
+
+function feedDate(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(date);
+}
 
 export function HomeMyTowns() {
   const { status, preferences, profile } = useAuth();
   const [towns, setTowns] = useState<FollowedTown[]>([]);
+  const [feed, setFeed] = useState<TerritorialFeedItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [feedLoading, setFeedLoading] = useState(false);
+  const [feedError, setFeedError] = useState(false);
 
   const primaryTown = useMemo(
     () => findMaginaTown(preferences?.preferred_municipality ?? profile?.municipality),
@@ -21,6 +38,7 @@ export function HomeMyTowns() {
   useEffect(() => {
     if (status !== 'authenticated') {
       setTowns([]);
+      setFeed([]);
       setLoading(false);
       setError(false);
       return;
@@ -47,6 +65,35 @@ export function HomeMyTowns() {
     return () => { cancelled = true; };
   }, [status]);
 
+  useEffect(() => {
+    if (status !== 'authenticated' || towns.length === 0) {
+      setFeed([]);
+      setFeedLoading(false);
+      setFeedError(false);
+      return;
+    }
+
+    let cancelled = false;
+    setFeedLoading(true);
+    setFeedError(false);
+    loadTerritorialFeed(towns.map((town) => town.slug))
+      .then((items) => {
+        if (!cancelled) setFeed(items);
+      })
+      .catch((cause) => {
+        console.warn('Unable to load territorial feed on home', cause);
+        if (!cancelled) {
+          setFeed([]);
+          setFeedError(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFeedLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [status, towns]);
+
   if (status !== 'authenticated') return null;
 
   const visibleTowns = towns.slice(0, 4);
@@ -57,7 +104,7 @@ export function HomeMyTowns() {
       <div>
         <span>MI MÁGINA</span>
         <h2 id="home-my-towns-title">Tus pueblos</h2>
-        <p>Acceso rápido a la información local que has decidido seguir.</p>
+        <p>Acceso rápido y actualidad local de los municipios que has decidido seguir.</p>
       </div>
       <Link href="/mis-pueblos">Gestionar →</Link>
     </div>
@@ -92,5 +139,30 @@ export function HomeMyTowns() {
     </div> : null}
 
     {remaining > 0 ? <Link className={styles.more} href="/mis-pueblos">+{remaining} pueblo{remaining === 1 ? '' : 's'} más</Link> : null}
+
+    {!loading && !error && towns.length > 0 ? <div className={styles.feedSection}>
+      <div className={styles.feedHeader}>
+        <div>
+          <span>AHORA EN TUS PUEBLOS</span>
+          <h3>Tu actualidad local</h3>
+        </div>
+        <Link href="/noticias">Ver actualidad →</Link>
+      </div>
+
+      {feedLoading ? <p className={styles.state}>Reuniendo noticias, eventos y empresas…</p> : null}
+      {feedError ? <p className={styles.state}>Parte de la actualidad local no está disponible ahora mismo.</p> : null}
+      {!feedLoading && !feedError && feed.length === 0 ? <div className={styles.feedEmpty}>Todavía no hay contenido publicado asociado a tus pueblos.</div> : null}
+
+      {!feedLoading && feed.length > 0 ? <div className={styles.feedList}>
+        {feed.map((item) => <Link className={styles.feedItem} href={item.href} key={item.id}>
+          <div className={styles.feedMeta}>
+            <span>{feedKindLabel(item.kind)}</span>
+            <small>{item.townName}{feedDate(item.timestamp) ? ` · ${feedDate(item.timestamp)}` : ''}</small>
+          </div>
+          <strong>{item.title}</strong>
+          {item.summary ? <p>{item.summary}</p> : null}
+        </Link>)}
+      </div> : null}
+    </div> : null}
   </section>;
 }
