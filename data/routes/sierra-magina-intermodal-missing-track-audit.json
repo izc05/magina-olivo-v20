@@ -1,0 +1,53 @@
+{
+  "audit_version": 1,
+  "audited_at": "2026-09-14",
+  "authority": "Diputacion de Jaen - Jaen Paraiso Interior",
+  "scope": "Official Sierra Magina intermodal hiking routes whose authoritative track artifact has not been located",
+  "method": "Review the current official route page, its published document reference and visible downloadable route-artifact references. Do not infer unpublished URLs from naming patterns used by other routes.",
+  "policy": {
+    "guessed_track_urls_forbidden": true,
+    "track_found_requires_authoritative_artifact_url": true,
+    "rutometer_is_not_a_track_geometry": true
+  },
+  "routes": [
+    {
+      "code": "R4",
+      "name": "Area Recreativa Fuenmayor - Albanchez de Magina",
+      "source_url": "https://www.jaenparaisointerior.es/es/w/sm/senderismo/r4",
+      "published_document_url": "https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r4",
+      "official_distance_m": 10500,
+      "distance_evidence": "Official rutometer reaches km 10.5 at Albanchez de Magina.",
+      "authoritative_track_status": "not_located",
+      "track_artifact_url": null,
+      "audit_note": "Current official page exposes the route description/rutometer and document reference, but no explicit GPX/KML/KMZ route artifact was located."
+    },
+    {
+      "code": "R5",
+      "name": "Area Recreativa El Peralejo - Area Recreativa Fuenmayor",
+      "source_url": "https://www.jaenparaisointerior.es/es/w/sm/senderismo/r5",
+      "published_document_url": "https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r5",
+      "official_distance_m": 16700,
+      "distance_evidence": "Official rutometer finishes at Fuenmayor at km 16.7.",
+      "authoritative_track_status": "not_located",
+      "track_artifact_url": null,
+      "audit_note": "Current official page exposes the route description/rutometer and document reference, but no explicit GPX/KML/KMZ route artifact was located."
+    },
+    {
+      "code": "R8",
+      "name": "Area Recreativa Rio Cuadros - Cano del Aguadero - Belmez de la Moraleda",
+      "source_url": "https://www.jaenparaisointerior.es/es/w/sm/senderismo/r8",
+      "published_document_url": "https://www.jaenparaisointerior.es/documents/d/jaen-paraiso-interior/r8",
+      "official_distance_m": 20900,
+      "distance_evidence": "Official route record/rutometer documents the 20.9 km linear itinerary.",
+      "authoritative_track_status": "not_located",
+      "track_artifact_url": null,
+      "audit_note": "Current official page exposes the route description/rutometer and document reference, but no explicit GPX/KML/KMZ route artifact was located."
+    }
+  ],
+  "closure": {
+    "audited_records": 3,
+    "authoritative_tracks_located": 0,
+    "status": "audited_absence_of_published_track_artifact",
+    "note": "This does not prove that no geometry exists inside Diputacion systems. It records that no authoritative public track artifact has been located and prevents guessed URLs from being promoted as evidence."
+  }
+}
