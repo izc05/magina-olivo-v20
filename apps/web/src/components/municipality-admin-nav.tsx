@@ -3,7 +3,7 @@
 import { municipalityAdminHref, publicMunicipalityHref } from '@/lib/municipality-admin-context';
 import styles from './municipality-admin-nav.module.css';
 
-type Section = 'ficha' | 'contenido' | 'portada' | 'preview' | 'patrimonio' | 'actualidad' | 'cobertura' | 'historial';
+type Section = 'ficha' | 'contenido' | 'portada' | 'preview' | 'patrimonio' | 'actualidad' | 'cobertura' | 'huecos' | 'historial';
 
 const SECTIONS: Array<{ key: Section; label: string; path: string }> = [
   { key: 'ficha', label: 'Ficha', path: '/admin/ayuntamientos' },
@@ -13,6 +13,7 @@ const SECTIONS: Array<{ key: Section; label: string; path: string }> = [
   { key: 'patrimonio', label: 'Patrimonio', path: '/admin/ayuntamientos/patrimonio' },
   { key: 'actualidad', label: 'Actualidad', path: '/admin/ayuntamientos/actualidad' },
   { key: 'cobertura', label: 'Cobertura', path: '/admin/ayuntamientos/cobertura' },
+  { key: 'huecos', label: 'Huecos', path: '/admin/ayuntamientos/huecos' },
   { key: 'historial', label: 'Historial', path: '/admin/ayuntamientos/historial' },
 ];
 
