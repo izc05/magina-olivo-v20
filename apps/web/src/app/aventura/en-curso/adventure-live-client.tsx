@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { ApiRequestError } from '../../../lib/api-client';
 import { loadPublicRoute, type PublicRouteDetail } from '../../../lib/public-routes-source';
 import { loadCurrentRouteActivity } from '../../../lib/route-activity-source';
-import { RouteActivityRecorder } from '../../actividad/route-activity-recorder';
+import { RouteActivityRecorder } from '../actividad/route-activity-recorder';
 import { RouteAdventurePanel } from '../../rutas/detalle/route-adventure-panel';
 import { RouteMap } from '../../rutas/detalle/route-map';
 import styles from './live.module.css';
