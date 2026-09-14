@@ -13,8 +13,12 @@ const adminCss = existsSync(adminCssPath) ? readFileSync(adminCssPath, 'utf8') :
 const registryPath = resolve(adminDir, 'modulos/admin-modules.json');
 const adminLayoutPath = resolve(adminDir, 'layout.tsx');
 const adminRouteGatePath = resolve(root, 'apps/web/src/components/admin-route-gate.tsx');
+const adminControlCenterPath = resolve(root, 'apps/web/src/components/admin-control-center.tsx');
+const adminApiPolicyPath = resolve(root, 'apps/api/src/routes/admin.ts');
 const adminLayout = existsSync(adminLayoutPath) ? readFileSync(adminLayoutPath, 'utf8') : '';
 const adminRouteGate = existsSync(adminRouteGatePath) ? readFileSync(adminRouteGatePath, 'utf8') : '';
+const adminControlCenter = existsSync(adminControlCenterPath) ? readFileSync(adminControlCenterPath, 'utf8') : '';
+const adminApiPolicy = existsSync(adminApiPolicyPath) ? readFileSync(adminApiPolicyPath, 'utf8') : '';
 const modules = JSON.parse(readFileSync(registryPath, 'utf8'));
 
 const baselineModuleIds = [
@@ -38,6 +42,16 @@ const baselineModuleIds = [
   'route-community',
   'route-sponsorships',
   'adventure',
+];
+
+const publicSettingKeys = [
+  'alerts.banner',
+  'home.hero',
+  'home.territory_banner',
+  'site.contact',
+  'site.identity',
+  'site.seo',
+  'site.social',
 ];
 
 const allowedStatuses = new Set(['available', 'implemented']);
@@ -132,6 +146,49 @@ if (!adminRouteGate) {
   }
   if (!adminRouteGate.includes('validatingRef.current')) {
     failures.push('AdminRouteGate debe impedir validaciones de acceso concurrentes.');
+  }
+}
+
+if (!adminControlCenter) {
+  failures.push('Falta AdminControlCenter para gobernar usuarios y ajustes globales.');
+} else {
+  if (!adminControlCenter.includes('user.id === session.user.id')) {
+    failures.push('AdminControlCenter debe identificar la propia cuenta para impedir autoedición de acceso.');
+  }
+  if (!adminControlCenter.includes('Tu cuenta · acceso protegido')) {
+    failures.push('AdminControlCenter debe mostrar la propia cuenta como acceso protegido.');
+  }
+  if (!adminControlCenter.includes('if (userId === session?.user.id)')) {
+    failures.push('AdminControlCenter debe bloquear cambios del propio rol también en el handler de UI.');
+  }
+  if (!adminControlCenter.includes('if (user.id === session?.user.id)')) {
+    failures.push('AdminControlCenter debe bloquear revocación propia también en el handler de UI.');
+  }
+  if (!adminControlCenter.includes('settingPublic && !canPublishSetting(settingKey)')) {
+    failures.push('AdminControlCenter debe impedir publicar claves internas antes de llamar a la API.');
+  }
+  if (!adminControlCenter.includes('disabled={!canEdit(role) || !settingCanBePublic}')) {
+    failures.push('El checkbox de publicación debe quedar deshabilitado para claves internas.');
+  }
+  for (const key of publicSettingKeys) {
+    if (!adminControlCenter.includes(`'${key}'`)) failures.push(`AdminControlCenter no reconoce la clave pública ${key}.`);
+  }
+}
+
+if (!adminApiPolicy) {
+  failures.push('Falta el router Admin principal para validar políticas críticas.');
+} else {
+  if (!adminApiPolicy.includes('cannot_change_current_admin_access')) {
+    failures.push('La API Admin debe bloquear cambios sobre el propio acceso administrativo.');
+  }
+  if (!adminApiPolicy.includes('setting_not_publicable')) {
+    failures.push('La API Admin debe rechazar la publicación de claves internas.');
+  }
+  if (!adminApiPolicy.includes('publicSiteSettingKeySet')) {
+    failures.push('La API Admin debe aplicar una allowlist explícita de claves publicables.');
+  }
+  for (const key of publicSettingKeys) {
+    if (!adminApiPolicy.includes(`'${key}'`)) failures.push(`La API Admin no reconoce la clave pública ${key}.`);
   }
 }
 
@@ -294,5 +351,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas con PR fuente, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed; directorio filtrable; lanzador visible).`,
+  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas con PR fuente, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed; autoacceso protegido; settings públicos allowlisted; directorio filtrable; lanzador visible).`,
 );
