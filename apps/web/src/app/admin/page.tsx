@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AdminControlCenter } from '../../components/admin-control-center';
+import moduleRegistry from './modulos/admin-modules.json';
 import './admin.css';
 
 export const metadata: Metadata = {
@@ -9,25 +10,32 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+type AdminShortcut = {
+  id: string;
+  title: string;
+  status: 'available' | 'implemented';
+  href?: string;
+};
+
+const availableShortcuts = (moduleRegistry as AdminShortcut[])
+  .filter((module) => module.status === 'available' && module.href)
+  .sort((a, b) => a.title.localeCompare(b.title, 'es'));
+
 export default function AdminPage() {
   return (
     <>
       <AdminControlCenter />
       <nav className="admin-shortcuts" aria-label="Herramientas de administración">
         <Link href="/admin/modulos" aria-label="Abrir directorio unificado de módulos">Módulos</Link>
-        <Link href="/admin/ayuntamientos" aria-label="Abrir centro de control de ayuntamientos">Ayuntamientos</Link>
-        <Link href="/admin/operaciones" aria-label="Abrir centro operativo de plataforma">Operaciones</Link>
-        <Link href="/admin/analitica" aria-label="Abrir analítica histórica de plataforma">Analítica</Link>
-        <Link href="/admin/gestion" aria-label="Abrir gestión de workspaces, miembros y fincas">Gestión</Link>
-        <Link href="/admin/campanas-planes" aria-label="Abrir administración de campañas y planes">Campañas</Link>
-        <Link href="/admin/agenda" aria-label="Abrir agenda global">Agenda</Link>
-        <Link href="/admin/trabajos" aria-label="Abrir trabajos y actividad agrícola">Trabajos</Link>
-        <Link href="/admin/documentos" aria-label="Abrir soporte de documentos y OCR">Documentos/OCR</Link>
-        <Link href="/admin/profesional" aria-label="Abrir soporte comercial profesional">Profesional</Link>
-        <Link href="/admin/fuentes" aria-label="Abrir estado de fuentes y datos">Fuentes</Link>
-        <Link href="/admin/territorio" aria-label="Abrir administración de territorio y directorio">Territorio</Link>
-        <Link href="/admin/media" aria-label="Abrir biblioteca multimedia">Multimedia</Link>
-        <Link href="/admin/web" aria-label="Abrir editor visual de la web">Editar web</Link>
+        {availableShortcuts.map((module) => (
+          <Link
+            href={module.href!}
+            aria-label={`Abrir administración de ${module.title}`}
+            key={module.id}
+          >
+            {module.title}
+          </Link>
+        ))}
       </nav>
     </>
   );
