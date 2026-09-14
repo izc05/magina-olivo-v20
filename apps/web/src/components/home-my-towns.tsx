@@ -8,9 +8,14 @@ import { loadTerritorialFeed, type TerritorialFeedItem } from '@/lib/territorial
 import { findMaginaTown, townModuleHref } from '@/lib/towns';
 import styles from './home-my-towns.module.css';
 
-function feedKindLabel(kind: TerritorialFeedItem['kind']) {
-  if (kind === 'news') return 'Noticia';
-  if (kind === 'event') return 'Evento';
+function feedKindLabel(item: TerritorialFeedItem) {
+  if (item.kind === 'notice') {
+    if (item.noticePriority === 'urgent') return 'Aviso urgente';
+    if (item.noticePriority === 'important') return 'Aviso importante';
+    return 'Aviso municipal';
+  }
+  if (item.kind === 'news') return 'Noticia';
+  if (item.kind === 'event') return 'Evento';
   return 'Empresa';
 }
 
@@ -149,7 +154,7 @@ export function HomeMyTowns() {
         <Link href="/noticias">Ver actualidad →</Link>
       </div>
 
-      {feedLoading ? <p className={styles.state}>Priorizando noticias, eventos y empresas de tus pueblos…</p> : null}
+      {feedLoading ? <p className={styles.state}>Priorizando avisos, noticias, eventos y empresas de tus pueblos…</p> : null}
       {feedError ? <p className={styles.state}>Parte de la actualidad local no está disponible ahora mismo.</p> : null}
       {!feedLoading && !feedError && feed.length === 0 ? <div className={styles.feedEmpty}>Todavía no hay contenido publicado asociado a tus pueblos.</div> : null}
 
@@ -159,7 +164,7 @@ export function HomeMyTowns() {
           const date = feedDate(item.timestamp);
           return <Link className={styles.feedItem} href={item.href} key={item.id}>
             <div className={styles.feedMeta}>
-              <span>{feedKindLabel(item.kind)}{item.featured ? ' · Destacado' : ''}</span>
+              <span>{feedKindLabel(item)}{item.featured ? ' · Destacado' : ''}</span>
               <small>{item.townName}{isPrimary ? ' · Principal' : ''}{date ? ` · ${date}` : ''}</small>
             </div>
             <strong>{item.title}</strong>

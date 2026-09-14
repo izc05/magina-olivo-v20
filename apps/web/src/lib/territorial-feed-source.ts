@@ -1,10 +1,10 @@
 import { loadBusinesses, type BusinessDirectoryItem } from './business-directory-source';
-import { editorialDetails, loadPublicEditorial, type PublicEditorialEntry } from './public-editorial-source';
+import { editorialDetails, loadPublicEditorial, type MunicipalNoticePriority, type PublicEditorialEntry } from './public-editorial-source';
 import { findMaginaTown } from './towns';
 
 export type TerritorialFeedItem = {
   id: string;
-  kind: 'news' | 'event' | 'business';
+  kind: 'notice' | 'news' | 'event' | 'business';
   townSlug: string;
   townName: string;
   title: string;
@@ -12,11 +12,12 @@ export type TerritorialFeedItem = {
   href: string;
   timestamp: string | null;
   featured: boolean;
+  noticePriority: MunicipalNoticePriority | null;
 };
 
 function editorialTown(entry: PublicEditorialEntry) {
   const details = editorialDetails(entry);
-  return findMaginaTown(details.town || details.location);
+  return findMaginaTown(details.municipalitySlug || details.town || details.location);
 }
 
 function editorialTimestamp(entry: PublicEditorialEntry) {
@@ -44,6 +45,7 @@ function businessFeedItem(business: BusinessDirectoryItem): TerritorialFeedItem 
     href: `/empresas?slug=${encodeURIComponent(business.slug)}`,
     timestamp: null,
     featured: business.placement.featured || business.placement.sponsored,
+    noticePriority: null,
   };
 }
 
@@ -53,6 +55,13 @@ function timestampValue(item: TerritorialFeedItem) {
   return Number.isNaN(value) ? 0 : value;
 }
 
+function noticeWeight(priority: MunicipalNoticePriority | null) {
+  if (priority === 'urgent') return 90;
+  if (priority === 'important') return 55;
+  if (priority === 'normal') return 30;
+  return 0;
+}
+
 function priorityScore(item: TerritorialFeedItem, primaryTownSlug: string | null, now: number) {
   const timestamp = timestampValue(item);
   let score = 0;
@@ -60,7 +69,13 @@ function priorityScore(item: TerritorialFeedItem, primaryTownSlug: string | null
   if (primaryTownSlug && item.townSlug === primaryTownSlug) score += 100;
   if (item.featured) score += 25;
 
-  if (item.kind === 'event') {
+  if (item.kind === 'notice') {
+    score += 120 + noticeWeight(item.noticePriority);
+    if (timestamp > 0) {
+      const ageDays = Math.max(0, (now - timestamp) / 86_400_000);
+      score += Math.max(0, 10 - Math.min(10, ageDays));
+    }
+  } else if (item.kind === 'event') {
     if (timestamp >= now) {
       score += 60;
       const daysAway = Math.max(0, (timestamp - now) / 86_400_000);
@@ -100,9 +115,10 @@ export async function loadTerritorialFeed(
     for (const entry of result.value) {
       const town = editorialTown(entry);
       if (!town || !allowed.has(town.slug)) continue;
+      const details = editorialDetails(entry);
       editorial.push({
         id: `${entry.type}:${entry.id}`,
-        kind: entry.type,
+        kind: details.municipalNotice ? 'notice' : entry.type,
         townSlug: town.slug,
         townName: town.name,
         title: entry.title,
@@ -110,6 +126,7 @@ export async function loadTerritorialFeed(
         href: editorialHref(entry),
         timestamp: editorialTimestamp(entry),
         featured: entry.featured,
+        noticePriority: details.municipalNotice ? details.noticePriority : null,
       });
     }
   }
