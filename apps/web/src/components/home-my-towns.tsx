@@ -76,7 +76,7 @@ export function HomeMyTowns() {
     let cancelled = false;
     setFeedLoading(true);
     setFeedError(false);
-    loadTerritorialFeed(towns.map((town) => town.slug))
+    loadTerritorialFeed(towns.map((town) => town.slug), primaryTown?.slug ?? null)
       .then((items) => {
         if (!cancelled) setFeed(items);
       })
@@ -92,7 +92,7 @@ export function HomeMyTowns() {
       });
 
     return () => { cancelled = true; };
-  }, [status, towns]);
+  }, [status, towns, primaryTown?.slug]);
 
   if (status !== 'authenticated') return null;
 
@@ -143,25 +143,29 @@ export function HomeMyTowns() {
     {!loading && !error && towns.length > 0 ? <div className={styles.feedSection}>
       <div className={styles.feedHeader}>
         <div>
-          <span>AHORA EN TUS PUEBLOS</span>
-          <h3>Tu actualidad local</h3>
+          <span>PARA TI EN SIERRA MÁGINA</span>
+          <h3>Lo más relevante para ti</h3>
         </div>
         <Link href="/noticias">Ver actualidad →</Link>
       </div>
 
-      {feedLoading ? <p className={styles.state}>Reuniendo noticias, eventos y empresas…</p> : null}
+      {feedLoading ? <p className={styles.state}>Priorizando noticias, eventos y empresas de tus pueblos…</p> : null}
       {feedError ? <p className={styles.state}>Parte de la actualidad local no está disponible ahora mismo.</p> : null}
       {!feedLoading && !feedError && feed.length === 0 ? <div className={styles.feedEmpty}>Todavía no hay contenido publicado asociado a tus pueblos.</div> : null}
 
       {!feedLoading && feed.length > 0 ? <div className={styles.feedList}>
-        {feed.map((item) => <Link className={styles.feedItem} href={item.href} key={item.id}>
-          <div className={styles.feedMeta}>
-            <span>{feedKindLabel(item.kind)}</span>
-            <small>{item.townName}{feedDate(item.timestamp) ? ` · ${feedDate(item.timestamp)}` : ''}</small>
-          </div>
-          <strong>{item.title}</strong>
-          {item.summary ? <p>{item.summary}</p> : null}
-        </Link>)}
+        {feed.map((item) => {
+          const isPrimary = item.townSlug === primaryTown?.slug;
+          const date = feedDate(item.timestamp);
+          return <Link className={styles.feedItem} href={item.href} key={item.id}>
+            <div className={styles.feedMeta}>
+              <span>{feedKindLabel(item.kind)}{item.featured ? ' · Destacado' : ''}</span>
+              <small>{item.townName}{isPrimary ? ' · Principal' : ''}{date ? ` · ${date}` : ''}</small>
+            </div>
+            <strong>{item.title}</strong>
+            {item.summary ? <p>{item.summary}</p> : null}
+          </Link>;
+        })}
       </div> : null}
     </div> : null}
   </section>;
