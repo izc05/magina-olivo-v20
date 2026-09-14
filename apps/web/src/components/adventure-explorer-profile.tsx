@@ -92,6 +92,8 @@ export function AdventureExplorerProfile() {
     }));
   }, [profile]);
 
+  const municipalitySeals = useMemo(() => profile?.territory.municipalities.filter((municipality) => municipality.available > 0 && municipality.unlocked >= municipality.available) ?? [], [profile]);
+
   if (failed) return <section className="card profile-card premium-profile-card">
     <div className="profile-card-head"><h3>Mágina Aventura</h3><span>Sin conexión</span></div>
     <p className="subtle">No se ha podido cargar ahora tu progreso de exploración. Tus datos guardados no se han perdido.</p>
@@ -130,8 +132,13 @@ export function AdventureExplorerProfile() {
     <div className="profile-line"><span>Aventuras completadas</span><strong>{profile.summary.adventures_completed}</strong></div>
     <div className="profile-line"><span>Descubrimientos</span><strong>{profile.summary.discoveries}</strong></div>
     <div className="profile-line"><span>Municipios descubiertos</span><strong>{profile.territory.municipalities_discovered}/{profile.territory.municipalities_available}</strong></div>
+    <div className="profile-line"><span>Sellos municipales</span><strong>{municipalitySeals.length}</strong></div>
     <div className="profile-line"><span>Sierra Mágina explorada</span><strong>{profile.territory.explored_percent}%</strong></div>
     <div className="profile-line"><span>Álbum territorial</span><strong>{albumUnlocked}/{albumAvailable}</strong></div>
+
+    {municipalitySeals.length > 0 ? <div className="role-row" aria-label="Sellos municipales de Mágina Aventura">
+      {municipalitySeals.map((municipality) => <span key={municipality.municipality_id}>✦ Sello de {municipality.municipality_name}</span>)}
+    </div> : <p className="subtle">Completa el 100 % de los descubrimientos de un municipio para conseguir su sello.</p>}
 
     {album.length > 0 ? <div className="role-row" aria-label="Álbum de Sierra Mágina">
       {album.map((entry) => <span key={entry.category}>{categoryLabel(entry.category)} {entry.unlocked}/{entry.available}</span>)}
