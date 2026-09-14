@@ -125,9 +125,10 @@ mostrar estos comandos con una sola orden:
 
 Para cargar además los datos demo, usar `-SeedDemo`. El script opera solo sobre
 el contenedor local `magina-v20-postgres`; no se conecta al mini PC ni a staging.
-Guarda un historial local de migraciones, por lo que puede ejecutarse de nuevo:
-solo aplicará las que todavía no existan en esa base. Si encuentra tablas locales
-sin historial, se detiene sin modificarlas para evitar perder datos.
+Guarda un historial local de migraciones y de la semilla demo, por lo que puede
+ejecutarse de nuevo: solo aplicará las que todavía no existan en esa base. Si
+encuentra tablas locales sin historial, se detiene sin modificarlas para evitar
+perder datos.
 
 ## 8. Validación completa
 

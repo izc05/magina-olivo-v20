@@ -49,6 +49,27 @@ function Invoke-LocalPsqlFile {
   if ($LASTEXITCODE -ne 0) { throw "La migración $filename se aplicó pero no se pudo registrar en el historial local." }
 }
 
+function Invoke-LocalSeedFile {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  $filename = Split-Path -Leaf $Path
+  $escapedFilename = $filename.Replace("'", "''")
+  $alreadyApplied = docker exec $containerName psql -U magina -d magina_v20 -At -c "SELECT 1 FROM local_seed_history WHERE filename = '$escapedFilename' LIMIT 1;"
+  if ($LASTEXITCODE -ne 0) { throw 'No se pudo consultar el historial de datos demo local.' }
+  if (($alreadyApplied | Out-String).Trim() -eq '1') {
+    Write-Host "Datos demo ya cargados: $filename"
+    return
+  }
+
+  Write-Host "Cargando datos demo: $filename"
+  Get-Content -LiteralPath $Path -Raw |
+    docker exec -i $containerName psql -U magina -d magina_v20 -v ON_ERROR_STOP=1
+  if ($LASTEXITCODE -ne 0) { throw "No se pudieron cargar los datos demo $filename." }
+
+  docker exec $containerName psql -U magina -d magina_v20 -v ON_ERROR_STOP=1 -c "INSERT INTO local_seed_history (filename) VALUES ('$escapedFilename');" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Los datos demo se cargaron pero no se pudo registrar $filename." }
+}
+
 & $preflightScript -RequireDocker
 if ($LASTEXITCODE -ne 0) { throw 'Corrige los requisitos indicados por el diagnóstico antes de preparar el entorno local.' }
 
@@ -78,12 +99,15 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el historial de migraciones local.' }
   }
 
+  docker exec $containerName psql -U magina -d magina_v20 -v ON_ERROR_STOP=1 -c 'CREATE TABLE IF NOT EXISTS local_seed_history (filename text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());' | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar el historial de datos demo local.' }
+
   Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'database/migrations') -Filter '*.sql' |
     Sort-Object Name |
     ForEach-Object { Invoke-LocalPsqlFile -Path $_.FullName }
 
   if ($SeedDemo) {
-    Invoke-LocalPsqlFile -Path (Join-Path $repositoryRoot 'database/seeds/001_demo.sql')
+    Invoke-LocalSeedFile -Path (Join-Path $repositoryRoot 'database/seeds/001_demo.sql')
   }
 
   Write-Host ''
