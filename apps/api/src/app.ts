@@ -57,6 +57,7 @@ import { registerBusinessRevenueRoutes } from './routes/business-revenue.js';
 import { registerBusinessPortalRoutes } from './routes/business-portal.js';
 import { registerBusinessExperienceRoutes } from './routes/business-experiences.js';
 import { registerBusinessExperienceManagementRoutes } from './routes/business-experience-management.js';
+import { registerAlmazaraRewardRoutes } from './routes/almazara-rewards.js';
 import { registerMarketRoutes } from './routes/market.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
@@ -221,6 +222,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerBusinessPortalRoutes(app, db);
   registerBusinessExperienceRoutes(app, db);
   registerBusinessExperienceManagementRoutes(app, db);
+  registerAlmazaraRewardRoutes(app, db);
   registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db, storage);
@@ -242,7 +244,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerFinancialAttentionRoutes(app, db);
   registerHomePriorityPreferenceRoutes(app, db);
   registerFinancialNotificationRoutes(app, db, notificationQueue);
-  registerCommercialNotificationRoutes(app, db);
+  registerCommercialNotificationRoutes(app, db, notificationQueue);
   registerNotificationCenterRoutes(app, db);
   registerPlannedTaskRoutes(app, db);
   registerWorkRoutes(app, db);
