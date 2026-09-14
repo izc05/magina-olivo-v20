@@ -44,6 +44,8 @@ Comunidad Mágina es el feed social público de Mágina Olivo. Une conversacione
 - comentar y borrar comentarios propios;
 - marcar/desmarcar `like`;
 - guardar/quitar de guardados;
+- recuperar la colección privada de guardados mediante `GET /api/v1/community/bookmarks`;
+- filtrar los guardados por temática y municipio;
 - reportar publicaciones y comentarios.
 
 ### Moderación
@@ -76,6 +78,8 @@ La comunidad no acepta `workspace_id`, `field_id` ni geometrías como parte del 
 
 El avatar solo se devuelve en las consultas públicas cuando `user_profiles.visibility = 'public'`. Ningún email se devuelve desde los endpoints de comunidad.
 
+La colección de guardados es privada, exige autenticación y se vincula únicamente a la cuenta del usuario; tampoco depende de ningún workspace.
+
 ## Media
 
 V1 permite únicamente rutas internas `/media/...` ya gestionadas por la plataforma. No se aceptan URLs de imagen arbitrarias enviadas por usuarios. La subida de imágenes deberá reutilizar el storage/media de V20 y sus controles de seguridad antes de habilitarse desde el compositor.
@@ -84,7 +88,7 @@ V1 permite únicamente rutas internas `/media/...` ya gestionadas por la platafo
 
 Superficie pública: `/comunidad`.
 
-La entrada se añade a `Explorar`. La pantalla tiene estados reales de carga, vacío y error y no utiliza publicaciones ficticias como fallback. Puede filtrar por temática y por municipio oficial; además permite compartir publicaciones y reportar tanto publicaciones como comentarios.
+La entrada se añade a `Explorar`. La pantalla tiene estados reales de carga, vacío y error y no utiliza publicaciones ficticias como fallback. Puede filtrar por temática y por municipio oficial; además permite compartir publicaciones, reportar tanto publicaciones como comentarios y alternar entre `Recientes` y la colección privada `Guardados`.
 
 Superficie administrativa: `/admin/comunidad`.
 
@@ -94,12 +98,11 @@ El módulo está incluido en `admin/modulos/admin-modules.json`, por lo que qued
 
 `pnpm check:community`
 
-El contrato verifica tablas, endpoints, autorización, moderación, auditoría, privacidad del avatar, superficie pública, filtros territoriales, compartición, reportes de comentarios, superficie Admin y registro en el centro unificado. Además impide introducir identificadores privados de finca/workspace en el API de comunidad.
+El contrato verifica tablas, endpoints, autorización, moderación, auditoría, privacidad del avatar, superficie pública, filtros territoriales, compartición, reportes de comentarios, colección de guardados, superficie Admin y registro en el centro unificado. Además impide introducir identificadores privados de finca/workspace en las APIs de comunidad y guardados.
 
 ## Siguiente evolución
 
 - subida de imágenes desde el media manager;
-- recuperar y navegar las publicaciones guardadas;
 - perfiles públicos y logros de Mi Olivo/Mágina Aventura compartibles de forma explícita;
 - notificaciones de respuestas/reacciones con un modelo que no dependa de workspace;
 - herramientas anti-spam y límites específicos por usuario;
