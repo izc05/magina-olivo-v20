@@ -33,6 +33,14 @@ if (routes.includes('workspace_id') || routes.includes('field_id') || routes.inc
   fail('community API must not copy private workspace, field or geometry identifiers into the public feed');
 }
 
+const bookmarksRoute = requireFile('apps/api/src/routes/community-bookmarks.ts');
+requireText(bookmarksRoute, '/api/v1/community/bookmarks', 'community saved-post API');
+requireText(bookmarksRoute, 'requireAuthenticatedUser', 'community saved-post authentication');
+requireText(bookmarksRoute, 'JOIN community_bookmarks', 'community saved-post source');
+if (bookmarksRoute.includes('workspace_id') || bookmarksRoute.includes('field_id') || bookmarksRoute.includes('geometry')) {
+  fail('community saved-post API must remain account-scoped and independent from private farm geometry');
+}
+
 const adminRoutes = requireFile('apps/api/src/routes/admin-community.ts');
 requireText(adminRoutes, '/api/v1/admin/community/reports', 'community moderation API');
 requireText(adminRoutes, '/api/v1/admin/community/moderation', 'community moderation API');
@@ -41,6 +49,7 @@ requireText(adminRoutes, 'auditAdminAction', 'community moderation audit');
 
 const app = requireFile('apps/api/src/app.ts');
 requireText(app, 'registerCommunityRoutes(app, db)', 'community API registration');
+requireText(app, 'registerCommunityBookmarkRoutes(app, db)', 'community saved-post registration');
 requireText(app, 'registerAdminCommunityRoutes(app, db)', 'community admin API registration');
 
 requireFile('apps/web/src/app/comunidad/page.tsx');
@@ -49,6 +58,7 @@ for (const behavior of [
   'createCommunityPost',
   'setCommunityLike',
   'setCommunityBookmark',
+  'loadCommunityBookmarks',
   'createCommunityComment',
   'reportCommunityTarget',
   'loadPublicMunicipalities',
@@ -56,9 +66,11 @@ for (const behavior of [
 ]) requireText(client, behavior, 'community UI');
 requireText(client, "reportTarget('comment', comment.id)", 'community comment reporting');
 requireText(client, 'composerMunicipality', 'community municipality context');
+requireText(client, "mode === 'saved'", 'community saved-post view');
+const source = requireFile('apps/web/src/lib/community-source.ts');
+requireText(source, '/api/v1/community/bookmarks', 'community saved-post client');
 const explore = requireFile('apps/web/src/app/explorar/explore-public-client.tsx');
 requireText(explore, "href: '/comunidad'", 'Explore community entry');
-requireFile('apps/web/src/lib/community-source.ts');
 requireFile('apps/web/src/app/comunidad/community.module.css');
 
 requireFile('apps/web/src/app/admin/comunidad/page.tsx');
