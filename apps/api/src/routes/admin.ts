@@ -385,13 +385,14 @@ export function registerAdminRoutes(app: FastifyInstance, db: DatabaseClient | n
   app.get('/api/v1/public/site-settings', async (_request, reply) => {
     const database = requireDatabase(db, reply);
     if (!database) return;
-    const rows = await database.selectFrom('site_settings')
-      .select(['key', 'value_json'])
-      .where('is_public', '=', true)
-      .where('key', 'in', [...publicSiteSettingKeys])
-      .orderBy('key', 'asc')
-      .execute();
-    return { settings: Object.fromEntries(rows.map((row) => [row.key, row.value_json])) };
+    const result = await sql<{ key: string; value_json: unknown }>`
+      SELECT key, value_json
+      FROM site_settings
+      WHERE is_public = true
+        AND key IN ('alerts.banner','home.hero','home.territory_banner','site.contact','site.identity','site.seo','site.social')
+      ORDER BY key ASC
+    `.execute(database);
+    return { settings: Object.fromEntries(result.rows.map((row) => [row.key, row.value_json])) };
   });
 }
 
