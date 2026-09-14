@@ -7,6 +7,7 @@ on:
       - 'apps/api/src/routes/mi-olivo.ts'
       - 'apps/api/src/routes/mi-olivo-progression.ts'
       - 'apps/api/src/routes/mi-olivo-campaign.ts'
+      - 'apps/api/src/routes/mi-olivo-reward-unlocks.ts'
       - 'apps/api/src/routes/almazara-rewards.ts'
       - 'apps/api/src/routes/admin-almazara-rewards.ts'
       - 'apps/api/src/rewards/**'
@@ -19,6 +20,7 @@ on:
       - 'apps/web/src/components/mi-olivo-*.tsx'
       - 'apps/web/src/components/mi-olivo-*.module.css'
       - 'apps/web/src/components/almazara-business-panel.tsx'
+      - 'apps/web/src/components/almazara-reward-unlock-manager.tsx'
       - 'apps/web/src/components/almazara-admin-console.tsx'
       - 'apps/web/src/components/public-mills-page.tsx'
       - 'apps/web/src/components/reward-qr.tsx'
@@ -29,6 +31,7 @@ on:
       - 'database/migrations/0052_mi_olivo_appearance.sql'
       - 'database/migrations/0086_almazara_rewards_qr.sql'
       - 'database/migrations/0087_mi_olivo_progression_security.sql'
+      - 'database/migrations/0088_mi_olivo_reward_unlocks.sql'
       - '.env.example'
       - '.nvmrc'
       - 'pnpm-lock.yaml'
@@ -103,6 +106,13 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'false'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/almazara-rewards-smoke.js
+      - name: Mi Olivo level-gated reward unlock smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_mi_olivo
+          REWARD_QR_SECRET: ci-mi-olivo-reward-unlocks-secret-only-for-tests
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/mi-olivo-reward-unlocks-smoke.js
       - name: Mi Olivo campaign + appearance smoke
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_mi_olivo
