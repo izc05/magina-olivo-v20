@@ -5,6 +5,7 @@ import { ManagedSeoMetadata } from '@/components/managed-seo-metadata';
 import { MiOlivoActivityTracker } from '@/components/mi-olivo-activity-tracker';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
+import './design-system.css';
 import './premium.css';
 import './pwa.css';
 import './assets.css';
