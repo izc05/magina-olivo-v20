@@ -47,8 +47,10 @@ const EXPLORER_LEVELS = [
   { level: 10, minXp: 6_500, name: 'Leyenda de Sierra Mágina' },
 ] as const;
 
+type ExplorerLevel = (typeof EXPLORER_LEVELS)[number];
+
 function explorerLevel(totalXp: number) {
-  let current = EXPLORER_LEVELS[0];
+  let current: ExplorerLevel = EXPLORER_LEVELS[0];
   for (const candidate of EXPLORER_LEVELS) {
     if (totalXp >= candidate.minXp) current = candidate;
   }
