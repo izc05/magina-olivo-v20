@@ -34,53 +34,51 @@ Incluye comparación `Borrador editorial` vs `Resultado público actual`, estado
 
 ## Fase 3 — Historial y auditoría municipal legible
 
-Estado: IMPLEMENTADA en PR #103 / `feat/v20-municipalities-audit-history`; validación CI en curso.
+Estado: IMPLEMENTADA en PR #103 / `feat/v20-municipalities-audit-history`.
 
 Incluye reutilización de `adminApi.audit()`, correlación por identidad canónica/targets CMS, actor abreviado, metadata bruta oculta, solo lectura y contexto municipal. No crea backend paralelo ni consulta el directorio de usuarios.
 
 ## Fase 4 — Matriz de huecos de contenido
 
-Estado: EN IMPLEMENTACIÓN en `feat/v20-municipalities-gap-matrix`.
+Estado: IMPLEMENTADA en PR #104 / `feat/v20-municipalities-gap-matrix`.
 
-Objetivos:
-- matriz alfabética de los 16 municipios;
-- nueve señales binarias: perfil, resumen, hero, procedencia, patrimonio, naturaleza, turismo, actualidad y economía;
-- respetar estado y ventanas de publicación;
-- filtro por área y solo huecos;
-- enlace directo a la herramienta que resuelve cada ausencia;
-- ninguna nota subjetiva ni ranking.
-
-Cierre:
-- solo lectura;
-- fuentes canónicas existentes;
-- contrato específico y matriz CI verdes.
+Incluye matriz alfabética 16×9, señales binarias de perfil/resumen/hero/procedencia/patrimonio/naturaleza/turismo/actualidad/economía, ventanas de publicación, filtros y CTAs directos. Sin puntuaciones subjetivas ni ranking.
 
 ## Fase 5 — QA municipal final 16/16
 
+Estado: EN VALIDACIÓN en `feat/v20-municipalities-qa-16`.
+
 Objetivos:
-- smoke de las 16 fichas públicas;
-- metadata por slug;
-- enlaces Admin contextuales;
-- responsive móvil/escritorio;
-- accesibilidad;
-- enlaces oficiales y procedencia presentes cuando existen;
-- estados vacíos correctos.
+- validar exactamente los 16 slugs canónicos;
+- comprobar generación estática y metadata por slug;
+- verificar secciones públicas, estados vacíos y fuente municipal canónica;
+- verificar el workspace Admin completo;
+- confirmar contexto `?municipio=` en todas las herramientas;
+- asegurar que Preview, Historial y Huecos siguen siendo de solo lectura;
+- ejecutar todos los contratos municipales históricos más el agregador final 16/16;
+- superar typecheck, build, Admin, Candidate, Staging y Browser E2E sobre el mismo HEAD.
 
 Cierre:
-- contrato municipal + workspace + candidate + Admin + staging + Browser E2E verdes sobre el mismo HEAD.
+- contrato `scripts/check-municipality-qa-16.mjs` verde;
+- workflow municipal verde;
+- matriz global de 7 gates verde sobre el mismo commit.
 
 ## Fase 6 — Handoff de integración
+
+Estado: PENDIENTE tras cerrar la Fase 5.
 
 Objetivos:
 - verificar cadena de bases desde #83 hasta el último PR municipal;
 - comprobar `behind_by=0` respecto a su padre inmediato;
 - documentar orden de absorción;
+- revalidar colisiones con Rutas, Empresas, GIS/Clima y Admin global;
 - preparar handoff hacia `integrate/v20-beta-closure`.
 
 Reglas:
 - no merge automático;
 - no tocar `main`;
-- revalidar colisiones con Rutas, Empresas y Admin global antes de la absorción coordinada.
+- no ejecutar importadores #90/#91 contra staging/live durante el handoff;
+- no absorber ramas ajenas al bloque municipal.
 
 ## Definición de terminado del bloque municipal
 
