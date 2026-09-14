@@ -1,26 +1,20 @@
+import type { Metadata } from 'next';
+import { loadPublicMunicipality } from '@/lib/public-territory-source';
+import { MUNICIPALITY_STATIC_CATALOG, municipalityMetadata } from '@/lib/municipality-seo';
 import { MunicipalityDetailClient } from './municipality-detail-client';
 
-const municipalitySlugs = [
-  'albanchez-de-magina',
-  'bedmar-y-garciez',
-  'belmez-de-la-moraleda',
-  'cabra-del-santo-cristo',
-  'cambil',
-  'campillo-de-arenas',
-  'carcheles',
-  'la-guardia-de-jaen',
-  'huelma',
-  'jimena',
-  'jodar',
-  'larva',
-  'mancha-real',
-  'noalejo',
-  'pegalajar',
-  'torres',
-] as const;
-
 export function generateStaticParams() {
-  return municipalitySlugs.map((slug) => ({ slug }));
+  return MUNICIPALITY_STATIC_CATALOG.map(({ slug }) => ({ slug }));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const municipality = await loadPublicMunicipality(slug);
+    return municipalityMetadata(slug, municipality);
+  } catch {
+    return municipalityMetadata(slug, null);
+  }
 }
 
 export default async function MunicipalityDetailPage({ params }: { params: Promise<{ slug: string }> }) {
