@@ -26,6 +26,15 @@ los requisitos estén correctos, prepara la base local con:
 .\scripts\start-local-v20.ps1 -SeedDemo
 ```
 
+Para preparar la base y arrancar API + web automáticamente, usa en su lugar:
+
+```powershell
+.\scripts\run-local-v20.ps1 -SeedDemo
+```
+
+La web quedará en `http://127.0.0.1:3001` y la API en
+`http://127.0.0.1:3002/health`. Los registros se guardan en `artifacts/`.
+
 No hace falta instalar `psql` en Windows para este flujo: el script ejecuta las
 migraciones dentro del contenedor local de PostgreSQL.
 
