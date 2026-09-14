@@ -16,7 +16,10 @@ export default function CommunityPage() {
       <div className="page">
         <nav className="section-head" aria-label="Herramientas de Comunidad Mágina">
           <span>Comunidad Mágina</span>
-          <Link href="/comunidad/descubrir">Buscar y descubrir</Link>
+          <div>
+            <Link href="/comunidad/actividad">Mi actividad</Link>
+            <Link href="/comunidad/descubrir">Buscar y descubrir</Link>
+          </div>
         </nav>
         <CommunityClient />
       </div>
