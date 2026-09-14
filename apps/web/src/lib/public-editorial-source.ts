@@ -1,6 +1,7 @@
 import { apiFetch } from './api-client';
 
 export type PublicEditorialType = 'news' | 'event';
+export type MunicipalNoticePriority = 'normal' | 'important' | 'urgent';
 
 export type PublicEditorialEntry = {
   id: string;
@@ -26,9 +27,12 @@ export type EditorialDetails = {
   body: string;
   location: string;
   town: string;
+  municipalitySlug: string;
   address: string;
   eventStart: string | null;
   eventEnd: string | null;
+  municipalNotice: boolean;
+  noticePriority: MunicipalNoticePriority;
 };
 
 function asObject(value: unknown): Record<string, unknown> {
@@ -48,15 +52,22 @@ function nullableDate(value: unknown) {
   return Number.isNaN(date.getTime()) ? null : candidate;
 }
 
+function noticePriority(value: unknown): MunicipalNoticePriority {
+  return value === 'urgent' || value === 'important' || value === 'normal' ? value : 'normal';
+}
+
 export function editorialDetails(entry: PublicEditorialEntry): EditorialDetails {
   const content = asObject(entry.content_json);
   return {
     body: stringValue(content.body),
     location: stringValue(content.location),
     town: stringValue(content.town),
+    municipalitySlug: stringValue(content.municipality_slug),
     address: stringValue(content.address),
     eventStart: nullableDate(content.event_start),
     eventEnd: nullableDate(content.event_end),
+    municipalNotice: content.municipal_notice === true,
+    noticePriority: noticePriority(content.notice_priority),
   };
 }
 
