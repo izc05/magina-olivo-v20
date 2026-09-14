@@ -1,0 +1,199 @@
+.page {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 34px 0 112px;
+}
+
+.hero,
+.heading {
+  display: grid;
+  gap: 9px;
+}
+
+.hero {
+  margin-bottom: 22px;
+}
+
+.hero > span,
+.heading > span,
+.primaryCard span,
+.townMeta span {
+  color: #607364;
+  font-size: .74rem;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.hero h1,
+.heading h2,
+.primaryCard h2,
+.townCard h3 {
+  margin: 0;
+  color: var(--ink, #203027);
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 5vw, 4.2rem);
+  line-height: .98;
+}
+
+.hero p,
+.heading p,
+.primaryCard p,
+.townCard p,
+.stateCard p {
+  margin: 0;
+  color: var(--muted, #627066);
+  line-height: 1.6;
+}
+
+.stateCard,
+.primaryCard,
+.townCard {
+  border: 1px solid rgba(38, 69, 47, .13);
+  border-radius: 22px;
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 14px 38px rgba(34,60,39,.07);
+}
+
+.stateCard {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+}
+
+.primaryCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: center;
+  margin-bottom: 28px;
+  padding: clamp(20px, 4vw, 34px);
+  background: linear-gradient(135deg, #f7f8ef, #fff 54%, #eef4ea);
+}
+
+.primaryCard > div:first-child {
+  display: grid;
+  gap: 7px;
+}
+
+.primaryCard h2 {
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
+}
+
+.quickLinks {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 9px;
+}
+
+.quickLinks a,
+.actions a,
+.actions button {
+  min-height: 42px;
+  border-radius: 13px;
+  padding: 0 14px;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.quickLinks a,
+.actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(38,69,47,.14);
+  background: #fff;
+  color: #31543a;
+}
+
+.catalogue {
+  display: grid;
+  gap: 18px;
+}
+
+.heading h2 {
+  font-size: clamp(1.7rem, 3vw, 2.5rem);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.townCard {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px;
+}
+
+.townCard.selected {
+  border-color: rgba(42, 90, 51, .38);
+  box-shadow: 0 16px 42px rgba(34,60,39,.12);
+}
+
+.townMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.townCard h3 {
+  font-size: 1.25rem;
+}
+
+.townCard p {
+  min-height: 3.1em;
+  font-size: .9rem;
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.actions button {
+  border: 0;
+  background: #294d32;
+  color: white;
+  cursor: pointer;
+}
+
+.actions button:nth-of-type(2) {
+  border: 1px solid rgba(38,69,47,.18);
+  background: #f4f7f2;
+  color: #31543a;
+}
+
+.actions button:disabled {
+  cursor: default;
+  opacity: .62;
+}
+
+.error {
+  margin: 0 0 20px;
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fff0ee;
+  color: #8a3027;
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .primaryCard { grid-template-columns: 1fr; }
+  .quickLinks { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .page { width: calc(100% - 22px); padding-top: 24px; }
+  .grid { grid-template-columns: 1fr; }
+  .quickLinks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .townCard p { min-height: auto; }
+}

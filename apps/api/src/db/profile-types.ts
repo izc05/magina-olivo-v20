@@ -25,7 +25,14 @@ export interface UserPreferenceTable {
   updated_at: ProfileGeneratedTimestamp;
 }
 
+export interface UserFollowedTownTable {
+  user_id: string;
+  municipality_id: string;
+  created_at: ProfileGeneratedTimestamp;
+}
+
 export interface ProfileDatabase {
   user_profiles: UserProfileTable;
   user_preferences: UserPreferenceTable;
+  user_followed_towns: UserFollowedTownTable;
 }
