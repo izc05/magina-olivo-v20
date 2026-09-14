@@ -32,6 +32,9 @@
 .feedHead { align-items: flex-start; margin-bottom: 12px; }
 .feedHead p { margin: 7px 0 0; color: var(--muted, #68736b); }
 .territoryFilter { display: flex; justify-content: flex-end; }
+.viewTabs { display: flex; gap: 8px; margin: 14px 0 12px; padding: 5px; width: fit-content; border-radius: 14px; background: #f3f6f2; }
+.viewTabs button { border: 0; border-radius: 10px; background: transparent; color: #5d685f; padding: 9px 13px; font: inherit; font-weight: 700; cursor: pointer; }
+.viewTabs .viewTabActive { background: #fff; color: #2f603d; box-shadow: 0 4px 14px rgba(42,60,47,.08); }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
 .filters button { border: 1px solid #dde3dd; background: #fff; color: #445047; padding: 8px 11px; border-radius: 999px; cursor: pointer; }
 .filters .filterActive { background: #315f3e; color: #fff; border-color: #315f3e; }
@@ -86,6 +89,8 @@
   .composerActions label, .territoryFilter label { width: 100%; justify-content: space-between; }
   .composerActions select, .territoryFilter select { max-width: 62%; }
   .primaryButton { width: 100%; }
+  .viewTabs { width: 100%; box-sizing: border-box; }
+  .viewTabs button { flex: 1; }
   .postHeader { align-items: flex-start; }
   .category { font-size: .74rem !important; }
   .postActions { justify-content: flex-start; }
