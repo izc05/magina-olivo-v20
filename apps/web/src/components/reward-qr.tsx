@@ -52,7 +52,7 @@ function encodeCodewords(value: string) {
   if (bytes.length > 53) throw new Error('reward_qr_payload_too_long');
 
   const bits: number[] = [];
-  appendBits(bits, 0b0100, 4); // byte mode
+  appendBits(bits, 0b0100, 4);
   appendBits(bits, bytes.length, VERSION < 10 ? 8 : 16);
   bytes.forEach((byte) => appendBits(bits, byte, 8));
 
@@ -88,7 +88,6 @@ function encodeCodewords(value: string) {
 }
 
 function encodeFormatBits() {
-  // Error correction L (01) + mask 0.
   const formatData = 1 << 3;
   let remainder = formatData;
   for (let i = 0; i < 10; i += 1) remainder = (remainder << 1) ^ (((remainder >>> 9) & 1) * 0x537);
@@ -154,7 +153,7 @@ function createMatrix(value: string) {
         if (reserved[y][x]) continue;
         let dark = bitIndex < dataBits.length ? dataBits[bitIndex] === 1 : false;
         bitIndex += 1;
-        if ((x + y) % 2 === 0) dark = !dark; // mask pattern 0
+        if ((x + y) % 2 === 0) dark = !dark;
         matrix[y][x] = dark;
       }
     }
@@ -176,8 +175,8 @@ function createMatrix(value: string) {
 }
 
 export function RewardQr({ code, size = 220 }: RewardQrProps) {
-  const normalized = code.trim().toLowerCase();
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(normalized)) return null;
+  const normalized = code.trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.[A-Za-z0-9_-]{16}$/i.test(normalized)) return null;
 
   const matrix = createMatrix(normalized);
   const viewSize = MATRIX_SIZE + QUIET_ZONE * 2;
@@ -185,7 +184,7 @@ export function RewardQr({ code, size = 220 }: RewardQrProps) {
 
   return <svg
     role="img"
-    aria-label="Código QR de recogida"
+    aria-label="Código QR firmado de recogida"
     width={size}
     height={size}
     viewBox={`0 0 ${viewSize} ${viewSize}`}
