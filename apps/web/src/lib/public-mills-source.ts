@@ -18,15 +18,17 @@ export type PublicMillReward = {
 
 export type MillRedemption = {
   id: string;
-  code: string;
+  code: string | null;
   status: string;
   olivesSpent: number;
   expiresAt: string;
   redeemedAt: string | null;
+  cancelledAt: string | null;
   createdAt: string;
   productTitle: string;
   businessName: string;
   qrPayload: string | null;
+  qrReady: boolean;
 };
 
 export type PublicMill = {
@@ -106,7 +108,7 @@ export async function loadMillRewards(slug: string): Promise<PublicMillReward[]>
 }
 
 export async function redeemMillReward(id: string) {
-  return apiFetch<{ redemption: { id: string; code: string; status: string; qrPayload: string; expiresAt: string; productTitle: string; businessName: string; olivesSpent: number } }>(
+  return apiFetch<{ redemption: { id: string; token: string; status: string; qrPayload: string; expiresAt: string; productTitle: string; businessName: string; olivesSpent: number } }>(
     `/api/v1/almazara-rewards/${encodeURIComponent(id)}/redeem`,
     { method: 'POST' },
   );
