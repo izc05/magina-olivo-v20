@@ -17,6 +17,7 @@ const areas = [
   { icon: HomeIcon, title: 'Almazaras y cooperativas', text: 'Directorio público con información verificada.', href: '/cooperativas', badge: 'Disponible' },
   { icon: MoreIcon, title: 'Servicios', text: 'Negocios y profesionales con patrocinio claramente identificado.', href: '/servicios', badge: 'Disponible' },
   { icon: SproutIcon, title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
+  { icon: PlusIcon, title: 'Comunidad Mágina', text: 'Fotos, preguntas y conversaciones de campo, pueblos, cosecha, gastronomía y rutas.', href: '/comunidad', badge: 'Nuevo' },
   { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Contenidos territoriales y oleoturismo.', href: null, badge: 'En preparación' },
 ] as const;
 
