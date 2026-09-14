@@ -1,4 +1,3 @@
-import { sql } from 'kysely';
 import { buildApp } from '../apps/api/dist/app.js';
 import { createDatabase } from '../apps/api/dist/db/client.js';
 
@@ -19,9 +18,9 @@ function expectStatus(response, expected, label) {
 }
 
 try {
-  await sql`INSERT INTO users(id,primary_email,display_name,status) VALUES(${userId}::uuid,'owner-management@example.com','Owner management','active')`.execute(db);
-  await sql`INSERT INTO businesses(id,slug,name,status,verification_status,published_at) VALUES(${businessId}::uuid,'experiencias-management-ci','Experiencias Management CI','published','verified',now())`.execute(db);
-  await sql`INSERT INTO business_memberships(business_id,user_id,role,status) VALUES(${businessId}::uuid,${userId}::uuid,'owner','active')`.execute(db);
+  await db.insertInto('users').values({ id:userId, primary_email:'owner-management@example.com', display_name:'Owner management', status:'active' }).execute();
+  await db.insertInto('businesses').values({ id:businessId, slug:'experiencias-management-ci', name:'Experiencias Management CI', status:'published', verification_status:'verified', published_at:new Date() }).execute();
+  await db.insertInto('business_memberships').values({ business_id:businessId, user_id:userId, role:'owner', status:'active' }).execute();
   await app.ready();
 
   const created = await app.inject({ method:'POST', url:`/api/v1/my/businesses/${businessId}/experiences`, headers, payload:{ slug:'cata-management-ci', title:'Cata Management CI', experienceType:'aove_tasting', minPartySize:1, maxPartySize:8, priceCents:1500, bookingMode:'request', status:'published' } });
@@ -45,11 +44,12 @@ try {
   expectStatus(await app.inject({ method:'PATCH', url:`/api/v1/my/businesses/${businessId}/experience-bookings/${secondId}`, headers, payload:{status:'confirmed'} }), 200, 'confirm second after capacity increase');
   expectStatus(await app.inject({ method:'PATCH', url:`/api/v1/my/businesses/${businessId}/experiences/${experienceId}`, headers, payload:{title:'Cata Management Actualizada',priceCents:1750} }), 200, 'edit experience');
 
-  const state = await sql`
-    SELECT s.confirmed_count,s.capacity,e.title,e.price_cents
-    FROM business_experience_slots s JOIN business_experiences e ON e.id=s.experience_id WHERE s.id=${slotId}::uuid
-  `.execute(db);
-  const row = state.rows[0];
+  const row = await db
+    .selectFrom('business_experience_slots as s')
+    .innerJoin('business_experiences as e', 'e.id', 's.experience_id')
+    .select(['s.confirmed_count', 's.capacity', 'e.title', 'e.price_cents'])
+    .where('s.id', '=', slotId)
+    .executeTakeFirst();
   if (!row || row.confirmed_count !== 5 || row.capacity !== 5 || row.title !== 'Cata Management Actualizada' || row.price_cents !== 1750) throw new Error(`unexpected state: ${JSON.stringify(row)}`);
 
   expectStatus(await app.inject({ method:'PATCH', url:`/api/v1/my/businesses/${businessId}/experience-slots/${slotId}`, headers, payload:{status:'cancelled'} }), 409, 'prevent cancelling occupied slot');
