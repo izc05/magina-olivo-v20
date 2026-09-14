@@ -69,21 +69,26 @@ export function AdventureLiveClient() {
   }, []);
 
   useEffect(() => {
-    if (!slug) {
-      if (noActive || authRequired || error) setLoading(false);
-      return;
-    }
+    if (!slug) return;
     let cancelled = false;
     setLoading(true);
+    setError(false);
     loadPublicRoute(slug)
       .then((value) => {
         if (cancelled) return;
         setDetail(value);
-        setError(false);
       })
-      .catch(() => { if (!cancelled) setError(true); })
+      .catch(() => {
+        if (cancelled) return;
+        setDetail(null);
+        setError(true);
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
+  }, [slug]);
+
+  useEffect(() => {
+    if (!slug && (noActive || authRequired || error)) setLoading(false);
   }, [slug, noActive, authRequired, error]);
 
   if (loading) return <main className={styles.page}><section className={styles.state}><strong>Preparando expedición…</strong><p>Cargando la ruta, checkpoints y estado GPS.</p></section></main>;
