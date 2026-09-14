@@ -61,6 +61,18 @@ export async function loadCommunityFeed(input: {
   return apiFetch<CommunityFeed>(`/api/v1/public/community?${params.toString()}`);
 }
 
+export async function loadCommunityBookmarks(input: {
+  category?: CommunityCategory | null;
+  municipality?: string | null;
+  limit?: number;
+} = {}) {
+  const params = new URLSearchParams();
+  if (input.category) params.set('category', input.category);
+  if (input.municipality) params.set('municipality', input.municipality);
+  params.set('limit', String(input.limit ?? 50));
+  return apiFetch<{ items: CommunityPost[]; categories: CommunityCategory[] }>(`/api/v1/community/bookmarks?${params.toString()}`);
+}
+
 export async function loadCommunityComments(postId: string) {
   return apiFetch<{ items: CommunityComment[] }>(`/api/v1/public/community/posts/${postId}/comments`);
 }
