@@ -19,8 +19,8 @@ const areas = [
   { icon: MoreIcon, title: 'Empresas y negocios', text: 'Directorio territorial con mapa, categorías, fichas verificables y patrocinio siempre identificado.', href: '/explorar/empresas', badge: 'Nuevo' },
   { icon: SproutIcon, title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
   { icon: PlusIcon, title: 'Comunidad Mágina', text: 'Fotos, preguntas y conversaciones de campo, pueblos, cosecha, gastronomía y rutas.', href: '/comunidad', badge: 'Nuevo' },
-  { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Contenidos territoriales y oleoturismo.', href: null, badge: 'En preparación' },
-] as const;
+  { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Rutas con track GPX validado, desnivel y fuentes trazables.', href: '/rutas', badge: 'Disponible' },
+];
 
 function placeKindLabel(kind: string) {
   if (kind === 'municipal_seat') return 'Cabecera municipal';
