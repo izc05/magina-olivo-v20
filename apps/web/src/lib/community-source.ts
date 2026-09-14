@@ -36,6 +36,8 @@ export type CommunityComment = {
   body: string;
   created_at: string;
   edited_at: string | null;
+  parent_comment_id: string | null;
+  reply_to_author_name: string | null;
   author_id: string | null;
   author_name: string;
   author_avatar_url: string | null;
@@ -45,6 +47,42 @@ export type CommunityFeed = {
   items: CommunityPost[];
   next_cursor: string | null;
   categories: CommunityCategory[];
+};
+
+export type CommunityActivityItem = {
+  event_id: string;
+  type: 'like' | 'comment' | 'reply';
+  created_at: string;
+  post_id: string;
+  post_excerpt: string;
+  actor_id: string | null;
+  actor_name: string;
+  actor_avatar_url: string | null;
+  municipality_slug: string | null;
+  municipality_name: string | null;
+  unread: boolean;
+};
+
+export type CommunityActivity = {
+  items: CommunityActivityItem[];
+  unread_count: number;
+  last_seen_at: string;
+};
+
+export type CommunityHighlight = {
+  id: string;
+  category: CommunityCategory;
+  body: string;
+  media_url: string | null;
+  created_at: string;
+  author_id: string | null;
+  author_name: string;
+  author_avatar_url: string | null;
+  municipality_slug: string | null;
+  municipality_name: string | null;
+  reaction_count: number;
+  comment_count: number;
+  score: number;
 };
 
 export async function loadCommunityFeed(input: {
@@ -100,11 +138,26 @@ export async function setCommunityBookmark(postId: string, active: boolean) {
   });
 }
 
-export async function createCommunityComment(postId: string, body: string) {
+export async function createCommunityComment(postId: string, body: string, parentCommentId?: string | null) {
   return apiFetch<{ id: string; status: string }>(`/api/v1/community/posts/${postId}/comments`, {
     method: 'POST',
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, parent_comment_id: parentCommentId ?? null }),
   });
+}
+
+export async function loadCommunityActivity(limit = 30) {
+  return apiFetch<CommunityActivity>(`/api/v1/community/activity?limit=${limit}`);
+}
+
+export async function markCommunityActivityRead() {
+  return apiFetch<{ last_seen_at: string }>('/api/v1/community/activity/read', { method: 'POST' });
+}
+
+export async function loadCommunityHighlights(input: { municipality?: string | null; limit?: number } = {}) {
+  const params = new URLSearchParams();
+  if (input.municipality) params.set('municipality', input.municipality);
+  params.set('limit', String(input.limit ?? 3));
+  return apiFetch<{ items: CommunityHighlight[] }>(`/api/v1/public/community/highlights?${params.toString()}`);
 }
 
 export async function reportCommunityTarget(input: {
