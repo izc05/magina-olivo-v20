@@ -1,0 +1,118 @@
+.root {
+  position: sticky;
+  top: 0;
+  z-index: var(--ui-z-sticky);
+  display: flex;
+  height: var(--ui-topbar-mobile-height);
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 18px;
+  border-bottom: 1px solid rgba(32, 53, 35, .08);
+  background: rgba(250, 248, 241, .86);
+  backdrop-filter: blur(24px) saturate(1.08);
+}
+
+.primaryNav,
+.profileLink {
+  display: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (min-width: 700px) and (max-width: 1023px) {
+  .root {
+    height: var(--ui-topbar-tablet-height);
+    padding-inline: var(--ui-page-gutter-tablet);
+  }
+}
+
+@media (min-width: 1024px) {
+  .root {
+    display: grid;
+    height: var(--ui-topbar-desktop-height);
+    grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
+    gap: 24px;
+    padding-inline: var(--ui-page-gutter-desktop);
+  }
+
+  .root :global(.brand) {
+    width: clamp(190px, 17vw, 236px);
+    justify-self: start;
+  }
+
+  .primaryNav {
+    display: flex;
+    height: 100%;
+    align-items: stretch;
+    justify-content: center;
+    gap: clamp(12px, 2vw, 30px);
+  }
+
+  .navLink {
+    position: relative;
+    display: inline-flex;
+    min-width: var(--ui-control-min);
+    min-height: var(--ui-control-min);
+    align-items: center;
+    justify-content: center;
+    padding-inline: 4px;
+    color: #313b31;
+    font-size: .84rem;
+    font-weight: 680;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .navLink::after {
+    position: absolute;
+    right: 0;
+    bottom: 14px;
+    left: 0;
+    height: 2px;
+    border-radius: var(--ui-radius-pill);
+    background: var(--ui-color-olive-700);
+    content: '';
+    opacity: 0;
+    transform: scaleX(.35);
+    transition:
+      opacity var(--ui-motion-fast) var(--ui-ease-standard),
+      transform var(--ui-motion-fast) var(--ui-ease-standard);
+  }
+
+  .navLink:hover::after,
+  .navLinkActive::after {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  .actions {
+    justify-self: end;
+  }
+
+  .profileLink {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid rgba(41, 65, 40, .15);
+    border-radius: 50%;
+    background: var(--ui-color-olive-900);
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-decoration: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .root * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
