@@ -47,6 +47,23 @@ async function membership(database: DatabaseClient, businessId: string, userId: 
   return result.rows[0] ?? null;
 }
 
+async function expireOwnReservations(database: DatabaseClient, userId: string) {
+  await database.transaction().execute(async (trx) => {
+    const expired = await sql<{ id: string; product_id: string }>`
+      SELECT id::text, product_id::text
+      FROM mill_reward_redemptions
+      WHERE user_id=${userId}::uuid AND status='reserved' AND expires_at < now()
+      FOR UPDATE
+    `.execute(trx);
+    if (!expired.rows.length) return;
+    for (const row of expired.rows) {
+      await sql`UPDATE mill_reward_redemptions SET status='expired', updated_at=now() WHERE id=${row.id}::uuid AND status='reserved'`.execute(trx);
+      await sql`UPDATE mill_reward_products SET stock_reserved=GREATEST(0, stock_reserved-1), updated_at=now() WHERE id=${row.product_id}::uuid`.execute(trx);
+      await sql`INSERT INTO mill_reward_redemption_audit (redemption_id, actor_user_id, event_type) VALUES (${row.id}::uuid, ${userId}::uuid, 'expired')`.execute(trx);
+    }
+  });
+}
+
 export function registerAlmazaraRewardRoutes(app: FastifyInstance, db: DatabaseClient | null) {
   app.get('/api/v1/public/almazaras', async (request, reply) => {
     const database = requireDatabase(db, reply);
@@ -192,6 +209,7 @@ export function registerAlmazaraRewardRoutes(app: FastifyInstance, db: DatabaseC
     if (!database) return;
     const userId = requireAuthenticatedUser(request, reply);
     if (!userId) return;
+    await expireOwnReservations(database, userId);
     const result = await sql<{
       id: string; redemption_code: string; status: string; olives_spent: number; expires_at: Date; redeemed_at: Date | null;
       created_at: Date; product_title: string; business_name: string;
@@ -208,6 +226,36 @@ export function registerAlmazaraRewardRoutes(app: FastifyInstance, db: DatabaseC
       productTitle: row.product_title, businessName: row.business_name,
       qrPayload: row.status === 'reserved' ? `magina-olivo://reward/${row.redemption_code}` : null,
     })) };
+  });
+
+  app.post('/api/v1/my/almazara-redemptions/:id/cancel', async (request, reply) => {
+    const database = requireDatabase(db, reply);
+    if (!database) return;
+    const userId = requireAuthenticatedUser(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).safeParse(request.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_redemption_id' });
+    try {
+      const cancelled = await database.transaction().execute(async (trx) => {
+        const result = await sql<{ id: string; product_id: string; status: string }>`
+          SELECT id::text, product_id::text, status FROM mill_reward_redemptions
+          WHERE id=${params.data.id}::uuid AND user_id=${userId}::uuid
+          FOR UPDATE
+        `.execute(trx);
+        const row = result.rows[0];
+        if (!row) throw new Error('redemption_not_found');
+        if (row.status !== 'reserved') throw new Error('redemption_not_cancellable');
+        await sql`UPDATE mill_reward_redemptions SET status='cancelled', cancelled_at=now(), updated_at=now() WHERE id=${row.id}::uuid`.execute(trx);
+        await sql`UPDATE mill_reward_products SET stock_reserved=GREATEST(0,stock_reserved-1), updated_at=now() WHERE id=${row.product_id}::uuid`.execute(trx);
+        await sql`INSERT INTO mill_reward_redemption_audit (redemption_id, actor_user_id, event_type) VALUES (${row.id}::uuid, ${userId}::uuid, 'cancelled')`.execute(trx);
+        return row.id;
+      });
+      return { redemption: { id: cancelled, status: 'cancelled', refunded: true } };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'redemption_cancel_failed';
+      const status = message === 'redemption_not_found' ? 404 : message === 'redemption_not_cancellable' ? 409 : 500;
+      return reply.code(status).send({ error: message });
+    }
   });
 
   app.put('/api/v1/my/businesses/:id/mill-profile', async (request, reply) => {
