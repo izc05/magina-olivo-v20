@@ -79,7 +79,7 @@ Tener cobertura 20/20 no significa que los 20 módulos estén ya integrados en e
 
 Estas rutas objetivo son información de gobierno y no enlaces activos desde esta rama. Solo pasarán a `href` cuando el código funcional correspondiente haya sido absorbido y validado en la base común.
 
-## Protección transversal de `/admin`
+## Acceso transversal de `/admin`
 
 Todo el segmento `/admin` pasa por `AdminRouteGate` desde `apps/web/src/app/admin/layout.tsx`.
 
@@ -87,10 +87,11 @@ El gate:
 
 - espera una sesión de producto autenticada;
 - valida además `adminApi.session()` contra el servidor;
-- no renderiza la superficie solicitada antes de confirmar autorización;
+- no habilita la superficie solicitada en la UI antes de confirmar autorización;
 - trata `403` como acceso corporativo denegado;
-- ante error de validación mantiene el Admin cerrado y ofrece reintento;
-- evita que conocer una URL interna permita visualizar su contenido.
+- ante error de validación mantiene la UI administrativa cerrada y ofrece reintento.
+
+Este gate es una **capa común de experiencia y defensa adicional**, no la frontera de seguridad de los datos. La autorización real sigue siendo responsabilidad obligatoria de cada endpoint `/api/v1/admin/...`, que recibe la sesión mediante `credentials: include` y debe rechazar en servidor a quien no tenga permiso de plataforma. No deben almacenarse secretos en páginas estáticas ni en `admin-modules.json`.
 
 El layout aplica también de forma centralizada `robots: noindex`, `nofollow` y `nocache` a todo el árbol Admin. Las páginas pueden conservar metadata específica de título/descripción sin depender de recordar individualmente la política de indexación.
 
