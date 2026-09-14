@@ -46,7 +46,7 @@ export const MI_OLIVO_DISCOVERY_WORLDS = [
     title: 'Empresas de Mágina',
     eyebrow: 'Economía local',
     description: 'Encuentra negocios y servicios del territorio y convierte cada descubrimiento en vínculo local.',
-    href: '/empresas',
+    href: '/explorar/empresas',
     icon: '🏪',
   },
   {
@@ -94,8 +94,8 @@ export const MI_OLIVO_DISCOVERY_WORLDS = [
 const SURFACE_SOURCES: Readonly<Record<string, string>> = {
   '/almazaras': 'pueblo:surface:almazaras',
   '/cooperativas': 'pueblo:surface:cooperativas',
-  '/empresas': 'pueblo:surface:empresas',
   '/explorar': 'pueblo:surface:explorar',
+  '/explorar/empresas': 'pueblo:surface:empresas',
   '/experiencias': 'pueblo:surface:experiencias',
   '/mercado': 'pueblo:surface:mercado',
   '/pueblos': 'pueblo:surface:pueblos',
@@ -149,15 +149,22 @@ export function miOlivoDiscoveryActionForRoute(pathname: string, query: string):
     return { eventType: 'territory_viewed', sourceId: `pueblo:${municipalitySlug}`, delayMs: 6_000 };
   }
 
-  const detailNamespace: Readonly<Record<string, string>> = {
-    '/almazaras': 'almazara',
-    '/cooperativas': 'cooperativa',
-    '/empresas': 'empresa',
-    '/experiencias': 'experiencia',
-  };
-  const namespace = detailNamespace[path];
-  if (namespace && slug) {
+  if ((path === '/almazaras' || path === '/cooperativas') && slug) {
+    const namespace = path === '/almazaras' ? 'almazara' : 'cooperativa';
     return { eventType: 'territory_viewed', sourceId: `pueblo:${namespace}:${slug}`, delayMs: 7_000 };
+  }
+
+  if (path === '/empresas' && slug) {
+    return { eventType: 'territory_viewed', sourceId: `pueblo:empresa:${slug}`, delayMs: 7_000 };
+  }
+
+  const experienceBusiness = sourceToken(params.get('business'));
+  if (path === '/experiencias' && experienceBusiness && slug) {
+    return {
+      eventType: 'territory_viewed',
+      sourceId: `pueblo:experiencia:${experienceBusiness}:${slug}`,
+      delayMs: 9_000,
+    };
   }
 
   if (path === '/radar') {
