@@ -9,6 +9,26 @@ Estado: candidato V20. No producción.
 - Docker + Docker Compose
 - cliente `psql` para aplicar migraciones manualmente
 
+## Comprobación antes de arrancar (Windows)
+
+Después de activar la virtualización y reiniciar el PC, abre PowerShell en la raíz
+del proyecto y ejecuta:
+
+```powershell
+.\scripts\check-local-v20.ps1 -RequireDocker
+```
+
+La comprobación no instala ni modifica nada. Confirma Node 22, pnpm 10.15,
+virtualización, WSL 2, Docker y los puertos `3001`, `3002` y `5432`. Cuando todos
+los requisitos estén correctos, prepara la base local con:
+
+```powershell
+.\scripts\start-local-v20.ps1 -SeedDemo
+```
+
+No hace falta instalar `psql` en Windows para este flujo: el script ejecuta las
+migraciones dentro del contenedor local de PostgreSQL.
+
 ## 1. Instalar dependencias
 
 ```bash
@@ -105,6 +125,9 @@ mostrar estos comandos con una sola orden:
 
 Para cargar además los datos demo, usar `-SeedDemo`. El script opera solo sobre
 el contenedor local `magina-v20-postgres`; no se conecta al mini PC ni a staging.
+Guarda un historial local de migraciones, por lo que puede ejecutarse de nuevo:
+solo aplicará las que todavía no existan en esa base. Si encuentra tablas locales
+sin historial, se detiene sin modificarlas para evitar perder datos.
 
 ## 8. Validación completa
 
