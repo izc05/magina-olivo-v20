@@ -25,6 +25,15 @@ function actionLabel(action: string) {
   return labels[action] ?? action.replaceAll('.', ' · ');
 }
 function actorLabel(entry: AdminAuditEntry) { return entry.actor_user_id ? `${entry.actor_role} · ${entry.actor_user_id.slice(0, 8)}` : entry.actor_role; }
+function safeMetadataLabel(entry: AdminAuditEntry) {
+  const metadata = asObject(entry.metadata);
+  const parts: string[] = [];
+  for (const key of ['type', 'slug', 'status', 'name'] as const) {
+    const value = metadata[key];
+    if (typeof value === 'string' && value.trim()) parts.push(`${key}: ${value}`);
+  }
+  return parts.join(' · ');
+}
 function formatDate(value: string) { try { return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)); } catch { return value; } }
 
 export default function MunicipalityAuditHistoryPage() {
@@ -61,7 +70,7 @@ export default function MunicipalityAuditHistoryPage() {
   }).filter((entry) => {
     const needle = query.trim().toLocaleLowerCase('es');
     if (!needle) return true;
-    return `${entry.action} ${entry.target_type} ${entry.target_id ?? ''} ${titleById.get(entry.target_id ?? '') ?? ''} ${actorLabel(entry)}`.toLocaleLowerCase('es').includes(needle);
+    return `${entry.action} ${entry.target_type} ${entry.target_id ?? ''} ${titleById.get(entry.target_id ?? '') ?? ''} ${actorLabel(entry)} ${safeMetadataLabel(entry)}`.toLocaleLowerCase('es').includes(needle);
   }), [audit, municipalTargetIds, municipality, query, titleById]);
 
   function changeMunicipality(id: string) { setMunicipalityId(id); setQuery(''); const next = municipalities.find((item) => item.id === id); replaceMunicipalityContext(next?.slug); }
@@ -81,11 +90,14 @@ export default function MunicipalityAuditHistoryPage() {
     </section>
 
     <section className="admin-card">
-      <div className={styles.heading}><div><span>TRAZABILIDAD</span><h2>{municipality?.name ?? 'Municipio'}</h2><p>Solo se muestran eventos cuyo objetivo es el municipio, una pieza CMS actualmente vinculada o cuya metadata contiene su identidad canónica.</p></div><small>Solo lectura</small></div>
-      <div className={styles.timeline}>{relevant.map((entry) => <article key={entry.id} className={styles.event}>
-        <div className={styles.dot} />
-        <div><div className={styles.meta}><time dateTime={entry.created_at}>{formatDate(entry.created_at)}</time><span>{actorLabel(entry)}</span></div><h3>{actionLabel(entry.action)}</h3><p>{titleById.get(entry.target_id ?? '') ?? `${entry.target_type}${entry.target_id ? ` · ${entry.target_id.slice(0, 8)}` : ''}`}</p>{entry.metadata ? <details><summary>Detalles técnicos</summary><pre>{JSON.stringify(entry.metadata, null, 2)}</pre></details> : null}</div>
-      </article>)}{!relevant.length ? <div className={styles.empty}><strong>Sin eventos relacionados en la ventana de auditoría disponible.</strong><p>Esto no significa que nunca haya habido cambios: la vista reutiliza el conjunto que devuelve la auditoría corporativa actual.</p></div> : null}</div>
+      <div className={styles.heading}><div><span>TRAZABILIDAD</span><h2>{municipality?.name ?? 'Municipio'}</h2><p>Solo se muestran eventos cuyo objetivo es el municipio, una pieza CMS actualmente vinculada o cuya metadata contiene su identidad canónica.</p></div><small>Solo lectura · metadata sensible oculta</small></div>
+      <div className={styles.timeline}>{relevant.map((entry) => {
+        const safeMeta = safeMetadataLabel(entry);
+        return <article key={entry.id} className={styles.event}>
+          <div className={styles.dot} />
+          <div><div className={styles.meta}><time dateTime={entry.created_at}>{formatDate(entry.created_at)}</time><span>{actorLabel(entry)}</span></div><h3>{actionLabel(entry.action)}</h3><p>{titleById.get(entry.target_id ?? '') ?? `${entry.target_type}${entry.target_id ? ` · ${entry.target_id.slice(0, 8)}` : ''}`}</p>{safeMeta ? <small className={styles.safeMeta}>{safeMeta}</small> : null}</div>
+        </article>;
+      })}{!relevant.length ? <div className={styles.empty}><strong>Sin eventos relacionados en la ventana de auditoría disponible.</strong><p>Esto no significa que nunca haya habido cambios: la vista reutiliza el conjunto que devuelve la auditoría corporativa actual.</p></div> : null}</div>
     </section>
   </main>;
 }
