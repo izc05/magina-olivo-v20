@@ -14,6 +14,8 @@ export default function AdminPage() {
     <>
       <AdminControlCenter />
       <nav className="admin-shortcuts" aria-label="Herramientas de administración">
+        <Link href="/admin/modulos" aria-label="Abrir directorio unificado de módulos">Módulos</Link>
+        <Link href="/admin/ayuntamientos" aria-label="Abrir centro de control de ayuntamientos">Ayuntamientos</Link>
         <Link href="/admin/operaciones" aria-label="Abrir centro operativo de plataforma">Operaciones</Link>
         <Link href="/admin/analitica" aria-label="Abrir analítica histórica de plataforma">Analítica</Link>
         <Link href="/admin/gestion" aria-label="Abrir gestión de workspaces, miembros y fincas">Gestión</Link>
