@@ -113,6 +113,7 @@ try {
   assert.equal(myUnlocks.statusCode, 200, myUnlocks.body);
   assert.equal(myUnlocks.json().currentLevel, 6);
   assert.equal(myUnlocks.json().xp, 1200);
+  assert.equal(myUnlocks.json().balance, 1200);
   assert.equal(myUnlocks.json().rewards[0].unlocked, false);
 
   const beforeBlockedBalance = await walletBalance(userId);
@@ -185,6 +186,7 @@ try {
     headers,
   });
   assert.equal(nowUnlocked.statusCode, 200, nowUnlocked.body);
+  assert.equal(nowUnlocked.json().balance, 1200);
   const unlockedState = nowUnlocked.json().rewards.find((item: { rewardId: string }) => item.rewardId === lockedProductId);
   assert.equal(unlockedState?.unlocked, true);
 
@@ -198,13 +200,23 @@ try {
   assert.equal(await walletBalance(userId), 900);
   assert.deepEqual(await stock(lockedProductId), { stock_reserved: 1, stock_redeemed: 0 });
 
+  const rewardStateAfterSpend = await app.inject({
+    method: 'GET',
+    url: `/api/v1/my/almazaras/${businessSlug}/reward-unlocks`,
+    headers,
+  });
+  assert.equal(rewardStateAfterSpend.statusCode, 200, rewardStateAfterSpend.body);
+  assert.equal(rewardStateAfterSpend.json().balance, 900, 'reward state must expose live spendable balance');
+  assert.equal(rewardStateAfterSpend.json().xp, 1200, 'spending must not reduce reward XP state');
+  assert.equal(rewardStateAfterSpend.json().currentLevel, 6, 'spending must not reduce reward level state');
+
   const afterSpend = await app.inject({ method: 'GET', url: '/api/v1/mi-olivo/progression', headers });
   assert.equal(afterSpend.statusCode, 200, afterSpend.body);
   assert.equal(afterSpend.json().currency.balance, 900);
   assert.equal(afterSpend.json().xp, 1200, 'reward spending must not reduce permanent XP');
   assert.equal(afterSpend.json().current_level.level, 6, 'reward spending must not reduce permanent level');
 
-  console.log('Mi Olivo reward level unlock smoke OK');
+  console.log('Mi Olivo reward level unlock + spendable balance smoke OK');
 } finally {
   await app.close();
   await db.destroy();
