@@ -47,7 +47,7 @@ type FeedRow = {
   media_url: string | null;
   created_at: Date | string;
   edited_at: Date | string | null;
-  author_id: string;
+  author_id: string | null;
   author_name: string;
   author_avatar_url: string | null;
   municipality_slug: string | null;
@@ -63,7 +63,7 @@ type CommentRow = {
   body: string;
   created_at: Date | string;
   edited_at: Date | string | null;
-  author_id: string;
+  author_id: string | null;
   author_name: string;
   author_avatar_url: string | null;
 };
@@ -99,10 +99,11 @@ export function registerCommunityRoutes(app: FastifyInstance, db: DatabaseClient
         p.media_url,
         p.created_at,
         p.edited_at,
-        u.id::text AS author_id,
+        CASE WHEN up.visibility = 'public' THEN u.id::text ELSE NULL END AS author_id,
         CASE
           WHEN up.visibility = 'public' AND up.display_name_override IS NOT NULL THEN up.display_name_override
-          ELSE u.display_name
+          WHEN up.visibility = 'public' THEN u.display_name
+          ELSE 'Miembro de Mágina'
         END AS author_name,
         CASE WHEN up.visibility = 'public' THEN u.avatar_url ELSE NULL END AS author_avatar_url,
         m.slug AS municipality_slug,
@@ -149,10 +150,11 @@ export function registerCommunityRoutes(app: FastifyInstance, db: DatabaseClient
         c.body,
         c.created_at,
         c.edited_at,
-        u.id::text AS author_id,
+        CASE WHEN up.visibility = 'public' THEN u.id::text ELSE NULL END AS author_id,
         CASE
           WHEN up.visibility = 'public' AND up.display_name_override IS NOT NULL THEN up.display_name_override
-          ELSE u.display_name
+          WHEN up.visibility = 'public' THEN u.display_name
+          ELSE 'Miembro de Mágina'
         END AS author_name,
         CASE WHEN up.visibility = 'public' THEN u.avatar_url ELSE NULL END AS author_avatar_url
       FROM community_comments c
