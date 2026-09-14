@@ -175,7 +175,7 @@ export function RouteActivityRecorder() {
       if (document.visibilityState === 'hidden' && activity?.status === 'active') {
         stopWatching();
         setMessage('Grabación pausada al salir de la pantalla para evitar seguimiento oculto en segundo plano.');
-        void pauseRouteActivity(activity.id)
+        void pauseRouteActivity(activity.id, true)
           .then((result) => setActivity(result.activity))
           .catch(() => undefined);
       }
