@@ -47,7 +47,44 @@ function businessFeedItem(business: BusinessDirectoryItem): TerritorialFeedItem 
   };
 }
 
-export async function loadTerritorialFeed(followedTownSlugs: string[]): Promise<TerritorialFeedItem[]> {
+function timestampValue(item: TerritorialFeedItem) {
+  if (!item.timestamp) return 0;
+  const value = new Date(item.timestamp).getTime();
+  return Number.isNaN(value) ? 0 : value;
+}
+
+function priorityScore(item: TerritorialFeedItem, primaryTownSlug: string | null, now: number) {
+  const timestamp = timestampValue(item);
+  let score = 0;
+
+  if (primaryTownSlug && item.townSlug === primaryTownSlug) score += 100;
+  if (item.featured) score += 25;
+
+  if (item.kind === 'event') {
+    if (timestamp >= now) {
+      score += 60;
+      const daysAway = Math.max(0, (timestamp - now) / 86_400_000);
+      score += Math.max(0, 14 - Math.min(14, daysAway));
+    } else {
+      score -= 20;
+    }
+  } else if (item.kind === 'news') {
+    score += 15;
+    if (timestamp > 0) {
+      const ageDays = Math.max(0, (now - timestamp) / 86_400_000);
+      score += Math.max(0, 12 - Math.min(12, ageDays));
+    }
+  } else {
+    score += 5;
+  }
+
+  return score;
+}
+
+export async function loadTerritorialFeed(
+  followedTownSlugs: string[],
+  primaryTownSlug: string | null = null,
+): Promise<TerritorialFeedItem[]> {
   const allowed = new Set(followedTownSlugs);
   if (allowed.size === 0) return [];
 
@@ -84,15 +121,11 @@ export async function loadTerritorialFeed(followedTownSlugs: string[]): Promise<
     : [];
 
   const now = Date.now();
-  const sortedEditorial = editorial.sort((a, b) => {
-    const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-    const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-    const aUpcoming = a.kind === 'event' && aTime >= now ? 1 : 0;
-    const bUpcoming = b.kind === 'event' && bTime >= now ? 1 : 0;
-    if (aUpcoming !== bUpcoming) return bUpcoming - aUpcoming;
-    if (a.featured !== b.featured) return Number(b.featured) - Number(a.featured);
-    return bTime - aTime;
-  });
-
-  return [...sortedEditorial, ...businesses].slice(0, 8);
+  return [...editorial, ...businesses]
+    .sort((a, b) => {
+      const scoreDifference = priorityScore(b, primaryTownSlug, now) - priorityScore(a, primaryTownSlug, now);
+      if (scoreDifference !== 0) return scoreDifference;
+      return timestampValue(b) - timestampValue(a);
+    })
+    .slice(0, 8);
 }
