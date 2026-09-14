@@ -24,19 +24,24 @@ const availableShortcuts = (moduleRegistry as AdminShortcut[])
 export default function AdminPage() {
   return (
     <>
-      <AdminControlCenter />
-      <nav className="admin-shortcuts" aria-label="Herramientas de administración">
-        <Link href="/admin/modulos" aria-label="Abrir directorio unificado de módulos">Módulos</Link>
-        {availableShortcuts.map((module) => (
-          <Link
-            href={module.href!}
-            aria-label={`Abrir administración de ${module.title}`}
-            key={module.id}
-          >
-            {module.title}
-          </Link>
-        ))}
+      <nav className="admin-shortcuts" aria-label="Módulos de administración disponibles">
+        <Link className="admin-shortcuts-primary" href="/admin/modulos" aria-label="Abrir directorio unificado de módulos">
+          <strong>Todos los módulos</strong>
+          <span>{availableShortcuts.length} disponibles · ver integración y pendientes</span>
+        </Link>
+        <div className="admin-shortcuts-list">
+          {availableShortcuts.map((module) => (
+            <Link
+              href={module.href!}
+              aria-label={`Abrir administración de ${module.title}`}
+              key={module.id}
+            >
+              {module.title}
+            </Link>
+          ))}
+        </div>
       </nav>
+      <AdminControlCenter />
     </>
   );
 }
