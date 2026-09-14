@@ -166,6 +166,15 @@ export async function loadPublicRoutes(query = '') {
   return response.routes;
 }
 
+export async function loadPublicRoutesByTerritory(filters: { placeId?: string | null; municipalityId?: string | null; limit?: number }) {
+  const params = new URLSearchParams();
+  if (filters.placeId) params.set('place_id', filters.placeId);
+  else if (filters.municipalityId) params.set('municipality_id', filters.municipalityId);
+  if (filters.limit) params.set('limit', String(filters.limit));
+  const response = await apiFetch<{ routes: PublicRouteSummary[] }>(`/api/v1/public/routes${params.size ? `?${params.toString()}` : ''}`);
+  return response.routes;
+}
+
 export async function loadPublicRoute(slug: string) { return apiFetch<PublicRouteDetail>(`/api/v1/public/routes/${encodeURIComponent(slug)}`); }
 export async function loadPublicRouteCommunity(slug: string) { return apiFetch<PublicRouteCommunity>(`/api/v1/public/routes/${encodeURIComponent(slug)}/community`); }
 export async function loadPublicRouteAdventure(slug: string) { return apiFetch<PublicRouteAdventure>(`/api/v1/public/routes/${encodeURIComponent(slug)}/adventure`); }

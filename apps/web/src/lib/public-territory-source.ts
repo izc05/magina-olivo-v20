@@ -1,5 +1,14 @@
 import { apiBaseUrl } from '@/lib/api-client';
 
+export type PublicMunicipalityOfficialLink = {
+  id: string;
+  kind: 'town_hall' | 'electronic_office' | 'transparency' | 'tourism' | 'other_official' | string;
+  label: string;
+  url: string;
+  source_url: string | null;
+  verified_at: string;
+};
+
 export type PublicTerritoryPlace = {
   id: string;
   name: string;
@@ -13,6 +22,7 @@ export type PublicTerritoryPlace = {
   ine_code: string;
   aemet_code: string | null;
   province_name: string;
+  official_links?: PublicMunicipalityOfficialLink[];
 };
 
 export type PublicMunicipalityContentType = 'place' | 'mill' | 'directory' | 'news' | 'event';
@@ -63,7 +73,7 @@ export class PublicTerritoryUnavailableError extends Error {
   }
 }
 
-async function publicJson<T>(path: string): Promise<T> {
+async function publicTerritoryFetch<T>(path: string): Promise<T> {
   if (!apiBaseUrl) throw new PublicTerritoryUnavailableError();
   let response: Response;
   try {
@@ -76,17 +86,27 @@ async function publicJson<T>(path: string): Promise<T> {
 }
 
 export async function loadPublicTerritoryPlaces() {
-  const payload = await publicJson<{ places?: PublicTerritoryPlace[] }>('/api/v1/public/territory/places');
+  const payload = await publicTerritoryFetch<{ places?: PublicTerritoryPlace[] }>('/api/v1/public/territory/places');
   return Array.isArray(payload.places) ? payload.places : [];
 }
 
+export async function loadPublicTerritoryPlace(slug: string) {
+  const normalized = slug.trim().toLocaleLowerCase('es-ES');
+  if (!normalized) throw new PublicTerritoryUnavailableError();
+  const payload = await publicTerritoryFetch<{ place?: PublicTerritoryPlace }>(`/api/v1/public/territory/places/${encodeURIComponent(normalized)}`);
+  if (!payload.place) throw new PublicTerritoryUnavailableError();
+  return payload.place;
+}
+
 export async function loadPublicMunicipalities() {
-  const payload = await publicJson<{ municipalities?: PublicMunicipalityDirectory[] }>('/api/v1/public/territory/municipalities');
+  const payload = await publicTerritoryFetch<{ municipalities?: PublicMunicipalityDirectory[] }>('/api/v1/public/territory/municipalities');
   return Array.isArray(payload.municipalities) ? payload.municipalities : [];
 }
 
 export async function loadPublicMunicipality(slug: string) {
-  const payload = await publicJson<{ municipality?: PublicMunicipalityDirectory }>(`/api/v1/public/territory/municipalities/${encodeURIComponent(slug)}`);
+  const normalized = slug.trim().toLocaleLowerCase('es-ES');
+  if (!normalized) throw new PublicTerritoryUnavailableError();
+  const payload = await publicTerritoryFetch<{ municipality?: PublicMunicipalityDirectory }>(`/api/v1/public/territory/municipalities/${encodeURIComponent(normalized)}`);
   if (!payload.municipality) throw new PublicTerritoryUnavailableError();
   return payload.municipality;
 }
