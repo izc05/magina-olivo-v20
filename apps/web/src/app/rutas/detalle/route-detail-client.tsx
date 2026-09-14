@@ -10,6 +10,7 @@ import { RouteExperience } from './route-experience';
 import { RouteAdventurePanel } from './route-adventure-panel';
 import { RouteActivityRecorder } from './route-activity-recorder';
 import styles from '../routes-public.module.css';
+import adventureStyles from './route-adventure-premium.module.css';
 
 function km(value: number | null) { return value === null ? '—' : `${(value / 1000).toFixed(1)} km`; }
 function duration(value: number | null) {
@@ -66,8 +67,26 @@ export function RouteDetailClient() {
       <article className={styles.infoCard}><h2>Fuentes oficiales y editoriales</h2>{detail.sources.length ? <ul className={styles.sourceList}>{detail.sources.map((source, index) => <li key={String(source.id ?? index)}>{typeof source.source_url === 'string' ? <a href={source.source_url} target="_blank" rel="noreferrer">{String(source.source_name ?? 'Fuente')}</a> : String(source.source_name ?? 'Fuente')}</li>)}</ul> : <p>La ficha no publica fuentes adicionales.</p>}</article>
     </section>
 
-    <RouteActivityRecorder routeId={route.id} slug={slug} />
-    <RouteAdventurePanel routeId={route.id} slug={slug} />
+    <section className={adventureStyles.liveZone} aria-label="Mágina Aventura en esta ruta">
+      <div className={adventureStyles.liveHeader}>
+        <div>
+          <span className={adventureStyles.eyebrow}>MÁGINA AVENTURA · EXPERIENCIA EN RUTA</span>
+          <h2>Aventura en curso</h2>
+          <p>GPS opcional, checkpoints reales, XP y descubrimientos sobre el trazado validado de <strong>{route.name}</strong>.</p>
+        </div>
+        <div className={adventureStyles.liveFacts}>
+          <span><b>⌁</b><strong>{km(route.distance_m)}</strong><small>ruta</small></span>
+          <span><b>↗</b><strong>{route.elevation_gain_m ?? '—'} m</strong><small>desnivel +</small></span>
+          <span><b>◷</b><strong>{duration(route.duration_minutes)}</strong><small>estimada</small></span>
+        </div>
+      </div>
+      <div className={adventureStyles.safetyStrip}><span>!</span><p>La aventura añade exploración y colección, pero nunca sustituye la señalización, la navegación técnica ni los avisos oficiales.</p></div>
+      <div className={adventureStyles.liveStack}>
+        <div className={adventureStyles.recorderFrame}><RouteActivityRecorder routeId={route.id} slug={slug} /></div>
+        <div className={adventureStyles.gameFrame}><RouteAdventurePanel routeId={route.id} slug={slug} /></div>
+      </div>
+    </section>
+
     <RouteExperience detail={detail} />
     <RouteCommunityPanel routeId={route.id} slug={slug} />
   </main>;
