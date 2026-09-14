@@ -1,0 +1,76 @@
+name: V20 routes REDIAM geometry audit
+
+on:
+  push:
+    branches:
+      - feat/v20-routes-catalog-completion
+    paths:
+      - 'data/routes/sierra-magina-rediam-track-sources.json'
+      - 'data/routes/sierra-magina-official-core-technical-audit.json'
+      - 'data/routes/sierra-magina-master-catalog.json'
+      - 'scripts/audit-rediam-geometries.mjs'
+      - 'scripts/audit-rediam-kml-browserlike.mjs'
+      - '.github/workflows/routes-rediam-geometry-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Audit REDIAM GML geometries
+        id: gml_audit
+        continue-on-error: true
+        run: node scripts/audit-rediam-geometries.mjs --write data/routes/sierra-magina-rediam-geometry-audit.json
+
+      - name: Audit REDIAM KML with browser-like request
+        id: kml_audit
+        continue-on-error: true
+        run: node scripts/audit-rediam-kml-browserlike.mjs --write data/routes/sierra-magina-rediam-kml-browserlike-audit.json
+
+      - name: Print audit summaries
+        if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          for (const file of [
+            'data/routes/sierra-magina-rediam-geometry-audit.json',
+            'data/routes/sierra-magina-rediam-kml-browserlike-audit.json'
+          ]) {
+            if (!fs.existsSync(file)) {
+              console.log(`${file}: report not generated`);
+              continue;
+            }
+            const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+            console.log(`${file}:`);
+            console.log(JSON.stringify(report.summary, null, 2));
+          }
+          NODE
+
+      - name: Upload REDIAM audit reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: sierra-magina-rediam-geometry-audit
+          path: |
+            data/routes/sierra-magina-rediam-geometry-audit.json
+            data/routes/sierra-magina-rediam-kml-browserlike-audit.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Record external-source outcome
+        if: always()
+        run: |
+          echo 'The REDIAM audits are intentionally non-blocking.'
+          echo 'A remote fetch failure must not make application CI red; it remains visible in the uploaded reports.'
