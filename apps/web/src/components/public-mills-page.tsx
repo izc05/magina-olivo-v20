@@ -42,7 +42,7 @@ function searchableText(item: PublicMill) {
 function MillCard({ item, basePath }: { item: PublicMill; basePath: string }) {
   const image = safeMediaUrl(item.mediaUrl);
   return <article className={styles.card}>
-    {image ? <img className={styles.cardImage} src={image} alt="" loading="lazy" /> : <div className={styles.cardPlaceholder} aria-hidden="true">🫒</div>}
+    {image ? <img className={styles.cardImage} src={image} alt="" loading="lazy" /> : <div className={styles.cardPlaceholder} aria-hidden="true"><span>AOVE</span></div>}
     <div className={styles.cardBody}>
       <div className={styles.metaRow}>
         <span>{item.millKind === 'cooperativa' ? 'Cooperativa' : 'Almazara'}</span>
@@ -52,7 +52,7 @@ function MillCard({ item, basePath }: { item: PublicMill; basePath: string }) {
       {item.summary ? <p>{item.summary}</p> : null}
       {item.oliveVarieties.length ? <p><strong>Variedades:</strong> {item.oliveVarieties.join(', ')}</p> : null}
       <div className={styles.locationLine}>{[item.location, item.address].filter(Boolean).join(' · ') || 'Información de ubicación pendiente'}</div>
-      {item.rewardCount > 0 ? <div className={styles.metaRow}><span>🎁 {item.rewardCount} {item.rewardCount === 1 ? 'premio disponible' : 'premios disponibles'}</span></div> : null}
+      {item.rewardCount > 0 ? <div className={styles.rewardHint}><span>Premios Mi Olivo</span><strong>{item.rewardCount}</strong></div> : null}
       <Link className={styles.primaryLink} href={`${basePath}?slug=${encodeURIComponent(item.slug)}`}>Ver ficha y premios →</Link>
     </div>
   </article>;
@@ -90,34 +90,59 @@ function RewardCatalog({ slug }: { slug: string }) {
     }
   }
 
-  if (loading) return <section className={styles.stateCard}><strong>Cargando premios…</strong></section>;
+  if (loading) return <section className={styles.stateCard}><strong>Cargando premios…</strong><p>Consultando stock y condiciones actuales.</p></section>;
 
-  return <section className={styles.stateCard} aria-label="Premios de la almazara">
-    <h2>Premios con Mi Olivo</h2>
-    <p>Canjea tus aceitunas por productos reales. Al confirmar se reservan durante 7 días y recibirás un QR único para recogerlos en la almazara.</p>
-    {message ? <p role="alert">{message}</p> : null}
-    {credential ? <div className={styles.cardBody}>
-      <strong>✅ Premio reservado: {credential.productTitle}</strong>
-      <p>Presenta este QR firmado en la almazara. Solo puede utilizarse una vez.</p>
-      <RewardQr code={credential.code} />
-      <code style={{ overflowWrap: 'anywhere', fontSize: '0.8rem' }}>{credential.code}</code>
-      <small>Caduca: {new Date(credential.expiresAt).toLocaleString('es-ES')}</small>
-      <Link className={styles.secondaryLink} href="/mi-olivo/canjes">Ver todos mis canjes →</Link>
-    </div> : null}
-    {!items.length ? <p>Esta almazara todavía no tiene premios activos.</p> : null}
-    <div className={styles.grid}>
-      {items.map((item) => <article className={styles.card} key={item.id}>
-        {safeMediaUrl(item.imageUrl) ? <img className={styles.cardImage} src={safeMediaUrl(item.imageUrl) ?? ''} alt="" /> : <div className={styles.cardPlaceholder}>🫒</div>}
-        <div className={styles.cardBody}>
-          <h3>{item.title}</h3>
-          {item.volumeMl ? <small>{item.volumeMl} ml</small> : null}
-          {item.description ? <p>{item.description}</p> : null}
-          <p><strong>{item.oliveCost} aceitunas</strong> · {item.availableStock > 0 ? `${item.availableStock} disponibles` : 'Agotado'}</p>
-          <button className={styles.primaryLink} type="button" disabled={item.availableStock < 1 || redeeming === item.id} onClick={() => redeem(item)}>
-            {redeeming === item.id ? 'Reservando…' : 'Canjear premio'}
-          </button>
-        </div>
-      </article>)}
+  return <section className={styles.rewardCatalog} aria-label="Premios de la almazara">
+    <div className={styles.rewardIntro}>
+      <div>
+        <span className={styles.eyebrow}>MI OLIVO · RECOMPENSAS REALES</span>
+        <h2>Del progreso digital a una botella de Mágina</h2>
+        <p>Canjea tus aceitunas por productos reales. Al confirmar, el stock queda reservado durante 7 días y recibes un QR firmado de un solo uso para recoger el premio.</p>
+      </div>
+      <div className={styles.rewardLinks}>
+        <Link className={styles.secondaryLink} href="/mi-olivo">Abrir Mi Olivo</Link>
+        <Link className={styles.secondaryLink} href="/mi-olivo/canjes">Mis canjes</Link>
+      </div>
+    </div>
+
+    {message ? <div className={styles.message} role="alert">{message}</div> : null}
+
+    {credential ? <section className={styles.credential} aria-label="Premio reservado">
+      <div className={styles.credentialCopy}>
+        <span className={styles.statusPill}>Reserva activa</span>
+        <h3>{credential.productTitle}</h3>
+        <p>Presenta este QR firmado en la almazara. El código solo puede validarse una vez.</p>
+        <small>Caduca: {new Date(credential.expiresAt).toLocaleString('es-ES')}</small>
+        <Link className={styles.primaryLink} href="/mi-olivo/canjes">Ver todos mis canjes →</Link>
+      </div>
+      <div className={styles.qrPanel}>
+        <RewardQr code={credential.code} />
+        <code>{credential.code}</code>
+      </div>
+    </section> : null}
+
+    {!items.length ? <div className={styles.softState}><strong>Esta almazara todavía no tiene premios activos.</strong><span>La ficha sigue disponible y los premios aparecerán cuando exista stock publicado.</span></div> : null}
+
+    <div className={styles.rewardGrid}>
+      {items.map((item) => {
+        const rewardImage = safeMediaUrl(item.imageUrl);
+        const soldOut = item.availableStock < 1;
+        return <article className={styles.rewardCard} key={item.id}>
+          {rewardImage ? <img className={styles.rewardImage} src={rewardImage} alt="" /> : <div className={styles.rewardPlaceholder} aria-hidden="true"><span>AOVE</span></div>}
+          <div className={styles.rewardBody}>
+            <div className={styles.rewardTopline}>
+              <span className={styles.cost}>{item.oliveCost} aceitunas</span>
+              <span className={`${styles.stock} ${soldOut ? styles.stockEmpty : ''}`}>{soldOut ? 'Agotado' : `${item.availableStock} disponibles`}</span>
+            </div>
+            <h3>{item.title}</h3>
+            {item.volumeMl ? <small>{item.volumeMl} ml</small> : null}
+            {item.description ? <p>{item.description}</p> : null}
+            <button className={styles.primaryLink} type="button" disabled={soldOut || redeeming === item.id} onClick={() => redeem(item)}>
+              {redeeming === item.id ? 'Reservando…' : soldOut ? 'Sin stock' : 'Canjear premio'}
+            </button>
+          </div>
+        </article>;
+      })}
     </div>
   </section>;
 }
@@ -129,7 +154,7 @@ function MillDetail({ item, basePath }: { item: PublicMill; basePath: string }) 
   return <>
     <Link className={styles.backLink} href={basePath}>← Cooperativas y almazaras</Link>
     <article className={styles.detail}>
-      {image ? <img className={styles.heroImage} src={image} alt="" /> : <div className={styles.heroPlaceholder} aria-hidden="true">🫒</div>}
+      {image ? <img className={styles.heroImage} src={image} alt="" /> : <div className={styles.heroPlaceholder} aria-hidden="true"><span>AOVE</span></div>}
       <div className={styles.detailBody}>
         <div className={styles.metaRow}><span>{item.millKind === 'cooperativa' ? 'Cooperativa' : 'Almazara'}</span>{item.town ? <span>{item.town}</span> : null}</div>
         <h1>{item.title}</h1>
@@ -187,9 +212,15 @@ export function PublicMillsPage({ basePath = '/cooperativas' }: { basePath?: '/c
 
   return <main className={styles.page}>
     <header className={styles.header}>
-      <span>SIERRA MÁGINA · AOVE</span>
-      <h1>Cooperativas y almazaras</h1>
-      <p>Descubre dónde nace el AOVE de Sierra Mágina y convierte las aceitunas de Mi Olivo en recompensas reales del territorio.</p>
+      <div>
+        <span>SIERRA MÁGINA · AOVE</span>
+        <h1>El aceite también forma parte de tu experiencia.</h1>
+        <p>Descubre cooperativas y almazaras del territorio, conoce dónde nace el AOVE de Sierra Mágina y utiliza las aceitunas de Mi Olivo en recompensas reales cuando exista stock publicado.</p>
+      </div>
+      <div className={styles.headerActions}>
+        <Link className={styles.primaryLink} href="/mi-olivo">Ver Mi Olivo</Link>
+        <Link className={styles.secondaryLink} href="/mi-olivo/canjes">Mis canjes</Link>
+      </div>
     </header>
     <section className={styles.toolbar} aria-label="Buscar en el directorio">
       <label htmlFor="mill-search">Buscar por nombre, pueblo, variedad o dirección</label>
