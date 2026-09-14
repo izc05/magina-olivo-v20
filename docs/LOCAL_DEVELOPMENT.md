@@ -64,13 +64,16 @@ pnpm --filter @magina/contracts build
 
 ```bash
 export DATABASE_URL=postgresql://magina:magina@127.0.0.1:5432/magina_v20
+export PORT=3002
+export HOST=127.0.0.1
+export CORS_ALLOWED_ORIGINS=http://127.0.0.1:3001,http://localhost:3001
 pnpm dev:api
 ```
 
 Health:
 
 ```text
-GET http://127.0.0.1:3001/health
+GET http://127.0.0.1:3002/health
 ```
 
 ### Contexto de autenticación provisional
@@ -89,8 +92,19 @@ Esto **no es autenticación de producción** y debe desaparecer antes del piloto
 En otra terminal:
 
 ```bash
-pnpm dev
+export NEXT_PUBLIC_API_URL=http://127.0.0.1:3002
+pnpm dev -- --hostname 127.0.0.1 --port 3001
 ```
+
+En Windows PowerShell se puede preparar la base local, aplicar las migraciones y
+mostrar estos comandos con una sola orden:
+
+```powershell
+.\scripts\start-local-v20.ps1
+```
+
+Para cargar además los datos demo, usar `-SeedDemo`. El script opera solo sobre
+el contenedor local `magina-v20-postgres`; no se conecta al mini PC ni a staging.
 
 ## 8. Validación completa
 
