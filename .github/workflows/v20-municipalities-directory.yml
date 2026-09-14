@@ -11,6 +11,7 @@ on:
       - 'apps/web/src/components/municipality-admin-nav.tsx'
       - 'apps/web/src/components/municipality-admin-nav.module.css'
       - 'apps/web/src/lib/municipality-admin-context.ts'
+      - 'apps/web/src/lib/municipality-seo.ts'
       - 'apps/web/src/app/explorar/explore-public-client.tsx'
       - 'apps/web/src/lib/public-territory-source.ts'
       - 'scripts/check-municipalities-directory.mjs'
@@ -21,6 +22,7 @@ on:
       - 'scripts/check-municipality-editorial-control.mjs'
       - 'scripts/check-municipality-content-editor.mjs'
       - 'scripts/check-municipality-admin-navigation.mjs'
+      - 'scripts/check-municipality-seo-readiness.mjs'
       - '.github/workflows/v20-municipalities-directory.yml'
   workflow_dispatch:
 
@@ -53,6 +55,8 @@ jobs:
         run: node scripts/check-municipality-content-editor.mjs
       - name: Municipality Admin navigation contract
         run: node scripts/check-municipality-admin-navigation.mjs
+      - name: Municipality SEO readiness contract
+        run: node scripts/check-municipality-seo-readiness.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck
