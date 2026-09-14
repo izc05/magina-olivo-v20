@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { PublicMunicipalityContent, PublicMunicipalityDirectory } from '@/lib/public-territory-source';
 
-// Canonical municipality identity source validated by the final 16/16 QA contract.
+// Canonical municipality identity source validated by QA 16/16 and the integration handoff.
 export const MUNICIPALITY_STATIC_CATALOG = [
   { slug: 'albanchez-de-magina', name: 'Albanchez de Mágina' },
   { slug: 'bedmar-y-garciez', name: 'Bedmar y Garcíez' },
