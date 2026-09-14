@@ -1,0 +1,149 @@
+.shell {
+  width: min(1160px, 100%);
+  margin: 22px auto 0;
+  padding: 0 20px;
+}
+
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.heading h2,
+.recentHeading h3 {
+  margin: 5px 0 7px;
+  color: #253522;
+}
+
+.heading p {
+  max-width: 760px;
+  margin: 0;
+  color: #687064;
+  line-height: 1.55;
+}
+
+.eyebrow,
+.careLabel {
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .15em;
+  color: #75855d;
+}
+
+.link,
+.careCard a {
+  color: #315238;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.careGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.careCard,
+.recent,
+.empty {
+  border: 1px solid rgba(77, 98, 61, .13);
+  background: rgba(255, 254, 250, .94);
+  box-shadow: 0 12px 34px rgba(43, 55, 39, .065);
+}
+
+.careCard {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 174px;
+  padding: 18px;
+  border-radius: 18px;
+}
+
+.careCard strong { color: #2d412c; }
+.careCard small { color: #747b71; line-height: 1.45; }
+.careCard a { margin-top: auto; padding-top: 7px; }
+
+.recent {
+  margin-top: 12px;
+  padding: 20px;
+  border-radius: 20px;
+}
+
+.recentHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 9px;
+}
+
+.recentHeading span {
+  color: #7a8177;
+  font-size: .8rem;
+}
+
+.recentList {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid rgba(77, 98, 61, .1);
+  border-radius: 14px;
+}
+
+.recentItem {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  padding: 14px 16px;
+  background: #faf9f4;
+}
+
+.recentItem time {
+  color: #6f7d64;
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.recentItem div {
+  display: grid;
+  gap: 3px;
+}
+
+.recentItem strong { color: #293d29; }
+.recentItem small { color: #777e74; line-height: 1.4; }
+
+.empty {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 20px;
+  border-radius: 18px;
+}
+
+.empty strong { color: #2d412c; }
+.empty span { color: #747b71; line-height: 1.5; }
+
+@media (max-width: 920px) {
+  .careGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .shell { padding: 0 14px; }
+  .heading { display: grid; gap: 8px; }
+  .link { width: fit-content; }
+  .careGrid { grid-template-columns: 1fr; }
+  .careCard { min-height: 0; }
+  .recentHeading { display: grid; gap: 2px; }
+  .recentItem { grid-template-columns: 1fr; gap: 5px; }
+}

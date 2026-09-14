@@ -1,0 +1,155 @@
+.shell {
+  width: min(1160px, 100%);
+  margin: 22px auto 0;
+  padding: 0 20px;
+}
+
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.heading h2 {
+  margin: 5px 0 7px;
+  color: #253522;
+}
+
+.heading p {
+  max-width: 700px;
+  margin: 0;
+  color: #687064;
+  line-height: 1.55;
+}
+
+.eyebrow {
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .17em;
+  color: #75855d;
+}
+
+.link,
+.emptyActions a {
+  color: #315238;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.timeline {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0 0 0 22px;
+  list-style: none;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 18px;
+  bottom: 18px;
+  width: 2px;
+  background: linear-gradient(180deg, #9bab7f, #d9dfcf);
+}
+
+.item {
+  position: relative;
+}
+
+.dot {
+  position: absolute;
+  left: -21px;
+  top: 22px;
+  width: 12px;
+  height: 12px;
+  border: 3px solid #eef1e7;
+  border-radius: 50%;
+  background: #536846;
+  box-shadow: 0 0 0 2px #728267;
+}
+
+.card,
+.empty {
+  border: 1px solid rgba(77, 98, 61, .13);
+  border-radius: 18px;
+  background: rgba(255, 254, 250, .94);
+  box-shadow: 0 12px 34px rgba(43, 55, 39, .065);
+}
+
+.card {
+  padding: 18px 20px;
+}
+
+.card > strong {
+  display: block;
+  margin-top: 7px;
+  color: #293a27;
+  font-size: 1rem;
+}
+
+.card p {
+  margin: 5px 0 0;
+  color: #71766f;
+  line-height: 1.5;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: #7a8176;
+  font-size: .76rem;
+}
+
+.meta span {
+  color: #718267;
+  font-weight: 850;
+  letter-spacing: .11em;
+}
+
+.meta time {
+  white-space: nowrap;
+}
+
+.empty {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+}
+
+.empty strong {
+  color: #293a27;
+  font-size: 1.05rem;
+}
+
+.empty span {
+  color: #71766f;
+  line-height: 1.5;
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 7px;
+}
+
+@media (max-width: 620px) {
+  .shell { padding: 0 14px; }
+  .heading { display: grid; gap: 8px; }
+  .link { width: fit-content; }
+  .meta { display: grid; gap: 4px; }
+  .card { padding: 16px; }
+}
