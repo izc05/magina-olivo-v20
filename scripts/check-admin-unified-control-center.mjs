@@ -49,6 +49,10 @@ function isAdminHref(value) {
   return typeof value === 'string' && value.startsWith('/admin/');
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function adminApiRoutesInFile(filePath) {
   const source = readFileSync(filePath, 'utf8');
   const routePattern = /app\.(get|post|put|patch|delete)\(\s*(['"`])(\/api\/v1\/admin\/[^'"`]+)\2/g;
@@ -66,6 +70,15 @@ function adminApiRoutesInFile(filePath) {
       segment: source.slice(start, end),
     };
   });
+}
+
+function accessGuardInRoute(segment) {
+  const assignment = segment.match(/const\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+requirePlatformAccess\s*\(/);
+  if (!assignment) return { protected: false, reason: 'missing_assignment' };
+  const variable = escapeRegExp(assignment[1]);
+  const failClosed = new RegExp(`if\\s*\\(\\s*!\\s*${variable}\\s*\\)\\s*(?:return\\b|\\{\\s*return\\b)`);
+  if (!failClosed.test(segment)) return { protected: false, reason: 'missing_fail_closed', variable: assignment[1] };
+  return { protected: true, variable: assignment[1] };
 }
 
 if (!Array.isArray(modules)) {
@@ -206,15 +219,16 @@ for (const filePath of adminApiRouteFiles) {
   }
 
   for (const route of routes) {
-    if (!route.segment.includes('requirePlatformAccess(')) {
-      failures.push(`${basename(filePath)}: ${route.method} ${route.path} no contiene requirePlatformAccess en su handler.`);
+    const guard = accessGuardInRoute(route.segment);
+    if (guard.protected) {
+      protectedAdminApiRoutes += 1;
       continue;
     }
-    if (!route.segment.includes('if (!auth) return')) {
-      failures.push(`${basename(filePath)}: ${route.method} ${route.path} valida acceso pero no corta explícitamente cuando auth falla.`);
-      continue;
+    if (guard.reason === 'missing_assignment') {
+      failures.push(`${basename(filePath)}: ${route.method} ${route.path} no asigna el resultado de requirePlatformAccess en su handler.`);
+    } else {
+      failures.push(`${basename(filePath)}: ${route.method} ${route.path} no corta ejecución cuando ${guard.variable ?? 'el acceso'} es nulo.`);
     }
-    protectedAdminApiRoutes += 1;
   }
 }
 
