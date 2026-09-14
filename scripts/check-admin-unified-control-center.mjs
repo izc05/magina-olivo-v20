@@ -1,8 +1,9 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 
 const root = process.cwd();
 const adminDir = resolve(root, 'apps/web/src/app/admin');
+const apiRoutesDir = resolve(root, 'apps/api/src/routes');
 const modulesPage = readFileSync(resolve(adminDir, 'modulos/page.tsx'), 'utf8');
 const adminPage = readFileSync(resolve(adminDir, 'page.tsx'), 'utf8');
 const registryPath = resolve(adminDir, 'modulos/admin-modules.json');
@@ -46,6 +47,25 @@ function routeToPagePath(href) {
 
 function isAdminHref(value) {
   return typeof value === 'string' && value.startsWith('/admin/');
+}
+
+function adminApiRoutesInFile(filePath) {
+  const source = readFileSync(filePath, 'utf8');
+  const routePattern = /app\.(get|post|put|patch|delete)\(\s*(['"`])(\/api\/v1\/admin\/[^'"`]+)\2/g;
+  const allAppRoutePattern = /app\.(get|post|put|patch|delete)\(\s*(['"`])([^'"`]+)\2/g;
+  const adminMatches = [...source.matchAll(routePattern)];
+  const allRouteMatches = [...source.matchAll(allAppRoutePattern)];
+
+  return adminMatches.map((match) => {
+    const start = match.index ?? 0;
+    const nextRoute = allRouteMatches.find((candidate) => (candidate.index ?? 0) > start);
+    const end = nextRoute?.index ?? source.length;
+    return {
+      method: match[1].toUpperCase(),
+      path: match[3],
+      segment: source.slice(start, end),
+    };
+  });
 }
 
 if (!Array.isArray(modules)) {
@@ -162,6 +182,36 @@ for (const routeRoot of availableRouteRoots) {
   }
 }
 
+const adminApiRouteFiles = readdirSync(apiRoutesDir, { withFileTypes: true })
+  .filter((entry) => entry.isFile() && /^admin(?:-.+)?\.ts$/.test(entry.name))
+  .map((entry) => resolve(apiRoutesDir, entry.name))
+  .sort();
+
+let protectedAdminApiRoutes = 0;
+for (const filePath of adminApiRouteFiles) {
+  const source = readFileSync(filePath, 'utf8');
+  const routes = adminApiRoutesInFile(filePath);
+  if (routes.length && !source.includes("from '../admin/access.js'")) {
+    failures.push(`${basename(filePath)} expone rutas Admin pero no importa el control de acceso de plataforma.`);
+  }
+
+  for (const route of routes) {
+    if (!route.segment.includes('requirePlatformAccess(')) {
+      failures.push(`${basename(filePath)}: ${route.method} ${route.path} no contiene requirePlatformAccess en su handler.`);
+      continue;
+    }
+    if (!route.segment.includes('if (!auth) return')) {
+      failures.push(`${basename(filePath)}: ${route.method} ${route.path} valida acceso pero no corta explícitamente cuando auth falla.`);
+      continue;
+    }
+    protectedAdminApiRoutes += 1;
+  }
+}
+
+if (protectedAdminApiRoutes === 0) {
+  failures.push('No se detectaron endpoints /api/v1/admin protegidos; revisa el detector del contrato.');
+}
+
 if (!adminPage.includes('href="/admin/modulos"')) failures.push('El centro Admin no enlaza al directorio unificado.');
 if (!adminPage.includes('href="/admin/ayuntamientos"')) failures.push('El centro Admin no enlaza directamente a Ayuntamientos.');
 
@@ -176,5 +226,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas raíz verificadas y gate corporativo común activo).`,
+  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin de API protegidos).`,
 );
