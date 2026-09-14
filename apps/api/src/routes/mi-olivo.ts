@@ -23,11 +23,21 @@ type SourceRow = { source_id: string };
 type ActivitySourceRow = { source_id: string; source_type: string };
 type CountRow = { total: number };
 type BalanceRow = { balance: number };
+type ProgressTotalsRow = { balance: number; xp: number };
 type EventTypeRow = { event_type: string };
 type WeekRow = { week_start: string };
 type CurrentWeekRow = { current_week: string };
 type LocalClockRow = { local_date: string; week_start: string };
 type IdRow = { id: string };
+type LevelRow = {
+  level: number;
+  slug: string;
+  name: string;
+  min_xp: number;
+  tree_stage: number;
+  badge_title: string;
+  description: string;
+};
 type LedgerRow = {
   id: string;
   event_type: string;
@@ -55,26 +65,10 @@ type InteractionRule = {
 };
 
 const interactionRules: Record<InteractionType, InteractionRule> = {
-  content_read: {
-    points: 2,
-    sourceType: 'public_content',
-    reason: 'Contenido útil consultado',
-  },
-  territory_viewed: {
-    points: 3,
-    sourceType: 'territory_place',
-    reason: 'Nuevo rincón de Mágina descubierto',
-  },
-  weather_checked: {
-    points: 2,
-    sourceType: 'weather_surface',
-    reason: 'Clima revisado antes de organizar el campo',
-  },
-  learning_completed: {
-    points: 5,
-    sourceType: 'field_learning',
-    reason: 'Guía práctica explorada',
-  },
+  content_read: { points: 2, sourceType: 'public_content', reason: 'Contenido útil consultado' },
+  territory_viewed: { points: 3, sourceType: 'territory_place', reason: 'Nuevo rincón de Mágina descubierto' },
+  weather_checked: { points: 2, sourceType: 'weather_surface', reason: 'Clima revisado antes de organizar el campo' },
+  learning_completed: { points: 5, sourceType: 'field_learning', reason: 'Guía práctica explorada' },
 };
 
 async function ensureProfile(database: DatabaseClient, userId: string) {
@@ -106,7 +100,6 @@ async function award(database: DatabaseClient, input: AwardInput) {
     ON CONFLICT (user_id, idempotency_key) DO NOTHING
     RETURNING id::text AS id
   `.execute(database);
-
   return result.rows.length > 0;
 }
 
@@ -116,7 +109,6 @@ async function getLocalClock(database: DatabaseClient) {
       to_char(now() AT TIME ZONE 'Europe/Madrid', 'YYYY-MM-DD') AS local_date,
       to_char(date_trunc('week', now() AT TIME ZONE 'Europe/Madrid'), 'YYYY-MM-DD') AS week_start
   `.execute(database);
-
   return result.rows[0] ?? {
     local_date: new Date().toISOString().slice(0, 10),
     week_start: new Date().toISOString().slice(0, 10),
@@ -135,7 +127,6 @@ async function getDailyEngagement(database: DatabaseClient, userId: string) {
         date_trunc('day', now() AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid'
       )
   `.execute(database);
-
   return Math.max(0, result.rows[0]?.total ?? 0);
 }
 
@@ -145,11 +136,11 @@ async function getWeeklyOlives(database: DatabaseClient, userId: string) {
     FROM mi_olivo_ledger
     WHERE user_id = ${userId}::uuid
       AND points > 0
+      AND event_type <> 'reward_refund'
       AND created_at >= (
         date_trunc('week', now() AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid'
       )
   `.execute(database);
-
   return Math.max(0, result.rows[0]?.total ?? 0);
 }
 
@@ -157,19 +148,14 @@ function validInteractionSource(eventType: InteractionType, sourceId: string) {
   const normalized = sourceId.toLocaleLowerCase('es');
   const safeSource = /^[a-z0-9][a-z0-9:_-]{0,159}$/i.test(sourceId);
   if (!safeSource) return false;
-
-  if (eventType === 'content_read') {
-    return normalized.startsWith('noticia:') || normalized.startsWith('evento:');
-  }
+  if (eventType === 'content_read') return normalized.startsWith('noticia:') || normalized.startsWith('evento:');
   if (eventType === 'territory_viewed') return normalized.startsWith('pueblo:');
   if (eventType === 'weather_checked') return normalized === 'radar';
   return normalized.startsWith('consejo:');
 }
 
 function engagementIdempotencyKey(eventType: InteractionType, sourceId: string, workspaceId: string, localDate: string) {
-  if (eventType === 'weather_checked') {
-    return `${ENGAGEMENT_RULE_VERSION}:${eventType}:${workspaceId}:${localDate}`;
-  }
+  if (eventType === 'weather_checked') return `${ENGAGEMENT_RULE_VERSION}:${eventType}:${workspaceId}:${localDate}`;
   return `${ENGAGEMENT_RULE_VERSION}:${eventType}:${sourceId}`;
 }
 
@@ -181,180 +167,102 @@ async function reconcileVerifiedEvents(database: DatabaseClient, userId: string,
   `.execute(database);
   if (profile.rows[0]?.complete) {
     await award(database, {
-      userId,
-      workspaceId: null,
-      eventType: 'profile_ready',
-      sourceType: 'user_profile',
-      sourceId: userId,
-      points: 20,
-      reason: 'Perfil básico preparado',
+      userId, workspaceId: null, eventType: 'profile_ready', sourceType: 'user_profile', sourceId: userId,
+      points: 20, reason: 'Perfil básico preparado',
     });
   }
 
   const firstActivity = await sql<SourceRow>`
-    SELECT source_id
-    FROM (
-      SELECT id::text AS source_id, created_at FROM irrigation_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id::text AS source_id, created_at FROM treatment_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id::text AS source_id, created_at FROM fertilization_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id::text AS source_id, created_at FROM pruning_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id::text AS source_id, created_at FROM observation_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id::text AS source_id, created_at FROM expense_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-    ) activity
-    ORDER BY created_at ASC
-    LIMIT 1
+    SELECT source_id FROM (
+      SELECT id::text AS source_id, created_at FROM irrigation_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id::text, created_at FROM treatment_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id::text, created_at FROM fertilization_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id::text, created_at FROM pruning_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id::text, created_at FROM observation_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id::text, created_at FROM expense_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+    ) activity ORDER BY created_at ASC LIMIT 1
   `.execute(database);
-
   if (firstActivity.rows[0]) {
     await award(database, {
-      userId,
-      workspaceId,
-      eventType: 'first_activity',
-      sourceType: 'farm_activity',
-      sourceId: firstActivity.rows[0].source_id,
-      points: 25,
-      reason: 'Primera actividad registrada',
+      userId, workspaceId, eventType: 'first_activity', sourceType: 'farm_activity',
+      sourceId: firstActivity.rows[0].source_id, points: 25, reason: 'Primera actividad registrada',
     });
   }
 
   const activityCount = await sql<CountRow>`
-    SELECT COUNT(*)::int AS total
-    FROM (
-      SELECT id FROM irrigation_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id FROM treatment_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id FROM fertilization_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id FROM pruning_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id FROM observation_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id FROM expense_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
+    SELECT COUNT(*)::int AS total FROM (
+      SELECT id FROM irrigation_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id FROM treatment_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id FROM fertilization_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id FROM pruning_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id FROM observation_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id FROM expense_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
     ) activity
   `.execute(database);
-
   if ((activityCount.rows[0]?.total ?? 0) >= 10) {
     await award(database, {
-      userId,
-      workspaceId,
-      eventType: 'ten_activities',
-      sourceType: 'farm_activity_count',
-      sourceId: '10',
-      points: 50,
-      reason: 'Diez actividades organizadas',
+      userId, workspaceId, eventType: 'ten_activities', sourceType: 'farm_activity_count', sourceId: '10',
+      points: 50, reason: 'Diez actividades organizadas',
     });
   }
 
   const firstDocument = await sql<SourceRow>`
-    SELECT id::text AS source_id
-    FROM documents
-    WHERE workspace_id = ${workspaceId}::uuid
-      AND created_by = ${userId}::uuid
-      AND status = 'active'
-    ORDER BY created_at ASC
-    LIMIT 1
+    SELECT id::text AS source_id FROM documents
+    WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid AND status='active'
+    ORDER BY created_at ASC LIMIT 1
   `.execute(database);
   if (firstDocument.rows[0]) {
     await award(database, {
-      userId,
-      workspaceId,
-      eventType: 'first_document',
-      sourceType: 'document',
-      sourceId: firstDocument.rows[0].source_id,
-      points: 25,
-      reason: 'Primer documento organizado',
+      userId, workspaceId, eventType: 'first_document', sourceType: 'document', sourceId: firstDocument.rows[0].source_id,
+      points: 25, reason: 'Primer documento organizado',
     });
   }
 
   const firstHarvest = await sql<SourceRow>`
-    SELECT id::text AS source_id
-    FROM harvest_deliveries
-    WHERE workspace_id = ${workspaceId}::uuid
-      AND created_by = ${userId}::uuid
-    ORDER BY created_at ASC
-    LIMIT 1
+    SELECT id::text AS source_id FROM harvest_deliveries
+    WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+    ORDER BY created_at ASC LIMIT 1
   `.execute(database);
   if (firstHarvest.rows[0]) {
     await award(database, {
-      userId,
-      workspaceId,
-      eventType: 'first_harvest_delivery',
-      sourceType: 'harvest_delivery',
-      sourceId: firstHarvest.rows[0].source_id,
-      points: 30,
-      reason: 'Primera entrega de cosecha registrada',
+      userId, workspaceId, eventType: 'first_harvest_delivery', sourceType: 'harvest_delivery', sourceId: firstHarvest.rows[0].source_id,
+      points: 30, reason: 'Primera entrega de cosecha registrada',
     });
   }
 }
 
 async function reconcileWeeklyFieldRewards(database: DatabaseClient, userId: string, workspaceId: string) {
   const alreadyRewardedResult = await sql<CountRow>`
-    SELECT COUNT(*)::int AS total
-    FROM mi_olivo_ledger
-    WHERE user_id = ${userId}::uuid
-      AND workspace_id = ${workspaceId}::uuid
-      AND event_type = 'field_activity_reward'
-      AND rule_version = ${ENGAGEMENT_RULE_VERSION}
-      AND points > 0
-      AND created_at >= (
-        date_trunc('week', now() AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid'
-      )
+    SELECT COUNT(*)::int AS total FROM mi_olivo_ledger
+    WHERE user_id=${userId}::uuid AND workspace_id=${workspaceId}::uuid
+      AND event_type='field_activity_reward' AND rule_version=${ENGAGEMENT_RULE_VERSION} AND points>0
+      AND created_at >= (date_trunc('week', now() AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid')
   `.execute(database);
-
   let rewarded = alreadyRewardedResult.rows[0]?.total ?? 0;
   if (rewarded >= WEEKLY_FIELD_REWARD_LIMIT) return;
 
   const candidates = await sql<ActivitySourceRow>`
-    SELECT source_id, source_type
-    FROM (
-      SELECT id::text AS source_id, 'irrigation_record' AS source_type, created_at FROM irrigation_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id::text AS source_id, 'treatment_record' AS source_type, created_at FROM treatment_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id::text AS source_id, 'fertilization_record' AS source_type, created_at FROM fertilization_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id::text AS source_id, 'pruning_record' AS source_type, created_at FROM pruning_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id::text AS source_id, 'observation_record' AS source_type, created_at FROM observation_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
-      UNION ALL
-      SELECT id::text AS source_id, 'expense_record' AS source_type, created_at FROM expense_records WHERE workspace_id = ${workspaceId}::uuid AND created_by = ${userId}::uuid
+    SELECT source_id, source_type FROM (
+      SELECT id::text AS source_id, 'irrigation_record' AS source_type, created_at FROM irrigation_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id::text, 'treatment_record', created_at FROM treatment_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id::text, 'fertilization_record', created_at FROM fertilization_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id::text, 'pruning_record', created_at FROM pruning_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id::text, 'observation_record', created_at FROM observation_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
+      UNION ALL SELECT id::text, 'expense_record', created_at FROM expense_records WHERE workspace_id=${workspaceId}::uuid AND created_by=${userId}::uuid
     ) activity
-    WHERE created_at >= (
-      date_trunc('week', now() AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid'
-    )
-    ORDER BY created_at ASC
-    LIMIT 50
+    WHERE created_at >= (date_trunc('week', now() AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid')
+    ORDER BY created_at ASC LIMIT 50
   `.execute(database);
 
   for (const candidate of candidates.rows) {
     if (rewarded >= WEEKLY_FIELD_REWARD_LIMIT) break;
     const inserted = await award(database, {
-      userId,
-      workspaceId,
-      eventType: 'field_activity_reward',
-      sourceType: candidate.source_type,
-      sourceId: candidate.source_id,
-      points: 4,
-      reason: 'Trabajo real registrado esta semana',
-      ruleVersion: ENGAGEMENT_RULE_VERSION,
+      userId, workspaceId, eventType: 'field_activity_reward', sourceType: candidate.source_type, sourceId: candidate.source_id,
+      points: 4, reason: 'Trabajo real registrado esta semana', ruleVersion: ENGAGEMENT_RULE_VERSION,
       idempotencyKey: `${ENGAGEMENT_RULE_VERSION}:field_activity:${candidate.source_type}:${candidate.source_id}`,
     });
     if (inserted) rewarded += 1;
   }
-}
-
-function levelLabel(level: number) {
-  if (level >= 5) return 'Olivo maestro';
-  if (level === 4) return 'Olivo arraigado';
-  if (level === 3) return 'Olivo joven';
-  if (level === 2) return 'Rama nueva';
-  return 'Brote';
 }
 
 function shiftWeek(weekStart: string, days: number) {
@@ -368,34 +276,24 @@ function projectRhythm(weekStarts: string[], currentWeek: string) {
   const active = new Set(weekStarts);
   let cursor = currentWeek;
   let graceActive = false;
-
   if (!active.has(cursor)) {
     const previousWeek = shiftWeek(cursor, -7);
     if (!active.has(previousWeek)) {
-      return {
-        active_weeks: 0,
-        grace_active: false,
-        label: 'Sin ritmo activo',
-        message: 'Se activa cuando registras una actividad útil. No pierdes puntos por descansar.',
-      };
+      return { active_weeks: 0, grace_active: false, label: 'Sin ritmo activo', message: 'Se activa cuando registras una actividad útil. No pierdes puntos por descansar.' };
     }
     cursor = previousWeek;
     graceActive = true;
   }
-
   let activeWeeks = 0;
   while (active.has(cursor) && activeWeeks < 53) {
     activeWeeks += 1;
     cursor = shiftWeek(cursor, -7);
   }
-
   return {
     active_weeks: activeWeeks,
     grace_active: graceActive,
     label: activeWeeks === 1 ? '1 semana activa' : `${activeWeeks} semanas activas`,
-    message: graceActive
-      ? 'Esta semana tiene margen: tu ritmo continúa sin penalización.'
-      : 'Cuenta semanas con actividad real registrada, sin premiar aperturas de la app.',
+    message: graceActive ? 'Esta semana tiene margen: tu ritmo continúa sin penalización.' : 'Cuenta semanas con actividad real registrada, sin premiar aperturas de la app.',
   };
 }
 
@@ -406,95 +304,76 @@ export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient |
     if (!context || !database) return;
 
     await ensureProfile(database, context.userId);
-
-    const profile = await sql<ProfileState>`
-      SELECT enabled
-      FROM mi_olivo_profiles
-      WHERE user_id = ${context.userId}::uuid
-    `.execute(database);
+    const profile = await sql<ProfileState>`SELECT enabled FROM mi_olivo_profiles WHERE user_id=${context.userId}::uuid`.execute(database);
     const enabled = profile.rows[0]?.enabled ?? true;
-
     if (enabled) {
       await reconcileVerifiedEvents(database, context.userId, context.workspaceId);
       await reconcileWeeklyFieldRewards(database, context.userId, context.workspaceId);
     }
 
-    const balanceResult = await sql<BalanceRow>`
-      SELECT COALESCE(SUM(points), 0)::int AS balance
-      FROM mi_olivo_ledger
-      WHERE user_id = ${context.userId}::uuid
+    const totalsResult = await sql<ProgressTotalsRow>`
+      SELECT
+        COALESCE(SUM(points),0)::int AS balance,
+        COALESCE(SUM(CASE WHEN points>0 AND event_type<>'reward_refund' THEN points ELSE 0 END),0)::int AS xp
+      FROM mi_olivo_ledger WHERE user_id=${context.userId}::uuid
     `.execute(database);
-    const balance = Math.max(0, balanceResult.rows[0]?.balance ?? 0);
-    const level = Math.floor(balance / 100) + 1;
-    const levelFloor = (level - 1) * 100;
-    const progress = balance - levelFloor;
+    const totals = totalsResult.rows[0] ?? { balance: 0, xp: 0 };
+    const balance = Math.max(0, Number(totals.balance));
+    const xp = Math.max(0, Number(totals.xp));
+
+    const levelsResult = await sql<LevelRow>`
+      SELECT level, slug, name, min_xp, tree_stage, badge_title, description
+      FROM mi_olivo_levels ORDER BY level
+    `.execute(database);
+    const levels = levelsResult.rows;
+    const currentLevel = [...levels].reverse().find((item) => xp >= item.min_xp) ?? levels[0];
+    const currentIndex = currentLevel ? levels.findIndex((item) => item.level === currentLevel.level) : -1;
+    const nextLevel = currentIndex >= 0 ? levels[currentIndex + 1] ?? null : levels[0] ?? null;
+    const levelFloor = currentLevel?.min_xp ?? 0;
+    const levelTarget = nextLevel ? Math.max(1, nextLevel.min_xp - levelFloor) : Math.max(1, xp - levelFloor);
+    const progressCurrent = Math.max(0, xp - levelFloor);
+    const progressPercent = nextLevel ? Math.min(100, Math.round((progressCurrent / levelTarget) * 100)) : 100;
 
     const eventResult = await sql<EventTypeRow>`
-      SELECT DISTINCT event_type
-      FROM mi_olivo_ledger
-      WHERE user_id = ${context.userId}::uuid
-        AND points > 0
+      SELECT DISTINCT event_type FROM mi_olivo_ledger
+      WHERE user_id=${context.userId}::uuid AND points>0
     `.execute(database);
     const events = new Set(eventResult.rows.map((row) => row.event_type));
 
     const activityProgress = await sql<CountRow>`
-      SELECT COUNT(*)::int AS total
-      FROM (
-        SELECT id FROM irrigation_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-        UNION ALL
-        SELECT id FROM treatment_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-        UNION ALL
-        SELECT id FROM fertilization_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-        UNION ALL
-        SELECT id FROM pruning_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-        UNION ALL
-        SELECT id FROM observation_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-        UNION ALL
-        SELECT id FROM expense_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
+      SELECT COUNT(*)::int AS total FROM (
+        SELECT id FROM irrigation_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+        UNION ALL SELECT id FROM treatment_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+        UNION ALL SELECT id FROM fertilization_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+        UNION ALL SELECT id FROM pruning_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+        UNION ALL SELECT id FROM observation_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+        UNION ALL SELECT id FROM expense_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
       ) activity
     `.execute(database);
     const activityTotal = activityProgress.rows[0]?.total ?? 0;
 
     const weekResult = await sql<WeekRow>`
-      SELECT DISTINCT to_char(
-        date_trunc('week', created_at AT TIME ZONE 'Europe/Madrid'),
-        'YYYY-MM-DD'
-      ) AS week_start
+      SELECT DISTINCT to_char(date_trunc('week', created_at AT TIME ZONE 'Europe/Madrid'), 'YYYY-MM-DD') AS week_start
       FROM (
-        SELECT created_at FROM irrigation_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-        UNION ALL
-        SELECT created_at FROM treatment_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-        UNION ALL
-        SELECT created_at FROM fertilization_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-        UNION ALL
-        SELECT created_at FROM pruning_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-        UNION ALL
-        SELECT created_at FROM observation_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-        UNION ALL
-        SELECT created_at FROM expense_records WHERE workspace_id = ${context.workspaceId}::uuid AND created_by = ${context.userId}::uuid
-      ) activity
-      ORDER BY week_start DESC
-      LIMIT 54
+        SELECT created_at FROM irrigation_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+        UNION ALL SELECT created_at FROM treatment_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+        UNION ALL SELECT created_at FROM fertilization_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+        UNION ALL SELECT created_at FROM pruning_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+        UNION ALL SELECT created_at FROM observation_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+        UNION ALL SELECT created_at FROM expense_records WHERE workspace_id=${context.workspaceId}::uuid AND created_by=${context.userId}::uuid
+      ) activity ORDER BY week_start DESC LIMIT 54
     `.execute(database);
-
     const currentWeekResult = await sql<CurrentWeekRow>`
-      SELECT to_char(
-        date_trunc('week', now() AT TIME ZONE 'Europe/Madrid'),
-        'YYYY-MM-DD'
-      ) AS current_week
+      SELECT to_char(date_trunc('week', now() AT TIME ZONE 'Europe/Madrid'), 'YYYY-MM-DD') AS current_week
     `.execute(database);
     const currentWeek = currentWeekResult.rows[0]?.current_week ?? new Date().toISOString().slice(0, 10);
     const rhythm = projectRhythm(weekResult.rows.map((row) => row.week_start), currentWeek);
 
     const dailyEarned = await getDailyEngagement(database, context.userId);
     const weeklyEarned = await getWeeklyOlives(database, context.userId);
-
     const recentResult = await sql<LedgerRow>`
-      SELECT id::text, event_type, points, reason, created_at
-      FROM mi_olivo_ledger
-      WHERE user_id = ${context.userId}::uuid
-      ORDER BY created_at DESC
-      LIMIT 8
+      SELECT id::text, event_type, points, reason, created_at FROM mi_olivo_ledger
+      WHERE user_id=${context.userId}::uuid ORDER BY created_at DESC LIMIT 12
     `.execute(database);
 
     return {
@@ -502,25 +381,15 @@ export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient |
       rule_version: RULE_VERSION,
       engagement_rule_version: ENGAGEMENT_RULE_VERSION,
       balance,
-      level,
-      level_label: levelLabel(level),
-      tree_stage: Math.min(level, 5),
-      progress: {
-        current: progress,
-        target: 100,
-        percent: Math.min(100, progress),
-      },
+      xp,
+      level: currentLevel?.level ?? 1,
+      level_label: currentLevel?.name ?? 'Brote',
+      tree_stage: currentLevel?.tree_stage ?? 1,
+      next_level: nextLevel ? { level: nextLevel.level, name: nextLevel.name, min_xp: nextLevel.min_xp } : null,
+      progress: { current: progressCurrent, target: levelTarget, percent: progressPercent },
       rhythm,
-      today: {
-        earned: dailyEarned,
-        cap: DAILY_ENGAGEMENT_CAP,
-        remaining: Math.max(0, DAILY_ENGAGEMENT_CAP - dailyEarned),
-      },
-      weekly: {
-        earned: weeklyEarned,
-        goal: WEEKLY_OLIVE_GOAL,
-        percent: Math.min(100, Math.round((weeklyEarned / WEEKLY_OLIVE_GOAL) * 100)),
-      },
+      today: { earned: dailyEarned, cap: DAILY_ENGAGEMENT_CAP, remaining: Math.max(0, DAILY_ENGAGEMENT_CAP - dailyEarned) },
+      weekly: { earned: weeklyEarned, goal: WEEKLY_OLIVE_GOAL, percent: Math.min(100, Math.round((weeklyEarned / WEEKLY_OLIVE_GOAL) * 100)) },
       earning_actions: [
         { id: 'field-work', title: 'Trabaja en tu finca', detail: 'Riego, poda, tratamiento, abonado, observaciones o gastos reales.', reward_label: '+4 · hasta 5/semana' },
         { id: 'territory', title: 'Explora Mágina', detail: 'Abre fichas de pueblos que todavía no conoces.', reward_label: '+3 por lugar' },
@@ -543,14 +412,17 @@ export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient |
         { id: 'harvest', title: 'Primera cosecha', detail: 'Primera entrega registrada.', unlocked: events.has('first_harvest_delivery') },
         { id: 'constancy', title: 'Constancia', detail: 'Diez actividades reales organizadas.', unlocked: events.has('ten_activities') },
         { id: 'explorer', title: 'Raíces en Mágina', detail: 'Primera ficha de un pueblo explorada.', unlocked: events.has('territory_viewed') },
+        { id: 'xp-500', title: 'Copa creciente', detail: '500 XP históricos.', unlocked: xp >= 500 },
+        { id: 'xp-1000', title: 'Olivo de cosecha', detail: '1.000 XP históricos.', unlocked: xp >= 1000 },
       ],
-      rewards: [
-        { id: 'sprout-badge', title: 'Distintivo Brote', detail: 'Tu primer progreso verificable en Mi Olivo.', required_level: 1, unlocked: balance > 0 },
-        { id: 'new-branch-badge', title: 'Distintivo Rama nueva', detail: 'Tu olivo alcanza el nivel 2.', required_level: 2, unlocked: level >= 2 },
-        { id: 'young-olive-badge', title: 'Distintivo Olivo joven', detail: 'Tu olivo alcanza el nivel 3.', required_level: 3, unlocked: level >= 3 },
-        { id: 'rooted-olive-badge', title: 'Distintivo Olivo arraigado', detail: 'Tu olivo alcanza el nivel 4.', required_level: 4, unlocked: level >= 4 },
-        { id: 'master-olive-badge', title: 'Distintivo Olivo maestro', detail: 'Tu olivo alcanza el nivel 5.', required_level: 5, unlocked: level >= 5 },
-      ],
+      rewards: levels.map((item) => ({
+        id: `level-${item.level}`,
+        title: item.badge_title,
+        detail: item.description,
+        required_level: item.level,
+        unlocked: xp >= item.min_xp,
+      })),
+      levels: levels.map((item) => ({ ...item, unlocked: xp >= item.min_xp })),
       recent: recentResult.rows,
     };
   });
@@ -559,66 +431,37 @@ export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient |
     const context = requireContext(request, reply);
     const database = requireDatabase(db, reply);
     if (!context || !database) return;
-
     const input = parseBody(interactionSchema, request.body, reply);
     if (!input) return;
-    if (!validInteractionSource(input.event_type, input.source_id)) {
-      return reply.code(400).send({ error: 'Fuente de progreso no válida.' });
-    }
+    if (!validInteractionSource(input.event_type, input.source_id)) return reply.code(400).send({ error: 'Fuente de progreso no válida.' });
 
     await ensureProfile(database, context.userId);
-    const profile = await sql<ProfileState>`
-      SELECT enabled
-      FROM mi_olivo_profiles
-      WHERE user_id = ${context.userId}::uuid
-    `.execute(database);
+    const profile = await sql<ProfileState>`SELECT enabled FROM mi_olivo_profiles WHERE user_id=${context.userId}::uuid`.execute(database);
     if (!(profile.rows[0]?.enabled ?? true)) {
       const earned = await getDailyEngagement(database, context.userId);
-      return {
-        awarded: false,
-        points: 0,
-        status: 'paused',
-        message: 'Mi Olivo está pausado.',
-        daily: { earned, cap: DAILY_ENGAGEMENT_CAP, remaining: Math.max(0, DAILY_ENGAGEMENT_CAP - earned) },
-      };
+      return { awarded: false, points: 0, status: 'paused', message: 'Mi Olivo está pausado.', daily: { earned, cap: DAILY_ENGAGEMENT_CAP, remaining: Math.max(0, DAILY_ENGAGEMENT_CAP - earned) } };
     }
 
     const rule = interactionRules[input.event_type];
     const dailyEarned = await getDailyEngagement(database, context.userId);
     if (dailyEarned + rule.points > DAILY_ENGAGEMENT_CAP) {
-      return {
-        awarded: false,
-        points: 0,
-        status: 'daily_cap',
-        message: 'Hoy ya has completado suficiente exploración útil. El campo también necesita descanso.',
-        daily: { earned: dailyEarned, cap: DAILY_ENGAGEMENT_CAP, remaining: Math.max(0, DAILY_ENGAGEMENT_CAP - dailyEarned) },
-      };
+      return { awarded: false, points: 0, status: 'daily_cap', message: 'Hoy ya has completado suficiente exploración útil. El campo también necesita descanso.', daily: { earned: dailyEarned, cap: DAILY_ENGAGEMENT_CAP, remaining: Math.max(0, DAILY_ENGAGEMENT_CAP - dailyEarned) } };
     }
 
     const clock = await getLocalClock(database);
     const inserted = await award(database, {
-      userId: context.userId,
-      workspaceId: context.workspaceId,
-      eventType: input.event_type,
-      sourceType: rule.sourceType,
-      sourceId: input.source_id,
-      points: rule.points,
-      reason: rule.reason,
+      userId: context.userId, workspaceId: context.workspaceId, eventType: input.event_type,
+      sourceType: rule.sourceType, sourceId: input.source_id, points: rule.points, reason: rule.reason,
       ruleVersion: ENGAGEMENT_RULE_VERSION,
       idempotencyKey: engagementIdempotencyKey(input.event_type, input.source_id, context.workspaceId, clock.local_date),
     });
     const nextEarned = inserted ? dailyEarned + rule.points : dailyEarned;
-
     return {
       awarded: inserted,
       points: inserted ? rule.points : 0,
       status: inserted ? 'awarded' : 'already_recognized',
       message: inserted ? rule.reason : 'Esta acción ya estaba reconocida.',
-      daily: {
-        earned: nextEarned,
-        cap: DAILY_ENGAGEMENT_CAP,
-        remaining: Math.max(0, DAILY_ENGAGEMENT_CAP - nextEarned),
-      },
+      daily: { earned: nextEarned, cap: DAILY_ENGAGEMENT_CAP, remaining: Math.max(0, DAILY_ENGAGEMENT_CAP - nextEarned) },
     };
   });
 
@@ -628,15 +471,12 @@ export function registerMiOlivoRoutes(app: FastifyInstance, db: DatabaseClient |
     if (!context || !database) return;
     const input = parseBody(preferenceSchema, request.body, reply);
     if (!input) return;
-
     const result = await sql<ProfileState>`
       INSERT INTO mi_olivo_profiles (user_id, enabled, updated_at)
       VALUES (${context.userId}::uuid, ${input.enabled}, now())
-      ON CONFLICT (user_id)
-      DO UPDATE SET enabled = EXCLUDED.enabled, updated_at = now()
+      ON CONFLICT (user_id) DO UPDATE SET enabled=EXCLUDED.enabled, updated_at=now()
       RETURNING enabled
     `.execute(database);
-
     return { enabled: result.rows[0]?.enabled ?? input.enabled };
   });
 }
