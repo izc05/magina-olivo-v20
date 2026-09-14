@@ -123,9 +123,8 @@
     "id": "magina-pass",
     "title": "Mágina Pass",
     "description": "Programas, negocios participantes, QR, puntos y recompensas.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-business-magina-pass",
-    "targetHref": "/admin/empresas/magina-pass",
+    "status": "available",
+    "href": "/admin/empresas/magina-pass",
     "area": "Experiencia"
   },
   {
