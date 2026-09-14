@@ -51,7 +51,7 @@ export function MiOlivoRedemptionsPage() {
     <header style={{ margin: '24px 0' }}>
       <span>MI OLIVO · RECOMPENSAS</span>
       <h1>Mis canjes</h1>
-      <p>Guarda aquí tus premios de almazaras. Los QR reservados son de un solo uso y caducan automáticamente.</p>
+      <p>Guarda aquí tus premios de almazaras. Los QR reservados están firmados, son de un solo uso y caducan automáticamente.</p>
     </header>
 
     {loading ? <p aria-live="polite">Cargando canjes…</p> : null}
@@ -65,7 +65,7 @@ export function MiOlivoRedemptionsPage() {
           <h2>{item.productTitle}</h2>
           <p><strong>{labels[item.status] ?? item.status}</strong> · {item.olivesSpent} aceitunas</p>
         </div>
-        {item.status === 'reserved' ? <>
+        {item.status === 'reserved' && item.code ? <>
           <RewardQr code={item.code} size={240} />
           <code style={{ overflowWrap: 'anywhere' }}>{item.code}</code>
           <p>Válido hasta {new Date(item.expiresAt).toLocaleString('es-ES')}.</p>
@@ -73,6 +73,7 @@ export function MiOlivoRedemptionsPage() {
             {cancelling === item.id ? 'Cancelando…' : 'Cancelar y recuperar aceitunas'}
           </button>
         </> : null}
+        {item.status === 'reserved' && !item.code ? <p role="status">El QR no está disponible temporalmente. La reserva sigue protegida y no se ha perdido.</p> : null}
         {item.status === 'redeemed' && item.redeemedAt ? <p>Recogido el {new Date(item.redeemedAt).toLocaleString('es-ES')}.</p> : null}
         {item.status === 'cancelled' || item.status === 'expired' ? <p>Las aceitunas de esta reserva se devuelven automáticamente a tu saldo.</p> : null}
       </article>)}
