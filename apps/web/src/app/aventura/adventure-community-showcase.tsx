@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  loadPublicAdventures,
   loadPublicRouteCommunity,
   publicRouteMediaUrl,
+  type PublicAdventureSummary,
   type PublicRouteCommunity,
 } from '../../lib/public-routes-source';
 import styles from './adventure-community.module.css';
@@ -28,31 +30,39 @@ function stars(value: number) {
   return `${'★'.repeat(rounded)}${'☆'.repeat(5 - rounded)}`;
 }
 
-export function AdventureCommunityShowcase({ slug, routeName }: { slug: string | null; routeName: string | null }) {
+export function AdventureCommunityShowcase() {
+  const [featured, setFeatured] = useState<PublicAdventureSummary | null>(null);
   const [community, setCommunity] = useState<PublicRouteCommunity | null>(null);
-  const [loading, setLoading] = useState(Boolean(slug));
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!slug) {
-      setCommunity(null);
-      setLoading(false);
-      return;
-    }
     let cancelled = false;
     setLoading(true);
-    loadPublicRouteCommunity(slug)
-      .then((value) => { if (!cancelled) setCommunity(value); })
-      .catch(() => { if (!cancelled) setCommunity(null); })
+    loadPublicAdventures()
+      .then(async (hub) => {
+        if (cancelled) return;
+        const next = hub.adventures[0] ?? null;
+        setFeatured(next);
+        if (!next) return;
+        const value = await loadPublicRouteCommunity(next.slug);
+        if (!cancelled) setCommunity(value);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFeatured(null);
+          setCommunity(null);
+        }
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [slug]);
+  }, []);
 
   const rating = useMemo(() => Number(community?.summary.rating_average ?? 0), [community]);
   const photos = community?.photos.slice(0, 3) ?? [];
   const reviews = community?.reviews.slice(0, 2) ?? [];
   const conditions = community?.conditions.slice(0, 2) ?? [];
 
-  if (!slug) return null;
+  if (!loading && !featured) return null;
 
   return <section id="comunidad" className={styles.section} aria-labelledby="adventure-community-title">
     <div className={styles.heading}>
@@ -61,13 +71,13 @@ export function AdventureCommunityShowcase({ slug, routeName }: { slug: string |
         <h2 id="adventure-community-title">Gente que explora, cuida y comparte</h2>
         <p>Experiencias, fotografías y avisos aprobados de la comunidad sobre rutas reales de Sierra Mágina.</p>
       </div>
-      <Link href={`/rutas/detalle?slug=${encodeURIComponent(slug)}#comunidad`} className={styles.link}>Abrir comunidad de la ruta <span>→</span></Link>
+      {featured ? <Link href={`/rutas/detalle?slug=${encodeURIComponent(featured.slug)}#comunidad`} className={styles.link}>Abrir comunidad de la ruta <span>→</span></Link> : null}
     </div>
 
     <div className={styles.layout}>
       <article className={styles.summaryCard}>
         <span className={styles.routeLabel}>RUTA DESTACADA</span>
-        <h3>{routeName ?? community?.route.name ?? 'Sierra Mágina'}</h3>
+        <h3>{featured?.title ?? community?.route.name ?? 'Sierra Mágina'}</h3>
         {loading ? <p>Cargando actividad real…</p> : <>
           <div className={styles.ratingRow}><strong>{rating.toFixed(1)}</strong><span>{stars(rating)}</span></div>
           <div className={styles.stats}>
