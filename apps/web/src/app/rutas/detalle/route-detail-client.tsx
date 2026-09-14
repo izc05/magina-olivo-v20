@@ -37,11 +37,11 @@ export function RouteDetailClient() {
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) return <main className={styles.detailShell}><section className={styles.state}><h1>Cargando ruta…</h1><p>Comprobando track y datos publicados.</p></section></main>;
-  if (error || !detail || !slug) return <main className={styles.detailShell}><section className={styles.state}><h1>Ruta no disponible</h1><p>Puede estar en revisión, no disponer de track validado o faltar el identificador de ruta.</p><Link href="/rutas">Volver a rutas</Link></section></main>;
+  if (loading) return <div className={styles.detailShell}><section className={styles.state}><h1>Cargando ruta…</h1><p>Comprobando track y datos publicados.</p></section></div>;
+  if (error || !detail || !slug) return <div className={styles.detailShell}><section className={styles.state}><h1>Ruta no disponible</h1><p>Puede estar en revisión, no disponer de track validado o faltar el identificador de ruta.</p><Link href="/rutas">Volver a rutas</Link></section></div>;
 
   const route = detail.route;
-  return <main className={styles.detailShell}>
+  return <div className={styles.detailShell}>
     <div className={styles.notice}>Track validado · los datos técnicos proceden del recorrido almacenado, no de una ruta generada por IA.</div>
     <section className={styles.detailHero}>
       <article className={styles.detailIntro}>
@@ -70,5 +70,5 @@ export function RouteDetailClient() {
     <RouteAdventurePanel routeId={route.id} slug={slug} />
     <RouteExperience detail={detail} />
     <RouteCommunityPanel routeId={route.id} slug={slug} />
-  </main>;
+  </div>;
 }
