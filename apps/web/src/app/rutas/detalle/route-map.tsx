@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
+  loadPublicRouteAdventure,
   loadPublicRouteCommunity,
+  loadRouteAdventureProgress,
   publicRouteMediaUrl,
   type PublicRouteCommunity,
   type PublicRouteDetail,
+  type RouteAdventureCheckpoint,
 } from '../../../lib/public-routes-source';
 import styles from '../routes-public.module.css';
 
@@ -13,6 +16,8 @@ type Coordinate = [number, number];
 type Photo = PublicRouteCommunity['photos'][number];
 type PhotoFocusDetail = { photoId: string; latitude: number; longitude: number };
 type ElevationFocusDetail = { latitude: number; longitude: number; distance_m: number; elevation_m: number; grade_percent: number | null };
+type AdventureFocusDetail = { checkpointId: string; latitude: number; longitude: number };
+type AdventureProgressDetail = { unlockedCheckpointIds: string[] };
 
 function routeCoordinates(detail: PublicRouteDetail): Coordinate[] {
   const geometry = detail.track?.geometry;
@@ -29,6 +34,17 @@ function validPhotoLocation(photo: Photo) {
     && photo.longitude != null
     && Number.isFinite(Number(photo.latitude))
     && Number.isFinite(Number(photo.longitude));
+}
+
+function validCheckpointLocation(checkpoint: RouteAdventureCheckpoint) {
+  return Number.isFinite(Number(checkpoint.latitude)) && Number.isFinite(Number(checkpoint.longitude));
+}
+
+function checkpointKind(kind: RouteAdventureCheckpoint['kind']) {
+  return ({
+    landmark: 'Lugar', trivia: 'Reto', observation: 'Observación', photo: 'Foto',
+    collection: 'Coleccionable', rest: 'Descanso',
+  } satisfies Record<RouteAdventureCheckpoint['kind'], string>)[kind];
 }
 
 function photoPopup(photo: Photo) {
@@ -57,14 +73,68 @@ function photoPopup(photo: Photo) {
   return container;
 }
 
+function adventurePopup(checkpoint: RouteAdventureCheckpoint, unlocked: boolean) {
+  const container = document.createElement('article');
+  container.style.width = 'min(260px, 70vw)';
+  const eyebrow = document.createElement('small');
+  eyebrow.textContent = `Mágina Aventura · ${checkpointKind(checkpoint.kind)}`;
+  eyebrow.style.display = 'block';
+  eyebrow.style.marginBottom = '4px';
+  eyebrow.style.fontWeight = '700';
+  container.append(eyebrow);
+  const title = document.createElement('strong');
+  title.textContent = checkpoint.title;
+  container.append(title);
+  if (checkpoint.description) {
+    const description = document.createElement('p');
+    description.textContent = checkpoint.description;
+    description.style.margin = '8px 0';
+    container.append(description);
+  }
+  const status = document.createElement('p');
+  status.dataset.adventurePopupStatus = checkpoint.id;
+  status.textContent = unlocked ? `✓ Desbloqueado · +${checkpoint.points} pt` : `Pendiente · acércate a ${checkpoint.unlock_radius_m} m para desbloquearlo`;
+  status.style.margin = '8px 0 0';
+  status.style.fontWeight = '700';
+  container.append(status);
+  const safety = document.createElement('small');
+  safety.textContent = 'El reto es lúdico y no sustituye la señalización ni la información de seguridad de la ruta.';
+  safety.style.display = 'block';
+  safety.style.marginTop = '8px';
+  safety.style.opacity = '.7';
+  container.append(safety);
+  return container;
+}
+
+function paintAdventureMarker(button: HTMLButtonElement, unlocked: boolean) {
+  button.dataset.unlocked = unlocked ? 'true' : 'false';
+  button.style.width = '38px';
+  button.style.height = '38px';
+  button.style.borderRadius = '999px';
+  button.style.border = '3px solid #fff';
+  button.style.boxShadow = '0 4px 14px rgba(0,0,0,.28)';
+  button.style.cursor = 'pointer';
+  button.style.fontWeight = '900';
+  button.style.fontSize = '16px';
+  button.style.color = unlocked ? '#163d29' : '#fff';
+  button.style.background = unlocked ? '#d7b768' : '#244f36';
+  button.style.display = 'grid';
+  button.style.placeItems = 'center';
+  button.textContent = unlocked ? '✓' : '✦';
+}
+
 export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import('maplibre-gl').Map | null>(null);
   const photoMarkersRef = useRef(new Map<string, import('maplibre-gl').Marker>());
   const photoPopupsRef = useRef(new Map<string, import('maplibre-gl').Popup>());
+  const adventureMarkersRef = useRef(new Map<string, import('maplibre-gl').Marker>());
+  const adventurePopupsRef = useRef(new Map<string, import('maplibre-gl').Popup>());
+  const adventureElementsRef = useRef(new Map<string, HTMLButtonElement>());
   const [failed, setFailed] = useState(false);
   const [photoCount, setPhotoCount] = useState(0);
   const [conditionCount, setConditionCount] = useState(0);
+  const [adventureCount, setAdventureCount] = useState(0);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -72,6 +142,17 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
     if (!container || coordinates.length < 2) return;
     let disposed = false;
     let map: import('maplibre-gl').Map | null = null;
+
+    function updateAdventureState(unlockedIds: Iterable<string>) {
+      const unlocked = new Set(unlockedIds);
+      for (const [checkpointId, button] of adventureElementsRef.current.entries()) {
+        const done = unlocked.has(checkpointId);
+        paintAdventureMarker(button, done);
+        const popupNode = adventurePopupsRef.current.get(checkpointId)?.getElement();
+        const status = popupNode?.querySelector<HTMLElement>(`[data-adventure-popup-status="${checkpointId}"]`);
+        if (status) status.textContent = done ? '✓ Desbloqueado' : 'Pendiente · usa “Estoy aquí” desde Mágina Aventura';
+      }
+    }
 
     void import('maplibre-gl').then((maplibre) => {
       if (disposed) return;
@@ -140,6 +221,39 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
             new maplibre.Popup({ offset: 12 }).setLngLat([Number(geometry.coordinates[0]), Number(geometry.coordinates[1])]).setDOMContent(node).addTo(map);
           });
         }
+
+        void loadPublicRouteAdventure(detail.route.slug).then(async (definition) => {
+          if (!map || disposed || !definition.enabled || !definition.adventure) return;
+          const checkpoints = definition.checkpoints.filter(validCheckpointLocation);
+          setAdventureCount(checkpoints.length);
+          let unlocked = new Set<string>();
+          try {
+            const progress = await loadRouteAdventureProgress(detail.route.id);
+            unlocked = new Set(progress.unlocks.map((item) => item.checkpoint_id));
+          } catch {
+            // Public visitors can still see the adventure checkpoints without exposing private progress.
+          }
+          if (!map || disposed) return;
+          for (const checkpoint of checkpoints) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.dataset.adventureCheckpointId = checkpoint.id;
+            button.title = `${checkpoint.title} · ${checkpointKind(checkpoint.kind)}`;
+            button.setAttribute('aria-label', `Mágina Aventura: ${button.title}`);
+            paintAdventureMarker(button, unlocked.has(checkpoint.id));
+            const popup = new maplibre.Popup({ offset: 24, closeButton: true })
+              .setDOMContent(adventurePopup(checkpoint, unlocked.has(checkpoint.id)));
+            const marker = new maplibre.Marker({ element: button, anchor: 'center' })
+              .setLngLat([Number(checkpoint.longitude), Number(checkpoint.latitude)])
+              .setPopup(popup)
+              .addTo(map);
+            adventureElementsRef.current.set(checkpoint.id, button);
+            adventureMarkersRef.current.set(checkpoint.id, marker);
+            adventurePopupsRef.current.set(checkpoint.id, popup);
+          }
+        }).catch(() => {
+          // Adventure is an optional layer; failure must never hide the validated route.
+        });
 
         void loadPublicRouteCommunity(detail.route.slug).then((community) => {
           if (!map || disposed) return;
@@ -228,16 +342,38 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
       });
     }
 
+    function focusAdventureCheckpoint(event: Event) {
+      const value = (event as CustomEvent<AdventureFocusDetail>).detail;
+      const activeMap = mapRef.current;
+      if (!value || !activeMap) return;
+      activeMap.flyTo({ center: [value.longitude, value.latitude], zoom: Math.max(activeMap.getZoom(), 16), essential: true });
+      adventurePopupsRef.current.get(value.checkpointId)?.addTo(activeMap);
+      containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function syncAdventureProgress(event: Event) {
+      const value = (event as CustomEvent<AdventureProgressDetail>).detail;
+      if (!value || !Array.isArray(value.unlockedCheckpointIds)) return;
+      updateAdventureState(value.unlockedCheckpointIds);
+    }
+
     window.addEventListener('magina:route-photo-focus', focusCommunityPhoto);
     window.addEventListener('magina:route-elevation-focus', focusElevation);
+    window.addEventListener('magina:route-adventure-focus', focusAdventureCheckpoint);
+    window.addEventListener('magina:route-adventure-progress', syncAdventureProgress);
 
     return () => {
       disposed = true;
       window.removeEventListener('magina:route-photo-focus', focusCommunityPhoto);
       window.removeEventListener('magina:route-elevation-focus', focusElevation);
+      window.removeEventListener('magina:route-adventure-focus', focusAdventureCheckpoint);
+      window.removeEventListener('magina:route-adventure-progress', syncAdventureProgress);
       for (const marker of photoMarkersRef.current.values()) marker.remove();
       for (const popup of photoPopupsRef.current.values()) popup.remove();
+      for (const marker of adventureMarkersRef.current.values()) marker.remove();
+      for (const popup of adventurePopupsRef.current.values()) popup.remove();
       photoMarkersRef.current.clear(); photoPopupsRef.current.clear();
+      adventureMarkersRef.current.clear(); adventurePopupsRef.current.clear(); adventureElementsRef.current.clear();
       mapRef.current = null;
       map?.remove();
     };
@@ -245,7 +381,8 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
 
   if (!detail.track) return <div className={styles.emptyMap}>No hay geometría pública disponible.</div>;
   return <div className={styles.interactiveMapWrap}>
-    <div ref={containerRef} className={styles.interactiveMap} aria-label="Mapa inteligente del track validado, POI, perfil, fotos y avisos comunitarios" />
+    <div ref={containerRef} className={styles.interactiveMap} aria-label="Mapa inteligente del track validado, POI, retos de Mágina Aventura, perfil, fotos y avisos comunitarios" />
+    {adventureCount > 0 ? <div className={styles.mapFallback} style={{ bottom: 'auto', top: 12, right: 12, left: 'auto' }}>✦ {adventureCount} reto{adventureCount === 1 ? '' : 's'} de aventura</div> : null}
     {photoCount > 0 ? <div className={styles.mapFallback} style={{ bottom: 'auto', top: 12, right: 'auto' }}>{photoCount} foto{photoCount === 1 ? '' : 's'} geolocalizada{photoCount === 1 ? '' : 's'}</div> : null}
     {conditionCount > 0 ? <div className={styles.mapFallback} style={{ bottom: 'auto', top: 48, right: 'auto' }}>{conditionCount} aviso{conditionCount === 1 ? '' : 's'} comunitario{conditionCount === 1 ? '' : 's'}</div> : null}
     {failed ? <div className={styles.mapFallback}>El mapa base no está disponible. El track validado sigue disponible en los datos de la ruta.</div> : null}
