@@ -205,16 +205,20 @@ for (const routeRoot of availableRouteRoots) {
   }
 }
 
-const adminApiRouteFiles = readdirSync(apiRoutesDir, { withFileTypes: true })
-  .filter((entry) => entry.isFile() && /^admin(?:-.+)?\.ts$/.test(entry.name))
+const apiRouteFiles = readdirSync(apiRoutesDir, { withFileTypes: true })
+  .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
   .map((entry) => resolve(apiRoutesDir, entry.name))
   .sort();
 
+let adminApiFiles = 0;
 let protectedAdminApiRoutes = 0;
-for (const filePath of adminApiRouteFiles) {
+for (const filePath of apiRouteFiles) {
   const source = readFileSync(filePath, 'utf8');
   const routes = adminApiRoutesInFile(filePath);
-  if (routes.length && !source.includes("from '../admin/access.js'")) {
+  if (!routes.length) continue;
+  adminApiFiles += 1;
+
+  if (!source.includes("from '../admin/access.js'")) {
     failures.push(`${basename(filePath)} expone rutas Admin pero no importa el control de acceso de plataforma.`);
   }
 
@@ -232,7 +236,7 @@ for (const filePath of adminApiRouteFiles) {
   }
 }
 
-if (protectedAdminApiRoutes === 0) {
+if (adminApiFiles === 0 || protectedAdminApiRoutes === 0) {
   failures.push('No se detectaron endpoints /api/v1/admin protegidos; revisa el detector del contrato.');
 }
 
@@ -247,5 +251,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin de API protegidos).`,
+  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers).`,
 );
