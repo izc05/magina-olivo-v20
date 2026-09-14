@@ -22,6 +22,7 @@ on:
       - 'apps/web/src/components/mi-olivo-activity-tracker.module.css'
       - 'apps/web/src/components/mi-olivo-discovery-compass.tsx'
       - 'apps/web/src/components/mi-olivo-discovery-compass.module.css'
+      - 'apps/web/src/components/mi-olivo-discovery-progress.tsx'
       - 'apps/web/src/lib/mi-olivo-discovery.ts'
       - 'database/migrations/0050_mi_olivo_core.sql'
       - 'database/migrations/0051_mi_olivo_v2_source_validation.sql'
