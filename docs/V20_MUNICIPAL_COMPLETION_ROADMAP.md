@@ -34,33 +34,26 @@ Incluye comparación `Borrador editorial` vs `Resultado público actual`, estado
 
 ## Fase 3 — Historial y auditoría municipal legible
 
-Estado: EN IMPLEMENTACIÓN en `feat/v20-municipalities-audit-history`.
+Estado: IMPLEMENTADA en PR #103 / `feat/v20-municipalities-audit-history`; validación CI en curso.
 
-Objetivos:
-- reutilizar `adminApi.audit()` sin crear backend paralelo;
-- correlacionar por ID municipal, IDs de piezas CMS y metadata con identidad canónica;
-- mostrar qué cambió, cuándo y qué objetivo municipal afectó;
-- mostrar actor solo como rol + identificador abreviado;
-- ocultar metadata bruta y limitar los detalles visibles a campos seguros;
-- mantener `?municipio=<slug>`.
-
-Cierre:
-- solo lectura;
-- sin endpoint/tabla nuevos;
-- sin directorio de usuarios;
-- no exponer metadata sensible;
-- contratos y matriz CI verdes.
+Incluye reutilización de `adminApi.audit()`, correlación por identidad canónica/targets CMS, actor abreviado, metadata bruta oculta, solo lectura y contexto municipal. No crea backend paralelo ni consulta el directorio de usuarios.
 
 ## Fase 4 — Matriz de huecos de contenido
 
+Estado: EN IMPLEMENTACIÓN en `feat/v20-municipalities-gap-matrix`.
+
 Objetivos:
-- detectar por municipio huecos de perfil, media, procedencia, patrimonio, naturaleza, turismo, actualidad y economía;
-- separar cobertura institucional de preparación editorial;
-- enlaces directos al editor que resuelve cada hueco.
+- matriz alfabética de los 16 municipios;
+- nueve señales binarias: perfil, resumen, hero, procedencia, patrimonio, naturaleza, turismo, actualidad y economía;
+- respetar estado y ventanas de publicación;
+- filtro por área y solo huecos;
+- enlace directo a la herramienta que resuelve cada ausencia;
+- ninguna nota subjetiva ni ranking.
 
 Cierre:
-- todas las señales son binarias y derivadas de datos reales;
-- ninguna puntuación subjetiva ni ranking de municipios.
+- solo lectura;
+- fuentes canónicas existentes;
+- contrato específico y matriz CI verdes.
 
 ## Fase 5 — QA municipal final 16/16
 
