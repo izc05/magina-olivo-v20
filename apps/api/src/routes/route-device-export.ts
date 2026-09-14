@@ -13,6 +13,7 @@ import { registerAdminRouteAdventureBulkRoutes } from './admin-route-adventure-b
 import { registerAdminRouteAdventureReadinessRoutes } from './admin-route-adventure-readiness.js';
 import { registerAdminRouteAdventureCandidateRoutes } from './admin-route-adventure-candidates.js';
 import { registerAdminRouteAdventureProgressionRoutes } from './admin-route-adventure-progression.js';
+import { registerAdminRouteKmlRoutes } from './admin-route-kml.js';
 
 const slugParams = z.object({ slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/) });
 
@@ -36,6 +37,7 @@ export function registerRouteDeviceExportRoutes(app: FastifyInstance, db: Databa
   registerAdminRouteAdventureReadinessRoutes(app, db);
   registerAdminRouteAdventureCandidateRoutes(app, db);
   registerAdminRouteAdventureProgressionRoutes(app, db);
+  registerAdminRouteKmlRoutes(app, db);
 
   app.get('/api/v1/public/routes/:slug/gpx', async (request, reply) => {
     if (!db) return reply.code(503).send({ error: 'database_unavailable' });
