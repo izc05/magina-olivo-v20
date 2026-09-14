@@ -10,6 +10,7 @@ import {
   type PublicMill,
   type PublicMillReward,
 } from '@/lib/public-mills-source';
+import { RewardQr } from './reward-qr';
 import styles from './public-mills.module.css';
 
 function safeExternalUrl(value: string | null): string | null {
@@ -93,13 +94,15 @@ function RewardCatalog({ slug }: { slug: string }) {
 
   return <section className={styles.stateCard} aria-label="Premios de la almazara">
     <h2>Premios con Mi Olivo</h2>
-    <p>Canjea tus aceitunas por productos reales. Al confirmar se reservan durante 7 días y recibirás un código único para recogerlos en la almazara.</p>
+    <p>Canjea tus aceitunas por productos reales. Al confirmar se reservan durante 7 días y recibirás un QR único para recogerlos en la almazara.</p>
     {message ? <p role="alert">{message}</p> : null}
     {credential ? <div className={styles.cardBody}>
       <strong>✅ Premio reservado: {credential.productTitle}</strong>
-      <p>Presenta este código en la almazara. Solo puede utilizarse una vez.</p>
-      <code style={{ overflowWrap: 'anywhere', fontSize: '1rem' }}>{credential.code}</code>
+      <p>Presenta este QR en la almazara. Solo puede utilizarse una vez.</p>
+      <RewardQr code={credential.code} />
+      <code style={{ overflowWrap: 'anywhere', fontSize: '0.8rem' }}>{credential.code}</code>
       <small>Caduca: {new Date(credential.expiresAt).toLocaleString('es-ES')}</small>
+      <Link className={styles.secondaryLink} href="/mi-olivo/canjes">Ver todos mis canjes →</Link>
     </div> : null}
     {!items.length ? <p>Esta almazara todavía no tiene premios activos.</p> : null}
     <div className={styles.grid}>
