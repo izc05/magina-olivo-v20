@@ -14,6 +14,7 @@ import { registerAdminBusinessDirectoryRoutes } from './routes/admin-business-di
 import { registerAdminBusinessCategoryRoutes } from './routes/admin-business-categories.js';
 import { registerAdminBusinessRevenueRoutes } from './routes/admin-business-revenue.js';
 import { registerAdminBusinessPassRoutes } from './routes/admin-business-pass.js';
+import { registerAdminAlmazaraRewardRoutes } from './routes/admin-almazara-rewards.js';
 import { registerAdminSourceRoutes } from './routes/admin-sources.js';
 import { registerAdminSourceOperationRoutes } from './routes/admin-source-operations.js';
 import { registerAdminAnalyticsRoutes } from './routes/admin-analytics.js';
@@ -59,6 +60,7 @@ import { registerBusinessPortalRoutes } from './routes/business-portal.js';
 import { registerBusinessExperienceRoutes } from './routes/business-experiences.js';
 import { registerBusinessExperienceManagementRoutes } from './routes/business-experience-management.js';
 import { registerBusinessPassRoutes } from './routes/business-pass.js';
+import { registerAlmazaraRewardRoutes } from './routes/almazara-rewards.js';
 import { registerMarketRoutes } from './routes/market.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
@@ -205,6 +207,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminBusinessCategoryRoutes(app, db);
   registerAdminBusinessRevenueRoutes(app, db);
   registerAdminBusinessPassRoutes(app, db);
+  registerAdminAlmazaraRewardRoutes(app, db);
   registerAdminSourceRoutes(app, db);
   registerAdminSourceOperationRoutes(app, db, weatherProvider, radarQueue, notificationQueue);
   registerAdminAnalyticsRoutes(app, db);
@@ -225,6 +228,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerBusinessExperienceRoutes(app, db);
   registerBusinessExperienceManagementRoutes(app, db);
   registerBusinessPassRoutes(app, db);
+  registerAlmazaraRewardRoutes(app, db);
   registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db, storage);
