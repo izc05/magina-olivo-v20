@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AdventureHubClient } from './adventure-hub-client';
+import { AdventureResumeBanner } from './adventure-resume-banner';
 import { AdventureTerritoryBoard } from './adventure-territory-board';
 import styles from './adventure.module.css';
 
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 export default function AdventurePage() {
   return <div className={styles.page}>
     <AdventureHubClient />
+    <AdventureResumeBanner />
     <AdventureTerritoryBoard />
   </div>;
 }
