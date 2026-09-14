@@ -104,6 +104,16 @@ if (!modulesPage.includes("import moduleRegistry from './admin-modules.json'")) 
   failures.push('La UI de módulos debe leer el registro canónico admin-modules.json.');
 }
 
+if (!adminPage.includes("import moduleRegistry from './modulos/admin-modules.json'")) {
+  failures.push('La portada Admin debe leer el mismo registro canónico que el directorio.');
+}
+if (!adminPage.includes("module.status === 'available' && module.href")) {
+  failures.push('La portada Admin debe generar sus accesos operativos desde módulos available del registro.');
+}
+if (!adminPage.includes('href="/admin/modulos"')) {
+  failures.push('El centro Admin no enlaza al directorio unificado.');
+}
+
 const ids = modules.map((module) => module?.id);
 for (const id of baselineModuleIds) {
   const occurrences = ids.filter((candidate) => candidate === id).length;
@@ -211,9 +221,6 @@ for (const filePath of adminApiRouteFiles) {
 if (protectedAdminApiRoutes === 0) {
   failures.push('No se detectaron endpoints /api/v1/admin protegidos; revisa el detector del contrato.');
 }
-
-if (!adminPage.includes('href="/admin/modulos"')) failures.push('El centro Admin no enlaza al directorio unificado.');
-if (!adminPage.includes('href="/admin/ayuntamientos"')) failures.push('El centro Admin no enlaza directamente a Ayuntamientos.');
 
 if (!modulesPage.includes('Que esté implementado en otra rama demuestra cobertura')) {
   failures.push('Falta la regla explícita que separa cobertura de absorción.');
