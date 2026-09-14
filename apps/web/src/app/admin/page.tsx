@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AdminControlCenter } from '../../components/admin-control-center';
+import moduleRegistry from './modulos/admin-modules.json';
 import './admin.css';
 
 export const metadata: Metadata = {
@@ -9,29 +10,28 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+type AdminShortcut = {
+  id: string;
+  title: string;
+  status: 'available' | 'implemented';
+  href?: string;
+};
+
+const availableShortcuts = (moduleRegistry as AdminShortcut[])
+  .filter((module) => module.status === 'available' && module.href)
+  .sort((a, b) => a.title.localeCompare(b.title, 'es'));
+
 export default function AdminPage() {
   return (
     <>
       <AdminControlCenter />
       <nav className="admin-shortcuts" aria-label="Herramientas de administración">
-        <Link href="/admin/operaciones" aria-label="Abrir centro operativo de plataforma">Operaciones</Link>
-        <Link href="/admin/analitica" aria-label="Abrir analítica histórica de plataforma">Analítica</Link>
-        <Link href="/admin/gestion" aria-label="Abrir gestión de workspaces, miembros y fincas">Gestión</Link>
-        <Link href="/admin/campanas-planes" aria-label="Abrir administración de campañas y planes">Campañas</Link>
-        <Link href="/admin/agenda" aria-label="Abrir agenda global">Agenda</Link>
-        <Link href="/admin/trabajos" aria-label="Abrir trabajos y actividad agrícola">Trabajos</Link>
-        <Link href="/admin/documentos" aria-label="Abrir soporte de documentos y OCR">Documentos/OCR</Link>
-        <Link href="/admin/profesional" aria-label="Abrir soporte comercial profesional">Profesional</Link>
-        <Link href="/admin/fuentes" aria-label="Abrir estado de fuentes y datos">Fuentes</Link>
-        <Link href="/admin/territorio" aria-label="Abrir administración de territorio y directorio editorial">Territorio</Link>
-        <Link href="/admin/rutas" aria-label="Abrir administración de rutas y tracks GPX">Rutas</Link>
-        <Link href="/admin/empresas" aria-label="Abrir directorio estructurado de empresas y servicios">Empresas</Link>
-        <Link href="/admin/empresas/rendimiento" aria-label="Abrir rendimiento comercial, leads y ofertas de empresas">Rendimiento empresas</Link>
-        <Link href="/admin/empresas/experiencias" aria-label="Administrar experiencias, sesiones y reservas">Experiencias empresas</Link>
-        <Link href="/admin/empresas/magina-pass" aria-label="Administrar Mágina Pass, QR y recompensas">Mágina Pass</Link>
-        <Link href="/admin/empresas/categorias" aria-label="Abrir categorías del directorio de empresas">Categorías empresas</Link>
-        <Link href="/admin/media" aria-label="Abrir biblioteca multimedia">Multimedia</Link>
-        <Link href="/admin/web" aria-label="Abrir editor visual de la web">Editar web</Link>
+        <Link href="/admin/modulos" aria-label="Abrir directorio unificado de módulos">Módulos</Link>
+        {availableShortcuts.map((module) => (
+          <Link href={module.href!} aria-label={`Abrir administración de ${module.title}`} key={module.id}>
+            {module.title}
+          </Link>
+        ))}
       </nav>
     </>
   );
