@@ -54,6 +54,23 @@ try {
   assert.equal(superAdminSession.json().platform_access.role, 'super_admin');
   assert.equal(superAdminSession.json().platform_access.source, 'bootstrap');
 
+  const selfDemotion = await app.inject({
+    method: 'PUT',
+    url: `/api/v1/admin/platform-access/${superAdminId}`,
+    headers: { cookie: superAdminLogin.cookie },
+    payload: { role: 'admin', status: 'active' },
+  });
+  assert.equal(selfDemotion.statusCode, 409, selfDemotion.body);
+  assert.equal(selfDemotion.json().error, 'cannot_change_current_admin_access');
+
+  const superAdminAfterBlockedDemotion = await app.inject({
+    method: 'GET',
+    url: '/api/v1/admin/session',
+    headers: { cookie: superAdminLogin.cookie },
+  });
+  assert.equal(superAdminAfterBlockedDemotion.statusCode, 200, superAdminAfterBlockedDemotion.body);
+  assert.equal(superAdminAfterBlockedDemotion.json().platform_access.role, 'super_admin');
+
   claims = {
     ...claims,
     subject: 'role-safety-admin',
