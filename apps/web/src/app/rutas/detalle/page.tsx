@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { BottomNav } from '@/components/bottom-nav';
+import { Topbar } from '@/components/topbar';
 import { RouteDetailClient } from './route-detail-client';
 
 export const metadata: Metadata = {
@@ -8,5 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function RouteDetailPage() {
-  return <RouteDetailClient />;
+  return <main className="app-shell">
+    <Topbar />
+    <div className="page"><RouteDetailClient /></div>
+    <BottomNav active="/explorar" />
+  </main>;
 }
