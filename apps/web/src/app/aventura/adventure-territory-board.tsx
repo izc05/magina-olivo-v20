@@ -1,21 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { apiFetch } from '../../lib/api-client';
-import styles from './adventure.module.css';
+import styles from './adventure-passport.module.css';
 
 type TerritoryProfile = {
-  summary: {
-    total_score: number;
-  };
-  journey: {
-    completed_routes: number;
-    completed_distance_m: number;
-  };
-  recorded: {
-    activity_count: number;
-    recorded_distance_m: number;
-  };
+  summary: { total_score: number };
+  journey: { completed_routes: number; completed_distance_m: number };
+  recorded: { activity_count: number; recorded_distance_m: number };
   territory: {
     available_checkpoints: number;
     unlocked_checkpoints: number;
@@ -90,7 +82,7 @@ export function AdventureTerritoryBoard() {
         <h2 id="magina-passport-title">Tu territorio conquistado</h2>
         <p>Los descubrimientos, rutas completadas y kilómetros registrados proceden de actividad real. Mágina Aventura no convierte tus recorridos en una clasificación de velocidad.</p>
       </div>
-      <div className={styles.exploredRing} style={{ '--explored': `${territory.explored_percent * 3.6}deg` } as React.CSSProperties}>
+      <div className={styles.exploredRing} style={{ '--explored': `${territory.explored_percent * 3.6}deg` } as CSSProperties}>
         <div><strong>{territory.explored_percent}%</strong><span>explorado</span></div>
       </div>
     </div>
@@ -100,9 +92,7 @@ export function AdventureTerritoryBoard() {
       <div className={styles.levelCopy}>
         <span>Nivel {progression.current.level}</span>
         <h3>{progression.current.name}</h3>
-        <div className={styles.levelProgress}>
-          <div style={{ width: `${progression.progressPercent}%` }} />
-        </div>
+        <div className={styles.levelProgress}><div style={{ width: `${progression.progressPercent}%` }} /></div>
         <small>{progression.next ? `${progression.progressXp}/${progression.targetXp} XP para ${progression.next.name}` : 'Has alcanzado el rango máximo de Mágina Aventura'}</small>
       </div>
       <div className={styles.xpBadge}><strong>{totalXp}</strong><span>XP</span></div>
