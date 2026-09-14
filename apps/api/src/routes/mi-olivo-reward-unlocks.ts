@@ -174,6 +174,35 @@ export function registerMiOlivoRewardUnlockRoutes(app: FastifyInstance, db: Data
     };
   });
 
+  // Companion metadata for /mi-olivo/canjes. The mature redemption endpoint
+  // remains untouched; this only links each reservation back to its public mill.
+  app.get('/api/v1/my/almazara-redemption-pickups', async (request, reply) => {
+    const database = requireDatabase(db, reply);
+    if (!database) return;
+    const userId = requireAuthenticatedUser(request, reply);
+    if (!userId) return;
+
+    const result = await sql<{
+      redemption_id: string;
+      business_slug: string;
+    }>`
+      SELECT r.id::text AS redemption_id,
+             b.slug AS business_slug
+      FROM mill_reward_redemptions r
+      JOIN businesses b ON b.id=r.business_id
+      WHERE r.user_id=${userId}::uuid
+      ORDER BY r.created_at DESC
+      LIMIT 100
+    `.execute(database);
+
+    return {
+      pickups: result.rows.map((row) => ({
+        redemptionId: row.redemption_id,
+        businessSlug: row.business_slug,
+      })),
+    };
+  });
+
   app.get('/api/v1/my/businesses/:id/almazara-reward-unlocks', async (request, reply) => {
     const database = requireDatabase(db, reply);
     if (!database) return;
