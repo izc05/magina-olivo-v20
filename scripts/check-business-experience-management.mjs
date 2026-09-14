@@ -45,7 +45,7 @@ try {
   expectStatus(await app.inject({ method:'PATCH', url:`/api/v1/my/businesses/${businessId}/experience-bookings/${secondId}`, headers, payload:{status:'confirmed'} }), 200, 'confirm second after capacity increase');
   expectStatus(await app.inject({ method:'PATCH', url:`/api/v1/my/businesses/${businessId}/experiences/${experienceId}`, headers, payload:{title:'Cata Management Actualizada',priceCents:1750} }), 200, 'edit experience');
 
-  const state = await sql<{confirmed_count:number;capacity:number;title:string;price_cents:number}>`
+  const state = await sql`
     SELECT s.confirmed_count,s.capacity,e.title,e.price_cents
     FROM business_experience_slots s JOIN business_experiences e ON e.id=s.experience_id WHERE s.id=${slotId}::uuid
   `.execute(db);
