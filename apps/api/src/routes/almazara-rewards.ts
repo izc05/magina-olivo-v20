@@ -281,7 +281,7 @@ export function registerAlmazaraRewardRoutes(app: FastifyInstance, db: DatabaseC
     if (!access || !scannerRoles.has(access.role)) return reply.code(403).send({ error: 'redemption_scan_denied' });
 
     try {
-      const redeemed = await database.transaction().execute(async (trx) => {
+      const result = await database.transaction().execute(async (trx) => {
         const found = await sql<{ id: string; product_id: string; status: string; expires_at: Date; title: string }>`
           SELECT r.id::text, r.product_id::text, r.status, r.expires_at, p.title
           FROM mill_reward_redemptions r JOIN mill_reward_products p ON p.id=r.product_id
@@ -295,7 +295,7 @@ export function registerAlmazaraRewardRoutes(app: FastifyInstance, db: DatabaseC
           await sql`UPDATE mill_reward_redemptions SET status='expired', updated_at=now() WHERE id=${row.id}::uuid`.execute(trx);
           await sql`UPDATE mill_reward_products SET stock_reserved=GREATEST(0,stock_reserved-1), updated_at=now() WHERE id=${row.product_id}::uuid`.execute(trx);
           await sql`INSERT INTO mill_reward_redemption_audit (redemption_id, actor_user_id, event_type) VALUES (${row.id}::uuid, ${userId}::uuid, 'expired')`.execute(trx);
-          throw new Error('redemption_expired');
+          return { expired: true as const, id: row.id, productTitle: row.title };
         }
         await sql`
           UPDATE mill_reward_redemptions SET status='redeemed', redeemed_at=now(), redeemed_by=${userId}::uuid, updated_at=now()
@@ -306,12 +306,13 @@ export function registerAlmazaraRewardRoutes(app: FastifyInstance, db: DatabaseC
           WHERE id=${row.product_id}::uuid
         `.execute(trx);
         await sql`INSERT INTO mill_reward_redemption_audit (redemption_id, actor_user_id, event_type) VALUES (${row.id}::uuid, ${userId}::uuid, 'redeemed')`.execute(trx);
-        return { id: row.id, productTitle: row.title };
+        return { expired: false as const, id: row.id, productTitle: row.title };
       });
-      return { redemption: { ...redeemed, status: 'redeemed' } };
+      if (result.expired) return reply.code(409).send({ error: 'redemption_expired' });
+      return { redemption: { id: result.id, productTitle: result.productTitle, status: 'redeemed' } };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'redemption_failed';
-      const status = message === 'redemption_not_found' ? 404 : message === 'redemption_not_redeemable' || message === 'redemption_expired' ? 409 : 500;
+      const status = message === 'redemption_not_found' ? 404 : message === 'redemption_not_redeemable' ? 409 : 500;
       return reply.code(status).send({ error: message });
     }
   });
