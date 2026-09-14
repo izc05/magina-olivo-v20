@@ -157,7 +157,7 @@ export function registerCommunityActivityRoutes(app: FastifyInstance, db: Databa
         SELECT
           events.*,
           (events.created_at > read_state.last_seen_at) AS unread,
-          COUNT(*) FILTER (WHERE events.created_at > read_state.last_seen_at) OVER ()::int AS unread_count,
+          (COUNT(*) FILTER (WHERE events.created_at > read_state.last_seen_at) OVER ())::int AS unread_count,
           read_state.last_seen_at
         FROM events
         CROSS JOIN read_state
