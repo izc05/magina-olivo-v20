@@ -12,6 +12,7 @@ Comunidad Mágina es el feed social público de Mágina Olivo. Une conversacione
 4. La geometría exacta de fincas, documentos privados, costes, cosechas y clientes nunca se copian automáticamente al feed.
 5. Los contenidos pueden asociarse únicamente a un municipio público de Sierra Mágina.
 6. La moderación y la auditoría existen antes de abrir la comunidad a usuarios reales.
+7. El avatar solo se expone cuando el perfil del usuario está marcado como público.
 
 ## Categorías V1
 
@@ -45,7 +46,9 @@ Comunidad Mágina es el feed social público de Mágina Olivo. Une conversacione
 
 ### Moderación
 
+- módulo Admin registrado como `Comunidad Mágina` en `/admin/comunidad`;
 - cola de reportes en `/api/v1/admin/community/reports`;
+- filtros por estado de revisión;
 - ocultar, restaurar o eliminar posts/comentarios;
 - roles de plataforma obligatorios;
 - acciones registradas en `admin_audit_log`;
@@ -69,7 +72,7 @@ Los borrados de usuario son lógicos (`status=deleted`) para preservar integrida
 
 La comunidad no acepta `workspace_id`, `field_id` ni geometrías como parte del contrato público V1. Una futura función explícita de «Compartir desde Mi Campo» deberá crear una representación pública nueva y pedir confirmación del usuario; nunca expondrá automáticamente polígonos, coordenadas exactas ni documentos privados.
 
-La foto/avatar solo debe tratarse como identidad pública cuando la política de perfil correspondiente lo permita. Ningún email se devuelve desde los endpoints de comunidad.
+El avatar solo se devuelve en las consultas públicas cuando `user_profiles.visibility = 'public'`. Ningún email se devuelve desde los endpoints de comunidad.
 
 ## Media
 
@@ -81,18 +84,21 @@ Superficie pública: `/comunidad`.
 
 La entrada se añade a `Explorar`. La pantalla tiene estados reales de carga, vacío y error y no utiliza publicaciones ficticias como fallback.
 
+Superficie administrativa: `/admin/comunidad`.
+
+El módulo está incluido en `admin/modulos/admin-modules.json`, por lo que queda gobernado por el Admin unificado y por su `AdminRouteGate` compartido.
+
 ## Checks
 
 `pnpm check:community`
 
-El contrato verifica tablas, endpoints, autorización, moderación, auditoría, superficie web y la ausencia de identificadores privados de finca/workspace en el API de comunidad.
+El contrato verifica tablas, endpoints, autorización, moderación, auditoría, privacidad del avatar, superficie pública, superficie Admin y registro en el centro unificado. Además impide introducir identificadores privados de finca/workspace en el API de comunidad.
 
 ## Siguiente evolución
 
 - subida de imágenes desde el media manager;
-- reportes sobre comentarios desde la UI;
+- reportes sobre comentarios desde la UI pública;
 - perfiles públicos y logros de Mi Olivo/Mágina Aventura compartibles de forma explícita;
-- notificaciones de respuestas/reacciones;
-- panel visual de moderación integrado en el Admin unificado;
+- notificaciones de respuestas/reacciones con un modelo que no dependa de workspace;
 - herramientas anti-spam y límites específicos por usuario;
 - contenido destacado/editorial sin mezclarlo con publicidad encubierta.

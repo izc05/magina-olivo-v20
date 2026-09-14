@@ -16,6 +16,7 @@ for (const table of ['community_posts','community_comments','community_reactions
 }
 requireText(migration, "status IN ('published','hidden','deleted')", 'community moderation state');
 requireText(migration, 'Exact farm geometry', 'community privacy contract');
+requireText(migration, 'community_reports_moderation_queue_idx', 'community moderation queue index');
 
 const routes = requireFile('apps/api/src/routes/community.ts');
 for (const endpoint of [
@@ -27,6 +28,7 @@ for (const endpoint of [
   '/api/v1/community/reports',
 ]) requireText(routes, endpoint, 'community API');
 requireText(routes, 'requireAuthenticatedUser', 'community authenticated writes');
+requireText(routes, "CASE WHEN up.visibility = 'public' THEN u.avatar_url ELSE NULL END AS author_avatar_url", 'community profile privacy');
 if (routes.includes('workspace_id') || routes.includes('field_id') || routes.includes('geometry')) {
   fail('community API must not copy private workspace, field or geometry identifiers into the public feed');
 }
@@ -50,5 +52,17 @@ const explore = requireFile('apps/web/src/app/explorar/explore-public-client.tsx
 requireText(explore, "href: '/comunidad'", 'Explore community entry');
 requireFile('apps/web/src/lib/community-source.ts');
 requireFile('apps/web/src/app/comunidad/community.module.css');
+
+requireFile('apps/web/src/app/admin/comunidad/page.tsx');
+const adminConsole = requireFile('apps/web/src/components/admin-community-console.tsx');
+requireText(adminConsole, '/api/v1/admin/community/reports', 'community Admin queue');
+requireText(adminConsole, '/api/v1/admin/community/moderation', 'community Admin moderation');
+requireFile('apps/web/src/components/admin-community-console.module.css');
+
+const registry = JSON.parse(requireFile('apps/web/src/app/admin/modulos/admin-modules.json') || '[]');
+const communityModule = Array.isArray(registry) ? registry.find((module) => module?.id === 'community') : null;
+if (!communityModule || communityModule.status !== 'available' || communityModule.href !== '/admin/comunidad') {
+  fail('community must be registered as available at /admin/comunidad in the unified Admin registry');
+}
 
 if (!process.exitCode) console.log('community-check: ok');
