@@ -9,11 +9,13 @@ import {
   loadCommunityBookmarks,
   loadCommunityComments,
   loadCommunityFeed,
+  loadCommunityHighlights,
   reportCommunityTarget,
   setCommunityBookmark,
   setCommunityLike,
   type CommunityCategory,
   type CommunityComment,
+  type CommunityHighlight,
   type CommunityPost,
 } from '@/lib/community-source';
 import { loadPublicMunicipalities, type PublicMunicipalityDirectory } from '@/lib/public-territory-source';
@@ -30,6 +32,7 @@ const reportReasons = [
 
 type ReportReason = (typeof reportReasons)[number][0];
 type FeedMode = 'recent' | 'saved';
+type ReplyTarget = { id: string; name: string };
 
 function categoryLabel(value: string) {
   return communityCategories.find((category) => category.value === value)?.label ?? value;
@@ -47,12 +50,26 @@ function authMessage(error: unknown) {
     : 'No hemos podido completar la acción. Inténtalo de nuevo.';
 }
 
+function orderedComments(items: CommunityComment[]) {
+  const roots = items.filter((item) => !item.parent_comment_id);
+  const replies = items.filter((item) => item.parent_comment_id);
+  const ordered: CommunityComment[] = [];
+  for (const root of roots) {
+    ordered.push(root);
+    ordered.push(...replies.filter((reply) => reply.parent_comment_id === root.id));
+  }
+  ordered.push(...replies.filter((reply) => !roots.some((root) => root.id === reply.parent_comment_id)));
+  return ordered;
+}
+
 export function CommunityClient() {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [mode, setMode] = useState<FeedMode>('recent');
   const [category, setCategory] = useState<CommunityCategory | 'all'>('all');
   const [municipality, setMunicipality] = useState<string>('all');
   const [municipalities, setMunicipalities] = useState<PublicMunicipalityDirectory[]>([]);
+  const [highlights, setHighlights] = useState<CommunityHighlight[]>([]);
+  const [highlightsLoading, setHighlightsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
@@ -66,10 +83,12 @@ export function CommunityClient() {
   const [comments, setComments] = useState<Record<string, CommunityComment[]>>({});
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [replyTargets, setReplyTargets] = useState<Record<string, ReplyTarget | null>>({});
   const [reportReason, setReportReason] = useState<Record<string, ReportReason>>({});
 
   const activeCategory = category === 'all' ? null : category;
   const activeMunicipality = municipality === 'all' ? null : municipality;
+  const activeMunicipalityName = municipalities.find((item) => item.slug === activeMunicipality)?.name ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +97,19 @@ export function CommunityClient() {
       .catch(() => { if (!cancelled) setMunicipalities([]); });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setHighlightsLoading(true);
+    loadCommunityHighlights({ municipality: activeMunicipality, limit: 3 })
+      .then((response) => { if (!cancelled) setHighlights(response.items); })
+      .catch((cause) => {
+        console.warn('Unable to load community highlights', cause);
+        if (!cancelled) setHighlights([]);
+      })
+      .finally(() => { if (!cancelled) setHighlightsLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeMunicipality]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -189,15 +221,22 @@ export function CommunityClient() {
   async function submitComment(post: CommunityPost) {
     const body = (commentDrafts[post.id] ?? '').trim();
     if (!body) return;
+    const replyTarget = replyTargets[post.id] ?? null;
     try {
-      await createCommunityComment(post.id, body);
+      await createCommunityComment(post.id, body, replyTarget?.id ?? null);
       const response = await loadCommunityComments(post.id);
       setComments((state) => ({ ...state, [post.id]: response.items }));
       setCommentDrafts((state) => ({ ...state, [post.id]: '' }));
+      setReplyTargets((state) => ({ ...state, [post.id]: null }));
       setPosts((items) => items.map((item) => item.id === post.id ? { ...item, comment_count: response.items.length } : item));
     } catch (cause) {
       setNotice(authMessage(cause));
     }
+  }
+
+  function startReply(postId: string, comment: CommunityComment) {
+    if (comment.parent_comment_id) return;
+    setReplyTargets((state) => ({ ...state, [postId]: { id: comment.id, name: comment.author_name } }));
   }
 
   async function reportTarget(targetType: 'post' | 'comment', targetId: string) {
@@ -250,6 +289,13 @@ export function CommunityClient() {
     }
   }
 
+  function focusHighlight(highlight: CommunityHighlight) {
+    setMode('recent');
+    setCategory('all');
+    setMunicipality(highlight.municipality_slug ?? 'all');
+    window.setTimeout(() => document.getElementById(`post-${highlight.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
+  }
+
   return <>
     <section className={styles.hero}>
       <span className="eyebrow">COMUNIDAD MÁGINA</span>
@@ -297,6 +343,23 @@ export function CommunityClient() {
         </button>
       </div>
       {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
+    </section>
+
+    <section className={styles.highlights} aria-labelledby="community-highlights-title">
+      <div className={styles.highlightsHead}>
+        <div><span className="eyebrow dark">DESTACADO</span><h2 id="community-highlights-title">{activeMunicipalityName ? `Ahora en ${activeMunicipalityName}` : 'Lo que mueve Sierra Mágina'}</h2></div>
+        <span>Últimos 30 días · conversación + reacciones</span>
+      </div>
+      {highlightsLoading ? <div className={styles.highlightState}>Calculando conversaciones destacadas…</div> : null}
+      {!highlightsLoading && highlights.length === 0 ? <div className={styles.highlightState}>Todavía no hay suficiente actividad para destacar contenido aquí.</div> : null}
+      <div className={styles.highlightGrid}>
+        {highlights.map((highlight, index) => <button type="button" key={highlight.id} className={styles.highlightCard} onClick={() => focusHighlight(highlight)}>
+          <span className={styles.highlightRank}>#{index + 1}</span>
+          <strong>{categoryLabel(highlight.category)}{highlight.municipality_name ? ` · ${highlight.municipality_name}` : ''}</strong>
+          <p>{highlight.body}</p>
+          <span>♥ {highlight.reaction_count} · 💬 {highlight.comment_count}</span>
+        </button>)}
+      </div>
     </section>
 
     <section className={styles.feedSection}>
@@ -347,25 +410,33 @@ export function CommunityClient() {
             <div className={styles.commentList}>
               {!comments[post.id] ? <span>Cargando comentarios…</span> : null}
               {comments[post.id]?.length === 0 ? <span>Todavía no hay respuestas.</span> : null}
-              {comments[post.id]?.map((comment) => {
+              {orderedComments(comments[post.id] ?? []).map((comment) => {
                 const reportKey = `comment:${comment.id}`;
-                return <div className={styles.comment} key={comment.id}>
+                return <div className={`${styles.comment} ${comment.parent_comment_id ? styles.commentReply : ''}`} key={comment.id}>
+                  {comment.reply_to_author_name ? <span className={styles.replyContext}>↪ Respuesta a {comment.reply_to_author_name}</span> : null}
                   <strong>{comment.author_name}</strong><p>{comment.body}</p><small>{formatDate(comment.created_at)}</small>
-                  <details className={styles.commentReport}>
-                    <summary>Reportar</summary>
-                    <div>
-                      <select value={reportReason[reportKey] ?? 'other'} onChange={(event) => setReportReason((state) => ({ ...state, [reportKey]: event.target.value as ReportReason }))}>
-                        {reportReasons.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                      </select>
-                      <button type="button" onClick={() => void reportTarget('comment', comment.id)}>Enviar aviso</button>
-                    </div>
-                  </details>
+                  <div className={styles.commentActions}>
+                    {!comment.parent_comment_id ? <button type="button" onClick={() => startReply(post.id, comment)}>Responder</button> : null}
+                    <details className={styles.commentReport}>
+                      <summary>Reportar</summary>
+                      <div>
+                        <select value={reportReason[reportKey] ?? 'other'} onChange={(event) => setReportReason((state) => ({ ...state, [reportKey]: event.target.value as ReportReason }))}>
+                          {reportReasons.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        </select>
+                        <button type="button" onClick={() => void reportTarget('comment', comment.id)}>Enviar aviso</button>
+                      </div>
+                    </details>
+                  </div>
                 </div>;
               })}
             </div>
+            {replyTargets[post.id] ? <div className={styles.replyingTo}>
+              <span>Respondiendo a <strong>{replyTargets[post.id]!.name}</strong></span>
+              <button type="button" onClick={() => setReplyTargets((state) => ({ ...state, [post.id]: null }))}>Cancelar</button>
+            </div> : null}
             <div className={styles.commentComposer}>
-              <input value={commentDrafts[post.id] ?? ''} onChange={(event) => setCommentDrafts((state) => ({ ...state, [post.id]: event.target.value.slice(0, 1000) }))} placeholder="Escribe una respuesta…" />
-              <button type="button" onClick={() => void submitComment(post)} disabled={!(commentDrafts[post.id] ?? '').trim()}>Responder</button>
+              <input value={commentDrafts[post.id] ?? ''} onChange={(event) => setCommentDrafts((state) => ({ ...state, [post.id]: event.target.value.slice(0, 1000) }))} placeholder={replyTargets[post.id] ? `Responder a ${replyTargets[post.id]!.name}…` : 'Escribe un comentario…'} />
+              <button type="button" onClick={() => void submitComment(post)} disabled={!(commentDrafts[post.id] ?? '').trim()}>{replyTargets[post.id] ? 'Responder' : 'Comentar'}</button>
             </div>
           </div> : null}
 
