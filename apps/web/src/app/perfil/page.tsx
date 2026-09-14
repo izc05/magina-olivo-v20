@@ -97,6 +97,14 @@ export default function ProfilePage() {
         <div className="olivo-level"><span className="olivo-mark"><SproutIcon/></span><div><strong>{authenticated ? 'Tu olivo personal' : 'Conoce Mi Olivo'}</strong><small>Mi Olivo ya está disponible. Los puntos y recompensas seguirán ampliándose en una fase posterior.</small><div className="level-bar"><i/></div></div></div>
         <Link className="profile-line" href="/mi-olivo"><span>Abrir Mi Olivo</span><span>›</span></Link>
       </section>
+
+      <section className="card profile-card premium-profile-card">
+        <div className="profile-card-head"><h3>Mis pueblos</h3><span>{authenticated ? 'Mi Mágina' : 'Con cuenta'}</span></div>
+        <p className="subtle">Elige tu pueblo principal y sigue otros municipios para personalizar noticias, eventos, empresas y avisos del territorio.</p>
+        <Link className="profile-line" href="/mis-pueblos"><span>Configurar Mis pueblos</span><span>›</span></Link>
+        <Link className="profile-line" href="/pueblos"><span>Explorar Pueblos de Mágina</span><span>›</span></Link>
+      </section>
+
       <section className="card profile-card premium-profile-card professional-card">
         <div className="profile-card-head"><h3>Perfil profesional</h3><span>{authenticated ? 'Configurable arriba' : 'Con cuenta'}</span></div>
         <p>Trabaja para terceros sin mezclar tu información personal ni tus fincas privadas.</p>
