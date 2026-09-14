@@ -41,7 +41,7 @@ function businessFeedItem(business: BusinessDirectoryItem): TerritorialFeedItem 
     townName: town.name,
     title: business.name,
     summary: business.shortDescription,
-    href: `/empresas/${encodeURIComponent(business.slug)}`,
+    href: `/empresas?slug=${encodeURIComponent(business.slug)}`,
     timestamp: null,
     featured: business.placement.featured || business.placement.sponsored,
   };
