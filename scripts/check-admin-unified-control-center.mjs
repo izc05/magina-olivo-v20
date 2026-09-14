@@ -148,6 +148,7 @@ if (!modulesDirectory) {
   if (!modulesDirectory.includes("useState<'all' | ModuleStatus>")) failures.push('El directorio Admin debe filtrar por estado.');
   if (!modulesDirectory.includes("useState<'all' | ModuleArea>")) failures.push('El directorio Admin debe filtrar por área.');
   if (!modulesDirectory.includes('aria-live="polite"')) failures.push('El contador de resultados del directorio debe anunciar cambios de forma accesible.');
+  if (!modulesDirectory.includes('PR fuente')) failures.push('El directorio Admin debe mostrar el PR fuente de los handoffs pendientes.');
 }
 
 if (!adminPage.includes("import moduleRegistry from './modulos/admin-modules.json'")) {
@@ -197,7 +198,7 @@ for (const module of modules) {
 
   if (module.status === 'available') {
     if (!isAdminHref(module.href)) failures.push(`${label} está disponible pero no declara href bajo /admin/.`);
-    if (module.sourceBranch || module.targetHref) failures.push(`${label} está disponible y no debe conservar metadatos de integración externa.`);
+    if (module.sourceBranch || module.sourcePr || module.targetHref) failures.push(`${label} está disponible y no debe conservar metadatos de integración externa.`);
     if (isAdminHref(module.href) && !existsSync(routeToPagePath(module.href))) {
       failures.push(`La ruta disponible ${module.href} no tiene una page.tsx real.`);
     }
@@ -206,6 +207,7 @@ for (const module of modules) {
   if (module.status === 'implemented') {
     if (module.href) failures.push(`${label} no debe exponer href antes de su absorción.`);
     if (typeof module.sourceBranch !== 'string' || !module.sourceBranch.trim()) failures.push(`${label} debe declarar sourceBranch.`);
+    if (!Number.isInteger(module.sourcePr) || module.sourcePr <= 0) failures.push(`${label} debe declarar sourcePr como número de PR válido.`);
     if (!isAdminHref(module.targetHref)) failures.push(`${label} debe declarar targetHref bajo /admin/.`);
   }
 }
@@ -292,5 +294,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed; directorio filtrable; lanzador visible).`,
+  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas con PR fuente, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed; directorio filtrable; lanzador visible).`,
 );
