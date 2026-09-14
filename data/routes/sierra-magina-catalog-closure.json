@@ -1,6 +1,6 @@
 {
-  "status_version": 5,
-  "audited_at": "2026-09-13",
+  "status_version": 6,
+  "audited_at": "2026-09-14",
   "scope": "Sierra Magina hiking catalog closure status",
   "official_park_inventory": {
     "status": "closed",
@@ -28,8 +28,10 @@
     "tracks_located": 6,
     "tracks_geometry_validated": 6,
     "tracks_not_located": ["R4", "R5", "R8"],
+    "missing_track_audit_status": "audited_absence_of_published_track_artifact",
+    "missing_track_audit_file": "data/routes/sierra-magina-intermodal-missing-track-audit.json",
     "source_name": "Diputacion de Jaen - Jaen Paraiso Interior",
-    "validation_note": "R1, R2, R3, R6, R7 and R9 official KMZ files were downloaded and geometry-reviewed. R2 and R6 use explicit repeated-segment semantics for out-and-back routes rather than duplicating shared geometry."
+    "validation_note": "R1, R2, R3, R6, R7 and R9 official KMZ files were downloaded and geometry-reviewed. R2 and R6 use explicit repeated-segment semantics for out-and-back routes rather than duplicating shared geometry. R4, R5 and R8 retain official rutometer distances but no explicit public authoritative GPX/KML/KMZ artifact was located; guessed URLs are forbidden."
   },
   "homologated_network": {
     "status": "geometry_baseline_closed",
@@ -58,6 +60,22 @@
     "verified_at": "2026-09-13",
     "validation_note": "All 17 official-core routes have a confirmed REDIAM CODIGOEQUI. REDIAM is blocked from GitHub runners. Eight Diputacion/FAM KMZ targets and five Sierra Magina GR-7 stage archives were downloaded, hashed, parsed and geometry-reviewed successfully."
   },
+  "municipal_comarca_tracks": {
+    "status": "partial_authoritative_track_discovery",
+    "authoritative_tracks_located": 3,
+    "geometry_validated": 0,
+    "located_route_slugs": [
+      "mancha-real-el-puerto-los-llanos-pena-del-aguila",
+      "mancha-real-circular-pena-del-aguila",
+      "mancha-real-pena-aguila-morron-mojon-blanco-refugio-cueva-murcielagos"
+    ],
+    "source_name": "Ayuntamiento de Mancha Real - Turismo Mancha Real",
+    "source_registry": "data/routes/sierra-magina-municipal-track-sources.json",
+    "access_audit": "data/routes/sierra-magina-municipal-kml-access-audit.json",
+    "access_blocker": "The three official KML links resolve to archivos.campusfortalezas.com, whose HTTPS certificate fails strict hostname verification for that hostname. TLS verification is not disabled to force geometry validation.",
+    "remaining_discovery_targets": ["Noalejo", "Carcheles", "La Guardia de Jaen", "Campillo de Arenas", "Cabra del Santo Cristo"],
+    "verified_at": "2026-09-14"
+  },
   "operational_safety": {
     "status": "tracked_separately",
     "temporarily_closed_verified": ["adelfal-de-cuadros", "las-vinas"],
@@ -74,6 +92,6 @@
       "Current closures/incidents must remain independent from catalog publication state.",
       "Duplicate or overlapping Junta/Diputacion/GR-PR-SL records must preserve provenance and canonical relationships instead of being silently merged."
     ],
-    "reason_not_closed": "Official-core REDIAM source identification is closed 17/17, the current GR/PR/SL baseline is geometry-validated, and six provincial routes have validated official KMZ tracks. Remaining blockers are REDIAM geometry access from an allowed environment, R4/R5/R8 authoritative tracks, and incomplete municipal authoritative tracks."
+    "reason_not_closed": "Official-core REDIAM source identification is closed 17/17, the current GR/PR/SL baseline is geometry-validated, six provincial routes have validated official KMZ tracks, R4/R5/R8 have an explicit audited no-public-track state, and three Mancha Real municipal KML artifacts are authoritatively linked but blocked by a TLS hostname mismatch. Remaining blockers are REDIAM geometry access from an allowed environment and incomplete municipal authoritative geometry validation/discovery."
   }
 }
