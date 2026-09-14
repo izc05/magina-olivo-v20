@@ -1,0 +1,130 @@
+.root {
+  position: fixed;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: var(--ui-z-nav);
+  display: grid;
+  width: min(calc(100% - 20px), 472px);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 7px 7px max(7px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  border: 1px solid rgba(31, 53, 34, .13);
+  border-radius: 20px;
+  background: rgba(253, 252, 248, .91);
+  box-shadow: 0 20px 55px rgba(28, 41, 27, .16);
+  backdrop-filter: blur(24px) saturate(1.08);
+}
+
+.link {
+  display: flex;
+  min-width: var(--ui-control-min);
+  min-height: var(--ui-control-hero);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 14px;
+  color: #798077;
+  text-align: center;
+  transition:
+    background-color var(--ui-motion-base) var(--ui-ease-standard),
+    color var(--ui-motion-base) var(--ui-ease-standard),
+    transform var(--ui-motion-base) var(--ui-ease-standard);
+}
+
+.link:hover {
+  transform: translateY(-1px);
+  background: rgba(232, 238, 225, .56);
+  color: var(--ui-color-olive-900);
+}
+
+.icon {
+  display: grid;
+  width: 34px;
+  height: 27px;
+  place-items: center;
+  border-radius: 12px;
+}
+
+.icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.active {
+  background: #e8eee1;
+  color: #294027;
+  font-weight: 800;
+}
+
+.active .icon {
+  background: transparent;
+}
+
+@media (max-width: 380px) {
+  .root {
+    bottom: max(7px, env(safe-area-inset-bottom));
+    width: calc(100% - 14px);
+  }
+}
+
+@media (max-width: 699px) and (max-height: 560px) {
+  :global(body:has(input:focus, textarea:focus, select:focus)) .root {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, calc(100% + 24px));
+  }
+}
+
+@media (min-width: 700px) {
+  .root {
+    bottom: 28px;
+    width: min(620px, calc(100% - 64px));
+  }
+}
+
+@media (min-width: 1024px) {
+  .root {
+    top: 36px;
+    bottom: 36px;
+    left: max(36px, calc((100vw - 1520px) / 2 + 36px));
+    width: 80px;
+    height: auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, minmax(72px, auto));
+    align-content: center;
+    padding: 10px;
+    transform: none;
+    border-radius: 24px;
+  }
+
+  .link {
+    min-height: 72px;
+    gap: 6px;
+    padding: 8px 4px;
+  }
+
+  .active {
+    box-shadow: inset 3px 0 var(--ui-color-olive-700);
+  }
+
+  .icon {
+    width: 38px;
+    height: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .root * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
