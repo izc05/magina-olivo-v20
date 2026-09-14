@@ -75,12 +75,14 @@ export function registerAdminAlmazaraRewardRoutes(app: FastifyInstance, db: Data
     `.execute(auth.database);
     const reward = updated.rows[0];
     if (!reward) return reply.code(404).send({ error: 'reward_not_found' });
-    await auditAdminAction(auth.database, auth.access, {
-      action: 'almazara_reward_paused',
-      resourceType: 'mill_reward_product',
-      resourceId: reward.id,
-      metadata: { title: reward.title },
-    });
+    await auditAdminAction(
+      auth.database,
+      auth.access,
+      'almazara_reward.paused',
+      'mill_reward_product',
+      reward.id,
+      { title: reward.title },
+    );
     return { reward: { id: reward.id, status: 'paused' } };
   });
 }
