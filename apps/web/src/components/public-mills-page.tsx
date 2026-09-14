@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   loadMillRewards,
+  loadMyMillRewardUnlocks,
   loadPublicMills,
   redeemMillReward,
+  type MillRewardUnlockState,
   type PublicMill,
   type PublicMillReward,
 } from '@/lib/public-mills-source';
@@ -60,6 +62,7 @@ function MillCard({ item, basePath }: { item: PublicMill; basePath: string }) {
 
 function RewardCatalog({ slug }: { slug: string }) {
   const [items, setItems] = useState<PublicMillReward[]>([]);
+  const [unlockState, setUnlockState] = useState<MillRewardUnlockState | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState<string | null>(null);
@@ -68,10 +71,14 @@ function RewardCatalog({ slug }: { slug: string }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setUnlockState(null);
     loadMillRewards(slug)
       .then((rows) => { if (!cancelled) setItems(rows); })
       .catch(() => { if (!cancelled) setMessage('No se pudieron cargar los premios de esta almazara.'); })
       .finally(() => { if (!cancelled) setLoading(false); });
+    loadMyMillRewardUnlocks(slug)
+      .then((state) => { if (!cancelled) setUnlockState(state); })
+      .catch(() => { if (!cancelled) setUnlockState(null); });
     return () => { cancelled = true; };
   }, [slug]);
 
@@ -84,26 +91,37 @@ function RewardCatalog({ slug }: { slug: string }) {
       setItems((current) => current.map((row) => row.id === item.id ? { ...row, availableStock: Math.max(0, row.availableStock - 1) } : row));
     } catch (error) {
       const text = error instanceof Error ? error.message : '';
-      setMessage(text.includes('409') ? 'No tienes aceitunas suficientes, se agotó el premio o ya alcanzaste el límite de canjes.' : 'No ha sido posible realizar el canje. Inicia sesión y vuelve a intentarlo.');
+      if (text.includes('reward_level_locked')) {
+        setMessage('Este premio todavía está bloqueado para tu nivel de Mi Olivo. Sigue acumulando XP para desbloquearlo.');
+      } else if (text.includes('409')) {
+        setMessage('No tienes aceitunas suficientes, se agotó el premio o ya alcanzaste el límite de canjes.');
+      } else {
+        setMessage('No ha sido posible realizar el canje. Inicia sesión y vuelve a intentarlo.');
+      }
     } finally {
       setRedeeming(null);
     }
   }
 
-  if (loading) return <section className={styles.stateCard}><strong>Cargando premios…</strong><p>Consultando stock y condiciones actuales.</p></section>;
+  if (loading) return <section className={styles.stateCard}><strong>Cargando premios…</strong><p>Consultando stock, nivel requerido y condiciones actuales.</p></section>;
 
   return <section className={styles.rewardCatalog} aria-label="Premios de la almazara">
     <div className={styles.rewardIntro}>
       <div>
         <span className={styles.eyebrow}>MI OLIVO · RECOMPENSAS REALES</span>
         <h2>Del progreso digital a una botella de Mágina</h2>
-        <p>Canjea tus aceitunas por productos reales. Al confirmar, el stock queda reservado durante 7 días y recibes un QR firmado de un solo uso para recoger el premio.</p>
+        <p>Canjea tus aceitunas por productos reales. Algunos premios requieren un nivel permanente de Mi Olivo. Al confirmar, el stock queda reservado durante 7 días y recibes un QR firmado de un solo uso para recoger el premio.</p>
       </div>
       <div className={styles.rewardLinks}>
         <Link className={styles.secondaryLink} href="/mi-olivo">Abrir Mi Olivo</Link>
         <Link className={styles.secondaryLink} href="/mi-olivo/canjes">Mis canjes</Link>
       </div>
     </div>
+
+    {unlockState ? <div className={styles.rewardHint} aria-label="Nivel actual de Mi Olivo">
+      <span>Tu progreso: Nivel {unlockState.currentLevel} · {unlockState.currentLevelName}</span>
+      <strong>{unlockState.xp} XP</strong>
+    </div> : <div className={styles.softState}><strong>Consulta tus desbloqueos</strong><span>Inicia sesión para ver qué premios tienes disponibles por nivel.</span></div>}
 
     {message ? <div className={styles.message} role="alert">{message}</div> : null}
 
@@ -127,6 +145,8 @@ function RewardCatalog({ slug }: { slug: string }) {
       {items.map((item) => {
         const rewardImage = safeMediaUrl(item.imageUrl);
         const soldOut = item.availableStock < 1;
+        const personal = unlockState?.rewards.find((entry) => entry.rewardId === item.id) ?? null;
+        const lockedByLevel = personal ? !personal.unlocked : false;
         return <article className={styles.rewardCard} key={item.id}>
           {rewardImage ? <img className={styles.rewardImage} src={rewardImage} alt="" /> : <div className={styles.rewardPlaceholder} aria-hidden="true"><span>AOVE</span></div>}
           <div className={styles.rewardBody}>
@@ -137,8 +157,13 @@ function RewardCatalog({ slug }: { slug: string }) {
             <h3>{item.title}</h3>
             {item.volumeMl ? <small>{item.volumeMl} ml</small> : null}
             {item.description ? <p>{item.description}</p> : null}
-            <button className={styles.primaryLink} type="button" disabled={soldOut || redeeming === item.id} onClick={() => redeem(item)}>
-              {redeeming === item.id ? 'Reservando…' : soldOut ? 'Sin stock' : 'Canjear premio'}
+            <div className={styles.rewardHint}>
+              <span>Nivel {item.requiredLevel} · {item.requiredLevelName}</span>
+              <strong>{item.minXp} XP</strong>
+            </div>
+            {personal ? <p><strong>{personal.unlocked ? `Desbloqueado con tu nivel ${unlockState?.currentLevel}` : `Bloqueado: necesitas nivel ${personal.requiredLevel}`}</strong></p> : null}
+            <button className={styles.primaryLink} type="button" disabled={soldOut || lockedByLevel || redeeming === item.id} onClick={() => redeem(item)}>
+              {redeeming === item.id ? 'Reservando…' : soldOut ? 'Sin stock' : lockedByLevel ? `Nivel ${item.requiredLevel} requerido` : 'Canjear premio'}
             </button>
           </div>
         </article>;
@@ -206,7 +231,7 @@ export function PublicMillsPage({ basePath = '/cooperativas' }: { basePath?: '/c
   }, [items, query]);
 
   if (loading) return <main className={styles.page}><section className={styles.stateCard} aria-live="polite"><strong>Cargando cooperativas y almazaras…</strong><p>Consultando el directorio público de Mágina.</p></section></main>;
-  if (error) return <main className={styles.page}><header className={styles.header}><span>SIERRA MÁGINA</span><h1>Cooperativas y almazaras</h1></header><section className={styles.stateCard} role="alert"><strong>Directorio no disponible ahora</strong><p>Vuelve a intentarlo cuando el servicio esté disponible.</p><button type="button" onClick={() => window.location.reload()}>Reintentar</button></section></main>;
+  if (error) return <main className={styles.page}><header className={styles.header}><span>SIERRA MÁGINA</span><h1>Cooperativas y almazaras</h1></header><section className={styles.stateCard} role="alert"><strong>Directorio no disponible ahora</strong><p>No mostramos entidades ni premios inventados. Vuelve a intentarlo cuando el servicio esté disponible.</p><button type="button" onClick={() => window.location.reload()}>Reintentar</button></section></main>;
   if (slug && !selected) return <main className={styles.page}><header className={styles.header}><span>SIERRA MÁGINA</span><h1>Cooperativas y almazaras</h1></header><section className={styles.stateCard}><strong>No encontramos esta ficha</strong><p>Puede haber sido retirada o su enlace haber cambiado.</p><Link href={basePath}>Volver al directorio</Link></section></main>;
   if (selected) return <main className={styles.page}><MillDetail item={selected} basePath={basePath} /></main>;
 
@@ -228,7 +253,7 @@ export function PublicMillsPage({ basePath = '/cooperativas' }: { basePath?: '/c
       <small>{filtered.length} {filtered.length === 1 ? 'resultado' : 'resultados'}</small>
     </section>
     {!items.length ? <section className={styles.stateCard}><strong>Todavía no hay entidades publicadas</strong><p>El directorio aparecerá aquí cuando Administración publique cooperativas o almazaras.</p></section> : null}
-    {items.length && !filtered.length ? <section className={styles.stateCard}><strong>Sin coincidencias</strong><button type="button" onClick={() => setQuery('')}>Ver todas</button></section> : null}
+    {items.length > 0 && !filtered.length ? <section className={styles.stateCard}><strong>Sin coincidencias</strong><button type="button" onClick={() => setQuery('')}>Ver todas</button></section> : null}
     <section className={styles.grid} aria-label="Cooperativas y almazaras publicadas">{filtered.map((item) => <MillCard key={item.id} item={item} basePath={basePath} />)}</section>
   </main>;
 }
