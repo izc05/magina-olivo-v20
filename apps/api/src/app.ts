@@ -65,6 +65,7 @@ import { registerBusinessPassRoutes } from './routes/business-pass.js';
 import { registerRoutesExploreRoutes } from './routes/routes-explore.js';
 import { registerRouteCommunityRoutes } from './routes/route-community.js';
 import { registerRouteDeviceExportRoutes } from './routes/route-device-export.js';
+import { registerAdventureRoutes } from './routes/adventure.js';
 import { registerMarketRoutes } from './routes/market.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
@@ -237,6 +238,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerRoutesExploreRoutes(app, db);
   registerRouteCommunityRoutes(app, db, storage);
   registerRouteDeviceExportRoutes(app, db);
+  registerAdventureRoutes(app, db);
   registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db, storage);
