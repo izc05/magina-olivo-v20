@@ -115,18 +115,16 @@
     "id": "businesses",
     "title": "Empresas",
     "description": "Directorio, rendimiento, reclamaciones, ofertas, leads y gobierno comercial.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-business-directory",
-    "targetHref": "/admin/empresas",
+    "status": "available",
+    "href": "/admin/empresas",
     "area": "Negocio"
   },
   {
     "id": "experiences",
     "title": "Experiencias y reservas",
     "description": "Sesiones, aforo, solicitudes y reservas empresariales.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-business-experiences",
-    "targetHref": "/admin/empresas/experiencias",
+    "status": "available",
+    "href": "/admin/empresas/experiencias",
     "area": "Experiencia"
   },
   {

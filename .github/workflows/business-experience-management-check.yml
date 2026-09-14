@@ -1,0 +1,72 @@
+name: V20 business experience management check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/api/src/routes/business-experience-management.ts'
+      - 'apps/api/src/app.ts'
+      - 'apps/web/src/components/business-experience-operations.tsx'
+      - 'apps/web/src/components/my-business-experience-operations.tsx'
+      - 'apps/web/src/lib/business-experience-source.ts'
+      - 'scripts/check-business-experience-management.mjs'
+      - '.github/workflows/business-experience-management-check.yml'
+
+concurrency:
+  group: business-experience-management-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  management:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: magina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d magina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Build API dependencies
+        run: |
+          pnpm --filter @magina/contracts build
+          pnpm --filter @magina/weather build
+          pnpm --filter @magina/jobs build
+      - name: Typecheck and build
+        run: |
+          pnpm --filter @magina/api typecheck
+          pnpm --filter @magina/web typecheck
+          pnpm --filter @magina/api build
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+      - name: Apply migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for migration in database/migrations/*.sql; do
+            psql -h 127.0.0.1 -U postgres -d magina -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+          done
+      - name: Run management smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina
+        run: node scripts/check-business-experience-management.mjs
