@@ -15,6 +15,7 @@ import { registerAdminBusinessDirectoryRoutes } from './routes/admin-business-di
 import { registerAdminBusinessCategoryRoutes } from './routes/admin-business-categories.js';
 import { registerAdminBusinessRevenueRoutes } from './routes/admin-business-revenue.js';
 import { registerAdminBusinessPassRoutes } from './routes/admin-business-pass.js';
+import { registerAdminAlmazaraRewardRoutes } from './routes/admin-almazara-rewards.js';
 import { registerAdminSourceOperationRoutes } from './routes/admin-source-operations.js';
 import { registerAdminAnalyticsRoutes } from './routes/admin-analytics.js';
 import { registerAdminOperationsRoutes } from './routes/admin-operations.js';
@@ -31,6 +32,7 @@ import { registerAdminCommunityRoutes } from './routes/admin-community.js';
 import { registerPlanRoutes } from './routes/plans.js';
 import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerMiOlivoCampaignRoutes } from './routes/mi-olivo-campaign.js';
+import { registerMiOlivoProgressionRoutes } from './routes/mi-olivo-progression.js';
 import { registerCommunityRoutes } from './routes/community.js';
 import { registerFieldRoutes } from './routes/fields.js';
 import { registerIrrigationRoutes } from './routes/irrigations.js';
@@ -65,6 +67,7 @@ import { registerBusinessPortalRoutes } from './routes/business-portal.js';
 import { registerBusinessExperienceRoutes } from './routes/business-experiences.js';
 import { registerBusinessExperienceManagementRoutes } from './routes/business-experience-management.js';
 import { registerBusinessPassRoutes } from './routes/business-pass.js';
+import { registerAlmazaraRewardRoute } from './routes/almazara-rewards.js';
 import { registerMarketRoutes } from './routes/market.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
@@ -215,6 +218,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerAdminBusinessCategoryRoutes(app, db);
   registerAdminBusinessRevenueRoutes(app, db);
   registerAdminBusinessPassRoutes(app, db);
+  registerAdminAlmazaraRewardRoutes(app, db);
   registerAdminSourceOperationRoutes(app, db, weatherProvider, radarQueue, notificationQueue);
   registerAdminAnalyticsRoutes(app, db);
   registerAdminOperationsRoutes(app, db);
@@ -231,6 +235,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerPlanRoutes(app, db);
   registerMiOlivoRoutes(app, db);
   registerMiOlivoCampaignRoutes(app, db);
+  registerMiOlivoProgressionRoutes(app, db);
   registerCommunityRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerBusinessDirectoryRoutes(app, db);
@@ -240,6 +245,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerBusinessExperienceRoutes(app, db);
   registerBusinessExperienceManagementRoutes(app, db);
   registerBusinessPassRoutes(app, db);
+  registerAlmazaraRewardRoute(app, db);
   registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
   registerRadarRoutes(app, db, storage);

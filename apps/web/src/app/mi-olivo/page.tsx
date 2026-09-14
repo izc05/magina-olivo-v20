@@ -3,6 +3,7 @@ import { MiOlivoDashboard } from '../../components/mi-olivo-dashboard';
 import { MiOlivoWeatherController } from '../../components/mi-olivo-weather-controller';
 import { MiOlivoCampaignController } from '../../components/mi-olivo-campaign-controller';
 import { MiOlivoSeasonsController } from '../../components/mi-olivo-seasons-controller';
+import { MiOlivoProgressionDashboard } from '../../components/mi-olivo-progression-dashboard';
 
 export const metadata: Metadata = {
   title: 'Mi Olivo · Mágina Olivo',
@@ -14,6 +15,7 @@ export default function MiOlivoPage() {
     <MiOlivoCampaignController>
       <MiOlivoWeatherController />
       <MiOlivoDashboard />
+      <MiOlivoProgressionDashboard />
       <MiOlivoSeasonsController />
     </MiOlivoCampaignController>
   );
