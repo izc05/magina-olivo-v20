@@ -8,6 +8,8 @@ const modulesPage = readFileSync(resolve(adminDir, 'modulos/page.tsx'), 'utf8');
 const modulesDirectoryPath = resolve(adminDir, 'modulos/admin-modules-directory.tsx');
 const modulesDirectory = existsSync(modulesDirectoryPath) ? readFileSync(modulesDirectoryPath, 'utf8') : '';
 const adminPage = readFileSync(resolve(adminDir, 'page.tsx'), 'utf8');
+const adminCssPath = resolve(adminDir, 'admin.css');
+const adminCss = existsSync(adminCssPath) ? readFileSync(adminCssPath, 'utf8') : '';
 const registryPath = resolve(adminDir, 'modulos/admin-modules.json');
 const adminLayoutPath = resolve(adminDir, 'layout.tsx');
 const adminRouteGatePath = resolve(root, 'apps/web/src/components/admin-route-gate.tsx');
@@ -122,6 +124,15 @@ if (!adminRouteGate) {
   if (!adminRouteGate.includes("state !== 'authorized'")) {
     failures.push('AdminRouteGate no debe renderizar contenido antes de confirmar autorización.');
   }
+  if (!adminRouteGate.includes("window.addEventListener('focus'")) {
+    failures.push('AdminRouteGate debe revalidar acceso al recuperar foco.');
+  }
+  if (!adminRouteGate.includes("document.addEventListener('visibilitychange'")) {
+    failures.push('AdminRouteGate debe revalidar acceso al volver visible la pestaña.');
+  }
+  if (!adminRouteGate.includes('validatingRef.current')) {
+    failures.push('AdminRouteGate debe impedir validaciones de acceso concurrentes.');
+  }
 }
 
 if (!modulesPage.includes("import moduleRegistry from './admin-modules.json'")) {
@@ -147,6 +158,14 @@ if (!adminPage.includes("module.status === 'available' && module.href")) {
 }
 if (!adminPage.includes('href="/admin/modulos"')) {
   failures.push('El centro Admin no enlaza al directorio unificado.');
+}
+const launcherIndex = adminPage.indexOf('className="admin-shortcuts"');
+const controlCenterIndex = adminPage.indexOf('<AdminControlCenter />');
+if (launcherIndex < 0 || controlCenterIndex < 0 || launcherIndex > controlCenterIndex) {
+  failures.push('El lanzador de módulos debe aparecer antes del AdminControlCenter para ser descubrible al entrar.');
+}
+if (!adminCss.includes('.admin-shortcuts') || !adminCss.includes('.admin-shortcuts-list')) {
+  failures.push('El lanzador de módulos debe tener estilos propios responsive en admin.css.');
 }
 
 const ids = modules.map((module) => module?.id);
@@ -273,5 +292,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed; directorio filtrable).`,
+  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas web raíz y ${protectedAdminApiRoutes} endpoints Admin protegidos en ${adminApiFiles} routers; 401/403 fail-closed; directorio filtrable; lanzador visible).`,
 );
