@@ -8,6 +8,14 @@ type TerritoryProfile = {
   summary: {
     total_score: number;
   };
+  journey: {
+    completed_routes: number;
+    completed_distance_m: number;
+  };
+  recorded: {
+    activity_count: number;
+    recorded_distance_m: number;
+  };
   territory: {
     available_checkpoints: number;
     unlocked_checkpoints: number;
@@ -26,13 +34,33 @@ type TerritoryProfile = {
   };
 };
 
-const XP_PER_LEVEL = 500;
+const EXPLORER_LEVELS = [
+  { level: 1, minXp: 0, name: 'Caminante de Mágina' },
+  { level: 2, minXp: 250, name: 'Rastreador del Olivar' },
+  { level: 3, minXp: 500, name: 'Descubridor de Senderos' },
+  { level: 4, minXp: 1_000, name: 'Explorador de Mágina' },
+  { level: 5, minXp: 1_500, name: 'Cartógrafo de la Sierra' },
+  { level: 6, minXp: 2_250, name: 'Aventurero de Mágina' },
+  { level: 7, minXp: 3_000, name: 'Conquistador de Cumbres' },
+  { level: 8, minXp: 4_000, name: 'Maestro del Sendero' },
+  { level: 9, minXp: 5_000, name: 'Guardián de Mágina' },
+  { level: 10, minXp: 6_500, name: 'Leyenda de Sierra Mágina' },
+] as const;
 
-function explorerRank(level: number) {
-  if (level >= 10) return 'Guardián de Sierra Mágina';
-  if (level >= 6) return 'Aventurero de Mágina';
-  if (level >= 3) return 'Explorador de Mágina';
-  return 'Caminante de Mágina';
+function explorerLevel(totalXp: number) {
+  let current = EXPLORER_LEVELS[0];
+  for (const candidate of EXPLORER_LEVELS) {
+    if (totalXp >= candidate.minXp) current = candidate;
+  }
+  const next = EXPLORER_LEVELS.find((candidate) => candidate.level === current.level + 1) ?? null;
+  const progressXp = Math.max(0, totalXp - current.minXp);
+  const targetXp = next ? next.minXp - current.minXp : 0;
+  const progressPercent = next && targetXp > 0 ? Math.min(100, Math.round((progressXp / targetXp) * 100)) : 100;
+  return { current, next, progressXp, targetXp, progressPercent };
+}
+
+function km(value: number) {
+  return `${(Number(value || 0) / 1000).toFixed(1)} km`;
 }
 
 export function AdventureTerritoryBoard() {
@@ -49,9 +77,7 @@ export function AdventureTerritoryBoard() {
   if (!profile || profile.territory.municipalities_available === 0) return null;
   const territory = profile.territory;
   const totalXp = Number(profile.summary.total_score || 0);
-  const level = Math.floor(totalXp / XP_PER_LEVEL) + 1;
-  const levelXp = totalXp % XP_PER_LEVEL;
-  const rank = explorerRank(level);
+  const progression = explorerLevel(totalXp);
 
   return <section className={styles.profilePanel} aria-labelledby="magina-passport-title">
     <div className={styles.profileHeading}>
@@ -59,15 +85,26 @@ export function AdventureTerritoryBoard() {
         <span className={styles.eyebrow}>PASAPORTE DE MÁGINA</span>
         <h2 id="magina-passport-title">Sierra Mágina explorada: {territory.explored_percent}%</h2>
       </div>
-      <p>Tu mapa se completa con descubrimientos reales desbloqueados en las aventuras. No usamos kilómetros ficticios ni guardamos tu recorrido GPS.</p>
+      <p>Tu mapa se completa con descubrimientos reales desbloqueados en las aventuras. Los kilómetros conquistados proceden de rutas completadas; los kilómetros grabados solo existen cuando activas el GPS de forma explícita.</p>
     </div>
 
     <div className={styles.profileStats}>
-      <article><strong>Nivel {level}</strong><span>{rank}</span></article>
-      <article><strong>{totalXp} XP</strong><span>{levelXp}/{XP_PER_LEVEL} hacia el siguiente nivel</span></article>
+      <article><strong>Nivel {progression.current.level}</strong><span>{progression.current.name}</span></article>
+      <article><strong>{totalXp} XP</strong><span>{progression.next ? `${progression.progressXp}/${progression.targetXp} hacia ${progression.next.name}` : 'Nivel máximo alcanzado'}</span></article>
+      <article><strong>{km(profile.journey.completed_distance_m)}</strong><span>Kilómetros conquistados</span></article>
+      <article><strong>{km(profile.recorded.recorded_distance_m)}</strong><span>Kilómetros grabados · {profile.recorded.activity_count} actividades</span></article>
       <article><strong>{territory.unlocked_checkpoints}/{territory.available_checkpoints}</strong><span>Descubrimientos</span></article>
       <article><strong>{territory.municipalities_discovered}/{territory.municipalities_available}</strong><span>Municipios descubiertos</span></article>
       <article><strong>{territory.explored_percent}%</strong><span>Territorio de aventura</span></article>
+    </div>
+
+    <div className={styles.recent}>
+      <h3>Progresión de explorador</h3>
+      <p>Nivel {progression.current.level} · {progression.current.name}{progression.next ? ` · siguiente: ${progression.next.name}` : ' · rango máximo'}</p>
+      <progress max={100} value={progression.progressPercent} aria-label={`Progreso del nivel ${progression.current.level}: ${progression.progressPercent}%`} />
+      <div className={styles.badges} aria-label="Escalera de niveles de Mágina Aventura">
+        {EXPLORER_LEVELS.map((level) => <span key={level.level}>{totalXp >= level.minXp ? '✓' : '○'} {level.level}. {level.name}</span>)}
+      </div>
     </div>
 
     <div className={styles.collectionGrid} aria-label="Progreso por municipio">
