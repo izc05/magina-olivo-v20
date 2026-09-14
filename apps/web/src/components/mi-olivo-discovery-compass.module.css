@@ -42,6 +42,111 @@
   text-transform: uppercase;
 }
 
+.progressPanel {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(49, 69, 42, 0.14);
+  border-radius: 1.15rem;
+  background: linear-gradient(135deg, rgba(241, 239, 218, 0.92), rgba(246, 249, 236, 0.92));
+}
+
+.progressHeadline {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.progressHeadline > div:first-child {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.progressHeadline > div:first-child strong {
+  color: #2d4027;
+  font-size: clamp(1.15rem, 2.5vw, 1.6rem);
+}
+
+.progressHeadline > div:first-child > span:last-child {
+  color: #65705e;
+  font-size: 0.9rem;
+}
+
+.discoveryPoints {
+  display: grid;
+  justify-items: end;
+  line-height: 1;
+}
+
+.discoveryPoints strong {
+  color: #2f4928;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+}
+
+.discoveryPoints span {
+  margin-top: 0.3rem;
+  color: #65705e;
+  font-size: 0.78rem;
+}
+
+.progressStats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.progressStats > div {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.progressStats span {
+  color: #737b6e;
+  font-size: 0.74rem;
+}
+
+.progressStats strong {
+  color: #304329;
+  font-size: 1.15rem;
+}
+
+.weeklyDiscovery {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.weeklyDiscovery > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #4f5f48;
+  font-size: 0.86rem;
+}
+
+.weeklyDiscovery small {
+  color: #70796b;
+  line-height: 1.4;
+}
+
+.progressTrack {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(62, 82, 53, 0.12);
+}
+
+.progressTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6f8652, #9aab65);
+  transition: width 220ms ease;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -150,6 +255,10 @@
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .progressStats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 680px) {
@@ -165,6 +274,25 @@
 
   .heading h2 {
     max-width: none;
+  }
+
+  .progressHeadline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .discoveryPoints {
+    justify-items: start;
+  }
+
+  .progressStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .weeklyDiscovery > div:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
   }
 
   .grid {

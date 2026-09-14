@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { apiFetch } from '../lib/api-client';
 import {
+  isMiOlivoDiscoveryV3Event,
   miOlivoDiscoveryActionForRoute,
   type MiOlivoInteractionType,
 } from '../lib/mi-olivo-discovery';
@@ -52,7 +53,10 @@ export function MiOlivoActivityTracker() {
 
     window.sessionStorage.setItem(sessionKey, 'sent');
     try {
-      const response = await apiFetch<AwardResponse>('/api/v1/mi-olivo/events', {
+      const endpoint = isMiOlivoDiscoveryV3Event(trackRequest.eventType)
+        ? '/api/v1/mi-olivo/discovery-events'
+        : '/api/v1/mi-olivo/events';
+      const response = await apiFetch<AwardResponse>(endpoint, {
         method: 'POST',
         workspaceId: selectedWorkspaceId,
         body: JSON.stringify({

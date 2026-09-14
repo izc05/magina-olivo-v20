@@ -5,8 +5,10 @@ on:
   pull_request:
     paths:
       - 'apps/api/src/routes/mi-olivo.ts'
+      - 'apps/api/src/routes/mi-olivo-discovery.ts'
       - 'apps/api/src/routes/mi-olivo-campaign.ts'
       - 'apps/api/src/testing/mi-olivo-smoke.ts'
+      - 'apps/api/src/testing/mi-olivo-discovery-smoke.ts'
       - 'apps/api/src/testing/mi-olivo-campaign-smoke.ts'
       - 'apps/api/src/app.ts'
       - 'apps/web/src/app/mi-olivo/**'
@@ -90,6 +92,12 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'false'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/mi-olivo-smoke.js
+      - name: Mi Olivo Discovery V3 smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_mi_olivo
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/mi-olivo-discovery-smoke.js
       - name: Mi Olivo campaign + appearance smoke
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_mi_olivo

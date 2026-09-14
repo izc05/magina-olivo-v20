@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MI_OLIVO_DISCOVERY_WORLDS } from '../lib/mi-olivo-discovery';
+import { MiOlivoDiscoveryProgress } from './mi-olivo-discovery-progress';
 import styles from './mi-olivo-discovery-compass.module.css';
 
 export function MiOlivoDiscoveryCompass() {
@@ -15,6 +16,8 @@ export function MiOlivoDiscoveryCompass() {
           actualidad, mercado y clima deja una huella permanente en tu progreso.
         </p>
       </div>
+
+      <MiOlivoDiscoveryProgress />
 
       <div className={styles.grid}>
         {MI_OLIVO_DISCOVERY_WORLDS.map((world) => (

@@ -1,8 +1,19 @@
-export type MiOlivoInteractionType =
+export type MiOlivoLegacyInteractionType =
   | 'content_read'
   | 'territory_viewed'
   | 'weather_checked'
   | 'learning_completed';
+
+export type MiOlivoDiscoveryV3Type =
+  | 'section_discovered'
+  | 'mill_discovered'
+  | 'business_discovered'
+  | 'experience_discovered'
+  | 'heritage_discovered'
+  | 'route_discovered'
+  | 'market_checked';
+
+export type MiOlivoInteractionType = MiOlivoLegacyInteractionType | MiOlivoDiscoveryV3Type;
 
 export type MiOlivoDiscoveryAction = {
   eventType: MiOlivoInteractionType;
@@ -19,10 +30,24 @@ export type MiOlivoDiscoveryWorld = {
   icon: string;
 };
 
+const DISCOVERY_V3_TYPES = new Set<MiOlivoInteractionType>([
+  'section_discovered',
+  'mill_discovered',
+  'business_discovered',
+  'experience_discovered',
+  'heritage_discovered',
+  'route_discovered',
+  'market_checked',
+]);
+
+export function isMiOlivoDiscoveryV3Event(eventType: MiOlivoInteractionType) {
+  return DISCOVERY_V3_TYPES.has(eventType);
+}
+
 /**
  * The public worlds that make Mi Olivo a passport for the whole platform.
- * These links are intentionally independent from Mi Campo: a visitor can
- * grow their olive tree by learning about and exploring Sierra Mágina.
+ * They are intentionally independent from Mi Campo: somebody without a farm
+ * can still build a rich, permanent history by discovering Sierra Mágina.
  */
 export const MI_OLIVO_DISCOVERY_WORLDS = [
   {
@@ -91,16 +116,17 @@ export const MI_OLIVO_DISCOVERY_WORLDS = [
   },
 ] as const satisfies readonly MiOlivoDiscoveryWorld[];
 
-const SURFACE_SOURCES: Readonly<Record<string, string>> = {
-  '/almazaras': 'pueblo:surface:almazaras',
-  '/cooperativas': 'pueblo:surface:cooperativas',
-  '/explorar': 'pueblo:surface:explorar',
-  '/explorar/empresas': 'pueblo:surface:empresas',
-  '/experiencias': 'pueblo:surface:experiencias',
-  '/mercado': 'pueblo:surface:mercado',
-  '/pueblos': 'pueblo:surface:pueblos',
-  '/ayuntamientos': 'pueblo:surface:ayuntamientos',
-  '/servicios': 'pueblo:surface:servicios',
+const SECTION_SOURCES: Readonly<Record<string, string>> = {
+  '/almazaras': 'section:almazaras',
+  '/cooperativas': 'section:cooperativas',
+  '/explorar': 'section:explorar',
+  '/explorar/empresas': 'section:empresas',
+  '/experiencias': 'section:experiencias',
+  '/pueblos': 'section:pueblos',
+  '/ayuntamientos': 'section:ayuntamientos',
+  '/servicios': 'section:servicios',
+  '/noticias': 'section:noticias',
+  '/eventos': 'section:eventos',
 };
 
 function normalizePath(pathname: string) {
@@ -117,16 +143,14 @@ function sourceToken(value: string | null | undefined) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9_-]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
+    .slice(0, 70);
   return normalized || null;
 }
 
 /**
- * Maps navigation to the event vocabulary currently accepted by the V2 API.
- * Public discovery surfaces temporarily use `territory_viewed` with a
- * namespaced `pueblo:` source so they remain server-validated and idempotent.
- * A future V3 backend can promote these namespaces to explicit event types
- * without changing the navigation contract established here.
+ * Maps site navigation to Mi Olivo progress. Existing V2 events remain for
+ * content, villages, weather and learning so old idempotency keys keep their
+ * meaning. New cross-platform discoveries use the explicit V3 vocabulary.
  */
 export function miOlivoDiscoveryActionForRoute(pathname: string, query: string): MiOlivoDiscoveryAction | null {
   const path = normalizePath(pathname);
@@ -150,23 +174,25 @@ export function miOlivoDiscoveryActionForRoute(pathname: string, query: string):
   }
 
   if ((path === '/almazaras' || path === '/cooperativas') && slug) {
-    const namespace = path === '/almazaras' ? 'almazara' : 'cooperativa';
-    return { eventType: 'territory_viewed', sourceId: `pueblo:${namespace}:${slug}`, delayMs: 7_000 };
+    return { eventType: 'mill_discovered', sourceId: `mill:${slug}`, delayMs: 7_000 };
   }
 
   if (path === '/empresas' && slug) {
-    return { eventType: 'territory_viewed', sourceId: `pueblo:empresa:${slug}`, delayMs: 7_000 };
+    return { eventType: 'business_discovered', sourceId: `business:${slug}`, delayMs: 7_000 };
   }
 
   const experienceBusiness = sourceToken(params.get('business'));
   if (path === '/experiencias' && experienceBusiness && slug) {
     return {
-      eventType: 'territory_viewed',
-      sourceId: `pueblo:experiencia:${experienceBusiness}:${slug}`,
+      eventType: 'experience_discovered',
+      sourceId: `experience:${experienceBusiness}:${slug}`,
       delayMs: 9_000,
     };
   }
 
+  if (path === '/mercado') {
+    return { eventType: 'market_checked', sourceId: 'market', delayMs: 6_000 };
+  }
   if (path === '/radar') {
     return { eventType: 'weather_checked', sourceId: 'radar', delayMs: 5_000 };
   }
@@ -174,9 +200,9 @@ export function miOlivoDiscoveryActionForRoute(pathname: string, query: string):
     return { eventType: 'learning_completed', sourceId: `consejo:${slug}`, delayMs: 10_000 };
   }
 
-  const surfaceSource = SURFACE_SOURCES[path];
-  if (surfaceSource) {
-    return { eventType: 'territory_viewed', sourceId: surfaceSource, delayMs: 7_000 };
+  const sectionSource = SECTION_SOURCES[path];
+  if (sectionSource) {
+    return { eventType: 'section_discovered', sourceId: sectionSource, delayMs: 7_000 };
   }
 
   return null;
