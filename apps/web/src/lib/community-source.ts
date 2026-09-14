@@ -20,7 +20,7 @@ export type CommunityPost = {
   media_url: string | null;
   created_at: string;
   edited_at: string | null;
-  author_id: string;
+  author_id: string | null;
   author_name: string;
   author_avatar_url: string | null;
   municipality_slug: string | null;
@@ -36,7 +36,7 @@ export type CommunityComment = {
   body: string;
   created_at: string;
   edited_at: string | null;
-  author_id: string;
+  author_id: string | null;
   author_name: string;
   author_avatar_url: string | null;
 };
