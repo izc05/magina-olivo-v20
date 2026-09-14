@@ -51,6 +51,9 @@ function Start-LocalProcess {
 
 Assert-PortAvailable -Port 3001
 Assert-PortAvailable -Port 3002
+if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot 'node_modules/.pnpm'))) {
+  throw 'Faltan dependencias del proyecto. Ejecuta pnpm install en la raíz antes de arrancar el stack local.'
+}
 
 & (Join-Path $PSScriptRoot 'start-local-v20.ps1') -SeedDemo:$SeedDemo
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar la base local.' }

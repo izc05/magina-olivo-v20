@@ -26,7 +26,8 @@ los requisitos estén correctos, prepara la base local con:
 .\scripts\start-local-v20.ps1 -SeedDemo
 ```
 
-Para preparar la base y arrancar API + web automáticamente, usa en su lugar:
+Después de ejecutar `pnpm install`, para preparar la base y arrancar API + web
+automáticamente, usa en su lugar:
 
 ```powershell
 .\scripts\run-local-v20.ps1 -SeedDemo
