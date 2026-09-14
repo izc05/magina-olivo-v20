@@ -45,6 +45,17 @@ if (bookmarksRoute.includes('workspace_id') || bookmarksRoute.includes('field_id
   fail('community saved-post API must remain account-scoped and independent from private farm geometry');
 }
 
+const discoveryRoute = requireFile('apps/api/src/routes/community-discovery.ts');
+requireText(discoveryRoute, '/api/v1/public/community/discover', 'community discovery API');
+requireText(discoveryRoute, '/api/v1/public/community/members/:id', 'community public profile API');
+requireText(discoveryRoute, "z.enum(sortModes).default('recent')", 'community discovery sorting');
+requireText(discoveryRoute, "p.body ILIKE", 'community safe text search');
+requireText(discoveryRoute, "up.visibility = 'public'", 'community public profile visibility gate');
+requireText(discoveryRoute, "ELSE 'Miembro de Mágina'", 'community discovery private author alias');
+for (const privateToken of ['primary_email', 'workspace_id', 'field_id', 'geometry']) {
+  if (discoveryRoute.includes(privateToken)) fail(`community discovery must not expose ${privateToken}`);
+}
+
 const adminRoutes = requireFile('apps/api/src/routes/admin-community.ts');
 requireText(adminRoutes, '/api/v1/admin/community/reports', 'community moderation API');
 requireText(adminRoutes, '/api/v1/admin/community/moderation', 'community moderation API');
@@ -54,9 +65,11 @@ requireText(adminRoutes, 'auditAdminAction', 'community moderation audit');
 const app = requireFile('apps/api/src/app.ts');
 requireText(app, 'registerCommunityRoutes(app, db)', 'community API registration');
 requireText(app, 'registerCommunityBookmarkRoutes(app, db)', 'community saved-post registration');
+requireText(app, 'registerCommunityDiscoveryRoutes(app, db)', 'community discovery registration');
 requireText(app, 'registerAdminCommunityRoutes(app, db)', 'community admin API registration');
 
-requireFile('apps/web/src/app/comunidad/page.tsx');
+const communityPage = requireFile('apps/web/src/app/comunidad/page.tsx');
+requireText(communityPage, '/comunidad/descubrir', 'community discovery navigation');
 const client = requireFile('apps/web/src/app/comunidad/community-client.tsx');
 for (const behavior of [
   'createCommunityPost',
@@ -77,6 +90,17 @@ requireText(source, 'author_id: string | null', 'community private author client
 const explore = requireFile('apps/web/src/app/explorar/explore-public-client.tsx');
 requireText(explore, "href: '/comunidad'", 'Explore community entry');
 requireFile('apps/web/src/app/comunidad/community.module.css');
+
+const discoveryClient = requireFile('apps/web/src/app/comunidad/descubrir/discovery-client.tsx');
+requireText(discoveryClient, '/api/v1/public/community/discover', 'community discovery UI');
+requireText(discoveryClient, 'most_commented', 'community most-commented ranking UI');
+requireText(discoveryClient, 'most_liked', 'community most-liked ranking UI');
+requireText(discoveryClient, '/comunidad/persona/', 'community member navigation');
+requireFile('apps/web/src/app/comunidad/descubrir/discovery.module.css');
+const publicMemberPage = requireFile('apps/web/src/app/comunidad/persona/[id]/page.tsx');
+requireText(publicMemberPage, '/api/v1/public/community/members/', 'community public member UI');
+requireText(publicMemberPage, 'Perfil no público', 'community private profile state');
+requireFile('apps/web/src/app/comunidad/persona/[id]/profile.module.css');
 
 requireFile('apps/web/src/app/admin/comunidad/page.tsx');
 const adminConsole = requireFile('apps/web/src/components/admin-community-console.tsx');
