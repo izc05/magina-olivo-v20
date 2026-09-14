@@ -21,6 +21,7 @@ export type PublicMillReward = {
 
 export type MillRewardUnlockState = {
   xp: number;
+  balance: number;
   currentLevel: number;
   currentLevelName: string;
   rewards: Array<{
