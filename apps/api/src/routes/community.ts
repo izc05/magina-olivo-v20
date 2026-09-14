@@ -13,7 +13,10 @@ const postBodySchema = z.object({
   municipality_slug: z.string().trim().min(1).max(120).optional().nullable(),
   media_url: z.string().trim().regex(/^\/media\/[A-Za-z0-9_./-]+$/).max(500).optional().nullable(),
 });
-const commentBodySchema = z.object({ body: z.string().trim().min(1).max(1000) });
+const commentBodySchema = z.object({
+  body: z.string().trim().min(1).max(1000),
+  parent_comment_id: z.string().uuid().optional().nullable(),
+});
 const reportBodySchema = z.object({
   target_type: z.enum(['post','comment']),
   target_id: z.string().uuid(),
@@ -63,9 +66,17 @@ type CommentRow = {
   body: string;
   created_at: Date | string;
   edited_at: Date | string | null;
+  parent_comment_id: string | null;
+  reply_to_author_name: string | null;
   author_id: string | null;
   author_name: string;
   author_avatar_url: string | null;
+};
+
+type ParentCommentRow = {
+  post_id: string;
+  parent_comment_id: string | null;
+  status: string;
 };
 
 type IdRow = { id: string };
@@ -150,6 +161,13 @@ export function registerCommunityRoutes(app: FastifyInstance, db: DatabaseClient
         c.body,
         c.created_at,
         c.edited_at,
+        CASE WHEN parent.status = 'published' THEN parent.id::text ELSE NULL END AS parent_comment_id,
+        CASE
+          WHEN parent.status <> 'published' OR parent.id IS NULL THEN NULL
+          WHEN parent_profile.visibility = 'public' AND parent_profile.display_name_override IS NOT NULL THEN parent_profile.display_name_override
+          WHEN parent_profile.visibility = 'public' THEN parent_user.display_name
+          ELSE 'Miembro de Mágina'
+        END AS reply_to_author_name,
         CASE WHEN up.visibility = 'public' THEN u.id::text ELSE NULL END AS author_id,
         CASE
           WHEN up.visibility = 'public' AND up.display_name_override IS NOT NULL THEN up.display_name_override
@@ -160,6 +178,9 @@ export function registerCommunityRoutes(app: FastifyInstance, db: DatabaseClient
       FROM community_comments c
       JOIN users u ON u.id = c.author_user_id AND u.status = 'active'
       LEFT JOIN user_profiles up ON up.user_id = u.id
+      LEFT JOIN community_comments parent ON parent.id = c.parent_comment_id
+      LEFT JOIN users parent_user ON parent_user.id = parent.author_user_id AND parent_user.status = 'active'
+      LEFT JOIN user_profiles parent_profile ON parent_profile.user_id = parent_user.id
       WHERE c.post_id = ${params.id}::uuid
         AND c.status = 'published'
       ORDER BY c.created_at ASC, c.id ASC
@@ -293,9 +314,25 @@ export function registerCommunityRoutes(app: FastifyInstance, db: DatabaseClient
     if (!body) return;
     if (!(await publishedPostExists(database, params.id))) return reply.code(404).send({ error: 'community_post_not_found' });
 
+    if (body.parent_comment_id) {
+      const parent = await sql<ParentCommentRow>`
+        SELECT post_id::text AS post_id, parent_comment_id::text AS parent_comment_id, status
+        FROM community_comments
+        WHERE id = ${body.parent_comment_id}::uuid
+        LIMIT 1
+      `.execute(database);
+      const parentComment = parent.rows[0];
+      if (!parentComment || parentComment.status !== 'published' || parentComment.post_id !== params.id) {
+        return reply.code(400).send({ error: 'community_reply_parent_invalid' });
+      }
+      if (parentComment.parent_comment_id) {
+        return reply.code(400).send({ error: 'community_reply_depth_exceeded' });
+      }
+    }
+
     const created = await sql<IdRow>`
-      INSERT INTO community_comments (post_id, author_user_id, body)
-      VALUES (${params.id}::uuid, ${userId}::uuid, ${body.body})
+      INSERT INTO community_comments (post_id, author_user_id, body, parent_comment_id)
+      VALUES (${params.id}::uuid, ${userId}::uuid, ${body.body}, ${body.parent_comment_id ?? null}::uuid)
       RETURNING id::text AS id
     `.execute(database);
     return reply.code(201).send({ id: created.rows[0]!.id, status: 'published' });
