@@ -5,12 +5,14 @@ const root = process.cwd();
 const adminDir = resolve(root, 'apps/web/src/app/admin');
 const modulesPage = readFileSync(resolve(adminDir, 'modulos/page.tsx'), 'utf8');
 const adminPage = readFileSync(resolve(adminDir, 'page.tsx'), 'utf8');
+const registryPath = resolve(adminDir, 'modulos/admin-modules.json');
 const adminLayoutPath = resolve(adminDir, 'layout.tsx');
 const adminRouteGatePath = resolve(root, 'apps/web/src/components/admin-route-gate.tsx');
 const adminLayout = existsSync(adminLayoutPath) ? readFileSync(adminLayoutPath, 'utf8') : '';
 const adminRouteGate = existsSync(adminRouteGatePath) ? readFileSync(adminRouteGatePath, 'utf8') : '';
+const modules = JSON.parse(readFileSync(registryPath, 'utf8'));
 
-const requiredModuleIds = [
+const baselineModuleIds = [
   'operations',
   'analytics',
   'management',
@@ -33,42 +35,21 @@ const requiredModuleIds = [
   'adventure',
 ];
 
-const requiredAvailableRoutes = [
-  '/admin/operaciones',
-  '/admin/analitica',
-  '/admin/gestion',
-  '/admin/campanas-planes',
-  '/admin/agenda',
-  '/admin/trabajos',
-  '/admin/documentos',
-  '/admin/profesional',
-  '/admin/fuentes',
-  '/admin/territorio',
-  '/admin/media',
-  '/admin/web',
-  '/admin/ayuntamientos',
-];
-
-const implementedModules = [
-  { id: 'businesses', sourceBranch: 'feat/v20-business-directory', targetHref: '/admin/empresas' },
-  { id: 'experiences', sourceBranch: 'feat/v20-business-experiences', targetHref: '/admin/empresas/experiencias' },
-  { id: 'magina-pass', sourceBranch: 'feat/v20-business-magina-pass', targetHref: '/admin/empresas/magina-pass' },
-  { id: 'routes', sourceBranch: 'feat/v20-routes-explore', targetHref: '/admin/rutas' },
-  { id: 'route-community', sourceBranch: 'feat/v20-routes-explore', targetHref: '/admin/rutas/comunidad' },
-  { id: 'route-sponsorships', sourceBranch: 'feat/v20-routes-explore', targetHref: '/admin/rutas/patrocinios' },
-  { id: 'adventure', sourceBranch: 'feat/v20-routes-adventure', targetHref: '/admin/rutas/aventuras' },
-];
-
+const allowedStatuses = new Set(['available', 'implemented']);
+const allowedAreas = new Set(['Plataforma', 'Territorio', 'Negocio', 'Experiencia']);
 const failures = [];
-const lines = modulesPage.split('\n');
-
-function countOccurrences(text, needle) {
-  return text.split(needle).length - 1;
-}
 
 function routeToPagePath(href) {
   const segments = href.split('/').filter(Boolean);
   return resolve(root, 'apps/web/src/app', ...segments, 'page.tsx');
+}
+
+function isAdminHref(value) {
+  return typeof value === 'string' && value.startsWith('/admin/');
+}
+
+if (!Array.isArray(modules)) {
+  failures.push('admin-modules.json debe contener un array de módulos.');
 }
 
 if (!adminLayout) {
@@ -99,47 +80,67 @@ if (!adminRouteGate) {
   }
 }
 
-for (const id of requiredModuleIds) {
-  const occurrences = countOccurrences(modulesPage, `id: '${id}'`);
-  if (occurrences !== 1) failures.push(`El módulo ${id} debe aparecer exactamente una vez; aparece ${occurrences}.`);
+if (!modulesPage.includes("import moduleRegistry from './admin-modules.json'")) {
+  failures.push('La UI de módulos debe leer el registro canónico admin-modules.json.');
 }
 
-const moduleRows = requiredModuleIds.map((id) => ({
-  id,
-  row: lines.find((line) => line.includes(`id: '${id}'`)) ?? '',
-}));
-
-if (moduleRows.filter(({ row }) => row.includes("status: 'available'")).length !== 13) {
-  failures.push('Deben existir exactamente 13 módulos disponibles en la base actual.');
+const ids = modules.map((module) => module?.id);
+for (const id of baselineModuleIds) {
+  const occurrences = ids.filter((candidate) => candidate === id).length;
+  if (occurrences !== 1) failures.push(`El módulo crítico ${id} debe aparecer exactamente una vez; aparece ${occurrences}.`);
 }
 
-if (moduleRows.filter(({ row }) => row.includes("status: 'implemented'")).length !== 7) {
-  failures.push('Deben existir exactamente 7 módulos implementados en ramas funcionales.');
+if (new Set(ids).size !== ids.length) {
+  failures.push('El registro Admin contiene IDs de módulo duplicados.');
 }
 
-for (const href of requiredAvailableRoutes) {
-  const row = moduleRows.find(({ row }) => row.includes(`href: '${href}'`))?.row;
-  if (!row?.includes("status: 'available'")) failures.push(`La ruta ${href} debe pertenecer a un módulo disponible.`);
-
-  const pagePath = routeToPagePath(href);
-  if (!existsSync(pagePath)) failures.push(`La ruta disponible ${href} no tiene una page.tsx real (${pagePath}).`);
+if (modules.length < baselineModuleIds.length) {
+  failures.push(`El registro no puede reducirse por debajo de los ${baselineModuleIds.length} módulos críticos auditados.`);
 }
 
-for (const { id, sourceBranch, targetHref } of implementedModules) {
-  const row = moduleRows.find((module) => module.id === id)?.row ?? '';
-  if (!row.includes("status: 'implemented'")) failures.push(`${id} debe figurar como implementado en rama.`);
-  if (row.includes(' href:')) failures.push(`${id} no debe exponer href antes de su absorción.`);
-  if (!row.includes(`sourceBranch: '${sourceBranch}'`)) failures.push(`${id} debe declarar su rama fuente ${sourceBranch}.`);
-  if (!row.includes(`targetHref: '${targetHref}'`)) failures.push(`${id} debe declarar su ruta objetivo ${targetHref}.`);
-  if (!targetHref.startsWith('/admin/')) failures.push(`${id} debe declarar una ruta objetivo bajo /admin/.`);
+for (const module of modules) {
+  if (!module || typeof module !== 'object') {
+    failures.push('Todos los registros Admin deben ser objetos.');
+    continue;
+  }
+
+  const label = module.id || '(sin id)';
+  if (typeof module.id !== 'string' || !module.id.trim()) failures.push('Hay un módulo sin id válido.');
+  if (typeof module.title !== 'string' || !module.title.trim()) failures.push(`${label} no tiene title válido.`);
+  if (typeof module.description !== 'string' || !module.description.trim()) failures.push(`${label} no tiene description válida.`);
+  if (!allowedStatuses.has(module.status)) failures.push(`${label} usa un status no permitido: ${module.status}.`);
+  if (!allowedAreas.has(module.area)) failures.push(`${label} usa un área no permitida: ${module.area}.`);
+
+  if (module.status === 'available') {
+    if (!isAdminHref(module.href)) failures.push(`${label} está disponible pero no declara href bajo /admin/.`);
+    if (module.sourceBranch || module.targetHref) failures.push(`${label} está disponible y no debe conservar metadatos de integración externa.`);
+    if (isAdminHref(module.href) && !existsSync(routeToPagePath(module.href))) {
+      failures.push(`La ruta disponible ${module.href} no tiene una page.tsx real.`);
+    }
+  }
+
+  if (module.status === 'implemented') {
+    if (module.href) failures.push(`${label} no debe exponer href antes de su absorción.`);
+    if (typeof module.sourceBranch !== 'string' || !module.sourceBranch.trim()) failures.push(`${label} debe declarar sourceBranch.`);
+    if (!isAdminHref(module.targetHref)) failures.push(`${label} debe declarar targetHref bajo /admin/.`);
+  }
 }
 
-for (const { id, row } of moduleRows) {
-  if (row.includes("status: 'available'") && !row.includes('href:')) failures.push(`${id} está disponible pero no tiene href.`);
+const availableModules = modules.filter((module) => module?.status === 'available');
+const implementedModules = modules.filter((module) => module?.status === 'implemented');
+const availableHrefs = availableModules.map((module) => module.href).filter(Boolean);
+const targetHrefs = implementedModules.map((module) => module.targetHref).filter(Boolean);
+
+if (new Set(availableHrefs).size !== availableHrefs.length) {
+  failures.push('Dos módulos disponibles no pueden compartir el mismo href.');
+}
+
+if (new Set(targetHrefs).size !== targetHrefs.length) {
+  failures.push('Dos módulos implementados no pueden compartir la misma ruta objetivo.');
 }
 
 const availableRouteRoots = new Set(
-  requiredAvailableRoutes.map((href) => href.split('/').filter(Boolean)[1]),
+  availableHrefs.map((href) => href.split('/').filter(Boolean)[1]).filter(Boolean),
 );
 availableRouteRoots.add('modulos');
 
@@ -161,11 +162,6 @@ for (const routeRoot of availableRouteRoots) {
   }
 }
 
-const targetHrefs = implementedModules.map(({ targetHref }) => targetHref);
-if (new Set(targetHrefs).size !== targetHrefs.length) {
-  failures.push('Las rutas objetivo de módulos implementados deben ser únicas.');
-}
-
 if (!adminPage.includes('href="/admin/modulos"')) failures.push('El centro Admin no enlaza al directorio unificado.');
 if (!adminPage.includes('href="/admin/ayuntamientos"')) failures.push('El centro Admin no enlaza directamente a Ayuntamientos.');
 
@@ -180,5 +176,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Contrato Admin unificado: OK (${requiredModuleIds.length}/${requiredModuleIds.length} superficies Admin registradas; 13 disponibles, 7 implementadas en ramas, ${topLevelAdminRoutes.length} rutas raíz verificadas y gate corporativo común activo).`,
+  `Contrato Admin unificado: OK (${modules.length} superficies registradas; ${availableModules.length} disponibles, ${implementedModules.length} implementadas en ramas, ${topLevelAdminRoutes.length} rutas raíz verificadas y gate corporativo común activo).`,
 );
