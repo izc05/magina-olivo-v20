@@ -86,7 +86,7 @@ export function registerCommunityRoutes(app: FastifyInstance, db: DatabaseClient
     if (!database) return;
     const query = parseQuery(feedQuerySchema, request.query, reply);
     if (!query) return;
-    const viewerId = readAuthenticatedUserId(request);
+    const viewerId = readAuthenticatedUserId(request) ?? null;
     const category = query.category ?? null;
     const municipality = query.municipality ?? null;
     const before = query.before ?? null;
@@ -104,7 +104,7 @@ export function registerCommunityRoutes(app: FastifyInstance, db: DatabaseClient
           WHEN up.visibility = 'public' AND up.display_name_override IS NOT NULL THEN up.display_name_override
           ELSE u.display_name
         END AS author_name,
-        u.avatar_url AS author_avatar_url,
+        CASE WHEN up.visibility = 'public' THEN u.avatar_url ELSE NULL END AS author_avatar_url,
         m.slug AS municipality_slug,
         m.name AS municipality_name,
         (SELECT COUNT(*)::int FROM community_reactions r WHERE r.post_id = p.id AND r.reaction = 'like') AS reaction_count,
@@ -154,7 +154,7 @@ export function registerCommunityRoutes(app: FastifyInstance, db: DatabaseClient
           WHEN up.visibility = 'public' AND up.display_name_override IS NOT NULL THEN up.display_name_override
           ELSE u.display_name
         END AS author_name,
-        u.avatar_url AS author_avatar_url
+        CASE WHEN up.visibility = 'public' THEN u.avatar_url ELSE NULL END AS author_avatar_url
       FROM community_comments c
       JOIN users u ON u.id = c.author_user_id AND u.status = 'active'
       LEFT JOIN user_profiles up ON up.user_id = u.id
