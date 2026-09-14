@@ -44,7 +44,7 @@ test('Mágina Aventura renders its public mobile hub without fictional fallback 
   await expectNoHorizontalOverflow(page);
 });
 
-test('Aventura en curso has a dedicated mobile expedition screen', async ({ page }) => {
+test('Aventura en curso has live mobile telemetry without starting a second GPS watcher', async ({ page }) => {
   const routeDetail = {
     route: {
       id: '22222222-2222-4222-8222-222222222222',
@@ -91,8 +91,21 @@ test('Aventura en curso has a dedicated mobile expedition screen', async ({ page
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ enabled: false, route: { id: routeDetail.route.id, slug: 'ruta-demo', name: routeDetail.route.name }, adventure: null, checkpoints: [] }),
+      body: JSON.stringify({
+        enabled: true,
+        route: { id: routeDetail.route.id, slug: 'ruta-demo', name: routeDetail.route.name },
+        adventure: { title: 'La senda de prueba', intro: 'Aventura de validación.', completion_message: null, progression_mode: 'linear' },
+        checkpoints: [{
+          id: 'checkpoint-demo', route_point_id: null, title: 'Punto de prueba', description: 'Checkpoint real de prueba.',
+          kind: 'landmark', collection_category: 'heritage', rarity: 'common', distance_m: 1200, unlock_radius_m: 40,
+          points: 50, is_required: true, question: null, answer_options: [], hint: null, sort_order: 1,
+          latitude: 37.75, longitude: -3.45,
+        }],
+      }),
     });
+  });
+  await page.route('**/api/v1/routes/22222222-2222-4222-8222-222222222222/adventure/progress', async (route) => {
+    await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'authentication_required' }) });
   });
   await page.route('**/api/v1/activities/active', async (route) => {
     await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'authentication_required' }) });
@@ -102,6 +115,19 @@ test('Aventura en curso has a dedicated mobile expedition screen', async ({ page
   await page.goto('/aventura/en-curso?slug=ruta-demo');
 
   await expect(page.getByRole('heading', { level: 1, name: 'Ruta Demo de Mágina' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Ahora mismo' })).toBeVisible();
+  await expect(page.getByText('Punto de prueba')).toBeVisible();
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent('magina:route-gps-telemetry', { detail: {
+      status: 'tracking', latitude: 37.75, longitude: -3.45, accuracy: 6, timestamp: Date.now(),
+    } }));
+  });
+
+  await expect(page.getByText('GPS activo')).toBeVisible();
+  await expect(page.getByText('Precisión aproximada ±6 m')).toBeVisible();
+  await expect(page.getByText('Ya estás dentro del radio de 40 m.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ver siguiente checkpoint en el mapa/ })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Mapa de expedición' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Grabar recorrido' })).toBeVisible();
   await expect(page.getByText('Revisa meteorología y lleva agua suficiente.')).toBeVisible();
