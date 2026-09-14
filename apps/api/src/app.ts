@@ -29,6 +29,7 @@ import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
 import { registerMiOlivoCampaignRoutes } from './routes/mi-olivo-campaign.js';
 import { registerCommunityRoutes } from './routes/community.js';
 import { registerCommunityBookmarkRoutes } from './routes/community-bookmarks.js';
+import { registerCommunityDiscoveryRoutes } from './routes/community-discovery.js';
 import { registerFieldRoutes } from './routes/fields.js';
 import { registerIrrigationRoutes } from './routes/irrigations.js';
 import { registerObservationRoutes } from './routes/observations.js';
@@ -221,6 +222,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerMiOlivoCampaignRoutes(app, db);
   registerCommunityRoutes(app, db);
   registerCommunityBookmarkRoutes(app, db);
+  registerCommunityDiscoveryRoutes(app, db);
   registerTerritoryRoutes(app, db);
   registerBusinessDirectoryRoutes(app, db);
   registerBusinessRevenueRoutes(app, db);
