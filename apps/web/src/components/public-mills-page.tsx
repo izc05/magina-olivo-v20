@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { loadPublicMills, type PublicMill } from '@/lib/public-mills-source';
+import { MillIcon } from '@/components/icons';
 import styles from './public-mills.module.css';
 
 function safeExternalUrl(value: string | null): string | null {
@@ -35,7 +36,7 @@ function searchableText(item: PublicMill) {
 function MillCard({ item, basePath }: { item: PublicMill; basePath: string }) {
   const image = safeMediaUrl(item.mediaUrl);
   return <article className={styles.card}>
-    {image ? <img className={styles.cardImage} src={image} alt="" loading="lazy" /> : <div className={styles.cardPlaceholder} aria-hidden="true">🫒</div>}
+    {image ? <img className={styles.cardImage} src={image} alt="" loading="lazy" /> : <div className={styles.cardPlaceholder} aria-hidden="true"><MillIcon /></div>}
     <div className={styles.cardBody}>
       <div className={styles.metaRow}>
         <span>{item.featured ? 'Destacada' : 'Cooperativa / almazara'}</span>
@@ -56,7 +57,7 @@ function MillDetail({ item, basePath }: { item: PublicMill; basePath: string }) 
   return <>
     <Link className={styles.backLink} href={basePath}>← Cooperativas y almazaras</Link>
     <article className={styles.detail}>
-      {image ? <img className={styles.heroImage} src={image} alt="" /> : <div className={styles.heroPlaceholder} aria-hidden="true">🫒</div>}
+      {image ? <img className={styles.heroImage} src={image} alt="" /> : <div className={styles.heroPlaceholder} aria-hidden="true"><MillIcon /></div>}
       <div className={styles.detailBody}>
         <div className={styles.metaRow}><span>Cooperativa / almazara</span>{item.town ? <span>{item.town}</span> : null}</div>
         <h1>{item.title}</h1>

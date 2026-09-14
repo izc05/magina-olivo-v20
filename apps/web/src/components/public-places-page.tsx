@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { loadPublicPlaces, type PublicPlace } from '@/lib/public-places-source';
+import { PlaceIcon } from '@/components/icons';
 import styles from './public-places.module.css';
 
 function safeExternalUrl(value: string | null): string | null {
@@ -34,7 +35,7 @@ function PlaceCard({ item }: { item: PublicPlace }) {
   return <article className={styles.card}>
     {image
       ? <img className={styles.cardImage} src={image} alt="" loading="lazy" />
-      : <div className={styles.cardPlaceholder} aria-hidden="true">⛰️</div>}
+      : <div className={styles.cardPlaceholder} aria-hidden="true"><PlaceIcon /></div>}
     <div className={styles.cardBody}>
       <div className={styles.metaRow}>
         <span>{item.featured ? 'Destacado' : 'Pueblo / lugar'}</span>
@@ -56,7 +57,7 @@ function PlaceDetail({ item }: { item: PublicPlace }) {
     <article className={styles.detail}>
       {image
         ? <img className={styles.heroImage} src={image} alt="" />
-        : <div className={styles.heroPlaceholder} aria-hidden="true">⛰️</div>}
+        : <div className={styles.heroPlaceholder} aria-hidden="true"><PlaceIcon /></div>}
       <div className={styles.detailBody}>
         <div className={styles.metaRow}><span>Pueblo / lugar</span>{item.town && item.town !== item.title ? <span>{item.town}</span> : null}</div>
         <h1>{item.title}</h1>

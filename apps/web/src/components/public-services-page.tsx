@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { loadPublicServices, type PublicService } from '@/lib/public-services-source';
+import { ServiceIcon } from '@/components/icons';
 import styles from './public-services.module.css';
 
 function safeExternalUrl(value: string | null): string | null {
@@ -53,7 +54,7 @@ function ServiceCard({ item }: { item: PublicService }) {
   return <article className={styles.card}>
     {image
       ? <img className={styles.cardImage} src={image} alt="" loading="lazy" />
-      : <div className={styles.cardPlaceholder} aria-hidden="true">🛠️</div>}
+      : <div className={styles.cardPlaceholder} aria-hidden="true"><ServiceIcon /></div>}
     <div className={styles.cardBody}>
       <div className={styles.metaRow}>
         <span>{item.featured ? 'Destacado' : 'Servicio local'}</span>
@@ -83,7 +84,7 @@ function ServiceDetail({ item }: { item: PublicService }) {
     <article className={styles.detail}>
       {image
         ? <img className={styles.heroImage} src={image} alt="" />
-        : <div className={styles.heroPlaceholder} aria-hidden="true">🛠️</div>}
+        : <div className={styles.heroPlaceholder} aria-hidden="true"><ServiceIcon /></div>}
       <div className={styles.detailBody}>
         <div className={styles.metaRow}><span>Empresa / servicio local</span>{item.featured ? <span>Destacado</span> : null}</div>
         <h1>{item.title}</h1>

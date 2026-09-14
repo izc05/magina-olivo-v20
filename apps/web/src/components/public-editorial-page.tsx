@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { BottomNav } from './bottom-nav';
 import { Topbar } from './topbar';
+import { EventIcon, NewsIcon } from './icons';
 import { editorialDetails, loadPublicEditorial, type PublicEditorialEntry, type PublicEditorialType } from '../lib/public-editorial-source';
 import styles from './public-editorial.module.css';
 
@@ -74,7 +75,7 @@ function Card({ entry, type }: { entry: PublicEditorialEntry; type: PublicEditor
     <Link className={styles.cardLink} href={href}>
       {entry.media_url
         ? <img className={styles.media} src={entry.media_url} alt="" loading="lazy" />
-        : <div className={styles.mediaPlaceholder} aria-hidden>{type === 'news' ? '📰' : '📅'}</div>}
+        : <div className={styles.mediaPlaceholder} aria-hidden>{type === 'news' ? <NewsIcon /> : <EventIcon />}</div>}
       <div className={styles.cardBody}>
         <div className={styles.meta}>
           {entry.featured ? <span className={styles.badge}>Destacado</span> : null}

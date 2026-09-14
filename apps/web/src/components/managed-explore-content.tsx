@@ -1,19 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowIcon } from './icons';
+import type { ComponentType } from 'react';
+import { AlertIcon, ArrowIcon, DirectoryIcon, DocumentIcon, EventIcon, MapPinIcon, MillIcon, NewsIcon, PromotionIcon } from './icons';
 import { getPublishedContent } from '../lib/public-content-source';
 import type { CmsEntry } from '../lib/admin-data-source';
 
-const iconByType: Record<CmsEntry['type'], string> = {
-  page: '📄',
-  news: '📰',
-  event: '📅',
-  place: '📍',
-  mill: '🫒',
-  directory: '🏪',
-  promotion: '✨',
-  alert: '⚠️',
+const iconByType: Record<CmsEntry['type'], ComponentType> = {
+  page: DocumentIcon,
+  news: NewsIcon,
+  event: EventIcon,
+  place: MapPinIcon,
+  mill: MillIcon,
+  directory: DirectoryIcon,
+  promotion: PromotionIcon,
+  alert: AlertIcon,
 };
 
 type TerritoryData = {
@@ -63,10 +64,11 @@ function ManagedCard({ entry }: { entry: CmsEntry }) {
   const isTerritory = entry.type === 'place' || entry.type === 'mill' || entry.type === 'directory';
   const services = data.services?.slice(0, 3) ?? [];
   const meta = [data.territory_place_name, data.phone].filter(Boolean).join(' · ');
+  const EntryIcon = iconByType[entry.type];
 
   const content = (
     <>
-      {media ? <img src={media} alt="" loading="lazy" style={{ width: 58, height: 58, borderRadius: 14, objectFit: 'cover', flex: '0 0 auto' }} /> : <span className="explore-icon">{iconByType[entry.type]}</span>}
+      {media ? <img src={media} alt="" loading="lazy" style={{ width: 58, height: 58, borderRadius: 14, objectFit: 'cover', flex: '0 0 auto' }} /> : <span className="explore-icon"><EntryIcon /></span>}
       <div style={{ minWidth: 0 }}>
         <h3>{entry.title}</h3>
         {isTerritory && meta ? <small style={{ display: 'block', marginBottom: 5, color: '#6e756d', fontWeight: 700 }}>{meta}</small> : null}

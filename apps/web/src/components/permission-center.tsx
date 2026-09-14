@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { BellIcon, CameraIcon, MapPinIcon, OfflineIcon } from './icons';
 
 type Status = 'Comprobando…' | 'Sin solicitar' | 'Permitido' | 'Denegado' | 'No disponible';
 
@@ -108,10 +109,10 @@ export function PermissionCenter() {
   return (
     <section className="card permission-center">
       <div className="permission-head"><div><span className="eyebrow dark">PRIVACIDAD</span><h3>Permisos del dispositivo</h3><p>Ves el estado real de este navegador. Mágina solo los solicita cuando decides activar cada función.</p></div></div>
-      <div className="permission-row"><div><strong>📍 Ubicación</strong><small>Municipio, tiempo y lugares cercanos. No se activa en segundo plano desde esta pantalla.</small></div><button type="button" onClick={requestLocation} disabled={busy === 'location' || location === 'Permitido' || location === 'No disponible'} aria-label="Gestionar permiso de ubicación">{busy === 'location' ? 'Solicitando…' : permissionLabel(location)}</button></div>
-      <div className="permission-row"><div><strong>🔔 Notificaciones</strong><small>Lluvia, riegos y tareas que tú actives. Si están denegadas, debes reactivarlas desde el navegador.</small></div><button type="button" onClick={requestNotifications} disabled={busy === 'notifications' || notifications === 'Permitido' || notifications === 'Denegado' || notifications === 'No disponible'} aria-label="Gestionar permiso de notificaciones">{busy === 'notifications' ? 'Solicitando…' : permissionLabel(notifications)}</button></div>
-      <div className="permission-row"><div><strong>📷 Cámara</strong><small>Se solicita únicamente al fotografiar un albarán o documento.</small></div><span className="context-pill">Contextual</span></div>
-      <div className="permission-row"><div><strong>⇩ Modo sin conexión</strong><small>El almacenamiento persistente ayuda a conservar datos locales cuando el sistema lo permite.</small></div><button type="button" onClick={requestPersistentStorage} disabled={busy === 'storage' || storage === 'Permitido' || storage === 'No disponible'} aria-label="Gestionar almacenamiento persistente">{busy === 'storage' ? 'Solicitando…' : permissionLabel(storage)}</button></div>
+      <div className="permission-row"><div><strong><MapPinIcon /> Ubicación</strong><small>Municipio, tiempo y lugares cercanos. No se activa en segundo plano desde esta pantalla.</small></div><button type="button" onClick={requestLocation} disabled={busy === 'location' || location === 'Permitido' || location === 'No disponible'} aria-label="Gestionar permiso de ubicación">{busy === 'location' ? 'Solicitando…' : permissionLabel(location)}</button></div>
+      <div className="permission-row"><div><strong><BellIcon /> Notificaciones</strong><small>Lluvia, riegos y tareas que tú actives. Si están denegadas, debes reactivarlas desde el navegador.</small></div><button type="button" onClick={requestNotifications} disabled={busy === 'notifications' || notifications === 'Permitido' || notifications === 'Denegado' || notifications === 'No disponible'} aria-label="Gestionar permiso de notificaciones">{busy === 'notifications' ? 'Solicitando…' : permissionLabel(notifications)}</button></div>
+      <div className="permission-row"><div><strong><CameraIcon /> Cámara</strong><small>Se solicita únicamente al fotografiar un albarán o documento.</small></div><span className="context-pill">Contextual</span></div>
+      <div className="permission-row"><div><strong><OfflineIcon /> Modo sin conexión</strong><small>El almacenamiento persistente ayuda a conservar datos locales cuando el sistema lo permite.</small></div><button type="button" onClick={requestPersistentStorage} disabled={busy === 'storage' || storage === 'Permitido' || storage === 'No disponible'} aria-label="Gestionar almacenamiento persistente">{busy === 'storage' ? 'Solicitando…' : permissionLabel(storage)}</button></div>
     </section>
   );
 }
