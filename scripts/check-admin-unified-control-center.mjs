@@ -5,6 +5,10 @@ const root = process.cwd();
 const adminDir = resolve(root, 'apps/web/src/app/admin');
 const modulesPage = readFileSync(resolve(adminDir, 'modulos/page.tsx'), 'utf8');
 const adminPage = readFileSync(resolve(adminDir, 'page.tsx'), 'utf8');
+const adminLayoutPath = resolve(adminDir, 'layout.tsx');
+const adminRouteGatePath = resolve(root, 'apps/web/src/components/admin-route-gate.tsx');
+const adminLayout = existsSync(adminLayoutPath) ? readFileSync(adminLayoutPath, 'utf8') : '';
+const adminRouteGate = existsSync(adminRouteGatePath) ? readFileSync(adminRouteGatePath, 'utf8') : '';
 
 const requiredModuleIds = [
   'operations',
@@ -65,6 +69,34 @@ function countOccurrences(text, needle) {
 function routeToPagePath(href) {
   const segments = href.split('/').filter(Boolean);
   return resolve(root, 'apps/web/src/app', ...segments, 'page.tsx');
+}
+
+if (!adminLayout) {
+  failures.push('Falta apps/web/src/app/admin/layout.tsx para aplicar políticas comunes a todo Admin.');
+} else {
+  if (!adminLayout.includes('<AdminRouteGate>{children}</AdminRouteGate>')) {
+    failures.push('El layout de Admin debe envolver todas las rutas con AdminRouteGate.');
+  }
+  if (!adminLayout.includes('index: false') || !adminLayout.includes('follow: false')) {
+    failures.push('El layout de Admin debe aplicar robots noindex/nofollow de forma centralizada.');
+  }
+  if (!adminLayout.includes('nocache: true')) {
+    failures.push('El layout de Admin debe desactivar cacheado de indexación con nocache.');
+  }
+}
+
+if (!adminRouteGate) {
+  failures.push('Falta el gate corporativo compartido apps/web/src/components/admin-route-gate.tsx.');
+} else {
+  if (!adminRouteGate.includes('await adminApi.session()')) {
+    failures.push('AdminRouteGate debe validar la sesión administrativa contra el servidor.');
+  }
+  if (!adminRouteGate.includes('caught instanceof ApiRequestError && caught.status === 403')) {
+    failures.push('AdminRouteGate debe tratar explícitamente el rechazo 403.');
+  }
+  if (!adminRouteGate.includes("state !== 'authorized'")) {
+    failures.push('AdminRouteGate no debe renderizar contenido antes de confirmar autorización.');
+  }
 }
 
 for (const id of requiredModuleIds) {
@@ -148,5 +180,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Contrato Admin unificado: OK (${requiredModuleIds.length}/${requiredModuleIds.length} superficies Admin registradas; 13 disponibles, 7 implementadas en ramas y ${topLevelAdminRoutes.length} rutas raíz verificadas).`,
+  `Contrato Admin unificado: OK (${requiredModuleIds.length}/${requiredModuleIds.length} superficies Admin registradas; 13 disponibles, 7 implementadas en ramas, ${topLevelAdminRoutes.length} rutas raíz verificadas y gate corporativo común activo).`,
 );
