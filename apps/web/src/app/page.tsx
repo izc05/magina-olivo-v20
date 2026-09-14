@@ -1,6 +1,7 @@
 import { BottomNav } from '@/components/bottom-nav';
 import { Topbar } from '@/components/topbar';
 import { HomeDailyCenter } from '@/components/home-daily-center';
+import { HomeMyTowns } from '@/components/home-my-towns';
 import { ManagedHomeContent } from '@/components/managed-home-content';
 import { ManagedAdSlot } from '@/components/managed-ad-slot';
 
@@ -27,6 +28,7 @@ export default function HomePage() {
         <ManagedAdSlot slot="home_top" />
         <ManagedHomeContent>
           <HomeDailyCenter />
+          <HomeMyTowns />
           <ManagedAdSlot slot="home_inline" />
         </ManagedHomeContent>
       </div>
