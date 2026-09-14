@@ -131,27 +131,24 @@
     "id": "routes",
     "title": "Rutas",
     "description": "Gestión editorial y técnica de rutas y catálogo senderista.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-routes-explore",
-    "targetHref": "/admin/rutas",
+    "status": "available",
+    "href": "/admin/rutas",
     "area": "Territorio"
   },
   {
     "id": "route-community",
     "title": "Comunidad de rutas",
     "description": "Moderación de reseñas, fotos, condiciones y denuncias.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-routes-explore",
-    "targetHref": "/admin/rutas/comunidad",
+    "status": "available",
+    "href": "/admin/rutas/comunidad",
     "area": "Experiencia"
   },
   {
     "id": "route-sponsorships",
     "title": "Patrocinios de rutas",
     "description": "Campañas, posiciones patrocinadas y rendimiento sin alterar información técnica.",
-    "status": "implemented",
-    "sourceBranch": "feat/v20-routes-explore",
-    "targetHref": "/admin/rutas/patrocinios",
+    "status": "available",
+    "href": "/admin/rutas/patrocinios",
     "area": "Negocio"
   },
   {

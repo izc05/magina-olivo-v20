@@ -18,7 +18,7 @@ const areas = [
   { icon: MoreIcon, title: 'Servicios', text: 'Negocios y profesionales con patrocinio claramente identificado.', href: '/servicios', badge: 'Disponible' },
   { icon: MoreIcon, title: 'Empresas y negocios', text: 'Directorio territorial con mapa, categorías, fichas verificables y patrocinio siempre identificado.', href: '/explorar/empresas', badge: 'Nuevo' },
   { icon: SproutIcon, title: 'Consejos del campo', text: 'Guías prácticas de observación, manejo y seguridad en el olivar.', href: '/consejos', badge: 'Disponible' },
-  { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Contenidos territoriales y oleoturismo.', href: null, badge: 'En preparación' },
+  { icon: CompassIcon, title: 'Rutas y experiencias', text: 'Rutas con track GPX validado, desnivel y fuentes trazables.', href: '/rutas', badge: 'Disponible' },
 ] as const;
 
 function placeKindLabel(kind: string) {
