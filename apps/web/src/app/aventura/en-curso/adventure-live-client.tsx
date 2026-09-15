@@ -8,6 +8,7 @@ import { loadActiveRouteActivity } from '../../../lib/route-activity-source';
 import { RouteActivityRecorder } from '../../rutas/detalle/route-activity-recorder';
 import { RouteAdventurePanel } from '../../rutas/detalle/route-adventure-panel';
 import { RouteMap } from '../../rutas/detalle/route-map';
+import { AdventureWeather } from './adventure-weather';
 import styles from './live.module.css';
 
 function distance(value: number | null) {
@@ -119,10 +120,13 @@ export function AdventureLiveClient() {
       </div>
     </section>
 
+    <AdventureWeather routeName={route.name} />
+
     <nav className={styles.quickNav} aria-label="Controles de la expedición">
       <a href="#mapa">Mapa</a>
       <a href="#gps">GPS</a>
       <a href="#retos">Retos</a>
+      <Link href={`/aventura/preparar?slug=${encodeURIComponent(slug)}`}>Clima y preparación</Link>
       <Link href={`/rutas/detalle?slug=${encodeURIComponent(slug)}`}>Ficha completa</Link>
     </nav>
 
