@@ -53,6 +53,9 @@ jobs:
       - name: Weather unit contracts
         run: pnpm --filter @magina/weather test
 
+      - name: Build jobs dependency
+        run: pnpm --filter @magina/jobs build
+
       - name: API weather contract
         run: pnpm --filter @magina/api test:weather
 
