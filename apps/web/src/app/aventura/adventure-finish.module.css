@@ -1,0 +1,208 @@
+.root{
+  --adventure-ink:#16241b;
+  --adventure-forest:#173824;
+  --adventure-forest-2:#244d34;
+  --adventure-olive:#6f855f;
+  --adventure-gold:#d8b85f;
+  --adventure-cream:#f6f2e7;
+  --adventure-paper:#fffdf7;
+  --adventure-line:rgba(49,73,56,.14);
+  position:relative;
+  isolation:isolate;
+  overflow:clip;
+  background:
+    radial-gradient(circle at 8% 20%,rgba(121,149,101,.12),transparent 24rem),
+    radial-gradient(circle at 93% 48%,rgba(213,184,100,.10),transparent 28rem),
+    linear-gradient(180deg,#f4f1e7 0%,#fbf9f2 48%,#f2ede0 100%);
+}
+.root:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  opacity:.18;
+  background-image:
+    repeating-radial-gradient(ellipse at 30% 20%,transparent 0 22px,rgba(39,72,50,.12) 23px 24px,transparent 25px 47px),
+    repeating-radial-gradient(ellipse at 72% 72%,transparent 0 26px,rgba(39,72,50,.08) 27px 28px,transparent 29px 54px);
+  background-size:420px 420px,560px 560px;
+  mask-image:linear-gradient(to bottom,transparent 0,#000 18%,#000 82%,transparent 100%);
+}
+
+.root :global(main){position:relative;z-index:1}
+.root :global(main > section:first-child){
+  min-height:min(74vh,760px);
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 34px 90px rgba(18,43,29,.22),0 2px 0 rgba(255,255,255,.24) inset;
+}
+.root :global(main > section:first-child):after{
+  content:"SIERRA MÁGINA · JAÉN";
+  position:absolute;
+  right:28px;
+  bottom:26px;
+  z-index:2;
+  color:rgba(255,255,255,.72);
+  font-size:.64rem;
+  font-weight:900;
+  letter-spacing:.18em;
+  writing-mode:vertical-rl;
+  text-orientation:mixed;
+}
+.root :global(#magina-aventura-title){text-wrap:balance;text-shadow:0 12px 34px rgba(0,0,0,.24)}
+.root :global(main > nav:first-of-type){
+  position:relative;
+  z-index:8;
+  margin-top:-34px;
+  padding:12px;
+  border:1px solid rgba(66,83,70,.12);
+  border-radius:24px;
+  background:rgba(255,253,247,.88);
+  backdrop-filter:blur(18px) saturate(1.08);
+  box-shadow:0 18px 55px rgba(37,55,43,.12);
+}
+.root :global(main > nav:first-of-type a){
+  min-height:60px;
+  transition:transform .18s ease,background .18s ease,box-shadow .18s ease;
+}
+.root :global(main > nav:first-of-type a:hover){
+  transform:translateY(-2px);
+  background:#f7f8f2;
+  box-shadow:0 10px 24px rgba(39,66,48,.08);
+}
+
+.root :global(#mi-aventura),
+.root :global(#aventuras),
+.root :global(#album),
+.root :global(#comunidad){scroll-margin-top:92px}
+
+.root :global(#mi-aventura){
+  position:relative;
+  overflow:hidden;
+  border-color:rgba(92,112,91,.18);
+  background:
+    radial-gradient(circle at 100% 0,rgba(216,184,95,.13),transparent 28rem),
+    linear-gradient(145deg,rgba(255,255,255,.98),rgba(248,247,240,.98));
+  box-shadow:0 24px 66px rgba(35,54,41,.10);
+}
+.root :global(#mi-aventura):after{
+  content:"△";
+  position:absolute;
+  right:-30px;
+  top:-70px;
+  font-size:17rem;
+  line-height:1;
+  color:rgba(44,79,54,.035);
+  pointer-events:none;
+}
+.root :global(#mi-aventura article){
+  border:1px solid rgba(60,89,68,.08);
+  background:linear-gradient(145deg,#f0f4ec,#e8eee5);
+  box-shadow:0 8px 22px rgba(41,65,48,.05);
+}
+.root :global(#mi-aventura progress){height:9px;border-radius:999px;overflow:hidden}
+
+.root :global(#aventuras){position:relative}
+.root :global(#aventuras):before{
+  content:"";
+  position:absolute;
+  left:-5vw;
+  right:-5vw;
+  top:24px;
+  bottom:-36px;
+  z-index:-1;
+  border-radius:48px;
+  background:linear-gradient(180deg,rgba(233,238,226,.56),rgba(247,244,235,.1));
+}
+.root :global(#aventuras article){
+  border-color:rgba(54,78,60,.13);
+  box-shadow:0 18px 52px rgba(27,50,35,.09);
+}
+.root :global(#aventuras article:first-child){
+  box-shadow:0 28px 76px rgba(24,49,33,.15);
+}
+.root :global(#aventuras article img){filter:saturate(.92) contrast(1.03)}
+.root :global(#aventuras article:hover img){filter:saturate(1.02) contrast(1.05)}
+.root :global(#aventuras article a){transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+.root :global(#aventuras article a:hover){transform:translateY(-1px);box-shadow:0 10px 24px rgba(30,67,43,.18)}
+
+.root :global(#album){
+  margin-top:30px;
+  padding:44px 36px;
+  border:1px solid rgba(59,80,64,.12);
+  border-radius:32px;
+  background:
+    radial-gradient(circle at 96% 2%,rgba(215,184,96,.14),transparent 19rem),
+    linear-gradient(145deg,rgba(255,254,249,.96),rgba(239,242,233,.96));
+  box-shadow:0 22px 60px rgba(35,54,41,.08);
+}
+.root :global(#album article){
+  position:relative;
+  overflow:hidden;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+.root :global(#album article:hover){
+  transform:translateY(-3px);
+  border-color:rgba(157,132,66,.30);
+  box-shadow:0 15px 36px rgba(38,57,44,.09);
+}
+.root :global(#album article):after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:3px;
+  background:linear-gradient(90deg,#244d34,#7f986a,#d7b85f);
+  opacity:.75;
+}
+
+.root :global(main > section:last-of-type){
+  position:relative;
+  margin-top:64px;
+  padding:42px;
+  overflow:hidden;
+  border-radius:32px;
+  color:#f8f5eb;
+  background:
+    radial-gradient(circle at 86% 18%,rgba(216,184,95,.22),transparent 24rem),
+    linear-gradient(145deg,#142d1e,#234b32 72%,#345f40);
+  box-shadow:0 26px 72px rgba(23,47,31,.18);
+}
+.root :global(main > section:last-of-type h2),
+.root :global(main > section:last-of-type h3){color:#fff}
+.root :global(main > section:last-of-type article){
+  border-color:rgba(255,255,255,.12);
+  background:rgba(255,255,255,.075);
+  color:#fff;
+  backdrop-filter:blur(8px);
+  box-shadow:none;
+}
+.root :global(main > section:last-of-type article p){color:rgba(255,255,255,.68)}
+
+@media(min-width:1180px){
+  .root :global(main){padding-top:30px}
+  .root :global(main > section:first-child){min-height:700px}
+  .root :global(#mi-aventura){padding:34px}
+  .root :global(#aventuras){padding-top:86px}
+  .root :global(#album){padding:48px 42px}
+}
+
+@media(max-width:900px){
+  .root :global(main > nav:first-of-type){margin-top:-18px;border-radius:20px}
+  .root :global(#album){padding:32px 22px;border-radius:26px}
+  .root :global(main > section:last-of-type){padding:32px 24px;border-radius:26px}
+  .root :global(main > section:first-child):after{display:none}
+}
+
+@media(max-width:780px){
+  .root{background:linear-gradient(180deg,#f4f1e7 0%,#faf8f1 48%,#f1ecdf 100%)}
+  .root :global(main > section:first-child){min-height:620px;border-radius:26px}
+  .root :global(main > nav:first-of-type){display:none}
+  .root :global(#mi-aventura){margin-top:18px;border-radius:24px}
+  .root :global(#album){margin-top:12px;padding:28px 14px;border-radius:24px}
+  .root :global(main > section:last-of-type){margin-top:44px;padding:28px 18px 34px;border-radius:24px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .root :global(*){scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
