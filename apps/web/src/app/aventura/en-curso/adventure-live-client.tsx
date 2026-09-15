@@ -76,6 +76,7 @@ export function AdventureLiveClient() {
   const [detail, setDetail] = useState<PublicRouteDetail | null>(null);
   const [adventure, setAdventure] = useState<PublicRouteAdventure | null>(null);
   const [progress, setProgress] = useState<RouteAdventureProgress | null>(null);
+  const [liveUnlockedCheckpointIds, setLiveUnlockedCheckpointIds] = useState<string[] | null>(null);
   const [telemetry, setTelemetry] = useState<RouteLiveTelemetry | null>(null);
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
@@ -88,6 +89,15 @@ export function AdventureLiveClient() {
     };
     window.addEventListener(ROUTE_LIVE_TELEMETRY_EVENT, onTelemetry);
     return () => window.removeEventListener(ROUTE_LIVE_TELEMETRY_EVENT, onTelemetry);
+  }, []);
+
+  useEffect(() => {
+    const onProgress = (event: Event) => {
+      const unlockedCheckpointIds = (event as CustomEvent<{ unlockedCheckpointIds?: string[] }>).detail?.unlockedCheckpointIds;
+      if (Array.isArray(unlockedCheckpointIds)) setLiveUnlockedCheckpointIds(unlockedCheckpointIds);
+    };
+    window.addEventListener('magina:route-adventure-progress', onProgress);
+    return () => window.removeEventListener('magina:route-adventure-progress', onProgress);
   }, []);
 
   useEffect(() => {
@@ -126,6 +136,7 @@ export function AdventureLiveClient() {
     let cancelled = false;
     setLoading(true);
     setError(false);
+    setLiveUnlockedCheckpointIds(null);
     loadPublicRoute(slug)
       .then((value) => {
         if (cancelled) return;
@@ -173,7 +184,8 @@ export function AdventureLiveClient() {
 
   const nextCheckpoint = useMemo(() => {
     if (!adventure?.enabled || !adventure.adventure) return null;
-    const unlocked = new Set(progress?.unlocks.map((item) => item.checkpoint_id) ?? []);
+    const unlockedCheckpointIds = liveUnlockedCheckpointIds ?? progress?.unlocks.map((item) => item.checkpoint_id) ?? [];
+    const unlocked = new Set(unlockedCheckpointIds);
     const pending = adventure.checkpoints.filter((checkpoint) => !unlocked.has(checkpoint.id));
     if (!pending.length) return null;
     if (adventure.adventure.progression_mode === 'linear') {
@@ -193,7 +205,7 @@ export function AdventureLiveClient() {
       })[0];
     }
     return pending[0];
-  }, [adventure, progress, telemetry]);
+  }, [adventure, liveUnlockedCheckpointIds, progress, telemetry]);
 
   const nextCheckpointDistanceM = useMemo(() => {
     if (!nextCheckpoint || telemetry?.latitude == null || telemetry.longitude == null) return null;
