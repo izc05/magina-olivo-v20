@@ -1,0 +1,40 @@
+.panel{
+  position:relative;
+  overflow:hidden;
+  max-width:1432px;
+  margin:28px auto 0;
+  padding:26px 28px;
+  border:1px solid rgba(54,79,60,.13);
+  border-radius:26px;
+  background:
+    radial-gradient(circle at 92% 20%,rgba(218,187,105,.16),transparent 18rem),
+    linear-gradient(145deg,#fffdf8,#f0f4eb);
+  color:#17251c;
+  box-shadow:0 20px 56px rgba(31,52,38,.09);
+}
+.panel:after{
+  content:"↗";
+  position:absolute;
+  right:22px;
+  bottom:-28px;
+  color:rgba(39,78,53,.045);
+  font-size:9rem;
+  line-height:1;
+  pointer-events:none;
+}
+.heading{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;gap:28px}
+.heading>div{max-width:760px}
+.eyebrow{display:block;color:#a38335;font-size:.66rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase}
+.heading h2{margin:.35rem 0 0;font-size:clamp(1.8rem,3.8vw,3.2rem);line-height:1;letter-spacing:-.04em}
+.heading p{max-width:560px;margin:0;color:#647168;line-height:1.58}
+.actions{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.primary,.secondary{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 16px;border-radius:13px;text-decoration:none;font-weight:900;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+.primary{background:#244d34;color:#fff;box-shadow:0 12px 28px rgba(35,74,49,.18)}
+.secondary{border:1px solid rgba(46,77,55,.18);background:#fff;color:#284b35}
+.primary:hover,.secondary:hover{transform:translateY(-1px)}
+.primary:hover{box-shadow:0 15px 32px rgba(35,74,49,.22)}
+.secondary:hover{background:#f8faf5}
+
+@media(max-width:980px){.panel{margin-left:12px;margin-right:12px}}
+@media(max-width:700px){.panel{padding:22px 18px;border-radius:22px}.heading{align-items:flex-start;flex-direction:column;gap:10px}.heading p{max-width:none}.actions{display:grid;grid-template-columns:1fr}.primary,.secondary{width:100%;box-sizing:border-box}.panel:after{display:none}}
+@media(prefers-reduced-motion:reduce){.primary,.secondary{transition:none}}
