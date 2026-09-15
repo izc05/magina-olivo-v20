@@ -10,7 +10,6 @@ import {
   type PublicRouteAdventure,
   type PublicRouteDetail,
   type RouteAdventureCheckpoint,
-  type RouteAdventureProgress,
 } from '../../../lib/public-routes-source';
 import {
   coordinateDistanceM,
@@ -75,8 +74,7 @@ export function AdventureLiveClient() {
   const [slug, setSlug] = useState<string | null>(null);
   const [detail, setDetail] = useState<PublicRouteDetail | null>(null);
   const [adventure, setAdventure] = useState<PublicRouteAdventure | null>(null);
-  const [progress, setProgress] = useState<RouteAdventureProgress | null>(null);
-  const [liveUnlockedCheckpointIds, setLiveUnlockedCheckpointIds] = useState<string[] | null>(null);
+  const [unlockedCheckpointIds, setUnlockedCheckpointIds] = useState<string[]>([]);
   const [telemetry, setTelemetry] = useState<RouteLiveTelemetry | null>(null);
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
@@ -92,12 +90,13 @@ export function AdventureLiveClient() {
   }, []);
 
   useEffect(() => {
-    const onProgress = (event: Event) => {
-      const unlockedCheckpointIds = (event as CustomEvent<{ unlockedCheckpointIds?: string[] }>).detail?.unlockedCheckpointIds;
-      if (Array.isArray(unlockedCheckpointIds)) setLiveUnlockedCheckpointIds(unlockedCheckpointIds);
+    const onAdventureProgress = (event: Event) => {
+      const value = (event as CustomEvent<{ unlockedCheckpointIds?: unknown }>).detail;
+      if (!value || !Array.isArray(value.unlockedCheckpointIds)) return;
+      setUnlockedCheckpointIds(value.unlockedCheckpointIds.filter((id): id is string => typeof id === 'string'));
     };
-    window.addEventListener('magina:route-adventure-progress', onProgress);
-    return () => window.removeEventListener('magina:route-adventure-progress', onProgress);
+    window.addEventListener('magina:route-adventure-progress', onAdventureProgress);
+    return () => window.removeEventListener('magina:route-adventure-progress', onAdventureProgress);
   }, []);
 
   useEffect(() => {
@@ -136,7 +135,6 @@ export function AdventureLiveClient() {
     let cancelled = false;
     setLoading(true);
     setError(false);
-    setLiveUnlockedCheckpointIds(null);
     loadPublicRoute(slug)
       .then((value) => {
         if (cancelled) return;
@@ -159,20 +157,20 @@ export function AdventureLiveClient() {
         if (cancelled) return;
         setAdventure(definition);
         if (!definition.enabled) {
-          setProgress(null);
+          setUnlockedCheckpointIds([]);
           return;
         }
         try {
           const current = await loadRouteAdventureProgress(detail.route.id);
-          if (!cancelled) setProgress(current);
+          if (!cancelled) setUnlockedCheckpointIds(current.unlocks.map((item) => item.checkpoint_id));
         } catch (cause) {
-          if (!cancelled && cause instanceof ApiRequestError && cause.status === 401) setProgress(null);
+          if (!cancelled && cause instanceof ApiRequestError && cause.status === 401) setUnlockedCheckpointIds([]);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setAdventure(null);
-          setProgress(null);
+          setUnlockedCheckpointIds([]);
         }
       });
     return () => { cancelled = true; };
@@ -184,7 +182,6 @@ export function AdventureLiveClient() {
 
   const nextCheckpoint = useMemo(() => {
     if (!adventure?.enabled || !adventure.adventure) return null;
-    const unlockedCheckpointIds = liveUnlockedCheckpointIds ?? progress?.unlocks.map((item) => item.checkpoint_id) ?? [];
     const unlocked = new Set(unlockedCheckpointIds);
     const pending = adventure.checkpoints.filter((checkpoint) => !unlocked.has(checkpoint.id));
     if (!pending.length) return null;
@@ -205,7 +202,7 @@ export function AdventureLiveClient() {
       })[0];
     }
     return pending[0];
-  }, [adventure, liveUnlockedCheckpointIds, progress, telemetry]);
+  }, [adventure, unlockedCheckpointIds, telemetry]);
 
   const nextCheckpointDistanceM = useMemo(() => {
     if (!nextCheckpoint || telemetry?.latitude == null || telemetry.longitude == null) return null;
