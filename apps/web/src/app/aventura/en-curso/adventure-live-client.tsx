@@ -120,7 +120,7 @@ export function AdventureLiveClient() {
       </div>
     </section>
 
-    <AdventureWeather routeName={route.name} />
+    <div className={styles.weatherSlot}><AdventureWeather routeName={route.name} /></div>
 
     <nav className={styles.quickNav} aria-label="Controles de la expedición">
       <a href="#mapa">Mapa</a>
