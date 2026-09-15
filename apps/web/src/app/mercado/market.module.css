@@ -1,0 +1,504 @@
+.page {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 24px 18px 112px;
+  display: grid;
+  gap: 22px;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 30px;
+  padding: 28px 24px;
+  color: #f8f5ea;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(228, 206, 126, 0.26), transparent 28%),
+    linear-gradient(145deg, #263821 0%, #405c32 58%, #6f7440 100%);
+  box-shadow: 0 18px 45px rgba(38, 56, 33, 0.18);
+}
+
+.hero::after {
+  content: '🫒';
+  position: absolute;
+  right: -10px;
+  bottom: -34px;
+  font-size: 132px;
+  opacity: 0.08;
+  transform: rotate(-12deg);
+  pointer-events: none;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.82);
+  text-decoration: none;
+  font-size: 0.86rem;
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8a7843;
+}
+
+.hero .eyebrow {
+  color: #dacf9c;
+}
+
+.hero h1 {
+  max-width: 650px;
+  margin: 0;
+  font-size: clamp(2rem, 7vw, 3.65rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.heroText {
+  max-width: 620px;
+  margin: 14px 0 0;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: rgba(248, 245, 234, 0.82);
+}
+
+.heroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.heroMeta span {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.76rem;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.sectionHeading h2 {
+  margin: 0;
+  color: #263821;
+  font-size: clamp(1.35rem, 4vw, 1.9rem);
+  letter-spacing: -0.025em;
+}
+
+.statusChip {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #edf0e6;
+  color: #405c32;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.priceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.priceCard,
+.trendCard,
+.calculator,
+.sourceCard {
+  border: 1px solid rgba(49, 69, 42, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 28px rgba(49, 69, 42, 0.07);
+}
+
+.priceCard {
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.priceCardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.priceCard h3 {
+  margin: 0;
+  color: #34472d;
+  font-size: 0.95rem;
+}
+
+.priceValue {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 18px;
+  color: #22331e;
+}
+
+.priceValue strong {
+  font-size: clamp(1.75rem, 5vw, 2.45rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.priceValue span {
+  color: #71806b;
+  font-size: 0.78rem;
+}
+
+.delta {
+  margin-top: 9px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.deltaUp {
+  color: #397344;
+}
+
+.deltaDown {
+  color: #9b573d;
+}
+
+.deltaFlat {
+  color: #6b7167;
+}
+
+.cardCaption {
+  margin: 10px 0 0;
+  color: #7a8276;
+  font-size: 0.73rem;
+  line-height: 1.35;
+}
+
+.trendCard {
+  border-radius: 26px;
+  padding: 20px;
+}
+
+.trendList {
+  display: grid;
+  gap: 18px;
+}
+
+.trendRow {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 12px;
+}
+
+.trendName strong,
+.trendName small {
+  display: block;
+}
+
+.trendName strong {
+  color: #34472d;
+  font-size: 0.88rem;
+}
+
+.trendName small {
+  margin-top: 2px;
+  color: #879081;
+  font-size: 0.68rem;
+}
+
+.sparkline {
+  width: 100%;
+  min-width: 0;
+  height: 64px;
+  overflow: visible;
+}
+
+.sparkline line {
+  stroke: #dde3d7;
+  stroke-width: 1;
+}
+
+.sparkline polyline {
+  fill: none;
+  stroke: #536f45;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.sparkline circle {
+  fill: #fff;
+  stroke: #536f45;
+  stroke-width: 2.5;
+}
+
+.trendPrice {
+  text-align: right;
+  color: #2b3d25;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.weeksLegend {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid #e8ebe4;
+  margin-top: 18px;
+  padding-top: 12px;
+  color: #92998e;
+  font-size: 0.66rem;
+}
+
+.calculator {
+  border-radius: 28px;
+  padding: 22px;
+}
+
+.calculatorIntro {
+  max-width: 720px;
+  margin: -4px 0 18px;
+  color: #697264;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+.inputGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.inputGrid label > span {
+  display: block;
+  margin: 0 0 7px 2px;
+  color: #596454;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.inputWithUnit {
+  display: flex;
+  align-items: center;
+  border: 1px solid #dfe4da;
+  border-radius: 14px;
+  background: #fbfcf8;
+  overflow: hidden;
+}
+
+.inputWithUnit:focus-within {
+  border-color: #708764;
+  box-shadow: 0 0 0 3px rgba(112, 135, 100, 0.12);
+}
+
+.inputWithUnit input {
+  min-width: 0;
+  width: 100%;
+  padding: 12px 10px 12px 12px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #293724;
+  font: inherit;
+  font-weight: 700;
+}
+
+.inputWithUnit small {
+  flex: 0 0 auto;
+  padding-right: 12px;
+  color: #879080;
+  font-size: 0.72rem;
+}
+
+.resultGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.resultGrid article {
+  border-radius: 16px;
+  padding: 14px;
+  background: #f2f4ec;
+}
+
+.resultGrid span,
+.resultGrid strong {
+  display: block;
+}
+
+.resultGrid span {
+  min-height: 2.2em;
+  color: #737d6e;
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.resultGrid strong {
+  margin-top: 8px;
+  color: #2c3c27;
+  font-size: 1.1rem;
+}
+
+.disclaimer {
+  margin: 14px 0 0;
+  color: #898f85;
+  font-size: 0.69rem;
+  line-height: 1.45;
+}
+
+.sourceCard {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: center;
+  border-radius: 22px;
+  padding: 18px 20px;
+}
+
+.sourceCard h2 {
+  margin: 0;
+  color: #34472d;
+  font-size: 1rem;
+}
+
+.sourceCard p {
+  max-width: 720px;
+  margin: 6px 0 0;
+  color: #717a6d;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.sourceLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border-radius: 999px;
+  padding: 0 15px;
+  background: #344b2d;
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.76rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 16px 14px 104px;
+    gap: 18px;
+  }
+
+  .hero {
+    border-radius: 24px;
+    padding: 22px 18px 24px;
+  }
+
+  .backLink {
+    margin-bottom: 24px;
+  }
+
+  .priceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .priceCard {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 16px;
+    align-items: center;
+  }
+
+  .priceCardHeader,
+  .cardCaption {
+    grid-column: 1;
+  }
+
+  .priceValue {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin-top: 0;
+  }
+
+  .delta {
+    grid-column: 1;
+    margin-top: 2px;
+  }
+
+  .trendCard,
+  .calculator {
+    padding: 17px;
+  }
+
+  .trendRow {
+    grid-template-columns: 76px minmax(0, 1fr) 54px;
+    gap: 8px;
+  }
+
+  .trendName small {
+    display: none;
+  }
+
+  .inputGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .resultGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .resultGrid article {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .resultGrid span {
+    min-height: 0;
+  }
+
+  .resultGrid strong {
+    margin-top: 0;
+    text-align: right;
+  }
+
+  .sourceCard {
+    grid-template-columns: 1fr;
+  }
+
+  .sourceLink {
+    width: 100%;
+  }
+}
+
+@media (max-width: 390px) {
+  .trendRow {
+    grid-template-columns: 70px minmax(0, 1fr) 50px;
+  }
+
+  .trendPrice {
+    font-size: 0.8rem;
+  }
+
+  .weeksLegend span:nth-child(2),
+  .weeksLegend span:nth-child(3) {
+    display: none;
+  }
+}

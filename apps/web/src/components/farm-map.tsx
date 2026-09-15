@@ -25,6 +25,11 @@ export type FarmMapData = {
   references: MapLandReference[];
 };
 
+export type RadarMapOverlay = {
+  imageUrl: string;
+  bbox: [number, number, number, number];
+};
+
 const previewStyle = {
   version: 8 as const,
   sources: {
@@ -64,7 +69,7 @@ function geometryFeature(geometry: MapGeometry, properties: Record<string, strin
   };
 }
 
-export function FarmMap({ data }: { data: FarmMapData }) {
+export function FarmMap({ data, radarOverlay = null }: { data: FarmMapData; radarOverlay?: RadarMapOverlay | null }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
 
@@ -93,6 +98,26 @@ export function FarmMap({ data }: { data: FarmMapData }) {
     }), 'top-right');
 
     map.on('load', () => {
+      if (radarOverlay) {
+        const [minLon, minLat, maxLon, maxLat] = radarOverlay.bbox;
+        map.addSource('radar-observed', {
+          type: 'image',
+          url: radarOverlay.imageUrl,
+          coordinates: [
+            [minLon, maxLat],
+            [maxLon, maxLat],
+            [maxLon, minLat],
+            [minLon, minLat],
+          ],
+        });
+        map.addLayer({
+          id: 'radar-observed-layer',
+          type: 'raster',
+          source: 'radar-observed',
+          paint: { 'raster-opacity': 0.78, 'raster-fade-duration': 0 },
+        });
+      }
+
       if (data.geometry) {
         map.addSource('farm-canonical', {
           type: 'geojson',
@@ -166,7 +191,7 @@ export function FarmMap({ data }: { data: FarmMapData }) {
       mapRef.current = null;
       map.remove();
     };
-  }, [data]);
+  }, [data, radarOverlay]);
 
   return <div ref={containerRef} className="farm-map-canvas" aria-label={`Mapa de ${data.name}`} />;
 }

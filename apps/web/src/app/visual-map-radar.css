@@ -1,0 +1,642 @@
+/* V20 visual final · Mapa GIS + Radar real
+   Esta capa solo cambia presentación. No crea geometría, radar, nowcast ni datos derivados. */
+
+/* ——— Mapa de fincas ——— */
+.map-platform-page {
+  position: relative;
+}
+
+.map-platform-page > .map-platform-header {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 196px;
+  margin: 8px 0 14px;
+  padding: 30px 24px 25px;
+  align-items: flex-end;
+  border: 1px solid rgba(49, 69, 42, .12);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 95% 6%, rgba(196, 163, 76, .19), transparent 34%),
+    radial-gradient(circle at 0% 100%, rgba(88, 116, 72, .14), transparent 43%),
+    linear-gradient(145deg, #f7f3e7, #ebf0e6);
+  box-shadow: 0 18px 42px rgba(43, 53, 38, .09);
+}
+
+.map-platform-page > .map-platform-header::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  right: -45px;
+  bottom: -38px;
+  width: 190px;
+  height: 126px;
+  background: var(--asset-olive-sprig) center / contain no-repeat;
+  opacity: .10;
+  transform: rotate(-8deg);
+}
+
+.map-platform-page > .map-platform-header .eyebrow {
+  color: var(--olive-700);
+}
+
+.map-platform-page > .map-platform-header h1 {
+  margin: 6px 0 9px;
+  color: var(--olive-950);
+  font-size: clamp(40px, 10.8vw, 58px);
+  line-height: .92;
+  text-wrap: balance;
+}
+
+.map-platform-page > .map-platform-header p {
+  max-width: 37rem;
+  color: #626d60;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.map-platform-page .map-linker-panel {
+  padding: 17px;
+  gap: 14px;
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(255,253,248,.96), rgba(246,246,239,.94));
+  box-shadow: 0 14px 34px rgba(42, 53, 37, .07);
+}
+
+.map-platform-page .map-linker-heading {
+  gap: 12px;
+}
+
+.map-platform-page .map-linker-heading h2 {
+  margin: 5px 0 7px;
+  color: var(--olive-950);
+  font-size: 25px;
+  line-height: 1.05;
+}
+
+.map-platform-page .map-linker-heading p,
+.map-platform-page .map-link-form p {
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.map-platform-page .map-field-selector {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(238, 243, 233, .72);
+  color: var(--olive-800);
+  font-size: 10px;
+  letter-spacing: .02em;
+}
+
+.map-platform-page .map-field-selector select,
+.map-platform-page .map-link-form input {
+  min-height: 46px;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+}
+
+.map-platform-page .map-field-selector select:focus,
+.map-platform-page .map-link-form input:focus {
+  outline: 3px solid rgba(106, 132, 87, .18);
+  border-color: var(--olive-600);
+}
+
+.map-platform-page .map-primary-boundary {
+  padding: 13px 14px;
+  border: 1px solid rgba(73, 94, 64, .10);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #eef3e9, #f8faf5);
+}
+
+.map-platform-page .map-primary-boundary strong {
+  color: var(--olive-950);
+  font-size: 11px;
+}
+
+.map-platform-page .map-primary-boundary small {
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.map-platform-page .map-link-grid {
+  gap: 9px;
+}
+
+.map-platform-page .map-link-form {
+  position: relative;
+  overflow: hidden;
+  padding: 15px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.78);
+}
+
+.map-platform-page .map-link-form h3 {
+  margin: 8px 0 5px;
+  color: var(--olive-950);
+  font-size: 19px;
+}
+
+.map-platform-page .map-link-form label > span {
+  color: var(--olive-800);
+  font-size: 9.5px;
+}
+
+.map-platform-page .map-link-form .primary {
+  min-height: 45px;
+  padding: 11px 14px;
+}
+
+.map-platform-page .map-source-badge {
+  padding: 6px 10px;
+  font-size: 9px;
+}
+
+.map-platform-page .map-link-feedback {
+  padding: 12px 13px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.map-platform-page .map-platform-empty {
+  margin-top: 12px;
+  padding: 20px;
+  border-radius: 20px;
+}
+
+.map-platform-page .map-platform-empty h2 {
+  color: var(--olive-950);
+  font-size: 23px;
+}
+
+.map-platform-page .map-platform-empty p {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.map-platform-page .map-platform-shell {
+  position: relative;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(45, 63, 39, .14);
+  border-radius: 24px;
+  background: #e6eadf;
+  box-shadow: 0 20px 48px rgba(38, 48, 34, .14);
+}
+
+.map-platform-page .farm-map-canvas {
+  min-height: 420px;
+  height: min(62vh, 650px);
+  background: #e6eadf;
+}
+
+.map-platform-page .map-platform-statusbar {
+  gap: 6px;
+  padding: 10px 11px 12px;
+  background: rgba(255,253,248,.96);
+  backdrop-filter: blur(15px);
+}
+
+.map-platform-page .map-chip {
+  min-height: 31px;
+  padding: 6px 9px;
+  border: 1px solid rgba(49,69,42,.08);
+  background: #f5f5ef;
+  font-size: 9.5px;
+}
+
+.map-platform-page .map-platform-info {
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.map-platform-page .map-platform-info article {
+  min-width: 0;
+  padding: 14px;
+  border-radius: 18px;
+}
+
+.map-platform-page .map-platform-info .map-info-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  color: var(--olive-800);
+  background: linear-gradient(145deg, #e7eee0, #f6f8f3);
+}
+
+.map-platform-page .map-platform-info strong {
+  color: var(--olive-950);
+  font: 600 14px/1.2 Georgia, serif;
+  overflow-wrap: anywhere;
+}
+
+.map-platform-page .map-platform-info small {
+  font-size: 9px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.map-platform-page .no-duplicate-note {
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #f7f1df;
+  box-shadow: none;
+}
+
+.map-platform-page .no-duplicate-note strong {
+  color: #765d21;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.map-platform-page .no-duplicate-note p {
+  margin: 5px 0 0;
+  color: #756b53;
+  font-size: 9.5px;
+  line-height: 1.45;
+}
+
+/* Controles nativos MapLibre: los únicos controles visuales del mapa real. */
+.map-platform-page .maplibregl-ctrl-top-right,
+.radar-page .maplibregl-ctrl-top-right {
+  top: 8px;
+  right: 8px;
+}
+
+.map-platform-page .maplibregl-ctrl-group,
+.radar-page .maplibregl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid rgba(36, 53, 31, .10);
+  border-radius: 13px;
+  box-shadow: 0 8px 22px rgba(36, 48, 32, .15);
+}
+
+.map-platform-page .maplibregl-ctrl-group button,
+.radar-page .maplibregl-ctrl-group button {
+  width: 38px;
+  height: 38px;
+}
+
+/* ——— Radar observado ——— */
+.radar-page {
+  position: relative;
+}
+
+.radar-page > .radar-title {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 190px;
+  margin: 8px 0 13px;
+  padding: 29px 22px 25px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border: 1px solid rgba(49,69,42,.12);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 95% 4%, rgba(91, 128, 145, .18), transparent 37%),
+    radial-gradient(circle at 4% 100%, rgba(103, 130, 85, .12), transparent 42%),
+    linear-gradient(145deg, #eef3f2, #f6f3e8);
+  box-shadow: 0 18px 42px rgba(43,53,38,.09);
+}
+
+.radar-page > .radar-title::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  right: -44px;
+  bottom: -35px;
+  width: 180px;
+  height: 118px;
+  background: var(--asset-olive-sprig) center / contain no-repeat;
+  opacity: .08;
+  transform: rotate(-8deg);
+}
+
+.radar-page > .radar-title .eyebrow.dark {
+  color: #557485;
+}
+
+.radar-page > .radar-title h1 {
+  margin: 6px 0 8px;
+  color: var(--olive-950);
+  font-size: clamp(40px, 10.8vw, 58px);
+  line-height: .92;
+  text-wrap: balance;
+}
+
+.radar-page > .radar-title p {
+  max-width: 35rem;
+  margin: 0;
+  color: #62706d;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.radar-page .radar-context {
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 11px;
+  margin-bottom: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(255,253,248,.94);
+  box-shadow: 0 10px 26px rgba(40,51,36,.07);
+}
+
+.radar-page .radar-farm-thumb {
+  width: 46px;
+  height: 46px;
+  border: 2px solid rgba(255,255,255,.8);
+  box-shadow: 0 6px 14px rgba(39,50,34,.12);
+}
+
+.radar-page .radar-context strong {
+  color: var(--olive-950);
+  font-size: 16px;
+}
+
+.radar-page .radar-context small {
+  font-size: 9px;
+}
+
+.radar-page .radar-context .detail-link {
+  min-height: 35px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8f8f3;
+  color: var(--olive-800);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.radar-page .rain-settings {
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.radar-page .rain-settings h2 {
+  margin: 5px 0 5px;
+  color: var(--olive-950);
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.radar-page .rain-settings p {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.radar-page .rain-settings > .settings-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.radar-page .rain-settings > .settings-grid > span {
+  min-width: 0;
+  padding: 10px 8px;
+  border: 1px solid rgba(55, 76, 50, .08);
+  border-radius: 12px;
+  background: #f3f5ee;
+  font-size: 8.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.radar-page .rain-settings > .settings-grid .tag,
+.radar-page .rain-settings > .settings-grid .active-alert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  text-align: center;
+}
+
+.radar-page .rain-settings > .settings-grid .active-alert {
+  color: #8a4c32;
+  background: #fae9e1;
+}
+
+/* Neutralizamos el antiguo radar decorativo: aquí solo se ve mapa real y raster real. */
+.radar-page .radar-map {
+  position: relative;
+  min-height: 390px;
+  height: min(58vh, 600px);
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(45,63,39,.15);
+  border-radius: 24px;
+  background: #e6eadf !important;
+  box-shadow: 0 20px 48px rgba(38,48,34,.14);
+}
+
+.radar-page .radar-map::before,
+.radar-page .radar-map::after {
+  content: none !important;
+  background: none !important;
+}
+
+.radar-page .radar-map .farm-map-canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 390px;
+  background: #e6eadf;
+}
+
+.radar-page .radar-label {
+  z-index: 8;
+  top: 11px;
+  left: 11px;
+  max-width: calc(100% - 74px);
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 999px;
+  background: rgba(27, 40, 28, .82);
+  box-shadow: 0 8px 18px rgba(0,0,0,.13);
+  backdrop-filter: blur(12px);
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+.radar-page .radar-map > p {
+  position: absolute;
+  z-index: 8;
+  left: 12px;
+  right: 12px;
+  bottom: 11px;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 12px;
+  color: #fff;
+  background: rgba(30, 41, 29, .84);
+  backdrop-filter: blur(12px);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.radar-page .rain-warning {
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 11px;
+  padding: 14px;
+  border-radius: 19px;
+  border: 1px solid rgba(83,112,126,.11);
+  background: linear-gradient(145deg, #eef4f5, #fbfcfa);
+}
+
+.radar-page .rain-warning-icon {
+  width: 44px;
+  height: 44px;
+  color: #52778a;
+  background: #fff;
+  box-shadow: 0 5px 13px rgba(65,91,102,.08);
+}
+
+.radar-page .rain-warning strong {
+  color: var(--olive-950);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.radar-page .rain-warning small {
+  margin-top: 5px;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.radar-page .radar-alert-form {
+  gap: 10px;
+}
+
+.radar-page .radar-alert-toggle {
+  border: 1px solid rgba(56,79,50,.09);
+  background: linear-gradient(145deg, #edf3e7, #f9fbf7);
+}
+
+.radar-page .radar-alert-field select {
+  min-height: 45px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.radar-page .radar-alert-help {
+  border: 1px solid rgba(72,82,62,.08);
+  background: #f6f3e9;
+}
+
+.radar-page .radar-alert-save {
+  min-height: 45px;
+  box-shadow: 0 8px 18px rgba(44,64,37,.13);
+}
+
+.radar-page .radar-alert-global-off {
+  border: 1px solid rgba(173,139,64,.12);
+}
+
+@media (max-width: 430px) {
+  .map-platform-page > .map-platform-header,
+  .radar-page > .radar-title {
+    min-height: 178px;
+    padding: 25px 18px 22px;
+  }
+
+  .map-platform-page > .map-platform-header h1,
+  .radar-page > .radar-title h1 {
+    font-size: clamp(37px, 10.5vw, 47px);
+  }
+
+  .map-platform-page .map-linker-panel {
+    padding: 14px;
+  }
+
+  .map-platform-page .farm-map-canvas,
+  .radar-page .radar-map,
+  .radar-page .radar-map .farm-map-canvas {
+    min-height: 350px;
+  }
+
+  .map-platform-page .farm-map-canvas,
+  .radar-page .radar-map {
+    height: 52vh;
+    max-height: 500px;
+  }
+
+  .map-platform-page .map-platform-statusbar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .map-platform-page .map-platform-statusbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .map-platform-page .map-chip {
+    flex: 0 0 auto;
+  }
+
+  .radar-page .radar-context {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .radar-page .radar-context .detail-link {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .radar-page .rain-settings > .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .radar-page .rain-settings > .settings-grid > span {
+    min-height: 38px;
+  }
+}
+
+@media (max-width: 360px) {
+  .map-platform-page .map-link-form,
+  .radar-page .rain-settings {
+    padding: 13px;
+  }
+
+  .map-platform-page .farm-map-canvas,
+  .radar-page .radar-map,
+  .radar-page .radar-map .farm-map-canvas {
+    min-height: 330px;
+  }
+}
+
+@media (min-width: 760px) {
+  .map-platform-page > .map-platform-header,
+  .radar-page > .radar-title {
+    min-height: 235px;
+    padding: 37px 36px 31px;
+  }
+
+  .map-platform-page > .map-platform-header h1,
+  .radar-page > .radar-title h1 {
+    font-size: 62px;
+  }
+
+  .map-platform-page .map-linker-panel {
+    padding: 20px;
+  }
+
+  .map-platform-page .map-platform-shell,
+  .radar-page .radar-map {
+    border-radius: 27px;
+  }
+
+  .radar-page .radar-map,
+  .radar-page .radar-map .farm-map-canvas {
+    min-height: 510px;
+  }
+}

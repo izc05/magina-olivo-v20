@@ -6,31 +6,27 @@ import { useAuth } from '@/components/auth-provider';
 import { loadApiCampaigns, type CampaignListItem } from '@/lib/campaign-data-source';
 import { getDocumentReadUrl, loadFieldDocuments, type FieldDocument } from '@/lib/document-data-source';
 import type { DocumentKind } from '@/lib/document-upload-source';
+import {
+  buildDocumentReviewHref,
+  documentKindLabel,
+  documentKinds,
+  supportsDocumentOcr,
+} from '@/lib/document-workflow';
 import { useFieldContext, withFieldQuery } from '@/lib/use-field-context';
+import styles from './document-workflow.module.css';
 
-const kinds: Array<{ value: DocumentKind; label: string }> = [
-  { value: 'invoice', label: 'Facturas' },
-  { value: 'purchase_receipt', label: 'Tickets / compras' },
-  { value: 'quote', label: 'Presupuestos' },
-  { value: 'delivery_ticket', label: 'Albaranes' },
-  { value: 'yield_result', label: 'Rendimientos' },
-  { value: 'settlement_statement', label: 'Liquidaciones' },
-  { value: 'collection_receipt', label: 'Justificantes de cobro' },
-  { value: 'treatment', label: 'Tratamientos' },
-  { value: 'fertilization', label: 'Abonado' },
-  { value: 'irrigation', label: 'Riego' },
-  { value: 'pruning', label: 'Poda' },
-  { value: 'observation', label: 'Observaciones' },
-  { value: 'work_report', label: 'Partes de trabajo' },
-  { value: 'land_reference', label: 'Terreno / referencias' },
-  { value: 'photo', label: 'Fotos' },
-  { value: 'other', label: 'Otros' },
-];
+const domainLabels: Record<string, string> = {
+  expense: 'Gasto vinculado',
+  harvest_delivery: 'Entrega vinculada',
+  harvest_result: 'Rendimiento vinculado',
+  harvest_settlement: 'Liquidación vinculada',
+  harvest_collection: 'Cobro vinculado',
+};
 
-const ocrKinds = new Set<DocumentKind>(['invoice', 'purchase_receipt', 'quote', 'delivery_ticket', 'yield_result', 'settlement_statement', 'collection_receipt']);
-
-function kindLabel(kind: string) {
-  return kinds.find((item) => item.value === kind)?.label.replace(/s$/, '') ?? kind;
+function formatDocumentDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
 }
 
 export function FarmDocumentsPanel() {
@@ -47,14 +43,17 @@ export function FarmDocumentsPanel() {
   useEffect(() => {
     if (!ready || !found || context.source !== 'api' || !selectedWorkspaceId) { setCampaigns([]); return; }
     let cancelled = false;
-    loadApiCampaigns(selectedWorkspaceId).then((items) => { if (!cancelled) setCampaigns(items); }).catch((cause) => console.warn('Unable to load document campaigns', cause));
+    loadApiCampaigns(selectedWorkspaceId)
+      .then((items) => { if (!cancelled) setCampaigns(items); })
+      .catch((cause) => console.warn('Unable to load document campaigns', cause));
     return () => { cancelled = true; };
   }, [context.source, found, ready, selectedWorkspaceId]);
 
   useEffect(() => {
     if (!ready || !found || context.source !== 'api' || !selectedWorkspaceId) { setDocuments([]); return; }
     let cancelled = false;
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     loadFieldDocuments(selectedWorkspaceId, context.id, {
       kind: kind || undefined,
       campaignId: campaignFilter !== 'all' && campaignFilter !== 'unassigned' ? campaignFilter : undefined,
@@ -70,11 +69,17 @@ export function FarmDocumentsPanel() {
     const popup = window.open('', '_blank');
     try {
       setOpeningId(documentId);
+      setError(null);
       const access = await getDocumentReadUrl(selectedWorkspaceId, documentId);
-      if (popup) popup.location.href = access.url; else window.location.href = access.url;
+      if (popup) popup.location.href = access.url;
+      else window.location.href = access.url;
     } catch (cause) {
-      console.error('Unable to open document', cause); popup?.close(); setError('El documento no está disponible para lectura en este momento.');
-    } finally { setOpeningId(null); }
+      console.error('Unable to open document', cause);
+      popup?.close();
+      setError('El archivo original no está disponible para lectura en este momento.');
+    } finally {
+      setOpeningId(null);
+    }
   }
 
   if (!ready || !found || context.source !== 'api') return null;
@@ -84,18 +89,25 @@ export function FarmDocumentsPanel() {
   const visibleDocuments = filtersActive ? documents : documents.slice(0, 5);
 
   return <section className="section">
-    <div className="section-head"><h2>{filtersActive ? 'Documentos' : 'Documentos recientes'}</h2><Link href={uploadHref} className="detail-link">＋ Añadir documento</Link></div>
+    <div className="section-head"><div><h2>{filtersActive ? 'Documentos' : 'Documentos recientes'}</h2><p className="subtle">Originales privados vinculados a esta finca. OCR y registros se revisan por separado.</p></div><Link href={uploadHref} className="detail-link">＋ Añadir documento</Link></div>
     <div className="card record-fields">
-      <label className="record-field"><span>Tipo</span><select className="record-control" value={kind} onChange={(event) => setKind(event.target.value as '' | DocumentKind)}><option value="">Todos</option>{kinds.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+      <label className="record-field"><span>Tipo</span><select className="record-control" value={kind} onChange={(event) => setKind(event.target.value as '' | DocumentKind)}><option value="">Todos</option>{documentKinds.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
       <label className="record-field"><span>Campaña</span><select className="record-control" value={campaignFilter} onChange={(event) => setCampaignFilter(event.target.value)}><option value="all">Todas</option><option value="unassigned">Sin asignar</option>{campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}{campaign.status === 'active' ? ' · activa' : ''}</option>)}</select></label>
     </div>
+
     {error ? <p className="form-error" role="alert">{error}</p> : null}
-    {loading ? <section className="card"><p>Cargando documentos…</p></section> : null}
-    {!loading && documents.length === 0 ? <section className="card"><p>{filtersActive ? 'No hay documentos con estos filtros.' : 'Aún no hay documentos vinculados a esta finca.'}</p></section> : null}
+    {loading ? <section className="card" aria-live="polite"><p>Cargando documentos…</p></section> : null}
+    {!loading && documents.length === 0 ? <section className={`card ${styles.flowCard}`}><div><h3>{filtersActive ? 'No hay documentos con estos filtros' : 'Aún no hay documentos'}</h3><p>{filtersActive ? 'Prueba otro tipo o campaña.' : 'Guarda aquí albaranes, facturas, liquidaciones, fotos y demás evidencias de la finca.'}</p></div>{!filtersActive ? <Link className="primary action-link" href={uploadHref}>Añadir primer documento</Link> : null}</section> : null}
+
     {visibleDocuments.length ? <div className="card feed today-list">{visibleDocuments.map((document) => {
-      const reviewHref = `/mi-campo/documentos/revisar?documentId=${encodeURIComponent(document.id)}&fieldId=${encodeURIComponent(context.id)}&source=${encodeURIComponent(context.source)}`;
-      return <div className="feed-row" key={document.id}><div className="feed-copy"><strong>{document.title}</strong><small>{kindLabel(document.kind)} · {document.created_at.slice(0, 10)}{document.campaign_name ? ` · ${document.campaign_name}` : ' · sin campaña'}{document.domain_type ? ` · vinculado a ${document.domain_type}` : ''}</small></div><div className="record-actions">{ocrKinds.has(document.kind as DocumentKind) ? <Link className="secondary-action action-link" href={reviewHref}>Analizar</Link> : null}<button type="button" className="secondary-action" onClick={() => void openDocument(document.id)} disabled={openingId === document.id}>{openingId === document.id ? 'Abriendo…' : 'Abrir'}</button></div></div>;
+      const canAnalyze = supportsDocumentOcr(document.kind);
+      const reviewHref = buildDocumentReviewHref(document.id, context.id, context.source);
+      return <div className="feed-row" key={document.id}>
+        <div className="feed-copy"><strong>{document.title}</strong><small>{documentKindLabel(document.kind)} · {formatDocumentDate(document.created_at)}</small><div className={styles.catalogMeta}><span className={styles.catalogTag}>{document.campaign_name ?? 'Sin campaña'}</span>{document.domain_type ? <span className={styles.catalogTag}>{domainLabels[document.domain_type] ?? 'Registro vinculado'} ✓</span> : <span className={styles.catalogTag}>{canAnalyze ? 'OCR opcional · revisión humana' : 'Evidencia documental'}</span>}</div></div>
+        <div className="record-actions">{canAnalyze ? <Link className="secondary-action action-link" href={reviewHref}>{document.domain_type ? 'Ver lectura' : 'Analizar / revisar'}</Link> : null}<button type="button" className="secondary-action" onClick={() => void openDocument(document.id)} disabled={openingId === document.id}>{openingId === document.id ? 'Abriendo…' : 'Abrir original'}</button></div>
+      </div>;
     })}</div> : null}
-    {!filtersActive && documents.length > 5 ? <p className="subtle">Mostrando los 5 más recientes. Usa los filtros para consultar el catálogo.</p> : null}
+
+    {!filtersActive && documents.length > 5 ? <p className="subtle">Mostrando los 5 más recientes. Usa los filtros para consultar el resto del catálogo.</p> : null}
   </section>;
 }

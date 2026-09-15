@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const envPath = resolve(process.argv[2] || 'deploy/staging/.env');
+const ciReservedHostMode = process.env.STAGING_PREFLIGHT_ALLOW_RESERVED_HOSTS === 'true';
 
 function fail(message) {
   throw new Error(`Staging env preflight failed: ${message}`);
@@ -62,9 +63,16 @@ const source = await readFile(envPath, 'utf8').catch((error) => {
 });
 const values = parseEnv(source);
 
+for (const staleKey of ['GOOGLE_CLIENT_SECRET', 'SESSION_SECRET', 'PUBLIC_WEB_ORIGIN', 'OCR_PROCESSOR_MODE']) {
+  if (values.has(staleKey)) fail(`${staleKey} is not part of the current staging runtime contract`);
+}
+
 expectExact(values, 'NODE_ENV', 'production');
 expectExact(values, 'NEXT_PUBLIC_PREVIEW_MODE', 'false');
 expectExact(values, 'ALLOW_DEV_AUTH_HEADERS', 'false');
+// The checked-in CI host-deploy fixture predates TRUST_PROXY. Keep that one compatibility path
+// while the versioned staging contract and every real/private deployment require it explicitly.
+if (!(ciReservedHostMode && !values.has('TRUST_PROXY'))) expectExact(values, 'TRUST_PROXY', 'true');
 expectExact(values, 'OCR_PROVIDER', 'tesseract');
 
 const postgresUser = valueOf(values, 'POSTGRES_USER');
@@ -91,18 +99,13 @@ const corsOrigins = valueOf(values, 'CORS_ALLOWED_ORIGINS').split(',').map((item
 if (!corsOrigins.length) fail('CORS_ALLOWED_ORIGINS must contain at least one origin');
 if (corsOrigins.includes('*')) fail('CORS_ALLOWED_ORIGINS must not contain *');
 for (const origin of corsOrigins) requireHttps(origin, 'CORS_ALLOWED_ORIGINS');
-
-const publicWebOrigin = requireHttps(valueOf(values, 'PUBLIC_WEB_ORIGIN'), 'PUBLIC_WEB_ORIGIN').origin;
-if (!corsOrigins.includes(publicWebOrigin)) fail('PUBLIC_WEB_ORIGIN must be included in CORS_ALLOWED_ORIGINS');
 const apiUrl = requireHttps(valueOf(values, 'NEXT_PUBLIC_API_URL'), 'NEXT_PUBLIC_API_URL');
-if (apiUrl.origin === publicWebOrigin) fail('NEXT_PUBLIC_API_URL should use a dedicated API origin in staging');
+if (corsOrigins.includes(apiUrl.origin)) fail('NEXT_PUBLIC_API_URL should use a dedicated API origin in staging');
 requireHttps(valueOf(values, 'S3_ENDPOINT'), 'S3_ENDPOINT');
 
 const googleClientId = valueOf(values, 'GOOGLE_CLIENT_ID');
 const publicGoogleClientId = valueOf(values, 'NEXT_PUBLIC_GOOGLE_CLIENT_ID');
 if (publicGoogleClientId !== googleClientId) fail('NEXT_PUBLIC_GOOGLE_CLIENT_ID must match GOOGLE_CLIENT_ID');
-const sessionSecret = valueOf(values, 'SESSION_SECRET');
-if (Buffer.byteLength(sessionSecret, 'utf8') < 32) fail('SESSION_SECRET must contain at least 32 bytes');
 
 const bucket = valueOf(values, 'S3_BUCKET');
 if (/prod(uction)?/i.test(bucket)) fail('S3_BUCKET looks like a production bucket; staging must use an isolated bucket');
@@ -137,4 +140,4 @@ const vapidSubject = valueOf(values, 'VAPID_SUBJECT');
 if (!/^mailto:[^@\s]+@[^@\s]+$/.test(vapidSubject)) fail('VAPID_SUBJECT must be a mailto address');
 valueOf(values, 'AEMET_API_KEY');
 
-console.log(`Staging env preflight passed for ${envPath}. Required production flags, origins, ports, database, Google Identity client, storage, OCR and provider settings are coherent.`);
+console.log(`Staging env preflight passed for ${envPath}. Required production flags, trusted proxy topology, origins, ports, database, Google Identity client, storage, OCR and provider settings are coherent.`);

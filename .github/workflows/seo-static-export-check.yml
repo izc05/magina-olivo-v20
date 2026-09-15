@@ -1,0 +1,56 @@
+name: V20 static SEO check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/v20-beta-review-closure
+      - integrate/v20-beta-closure
+    paths:
+      - 'apps/web/src/app/layout.tsx'
+      - 'apps/web/src/components/managed-seo-metadata.tsx'
+      - 'apps/web/src/lib/public-content-source.ts'
+      - 'scripts/seo-static-export-smoke.mjs'
+      - '.github/workflows/seo-static-export-check.yml'
+  pull_request:
+    branches:
+      - integrate/v20-beta-closure
+    paths:
+      - 'apps/web/src/app/layout.tsx'
+      - 'apps/web/src/components/managed-seo-metadata.tsx'
+      - 'apps/web/src/lib/public-content-source.ts'
+      - 'scripts/seo-static-export-smoke.mjs'
+      - '.github/workflows/seo-static-export-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  static-seo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify CMS SEO is present in initial exported HTML
+        run: node scripts/seo-static-export-smoke.mjs

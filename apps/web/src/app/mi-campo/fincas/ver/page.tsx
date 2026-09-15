@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { FarmDetailShell } from '@/components/farm-detail-shell';
+import { FarmEditShortcut } from '@/components/farm-edit-shortcut';
 import { AttentionSummaryCard } from '@/components/attention-summary-card';
 import { FinancialAttentionCard } from '@/components/financial-attention-card';
 import { FarmPlanShortcut } from '@/components/farm-plan-shortcut';
@@ -11,9 +12,10 @@ export default function FarmDetailPage() {
   return (
     <main className="app-shell">
       <Topbar />
-      <div className="page mi-campo-page">
+      <div className="page mi-campo-page farm-detail-page">
         <Suspense fallback={<section className="card"><p>Cargando finca…</p></section>}>
           <FarmDetailShell />
+          <FarmEditShortcut />
           <FarmPlanShortcut />
           <AttentionSummaryCard inferFieldFromQuery compact />
           <FinancialAttentionCard inferFieldFromQuery compact />

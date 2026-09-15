@@ -17,6 +17,8 @@ type Receivable = {
   pending_eur: number | string;
 };
 
+type SavedCollection = { workId: string; title: string; amountEur: number; remainingEur: number };
+
 function money(value: number) {
   return value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -30,7 +32,7 @@ export function ProfessionalCollectionEntryClient() {
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<SavedCollection | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,6 +42,7 @@ export function ProfessionalCollectionEntryClient() {
     }
     let cancelled = false;
     setLoading(true);
+    setError(null);
     apiFetch<{ receivables: Receivable[] }>('/api/v1/works/receivables', { workspaceId: selectedWorkspaceId })
       .then((response) => {
         if (cancelled) return;
@@ -49,11 +52,17 @@ export function ProfessionalCollectionEntryClient() {
         if (selected) {
           setWorkId(selected.id);
           setAmount(Number(selected.pending_eur).toFixed(2));
+        } else {
+          setWorkId('');
+          setAmount('');
         }
       })
       .catch((cause) => {
         console.error('Unable to load professional receivables', cause);
-        if (!cancelled) setError('No se han podido cargar los trabajos pendientes de cobro.');
+        if (!cancelled) {
+          setRows([]);
+          setError('No se han podido cargar los trabajos pendientes de cobro.');
+        }
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -70,7 +79,7 @@ export function ProfessionalCollectionEntryClient() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedWorkspaceId || !workId || saving) return;
+    if (!selectedWorkspaceId || !workId || !selected || saving) return;
     const form = new FormData(event.currentTarget);
     const collectedOn = String(form.get('date') ?? '');
     const amountEur = Number(String(form.get('amount') ?? '').replace(',', '.'));
@@ -102,7 +111,7 @@ export function ProfessionalCollectionEntryClient() {
           notes: notes || undefined,
         }),
       });
-      setSaved(true);
+      setSaved({ workId, title: selected.title, amountEur, remainingEur: Math.max(0, pending - amountEur) });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (cause) {
       console.error('Unable to save professional collection', cause);
@@ -113,11 +122,12 @@ export function ProfessionalCollectionEntryClient() {
   }
 
   if (loading) return <section className="card"><p>Cargando trabajos pendientes…</p></section>;
-  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Cobro registrado</h1><p>El movimiento queda guardado con fecha, importe y referencia, y reduce el saldo pendiente del trabajo.</p><Link className="primary action-link" href="/mi-campo/profesional">Volver a Profesional</Link></section>;
+  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Cobro registrado</h1><p>Has registrado {money(saved.amountEur)} € para “{saved.title}”. {saved.remainingEur > 0.009 ? `Quedan ${money(saved.remainingEur)} € pendientes.` : 'El trabajo queda completamente cobrado.'}</p><div className="record-actions">{saved.remainingEur > 0.009 ? <Link className="primary action-link" href={`/mi-campo/profesional/cobrar?workId=${encodeURIComponent(saved.workId)}`}>Registrar otro cobro →</Link> : null}<Link className="secondary-action action-link" href="/mi-campo/profesional">Ver resumen profesional</Link><Link className="secondary-action action-link" href="/mi-campo/profesional/facturas">Ver facturas</Link></div></section>;
 
   return <>
     <header className="page-title"><span className="eyebrow dark">MI CAMPO · PROFESIONAL</span><h1>Registrar cobro</h1><p>Registra un cobro parcial o completa todo lo pendiente de un trabajo para tercero.</p></header>
-    {rows.length === 0 ? <section className="card"><h3>Sin cobros pendientes</h3><p>No hay trabajos profesionales con saldo pendiente.</p><Link className="secondary-action action-link" href="/mi-campo/profesional">Volver a Profesional</Link></section> : <form className="quick-record-form" onSubmit={submit}>
+    {error ? <p className="form-error" role="alert">{error}</p> : null}
+    {rows.length === 0 ? <section className="card"><h3>Sin cobros pendientes</h3><p>No hay trabajos profesionales con saldo pendiente.</p><div className="record-actions"><Link className="primary action-link" href="/mi-campo/profesional/facturas/nueva">Nueva factura</Link><Link className="secondary-action action-link" href="/mi-campo/registrar/trabajo">Registrar trabajo</Link><Link className="secondary-action action-link" href="/mi-campo/profesional">Volver a Profesional</Link></div></section> : <form className="quick-record-form" onSubmit={submit}>
       <section className="card record-panel"><div className="record-fields">
         <label className="record-field wide"><span>Trabajo</span><select className="record-control" value={workId} onChange={(event) => chooseWork(event.target.value)} required><option value="" disabled>Seleccionar trabajo</option>{rows.map((item) => <option key={item.id} value={item.id}>{item.customer_name || 'Cliente'} · {item.title} · pendiente {money(Number(item.pending_eur))} €</option>)}</select></label>
         {selected ? <div className="record-field wide"><span>Estado</span><div className="card"><strong>{selected.title}</strong><small>{selected.customer_name || 'Cliente'} · facturado {money(Number(selected.charge_eur ?? 0))} € · cobrado {money(Number(selected.collected_from_movements_eur))} € · pendiente {money(pending)} €</small></div></div> : null}
@@ -128,7 +138,6 @@ export function ProfessionalCollectionEntryClient() {
         <label className="record-field wide"><span>Notas</span><textarea className="record-control" name="notes" rows={3} /></label>
       </div></section>
       <section className="card register-principle"><div><strong>Cobro auditable</strong><small>Cada pago queda como movimiento independiente. El servidor bloquea el trabajo y recalcula el pendiente antes de aceptar el importe.</small></div></section>
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
       <section className="record-save-bar"><small>El importe facturado del trabajo no cambia al registrar un cobro.</small><button className="primary" type="submit" disabled={!workId || saving}>{saving ? 'Guardando…' : 'Guardar cobro →'}</button></section>
     </form>}
   </>;

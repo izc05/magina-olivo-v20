@@ -1,3 +1,9 @@
 packages:
   - apps/*
   - packages/*
+
+# pnpm 10 blocks dependency lifecycle scripts by default. Keep the allowlist
+# explicit and fail CI when a new dependency introduces an unreviewed script.
+onlyBuiltDependencies:
+  - esbuild
+strictDepBuilds: true

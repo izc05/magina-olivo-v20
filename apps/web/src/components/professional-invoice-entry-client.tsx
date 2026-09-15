@@ -12,6 +12,8 @@ function money(value: number) {
   return value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+type SavedInvoice = { id: string; customerId: string; status: 'draft' | 'issued'; firstWorkId: string | null };
+
 export function ProfessionalInvoiceEntryClient() {
   const params = useSearchParams();
   const preselectedCustomerId = params.get('customerId') ?? '';
@@ -24,14 +26,16 @@ export function ProfessionalInvoiceEntryClient() {
   const [taxPercent, setTaxPercent] = useState('21');
   const [status, setStatus] = useState<'draft' | 'issued'>('draft');
   const [loading, setLoading] = useState(true);
+  const [worksLoading, setWorksLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [savedInvoice, setSavedInvoice] = useState<SavedInvoice | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedWorkspaceId) return;
     let cancelled = false;
     setLoading(true);
+    setError(null);
     loadWorkDirectory(selectedWorkspaceId)
       .then((directory) => {
         if (cancelled) return;
@@ -52,9 +56,12 @@ export function ProfessionalInvoiceEntryClient() {
     if (!selectedWorkspaceId || !customerId) {
       setWorks([]);
       setSelectedIds([]);
+      setWorksLoading(false);
       return;
     }
     let cancelled = false;
+    setWorksLoading(true);
+    setError(null);
     loadInvoiceCandidates(selectedWorkspaceId, customerId)
       .then((items) => {
         if (cancelled) return;
@@ -67,8 +74,13 @@ export function ProfessionalInvoiceEntryClient() {
       })
       .catch((cause) => {
         console.error('Unable to load invoice candidates', cause);
-        if (!cancelled) setError('No se han podido cargar los trabajos pendientes de facturar.');
-      });
+        if (!cancelled) {
+          setWorks([]);
+          setSelectedIds([]);
+          setError('No se han podido cargar los trabajos pendientes de facturar.');
+        }
+      })
+      .finally(() => { if (!cancelled) setWorksLoading(false); });
     return () => { cancelled = true; };
   }, [customerId, preselectedWorkId, selectedWorkspaceId]);
 
@@ -99,7 +111,7 @@ export function ProfessionalInvoiceEntryClient() {
     try {
       setSaving(true);
       setError(null);
-      await createProfessionalInvoice(selectedWorkspaceId, {
+      const invoice = await createProfessionalInvoice(selectedWorkspaceId, {
         customer_party_id: customerId,
         invoice_number: invoiceNumber || undefined,
         issued_on: issuedOn || undefined,
@@ -111,7 +123,8 @@ export function ProfessionalInvoiceEntryClient() {
         notes: notes || undefined,
         works: selectedWorks.map((item) => ({ work_id: item.id, amount_eur: Number(Number(item.charge_eur ?? 0).toFixed(2)) })),
       });
-      setSaved(true);
+      setSavedInvoice({ id: invoice.id, customerId, status, firstWorkId: selectedWorks[0]?.id ?? null });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (cause) {
       console.error('Unable to create invoice', cause);
       setError('No se ha podido guardar la factura. Comprueba que los trabajos sigan sin facturar y que el número no esté repetido.');
@@ -121,12 +134,14 @@ export function ProfessionalInvoiceEntryClient() {
   }
 
   if (loading) return <section className="card"><p>Cargando clientes…</p></section>;
-  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Factura guardada</h1><p>Los trabajos quedan vinculados a la factura y ya no podrán incluirse en otra factura activa.</p><Link className="primary action-link" href="/mi-campo/profesional">Volver a Profesional</Link></section>;
+  if (savedInvoice) return <section className="record-success card"><div className="success-mark">✓</div><h1>{savedInvoice.status === 'issued' ? 'Factura emitida' : 'Borrador de factura guardado'}</h1><p>Los trabajos quedan vinculados a esta factura y ya no podrán incluirse en otra factura activa. Registrar la factura no registra ningún cobro.</p><div className="record-actions"><Link className="primary action-link" href={`/mi-campo/profesional/documento?type=invoice&id=${encodeURIComponent(savedInvoice.id)}`}>Ver / compartir factura →</Link>{savedInvoice.status === 'issued' && savedInvoice.firstWorkId ? <Link className="secondary-action action-link" href={`/mi-campo/profesional/cobrar?workId=${encodeURIComponent(savedInvoice.firstWorkId)}`}>Registrar cobro</Link> : null}<Link className="secondary-action action-link" href={`/mi-campo/profesional/cliente?id=${encodeURIComponent(savedInvoice.customerId)}`}>Ver cliente</Link><Link className="secondary-action action-link" href="/mi-campo/profesional">Profesional</Link></div></section>;
 
   return <>
     <header className="page-title"><span className="eyebrow dark">MI CAMPO · PROFESIONAL</span><h1>Nueva factura</h1><p>Agrupa trabajos del mismo cliente. El importe a cobrar de cada trabajo se considera total final; el IVA se desglosa dentro de ese total.</p></header>
     {preselectedWorkId ? <section className="card register-principle"><div><strong>Trabajo preseleccionado desde seguimiento comercial</strong><small>Comprueba cliente, trabajo, impuestos y estado antes de guardar.</small></div></section> : null}
-    <form className="quick-record-form" onSubmit={submit}>
+    {error ? <p className="form-error" role="alert">{error}</p> : null}
+
+    {!customers.length ? <section className="card"><h2>Aún no hay clientes profesionales</h2><p>Registra un trabajo para un cliente para poder facturarlo después.</p><Link className="primary action-link" href="/mi-campo/registrar/trabajo">Registrar trabajo →</Link></section> : <form className="quick-record-form" onSubmit={submit}>
       <section className="card record-panel"><div className="record-fields">
         <label className="record-field wide"><span>Cliente</span><select className="record-control" value={customerId} onChange={(event) => setCustomerId(event.target.value)} required><option value="" disabled>Seleccionar cliente</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.display_name}</option>)}</select></label>
         <label className="record-field"><span>Estado</span><select className="record-control" value={status} onChange={(event) => setStatus(event.target.value as 'draft' | 'issued')}><option value="draft">Borrador</option><option value="issued">Emitida</option></select></label>
@@ -138,13 +153,12 @@ export function ProfessionalInvoiceEntryClient() {
       </div></section>
 
       <section className="section"><div className="section-head"><h2>Trabajos a facturar</h2><span className="subtle">{selectedWorks.length} seleccionados</span></div>
-        {works.length === 0 ? <section className="card"><p>Este cliente no tiene trabajos pendientes de facturar.</p></section> : <div className="activity-list">{works.map((work) => <label className="card activity-item" key={work.id}><div><input type="checkbox" checked={selectedIds.includes(work.id)} onChange={() => toggleWork(work.id)} /> <strong>{work.title}</strong><p>{work.occurred_on}{work.site_name ? ` · ${work.site_name}` : ''}</p></div><div><strong>{money(Number(work.charge_eur ?? 0))} €</strong><small>{Number(work.collected_eur ?? 0) > 0 ? `${money(Number(work.collected_eur))} € ya cobrados` : 'sin cobros'}</small></div></label>)}</div>}
+        {worksLoading ? <section className="card"><p>Cargando trabajos pendientes…</p></section> : works.length === 0 ? <section className="card"><h3>Sin trabajos pendientes de facturar</h3><p>Este cliente no tiene trabajos disponibles para una nueva factura.</p><div className="record-actions"><Link className="primary action-link" href={`/mi-campo/registrar/trabajo?customerId=${encodeURIComponent(customerId)}`}>Registrar trabajo →</Link><Link className="secondary-action action-link" href={`/mi-campo/profesional/presupuestos?customerId=${encodeURIComponent(customerId)}`}>Crear presupuesto</Link><Link className="secondary-action action-link" href={`/mi-campo/profesional/cliente?id=${encodeURIComponent(customerId)}`}>Ver cliente</Link></div></section> : <div className="activity-list">{works.map((work) => <label className="card activity-item" key={work.id}><div><input type="checkbox" checked={selectedIds.includes(work.id)} onChange={() => toggleWork(work.id)} /> <strong>{work.title}</strong><p>{work.occurred_on}{work.site_name ? ` · ${work.site_name}` : ''}</p></div><div><strong>{money(Number(work.charge_eur ?? 0))} €</strong><small>{Number(work.collected_eur ?? 0) > 0 ? `${money(Number(work.collected_eur))} € ya cobrados` : 'sin cobros'}</small></div></label>)}</div>}
       </section>
 
       <section className="card register-principle"><div><strong>Resumen</strong><small>Base {money(subtotal)} € · IVA incluido {money(tax)} € · total {money(total)} €</small></div></section>
-      <section className="card register-principle"><div><strong>Factura ≠ cobro</strong><small>Emitir una factura no registra dinero recibido. Los cobros siguen siendo movimientos independientes.</small></div></section>
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
-      <section className="record-save-bar"><small>{status === 'draft' ? 'Podrás emitirla después.' : 'El número debe ser único y queda reservado incluso si después anulas la factura.'}</small><button className="primary" type="submit" disabled={saving || selectedWorks.length === 0}>{saving ? 'Guardando…' : status === 'draft' ? 'Guardar borrador →' : 'Emitir factura →'}</button></section>
-    </form>
+      <section className="card register-principle"><div><strong>Factura ≠ cobro</strong><small>Emitir una factura no registra dinero recibido. Los cobros siguen siendo movimientos independientes por trabajo.</small></div></section>
+      <section className="record-save-bar"><small>{status === 'draft' ? 'Podrás emitirla después.' : 'El número debe ser único y queda reservado incluso si después anulas la factura.'}</small><button className="primary" type="submit" disabled={saving || worksLoading || selectedWorks.length === 0}>{saving ? 'Guardando…' : status === 'draft' ? 'Guardar borrador →' : 'Emitir factura →'}</button></section>
+    </form>}
   </>;
 }

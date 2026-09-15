@@ -1,0 +1,227 @@
+.shell {
+  width: min(1160px, 100%);
+  margin: 18px auto 0;
+  padding: 0 20px;
+}
+
+.hero,
+.journey {
+  border: 1px solid rgba(77, 98, 61, .14);
+  background: rgba(255, 254, 250, .94);
+  box-shadow: 0 22px 56px rgba(43, 55, 39, .09);
+}
+
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .45fr);
+  align-items: center;
+  gap: 28px;
+  overflow: hidden;
+  min-height: 300px;
+  padding: clamp(26px, 5vw, 52px);
+  border-radius: 30px 30px 12px 12px;
+  background:
+    radial-gradient(circle at 82% 14%, rgba(213, 195, 124, .24), transparent 18rem),
+    linear-gradient(135deg, #f8f5eb 0%, #eef1e4 100%);
+}
+
+.copy { position: relative; z-index: 2; }
+
+.eyebrow {
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .17em;
+  color: #75855d;
+}
+
+.hero h2,
+.journey h3 {
+  margin: 7px 0 10px;
+  color: #243721;
+}
+
+.hero h2 {
+  max-width: 700px;
+  font-size: clamp(2rem, 4.5vw, 4rem);
+  line-height: .95;
+  letter-spacing: -.04em;
+}
+
+.lead {
+  max-width: 660px;
+  margin: 0;
+  color: #687064;
+  font-size: clamp(1rem, 1.5vw, 1.16rem);
+  line-height: 1.6;
+}
+
+.startState {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  margin-top: 24px;
+}
+
+.startState span,
+.startState strong {
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+
+.startState span {
+  background: #dfe7d7;
+  color: #315238;
+  font-weight: 800;
+}
+
+.startState strong {
+  background: #203a27;
+  color: #fff;
+}
+
+.startState small {
+  width: 100%;
+  color: #72776f;
+}
+
+.seedling {
+  position: relative;
+  width: min(260px, 100%);
+  aspect-ratio: 1 / 1;
+  justify-self: center;
+}
+
+.ground {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 12%;
+  height: 20%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, #837054 0%, #685840 52%, transparent 55%);
+  opacity: .82;
+}
+
+.stem {
+  position: absolute;
+  left: 49%;
+  bottom: 28%;
+  width: 4%;
+  height: 36%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #72814d, #5b603d 70%, #6b543d);
+  transform: rotate(-3deg);
+  transform-origin: bottom;
+}
+
+.leaf {
+  position: absolute;
+  width: 28%;
+  height: 15%;
+  border-radius: 100% 0 100% 0;
+  background: linear-gradient(135deg, #9eae70, #4f6d44);
+  box-shadow: inset -8px -8px 18px rgba(32, 58, 39, .18);
+}
+
+.leafLeft {
+  left: 26%;
+  top: 34%;
+  transform: rotate(26deg);
+}
+
+.leafRight {
+  right: 22%;
+  top: 26%;
+  transform: scaleX(-1) rotate(18deg);
+}
+
+.journey {
+  padding: clamp(22px, 4vw, 36px);
+  border-top: 0;
+  border-radius: 12px 12px 30px 30px;
+}
+
+.journeyHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.journeyHeading strong {
+  min-width: 54px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: #eef1e7;
+  color: #315238;
+  text-align: center;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid rgba(77, 98, 61, .12);
+  border-radius: 18px;
+  background: #fbfaf6;
+  color: inherit;
+  text-decoration: none;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.step:hover {
+  transform: translateY(-2px);
+  border-color: rgba(77, 98, 61, .28);
+  box-shadow: 0 14px 30px rgba(43, 55, 39, .08);
+}
+
+.step[data-done='true'] { background: #f1f5ec; }
+
+.stepNumber {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #334b32;
+  color: #fff;
+  font-weight: 850;
+}
+
+.stepCopy { display: grid; gap: 5px; }
+.stepCopy strong { color: #263a24; }
+.stepCopy small { color: #70766d; line-height: 1.45; }
+.arrow { color: #617457; font-size: 1.15rem; }
+
+.note {
+  margin: 18px 0 0;
+  color: #737970;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .shell { padding: 0 14px; }
+  .hero { grid-template-columns: 1fr; min-height: 0; }
+  .seedling { width: 180px; margin: -18px auto -8px; }
+  .steps { grid-template-columns: 1fr; }
+  .step { min-height: 92px; }
+}
+
+@media (max-width: 390px) {
+  .hero,
+  .journey { padding: 20px; }
+  .step { grid-template-columns: auto 1fr; }
+  .arrow { display: none; }
+}

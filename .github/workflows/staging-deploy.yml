@@ -3,16 +3,17 @@ name: V20 staging deploy
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: Branch/tag/SHA to deploy
-        required: true
-        default: feat/v20-visual-prototype
       expected_sha:
-        description: Exact 40-character commit SHA that must be checked out and have all gates green
+        description: Exact 40-character V20 SHA to deploy; all required gates must be green for this SHA
         required: true
       confirm:
         description: Type DEPLOY-STAGING to allow deployment
         required: true
+  push:
+    branches:
+      - integrate/v20-beta-closure
+    paths:
+      - 'deploy/staging/STAGING_DEPLOY_REQUEST.json'
 
 permissions:
   contents: read
@@ -24,40 +25,78 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ inputs.confirm == 'DEPLOY-STAGING' }}
+    if: ${{ github.event_name == 'push' || inputs.confirm == 'DEPLOY-STAGING' }}
     runs-on: ubuntu-latest
     environment: staging
 
     steps:
-      - name: Checkout exact candidate ref
-        uses: actions/checkout@v4
+      - name: Checkout deployment controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Resolve deployment request
+        id: request
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_SHA: ${{ inputs.expected_sha }}
+          DISPATCH_CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -eu
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import { readFileSync } from 'node:fs';
 
-      - name: Verify exact SHA
+          let expectedSha;
+          let confirm;
+
+          if (process.env.EVENT_NAME === 'push') {
+            const request = JSON.parse(readFileSync('deploy/staging/STAGING_DEPLOY_REQUEST.json', 'utf8'));
+            expectedSha = typeof request.expected_sha === 'string' ? request.expected_sha.trim() : '';
+            confirm = typeof request.confirm === 'string' ? request.confirm.trim() : '';
+          } else {
+            expectedSha = (process.env.DISPATCH_SHA ?? '').trim();
+            confirm = (process.env.DISPATCH_CONFIRM ?? '').trim();
+          }
+
+          if (!/^[0-9a-f]{40}$/.test(expectedSha)) {
+            throw new Error('expected_sha must be an exact lowercase 40-character commit SHA.');
+          }
+          if (confirm !== 'DEPLOY-STAGING') {
+            throw new Error('Deployment request must contain confirm=DEPLOY-STAGING.');
+          }
+
+          console.log(`expected_sha=${expectedSha}`);
+          console.log(`confirm=${confirm}`);
+          NODE
+
+      - name: Checkout exact V20 SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ steps.request.outputs.expected_sha }}
+          fetch-depth: 0
+
+      - name: Verify exact V20 ancestry
         id: candidate
         env:
-          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_SHA: ${{ steps.request.outputs.expected_sha }}
         run: |
           set -eu
           actual="$(git rev-parse HEAD)"
-          if ! printf '%s' "$EXPECTED_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
-            echo 'expected_sha must be a full 40-character lowercase Git SHA.' >&2
+          test "$actual" = "$EXPECTED_SHA"
+          git fetch --no-tags origin feat/v20-visual-prototype:refs/remotes/origin/feat/v20-visual-prototype
+          git fetch --no-tags origin integrate/v20-beta-closure:refs/remotes/origin/integrate/v20-beta-closure
+          if ! git merge-base --is-ancestor origin/feat/v20-visual-prototype "$actual"; then
+            echo "$actual does not descend from feat/v20-visual-prototype; refusing staging deployment." >&2
             exit 1
           fi
-          if [ "$actual" != "$EXPECTED_SHA" ]; then
-            echo "Checked out $actual but expected $EXPECTED_SHA" >&2
+          if ! git merge-base --is-ancestor "$actual" origin/integrate/v20-beta-closure; then
+            echo "$actual is not part of integrate/v20-beta-closure history; refusing staging deployment." >&2
             exit 1
           fi
           echo "sha=$actual" >> "$GITHUB_OUTPUT"
 
-      - name: Require all V20 gates green for exact SHA
+      - name: Require all V20 staging gates green for exact SHA
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.candidate.outputs.sha }}
@@ -73,18 +112,62 @@ jobs:
             fi
           done
 
-      - name: Validate staging environment secret
+      - name: Validate staging configuration presence
         env:
           STAGING_ENV_FILE: ${{ secrets.STAGING_ENV_FILE }}
+          STAGING_SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          STAGING_SSH_KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+          STAGING_WEB_URL: ${{ vars.STAGING_WEB_URL }}
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_PORT: ${{ vars.STAGING_PORT }}
+          STAGING_PATH: ${{ vars.STAGING_PATH }}
         run: |
           set -eu
-          test -n "$STAGING_ENV_FILE"
+          missing=0
+
+          for name in STAGING_ENV_FILE STAGING_SSH_PRIVATE_KEY STAGING_SSH_KNOWN_HOSTS; do
+            if [ -z "$(printenv "$name" || true)" ]; then
+              echo "::error title=Missing staging secret::$name is not configured in GitHub Environment 'staging'."
+              missing=1
+            fi
+          done
+
+          for name in STAGING_WEB_URL STAGING_HOST STAGING_USER STAGING_PORT STAGING_PATH; do
+            if [ -z "$(printenv "$name" || true)" ]; then
+              echo "::error title=Missing staging variable::$name is not configured in GitHub Environment 'staging'."
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "Configure every missing name in GitHub Environment 'staging' before retrying. No secret values were printed." >&2
+            exit 1
+          fi
+
+      - name: Validate private staging environment
+        env:
+          STAGING_ENV_FILE: ${{ secrets.STAGING_ENV_FILE }}
+          STAGING_WEB_URL: ${{ vars.STAGING_WEB_URL }}
+        run: |
+          set -eu
           umask 077
           printf '%s' "$STAGING_ENV_FILE" > /tmp/magina-staging.env
           node scripts/staging-env-preflight.mjs /tmp/magina-staging.env
 
           node --input-type=module <<'NODE' >> "$GITHUB_ENV"
           import { readFileSync } from 'node:fs';
+
+          const webRaw = process.env.STAGING_WEB_URL;
+          if (!webRaw || webRaw !== webRaw.trim() || /[\r\n]/.test(webRaw)) {
+            throw new Error('STAGING_WEB_URL must be a single non-empty URL.');
+          }
+          const web = new URL(webRaw);
+          if (web.protocol !== 'https:' || web.username || web.password || web.search || web.hash) {
+            throw new Error('STAGING_WEB_URL must be a clean HTTPS origin.');
+          }
+          const webOrigin = web.origin;
+
           const source = readFileSync('/tmp/magina-staging.env', 'utf8');
           const values = new Map();
           for (const raw of source.split(/\r?\n/)) {
@@ -96,8 +179,22 @@ jobs:
             if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
             values.set(line.slice(0, i).trim(), value);
           }
-          console.log(`STAGING_WEB_URL=${values.get('PUBLIC_WEB_ORIGIN')}`);
-          console.log(`STAGING_API_URL=${values.get('NEXT_PUBLIC_API_URL')}`);
+
+          const apiRaw = values.get('NEXT_PUBLIC_API_URL');
+          if (!apiRaw) throw new Error('NEXT_PUBLIC_API_URL is missing after staging preflight.');
+          const api = new URL(apiRaw);
+          const allowedOrigins = (values.get('CORS_ALLOWED_ORIGINS') ?? '')
+            .split(',').map((item) => item.trim()).filter(Boolean)
+            .map((item) => new URL(item).origin);
+          if (!allowedOrigins.includes(webOrigin)) {
+            throw new Error('STAGING_WEB_URL must be included in CORS_ALLOWED_ORIGINS.');
+          }
+          if (api.origin === webOrigin) {
+            throw new Error('Staging web and API must use separate HTTPS origins.');
+          }
+
+          console.log(`STAGING_WEB_URL=${webOrigin}`);
+          console.log(`STAGING_API_URL=${api.origin}`);
           NODE
 
       - name: Validate SSH deployment settings
@@ -110,16 +207,12 @@ jobs:
           KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
         run: |
           set -eu
-          test -n "$STAGING_HOST"
-          test -n "$STAGING_USER"
-          test -n "$STAGING_PORT"
-          test -n "$STAGING_PATH"
-          test -n "$SSH_KEY"
-          test -n "$KNOWN_HOSTS"
           printf '%s' "$STAGING_HOST" | grep -Eq '^[A-Za-z0-9.-]+$'
           printf '%s' "$STAGING_USER" | grep -Eq '^[A-Za-z0-9._-]+$'
           printf '%s' "$STAGING_PORT" | grep -Eq '^[0-9]{1,5}$'
+          [ "$STAGING_PORT" -ge 1 ] && [ "$STAGING_PORT" -le 65535 ]
           printf '%s' "$STAGING_PATH" | grep -Eq '^/[A-Za-z0-9._/-]+$'
+          case "/$STAGING_PATH/" in *'/../'*|*'/./'*) echo 'STAGING_PATH may not contain . or .. path segments.' >&2; exit 1;; esac
 
           install -m 700 -d ~/.ssh
           umask 077
@@ -135,9 +228,9 @@ jobs:
         run: |
           set -eu
           remote="$STAGING_USER@$STAGING_HOST"
-          ssh -p "$STAGING_PORT" "$remote" 'set -eu; docker version >/dev/null; docker compose version >/dev/null; curl --version >/dev/null; tar --version >/dev/null'
+          ssh -p "$STAGING_PORT" "$remote" 'set -eu; docker version >/dev/null; docker compose version >/dev/null; curl --version >/dev/null; tar --version >/dev/null; command -v sha256sum >/dev/null'
 
-      - name: Upload immutable release
+      - name: Upload immutable verified release
         env:
           SHA: ${{ steps.candidate.outputs.sha }}
           STAGING_HOST: ${{ vars.STAGING_HOST }}
@@ -148,17 +241,28 @@ jobs:
           set -eu
           remote="$STAGING_USER@$STAGING_HOST"
           release="$STAGING_PATH/releases/$SHA"
-          ssh -p "$STAGING_PORT" "$remote" "mkdir -p '$release' '$STAGING_PATH/backups'"
+          incoming="$STAGING_PATH/.incoming-$SHA"
+          archive="/tmp/magina-v20-$SHA.tar.gz"
+
+          rm -f "$archive"
           tar \
             --exclude='.git' \
             --exclude='node_modules' \
             --exclude='deploy/staging/.env' \
-            -czf - . | ssh -p "$STAGING_PORT" "$remote" "tar -xzf - -C '$release'"
-          scp -P "$STAGING_PORT" /tmp/magina-staging.env "$remote:$release/deploy/staging/.env.tmp"
-          ssh -p "$STAGING_PORT" "$remote" \
-            "chmod 600 '$release/deploy/staging/.env.tmp' && mv '$release/deploy/staging/.env.tmp' '$release/deploy/staging/.env'"
+            -czf "$archive" .
+          archive_sha="$(sha256sum "$archive" | awk '{print $1}')"
+          printf '%s' "$archive_sha" | grep -Eq '^[0-9a-f]{64}$'
 
-      - name: Deploy on staging host with pre-migration backup
+          ssh -p "$STAGING_PORT" "$remote" \
+            "set -eu; mkdir -p '$STAGING_PATH/releases' '$STAGING_PATH/backups'; test ! -e '$release'; test ! -L '$release'; rm -rf '$incoming'; mkdir -p '$incoming'"
+
+          scp -P "$STAGING_PORT" "$archive" "$remote:$incoming/release.tar.gz"
+          scp -P "$STAGING_PORT" /tmp/magina-staging.env "$remote:$incoming/staging.env"
+
+          ssh -p "$STAGING_PORT" "$remote" \
+            "set -eu; printf '%s  %s\n' '$archive_sha' '$incoming/release.tar.gz' | sha256sum -c -; mkdir '$incoming/root'; tar -xzf '$incoming/release.tar.gz' -C '$incoming/root'; chmod 600 '$incoming/staging.env'; mv '$incoming/staging.env' '$incoming/root/deploy/staging/.env'; rm '$incoming/release.tar.gz'; mv '$incoming/root' '$release'; rmdir '$incoming'"
+
+      - name: Deploy on staging host
         env:
           SHA: ${{ steps.candidate.outputs.sha }}
           STAGING_HOST: ${{ vars.STAGING_HOST }}
@@ -206,9 +310,11 @@ jobs:
             echo '### V20 staging deployment'
             echo
             echo "- SHA: \`$SHA\`"
+            echo "- Trigger: $GITHUB_EVENT_NAME"
             echo "- Web: $STAGING_WEB_URL"
             echo "- API: $STAGING_API_URL"
-            echo '- Candidate, browser E2E and readiness were required green for this exact SHA.'
-            echo '- PostgreSQL backup was attempted before migrations whenever a staging database was already running.'
+            echo '- Exact coordinator ancestry and full/browser/staging gates were required before deployment.'
+            echo '- Release archive SHA-256 was verified on the staging host before publication.'
+            echo '- A PostgreSQL dump was created immediately before migrations.'
             echo '- No destructive database rollback is performed automatically.'
           } >> "$GITHUB_STEP_SUMMARY"

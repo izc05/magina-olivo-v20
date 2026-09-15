@@ -12,6 +12,7 @@ import {
 } from '@/lib/agronomy-data-source';
 
 type AdvisoryState = Record<string, AgronomyAdvisoryView | null | undefined>;
+type AgendaFilter = 'all' | 'overdue' | 'today' | 'upcoming';
 
 function advisoryLabel(advisory: AgronomyAdvisoryView) {
   if (advisory.suitability === 'avoid') return 'Evitar';
@@ -32,6 +33,11 @@ function formatAgendaDate(value: string) {
   });
 }
 
+function formatAgendaDay(value: string) {
+  const [year, month, day] = value.split('-');
+  return year && month && day ? `${day}/${month}/${year}` : value;
+}
+
 function forecastSourceLabel(source: string) {
   if (source.toLowerCase().includes('aemet')) return 'AEMET';
   return source.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -46,6 +52,12 @@ function executionHref(item: AgendaItem) {
   const slug = routeByType[item.taskKind ?? item.sourceDomainType ?? ''] ?? 'trabajo';
   const params = new URLSearchParams({ fieldId: item.fieldId, source: 'api', plannedEventId: item.id });
   return `/mi-campo/registrar/${slug}?${params.toString()}`;
+}
+
+function fieldActionHref(path: string, fieldId?: string) {
+  if (!fieldId) return '/mi-campo';
+  const params = new URLSearchParams({ fieldId, source: 'api' });
+  return `${path}?${params.toString()}`;
 }
 
 function AdvisoryEvidence({ advisory }: { advisory: AgronomyAdvisoryView }) {
@@ -88,6 +100,7 @@ function AgendaSection({
           <div className="feed-copy">
             <strong>{item.title}</strong>
             <small>{item.fieldName ?? 'Sin finca'} · {formatAgendaDate(item.scheduledAt)}{item.status === 'postponed' ? ' · aplazada' : ''}</small>
+            {item.notes ? <small>{item.notes}</small> : null}
             {item.weatherSensitive ? <>
               <small>
                 {advisory === undefined ? 'Consultando el tiempo para esta tarea…' : advisory === null ? 'No hay información meteorológica disponible para esta tarea.' : `${advisoryLabel(advisory)} · ${advisory.summary}`}
@@ -102,7 +115,7 @@ function AgendaSection({
           <span className="pending-pill">{advisory ? advisoryLabel(advisory) : item.priority === 'high' ? 'Prioridad alta' : item.bucket === 'today' ? 'Hoy' : 'Próximo'}</span>
         </div>;
       })}
-    </div> : <section className="card"><p>No hay tareas en este bloque.</p></section>}
+    </div> : <div className="card"><p>No hay tareas en este bloque.</p></div>}
   </section>;
 }
 
@@ -113,11 +126,28 @@ export function TodayAgendaClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
+  const [filter, setFilter] = useState<AgendaFilter>('all');
 
-  const weatherSensitiveItems = useMemo(
-    () => [...agenda.overdue, ...agenda.today, ...agenda.upcoming].filter((item) => item.weatherSensitive && item.fieldId),
+  const allAgendaItems = useMemo(
+    () => [...agenda.overdue, ...agenda.today, ...agenda.upcoming],
     [agenda],
   );
+  const weatherSensitiveItems = useMemo(
+    () => allAgendaItems.filter((item) => item.weatherSensitive && item.fieldId),
+    [allAgendaItems],
+  );
+  const actionFieldId = allAgendaItems.find((item) => item.fieldId)?.fieldId;
+  const planHref = fieldActionHref('/mi-campo/planificar', actionFieldId);
+  const totalItems = agenda.counts.overdue + agenda.counts.today + agenda.counts.upcoming;
+  const visibleSections = useMemo(() => {
+    const sections = [
+      { key: 'overdue' as const, title: 'Atrasadas', items: agenda.overdue },
+      { key: 'today' as const, title: 'Para hoy', items: agenda.today },
+      { key: 'upcoming' as const, title: 'Próximos 7 días', items: agenda.upcoming },
+    ];
+    if (filter === 'all') return sections.filter((section) => section.items.length > 0);
+    return sections.filter((section) => section.key === filter);
+  }, [agenda, filter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -184,19 +214,31 @@ export function TodayAgendaClient() {
     <section className="card field-summary campaign-summary"><div className="stats">
       <div className="stat"><b>{agenda.counts.overdue}</b><span>atrasadas</span></div>
       <div className="stat"><b>{agenda.counts.today}</b><span>para hoy</span></div>
+      <div className="stat"><b>{agenda.counts.upcoming}</b><span>próximos 7 días</span></div>
       <div className="stat"><b>{agenda.counts.weatherSensitive}</b><span>sensibles al clima</span></div>
     </div></section>
 
+    {!loading && !error ? <section className="section card">
+      <div className="section-head"><div><h2>Agenda del {formatAgendaDay(agenda.date)}</h2><small>{totalItems ? `${totalItems} tarea${totalItems === 1 ? '' : 's'} pendiente${totalItems === 1 ? '' : 's'}` : 'Sin tareas pendientes próximas'}</small></div><Link href={planHref}>{actionFieldId ? 'Planificar nueva' : 'Elegir finca'}</Link></div>
+      {totalItems ? <div className="record-actions" aria-label="Filtrar agenda">
+        {([
+          ['all', 'Todas'],
+          ['overdue', `Atrasadas (${agenda.counts.overdue})`],
+          ['today', `Hoy (${agenda.counts.today})`],
+          ['upcoming', `Próximas (${agenda.counts.upcoming})`],
+        ] as Array<[AgendaFilter, string]>).map(([value, label]) => <button key={value} type="button" className={filter === value ? 'primary' : 'secondary-action'} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</button>)}
+      </div> : null}
+    </section> : null}
+
     {previewEnabled && !apiConfigured ? <section className="card"><strong>Modo demostración</strong><p>Esta vista no carga tu agenda privada. Las tareas reales aparecerán cuando uses Mágina con tu cuenta conectada.</p></section> : null}
-    {loading ? <section className="card"><p>Cargando agenda…</p></section> : null}
-    {error ? <p className="form-error" role="alert">{error}</p> : null}
-    {!loading && !error ? <>
-      <AgendaSection title="Atrasadas" items={agenda.overdue} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />
-      <AgendaSection title="Para hoy" items={agenda.today} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />
-      <AgendaSection title="Próximos 7 días" items={agenda.upcoming} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />
+    {loading ? <section className="card" aria-busy="true"><p>Cargando agenda…</p></section> : null}
+    {error ? <section className="card" role="alert"><strong>Agenda no disponible</strong><p>{error}</p>{status === 'authenticated' ? <button className="secondary-action" type="button" onClick={refresh}>Reintentar</button> : null}</section> : null}
+    {!loading && !error && totalItems === 0 ? <section className="section card"><h2>Agenda al día</h2><p>No tienes tareas atrasadas, para hoy ni para los próximos siete días.</p><div className="record-actions"><Link className="primary action-link" href="/mi-campo">Elegir finca para planificar</Link></div></section> : null}
+    {!loading && !error && totalItems > 0 ? <>
+      {visibleSections.map((section) => <AgendaSection key={section.key} title={section.title} items={section.items} advisories={advisories} workspaceId={status === 'authenticated' ? selectedWorkspaceId ?? undefined : undefined} onChanged={refresh} />)}
       <section className="card"><strong>El tiempo ayuda; tú decides</strong><p>{agenda.rule}</p><small>La previsión mira hacia delante y el radar aporta observaciones recientes. No mostramos una hora exacta de llegada de la lluvia cuando los datos no permiten calcularla con fiabilidad.</small></section>
     </> : null}
 
-    <section className="territory-banner compact-banner"><div><span className="eyebrow">TU TRABAJO, BIEN ORGANIZADO</span><h2>Planifica aquí y registra la tarea cuando realmente la hayas hecho.</h2></div><Link href="/mi-campo">Mi Campo</Link></section>
+    <section className="territory-banner compact-banner"><div><span className="eyebrow">TU TRABAJO, BIEN ORGANIZADO</span><h2>Planifica primero y registra la tarea cuando realmente la hayas hecho.</h2></div><Link href={planHref}>{actionFieldId ? 'Planificar tarea' : 'Elegir finca'}</Link></section>
   </>;
 }

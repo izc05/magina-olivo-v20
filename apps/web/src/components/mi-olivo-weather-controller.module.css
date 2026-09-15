@@ -1,0 +1,151 @@
+.strip {
+  width: min(1160px, calc(100% - 40px));
+  margin: 0 auto -12px;
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  padding: 14px 18px;
+  border: 1px solid rgba(82, 104, 70, .18);
+  border-radius: 18px;
+  background: rgba(250, 249, 242, .94);
+  box-shadow: 0 12px 36px rgba(48, 61, 40, .08);
+  backdrop-filter: blur(14px);
+}
+
+.strip > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.kicker {
+  color: #74845e;
+  font-size: .66rem;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.strip strong {
+  color: #31432e;
+  font-size: .92rem;
+}
+
+.strip small {
+  color: #747a70;
+  font-size: .72rem;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 10px;
+  margin: 0;
+}
+
+.metrics > div {
+  min-width: 92px;
+  padding: 8px 11px;
+  border-radius: 13px;
+  background: #f0f1e8;
+}
+
+.metrics dt,
+.metrics dd {
+  margin: 0;
+}
+
+.metrics dt {
+  color: #7a8175;
+  font-size: .64rem;
+  font-weight: 700;
+}
+
+.metrics dd {
+  margin-top: 2px;
+  color: #34472f;
+  font-size: .78rem;
+  font-weight: 900;
+}
+
+:global(html[data-mi-olivo-rain='likely']) section[aria-labelledby='tree-title'] > div:first-child {
+  background:
+    repeating-linear-gradient(105deg, transparent 0 16px, rgba(222, 235, 240, .18) 17px 18px, transparent 19px 31px),
+    linear-gradient(180deg, #aebfc4 0%, #cad2c5 45%, #a9aa83 100%);
+}
+
+:global(html[data-mi-olivo-rain='likely']) section[aria-labelledby='tree-title'] > div:first-child::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(105deg, transparent 0 25px, rgba(231, 241, 246, .32) 26px 27px, transparent 28px 43px);
+  animation: forecast-rain 1.3s linear infinite;
+}
+
+:global(html[data-mi-olivo-heat='true']) section[aria-labelledby='tree-title'] > div:first-child {
+  background: linear-gradient(180deg, #eadfbf 0%, #eee3c7 47%, #c8be82 100%);
+}
+
+:global(html[data-mi-olivo-cold='true']) section[aria-labelledby='tree-title'] > div:first-child {
+  background: linear-gradient(180deg, #d9e5ea 0%, #e6e9dc 48%, #c4c6a4 100%);
+}
+
+:global(html[data-mi-olivo-windy='true']) svg[aria-label^='Olivo digital en fase'] {
+  transform-origin: 50% 92%;
+  animation: forecast-sway 3.2s ease-in-out infinite;
+}
+
+@keyframes forecast-rain {
+  from { background-position: 0 0; }
+  to { background-position: -30px 70px; }
+}
+
+@keyframes forecast-sway {
+  0%, 100% { transform: rotate(-.6deg); }
+  50% { transform: rotate(.8deg); }
+}
+
+@media (max-width: 760px) {
+  .strip {
+    width: calc(100% - 28px);
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: -6px;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .metrics > div {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .strip {
+    width: calc(100% - 24px);
+    padding: 12px;
+  }
+
+  .metrics {
+    gap: 6px;
+  }
+
+  .metrics > div {
+    padding: 7px 8px;
+  }
+
+  .metrics dd {
+    font-size: .72rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-mi-olivo-rain='likely']) section[aria-labelledby='tree-title'] > div:first-child::after,
+  :global(html[data-mi-olivo-windy='true']) svg[aria-label^='Olivo digital en fase'] {
+    animation: none;
+  }
+}

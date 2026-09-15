@@ -1,0 +1,406 @@
+/* Mágina Olivo V20 — cierre visual específico de Mi Campo */
+
+.mi-campo-page {
+  --field-accent: #405b37;
+}
+
+.mi-campo-title {
+  gap: 15px;
+  align-items: center;
+  padding-top: 30px;
+  padding-bottom: 6px;
+}
+
+.mi-campo-title .title-mark {
+  width: 62px;
+  height: 62px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 25% 20%, rgba(255,255,255,.92), transparent 42%),
+    linear-gradient(145deg, #dce8d1, #eef3e9);
+  box-shadow: inset 0 0 0 1px rgba(45, 66, 38, .07), 0 10px 24px rgba(38, 56, 33, .08);
+}
+
+.mi-campo-title .title-mark svg {
+  width: 31px;
+  height: 31px;
+}
+
+.mi-campo-title .eyebrow {
+  color: #7a846f;
+  font-size: 7.5px;
+  letter-spacing: .19em;
+}
+
+.mi-campo-title h1 {
+  margin: 3px 0 0;
+  color: #192319;
+  font-size: clamp(39px, 10vw, 51px);
+  line-height: .92;
+  letter-spacing: -.05em;
+}
+
+.mi-campo-title p {
+  max-width: 42ch;
+  margin-top: 8px;
+  color: #6a7367;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.campaign-summary {
+  position: relative;
+  margin-top: 18px;
+  padding: 3px 12px 11px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(170, 184, 142, .18), transparent 38%),
+    linear-gradient(145deg, rgba(255,255,252,.96), rgba(247,246,239,.92));
+}
+
+.campaign-summary::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  bottom: -30px;
+  width: 150px;
+  height: 100px;
+  background: var(--asset-olive-sprig) center / contain no-repeat;
+  opacity: .055;
+  pointer-events: none;
+}
+
+.campaign-summary .stats {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  border: 0;
+  padding-block: 15px 8px;
+}
+
+.campaign-summary .stat {
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.campaign-summary .stat b {
+  font-size: clamp(22px, 6.2vw, 29px);
+  letter-spacing: -.035em;
+}
+
+.campaign-summary .subtle {
+  position: relative;
+  z-index: 1;
+  margin: 5px 10px 4px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(42, 58, 38, .08);
+}
+
+#mis-fincas > .section-head {
+  margin-bottom: 12px;
+}
+
+#mis-fincas > .section-head .detail-link {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(51, 72, 44, .13);
+  border-radius: 12px;
+  background: rgba(255,255,255,.55);
+}
+
+#mis-fincas > .section-head .detail-link:hover {
+  background: white;
+  box-shadow: 0 8px 20px rgba(33, 48, 29, .07);
+}
+
+.record-fields {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 252, .68);
+  box-shadow: none;
+}
+
+.record-field {
+  gap: 6px;
+}
+
+.record-field > span {
+  color: #677064;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.record-control {
+  min-height: 46px;
+  border: 1px solid rgba(47, 67, 41, .12);
+  border-radius: 13px;
+  background: rgba(255,255,255,.83);
+  color: #263225;
+  box-shadow: inset 0 1px 1px rgba(35, 49, 31, .02);
+}
+
+.record-control:hover {
+  border-color: rgba(47, 67, 41, .20);
+}
+
+.record-control:focus {
+  border-color: rgba(62, 89, 52, .34);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(87, 113, 72, .08);
+}
+
+.farm-row {
+  gap: 13px;
+}
+
+.farm-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255,255,252,.92);
+}
+
+.farm-image {
+  height: 176px;
+  padding: 13px;
+  background-position: center 48%;
+  transition: background-size .4s ease;
+}
+
+.farm-image::after {
+  background:
+    linear-gradient(180deg, rgba(20,28,18,.03) 35%, rgba(20,28,18,.38) 100%);
+}
+
+.farm-card:hover .farm-image {
+  background-size: 104%;
+}
+
+.farm-status {
+  margin-top: auto;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,.42);
+  background: rgba(247, 249, 243, .90);
+  box-shadow: 0 7px 18px rgba(24, 35, 21, .09);
+}
+
+.farm-body {
+  padding: 16px;
+}
+
+.farm-card-head {
+  align-items: flex-start;
+}
+
+.farm-card-head h3 {
+  font-size: 27px;
+  line-height: 1;
+}
+
+.farm-card-head > svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 4px;
+  color: #8b9288;
+}
+
+.farm-meta {
+  max-width: 46ch;
+  margin-top: 7px;
+  color: #6d756b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.farm-card .record-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 15px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(45, 62, 40, .08);
+}
+
+.farm-card .record-actions:has(.action-link:only-child) {
+  grid-template-columns: 1fr;
+}
+
+.farm-card .record-actions .action-link {
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 11px;
+}
+
+.mi-campo-page .quick-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mi-campo-page .premium-quick {
+  min-height: 106px;
+  padding: 14px;
+  border-radius: 19px;
+  background:
+    linear-gradient(145deg, rgba(255,255,252,.94), rgba(248,247,241,.88));
+}
+
+.mi-campo-page .premium-quick > .icon {
+  width: 43px;
+  height: 43px;
+  border-radius: 14px;
+  color: #40573a;
+  background: #e8eee2;
+}
+
+.mi-campo-page .premium-quick strong {
+  color: #263125;
+  font-size: 13px;
+}
+
+.mi-campo-page .premium-quick small {
+  margin-top: 4px;
+  color: #71796f;
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+
+.mi-campo-page .premium-quick .quick-arrow {
+  opacity: .66;
+}
+
+.mi-campo-page .territory-banner {
+  margin-top: 30px;
+  padding: 22px;
+  border-radius: 24px;
+  background:
+    linear-gradient(105deg, rgba(28, 43, 27, .96), rgba(57, 75, 46, .91)),
+    var(--asset-farm-las-cenillas) center / cover;
+}
+
+.mi-campo-page .territory-banner h2 {
+  max-width: 32ch;
+  font-size: clamp(20px, 5.5vw, 25px);
+  line-height: 1.08;
+}
+
+.mi-campo-page .territory-banner a {
+  background: rgba(255,255,255,.06);
+  backdrop-filter: blur(8px);
+}
+
+@media (max-width: 380px) {
+  .mi-campo-title {
+    gap: 11px;
+  }
+
+  .mi-campo-title .title-mark {
+    width: 52px;
+    height: 52px;
+    border-radius: 17px;
+  }
+
+  .mi-campo-title .title-mark svg {
+    width: 27px;
+    height: 27px;
+  }
+
+  .mi-campo-title h1 {
+    font-size: 38px;
+  }
+
+  .campaign-summary {
+    padding-inline: 7px;
+  }
+
+  .campaign-summary .stat {
+    padding-inline: 7px;
+  }
+
+  .campaign-summary .stat b {
+    font-size: 21px;
+  }
+
+  .campaign-summary .stat span {
+    font-size: 9.5px;
+  }
+
+  .farm-image {
+    height: 154px;
+  }
+
+  .farm-card-head h3 {
+    font-size: 24px;
+  }
+
+  .mi-campo-page .quick-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mi-campo-page .premium-quick {
+    min-height: 82px;
+  }
+
+  .mi-campo-page .territory-banner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (min-width: 620px) {
+  .record-fields {
+    grid-template-columns: minmax(0, 1.6fr) minmax(180px, .6fr);
+    align-items: end;
+  }
+}
+
+@media (min-width: 820px) {
+  .mi-campo-title {
+    padding-top: 38px;
+  }
+
+  .mi-campo-title .title-mark {
+    width: 70px;
+    height: 70px;
+    border-radius: 22px;
+  }
+
+  .mi-campo-title h1 {
+    font-size: 56px;
+  }
+
+  .campaign-summary {
+    max-width: 760px;
+    padding-inline: 18px;
+  }
+
+  .farm-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .farm-image {
+    height: 210px;
+  }
+
+  .mi-campo-page .quick-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 13px;
+  }
+
+  .mi-campo-page .premium-quick {
+    min-height: 112px;
+  }
+}
+
+@media (min-width: 1180px) {
+  .farm-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

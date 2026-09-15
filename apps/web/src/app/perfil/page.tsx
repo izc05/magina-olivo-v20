@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { BottomNav } from '@/components/bottom-nav';
 import { GoogleSignInButton } from '@/components/google-sign-in-button';
 import { Topbar } from '@/components/topbar';
@@ -91,8 +92,18 @@ export default function ProfilePage() {
 
       {authenticated && workspaces.length > 1 ? <section className="card profile-card premium-profile-card"><div className="profile-card-head"><h3>Espacio activo</h3><span>Cambiar</span></div><p className="subtle">Los datos de Mi Campo y Profesional se muestran para el espacio que elijas.</p>{workspaces.map((workspace)=><button type="button" className="profile-line" key={workspace.workspace_id} onClick={()=>selectWorkspace(workspace.workspace_id)} aria-pressed={workspace.workspace_id === selectedWorkspaceId}><span>{workspace.workspace_name}</span><span>{workspace.workspace_id === selectedWorkspaceId ? 'Activo ✓' : `${workspace.role} ›`}</span></button>)}</section> : null}
 
-      <section className="card profile-card premium-profile-card olive-card"><div className="profile-card-head"><h3>Mi Olivo</h3><span>Después de Beta</span></div><div className="olivo-level"><span className="olivo-mark"><SproutIcon/></span><div><strong>{authenticated ? 'Tu olivo personal' : 'Entra para crear tu olivo'}</strong><small>Los puntos y recompensas se activarán en una fase posterior; todavía no forman parte del núcleo Beta.</small><div className="level-bar"><i/></div></div></div></section>
-      <section className="card profile-card premium-profile-card professional-card"><div className="profile-card-head"><h3>Perfil profesional</h3><span>{authenticated ? 'Configurable arriba' : 'Con cuenta'}</span></div><p>Trabaja para terceros sin mezclar tu información personal ni tus fincas privadas.</p><div className="profile-line"><span>Servicios públicos/directorio</span><span>Después de Beta</span></div><div className="profile-line"><span>Visibilidad actual</span><span>{profile?.visibility === 'public' ? 'Pública' : authenticated ? 'Privada' : 'Accede'}</span></div></section>
+      <section className="card profile-card premium-profile-card olive-card">
+        <div className="profile-card-head"><h3>Mi Olivo</h3><span>Disponible en Beta</span></div>
+        <div className="olivo-level"><span className="olivo-mark"><SproutIcon/></span><div><strong>{authenticated ? 'Tu olivo personal' : 'Conoce Mi Olivo'}</strong><small>Mi Olivo ya está disponible. Los puntos y recompensas seguirán ampliándose en una fase posterior.</small><div className="level-bar"><i/></div></div></div>
+        <Link className="profile-line" href="/mi-olivo"><span>Abrir Mi Olivo</span><span>›</span></Link>
+      </section>
+      <section className="card profile-card premium-profile-card professional-card">
+        <div className="profile-card-head"><h3>Perfil profesional</h3><span>{authenticated ? 'Configurable arriba' : 'Con cuenta'}</span></div>
+        <p>Trabaja para terceros sin mezclar tu información personal ni tus fincas privadas.</p>
+        <Link className="profile-line" href="/mi-campo/profesional"><span>Herramientas profesionales</span><span>Abrir ›</span></Link>
+        <Link className="profile-line" href="/servicios"><span>Servicios públicos/directorio</span><span>Disponible ›</span></Link>
+        <div className="profile-line"><span>Visibilidad actual</span><span>{profile?.visibility === 'public' ? 'Pública' : authenticated ? 'Privada' : 'Accede'}</span></div>
+      </section>
     </div>
 
     <section className="section"><PermissionCenter/></section>

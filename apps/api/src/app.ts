@@ -1,10 +1,37 @@
+import { randomUUID } from 'node:crypto';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import type { DatabaseClient } from './db/client.js';
 import { hydrateRequestAuthentication, prototypeAuthWarning } from './request-context.js';
+import { createRuntimeRateLimitHook, checkRuntimeReadiness } from './runtime-hardening.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerMeRoutes } from './routes/me.js';
+import { registerAdminRoutes } from './routes/admin.js';
+import { registerAdminMediaRoutes } from './routes/admin-media.js';
+import { registerAdminTerritoryRoutes } from './routes/admin-territory.js';
+import { registerAdminBusinessDirectoryRoutes } from './routes/admin-business-directory.js';
+import { registerAdminBusinessCategoryRoutes } from './routes/admin-business-categories.js';
+import { registerAdminBusinessRevenueRoutes } from './routes/admin-business-revenue.js';
+import { registerAdminBusinessPassRoutes } from './routes/admin-business-pass.js';
+import { registerAdminRoutesExploreRoutes } from './routes/admin-routes-explore.js';
+import { registerAdminRouteContentRoutes } from './routes/admin-route-content.js';
+import { registerAdminRouteCommunityRoutes } from './routes/admin-route-community.js';
+import { registerAdminAlmazaraRewardRoutes } from './routes/admin-almazara-rewards.js';
+import { registerAdminSourceRoutes } from './routes/admin-sources.js';
+import { registerAdminSourceOperationRoutes } from './routes/admin-source-operations.js';
+import { registerAdminAnalyticsRoutes } from './routes/admin-analytics.js';
+import { registerAdminOperationsRoutes } from './routes/admin-operations.js';
+import { registerAdminManagementRoutes } from './routes/admin-management.js';
+import { registerAdminCampaignPlanRoutes } from './routes/admin-campaign-plans.js';
+import { registerAdminAgendaRoutes } from './routes/admin-agenda.js';
+import { registerAdminWorkActivityRoutes } from './routes/admin-work-activity.js';
+import { registerAdminDocumentRoutes } from './routes/admin-documents.js';
+import { registerAdminProfessionalRoutes } from './routes/admin-professional.js';
+import { registerPlanRoutes } from './routes/plans.js';
+import { registerMiOlivoRoutes } from './routes/mi-olivo.js';
+import { registerMiOlivoProgressionRoutes } from './routes/mi-olivo-progression.js';
+import { registerMiOlivoCampaignRoutes } from './routes/mi-olivo-campaign.js';
 import { registerFieldRoutes } from './routes/fields.js';
 import { registerIrrigationRoutes } from './routes/irrigations.js';
 import { registerObservationRoutes } from './routes/observations.js';
@@ -23,6 +50,7 @@ import { registerFinancialAttentionRoutes } from './routes/financial-attention.j
 import { registerHomePriorityPreferenceRoutes } from './routes/home-priority-preferences.js';
 import { registerFinancialNotificationRoutes } from './routes/financial-notifications.js';
 import { registerCommercialNotificationRoutes } from './routes/commercial-notifications.js';
+import { registerNotificationCenterRoutes } from './routes/notification-center.js';
 import { registerPlannedTaskRoutes } from './routes/planned-tasks.js';
 import { registerDocumentRoutes } from './routes/documents.js';
 import { registerDocumentAccessRoutes } from './routes/document-access.js';
@@ -30,6 +58,17 @@ import { registerDocumentCatalogRoutes } from './routes/document-catalog.js';
 import { registerDocumentAnalysisRoutes } from './routes/document-analysis.js';
 import { registerGisRoutes } from './routes/gis.js';
 import { registerTerritoryRoutes } from './routes/territory.js';
+import { registerBusinessDirectoryRoutes } from './routes/business-directory.js';
+import { registerBusinessRevenueRoutes } from './routes/business-revenue.js';
+import { registerBusinessPortalRoutes } from './routes/business-portal.js';
+import { registerBusinessExperienceRoutes } from './routes/business-experiences.js';
+import { registerBusinessExperienceManagementRoutes } from './routes/business-experience-management.js';
+import { registerBusinessPassRoutes } from './routes/business-pass.js';
+import { registerRoutesExploreRoutes } from './routes/routes-explore.js';
+import { registerRouteCommunityRoutes } from './routes/route-community.js';
+import { registerRouteDeviceExportRoutes } from './routes/route-device-export.js';
+import { registerAlmazaraRewardRoutes } from './routes/almazara-rewards.js';
+import { registerMarketRoutes } from './routes/market.js';
 import { registerWeatherRoutes } from './routes/weather.js';
 import { registerRadarRoutes } from './routes/radar.js';
 import { registerPushRoutes } from './routes/push.js';
@@ -50,6 +89,8 @@ import type { OcrQueuePort } from './ocr/port.js';
 import { UnavailableOcrQueue } from './ocr/port.js';
 import type { NotificationDispatchQueuePort } from './notifications/port.js';
 import { UnavailableNotificationDispatchQueue } from './notifications/port.js';
+import type { RadarIngestQueuePort } from './radar/port.js';
+import { UnavailableRadarIngestQueue } from './radar/port.js';
 import type { GoogleIdentityVerifier } from './auth/google.js';
 import { UnavailableGoogleIdentityVerifier } from './auth/google.js';
 import type { GisProviders } from './gis/providers.js';
@@ -62,6 +103,7 @@ export type AppDependencies = {
   storage?: StoragePort;
   ocrQueue?: OcrQueuePort;
   notificationQueue?: NotificationDispatchQueuePort;
+  radarQueue?: RadarIngestQueuePort;
   pushPublicKey?: string | null;
   googleVerifier?: GoogleIdentityVerifier;
   gisProviders?: GisProviders;
@@ -83,22 +125,45 @@ function isPrivateApiPath(url: string) {
   return url.startsWith('/api/v1/') && !url.startsWith('/api/v1/public/');
 }
 
+function loggerOptions() {
+  return {
+    level: process.env.LOG_LEVEL?.trim() || 'info',
+    redact: {
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.headers["x-user-id"]',
+        'req.headers["x-workspace-id"]',
+        'res.headers["set-cookie"]',
+      ],
+      censor: '[REDACTED]',
+    },
+  };
+}
+
 export function buildApp(dependencies: AppDependencies = {}) {
   const db = dependencies.db ?? null;
   const storage = dependencies.storage ?? new UnavailableStorage();
   const ocrQueue = dependencies.ocrQueue ?? new UnavailableOcrQueue();
   const notificationQueue = dependencies.notificationQueue ?? new UnavailableNotificationDispatchQueue();
+  const radarQueue = dependencies.radarQueue ?? new UnavailableRadarIngestQueue();
   const pushPublicKey = dependencies.pushPublicKey ?? null;
   const googleVerifier = dependencies.googleVerifier ?? new UnavailableGoogleIdentityVerifier();
   const gisProviders = dependencies.gisProviders ?? remoteGisProviders;
   const weatherProvider = dependencies.weatherProvider ?? remoteAemetWeatherProvider;
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: loggerOptions(),
+    genReqId: () => randomUUID(),
+    trustProxy: process.env.TRUST_PROXY === 'true',
+  });
   const allowedOrigins = corsOrigins();
+  const rateLimitHook = createRuntimeRateLimitHook();
 
   app.register(cors, {
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['content-type', 'x-workspace-id', 'x-user-id'],
+    exposedHeaders: ['x-request-id', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'retry-after'],
     origin(origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -108,10 +173,12 @@ export function buildApp(dependencies: AppDependencies = {}) {
     },
   });
   app.register(cookie);
+  app.addHook('onRequest', rateLimitHook);
   app.addHook('onRequest', async (request) => {
     await hydrateRequestAuthentication(request, db);
   });
   app.addHook('onSend', async (request, reply, payload) => {
+    reply.header('x-request-id', request.id);
     reply.header('x-content-type-options', 'nosniff');
     reply.header('referrer-policy', 'strict-origin-when-cross-origin');
     reply.header('x-frame-options', 'DENY');
@@ -129,11 +196,56 @@ export function buildApp(dependencies: AppDependencies = {}) {
     warning: prototypeAuthWarning,
   }));
 
+  app.get('/ready', async (request, reply) => {
+    const readiness = await checkRuntimeReadiness(db);
+    if (!readiness.ok) {
+      request.log.error({ database: readiness.database }, 'runtime readiness check failed');
+      return reply.code(503).send(readiness);
+    }
+    return readiness;
+  });
+
   registerAuthRoutes(app, db, googleVerifier);
   registerMeRoutes(app, db);
+  registerAdminRoutes(app, db);
+  registerAdminMediaRoutes(app, db, storage);
+  registerAdminTerritoryRoutes(app, db);
+  registerAdminBusinessDirectoryRoutes(app, db);
+  registerAdminBusinessCategoryRoutes(app, db);
+  registerAdminBusinessRevenueRoutes(app, db);
+  registerAdminBusinessPassRoutes(app, db);
+  registerAdminRoutesExploreRoutes(app, db);
+  registerAdminRouteContentRoutes(app, db);
+  registerAdminRouteCommunityRoutes(app, db);
+  registerAdminAlmazaraRewardRoutes(app, db);
+  registerAdminSourceRoutes(app, db);
+  registerAdminSourceOperationRoutes(app, db, weatherProvider, radarQueue, notificationQueue);
+  registerAdminAnalyticsRoutes(app, db);
+  registerAdminOperationsRoutes(app, db);
+  registerAdminManagementRoutes(app, db);
+  registerAdminCampaignPlanRoutes(app, db);
+  registerAdminAgendaRoutes(app, db);
+  registerAdminWorkActivityRoutes(app, db);
+  registerAdminDocumentRoutes(app, db, ocrQueue);
+  registerAdminProfessionalRoutes(app, db);
+  registerPlanRoutes(app, db);
+  registerMiOlivoRoutes(app, db);
+  registerMiOlivoProgressionRoutes(app, db);
+  registerMiOlivoCampaignRoutes(app, db);
   registerTerritoryRoutes(app, db);
+  registerBusinessDirectoryRoutes(app, db);
+  registerBusinessRevenueRoutes(app, db);
+  registerBusinessPortalRoutes(app, db);
+  registerBusinessExperienceRoutes(app, db);
+  registerBusinessExperienceManagementRoutes(app, db);
+  registerBusinessPassRoutes(app, db);
+  registerRoutesExploreRoutes(app, db);
+  registerRouteCommunityRoutes(app, db, storage);
+  registerRouteDeviceExportRoutes(app, db);
+  registerAlmazaraRewardRoutes(app, db);
+  registerMarketRoutes(app, db);
   registerWeatherRoutes(app, db, weatherProvider);
-  registerRadarRoutes(app, db);
+  registerRadarRoutes(app, db, storage);
   registerPushRoutes(app, db, notificationQueue, pushPublicKey);
   registerFieldRoutes(app, db);
   registerIrrigationRoutes(app, db);
@@ -153,6 +265,7 @@ export function buildApp(dependencies: AppDependencies = {}) {
   registerHomePriorityPreferenceRoutes(app, db);
   registerFinancialNotificationRoutes(app, db, notificationQueue);
   registerCommercialNotificationRoutes(app, db);
+  registerNotificationCenterRoutes(app, db);
   registerPlannedTaskRoutes(app, db);
   registerWorkRoutes(app, db);
   registerWorkCommercialRoutes(app, db);

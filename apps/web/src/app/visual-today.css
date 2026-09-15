@@ -1,0 +1,377 @@
+/* V20 visual final · agenda Hoy */
+
+.today-page {
+  position: relative;
+}
+
+.today-page > .page-title {
+  position: relative;
+  overflow: hidden;
+  margin: 8px 0 0;
+  padding: 27px 22px 25px;
+  min-height: 176px;
+  display: flex;
+  align-items: flex-end;
+  border: 1px solid rgba(65, 83, 57, .12);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(196, 163, 76, .19), transparent 42%),
+    radial-gradient(circle at 0% 100%, rgba(101, 130, 82, .14), transparent 45%),
+    linear-gradient(145deg, #f7f4e9, #eef2e8);
+  box-shadow: 0 16px 36px rgba(45, 56, 40, .08);
+}
+
+.today-page > .page-title::after {
+  content: "";
+  position: absolute;
+  width: 170px;
+  height: 110px;
+  right: -38px;
+  bottom: -28px;
+  background: var(--asset-olive-sprig) center / contain no-repeat;
+  opacity: .11;
+  transform: rotate(-8deg);
+}
+
+.today-page > .page-title > div {
+  position: relative;
+  z-index: 1;
+}
+
+.today-page > .page-title h1 {
+  margin: 4px 0 8px;
+  color: var(--olive-950);
+  font-size: clamp(46px, 13vw, 62px);
+  line-height: .88;
+}
+
+.today-page > .page-title p {
+  max-width: 33rem;
+  margin: 0;
+  color: #606b5e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.today-page > .campaign-summary {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 22px;
+  background: rgba(255,253,248,.92);
+}
+
+.today-page > .campaign-summary .stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+}
+
+.today-page > .campaign-summary .stat {
+  padding: 11px 8px;
+  border-right: 0;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+}
+
+.today-page > .campaign-summary .stat:nth-child(odd) {
+  border-right: 1px solid var(--line);
+}
+
+.today-page > .campaign-summary .stat:nth-last-child(-n+2) {
+  border-bottom: 0;
+}
+
+.today-page > .campaign-summary .stat b {
+  font-size: 26px;
+}
+
+.today-page > .campaign-summary .stat span {
+  display: block;
+  margin-top: 4px;
+  font-size: 9.5px;
+}
+
+.today-page > .section.card {
+  padding: 17px;
+  border-radius: 22px;
+}
+
+.today-page > .section.card > .section-head {
+  align-items: center;
+}
+
+.today-page > .section.card > .section-head h2 {
+  font-size: 23px;
+}
+
+.today-page > .section.card > .section-head small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.today-page > .section.card > .section-head > a {
+  flex: none;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--olive-800);
+  font-size: 10px;
+  font-weight: 800;
+  background: rgba(255,255,255,.5);
+}
+
+.today-page > .section.card > .record-actions[aria-label="Filtrar agenda"] {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 2px 0 1px;
+  scrollbar-width: none;
+}
+
+.today-page > .section.card > .record-actions[aria-label="Filtrar agenda"]::-webkit-scrollbar {
+  display: none;
+}
+
+.today-page > .section.card > .record-actions[aria-label="Filtrar agenda"] button {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 38px;
+  padding: 9px 13px;
+  border-radius: 999px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.today-page > .section:not(.card) {
+  margin-top: 27px;
+}
+
+.today-page > .section:not(.card) > .section-head {
+  margin-bottom: 10px;
+  padding-inline: 2px;
+}
+
+.today-page > .section:not(.card) > .section-head h2 {
+  font-size: 27px;
+}
+
+.today-page > .section:not(.card) > .section-head .subtle {
+  min-width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--olive-800);
+  background: var(--sage-100);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.today-page .today-list {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.today-page .today-list > .feed-row {
+  position: relative;
+  margin-top: 9px;
+  padding: 16px;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.today-page .today-list > .feed-row:first-child {
+  margin-top: 0;
+}
+
+.today-page .feed-copy > strong {
+  display: block;
+  padding-right: 4px;
+  color: var(--olive-950);
+  font: 600 17px/1.15 Georgia, serif;
+}
+
+.today-page .feed-copy > small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.today-page .today-advisory-evidence {
+  margin-top: 9px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #edf3f5, #f8fbfb);
+  border: 1px solid rgba(76, 112, 126, .10);
+}
+
+.today-page .today-advisory-evidence small {
+  display: block;
+  margin: 0;
+  color: #536b73;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.today-page .today-advisory-evidence small + small {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(76, 112, 126, .11);
+}
+
+.today-page .feed-row > .pending-pill {
+  flex: none;
+  max-width: 105px;
+  padding: 7px 9px;
+  border-radius: 999px;
+  font-size: 8.5px;
+}
+
+.today-page .feed-copy > .record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.today-page .feed-copy > .record-actions > * {
+  flex: 1 1 125px;
+  min-width: 0;
+}
+
+.today-page .feed-copy > .record-actions .primary,
+.today-page .feed-copy > .record-actions .secondary-action {
+  min-height: 38px;
+  padding: 9px 12px;
+  font-size: 9.5px;
+}
+
+.today-page .planned-task-actions {
+  position: relative;
+}
+
+.today-page .planned-task-actions > .secondary-action {
+  width: 100%;
+}
+
+.today-page .planned-task-review {
+  position: relative;
+  margin-top: 9px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #faf8f1;
+  box-shadow: none;
+}
+
+.today-page .planned-task-review > p {
+  margin: 5px 0;
+}
+
+.today-page .planned-task-review .record-fields {
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.today-page .planned-task-review .record-control {
+  min-height: 43px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.today-page .planned-task-review textarea.record-control {
+  min-height: 88px;
+}
+
+.today-page > .card[role="alert"],
+.today-page > .card[aria-busy="true"],
+.today-page > .card:not(.field-summary):not(.section) {
+  margin-top: 14px;
+  padding: 17px;
+  border-radius: 20px;
+}
+
+.today-page > .card[role="alert"] {
+  border-color: rgba(165, 94, 70, .20);
+  background: #fff8f4;
+}
+
+.today-page > .territory-banner {
+  margin-top: 28px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 380px) {
+  .today-page > .page-title {
+    padding: 23px 18px;
+    min-height: 162px;
+  }
+
+  .today-page > .campaign-summary .stat b {
+    font-size: 23px;
+  }
+
+  .today-page .today-list > .feed-row {
+    display: block;
+  }
+
+  .today-page .feed-row > .pending-pill {
+    display: inline-flex;
+    margin-top: 9px;
+    max-width: none;
+  }
+
+  .today-page .feed-copy > .record-actions > * {
+    flex-basis: 100%;
+  }
+}
+
+@media (min-width: 820px) {
+  .today-page > .page-title {
+    min-height: 220px;
+    padding: 34px 36px 30px;
+  }
+
+  .today-page > .page-title h1 {
+    font-size: 68px;
+  }
+
+  .today-page > .campaign-summary {
+    padding: 9px 16px;
+  }
+
+  .today-page > .campaign-summary .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .today-page > .campaign-summary .stat,
+  .today-page > .campaign-summary .stat:nth-child(odd),
+  .today-page > .campaign-summary .stat:nth-last-child(-n+2) {
+    padding: 13px 10px;
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+  }
+
+  .today-page > .campaign-summary .stat:last-child {
+    border-right: 0;
+  }
+
+  .today-page .today-list > .feed-row {
+    padding: 18px;
+  }
+
+  .today-page .feed-copy > .record-actions {
+    max-width: 560px;
+  }
+}

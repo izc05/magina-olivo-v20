@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api-client';
 import { ArrowIcon, MapPinIcon, SproutIcon } from '@/components/icons';
 import { useAuth } from '@/components/auth-provider';
 import { GoogleSignInButton } from '@/components/google-sign-in-button';
+import { FarmGisSelector, type GisSelection } from '@/components/farm-gis-selector';
 
 type LocateMode = 'mapa' | 'catastro' | 'sigpac' | 'dibujar' | null;
 type WaterRegime = 'Secano' | 'Regadío' | 'Mixto';
@@ -52,10 +53,14 @@ export function NewFarmWizard() {
   const [waterRegime, setWaterRegime] = useState<WaterRegime>('Secano');
   const [mode, setMode] = useState<LocateMode>(null);
   const [linked, setLinked] = useState(false);
+  const [gisSelection, setGisSelection] = useState<GisSelection | null>(null);
+  const [geometryLinked, setGeometryLinked] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [savedRemotely, setSavedRemotely] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [operationId] = useState(() => crypto.randomUUID());
+  const [entityId] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +101,7 @@ export function NewFarmWizard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  async function finish() {
+  async function finish(withGeometry = false) {
     if (saving) return;
     setSaving(true);
     setSaveError(null);
@@ -108,23 +113,50 @@ export function NewFarmWizard() {
           return;
         }
 
-        const operationId = crypto.randomUUID();
-        const entityId = crypto.randomUUID();
-        const created = await apiFetch<CreatedFieldPayload>('/api/v1/fields', {
-          method: 'POST',
-          workspaceId: selectedWorkspaceId,
-          body: JSON.stringify({
-            client_operation_id: operationId,
-            entity_id: entityId,
-            name: name.trim() || 'Nueva finca',
-            ...(placeId ? { place_id: placeId } : { municipality: fallbackMunicipality.trim() || undefined, province: 'Jaén' }),
-            tree_count: trees ? Number(trees) : undefined,
-            variety: variety || undefined,
-            water_regime: apiWaterRegime(waterRegime),
-          }),
-        });
-        setSavedId(created.field.id);
-        setSavedRemotely(true);
+        let fieldId = savedId;
+        if (!fieldId) {
+          const created = await apiFetch<CreatedFieldPayload>('/api/v1/fields', {
+            method: 'POST',
+            workspaceId: selectedWorkspaceId,
+            body: JSON.stringify({
+              client_operation_id: operationId,
+              entity_id: entityId,
+              name: name.trim() || 'Nueva finca',
+              ...(placeId ? { place_id: placeId } : { municipality: fallbackMunicipality.trim() || undefined, province: 'Jaén' }),
+              tree_count: trees ? Number(trees) : undefined,
+              variety: variety || undefined,
+              water_regime: apiWaterRegime(waterRegime),
+            }),
+          });
+          fieldId = created.field.id;
+          setSavedId(fieldId);
+          setSavedRemotely(true);
+        }
+
+        if (withGeometry) {
+          if (!gisSelection) {
+            setSaveError('Selecciona primero un límite real de Catastro o SIGPAC.');
+            return;
+          }
+          const path = gisSelection.source === 'catastro'
+            ? `/api/v1/fields/${encodeURIComponent(fieldId)}/land-references/catastro`
+            : `/api/v1/fields/${encodeURIComponent(fieldId)}/land-references/sigpac`;
+          const body = gisSelection.source === 'catastro'
+            ? { reference: gisSelection.reference, set_as_geometry: gisSelection.setAsGeometry }
+            : { feature_id: gisSelection.reference, set_as_geometry: gisSelection.setAsGeometry };
+          try {
+            await apiFetch(path, {
+              method: 'POST',
+              workspaceId: selectedWorkspaceId,
+              body: JSON.stringify(body),
+            });
+            setGeometryLinked(gisSelection.setAsGeometry);
+          } catch (linkError) {
+            console.error('Unable to link finca GIS geometry', linkError);
+            setSaveError('La finca se ha guardado, pero no se ha podido vincular ese límite. Puedes reintentar sin crear otra finca o continuar sin límites.');
+            return;
+          }
+        }
       } else if (previewEnabled) {
         const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `field-${Date.now()}`;
         saveLocalField({
@@ -154,9 +186,9 @@ export function NewFarmWizard() {
   }
 
   if (step === 3) {
-    const fieldHref = savedRemotely ? '/mi-campo' : savedId ? `/mi-campo/fincas/local?id=${encodeURIComponent(savedId)}` : '/mi-campo';
+    const fieldHref = savedRemotely && savedId ? `/mi-campo/fincas/ver?id=${encodeURIComponent(savedId)}` : savedId ? `/mi-campo/fincas/local?id=${encodeURIComponent(savedId)}` : '/mi-campo';
     const registerHref = savedId ? `/mi-campo/registrar?fieldId=${encodeURIComponent(savedId)}` : '/mi-campo/registrar';
-    const mapHref = savedRemotely && savedId ? `/mi-campo/mapa?fieldId=${encodeURIComponent(savedId)}` : null;
+    const editHref = savedRemotely && savedId ? `/mi-campo/fincas/editar?fieldId=${encodeURIComponent(savedId)}` : null;
     return <section className="card new-farm-success">
       <div className="success-mark"><SproutIcon /></div>
       <span className="eyebrow dark">{savedRemotely ? 'FINCA GUARDADA EN MI CAMPO' : 'DEMOSTRACIÓN · GUARDADA EN ESTE DISPOSITIVO'}</span>
@@ -165,38 +197,25 @@ export function NewFarmWizard() {
       <div className="success-effects">
         <span>✓ Finca creada</span>
         <span>{selectedPlace ? `✓ Localidad: ${selectedPlace.name} · ${selectedPlace.municipality_name}` : '○ Localidad pendiente de vincular'}</span>
-        <span>{savedRemotely ? '○ Límites en el mapa pendientes · puedes añadirlos ahora' : linked ? '✓ Ubicación de ejemplo asociada' : '○ Ubicación de ejemplo pendiente'}</span>
+        <span>{savedRemotely ? geometryLinked ? '✓ Límites reales guardados en la finca' : '○ Finca guardada sin geometría · puedes completarla después' : linked ? '✓ Ubicación de ejemplo asociada' : '○ Ubicación de ejemplo pendiente'}</span>
       </div>
       <div className="record-actions">
-        <Link href={fieldHref} className="secondary-action action-link">Volver a Mi Campo</Link>
-        {mapHref ? <Link href={mapHref} className="secondary-action action-link">Añadir límites <MapPinIcon /></Link> : null}
+        <Link href={fieldHref} className="secondary-action action-link">Ver finca</Link>
+        {editHref ? <Link href={editHref} className="secondary-action action-link">{geometryLinked ? 'Editar finca y límites' : 'Añadir límites'} <MapPinIcon /></Link> : null}
         <Link href={registerHref} className="primary action-link">Registrar trabajo <ArrowIcon /></Link>
       </div>
     </section>;
   }
 
-  if (step === 2 && apiConfigured) {
+  if (step === 2 && apiConfigured && selectedWorkspaceId) {
     return <div className="new-farm-location-flow">
-      <section className="card new-farm-summary"><span className="new-farm-tree"><SproutIcon /></span><div><small>NUEVA FINCA</small><strong>{name}</strong><span>{trees} olivas · {municipalityLabel}</span></div><button onClick={() => setStep(1)}>Editar</button></section>
-      <section className="card locate-panel">
-        <span className="eyebrow dark">PASO 2 · UBICACIÓN</span>
-        <h2>Guarda primero la finca</h2>
-        <p>La finca puede existir aunque todavía no hayas definido sus límites. Podrás vincular Catastro, SIGPAC o dibujar el contorno después desde <strong>Mi Campo → Mapa</strong>.</p>
-        <div className="locate-grid">
-          <div className="locate-choice"><span>📍</span><strong>Mapa</strong><small>Añadir después</small></div>
-          <div className="locate-choice"><span>▦</span><strong>Catastro</strong><small>Vincular después</small></div>
-          <div className="locate-choice"><span>▱</span><strong>SIGPAC</strong><small>Vincular después</small></div>
-          <div className="locate-choice"><span>✎</span><strong>Contorno propio</strong><small>Dibujar después</small></div>
-        </div>
-      </section>
-      <section className="card locate-result">
-        <h3>No se guardará una localización ficticia</h3>
-        <p>Al continuar se guardarán únicamente los datos de la finca y su localidad. Sus límites quedarán pendientes hasta que confirmes una parcela, referencia o contorno real.</p>
-      </section>
+      <section className="card new-farm-summary"><span className="new-farm-tree"><SproutIcon /></span><div><small>NUEVA FINCA</small><strong>{name}</strong><span>{trees} olivas · {municipalityLabel}</span></div><button onClick={() => setStep(1)}>Editar datos</button></section>
+      <FarmGisSelector workspaceId={selectedWorkspaceId} fieldName={name} onSelectionChange={setGisSelection} />
+      {savedId && saveError ? <section className="card locate-result"><h3>La finca ya está guardada</h3><p>El fallo de la capa técnica no ha borrado ni duplicado la finca. Puedes reintentar el vínculo o continuar sin límites y volver a editarla después.</p></section> : null}
       {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
       <div className="new-farm-actions">
-        <button className="secondary-action" type="button" onClick={() => setStep(1)} disabled={saving}>Volver</button>
-        <button className="primary" type="button" onClick={() => void finish()} disabled={saving}>{saving ? 'Guardando…' : 'Guardar finca →'}</button>
+        <button className="secondary-action" type="button" onClick={() => void finish(false)} disabled={saving}>{saving ? 'Guardando…' : savedId ? 'Continuar sin límites' : 'Guardar sin límites'}</button>
+        <button className="primary" type="button" onClick={() => void finish(true)} disabled={!gisSelection || saving}>{saving ? 'Guardando…' : savedId ? 'Reintentar y guardar límites →' : 'Guardar finca con límites →'}</button>
       </div>
     </div>;
   }
@@ -215,7 +234,7 @@ export function NewFarmWizard() {
         <label className="link-confirm"><input type="checkbox" checked={linked} onChange={(event) => setLinked(event.target.checked)} /> Guardar esta referencia solo como ejemplo</label>
       </section>}
       {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
-      <div className="new-farm-actions"><button className="secondary-action" type="button" onClick={() => void finish()} disabled={saving}>{saving ? 'Guardando…' : 'Guardar sin ubicación'}</button><button className="primary" type="button" onClick={() => void finish()} disabled={!mode || saving}>{saving ? 'Guardando…' : 'Guardar demostración →'}</button></div>
+      <div className="new-farm-actions"><button className="secondary-action" type="button" onClick={() => void finish(false)} disabled={saving}>{saving ? 'Guardando…' : 'Guardar sin ubicación'}</button><button className="primary" type="button" onClick={() => void finish(false)} disabled={!mode || saving}>{saving ? 'Guardando…' : 'Guardar demostración →'}</button></div>
     </div>;
   }
 
@@ -236,6 +255,6 @@ export function NewFarmWizard() {
       <label className="record-field wide"><span>Notas</span><textarea className="record-control" rows={3} placeholder="Cómo llegar, nombre antiguo, referencias familiares…" /></label>
     </div></details>
     {saveError ? <p className="form-error" role="alert">{saveError}</p> : null}
-    <div className="record-save-bar"><small>Primero creamos tu finca. Sus límites y parcelas pueden añadirse después.</small><button className="primary" type="submit">Continuar →</button></div>
+    <div className="record-save-bar"><small>Primero identifica la finca. En el siguiente paso puedes seleccionar sus límites reales o dejarlo pendiente.</small><button className="primary" type="submit">Continuar →</button></div>
   </form>;
 }

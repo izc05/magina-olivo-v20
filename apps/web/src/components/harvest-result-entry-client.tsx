@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { apiFetch } from '@/lib/api-client';
 import { linkDocumentToDomain } from '@/lib/document-data-source';
-import { useFieldContext } from '@/lib/use-field-context';
+import { useFieldContext, withFieldQuery } from '@/lib/use-field-context';
 
 type DeliveryOption = {
   delivery_id: string;
@@ -44,6 +44,7 @@ export function HarvestResultEntryClient() {
     if (!ready || !found || context.source !== 'api' || !selectedWorkspaceId) { setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
+    setError(null);
     apiFetch<HarvestSummaryResponse>(`/api/v1/fields/${encodeURIComponent(context.id)}/harvest-summary`, { workspaceId: selectedWorkspaceId })
       .then((response) => {
         if (cancelled) return;
@@ -58,6 +59,9 @@ export function HarvestResultEntryClient() {
   }, [context.id, context.source, found, prefillTicket, ready, selectedWorkspaceId]);
 
   const selectedDelivery = useMemo(() => deliveries.find((item) => item.delivery_id === deliveryId), [deliveries, deliveryId]);
+  const pendingCount = deliveries.filter((item) => item.yield_percent == null).length;
+  const deliveryHref = withFieldQuery('/mi-campo/registrar/cosecha', context.id, context.source);
+  const resultHref = withFieldQuery('/mi-campo/registrar/rendimiento', context.id, context.source);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -105,15 +109,18 @@ export function HarvestResultEntryClient() {
 
   if (!ready || loading) return <section className="card"><p>Cargando entregas…</p></section>;
   if (!found || context.source !== 'api') return <section className="card"><h1>Finca no disponible</h1><Link href="/mi-campo">Volver a Mi Campo</Link></section>;
-  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Rendimiento guardado</h1><p>El resultado ha quedado asociado a la entrega seleccionada de {context.name}.</p>{sourceDocumentId ? <p>✓ Partía de un documento revisado y solo se guardó después de tu confirmación.</p> : null}{sourceLinked ? <p>✓ El documento de origen ha quedado enlazado al resultado.</p> : null}{sourceLinkWarning ? <p className="form-error" role="status">{sourceLinkWarning}</p> : null}<Link className="primary action-link" href={context.returnHref}>Volver a la finca</Link></section>;
+  if (saved) return <section className="record-success card"><div className="success-mark">✓</div><h1>Rendimiento guardado</h1><p>El resultado ha quedado asociado a la entrega seleccionada de {context.name}.</p>{sourceDocumentId ? <p>✓ Partía de un documento revisado y solo se guardó después de tu confirmación.</p> : null}{sourceLinked ? <p>✓ El documento de origen ha quedado enlazado al resultado.</p> : null}{sourceLinkWarning ? <p className="form-error" role="status">{sourceLinkWarning}</p> : null}<div className="record-actions">{pendingCount > 1 ? <Link className="secondary-action action-link" href={resultHref}>Registrar otro resultado</Link> : null}<Link className="secondary-action action-link" href="/mi-campo/campana">Ver campaña</Link><Link className="primary action-link" href={context.returnHref}>Volver a la finca</Link></div></section>;
+
+  if (!deliveries.length && !error) return <><header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar rendimiento</h1><p>El rendimiento siempre pertenece a una entrega ya registrada.</p></header><section className="card"><h2>Primero registra una entrega</h2><p>Aún no hay entregas de cosecha en {context.name}. Guarda los kilos y el albarán y después podrás añadir el rendimiento cuando lo recibas.</p><div className="record-actions"><Link className="primary action-link" href={deliveryHref}>Registrar entrega →</Link><Link className="secondary-action action-link" href="/mi-campo/campana">Ver campaña</Link></div></section></>;
 
   return <><header className="page-title"><span className="eyebrow dark">MI CAMPO · COSECHA · {context.name.toUpperCase()}</span><h1>Registrar rendimiento</h1><p>Selecciona expresamente la entrega a la que pertenece el resultado.</p></header>
     {sourceDocumentId ? <section className="card register-principle"><div><strong>Datos prellenados desde un resultado revisado</strong><small>El OCR no elige la entrega por ti. Comprueba el albarán y confirma antes de guardar.</small></div></section> : null}
+    {error ? <p className="form-error" role="alert">{error}</p> : null}
     <form className="quick-record-form" onSubmit={submit}><section className="card record-panel"><div className="record-fields">
-      <label className="record-field wide"><span>Entrega</span><select className="record-control" value={deliveryId} onChange={(event) => setDeliveryId(event.target.value)} required><option value="" disabled>Seleccionar entrega</option>{deliveries.map((item) => <option key={item.delivery_id} value={item.delivery_id}>{item.delivery_at.slice(0, 10)} · {item.kg.toLocaleString('es-ES', { useGrouping: 'always' })} kg{item.ticket_number ? ` · ${item.ticket_number}` : ''}{item.yield_percent != null ? ` · ya ${item.yield_percent}%` : ''}</option>)}</select><small>{selectedDelivery?.yield_percent != null ? 'Esta entrega ya tiene resultado: al guardar se conservará el anterior como superseded.' : 'Prioriza una entrega todavía pendiente de resultado.'}</small></label>
+      <label className="record-field wide"><span>Entrega</span><select className="record-control" value={deliveryId} onChange={(event) => setDeliveryId(event.target.value)} required><option value="" disabled>Seleccionar entrega</option>{deliveries.map((item) => <option key={item.delivery_id} value={item.delivery_id}>{item.delivery_at.slice(0, 10)} · {item.kg.toLocaleString('es-ES', { useGrouping: 'always' })} kg{item.ticket_number ? ` · ${item.ticket_number}` : ''}{item.yield_percent != null ? ` · ya ${item.yield_percent}%` : ''}</option>)}</select><small>{selectedDelivery?.yield_percent != null ? 'Esta entrega ya tiene resultado: al guardar se conservará el anterior como superseded.' : `${pendingCount} entrega(s) pendientes de resultado en esta finca.`}</small></label>
       <label className="record-field"><span>Fecha resultado</span><input className="record-control" name="date" type="date" defaultValue={prefillDate} required /></label>
       <label className="record-field"><span>Rendimiento</span><div className="record-input-wrap"><input className="record-control" name="yield" type="number" step="any" min="0.01" defaultValue={prefillYield} required /><b className="record-suffix">%</b></div></label>
       <label className="record-field"><span>Humedad</span><div className="record-input-wrap"><input className="record-control" name="moisture" type="number" step="any" min="0" defaultValue={prefillMoisture} /><b className="record-suffix">%</b></div></label>
       <label className="record-field"><span>Acidez</span><div className="record-input-wrap"><input className="record-control" name="acidity" type="number" step="any" min="0" defaultValue={prefillAcidity} /><b className="record-suffix">%</b></div></label>
-    </div></section>{error ? <p className="form-error" role="alert">{error}</p> : null}<section className="record-save-bar"><small>El resultado quedará separado de la entrega, liquidación y cobro.</small><button className="primary" type="submit" disabled={!deliveryId || saving}>{saving ? 'Guardando…' : 'Guardar rendimiento →'}</button></section></form></>;
+    </div></section><section className="record-save-bar"><small>El resultado quedará separado de la entrega, liquidación y cobro.</small><button className="primary" type="submit" disabled={!deliveryId || saving}>{saving ? 'Guardando…' : 'Guardar rendimiento →'}</button></section></form></>;
 }

@@ -23,6 +23,9 @@ export type ProfessionalQuote = {
   invoice_total_eur?: number | string | null;
 };
 
+type QuoteMutation = Pick<ProfessionalQuote, 'id' | 'customer_party_id' | 'customer_site_id' | 'quote_number' | 'title' | 'status' | 'total_eur'>;
+type ConvertedWork = { id: string; customer_party_id?: string | null; customer_site_id?: string | null; title?: string | null };
+
 export async function loadProfessionalQuotes(workspaceId: string, customerId?: string) {
   const suffix = customerId ? `?customerId=${encodeURIComponent(customerId)}` : '';
   const response = await apiFetch<{ quotes: ProfessionalQuote[] }>(`/api/v1/professional/quotes${suffix}`, { workspaceId });
@@ -43,16 +46,18 @@ export async function createProfessionalQuote(workspaceId: string, input: {
   notes?: string;
   lines: Array<{ description: string; quantity: number; unit?: string; unit_price_eur: number; line_total_eur: number }>;
 }) {
-  return apiFetch('/api/v1/professional/quotes', {
+  const response = await apiFetch<{ quote: QuoteMutation }>('/api/v1/professional/quotes', {
     method: 'POST', workspaceId,
     body: JSON.stringify({ client_operation_id: crypto.randomUUID(), ...input }),
   });
+  return response.quote;
 }
 
 export async function updateProfessionalQuoteStatus(workspaceId: string, quoteId: string, status: 'sent' | 'accepted' | 'rejected' | 'expired') {
-  return apiFetch(`/api/v1/professional/quotes/${encodeURIComponent(quoteId)}/status`, {
+  const response = await apiFetch<{ quote: QuoteMutation }>(`/api/v1/professional/quotes/${encodeURIComponent(quoteId)}/status`, {
     method: 'PATCH', workspaceId, body: JSON.stringify({ status }),
   });
+  return response.quote;
 }
 
 export async function convertProfessionalQuote(workspaceId: string, quoteId: string, input: {
@@ -71,7 +76,7 @@ export async function convertProfessionalQuote(workspaceId: string, quoteId: str
   const resources = input.other_cost_eur && input.other_cost_eur > 0
     ? [{ kind: 'service', name: 'Otros costes reales', cost_eur: input.other_cost_eur }]
     : [];
-  return apiFetch(`/api/v1/professional/quotes/${encodeURIComponent(quoteId)}/convert`, {
+  const response = await apiFetch<{ work: ConvertedWork }>(`/api/v1/professional/quotes/${encodeURIComponent(quoteId)}/convert`, {
     method: 'POST', workspaceId,
     body: JSON.stringify({
       client_operation_id: crypto.randomUUID(),
@@ -86,4 +91,5 @@ export async function convertProfessionalQuote(workspaceId: string, quoteId: str
       resources,
     }),
   });
+  return response.work;
 }
