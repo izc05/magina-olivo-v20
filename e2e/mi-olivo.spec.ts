@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const apiUrl = 'http://127.0.0.1:3001';
 
@@ -20,6 +20,21 @@ type AwardResponse = {
   status: string;
   daily: { earned: number; cap: number; remaining: number };
 };
+
+async function assertNoDuplicateIds(page: Page) {
+  const duplicateIds = await page.evaluate(() => {
+    const counts = new Map<string, number>();
+    document.querySelectorAll<HTMLElement>('[id]').forEach((element) => {
+      if (!element.id) return;
+      counts.set(element.id, (counts.get(element.id) ?? 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([id, count]) => `${id}:${count}`);
+  });
+
+  expect(duplicateIds).toEqual([]);
+}
 
 test.describe.configure({ mode: 'serial' });
 
@@ -102,20 +117,26 @@ for (const width of [360, 390, 430]) {
   test.describe(`Mi Olivo ${width}px`, () => {
     test.use({ viewport: { width, height: 844 } });
 
-    test('muestra progreso, AEMET real y escena viva sin desbordamiento horizontal', async ({ page }) => {
+    test('cumple el contrato visual V7 y no desborda horizontalmente', async ({ page }) => {
       await page.goto('/mi-olivo');
 
-      await expect(page.getByRole('heading', { name: 'Tu olivo digital' })).toBeVisible();
-      await expect(page.getByRole('img', { name: /Olivo digital en fase/ })).toBeVisible();
-      await expect(page.getByText('SIERRA MÁGINA · XP PERMANENTE', { exact: true })).toBeVisible();
-      await expect(page.getByText(/Fase (?:[1-9]|10)\/10/)).toBeVisible();
-      await expect(page.getByText('aceitunas disponibles', { exact: true })).toBeVisible();
-      await expect(page.getByText(/Ritmo del cuaderno ·/)).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Gana aceitunas y XP' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Mi Olivo', exact: true }).first()).toBeVisible();
+      await expect(page.getByText('SIERRA MÁGINA · TU PROGRESO', { exact: true })).toBeVisible();
+      await expect(page.getByRole('img', { name: /Olivo digital en fase/ }).first()).toBeVisible();
+      await expect(page.getByText('TU OLIVO AHORA', { exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'La vida de tu olivo' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Del olivo al territorio' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Acciones que cuidan tu progreso' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Pequeños pasos útiles' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Tu colección' })).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Evolución del olivo' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Evolución completa del olivo' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Movimientos de aceitunas' })).toBeVisible();
+
+      const tabs = page.getByRole('navigation', { name: 'Secciones de Mi Olivo' });
+      await expect(tabs).toContainText('Resumen');
+      await expect(tabs).toContainText('Cuidados');
+      await expect(tabs).toContainText('Historia');
+      await expect(tabs).toContainText('Recompensas');
 
       const forecast = page.getByRole('region', { name: 'Previsión real que ambienta Mi Olivo' });
       await expect(forecast).toBeVisible();
@@ -124,6 +145,8 @@ for (const width of [360, 390, 430]) {
       await expect(forecast).toContainText('35 %');
       await expect(forecast).toContainText('14° / 27°');
       await expect(forecast).toContainText('20 km/h');
+
+      await assertNoDuplicateIds(page);
 
       const dimensions = await page.evaluate(() => ({
         viewport: document.documentElement.clientWidth,
