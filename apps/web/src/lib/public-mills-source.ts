@@ -45,6 +45,11 @@ export type MillRedemption = {
   productTitle: string;
   businessName: string;
   businessSlug: string | null;
+  pickupAddress: string | null;
+  pickupMunicipalityName: string | null;
+  pickupPhone: string | null;
+  pickupLongitude: number | null;
+  pickupLatitude: number | null;
   qrPayload: string | null;
   qrReady: boolean;
 };
@@ -106,6 +111,11 @@ type RedemptionPickupPayload = {
   pickups: Array<{
     redemptionId: string;
     businessSlug: string;
+    address: string | null;
+    municipalityName: string | null;
+    phone: string | null;
+    longitude: number | null;
+    latitude: number | null;
   }>;
 };
 
@@ -166,15 +176,23 @@ export async function redeemMillReward(id: string) {
 
 export async function loadMyMillRedemptions() {
   const [payload, pickupPayload] = await Promise.all([
-    apiFetch<{ redemptions: Omit<MillRedemption, 'businessSlug'>[] }>('/api/v1/my/almazara-redemptions'),
+    apiFetch<{ redemptions: Omit<MillRedemption, 'businessSlug' | 'pickupAddress' | 'pickupMunicipalityName' | 'pickupPhone' | 'pickupLongitude' | 'pickupLatitude'>[] }>('/api/v1/my/almazara-redemptions'),
     apiFetch<RedemptionPickupPayload>('/api/v1/my/almazara-redemption-pickups'),
   ]);
-  const pickupByRedemption = new Map(pickupPayload.pickups.map((item) => [item.redemptionId, item.businessSlug]));
+  const pickupByRedemption = new Map(pickupPayload.pickups.map((item) => [item.redemptionId, item]));
   return {
-    redemptions: payload.redemptions.map((item) => ({
-      ...item,
-      businessSlug: pickupByRedemption.get(item.id) ?? null,
-    })),
+    redemptions: payload.redemptions.map((item) => {
+      const pickup = pickupByRedemption.get(item.id);
+      return {
+        ...item,
+        businessSlug: pickup?.businessSlug ?? null,
+        pickupAddress: pickup?.address ?? null,
+        pickupMunicipalityName: pickup?.municipalityName ?? null,
+        pickupPhone: pickup?.phone ?? null,
+        pickupLongitude: pickup?.longitude ?? null,
+        pickupLatitude: pickup?.latitude ?? null,
+      };
+    }),
   };
 }
 
