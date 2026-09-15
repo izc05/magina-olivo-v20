@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowIcon } from './icons';
 import { getPublishedContent, getPublicSiteSettings } from '../lib/public-content-source';
 import type { CmsEntry } from '../lib/admin-data-source';
+import styles from './managed-home-content.module.css';
 
 type PublicSettings = Record<string, unknown>;
 
@@ -95,10 +96,10 @@ function ManagedStory({ entry }: { entry: CmsEntry }) {
   );
 
   if (externalUrl) {
-    return <a href={externalUrl} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{card}</a>;
+    return <a href={externalUrl} target="_blank" rel="noreferrer" className={styles.storyLink}>{card}</a>;
   }
   if (internalUrl) {
-    return <Link href={internalUrl} style={{ color: 'inherit', textDecoration: 'none' }}>{card}</Link>;
+    return <Link href={internalUrl} className={styles.storyLink}>{card}</Link>;
   }
   return card;
 }
@@ -143,25 +144,30 @@ export function ManagedHomeContent({ children }: { children?: ReactNode }) {
     <>
       {banner?.enabled && banner.text ? (
         <section className="section" aria-label="Aviso de Mágina Olivo">
-          {bannerHref ? <a className="card" href={bannerHref} style={{ display: 'block', padding: 16, textDecoration: 'none', color: 'inherit' }}><strong>{banner.text}</strong></a> : <div className="card" style={{ padding: 16 }}><strong>{banner.text}</strong></div>}
+          {bannerHref
+            ? <a className={`card ${styles.announcement}`} href={bannerHref}><strong>{banner.text}</strong></a>
+            : <div className={`card ${styles.announcement}`}><strong>{banner.text}</strong></div>}
         </section>
       ) : null}
 
-        <section className="section home-editorial-hero">
-          <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
-            <div style={{ minHeight: 220, display: 'flex', alignItems: 'flex-end', padding: 24, background: heroMediaUrl ? `linear-gradient(90deg, rgba(18,38,22,.78), rgba(18,38,22,.22)), url(${heroMediaUrl}) center/cover` : 'linear-gradient(90deg, rgba(17,36,23,.94) 0%, rgba(24,48,30,.74) 44%, rgba(24,48,30,.12) 76%), var(--asset-premium-hero) center/cover', color: '#fff' }}>
-              <div style={{ maxWidth: 720 }}>
-                <span className="eyebrow" style={{ color: 'inherit' }}>{hero?.eyebrow ?? 'MÁGINA OLIVO'}</span>
-                <h2 style={{ fontSize: 'clamp(1.8rem,4vw,3rem)', margin: '8px 0' }}>{hero?.title ?? 'La fuerza de un gran territorio'}</h2>
-                <p style={{ fontSize: '1.05rem', opacity: .92 }}>{hero?.subtitle ?? 'Información, herramientas y conocimiento para un olivar más sostenible, rentable y vivo.'}</p>
-                <div className="home-hero-actions">
-                  <Link className="primary action-link" href={heroHref ?? '/explorar'}>{hero?.cta_label ?? 'Explorar el territorio'} <ArrowIcon /></Link>
-                  <Link className="home-hero-secondary" href="/mi-campo">Ir a Mi Campo</Link>
-                </div>
+      <section className="section home-editorial-hero">
+        <div className={`card ${styles.heroCard}`}>
+          <div
+            className={styles.heroSurface}
+            style={heroMediaUrl ? { backgroundImage: `linear-gradient(90deg, rgba(18,38,22,.78), rgba(18,38,22,.22)), url(${heroMediaUrl})` } : undefined}
+          >
+            <div className={styles.heroContent}>
+              <span className={`eyebrow ${styles.heroEyebrow}`}>{hero?.eyebrow ?? 'MÁGINA OLIVO'}</span>
+              <h2 className={styles.heroTitle}>{hero?.title ?? 'La fuerza de un gran territorio'}</h2>
+              <p className={styles.heroSubtitle}>{hero?.subtitle ?? 'Información, herramientas y conocimiento para un olivar más sostenible, rentable y vivo.'}</p>
+              <div className="home-hero-actions">
+                <Link className="primary action-link" href={heroHref ?? '/explorar'}>{hero?.cta_label ?? 'Explorar el territorio'} <ArrowIcon /></Link>
+                <Link className="home-hero-secondary" href="/mi-campo">Ir a Mi Campo</Link>
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
       {children}
 
@@ -171,9 +177,9 @@ export function ManagedHomeContent({ children }: { children?: ReactNode }) {
         <div className="story-grid">
           {stories.length ? stories.map((entry) => <ManagedStory key={entry.id} entry={entry} />) : (
             <>
-              <Link href="/noticias" style={{ color: 'inherit', textDecoration: 'none' }}><article className="card story-card"><div className="story-image story-olive"/><span className="story-tag">NOTICIAS</span><h3>Noticias de Mágina</h3><p>Consultar la actualidad agrícola y del territorio.</p></article></Link>
-              <Link href="/eventos" style={{ color: 'inherit', textDecoration: 'none' }}><article className="card story-card"><div className="story-image story-town"/><span className="story-tag">EVENTOS</span><h3>Agenda del territorio</h3><p>Consultar ferias, jornadas y encuentros publicados.</p></article></Link>
-              <Link href="/servicios" style={{ color: 'inherit', textDecoration: 'none' }}><article className="card story-card"><div className="story-image story-oil"/><span className="story-tag">DIRECTORIO</span><h3>Servicios de Mágina</h3><p>Consultar los profesionales y negocios del territorio.</p></article></Link>
+              <Link href="/noticias" className={styles.storyLink}><article className="card story-card"><div className="story-image story-olive"/><span className="story-tag">NOTICIAS</span><h3>Noticias de Mágina</h3><p>Consultar la actualidad agrícola y del territorio.</p></article></Link>
+              <Link href="/eventos" className={styles.storyLink}><article className="card story-card"><div className="story-image story-town"/><span className="story-tag">EVENTOS</span><h3>Agenda del territorio</h3><p>Consultar ferias, jornadas y encuentros publicados.</p></article></Link>
+              <Link href="/servicios" className={styles.storyLink}><article className="card story-card"><div className="story-image story-oil"/><span className="story-tag">DIRECTORIO</span><h3>Servicios de Mágina</h3><p>Consultar los profesionales y negocios del territorio.</p></article></Link>
             </>
           )}
         </div>

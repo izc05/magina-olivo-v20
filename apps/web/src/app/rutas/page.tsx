@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { BottomNav } from '@/components/bottom-nav';
+import { Topbar } from '@/components/topbar';
 import { RoutesPublicClient } from './routes-public-client';
 import styles from './routes-public.module.css';
 
@@ -8,5 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function RoutesPage() {
-  return <div className={styles.page}><RoutesPublicClient /></div>;
+  return <main className="app-shell">
+    <Topbar />
+    <div className={`page ${styles.page}`}><RoutesPublicClient /></div>
+    <BottomNav active="/explorar" />
+  </main>;
 }

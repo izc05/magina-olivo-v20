@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { BottomNav } from '@/components/bottom-nav';
 import { MaginaPassPage } from '@/components/magina-pass-page';
+import { Topbar } from '@/components/topbar';
 
 export const metadata: Metadata = {
   title: 'Mágina Pass · Descubre y apoya lo local',
@@ -7,5 +9,11 @@ export const metadata: Metadata = {
 };
 
 export default function MaginaPassRoute() {
-  return <MaginaPassPage />;
+  return (
+    <div className="app-shell">
+      <Topbar />
+      <MaginaPassPage />
+      <BottomNav active="/explorar" />
+    </div>
+  );
 }

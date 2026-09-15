@@ -46,7 +46,7 @@ export function RoutesPublicClient() {
     return routes.filter((route) => `${route.name} ${route.place_name ?? ''} ${route.municipality_name ?? ''} ${route.short_description ?? ''}`.toLocaleLowerCase('es').includes(normalized));
   }, [query, routes]);
 
-  return <main className={styles.shell}>
+  return <div className={styles.shell}>
     <section className={styles.hero}>
       <div><span>Rutas verificadas · Sierra Mágina</span><h1>Camina el territorio con datos reales.</h1><p>Tracks GPX validados, desnivel calculado desde el recorrido y fuentes trazables. Si una ruta no tiene track validado, no se publica.</p></div>
       <label><span className="sr-only">Buscar ruta</span><input type="search" placeholder="Buscar ruta o pueblo…" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
@@ -65,5 +65,5 @@ export function RoutesPublicClient() {
         <div className={styles.stats}><span><strong>{km(route.distance_m)}</strong>distancia</span><span><strong>{duration(route.duration_minutes)}</strong>duración</span><span><strong>{route.elevation_gain_m ?? '—'} m</strong>desnivel +</span><span><strong>{route.difficulty ? difficultyLabel[route.difficulty] : '—'}</strong>dificultad</span></div>
       </div>
     </Link>)}</section> : null}
-  </main>;
+  </div>;
 }

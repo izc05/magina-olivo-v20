@@ -1,0 +1,113 @@
+/*
+ * Mágina Olivo V20 — canonical UI/UX design tokens
+ *
+ * This file is intentionally a foundation, not another override layer.
+ * Existing visual sheets keep rendering the product while the UI/UX Premium
+ * workstream migrates shared primitives toward this stable semantic namespace.
+ */
+
+:root {
+  /* Brand / territory */
+  --ui-color-bg: #eee9de;
+  --ui-color-surface: rgba(255, 254, 250, .94);
+  --ui-color-surface-strong: #fffefa;
+  --ui-color-ink: #182219;
+  --ui-color-muted: #667066;
+  --ui-color-olive-950: #17281c;
+  --ui-color-olive-900: #203a27;
+  --ui-color-olive-800: #315238;
+  --ui-color-olive-700: #4e6b49;
+  --ui-color-olive-600: #718267;
+  --ui-color-sage-100: #edf1e7;
+  --ui-color-sage-200: #dfe7d7;
+  --ui-color-cream: #f8f4eb;
+  --ui-color-gold: #b99545;
+  --ui-color-gold-soft: #f4ead1;
+  --ui-color-line: rgba(28, 47, 31, .11);
+  --ui-color-line-strong: rgba(28, 47, 31, .2);
+
+  /* Semantic states */
+  --ui-color-success: #41673f;
+  --ui-color-warning: #9b6f20;
+  --ui-color-danger: #9a4338;
+  --ui-color-info: #456c7a;
+
+  /* Elevation */
+  --ui-shadow-xs: 0 1px 1px rgba(28, 39, 26, .03), 0 7px 22px rgba(28, 39, 26, .045);
+  --ui-shadow-sm: 0 12px 32px rgba(28, 39, 28, .065);
+  --ui-shadow-md: 0 28px 72px rgba(28, 39, 28, .13);
+  --ui-shadow-hero: 0 30px 80px rgba(17, 29, 19, .22);
+
+  /* Shape */
+  --ui-radius-sm: 10px;
+  --ui-radius-md: 13px;
+  --ui-radius-lg: 18px;
+  --ui-radius-xl: 28px;
+  --ui-radius-feature: 30px;
+  --ui-radius-pill: 999px;
+
+  /* Spacing */
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 20px;
+  --ui-space-6: 24px;
+  --ui-space-8: 32px;
+  --ui-space-10: 40px;
+  --ui-space-12: 48px;
+  --ui-space-16: 64px;
+  --ui-page-gutter-mobile: clamp(14px, 4vw, 22px);
+  --ui-page-gutter-tablet: clamp(24px, 4vw, 42px);
+  --ui-page-gutter-desktop: clamp(26px, 3.2vw, 52px);
+
+  /* Touch / control geometry */
+  --ui-control-min: 44px;
+  --ui-control-comfortable: 48px;
+  --ui-control-hero: 56px;
+
+  /* Product shell */
+  --ui-shell-mobile-max: 500px;
+  --ui-shell-desktop-max: 1540px;
+  --ui-content-readable: 760px;
+  --ui-content-wide: 1180px;
+  --ui-topbar-mobile-height: 72px;
+  --ui-topbar-tablet-height: 78px;
+  --ui-topbar-desktop-height: 76px;
+  --ui-topbar-height: var(--ui-topbar-desktop-height);
+  --ui-mobile-nav-height: 78px;
+  --ui-mobile-nav-reserve: 116px;
+
+  /* Typography */
+  --ui-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ui-font-display: Georgia, "Times New Roman", serif;
+  --ui-text-xs: .72rem;
+  --ui-text-sm: .84rem;
+  --ui-text-base: 1rem;
+  --ui-text-lg: 1.125rem;
+  --ui-text-xl: 1.35rem;
+  --ui-display-sm: clamp(1.75rem, 3vw, 2.35rem);
+  --ui-display-md: clamp(2.7rem, 5vw, 4.75rem);
+  --ui-display-lg: clamp(3rem, 6vw, 5.4rem);
+
+  /* Motion */
+  --ui-motion-fast: 140ms;
+  --ui-motion-base: 200ms;
+  --ui-motion-slow: 280ms;
+  --ui-ease-standard: cubic-bezier(.2, .8, .2, 1);
+
+  /* Layering */
+  --ui-z-content: 1;
+  --ui-z-sticky: 40;
+  --ui-z-nav: 50;
+  --ui-z-overlay: 80;
+  --ui-z-modal: 100;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ui-motion-fast: 0ms;
+    --ui-motion-base: 0ms;
+    --ui-motion-slow: 0ms;
+  }
+}
