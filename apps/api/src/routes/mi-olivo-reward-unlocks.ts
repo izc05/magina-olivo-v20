@@ -175,7 +175,7 @@ export function registerMiOlivoRewardUnlockRoutes(app: FastifyInstance, db: Data
   });
 
   // Companion metadata for /mi-olivo/canjes. The mature redemption endpoint
-  // remains untouched; this only links each reservation back to its public mill.
+  // remains untouched; this only exposes pickup details from the business profile.
   app.get('/api/v1/my/almazara-redemption-pickups', async (request, reply) => {
     const database = requireDatabase(db, reply);
     if (!database) return;
@@ -185,11 +185,22 @@ export function registerMiOlivoRewardUnlockRoutes(app: FastifyInstance, db: Data
     const result = await sql<{
       redemption_id: string;
       business_slug: string;
+      address: string | null;
+      municipality_name: string | null;
+      phone: string | null;
+      longitude: number | null;
+      latitude: number | null;
     }>`
       SELECT r.id::text AS redemption_id,
-             b.slug AS business_slug
+             b.slug AS business_slug,
+             b.address,
+             m.name AS municipality_name,
+             b.phone,
+             CASE WHEN b.location IS NULL THEN NULL ELSE ST_X(b.location) END AS longitude,
+             CASE WHEN b.location IS NULL THEN NULL ELSE ST_Y(b.location) END AS latitude
       FROM mill_reward_redemptions r
       JOIN businesses b ON b.id=r.business_id
+      LEFT JOIN territory_municipalities m ON m.id=b.municipality_id
       WHERE r.user_id=${userId}::uuid
       ORDER BY r.created_at DESC
       LIMIT 100
@@ -199,6 +210,11 @@ export function registerMiOlivoRewardUnlockRoutes(app: FastifyInstance, db: Data
       pickups: result.rows.map((row) => ({
         redemptionId: row.redemption_id,
         businessSlug: row.business_slug,
+        address: row.address,
+        municipalityName: row.municipality_name,
+        phone: row.phone,
+        longitude: row.longitude === null ? null : Number(row.longitude),
+        latitude: row.latitude === null ? null : Number(row.latitude),
       })),
     };
   });
