@@ -69,16 +69,40 @@ async function mockRedemptions(page: Page) {
       contentType: 'application/json',
       body: JSON.stringify({
         pickups: [
-          { redemptionId: '61000000-0000-4000-8000-000000000001', businessSlug: 'cooperativa-bedmar-e2e' },
-          { redemptionId: '61000000-0000-4000-8000-000000000002', businessSlug: 'almazara-sierra-e2e' },
-          { redemptionId: '61000000-0000-4000-8000-000000000003', businessSlug: 'cooperativa-historica-e2e' },
+          {
+            redemptionId: '61000000-0000-4000-8000-000000000001',
+            businessSlug: 'cooperativa-bedmar-e2e',
+            address: 'Avenida de Mágina 12',
+            municipalityName: 'Bedmar y Garcíez',
+            phone: '+34 953 000 123',
+            longitude: -3.4123,
+            latitude: 37.9971,
+          },
+          {
+            redemptionId: '61000000-0000-4000-8000-000000000002',
+            businessSlug: 'almazara-sierra-e2e',
+            address: 'Calle Sierra 8',
+            municipalityName: 'Huelma',
+            phone: null,
+            longitude: null,
+            latitude: null,
+          },
+          {
+            redemptionId: '61000000-0000-4000-8000-000000000003',
+            businessSlug: 'cooperativa-historica-e2e',
+            address: null,
+            municipalityName: null,
+            phone: null,
+            longitude: null,
+            latitude: null,
+          },
         ],
       }),
     });
   });
 }
 
-test('Mi Olivo redemptions prioritizes pickup-ready reservations and links to the mill', async ({ page }) => {
+test('Mi Olivo redemptions prioritizes pickup-ready reservations and provides real pickup actions', async ({ page }) => {
   await mockRedemptions(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/mi-olivo/canjes');
@@ -92,9 +116,21 @@ test('Mi Olivo redemptions prioritizes pickup-ready reservations and links to th
   await expect(pendingCards.nth(0).getByRole('heading', { name: 'Botella AOVE urgente' })).toBeVisible();
   await expect(pendingCards.nth(1).getByRole('heading', { name: 'Caja AOVE selección' })).toBeVisible();
   await expect(pendingCards.nth(0).getByText(/Quedan \d+ (hora|horas|día|días) para recogerlo\./)).toBeVisible();
+  await expect(pendingCards.nth(0).getByText('Avenida de Mágina 12 · Bedmar y Garcíez')).toBeVisible();
   await expect(pendingCards.nth(0).getByRole('img', { name: 'Código QR firmado de recogida' })).toBeVisible();
-  await expect(pendingCards.nth(0).getByRole('link', { name: 'Ver ficha, dirección y contacto de la almazara →' }))
+  await expect(pendingCards.nth(0).getByRole('link', { name: 'Llamar a la almazara' }))
+    .toHaveAttribute('href', 'tel:+34953000123');
+  await expect(pendingCards.nth(0).getByRole('link', { name: 'Cómo llegar ↗' }))
+    .toHaveAttribute('href', 'https://www.google.com/maps/dir/?api=1&destination=37.9971%2C-3.4123');
+  await expect(pendingCards.nth(0).getByRole('link', { name: 'Cómo llegar ↗' }))
+    .toHaveAttribute('target', '_blank');
+  await expect(pendingCards.nth(0).getByRole('link', { name: 'Ver ficha de la almazara →' }))
     .toHaveAttribute('href', '/almazaras/?slug=cooperativa-bedmar-e2e');
+
+  await expect(pendingCards.nth(1).getByText('Calle Sierra 8 · Huelma')).toBeVisible();
+  await expect(pendingCards.nth(1).getByRole('link', { name: 'Cómo llegar ↗' }))
+    .toHaveAttribute('href', 'https://www.google.com/maps/dir/?api=1&destination=Calle%20Sierra%208%2C%20Huelma');
+  await expect(pendingCards.nth(1).getByRole('link', { name: 'Llamar a la almazara' })).toHaveCount(0);
 
   const history = page.getByRole('region', { name: 'Historial' });
   await expect(history.getByRole('heading', { name: 'Botella cancelada' })).toBeVisible();
