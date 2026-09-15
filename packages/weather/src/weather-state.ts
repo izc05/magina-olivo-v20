@@ -72,7 +72,9 @@ type OpenMeteoPayload = {
 };
 
 function finite(value: unknown): number | null {
-  const number = typeof value === 'string' && value.trim() === '' ? Number.NaN : Number(value);
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
+  const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
 
