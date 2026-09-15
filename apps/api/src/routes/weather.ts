@@ -1,7 +1,9 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { sql } from 'kysely';
+import { validateWeatherCoordinates } from '@magina/weather';
 import type { DatabaseClient } from '../db/client.js';
 import { getCachedMunicipalityForecast } from '../weather/cache.js';
+import type { CurrentWeatherProvider } from '../weather/current-provider.js';
 import type { MunicipalityWeatherProvider } from '../weather/providers.js';
 import { requireContext, requireDatabase } from '../http/helpers.js';
 
@@ -43,7 +45,32 @@ export function registerWeatherRoutes(
   app: FastifyInstance,
   db: DatabaseClient | null,
   provider: MunicipalityWeatherProvider,
+  currentWeatherProvider: CurrentWeatherProvider,
 ) {
+  app.post('/api/v1/public/weather/current', async (request, reply) => {
+    reply.header('cache-control', 'no-store');
+    const body = (request.body ?? {}) as { latitude?: unknown; longitude?: unknown };
+    if (typeof body.latitude !== 'number' || typeof body.longitude !== 'number') {
+      return reply.code(400).send({ error: 'invalid_weather_coordinates' });
+    }
+
+    try {
+      const { latitude, longitude } = validateWeatherCoordinates(body.latitude, body.longitude);
+      const result = await currentWeatherProvider.currentWeather(latitude, longitude);
+      return reply.send({
+        weather: result.weather,
+        cache_status: result.cacheStatus,
+        fetched_at: result.fetchedAt,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'INVALID_WEATHER_COORDINATES') {
+        return reply.code(400).send({ error: 'invalid_weather_coordinates' });
+      }
+      request.log.error({ err: error }, 'Unable to load current weather');
+      return reply.code(502).send({ error: 'weather_upstream_unavailable' });
+    }
+  });
+
   app.get('/api/v1/public/weather/places/:slug/daily', async (request, reply) => {
     const database = requireDatabase(db, reply);
     if (!database) return;
