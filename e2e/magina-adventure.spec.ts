@@ -44,6 +44,13 @@ test('Mágina Aventura renders its public mobile hub without fictional fallback 
   await expect(page.getByRole('heading', { level: 1, name: /Mágina Aventura/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /Comenzar aventura/ })).toHaveAttribute('href', '#aventuras');
   await expect(page.getByRole('link', { name: 'Ver todas las rutas' })).toHaveAttribute('href', /^\/rutas\/?$/);
+  const shortcuts = page.getByRole('navigation', { name: 'Mágina Aventura', exact: true });
+  await expect(shortcuts).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Rutas/ })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Aventura en curso/ })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Mi aventura/i })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Colecciones/ })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Comunidad/ })).toBeVisible();
   await expect(page.getByText('Las primeras aventuras están en preparación')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
