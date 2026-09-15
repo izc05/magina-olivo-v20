@@ -113,6 +113,13 @@ jobs:
           ALLOW_DEV_AUTH_HEADERS: 'false'
           AUTH_COOKIE_SECURE: 'false'
         run: node apps/api/dist/testing/mi-olivo-reward-unlocks-smoke.js
+      - name: Mi Olivo redemption pickup smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_mi_olivo
+          REWARD_QR_SECRET: ci-mi-olivo-pickup-secret-only-for-tests
+          ALLOW_DEV_AUTH_HEADERS: 'false'
+          AUTH_COOKIE_SECURE: 'false'
+        run: node apps/api/dist/testing/mi-olivo-redemption-pickup-smoke.js
       - name: Mi Olivo campaign + appearance smoke
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/magina_mi_olivo
