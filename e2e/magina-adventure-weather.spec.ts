@@ -119,7 +119,7 @@ test('Preparar aventura requests local weather only after explicit user action',
   await expect.poll(() => weatherCalls).toBe(1);
   await expect(page.getByText('17 °C', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Lluvia moderada', { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole('link', { name: /Comenzar aventura/ })).toHaveAttribute('href', /\/aventura\/en-curso\?slug=ruta-demo$/);
+  await expect(page.getByRole('link', { name: /Comenzar aventura/ })).toHaveAttribute('href', /\/aventura\/en-curso\/?\?slug=ruta-demo$/);
   await expectNoHorizontalOverflow(page);
 });
 
