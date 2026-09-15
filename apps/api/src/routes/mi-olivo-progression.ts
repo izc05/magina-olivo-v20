@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import type { DatabaseClient } from '../db/client.js';
 import { requireAuthenticatedUser, requireDatabase } from '../http/helpers.js';
+import { registerMiOlivoRewardUnlockRoutes } from './mi-olivo-reward-unlocks.js';
 
 type ProgressRow = { balance: number; xp: number };
 type LevelRow = {
@@ -193,4 +194,6 @@ export function registerMiOlivoProgressionRoutes(app: FastifyInstance, db: Datab
       history: historyResult.rows,
     };
   });
+
+  registerMiOlivoRewardUnlockRoutes(app, db);
 }

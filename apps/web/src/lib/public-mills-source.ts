@@ -14,6 +14,23 @@ export type PublicMillReward = {
   maxPerUser: number | null;
   startsAt: string | null;
   endsAt: string | null;
+  requiredLevel: number;
+  requiredLevelName: string;
+  minXp: number;
+};
+
+export type MillRewardUnlockState = {
+  xp: number;
+  balance: number;
+  currentLevel: number;
+  currentLevelName: string;
+  rewards: Array<{
+    rewardId: string;
+    requiredLevel: number;
+    requiredLevelName: string;
+    minXp: number;
+    unlocked: boolean;
+  }>;
 };
 
 export type MillRedemption = {
@@ -75,6 +92,15 @@ type AlmazaraPayload = {
   }>;
 };
 
+type RewardUnlockPayload = {
+  rewards: Array<{
+    rewardId: string;
+    requiredLevel: number;
+    requiredLevelName: string;
+    minXp: number;
+  }>;
+};
+
 export async function loadPublicMills(): Promise<PublicMill[]> {
   const payload = await apiFetch<AlmazaraPayload>('/api/v1/public/almazaras');
   return payload.almazaras.map((item, index) => ({
@@ -103,8 +129,24 @@ export async function loadPublicMills(): Promise<PublicMill[]> {
 }
 
 export async function loadMillRewards(slug: string): Promise<PublicMillReward[]> {
-  const payload = await apiFetch<{ rewards: PublicMillReward[] }>(`/api/v1/public/almazaras/${encodeURIComponent(slug)}/rewards`);
-  return payload.rewards;
+  const [payload, unlockPayload] = await Promise.all([
+    apiFetch<{ rewards: Omit<PublicMillReward, 'requiredLevel' | 'requiredLevelName' | 'minXp'>[] }>(`/api/v1/public/almazaras/${encodeURIComponent(slug)}/rewards`),
+    apiFetch<RewardUnlockPayload>(`/api/v1/public/almazaras/${encodeURIComponent(slug)}/reward-unlocks`),
+  ]);
+  const unlocks = new Map(unlockPayload.rewards.map((item) => [item.rewardId, item]));
+  return payload.rewards.map((reward) => {
+    const unlock = unlocks.get(reward.id);
+    return {
+      ...reward,
+      requiredLevel: unlock?.requiredLevel ?? 1,
+      requiredLevelName: unlock?.requiredLevelName ?? 'Brote',
+      minXp: unlock?.minXp ?? 0,
+    };
+  });
+}
+
+export async function loadMyMillRewardUnlocks(slug: string): Promise<MillRewardUnlockState> {
+  return apiFetch<MillRewardUnlockState>(`/api/v1/my/almazaras/${encodeURIComponent(slug)}/reward-unlocks`);
 }
 
 export async function redeemMillReward(id: string) {

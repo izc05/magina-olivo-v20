@@ -24,6 +24,7 @@ type RewardProduct = {
   stock_reserved: number;
   stock_redeemed: number;
   max_per_user: number | null;
+  required_level: number;
   status: 'draft' | 'published' | 'paused' | 'archived';
   starts_at: string | null;
   ends_at: string | null;
@@ -67,7 +68,25 @@ type BarcodeDetectorLike = {
 
 type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorLike;
 
-type ProductDraft = { oliveCost: string; stockTotal: string; status: RewardProduct['status'] };
+type ProductDraft = {
+  oliveCost: string;
+  stockTotal: string;
+  requiredLevel: number;
+  status: RewardProduct['status'];
+};
+
+const LEVELS = [
+  { level: 1, name: 'Brote', xp: 0 },
+  { level: 2, name: 'Rama nueva', xp: 100 },
+  { level: 3, name: 'Olivo joven', xp: 250 },
+  { level: 4, name: 'Olivo arraigado', xp: 450 },
+  { level: 5, name: 'Olivo en flor', xp: 700 },
+  { level: 6, name: 'Olivo de cosecha', xp: 1000 },
+  { level: 7, name: 'Olivo maduro', xp: 1400 },
+  { level: 8, name: 'Olivo centenario', xp: 1900 },
+  { level: 9, name: 'Guardián del Olivar', xp: 2500 },
+  { level: 10, name: 'Leyenda de Mágina', xp: 3200 },
+] as const;
 
 function extractSignedToken(value: string) {
   const trimmed = value.trim();
@@ -84,6 +103,22 @@ function eventLabel(value: string) {
   if (value === 'released') return 'Stock liberado';
   if (value === 'manual_adjustment') return 'Ajuste manual';
   return value;
+}
+
+function productPayload(product: RewardProduct, draft: ProductDraft) {
+  return {
+    slug: product.slug,
+    title: product.title,
+    description: product.description,
+    imageUrl: product.image_url,
+    volumeMl: product.volume_ml,
+    oliveCost: Number(draft.oliveCost),
+    stockTotal: Number(draft.stockTotal),
+    maxPerUser: product.max_per_user,
+    status: draft.status,
+    startsAt: product.starts_at,
+    endsAt: product.ends_at,
+  };
 }
 
 export function AlmazaraBusinessPanel() {
@@ -123,6 +158,7 @@ export function AlmazaraBusinessPanel() {
       setDrafts(Object.fromEntries(result.products.map((product) => [product.id, {
         oliveCost: String(product.olive_cost),
         stockTotal: String(product.stock_total),
+        requiredLevel: product.required_level ?? 1,
         status: product.status,
       }])));
     } catch {
@@ -144,18 +180,42 @@ export function AlmazaraBusinessPanel() {
     const oliveCost = Number(form.get('oliveCost'));
     const stockTotal = Number(form.get('stockTotal'));
     const volumeMlValue = Number(form.get('volumeMl'));
+    const requiredLevel = Number(form.get('requiredLevel'));
+    let createdId: string | null = null;
+    const payload = {
+      title,
+      slug,
+      oliveCost,
+      stockTotal,
+      volumeMl: Number.isFinite(volumeMlValue) && volumeMlValue > 0 ? volumeMlValue : null,
+      maxPerUser: 1,
+      startsAt: null,
+      endsAt: null,
+    };
     try {
-      await apiFetch(`/api/v1/my/businesses/${businessId}/almazara-rewards`, {
+      const created = await apiFetch<{ reward: { id: string } }>(`/api/v1/my/businesses/${businessId}/almazara-rewards`, {
         method: 'POST',
-        body: JSON.stringify({ title, slug, oliveCost, stockTotal,
-          volumeMl: Number.isFinite(volumeMlValue) && volumeMlValue > 0 ? volumeMlValue : null,
-          maxPerUser: 1, status: 'published' }),
+        body: JSON.stringify({ ...payload, status: 'draft' }),
+      });
+      createdId = created.reward.id;
+      await apiFetch(`/api/v1/my/businesses/${businessId}/almazara-rewards/${createdId}/unlock`, {
+        method: 'PUT',
+        body: JSON.stringify({ requiredLevel }),
+      });
+      await apiFetch(`/api/v1/my/businesses/${businessId}/almazara-rewards/${createdId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...payload, description: null, imageUrl: null, status: 'published' }),
       });
       event.currentTarget.reset();
-      setMessage('Premio publicado correctamente.');
+      setMessage(`Premio publicado correctamente desde nivel ${requiredLevel}.`);
       await loadRewards();
     } catch {
-      setMessage('No se pudo crear el premio. Revisa slug, stock y coste en aceitunas.');
+      if (createdId) {
+        setMessage('El premio se ha conservado como borrador porque no pudo completarse su nivel/publicación. Revísalo antes de publicarlo.');
+        await loadRewards();
+      } else {
+        setMessage('No se pudo crear el premio. Revisa slug, stock, coste y nivel mínimo.');
+      }
     }
   }
 
@@ -165,34 +225,45 @@ export function AlmazaraBusinessPanel() {
     if (!draft) return;
     const oliveCost = Number(draft.oliveCost);
     const stockTotal = Number(draft.stockTotal);
-    if (!Number.isInteger(oliveCost) || oliveCost < 1 || !Number.isInteger(stockTotal) || stockTotal < 0) {
-      setMessage('Coste y stock deben ser números enteros válidos.');
+    const requiredLevel = Number(draft.requiredLevel);
+    if (!Number.isInteger(oliveCost) || oliveCost < 1 || !Number.isInteger(stockTotal) || stockTotal < 0 || !Number.isInteger(requiredLevel) || requiredLevel < 1 || requiredLevel > 10) {
+      setMessage('Coste, stock y nivel deben tener valores válidos.');
       return;
     }
     setSavingProduct(product.id);
     setMessage(null);
+    let levelChanged = false;
     try {
+      if (requiredLevel !== product.required_level) {
+        await apiFetch(`/api/v1/my/businesses/${businessId}/almazara-rewards/${product.id}/unlock`, {
+          method: 'PUT',
+          body: JSON.stringify({ requiredLevel }),
+        });
+        levelChanged = true;
+      }
       await apiFetch(`/api/v1/my/businesses/${businessId}/almazara-rewards/${product.id}`, {
         method: 'PUT',
-        body: JSON.stringify({
-          slug: product.slug,
-          title: product.title,
-          description: product.description,
-          imageUrl: product.image_url,
-          volumeMl: product.volume_ml,
-          oliveCost,
-          stockTotal,
-          maxPerUser: product.max_per_user,
-          status: draft.status,
-          startsAt: product.starts_at,
-          endsAt: product.ends_at,
-        }),
+        body: JSON.stringify(productPayload(product, draft)),
       });
-      setMessage('Premio actualizado. El stock comprometido sigue protegido.');
+      setMessage(`Premio actualizado. Nivel mínimo ${requiredLevel}; el stock comprometido sigue protegido.`);
       await loadRewards();
     } catch (error) {
+      if (levelChanged) {
+        try {
+          await apiFetch(`/api/v1/my/businesses/${businessId}/almazara-rewards/${product.id}/unlock`, {
+            method: 'PUT',
+            body: JSON.stringify({ requiredLevel: product.required_level }),
+          });
+        } catch {
+          setMessage('La edición falló y tampoco fue posible restaurar automáticamente el nivel anterior. Revisa el premio antes de publicarlo.');
+          await loadRewards();
+          setSavingProduct(null);
+          return;
+        }
+      }
       const detail = error instanceof Error ? error.message : '';
-      setMessage(detail.includes('reward_stock_below_committed') ? 'No puedes bajar el stock por debajo de las unidades reservadas y ya entregadas.' : 'No se pudo actualizar el premio.');
+      setMessage(detail.includes('reward_stock_below_committed') ? 'No puedes bajar el stock por debajo de las unidades reservadas y ya entregadas.' : 'No se pudo actualizar el premio; el nivel anterior se ha conservado.');
+      await loadRewards();
     } finally {
       setSavingProduct(null);
     }
@@ -274,7 +345,7 @@ export function AlmazaraBusinessPanel() {
   const canEdit = role === 'owner' || role === 'manager' || role === 'editor';
 
   return <main style={{ maxWidth: 1080, margin: '0 auto', padding: '24px 18px 80px' }}>
-    <header><span>ALMAZARAS · PANEL OPERATIVO</span><h1>Premios y canjes</h1><p>Gestiona productos, stock y recogidas QR de Mi Olivo con trazabilidad completa.</p></header>
+    <header><span>ALMAZARAS · PANEL OPERATIVO</span><h1>Premios y canjes</h1><p>Gestiona productos, nivel mínimo, stock y recogidas QR de Mi Olivo con trazabilidad completa.</p></header>
     {message ? <p role="status" className="card">{message}</p> : null}
 
     <section className="card" style={{ marginTop: 20 }}>
@@ -292,10 +363,11 @@ export function AlmazaraBusinessPanel() {
       <div><small>Aceitunas canjeadas</small><strong style={{ display: 'block', fontSize: '1.5rem' }}>{stats.olives_redeemed}</strong></div>
     </section> : null}
 
-    {businessId && canEdit ? <section className="card" style={{ marginTop: 20 }}><h2>Crear premio</h2><form onSubmit={createReward} style={{ display: 'grid', gap: 12, maxWidth: 640 }}>
+    {businessId && canEdit ? <section className="card" style={{ marginTop: 20 }}><h2>Crear premio</h2><p>Define el coste y el nivel antes de publicarlo. El premio permanece oculto hasta que ambos pasos quedan guardados.</p><form onSubmit={createReward} style={{ display: 'grid', gap: 12, maxWidth: 640 }}>
       <label>Nombre de producto<input name="title" required minLength={2} placeholder="Botella AOVE 500 ml" /></label>
       <label>Slug<input name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="aove-500-ml" /></label>
       <label>Coste en aceitunas<input name="oliveCost" required type="number" min="1" step="1" /></label>
+      <label>Nivel mínimo<select name="requiredLevel" defaultValue="1">{LEVELS.map((level) => <option key={level.level} value={level.level}>Nivel {level.level} · {level.name} · {level.xp} XP</option>)}</select></label>
       <label>Stock disponible<input name="stockTotal" required type="number" min="0" step="1" /></label>
       <label>Volumen ml<input name="volumeMl" type="number" min="1" step="1" /></label>
       <button type="submit">Publicar premio</button>
@@ -307,9 +379,18 @@ export function AlmazaraBusinessPanel() {
       {!scanning ? <button type="button" onClick={() => void startScanner()}>Escanear con cámara</button> : <button type="button" onClick={stopScanner}>Cerrar cámara</button>}
     </div><video ref={videoRef} muted playsInline style={{ display: scanning ? 'block' : 'none', width: '100%', maxWidth: 520, marginTop: 16, borderRadius: 12 }} /></section> : null}
 
-    <section className="card" style={{ marginTop: 20 }}><h2>Productos</h2>{!products.length ? <p>No hay premios creados.</p> : <div style={{ overflowX: 'auto' }}><table><thead><tr><th>Premio</th><th>Coste</th><th>Stock total</th><th>Reservado</th><th>Entregado</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{products.map((product) => {
+    <section className="card" style={{ marginTop: 20 }}><h2>Productos</h2>{!products.length ? <p>No hay premios creados.</p> : <div style={{ overflowX: 'auto' }}><table><thead><tr><th>Premio</th><th>Coste</th><th>Nivel</th><th>Stock total</th><th>Reservado</th><th>Entregado</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{products.map((product) => {
       const draft = drafts[product.id];
-      return <tr key={product.id}><td>{product.title}</td><td><input aria-label={`Coste ${product.title}`} type="number" min="1" step="1" value={draft?.oliveCost ?? product.olive_cost} onChange={(event) => setDrafts((current) => ({ ...current, [product.id]: { ...(current[product.id] ?? { stockTotal: String(product.stock_total), status: product.status }), oliveCost: event.target.value } }))} disabled={!canEdit} style={{ width: 90 }} /></td><td><input aria-label={`Stock ${product.title}`} type="number" min={product.stock_reserved + product.stock_redeemed} step="1" value={draft?.stockTotal ?? product.stock_total} onChange={(event) => setDrafts((current) => ({ ...current, [product.id]: { ...(current[product.id] ?? { oliveCost: String(product.olive_cost), status: product.status }), stockTotal: event.target.value } }))} disabled={!canEdit} style={{ width: 90 }} /></td><td>{product.stock_reserved}</td><td>{product.stock_redeemed}</td><td><select aria-label={`Estado ${product.title}`} value={draft?.status ?? product.status} onChange={(event) => setDrafts((current) => ({ ...current, [product.id]: { ...(current[product.id] ?? { oliveCost: String(product.olive_cost), stockTotal: String(product.stock_total) }), status: event.target.value as RewardProduct['status'] } }))} disabled={!canEdit}><option value="draft">Borrador</option><option value="published">Publicado</option><option value="paused">Pausado</option><option value="archived">Archivado</option></select></td><td>{canEdit ? <button type="button" disabled={savingProduct === product.id} onClick={() => void updateReward(product)}>{savingProduct === product.id ? 'Guardando…' : 'Guardar'}</button> : 'Solo lectura'}</td></tr>;
+      const requiredLevel = draft?.requiredLevel ?? product.required_level ?? 1;
+      return <tr key={product.id}>
+        <td>{product.title}</td>
+        <td><input aria-label={`Coste ${product.title}`} type="number" min="1" step="1" value={draft?.oliveCost ?? product.olive_cost} onChange={(event) => setDrafts((current) => ({ ...current, [product.id]: { ...(current[product.id] ?? { stockTotal: String(product.stock_total), requiredLevel: product.required_level ?? 1, status: product.status }), oliveCost: event.target.value } }))} disabled={!canEdit} style={{ width: 90 }} /></td>
+        <td><select aria-label={`Nivel mínimo ${product.title}`} value={requiredLevel} onChange={(event) => setDrafts((current) => ({ ...current, [product.id]: { ...(current[product.id] ?? { oliveCost: String(product.olive_cost), stockTotal: String(product.stock_total), status: product.status }), requiredLevel: Number(event.target.value) } }))} disabled={!canEdit}>{LEVELS.map((level) => <option key={level.level} value={level.level}>{level.level} · {level.name}</option>)}</select></td>
+        <td><input aria-label={`Stock ${product.title}`} type="number" min={product.stock_reserved + product.stock_redeemed} step="1" value={draft?.stockTotal ?? product.stock_total} onChange={(event) => setDrafts((current) => ({ ...current, [product.id]: { ...(current[product.id] ?? { oliveCost: String(product.olive_cost), requiredLevel: product.required_level ?? 1, status: product.status }), stockTotal: event.target.value } }))} disabled={!canEdit} style={{ width: 90 }} /></td>
+        <td>{product.stock_reserved}</td><td>{product.stock_redeemed}</td>
+        <td><select aria-label={`Estado ${product.title}`} value={draft?.status ?? product.status} onChange={(event) => setDrafts((current) => ({ ...current, [product.id]: { ...(current[product.id] ?? { oliveCost: String(product.olive_cost), stockTotal: String(product.stock_total), requiredLevel: product.required_level ?? 1 }), status: event.target.value as RewardProduct['status'] } }))} disabled={!canEdit}><option value="draft">Borrador</option><option value="published">Publicado</option><option value="paused">Pausado</option><option value="archived">Archivado</option></select></td>
+        <td>{canEdit ? <button type="button" disabled={savingProduct === product.id} onClick={() => void updateReward(product)}>{savingProduct === product.id ? 'Guardando…' : 'Guardar'}</button> : 'Solo lectura'}</td>
+      </tr>;
     })}</tbody></table></div>}</section>
 
     <section className="card" style={{ marginTop: 20 }}><h2>Últimos canjes</h2>{!redemptions.length ? <p>No hay canjes todavía.</p> : <div style={{ overflowX: 'auto' }}><table><thead><tr><th>Premio</th><th>Aceitunas</th><th>Estado</th><th>Creado</th><th>Trazabilidad</th></tr></thead><tbody>{redemptions.map((item) => <tr key={item.id}><td>{item.product_title}</td><td>{item.olives_spent}</td><td>{item.status}</td><td>{new Date(item.created_at).toLocaleString('es-ES')}</td><td><button type="button" onClick={() => void loadHistory(item.id)}>Ver historial</button></td></tr>)}</tbody></table></div>}</section>
