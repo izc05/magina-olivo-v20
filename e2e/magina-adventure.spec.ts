@@ -113,6 +113,7 @@ test('Aventura en curso exposes one live hiking HUD fed by the active GPS record
   const routeId = '22222222-2222-4222-8222-222222222222';
   const activityId = '33333333-3333-4333-8333-333333333333';
   const checkpointId = '44444444-4444-4444-8444-444444444444';
+  const secondCheckpointId = '88888888-8888-4888-8888-888888888888';
   const routeDetail = {
     route: {
       id: routeId,
@@ -190,6 +191,25 @@ test('Aventura en curso exposes one live hiking HUD fed by the active GPS record
         latitude: 37.7244,
         longitude: -3.4114,
       },
+      {
+        id: secondCheckpointId,
+        route_point_id: null,
+        title: 'Fuente de Bedmar',
+        description: 'Segundo descubrimiento del piloto.',
+        kind: 'landmark',
+        collection_category: 'heritage',
+        rarity: 'common',
+        distance_m: 900,
+        unlock_radius_m: 40,
+        points: 40,
+        is_required: true,
+        question: null,
+        answer_options: null,
+        hint: null,
+        sort_order: 2,
+        latitude: 37.7255,
+        longitude: -3.4098,
+      },
     ],
     notice: 'La aventura no sustituye navegación ni seguridad.',
   };
@@ -205,12 +225,12 @@ test('Aventura en curso exposes one live hiking HUD fed by the active GPS record
       last_distance_m: null,
     },
     stats: {
-      total_checkpoints: 1,
-      required_checkpoints: 1,
-      total_points: 50,
+      total_checkpoints: 2,
+      required_checkpoints: 2,
+      total_points: 90,
       unlocked_checkpoints: 0,
       required_unlocked: 0,
-      required_remaining: 1,
+      required_remaining: 2,
     },
     unlocks: [],
     badges: [],
@@ -290,6 +310,12 @@ test('Aventura en curso exposes one live hiking HUD fed by the active GPS record
 
   const nextCheckpoint = page.getByTestId('next-checkpoint-card');
   await expect(nextCheckpoint).toContainText('Mirador del olivar');
+  await page.evaluate((unlockedCheckpointId) => {
+    window.dispatchEvent(new CustomEvent('magina:route-adventure-progress', {
+      detail: { unlockedCheckpointIds: [unlockedCheckpointId] },
+    }));
+  }, checkpointId);
+  await expect(nextCheckpoint).toContainText('Fuente de Bedmar');
   await expect(page.getByRole('button', { name: 'Centrarme' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Map' }).getByRole('button', { name: 'Tu posición · precisión ±7 m' })).toBeVisible();
   await expect(page.getByText('Mantén el track validado como referencia principal.')).toBeVisible();
