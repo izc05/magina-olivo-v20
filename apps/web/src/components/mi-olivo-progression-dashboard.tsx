@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { apiFetch } from '../lib/api-client';
 import { useAuth } from './auth-provider';
 import styles from './mi-olivo-dashboard.module.css';
@@ -73,44 +73,98 @@ const OLIVE_POSITIONS = [
   [62, 142], [250, 142], [95, 84], [218, 75], [137, 61], [180, 58], [71, 102], [245, 96],
 ] as const;
 
+const CROWN_CLUSTERS = [
+  [1, 151, 126, 42, 34], [2, 113, 147, 45, 34], [3, 204, 143, 47, 35], [4, 126, 102, 45, 34],
+  [5, 193, 98, 48, 36], [6, 77, 138, 37, 30], [7, 244, 132, 38, 30], [8, 95, 99, 36, 29],
+  [9, 225, 89, 37, 30], [10, 160, 72, 40, 31],
+] as const;
+
 function OliveTree({ stage, xp, compact = false }: { stage: number; xp: number; compact?: boolean }) {
+  const instanceId = useId().replace(/:/g, '');
+  const trunkId = `${instanceId}-trunk`;
+  const barkId = `${instanceId}-bark`;
+  const crownId = `${instanceId}-crown`;
+  const fruitId = `${instanceId}-fruit`;
   const visibleOlives = Math.min(OLIVE_POSITIONS.length, xp > 0 ? Math.max(stage * 2, Math.ceil(xp / 110)) : 0);
+  const mature = stage >= 6;
+
   return (
-    <svg className={`${styles.tree} ${compact ? styles.treeCompact : ''}`} viewBox="0 0 320 320" role="img" aria-label={`Olivo digital en fase ${stage} de 10`}>
+    <svg
+      className={`${styles.tree} ${compact ? styles.treeCompact : ''}`}
+      viewBox="0 0 320 320"
+      role="img"
+      aria-label={`Olivo digital en fase ${stage} de 10`}
+    >
       <defs>
-        <linearGradient id={`progressTrunk-${stage}-${compact ? 'mini' : 'hero'}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#b99469" />
-          <stop offset="0.46" stopColor="#79583c" />
-          <stop offset="1" stopColor="#433126" />
+        <linearGradient id={trunkId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#c3a278" />
+          <stop offset="0.28" stopColor="#8d6848" />
+          <stop offset="0.62" stopColor="#674a37" />
+          <stop offset="1" stopColor="#34261f" />
         </linearGradient>
-        <radialGradient id={`progressCrown-${stage}-${compact ? 'mini' : 'hero'}`} cx="42%" cy="32%" r="72%">
-          <stop offset="0" stopColor="#dce3aa" />
-          <stop offset="0.42" stopColor="#8ca467" />
-          <stop offset="0.78" stopColor="#587249" />
-          <stop offset="1" stopColor="#344a32" />
+        <linearGradient id={barkId} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#e0c39a" stopOpacity=".58" />
+          <stop offset="0.55" stopColor="#8b674a" stopOpacity=".2" />
+          <stop offset="1" stopColor="#2d211c" stopOpacity=".55" />
+        </linearGradient>
+        <radialGradient id={crownId} cx="38%" cy="28%" r="78%">
+          <stop offset="0" stopColor="#dfe8b4" />
+          <stop offset="0.34" stopColor="#a0b875" />
+          <stop offset="0.68" stopColor="#657e50" />
+          <stop offset="1" stopColor="#31462f" />
         </radialGradient>
-        <radialGradient id={`progressFruit-${stage}-${compact ? 'mini' : 'hero'}`} cx="30%" cy="24%" r="78%">
-          <stop offset="0" stopColor="#d3d98b" />
-          <stop offset="0.42" stopColor="#77833f" />
-          <stop offset="1" stopColor="#263121" />
+        <radialGradient id={fruitId} cx="30%" cy="24%" r="78%">
+          <stop offset="0" stopColor="#d9df91" />
+          <stop offset="0.38" stopColor="#7d8842" />
+          <stop offset="1" stopColor="#222d20" />
         </radialGradient>
       </defs>
-      <ellipse cx="160" cy="284" rx="90" ry="16" className={styles.shadow} />
-      <path d="M142 278c14-42 13-73 10-104 17 15 28 39 31 70 11-30 25-50 43-65-16 29-25 61-27 99z" fill={`url(#progressTrunk-${stage}-${compact ? 'mini' : 'hero'})`} />
-      <path d="M155 203c-25-29-43-47-73-61M175 193c19-31 38-48 67-64M164 168c1-31-4-53-16-78M148 225c-16-14-31-22-48-28M185 221c17-13 34-22 52-28" className={styles.branch} />
-      {[
-        [1, 151, 125, 37], [2, 112, 145, 39], [3, 204, 142, 42], [4, 125, 100, 40], [5, 194, 96, 42],
-        [6, 76, 137, 32], [7, 244, 130, 34], [8, 93, 98, 31], [9, 226, 88, 32], [10, 159, 72, 35],
-      ].map(([required, cx, cy, radius]) => (
+
+      <ellipse cx="160" cy="286" rx={mature ? 98 : 72} ry="15" className={styles.shadow} />
+
+      <g aria-hidden="true">
+        <path
+          d={mature
+            ? 'M136 282c12-34 17-64 13-91-3-22-12-37-8-55 4-15 17-28 30-36-5 17-6 34 3 49 10 18 25 29 29 49 5 25-4 53-8 84h-59Z'
+            : 'M145 282c9-38 13-70 10-96-2-22-9-40-4-57 4-13 13-23 22-30-3 19-1 36 7 51 10 20 17 42 16 67-1 23-5 44-7 65h-44Z'}
+          fill={`url(#${trunkId})`}
+        />
+        <path
+          d="M154 275c8-37 10-68 6-92-3-20-9-34-5-48 3-9 9-18 16-25-2 17 0 33 8 49 8 17 12 34 10 53-2 25-7 46-8 63Z"
+          fill={`url(#${barkId})`}
+          opacity=".72"
+        />
+        {stage >= 3 ? <path d="M158 207c-23-30-46-48-79-61M181 202c20-33 40-52 73-69" className={styles.branch} /> : null}
+        {stage >= 5 ? <path d="M166 171c-1-34-6-57-19-83M147 228c-18-15-35-23-55-28M190 224c19-15 37-24 57-31" className={styles.branch} /> : null}
+        {stage >= 8 ? <path d="M139 181c-21-16-36-22-58-25M197 179c21-17 39-24 62-27M176 147c16-21 27-36 34-58" className={styles.branch} /> : null}
+      </g>
+
+      {CROWN_CLUSTERS.map(([required, cx, cy, rx, ry], index) => (
         <g key={required} className={stage >= required ? styles.grown : styles.future}>
-          <circle cx={cx} cy={cy} r={radius} fill={`url(#progressCrown-${stage}-${compact ? 'mini' : 'hero'})`} />
+          <ellipse
+            cx={cx}
+            cy={cy}
+            rx={rx}
+            ry={ry}
+            transform={`rotate(${index % 2 === 0 ? -8 : 8} ${cx} ${cy})`}
+            fill={`url(#${crownId})`}
+          />
+          {stage >= required && required >= 4 ? (
+            <ellipse cx={cx - 8} cy={cy - 8} rx={Math.max(10, rx * 0.36)} ry={Math.max(7, ry * 0.22)} fill="#eef0c3" opacity=".12" />
+          ) : null}
         </g>
       ))}
+
       <g className={styles.fruitLayer}>
         {OLIVE_POSITIONS.map(([cx, cy], index) => (
-          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={index < visibleOlives ? 5 : 3.5}
+          <circle
+            key={`${cx}-${cy}`}
+            cx={cx}
+            cy={cy}
+            r={index < visibleOlives ? (index % 3 === 0 ? 5.4 : 4.6) : 3.3}
             className={index < visibleOlives ? styles.olive : styles.futureOlive}
-            fill={index < visibleOlives ? `url(#progressFruit-${stage}-${compact ? 'mini' : 'hero'})` : undefined} />
+            fill={index < visibleOlives ? `url(#${fruitId})` : undefined}
+          />
         ))}
       </g>
     </svg>
