@@ -4,6 +4,7 @@ import { MiOlivoCampaignController } from '../../components/mi-olivo-campaign-co
 import { MiOlivoCareController } from '../../components/mi-olivo-care-controller';
 import { MiOlivoProgressionDashboard } from '../../components/mi-olivo-progression-dashboard';
 import { MiOlivoSeasonsController } from '../../components/mi-olivo-seasons-controller';
+import treeStageStyles from '../../components/mi-olivo-tree-stages.module.css';
 import { MiOlivoTimelineController } from '../../components/mi-olivo-timeline-controller';
 import { MiOlivoWeatherController } from '../../components/mi-olivo-weather-controller';
 import { MiOlivoWelcomeController } from '../../components/mi-olivo-welcome-controller';
@@ -18,7 +19,9 @@ export default function MiOlivoPage() {
     <MiOlivoCampaignController>
       <MiOlivoWeatherController />
       <MiOlivoWelcomeController />
-      <MiOlivoProgressionDashboard />
+      <div className={treeStageStyles.scope}>
+        <MiOlivoProgressionDashboard />
+      </div>
       <MiOlivoSeasonsController />
       <MiOlivoCampaignComparison />
       <MiOlivoCareController />

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { apiFetch } from '../lib/api-client';
 import { useAuth } from './auth-provider';
 import styles from './mi-olivo-dashboard.module.css';
@@ -66,6 +66,43 @@ type Payload = {
   recent: LedgerEntry[];
 };
 
+type MiOlivoIconName = 'leaf' | 'field' | 'olive' | 'activity' | 'sprout' | 'trophy';
+
+function MiOlivoIcon({ name }: { name: MiOlivoIconName }) {
+  const common = {
+    width: '1em',
+    height: '1em',
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+    focusable: false,
+  };
+
+  if (name === 'olive') {
+    return <svg {...common}><ellipse cx="10.5" cy="13.5" rx="5" ry="6.5" /><path d="M13.5 7.7c1.2-2.6 3.4-4 6.1-4.2-.4 2.8-2.1 4.8-5.3 5.6M13.8 8.3c1.2.7 2.1 1.7 2.8 3" /></svg>;
+  }
+  if (name === 'activity') {
+    return <svg {...common}><path d="M4 19V11M10 19V6M16 19v-4M22 19V9" /><path d="M2.5 19.5h19" /></svg>;
+  }
+  if (name === 'sprout') {
+    return <svg {...common}><path d="M12 21V10" /><path d="M12 12C8 12 5.5 9.6 5 6c4.4-.1 7 1.8 7 6ZM12 15c4 0 6.5-2.3 7-6-4.4-.1-7 1.8-7 6Z" /></svg>;
+  }
+  if (name === 'trophy') {
+    return <svg {...common}><path d="M8 4h8v4c0 4-1.8 6-4 6s-4-2-4-6V4Z" /><path d="M8 6H4v2c0 2.4 1.6 4 4.2 4M16 6h4v2c0 2.4-1.6 4-4.2 4M12 14v4M8.5 21h7M10 18h4" /></svg>;
+  }
+  if (name === 'field') {
+    return <svg {...common}><path d="M3 17c4-4.2 8.1-6.2 18-7M3 21c5-4.5 9.8-6.3 18-6.8M3 12.7c3.7-3.1 7.6-4.9 12-5.7" /><path d="M15 7c.9-2.2 2.5-3.5 5-4-.3 2.4-1.7 4-4.3 4.8" /></svg>;
+  }
+  if (name === 'leaf') {
+    return <svg {...common}><path d="M20.5 3.5C12 4 6.8 7.1 5.3 12.2c-1 3.5.8 6.7 4.3 7.8 4.9 1.5 9.6-2.7 10.9-16.5Z" /><path d="M5 21c2.1-5.1 5.7-8.8 11-11.2" /></svg>;
+  }
+  return <svg {...common}><path d="M12 20V9" /><path d="M12 13C8.5 13 6 11 5.3 7.7c3.8-.3 6.5 1.3 6.7 5.3ZM12 10.8c3.5 0 6-2 6.7-5.3-3.8-.3-6.5 1.3-6.7 5.3Z" /><circle cx="12" cy="20" r="1" /></svg>;
+}
+
 const OLIVE_POSITIONS = [
   [92, 128], [112, 102], [129, 143], [148, 91], [164, 121], [181, 98], [199, 132], [218, 105],
   [77, 151], [104, 165], [137, 167], [170, 154], [205, 161], [235, 143], [125, 78], [191, 74],
@@ -73,52 +110,106 @@ const OLIVE_POSITIONS = [
   [62, 142], [250, 142], [95, 84], [218, 75], [137, 61], [180, 58], [71, 102], [245, 96],
 ] as const;
 
-function OliveTree({ stage, xp }: { stage: number; xp: number }) {
+const CROWN_CLUSTERS = [
+  [1, 151, 126, 42, 34], [2, 113, 147, 45, 34], [3, 204, 143, 47, 35], [4, 126, 102, 45, 34],
+  [5, 193, 98, 48, 36], [6, 77, 138, 37, 30], [7, 244, 132, 38, 30], [8, 95, 99, 36, 29],
+  [9, 225, 89, 37, 30], [10, 160, 72, 40, 31],
+] as const;
+
+function OliveTree({ stage, xp, compact = false }: { stage: number; xp: number; compact?: boolean }) {
+  const instanceId = useId().replace(/:/g, '');
+  const trunkId = `${instanceId}-trunk`;
+  const barkId = `${instanceId}-bark`;
+  const crownId = `${instanceId}-crown`;
+  const fruitId = `${instanceId}-fruit`;
   const visibleOlives = Math.min(OLIVE_POSITIONS.length, xp > 0 ? Math.max(stage * 2, Math.ceil(xp / 110)) : 0);
+  const mature = stage >= 6;
+
   return (
-    <svg className={styles.tree} viewBox="0 0 320 320" role="img" aria-label={`Olivo digital en fase ${stage} de 10`}>
+    <svg
+      className={`${styles.tree} ${compact ? styles.treeCompact : ''}`}
+      viewBox="0 0 320 320"
+      role="img"
+      aria-label={`Olivo digital en fase ${stage} de 10`}
+    >
       <defs>
-        <linearGradient id="progressTrunk" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#9a714c" />
-          <stop offset="0.55" stopColor="#725238" />
-          <stop offset="1" stopColor="#4e392c" />
+        <linearGradient id={trunkId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#c3a278" />
+          <stop offset="0.28" stopColor="#8d6848" />
+          <stop offset="0.62" stopColor="#674a37" />
+          <stop offset="1" stopColor="#34261f" />
         </linearGradient>
-        <radialGradient id="progressCrown" cx="45%" cy="35%" r="70%">
-          <stop offset="0" stopColor="#c2d08e" />
-          <stop offset="0.55" stopColor="#78925b" />
-          <stop offset="1" stopColor="#405b38" />
+        <linearGradient id={barkId} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#e0c39a" stopOpacity=".58" />
+          <stop offset="0.55" stopColor="#8b674a" stopOpacity=".2" />
+          <stop offset="1" stopColor="#2d211c" stopOpacity=".55" />
+        </linearGradient>
+        <radialGradient id={crownId} cx="38%" cy="28%" r="78%">
+          <stop offset="0" stopColor="#dfe8b4" />
+          <stop offset="0.34" stopColor="#a0b875" />
+          <stop offset="0.68" stopColor="#657e50" />
+          <stop offset="1" stopColor="#31462f" />
         </radialGradient>
-        <radialGradient id="progressFruit" cx="32%" cy="28%" r="75%">
-          <stop offset="0" stopColor="#aeba62" />
-          <stop offset="0.5" stopColor="#576735" />
-          <stop offset="1" stopColor="#263221" />
+        <radialGradient id={fruitId} cx="30%" cy="24%" r="78%">
+          <stop offset="0" stopColor="#d9df91" />
+          <stop offset="0.38" stopColor="#7d8842" />
+          <stop offset="1" stopColor="#222d20" />
         </radialGradient>
       </defs>
-      <ellipse cx="160" cy="284" rx="90" ry="16" className={styles.shadow} />
-      <path d="M142 278c14-42 13-73 10-104 17 15 28 39 31 70 11-30 25-50 43-65-16 29-25 61-27 99z" fill="url(#progressTrunk)" />
-      <path d="M155 203c-25-29-43-47-73-61M175 193c19-31 38-48 67-64M164 168c1-31-4-53-16-78M148 225c-16-14-31-22-48-28M185 221c17-13 34-22 52-28" className={styles.branch} />
-      <g className={stage >= 1 ? styles.grown : styles.future}><circle cx="151" cy="125" r="37" fill="url(#progressCrown)" /></g>
-      <g className={stage >= 2 ? styles.grown : styles.future}><circle cx="112" cy="145" r="39" fill="url(#progressCrown)" /></g>
-      <g className={stage >= 3 ? styles.grown : styles.future}><circle cx="204" cy="142" r="42" fill="url(#progressCrown)" /></g>
-      <g className={stage >= 4 ? styles.grown : styles.future}><circle cx="125" cy="100" r="40" fill="url(#progressCrown)" /></g>
-      <g className={stage >= 5 ? styles.grown : styles.future}><circle cx="194" cy="96" r="42" fill="url(#progressCrown)" /></g>
-      <g className={stage >= 6 ? styles.grown : styles.future}><circle cx="76" cy="137" r="32" fill="url(#progressCrown)" /></g>
-      <g className={stage >= 7 ? styles.grown : styles.future}><circle cx="244" cy="130" r="34" fill="url(#progressCrown)" /></g>
-      <g className={stage >= 8 ? styles.grown : styles.future}><circle cx="93" cy="98" r="31" fill="url(#progressCrown)" /></g>
-      <g className={stage >= 9 ? styles.grown : styles.future}><circle cx="226" cy="88" r="32" fill="url(#progressCrown)" /></g>
-      <g className={stage >= 10 ? styles.grown : styles.future}>
-        <circle cx="159" cy="72" r="35" fill="url(#progressCrown)" />
-        <circle cx="160" cy="119" r="106" fill="none" stroke="rgba(214,197,132,.55)" strokeWidth="3" />
+
+      <ellipse cx="160" cy="286" rx={mature ? 98 : 72} ry="15" className={styles.shadow} />
+
+      <g aria-hidden="true">
+        <path
+          d={mature
+            ? 'M136 282c12-34 17-64 13-91-3-22-12-37-8-55 4-15 17-28 30-36-5 17-6 34 3 49 10 18 25 29 29 49 5 25-4 53-8 84h-59Z'
+            : 'M145 282c9-38 13-70 10-96-2-22-9-40-4-57 4-13 13-23 22-30-3 19-1 36 7 51 10 20 17 42 16 67-1 23-5 44-7 65h-44Z'}
+          fill={`url(#${trunkId})`}
+        />
+        <path
+          d="M154 275c8-37 10-68 6-92-3-20-9-34-5-48 3-9 9-18 16-25-2 17 0 33 8 49 8 17 12 34 10 53-2 25-7 46-8 63Z"
+          fill={`url(#${barkId})`}
+          opacity=".72"
+        />
+        {stage >= 3 ? <path d="M158 207c-23-30-46-48-79-61M181 202c20-33 40-52 73-69" className={styles.branch} /> : null}
+        {stage >= 5 ? <path d="M166 171c-1-34-6-57-19-83M147 228c-18-15-35-23-55-28M190 224c19-15 37-24 57-31" className={styles.branch} /> : null}
+        {stage >= 8 ? <path d="M139 181c-21-16-36-22-58-25M197 179c21-17 39-24 62-27M176 147c16-21 27-36 34-58" className={styles.branch} /> : null}
       </g>
+
+      {CROWN_CLUSTERS.map(([required, cx, cy, rx, ry], index) => (
+        <g key={required} className={stage >= required ? styles.grown : styles.future}>
+          <ellipse
+            cx={cx}
+            cy={cy}
+            rx={rx}
+            ry={ry}
+            transform={`rotate(${index % 2 === 0 ? -8 : 8} ${cx} ${cy})`}
+            fill={`url(#${crownId})`}
+          />
+          {stage >= required && required >= 4 ? (
+            <ellipse cx={cx - 8} cy={cy - 8} rx={Math.max(10, rx * 0.36)} ry={Math.max(7, ry * 0.22)} fill="#eef0c3" opacity=".12" />
+          ) : null}
+        </g>
+      ))}
+
       <g className={styles.fruitLayer}>
         {OLIVE_POSITIONS.map(([cx, cy], index) => (
-          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={index < visibleOlives ? 5 : 3.5}
+          <circle
+            key={`${cx}-${cy}`}
+            cx={cx}
+            cy={cy}
+            r={index < visibleOlives ? (index % 3 === 0 ? 5.4 : 4.6) : 3.3}
             className={index < visibleOlives ? styles.olive : styles.futureOlive}
-            fill={index < visibleOlives ? 'url(#progressFruit)' : undefined} />
+            fill={index < visibleOlives ? `url(#${fruitId})` : undefined}
+          />
         ))}
       </g>
     </svg>
   );
+}
+
+function progressWidth(value: number) {
+  return `${Math.max(0, Math.min(100, value))}%`;
 }
 
 export function MiOlivoProgressionDashboard() {
@@ -175,64 +266,118 @@ export function MiOlivoProgressionDashboard() {
   if (error || !data) return <main className={styles.shell}><div className={styles.stateCard}><h1>Mi Olivo</h1><p>{error ?? 'No hay datos disponibles.'}</p><button onClick={() => void load()}>Reintentar</button></div></main>;
 
   const completedMissions = data.missions.filter((mission) => mission.completed).length;
+  const currentLevel = data.levels.find((level) => level.level === data.level);
+  const nextLevel = data.next_level ? data.levels.find((level) => level.level === data.next_level?.level) : null;
   const xpMissing = data.next_level ? Math.max(0, data.next_level.min_xp - data.xp) : 0;
+  const visibleStart = Math.max(0, Math.min(Math.max(0, data.levels.length - 5), data.level - 3));
+  const visibleLevels = data.levels.slice(visibleStart, visibleStart + 5);
 
   return <main className={styles.shell}>
-    <header className={styles.header}>
-      <div><span className={styles.eyebrow}>MI OLIVO · PROGRESIÓN</span><h1>Tu olivo digital</h1><p>Crece con XP permanente y usa tus aceitunas para conseguir recompensas reales de Sierra Mágina.</p></div>
-      <Link href="/" className={styles.backLink}>Inicio</Link>
+    <header className={styles.mobileHeader}>
+      <Link href="/" className={styles.mobileBack} aria-label="Volver al inicio">‹</Link>
+      <div><span className={styles.leafMark}><MiOlivoIcon name="leaf" /></span><strong>Mi Olivo</strong></div>
+      <span className={styles.mobileMenu} aria-hidden="true">⋮</span>
     </header>
 
-    <section className={styles.hero} aria-labelledby="tree-title">
+    <header className={styles.header}>
+      <div><span className={styles.eyebrow}>MI OLIVO · SIERRA MÁGINA</span><h1>Mi Olivo</h1><p>Tu historia, nuestras raíces. Un olivo digital que conserva tu progreso y conecta tus aceitunas con recompensas reales del territorio.</p></div>
+      <Link href="/mi-campo" className={styles.fieldLink}><MiOlivoIcon name="field" /> Ver mi campo <span>→</span></Link>
+    </header>
+
+    <nav className={styles.tabs} aria-label="Secciones de Mi Olivo">
+      <a href="#resumen" className={styles.activeTab}>Resumen</a>
+      <a href="#misiones">Cuidados</a>
+      <a href="#historial">Historia</a>
+      <a href="#recompensas">Recompensas</a>
+    </nav>
+
+    <section id="resumen" className={styles.hero} aria-labelledby="tree-title">
       <div className={styles.scene}>
-        <div className={styles.skyGlow} aria-hidden="true" /><div className={styles.sun} aria-hidden="true" />
-        <div className={styles.distantSierra} aria-hidden="true" /><div className={styles.nearSierra} aria-hidden="true" /><div className={styles.ground} aria-hidden="true" />
-        <span className={styles.sceneLabel}>SIERRA MÁGINA · XP PERMANENTE</span>
+        <div className={styles.sceneShade} aria-hidden="true" />
+        <span className={styles.sceneLabel}>SIERRA MÁGINA · TU PROGRESO</span>
+        <div className={styles.treeAura} aria-hidden="true" />
         <div className={styles.treePanel}><OliveTree stage={data.tree_stage} xp={data.xp} /></div>
+        <p className={`${styles.editorialLine} ${styles.editorialLeft}`}>Raíces que conectan personas</p>
+        <p className={`${styles.editorialLine} ${styles.editorialRight}`}>Un futuro más verde</p>
+        <div className={styles.heroLevelCard}>
+          <span>Nivel {data.level}</span>
+          <strong id="tree-title">{data.level_label}</strong>
+          <div className={styles.progressTrack}><span style={{ width: progressWidth(data.progress.percent) }} /></div>
+          <small>{data.progress.current} / {data.progress.target} XP</small>
+        </div>
         <div className={styles.sceneStats}>
-          <div><span>XP histórico</span><strong>{data.xp} XP</strong></div>
-          <div><span>Esta semana</span><strong>{data.weekly.earned} 🫒</strong></div>
+          <div><span><MiOlivoIcon name="olive" /></span><strong>{data.balance}</strong><small>Aceitunas</small><em>+{data.weekly.earned} esta semana</em></div>
+          <div><span><MiOlivoIcon name="activity" /></span><strong>{data.today.earned}</strong><small>Hoy</small><em>de {data.today.cap}</em></div>
+          <div><span><MiOlivoIcon name="sprout" /></span><strong>{data.rhythm.active_weeks || 0}</strong><small>Semanas</small><em>{data.rhythm.label}</em></div>
+          <div><span><MiOlivoIcon name="trophy" /></span><strong>{data.achievements.filter((item) => item.unlocked).length}</strong><small>Logros</small><em>Conseguidos</em></div>
         </div>
       </div>
-      <div className={styles.heroCopy}>
-        <div className={styles.levelRow}><span className={styles.levelPill}>Nivel {data.level}</span><span className={styles.stagePill}>Fase {data.tree_stage}/10</span></div>
-        <h2 id="tree-title">{data.level_label}</h2>
-        <div className={styles.balance}><strong>{data.balance}</strong><span>aceitunas disponibles</span></div>
-        <p className={styles.heroLead}>Las aceitunas son saldo interno de fidelización y pueden gastarse. Tu XP es histórico: al canjear un premio el olivo nunca pierde nivel ni retrocede.</p>
-        <div className={styles.progressLabel}><span>{data.next_level ? `Hacia ${data.next_level.name}` : 'Nivel máximo'}</span><span>{data.progress.current}/{data.progress.target} XP</span></div>
-        <div className={styles.progressTrack} aria-label={`${data.progress.percent}% hacia el siguiente nivel`}><span style={{ width: `${data.progress.percent}%` }} /></div>
-        <div className={styles.nextMilestone}>{data.next_level ? <><span>Te faltan</span><strong>{xpMissing} XP</strong><span>para el nivel {data.next_level.level}.</span></> : <><strong>Nivel máximo alcanzado</strong><span>Tu XP puede seguir creciendo.</span></>}</div>
+
+      <div className={styles.summaryPane}>
+        <article className={styles.currentLevelCard}>
+          <div className={styles.currentTree}><OliveTree stage={data.tree_stage} xp={data.xp} compact /></div>
+          <div className={styles.currentCopy}>
+            <span className={styles.eyebrow}>TU OLIVO AHORA</span>
+            <h2>Nivel {data.level} · {data.level_label}</h2>
+            <p className={styles.levelDescription}>{currentLevel?.description ?? 'Tu olivo conserva la memoria de tu progreso en Mágina.'}</p>
+            <div className={styles.progressTrack}><span style={{ width: progressWidth(data.progress.percent) }} /></div>
+            <div className={styles.progressFoot}><strong>{data.progress.current} / {data.progress.target} XP</strong><span>{data.next_level ? `Faltan ${xpMissing}` : 'Nivel máximo'}</span></div>
+          </div>
+          {nextLevel ? <div className={styles.nextMini}><OliveTree stage={nextLevel.tree_stage} xp={nextLevel.min_xp} compact /><span>Nivel {nextLevel.level}</span><strong>{nextLevel.name}</strong></div> : null}
+        </article>
+
+        {nextLevel ? <article id="proximo-nivel" className={styles.nextLevelCard}>
+          <div className={styles.sectionTitle}><div><span className={styles.eyebrow}>PRÓXIMO NIVEL</span><h2>{nextLevel.name}</h2></div><span>{nextLevel.min_xp} XP</span></div>
+          <div className={styles.nextLevelBody}>
+            <div className={styles.nextTree}><OliveTree stage={nextLevel.tree_stage} xp={nextLevel.min_xp} compact /></div>
+            <div><strong>Nivel {nextLevel.level} · {nextLevel.name}</strong><p>{nextLevel.description}</p><ul><li>Más posibilidades de recompensa</li><li>{nextLevel.badge_title}</li><li>Tu olivo evoluciona sin perder XP</li></ul></div>
+          </div>
+        </article> : null}
+
+        <article id="evolucion" className={styles.evolutionCard}>
+          <div className={styles.sectionTitle}><div><span className={styles.eyebrow}>EVOLUCIÓN</span><h2>La vida de tu olivo</h2></div><span>{data.level}/10</span></div>
+          <div className={styles.levelTimeline}>
+            {visibleLevels.map((level) => <div key={level.level} className={`${styles.levelStage} ${level.level === data.level ? styles.levelStageCurrent : ''} ${level.unlocked ? styles.levelStageUnlocked : ''}`}>
+              <div className={styles.levelTree}><OliveTree stage={level.tree_stage} xp={Math.max(level.min_xp, data.xp)} compact /></div>
+              <strong>{level.name}</strong><span>N.{level.level}</span>
+            </div>)}
+          </div>
+          <a href="#niveles" className={styles.inlineLink}>Ver todos los niveles →</a>
+        </article>
       </div>
     </section>
 
-    <section className={styles.campaignCard} aria-label="Recompensas reales de Mi Olivo">
-      <div className={styles.campaignIntro}><span className={styles.eyebrow}>RECOMPENSAS AOVE</span><h2>Del progreso al territorio</h2><p>Usa tus aceitunas para reservar botellas y otros premios publicados por almazaras reales. Cada reserva genera un QR firmado y de un solo uso.</p></div>
-      <div className={styles.campaignStats}>
-        <div><span>Saldo disponible</span><strong>{data.balance} 🫒</strong></div>
-        <div><span>Nivel</span><strong>{data.level}/10</strong></div>
-        <div><span>XP histórico</span><strong>{data.xp}</strong></div>
-        <div><span>Misiones</span><strong>{completedMissions}/{data.missions.length}</strong></div>
+    <section id="recompensas" className={styles.rewardShowcase}>
+      <div className={styles.sectionTitle}><div><span className={styles.eyebrow}>TUS RECOMPENSAS</span><h2>Del olivo al territorio</h2></div><Link href="/almazaras">Ver catálogo →</Link></div>
+      <div className={styles.rewardScroller}>
+        {data.rewards.slice(0, 3).map((reward, index) => <article key={reward.id} className={styles.rewardCard}>
+          <div className={`${styles.rewardThumb} ${styles[`rewardThumb${index + 1}`] ?? ''}`}><span>{reward.unlocked ? 'Disponible' : `Nivel ${reward.required_level}`}</span></div>
+          <strong>{reward.title}</strong><p>{reward.detail}</p><small>{reward.unlocked ? 'Listo para explorar' : `Se desbloquea en nivel ${reward.required_level}`}</small>
+        </article>)}
+        {!data.rewards.length ? <article className={styles.rewardEmpty}><strong>Catálogo AOVE</strong><p>Las recompensas aparecerán aquí cuando estén publicadas para tu cuenta.</p><Link href="/almazaras">Explorar almazaras →</Link></article> : null}
       </div>
-      <div><Link href="/almazaras" className={styles.campaignLink}>Ver premios →</Link><br /><Link href="/mi-olivo/canjes" className={styles.campaignLink}>Mis canjes →</Link></div>
+      <div className={styles.rewardActions}><Link href="/almazaras" className={styles.primaryAction}>Explorar premios</Link><Link href="/mi-olivo/canjes" className={styles.secondaryAction}>Mis canjes</Link></div>
     </section>
 
     <section className={styles.weeklyPanel} aria-label="Progreso de Mi Olivo esta semana">
-      <div className={styles.weeklyMain}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>ESTA SEMANA</span><h2>{data.weekly.earned} aceitunas conseguidas</h2></div><strong>{data.weekly.earned}/{data.weekly.goal}</strong></div><div className={styles.progressTrack} aria-label={`${data.weekly.percent}% del objetivo semanal`}><span style={{ width: `${data.weekly.percent}%` }} /></div><p>El objetivo semanal sirve de guía. Tu saldo no caduca por descansar y el XP ya ganado no disminuye.</p></div>
-      <div className={styles.todayCard}><span className={styles.eyebrow}>EXPLORACIÓN ÚTIL HOY</span><strong>{data.today.earned}/{data.today.cap}</strong><span>{data.today.remaining > 0 ? `Aún puedes sumar hasta ${data.today.remaining} aceitunas.` : 'Límite diario alcanzado.'}</span></div>
+      <div className={styles.weeklyMain}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>ESTA SEMANA</span><h2>{data.weekly.earned} aceitunas conseguidas</h2></div><strong>{data.weekly.earned}/{data.weekly.goal}</strong></div><div className={styles.progressTrack}><span style={{ width: progressWidth(data.weekly.percent) }} /></div><p>Tu objetivo semanal orienta el progreso; descansar no hace caducar el saldo ni reduce el XP acumulado.</p></div>
+      <div className={styles.todayCard}><span className={styles.eyebrow}>HOY</span><strong>{data.today.earned}/{data.today.cap}</strong><span>{data.today.remaining > 0 ? `Aún puedes sumar ${data.today.remaining} aceitunas.` : 'Límite diario alcanzado.'}</span></div>
     </section>
+
+    <section className={styles.quoteCard}><span><MiOlivoIcon name="leaf" /></span><blockquote>“Cuidar un olivo es cuidar también de lo que viene.”</blockquote></section>
 
     <section className={styles.notice}><strong>Ritmo del cuaderno · {data.rhythm.label}</strong><span>{data.rhythm.message}</span></section>
     {!data.enabled ? <section className={styles.notice}><strong>Mi Olivo está pausado.</strong><span>Tu historial se conserva, pero no se reconocen nuevos hitos mientras esté pausado.</span></section> : null}
 
-    <section className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>CÓMO CRECE</span><h2>Gana aceitunas y XP</h2></div><span>Acciones útiles</span></div><div className={styles.cardGrid}>{data.earning_actions.map((action) => <article key={action.id} className={styles.earningCard}><span className={styles.earningIcon}>🫒</span><div><h3>{action.title}</h3><p>{action.detail}</p></div><span className={styles.reward}>{action.reward_label}</span></article>)}</div></section>
+    <section id="misiones" className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>CÓMO CRECE</span><h2>Acciones que cuidan tu progreso</h2></div><span>Acciones útiles</span></div><div className={styles.cardGrid}>{data.earning_actions.map((action) => <article key={action.id} className={styles.earningCard}><span className={styles.earningIcon}><MiOlivoIcon name="olive" /></span><div><h3>{action.title}</h3><p>{action.detail}</p></div><span className={styles.reward}>{action.reward_label}</span></article>)}</div></section>
 
-    <section className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>MISIONES</span><h2>Pequeños pasos útiles</h2></div><span>{completedMissions}/{data.missions.length}</span></div><div className={styles.cardGrid}>{data.missions.map((mission) => <article key={mission.id} className={`${styles.missionCard} ${mission.completed ? styles.done : ''}`}><div className={styles.cardIcon}>{mission.completed ? '✓' : '○'}</div><div><h3>{mission.title}</h3><p>{mission.detail}</p>{mission.progress_target > 1 ? <><div className={styles.progressLabel}><span>Progreso</span><span>{mission.progress_current}/{mission.progress_target}</span></div><div className={styles.progressTrack}><span style={{ width: `${Math.min(100, (mission.progress_current / mission.progress_target) * 100)}%` }} /></div></> : null}</div><span className={styles.reward}>+{mission.reward}</span></article>)}</div></section>
+    <section className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>MISIONES</span><h2>Pequeños pasos útiles</h2></div><span>{completedMissions}/{data.missions.length}</span></div><div className={styles.cardGrid}>{data.missions.map((mission) => <article key={mission.id} className={`${styles.missionCard} ${mission.completed ? styles.done : ''}`}><div className={styles.cardIcon}>{mission.completed ? '✓' : '○'}</div><div><h3>{mission.title}</h3><p>{mission.detail}</p>{mission.progress_target > 1 ? <><div className={styles.progressLabel}><span>Progreso</span><span>{mission.progress_current}/{mission.progress_target}</span></div><div className={styles.progressTrack}><span style={{ width: progressWidth((mission.progress_current / mission.progress_target) * 100) }} /></div></> : null}</div><span className={styles.reward}>+{mission.reward}</span></article>)}</div></section>
 
     <section className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>LOGROS</span><h2>Tu colección</h2></div></div><div className={styles.achievementGrid}>{data.achievements.map((achievement) => <article key={achievement.id} className={`${styles.achievement} ${achievement.unlocked ? styles.unlocked : ''}`}><span className={styles.medal}>{achievement.unlocked ? '✦' : '·'}</span><h3>{achievement.title}</h3><p>{achievement.detail}</p></article>)}</div></section>
 
-    <section className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>LOS 10 NIVELES</span><h2>Evolución del olivo</h2></div><span>{data.level}/10</span></div><div className={styles.achievementGrid}>{data.levels.map((level) => <article key={level.level} className={`${styles.achievement} ${level.unlocked ? styles.unlocked : ''}`}><span className={styles.medal}>{level.unlocked ? '✦' : level.level}</span><h3>{level.name}</h3><p>{level.unlocked ? level.description : `${level.min_xp} XP · ${level.badge_title}`}</p></article>)}</div></section>
+    <section id="niveles" className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>LOS 10 NIVELES</span><h2>Evolución completa del olivo</h2></div><span>{data.level}/10</span></div><div className={styles.achievementGrid}>{data.levels.map((level) => <article key={level.level} className={`${styles.achievement} ${level.unlocked ? styles.unlocked : ''}`}><span className={styles.medal}>{level.unlocked ? '✦' : level.level}</span><h3>{level.name}</h3><p>{level.unlocked ? level.description : `${level.min_xp} XP · ${level.badge_title}`}</p></article>)}</div></section>
 
-    <section className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>HISTORIAL</span><h2>Movimientos de aceitunas</h2></div></div>{data.recent.length ? <div className={styles.ledger}>{data.recent.map((entry) => <div key={entry.id} className={styles.ledgerRow}><div><strong>{entry.reason}</strong><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleDateString('es-ES')}</time></div><span className={entry.points > 0 ? styles.positive : styles.negative}>{entry.points > 0 ? '+' : ''}{entry.points}</span></div>)}</div> : <p className={styles.empty}>Aún no hay movimientos. Empieza por una misión útil.</p>}</section>
+    <section id="historial" className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>HISTORIA</span><h2>Movimientos de aceitunas</h2></div></div>{data.recent.length ? <div className={styles.ledger}>{data.recent.map((entry) => <div key={entry.id} className={styles.ledgerRow}><div><strong>{entry.reason}</strong><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleDateString('es-ES')}</time></div><span className={entry.points > 0 ? styles.positive : styles.negative}>{entry.points > 0 ? '+' : ''}{entry.points}</span></div>)}</div> : <p className={styles.empty}>Aún no hay movimientos. Empieza por una misión útil.</p>}</section>
 
     <section className={styles.settingsCard}><div><strong>Participación voluntaria</strong><p>Mi Olivo no es dinero, no es transferible y no usa blockchain. Puedes pausarlo sin perder tu historial.</p></div><button type="button" onClick={() => void toggleEnabled()} disabled={savingPreference}>{savingPreference ? 'Guardando…' : data.enabled ? 'Pausar Mi Olivo' : 'Activar Mi Olivo'}</button></section>
   </main>;
