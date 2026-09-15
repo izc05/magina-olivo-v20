@@ -117,8 +117,8 @@ test('Preparar aventura requests local weather only after explicit user action',
   await page.getByRole('button', { name: /Comprobar clima local/ }).click();
 
   await expect.poll(() => weatherCalls).toBe(1);
-  await expect(page.getByText('17 °C')).toBeVisible();
-  await expect(page.getByText('Lluvia moderada')).toBeVisible();
+  await expect(page.getByText('17 °C', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Lluvia moderada', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: /Comenzar aventura/ })).toHaveAttribute('href', /\/aventura\/en-curso\?slug=ruta-demo$/);
   await expectNoHorizontalOverflow(page);
 });
@@ -134,9 +134,27 @@ test('Aventura en curso renders weather HUD and deterministic rain visual state'
   await page.goto('/aventura/en-curso?slug=ruta-demo');
   await page.getByRole('button', { name: /Activar clima local/ }).click();
 
-  await expect(page.getByText('Clima local')).toBeVisible();
-  await expect(page.getByText('17 °C')).toBeVisible();
-  await expect(page.getByText('Lluvia moderada')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Clima local' })).toBeVisible();
+  await expect(page.getByText('17 °C', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Lluvia moderada', { exact: true }).first()).toBeVisible();
   await expect(page.locator('[data-weather-condition="rain"][data-weather-intensity="2"]')).toHaveCount(1);
+  await expectNoHorizontalOverflow(page);
+});
+
+test('local weather lab can simulate effects without requesting GPS weather', async ({ page }) => {
+  await mockRoute(page);
+  let weatherCalls = 0;
+  await page.route('**/api/v1/public/weather/current', async (route) => {
+    weatherCalls += 1;
+    await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'should_not_be_called' }) });
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/aventura/en-curso?slug=ruta-demo&weatherLab=1');
+
+  await expect(page.getByText('Laboratorio de clima')).toBeVisible();
+  await page.getByRole('button', { name: 'Lluvia intensa' }).click();
+  await expect(page.locator('[data-weather-condition="rain"][data-weather-intensity="3"]')).toHaveCount(1);
+  expect(weatherCalls).toBe(0);
   await expectNoHorizontalOverflow(page);
 });
