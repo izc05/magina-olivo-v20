@@ -66,6 +66,43 @@ type Payload = {
   recent: LedgerEntry[];
 };
 
+type MiOlivoIconName = 'leaf' | 'field' | 'olive' | 'activity' | 'sprout' | 'trophy';
+
+function MiOlivoIcon({ name }: { name: MiOlivoIconName }) {
+  const common = {
+    width: '1em',
+    height: '1em',
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+    focusable: false,
+  };
+
+  if (name === 'olive') {
+    return <svg {...common}><ellipse cx="10.5" cy="13.5" rx="5" ry="6.5" /><path d="M13.5 7.7c1.2-2.6 3.4-4 6.1-4.2-.4 2.8-2.1 4.8-5.3 5.6M13.8 8.3c1.2.7 2.1 1.7 2.8 3" /></svg>;
+  }
+  if (name === 'activity') {
+    return <svg {...common}><path d="M4 19V11M10 19V6M16 19v-4M22 19V9" /><path d="M2.5 19.5h19" /></svg>;
+  }
+  if (name === 'sprout') {
+    return <svg {...common}><path d="M12 21V10" /><path d="M12 12C8 12 5.5 9.6 5 6c4.4-.1 7 1.8 7 6ZM12 15c4 0 6.5-2.3 7-6-4.4-.1-7 1.8-7 6Z" /></svg>;
+  }
+  if (name === 'trophy') {
+    return <svg {...common}><path d="M8 4h8v4c0 4-1.8 6-4 6s-4-2-4-6V4Z" /><path d="M8 6H4v2c0 2.4 1.6 4 4.2 4M16 6h4v2c0 2.4-1.6 4-4.2 4M12 14v4M8.5 21h7M10 18h4" /></svg>;
+  }
+  if (name === 'field') {
+    return <svg {...common}><path d="M3 17c4-4.2 8.1-6.2 18-7M3 21c5-4.5 9.8-6.3 18-6.8M3 12.7c3.7-3.1 7.6-4.9 12-5.7" /><path d="M15 7c.9-2.2 2.5-3.5 5-4-.3 2.4-1.7 4-4.3 4.8" /></svg>;
+  }
+  if (name === 'leaf') {
+    return <svg {...common}><path d="M20.5 3.5C12 4 6.8 7.1 5.3 12.2c-1 3.5.8 6.7 4.3 7.8 4.9 1.5 9.6-2.7 10.9-16.5Z" /><path d="M5 21c2.1-5.1 5.7-8.8 11-11.2" /></svg>;
+  }
+  return <svg {...common}><path d="M12 20V9" /><path d="M12 13C8.5 13 6 11 5.3 7.7c3.8-.3 6.5 1.3 6.7 5.3ZM12 10.8c3.5 0 6-2 6.7-5.3-3.8-.3-6.5 1.3-6.7 5.3Z" /><circle cx="12" cy="20" r="1" /></svg>;
+}
+
 const OLIVE_POSITIONS = [
   [92, 128], [112, 102], [129, 143], [148, 91], [164, 121], [181, 98], [199, 132], [218, 105],
   [77, 151], [104, 165], [137, 167], [170, 154], [205, 161], [235, 143], [125, 78], [191, 74],
@@ -238,13 +275,13 @@ export function MiOlivoProgressionDashboard() {
   return <main className={styles.shell}>
     <header className={styles.mobileHeader}>
       <Link href="/" className={styles.mobileBack} aria-label="Volver al inicio">‹</Link>
-      <div><span className={styles.leafMark}>❧</span><strong>Mi Olivo</strong></div>
+      <div><span className={styles.leafMark}><MiOlivoIcon name="leaf" /></span><strong>Mi Olivo</strong></div>
       <span className={styles.mobileMenu} aria-hidden="true">⋮</span>
     </header>
 
     <header className={styles.header}>
       <div><span className={styles.eyebrow}>MI OLIVO · SIERRA MÁGINA</span><h1>Mi Olivo</h1><p>Tu historia, nuestras raíces. Un olivo digital que conserva tu progreso y conecta tus aceitunas con recompensas reales del territorio.</p></div>
-      <Link href="/mi-campo" className={styles.fieldLink}>🌱 Ver mi campo <span>→</span></Link>
+      <Link href="/mi-campo" className={styles.fieldLink}><MiOlivoIcon name="field" /> Ver mi campo <span>→</span></Link>
     </header>
 
     <nav className={styles.tabs} aria-label="Secciones de Mi Olivo">
@@ -269,10 +306,10 @@ export function MiOlivoProgressionDashboard() {
           <small>{data.progress.current} / {data.progress.target} XP</small>
         </div>
         <div className={styles.sceneStats}>
-          <div><span>🫒</span><strong>{data.balance}</strong><small>Aceitunas</small><em>+{data.weekly.earned} esta semana</em></div>
-          <div><span>▥</span><strong>{data.today.earned}</strong><small>Hoy</small><em>de {data.today.cap}</em></div>
-          <div><span>🌱</span><strong>{data.rhythm.active_weeks || 0}</strong><small>Semanas</small><em>{data.rhythm.label}</em></div>
-          <div><span>🏆</span><strong>{data.achievements.filter((item) => item.unlocked).length}</strong><small>Logros</small><em>Conseguidos</em></div>
+          <div><span><MiOlivoIcon name="olive" /></span><strong>{data.balance}</strong><small>Aceitunas</small><em>+{data.weekly.earned} esta semana</em></div>
+          <div><span><MiOlivoIcon name="activity" /></span><strong>{data.today.earned}</strong><small>Hoy</small><em>de {data.today.cap}</em></div>
+          <div><span><MiOlivoIcon name="sprout" /></span><strong>{data.rhythm.active_weeks || 0}</strong><small>Semanas</small><em>{data.rhythm.label}</em></div>
+          <div><span><MiOlivoIcon name="trophy" /></span><strong>{data.achievements.filter((item) => item.unlocked).length}</strong><small>Logros</small><em>Conseguidos</em></div>
         </div>
       </div>
 
@@ -327,12 +364,12 @@ export function MiOlivoProgressionDashboard() {
       <div className={styles.todayCard}><span className={styles.eyebrow}>HOY</span><strong>{data.today.earned}/{data.today.cap}</strong><span>{data.today.remaining > 0 ? `Aún puedes sumar ${data.today.remaining} aceitunas.` : 'Límite diario alcanzado.'}</span></div>
     </section>
 
-    <section className={styles.quoteCard}><span>❧</span><blockquote>“Cuidar un olivo es cuidar también de lo que viene.”</blockquote></section>
+    <section className={styles.quoteCard}><span><MiOlivoIcon name="leaf" /></span><blockquote>“Cuidar un olivo es cuidar también de lo que viene.”</blockquote></section>
 
     <section className={styles.notice}><strong>Ritmo del cuaderno · {data.rhythm.label}</strong><span>{data.rhythm.message}</span></section>
     {!data.enabled ? <section className={styles.notice}><strong>Mi Olivo está pausado.</strong><span>Tu historial se conserva, pero no se reconocen nuevos hitos mientras esté pausado.</span></section> : null}
 
-    <section id="misiones" className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>CÓMO CRECE</span><h2>Acciones que cuidan tu progreso</h2></div><span>Acciones útiles</span></div><div className={styles.cardGrid}>{data.earning_actions.map((action) => <article key={action.id} className={styles.earningCard}><span className={styles.earningIcon}>🫒</span><div><h3>{action.title}</h3><p>{action.detail}</p></div><span className={styles.reward}>{action.reward_label}</span></article>)}</div></section>
+    <section id="misiones" className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>CÓMO CRECE</span><h2>Acciones que cuidan tu progreso</h2></div><span>Acciones útiles</span></div><div className={styles.cardGrid}>{data.earning_actions.map((action) => <article key={action.id} className={styles.earningCard}><span className={styles.earningIcon}><MiOlivoIcon name="olive" /></span><div><h3>{action.title}</h3><p>{action.detail}</p></div><span className={styles.reward}>{action.reward_label}</span></article>)}</div></section>
 
     <section className={styles.section}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>MISIONES</span><h2>Pequeños pasos útiles</h2></div><span>{completedMissions}/{data.missions.length}</span></div><div className={styles.cardGrid}>{data.missions.map((mission) => <article key={mission.id} className={`${styles.missionCard} ${mission.completed ? styles.done : ''}`}><div className={styles.cardIcon}>{mission.completed ? '✓' : '○'}</div><div><h3>{mission.title}</h3><p>{mission.detail}</p>{mission.progress_target > 1 ? <><div className={styles.progressLabel}><span>Progreso</span><span>{mission.progress_current}/{mission.progress_target}</span></div><div className={styles.progressTrack}><span style={{ width: progressWidth((mission.progress_current / mission.progress_target) * 100) }} /></div></> : null}</div><span className={styles.reward}>+{mission.reward}</span></article>)}</div></section>
 
