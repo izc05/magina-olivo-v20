@@ -8,6 +8,7 @@ import {
   weatherSafetySummary,
   type AdventureWeatherCondition,
   type AdventureWeatherDayPhase,
+  type AdventureWeatherIntensity,
   type AdventureWeatherState,
 } from '../../../lib/weather-source';
 import styles from './adventure-weather.module.css';
@@ -31,6 +32,18 @@ const phaseClass: Record<AdventureWeatherDayPhase, string> = {
   night: styles.night,
 };
 
+const labPresets: Array<{ label: string; condition: AdventureWeatherCondition; intensity: AdventureWeatherIntensity; phase?: AdventureWeatherDayPhase }> = [
+  { label: 'Sol', condition: 'clear', intensity: 0 },
+  { label: 'Nublado', condition: 'cloudy', intensity: 2 },
+  { label: 'Lluvia suave', condition: 'rain', intensity: 1 },
+  { label: 'Lluvia intensa', condition: 'rain', intensity: 3 },
+  { label: 'Tormenta', condition: 'storm', intensity: 3 },
+  { label: 'Niebla', condition: 'fog', intensity: 2 },
+  { label: 'Nieve', condition: 'snow', intensity: 2 },
+  { label: 'Viento', condition: 'wind', intensity: 2 },
+  { label: 'Noche', condition: 'clear', intensity: 0, phase: 'night' },
+];
+
 function temperature(value: number | null) {
   return value == null ? '—' : `${Math.round(value)} °C`;
 }
@@ -44,14 +57,43 @@ function permissionDenied(cause: unknown) {
   return Number((cause as { code?: unknown }).code) === 1;
 }
 
+function simulatedWeather(condition: AdventureWeatherCondition, intensity: AdventureWeatherIntensity, phase: AdventureWeatherDayPhase = 'day'): AdventureWeatherState {
+  return {
+    provider: 'Simulation',
+    condition,
+    intensity,
+    temperatureC: null,
+    feelsLikeC: null,
+    windSpeedKmh: condition === 'wind' ? 45 : null,
+    windDirectionDeg: condition === 'wind' ? 225 : null,
+    windGustsKmh: condition === 'wind' ? 65 : null,
+    precipitationMm: condition === 'rain' || condition === 'storm' ? intensity === 3 ? 7 : 0.8 : null,
+    visibilityM: condition === 'fog' ? 450 : null,
+    cloudCoverPercent: condition === 'cloudy' || condition === 'rain' || condition === 'storm' ? 95 : null,
+    weatherCode: null,
+    dayPhase: phase,
+    observedAt: null,
+    expiresAt: null,
+    officialAlert: null,
+    stale: false,
+  };
+}
+
 export function AdventureWeather({ routeName }: { routeName: string }) {
   const [weather, setWeather] = useState<AdventureWeatherState | null>(null);
   const [active, setActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [labEnabled, setLabEnabled] = useState(false);
+  const [labMode, setLabMode] = useState(false);
   const mounted = useRef(true);
 
-  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const localHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+    setLabEnabled(localHost && params.get('weatherLab') === '1');
+    return () => { mounted.current = false; };
+  }, []);
 
   async function refreshWeather(background = false) {
     if (!background) setBusy(true);
@@ -61,6 +103,7 @@ export function AdventureWeather({ routeName }: { routeName: string }) {
       const result = await loadCurrentWeather(coordinates.latitude, coordinates.longitude);
       if (!mounted.current) return;
       setWeather(result.weather);
+      setLabMode(false);
       setActive(true);
     } catch (cause) {
       if (!mounted.current) return;
@@ -75,12 +118,19 @@ export function AdventureWeather({ routeName }: { routeName: string }) {
   }
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || labMode) return;
     const timer = window.setInterval(() => { void refreshWeather(true); }, REFRESH_MS);
     return () => window.clearInterval(timer);
   // El temporizador solo depende de que el usuario haya activado explícitamente el clima.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, [active, labMode]);
+
+  function applyLab(condition: AdventureWeatherCondition, intensity: AdventureWeatherIntensity, phase: AdventureWeatherDayPhase = 'day') {
+    setActive(false);
+    setLabMode(true);
+    setMessage(null);
+    setWeather(simulatedWeather(condition, intensity, phase));
+  }
 
   return <>
     {weather ? <div
@@ -96,7 +146,7 @@ export function AdventureWeather({ routeName }: { routeName: string }) {
           <span className={styles.eyebrow}>WEATHER ENGINE · GPS OPCIONAL</span>
           <h2 id="adventure-weather-title">Clima local</h2>
         </div>
-        {weather ? <span className={styles.live}>● AUTO</span> : <span className={styles.off}>○ OFF</span>}
+        {weather ? <span className={labMode ? styles.labPill : styles.live}>{labMode ? '● LAB' : '● AUTO'}</span> : <span className={styles.off}>○ OFF</span>}
       </div>
 
       {weather ? <div className={styles.liveGrid}>
@@ -112,15 +162,20 @@ export function AdventureWeather({ routeName }: { routeName: string }) {
 
       {weather ? <div className={`${styles.advice} ${weather.officialAlert || weather.condition === 'storm' || weather.intensity >= 3 ? styles.alert : ''}`}>
         <span>!</span><p>{weatherSafetySummary(weather)}</p>
-        {weather.stale ? <small>Última lectura disponible · actualización en directo temporalmente no disponible.</small> : <small>Actualización automática aproximada cada 10 minutos.</small>}
+        {weather.provider === 'Simulation' ? <small>Solo laboratorio visual local · no usar para decisiones de seguridad.</small> : weather.stale ? <small>Última lectura disponible · actualización en directo temporalmente no disponible.</small> : <small>Actualización automática aproximada cada 10 minutos.</small>}
       </div> : null}
 
       <div className={styles.actions}>
         <button type="button" onClick={() => void refreshWeather(false)} disabled={busy}>
-          {busy ? 'Actualizando clima…' : weather ? 'Actualizar ahora' : 'Activar clima local'}
+          {busy ? 'Actualizando clima…' : weather && !labMode ? 'Actualizar ahora' : 'Activar clima local'}
         </button>
-        {weather ? <button type="button" className={styles.secondary} onClick={() => { setWeather(null); setActive(false); setMessage(null); }}>Desactivar efectos</button> : null}
+        {weather ? <button type="button" className={styles.secondary} onClick={() => { setWeather(null); setActive(false); setLabMode(false); setMessage(null); }}>Desactivar efectos</button> : null}
       </div>
+
+      {labEnabled ? <div className={styles.lab}>
+        <div><strong>Laboratorio de clima</strong><small>Solo disponible en entorno local. Simula el renderer sin consultar GPS ni APIs.</small></div>
+        <div className={styles.labButtons}>{labPresets.map((preset) => <button key={preset.label} type="button" onClick={() => applyLab(preset.condition, preset.intensity, preset.phase)}>{preset.label}</button>)}</div>
+      </div> : null}
       {message ? <p className={styles.message} role="status">{message}</p> : null}
     </section>
   </>;
