@@ -202,7 +202,26 @@
 @media(max-width:780px){
   .root{background:linear-gradient(180deg,#f4f1e7 0%,#faf8f1 48%,#f1ecdf 100%)}
   .root :global(main > section:first-child){min-height:620px;border-radius:26px}
-  .root :global(main > nav:first-of-type){display:none}
+  .root :global(main > nav:first-of-type){
+    display:flex;
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+    gap:8px;
+    margin-top:-14px;
+    padding:8px;
+    overflow-x:auto;
+    overscroll-behavior-inline:contain;
+    scroll-snap-type:x proximity;
+    scrollbar-width:none;
+    border-radius:20px;
+  }
+  .root :global(main > nav:first-of-type::-webkit-scrollbar){display:none}
+  .root :global(main > nav:first-of-type a){
+    flex:0 0 148px;
+    min-height:56px;
+    scroll-snap-align:start;
+  }
   .root :global(#mi-aventura){margin-top:18px;border-radius:24px}
   .root :global(#album){margin-top:12px;padding:28px 14px;border-radius:24px}
   .root :global(main > section:last-of-type){margin-top:44px;padding:28px 18px 34px;border-radius:24px}
