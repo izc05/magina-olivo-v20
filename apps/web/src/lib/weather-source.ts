@@ -5,7 +5,7 @@ export type AdventureWeatherIntensity = 0 | 1 | 2 | 3;
 export type AdventureWeatherDayPhase = 'day' | 'golden_hour' | 'dusk' | 'night';
 
 export type AdventureWeatherState = {
-  provider: 'Open-Meteo' | 'AEMET OpenData';
+  provider: 'Open-Meteo' | 'AEMET OpenData' | 'Simulation';
   condition: AdventureWeatherCondition;
   intensity: AdventureWeatherIntensity;
   temperatureC: number | null;
@@ -72,6 +72,7 @@ export function weatherConditionLabel(weather: AdventureWeatherState) {
 }
 
 export function weatherSafetySummary(weather: AdventureWeatherState) {
+  if (weather.provider === 'Simulation') return 'Simulación visual local: no representa condiciones meteorológicas reales.';
   if (weather.officialAlert) return `Aviso oficial ${weather.officialAlert.level}: ${weather.officialAlert.title}`;
   if (weather.condition === 'storm') return 'Condiciones adversas: revisa avisos oficiales y valora posponer la salida.';
   if (weather.condition === 'fog' && weather.intensity >= 2) return 'Visibilidad reducida: extrema la orientación y no abandones el trazado validado.';
