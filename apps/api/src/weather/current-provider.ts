@@ -1,6 +1,8 @@
 import {
+  fetchAemetOfficialAlertForCoordinates,
   fetchOpenMeteoCurrentWeather,
   validateWeatherCoordinates,
+  type WeatherOfficialAlert,
   type WeatherState,
 } from '@magina/weather';
 
@@ -26,6 +28,14 @@ function privacyCacheKey(latitude: number, longitude: number) {
   return `${latitude.toFixed(3)},${longitude.toFixed(3)}`;
 }
 
+async function optionalOfficialAlert(latitude: number, longitude: number): Promise<WeatherOfficialAlert> {
+  try {
+    return await fetchAemetOfficialAlertForCoordinates(latitude, longitude, '61');
+  } catch {
+    return null;
+  }
+}
+
 export class OpenMeteoCurrentWeatherProvider implements CurrentWeatherProvider {
   private readonly cache = new Map<string, CacheEntry>();
 
@@ -44,9 +54,12 @@ export class OpenMeteoCurrentWeatherProvider implements CurrentWeatherProvider {
     }
 
     try {
-      const weather = await fetchOpenMeteoCurrentWeather(coordinates.latitude, coordinates.longitude);
+      const [weather, officialAlert] = await Promise.all([
+        fetchOpenMeteoCurrentWeather(coordinates.latitude, coordinates.longitude),
+        optionalOfficialAlert(coordinates.latitude, coordinates.longitude),
+      ]);
       const entry: CacheEntry = {
-        weather: { ...weather, stale: false },
+        weather: { ...weather, officialAlert, stale: false },
         fetchedAt: now,
         expiresAt: new Date(now.getTime() + CURRENT_WEATHER_TTL_MS),
       };
