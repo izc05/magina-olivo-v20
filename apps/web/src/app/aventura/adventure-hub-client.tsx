@@ -154,9 +154,10 @@ export function AdventureHubClient() {
 
     <nav className={styles.quickNav} aria-label="Mágina Aventura">
       <a href="#aventuras"><span>⌁</span><strong>Rutas</strong><small>Sal a explorar</small></a>
-      <a href="#album"><span>✦</span><strong>Colecciones</strong><small>Completa el álbum</small></a>
+      <Link href="/aventura/en-curso"><span>◉</span><strong>Aventura en curso</strong><small>Mapa, GPS y retos</small></Link>
       <a href="#mi-aventura"><span>△</span><strong>Mi aventura</strong><small>XP y progreso</small></a>
-      <Link href="/perfil"><span>◎</span><strong>Pasaporte</strong><small>Tu huella en Mágina</small></Link>
+      <a href="#album"><span>✦</span><strong>Colecciones</strong><small>Completa el álbum</small></a>
+      <a href="#comunidad"><span>◎</span><strong>Comunidad</strong><small>Experiencias y avisos</small></a>
     </nav>
 
     {profile ? <section id="mi-aventura" className={styles.profilePanel} aria-labelledby="explorer-profile-title">
