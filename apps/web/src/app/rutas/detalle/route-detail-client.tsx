@@ -81,6 +81,10 @@ export function RouteDetailClient() {
         </div>
       </div>
       <div className={adventureStyles.safetyStrip}><span>!</span><p>La aventura añade exploración y colección, pero nunca sustituye la señalización, la navegación técnica ni los avisos oficiales.</p></div>
+      <div className={adventureStyles.prepareRow}>
+        <div><strong>Clima + comprobación previa</strong><small>Revisa condiciones de tu posición y notas de seguridad antes de arrancar.</small></div>
+        <Link href={`/aventura/preparar?slug=${encodeURIComponent(slug)}`}>Preparar aventura →</Link>
+      </div>
       <div className={adventureStyles.liveStack}>
         <div className={adventureStyles.recorderFrame}><RouteActivityRecorder routeId={route.id} slug={slug} /></div>
         <div className={adventureStyles.gameFrame}><RouteAdventurePanel routeId={route.id} slug={slug} /></div>
