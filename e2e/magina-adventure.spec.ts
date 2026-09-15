@@ -291,6 +291,7 @@ test('Aventura en curso exposes one live hiking HUD fed by the active GPS record
   const nextCheckpoint = page.getByTestId('next-checkpoint-card');
   await expect(nextCheckpoint).toContainText('Mirador del olivar');
   await expect(page.getByRole('button', { name: 'Centrarme' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Map' }).getByRole('button', { name: 'Tu posición · precisión ±7 m' })).toBeVisible();
   await expect(page.getByText('Mantén el track validado como referencia principal.')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
