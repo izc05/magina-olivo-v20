@@ -94,11 +94,11 @@ test('Mi Olivo redemptions prioritizes pickup-ready reservations and links to th
   await expect(pendingCards.nth(0).getByText(/Quedan \d+ (hora|horas|día|días) para recogerlo\./)).toBeVisible();
   await expect(pendingCards.nth(0).getByRole('img', { name: 'Código QR firmado de recogida' })).toBeVisible();
   await expect(pendingCards.nth(0).getByRole('link', { name: 'Ver ficha, dirección y contacto de la almazara →' }))
-    .toHaveAttribute('href', '/almazaras?slug=cooperativa-bedmar-e2e');
+    .toHaveAttribute('href', '/almazaras/?slug=cooperativa-bedmar-e2e');
 
   const history = page.getByRole('region', { name: 'Historial' });
   await expect(history.getByRole('heading', { name: 'Botella cancelada' })).toBeVisible();
   await expect(history.getByText('Las aceitunas de esta reserva se devuelven automáticamente a tu saldo.')).toBeVisible();
   await expect(history.getByRole('link', { name: 'Volver a ver la almazara →' }))
-    .toHaveAttribute('href', '/almazaras?slug=cooperativa-historica-e2e');
+    .toHaveAttribute('href', '/almazaras/?slug=cooperativa-historica-e2e');
 });
