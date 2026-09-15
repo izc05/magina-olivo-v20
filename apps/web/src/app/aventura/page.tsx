@@ -4,6 +4,7 @@ import { AdventureExperienceNav } from './adventure-experience-nav';
 import { AdventureHubClient } from './adventure-hub-client';
 import { AdventureResumeBanner } from './adventure-resume-banner';
 import { AdventureTerritoryBoard } from './adventure-territory-board';
+import finish from './adventure-finish.module.css';
 import styles from './adventure.module.css';
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default function AdventurePage() {
-  return <div className={styles.page}>
+  return <div className={`${styles.page} ${finish.root}`}>
     <AdventureExperienceNav />
     <AdventureHubClient />
     <AdventureResumeBanner />
