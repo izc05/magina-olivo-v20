@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ApiRequestError } from '../../../lib/api-client';
+import { coordinateDistanceM, emitRouteLiveTelemetry } from '../../../lib/route-live-telemetry';
 import {
   appendRouteActivityPoints,
   finishRouteActivity,
@@ -26,16 +27,6 @@ function formatDuration(seconds: number) {
   const s = safe % 60;
   if (h) return `${h} h ${m.toString().padStart(2, '0')} min`;
   return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function haversineMetres(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {
-  const rad = Math.PI / 180;
-  const lat1 = a.latitude * rad;
-  const lat2 = b.latitude * rad;
-  const dLat = (b.latitude - a.latitude) * rad;
-  const dLon = (b.longitude - a.longitude) * rad;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
 function errorMessage(error: unknown) {
@@ -62,6 +53,8 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
 
   const watchIdRef = useRef<number | null>(null);
   const sequenceCounterRef = useRef(0);
+  const liveDistanceRef = useRef(0);
+  const liveElevationRef = useRef(0);
   const lastPointRef = useRef<{
     latitude: number;
     longitude: number;
@@ -72,11 +65,34 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
   } | null>(null);
   const sendChainRef = useRef<Promise<unknown>>(Promise.resolve());
 
-  function stopWatch() {
+  function publish(
+    activityId: string | null,
+    activityStatus: 'recording' | 'paused' | 'completed' | 'idle',
+    nextGpsState: 'idle' | 'searching' | 'tracking' | 'error',
+    point = lastPointRef.current,
+  ) {
+    emitRouteLiveTelemetry({
+      activityId,
+      activityStatus,
+      gpsState: nextGpsState,
+      latitude: point?.latitude ?? null,
+      longitude: point?.longitude ?? null,
+      accuracyM: point?.accuracy ?? null,
+      liveDistanceM: liveDistanceRef.current,
+      liveElevationM: liveElevationRef.current,
+      timestamp: point?.timestamp ?? null,
+    });
+  }
+
+  function stopWatch(
+    activityStatus: 'paused' | 'completed' | 'idle' = 'idle',
+    activityId: string | null = null,
+  ) {
     if (watchIdRef.current !== null && 'geolocation' in navigator) navigator.geolocation.clearWatch(watchIdRef.current);
     watchIdRef.current = null;
-    lastPointRef.current = null;
     setGpsState('idle');
+    publish(activityId, activityStatus, 'idle');
+    lastPointRef.current = null;
   }
 
   function queuePoint(activityId: string, point: RouteActivityPointInput) {
@@ -84,6 +100,7 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
       .then(() => appendRouteActivityPoints(activityId, [point]))
       .catch((error) => {
         setGpsState('error');
+        publish(activityId, 'recording', 'error');
         setMessage(errorMessage(error));
       });
   }
@@ -91,11 +108,13 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
   function beginWatch(activityId: string) {
     if (!('geolocation' in navigator)) {
       setGpsState('error');
+      publish(activityId, 'recording', 'error');
       setMessage('Este dispositivo o navegador no ofrece geolocalización.');
       return;
     }
     if (watchIdRef.current !== null) return;
     setGpsState('searching');
+    publish(activityId, 'recording', 'searching', null);
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const now = Number.isFinite(position.timestamp) ? position.timestamp : Date.now();
@@ -111,18 +130,24 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
         const previous = lastPointRef.current;
         if (previous) {
           const deltaSeconds = (current.timestamp - previous.timestamp) / 1000;
-          const leg = haversineMetres(previous, current);
+          const leg = coordinateDistanceM(previous, current);
           if (
             deltaSeconds > 0 && deltaSeconds <= 120 && leg >= 2 && leg / deltaSeconds <= 15
             && current.accuracy <= 100 && previous.accuracy <= 100
-          ) setLiveDistanceM((value) => value + leg);
+          ) {
+            liveDistanceRef.current += leg;
+            setLiveDistanceM(liveDistanceRef.current);
+          }
           if (
             current.altitude !== null && previous.altitude !== null
             && current.altitudeAccuracy !== null && previous.altitudeAccuracy !== null
             && current.altitudeAccuracy <= 50 && previous.altitudeAccuracy <= 50
           ) {
             const gain = current.altitude - previous.altitude;
-            if (gain > 3 && gain <= 50) setLiveElevationM((value) => value + gain);
+            if (gain > 3 && gain <= 50) {
+              liveElevationRef.current += gain;
+              setLiveElevationM(liveElevationRef.current);
+            }
           }
         }
         lastPointRef.current = current;
@@ -138,9 +163,11 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
           vertical_accuracy_m: coords.altitudeAccuracy,
         });
         setGpsState('tracking');
+        publish(activityId, 'recording', 'tracking', current);
       },
       () => {
         setGpsState('error');
+        publish(activityId, 'recording', 'error');
         setMessage('No se puede leer el GPS. Revisa el permiso de ubicación y que el móvil tenga señal suficiente.');
       },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 },
@@ -154,7 +181,12 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
         if (cancelled || !current) return;
         if (current.route_id === routeId) {
           setActivity(current);
+          liveDistanceRef.current = current.status === 'completed' ? current.distance_m : 0;
+          liveElevationRef.current = current.status === 'completed' ? (current.elevation_gain_m ?? 0) : 0;
+          setLiveDistanceM(liveDistanceRef.current);
+          setLiveElevationM(liveElevationRef.current);
           if (current.status === 'recording') beginWatch(current.id);
+          else publish(current.id, current.status, 'idle', null);
         } else {
           setOtherActivity(current);
         }
@@ -164,7 +196,7 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
       });
     return () => {
       cancelled = true;
-      stopWatch();
+      stopWatch('idle', null);
     };
     // The route id is the lifecycle boundary for a foreground recording panel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -195,6 +227,8 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
       setOtherActivity(null);
       setAuthRequired(false);
       setSessionSeconds(0);
+      liveDistanceRef.current = 0;
+      liveElevationRef.current = 0;
       setLiveDistanceM(0);
       setLiveElevationM(0);
       beginWatch(result.activity.id);
@@ -208,11 +242,12 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
   async function pause() {
     if (!activity) return;
     setBusy(true); setMessage(null);
-    stopWatch();
+    stopWatch('paused', activity.id);
     try {
       await sendChainRef.current;
       const result = await pauseRouteActivity(activity.id);
       setActivity(result.activity);
+      publish(result.activity.id, 'paused', 'idle', null);
       setMessage('Actividad en pausa. No se están enviando posiciones.');
     } catch (error) {
       setMessage(errorMessage(error));
@@ -235,11 +270,14 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
   async function finish() {
     if (!activity) return;
     setBusy(true); setMessage(null);
-    stopWatch();
+    stopWatch('completed', activity.id);
     try {
       await sendChainRef.current;
       const result = await finishRouteActivity(activity.id);
       setActivity(result.activity);
+      liveDistanceRef.current = result.activity.distance_m;
+      liveElevationRef.current = result.activity.elevation_gain_m ?? 0;
+      publish(result.activity.id, 'completed', 'idle', null);
       setMessage('Recorrido guardado en tu perfil. Puedes exportarlo a GPX o borrarlo cuando quieras.');
     } catch (error) {
       setMessage(errorMessage(error));
