@@ -10,25 +10,26 @@
 
 Es el gran gancho de adquisición y uso recurrente de Mágina Olivo.
 
-Inspiración funcional: exploración geolocalizada tipo juego de mundo real, con mapa vivo, GPS, descubrimientos, puntos cercanos, colecciones, progreso y recompensas. Debe tener identidad propia de Sierra Mágina y no copiar interfaz, personajes, marcas ni recursos visuales de terceros.
+**Definición oficial:** Mágina Aventura es un producto de **senderismo gamificado**. No es un modo de exploración libre por cualquier punto del territorio. La inspiración tipo juego geolocalizado se limita a la experiencia de GPS, proximidad, descubrimientos, checkpoints, colecciones, progreso y recompensas, siempre sobre rutas de senderismo y aventuras asociadas a esas rutas.
 
 Debe priorizar:
-- mapa vivo como pantalla principal durante la exploración;
-- posición GPS del usuario;
-- puntos de interés y descubrimientos alrededor;
-- rutas y aventuras geolocalizadas;
-- checkpoints por proximidad;
-- retos contextuales;
-- colecciones territoriales;
-- XP, niveles, km y porcentaje explorado;
-- insignias;
-- actividad grabada;
+- catálogo de rutas reales;
+- ficha de sendero con distancia, desnivel, dificultad, duración, GPX, mapa, seguridad y meteorología;
+- preparación antes de iniciar la ruta;
+- mapa GPS como protagonista durante la marcha;
+- posición del usuario y track recorrido/pendiente;
+- checkpoints por proximidad dentro del recorrido;
+- descubrimientos de flora, fauna, patrimonio, olivar, tradiciones y paisaje;
+- retos contextuales ligados a puntos de la ruta;
+- XP, niveles, kilómetros y porcentaje explorado;
+- insignias y colecciones;
+- grabación de actividad;
 - seguridad y avisos por encima de la gamificación;
 - funcionamiento offline razonable;
-- final de aventura espectacular;
+- final de ruta/aventura espectacular;
 - integración directa con Mi Olivo.
 
-La sensación buscada es: abrir la app y tener ganas de salir a descubrir Sierra Mágina.
+La sensación buscada es: **elegir una ruta, salir a caminar por Sierra Mágina y convertir el senderismo real en una aventura de descubrimiento y progreso**.
 
 ### P0-B — Mi Olivo — SEGUNDO GRAN PROTAGONISTA
 
@@ -40,13 +41,13 @@ Debe priorizar:
 - XP y aceitunas;
 - memoria de actividad;
 - colecciones e insignias;
-- conexión con lo descubierto en Mágina Aventura;
+- conexión con lo descubierto durante las rutas de Mágina Aventura;
 - recompensas reales de AOVE;
 - reserva y QR de canje;
 - escenas especiales de subida de nivel;
 - versión premium móvil y escritorio.
 
-Mágina Aventura genera actividad; Mi Olivo la transforma en progreso, apego y recompensa.
+Mágina Aventura genera actividad mediante senderismo real; Mi Olivo la transforma en progreso, apego y recompensa.
 
 ### P0-C — Mi Campo — TERCER PILAR ESTRATÉGICO
 
@@ -91,28 +92,28 @@ Aporta territorio, lugares, patrimonio, rutas, eventos y progreso municipal a M�
 Aporta AOVE, experiencias y recompensas reales a Mi Olivo.
 
 ### Comunidad
-Aporta fotos, reseñas, actividad y contenido social moderado a Aventura y territorio.
+Aporta fotos, reseñas, actividad y contenido social moderado a las rutas y al territorio.
 
 ### Noticias / Agenda
 Aporta contexto vivo, eventos y avisos a Inicio, Pueblos y Mi Campo.
 
 ### Empresas / Experiencias
-Aportan servicios, actividades y posibles recompensas/retos territoriales.
+Aportan servicios, actividades y posibles recompensas o contenidos asociados a rutas y territorio.
 
 ## 3. Nueva jerarquía de Inicio
 
 Inicio no debe presentar ocho módulos con el mismo peso.
 
 Orden visual recomendado:
-1. Mágina Aventura / continuar exploración.
+1. Mágina Aventura / elegir o continuar una ruta.
 2. Mi Olivo / progreso actual.
 3. Mi Campo para usuarios agricultores.
-4. Hoy en Mágina: tiempo, avisos y actividad.
-5. Contenido secundario: pueblos, almazaras, noticias, comunidad, experiencias.
+4. Hoy en Mágina: tiempo, avisos y estado de rutas.
+5. Contenido secundario: pueblos, almazaras, noticias, comunidad y experiencias.
 
-Para un visitante nuevo, el CTA principal debe conducir a explorar Mágina Aventura.
+Para un visitante nuevo, el CTA principal debe conducir a **descubrir rutas de senderismo**.
 
-Para un usuario registrado, Inicio debe priorizar la continuidad: aventura pendiente, progreso de Mi Olivo y, si aplica, situación de Mi Campo.
+Para un usuario registrado, Inicio debe priorizar la continuidad: ruta guardada o en curso, progreso de Mi Olivo y, si aplica, situación de Mi Campo.
 
 ## 4. Nueva jerarquía móvil
 
@@ -132,29 +133,31 @@ Orden de producción visual:
 
 1. Sistema base y navegación.
 2. Mágina Aventura — Home móvil.
-3. Mágina Aventura — mapa/exploración libre.
-4. Aventura en curso — GPS/checkpoints.
-5. Descubrimiento cercano / checkpoint.
-6. Reto geolocalizado.
-7. Final de aventura.
-8. Mi Aventura — progreso, mapa explorado, colecciones.
-9. Mi Olivo Premium — móvil.
-10. Mi Olivo Premium — escritorio.
-11. Evolución y subida de nivel del olivo.
-12. Recompensas AOVE → reserva → QR → canje.
-13. Mi Campo — dashboard.
-14. Mi Campo — finca/mapa.
-15. Mi Campo — registro rápido/cuaderno.
-16. Mi Campo — campaña/producción.
-17. Inicio V20 rediseñado alrededor de los tres pilares.
-18. Módulos secundarios.
-19. Admin y estados restantes.
+3. Catálogo de rutas.
+4. Ficha de ruta.
+5. Preparación antes de salir.
+6. Aventura en curso — GPS/track/checkpoints.
+7. Descubrimiento / checkpoint.
+8. Reto ligado a la ruta.
+9. Final de aventura.
+10. Mi Aventura — progreso, kilómetros, rutas, colecciones.
+11. Mi Olivo Premium — móvil.
+12. Mi Olivo Premium — escritorio.
+13. Evolución y subida de nivel del olivo.
+14. Recompensas AOVE → reserva → QR → canje.
+15. Mi Campo — dashboard.
+16. Mi Campo — finca/mapa.
+17. Mi Campo — registro rápido/cuaderno.
+18. Mi Campo — campaña/producción.
+19. Inicio V20 rediseñado alrededor de los tres pilares.
+20. Módulos secundarios.
+21. Admin y estados restantes.
 
 ## 6. Bucle principal del producto
 
 El bucle prioritario de V20 será:
 
-`Abrir app → ver mapa/aventura → salir al territorio → descubrir/checkpoint → ganar XP/aceitunas/colección → evolucionar Mi Olivo → desbloquear recompensa → canjear AOVE mediante QR → volver a explorar`
+`Elegir ruta → revisar ficha y seguridad → descargar/preparar → iniciar senderismo → seguir GPS/track → descubrir checkpoints y retos → terminar ruta → ganar XP/aceitunas/colección → evolucionar Mi Olivo → desbloquear recompensa → canjear AOVE mediante QR → volver a elegir otra ruta`
 
 Para agricultor se añade un segundo bucle:
 
@@ -164,7 +167,7 @@ Para agricultor se añade un segundo bucle:
 
 No se debe dedicar una fase grande de desarrollo a módulos secundarios mientras no estén cerrados de extremo a extremo:
 
-- Mágina Aventura / Mi Aventura;
+- Mágina Aventura / Mi Aventura como senderismo gamificado;
 - Mi Olivo;
 - Mi Campo núcleo.
 
@@ -172,7 +175,7 @@ El primer vertical territorial debe completarse en Bedmar antes de extender masi
 
 ## 8. Identidad frente a referencias externas
 
-Se puede estudiar la mecánica de productos de exploración geolocalizada para entender patrones de UX: mapa vivo, proximidad, descubrimiento, colección, progresión y retorno.
+Se pueden estudiar productos de exploración geolocalizada para entender patrones de UX como proximidad, descubrimiento, colección, progresión y retorno, pero la experiencia de Mágina Aventura estará centrada en **senderismo real y rutas verificadas**.
 
 Mágina Olivo debe usar:
 - identidad visual propia;
