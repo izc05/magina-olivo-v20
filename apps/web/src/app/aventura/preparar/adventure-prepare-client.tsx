@@ -39,6 +39,11 @@ function wind(value: number | null) {
   return value == null ? '—' : `${Math.round(value)} km/h`;
 }
 
+function permissionDenied(cause: unknown) {
+  if (!cause || typeof cause !== 'object' || !('code' in cause)) return false;
+  return Number((cause as { code?: unknown }).code) === 1;
+}
+
 export function AdventurePrepareClient() {
   const [slug, setSlug] = useState<string | null>(null);
   const [detail, setDetail] = useState<PublicRouteDetail | null>(null);
@@ -79,7 +84,7 @@ export function AdventurePrepareClient() {
       setWeather(result.weather);
     } catch (cause) {
       setWeather(null);
-      if (cause instanceof GeolocationPositionError && cause.code === cause.PERMISSION_DENIED) {
+      if (permissionDenied(cause)) {
         setWeatherError('No has dado permiso de ubicación. Puedes iniciar la aventura igualmente y consultar avisos oficiales por tu cuenta.');
       } else {
         setWeatherError('No hemos podido obtener el clima local. La ruta sigue disponible, pero revisa la previsión y los avisos oficiales antes de salir.');
