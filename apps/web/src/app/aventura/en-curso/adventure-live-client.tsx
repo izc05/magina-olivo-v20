@@ -3,12 +3,28 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ApiRequestError } from '../../../lib/api-client';
-import { loadPublicRoute, type PublicRouteDetail } from '../../../lib/public-routes-source';
+import {
+  loadPublicRoute,
+  loadPublicRouteAdventure,
+  type PublicRouteAdventure,
+  type PublicRouteDetail,
+  type RouteAdventureCheckpoint,
+} from '../../../lib/public-routes-source';
 import { loadActiveRouteActivity } from '../../../lib/route-activity-source';
 import { RouteActivityRecorder } from '../../rutas/detalle/route-activity-recorder';
 import { RouteAdventurePanel } from '../../rutas/detalle/route-adventure-panel';
 import { RouteMap } from '../../rutas/detalle/route-map';
 import styles from './live.module.css';
+
+type GpsTelemetry = {
+  status: 'idle' | 'searching' | 'tracking' | 'error';
+  latitude: number | null;
+  longitude: number | null;
+  accuracy: number | null;
+  timestamp: number | null;
+};
+
+type AdventureProgressDetail = { unlockedCheckpointIds: string[] };
 
 function distance(value: number | null) {
   return value == null ? '—' : `${(value / 1000).toFixed(1)} km`;
@@ -29,9 +45,43 @@ function difficulty(value: PublicRouteDetail['route']['difficulty']) {
   return 'Sin clasificar';
 }
 
+function gpsStatus(value: GpsTelemetry['status']) {
+  if (value === 'tracking') return 'GPS activo';
+  if (value === 'searching') return 'Buscando señal…';
+  if (value === 'error') return 'GPS sin señal';
+  return 'GPS detenido';
+}
+
+function metres(value: number | null) {
+  if (value == null) return '—';
+  if (value >= 1000) return `${(value / 1000).toFixed(2)} km`;
+  return `${Math.round(value)} m`;
+}
+
+function haversineMetres(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {
+  const rad = Math.PI / 180;
+  const lat1 = a.latitude * rad;
+  const lat2 = b.latitude * rad;
+  const dLat = (b.latitude - a.latitude) * rad;
+  const dLon = (b.longitude - a.longitude) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function checkpointPosition(checkpoint: RouteAdventureCheckpoint | null) {
+  if (!checkpoint) return null;
+  const latitude = Number(checkpoint.latitude);
+  const longitude = Number(checkpoint.longitude);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : null;
+}
+
 export function AdventureLiveClient() {
   const [slug, setSlug] = useState<string | null>(null);
   const [detail, setDetail] = useState<PublicRouteDetail | null>(null);
+  const [adventure, setAdventure] = useState<PublicRouteAdventure | null>(null);
+  const [unlockedCheckpointIds, setUnlockedCheckpointIds] = useState<string[]>([]);
+  const [gps, setGps] = useState<GpsTelemetry>({ status: 'idle', latitude: null, longitude: null, accuracy: null, timestamp: null });
+  const [online, setOnline] = useState(true);
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
   const [noActive, setNoActive] = useState(false);
@@ -88,6 +138,47 @@ export function AdventureLiveClient() {
   }, [slug]);
 
   useEffect(() => {
+    if (!slug) return;
+    let cancelled = false;
+    setAdventure(null);
+    loadPublicRouteAdventure(slug)
+      .then((value) => { if (!cancelled) setAdventure(value); })
+      .catch(() => { if (!cancelled) setAdventure(null); });
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  useEffect(() => {
+    function syncGps(event: Event) {
+      const value = (event as CustomEvent<Partial<GpsTelemetry> & { status?: GpsTelemetry['status'] }>).detail;
+      if (!value?.status) return;
+      setGps({
+        status: value.status,
+        latitude: typeof value.latitude === 'number' ? value.latitude : null,
+        longitude: typeof value.longitude === 'number' ? value.longitude : null,
+        accuracy: typeof value.accuracy === 'number' ? value.accuracy : null,
+        timestamp: typeof value.timestamp === 'number' ? value.timestamp : null,
+      });
+    }
+    function syncProgress(event: Event) {
+      const value = (event as CustomEvent<AdventureProgressDetail>).detail;
+      if (value && Array.isArray(value.unlockedCheckpointIds)) setUnlockedCheckpointIds(value.unlockedCheckpointIds);
+    }
+    function syncConnection() { setOnline(navigator.onLine); }
+
+    syncConnection();
+    window.addEventListener('magina:route-gps-telemetry', syncGps);
+    window.addEventListener('magina:route-adventure-progress', syncProgress);
+    window.addEventListener('online', syncConnection);
+    window.addEventListener('offline', syncConnection);
+    return () => {
+      window.removeEventListener('magina:route-gps-telemetry', syncGps);
+      window.removeEventListener('magina:route-adventure-progress', syncProgress);
+      window.removeEventListener('online', syncConnection);
+      window.removeEventListener('offline', syncConnection);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!slug && (noActive || authRequired || error)) setLoading(false);
   }, [slug, noActive, authRequired, error]);
 
@@ -100,6 +191,28 @@ export function AdventureLiveClient() {
   if (error || !detail || !slug) return <main className={styles.page}><section className={styles.state}><span className={styles.kicker}>MÁGINA AVENTURA</span><h1>No podemos abrir esta expedición</h1><p>La ruta puede estar en revisión o no disponer ya de un track publicado y validado.</p><Link className={styles.primary} href="/aventura">Volver a Mágina Aventura</Link></section></main>;
 
   const route = detail.route;
+  const unlocked = new Set(unlockedCheckpointIds);
+  const orderedCheckpoints = adventure?.enabled
+    ? adventure.checkpoints.slice().sort((a, b) => a.sort_order - b.sort_order)
+    : [];
+  const nextCheckpoint = orderedCheckpoints.find((checkpoint) => !unlocked.has(checkpoint.id)) ?? null;
+  const nextPosition = checkpointPosition(nextCheckpoint);
+  const distanceToNext = gps.status === 'tracking' && gps.latitude != null && gps.longitude != null && nextPosition
+    ? haversineMetres({ latitude: gps.latitude, longitude: gps.longitude }, nextPosition)
+    : null;
+  const insideUnlockRadius = nextCheckpoint && distanceToNext != null
+    ? distanceToNext <= nextCheckpoint.unlock_radius_m
+    : false;
+
+  function focusNextCheckpoint() {
+    if (!nextCheckpoint || !nextPosition) return;
+    window.dispatchEvent(new CustomEvent('magina:route-adventure-focus', { detail: {
+      checkpointId: nextCheckpoint.id,
+      latitude: nextPosition.latitude,
+      longitude: nextPosition.longitude,
+    } }));
+    document.getElementById('mapa')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
   return <main className={styles.page}>
     <header className={styles.topbar}>
@@ -120,11 +233,45 @@ export function AdventureLiveClient() {
     </section>
 
     <nav className={styles.quickNav} aria-label="Controles de la expedición">
+      <a href="#telemetria">En vivo</a>
       <a href="#mapa">Mapa</a>
       <a href="#gps">GPS</a>
       <a href="#retos">Retos</a>
       <Link href={`/rutas/detalle?slug=${encodeURIComponent(slug)}`}>Ficha completa</Link>
     </nav>
+
+    <section id="telemetria" className={styles.telemetry} aria-labelledby="live-telemetry-title">
+      <div className={styles.sectionHead}>
+        <div><span className={styles.kicker}>TELEMETRÍA DE MARCHA</span><h2 id="live-telemetry-title">Ahora mismo</h2></div>
+        <p>Usa la misma señal GPS del grabador. No se abre un segundo seguimiento ni se guarda posición fuera de una actividad iniciada por ti.</p>
+      </div>
+      <div className={styles.telemetryGrid}>
+        <article className={styles.telemetryCard}>
+          <span>Señal GPS</span>
+          <strong>{gpsStatus(gps.status)}</strong>
+          <p>{gps.accuracy != null ? `Precisión aproximada ±${Math.round(gps.accuracy)} m` : 'Inicia o reanuda el recorrido para recibir posición viva.'}</p>
+        </article>
+        <article className={styles.telemetryCard}>
+          <span>Siguiente checkpoint</span>
+          <strong>{nextCheckpoint?.title ?? (orderedCheckpoints.length ? 'Todos descubiertos' : 'Sin retos activos')}</strong>
+          <p>{nextCheckpoint ? `Etapa ${orderedCheckpoints.findIndex((checkpoint) => checkpoint.id === nextCheckpoint.id) + 1} · +${nextCheckpoint.points} XP` : 'La capa lúdica no bloquea el seguimiento seguro del track.'}</p>
+        </article>
+        <article className={`${styles.telemetryCard} ${insideUnlockRadius ? styles.readyCard : ''}`}>
+          <span>Proximidad</span>
+          <strong>{metres(distanceToNext)}</strong>
+          <p>{nextCheckpoint ? (insideUnlockRadius ? `Ya estás dentro del radio de ${nextCheckpoint.unlock_radius_m} m.` : `Radio de desbloqueo: ${nextCheckpoint.unlock_radius_m} m.`) : 'No hay un checkpoint pendiente que medir.'}</p>
+        </article>
+        <article className={styles.telemetryCard}>
+          <span>Conexión</span>
+          <strong>{online ? 'Con conexión' : 'Sin conexión'}</strong>
+          <p>{online ? 'Los retos y puntos pueden sincronizarse con el servidor.' : 'El GPS puede seguir midiendo, pero los envíos y desbloqueos esperarán conexión.'}</p>
+        </article>
+      </div>
+      {nextCheckpoint && nextPosition ? <div className={styles.telemetryActions}>
+        <button type="button" onClick={focusNextCheckpoint}>⌖ Ver siguiente checkpoint en el mapa</button>
+        <span>{insideUnlockRadius ? '✓ Estás suficientemente cerca para intentar desbloquearlo.' : 'Acércate siguiendo siempre el track y la señalización real.'}</span>
+      </div> : null}
+    </section>
 
     <section id="mapa" className={styles.mapSection}>
       <div className={styles.sectionHead}>

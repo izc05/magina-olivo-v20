@@ -15,6 +15,20 @@ import {
 } from '../../../lib/route-activity-source';
 import styles from '../routes-public.module.css';
 
+type RouteGpsTelemetryStatus = 'idle' | 'searching' | 'tracking' | 'error';
+
+type RouteGpsTelemetryDetail = {
+  status: RouteGpsTelemetryStatus;
+  latitude?: number;
+  longitude?: number;
+  accuracy?: number;
+  timestamp?: number;
+};
+
+function publishGpsTelemetry(detail: RouteGpsTelemetryDetail) {
+  window.dispatchEvent(new CustomEvent<RouteGpsTelemetryDetail>('magina:route-gps-telemetry', { detail }));
+}
+
 function formatKm(value: number) {
   return `${(Math.max(0, value) / 1000).toFixed(2)} km`;
 }
@@ -55,7 +69,7 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
   const [authRequired, setAuthRequired] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [gpsState, setGpsState] = useState<'idle' | 'searching' | 'tracking' | 'error'>('idle');
+  const [gpsState, setGpsState] = useState<RouteGpsTelemetryStatus>('idle');
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [liveDistanceM, setLiveDistanceM] = useState(0);
   const [liveElevationM, setLiveElevationM] = useState(0);
@@ -77,6 +91,7 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
     watchIdRef.current = null;
     lastPointRef.current = null;
     setGpsState('idle');
+    publishGpsTelemetry({ status: 'idle' });
   }
 
   function queuePoint(activityId: string, point: RouteActivityPointInput) {
@@ -84,6 +99,7 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
       .then(() => appendRouteActivityPoints(activityId, [point]))
       .catch((error) => {
         setGpsState('error');
+        publishGpsTelemetry({ status: 'error' });
         setMessage(errorMessage(error));
       });
   }
@@ -91,11 +107,13 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
   function beginWatch(activityId: string) {
     if (!('geolocation' in navigator)) {
       setGpsState('error');
+      publishGpsTelemetry({ status: 'error' });
       setMessage('Este dispositivo o navegador no ofrece geolocalización.');
       return;
     }
     if (watchIdRef.current !== null) return;
     setGpsState('searching');
+    publishGpsTelemetry({ status: 'searching' });
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const now = Number.isFinite(position.timestamp) ? position.timestamp : Date.now();
@@ -138,9 +156,17 @@ export function RouteActivityRecorder({ routeId, slug }: { routeId: string; slug
           vertical_accuracy_m: coords.altitudeAccuracy,
         });
         setGpsState('tracking');
+        publishGpsTelemetry({
+          status: 'tracking',
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracy: coords.accuracy,
+          timestamp: now,
+        });
       },
       () => {
         setGpsState('error');
+        publishGpsTelemetry({ status: 'error' });
         setMessage('No se puede leer el GPS. Revisa el permiso de ubicación y que el móvil tenga señal suficiente.');
       },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 },
