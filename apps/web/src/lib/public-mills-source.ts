@@ -44,6 +44,7 @@ export type MillRedemption = {
   createdAt: string;
   productTitle: string;
   businessName: string;
+  businessSlug: string | null;
   qrPayload: string | null;
   qrReady: boolean;
 };
@@ -98,6 +99,13 @@ type RewardUnlockPayload = {
     requiredLevel: number;
     requiredLevelName: string;
     minXp: number;
+  }>;
+};
+
+type RedemptionPickupPayload = {
+  pickups: Array<{
+    redemptionId: string;
+    businessSlug: string;
   }>;
 };
 
@@ -157,7 +165,17 @@ export async function redeemMillReward(id: string) {
 }
 
 export async function loadMyMillRedemptions() {
-  return apiFetch<{ redemptions: MillRedemption[] }>('/api/v1/my/almazara-redemptions');
+  const [payload, pickupPayload] = await Promise.all([
+    apiFetch<{ redemptions: Omit<MillRedemption, 'businessSlug'>[] }>('/api/v1/my/almazara-redemptions'),
+    apiFetch<RedemptionPickupPayload>('/api/v1/my/almazara-redemption-pickups'),
+  ]);
+  const pickupByRedemption = new Map(pickupPayload.pickups.map((item) => [item.redemptionId, item.businessSlug]));
+  return {
+    redemptions: payload.redemptions.map((item) => ({
+      ...item,
+      businessSlug: pickupByRedemption.get(item.id) ?? null,
+    })),
+  };
 }
 
 export async function cancelMyMillRedemption(id: string) {
