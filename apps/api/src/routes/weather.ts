@@ -3,7 +3,10 @@ import { sql } from 'kysely';
 import { validateWeatherCoordinates } from '@magina/weather';
 import type { DatabaseClient } from '../db/client.js';
 import { getCachedMunicipalityForecast } from '../weather/cache.js';
-import type { CurrentWeatherProvider } from '../weather/current-provider.js';
+import {
+  remoteOpenMeteoCurrentWeatherProvider,
+  type CurrentWeatherProvider,
+} from '../weather/current-provider.js';
 import type { MunicipalityWeatherProvider } from '../weather/providers.js';
 import { requireContext, requireDatabase } from '../http/helpers.js';
 
@@ -45,7 +48,7 @@ export function registerWeatherRoutes(
   app: FastifyInstance,
   db: DatabaseClient | null,
   provider: MunicipalityWeatherProvider,
-  currentWeatherProvider: CurrentWeatherProvider,
+  currentWeatherProvider: CurrentWeatherProvider = remoteOpenMeteoCurrentWeatherProvider,
 ) {
   app.post('/api/v1/public/weather/current', async (request, reply) => {
     reply.header('cache-control', 'no-store');
