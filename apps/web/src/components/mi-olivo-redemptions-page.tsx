@@ -22,8 +22,30 @@ function expiryCopy(expiresAt: string) {
   return `Quedan ${days} ${days === 1 ? 'día' : 'días'} para recogerlo.`;
 }
 
+function directionsHref(item: MillRedemption) {
+  if (
+    item.pickupLatitude !== null
+    && item.pickupLongitude !== null
+    && Number.isFinite(item.pickupLatitude)
+    && Number.isFinite(item.pickupLongitude)
+  ) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${item.pickupLatitude},${item.pickupLongitude}`)}`;
+  }
+  const destination = [item.pickupAddress, item.pickupMunicipalityName].filter(Boolean).join(', ');
+  return destination
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
+    : null;
+}
+
+function phoneHref(phone: string) {
+  return `tel:${phone.replace(/[^\d+]/g, '')}`;
+}
+
 function RedemptionCard({ item, cancelling, onCancel }: { item: MillRedemption; cancelling: string | null; onCancel: (item: MillRedemption) => void }) {
   const reserved = item.status === 'reserved';
+  const directions = reserved ? directionsHref(item) : null;
+  const locationCopy = [item.pickupAddress, item.pickupMunicipalityName].filter(Boolean).join(' · ');
+
   return <article className="card" style={{ display: 'grid', gap: 12 }}>
     <div>
       <small>{item.businessName}</small>
@@ -34,9 +56,14 @@ function RedemptionCard({ item, cancelling, onCancel }: { item: MillRedemption; 
 
     {reserved ? <div className="card" style={{ display: 'grid', gap: 8, padding: 12 }}>
       <strong>📍 Recogida física en {item.businessName}</strong>
+      {locationCopy ? <span>{locationCopy}</span> : null}
       <span>{expiryCopy(item.expiresAt)}</span>
       <small>Fecha límite: {new Date(item.expiresAt).toLocaleString('es-ES')}.</small>
-      {item.businessSlug ? <Link href={`/almazaras?slug=${encodeURIComponent(item.businessSlug)}`}>Ver ficha, dirección y contacto de la almazara →</Link> : null}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        {directions ? <a href={directions} target="_blank" rel="noreferrer">Cómo llegar ↗</a> : null}
+        {item.pickupPhone ? <a href={phoneHref(item.pickupPhone)}>Llamar a la almazara</a> : null}
+        {item.businessSlug ? <Link href={`/almazaras?slug=${encodeURIComponent(item.businessSlug)}`}>Ver ficha de la almazara →</Link> : null}
+      </div>
     </div> : null}
 
     {reserved && item.code ? <>
