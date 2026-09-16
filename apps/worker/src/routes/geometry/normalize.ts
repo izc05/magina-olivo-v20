@@ -40,8 +40,17 @@ const ZIP_LOCAL_SIGNATURE = 0x04034b50;
 const MAX_KMZ_ENTRIES = 256;
 const MAX_KML_BYTES = 20 * 1024 * 1024;
 
+const GRS80_A = 6_378_137;
+const GRS80_F = 1 / 298.257222101;
+const UTM_K0 = 0.9996;
+const UTM_ZONE_30_CENTRAL_MERIDIAN_RAD = (-3 * Math.PI) / 180;
+
 function radians(value: number) {
   return (value * Math.PI) / 180;
+}
+
+function degrees(value: number) {
+  return (value * 180) / Math.PI;
 }
 
 function haversineDistanceM(a: Position2D, b: Position2D) {
@@ -66,6 +75,57 @@ function assertWgs84([longitude, latitude]: Position2D) {
   }
 }
 
+function etrs89Utm30ToWgs84(easting: number, northing: number): Position2D {
+  if (easting < 100_000 || easting > 900_000 || northing < 0 || northing > 10_000_000) {
+    throw new Error('route_geometry_utm_coordinate_out_of_range');
+  }
+
+  const eccentricitySquared = GRS80_F * (2 - GRS80_F);
+  const secondEccentricitySquared = eccentricitySquared / (1 - eccentricitySquared);
+  const x = easting - 500_000;
+  const meridionalArc = northing / UTM_K0;
+  const mu = meridionalArc / (GRS80_A * (
+    1
+    - eccentricitySquared / 4
+    - (3 * eccentricitySquared ** 2) / 64
+    - (5 * eccentricitySquared ** 3) / 256
+  ));
+
+  const e1 = (1 - Math.sqrt(1 - eccentricitySquared)) / (1 + Math.sqrt(1 - eccentricitySquared));
+  const footprintLatitude = mu
+    + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu)
+    + (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
+    + (151 * e1 ** 3 / 96) * Math.sin(6 * mu)
+    + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
+
+  const sinFootprint = Math.sin(footprintLatitude);
+  const cosFootprint = Math.cos(footprintLatitude);
+  const tanFootprint = Math.tan(footprintLatitude);
+  const n1 = GRS80_A / Math.sqrt(1 - eccentricitySquared * sinFootprint ** 2);
+  const r1 = GRS80_A * (1 - eccentricitySquared)
+    / (1 - eccentricitySquared * sinFootprint ** 2) ** 1.5;
+  const t1 = tanFootprint ** 2;
+  const c1 = secondEccentricitySquared * cosFootprint ** 2;
+  const d = x / (n1 * UTM_K0);
+
+  const latitude = footprintLatitude - (n1 * tanFootprint / r1) * (
+    d ** 2 / 2
+    - (5 + 3 * t1 + 10 * c1 - 4 * c1 ** 2 - 9 * secondEccentricitySquared) * d ** 4 / 24
+    + (61 + 90 * t1 + 298 * c1 + 45 * t1 ** 2 - 252 * secondEccentricitySquared - 3 * c1 ** 2)
+      * d ** 6 / 720
+  );
+  const longitude = UTM_ZONE_30_CENTRAL_MERIDIAN_RAD + (
+    d
+    - (1 + 2 * t1 + c1) * d ** 3 / 6
+    + (5 - 2 * c1 + 28 * t1 - 3 * c1 ** 2 + 8 * secondEccentricitySquared + 24 * t1 ** 2)
+      * d ** 5 / 120
+  ) / cosFootprint;
+
+  const result: Position2D = [degrees(longitude), degrees(latitude)];
+  assertWgs84(result);
+  return result;
+}
+
 function parseKmlCoordinates(content: string): Position3D[] {
   const matches = [...content.matchAll(/<coordinates(?:\s[^>]*)?>([\s\S]*?)<\/coordinates>/gi)];
   const raw = matches.flatMap((match) => match[1].trim().split(/\s+/).filter(Boolean));
@@ -87,10 +147,6 @@ function parseKmlCoordinates(content: string): Position3D[] {
 }
 
 function parseGmlCoordinates(content: string, sourceCrs: SupportedRouteCrs): Position3D[] {
-  if (sourceCrs !== 'EPSG:4326') {
-    throw new Error(`unsupported_route_geometry_crs:${sourceCrs}`);
-  }
-
   const posLists = [...content.matchAll(/<(?:(?:\w+):)?posList([^>]*)>([\s\S]*?)<\/(?:(?:\w+):)?posList>/gi)];
   if (posLists.length === 0) throw new Error('gml_pos_list_required');
 
@@ -114,10 +170,17 @@ function parseGmlCoordinates(content: string, sourceCrs: SupportedRouteCrs): Pos
     for (let index = 0; index < numbers.length; index += dimension) {
       const first = numbers[index]!;
       const second = numbers[index + 1]!;
-      const longitude = longitudeFirst ? first : second;
-      const latitude = longitudeFirst ? second : first;
       const altitude = dimension === 3 ? numbers[index + 2]! : null;
-      assertWgs84([longitude, latitude]);
+      let longitude: number;
+      let latitude: number;
+
+      if (sourceCrs === 'EPSG:25830') {
+        [longitude, latitude] = etrs89Utm30ToWgs84(first, second);
+      } else {
+        longitude = longitudeFirst ? first : second;
+        latitude = longitudeFirst ? second : first;
+        assertWgs84([longitude, latitude]);
+      }
       points.push([longitude, latitude, altitude]);
     }
   }
