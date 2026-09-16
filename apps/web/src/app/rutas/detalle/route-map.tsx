@@ -10,7 +10,11 @@ import {
   type PublicRouteDetail,
   type RouteAdventureCheckpoint,
 } from '../../../lib/public-routes-source';
-import { ROUTE_LIVE_TELEMETRY_EVENT, type RouteLiveTelemetry } from '../../../lib/route-live-telemetry';
+import {
+  getLatestRouteLiveTelemetry,
+  ROUTE_LIVE_TELEMETRY_EVENT,
+  type RouteLiveTelemetry,
+} from '../../../lib/route-live-telemetry';
 import styles from '../routes-public.module.css';
 
 type Coordinate = [number, number];
@@ -215,6 +219,8 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
 
       map.on('load', () => {
         if (!map || disposed) return;
+        const latestTelemetry = getLatestRouteLiveTelemetry();
+        if (latestTelemetry) liveTelemetryRef.current = latestTelemetry;
         renderLivePosition(liveTelemetryRef.current);
         map.addSource('route-track', {
           type: 'geojson',
