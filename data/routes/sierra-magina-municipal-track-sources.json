@@ -1,0 +1,48 @@
+{
+  "registry_version": 1,
+  "audited_at": "2026-09-14",
+  "scope": "Authoritative municipal hiking track artifacts located for Sierra Magina comarca routes",
+  "sources": [
+    {
+      "slug": "mancha-real-el-puerto-los-llanos-pena-del-aguila",
+      "municipality": "Mancha Real",
+      "authority": "Ayuntamiento de Mancha Real - Turismo Mancha Real",
+      "source_page_url": "https://mancharealturismo.es/rutas-de-senderismo",
+      "artifact_url": "https://archivos.campusfortalezas.com/Ruta1.kml",
+      "artifact_format": "kml",
+      "artifact_link_label": "Descargar",
+      "track_found": true,
+      "track_validated": false,
+      "validation_state": "official_kml_located_pending_geometry_audit"
+    },
+    {
+      "slug": "mancha-real-circular-pena-del-aguila",
+      "municipality": "Mancha Real",
+      "authority": "Ayuntamiento de Mancha Real - Turismo Mancha Real",
+      "source_page_url": "https://mancharealturismo.es/rutas-de-senderismo",
+      "artifact_url": "https://archivos.campusfortalezas.com/Ruta2.kml",
+      "artifact_format": "kml",
+      "artifact_link_label": "Descargar",
+      "track_found": true,
+      "track_validated": false,
+      "validation_state": "official_kml_located_pending_geometry_audit"
+    },
+    {
+      "slug": "mancha-real-pena-aguila-morron-mojon-blanco-refugio-cueva-murcielagos",
+      "municipality": "Mancha Real",
+      "authority": "Ayuntamiento de Mancha Real - Turismo Mancha Real",
+      "source_page_url": "https://mancharealturismo.es/rutas-de-senderismo",
+      "artifact_url": "https://archivos.campusfortalezas.com/Ruta3.kml",
+      "artifact_format": "kml",
+      "artifact_link_label": "Descargar",
+      "track_found": true,
+      "track_validated": false,
+      "validation_state": "official_kml_located_pending_geometry_audit"
+    }
+  ],
+  "notes": [
+    "The KML URLs are direct links exposed by the municipal tourism page's three Descargar actions.",
+    "A located official KML is not geometry-validated until the artifact can be fetched, parsed and measured.",
+    "Noalejo, Carcheles, La Guardia, Campillo de Arenas and Cabra del Santo Cristo remain separate discovery targets; no track URL is inferred for them."
+  ]
+}

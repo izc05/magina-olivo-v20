@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "audited_at": "2026-09-13",
+  "scope": "Remote accessibility evidence for official REDIAM trail geometries",
+  "source_identification": {
+    "official_core_total": 17,
+    "codigoequi_confirmed": 17,
+    "status": "closed"
+  },
+  "github_actions_attempts": [
+    {
+      "run_id": 34779229449,
+      "strategy": "WFS GML request filtered by confirmed CODIGOEQUI",
+      "routes_attempted": 17,
+      "fetch_success": 0,
+      "fetch_failed": 17,
+      "http_status_observed": 403,
+      "machine_checks_passed": 0
+    },
+    {
+      "run_id": 34779309807,
+      "strategy": "Official KML URL shape with browser-like headers and per-route Junta referer",
+      "routes_attempted": 17,
+      "fetch_success": 0,
+      "fetch_failed": 17,
+      "http_status_observed": 403,
+      "machine_checks_passed": 0
+    }
+  ],
+  "conclusion": "The source registry is complete, but REDIAM rejects direct geometry downloads from the GitHub Actions runner in both tested request strategies. This is recorded as an external access blocker; it is not treated as missing source data and no track is marked geometry-validated.",
+  "next_safe_options": [
+    "Run the reproducible auditor from an environment allowed by REDIAM and preserve the generated evidence.",
+    "Use an official downloadable mirror if one is published by Junta de Andalucia.",
+    "Do not proxy, scrape around access controls, infer geometry, or mark tracks validated without parsed evidence."
+  ]
+}

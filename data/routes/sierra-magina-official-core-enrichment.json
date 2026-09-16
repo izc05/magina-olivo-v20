@@ -1,0 +1,22 @@
+{
+  "version": 3,
+  "audited_at": "2026-09-13",
+  "scope": "Non-destructive technical enrichment for the 17-route Junta core catalog",
+  "policy": {
+    "apply_only_to_matching_official_core_slug": true,
+    "never_override_track_validation": true,
+    "never_infer_missing_fields": true,
+    "source_priority": ["live_official_technical_sheet", "official_junta_publication"]
+  },
+  "overrides": [
+    {"slug":"el-peralejo","distance_m":2268,"duration_minutes":60,"difficulty":"easy","circular":true,"shade_level":"medium","official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"gibralberca","distance_m":5653,"duration_minutes":120,"difficulty":"moderate","circular":true,"road_type":"track","shade_level":"medium","official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"la-cueva-de-la-graja","distance_m":575,"duration_minutes":30,"difficulty":"moderate","circular":false,"official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"las-vinas","distance_m":8720,"duration_minutes":180,"difficulty":"moderate","circular":true,"official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"pinar-de-canava","distance_m":2350,"duration_minutes":60,"difficulty":"hard","circular":false,"official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"puerto-de-la-mata","distance_m":13170,"duration_minutes":290,"difficulty":"moderate","circular":false,"road_type":"track","shade_level":"medium","documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"sierra-de-la-cruz","distance_m":7292,"duration_minutes":150,"difficulty":"moderate","circular":true,"road_type":"trail","altitude_m":760,"official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"subida-a-pico-magina-y-miramundos","distance_m":14773,"duration_minutes":300,"difficulty":"hard","circular":false,"official_kml_available":true,"official_gml_available":true,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"},
+    {"slug":"umbria-de-los-corzos","distance_m":2630,"duration_minutes":60,"difficulty":"easy","circular":false,"road_type":"trail","altitude_m":1092,"documentation_level":"verified_technical_sheet","documented":true,"verified_at":"2026-09-13"}
+  ]
+}
