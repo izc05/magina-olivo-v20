@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "audited_at": "2026-09-13",
+  "workflow_run_id": 34779973218,
+  "authority": "Federacion Andaluza de Deportes de Montana, Escalada y Senderismo",
+  "source_page": "https://www.fedamon.com/index.php/home-6/2013-04-16-17-25-48/11-federacion/186-gr7-jaen",
+  "scope": "Durable geometry evidence for GR-7 stages 8-12 through Sierra Magina",
+  "maintenance_warning": "Geometry validation does not clear the FAM warning that the Jaen GR-7 section has had no maintenance notified since 1998 and has scarce/deteriorated signage.",
+  "summary": {"stages_expected":5,"fetch_success":5,"geometry_validated":5},
+  "stages": [
+    {"stage":8,"official_distance_m":8000,"calculated_length_m":8021,"length_ratio":1.0026,"point_count":134,"track_file":"08 Jodar-Bedmar.GPX","archive_sha256":"2fa897fab518739761b8550472231f58dc35c21ff255641d9afb5f6293e7e7e1","track_file_sha256":"97b5757fb603c38e0134547c229c04b16989f6c51676916290cc5919d99cd9c4","status":"geometry_validated"},
+    {"stage":9,"official_distance_m":10700,"calculated_length_m":10694,"length_ratio":0.9994,"point_count":136,"track_file":"09 Bedmar-Albanchez.GPX","archive_sha256":"f05b8f4b422e0aa3159b7350f37ef317209c611dc4e3bd0302afff09ec91c477","track_file_sha256":"cefe8c531749c6b12077c81971ec633c0ee7579a41800f22a81ae26b4a5feff2","status":"geometry_validated"},
+    {"stage":10,"official_distance_m":4500,"calculated_length_m":4498,"length_ratio":0.9996,"point_count":75,"track_file":"10 Albanchez-Torres.GPX","archive_sha256":"f4fc6d899c4937d3f54d579a535330cf07b06ea695a5fee3b8f9c3487547fa69","track_file_sha256":"a793167f132b735e2ac817d3368f37cc7786140ed68c8851e0970c0d9f94648e","status":"geometry_validated"},
+    {"stage":11,"official_distance_m":26900,"calculated_length_m":27095,"length_ratio":1.0072,"point_count":967,"track_file":"11 Torres-Cambil.GPX","archive_sha256":"ad2a04c2cae1cd5d30803373e183b868fc820252e3efe215775980a9fda46191","track_file_sha256":"eb24a653730b23e9dd6236f2a464a9e86b5d05f08da161378de827f15b00d059","status":"geometry_validated"},
+    {"stage":12,"official_distance_m":11800,"calculated_length_m":11744,"length_ratio":0.9953,"point_count":226,"track_file":"12 Cambil-Carchelejo.GPX","archive_sha256":"abad8ceaed08c2b0b530c2ac6799df31891665d8243cde91f0d93557e838a62c","track_file_sha256":"4150b011a0b7e9ff6a96bc32a658456dabc673dd5acbf51ef8c304d8e592f83c","status":"geometry_validated"}
+  ]
+}
