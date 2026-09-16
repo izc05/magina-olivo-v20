@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { loadExplorerProfile, type ExplorerProfile } from '../../lib/public-routes-source';
 import { loadActiveRouteActivity, type RouteActivity } from '../../lib/route-activity-source';
-import styles from './adventure.module.css';
+import styles from './adventure-resume-banner.module.css';
 
 export function AdventureResumeBanner() {
   const [profile, setProfile] = useState<ExplorerProfile | null>(null);
@@ -27,17 +27,17 @@ export function AdventureResumeBanner() {
   const title = activeRun?.adventure_title ?? activity?.route_name ?? 'Expedición en curso';
   const progress = activeRun ? `${activeRun.unlocked_checkpoints}/${activeRun.total_checkpoints} descubrimientos` : activity?.status === 'paused' ? 'GPS en pausa' : 'GPS activo';
 
-  return <section className={styles.profilePanel} aria-labelledby="continue-adventure-title">
-    <div className={styles.profileHeading}>
+  return <section className={styles.panel} aria-labelledby="continue-adventure-title">
+    <div className={styles.heading}>
       <div>
         <span className={styles.eyebrow}>CONTINUAR EXPEDICIÓN</span>
         <h2 id="continue-adventure-title">{title}</h2>
       </div>
-      <p>{progress}. Abre la vista de marcha para tener mapa, GPS y checkpoints en una sola pantalla móvil.</p>
+      <p>{progress}. Continúa con mapa, GPS, seguridad y checkpoints en una experiencia adaptada a web y móvil.</p>
     </div>
-    <div className={styles.heroActions}>
-      <Link className={styles.primaryAction} href={`/aventura/en-curso?slug=${encodeURIComponent(slug)}`}>Continuar aventura</Link>
-      <Link className={styles.secondaryAction} href={`/rutas/detalle?slug=${encodeURIComponent(slug)}`}>Ficha de senderismo</Link>
+    <div className={styles.actions}>
+      <Link className={styles.primary} href={`/aventura/en-curso?slug=${encodeURIComponent(slug)}`}>Continuar aventura <span>→</span></Link>
+      <Link className={styles.secondary} href={`/rutas/detalle?slug=${encodeURIComponent(slug)}`}>Ficha de senderismo</Link>
     </div>
   </section>;
 }

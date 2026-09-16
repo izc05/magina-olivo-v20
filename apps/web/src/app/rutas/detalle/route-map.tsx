@@ -10,6 +10,11 @@ import {
   type PublicRouteDetail,
   type RouteAdventureCheckpoint,
 } from '../../../lib/public-routes-source';
+import {
+  getLatestRouteLiveTelemetry,
+  ROUTE_LIVE_TELEMETRY_EVENT,
+  type RouteLiveTelemetry,
+} from '../../../lib/route-live-telemetry';
 import styles from '../routes-public.module.css';
 
 type Coordinate = [number, number];
@@ -123,9 +128,29 @@ function paintAdventureMarker(button: HTMLButtonElement, unlocked: boolean) {
   button.textContent = unlocked ? '✓' : '✦';
 }
 
+function paintLivePositionMarker(button: HTMLButtonElement, telemetry: RouteLiveTelemetry) {
+  const accuracy = telemetry.accuracyM == null ? null : Math.max(0, Math.round(telemetry.accuracyM));
+  const label = accuracy == null ? 'Tu posición' : `Tu posición · precisión ±${accuracy} m`;
+  button.type = 'button';
+  button.dataset.routeLivePosition = 'true';
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.style.width = '32px';
+  button.style.height = '32px';
+  button.style.borderRadius = '999px';
+  button.style.border = '4px solid #fff';
+  button.style.boxShadow = '0 0 0 8px rgba(32,61,44,.18),0 5px 18px rgba(0,0,0,.32)';
+  button.style.background = '#203d2c';
+  button.style.padding = '0';
+  button.style.cursor = 'pointer';
+}
+
 export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import('maplibre-gl').Map | null>(null);
+  const maplibreRef = useRef<typeof import('maplibre-gl') | null>(null);
+  const liveMarkerRef = useRef<import('maplibre-gl').Marker | null>(null);
+  const liveTelemetryRef = useRef<RouteLiveTelemetry | null>(null);
   const photoMarkersRef = useRef(new Map<string, import('maplibre-gl').Marker>());
   const photoPopupsRef = useRef(new Map<string, import('maplibre-gl').Popup>());
   const adventureMarkersRef = useRef(new Map<string, import('maplibre-gl').Marker>());
@@ -154,8 +179,31 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
       }
     }
 
+    function renderLivePosition(value: RouteLiveTelemetry | null) {
+      if (!value || value.latitude == null || value.longitude == null) return;
+      if (!Number.isFinite(value.latitude) || !Number.isFinite(value.longitude)) return;
+      const activeMap = mapRef.current;
+      const maplibre = maplibreRef.current;
+      if (!activeMap || !maplibre) return;
+
+      let marker = liveMarkerRef.current;
+      if (!marker) {
+        const button = document.createElement('button');
+        paintLivePositionMarker(button, value);
+        marker = new maplibre.Marker({ element: button, anchor: 'center' })
+          .setLngLat([value.longitude, value.latitude])
+          .addTo(activeMap);
+        liveMarkerRef.current = marker;
+      } else {
+        marker.setLngLat([value.longitude, value.latitude]);
+        const element = marker.getElement();
+        if (element instanceof HTMLButtonElement) paintLivePositionMarker(element, value);
+      }
+    }
+
     void import('maplibre-gl').then((maplibre) => {
       if (disposed) return;
+      maplibreRef.current = maplibre;
       const bounds = coordinates.reduce(
         (value, coordinate) => value.extend(coordinate),
         new maplibre.LngLatBounds(coordinates[0], coordinates[0]),
@@ -171,6 +219,9 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
 
       map.on('load', () => {
         if (!map || disposed) return;
+        const latestTelemetry = getLatestRouteLiveTelemetry();
+        if (latestTelemetry) liveTelemetryRef.current = latestTelemetry;
+        renderLivePosition(liveTelemetryRef.current);
         map.addSource('route-track', {
           type: 'geojson',
           data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } },
@@ -357,10 +408,31 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
       updateAdventureState(value.unlockedCheckpointIds);
     }
 
+    function syncLivePosition(event: Event) {
+      const value = (event as CustomEvent<RouteLiveTelemetry>).detail;
+      if (!value) return;
+      liveTelemetryRef.current = value;
+      renderLivePosition(value);
+    }
+
+    function focusLivePosition() {
+      const value = liveTelemetryRef.current;
+      const activeMap = mapRef.current;
+      if (!value || value.latitude == null || value.longitude == null || !activeMap) return;
+      activeMap.flyTo({
+        center: [value.longitude, value.latitude],
+        zoom: Math.max(activeMap.getZoom(), 16),
+        essential: true,
+      });
+      containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     window.addEventListener('magina:route-photo-focus', focusCommunityPhoto);
     window.addEventListener('magina:route-elevation-focus', focusElevation);
     window.addEventListener('magina:route-adventure-focus', focusAdventureCheckpoint);
     window.addEventListener('magina:route-adventure-progress', syncAdventureProgress);
+    window.addEventListener(ROUTE_LIVE_TELEMETRY_EVENT, syncLivePosition);
+    window.addEventListener('magina:route-live-focus', focusLivePosition);
 
     return () => {
       disposed = true;
@@ -368,6 +440,12 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
       window.removeEventListener('magina:route-elevation-focus', focusElevation);
       window.removeEventListener('magina:route-adventure-focus', focusAdventureCheckpoint);
       window.removeEventListener('magina:route-adventure-progress', syncAdventureProgress);
+      window.removeEventListener(ROUTE_LIVE_TELEMETRY_EVENT, syncLivePosition);
+      window.removeEventListener('magina:route-live-focus', focusLivePosition);
+      liveMarkerRef.current?.remove();
+      liveMarkerRef.current = null;
+      liveTelemetryRef.current = null;
+      maplibreRef.current = null;
       for (const marker of photoMarkersRef.current.values()) marker.remove();
       for (const popup of photoPopupsRef.current.values()) popup.remove();
       for (const marker of adventureMarkersRef.current.values()) marker.remove();
@@ -381,7 +459,7 @@ export function RouteMap({ detail }: { detail: PublicRouteDetail }) {
 
   if (!detail.track) return <div className={styles.emptyMap}>No hay geometría pública disponible.</div>;
   return <div className={styles.interactiveMapWrap}>
-    <div ref={containerRef} className={styles.interactiveMap} aria-label="Mapa inteligente del track validado, POI, retos de Mágina Aventura, perfil, fotos y avisos comunitarios" />
+    <div ref={containerRef} className={styles.interactiveMap} role="region" aria-label="Map" />
     {adventureCount > 0 ? <div className={styles.mapFallback} style={{ bottom: 'auto', top: 12, right: 12, left: 'auto' }}>✦ {adventureCount} reto{adventureCount === 1 ? '' : 's'} de aventura</div> : null}
     {photoCount > 0 ? <div className={styles.mapFallback} style={{ bottom: 'auto', top: 12, right: 'auto' }}>{photoCount} foto{photoCount === 1 ? '' : 's'} geolocalizada{photoCount === 1 ? '' : 's'}</div> : null}
     {conditionCount > 0 ? <div className={styles.mapFallback} style={{ bottom: 'auto', top: 48, right: 'auto' }}>{conditionCount} aviso{conditionCount === 1 ? '' : 's'} comunitario{conditionCount === 1 ? '' : 's'}</div> : null}
