@@ -15,8 +15,9 @@ if (prepared.sourceSha256 !== 'ab1a0cbe7561320a563ec26d4597b97780f6f157836296233
 if (prepared.bbox.join(',') !== '-3.5,37.7,-3.48,37.71') {
   throw new Error(`Unexpected bbox: ${prepared.bbox.join(',')}`);
 }
-if (!(prepared.distanceDeltaPercent > 1 && prepared.distanceDeltaPercent < 2)) {
-  throw new Error(`Unexpected distance delta: ${prepared.distanceDeltaPercent}`);
+const distanceDeltaPercent = prepared.distanceDeltaPercent;
+if (distanceDeltaPercent === null || !(distanceDeltaPercent > 1 && distanceDeltaPercent < 2)) {
+  throw new Error(`Unexpected distance delta: ${distanceDeltaPercent}`);
 }
 if (prepared.recommendation !== 'ready_for_review') {
   throw new Error(`Expected ready_for_review, got ${prepared.recommendation}`);
