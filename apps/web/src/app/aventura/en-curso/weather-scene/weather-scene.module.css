@@ -4,6 +4,108 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  opacity: 0.72;
   contain: strict;
+  isolation: isolate;
+}
+
+.sky,
+.ambient,
+.clouds,
+.fog {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--weather-transition-ms) ease,
+    background var(--weather-transition-ms) ease,
+    filter var(--weather-transition-ms) ease;
+}
+
+.sky {
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgb(130 184 211 / 26%) 0%, rgb(194 215 208 / 10%) 52%, transparent 100%);
+}
+
+.scene[data-weather-sky='soft-cloud'] .sky {
+  background:
+    linear-gradient(180deg, rgb(127 154 166 / 30%) 0%, rgb(190 202 195 / 14%) 58%, transparent 100%);
+}
+
+.scene[data-weather-sky='overcast'] .sky {
+  background:
+    linear-gradient(180deg, rgb(72 92 100 / 40%) 0%, rgb(129 145 142 / 20%) 60%, rgb(37 50 48 / 4%) 100%);
+}
+
+.scene[data-weather-sky='storm'] .sky {
+  background:
+    linear-gradient(180deg, rgb(35 43 52 / 54%) 0%, rgb(75 82 84 / 34%) 62%, rgb(28 38 36 / 12%) 100%);
+}
+
+.scene[data-weather-sky='fog'] .sky {
+  background:
+    linear-gradient(180deg, rgb(179 190 187 / 32%) 0%, rgb(219 224 218 / 18%) 60%, transparent 100%);
+}
+
+.scene[data-weather-sky='snow'] .sky {
+  background:
+    linear-gradient(180deg, rgb(177 203 214 / 34%) 0%, rgb(229 236 232 / 22%) 62%, transparent 100%);
+}
+
+.scene[data-weather-sky='night'] .sky {
+  background:
+    radial-gradient(circle at 76% 12%, rgb(204 221 218 / 12%) 0 2%, transparent 16%),
+    linear-gradient(180deg, rgb(10 25 35 / 68%) 0%, rgb(20 42 48 / 40%) 58%, rgb(5 18 17 / 16%) 100%);
+}
+
+.ambient {
+  z-index: 1;
+  background: transparent;
+}
+
+.scene[data-weather-tone='warm'] .ambient {
+  background: linear-gradient(180deg, rgb(236 176 93 / 44%) 0%, rgb(194 119 57 / 18%) 58%, transparent 100%);
+}
+
+.scene[data-weather-tone='cool'] .ambient {
+  background: linear-gradient(180deg, rgb(29 70 91 / 42%) 0%, rgb(54 85 88 / 18%) 64%, transparent 100%);
+}
+
+.scene[data-weather-tone='storm'] .ambient {
+  background: linear-gradient(180deg, rgb(19 30 42 / 48%) 0%, rgb(59 61 71 / 24%) 62%, transparent 100%);
+}
+
+.clouds {
+  z-index: 2;
+  inset: -8% -20% 34%;
+  filter: blur(16px);
+  background:
+    radial-gradient(ellipse at 10% 28%, rgb(224 230 225 / 46%) 0 18%, transparent 44%),
+    radial-gradient(ellipse at 44% 20%, rgb(196 207 204 / 50%) 0 22%, transparent 48%),
+    radial-gradient(ellipse at 78% 32%, rgb(218 224 219 / 43%) 0 19%, transparent 46%),
+    radial-gradient(ellipse at 98% 14%, rgb(176 190 190 / 38%) 0 18%, transparent 44%);
+}
+
+.scene[data-weather-sky='storm'] .clouds,
+.scene[data-weather-sky='overcast'] .clouds {
+  filter: blur(20px) saturate(0.72) brightness(0.76);
+}
+
+.fog {
+  z-index: 3;
+  inset: 18% -12% -8%;
+  filter: blur(22px);
+  background:
+    linear-gradient(174deg, transparent 0 16%, rgb(235 239 233 / 38%) 31%, transparent 52%),
+    linear-gradient(188deg, transparent 13%, rgb(215 224 219 / 34%) 42%, transparent 68%),
+    radial-gradient(ellipse at 50% 66%, rgb(235 239 233 / 30%) 0 28%, transparent 72%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky,
+  .ambient,
+  .clouds,
+  .fog {
+    transition: none;
+  }
 }
