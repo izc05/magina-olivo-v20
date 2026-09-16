@@ -28,6 +28,17 @@ export type BuildWeatherVisualModelOptions = {
   performanceTier?: WeatherPerformanceTier;
 };
 
+export type WeatherVisualState = Pick<
+  WeatherState,
+  | 'condition'
+  | 'intensity'
+  | 'dayPhase'
+  | 'windSpeedKmh'
+  | 'windDirectionDeg'
+  | 'windGustsKmh'
+  | 'officialAlert'
+>;
+
 const cloudyDensity: Record<WeatherIntensity, number> = { 0: 0.35, 1: 0.45, 2: 0.72, 3: 0.9 };
 const rainAmount: Record<WeatherIntensity, number> = { 0: 0.25, 1: 0.25, 2: 0.55, 3: 0.9 };
 const fogDensity: Record<WeatherIntensity, number> = { 0: 0.35, 1: 0.35, 2: 0.62, 3: 0.85 };
@@ -57,7 +68,7 @@ function ambientOpacityFor(phase: WeatherDayPhase, condition: WeatherState['cond
   return 0.12;
 }
 
-function skyPresetFor(weather: WeatherState): WeatherSkyPreset {
+function skyPresetFor(weather: WeatherVisualState): WeatherSkyPreset {
   if (weather.condition === 'storm') return 'storm';
   if (weather.condition === 'fog') return 'fog';
   if (weather.condition === 'snow') return 'snow';
@@ -73,14 +84,14 @@ function rainAngleFromDirection(direction: number | null) {
   return clamp(Math.sin(radians) * 25, -25, 25);
 }
 
-function trustedWindStrength(weather: WeatherState) {
+function trustedWindStrength(weather: WeatherVisualState) {
   if (weather.condition === 'wind') return windAmount[weather.intensity];
   const speed = weather.windSpeedKmh ?? 0;
   const gusts = weather.windGustsKmh ?? 0;
   return clamp(Math.max(speed / 60, gusts / 80));
 }
 
-function transitionDurationFor(weather: WeatherState, reducedMotion: boolean, performanceTier: WeatherPerformanceTier) {
+function transitionDurationFor(weather: WeatherVisualState, reducedMotion: boolean, performanceTier: WeatherPerformanceTier) {
   if (reducedMotion) return 0;
   const atmospheric = weather.condition === 'rain' || weather.condition === 'storm' || weather.condition === 'fog' || weather.condition === 'snow';
   const duration = atmospheric ? 3200 : 2400;
@@ -88,7 +99,7 @@ function transitionDurationFor(weather: WeatherState, reducedMotion: boolean, pe
 }
 
 export function buildWeatherVisualModel(
-  weather: WeatherState,
+  weather: WeatherVisualState,
   options: BuildWeatherVisualModelOptions = {},
 ): WeatherVisualModel {
   const reducedMotion = options.reducedMotion ?? false;
