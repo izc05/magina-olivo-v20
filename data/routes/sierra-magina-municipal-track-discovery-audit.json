@@ -1,0 +1,80 @@
+{
+  "audit_version": 1,
+  "audited_at": "2026-09-14",
+  "scope": "Municipal/comarca hiking records whose official or institutional source documents the route but exposes no authoritative public GPX/KML/KMZ artifact located during the audit",
+  "policy": {
+    "community_tracks_do_not_count_as_official": true,
+    "third_party_route_tracks_do_not_promote_track_found": true,
+    "guessed_download_urls_forbidden": true,
+    "absence_means_not_located_not_proven_nonexistent": true
+  },
+  "sources": [
+    {
+      "municipality": "Noalejo",
+      "authority": "Ayuntamiento de Noalejo",
+      "source_url": "https://www.noalejo.es/paraje-de-navalcan/",
+      "route_slugs": [
+        "navalcan-molinos",
+        "navalcan-los-castillejos-pinturas-rupestres",
+        "canada-del-toril",
+        "noalejo-navalcan"
+      ],
+      "authoritative_track_status": "not_located",
+      "artifact_urls": [],
+      "finding": "The municipal page names the four walking routes around Navalcan, but no public GPX/KML/KMZ artifact was located from the official source."
+    },
+    {
+      "municipality": "Carcheles",
+      "authority": "Ayuntamiento de Carcheles",
+      "source_url": "https://www.carcheles.es/turismo/patrimonio-natural/",
+      "route_slugs": [
+        "carchelejo-cazalla-convento",
+        "carchel-carchelejo-barranco-parrilla",
+        "cueva-puerto-de-las-palomas"
+      ],
+      "authoritative_track_status": "not_located",
+      "artifact_urls": [],
+      "finding": "The municipal natural-heritage page documents the named hiking itineraries, but no public GPX/KML/KMZ artifact was located from that authority."
+    },
+    {
+      "municipality": "La Guardia de Jaen",
+      "authority": "Ayuntamiento de La Guardia de Jaen",
+      "source_url": "https://laguardiadejaen.com/tu-ciudad/informacion-turistica/",
+      "route_slugs": [
+        "san-cristobal-cueva-cabrera-allanadas-del-santo"
+      ],
+      "authoritative_track_status": "not_located",
+      "artifact_urls": [],
+      "finding": "The municipal tourism source describes the Cerrillo de San Cristobal / Cueva Cabrera itinerary, but no authoritative downloadable geometry was located."
+    },
+    {
+      "municipality": "Campillo de Arenas",
+      "authority": "Ayuntamiento de Campillo de Arenas",
+      "source_url": "https://campillodearenas.es/turismo/patrimonio-natural/",
+      "route_slugs": [
+        "sendero-didactico-desfiladero-puerta-arenas"
+      ],
+      "authoritative_track_status": "not_located",
+      "artifact_urls": [],
+      "finding": "The municipal natural-heritage source confirms the botanical/didactic trail at Desfiladero de Puerta Arenas, but no public GPX/KML/KMZ artifact was located. Access-distance text on the page is not promoted to hiking-track geometry."
+    },
+    {
+      "municipality": "Cabra del Santo Cristo",
+      "authority": "Diputacion de Jaen - Jaen Paraiso Interior",
+      "source_url": "https://www.jaenparaisointerior.es/es/w/sm/monumento/puente-de-tierra",
+      "route_slugs": [
+        "puente-de-tierra-cabra-del-santo-cristo"
+      ],
+      "authoritative_track_status": "not_located",
+      "artifact_urls": [],
+      "finding": "The institutional page documents the Puente de Tierra hiking access and approximate circular/out-and-back distances but exposes no authoritative public GPX/KML/KMZ artifact located in this audit. Community and third-party tracks exist but are deliberately excluded from official evidence."
+    }
+  ],
+  "summary": {
+    "source_sets_audited": 5,
+    "canonical_route_records_covered": 10,
+    "authoritative_track_artifacts_located": 0,
+    "status": "audited_absence_of_public_authoritative_track_artifacts"
+  },
+  "closure_note": "These findings close the current public-source discovery pass for the five remaining municipal/comarca source sets. They do not assert that the authorities hold no internal geometry; they assert that no authoritative public artifact was located and prevent community tracks or guessed URLs from being promoted as official evidence."
+}

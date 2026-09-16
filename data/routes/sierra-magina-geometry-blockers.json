@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "audited_at": "2026-09-14",
+  "scope": "Known authoritative geometry blockers after public-source discovery closure",
+  "blockers": [
+    {
+      "id": "junta-rediam-wfs",
+      "authority": "Junta de Andalucia - REDIAM / Ventana del Visitante",
+      "affected_scope": "17 official_core routes",
+      "source_state": "identified_17_of_17",
+      "geometry_state": "blocked_external_fetch",
+      "blocker": "HTTP 403 / inaccessible WFS response from GitHub Actions and external fetch environments",
+      "endpoint": "REDIAM_WFS_Patrimonio_Natural",
+      "evidence": [
+        "data/routes/sierra-magina-rediam-track-sources.json",
+        "data/routes/sierra-magina-rediam-access-audit.json"
+      ],
+      "finding": "The KML/GML download actions exposed by live Ventana del Visitante route pages resolve to the same REDIAM WFS GetFeature endpoint filtered by CODIGOEQUI. They are not independent static-file downloads.",
+      "required_next_action": "Run the existing REDIAM geometry auditor from an environment accepted by the Junta WFS, or obtain the authoritative geometry through an official Junta/REDIAM data delivery endpoint.",
+      "unsafe_workaround_forbidden": "Do not fabricate geometry from map screenshots or community tracks."
+    },
+    {
+      "id": "mancha-real-campusfortalezas-tls",
+      "authority": "Ayuntamiento de Mancha Real - Turismo Mancha Real",
+      "affected_scope": "3 official_comarca routes",
+      "source_state": "three_authoritative_kml_links_located",
+      "geometry_state": "pending_external_fetch",
+      "blocker": "TLS certificate hostname mismatch on archivos.campusfortalezas.com",
+      "evidence": [
+        "data/routes/sierra-magina-municipal-track-sources.json",
+        "data/routes/sierra-magina-municipal-kml-access-audit.json"
+      ],
+      "required_next_action": "Re-run the municipal KML audit after the provider serves a certificate valid for archivos.campusfortalezas.com, or obtain the same KML artifacts through an authoritative correctly served endpoint.",
+      "unsafe_workaround_forbidden": "Do not disable TLS certificate verification to claim geometry validation."
+    },
+    {
+      "id": "diputacion-r4-r5-r8-no-public-artifact",
+      "authority": "Diputacion de Jaen - Jaen Paraiso Interior",
+      "affected_scope": "R4, R5, R8",
+      "source_state": "official_route_and_rutometer_documented",
+      "geometry_state": "authoritative_track_not_located",
+      "blocker": "No explicit public authoritative GPX/KML/KMZ artifact located on the official route sources",
+      "evidence": [
+        "data/routes/sierra-magina-intermodal-missing-track-audit.json"
+      ],
+      "required_next_action": "Use a future official GIS/API/public download or direct institutional data delivery if Diputacion publishes/provides the geometry.",
+      "unsafe_workaround_forbidden": "Do not infer track URLs from R1/R2/R3/R6/R7/R9 naming patterns."
+    },
+    {
+      "id": "municipal-comarca-no-public-artifact",
+      "authority": "Noalejo, Carcheles, La Guardia de Jaen, Campillo de Arenas and Cabra del Santo Cristo institutional sources",
+      "affected_scope": "10 official_comarca route records",
+      "source_state": "route_or_itinerary_documented",
+      "geometry_state": "authoritative_track_not_located",
+      "blocker": "No public authoritative GPX/KML/KMZ artifact located during the closed discovery pass",
+      "evidence": [
+        "data/routes/sierra-magina-municipal-track-discovery-audit.json"
+      ],
+      "required_next_action": "Accept future official municipal GIS/API/download publication or direct institutional geometry delivery.",
+      "unsafe_workaround_forbidden": "Do not promote Wikiloc/community/third-party tracks to official evidence."
+    }
+  ],
+  "closure": {
+    "public_source_discovery_complete_for_current_scope": true,
+    "all_geometry_validated": false,
+    "publication_gate_must_remain_open": true,
+    "note": "Remaining gaps are source-access/publication constraints, not unperformed public-source discovery."
+  }
+}

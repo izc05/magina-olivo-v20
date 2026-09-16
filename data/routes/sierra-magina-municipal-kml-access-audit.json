@@ -1,0 +1,47 @@
+{
+  "audit_version": 1,
+  "audited_at": "2026-09-14",
+  "workflow_run_id": 34805171209,
+  "workflow_artifact_id": 10333116317,
+  "workflow_artifact_sha256": "a1a14295acd4b20c8dac925d4178929b16603c92bc237c49503c629d73e8ddaf",
+  "source_registry": "data/routes/sierra-magina-municipal-track-sources.json",
+  "summary": {
+    "targets": 3,
+    "fetch_success": 0,
+    "geometry_validated": 0,
+    "fetch_failed": 3,
+    "common_blocker": "ssl_certificate_hostname_mismatch"
+  },
+  "routes": [
+    {
+      "slug": "mancha-real-el-puerto-los-llanos-pena-del-aguila",
+      "artifact_url": "https://archivos.campusfortalezas.com/Ruta1.kml",
+      "fetch_status": "failed",
+      "validation_status": "pending_external_fetch",
+      "error_class": "ssl_certificate_hostname_mismatch",
+      "error": "CERTIFICATE_VERIFY_FAILED: certificate hostname does not match archivos.campusfortalezas.com"
+    },
+    {
+      "slug": "mancha-real-circular-pena-del-aguila",
+      "artifact_url": "https://archivos.campusfortalezas.com/Ruta2.kml",
+      "fetch_status": "failed",
+      "validation_status": "pending_external_fetch",
+      "error_class": "ssl_certificate_hostname_mismatch",
+      "error": "CERTIFICATE_VERIFY_FAILED: certificate hostname does not match archivos.campusfortalezas.com"
+    },
+    {
+      "slug": "mancha-real-pena-aguila-morron-mojon-blanco-refugio-cueva-murcielagos",
+      "artifact_url": "https://archivos.campusfortalezas.com/Ruta3.kml",
+      "fetch_status": "failed",
+      "validation_status": "pending_external_fetch",
+      "error_class": "ssl_certificate_hostname_mismatch",
+      "error": "CERTIFICATE_VERIFY_FAILED: certificate hostname does not match archivos.campusfortalezas.com"
+    }
+  ],
+  "policy": {
+    "tls_verification_must_not_be_disabled_to_claim_validation": true,
+    "located_link_is_not_geometry_validation": true,
+    "publishable_remains_false_until_geometry_is_validated": true
+  },
+  "note": "The municipal tourism page exposes three concrete KML links. GitHub Actions reached the host but strict TLS verification rejected all three because the certificate hostname does not match archivos.campusfortalezas.com. The links remain authoritative located artifacts, but their geometries are not validated."
+}

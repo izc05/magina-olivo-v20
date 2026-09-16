@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "source_verified_at": "2026-09-13",
+  "source_name": "Diputacion de Jaen - Jaen Paraiso Interior",
+  "source_url": "https://www.jaenparaisointerior.es/es/sm/actividades-deportivas",
+  "program_name": "Entre Cumbres y Estrellas",
+  "program_period": "2026-03-01/2026-05-16",
+  "scope_note": "Official programmed hiking activities are preserved as a separate historical/curated layer. They are not automatically treated as permanent signposted trails.",
+  "routes": [
+    {"date":"2026-03-01","name":"Barranco Morelguillos - Refugio Mojon Blanco","shape":"circular","start":"Fuente de las Pilas, Mancha Real","municipalities":["Mancha Real"],"distance_m":14300,"difficulty":"medium","canonical_overlap":[]},
+    {"date":"2026-03-14","name":"Ruta del Chantre y la Umbria","shape":"circular","start":"Gasolinera, Cabra del Santo Cristo","municipalities":["Cabra del Santo Cristo"],"distance_m":17140,"difficulty":"medium","canonical_overlap":[]},
+    {"date":"2026-03-15","name":"Nacimiento del Rio Garganton","shape":"linear","start":"Parque del nacimiento, Belmez de la Moraleda","municipalities":["Belmez de la Moraleda"],"distance_m":7000,"difficulty":"medium_high","canonical_overlap":["R7"]},
+    {"date":"2026-03-22","name":"Cueva de la Graja - Pinar de Canava - Los Caracoles - Cruz de la Atalaya","shape":"linear","start":"Ermita de Canava, Jimena","municipalities":["Jimena"],"distance_m":10000,"difficulty":"medium_high","canonical_overlap":["R1","la-cueva-de-la-graja","pinar-de-canava"]},
+    {"date":"2026-03-22","name":"Columpio gigante de Torres - Barranco del Arroyuelo - Portillo de la Zarzadilla","shape":"circular","start":"Columpio gigante de Torres","municipalities":["Torres"],"distance_m":6400,"difficulty":"medium","canonical_overlap":["R3"]},
+    {"date":"2026-03-28","name":"Travesia nocturna Puerto de la Mata","shape":"linear","start":"Centro de Visitantes Mata Bejid","municipalities":["Cambil"],"distance_m":19700,"difficulty":"medium_high","canonical_overlap":["puerto-de-la-mata"]},
+    {"date":"2026-03-28","name":"Centro de visitantes Mata Bejid - Cueva de la Solana - Castillo y aldea de Mata Bejid - Pena del Aguila","shape":"circular","start":"Centro de Visitantes Mata Bejid","municipalities":["Cambil"],"distance_m":12190,"difficulty":"medium","canonical_overlap":["castillo-de-mata-bejid"]},
+    {"date":"2026-04-11","name":"Ascension al Pico Aznaitin","shape":"linear","start":"Plaza del Ayuntamiento, Albanchez","municipalities":["Albanchez de Magina"],"distance_m":9500,"difficulty":"high","canonical_overlap":["R2"]},
+    {"date":"2026-04-11","name":"Subida al Miramundos","start":"Barrera camino de la Tosquilla","municipalities":[],"distance_m":17570,"difficulty":"high","canonical_overlap":["subida-a-pico-magina-y-miramundos"]},
+    {"date":"2026-04-19","name":"Piedra del Palo","shape":"circular","start":"Parque nuevo de Carchelejo","municipalities":["Carcheles"],"distance_m":11500,"difficulty":"medium","canonical_overlap":["R9"]},
+    {"date":"2026-04-25","name":"Rio Cuadros - Las Vinas - Torreon","shape":"circular","start":"Parking Rio Cuadros","municipalities":["Bedmar y Garciez"],"distance_m":9500,"difficulty":"medium","canonical_overlap":["las-vinas"]},
+    {"date":"2026-05-02","name":"Travesia nocturna Valle del Almaden","start":"Parque municipal, Torres","municipalities":["Torres"],"distance_m":19700,"difficulty":"high","canonical_overlap":[]},
+    {"date":"2026-05-10","name":"Piedra del Aguila - Gibralberca - Peralejo","shape":"circular","start":"Centro de Visitantes Mata Bejid","municipalities":["Cambil"],"distance_m":12500,"difficulty":"easy","canonical_overlap":["gibralberca","el-peralejo"]},
+    {"date":"2026-05-16","name":"GR7 tramo Jodar - Bedmar","shape":"linear","start":"Plaza de Espana, Jodar","municipalities":["Jodar","Bedmar y Garciez"],"distance_m":9500,"difficulty":"medium","canonical_overlap":["GR-7"]}
+  ]
+}
