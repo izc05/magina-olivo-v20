@@ -185,3 +185,30 @@ test('WeatherScene exposes atmospheric sky, cloud, fog and phase model states', 
   await expect(scene).toHaveAttribute('data-weather-sky', 'night');
   await expect(scene).toHaveAttribute('data-weather-tone', 'cool');
 });
+
+test('WeatherScene renders deterministic rain and snow particles with a reduced-motion static fallback', async ({ page }) => {
+  await mockRoute(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/aventura/en-curso?slug=ruta-demo&weatherLab=1');
+
+  const scene = page.locator('[data-weather-scene="true"]');
+  const animated = scene.locator('[data-weather-particles-mode="animated"]');
+  const fallback = scene.locator('[data-weather-particles-mode="static"]');
+
+  await page.getByRole('button', { name: 'Lluvia intensa' }).click();
+  await expect(animated).toHaveAttribute('data-weather-particle-kind', 'rain');
+  await expect(animated).toHaveAttribute('data-weather-particle-count', '24');
+  await expect(animated).toBeVisible();
+  await expect(fallback).toHaveAttribute('data-weather-particle-kind', 'rain');
+  await expect(fallback).toBeHidden();
+
+  await page.getByRole('button', { name: 'Nieve' }).click();
+  await expect(animated).toHaveAttribute('data-weather-particle-kind', 'snow');
+  await expect(animated).toHaveAttribute('data-weather-particle-count', '16');
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(animated).toBeHidden();
+  await expect(fallback).toHaveAttribute('data-weather-particle-kind', 'snow');
+  await expect(fallback).toBeVisible();
+  await expect(scene.locator('button,a,input,select,textarea,[tabindex]')).toHaveCount(0);
+});
