@@ -1,0 +1,226 @@
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+  isolation: isolate;
+}
+
+.sky,
+.ambient,
+.clouds,
+.fog,
+.particleField,
+.particleFallback {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sky,
+.ambient,
+.clouds,
+.fog {
+  transition:
+    opacity var(--weather-transition-ms) ease,
+    background var(--weather-transition-ms) ease,
+    filter var(--weather-transition-ms) ease;
+}
+
+.sky {
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgb(130 184 211 / 26%) 0%, rgb(194 215 208 / 10%) 52%, transparent 100%);
+}
+
+.scene[data-weather-sky='soft-cloud'] .sky {
+  background:
+    linear-gradient(180deg, rgb(127 154 166 / 30%) 0%, rgb(190 202 195 / 14%) 58%, transparent 100%);
+}
+
+.scene[data-weather-sky='overcast'] .sky {
+  background:
+    linear-gradient(180deg, rgb(72 92 100 / 40%) 0%, rgb(129 145 142 / 20%) 60%, rgb(37 50 48 / 4%) 100%);
+}
+
+.scene[data-weather-sky='storm'] .sky {
+  background:
+    linear-gradient(180deg, rgb(35 43 52 / 54%) 0%, rgb(75 82 84 / 34%) 62%, rgb(28 38 36 / 12%) 100%);
+}
+
+.scene[data-weather-sky='fog'] .sky {
+  background:
+    linear-gradient(180deg, rgb(179 190 187 / 32%) 0%, rgb(219 224 218 / 18%) 60%, transparent 100%);
+}
+
+.scene[data-weather-sky='snow'] .sky {
+  background:
+    linear-gradient(180deg, rgb(177 203 214 / 34%) 0%, rgb(229 236 232 / 22%) 62%, transparent 100%);
+}
+
+.scene[data-weather-sky='night'] .sky {
+  background:
+    radial-gradient(circle at 76% 12%, rgb(204 221 218 / 12%) 0 2%, transparent 16%),
+    linear-gradient(180deg, rgb(10 25 35 / 68%) 0%, rgb(20 42 48 / 40%) 58%, rgb(5 18 17 / 16%) 100%);
+}
+
+.ambient {
+  z-index: 1;
+  background: transparent;
+}
+
+.scene[data-weather-tone='warm'] .ambient {
+  background: linear-gradient(180deg, rgb(236 176 93 / 44%) 0%, rgb(194 119 57 / 18%) 58%, transparent 100%);
+}
+
+.scene[data-weather-tone='cool'] .ambient {
+  background: linear-gradient(180deg, rgb(29 70 91 / 42%) 0%, rgb(54 85 88 / 18%) 64%, transparent 100%);
+}
+
+.scene[data-weather-tone='storm'] .ambient {
+  background: linear-gradient(180deg, rgb(19 30 42 / 48%) 0%, rgb(59 61 71 / 24%) 62%, transparent 100%);
+}
+
+.clouds {
+  z-index: 2;
+  inset: -8% -20% 34%;
+  filter: blur(16px);
+  background:
+    radial-gradient(ellipse at 10% 28%, rgb(224 230 225 / 46%) 0 18%, transparent 44%),
+    radial-gradient(ellipse at 44% 20%, rgb(196 207 204 / 50%) 0 22%, transparent 48%),
+    radial-gradient(ellipse at 78% 32%, rgb(218 224 219 / 43%) 0 19%, transparent 46%),
+    radial-gradient(ellipse at 98% 14%, rgb(176 190 190 / 38%) 0 18%, transparent 44%);
+}
+
+.scene[data-weather-sky='storm'] .clouds,
+.scene[data-weather-sky='overcast'] .clouds {
+  filter: blur(20px) saturate(0.72) brightness(0.76);
+}
+
+.fog {
+  z-index: 3;
+  inset: 18% -12% -8%;
+  filter: blur(22px);
+  background:
+    linear-gradient(174deg, transparent 0 16%, rgb(235 239 233 / 38%) 31%, transparent 52%),
+    linear-gradient(188deg, transparent 13%, rgb(215 224 219 / 34%) 42%, transparent 68%),
+    radial-gradient(ellipse at 50% 66%, rgb(235 239 233 / 30%) 0 28%, transparent 72%);
+}
+
+.particleField,
+.particleFallback {
+  z-index: 4;
+}
+
+.particleField {
+  overflow: hidden;
+  opacity: var(--weather-particle-opacity);
+}
+
+.particleField[data-weather-particles-static-only='true'] {
+  display: none;
+}
+
+.particle {
+  position: absolute;
+  top: -14vh;
+  left: var(--particle-x);
+  display: block;
+  opacity: 0.92;
+  transform-origin: center;
+  will-change: transform;
+  animation-delay: var(--particle-delay-ms);
+  animation-duration: var(--weather-particle-duration-ms);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.rainParticle {
+  width: 1.5px;
+  height: calc(16px * var(--particle-scale));
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(222 239 245 / 12%), rgb(205 231 241 / 86%));
+  box-shadow: 0 0 2px rgb(205 231 241 / 24%);
+  animation-name: rainFall;
+}
+
+.snowParticle {
+  width: calc(5px * var(--particle-scale));
+  height: calc(5px * var(--particle-scale));
+  border-radius: 50%;
+  background: rgb(245 250 248 / 92%);
+  box-shadow: 0 0 5px rgb(232 244 245 / 38%);
+  animation-name: snowFall;
+}
+
+.particleFallback {
+  display: none;
+}
+
+.particleFallback[data-weather-particles-static-only='true'] {
+  display: block;
+}
+
+.particleFallback[data-weather-particle-kind='rain'] {
+  background-image:
+    repeating-linear-gradient(
+      104deg,
+      transparent 0 28px,
+      rgb(207 230 239 / 24%) 29px 30px,
+      transparent 31px 58px
+    );
+  background-size: 82px 82px;
+}
+
+.particleFallback[data-weather-particle-kind='snow'] {
+  background-image:
+    radial-gradient(circle at 12% 18%, rgb(247 251 250 / 70%) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 68% 12%, rgb(247 251 250 / 58%) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 38% 61%, rgb(247 251 250 / 64%) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 84% 73%, rgb(247 251 250 / 52%) 0 1.5px, transparent 2px);
+  background-size: 96px 112px;
+}
+
+@keyframes rainFall {
+  from {
+    transform: translate3d(0, -12vh, 0) rotate(var(--weather-rain-angle));
+  }
+  to {
+    transform: translate3d(var(--particle-drift), 124vh, 0) rotate(var(--weather-rain-angle));
+  }
+}
+
+@keyframes snowFall {
+  0% {
+    transform: translate3d(0, -12vh, 0) scale(var(--particle-scale));
+  }
+  50% {
+    transform: translate3d(var(--particle-drift), 54vh, 0) scale(var(--particle-scale));
+  }
+  100% {
+    transform: translate3d(calc(var(--particle-drift) * -1), 122vh, 0) scale(var(--particle-scale));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky,
+  .ambient,
+  .clouds,
+  .fog {
+    transition: none;
+  }
+
+  .particleField {
+    display: none;
+  }
+
+  .particleFallback {
+    display: block;
+  }
+
+  .particle {
+    animation: none;
+  }
+}

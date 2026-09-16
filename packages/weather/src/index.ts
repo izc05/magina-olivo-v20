@@ -9,5 +9,6 @@ export * from './radar-geotiff-grid.js';
 export * from './agronomy-advisory.js';
 export * from './agronomy-radar.js';
 export * from './weather-state.js';
+export * from './weather-visual-model.js';
 export * from './open-meteo.js';
 export * from './aemet-warnings.js';

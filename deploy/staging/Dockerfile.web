@@ -13,6 +13,7 @@ COPY apps/web/package.json apps/web/package.json
 RUN pnpm install --frozen-lockfile --filter @magina/web...
 
 COPY apps/web apps/web
+COPY packages/weather packages/weather
 COPY scripts/check-web-bundle-budget.mjs scripts/check-web-bundle-budget.mjs
 
 ARG NEXT_PUBLIC_API_URL

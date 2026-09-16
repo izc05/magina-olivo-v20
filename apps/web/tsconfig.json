@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@magina/weather/visual": [
+        "../../packages/weather/src/weather-visual-model.ts"
       ]
     }
   },
