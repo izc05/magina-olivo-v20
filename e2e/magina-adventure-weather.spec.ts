@@ -123,7 +123,7 @@ test('Preparar aventura requests local weather only after explicit user action',
   await expectNoHorizontalOverflow(page);
 });
 
-test('Aventura en curso renders weather HUD and deterministic rain visual state', async ({ page, context }) => {
+test('Aventura en curso renders weather HUD and an isolated decorative WeatherScene', async ({ page, context }) => {
   await context.grantPermissions(['geolocation']);
   await context.setGeolocation({ latitude: 37.73, longitude: -3.41 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -137,7 +137,14 @@ test('Aventura en curso renders weather HUD and deterministic rain visual state'
   await expect(page.getByRole('heading', { name: 'Clima local' })).toBeVisible();
   await expect(page.getByText('17 °C', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Lluvia moderada', { exact: true }).first()).toBeVisible();
-  await expect(page.locator('[data-weather-condition="rain"][data-weather-intensity="2"]')).toHaveCount(1);
+
+  const scene = page.locator('[data-weather-scene="true"]');
+  await expect(scene).toHaveCount(1);
+  await expect(scene).toHaveAttribute('aria-hidden', 'true');
+  await expect(scene).toHaveAttribute('data-weather-condition', 'rain');
+  await expect(scene).toHaveAttribute('data-weather-intensity', '2');
+  await expect(scene.locator('button,a,input,select,textarea,[tabindex]')).toHaveCount(0);
+  await expect(scene.getByRole('heading')).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
 });
 
