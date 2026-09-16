@@ -27,7 +27,7 @@
         "./src/*"
       ],
       "@magina/weather/visual": [
-        "../../packages/weather/src/visual.ts"
+        "../../packages/weather/src/weather-visual-model.ts"
       ]
     }
   },
