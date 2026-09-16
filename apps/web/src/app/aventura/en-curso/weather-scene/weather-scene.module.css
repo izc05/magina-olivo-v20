@@ -11,10 +11,18 @@
 .sky,
 .ambient,
 .clouds,
-.fog {
+.fog,
+.particleField,
+.particleFallback {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+.sky,
+.ambient,
+.clouds,
+.fog {
   transition:
     opacity var(--weather-transition-ms) ease,
     background var(--weather-transition-ms) ease,
@@ -101,11 +109,118 @@
     radial-gradient(ellipse at 50% 66%, rgb(235 239 233 / 30%) 0 28%, transparent 72%);
 }
 
+.particleField,
+.particleFallback {
+  z-index: 4;
+}
+
+.particleField {
+  overflow: hidden;
+  opacity: var(--weather-particle-opacity);
+}
+
+.particleField[data-weather-particles-static-only='true'] {
+  display: none;
+}
+
+.particle {
+  position: absolute;
+  top: -14vh;
+  left: var(--particle-x);
+  display: block;
+  opacity: 0.92;
+  transform-origin: center;
+  will-change: transform;
+  animation-delay: var(--particle-delay-ms);
+  animation-duration: var(--weather-particle-duration-ms);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.rainParticle {
+  width: 1.5px;
+  height: calc(16px * var(--particle-scale));
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(222 239 245 / 12%), rgb(205 231 241 / 86%));
+  box-shadow: 0 0 2px rgb(205 231 241 / 24%);
+  animation-name: rainFall;
+}
+
+.snowParticle {
+  width: calc(5px * var(--particle-scale));
+  height: calc(5px * var(--particle-scale));
+  border-radius: 50%;
+  background: rgb(245 250 248 / 92%);
+  box-shadow: 0 0 5px rgb(232 244 245 / 38%);
+  animation-name: snowFall;
+}
+
+.particleFallback {
+  display: none;
+}
+
+.particleFallback[data-weather-particles-static-only='true'] {
+  display: block;
+}
+
+.particleFallback[data-weather-particle-kind='rain'] {
+  background-image:
+    repeating-linear-gradient(
+      104deg,
+      transparent 0 28px,
+      rgb(207 230 239 / 24%) 29px 30px,
+      transparent 31px 58px
+    );
+  background-size: 82px 82px;
+}
+
+.particleFallback[data-weather-particle-kind='snow'] {
+  background-image:
+    radial-gradient(circle at 12% 18%, rgb(247 251 250 / 70%) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 68% 12%, rgb(247 251 250 / 58%) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 38% 61%, rgb(247 251 250 / 64%) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 84% 73%, rgb(247 251 250 / 52%) 0 1.5px, transparent 2px);
+  background-size: 96px 112px;
+}
+
+@keyframes rainFall {
+  from {
+    transform: translate3d(0, -12vh, 0) rotate(var(--weather-rain-angle));
+  }
+  to {
+    transform: translate3d(var(--particle-drift), 124vh, 0) rotate(var(--weather-rain-angle));
+  }
+}
+
+@keyframes snowFall {
+  0% {
+    transform: translate3d(0, -12vh, 0) scale(var(--particle-scale));
+  }
+  50% {
+    transform: translate3d(var(--particle-drift), 54vh, 0) scale(var(--particle-scale));
+  }
+  100% {
+    transform: translate3d(calc(var(--particle-drift) * -1), 122vh, 0) scale(var(--particle-scale));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sky,
   .ambient,
   .clouds,
   .fog {
     transition: none;
+  }
+
+  .particleField {
+    display: none;
+  }
+
+  .particleFallback {
+    display: block;
+  }
+
+  .particle {
+    animation: none;
   }
 }
