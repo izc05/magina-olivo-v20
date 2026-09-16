@@ -36,6 +36,8 @@ export type RouteSourceFetchResult =
 export type FetchOfficialRouteAssetInput = {
   url: string;
   fetchImpl?: RouteSourceFetch;
+  maxAttempts?: number;
+  retryDelayMs?: number;
 };
 
 const OFFICIAL_ASSET_HEADERS = {
@@ -43,38 +45,77 @@ const OFFICIAL_ASSET_HEADERS = {
   'User-Agent': 'MaginaAventuraRouteIngestor/1.0',
 };
 
+const RETRYABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+function sleep(milliseconds: number) {
+  if (milliseconds <= 0) return Promise.resolve();
+  return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+}
+
 export async function fetchOfficialRouteAsset(
   input: FetchOfficialRouteAssetInput,
 ): Promise<RouteSourceFetchResult> {
   const fetchImpl = input.fetchImpl ?? (globalThis.fetch as unknown as RouteSourceFetch);
-  const response = await fetchImpl(input.url, { headers: OFFICIAL_ASSET_HEADERS });
-  const contentType = response.headers.get('content-type');
+  const maxAttempts = Math.max(1, Math.min(5, Math.trunc(input.maxAttempts ?? 3)));
+  const retryDelayMs = Math.max(0, Math.trunc(input.retryDelayMs ?? 500));
+  let lastHttpStatus = 0;
+  let lastContentType: string | null = null;
 
-  if (response.status === 401 || response.status === 403) {
-    return {
-      status: 'blocked',
-      httpStatus: response.status,
-      content: null,
-      contentType,
-      attempts: 1,
-    };
-  }
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetchImpl(input.url, { headers: OFFICIAL_ASSET_HEADERS });
+      lastHttpStatus = response.status;
+      lastContentType = response.headers.get('content-type');
 
-  if (!response.ok) {
-    return {
-      status: 'failed',
-      httpStatus: response.status,
-      content: null,
-      contentType,
-      attempts: 1,
-    };
+      if (response.status === 401 || response.status === 403) {
+        return {
+          status: 'blocked',
+          httpStatus: response.status,
+          content: null,
+          contentType: lastContentType,
+          attempts: attempt,
+        };
+      }
+
+      if (response.ok) {
+        return {
+          status: 'fetched',
+          httpStatus: response.status,
+          content: new Uint8Array(await response.arrayBuffer()),
+          contentType: lastContentType,
+          attempts: attempt,
+        };
+      }
+
+      if (!RETRYABLE_HTTP_STATUSES.has(response.status) || attempt === maxAttempts) {
+        return {
+          status: 'failed',
+          httpStatus: response.status,
+          content: null,
+          contentType: lastContentType,
+          attempts: attempt,
+        };
+      }
+    } catch {
+      if (attempt === maxAttempts) {
+        return {
+          status: 'failed',
+          httpStatus: lastHttpStatus,
+          content: null,
+          contentType: lastContentType,
+          attempts: attempt,
+        };
+      }
+    }
+
+    await sleep(retryDelayMs * attempt);
   }
 
   return {
-    status: 'fetched',
-    httpStatus: response.status,
-    content: new Uint8Array(await response.arrayBuffer()),
-    contentType,
-    attempts: 1,
+    status: 'failed',
+    httpStatus: lastHttpStatus,
+    content: null,
+    contentType: lastContentType,
+    attempts: maxAttempts,
   };
 }
