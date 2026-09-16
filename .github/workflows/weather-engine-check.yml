@@ -1,0 +1,66 @@
+name: V20 Weather Engine check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/weather/**'
+      - 'apps/api/src/weather/**'
+      - 'apps/api/src/routes/weather.ts'
+      - 'apps/api/src/routes/weather-current.test.ts'
+      - 'apps/api/package.json'
+      - 'apps/web/src/lib/weather-source.ts'
+      - 'apps/web/src/app/aventura/**'
+      - 'e2e/magina-adventure-weather.spec.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.nvmrc'
+      - '.github/workflows/weather-engine-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  weather-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build contracts
+        run: pnpm --filter @magina/contracts build
+
+      - name: Weather unit contracts
+        run: pnpm --filter @magina/weather test
+
+      - name: Build jobs dependency
+        run: pnpm --filter @magina/jobs build
+
+      - name: API weather contract
+        run: pnpm --filter @magina/api test:weather
+
+      - name: API typecheck
+        run: pnpm --filter @magina/api typecheck
+
+      - name: Web typecheck
+        run: pnpm --filter @magina/web typecheck

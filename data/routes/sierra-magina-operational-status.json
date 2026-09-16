@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "verified_at": "2026-09-13",
+  "scope": "Current authoritative operational status for hiking routes",
+  "policy": {
+    "operational_status_is_independent_from_editorial_publication": true,
+    "only_explicit_authoritative_statuses_are_recorded": true,
+    "absence_from_this_file_does_not_mean_open": true,
+    "status_values": ["temporarily_closed", "restricted", "open"]
+  },
+  "routes": [
+    {
+      "slug": "adelfal-de-cuadros",
+      "status": "temporarily_closed",
+      "authority": "Junta de Andalucia - Ventana del Visitante",
+      "source_url": "https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/adelfal-de-cuadros/255035",
+      "verified_at": "2026-09-13",
+      "source_label": "CERRADO TEMPORALMENTE (FUERA DE SERVICIO TEMPORALMENTE)"
+    },
+    {
+      "slug": "las-vinas",
+      "status": "temporarily_closed",
+      "authority": "Junta de Andalucia - Ventana del Visitante",
+      "source_url": "https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/detalle-buscador-mapa/-/asset_publisher/Jlbxh2qB3NwR/content/las-vi%C3%B1as/255035",
+      "verified_at": "2026-09-13",
+      "source_label": "CERRADO TEMPORALMENTE (FUERA DE SERVICIO TEMPORALMENTE)"
+    }
+  ]
+}

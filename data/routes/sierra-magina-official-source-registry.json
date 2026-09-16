@@ -1,0 +1,70 @@
+{
+  "registry_version": 1,
+  "audited_at": "2026-09-13",
+  "scope": "Official and institutional hiking sources for the 16 Sierra Magina municipalities",
+  "sources": [
+    {
+      "authority": "Junta de Andalucia - Ventana del Visitante",
+      "authority_kind": "regional",
+      "source_url": "https://www.juntadeandalucia.es/medioambiente/portal/web/ventanadelvisitante/",
+      "municipalities": ["Albanchez de Magina","Bedmar y Garciez","Belmez de la Moraleda","Cambil","Huelma","Jimena","Jodar","Mancha Real","Pegalajar","Torres"],
+      "finding": "Official Parque Natural Sierra Magina senderos and downloadable route resources."
+    },
+    {
+      "authority": "Diputacion de Jaen - Jaen Paraiso Interior",
+      "authority_kind": "provincial",
+      "source_url": "https://www.jaenparaisointerior.es/es/sierra_magina",
+      "municipalities": ["Albanchez de Magina","Bedmar y Garciez","Belmez de la Moraleda","Cabra del Santo Cristo","Cambil","Campillo de Arenas","Carcheles","Huelma","Jimena","Jodar","La Guardia de Jaen","Larva","Mancha Real","Noalejo","Pegalajar","Torres"],
+      "finding": "Official Sierra Magina tourism network; confirms the 16-municipality scope and publishes R1-R9 hiking network plus territorial resources."
+    },
+    {
+      "authority": "Ayuntamiento de Noalejo",
+      "authority_kind": "municipal",
+      "source_url": "https://www.noalejo.es/paraje-de-navalcan/",
+      "municipalities": ["Noalejo"],
+      "finding": "Lists Navalcan-Molinos, Navalcan-Los Castillejos-Pinturas rupestres, Canada del Toril and Noalejo-Navalcan."
+    },
+    {
+      "authority": "Ayuntamiento de Carcheles",
+      "authority_kind": "municipal",
+      "source_url": "https://www.carcheles.es/turismo/patrimonio-natural/",
+      "municipalities": ["Carcheles"],
+      "finding": "Lists Carchelejo-Cazalla-Convento, Carchel-Carchelejo por Barranco de la Parrilla and ascent to Cueva del Puerto de las Palomas."
+    },
+    {
+      "authority": "Ayuntamiento de Mancha Real - Turismo Mancha Real",
+      "authority_kind": "municipal",
+      "source_url": "https://mancharealturismo.es/rutas-de-senderismo",
+      "municipalities": ["Mancha Real"],
+      "finding": "Publishes three Level 2 hiking routes around Pena del Aguila with downloadable resources."
+    },
+    {
+      "authority": "Ayuntamiento de La Guardia de Jaen",
+      "authority_kind": "municipal",
+      "source_url": "https://laguardiadejaen.com/tu-ciudad/informacion-turistica/",
+      "municipalities": ["La Guardia de Jaen"],
+      "finding": "Describes the Cerrillo de San Cristobal-Cueva Cabrera-Allanadas del Santo route."
+    },
+    {
+      "authority": "Ayuntamiento de Campillo de Arenas",
+      "authority_kind": "municipal",
+      "source_url": "https://www.campillodearenas.es/turismo/patrimonio-natural/",
+      "municipalities": ["Campillo de Arenas"],
+      "finding": "Confirms a didactic botanical trail at Desfiladero de Puerta Arenas; technical track remains to be located."
+    },
+    {
+      "authority": "Diputacion de Jaen - Jaen Paraiso Interior",
+      "authority_kind": "provincial",
+      "source_url": "https://www.jaenparaisointerior.es/es/w/sm/monumento/puente-de-tierra",
+      "municipalities": ["Cabra del Santo Cristo"],
+      "finding": "Documents Puente de Tierra hiking variants: approximately 17 km circular or 12 km out-and-back."
+    },
+    {
+      "authority": "Ayuntamiento de Larva / Jaen Paraiso Interior",
+      "authority_kind": "municipal_provincial_audit",
+      "source_url": "https://larva.es/",
+      "municipalities": ["Larva"],
+      "finding": "Municipality audited. Natural areas suitable for walking are documented, but no named official pedestrian route with a dedicated technical sheet/track was located. Do not invent one."
+    }
+  ]
+}
