@@ -1,0 +1,70 @@
+name: V20 routes GR7 geometry audit
+
+on:
+  push:
+    branches:
+      - feat/v20-routes-catalog-completion
+    paths:
+      - 'data/routes/sierra-magina-gr7-stage-track-sources.json'
+      - 'scripts/audit-gr7-stage-geometries.py'
+      - '.github/workflows/routes-gr7-geometry-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Ensure 7z
+        run: |
+          if ! command -v 7z >/dev/null 2>&1 && ! command -v 7zz >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y p7zip-full
+          fi
+
+      - name: Audit GR-7 stage geometries
+        id: audit
+        continue-on-error: true
+        run: python scripts/audit-gr7-stage-geometries.py --write data/routes/sierra-magina-gr7-stage-geometry-audit.json
+
+      - name: Print summary
+        if: always()
+        run: |
+          if [ -f data/routes/sierra-magina-gr7-stage-geometry-audit.json ]; then
+            python - <<'PY'
+          import json
+          with open('data/routes/sierra-magina-gr7-stage-geometry-audit.json', encoding='utf-8') as handle:
+              report = json.load(handle)
+          print(json.dumps(report.get('summary', {}), indent=2, ensure_ascii=False))
+          for row in report.get('stages', []):
+              track = row.get('selected_track') or {}
+              print(row.get('stage'), row.get('fetch_status'), track.get('file_name'), track.get('calculated_length_m'), row.get('validation_status'))
+          PY
+          else
+            echo 'GR-7 audit report was not generated.'
+          fi
+
+      - name: Upload GR-7 geometry audit
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: sierra-magina-gr7-stage-geometry-audit
+          path: data/routes/sierra-magina-gr7-stage-geometry-audit.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Record safety rule
+        if: always()
+        run: |
+          echo 'This audit is non-blocking and does not remove FAM maintenance/signage warnings.'

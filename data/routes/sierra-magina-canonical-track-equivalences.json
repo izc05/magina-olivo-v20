@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "audited_at": "2026-09-13",
+  "policy": {
+    "equivalence_must_be_explicit": true,
+    "source_track_must_be_geometry_validated": true,
+    "canonical_evidence_record_must_exist": true,
+    "equivalence_does_not_make_route_publishable": true
+  },
+  "equivalences": [
+    {
+      "canonical_route_slug": "cano-del-aguadero",
+      "external_route_ref": "PR-A 350",
+      "authority": "Federacion Andaluza de Deportes de Montana, Escalada y Senderismo",
+      "status": "geometry_validated_canonical_equivalent",
+      "validated_at": "2026-09-13",
+      "calculated_length_m": 14305,
+      "junta_distance_m": 14306,
+      "sha256": "1321e33100e8f7c0e8f33312ed849d23672eba49edd494c282bb3590e08770a5",
+      "notes": "PR-A 350 is the federative identity for Caño del Aguadero. The official FAM geometry length differs by 1 m from the Junta technical sheet."
+    },
+    {
+      "canonical_route_slug": "fuenmayor",
+      "external_route_ref": "SL-A 135",
+      "authority": "Federacion Andaluza de Deportes de Montana, Escalada y Senderismo",
+      "status": "geometry_validated_canonical_equivalent",
+      "validated_at": "2026-09-13",
+      "calculated_length_m": 6316,
+      "junta_distance_m": 6405,
+      "sha256": "4be9574dff8d9b50728ef77bb9bfa3a991d240aee4b2758e737145ef65ae37a2",
+      "notes": "SL-A 135 is the federative identity for Fuenmayor. The official FAM geometry is 89 m shorter than the current Junta technical-sheet distance (about 1.4%)."
+    }
+  ]
+}
