@@ -36,9 +36,21 @@ try {
 
   const businessId = randomUUID();
   const businessSlug = `pickup-ci-${businessId.slice(0, 8)}`;
+  const pickupAddress = 'Avenida de Mágina 12';
+  const pickupPhone = '+34 953 000 123';
+  const pickupLongitude = -3.4123;
+  const pickupLatitude = 37.9971;
   await sql`
-    INSERT INTO businesses (id, slug, name, status, published_at, created_by, updated_by)
-    VALUES (${businessId}::uuid, ${businessSlug}, 'Almazara Pickup CI', 'published', now(), ${userId}::uuid, ${userId}::uuid)
+    INSERT INTO businesses (
+      id, slug, name, status, published_at, municipality_id,
+      address, phone, location, created_by, updated_by
+    )
+    SELECT
+      ${businessId}::uuid, ${businessSlug}, 'Almazara Pickup CI', 'published', now(), m.id,
+      ${pickupAddress}, ${pickupPhone}, ST_SetSRID(ST_MakePoint(${pickupLongitude}, ${pickupLatitude}), 4326),
+      ${userId}::uuid, ${userId}::uuid
+    FROM territory_municipalities m
+    WHERE m.slug='bedmar-y-garciez'
   `.execute(db);
 
   const productId = randomUUID();
@@ -79,6 +91,11 @@ try {
   const pickup = pickups.json().pickups.find((item: { redemptionId: string }) => item.redemptionId === redemptionId);
   assert.ok(pickup, 'reserved redemption must expose pickup metadata');
   assert.equal(pickup.businessSlug, businessSlug);
+  assert.equal(pickup.address, pickupAddress);
+  assert.equal(pickup.municipalityName, 'Bedmar y Garcíez');
+  assert.equal(pickup.phone, pickupPhone);
+  assert.ok(Math.abs(Number(pickup.longitude) - pickupLongitude) < 0.000001, 'pickup longitude must come from business location');
+  assert.ok(Math.abs(Number(pickup.latitude) - pickupLatitude) < 0.000001, 'pickup latitude must come from business location');
 
   const anonymous = await app.inject({ method: 'GET', url: '/api/v1/my/almazara-redemption-pickups' });
   assert.equal(anonymous.statusCode, 401, anonymous.body);
