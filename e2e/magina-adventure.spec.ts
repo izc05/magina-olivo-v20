@@ -9,17 +9,7 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(Math.max(dimensions.body, dimensions.document)).toBeLessThanOrEqual(dimensions.viewport + 1);
 }
 
-test('Mágina Aventura is discoverable from Explore on mobile', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/explorar');
-
-  const adventure = page.getByRole('link', { name: /Mágina Aventura/ });
-  await expect(adventure).toBeVisible();
-  await expect(adventure).toHaveAttribute('href', /^\/aventura\/?$/);
-  await expectNoHorizontalOverflow(page);
-});
-
-test('Mágina Aventura renders its public mobile hub without fictional fallback data', async ({ page }) => {
+async function mockEmptyAdventureHub(page: Page) {
   await page.route('**/api/v1/public/adventures', async (route) => {
     await route.fulfill({
       status: 200,
@@ -33,14 +23,51 @@ test('Mágina Aventura renders its public mobile hub without fictional fallback 
   await page.route('**/api/v1/activities/active', async (route) => {
     await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'authentication_required' }) });
   });
+}
+
+test('Mágina Aventura is discoverable from Explore on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/explorar');
+
+  const adventure = page.getByRole('link', { name: /Mágina Aventura/ });
+  await expect(adventure).toBeVisible();
+  await expect(adventure).toHaveAttribute('href', /^\/aventura\/?$/);
+  await expectNoHorizontalOverflow(page);
+});
+
+test('Mágina Aventura renders its public mobile hub without fictional fallback data', async ({ page }) => {
+  await mockEmptyAdventureHub(page);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/aventura');
 
   await expect(page.getByRole('heading', { level: 1, name: /Mágina Aventura/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Ver aventuras' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Ver rutas' })).toHaveAttribute('href', /^\/rutas\/?$/);
+  await expect(page.getByRole('link', { name: /Comenzar aventura/ })).toHaveAttribute('href', '#aventuras');
+  await expect(page.getByRole('link', { name: 'Ver todas las rutas' })).toHaveAttribute('href', /^\/rutas\/?$/);
+  const shortcuts = page.getByRole('navigation', { name: 'Mágina Aventura', exact: true });
+  await expect(shortcuts).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Rutas/ })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Aventura en curso/ })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Mi aventura/i })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Colecciones/ })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Comunidad/ })).toBeVisible();
   await expect(page.getByText('Las primeras aventuras están en preparación')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('Mágina Aventura desktop hub exposes the five primary product shortcuts', async ({ page }) => {
+  await mockEmptyAdventureHub(page);
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/aventura');
+
+  const shortcuts = page.getByRole('navigation', { name: 'Mágina Aventura', exact: true });
+  await expect(shortcuts).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Rutas/ })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Aventura en curso/ })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Mi aventura/i })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Colecciones/ })).toBeVisible();
+  await expect(shortcuts.getByRole('link', { name: /Comunidad/ })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
