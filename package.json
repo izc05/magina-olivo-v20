@@ -21,8 +21,9 @@
     "check:containers": "node scripts/check-container-pins.mjs",
     "check:admin-unified": "node scripts/check-admin-unified-control-center.mjs",
     "check:routes-catalog": "node scripts/check-route-catalog.mjs",
+    "check:route-geometry": "pnpm --filter @magina/worker build && pnpm --filter @magina/worker smoke:route-geometry",
     "audit:ci": "node scripts/audit-ci.mjs",
-    "check": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm check:admin-unified && pnpm check:routes-catalog && pnpm typecheck && pnpm build",
+    "check": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm check:admin-unified && pnpm check:routes-catalog && pnpm typecheck && pnpm check:route-geometry && pnpm build",
     "check:fast": "pnpm check:runtime && pnpm check:lockfile && pnpm check:env && pnpm check:staging && pnpm check:migrations && pnpm check:containers && pnpm check:admin-unified && pnpm check:routes-catalog && pnpm typecheck",
     "e2e:beta": "playwright test"
   },
