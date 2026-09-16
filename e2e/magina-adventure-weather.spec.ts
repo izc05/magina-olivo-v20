@@ -165,3 +165,23 @@ test('local weather lab can simulate effects without requesting GPS weather', as
   expect(weatherCalls).toBe(0);
   await expectNoHorizontalOverflow(page);
 });
+
+test('WeatherScene exposes atmospheric sky, cloud, fog and phase model states', async ({ page }) => {
+  await mockRoute(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/aventura/en-curso?slug=ruta-demo&weatherLab=1');
+
+  const scene = page.locator('[data-weather-scene="true"]');
+
+  await page.getByRole('button', { name: 'Nublado' }).click();
+  await expect(scene).toHaveAttribute('data-weather-sky', 'overcast');
+  await expect(scene).toHaveAttribute('data-weather-cloud-density', '0.72');
+
+  await page.getByRole('button', { name: 'Niebla' }).click();
+  await expect(scene).toHaveAttribute('data-weather-sky', 'fog');
+  await expect(scene).toHaveAttribute('data-weather-fog-density', '0.62');
+
+  await page.getByRole('button', { name: 'Noche' }).click();
+  await expect(scene).toHaveAttribute('data-weather-sky', 'night');
+  await expect(scene).toHaveAttribute('data-weather-tone', 'cool');
+});
