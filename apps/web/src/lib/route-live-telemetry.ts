@@ -14,7 +14,14 @@ export type RouteLiveTelemetry = {
 
 export const ROUTE_LIVE_TELEMETRY_EVENT = 'magina:route-live-telemetry';
 
+let latestRouteLiveTelemetry: RouteLiveTelemetry | null = null;
+
+export function getLatestRouteLiveTelemetry() {
+  return latestRouteLiveTelemetry;
+}
+
 export function emitRouteLiveTelemetry(detail: RouteLiveTelemetry) {
+  latestRouteLiveTelemetry = detail;
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent<RouteLiveTelemetry>(ROUTE_LIVE_TELEMETRY_EVENT, { detail }));
 }
