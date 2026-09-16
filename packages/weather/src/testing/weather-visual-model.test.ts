@@ -104,7 +104,7 @@ test('official AEMET alert emphasizes safety without increasing visual intensity
   assert.equal(alerted.lightningAmount, base.lightningAmount);
 });
 
-test('reduced motion disables transitions and continuous decorative motion', () => {
+test('reduced motion disables transitions and animated decorative families while preserving static precipitation strength', () => {
   const model = buildWeatherVisualModel(
     weather({ condition: 'storm', intensity: 3 }),
     { reducedMotion: true },
@@ -113,7 +113,7 @@ test('reduced motion disables transitions and continuous decorative motion', () 
   assert.equal(model.reducedMotion, true);
   assert.equal(model.transitionDurationMs, 0);
   assert.equal(model.lightningAmount, 0);
-  assert.equal(model.rainAmount, 0);
+  assert.ok(model.rainAmount >= 0.65);
   assert.equal(model.leafAmount, 0);
   assert.equal(model.dustAmount, 0);
 });
