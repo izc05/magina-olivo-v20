@@ -204,7 +204,7 @@ test('WeatherScene renders deterministic rain and snow particles with a reduced-
 
   await page.getByRole('button', { name: 'Nieve' }).click();
   await expect(animated).toHaveAttribute('data-weather-particle-kind', 'snow');
-  await expect(animated).toHaveAttribute('data-weather-particle-count', '16');
+  await expect(animated).toHaveAttribute('data-weather-particle-count', '10');
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(animated).toBeHidden();
