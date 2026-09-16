@@ -14,16 +14,40 @@ export type RouteLiveTelemetry = {
 
 export const ROUTE_LIVE_TELEMETRY_EVENT = 'magina:route-live-telemetry';
 
+const INITIAL_FIX_REPLAY_DELAYS_MS = [100, 500, 1500, 4000] as const;
+
 let latestRouteLiveTelemetry: RouteLiveTelemetry | null = null;
 
 export function getLatestRouteLiveTelemetry() {
   return latestRouteLiveTelemetry;
 }
 
+function dispatchRouteLiveTelemetry(detail: RouteLiveTelemetry) {
+  window.dispatchEvent(new CustomEvent<RouteLiveTelemetry>(ROUTE_LIVE_TELEMETRY_EVENT, { detail }));
+}
+
 export function emitRouteLiveTelemetry(detail: RouteLiveTelemetry) {
+  const previous = latestRouteLiveTelemetry;
   latestRouteLiveTelemetry = detail;
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent<RouteLiveTelemetry>(ROUTE_LIVE_TELEMETRY_EVENT, { detail }));
+
+  dispatchRouteLiveTelemetry(detail);
+
+  const enteredTracking = detail.gpsState === 'tracking'
+    && detail.latitude != null
+    && detail.longitude != null
+    && (previous?.gpsState !== 'tracking' || previous.activityId !== detail.activityId);
+  if (!enteredTracking) return;
+
+  const activityId = detail.activityId;
+  for (const delay of INITIAL_FIX_REPLAY_DELAYS_MS) {
+    window.setTimeout(() => {
+      const latest = latestRouteLiveTelemetry;
+      if (!latest || latest.gpsState !== 'tracking' || latest.activityId !== activityId) return;
+      if (latest.latitude == null || latest.longitude == null) return;
+      dispatchRouteLiveTelemetry(latest);
+    }, delay);
+  }
 }
 
 export function coordinateDistanceM(
