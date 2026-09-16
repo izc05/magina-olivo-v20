@@ -73,6 +73,46 @@ function parseKmlCoordinates(content: string): Position3D[] {
   });
 }
 
+function parseGmlCoordinates(content: string, sourceCrs: SupportedRouteCrs): Position3D[] {
+  if (sourceCrs !== 'EPSG:4326') {
+    throw new Error(`unsupported_route_geometry_crs:${sourceCrs}`);
+  }
+
+  const posLists = [...content.matchAll(/<(?:(?:\w+):)?posList([^>]*)>([\s\S]*?)<\/(?:(?:\w+):)?posList>/gi)];
+  if (posLists.length === 0) throw new Error('gml_pos_list_required');
+
+  const points: Position3D[] = [];
+  for (const match of posLists) {
+    const attributes = match[1] ?? '';
+    const numbers = (match[2] ?? '').trim().split(/\s+/).filter(Boolean)
+      .map((value) => parseFinite(value, 'gml_coordinate'));
+    const dimensionMatch = attributes.match(/srsDimension\s*=\s*["'](\d+)["']/i)
+      ?? content.match(/srsDimension\s*=\s*["'](\d+)["']/i);
+    const dimension = dimensionMatch ? Number(dimensionMatch[1]) : 2;
+    if (dimension !== 2 && dimension !== 3) throw new Error('unsupported_gml_dimension');
+    if (numbers.length < dimension * 2 || numbers.length % dimension !== 0) {
+      throw new Error('invalid_gml_pos_list');
+    }
+
+    const axisLabels = (attributes.match(/axisLabels\s*=\s*["']([^"']+)["']/i)
+      ?? content.match(/axisLabels\s*=\s*["']([^"']+)["']/i))?.[1]?.toLowerCase() ?? '';
+    const longitudeFirst = axisLabels.startsWith('long') || axisLabels.startsWith('lon');
+
+    for (let index = 0; index < numbers.length; index += dimension) {
+      const first = numbers[index]!;
+      const second = numbers[index + 1]!;
+      const longitude = longitudeFirst ? first : second;
+      const latitude = longitudeFirst ? second : first;
+      const altitude = dimension === 3 ? numbers[index + 2]! : null;
+      assertWgs84([longitude, latitude]);
+      points.push([longitude, latitude, altitude]);
+    }
+  }
+
+  if (points.length < 2) throw new Error('route_geometry_requires_two_points');
+  return points;
+}
+
 function buildResult(points: Position3D[]): NormalizedRouteGeometry {
   const coordinates: Position2D[] = points.map(([longitude, latitude]) => [longitude, latitude]);
   let distanceM = 0;
@@ -95,11 +135,15 @@ function buildResult(points: Position3D[]): NormalizedRouteGeometry {
 }
 
 export function normalizeRouteGeometry(input: NormalizeRouteGeometryInput): NormalizedRouteGeometry {
-  if (input.format !== 'kml') {
-    throw new Error(`unsupported_route_geometry_format:${input.format}`);
+  const sourceCrs = input.sourceCrs ?? 'EPSG:4326';
+  if (input.format === 'kml') {
+    if (sourceCrs !== 'EPSG:4326') {
+      throw new Error(`unsupported_route_geometry_crs:${sourceCrs}`);
+    }
+    return buildResult(parseKmlCoordinates(input.content));
   }
-  if ((input.sourceCrs ?? 'EPSG:4326') !== 'EPSG:4326') {
-    throw new Error(`unsupported_route_geometry_crs:${input.sourceCrs}`);
+  if (input.format === 'gml') {
+    return buildResult(parseGmlCoordinates(input.content, sourceCrs));
   }
-  return buildResult(parseKmlCoordinates(input.content));
+  throw new Error(`unsupported_route_geometry_format:${input.format}`);
 }
