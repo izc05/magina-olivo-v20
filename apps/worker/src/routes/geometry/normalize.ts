@@ -1,3 +1,5 @@
+import { inflateRawSync } from 'node:zlib';
+
 export type RouteGeometryFormat = 'kml' | 'gml' | 'kmz';
 export type SupportedRouteCrs = 'EPSG:4326' | 'EPSG:25830';
 
@@ -18,14 +20,25 @@ export type NormalizedRouteGeometry = {
 };
 
 export type NormalizeRouteGeometryInput = {
-  format: RouteGeometryFormat;
+  format: Exclude<RouteGeometryFormat, 'kmz'>;
   content: string;
+  sourceCrs?: SupportedRouteCrs;
+};
+
+export type NormalizeRouteAssetInput = {
+  format: RouteGeometryFormat;
+  content: string | Uint8Array;
   sourceCrs?: SupportedRouteCrs;
 };
 
 type Position3D = [number, number, number | null];
 
 const EARTH_RADIUS_M = 6_371_008.8;
+const ZIP_EOCD_SIGNATURE = 0x06054b50;
+const ZIP_CENTRAL_SIGNATURE = 0x02014b50;
+const ZIP_LOCAL_SIGNATURE = 0x04034b50;
+const MAX_KMZ_ENTRIES = 256;
+const MAX_KML_BYTES = 20 * 1024 * 1024;
 
 function radians(value: number) {
   return (value * Math.PI) / 180;
@@ -113,6 +126,72 @@ function parseGmlCoordinates(content: string, sourceCrs: SupportedRouteCrs): Pos
   return points;
 }
 
+function findEndOfCentralDirectory(bytes: Uint8Array) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const minimumOffset = Math.max(0, bytes.byteLength - 65_557);
+  for (let offset = bytes.byteLength - 22; offset >= minimumOffset; offset -= 1) {
+    if (view.getUint32(offset, true) === ZIP_EOCD_SIGNATURE) return offset;
+  }
+  throw new Error('invalid_kmz_end_of_central_directory');
+}
+
+function extractKmlFromKmz(content: Uint8Array) {
+  if (content.byteLength < 22) throw new Error('invalid_kmz_archive');
+  const view = new DataView(content.buffer, content.byteOffset, content.byteLength);
+  const eocdOffset = findEndOfCentralDirectory(content);
+  const entryCount = view.getUint16(eocdOffset + 10, true);
+  const centralOffset = view.getUint32(eocdOffset + 16, true);
+  if (entryCount < 1 || entryCount > MAX_KMZ_ENTRIES) throw new Error('invalid_kmz_entry_count');
+
+  let cursor = centralOffset;
+  const decoder = new TextDecoder('utf-8');
+  for (let entryIndex = 0; entryIndex < entryCount; entryIndex += 1) {
+    if (cursor + 46 > content.byteLength || view.getUint32(cursor, true) !== ZIP_CENTRAL_SIGNATURE) {
+      throw new Error('invalid_kmz_central_directory');
+    }
+    const compressionMethod = view.getUint16(cursor + 10, true);
+    const compressedSize = view.getUint32(cursor + 20, true);
+    const uncompressedSize = view.getUint32(cursor + 24, true);
+    const fileNameLength = view.getUint16(cursor + 28, true);
+    const extraLength = view.getUint16(cursor + 30, true);
+    const commentLength = view.getUint16(cursor + 32, true);
+    const localHeaderOffset = view.getUint32(cursor + 42, true);
+    const fileNameStart = cursor + 46;
+    const fileNameEnd = fileNameStart + fileNameLength;
+    if (fileNameEnd > content.byteLength) throw new Error('invalid_kmz_filename');
+    const fileName = decoder.decode(content.subarray(fileNameStart, fileNameEnd));
+
+    if (fileName.toLowerCase().endsWith('.kml')) {
+      if (uncompressedSize > MAX_KML_BYTES) throw new Error('kmz_kml_too_large');
+      if (localHeaderOffset + 30 > content.byteLength
+        || view.getUint32(localHeaderOffset, true) !== ZIP_LOCAL_SIGNATURE) {
+        throw new Error('invalid_kmz_local_header');
+      }
+      const localNameLength = view.getUint16(localHeaderOffset + 26, true);
+      const localExtraLength = view.getUint16(localHeaderOffset + 28, true);
+      const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength;
+      const dataEnd = dataStart + compressedSize;
+      if (dataEnd > content.byteLength) throw new Error('invalid_kmz_entry_data');
+      const compressed = content.subarray(dataStart, dataEnd);
+
+      let kmlBytes: Uint8Array;
+      if (compressionMethod === 0) {
+        kmlBytes = compressed;
+      } else if (compressionMethod === 8) {
+        kmlBytes = inflateRawSync(compressed);
+      } else {
+        throw new Error(`unsupported_kmz_compression:${compressionMethod}`);
+      }
+      if (kmlBytes.byteLength > MAX_KML_BYTES) throw new Error('kmz_kml_too_large');
+      return decoder.decode(kmlBytes);
+    }
+
+    cursor = fileNameEnd + extraLength + commentLength;
+  }
+
+  throw new Error('kmz_kml_entry_required');
+}
+
 function buildResult(points: Position3D[]): NormalizedRouteGeometry {
   const coordinates: Position2D[] = points.map(([longitude, latitude]) => [longitude, latitude]);
   let distanceM = 0;
@@ -142,8 +221,22 @@ export function normalizeRouteGeometry(input: NormalizeRouteGeometryInput): Norm
     }
     return buildResult(parseKmlCoordinates(input.content));
   }
-  if (input.format === 'gml') {
-    return buildResult(parseGmlCoordinates(input.content, sourceCrs));
+  return buildResult(parseGmlCoordinates(input.content, sourceCrs));
+}
+
+export function normalizeRouteAsset(input: NormalizeRouteAssetInput): NormalizedRouteGeometry {
+  if (input.format === 'kmz') {
+    if (typeof input.content === 'string') throw new Error('kmz_binary_content_required');
+    return normalizeRouteGeometry({
+      format: 'kml',
+      content: extractKmlFromKmz(input.content),
+      sourceCrs: input.sourceCrs,
+    });
   }
-  throw new Error(`unsupported_route_geometry_format:${input.format}`);
+  if (typeof input.content !== 'string') throw new Error(`${input.format}_text_content_required`);
+  return normalizeRouteGeometry({
+    format: input.format,
+    content: input.content,
+    sourceCrs: input.sourceCrs,
+  });
 }
