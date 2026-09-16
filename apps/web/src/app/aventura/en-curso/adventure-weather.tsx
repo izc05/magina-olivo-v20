@@ -11,26 +11,10 @@ import {
   type AdventureWeatherIntensity,
   type AdventureWeatherState,
 } from '../../../lib/weather-source';
+import { WeatherScene } from './weather-scene/weather-scene';
 import styles from './adventure-weather.module.css';
 
 const REFRESH_MS = 10 * 60 * 1000;
-
-const conditionClass: Record<AdventureWeatherCondition, string> = {
-  clear: styles.clear,
-  cloudy: styles.cloudy,
-  rain: styles.rain,
-  storm: styles.storm,
-  fog: styles.fog,
-  snow: styles.snow,
-  wind: styles.wind,
-};
-
-const phaseClass: Record<AdventureWeatherDayPhase, string> = {
-  day: styles.day,
-  golden_hour: styles.goldenHour,
-  dusk: styles.dusk,
-  night: styles.night,
-};
 
 const labPresets: Array<{ label: string; condition: AdventureWeatherCondition; intensity: AdventureWeatherIntensity; phase?: AdventureWeatherDayPhase }> = [
   { label: 'Sol', condition: 'clear', intensity: 0 },
@@ -133,12 +117,7 @@ export function AdventureWeather({ routeName }: { routeName: string }) {
   }
 
   return <>
-    {weather ? <div
-      className={`${styles.visualLayer} ${conditionClass[weather.condition]} ${phaseClass[weather.dayPhase]}`}
-      data-weather-condition={weather.condition}
-      data-weather-intensity={weather.intensity}
-      aria-hidden="true"
-    /> : null}
+    {weather ? <WeatherScene weather={weather} /> : null}
 
     <section className={styles.dock} aria-labelledby="adventure-weather-title">
       <div className={styles.heading}>
