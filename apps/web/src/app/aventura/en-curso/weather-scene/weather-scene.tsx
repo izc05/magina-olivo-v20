@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { AdventureWeatherState } from '../../../../lib/weather-source';
+import { WeatherParticles } from './weather-particles';
 import { buildWeatherSceneModel } from './weather-scene-model';
 import styles from './weather-scene.module.css';
 
@@ -32,6 +33,7 @@ export function WeatherScene({ weather }: { weather: AdventureWeatherState }) {
       <div className={styles.ambient} style={{ opacity: model.ambientOpacity }} />
       <div className={styles.clouds} style={{ opacity: model.cloudDensity }} />
       <div className={styles.fog} style={{ opacity: model.fogDensity }} />
+      <WeatherParticles model={model} />
     </div>
   );
 }
