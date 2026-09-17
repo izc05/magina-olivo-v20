@@ -8,12 +8,14 @@ This roadmap defines the mandatory sequence of work. A phase cannot be marked co
 
 - ✅ 0.1 Master product definition
 - ✅ 0.2 Scalable Mi Campo architecture
-- ▶ 0.3 Data Model RC1 + Future
-- ⬜ 0.4 Catastro Contract
-- ⬜ 0.5 Offline/Sync Contract
-- ⬜ 0.6 Screen Map
-- ⬜ 0.7 Design System Spec
-- ⬜ Implementation phases
+- ✅ 0.3 Data Model RC1 + Future — approved with normative addendum
+- ✅ 0.4 Catastro Contract
+- ✅ 0.5 Offline/Sync Contract — approved with normative addendum
+- ✅ 0.6 Screen Map — approved with normative cost interpretation
+- ✅ 0.7 Design System Spec
+- ▶ Phase 1 — Android project foundation
+
+The formal cross-document review is recorded in `docs/00-master/RC1-GATE-REVIEW.md`. Normative clarifications are in `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`.
 
 ---
 
@@ -37,6 +39,8 @@ Freeze entities, fields, relationships, UUIDs, geometry, indexes, historical sna
 
 **Gate:** no ambiguous ownership/cardinality/history rule remains.
 
+**Status:** PASSED with `RC1-NORMATIVE-ADDENDUM.md`.
+
 ## Phase 0.4 — Catastro Contract
 
 Freeze the sequence:
@@ -47,7 +51,9 @@ Locate → view cadastral overlay → select parcel → obtain identity → obta
 
 Document WMS/WFS/GML/CRS/error/caching rules.
 
-**Gate:** a real parcel can be transformed from cadastral source to Mágina Olivo parcel deterministically.
+**Gate:** a real parcel can be transformed from cadastral source to Mágina Olivo parcel deterministically at contract level; Phase 9 remains the mandatory Android real-parcel proof before productionizing the integration.
+
+**Status:** PASSED.
 
 ## Phase 0.5 — Offline/Sync Contract
 
@@ -55,17 +61,23 @@ Freeze local-first transactions, outbox, WorkManager scheduling, idempotency, re
 
 **Gate:** no critical field operation requires active Internet.
 
+**Status:** PASSED with aggregate clarifications in the normative addendum.
+
 ## Phase 0.6 — Complete Screen Map
 
 Specify every RC1 screen with purpose, entry, exit, actions, empty/loading/error/offline states and navigation.
 
 **Gate:** no primary flow contains dead ends or undefined transitions.
 
+**Status:** PASSED. Activity form cost fields are convenience inputs for linked Expense rows, per normative addendum.
+
 ## Phase 0.7 — Design System Spec
 
 Freeze visual tokens and reusable interaction components.
 
 **Gate:** implementation can build UI without inventing one-off visual patterns.
+
+**Status:** PASSED.
 
 ---
 
@@ -165,11 +177,13 @@ Create/activate/select parcels/snapshot/harvest state/close/history.
 
 Generic activity + activity-parcel relation, attachments/cost/notes; start with `OBSERVATION` and `OTHER`.
 
+Interpret `cost` as convenience creation/editing of linked Expense data. `expenses` remains the sole financial ledger.
+
 **Gate 13:** one offline activity can target several parcels and appears correctly in every parcel timeline.
 
 ## Phases 14–20 — Typed agricultural activities
 
-Implement sequentially, each with full create/edit/soft-delete/multi-parcel/cost/photo/timeline/offline/sync coverage:
+Implement sequentially, each with full create/edit/soft-delete/multi-parcel/linked-expense/photo/timeline/offline/sync coverage:
 
 14. Poda
 15. Abonado
@@ -187,7 +201,7 @@ Implement sequentially, each with full create/edit/soft-delete/multi-parcel/cost
 
 ## Phase 21 — Expenses
 
-Campaign/farm/parcel/activity expenses and derived totals.
+Campaign/farm/parcel/activity expenses and derived totals. `expenses` is the only authoritative financial ledger.
 
 **Gate 21:** totals reconcile across entity scopes without double counting.
 
