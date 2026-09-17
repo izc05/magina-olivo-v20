@@ -66,7 +66,7 @@ Mágina Olivo será una aplicación Android privada y offline-first para gestion
 ▶ FASE 1 — Android Project Foundation
 ```
 
-No se permite empezar una fase posterior mientras el Gate de la fase activa no esté superado.
+**Fase activa:** únicamente Fase 1. No se permite empezar Fase 2 ni funcionalidades agrícolas hasta superar Gate 1.
 
 ## Regla para agentes
 
