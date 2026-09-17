@@ -30,13 +30,14 @@ jobs:
           gradle-version: "9.4.1"
           cache-provider: basic
 
-      - name: Install Android 37 SDK
+      - name: Verify preinstalled Android 37 SDK
         shell: bash
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platforms;android-37" \
-            "build-tools;37.0.0"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -1 "$ANDROID_HOME/platforms"
+          ls -1 "$ANDROID_HOME/build-tools"
+          test -f "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -d "$ANDROID_HOME/build-tools/37.0.0"
 
       - name: Generate pinned Gradle wrapper
         run: gradle wrapper --gradle-version 9.4.1 --distribution-type bin
