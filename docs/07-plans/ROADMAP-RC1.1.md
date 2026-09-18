@@ -46,6 +46,8 @@ No farm/parcel feature work.
 
 ## Phase 2 — Base application architecture
 
+**Execution plan:** `docs/07-plans/PHASE2-BASE-ARCHITECTURE.md`
+
 - module/package boundaries;
 - dependency injection;
 - repository/use-case boundaries;
@@ -57,6 +59,8 @@ No farm/parcel feature work.
 **Gate 2:** architecture dependency tests + no Android UI coupled directly to remote services.
 
 ## Phase 3 — Design system implementation + reference screens
+
+**Execution plan:** `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`
 
 Implement tokens/components from Design System:
 
