@@ -96,3 +96,25 @@ Before freezing as official brand:
 - final product-owner approval.
 
 Do not rename the Android package until this Gate is formally closed.
+
+
+## Indexed exact-name screen update — 2026-09-18
+
+Additional exact-string searches for `OleaTrack` returned no indexed exact matches in:
+
+- Google Play (`play.google.com`);
+- Apple App Store (`apps.apple.com`);
+- EUIPO (`euipo.europa.eu`);
+- OEPM (`oepm.es`);
+- GitHub (`github.com`).
+
+Interpretation:
+
+- this improves OleaTrack as a working candidate;
+- it does **not** prove trademark availability;
+- search-index absence is not equivalent to registry clearance;
+- the final Naming Gate still requires direct trademark/domain/store verification and product-owner approval.
+
+Current status remains:
+
+**OleaTrack — leading candidate, provisional.**
