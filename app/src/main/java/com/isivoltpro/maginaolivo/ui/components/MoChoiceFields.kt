@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
@@ -75,17 +76,17 @@ private fun MoChoiceField(
         shape = MoShape.field,
         color = MoSurfaceSoft,
         border = BorderStroke(
-            width = androidx.compose.ui.unit.dp(1f),
+            width = 1.dp,
             color = MoOutline,
         ),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = androidx.compose.ui.unit.dp(16f), vertical = androidx.compose.ui.unit.dp(10f)),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(androidx.compose.ui.unit.dp(2f)),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
                     text = label,
