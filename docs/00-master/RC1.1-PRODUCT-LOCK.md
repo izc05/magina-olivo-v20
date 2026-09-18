@@ -1,5 +1,7 @@
 # Mágina Olivo — RC1.1 Product Lock
 
+> **SUPERSEDED BY RC1.2:** use `docs/00-master/RC1.2-PRODUCT-LOCK.md` and `docs/07-plans/ROADMAP-RC1.2.md` for current work. This file is historical context only.
+
 **Status:** APPROVED / NORMATIVE  
 **Baseline:** `RC1.1-BASELINE-2026-09-18`  
 **Scope:** Android app for private olive-farm management, initially focused on Jaén.
