@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -35,6 +36,7 @@ fun MoWeatherHero(
     windText: String,
     state: WeatherVisualState,
     modifier: Modifier = Modifier,
+    onRadarClick: (() -> Unit)? = null,
 ) {
     val colors = when (state) {
         WeatherVisualState.Clear -> listOf(Color(0xFFFFE7B5), OlivarColors.Cream100)
@@ -85,6 +87,14 @@ fun MoWeatherHero(
                 style = MaterialTheme.typography.bodyMedium,
                 color = OlivarColors.Charcoal700,
             )
+        }
+        if (onRadarClick != null) {
+            TextButton(
+                onClick = onRadarClick,
+                modifier = Modifier.padding(top = OlivarDimens.SpaceXs),
+            ) {
+                Text("Ver radar")
+            }
         }
     }
 }
