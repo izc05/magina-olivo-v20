@@ -1,7 +1,7 @@
 # Mágina Olivo — Current Work State
 
-**Baseline:** `RC1-BASELINE-2026-09-17`  
-**Last reviewed:** 2026-09-17
+**Baseline:** `RC1.1-BASELINE-2026-09-18`  
+**Last reviewed:** 2026-09-18
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -15,6 +15,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ 0.5 Offline/Sync Contract (with normative addendum)
 ✅ 0.6 Complete Screen Map (with normative cost interpretation)
 ✅ 0.7 Design System Spec
+✅ 0.8 RC1.1 Product reconciliation/spec lock
 ```
 
 ## Current allowed phase
@@ -28,11 +29,13 @@ Do not start Phase 2 or any agricultural feature until Gate 1 has passed.
 ## Mandatory reading order for any agent
 
 1. `docs/00-master/RC1-BASELINE.md`
-2. `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`
-3. `docs/00-master/MASTER-SPEC-RC1.md`
-4. `docs/00-master/RC1-GATE-REVIEW.md`
-5. `docs/07-plans/ROADMAP-RC1.md`
-6. the current phase implementation plan when one exists
+2. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
+3. `docs/00-master/RC1.1-CHANGE-REQUEST.md`
+4. `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`
+5. `docs/00-master/MASTER-SPEC-RC1.md`
+6. `docs/00-master/RC1-GATE-REVIEW.md`
+7. `docs/07-plans/ROADMAP-RC1.1.md`
+8. the current phase implementation plan when one exists
 
 Then read only the domain/architecture/UI contracts needed by the current phase.
 
@@ -40,17 +43,23 @@ Then read only the domain/architecture/UI contracts needed by the current phase.
 
 If implementation requires changing an immutable baseline decision, stop feature work and open a Change Request. Do not silently adapt architecture because a library, agent or generated template prefers another approach.
 
+RC1.1 Product Lock is normative and overrides contradictory RC1-era wording until all older documents are editorially reconciled.
+
+## RC1.1 reconciliation
+
+Phase 0.8 documentation is defined in `docs/07-plans/ROADMAP-RC1.1.md`. Implementation remains locked to Phase 1 until Gate 1 passes.
+
 ## Next deliverable
 
-Create the detailed Phase 1 implementation plan covering:
+Execute the existing Phase 1 implementation plan on `feat/android-foundation` / PR #165.
 
-- Android/Gradle project structure;
-- Kotlin + Compose setup;
-- package/application IDs;
-- DEV/STAGING/PRODUCTION build configuration;
-- version catalog/dependency policy;
-- unit/instrumented/UI test foundations;
-- static analysis/lint;
-- CI workflow;
-- first installable APK;
-- physical-device Gate 1 checklist.
+Required outcome before any Phase 2 work:
+
+- lint and unit tests green;
+- DEV/STAGING/PRODUCTION debug builds green;
+- CI artifact available;
+- DEV APK installed/launched on a physical Android device;
+- instrumentation smoke test green on physical hardware when available;
+- Gate 1 evidence recorded.
+
+Do not implement farms, parcels, campaigns, Home, maps or domain navigation inside Phase 1.

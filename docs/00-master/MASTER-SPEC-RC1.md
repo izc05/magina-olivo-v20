@@ -1,6 +1,7 @@
 # Mágina Olivo Android — Master Spec RC1
 
-**Baseline:** `RC1-BASELINE-2026-09-17`
+**Baseline:** `RC1.1-BASELINE-2026-09-18`
+**Normative override:** `docs/00-master/RC1.1-PRODUCT-LOCK.md` supersedes contradictory RC1-era wording.
 **Product sentence:** _Tu olivar, finca por finca, parcela por parcela y campaña por campaña._
 
 ## 1. Product goal
@@ -37,8 +38,10 @@ Install
 Permanent bottom navigation:
 
 ```text
-Inicio | Fincas | Campaña | Registrar | Más
+Inicio | Mi Olivar | Registrar (+) | Calendario | Perfil
 ```
+
+This navigation is frozen by RC1.1. Farm, parcel and campaign screens are reached through `Mi Olivar`; deep screens do not add primary tabs.
 
 `Registrar` is the principal operational action and can be context-aware:
 
@@ -51,21 +54,22 @@ Adding future Mi Campo modules must not add a large number of primary tabs.
 
 ## 4. Home
 
-Purpose: answer "how is my current campaign going?" and expose the fastest next action.
+Purpose: answer "what matters today?" without turning Mágina Olivo into a portal.
 
-Core content:
+Core/priority content:
 
-- active campaign;
-- number of farms/parcels;
-- managed area;
+- current olive-grove/campaign summary;
+- upcoming planned work/reminders;
 - prominent `+ Registrar`;
-- current harvest total when applicable;
-- expenses;
-- number of activities;
-- farms summary;
-- recent activity.
+- farms/parcels and current harvest totals when useful.
 
-Do not add news, weather, prices or promotional content.
+Contextual secondary blocks:
+
+- selected municipality weather and radar access;
+- reference olive-oil market with AOVE/Virgen/Lampante series when the configured source supports them;
+- preferred cooperative notices/news.
+
+External Home data is optional/cached and must never block agricultural workflows. Always show source/last update for market data. Do not add unrelated general news, tourism feeds or advertising in RC1.1.
 
 ## 5. Farms
 
@@ -75,6 +79,7 @@ Required flows:
 
 - list farms;
 - create farm quickly (name required, other metadata optional);
+- optional user-selected farm cover photo;
 - open farm;
 - edit;
 - archive;
@@ -231,16 +236,19 @@ Do not build one giant form. Each type has a common activity header and typed de
 - hours/cost as applicable;
 - notes/photos.
 
-### Riego básico
+### Riego
 
 - parcel(s);
+- planned/completed date and time where useful;
 - duration;
 - volume if known;
-- sector text if known;
+- reusable irrigation community/company when configured;
+- reusable sector when configured;
 - system;
-- cost/notes.
+- cost/notes;
+- optional local Android reminder for previous day and/or same day.
 
-Advanced irrigation infrastructure is post-RC1.
+Advanced hydraulic telemetry/automation remains post-RC1.1.
 
 ### Incidencia
 
@@ -311,12 +319,22 @@ Delivery is distinct from harvest.
 Required:
 
 - date;
-- destination/almázara;
+- reusable destination organization (cooperative/mill);
 - delivered kg;
-- delivery/albarán/ticket numbers;
-- fat/industrial yield if available;
-- ticket/photo/PDF;
+- delivery/albarán/ticket numbers when available;
+- original ticket/photo/PDF;
+- OCR extraction state and extracted values;
+- mandatory human review/correction before OCR values become confirmed delivery fields;
 - notes.
+
+Yield is later analysis linked to the delivery:
+
+- analysis date;
+- fat yield when available;
+- industrial yield when available;
+- other source values when supported.
+
+Adding or correcting yield must not rewrite the original delivery. Mixed-origin deliveries may reference several parcels; if the exact split is unknown, keep kg unallocated rather than fabricating parcel totals.
 
 Harvested and delivered totals may legitimately differ during the campaign.
 
@@ -428,26 +446,32 @@ Avoid:
 - tiny buttons;
 - information communicated by color alone.
 
-## 20. Future Mi Campo modules
+## 20. RC1.1 operational support and later growth
 
-The architecture reserves growth for:
+RC1.1 includes lightweight operational support for:
 
-- tasks/calendar/templates;
+- calendar/planned work/local reminders;
+- machinery relations;
+- reusable agricultural organizations/providers;
+- purchases/products as agricultural expense context;
+- irrigation provider/community and sector;
+- historical charts;
+- contextual Home services.
+
+Later growth remains optional for:
+
 - personnel;
-- machinery;
-- products;
-- suppliers/contacts;
-- purchases;
 - warehouse/inventory;
 - management zones;
-- advanced irrigation;
-- analyses;
+- advanced irrigation telemetry;
 - farm geographic features (well, tank, shed, hydrant, gate, road...);
-- shared workspace roles;
+- professional/client workspaces;
+- collaboration roles;
 - automation/sensors;
-- advanced analytics/AI.
+- advanced analytics/AI;
+- active loyalty/gamification.
 
-These modules must remain optional and depend on the stable core domain.
+Optional modules depend on the stable agricultural core; the core must never depend on them.
 
 ## 21. Definition of Done
 

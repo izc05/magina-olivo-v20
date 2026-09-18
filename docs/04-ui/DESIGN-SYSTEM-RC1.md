@@ -2,6 +2,7 @@
 
 **Status:** Phase 0.7 draft
 **Intent:** modern olive agriculture, simple field technology, excellent readability and low cognitive load.
+**Baseline:** `RC1.1-BASELINE-2026-09-18` — follow `RC1.1-PRODUCT-LOCK.md`.
 
 ## 1. Visual identity
 
@@ -462,3 +463,16 @@ Phase 0.7 is ready for approval when:
 - [ ] accessibility/outdoor-use requirements are explicit;
 - [ ] future modules can reuse the same design system;
 - [ ] no screen requires one-off styling to communicate core domain state.
+
+
+---
+
+## RC1.1 visual lock additions
+
+- Farm cards/detail may use the user's own cover photo with a controlled gradient/scrim for legibility.
+- Onboarding must feel premium but concise: 4–6 screens, one message per screen, strong photography/illustration and large CTA.
+- Historical kg/yield charts must be operational and readable, never decorative.
+- Home contextual blocks (weather/radar, oil market, preferred cooperative) use compact cards and cannot visually dominate Mi Olivar / upcoming work.
+- Oil market charts use a shared time axis when comparing AOVE, Virgen and Lampante and always surface unit, source and last update.
+- Offline/stale external information must be visually distinguishable from fresh data without alarming the user.
+- Before broad feature UI implementation, create and freeze reference screens for: Onboarding, Inicio, Mi Olivar, Finca, Parcela, Registrar, Campaña histórico and Entrega/OCR. Agents must reuse those tokens/components rather than redesigning each branch independently.
