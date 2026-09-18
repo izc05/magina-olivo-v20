@@ -16,6 +16,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ 0.6 Complete Screen Map (with normative cost interpretation)
 ✅ 0.7 Design System Spec
 ✅ 0.8 RC1.1 Product reconciliation/spec lock
+✅ 0.9 RC1.2 geographic-neutral scope + generic OCR + naming gate
 ```
 
 ## Current allowed phase
@@ -49,7 +50,7 @@ RC1.2 Product Lock is normative and overrides contradictory RC1-era wording unti
 
 ## RC1.2 reconciliation
 
-Phase 0.9 documentation is defined in `docs/07-plans/ROADMAP-RC1.2.md`. Implementation remains locked to Phase 1 until Gate 1 passes.
+Phase 0.9 documentation is defined in `docs/07-plans/ROADMAP-RC1.2.md`. Public brand remains TBD; do not deepen legacy customer-facing naming. Implementation remains locked to Phase 1 until Gate 1 passes.
 
 ## Next deliverable
 
