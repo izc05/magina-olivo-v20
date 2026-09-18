@@ -34,6 +34,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
+import com.isivoltpro.maginaolivo.ui.theme.MoMapBase
+import com.isivoltpro.maginaolivo.ui.theme.MoMapContour
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
@@ -89,7 +91,7 @@ fun MapCatastroReferenceScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .background(Color(0xFFD8D5BA)),
+                    .background(MoMapBase),
             ) {
                 ParcelMapFixture(
                     modifier = Modifier.fillMaxSize(),
@@ -213,7 +215,7 @@ private fun MapLegend() {
     ) {
         LegendItem(
             label = "Catastro visible",
-            color = Color(0xFF9A9275),
+            color = MoMapContour,
         )
         LegendItem(
             label = "Seleccionada",
@@ -256,7 +258,7 @@ private fun ParcelMapFixture(
         val w = size.width
         val h = size.height
 
-        drawRect(Color(0xFFD8D5BA))
+        drawRect(MoMapBase)
 
         repeat(10) { row ->
             repeat(8) { col ->
@@ -314,7 +316,7 @@ private fun ParcelMapFixture(
         repeat(5) { index ->
             val y = h * (0.18f + index * 0.13f)
             drawLine(
-                color = Color(0xFF9A9275).copy(alpha = 0.65f),
+                color = MoMapContour.copy(alpha = 0.65f),
                 start = Offset(w * 0.03f, y),
                 end = Offset(w * 0.95f, y + h * 0.04f),
                 strokeWidth = 1.5f,
