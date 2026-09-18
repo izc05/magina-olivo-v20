@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo.ui.reference
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
@@ -14,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarPreview
 import com.isivoltpro.maginaolivo.ui.theme.OlivarColors
 
@@ -39,21 +41,18 @@ fun Phase3GalleryScreen(
             .fillMaxSize()
             .testTag("phase3-gallery"),
     ) {
-        Column {
-            Text(
-                text = "DEV · Galería de diseño",
-                style = MaterialTheme.typography.labelLarge,
-                color = OlivarColors.Olive700,
-                modifier = androidx.compose.ui.Modifier
-                    .fillMaxSize(fraction = 0f),
-            )
-        }
+        Text(
+            text = "DEV · Galería de diseño",
+            style = MaterialTheme.typography.labelLarge,
+            color = OlivarColors.Olive700,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        )
 
         ScrollableTabRow(
             selectedTabIndex = selected.ordinal,
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.primary,
-            edgePadding = androidx.compose.ui.unit.dp(8f),
+            edgePadding = 8.dp,
             divider = {},
         ) {
             ReferenceScreen.entries.forEach { screen ->
