@@ -15,6 +15,7 @@
 - [x] 360dp reference previews defined.
 - [ ] 412dp common-width visual review completed.
 - [x] 412dp reference previews defined.
+- [x] Large-font previews (1.3×) defined for Inicio and OCR.
 
 ## Reusable components
 
