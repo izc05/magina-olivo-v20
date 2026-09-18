@@ -27,6 +27,14 @@ fun ReferenceFarmScreen(
         contentPadding = PaddingValues(OlivarDimens.ScreenPadding),
     ) {
         item {
+            Text(
+                text = "Referencia visual · datos de demostración",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        item {
             MoFarmCard(
                 name = "Finca Foralico",
                 campaign = "Bedmar · Campaña 2026/27",
