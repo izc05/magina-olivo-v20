@@ -129,7 +129,7 @@ Empty first-run state:
 
 `Aún no tienes fincas` + `Crear mi primera finca`.
 
-Contextual RC1.1 blocks may include weather/radar, olive-oil reference market and preferred-cooperative notices/news. They must be secondary, cached/optional and never block field workflows. No unrelated ads/general portal feed.
+Contextual RC1.2 blocks may include weather/radar, olive-oil reference market and preferred-cooperative notices/news. They must be secondary, cached/optional and never block field workflows. No unrelated ads/general portal feed.
 
 ---
 
