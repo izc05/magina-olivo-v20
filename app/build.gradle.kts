@@ -23,19 +23,19 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
-            resValue("string", "app_name", "Mágina Olivo Dev")
+            resValue("string", "app_name", "Olivar Dev")
             buildConfigField("String", "ENVIRONMENT", "\"DEV\"")
         }
         create("staging") {
             dimension = "environment"
             applicationIdSuffix = ".staging"
             versionNameSuffix = "-staging"
-            resValue("string", "app_name", "Mágina Olivo Staging")
+            resValue("string", "app_name", "Olivar Staging")
             buildConfigField("String", "ENVIRONMENT", "\"STAGING\"")
         }
         create("production") {
             dimension = "environment"
-            resValue("string", "app_name", "Mágina Olivo")
+            resValue("string", "app_name", "Olivar")
             buildConfigField("String", "ENVIRONMENT", "\"PRODUCTION\"")
         }
     }
