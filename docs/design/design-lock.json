@@ -1,0 +1,60 @@
+{
+  "project": "Mágina Olivo",
+  "status": "LOCKED",
+  "baseline": "RC1.2",
+  "locked_at": "2026-09-18",
+  "purpose": "Canonical visual contract for Android UI implementation",
+  "canonical_spec": "docs/design/VISUAL_DESIGN_LOCK.md",
+  "reference_index": "docs/design/reference/README.md",
+  "references": [
+    "docs/design/reference/01-brand.svg",
+    "docs/design/reference/10-core-a.svg",
+    "docs/design/reference/11-core-b.svg",
+    "docs/design/reference/12-core-c.svg",
+    "docs/design/reference/20-onboarding-a.svg",
+    "docs/design/reference/21-onboarding-b.svg"
+  ],
+  "screens": [
+    "Inicio",
+    "Mis fincas",
+    "Mapa y Catastro",
+    "Detalle de finca",
+    "Campaña",
+    "Registrar actuación",
+    "Cosecha",
+    "Gastos y documentos",
+    "Tiempo y mercado",
+    "Onboarding 1 — Bienvenida",
+    "Onboarding 2 — Fincas y parcelas",
+    "Onboarding 3 — Mapa y Catastro",
+    "Onboarding 4 — Actividad y campaña",
+    "Onboarding 5 — Cosecha, gastos y documentos",
+    "Onboarding 6 — Tiempo, mercado y alertas"
+  ],
+  "invariants": {
+    "visual_identity": "must_match_reference",
+    "composition": "must_match_reference",
+    "hierarchy": "must_match_reference",
+    "palette": "must_match_reference",
+    "typography_style": "must_match_reference",
+    "cards_radii_shadows": "must_match_reference",
+    "navigation_pattern": "must_match_reference",
+    "agricultural_territorial_character": "must_preserve",
+    "alternative_visual_language": "forbidden_without_explicit_design_lock_change"
+  },
+  "allowed_adaptations": [
+    "real dynamic data",
+    "Android system insets and device sizes",
+    "accessibility requirements",
+    "loading, empty, error and offline states using the same design language"
+  ],
+  "acceptance_gate": [
+    "compare implementation against canonical visual reference",
+    "verify composition and spacing",
+    "verify typography and color",
+    "verify iconography, radii and elevation",
+    "verify photography and territorial character",
+    "verify Android behavior and accessibility",
+    "reject visual drift"
+  ]
+}
