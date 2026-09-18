@@ -39,29 +39,11 @@ jobs:
           test -f "$ANDROID_HOME/platforms/android-37.0/android.jar"
           test -d "$ANDROID_HOME/build-tools/37.0.0"
 
-      - name: Generate pinned Gradle wrapper
-        run: gradle wrapper --gradle-version 9.4.1 --distribution-type bin
-
-      - name: Make wrapper executable
-        run: chmod +x gradlew
-
-      - name: Verify wrapper
-        run: ./gradlew --version
-
-      - name: Upload generated wrapper for repository bootstrap
-        uses: actions/upload-artifact@v6
-        with:
-          name: gradle-wrapper-9.4.1
-          path: |
-            gradlew
-            gradlew.bat
-            gradle/wrapper/gradle-wrapper.jar
-            gradle/wrapper/gradle-wrapper.properties
-          if-no-files-found: error
-          retention-days: 14
+      - name: Verify pinned Gradle runner
+        run: gradle --version
 
       - name: Lint, unit test, compile instrumented tests and build all environments
-        run: ./gradlew --no-daemon lintDevDebug testDevDebugUnitTest assembleDevDebug assembleStagingDebug assembleProductionDebug assembleDevDebugAndroidTest
+        run: gradle --no-daemon lintDevDebug testDevDebugUnitTest assembleDevDebug assembleStagingDebug assembleProductionDebug assembleDevDebugAndroidTest
 
       - name: Upload DEV APK
         uses: actions/upload-artifact@v6
