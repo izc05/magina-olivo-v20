@@ -4,13 +4,22 @@ Gate 1 can be marked PASS only after all items are evidenced.
 
 ## Automated
 
-- [ ] Gradle wrapper reports Gradle 9.4.1 on JDK 17.
-- [ ] `lintDevDebug` passes.
-- [ ] `testDevDebugUnitTest` passes.
-- [ ] `assembleDevDebug` passes.
-- [ ] `assembleDevDebugAndroidTest` passes.
-- [ ] GitHub Android CI passes for the implementation PR.
-- [ ] CI artifact `magina-olivo-dev-debug` exists.
+- [x] Gradle wrapper reports Gradle 9.4.1 on JDK 17.
+- [x] `lintDevDebug` passes.
+- [x] `testDevDebugUnitTest` passes.
+- [x] `assembleDevDebug` passes.
+- [x] `assembleDevDebugAndroidTest` passes.
+- [x] GitHub Android CI passes for the implementation PR.
+- [x] CI artifact `magina-olivo-dev-debug` exists.
+
+### Automated evidence
+
+- Workflow: Android CI run `35273042885`
+- Result: `success`
+- Verified step: `Lint, unit test, compile instrumented tests and build DEV APK` → success
+- DEV APK artifact: `magina-olivo-dev-debug`
+- Artifact id: `10518558625`
+- Head SHA: `3f179c73058197bd27d2a91b864c5425e71652f0`
 
 ## Physical Android device
 
