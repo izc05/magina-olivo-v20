@@ -16,6 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.components.MoBarPoint
+import com.isivoltpro.maginaolivo.ui.components.MoDeliveryRow
+import com.isivoltpro.maginaolivo.ui.components.MoExpenseRow
 import com.isivoltpro.maginaolivo.ui.components.MoMetricCard
 import com.isivoltpro.maginaolivo.ui.components.MoMetricStatus
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
@@ -154,22 +156,24 @@ fun ReferenceProductionScreen(
         }
 
         item {
-            DeliveryReferenceRow(
-                date = "27/12/26",
-                kg = "3.800 kg",
+            MoDeliveryRow(
+                dateText = "27/12/26",
+                kgText = "3.800 kg",
                 destination = "Cooperativa de referencia",
-                yield = "23,0 %",
-                ocr = "Confirmado",
+                yieldText = "23,0 %",
+                ocrText = "Confirmado",
             )
         }
 
         item {
-            DeliveryReferenceRow(
-                date = "11/12/26",
-                kg = "1.500 kg",
+            MoDeliveryRow(
+                dateText = "11/12/26",
+                kgText = "1.500 kg",
                 destination = "Cooperativa de referencia",
-                yield = "Pendiente",
-                ocr = "Por revisar",
+                yieldText = "Pendiente",
+                ocrText = "Por revisar",
+                yieldPending = true,
+                ocrPending = true,
             )
         }
     }
@@ -227,14 +231,13 @@ fun ReferenceCostsScreen(
         }
 
         item {
-            SimpleReferenceCard {
-                Text("Agroservicios Sierra · 148,20 €", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Factura · Fitosanitario · OCR por revisar",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            MoExpenseRow(
+                title = "Agroservicios Sierra",
+                dateText = "18/09/2026",
+                amountText = "148,20 €",
+                detailText = "Factura · Fitosanitario",
+                ocrPending = true,
+            )
         }
     }
 }
@@ -336,39 +339,6 @@ private fun AnalyticsList(
             }
         }
         content()
-    }
-}
-
-@Composable
-private fun DeliveryReferenceRow(
-    date: String,
-    kg: String,
-    destination: String,
-    yield: String,
-    ocr: String,
-) {
-    SimpleReferenceCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("$date · $kg", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    destination,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    "Rendimiento: $yield",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            MoStatusChip(
-                text = ocr,
-                tone = if (ocr == "Confirmado") MoStatusTone.Confirmed else MoStatusTone.Pending,
-            )
-        }
     }
 }
 
