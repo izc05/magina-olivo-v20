@@ -1,6 +1,6 @@
 # ADR-008 — Android Phase 1 Toolchain
 
-Status: Accepted for RC1 Phase 1  
+Status: Accepted for RC1.1 Phase 1  
 Date: 2026-09-17
 
 ## Decision
