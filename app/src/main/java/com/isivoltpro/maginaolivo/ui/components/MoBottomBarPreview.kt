@@ -15,7 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,7 +47,7 @@ fun MoBottomBarPreview(
 ) {
     val items = listOf(
         BottomItem("Inicio", Icons.Outlined.Home),
-        BottomItem("Mi Olivar", Icons.Outlined.List),
+        BottomItem("Mi Olivar", Icons.AutoMirrored.Outlined.List),
         BottomItem("Registrar", Icons.Filled.Add),
         BottomItem("Calendario", Icons.Outlined.CalendarMonth),
         BottomItem("Perfil", Icons.Outlined.Person),
