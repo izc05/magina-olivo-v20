@@ -15,11 +15,13 @@ val MoTextSecondary = Color(0xFF6D746B)
 val MoOutline = Color(0xFFE5E1D6)
 val MoSurfaceSoft = Color(0xFFF4F1E8)
 val MoSuccess = Color(0xFF4E7A45)
+val MoSuccessText = Color(0xFF466F3E)
 val MoInfo = Color(0xFF5E7D8C)
 val MoInfoText = Color(0xFF4E6B79)
 val MoWarning = Color(0xFFC49842)
-val MoWarningText = Color(0xFF8A641F)
+val MoWarningText = Color(0xFF805B18)
 val MoError = Color(0xFFB5534F)
+val MoErrorText = Color(0xFFA34844)
 
 val MoLightColorScheme = lightColorScheme(
     primary = MoOlivePrimary,
