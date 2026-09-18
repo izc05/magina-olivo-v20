@@ -42,8 +42,8 @@
 
 ## Missing canonical visual boards
 
-- [ ] Parcel detail.
-- [ ] Delivery / OCR review.
+- [x] Parcel detail — Compose reference implemented; canonical device screenshot still pending.
+- [x] Delivery / OCR review — Compose reference implemented; canonical device screenshot still pending.
 
 These two must be designed in the same locked visual language before Gate 3 PASS.
 
@@ -59,7 +59,7 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 - [ ] MoOfflineBanner.
 - [ ] MoSyncStatus.
 - [ ] MoSourceFreshness.
-- [ ] MoPhotoCover.
+- [x] MoPhotoCover.
 - [ ] MoChartContainer.
 - [ ] MoListSkeleton.
 - [ ] MoConfirmationSheet.
@@ -81,7 +81,7 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 10. [ ] Harvest reference.
 11. [ ] Expenses/documents reference.
 12. [ ] Weather/market reference.
-13. [ ] Delivery/OCR review reference.
+13. [x] Delivery/OCR review reference.
 
 ## Gate 3 evidence still required
 
