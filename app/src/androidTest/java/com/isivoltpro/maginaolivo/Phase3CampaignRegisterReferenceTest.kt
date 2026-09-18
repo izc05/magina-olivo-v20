@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.register.RegisterActivityReferenceScreen
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
@@ -37,6 +38,6 @@ class Phase3CampaignRegisterReferenceTest {
 
         composeRule.onNodeWithTag("register-reference-root").assertIsDisplayed()
         composeRule.onNodeWithText("Tipo de actuación").assertIsDisplayed()
-        composeRule.onNodeWithText("Guardar actuación").assertIsDisplayed()
+        composeRule.onNodeWithText("Guardar actuación").performScrollTo().assertIsDisplayed()
     }
 }
