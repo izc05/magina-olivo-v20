@@ -18,7 +18,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.isivoltpro.maginaolivo.ui.components.MoActivityRow
+import com.isivoltpro.maginaolivo.ui.components.MoCooperativeCard
 import com.isivoltpro.maginaolivo.ui.components.MoFarmCard
+import com.isivoltpro.maginaolivo.ui.components.MoMarketPrice
+import com.isivoltpro.maginaolivo.ui.components.MoOilMarketCard
 import com.isivoltpro.maginaolivo.ui.components.MoFreshnessState
 import com.isivoltpro.maginaolivo.ui.components.MoSourceFreshness
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
@@ -104,26 +108,13 @@ fun ReferenceHomeScreen(
                 Triple("4 oct · 08:00", "Recolección", "6 personas"),
             ),
         ) { (date, title, detail) ->
-            SimpleReferenceCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(date, style = MaterialTheme.typography.labelMedium)
-                        Text(title, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            detail,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    MoStatusChip(
-                        text = "Planificado",
-                        tone = MoStatusTone.Planned,
-                    )
-                }
-            }
+            MoActivityRow(
+                title = title,
+                dateText = date,
+                contextText = detail,
+                statusText = "Planificado",
+                statusTone = MoStatusTone.Planned,
+            )
         }
 
         item {
@@ -135,21 +126,16 @@ fun ReferenceHomeScreen(
         }
 
         item {
-            SimpleReferenceCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    MarketValue("AOVE", "3,63", "€/kg")
-                    MarketValue("Virgen", "3,30", "€/kg")
-                    MarketValue("Lampante", "3,19", "€/kg")
-                }
-                MoSourceFreshness(
-                    source = "Mercado de referencia",
-                    updatedText = "actualizado hace 2 h",
-                    state = MoFreshnessState.Fresh,
-                )
-            }
+            MoOilMarketCard(
+                prices = listOf(
+                    MoMarketPrice("AOVE", "3,63 €/kg"),
+                    MoMarketPrice("Virgen", "3,30 €/kg"),
+                    MoMarketPrice("Lampante", "3,19 €/kg"),
+                ),
+                source = "Mercado de referencia",
+                updatedText = "actualizado hace 2 h",
+                freshness = MoFreshnessState.Fresh,
+            )
         }
 
         item {
@@ -157,46 +143,13 @@ fun ReferenceHomeScreen(
         }
 
         item {
-            SimpleReferenceCard {
-                Text(
-                    text = "Cooperativa de referencia",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = "Aviso: próxima apertura de recepción de aceituna.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = OlivarDimens.SpaceXs),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MarketValue(
-    label: String,
-    value: String,
-    unit: String,
-) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = OlivarColors.Charcoal700,
-        )
-        Row {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                color = OlivarColors.Olive900,
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = unit,
-                style = MaterialTheme.typography.labelMedium,
-                color = OlivarColors.Charcoal700,
-                modifier = Modifier.padding(top = 6.dp),
+            MoCooperativeCard(
+                organizationName = "Cooperativa de referencia",
+                noticeTitle = "Aviso",
+                noticeBody = "Próxima apertura de recepción de aceituna.",
+                source = "Web de la cooperativa",
+                updatedText = "actualizado hace 1 h",
+                freshness = MoFreshnessState.Fresh,
             )
         }
     }
