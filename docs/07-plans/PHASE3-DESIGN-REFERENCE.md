@@ -14,6 +14,7 @@ Read all of these before creating reference screens:
 - `docs/04-ui/CAMPAIGN-ANALYTICS-SCREEN-SPEC-RC1.2.md`
 - `docs/04-ui/HOME-ONBOARDING-SPEC-RC1.2.md`
 - `docs/04-ui/BRAND-ASSET-BRIEF-RC1.2.md`
+- `docs/04-ui/FIGMA-BUILD-MANIFEST-RC1.2.md`
 
 
 Before designing Campaign/Producción/Costes/Rentabilidad, read `docs/04-ui/COMPETITIVE-BENCHMARK-RC1.2.md` together with the approved Brand Direction.
