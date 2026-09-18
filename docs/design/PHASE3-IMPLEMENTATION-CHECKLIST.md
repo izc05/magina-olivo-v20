@@ -75,7 +75,7 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 4. [ ] Mi Olivar / Fincas reference.
 5. [ ] Farm detail reference.
 6. [ ] Parcel detail reference.
-7. [ ] Map / Catastro reference.
+7. [x] Map / Catastro reference.
 8. [x] Register reference.
 9. [x] Campaign history reference.
 10. [ ] Harvest reference.
