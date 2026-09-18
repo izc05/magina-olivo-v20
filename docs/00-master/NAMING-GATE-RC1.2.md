@@ -69,3 +69,30 @@ Until this Gate closes:
 - do not repeatedly rename package IDs.
 
 Once approved, perform one controlled branding migration and rerun build/migration/installation tests.
+
+
+## Current leading candidate — 2026-09-18
+
+**#1 OleaTrack**
+
+Why it leads the current shortlist:
+
+- olive-specific via "Olea";
+- modern/product-like;
+- understandable beyond one Spanish region;
+- pronounceable in Spanish and internationally;
+- fits an Android app, web product and future professional mode;
+- works visually with map/trace/history concepts;
+- quick web screen returned no obvious current app/software/trademark collision in the searches performed today.
+
+Status: **LEADING CANDIDATE, NOT YET LEGALLY CLEARED**.
+
+Before freezing as official brand:
+
+- OEPM/EUIPO trademark check;
+- Google Play/App Store exact-name screen;
+- domain availability;
+- social-name availability where useful;
+- final product-owner approval.
+
+Do not rename the Android package until this Gate is formally closed.
