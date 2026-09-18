@@ -1,5 +1,7 @@
 # Mágina Olivo Android — Roadmap RC1.1
 
+> **SUPERSEDED BY RC1.2:** use `docs/00-master/RC1.2-PRODUCT-LOCK.md` and `docs/07-plans/ROADMAP-RC1.2.md` for current work. This file is historical context only.
+
 **Status:** NORMATIVE  
 **Baseline:** `RC1.1-BASELINE-2026-09-18`  
 **Rule:** phases are ordered. A later phase cannot start until the current Gate passes. Parallel documentation/research may prepare later phases, but production implementation stays gate-bound.
