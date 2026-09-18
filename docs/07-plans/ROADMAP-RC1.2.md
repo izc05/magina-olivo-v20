@@ -127,7 +127,7 @@ Frozen roots:
 
 **Gate 5:** migration tests + process restart persistence + airplane-mode CRUD proof on test entities.
 
-## Phase 6 — Farms RC1.1
+## Phase 6 — Farms RC1.2
 
 - create/edit/archive/restore;
 - optional cover photo reference;
@@ -307,7 +307,7 @@ Validate Spain official lookup/import paths, geometry parsing, GML, error modes 
 - RLS;
 - service/repository boundaries.
 
-**Gate 22:** backend can represent RC1.1 without requiring UI/server-first shortcuts.
+**Gate 22:** backend can represent RC1.2 without requiring UI/server-first shortcuts.
 
 ## Phase 23 — Synchronization proof and hardening
 
@@ -394,7 +394,7 @@ Separate private web surface:
 
 **Gate 28:** release candidate approved for production publication.
 
-## Post-RC1.1
+## Post-RC1.2
 
 Only after the agricultural Android product is stable:
 
@@ -407,4 +407,4 @@ Only after the agricultural Android product is stable:
 - advanced irrigation/IoT;
 - AI/automation.
 
-These do not retroactively change the RC1.1 core.
+These do not retroactively change the RC1.2 core.
