@@ -44,6 +44,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoSage
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSoftGold
+import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldText
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
@@ -384,7 +385,7 @@ private fun CooperativeNewsCard() {
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text("ACTUALIDAD", style = MaterialTheme.typography.labelMedium, color = MoSoftGold)
+                Text("ACTUALIDAD", style = MaterialTheme.typography.labelMedium, color = MoSoftGoldText)
                 Text("La cooperativa prepara la campaña", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text(
                     "Avisos y noticias de tu cooperativa de referencia aparecerán aquí.",
