@@ -1,0 +1,57 @@
+package com.isivoltpro.maginaolivo.ui.components
+
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import com.isivoltpro.maginaolivo.ui.theme.MoError
+import com.isivoltpro.maginaolivo.ui.theme.MoInfo
+import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
+import com.isivoltpro.maginaolivo.ui.theme.MoSuccess
+import com.isivoltpro.maginaolivo.ui.theme.MoWarning
+
+enum class MoStatusTone {
+    Neutral,
+    Success,
+    Info,
+    Warning,
+    Error,
+}
+
+@Composable
+fun MoStatusChip(
+    text: String,
+    modifier: Modifier = Modifier,
+    tone: MoStatusTone = MoStatusTone.Neutral,
+) {
+    val foreground = when (tone) {
+        MoStatusTone.Neutral -> MoOlivePrimary
+        MoStatusTone.Success -> MoSuccess
+        MoStatusTone.Info -> MoInfo
+        MoStatusTone.Warning -> MoWarning
+        MoStatusTone.Error -> MoError
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(999.dp),
+        color = foreground.copy(alpha = 0.12f),
+        contentColor = foreground,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.Unspecified,
+            )
+        }
+    }
+}
