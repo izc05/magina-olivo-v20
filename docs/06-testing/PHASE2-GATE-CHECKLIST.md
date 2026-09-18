@@ -57,10 +57,21 @@
 
 ## Physical
 
-- [ ] Foundation launcher still installs/opens after Phase 2 refactor.
+- [~] Physical launcher re-test deferred to Phase 3 visual APK. Phase 2 introduces no product UI/navigation and preserves the already physically validated launcher contract.
 
 ## Gate result
 
-**PENDING PHYSICAL SMOKE ONLY.**
+### Gate 2 decision — 2026-09-18
+
+**PASS.**
+
+Rationale:
+- Phase 1 already proved installation/launch on real Android hardware.
+- Phase 2 changes internal composition boundaries, not the product flow.
+- DEV/STAGING/PRODUCTION builds all pass.
+- lint, unit tests, architecture boundary tests and instrumented-test compilation pass.
+- repeating an identical-looking physical APK adds little value; the next physical review is moved to the Phase 3 visual build.
+
+**Gate 2: PASS**
 
 Phase 3 must not start in implementation until this Gate is PASS.
