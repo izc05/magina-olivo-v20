@@ -1,12 +1,12 @@
-# Mágina Olivo — Design System RC1 v1
+# Olive Farm App — Design System RC1.2
 
 **Status:** Phase 0.7 draft
 **Intent:** modern olive agriculture, simple field technology, excellent readability and low cognitive load.
-**Baseline:** `RC1.1-BASELINE-2026-09-18` — follow `RC1.1-PRODUCT-LOCK.md`.
+**Baseline:** `RC1.2-BASELINE-2026-09-18` — follow `RC1.2-PRODUCT-LOCK.md`.
 
 ## 1. Visual identity
 
-Mágina Olivo should feel:
+The olive-farm product should feel:
 
 - calm;
 - precise;
@@ -476,3 +476,37 @@ Phase 0.7 is ready for approval when:
 - Oil market charts use a shared time axis when comparing AOVE, Virgen and Lampante and always surface unit, source and last update.
 - Offline/stale external information must be visually distinguishable from fresh data without alarming the user.
 - Before broad feature UI implementation, create and freeze reference screens for: Onboarding, Inicio, Mi Olivar, Finca, Parcela, Registrar, Campaña histórico and Entrega/OCR. Agents must reuse those tokens/components rather than redesigning each branch independently.
+
+
+## RC1.2 weather-responsive Home
+
+Home may use a lightweight weather scene behind/around the top contextual area.
+
+Supported visual states:
+
+- clear/sun glow;
+- clouds;
+- rain;
+- wind/olive-leaf motion;
+- fog/mist;
+- storm emphasis only when the source reports it.
+
+Rules:
+
+- effects are driven by fetched weather state, not randomized decoration;
+- text/cards keep guaranteed contrast;
+- no effect may obscure operational information;
+- Android reduced-motion disables non-essential animation;
+- performance/battery tier may simplify or disable particles;
+- stale/offline weather uses the last-known visual state only when clearly marked stale;
+- no heavy 3D/particle engine is required;
+- effects belong to the Home presentation layer, not domain persistence.
+
+## RC1.2 brand-neutral design rule
+
+Until the Naming Gate passes:
+
+- use neutral app-title placeholders in reference designs;
+- do not create final logo/icon/store artwork around “Mágina Olivo”;
+- do not encode Sierra Mágina shapes/landmarks as universal brand identity;
+- olive-tree/leaf/fruit/agricultural motifs are acceptable if they remain modern and non-rustic.
