@@ -26,7 +26,7 @@ cream/100   #F8F4E9
 cream/200   #F1EAD8
 
 earth/500   #C39A68
-earth/600   #A97E4F
+earth/600   #95693F
 
 charcoal/900 #20231D
 charcoal/700 #4C5148
@@ -61,7 +61,7 @@ color/action/pressed      olive/900
 color/action/secondary    sage/200
 
 color/state/success       #3F7D43
-color/state/warning       #A56A13
+color/state/warning       #A3650E
 color/state/error         #B6463A
 color/state/info          #47789A
 ```
@@ -323,3 +323,22 @@ Until Naming Gate closes:
 - production UI code must obtain display brand from resources/config;
 - no domain entity references the brand name;
 - no final launcher/package rename until approved.
+
+
+## 16. Contrast review — 2026-09-18
+
+Key text/background pairs were checked against WCAG contrast ratios.
+
+Verified examples:
+
+- charcoal/900 on cream/50: 15.65:1;
+- charcoal/700 on cream/50: 8.01:1;
+- olive/700 on white: 5.95:1;
+- olive/700 on cream/100: 5.41:1;
+- success on white: 4.97:1;
+- info on white: 4.75:1;
+- error on white: 5.35:1;
+- earth/600 adjusted to #95693F: 4.81:1 on white;
+- warning adjusted to #A3650E: 4.75:1 on white.
+
+This is a token-level contrast check, not a substitute for final screen-by-screen visual QA, large-text exceptions, disabled-state review or chart accessibility review.
