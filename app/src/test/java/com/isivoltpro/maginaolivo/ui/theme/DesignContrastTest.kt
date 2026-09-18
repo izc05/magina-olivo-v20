@@ -37,6 +37,27 @@ class DesignContrastTest {
     }
 
     @Test
+    fun coreOutdoorTextPairsMeetWcagAa() {
+        val pairs = listOf(
+            Triple("primary text on cream", MoOliveDark, MoCream),
+            Triple("primary text on warm white", MoOliveDark, MoWarmWhite),
+            Triple("secondary text on cream", MoTextSecondary, MoCream),
+            Triple("secondary text on warm white", MoTextSecondary, MoWarmWhite),
+            Triple("light text on olive primary", MoWarmWhite, MoOlivePrimary),
+            Triple("dark text on sage", MoOliveDark, MoSage),
+        )
+
+        pairs.forEach { (label, foreground, background) ->
+            assertContrastAtLeast(
+                label = label,
+                foreground = foreground,
+                background = background,
+                minimum = WCAG_AA_NORMAL_TEXT,
+            )
+        }
+    }
+
+    @Test
     fun supportingSemanticLabelsMeetWcagAa() {
         assertContrastAtLeast(
             label = "info freshness label",

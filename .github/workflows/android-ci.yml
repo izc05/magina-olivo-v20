@@ -124,6 +124,18 @@ jobs:
             adb shell settings put global window_animation_scale 0
             gradle --no-daemon connectedDevDebugAndroidTest
 
+            mkdir -p gate3-evidence/reference-screens
+            for file in \
+              parcel-detail-360dp-font100.png \
+              parcel-detail-393dp-font130.png \
+              parcel-detail-480dp-font100.png \
+              ocr-review-360dp-font100.png \
+              ocr-review-393dp-font130.png \
+              ocr-review-480dp-font100.png; do
+              adb shell test -f "/sdcard/gate3/$file"
+            done
+            adb pull /sdcard/gate3/. gate3-evidence/reference-screens/
+
       - name: Upload Gate 3 emulator evidence
         uses: actions/upload-artifact@v6
         if: always()

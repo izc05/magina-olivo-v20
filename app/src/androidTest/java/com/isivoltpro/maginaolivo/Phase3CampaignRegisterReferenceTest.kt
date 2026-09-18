@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -37,6 +38,7 @@ class Phase3CampaignRegisterReferenceTest {
         }
 
         composeRule.onNodeWithTag("register-reference-root").assertIsDisplayed()
+        composeRule.onNodeWithTag("activity-type-Treatment").assertIsSelected()
         composeRule.onNodeWithText("Tipo de actuación").assertIsDisplayed()
         composeRule.onNodeWithText("Guardar actuación").performScrollTo().assertIsDisplayed()
     }
