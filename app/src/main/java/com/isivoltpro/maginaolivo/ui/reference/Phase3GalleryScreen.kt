@@ -22,12 +22,14 @@ import com.isivoltpro.maginaolivo.ui.theme.OlivarColors
 private enum class ReferenceScreen(
     val label: String,
 ) {
+    Onboarding("Onboarding"),
     Home("Inicio"),
     OliveGrove("Mi Olivar"),
     Campaign("Campaña"),
     Production("Producción"),
     Costs("Costes"),
     Profitability("Rentabilidad"),
+    Ocr("Entrega OCR"),
 }
 
 @Composable
@@ -73,18 +75,21 @@ fun Phase3GalleryScreen(
             modifier = Modifier.weight(1f),
         ) {
             when (selected) {
+                ReferenceScreen.Onboarding -> ReferenceOnboardingScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Home -> ReferenceHomeScreen(Modifier.fillMaxSize())
                 ReferenceScreen.OliveGrove -> ReferenceOliveGroveScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Campaign -> ReferenceCampaignScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Production -> ReferenceProductionScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Costs -> ReferenceCostsScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Profitability -> ReferenceProfitabilityScreen(Modifier.fillMaxSize())
+                ReferenceScreen.Ocr -> ReferenceOcrScreen(Modifier.fillMaxSize())
             }
         }
 
         MoBottomBarPreview(
             selected = when (selected) {
                 ReferenceScreen.Home -> "Inicio"
+                ReferenceScreen.Onboarding -> "Inicio"
                 else -> "Mi Olivar"
             },
             onSelected = { destination ->
