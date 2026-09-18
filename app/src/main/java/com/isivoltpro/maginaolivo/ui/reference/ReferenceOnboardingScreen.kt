@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -92,7 +93,7 @@ fun ReferenceOnboardingScreen(
                         modifier = Modifier
                             .padding(horizontal = 4.dp)
                             .height(8.dp)
-                            .fillMaxWidth(if (index == 0) 0.08f else 0.03f)
+                            .width(if (index == 0) 28.dp else 8.dp)
                             .background(
                                 color = if (index == 0) OlivarColors.Olive700 else OlivarColors.Line200,
                                 shape = CircleShape,
