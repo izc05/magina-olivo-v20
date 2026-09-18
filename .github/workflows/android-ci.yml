@@ -88,7 +88,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            set -euxo pipefail
+            set -eu
             mkdir -p gate3-evidence
 
             adb shell wm size 1080x2400
