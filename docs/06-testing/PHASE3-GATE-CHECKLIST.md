@@ -55,11 +55,20 @@
 
 ## Automated validation
 
-- [ ] lint passes.
-- [ ] unit tests pass.
-- [ ] DEV/STAGING/PRODUCTION builds pass.
-- [ ] instrumented-test APK compiles.
-- [ ] DEV launcher smoke test sees the design gallery.
+- [x] lint passes.
+- [x] unit tests pass.
+- [x] DEV/STAGING/PRODUCTION builds pass.
+- [x] instrumented-test APK compiles.
+- [x] DEV launcher smoke test sees the design gallery.
+
+### Automated evidence — 2026-09-18
+
+- Android CI run: `35323113508`
+- Head SHA: `f5467e91984a57d2c32768d73f7ab5812e3b41de`
+- Result: `success`
+- DEV artifact id: `10537594233`
+- Artifact digest: `sha256:e268f459010b57a68daf0e1eb4c7cd9b00e9c1a4c3eee07bd03fcf233fe494b3`
+- Extracted APK SHA-256: `ff081cee31168cebb3b3251c898fbd564b1df05c41ec1967d5e680bc096bf17e`
 
 ## Physical visual review
 
@@ -85,6 +94,6 @@ Figma transfer is required before final Gate 3 approval, but Compose design work
 
 ## Gate result
 
-**PENDING CI + PHYSICAL VISUAL REVIEW + FIGMA TRANSFER.**
+**PENDING PHYSICAL VISUAL REVIEW + FIGMA TRANSFER.**
 
 Phase 4 real navigation must not be merged before Gate 3 PASS.
