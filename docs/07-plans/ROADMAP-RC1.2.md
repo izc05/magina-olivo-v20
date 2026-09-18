@@ -7,13 +7,14 @@
 ## Current state
 
 ```text
-✅ Phase 0.1–0.7 — original core contracts
-✅ Phase 0.8 — RC1.2 agricultural product reconciliation
-✅ Phase 0.9 — RC1.2 geographic-neutral scope + generic OCR + naming gate
-▶ Phase 1 — Android Project Foundation
+✅ Phase 0.1–0.9 — baseline/specification work
+✅ Phase 1 — Android Project Foundation
+✅ Phase 2 — Base application architecture
+✅ CR-003 — Mágina Olivo brand + canonical visual system
+▶ Phase 3 — Design system implementation + reference screens
 ```
 
-The only currently allowed implementation phase is **Phase 1**. The public brand is pending and must not be hard-coded deeper into new domain/UI work.
+The only currently allowed implementation phase is **Phase 3**. The approved display brand is **Mágina Olivo**. Domain/data architecture remains geographic-neutral.
 
 ---
 
@@ -43,7 +44,7 @@ Deliverables:
 - weather visual-effect rules;
 - naming gate.
 
-**Gate 0.9:** no new implementation assumes Jaén-only identity, final “Mágina Olivo” branding, delivery-only OCR or Catastro-as-parcel-primary-key.
+**Gate 0.9:** no new implementation assumes Jaén-only domain identity, delivery-only OCR or Catastro-as-parcel-primary-key. The later CR-003 explicitly resolves Mágina Olivo as the display brand without changing geographic-neutral data architecture.
 
 ## Phase 1 — Android Project Foundation
 
@@ -91,14 +92,20 @@ Implement tokens/components from Design System:
 
 Create/freeze reference screens for:
 
-1. Onboarding;
+1. Onboarding — six pages;
 2. Inicio;
-3. Mi Olivar;
-4. Finca;
-5. Parcela;
-6. Registrar;
-7. Campaign history;
-8. Delivery/OCR review.
+3. Mi Olivar / Fincas;
+4. Finca detail;
+5. Parcela detail;
+6. Mapa / Catastro;
+7. Registrar;
+8. Campaign history;
+9. Cosecha;
+10. Gastos / documentos;
+11. Tiempo / mercado / alertas;
+12. Delivery / OCR review.
+
+Approved visual boards already cover all except **Parcela detail** and **Delivery/OCR review**, which remain Phase 3 reference-design gaps.
 
 **Gate 3:** reference screens approved on representative phone sizes and component reuse is proven.
 
@@ -372,16 +379,19 @@ Separate private web surface:
 
 **Gate 27:** field beta issues are triaged and release blockers closed.
 
-## ## Branding Gate — before public beta/store assets
+## Branding Gate — before public beta/store assets
 
-- shortlist and approve final product name;
+**Display name/logo direction:** resolved by CR-003 as **Mágina Olivo**.
+
+Still required before public store publication:
+
+- verify production logo/icon exports and Android adaptive-icon treatment;
 - check obvious product/brand conflicts;
 - confirm domain/social naming when practical;
-- freeze display name/logo/icon;
-- perform one controlled Android technical rename only if approved;
-- re-run package/application-ID and migration tests.
+- decide whether package/application-ID technical rename is required;
+- re-run package/application-ID and migration tests if that technical rename occurs.
 
-**Gate B:** public brand is frozen before store listing assets and production release naming.
+**Gate B:** store-ready brand assets and technical naming are frozen before production publication.
 
 ## Phase 28 — Google Play test tracks / release candidate
 
