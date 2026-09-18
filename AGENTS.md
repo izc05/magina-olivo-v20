@@ -99,7 +99,7 @@ Never:
 
 Branches, PRs and code from the old web/territorial V20 exist in this repository history.
 
-Do not copy, merge or resurrect old V20 architecture, pages, navigation, database contracts or public portal modules into the new Android line unless a task explicitly names a specific reusable asset and confirms compatibility with RC1.1.
+Do not copy, merge or resurrect old V20 architecture, pages, navigation, database contracts or public portal modules into the new Android line unless a task explicitly names a specific reusable asset and confirms compatibility with RC1.2.
 
 A broad prompt such as “improve the app” is **not** permission to reuse old V20 code.
 
