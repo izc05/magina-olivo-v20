@@ -68,10 +68,12 @@ La aplicación será Android nativa, privada y offline-first, especializada en l
 ✅ 0.8 RC1.1 Product reconciliation
 ✅ 0.9 RC1.2 geographic-neutral scope + generic OCR
 ✅ 0.9 RC1.2 global olive scope + generic OCR
-▶ FASE 1 — Android Project Foundation
+✅ FASE 1 — Android Project Foundation
+✅ FASE 2 — Base Application Architecture
+▶ FASE 3 — Design System + Reference Screens
 ```
 
-**Fase activa:** únicamente Fase 1. No se permite empezar Fase 2 ni funcionalidades agrícolas hasta superar Gate 1.
+**Fase activa:** únicamente Fase 3. Fase 1 y Fase 2 están cerradas. No se permite empezar Fase 4 ni implementar funcionalidades agrícolas reales hasta superar Gate 3.
 
 ## Regla para agentes
 
