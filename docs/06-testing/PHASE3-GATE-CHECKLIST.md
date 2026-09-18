@@ -81,14 +81,14 @@
 - [x] instrumented-test APK compiles.
 - [x] DEV launcher smoke test sees the design gallery.
 
-### Automated evidence — 2026-09-18
+### Current automated evidence — 2026-09-18
 
-- Android CI run: `35323113508`
-- Head SHA: `f5467e91984a57d2c32768d73f7ab5812e3b41de`
+- Android CI run: `35327564325`
+- Head SHA: `24e8586e9dbc054de47cec183e294302372d0a41`
 - Result: `success`
-- DEV artifact id: `10537594233`
-- Artifact digest: `sha256:e268f459010b57a68daf0e1eb4c7cd9b00e9c1a4c3eee07bd03fcf233fe494b3`
-- Extracted APK SHA-256: `ff081cee31168cebb3b3251c898fbd564b1df05c41ec1967d5e680bc096bf17e`
+- DEV artifact id: `10539922497`
+- Artifact digest: `sha256:9ad945678a041d071dbb66d7e7e5007b9b02c1726d1257c7a9bcb2d0bb9716aa`
+- Extracted APK SHA-256: `93095387244cb4a91c7455d5786b5129b3f6e0b2db2c96aa26cd233d3dd004c9`
 
 ## Physical visual review
 
