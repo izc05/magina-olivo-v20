@@ -8,7 +8,16 @@ Este documento fija la dirección visual aprobada para **Mágina Olivo**. La apl
 
 ## Fuente de verdad visual
 
-Las referencias aprobadas están guardadas directamente en `docs/design/reference/` como tableros SVG autocontenidos (las imágenes están embebidas dentro de cada archivo). Son la **fuente visual de verdad** del proyecto:\n\n- `01-brand.svg` — identidad de marca y logo.\n- `10-core-a.svg` — Inicio, Mis fincas, Mapa y Catastro.\n- `11-core-b.svg` — Detalle de finca, Campaña, Registrar actuación.\n- `12-core-c.svg` — Cosecha, Gastos y documentos, Tiempo y mercado.\n- `20-onboarding-a.svg` — Onboarding 1/6 a 3/6.\n- `21-onboarding-b.svg` — Onboarding 4/6 a 6/6.\n\nEl índice navegable está en `docs/design/reference/README.md`. Estas referencias no son inspiración: son el objetivo visual contra el que debe validarse la implementación.
+Las referencias aprobadas están guardadas directamente en `docs/design/reference/` como tableros SVG autocontenidos (las imágenes están embebidas dentro de cada archivo). Son la **fuente visual de verdad** del proyecto:
+
+- `01-brand.svg` — identidad de marca y logo.
+- `10-core-a.svg` — Inicio, Mis fincas, Mapa y Catastro.
+- `11-core-b.svg` — Detalle de finca, Campaña, Registrar actuación.
+- `12-core-c.svg` — Cosecha, Gastos y documentos, Tiempo y mercado.
+- `20-onboarding-a.svg` — Onboarding 1/6 a 3/6.
+- `21-onboarding-b.svg` — Onboarding 4/6 a 6/6.
+
+El índice navegable está en `docs/design/reference/README.md`. Estas referencias no son inspiración: son el objetivo visual contra el que debe validarse la implementación.
 
 Orden funcional de referencias:
 
