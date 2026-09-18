@@ -78,7 +78,7 @@ For Phase 2 itself, only the core abstractions and app composition root are impl
 
 Before changing code:
 
-- read RC1.1 baseline/Product Lock;
+- read RC1.2 baseline/Product Lock;
 - verify production application id remains `com.isivoltpro.maginaolivo`;
 - verify DEV/STAGING/PRODUCTION variants still build;
 - keep the Phase 1 smoke test alive;
@@ -209,7 +209,7 @@ Requirements:
 
 Move Phase 1 launcher composition behind an `AppRoot`/composition root without changing visible behavior.
 
-The launcher still only proves the app opens. No RC1.1 navigation shell yet.
+The launcher still only proves the app opens. No RC1.2 navigation shell yet.
 
 ## Task 9 — Architecture tests
 
