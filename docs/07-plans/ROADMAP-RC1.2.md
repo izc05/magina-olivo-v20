@@ -190,16 +190,18 @@ Frozen roots:
 
 **Gate 11:** attachment survives app restart and failed future upload cannot destroy local reference.
 
-## Phase 12 — Expenses, purchases and organizations
+## Phase 12 — Expenses, purchases, organizations + generic document OCR
 
 - authoritative Expense ledger;
 - agricultural organizations with reusable roles;
 - supplier/cooperative/company selection;
 - purchase items;
 - invoice/ticket attachment;
+- generic OCR service for purchase invoices/receipts, phytosanitary/fertilizer and irrigation documents;
+- extracted-draft → human review → Purchase/Expense draft;
 - activity/farm/parcel/campaign relations.
 
-**Gate 12:** no monetary double counting; organization reuse works across contexts.
+**Gate 12:** no monetary double counting; organization reuse works across contexts; OCR cannot auto-post money or silently confirm extracted values.
 
 ## Phase 13 — Harvest
 
@@ -211,12 +213,12 @@ Frozen roots:
 
 **Gate 13:** totals remain truthful and no parcel split is fabricated.
 
-## Phase 14 — Deliveries + OCR + later yield
+## Phase 14 — Deliveries + weight-ticket OCR + later yield
 
 - destination cooperative/mill;
 - kg/ticket/albarán;
 - image/PDF;
-- OCR extraction;
+- reuse the generic OCR engine with DELIVERY_TICKET profile;
 - user correction/confirmation;
 - mixed-origin delivery;
 - later yield analysis;
@@ -234,9 +236,11 @@ Frozen roots:
 
 **Gate 15:** machinery adds value without making activities mandatory/complex.
 
-## Phase 16 — Calendar, reminders and Android notifications
+## Phase 16 — Calendar, agenda, reminders and Android notifications
 
 - planned activity projection;
+- expected people count / crew/provider / planned duration;
+- harvest, pruning, irrigation, treatment and external-work appointments;
 - previous-day/same-day/custom reminder;
 - local notification scheduling;
 - notification deep-link;
@@ -248,7 +252,7 @@ Frozen roots:
 
 Validate Spain official lookup/import paths, geometry parsing, GML, error modes and legal/operational constraints.
 
-**Gate 17:** a real Jaén parcel can be located/imported without scraping or invented geometry.
+**Gate 17:** a real Spanish parcel can be located/imported without scraping or invented geometry.
 
 ## Phase 18 — Land registry/geometries + map
 
@@ -287,10 +291,10 @@ Validate Spain official lookup/import paths, geometry parsing, GML, error modes 
 ## Phase 21 — Profile
 
 - account;
-- municipality;
+- country/region/locality;
+- locale/timezone/currency/units;
 - preferred cooperative;
 - notification preferences;
-- units;
 - sync/export/help/privacy/about.
 
 **Gate 21:** preferences persist offline and account-sensitive operations are protected.
