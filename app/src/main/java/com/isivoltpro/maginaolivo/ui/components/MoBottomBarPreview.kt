@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +32,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.OlivarColors
+import com.isivoltpro.maginaolivo.ui.theme.OlivarDimens
 
 private data class BottomItem(
     val label: String,
@@ -71,6 +73,7 @@ fun MoBottomBarPreview(
             Column(
                 modifier = Modifier
                     .weight(1f)
+                    .heightIn(min = OlivarDimens.TouchTarget)
                     .semantics {
                         contentDescription = item.label
                         this.selected = isSelected
@@ -91,14 +94,14 @@ fun MoBottomBarPreview(
                     ) {
                         Icon(
                             imageVector = item.icon,
-                            contentDescription = "Registrar",
+                            contentDescription = null,
                             tint = OlivarColors.White,
                         )
                     }
                 } else {
                     Icon(
                         imageVector = item.icon,
-                        contentDescription = item.label,
+                        contentDescription = null,
                         tint = contentColor,
                         modifier = Modifier.size(24.dp),
                     )
