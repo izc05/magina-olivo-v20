@@ -1,12 +1,12 @@
-# Mágina Olivo Android — Master Spec RC1
+# Olive Farm App — Master Spec RC1.2
 
-**Baseline:** `RC1.1-BASELINE-2026-09-18`
-**Normative override:** `docs/00-master/RC1.1-PRODUCT-LOCK.md` supersedes contradictory RC1-era wording.
+**Baseline:** `RC1.2-BASELINE-2026-09-18`
+**Normative override:** `docs/00-master/RC1.2-PRODUCT-LOCK.md` supersedes contradictory RC1/RC1.1 wording. Public brand is TBD.
 **Product sentence:** _Tu olivar, finca por finca, parcela por parcela y campaña por campaña._
 
 ## 1. Product goal
 
-Mágina Olivo is a private Android field-management application for one or more olive holdings. It helps the user answer:
+The product is a private Android field-management application for one or more olive holdings, initially implemented for Spain and designed for olive-growing regions beyond Spain. It helps the user answer:
 
 1. What farms/parcels do I manage?
 2. What have I done in them?
@@ -311,6 +311,10 @@ Required:
 - notes/photos/documents.
 
 The system never fabricates a parcel production split.
+
+## 12.5 Generic OCR
+
+OCR is a shared document capability. It may assist with delivery/weight tickets, supplier invoices/receipts, phytosanitary/fertilizer documents, irrigation invoices and generic agricultural documents. Extracted values stay in review/draft state until the user confirms them; OCR must never auto-post financial records.
 
 ## 13. Deliveries
 
