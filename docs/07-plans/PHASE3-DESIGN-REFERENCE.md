@@ -271,6 +271,32 @@ Map preview is only shown when geometry exists; it must not dominate before Phas
 
 **Visual-reference gap:** no final generated board is committed yet. This screen must be designed during Phase 3 using the locked system before Gate 3.
 
+Prioritize:
+
+- parcel name/alias;
+- surface/trees/variety/water system when known;
+- campaign card;
+- recent/planned work;
+- historical campaign shortcut;
+- location/map placeholder when geometry exists.
+
+Unknown values are omitted or shown as “Sin registrar”, never fake zeros.
+
+## Reference screen R6 — Mapa / Catastro
+
+Use the committed map/Catastro board as the visual target.
+
+Rules:
+
+- satellite/orthophoto visual area dominates when geometry exists;
+- selected parcel uses translucent olive highlight;
+- boundaries remain clear;
+- search, layers, location and zoom controls are accessible;
+- bottom information card/sheet follows the reference;
+- no invented geometry;
+- Catastro remains an external provider, not Parcel identity.
+
+## Reference screen R7 — Registrar
 
 Use a visually simple action chooser.
 
@@ -397,7 +423,7 @@ This prevents design from being driven by random imagery.
 
 Phase 3 should produce:
 
-- 8 reference screens at common phone size;
+- 12 reference screens at common phone size (two still require final visual boards: Parcel detail and Delivery/OCR review);
 - 3 key screens at compact width;
 - light-theme component catalogue;
 - empty/error/offline states;
