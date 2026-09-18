@@ -17,7 +17,7 @@ class MainActivitySmokeTest {
     @Test
     fun launcherShowsFoundationContent() {
         composeRule.onNodeWithTag("foundation-root").assertIsDisplayed()
-        composeRule.onNodeWithText("Mágina Olivo").assertIsDisplayed()
+        composeRule.onNodeWithText("Olivar").assertIsDisplayed()
         composeRule.onNodeWithText("DEV").assertIsDisplayed()
     }
 }
