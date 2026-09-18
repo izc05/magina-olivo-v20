@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.ui.reference.expenses.ExpensesDocumentsReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.harvest.HarvestReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.weather.WeatherMarketReferenceScreen
@@ -36,7 +37,7 @@ class Phase3HarvestExpensesWeatherReferenceTest {
         }
         composeRule.onNodeWithTag("expenses-reference-root").assertIsDisplayed()
         composeRule.onNodeWithText("Gastos y documentos").assertIsDisplayed()
-        composeRule.onNodeWithText("Documentos recientes").assertIsDisplayed()
+        composeRule.onNodeWithText("Documentos recientes").performScrollTo().assertIsDisplayed()
     }
 
     @Test
