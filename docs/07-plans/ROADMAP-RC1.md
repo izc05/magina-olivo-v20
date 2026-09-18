@@ -1,5 +1,7 @@
 # Mágina Olivo Android — RC1 Roadmap
 
+> **SUPERSEDED BY RC1.1:** `docs/07-plans/ROADMAP-RC1.1.md` is the normative roadmap after approved CR-001 (2026-09-18). This file is retained as historical RC1 context only; agents must not use it to override RC1.1 phase order or scope.
+
 **Baseline:** `RC1-BASELINE-2026-09-17`
 
 This roadmap defines the mandatory sequence of work. A phase cannot be marked complete until its Gate is passed. New ideas do not reorder the active sequence.
