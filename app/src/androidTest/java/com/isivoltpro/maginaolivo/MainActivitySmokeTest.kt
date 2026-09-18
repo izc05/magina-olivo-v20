@@ -15,9 +15,9 @@ class MainActivitySmokeTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun launcherShowsFoundationContent() {
-        composeRule.onNodeWithTag("foundation-root").assertIsDisplayed()
-        composeRule.onNodeWithText("Olivar").assertIsDisplayed()
-        composeRule.onNodeWithText("DEV").assertIsDisplayed()
+    fun launcherShowsOnboardingReference() {
+        composeRule.onNodeWithTag("onboarding-root").assertIsDisplayed()
+        composeRule.onNodeWithText("Mágina\nOlivo").assertIsDisplayed()
+        composeRule.onNodeWithText("Saltar").assertIsDisplayed()
     }
 }
