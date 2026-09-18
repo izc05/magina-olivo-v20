@@ -2,4 +2,6 @@
 <resources>
     <string name="foundation_title">Olivar</string>
     <string name="foundation_subtitle">Gestión de tu olivar</string>
+    <string name="brand_working_name">OleaTrack</string>
+    <string name="brand_working_tagline">Tu olivar, bajo control</string>
 </resources>
