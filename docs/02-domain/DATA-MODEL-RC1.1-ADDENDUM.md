@@ -1,5 +1,7 @@
 # Mágina Olivo — RC1.1 Data Model Addendum
 
+> **Superseded/extended for current work:** read `docs/02-domain/DATA-MODEL-RC1.2-ADDENDUM.md` for geographic-neutral preferences, provider-neutral registry links, generic OCR, irrigation pricing and planned-work details.
+
 **Status:** NORMATIVE  
 **Baseline:** `RC1.1-BASELINE-2026-09-18`  
 **Extends:** `docs/02-domain/DATA-MODEL-RC1-FUTURE.md`
