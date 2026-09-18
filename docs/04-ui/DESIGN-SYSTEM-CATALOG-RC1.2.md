@@ -20,6 +20,13 @@ Do not create duplicate components with alternate names unless a documented requ
 | Section heading | `MoSectionHeader` | SectionHeader |
 | Farm card | `MoFarmCard` | FarmCard |
 | Parcel row | `MoParcelRow` | ParcelRow |
+| Activity row | `MoActivityRow` | ActivityRow |
+| Delivery row | `MoDeliveryRow` | DeliveryRow |
+| Expense row | `MoExpenseRow` | ExpenseRow |
+| Reminder row | `MoReminderRow` | ReminderRow |
+| Market card | `MoOilMarketCard` | OilMarketCard |
+| Cooperative card | `MoCooperativeCard` | CooperativeCard |
+| Attachment tile | `MoAttachmentTile` | AttachmentTile |
 | Weather hero | `MoWeatherHero` | WeatherCard |
 | Chart frame | `MoChartContainer` | ChartContainer |
 | Simple bar chart | `MoSimpleBarChart` | Chart / Bar |
