@@ -14,12 +14,13 @@ Gate 1 can be marked PASS only after all items are evidenced.
 
 ### Automated evidence
 
-- Workflow: Android CI run `35273042885`
+- Workflow: Android CI run `35312901468`
 - Result: `success`
 - Verified step: `Lint, unit test, compile instrumented tests and build DEV APK` → success
 - DEV APK artifact: `magina-olivo-dev-debug`
-- Artifact id: `10518558625`
-- Head SHA: `3f179c73058197bd27d2a91b864c5425e71652f0`
+- Artifact id: `10534221918`
+- Artifact digest: `sha256:f620e7b6be745ba9fa0d2286b4f3c84a06097c71cd3f7d52832b755c00130e4e`
+- Head SHA: `16436e85016a28eea7dc3faad391d883b8aa7d61`
 
 ## Physical Android device
 
