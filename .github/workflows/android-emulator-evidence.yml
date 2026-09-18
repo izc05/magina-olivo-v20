@@ -49,7 +49,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            set -uo pipefail
+            set -eu
             mkdir -p evidence
 
             PKG="com.isivoltpro.maginaolivo.dev"
@@ -128,9 +128,10 @@ jobs:
             adb shell simpleperf report -i /data/local/tmp/perf.data > evidence/simpleperf-report.txt 2>&1 || true
 
             set +e
-            adb shell am instrument -w "$TEST_PKG/androidx.test.runner.AndroidJUnitRunner" | tee evidence/instrumentation.txt
-            INSTRUMENTATION_RC=${PIPESTATUS[0]}
+            adb shell am instrument -w "$TEST_PKG/androidx.test.runner.AndroidJUnitRunner" > evidence/instrumentation.txt 2>&1
+            INSTRUMENTATION_RC=$?
             set -e
+            cat evidence/instrumentation.txt
 
             adb shell am start -W -n "$PKG/$ACTIVITY" > evidence/relaunch-after-test.txt 2>&1 || true
             sleep 2
