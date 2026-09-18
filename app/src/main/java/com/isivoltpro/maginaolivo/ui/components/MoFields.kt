@@ -47,9 +47,7 @@ fun MoSelectField(
         shape = MaterialTheme.shapes.small,
     ) {
         androidx.compose.foundation.layout.Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(Modifier),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
                 text = label,
