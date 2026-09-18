@@ -1,7 +1,8 @@
 # Mágina Olivo — Screen Map RC1 v1
 
 **Status:** Phase 0.6 draft
-**Navigation root:** `Inicio · Fincas · Campaña · Registrar · Más`
+**Navigation root:** `Inicio · Mi Olivar · Registrar (+) · Calendario · Perfil`
+**Normative override:** `docs/00-master/RC1.1-PRODUCT-LOCK.md`.
 
 This document defines purpose, entry/exit and required states for every RC1 screen. UI implementation must not invent new top-level navigation without a baseline Change Request.
 
@@ -12,10 +13,10 @@ APP
 ├── Auth flow (only when required)
 └── Main shell
     ├── Inicio
-    ├── Fincas
-    ├── Campaña
-    ├── Registrar
-    └── Más
+    ├── Mi Olivar
+    ├── Registrar (+)
+    ├── Calendario
+    └── Perfil
 ```
 
 Global rules:
@@ -23,12 +24,29 @@ Global rules:
 - Android back must return predictably through the stack.
 - Bottom navigation keeps root destinations stable.
 - Deep screens do not add new bottom tabs.
-- `Registrar` can be opened globally or contextually.
+- `Registrar (+)` can be opened globally or contextually.
+- `Mi Olivar` is the root for farm → parcel → campaign navigation.
+- `Calendario` surfaces planned work/reminders.
+- `Perfil` contains account, municipality, preferred cooperative, preferences and sync/help surfaces.
 - destructive/closing actions require appropriate confirmation, not every ordinary save.
 
 ---
 
 # 2. Launch/Auth
+
+## S00 — Onboarding
+
+Purpose: explain the product in 4–6 concise visual screens on first run.
+
+Narrative: farms/parcels → field work → harvest/delivery OCR → reminders → weather/market/cooperative/history.
+
+Rules:
+
+- skippable;
+- no network dependency for the explanatory screens;
+- can be reopened from Help/About;
+- does not replace authentication or workspace setup.
+
 
 ## S01 — Splash/Bootstrap
 
@@ -111,7 +129,7 @@ Empty first-run state:
 
 `Aún no tienes fincas` + `Crear mi primera finca`.
 
-No weather/news/prices/ads.
+Contextual RC1.1 blocks may include weather/radar, olive-oil reference market and preferred-cooperative notices/news. They must be secondary, cached/optional and never block field workflows. No unrelated ads/general portal feed.
 
 ---
 
