@@ -50,8 +50,8 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 ## Remaining component catalogue
 
 - [ ] MoIconButton.
-- [ ] MoSelectField.
-- [ ] MoDateField.
+- [x] MoSelectField.
+- [x] MoDateField.
 - [x] MoFarmCard.
 - [x] MoParcelRow.
 - [ ] MoEmptyState.
@@ -60,7 +60,7 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 - [x] MoSyncStatus.
 - [x] MoSourceFreshness.
 - [ ] MoPhotoCover.
-- [ ] MoChartContainer.
+- [x] MoChartContainer.
 - [ ] MoListSkeleton.
 - [ ] MoConfirmationSheet.
 - [ ] MoBottomActionSheet.
@@ -76,8 +76,8 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 5. [ ] Farm detail reference.
 6. [ ] Parcel detail reference.
 7. [x] Map / Catastro reference.
-8. [ ] Register reference.
-9. [ ] Campaign history reference.
+8. [x] Register reference.
+9. [x] Campaign history reference.
 10. [x] Harvest reference.
 11. [x] Expenses/documents reference.
 12. [x] Weather/market reference.
