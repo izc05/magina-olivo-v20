@@ -2,9 +2,9 @@
 
 **Status:** APPROVED / NORMATIVE  
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Public brand:** TBD — “Mágina Olivo” is retired as final product name.
+**Public brand:** **Mágina Olivo** — approved by CR-003 on 2026-09-18.
 
-This file supersedes geographic/product-scope wording in RC1.1. All existing agricultural/offline/gate rules remain in force unless explicitly changed here.
+This file supersedes geographic/product-scope wording in RC1.1. All existing agricultural/offline/gate rules remain in force unless explicitly changed here. CR-003 supersedes the temporary naming/visual clauses of the original RC1.2 lock.
 
 ## 1. Product identity
 
@@ -226,16 +226,18 @@ For Spain, a configured reliable source may expose synchronized series for:
 
 If a country/source cannot provide equivalent categories, the UI adapts or hides unavailable series rather than fabricating them.
 
-## 13. Brand transition
+## 13. Brand and visual identity
 
-Until final naming approval:
+CR-003 resolves the display-brand decision:
 
-- documentation calls the product “Olive Farm App” or “the app” when geographic neutrality matters;
-- repository `magina-olivo-v20` may remain unchanged;
-- current Android package/namespace remains a temporary engineering identifier;
-- new customer-facing screens must not deepen Sierra Mágina branding.
-
-Final name/logo/icon/package decision is one controlled branding migration before public beta/store release.
+- customer-facing display brand: **Mágina Olivo**;
+- canonical visual contract: `docs/design/VISUAL_DESIGN_LOCK.md`;
+- canonical design system: `docs/design/DESIGN_SYSTEM.md`;
+- canonical visual references: `docs/design/reference/`;
+- six-screen onboarding is approved;
+- current Android package/namespace remains the engineering identifier until a separate technical-rename decision is needed;
+- Sierra Mágina imagery is permitted as brand imagery but must never become a hard-coded domain/data restriction;
+- new screens must reuse the canonical Compose tokens/components rather than invent a parallel visual language.
 
 ## 14. Scope that remains deferred
 
@@ -250,4 +252,4 @@ Final name/logo/icon/package decision is one controlled branding migration befor
 
 ## 15. Agent rule
 
-If a branch assumes Jaén-only domain logic, hard-codes Catastro as Parcel identity, restricts OCR to delivery tickets, or reintroduces “Mágina Olivo” as final customer-facing brand, it conflicts with RC1.2 and must stop for correction.
+If a branch assumes Jaén-only domain logic, hard-codes Catastro as Parcel identity, restricts OCR to delivery tickets, or ignores the approved Mágina Olivo visual contract, it conflicts with RC1.2 + CR-003 and must stop for correction.
