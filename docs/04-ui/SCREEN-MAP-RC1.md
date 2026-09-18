@@ -832,7 +832,7 @@ Avoid generic full-screen spinners for data already available locally.
 - [ ] Catastro failure does not hide owned parcels;
 - [ ] harvest and delivery have separate flows;
 - [ ] offline saved state is representable in UI;
-- [ ] conflicts/sync errors have a destination under Más;
+- [ ] conflicts/sync errors have a destination under Perfil / synchronization support;
 - [ ] future Mi Campo modules can be added without another primary tab;
 - [ ] historical campaign access uses the same conceptual dashboard in protected/read-focused mode;
-- [ ] no news/weather/public portal screens exist in RC1.
+- [ ] contextual weather/market/preferred-cooperative Home blocks remain secondary and there is no unrelated public portal feed;
