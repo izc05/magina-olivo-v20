@@ -10,14 +10,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.OlivarColors
+
+private data class BottomItem(
+    val label: String,
+    val icon: ImageVector,
+)
 
 @Composable
 fun MoBottomBarPreview(
@@ -25,7 +38,13 @@ fun MoBottomBarPreview(
     onSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val items = listOf("Inicio", "Mi Olivar", "Registrar", "Calendario", "Perfil")
+    val items = listOf(
+        BottomItem("Inicio", Icons.Outlined.Home),
+        BottomItem("Mi Olivar", Icons.Outlined.List),
+        BottomItem("Registrar", Icons.Filled.Add),
+        BottomItem("Calendario", Icons.Outlined.CalendarMonth),
+        BottomItem("Perfil", Icons.Outlined.Person),
+    )
 
     Row(
         modifier = modifier
@@ -36,45 +55,51 @@ fun MoBottomBarPreview(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         items.forEach { item ->
-            val isRegister = item == "Registrar"
-            val isSelected = item == selected
+            val isRegister = item.label == "Registrar"
+            val isSelected = item.label == selected
+            val contentColor = if (isSelected || isRegister) {
+                OlivarColors.Olive700
+            } else {
+                OlivarColors.Charcoal500
+            }
+
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable { onSelected(item) },
+                    .clickable { onSelected(item.label) },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 if (isRegister) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(46.dp)
                             .background(
                                 color = OlivarColors.Olive700,
                                 shape = CircleShape,
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = "+",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = OlivarColors.White,
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = "Registrar",
+                            tint = OlivarColors.White,
                         )
                     }
                 } else {
-                    Text(
-                        text = if (isSelected) "●" else "○",
-                        color = if (isSelected) OlivarColors.Olive700 else OlivarColors.Charcoal500,
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = item.label,
+                        tint = contentColor,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
+
                 Text(
-                    text = item,
+                    text = item.label,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (isSelected || isRegister) {
-                        OlivarColors.Olive700
-                    } else {
-                        OlivarColors.Charcoal500
-                    },
+                    color = contentColor,
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
         }
