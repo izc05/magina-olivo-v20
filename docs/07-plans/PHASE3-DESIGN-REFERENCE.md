@@ -269,7 +269,7 @@ Map preview is only shown when geometry exists; it must not dominate before Phas
 
 ## Reference screen R5 — Parcel detail
 
-**Visual-reference gap:** no final generated board is committed yet. This screen must be designed during Phase 3 using the locked system before Gate 3.
+**Reference status:** Compose reference implemented in Phase 3 using the locked system. A representative Android screenshot must still be captured and approved before Gate 3.
 
 Prioritize:
 
@@ -423,7 +423,7 @@ This prevents design from being driven by random imagery.
 
 Phase 3 should produce:
 
-- 12 reference screens at common phone size (two still require final visual boards: Parcel detail and Delivery/OCR review);
+- 12 reference screens at common phone size; Parcel detail and Delivery/OCR review require final representative Android screenshots to complete their canonical visual evidence;
 - 3 key screens at compact width;
 - light-theme component catalogue;
 - empty/error/offline states;
