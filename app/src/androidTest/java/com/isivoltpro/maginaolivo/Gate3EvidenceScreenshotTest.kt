@@ -56,7 +56,7 @@ class Gate3EvidenceScreenshotTest {
         val fontScalePercent = (configuration.fontScale * 100f).roundToInt()
 
         val outputDirectory = File(
-            targetContext.getExternalFilesDir(null),
+            targetContext.filesDir,
             "gate3",
         ).apply {
             mkdirs()
