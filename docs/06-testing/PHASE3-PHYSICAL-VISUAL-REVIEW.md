@@ -95,7 +95,25 @@ Approve if:
 - income/cost relationship is obvious;
 - ratios are readable without feeling like a spreadsheet.
 
-## 11. Registrar
+## 11. Histórico
+
+Approve if:
+
+- campaign comparison is understandable;
+- chronology reads naturally from work → expense → delivery;
+- partial/missing campaign data remains obvious;
+- it does not feel like a raw database list.
+
+## 12. Documentos
+
+Approve if:
+
+- delivery tickets, invoices and other documents are clearly grouped;
+- OCR/upload/local-only states are understandable;
+- original-file identity is obvious;
+- document status never implies financial confirmation automatically.
+
+## 13. Registrar
 
 Approve if:
 
@@ -104,7 +122,7 @@ Approve if:
 - planned vs completed intent is understandable;
 - screen does not look overloaded.
 
-## 12. Calendario
+## 14. Calendario
 
 Approve if:
 
@@ -112,7 +130,7 @@ Approve if:
 - people/provider details fit naturally;
 - reminders are distinguishable from work items.
 
-## 13. Entrega OCR
+## 15. Entrega OCR
 
 Approve if:
 
@@ -121,7 +139,7 @@ Approve if:
 - confidence/review state is understandable;
 - yield pending is clearly separate.
 
-## 14. Factura OCR
+## 16. Factura OCR
 
 Approve if:
 
@@ -129,7 +147,7 @@ Approve if:
 - line items are readable;
 - the user understands this creates a draft, not an automatic final expense.
 
-## 15. Perfil
+## 17. Perfil
 
 Approve if:
 
@@ -137,7 +155,7 @@ Approve if:
 - it does not look like an admin panel;
 - advanced settings remain secondary.
 
-## 16. Estados
+## 18. Estados
 
 Approve if:
 
@@ -145,7 +163,7 @@ Approve if:
 - offline state feels safe rather than alarming;
 - unknown/partial values never look like zero.
 
-## 17. Bottom navigation
+## 19. Bottom navigation
 
 Check all:
 
@@ -162,7 +180,7 @@ Approve if:
 - labels remain visible;
 - no accidental taps due to cramped targets.
 
-## 18. Fast response format
+## 20. Fast response format
 
 The product owner can return any of:
 
@@ -183,7 +201,7 @@ Bottom nav: OK
 
 Screenshots with comments are preferred for visual corrections.
 
-## 19. Gate rule
+## 21. Gate rule
 
 Physical visual approval alone does not close Gate 3 while Figma transfer remains explicitly required by the current checklist.
 
