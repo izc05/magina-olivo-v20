@@ -95,24 +95,27 @@ jobs:
             adb shell wm density 480
             adb shell settings put system font_scale 1.0
             gradle --no-daemon connectedDevDebugAndroidTest
-            adb shell am force-stop com.isivoltpro.maginaolivo.dev || true
-            adb shell monkey -p com.isivoltpro.maginaolivo.dev -c android.intent.category.LAUNCHER 1 || true
+            gradle --no-daemon installDevDebug
+            adb shell am force-stop com.isivoltpro.maginaolivo.dev
+            adb shell am start -W -n com.isivoltpro.maginaolivo.dev/com.isivoltpro.maginaolivo.MainActivity
             sleep 2
             adb exec-out screencap -p > gate3-evidence/360dp.png
 
             adb shell wm density 440
             adb shell settings put system font_scale 1.3
             gradle --no-daemon connectedDevDebugAndroidTest
-            adb shell am force-stop com.isivoltpro.maginaolivo.dev || true
-            adb shell monkey -p com.isivoltpro.maginaolivo.dev -c android.intent.category.LAUNCHER 1 || true
+            gradle --no-daemon installDevDebug
+            adb shell am force-stop com.isivoltpro.maginaolivo.dev
+            adb shell am start -W -n com.isivoltpro.maginaolivo.dev/com.isivoltpro.maginaolivo.MainActivity
             sleep 2
             adb exec-out screencap -p > gate3-evidence/393dp-font130.png
 
             adb shell wm density 360
             adb shell settings put system font_scale 1.0
             gradle --no-daemon connectedDevDebugAndroidTest
-            adb shell am force-stop com.isivoltpro.maginaolivo.dev || true
-            adb shell monkey -p com.isivoltpro.maginaolivo.dev -c android.intent.category.LAUNCHER 1 || true
+            gradle --no-daemon installDevDebug
+            adb shell am force-stop com.isivoltpro.maginaolivo.dev
+            adb shell am start -W -n com.isivoltpro.maginaolivo.dev/com.isivoltpro.maginaolivo.MainActivity
             sleep 2
             adb exec-out screencap -p > gate3-evidence/480dp.png
 
