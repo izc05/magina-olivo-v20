@@ -1,6 +1,6 @@
 # Phase 2 — Base Application Architecture Execution Plan
 
-**Baseline:** `RC1.1-BASELINE-2026-09-18`  
+**Baseline:** `RC1.2-BASELINE-2026-09-18`  
 **Precondition:** Gate 1 PASS.  
 **Rule:** this plan may be read/prepared now, but **no Phase 2 implementation starts before Gate 1 is recorded as PASS**.
 
@@ -270,3 +270,24 @@ Phase 3 receives:
 - unchanged environment/application identities.
 
 Phase 3 then owns visual tokens/components and reference screens.
+
+## RC1.2 regional-neutral architecture rule
+
+Phase 2 must not hard-code Jaén, Spain, EUR, Europe/Madrid, hectare-only display logic or Spanish Catastro identifiers into domain primitives.
+
+Introduce only the minimal abstractions needed to keep later code honest:
+
+```text
+RegionalContext
+  countryCode
+  locale
+  timezone
+  currency
+
+UnitPreferences
+  area
+  volume
+  mass
+```
+
+Persistence/UI editing of these values belongs to later phases. Phase 2 only establishes safe boundaries/default-provider injection.
