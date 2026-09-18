@@ -11,10 +11,13 @@
 ✅ Phase 1 — Android Project Foundation
 ✅ Phase 2 — Base application architecture
 ✅ CR-003 — Mágina Olivo brand + canonical visual system
-▶ Phase 3 — Design system implementation + reference screens
+✅ Phase 3 implementation — design system + reference screens
+▶ Gate 3 — visual / accessibility validation
 ```
 
-The only currently allowed implementation phase is **Phase 3**. The approved display brand is **Mágina Olivo**. Domain/data architecture remains geographic-neutral.
+The only currently allowed production work is **Gate 3 validation/evidence**. Phase 4 implementation remains blocked until Gate 3 PASS. The approved display brand is **Mágina Olivo**. Domain/data architecture remains geographic-neutral.
+
+Canonical execution/handoff plan: `docs/00-master/SINGLE-TRACK-EXECUTION.md`.
 
 ---
 
@@ -105,9 +108,9 @@ Create/freeze reference screens for:
 11. Tiempo / mercado / alertas;
 12. Delivery / OCR review.
 
-Approved visual boards already cover all except **Parcela detail** and **Delivery/OCR review**, which remain Phase 3 reference-design gaps.
+All required reference screens are now implemented in Compose and merged into `main`. Parcel Detail and Delivery/OCR Review still require representative Android screenshots in the canonical visual evidence.
 
-**Gate 3:** reference screens approved on representative phone sizes and component reuse is proven.
+**Gate 3:** reference screens approved on representative phone sizes, accessibility/non-happy-state evidence recorded, screenshot comparison completed, and component reuse proven.
 
 ## Phase 4 — Navigation shell
 
