@@ -73,7 +73,7 @@ fun MoBottomBarPreview(
                     .weight(1f)
                     .semantics {
                         contentDescription = item.label
-                        selected = isSelected
+                        this.selected = isSelected
                         role = Role.Tab
                     }
                     .clickable { onSelected(item.label) },
