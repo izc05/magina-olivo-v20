@@ -6,7 +6,7 @@ Nuevo repositorio limpio para el rediseño completo de Mágina Olivo.
 
 Proyecto con baseline RC1 congelada y bloque documental previo a implementación aprobado.
 
-**Baseline vigente:** `RC1-BASELINE-2026-09-17`
+**Baseline vigente:** `RC1.1-BASELINE-2026-09-18`
 
 La arquitectura, el alcance RC1 y la secuencia de fases se consideran congelados. Cualquier cambio estructural requiere un Change Request y una nueva revisión de baseline.
 
@@ -21,11 +21,13 @@ Mágina Olivo será una aplicación Android privada y offline-first para gestion
 ## Lectura obligatoria para agentes
 
 1. [`docs/00-master/RC1-BASELINE.md`](docs/00-master/RC1-BASELINE.md)
-2. [`docs/00-master/RC1-NORMATIVE-ADDENDUM.md`](docs/00-master/RC1-NORMATIVE-ADDENDUM.md)
-3. [`docs/00-master/MASTER-SPEC-RC1.md`](docs/00-master/MASTER-SPEC-RC1.md)
-4. [`docs/00-master/RC1-GATE-REVIEW.md`](docs/00-master/RC1-GATE-REVIEW.md)
-5. [`docs/00-master/CURRENT-STATE.md`](docs/00-master/CURRENT-STATE.md)
-6. [`docs/07-plans/ROADMAP-RC1.md`](docs/07-plans/ROADMAP-RC1.md)
+2. [`docs/00-master/RC1.1-PRODUCT-LOCK.md`](docs/00-master/RC1.1-PRODUCT-LOCK.md)
+3. [`docs/00-master/RC1.1-CHANGE-REQUEST.md`](docs/00-master/RC1.1-CHANGE-REQUEST.md)
+4. [`docs/00-master/RC1-NORMATIVE-ADDENDUM.md`](docs/00-master/RC1-NORMATIVE-ADDENDUM.md)
+5. [`docs/00-master/MASTER-SPEC-RC1.md`](docs/00-master/MASTER-SPEC-RC1.md)
+6. [`docs/00-master/RC1-GATE-REVIEW.md`](docs/00-master/RC1-GATE-REVIEW.md)
+7. [`docs/00-master/CURRENT-STATE.md`](docs/00-master/CURRENT-STATE.md)
+8. [`docs/07-plans/ROADMAP-RC1.md`](docs/07-plans/ROADMAP-RC1.md)
 
 ## Documentación fuente de verdad
 
