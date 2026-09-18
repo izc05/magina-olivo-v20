@@ -15,6 +15,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ 0.5 Offline/Sync Contract (with normative addendum)
 ✅ 0.6 Complete Screen Map (with normative cost interpretation)
 ✅ 0.7 Design System Spec
+✅ 0.8 RC1.1 Product reconciliation/spec lock
 ```
 
 ## Current allowed phase
@@ -50,15 +51,15 @@ Phase 0.8 documentation is defined in `docs/07-plans/ROADMAP-RC1.1.md`. Implemen
 
 ## Next deliverable
 
-Create the detailed Phase 1 implementation plan covering:
+Execute the existing Phase 1 implementation plan on `feat/android-foundation` / PR #165.
 
-- Android/Gradle project structure;
-- Kotlin + Compose setup;
-- package/application IDs;
-- DEV/STAGING/PRODUCTION build configuration;
-- version catalog/dependency policy;
-- unit/instrumented/UI test foundations;
-- static analysis/lint;
-- CI workflow;
-- first installable APK;
-- physical-device Gate 1 checklist.
+Required outcome before any Phase 2 work:
+
+- lint and unit tests green;
+- DEV/STAGING/PRODUCTION debug builds green;
+- CI artifact available;
+- DEV APK installed/launched on a physical Android device;
+- instrumentation smoke test green on physical hardware when available;
+- Gate 1 evidence recorded.
+
+Do not implement farms, parcels, campaigns, Home, maps or domain navigation inside Phase 1.
