@@ -11,10 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoError
-import com.isivoltpro.maginaolivo.ui.theme.MoInfo
+import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoSuccess
-import com.isivoltpro.maginaolivo.ui.theme.MoWarning
+import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
 
 enum class MoStatusTone {
     Neutral,
@@ -33,8 +33,8 @@ fun MoStatusChip(
     val foreground = when (tone) {
         MoStatusTone.Neutral -> MoOlivePrimary
         MoStatusTone.Success -> MoSuccess
-        MoStatusTone.Info -> MoInfo
-        MoStatusTone.Warning -> MoWarning
+        MoStatusTone.Info -> MoInfoText
+        MoStatusTone.Warning -> MoWarningText
         MoStatusTone.Error -> MoError
     }
 
