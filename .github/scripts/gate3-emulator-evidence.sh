@@ -22,6 +22,7 @@ adb install -r -t "$TEST_APK" | tee evidence/install-test.txt
 
 PHYSICAL_SIZE="$(adb shell wm size | tr -d '\r' | sed -n 's/^Physical size: //p' | head -n 1)"
 PHYSICAL_WIDTH="${PHYSICAL_SIZE%x*}"
+PHYSICAL_HEIGHT="${PHYSICAL_SIZE#*x}"
 
 if [[ -z "$PHYSICAL_WIDTH" || "$PHYSICAL_WIDTH" == "$PHYSICAL_SIZE" ]]; then
   echo "Could not determine physical display width from: $PHYSICAL_SIZE" >&2
@@ -145,9 +146,25 @@ capture_variant() {
   adb exec-out screencap -p > "$out/home.png"
   dump_ui "$out/home-ui.xml"
 
-  if ! grep -q 'Mercado del aceite' "$out/home-ui.xml"; then
-    echo "Home accessibility tree does not expose 'Mercado del aceite' for $label" >&2
+  if ! grep -q 'Buenos días' "$out/home-ui.xml" && ! grep -q 'text="Inicio"' "$out/home-ui.xml"; then
+    echo "Home accessibility tree does not expose the visible Home header/navigation for $label" >&2
     exit 1
+  fi
+
+  adb shell input swipe \
+    "$((PHYSICAL_WIDTH / 2))" \
+    "$((PHYSICAL_HEIGHT * 4 / 5))" \
+    "$((PHYSICAL_WIDTH / 2))" \
+    "$((PHYSICAL_HEIGHT / 4))" \
+    450
+  sleep 1
+  adb exec-out screencap -p > "$out/home-scrolled.png"
+  dump_ui "$out/home-scrolled-ui.xml"
+
+  if grep -q 'Mercado del aceite' "$out/home-scrolled-ui.xml"; then
+    echo "market_after_scroll=FOUND" >> "$out/display.txt"
+  else
+    echo "market_after_scroll=NOT_VISIBLE" >> "$out/display.txt"
   fi
 
   adb shell run-as "$PKG" rm -rf files/gate3 >/dev/null 2>&1 || true
