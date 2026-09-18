@@ -8,13 +8,14 @@ Before changing code or architecture, read:
 
 1. `docs/00-master/RC1-BASELINE.md`
 2. `docs/00-master/RC1.2-PRODUCT-LOCK.md`
-3. `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
-4. `docs/design/VISUAL_DESIGN_LOCK.md`
-5. `docs/design/DESIGN_SYSTEM.md`
-6. `docs/00-master/CURRENT-STATE.md`
-7. `docs/07-plans/ROADMAP-RC1.2.md`
-8. the current phase execution plan, when one exists
-9. only then the domain/architecture/UI contracts needed for that phase
+3. `docs/00-master/SINGLE-TRACK-EXECUTION.md`
+4. `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
+5. `docs/design/VISUAL_DESIGN_LOCK.md`
+6. `docs/design/DESIGN_SYSTEM.md`
+7. `docs/00-master/CURRENT-STATE.md`
+8. `docs/07-plans/ROADMAP-RC1.2.md`
+9. the current phase execution plan, when one exists
+10. only then the domain/architecture/UI contracts needed for that phase
 
 If an older RC1/RC1.1 document conflicts with the RC1.2 Product Lock, RC1.2 wins.
 
@@ -108,6 +109,10 @@ A broad prompt such as “improve the app” is **not** permission to reuse old 
 
 ## Branch discipline
 
+- `main` is the single source of truth.
+- One production implementation phase may be active at a time.
+- At most two auxiliary parallel lines may exist for documentation/research/preparation only.
+- If two chats create overlapping work, keep the cleaner/current implementation against `main` and close the superseded PR.
 - `main` stays stable.
 - Use isolated `feat/*`, `fix/*`, `docs/*` branches.
 - Keep one phase/task scope per branch where practical.
