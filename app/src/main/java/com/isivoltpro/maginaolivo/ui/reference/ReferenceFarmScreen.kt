@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.isivoltpro.maginaolivo.ui.components.MoActivityRow
 import com.isivoltpro.maginaolivo.ui.components.MoFarmCard
 import com.isivoltpro.maginaolivo.ui.components.MoMetricCard
 import com.isivoltpro.maginaolivo.ui.components.MoParcelRow
@@ -110,17 +111,13 @@ fun ReferenceFarmScreen(
         }
 
         item {
-            SimpleReferenceCard {
-                Text(
-                    text = "18 sep · Riego",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = "Los Llanos · Sector 4 · 2 h",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            MoActivityRow(
+                title = "Riego",
+                dateText = "18 sep",
+                contextText = "Los Llanos · Sector 4 · 2 h",
+                statusText = "Completado",
+                statusTone = com.isivoltpro.maginaolivo.ui.components.MoStatusTone.Confirmed,
+            )
         }
     }
 }
