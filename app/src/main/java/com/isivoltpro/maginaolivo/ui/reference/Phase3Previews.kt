@@ -107,3 +107,32 @@ private fun PreviewOcr412() {
         ReferenceOcrScreen()
     }
 }
+
+
+@Preview(
+    name = "Inicio · 412dp · font 1.3",
+    widthDp = 412,
+    heightDp = 915,
+    fontScale = 1.3f,
+    showBackground = true,
+)
+@Composable
+private fun PreviewHomeLargeFont() {
+    OlivarTheme {
+        ReferenceHomeScreen()
+    }
+}
+
+@Preview(
+    name = "Entrega OCR · 412dp · font 1.3",
+    widthDp = 412,
+    heightDp = 915,
+    fontScale = 1.3f,
+    showBackground = true,
+)
+@Composable
+private fun PreviewOcrLargeFont() {
+    OlivarTheme {
+        ReferenceOcrScreen()
+    }
+}
