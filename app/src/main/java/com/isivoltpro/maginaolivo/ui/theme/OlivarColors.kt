@@ -18,7 +18,7 @@ object OlivarColors {
     val Cream200 = Color(0xFFF1EAD8)
 
     val Earth500 = Color(0xFFC39A68)
-    val Earth600 = Color(0xFFA97E4F)
+    val Earth600 = Color(0xFF95693F)
 
     val Charcoal900 = Color(0xFF20231D)
     val Charcoal700 = Color(0xFF4C5148)
@@ -28,7 +28,7 @@ object OlivarColors {
     val White = Color(0xFFFFFFFF)
 
     val Success = Color(0xFF3F7D43)
-    val Warning = Color(0xFFA56A13)
+    val Warning = Color(0xFFA3650E)
     val Error = Color(0xFFB6463A)
     val Info = Color(0xFF47789A)
 }
