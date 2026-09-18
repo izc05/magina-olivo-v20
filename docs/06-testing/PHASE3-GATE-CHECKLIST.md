@@ -2,7 +2,7 @@
 
 **Phase:** Design System + Reference Screens  
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Status:** STACKED / DRAFT until Gate 2 closes.
+**Status:** DRAFT — Gate 2 is closed; Gate 3 visual review remains.
 
 ## Design tokens
 
@@ -30,6 +30,14 @@
 - [x] Empty/error states.
 - [x] Source/freshness component.
 - [x] OCR review field/panel productionized.
+- [x] Top app bar.
+- [x] Icon button.
+- [x] Sync status.
+- [x] Photo-cover fallback.
+- [x] Chart container.
+- [x] Confirmation sheet.
+- [x] Bottom action sheet.
+- [x] List skeleton.
 
 ## Reference screens
 
