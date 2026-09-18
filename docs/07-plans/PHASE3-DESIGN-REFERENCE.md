@@ -4,6 +4,10 @@
 **Precondition:** Gate 2 PASS.  
 **Rule:** this plan may be prepared now, but production implementation starts only after Phase 2 passes.
 
+## Mandatory reference
+
+Before designing Campaign/Producción/Costes/Rentabilidad, read `docs/04-ui/COMPETITIVE-BENCHMARK-RC1.2.md` together with the approved Brand Direction.
+
 ## Goal
 
 Turn the approved visual direction into a reusable Compose design system and a small set of reference screens that later feature branches must follow.
