@@ -41,7 +41,7 @@ Permanent bottom navigation:
 Inicio | Mi Olivar | Registrar (+) | Calendario | Perfil
 ```
 
-This navigation is frozen by RC1.1. Farm, parcel and campaign screens are reached through `Mi Olivar`; deep screens do not add primary tabs.
+This navigation is frozen by RC1.2. Farm, parcel and campaign screens are reached through `Mi Olivar`; deep screens do not add primary tabs.
 
 `Registrar` is the principal operational action and can be context-aware:
 
@@ -54,7 +54,7 @@ Adding future Mi Campo modules must not add a large number of primary tabs.
 
 ## 4. Home
 
-Purpose: answer "what matters today?" without turning Mágina Olivo into a portal.
+Purpose: answer "what matters today?" without turning the app into a portal.
 
 Core/priority content:
 
@@ -69,7 +69,7 @@ Contextual secondary blocks:
 - reference olive-oil market with AOVE/Virgen/Lampante series when the configured source supports them;
 - preferred cooperative notices/news.
 
-External Home data is optional/cached and must never block agricultural workflows. Always show source/last update for market data. Do not add unrelated general news, tourism feeds or advertising in RC1.1.
+External Home data is optional/cached and must never block agricultural workflows. Always show source/last update for market data. Do not add unrelated general news, tourism feeds or advertising in RC1.2.
 
 ## 5. Farms
 
@@ -133,7 +133,7 @@ Must prioritize the map and show:
 
 ## 7. Catastro contract intent
 
-Catastro is a discovery/import source. Mágina Olivo stores its own normalized parcel record and geometry after import.
+Catastro is a discovery/import source. the app stores its own normalized parcel record and geometry after import.
 
 The normal farm/parcels UI must not require repeated cadastral calls after a parcel has been added.
 
@@ -248,7 +248,7 @@ Do not build one giant form. Each type has a common activity header and typed de
 - cost/notes;
 - optional local Android reminder for previous day and/or same day.
 
-Advanced hydraulic telemetry/automation remains post-RC1.1.
+Advanced hydraulic telemetry/automation remains post-RC1.2.
 
 ### Incidencia
 
@@ -450,9 +450,9 @@ Avoid:
 - tiny buttons;
 - information communicated by color alone.
 
-## 20. RC1.1 operational support and later growth
+## 20. RC1.2 operational support and later growth
 
-RC1.1 includes lightweight operational support for:
+RC1.2 includes lightweight operational support for:
 
 - calendar/planned work/local reminders;
 - machinery relations;
