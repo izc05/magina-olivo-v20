@@ -15,12 +15,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoInfo
+import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarning
+import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 
 enum class MoSyncState {
@@ -50,7 +52,7 @@ fun MoSourceFreshness(
             Text(
                 text = if (stale) "!" else "i",
                 style = MaterialTheme.typography.labelLarge,
-                color = if (stale) MoWarning else MoInfo,
+                color = if (stale) MoWarningText else MoInfoText,
             )
             Column {
                 Text(
@@ -84,7 +86,7 @@ fun MoOfflineBanner(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("!", color = MoWarning, style = MaterialTheme.typography.titleMedium)
+            Text("!", color = MoWarningText, style = MaterialTheme.typography.titleMedium)
             Text(message, style = MaterialTheme.typography.bodyMedium)
         }
     }
@@ -97,7 +99,7 @@ fun MoSyncStatus(
 ) {
     val (label, tone) = when (state) {
         MoSyncState.Synced -> "Sincronizado" to MoOlivePrimary
-        MoSyncState.Pending -> "Pendiente de sincronizar" to MoWarning
+        MoSyncState.Pending -> "Pendiente de sincronizar" to MoWarningText
         MoSyncState.Offline -> "Solo en este dispositivo" to MoTextSecondary
     }
 
