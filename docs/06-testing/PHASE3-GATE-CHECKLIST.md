@@ -25,10 +25,10 @@
 - [x] Weather hero.
 - [x] Simple analytical bar chart.
 - [x] Visual bottom navigation.
-- [ ] Text/select/date fields.
-- [ ] Parcel row.
-- [ ] Empty/error states.
-- [ ] Source/freshness component.
+- [x] Text/select/date fields.
+- [x] Parcel row.
+- [x] Empty/error states.
+- [x] Source/freshness component.
 - [ ] OCR review field/panel productionized.
 
 ## Reference screens
