@@ -17,15 +17,17 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ 0.7 Design System Spec
 ✅ 0.8 RC1.1 Product reconciliation/spec lock
 ✅ 0.9 RC1.2 geographic-neutral scope + generic OCR + naming gate
+✅ 1.0 Android Project Foundation
+✅ 2.0 Base Application Architecture
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 1 — ANDROID PROJECT FOUNDATION
+▶ PHASE 3 — DESIGN SYSTEM + REFERENCE SCREENS
 ```
 
-Do not start Phase 2 or any agricultural feature until Gate 1 has passed.
+Phase 1 and Phase 2 are closed. Do not start Phase 4 real navigation or agricultural feature implementation until Gate 3 passes.
 
 ## Mandatory reading order for any agent
 
@@ -50,10 +52,18 @@ RC1.2 Product Lock is normative and overrides contradictory RC1-era wording unti
 
 ## RC1.2 reconciliation
 
-Phase 0.9 documentation is defined in `docs/07-plans/ROADMAP-RC1.2.md`. Public brand remains TBD; do not deepen legacy customer-facing naming. Implementation remains locked to Phase 1 until Gate 1 passes.
+Phase 0.9 documentation is defined in `docs/07-plans/ROADMAP-RC1.2.md`. Public brand remains TBD; OleaTrack is a working candidate only. Implementation is currently limited to Phase 3 visual-system/reference-screen scope.
 
 ## Next deliverable
 
-Execute Phase 2 according to `docs/07-plans/PHASE2-BASE-ARCHITECTURE.md`.
+Execute Phase 3 according to `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`.
 
-Gate 2 requires CI, architecture tests, scope review and a physical launcher smoke after the refactor. Do not start Phase 3 implementation before Gate 2 PASS.
+Current work:
+- Compose visual tokens/components;
+- DEV-only reference gallery;
+- eight approved reference screens;
+- CI/build validation;
+- physical visual review;
+- Figma transfer when MCP access becomes available again.
+
+Do not start Phase 4 real navigation until Gate 3 PASS.
