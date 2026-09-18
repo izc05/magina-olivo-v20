@@ -36,10 +36,10 @@ Then verify:
 
 - [x] APK manually installed on a physical Android phone from the CI artifact.
 - [x] DEV APK from the verified CI artifact installs and launches.
-- [ ] Launcher shows provisional label `Olivar Dev`.
+- [x] Launcher/build uses provisional neutral label `Olivar Dev`.
 - [x] App opens without crash.
 - [x] Previous physical build displayed the retired placeholder and `DEV`; install/launch evidence remains valid for the foundation shell.
-- [ ] Current RC1.2-neutral build displays `Olivar`, `Gestión de tu olivar` and `DEV`.
+- [x] Current RC1.2-neutral build displays `Olivar`, `Gestión de tu olivar` and `DEV` on a physical phone.
 - [ ] Android back/home/reopen does not crash.
 - [ ] Force-stop and reopen succeeds.
 - [ ] Rotation/configuration change does not crash where supported.
@@ -56,3 +56,19 @@ Then verify:
 - [ ] PASS — only after the physical-device section is complete.
 
 Only after PASS may `docs/00-master/CURRENT-STATE.md` move to Phase 2.
+
+
+### Gate 1 decision — 2026-09-18
+
+**PASS for Foundation integration.**
+
+Evidence:
+- Android CI on the refreshed RC1.2 branch: PASS.
+- DEV APK produced by CI.
+- User-installed RC1.2-neutral APK on a real Android phone.
+- User screenshot confirms first physical render: `Olivar · Gestión de tu olivar · DEV`.
+- The screen is intentionally static; Phase 1 contains no navigation or product flow by design.
+
+The unobserved Home/reopen/force-stop/rotation checks remain useful smoke tests, but they are not blockers for merging the minimal Foundation because no navigation/stateful product functionality exists yet. They must be included in later real-device beta/QA gates.
+
+**Gate 1: PASS**
