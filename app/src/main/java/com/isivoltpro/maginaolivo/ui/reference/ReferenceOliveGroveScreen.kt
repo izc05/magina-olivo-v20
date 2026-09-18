@@ -45,25 +45,29 @@ fun ReferenceOliveGroveScreen(
         }
 
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(OlivarDimens.SpaceSm),
+            Column(
+                verticalArrangement = Arrangement.spacedBy(OlivarDimens.SpaceSm),
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(OlivarDimens.SpaceSm),
+                ) {
+                    MoMetricCard(
+                        label = "Fincas",
+                        value = "2",
+                        modifier = Modifier.weight(1f),
+                    )
+                    MoMetricCard(
+                        label = "Parcelas",
+                        value = "18",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 MoMetricCard(
-                    label = "Fincas",
-                    value = "2",
-                    modifier = Modifier.weight(1f),
-                )
-                MoMetricCard(
-                    label = "Parcelas",
-                    value = "18",
-                    modifier = Modifier.weight(1f),
-                )
-                MoMetricCard(
-                    label = "Superficie",
+                    label = "Superficie total",
                     value = "31,62",
                     unit = "ha",
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
