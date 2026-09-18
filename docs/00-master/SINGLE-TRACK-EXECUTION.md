@@ -62,9 +62,11 @@ Close these items in order:
 10. compare screenshots with `docs/design/reference/`;
 11. add the still-pending canonical screenshots for Parcel Detail and Delivery/OCR Review;
 12. final audit for ad-hoc colors/spacing/components;
-13. complete Figma transfer/validation when MCP access is available, unless a deliberate approved Change Request makes Figma non-blocking.
+13. keep the Figma handoff manifest ready for later transfer when MCP access is available.
 
-**Gate 3 PASS only after evidence is recorded in the repository.**
+Figma transfer is **supporting design handoff, not a Gate 3 blocker**. The normative Gate 3 condition is representative Android visual/accessibility validation plus recorded evidence.
+
+**Gate 3 PASS only after the required Android evidence is recorded in the repository.**
 
 ## 4. Execution discipline after Gate 3
 
