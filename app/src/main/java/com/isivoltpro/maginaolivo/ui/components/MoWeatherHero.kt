@@ -39,12 +39,12 @@ fun MoWeatherHero(
     onRadarClick: (() -> Unit)? = null,
 ) {
     val colors = when (state) {
-        WeatherVisualState.Clear -> listOf(Color(0xFFFFE7B5), OlivarColors.Cream100)
-        WeatherVisualState.Cloudy -> listOf(Color(0xFFD9E1DC), OlivarColors.Cream100)
-        WeatherVisualState.Rain -> listOf(Color(0xFFC9D8DE), Color(0xFFE9EEF0))
-        WeatherVisualState.Fog -> listOf(Color(0xFFE5E9E5), OlivarColors.Cream100)
-        WeatherVisualState.Wind -> listOf(Color(0xFFDDE8DA), OlivarColors.Cream100)
-        WeatherVisualState.Storm -> listOf(Color(0xFF9EABB0), Color(0xFFD9E0E2))
+        WeatherVisualState.Clear -> listOf(hexColor(0xFFFFE7B5), OlivarColors.Cream100)
+        WeatherVisualState.Cloudy -> listOf(hexColor(0xFFD9E1DC), OlivarColors.Cream100)
+        WeatherVisualState.Rain -> listOf(hexColor(0xFFC9D8DE), hexColor(0xFFE9EEF0))
+        WeatherVisualState.Fog -> listOf(hexColor(0xFFE5E9E5), OlivarColors.Cream100)
+        WeatherVisualState.Wind -> listOf(hexColor(0xFFDDE8DA), OlivarColors.Cream100)
+        WeatherVisualState.Storm -> listOf(hexColor(0xFF9EABB0), hexColor(0xFFD9E0E2))
     }
 
     Column(
@@ -99,4 +99,4 @@ fun MoWeatherHero(
     }
 }
 
-private fun Color(value: Long) = androidx.compose.ui.graphics.Color(value)
+private fun hexColor(value: Long) = Color(value)
