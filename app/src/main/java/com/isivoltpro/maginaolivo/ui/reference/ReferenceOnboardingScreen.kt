@@ -17,7 +17,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.isivoltpro.maginaolivo.R
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.theme.OlivarColors
@@ -35,12 +37,12 @@ fun ReferenceOnboardingScreen(
     ) {
         Column {
             Text(
-                text = "OleaTrack",
+                text = stringResource(R.string.brand_working_name),
                 style = MaterialTheme.typography.labelLarge,
                 color = OlivarColors.Olive700,
             )
             Text(
-                text = "Tu olivar, bajo control",
+                text = stringResource(R.string.brand_working_tagline),
                 style = MaterialTheme.typography.headlineLarge,
                 modifier = Modifier.padding(top = OlivarDimens.SpaceXs),
             )
