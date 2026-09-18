@@ -28,7 +28,11 @@ private enum class ReferenceScreen(
     Production("Producción"),
     Costs("Costes"),
     Profitability("Rentabilidad"),
+    Register("Registrar"),
+    Calendar("Calendario"),
     Ocr("Entrega OCR"),
+    Profile("Perfil"),
+    States("Estados"),
 }
 
 @Composable
@@ -81,20 +85,30 @@ fun Phase3GalleryScreen(
                 ReferenceScreen.Production -> ReferenceProductionScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Costs -> ReferenceCostsScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Profitability -> ReferenceProfitabilityScreen(Modifier.fillMaxSize())
+                ReferenceScreen.Register -> ReferenceRegisterScreen(Modifier.fillMaxSize())
+                ReferenceScreen.Calendar -> ReferenceCalendarScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Ocr -> ReferenceOcrScreen(Modifier.fillMaxSize())
+                ReferenceScreen.Profile -> ReferenceProfileScreen(Modifier.fillMaxSize())
+                ReferenceScreen.States -> ReferenceStatesScreen(Modifier.fillMaxSize())
             }
         }
 
         MoBottomBarPreview(
             selected = when (selected) {
+                ReferenceScreen.Onboarding,
                 ReferenceScreen.Home -> "Inicio"
-                ReferenceScreen.Onboarding -> "Inicio"
+                ReferenceScreen.Register -> "Registrar"
+                ReferenceScreen.Calendar -> "Calendario"
+                ReferenceScreen.Profile -> "Perfil"
                 else -> "Mi Olivar"
             },
             onSelected = { destination ->
                 when (destination) {
                     "Inicio" -> selected = ReferenceScreen.Home
                     "Mi Olivar" -> selected = ReferenceScreen.OliveGrove
+                    "Registrar" -> selected = ReferenceScreen.Register
+                    "Calendario" -> selected = ReferenceScreen.Calendar
+                    "Perfil" -> selected = ReferenceScreen.Profile
                 }
             },
         )
