@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.OlivarColors
 import com.isivoltpro.maginaolivo.ui.theme.OlivarDimens
@@ -36,12 +37,12 @@ fun MoWeatherHero(
     modifier: Modifier = Modifier,
 ) {
     val colors = when (state) {
-        WeatherVisualState.Clear -> listOf(ColorHex(0xFFFFE7B5), OlivarColors.Cream100)
-        WeatherVisualState.Cloudy -> listOf(ColorHex(0xFFD9E1DC), OlivarColors.Cream100)
-        WeatherVisualState.Rain -> listOf(ColorHex(0xFFC9D8DE), ColorHex(0xFFE9EEF0))
-        WeatherVisualState.Fog -> listOf(ColorHex(0xFFE5E9E5), OlivarColors.Cream100)
-        WeatherVisualState.Wind -> listOf(ColorHex(0xFFDDE8DA), OlivarColors.Cream100)
-        WeatherVisualState.Storm -> listOf(ColorHex(0xFF9EABB0), ColorHex(0xFFD9E0E2))
+        WeatherVisualState.Clear -> listOf(Color(0xFFFFE7B5), OlivarColors.Cream100)
+        WeatherVisualState.Cloudy -> listOf(Color(0xFFD9E1DC), OlivarColors.Cream100)
+        WeatherVisualState.Rain -> listOf(Color(0xFFC9D8DE), Color(0xFFE9EEF0))
+        WeatherVisualState.Fog -> listOf(Color(0xFFE5E9E5), OlivarColors.Cream100)
+        WeatherVisualState.Wind -> listOf(Color(0xFFDDE8DA), OlivarColors.Cream100)
+        WeatherVisualState.Storm -> listOf(Color(0xFF9EABB0), Color(0xFFD9E0E2))
     }
 
     Column(
@@ -88,4 +89,4 @@ fun MoWeatherHero(
     }
 }
 
-private fun ColorHex(value: Long) = androidx.compose.ui.graphics.Color(value)
+private fun Color(value: Long) = androidx.compose.ui.graphics.Color(value)
