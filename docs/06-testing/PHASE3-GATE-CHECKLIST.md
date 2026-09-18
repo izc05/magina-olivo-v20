@@ -64,6 +64,8 @@
 - [x] Perfil reference.
 - [x] Factura/OCR reference.
 - [x] Interface states reference.
+- [x] Histórico reference.
+- [x] Documentos reference.
 
 ## Truth rules
 
