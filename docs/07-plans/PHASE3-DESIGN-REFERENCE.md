@@ -327,7 +327,7 @@ Reference widths:
 - common ~393–412 dp;
 - large phone ~480 dp.
 
-Tablet adaptation can use wider content constraints but must not delay phone RC1.1.
+Tablet adaptation can use wider content constraints but must not delay phone RC1.2.
 
 ## Accessibility gate
 
@@ -383,7 +383,7 @@ Design fixtures must never be shipped as production agricultural data.
 - visual references are coherent;
 - all primary components are reusable Compose components;
 - no branch-specific ad-hoc theme values;
-- navigation appearance matches RC1.1;
+- navigation appearance matches RC1.2;
 - onboarding, Home, Farm, Parcel, Register, history and OCR review references approved;
 - accessibility checks pass;
 - representative physical Android rendering reviewed.
