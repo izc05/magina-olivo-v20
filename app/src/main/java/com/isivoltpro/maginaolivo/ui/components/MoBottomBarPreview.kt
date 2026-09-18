@@ -23,6 +23,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.OlivarColors
@@ -66,6 +71,11 @@ fun MoBottomBarPreview(
             Column(
                 modifier = Modifier
                     .weight(1f)
+                    .semantics {
+                        contentDescription = item.label
+                        selected = isSelected
+                        role = Role.Tab
+                    }
                     .clickable { onSelected(item.label) },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
