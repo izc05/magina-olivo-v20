@@ -66,6 +66,7 @@ fun ReferenceHomeScreen(
                     rainText = "Lluvia 15 %",
                     windText = "Viento 11 km/h",
                     state = WeatherVisualState.Cloudy,
+                    onRadarClick = {},
                 )
                 MoSourceFreshness(
                     source = "Tiempo de referencia",
