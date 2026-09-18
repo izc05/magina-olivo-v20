@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.parcel.ParcelDetailReferenceScreen
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
@@ -23,7 +24,7 @@ class Phase3ParcelOcrReferenceTest {
         }
         composeRule.onNodeWithTag("parcel-detail-reference-root").assertIsDisplayed()
         composeRule.onNodeWithText("Parcela Norte").assertIsDisplayed()
-        composeRule.onNodeWithText("Histórico").assertIsDisplayed()
+        composeRule.onNodeWithText("Histórico").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -35,6 +36,6 @@ class Phase3ParcelOcrReferenceTest {
         }
         composeRule.onNodeWithTag("ocr-review-reference-root").assertIsDisplayed()
         composeRule.onNodeWithText("Por revisar").assertIsDisplayed()
-        composeRule.onNodeWithText("Confirmar entrega").assertIsDisplayed()
+        composeRule.onNodeWithText("Confirmar entrega").performScrollTo().assertIsDisplayed()
     }
 }
