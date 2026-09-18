@@ -24,6 +24,8 @@ private enum class ReferenceScreen(
     Onboarding("Onboarding"),
     Home("Inicio"),
     OliveGrove("Mi Olivar"),
+    Farm("Finca"),
+    Parcel("Parcela"),
     Campaign("Campaña"),
     Production("Producción"),
     Costs("Costes"),
@@ -31,6 +33,7 @@ private enum class ReferenceScreen(
     Register("Registrar"),
     Calendar("Calendario"),
     Ocr("Entrega OCR"),
+    InvoiceOcr("Factura OCR"),
     Profile("Perfil"),
     States("Estados"),
 }
@@ -81,6 +84,8 @@ fun Phase3GalleryScreen(
                 ReferenceScreen.Onboarding -> ReferenceOnboardingScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Home -> ReferenceHomeScreen(Modifier.fillMaxSize())
                 ReferenceScreen.OliveGrove -> ReferenceOliveGroveScreen(Modifier.fillMaxSize())
+                ReferenceScreen.Farm -> ReferenceFarmScreen(Modifier.fillMaxSize())
+                ReferenceScreen.Parcel -> ReferenceParcelScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Campaign -> ReferenceCampaignScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Production -> ReferenceProductionScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Costs -> ReferenceCostsScreen(Modifier.fillMaxSize())
@@ -88,6 +93,7 @@ fun Phase3GalleryScreen(
                 ReferenceScreen.Register -> ReferenceRegisterScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Calendar -> ReferenceCalendarScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Ocr -> ReferenceOcrScreen(Modifier.fillMaxSize())
+                ReferenceScreen.InvoiceOcr -> ReferenceInvoiceOcrScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Profile -> ReferenceProfileScreen(Modifier.fillMaxSize())
                 ReferenceScreen.States -> ReferenceStatesScreen(Modifier.fillMaxSize())
             }
