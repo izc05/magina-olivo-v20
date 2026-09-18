@@ -30,6 +30,8 @@ private enum class ReferenceScreen(
     Production("Producción"),
     Costs("Costes"),
     Profitability("Rentabilidad"),
+    History("Histórico"),
+    Documents("Documentos"),
     Register("Registrar"),
     Calendar("Calendario"),
     Ocr("Entrega OCR"),
@@ -90,6 +92,8 @@ fun Phase3GalleryScreen(
                 ReferenceScreen.Production -> ReferenceProductionScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Costs -> ReferenceCostsScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Profitability -> ReferenceProfitabilityScreen(Modifier.fillMaxSize())
+                ReferenceScreen.History -> ReferenceHistoryScreen(Modifier.fillMaxSize())
+                ReferenceScreen.Documents -> ReferenceDocumentsScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Register -> ReferenceRegisterScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Calendar -> ReferenceCalendarScreen(Modifier.fillMaxSize())
                 ReferenceScreen.Ocr -> ReferenceOcrScreen(Modifier.fillMaxSize())
