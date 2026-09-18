@@ -8,10 +8,13 @@ Before changing code or architecture, read:
 
 1. `docs/00-master/RC1-BASELINE.md`
 2. `docs/00-master/RC1.2-PRODUCT-LOCK.md`
-3. `docs/00-master/CURRENT-STATE.md`
-4. `docs/07-plans/ROADMAP-RC1.2.md`
-5. the current phase execution plan, when one exists
-6. only then the domain/architecture/UI contracts needed for that phase
+3. `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
+4. `docs/design/VISUAL_DESIGN_LOCK.md`
+5. `docs/design/DESIGN_SYSTEM.md`
+6. `docs/00-master/CURRENT-STATE.md`
+7. `docs/07-plans/ROADMAP-RC1.2.md`
+8. the current phase execution plan, when one exists
+9. only then the domain/architecture/UI contracts needed for that phase
 
 If an older RC1/RC1.1 document conflicts with the RC1.2 Product Lock, RC1.2 wins.
 
@@ -23,7 +26,7 @@ Core hierarchy:
 
 `Finca → Parcela → Campaña → Actuaciones / Cosecha / Entregas / Gastos / Documentos → Histórico → Informes`
 
-Do not turn the new Android app back into the old territorial V20 portal. Do not treat “Mágina Olivo” as the final customer-facing brand.
+Do not turn the new Android app back into the old territorial V20 portal. **Mágina Olivo is the approved customer-facing display brand under CR-003**, while domain/data architecture remains geographic-neutral.
 
 ## Frozen primary navigation
 
@@ -130,11 +133,11 @@ Applicable DoD includes:
 
 ## Change control
 
-If a task conflicts with the frozen baseline or assumes a final public brand before the Naming Gate:
+If a task conflicts with the frozen baseline or attempts to replace the approved visual/brand contract without explicit change control:
 
 1. stop the conflicting implementation;
 2. create a Change Request following `docs/00-master/CHANGE-CONTROL.md`;
-3. do not silently “improve” the architecture;
+3. do not silently “improve” the architecture or redesign the visual language;
 4. resume only after approval.
 
 ## Agent handoff format
