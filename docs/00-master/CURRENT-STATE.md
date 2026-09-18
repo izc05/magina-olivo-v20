@@ -25,7 +25,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 3 — DESIGN SYSTEM IMPLEMENTATION + REFERENCE SCREENS
+▶ PHASE 3 — GATE 3 VISUAL / ACCESSIBILITY VALIDATION
 ```
 
 Do not start Phase 4 navigation-shell implementation or agricultural persistence/features until Gate 3 passes.
@@ -58,18 +58,25 @@ RC1.2 Product Lock is normative and overrides contradictory RC1-era wording unti
 
 CR-003 resolves the display brand as **Mágina Olivo** and freezes the visual references under `docs/design/`. Geographic-neutral domain/data architecture remains unchanged.
 
-Gate 2 passed on 2026-09-18. Phase 3 is now the active implementation phase.
+Gate 2 passed on 2026-09-18. Phase 3 implementation is now merged into `main`: canonical Compose tokens/components, six-screen onboarding and all required reference screens are implemented. Gate 3 remains open only for validation/evidence.
 
 ## Next deliverable
 
-Execute Phase 3 according to `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`.
+Do **not** create more product/reference screens unless Gate 3 validation identifies a defect.
 
-First deliverables:
+Close Gate 3 by producing and reviewing:
 
-1. project-owned Compose theme/tokens;
-2. reusable component primitives;
-3. six-screen onboarding reference;
-4. canonical reference screens/states;
-5. visual comparison + accessibility evidence.
+1. 360 dp compact rendering;
+2. ~393–412 dp common-phone rendering;
+3. 480 dp large-phone rendering;
+4. font-scale verification;
+5. TalkBack/semantics review;
+6. reduced-motion review where relevant;
+7. outdoor contrast review;
+8. empty/loading/error/offline state review;
+9. representative Android screenshots compared with the canonical visual boards;
+10. final audit for stray/ad-hoc visual values.
 
-Do not start Phase 4 until Gate 3 PASS.
+Parcel Detail and Delivery/OCR Review are implemented in Compose but still need their representative Android screenshots added to canonical visual evidence.
+
+Only after Gate 3 PASS may Phase 4 begin the production navigation shell.

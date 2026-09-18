@@ -1,7 +1,7 @@
 # Phase 3 — Mágina Olivo Visual Implementation Checklist
 
 **Status:** ACTIVE  
-**Branch:** `feat/rc1-2-visual-system`  
+**Implementation state:** merged into `main`; Gate 3 evidence remains open  
 **Canonical visual source:** `docs/design/VISUAL_DESIGN_LOCK.md`
 
 ## Completed in this slice
@@ -40,41 +40,41 @@
 - [x] Tiempo y mercado.
 - [x] Onboarding 1–6.
 
-## Missing canonical visual boards
+## Additional canonical device evidence pending
 
 - [x] Parcel detail — Compose reference implemented; canonical device screenshot still pending.
 - [x] Delivery / OCR review — Compose reference implemented; canonical device screenshot still pending.
 
-These two must be designed in the same locked visual language before Gate 3 PASS.
+Both screens are implemented in the locked visual language. Their representative Android screenshots must be captured and approved before Gate 3 PASS.
 
 ## Remaining component catalogue
 
-- [ ] MoIconButton.
+- [x] MoIconButton.
 - [x] MoSelectField.
 - [x] MoDateField.
 - [x] MoFarmCard.
 - [x] MoParcelRow.
-- [ ] MoEmptyState.
-- [ ] MoErrorState.
+- [x] MoEmptyState.
+- [x] MoErrorState.
 - [x] MoOfflineBanner.
 - [x] MoSyncStatus.
 - [x] MoSourceFreshness.
 - [x] MoPhotoCover.
 - [x] MoChartContainer.
-- [ ] MoListSkeleton.
-- [ ] MoConfirmationSheet.
-- [ ] MoBottomActionSheet.
-- [ ] MoBottomBar visual primitive.
-- [ ] MoTopAppBar visual primitive.
+- [x] MoListSkeleton.
+- [x] MoConfirmationSheet.
+- [x] MoBottomActionSheet.
+- [x] MoBottomBar visual primitive.
+- [x] MoTopAppBar visual primitive.
 
 ## Reference-screen implementation order
 
-1. [ ] Component catalogue screen.
-2. [ ] Onboarding 1–6.
-3. [ ] Inicio reference.
-4. [ ] Mi Olivar / Fincas reference.
-5. [ ] Farm detail reference.
-6. [ ] Parcel detail reference.
+1. [x] Component catalogue screen.
+2. [x] Onboarding 1–6.
+3. [x] Inicio reference.
+4. [x] Mi Olivar / Fincas reference.
+5. [x] Farm detail reference.
+6. [x] Parcel detail reference.
 7. [x] Map / Catastro reference.
 8. [x] Register reference.
 9. [x] Campaign history reference.
@@ -85,7 +85,7 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 
 ## Gate 3 evidence still required
 
-- [ ] CI green after each implementation slice.
+- [x] CI green after each implementation slice.
 - [ ] 360dp compact rendering.
 - [ ] ~393–412dp common phone rendering.
 - [ ] 480dp large-phone rendering.
@@ -96,7 +96,7 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 - [ ] empty/loading/error/offline reference states.
 - [ ] physical Android screenshot comparison against canonical boards.
 - [ ] no ad-hoc raw colors/spacing outside approved tokens.
-- [ ] no Phase 4 navigation behavior implemented early.
+- [x] no Phase 4 navigation behavior implemented early.
 
 ## Guardrail
 
