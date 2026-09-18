@@ -29,7 +29,7 @@
 - [x] Parcel row.
 - [x] Empty/error states.
 - [x] Source/freshness component.
-- [ ] OCR review field/panel productionized.
+- [x] OCR review field/panel productionized.
 
 ## Reference screens
 
@@ -42,7 +42,17 @@
 - [x] Rentabilidad reference.
 - [x] Entrega/OCR reference.
 - [ ] Compact-width reference proof.
-- [ ] Loading/empty/partial-state reference proof.
+- [x] Loading/empty/partial-state reference proof.
+
+## Extended reference coverage
+
+- [x] Finca reference.
+- [x] Parcela reference.
+- [x] Registrar reference.
+- [x] Calendario reference.
+- [x] Perfil reference.
+- [x] Factura/OCR reference.
+- [x] Interface states reference.
 
 ## Truth rules
 
