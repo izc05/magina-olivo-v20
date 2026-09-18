@@ -1,16 +1,16 @@
-# Mágina Olivo Android — RC1.1 Baseline
+# Olive Farm App — RC1.2 Baseline
 
 **Status:** APPROVED BASELINE  
-**Baseline ID:** RC1.1-BASELINE-2026-09-18  
-**Supersedes:** RC1-BASELINE-2026-09-17  
-**Approved change:** `docs/00-master/RC1.1-CHANGE-REQUEST.md`  
-**Normative product lock:** `docs/00-master/RC1.1-PRODUCT-LOCK.md`
+**Baseline ID:** RC1.2-BASELINE-2026-09-18  
+**Supersedes:** RC1.2-BASELINE-2026-09-18  
+**Approved change:** `docs/00-master/RC1.2-CHANGE-REQUEST.md`  
+**Normative product lock:** `docs/00-master/RC1.2-PRODUCT-LOCK.md`
 
 **Rule:** this document is the source of truth for the RC1.1 work line. Structural changes require an explicit Change Request and a new baseline revision. Do not silently change architecture, scope, navigation or phase ordering.
 
 ## Product identity
 
-Mágina Olivo is an Android application for private management of one or more olive-growing holdings, initially focused on the needs of olive growers in Jaén.
+The product is a native Android application for private management of one or more olive-growing holdings. The public brand is pending final naming. Initial implementation targets Spain, while the domain is designed for olive growers in other countries without rebuilding the core.
 
 It is **not** a revival of the old territorial V20 portal. The agricultural core comes first. Home may consume selected contextual information such as weather/radar, reference olive-oil prices and preferred-cooperative notices/news, but those services are secondary and must never block field-management workflows.
 
@@ -39,7 +39,7 @@ RC1.1 must cover, through the ordered roadmap and Gates:
 - account and private workspace;
 - onboarding;
 - named farms with optional user cover photo;
-- agricultural parcels with Catastro reference/import and app-owned stored geometry;
+- agricultural parcels with app-owned identity/geometry plus provider-specific land-registry links; Spain supports Catastro;
 - agricultural campaigns and historical campaign review;
 - field activities;
 - irrigation provider/community + sector where relevant;
@@ -48,13 +48,13 @@ RC1.1 must cover, through the ordered roadmap and Gates:
 - expenses, purchases and reusable supplier/cooperative/company references;
 - harvests;
 - olive deliveries;
-- ticket/photo/PDF attachment and OCR review with human confirmation;
+- ticket/photo/PDF attachment and generic OCR review with human confirmation for deliveries, invoices, receipts and agricultural documents;
 - yield analysis added after delivery without rewriting the delivery;
 - photos and documents;
 - parcel/campaign timeline/history;
 - useful historical charts and comparisons;
 - contextual Home: weather/radar, campaign/upcoming work, olive-oil reference market, preferred cooperative notices/news;
-- profile preferences including municipality/cooperative;
+- profile preferences including country/region/locality, locale/timezone/currency/units and preferred cooperative;
 - deferred synchronization;
 - separate private Admin web surface;
 - campaign/farm/parcel reporting and PDF;
