@@ -1,5 +1,7 @@
 # Mágina Olivo — Data Model RC1 + Future v1
 
+> **RC1.1 normative addendum:** read `docs/02-domain/DATA-MODEL-RC1.1-ADDENDUM.md` for organizations, OCR, yield analysis, machinery, reminders, irrigation sectors, purchases, farm cover and external Home cache.
+
 **Status:** Phase 0.3 draft for baseline review
 **Depends on:** `docs/00-master/RC1-BASELINE.md`
 
