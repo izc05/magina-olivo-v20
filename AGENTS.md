@@ -69,7 +69,7 @@ Never:
 - present stale/external information as fresh;
 - make Home external feeds a dependency for field work.
 
-## RC1.1 product requirements to preserve
+## RC1.2 product requirements to preserve
 
 - named Farms containing one or many agricultural Parcels;
 - optional Farm cover photo;
@@ -101,7 +101,7 @@ Branches, PRs and code from the old web/territorial V20 exist in this repository
 
 Do not copy, merge or resurrect old V20 architecture, pages, navigation, database contracts or public portal modules into the new Android line unless a task explicitly names a specific reusable asset and confirms compatibility with RC1.1.
 
-A broad prompt such as “improve Mágina Olivo” is **not** permission to reuse old V20 code.
+A broad prompt such as “improve the app” is **not** permission to reuse old V20 code.
 
 ## Branch discipline
 
