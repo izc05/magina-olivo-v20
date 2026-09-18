@@ -34,17 +34,18 @@ Do not start Phase 4 navigation-shell implementation or agricultural persistence
 
 1. `docs/00-master/RC1-BASELINE.md`
 2. `docs/00-master/RC1.2-PRODUCT-LOCK.md`
-3. `docs/00-master/RC1.2-CHANGE-REQUEST.md`
-4. `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
-5. `docs/design/VISUAL_DESIGN_LOCK.md`
-6. `docs/design/DESIGN_SYSTEM.md`
-7. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
-8. `docs/00-master/RC1.1-CHANGE-REQUEST.md`
-9. `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`
-10. `docs/00-master/MASTER-SPEC-RC1.md`
-11. `docs/00-master/RC1-GATE-REVIEW.md`
-12. `docs/07-plans/ROADMAP-RC1.2.md`
-13. `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`
+3. `docs/00-master/SINGLE-TRACK-EXECUTION.md`
+4. `docs/00-master/RC1.2-CHANGE-REQUEST.md`
+5. `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
+6. `docs/design/VISUAL_DESIGN_LOCK.md`
+7. `docs/design/DESIGN_SYSTEM.md`
+8. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
+9. `docs/00-master/RC1.1-CHANGE-REQUEST.md`
+10. `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`
+11. `docs/00-master/MASTER-SPEC-RC1.md`
+12. `docs/00-master/RC1-GATE-REVIEW.md`
+13. `docs/07-plans/ROADMAP-RC1.2.md`
+14. `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`
 
 Then read only the domain/architecture/UI contracts needed by the current phase.
 
@@ -80,3 +81,13 @@ Close Gate 3 by producing and reviewing:
 Parcel Detail and Delivery/OCR Review are implemented in Compose but still need their representative Android screenshots added to canonical visual evidence.
 
 Only after Gate 3 PASS may Phase 4 begin the production navigation shell.
+
+## Parallel-chat reconciliation
+
+All work from separate chats is reconciled through `docs/00-master/SINGLE-TRACK-EXECUTION.md`.
+
+Rules:
+- `main` is the source of truth;
+- merged Phase 3 slices #181–#192 supersede the old monolithic PR #180;
+- old web/V20 branches are reference-only unless a later phase explicitly approves selective reuse;
+- no second roadmap may override the single-track plan.
