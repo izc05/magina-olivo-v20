@@ -10,6 +10,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.isivoltpro.maginaolivo.ui.components.MoActivityRow
+import com.isivoltpro.maginaolivo.ui.components.MoReminderRow
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
@@ -55,97 +57,45 @@ fun ReferenceCalendarScreen(
         item { MoSectionHeader(title = "Próximos") }
 
         item {
-            CalendarItem(
-                day = "19 SEP",
+            MoActivityRow(
                 title = "Riego",
-                detail = "Los Llanos · Sector 4 · 08:00 · 2 h",
-                people = null,
-                tone = MoStatusTone.Planned,
+                dateText = "19 SEP",
+                contextText = "Los Llanos · Sector 4 · 08:00 · 2 h",
+                statusText = "Planificado",
+                statusTone = MoStatusTone.Planned,
             )
         }
 
         item {
-            CalendarItem(
-                day = "22 SEP",
+            MoActivityRow(
                 title = "Tratamiento",
-                detail = "La Hoya · Cobre · 07:30",
-                people = "2 personas",
-                tone = MoStatusTone.Planned,
+                dateText = "22 SEP",
+                contextText = "La Hoya · Cobre · 07:30 · 2 personas",
+                statusText = "Planificado",
+                statusTone = MoStatusTone.Planned,
             )
         }
 
         item {
-            CalendarItem(
-                day = "04 OCT",
+            MoActivityRow(
                 title = "Inicio de recolección",
-                detail = "Finca Foralico · 08:00",
-                people = "6 personas",
-                tone = MoStatusTone.Active,
+                dateText = "04 OCT",
+                contextText = "Finca Foralico · 08:00 · 6 personas",
+                statusText = "Planificado",
+                statusTone = MoStatusTone.Active,
             )
         }
 
         item { MoSectionHeader(title = "Recordatorios") }
 
         item {
-            SimpleReferenceCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Riego mañana",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            text = "Aviso programado hoy a las 19:00",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    MoStatusChip("Activo", MoStatusTone.Confirmed)
-                }
-            }
+            MoReminderRow(
+                title = "Riego mañana",
+                dateTimeText = "Hoy · 19:00",
+                contextText = "Los Llanos · Sector 4",
+                active = true,
+            )
         }
     }
 }
 
-@Composable
-private fun CalendarItem(
-    day: String,
-    title: String,
-    detail: String,
-    people: String?,
-    tone: MoStatusTone,
-) {
-    SimpleReferenceCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = day,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = detail,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (!people.isNullOrBlank()) {
-                    Text(
-                        text = people,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
-            }
-            MoStatusChip("Planificado", tone)
-        }
-    }
-}
