@@ -31,21 +31,29 @@
 
 ## Automated tests
 
-- [ ] `lintDevDebug` passes.
-- [ ] `testDevDebugUnitTest` passes.
-- [ ] `assembleDevDebug` passes.
-- [ ] `assembleStagingDebug` passes.
-- [ ] `assembleProductionDebug` passes.
-- [ ] instrumented test APK compiles.
-- [ ] existing launcher smoke test remains valid.
-- [ ] architecture boundary tests pass.
+- [x] `lintDevDebug` passes.
+- [x] `testDevDebugUnitTest` passes.
+- [x] `assembleDevDebug` passes.
+- [x] `assembleStagingDebug` passes.
+- [x] `assembleProductionDebug` passes.
+- [x] instrumented test APK compiles.
+- [x] existing launcher smoke test remains compiled/valid.
+- [x] architecture boundary tests pass.
 
 ## Review
 
-- [ ] Compose UI does not create database/network/provider infrastructure.
-- [ ] Core contracts do not contain Jaén-only assumptions.
-- [ ] production application ID remains stable.
-- [ ] no sensitive-data logging is introduced.
+- [x] Compose UI does not create database/network/provider infrastructure.
+- [x] Core contracts do not contain Jaén-only assumptions.
+- [x] production application ID remains stable.
+- [x] no sensitive-data logging is introduced.
+
+### Automated evidence
+
+- Android CI run: `35321063459`
+- Head SHA: `a08973fab54fe844844a1006855d35f8d9159ad5`
+- Result: `success`
+- DEV APK artifact id: `10537227013`
+- Artifact digest: `sha256:53a9d5a76acdc99f3ac472308e66c06b9f59b3a40fc6ff1322e00d0fbc03098a`
 
 ## Physical
 
@@ -53,6 +61,6 @@
 
 ## Gate result
 
-**PENDING CI + review + physical smoke.**
+**PENDING PHYSICAL SMOKE ONLY.**
 
 Phase 3 must not start in implementation until this Gate is PASS.
