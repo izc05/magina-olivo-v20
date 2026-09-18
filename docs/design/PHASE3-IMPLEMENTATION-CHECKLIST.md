@@ -52,8 +52,8 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 - [ ] MoIconButton.
 - [ ] MoSelectField.
 - [ ] MoDateField.
-- [ ] MoFarmCard.
-- [ ] MoParcelRow.
+- [x] MoFarmCard.
+- [x] MoParcelRow.
 - [ ] MoEmptyState.
 - [ ] MoErrorState.
 - [ ] MoOfflineBanner.
