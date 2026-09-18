@@ -56,9 +56,9 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 - [x] MoParcelRow.
 - [ ] MoEmptyState.
 - [ ] MoErrorState.
-- [ ] MoOfflineBanner.
-- [ ] MoSyncStatus.
-- [ ] MoSourceFreshness.
+- [x] MoOfflineBanner.
+- [x] MoSyncStatus.
+- [x] MoSourceFreshness.
 - [ ] MoPhotoCover.
 - [x] MoChartContainer.
 - [ ] MoListSkeleton.
@@ -78,9 +78,9 @@ These two must be designed in the same locked visual language before Gate 3 PASS
 7. [x] Map / Catastro reference.
 8. [x] Register reference.
 9. [x] Campaign history reference.
-10. [ ] Harvest reference.
-11. [ ] Expenses/documents reference.
-12. [ ] Weather/market reference.
+10. [x] Harvest reference.
+11. [x] Expenses/documents reference.
+12. [x] Weather/market reference.
 13. [ ] Delivery/OCR review reference.
 
 ## Gate 3 evidence still required
