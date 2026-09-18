@@ -5,7 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.isivoltpro.maginaolivo.FoundationScreen
+import com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 
@@ -21,9 +21,11 @@ fun AppRoot(
                 onFinished = { showOnboarding = false },
             )
         } else {
-            FoundationScreen(
-                environment = compositionRoot.environment,
-            )
+            HomeReferenceScreen()
         }
     }
+
+    // The composition root remains intentionally available for later gated phases.
+    @Suppress("UNUSED_EXPRESSION")
+    compositionRoot.environment
 }
