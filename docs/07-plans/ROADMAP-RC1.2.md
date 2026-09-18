@@ -104,6 +104,8 @@ Create/freeze reference screens for:
 
 ## Phase 4 — Navigation shell
 
+Execution plan: `docs/07-plans/PHASE4-NAVIGATION-SHELL.md`
+
 Frozen roots:
 
 `Inicio · Mi Olivar · Registrar (+) · Calendario · Perfil`
