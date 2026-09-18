@@ -467,7 +467,7 @@ Phase 0.7 is ready for approval when:
 
 ---
 
-## RC1.1 visual lock additions
+## RC1.2 visual lock additions
 
 - Farm cards/detail may use the user's own cover photo with a controlled gradient/scrim for legibility.
 - Onboarding must feel premium but concise: 4–6 screens, one message per screen, strong photography/illustration and large CTA.
