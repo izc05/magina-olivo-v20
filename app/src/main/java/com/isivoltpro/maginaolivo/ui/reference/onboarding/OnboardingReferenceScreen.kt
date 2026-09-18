@@ -194,11 +194,7 @@ private fun PageDots(
                             MoOlivePrimary.copy(alpha = 0.18f)
                         },
                     )
-                    .then(
-                        Modifier
-                            .height(if (index == selectedPage) 10.dp else 8.dp)
-                            .weight(0f, fill = false),
-                    ),
+                    .size(if (index == selectedPage) 10.dp else 8.dp),
             )
         }
     }
