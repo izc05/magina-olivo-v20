@@ -1,16 +1,16 @@
-# Mágina Olivo Android — RC1.1 Baseline
+# Olive Farm App — RC1.2 Baseline
 
 **Status:** APPROVED BASELINE  
-**Baseline ID:** RC1.1-BASELINE-2026-09-18  
-**Supersedes:** RC1-BASELINE-2026-09-17  
-**Approved change:** `docs/00-master/RC1.1-CHANGE-REQUEST.md`  
-**Normative product lock:** `docs/00-master/RC1.1-PRODUCT-LOCK.md`
+**Baseline ID:** RC1.2-BASELINE-2026-09-18  
+**Supersedes:** RC1.2-BASELINE-2026-09-18  
+**Approved change:** `docs/00-master/RC1.2-CHANGE-REQUEST.md`  
+**Normative product lock:** `docs/00-master/RC1.2-PRODUCT-LOCK.md`
 
-**Rule:** this document is the source of truth for the RC1.1 work line. Structural changes require an explicit Change Request and a new baseline revision. Do not silently change architecture, scope, navigation or phase ordering.
+**Rule:** this document is the source of truth for the RC1.2 work line. Structural changes require an explicit Change Request and a new baseline revision. Do not silently change architecture, scope, navigation or phase ordering.
 
 ## Product identity
 
-Mágina Olivo is an Android application for private management of one or more olive-growing holdings, initially focused on the needs of olive growers in Jaén.
+The product is a native Android application for private management of one or more olive-growing holdings. The public brand is pending final naming. Initial implementation targets Spain, while the domain is designed for olive growers in other countries without rebuilding the core.
 
 It is **not** a revival of the old territorial V20 portal. The agricultural core comes first. Home may consume selected contextual information such as weather/radar, reference olive-oil prices and preferred-cooperative notices/news, but those services are secondary and must never block field-management workflows.
 
@@ -32,14 +32,14 @@ HISTÓRICO
 INFORMES
 ```
 
-## RC1.1 core scope
+## RC1.2 core scope
 
-RC1.1 must cover, through the ordered roadmap and Gates:
+RC1.2 must cover, through the ordered roadmap and Gates:
 
 - account and private workspace;
 - onboarding;
 - named farms with optional user cover photo;
-- agricultural parcels with Catastro reference/import and app-owned stored geometry;
+- agricultural parcels with app-owned identity/geometry plus provider-specific land-registry links; Spain supports Catastro;
 - agricultural campaigns and historical campaign review;
 - field activities;
 - irrigation provider/community + sector where relevant;
@@ -48,22 +48,22 @@ RC1.1 must cover, through the ordered roadmap and Gates:
 - expenses, purchases and reusable supplier/cooperative/company references;
 - harvests;
 - olive deliveries;
-- ticket/photo/PDF attachment and OCR review with human confirmation;
+- ticket/photo/PDF attachment and generic OCR review with human confirmation for deliveries, invoices, receipts and agricultural documents;
 - yield analysis added after delivery without rewriting the delivery;
 - photos and documents;
 - parcel/campaign timeline/history;
 - useful historical charts and comparisons;
 - contextual Home: weather/radar, campaign/upcoming work, olive-oil reference market, preferred cooperative notices/news;
-- profile preferences including municipality/cooperative;
+- profile preferences including country/region/locality, locale/timezone/currency/units and preferred cooperative;
 - deferred synchronization;
 - separate private Admin web surface;
 - campaign/farm/parcel reporting and PDF;
 - Android APK validation on real hardware;
 - controlled test-track preparation before Google Play release.
 
-## Explicitly outside RC1.1
+## Explicitly outside RC1.2
 
-The following do not enter RC1.1 unless a later approved Change Request adds them:
+The following do not enter RC1.2 unless a later approved Change Request adds them:
 
 - professional/client mode for managing third-party owners' holdings;
 - public territorial portal;
@@ -78,7 +78,7 @@ Ideas in these areas go to later backlog and do not interrupt the active Gate.
 
 ## Immutable architectural decisions
 
-1. **Android first.** RC1.1 delivers a real installable Android APK.
+1. **Android first.** RC1.2 delivers a real installable Android APK.
 2. **Kotlin + Jetpack Compose** for the Android client.
 3. **Offline-first.** Normal field work must not depend on connectivity.
 4. **Room is the local operational source of truth.** UI reads local state.
@@ -87,7 +87,7 @@ Ideas in these areas go to later backlog and do not interrupt the active Gate.
 7. **Supabase is the remote backend**, behind repository/service abstractions.
 8. **PostgreSQL/PostGIS** stores synchronized structured/geographic data.
 9. **MapLibre-compatible map abstraction** for Android map rendering.
-10. **Catastro is an external source, not the application's database.** Imported geometry/identity is normalized into Mágina Olivo.
+10. **Catastro is an external source, not the application's database.** Imported geometry/identity is normalized into the app-owned parcel model.
 11. **Agricultural parcel identity is independent from Catastro identity.** Do not assume permanent 1:1 equivalence.
 12. **Campaign historical snapshots are mandatory.** Later parcel changes must not rewrite prior campaign history.
 13. **Harvest and Delivery are distinct.** Mixed-origin production must not be fabricated.
@@ -104,16 +104,16 @@ Ideas in these areas go to later backlog and do not interrupt the active Gate.
 ## Scalability principle
 
 ```text
-LEVEL 1 — RC1.1 FIELD CORE
+LEVEL 1 — RC1.2 FIELD CORE
 Fincas · Parcelas · Campañas · Actuaciones · Riego · Cosecha · Entregas · Gastos · Documentos
 
-LEVEL 2 — RC1.1 OPERATIONAL SUPPORT
+LEVEL 2 — RC1.2 OPERATIONAL SUPPORT
 Maquinaria · Calendario · Recordatorios · Proveedores/Compras · Histórico/Gráficas · Inicio contextual · Perfil
 
-LEVEL 3 — RC1.1 PLATFORM SUPPORT
+LEVEL 3 — RC1.2 PLATFORM SUPPORT
 Catastro/Mapas · Sync · Admin · Informes/PDF · QA/Play test tracks
 
-POST-RC1.1
+POST-RC1.2
 Modo profesional/clientes · Fidelización activa · Publicidad · IA · Sensores/automatización
 ```
 
@@ -154,9 +154,9 @@ Read baseline + Product Lock + current phase plan
 
 Do not skip phases because a later feature looks attractive.
 
-## RC1.1 success criterion
+## RC1.2 success criterion
 
-RC1.1 is accepted when a real user can manage an olive campaign end to end, including periods without mobile coverage, and can:
+RC1.2 is accepted when a real user can manage an olive campaign end to end, including periods without mobile coverage, and can:
 
 - identify their farms/parcels correctly;
 - keep campaign history;

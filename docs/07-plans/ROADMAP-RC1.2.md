@@ -1,20 +1,19 @@
-# Mágina Olivo Android — Roadmap RC1.1
-
-> **SUPERSEDED BY RC1.2:** use `docs/00-master/RC1.2-PRODUCT-LOCK.md` and `docs/07-plans/ROADMAP-RC1.2.md` for current work. This file is historical context only.
+# Olive Farm App — Roadmap RC1.2
 
 **Status:** NORMATIVE  
-**Baseline:** `RC1.1-BASELINE-2026-09-18`  
+**Baseline:** `RC1.2-BASELINE-2026-09-18`  
 **Rule:** phases are ordered. A later phase cannot start until the current Gate passes. Parallel documentation/research may prepare later phases, but production implementation stays gate-bound.
 
 ## Current state
 
 ```text
 ✅ Phase 0.1–0.7 — original core contracts
-✅ Phase 0.8 — RC1.1 product reconciliation/spec lock
+✅ Phase 0.8 — RC1.2 agricultural product reconciliation
+✅ Phase 0.9 — RC1.2 geographic-neutral scope + generic OCR + naming gate
 ▶ Phase 1 — Android Project Foundation
 ```
 
-The only currently allowed implementation phase is **Phase 1**.
+The only currently allowed implementation phase is **Phase 1**. The public brand is pending and must not be hard-coded deeper into new domain/UI work.
 
 ---
 
@@ -30,6 +29,21 @@ Deliverables:
 - this roadmap.
 
 **Gate 0.8:** no contradiction remains about Home, navigation, OCR/yield, machinery, irrigation reminders, providers/purchases, onboarding, history or deferred professional/loyalty scope.
+
+## Phase 0.9 — RC1.2 product globalization / OCR generalization
+
+Deliverables:
+
+- approved CR-002;
+- RC1.2 Product Lock;
+- provider-neutral parcel-registry contract;
+- generic OCR contract for delivery/purchase/irrigation/agricultural documents;
+- irrigation pricing snapshot;
+- scheduled-work people/provider details;
+- weather visual-effect rules;
+- naming gate.
+
+**Gate 0.9:** no new implementation assumes Jaén-only identity, final “Mágina Olivo” branding, delivery-only OCR or Catastro-as-parcel-primary-key.
 
 ## Phase 1 — Android Project Foundation
 
@@ -113,7 +127,7 @@ Frozen roots:
 
 **Gate 5:** migration tests + process restart persistence + airplane-mode CRUD proof on test entities.
 
-## Phase 6 — Farms RC1.1
+## Phase 6 — Farms RC1.2
 
 - create/edit/archive/restore;
 - optional cover photo reference;
@@ -176,16 +190,18 @@ Frozen roots:
 
 **Gate 11:** attachment survives app restart and failed future upload cannot destroy local reference.
 
-## Phase 12 — Expenses, purchases and organizations
+## Phase 12 — Expenses, purchases, organizations + generic document OCR
 
 - authoritative Expense ledger;
 - agricultural organizations with reusable roles;
 - supplier/cooperative/company selection;
 - purchase items;
 - invoice/ticket attachment;
+- generic OCR service for purchase invoices/receipts, phytosanitary/fertilizer and irrigation documents;
+- extracted-draft → human review → Purchase/Expense draft;
 - activity/farm/parcel/campaign relations.
 
-**Gate 12:** no monetary double counting; organization reuse works across contexts.
+**Gate 12:** no monetary double counting; organization reuse works across contexts; OCR cannot auto-post money or silently confirm extracted values.
 
 ## Phase 13 — Harvest
 
@@ -197,12 +213,12 @@ Frozen roots:
 
 **Gate 13:** totals remain truthful and no parcel split is fabricated.
 
-## Phase 14 — Deliveries + OCR + later yield
+## Phase 14 — Deliveries + weight-ticket OCR + later yield
 
 - destination cooperative/mill;
 - kg/ticket/albarán;
 - image/PDF;
-- OCR extraction;
+- reuse the generic OCR engine with DELIVERY_TICKET profile;
 - user correction/confirmation;
 - mixed-origin delivery;
 - later yield analysis;
@@ -220,9 +236,11 @@ Frozen roots:
 
 **Gate 15:** machinery adds value without making activities mandatory/complex.
 
-## Phase 16 — Calendar, reminders and Android notifications
+## Phase 16 — Calendar, agenda, reminders and Android notifications
 
 - planned activity projection;
+- expected people count / crew/provider / planned duration;
+- harvest, pruning, irrigation, treatment and external-work appointments;
 - previous-day/same-day/custom reminder;
 - local notification scheduling;
 - notification deep-link;
@@ -230,15 +248,16 @@ Frozen roots:
 
 **Gate 16:** reminders fire offline on physical Android under supported OS restrictions.
 
-## Phase 17 — Catastro technical spike
+## Phase 17 — Spain Catastro technical spike
 
-Validate official lookup/import paths, geometry parsing, GML, error modes and legal/operational constraints.
+Validate Spain official lookup/import paths, geometry parsing, GML, error modes and legal/operational constraints.
 
-**Gate 17:** a real Jaén parcel can be located/imported without scraping or invented geometry.
+**Gate 17:** a real Spanish parcel can be located/imported without scraping or invented geometry.
 
-## Phase 18 — Catastro + map/geometries
+## Phase 18 — Land registry/geometries + map
 
-- visual/reference/GML import routes approved by spike;
+- Spain Catastro visual/reference/GML import routes approved by spike;
+- provider-neutral registry/import boundary for other countries;
 - app-owned normalized geometry;
 - farm/parcel map;
 - offline display after import;
@@ -257,11 +276,12 @@ Validate official lookup/import paths, geometry parsing, GML, error modes and le
 
 **Gate 19:** charts derive from canonical truth and expose partial/unknown data correctly.
 
-## Phase 20 — Home contextual services
+## Phase 20 — Home contextual services + weather visuals
 
 - current campaign/olive-grove summary;
 - upcoming work;
 - weather/radar;
+- subtle live weather visual state (rain/sun/cloud/wind/fog) with reduced-motion/performance safeguards;
 - oil market AOVE/Virgen/Lampante when source supports them;
 - preferred-cooperative notices/news;
 - caching/freshness/source states.
@@ -271,10 +291,10 @@ Validate official lookup/import paths, geometry parsing, GML, error modes and le
 ## Phase 21 — Profile
 
 - account;
-- municipality;
+- country/region/locality;
+- locale/timezone/currency/units;
 - preferred cooperative;
 - notification preferences;
-- units;
 - sync/export/help/privacy/about.
 
 **Gate 21:** preferences persist offline and account-sensitive operations are protected.
@@ -287,7 +307,7 @@ Validate official lookup/import paths, geometry parsing, GML, error modes and le
 - RLS;
 - service/repository boundaries.
 
-**Gate 22:** backend can represent RC1.1 without requiring UI/server-first shortcuts.
+**Gate 22:** backend can represent RC1.2 without requiring UI/server-first shortcuts.
 
 ## Phase 23 — Synchronization proof and hardening
 
@@ -352,6 +372,17 @@ Separate private web surface:
 
 **Gate 27:** field beta issues are triaged and release blockers closed.
 
+## ## Branding Gate — before public beta/store assets
+
+- shortlist and approve final product name;
+- check obvious product/brand conflicts;
+- confirm domain/social naming when practical;
+- freeze display name/logo/icon;
+- perform one controlled Android technical rename only if approved;
+- re-run package/application-ID and migration tests.
+
+**Gate B:** public brand is frozen before store listing assets and production release naming.
+
 ## Phase 28 — Google Play test tracks / release candidate
 
 - signing;
@@ -363,7 +394,7 @@ Separate private web surface:
 
 **Gate 28:** release candidate approved for production publication.
 
-## Post-RC1.1
+## Post-RC1.2
 
 Only after the agricultural Android product is stable:
 
@@ -376,4 +407,4 @@ Only after the agricultural Android product is stable:
 - advanced irrigation/IoT;
 - AI/automation.
 
-These do not retroactively change the RC1.1 core.
+These do not retroactively change the RC1.2 core.

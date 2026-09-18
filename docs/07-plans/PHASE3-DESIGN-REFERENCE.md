@@ -1,6 +1,6 @@
-# Phase 3 — Design System + Reference Screens Execution Plan
+# Phase 3 — Design System + Reference Screens Execution Plan (RC1.2)
 
-**Baseline:** `RC1.1-BASELINE-2026-09-18`  
+**Baseline:** `RC1.2-BASELINE-2026-09-18`  
 **Precondition:** Gate 2 PASS.  
 **Rule:** this plan may be prepared now, but production implementation starts only after Phase 2 passes.
 
@@ -188,6 +188,9 @@ Rules:
 
 ## Reference screen R2 — Inicio
 
+The Home hero/context area must include a weather-responsive visual prototype with CLEAR/CLOUDY/RAIN/WIND/FOG states. The effect must remain subtle, performant, readable and reduced-motion compatible.
+
+
 Hierarchy:
 
 1. location/weather compact header;
@@ -324,7 +327,7 @@ Reference widths:
 - common ~393–412 dp;
 - large phone ~480 dp.
 
-Tablet adaptation can use wider content constraints but must not delay phone RC1.1.
+Tablet adaptation can use wider content constraints but must not delay phone RC1.2.
 
 ## Accessibility gate
 
@@ -346,6 +349,10 @@ Use subtle motion only for:
 - loading/confirmation feedback.
 
 Do not use constant decorative animation on core field screens.
+
+## Temporary branding rule
+
+Public product name is TBD. Use a neutral placeholder during Phase 3. Do not freeze final logo/icon until the Naming Gate.
 
 ## Visual asset rule
 
@@ -376,7 +383,7 @@ Design fixtures must never be shipped as production agricultural data.
 - visual references are coherent;
 - all primary components are reusable Compose components;
 - no branch-specific ad-hoc theme values;
-- navigation appearance matches RC1.1;
+- navigation appearance matches RC1.2;
 - onboarding, Home, Farm, Parcel, Register, history and OCR review references approved;
 - accessibility checks pass;
 - representative physical Android rendering reviewed.

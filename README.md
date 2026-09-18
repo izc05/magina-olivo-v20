@@ -1,33 +1,33 @@
-# Mágina Olivo V20
+# Olive Farm App — internal repository
 
-Nuevo repositorio limpio para el rediseño completo de Mágina Olivo.
+Repositorio de ingeniería del reinicio Android de la aplicación de gestión del olivar. El nombre público final está pendiente del Naming Gate.
 
 ## Estado
 
-Proyecto con baseline RC1.1 congelada y bloque documental previo a implementación aprobado.
+Proyecto con baseline RC1.2 congelada y bloque documental previo a implementación aprobado.
 
-**Baseline vigente:** `RC1.1-BASELINE-2026-09-18`
+**Baseline vigente:** `RC1.2-BASELINE-2026-09-18`
 
-La arquitectura, el alcance RC1.1 y la secuencia de fases se consideran congelados. Cualquier cambio estructural requiere un Change Request y una nueva revisión de baseline.
+La arquitectura, el alcance RC1.2 y la secuencia de fases se consideran congelados. Cualquier cambio estructural requiere un Change Request y una nueva revisión de baseline.
 
 ## Principio
 
 **Sencillo por fuera, estructurado por dentro.**
 
-Mágina Olivo será una aplicación Android privada y offline-first para gestionar el olivar:
+La aplicación será Android nativa, privada y offline-first, especializada en la gestión del olivar. El nombre público final está pendiente del Naming Gate:
 
 `Finca → Parcela → Campaña → Actuaciones → Gastos/Cosecha/Entregas → Histórico → Informes`
 
 ## Lectura obligatoria para agentes
 
 1. [`docs/00-master/RC1-BASELINE.md`](docs/00-master/RC1-BASELINE.md)
-2. [`docs/00-master/RC1.1-PRODUCT-LOCK.md`](docs/00-master/RC1.1-PRODUCT-LOCK.md)
-3. [`docs/00-master/RC1.1-CHANGE-REQUEST.md`](docs/00-master/RC1.1-CHANGE-REQUEST.md)
+2. [`docs/00-master/RC1.2-PRODUCT-LOCK.md`](docs/00-master/RC1.2-PRODUCT-LOCK.md)
+3. [`docs/00-master/RC1.2-CHANGE-REQUEST.md`](docs/00-master/RC1.2-CHANGE-REQUEST.md)
 4. [`docs/00-master/RC1-NORMATIVE-ADDENDUM.md`](docs/00-master/RC1-NORMATIVE-ADDENDUM.md)
 5. [`docs/00-master/MASTER-SPEC-RC1.md`](docs/00-master/MASTER-SPEC-RC1.md)
 6. [`docs/00-master/RC1-GATE-REVIEW.md`](docs/00-master/RC1-GATE-REVIEW.md)
 7. [`docs/00-master/CURRENT-STATE.md`](docs/00-master/CURRENT-STATE.md)
-8. [`docs/07-plans/ROADMAP-RC1.1.md`](docs/07-plans/ROADMAP-RC1.1.md)
+8. [`docs/07-plans/ROADMAP-RC1.2.md`](docs/07-plans/ROADMAP-RC1.2.md)
 
 ## Documentación fuente de verdad
 
@@ -53,7 +53,7 @@ Mágina Olivo será una aplicación Android privada y offline-first para gestion
 
 ### Plan
 
-- [`docs/07-plans/ROADMAP-RC1.1.md`](docs/07-plans/ROADMAP-RC1.1.md) — fases y Gates obligatorios.
+- [`docs/07-plans/ROADMAP-RC1.2.md`](docs/07-plans/ROADMAP-RC1.2.md) — fases y Gates obligatorios.
 
 ## Estado de la ruta
 
@@ -66,6 +66,8 @@ Mágina Olivo será una aplicación Android privada y offline-first para gestion
 ✅ 0.6 Screen Map
 ✅ 0.7 Design System Spec
 ✅ 0.8 RC1.1 Product reconciliation
+✅ 0.9 RC1.2 geographic-neutral scope + generic OCR
+✅ 0.9 RC1.2 global olive scope + generic OCR
 ▶ FASE 1 — Android Project Foundation
 ```
 

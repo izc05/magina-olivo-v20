@@ -1,4 +1,4 @@
-# AGENTS.md — Mágina Olivo RC1.1
+# AGENTS.md — Olive Farm App RC1.2
 
 This repository is under a frozen, gate-driven product baseline.
 
@@ -7,23 +7,23 @@ This repository is under a frozen, gate-driven product baseline.
 Before changing code or architecture, read:
 
 1. `docs/00-master/RC1-BASELINE.md`
-2. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
+2. `docs/00-master/RC1.2-PRODUCT-LOCK.md`
 3. `docs/00-master/CURRENT-STATE.md`
-4. `docs/07-plans/ROADMAP-RC1.1.md`
+4. `docs/07-plans/ROADMAP-RC1.2.md`
 5. the current phase execution plan, when one exists
 6. only then the domain/architecture/UI contracts needed for that phase
 
-If an older RC1 document conflicts with the RC1.1 Product Lock, RC1.1 wins.
+If an older RC1/RC1.1 document conflicts with the RC1.2 Product Lock, RC1.2 wins.
 
 ## Product identity
 
-Mágina Olivo RC1.1 is a **native Android, offline-first application for the farmer managing their own olive farms**, initially focused on Jaén.
+The product is a **native Android, offline-first application for farmers managing their own olive farms**. Initial implementation targets Spain; architecture is geographic-neutral for olive-growing countries.
 
 Core hierarchy:
 
 `Finca → Parcela → Campaña → Actuaciones / Cosecha / Entregas / Gastos / Documentos → Histórico → Informes`
 
-Do not turn the new Android app back into the old territorial V20 portal.
+Do not turn the new Android app back into the old territorial V20 portal. Do not treat “Mágina Olivo” as the final customer-facing brand.
 
 ## Frozen primary navigation
 
@@ -48,7 +48,8 @@ Documentation/research may prepare later phases, but production implementation r
 - Write locally first.
 - Durable deferred synchronization via outbox/WorkManager when that phase begins.
 - Supabase is remote backend, behind repository/service boundaries.
-- Catastro is an external import/reference source, not the app database.
+- Land-registry providers are external import/reference sources, not the app database.
+- Spain Catastro is one provider, not universal Parcel identity.
 - App owns normalized parcel identity and stored geometry.
 - Client-generated UUIDs for synchronizable domain entities.
 - Soft delete/versioning for critical historical records.
@@ -62,12 +63,13 @@ Never:
 - invent parcel or campaign data;
 - fabricate per-parcel kg for a mixed delivery;
 - auto-accept OCR values without human confirmation;
+- restrict OCR architecture to delivery tickets only;
 - rewrite the original delivery when later yield arrives;
 - duplicate money between an Activity and the authoritative Expense ledger;
 - present stale/external information as fresh;
 - make Home external feeds a dependency for field work.
 
-## RC1.1 product requirements to preserve
+## RC1.2 product requirements to preserve
 
 - named Farms containing one or many agricultural Parcels;
 - optional Farm cover photo;
@@ -84,18 +86,22 @@ Never:
 - delivery ticket/photo/PDF + OCR review;
 - later yield analysis as separate linked data;
 - Home contextual weather/radar, oil-market reference and preferred cooperative notices/news;
+- OCR for delivery tickets, invoices/receipts and agricultural documents;
+- irrigation historical pricing snapshots;
+- scheduled work with expected people/provider and reminders;
+- subtle weather-driven Home effects with reduced-motion/performance safeguards;
 - profile municipality + preferred cooperative;
 - separate private Admin web surface;
 - loyalty/Mi Olivo activation deferred until the agricultural core is proven;
-- professional/client mode deferred until post-RC1.1.
+- professional/client mode deferred until post-RC1.2.
 
 ## Old V20 isolation
 
 Branches, PRs and code from the old web/territorial V20 exist in this repository history.
 
-Do not copy, merge or resurrect old V20 architecture, pages, navigation, database contracts or public portal modules into the new Android line unless a task explicitly names a specific reusable asset and confirms compatibility with RC1.1.
+Do not copy, merge or resurrect old V20 architecture, pages, navigation, database contracts or public portal modules into the new Android line unless a task explicitly names a specific reusable asset and confirms compatibility with RC1.2.
 
-A broad prompt such as “improve Mágina Olivo” is **not** permission to reuse old V20 code.
+A broad prompt such as “improve the app” is **not** permission to reuse old V20 code.
 
 ## Branch discipline
 
@@ -124,7 +130,7 @@ Applicable DoD includes:
 
 ## Change control
 
-If a task conflicts with the frozen baseline:
+If a task conflicts with the frozen baseline or assumes a final public brand before the Naming Gate:
 
 1. stop the conflicting implementation;
 2. create a Change Request following `docs/00-master/CHANGE-CONTROL.md`;
