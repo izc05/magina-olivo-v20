@@ -2,11 +2,18 @@
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
 **Precondition:** Gate 2 PASS.  
-**Rule:** this plan may be prepared now, but production implementation starts only after Phase 2 passes.
+**Status:** ACTIVE — Gate 2 passed on 2026-09-18. Phase 3 implementation is allowed.
+
+**Normative visual decision:** CR-003 + `docs/design/VISUAL_DESIGN_LOCK.md` + `docs/design/DESIGN_SYSTEM.md` supersede earlier provisional visual/naming language.
 
 ## Mandatory reference
 
 Read all of these before creating reference screens:
+
+- `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
+- `docs/design/VISUAL_DESIGN_LOCK.md`
+- `docs/design/DESIGN_SYSTEM.md`
+- `docs/design/reference/README.md`
 
 - `docs/04-ui/BRAND-DIRECTION-RC1.2.md`
 - `docs/04-ui/VISUAL-TOKENS-RC1.2.md`
@@ -61,23 +68,23 @@ Create project-owned Compose tokens rather than scattering raw values.
 
 ### Color direction
 
-Proposed starting palette, subject to contrast verification before freeze:
+Canonical palette:
 
 ```text
-OlivePrimary        #556B2F
-OlivePrimaryDark    #37471F
-OliveContainer      #E2E8CF
-LeafSecondary       #718355
-EarthAccent         #8A6F4D
-Surface             #FFFDF7
-SurfaceSoft         #F5F3EA
-TextPrimary         #1C1D18
-TextSecondary       #606258
-Outline             #7A7D70
-Success             semantic token
-Warning             semantic token
-Error               semantic token
-Info                semantic token
+OlivePrimary        #3E5A32
+OlivePrimaryDark    #173122
+Cream               #F8F6EE
+WarmWhite           #FCFBF7
+Sage                #A7B08F
+Earth               #B88B6B
+SoftGold            #D4B76A
+TextSecondary       #6D746B
+Outline             #E5E1D6
+SurfaceSoft         #F4F1E8
+Success             #4E7A45
+Info                #5E7D8C
+Warning             #C49842
+Error               #B5534F
 ```
 
 Do not communicate state by color alone.
@@ -105,8 +112,8 @@ Base grid:
 4 / 8 / 12 / 16 / 24 / 32 dp
 ```
 
-Default screen horizontal padding: 16 dp.  
-Large visual/hero sections may use 20–24 dp internal spacing.
+Default screen horizontal padding: 20 dp. Compact widths may fall back to 16 dp.  
+Large visual/hero sections use 20–24 dp internal spacing.
 
 ### Shape
 
@@ -184,21 +191,23 @@ Requirements:
 
 ## Reference screen R1 — Onboarding
 
-Create 5 reference pages:
+Create **6** reference pages matching the approved visual boards:
 
-1. Tu olivar — farms/parcels.
-2. Registra trabajos — irrigation/treatments/pruning/fertilization.
-3. Controla la cosecha — delivery ticket + OCR + later yield.
-4. No olvides nada — calendar/reminders.
-5. Todo tu olivar contigo — history/weather/market/cooperative.
+1. Bienvenido a Mágina Olivo.
+2. Tus fincas y parcelas.
+3. Mapa y Catastro.
+4. Actividad y campaña.
+5. Cosecha, gastos y documentos.
+6. Tiempo, mercado y alertas.
 
 Rules:
 
 - one primary message per page;
 - large visual;
 - progress indicator;
-- Skip and Continue;
-- final Start action;
+- `Saltar` and `Siguiente`;
+- final `Comenzar` action;
+- cream/olive visual system;
 - no account form embedded inside onboarding artwork.
 
 ## Reference screen R2 — Inicio
@@ -260,18 +269,8 @@ Map preview is only shown when geometry exists; it must not dominate before Phas
 
 ## Reference screen R5 — Parcel detail
 
-Prioritize:
+**Visual-reference gap:** no final generated board is committed yet. This screen must be designed during Phase 3 using the locked system before Gate 3.
 
-- parcel name/alias;
-- surface/trees/variety/water system when known;
-- campaign card;
-- recent/planned work;
-- historical campaign shortcut;
-- location/map placeholder when geometry exists.
-
-Unknown values are omitted or shown as “Sin registrar”, never fake zeros.
-
-## Reference screen R6 — Registrar
 
 Use a visually simple action chooser.
 
@@ -293,7 +292,7 @@ After type selection, typed form uses:
 - sticky primary Save when useful;
 - draft protection.
 
-## Reference screen R7 — Campaign history
+## Reference screen R8 — Campaign history
 
 Show:
 
@@ -307,7 +306,19 @@ Show:
 
 Avoid giant dashboards.
 
-## Reference screen R8 — Delivery / OCR review
+## Reference screen R9 — Cosecha
+
+Use the committed harvest board as the visual target, but keep harvest/delivery truth rules intact.
+
+## Reference screen R10 — Gastos y documentos
+
+Use the committed expenses/documents board as the visual target. Expense ledger remains authoritative.
+
+## Reference screen R11 — Tiempo, mercado y alertas
+
+Use the committed weather/market board as the visual target. External data requires source/freshness states.
+
+## Reference screen R12 — Delivery / OCR review
 
 Flow reference:
 
@@ -365,9 +376,11 @@ Use subtle motion only for:
 
 Do not use constant decorative animation on core field screens.
 
-## Temporary branding rule
+## Approved branding rule
 
-Public product name is TBD. Use a neutral placeholder during Phase 3. Do not freeze final logo/icon until the Naming Gate.
+CR-003 freezes the customer-facing display brand as **Mágina Olivo** and the approved olive-branch logo direction.
+
+The current Android package/namespace remains unchanged in Phase 3. Store-ready icon/export verification remains a later Branding Gate task.
 
 ## Visual asset rule
 
@@ -399,7 +412,7 @@ Design fixtures must never be shipped as production agricultural data.
 - all primary components are reusable Compose components;
 - no branch-specific ad-hoc theme values;
 - navigation appearance matches RC1.2;
-- onboarding, Home, Farm, Parcel, Register, history and OCR review references approved;
+- six-page onboarding, Home, Mi Olivar, Farm, Parcel, Map/Catastro, Register, history, harvest, expenses/documents, weather/market and OCR review references approved;
 - accessibility checks pass;
 - representative physical Android rendering reviewed.
 
