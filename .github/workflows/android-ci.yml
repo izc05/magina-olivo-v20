@@ -60,8 +60,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Lint, unit test, compile instrumented tests and build DEV APK
-        run: ./gradlew --no-daemon lintDevDebug testDevDebugUnitTest assembleDevDebug assembleDevDebugAndroidTest
+      - name: Lint, unit test, compile instrumented tests and build all environments
+        run: ./gradlew --no-daemon lintDevDebug testDevDebugUnitTest assembleDevDebug assembleStagingDebug assembleProductionDebug assembleDevDebugAndroidTest
 
       - name: Upload DEV APK
         uses: actions/upload-artifact@v6

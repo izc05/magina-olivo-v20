@@ -54,15 +54,6 @@ Phase 0.9 documentation is defined in `docs/07-plans/ROADMAP-RC1.2.md`. Public b
 
 ## Next deliverable
 
-Execute the existing Phase 1 implementation plan on `feat/android-foundation` / PR #165.
+Execute Phase 2 according to `docs/07-plans/PHASE2-BASE-ARCHITECTURE.md`.
 
-Required outcome before any Phase 2 work:
-
-- lint and unit tests green;
-- DEV/STAGING/PRODUCTION debug builds green;
-- CI artifact available;
-- DEV APK installed/launched on a physical Android device;
-- instrumentation smoke test green on physical hardware when available;
-- Gate 1 evidence recorded.
-
-Do not implement farms, parcels, campaigns, Home, maps or domain navigation inside Phase 1.
+Gate 2 requires CI, architecture tests, scope review and a physical launcher smoke after the refactor. Do not start Phase 3 implementation before Gate 2 PASS.

@@ -13,10 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.isivoltpro.maginaolivo.app.AppEnvironment
 
 @Composable
 fun FoundationScreen(
-    environment: String,
+    environment: AppEnvironment,
     modifier: Modifier = Modifier,
 ) {
     MaterialTheme {
@@ -38,9 +39,9 @@ fun FoundationScreen(
                     text = stringResource(R.string.foundation_subtitle),
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                if (environment != "PRODUCTION") {
+                if (environment != AppEnvironment.PRODUCTION) {
                     Text(
-                        text = environment,
+                        text = environment.name,
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
