@@ -27,7 +27,7 @@ Mágina Olivo será una aplicación Android privada y offline-first para gestion
 5. [`docs/00-master/MASTER-SPEC-RC1.md`](docs/00-master/MASTER-SPEC-RC1.md)
 6. [`docs/00-master/RC1-GATE-REVIEW.md`](docs/00-master/RC1-GATE-REVIEW.md)
 7. [`docs/00-master/CURRENT-STATE.md`](docs/00-master/CURRENT-STATE.md)
-8. [`docs/07-plans/ROADMAP-RC1.md`](docs/07-plans/ROADMAP-RC1.md)
+8. [`docs/07-plans/ROADMAP-RC1.1.md`](docs/07-plans/ROADMAP-RC1.1.md)
 
 ## Documentación fuente de verdad
 
