@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.components.MoFarmCard
+import com.isivoltpro.maginaolivo.ui.components.MoFreshnessState
+import com.isivoltpro.maginaolivo.ui.components.MoSourceFreshness
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
@@ -56,14 +58,21 @@ fun ReferenceHomeScreen(
         }
 
         item {
-            MoWeatherHero(
-                location = "Finca Foralico · Bedmar",
-                temperature = "22 °C",
-                condition = "Nubes y claros",
-                rainText = "Lluvia 15 %",
-                windText = "Viento 11 km/h",
-                state = WeatherVisualState.Cloudy,
-            )
+            Column {
+                MoWeatherHero(
+                    location = "Finca Foralico · Bedmar",
+                    temperature = "22 °C",
+                    condition = "Nubes y claros",
+                    rainText = "Lluvia 15 %",
+                    windText = "Viento 11 km/h",
+                    state = WeatherVisualState.Cloudy,
+                )
+                MoSourceFreshness(
+                    source = "Tiempo de referencia",
+                    updatedText = "actualizado hace 12 min",
+                    state = MoFreshnessState.Fresh,
+                )
+            }
         }
 
         item {
@@ -134,11 +143,10 @@ fun ReferenceHomeScreen(
                     MarketValue("Virgen", "3,30", "€/kg")
                     MarketValue("Lampante", "3,19", "€/kg")
                 }
-                Text(
-                    text = "Referencia de mercado · actualizado hace 2 h",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = OlivarDimens.SpaceSm),
+                MoSourceFreshness(
+                    source = "Mercado de referencia",
+                    updatedText = "actualizado hace 2 h",
+                    state = MoFreshnessState.Fresh,
                 )
             }
         }
