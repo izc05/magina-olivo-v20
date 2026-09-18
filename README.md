@@ -1,6 +1,6 @@
 # Olive Farm App — internal repository
 
-Repositorio de ingeniería del reinicio Android de la aplicación de gestión del olivar. El nombre público final está pendiente del Naming Gate.
+Repositorio de ingeniería del reinicio Android de la aplicación de gestión del olivar. La marca visible aprobada por CR-003 es **Mágina Olivo**.
 
 ## Estado
 
@@ -14,7 +14,7 @@ La arquitectura, el alcance RC1.2 y la secuencia de fases se consideran congelad
 
 **Sencillo por fuera, estructurado por dentro.**
 
-La aplicación será Android nativa, privada y offline-first, especializada en la gestión del olivar. El nombre público final está pendiente del Naming Gate:
+La aplicación será Android nativa, privada y offline-first, especializada en la gestión del olivar:
 
 `Finca → Parcela → Campaña → Actuaciones → Gastos/Cosecha/Entregas → Histórico → Informes`
 
@@ -22,12 +22,13 @@ La aplicación será Android nativa, privada y offline-first, especializada en l
 
 1. [`docs/00-master/RC1-BASELINE.md`](docs/00-master/RC1-BASELINE.md)
 2. [`docs/00-master/RC1.2-PRODUCT-LOCK.md`](docs/00-master/RC1.2-PRODUCT-LOCK.md)
-3. [`docs/00-master/RC1.2-CHANGE-REQUEST.md`](docs/00-master/RC1.2-CHANGE-REQUEST.md)
-4. [`docs/00-master/RC1-NORMATIVE-ADDENDUM.md`](docs/00-master/RC1-NORMATIVE-ADDENDUM.md)
-5. [`docs/00-master/MASTER-SPEC-RC1.md`](docs/00-master/MASTER-SPEC-RC1.md)
-6. [`docs/00-master/RC1-GATE-REVIEW.md`](docs/00-master/RC1-GATE-REVIEW.md)
-7. [`docs/00-master/CURRENT-STATE.md`](docs/00-master/CURRENT-STATE.md)
-8. [`docs/07-plans/ROADMAP-RC1.2.md`](docs/07-plans/ROADMAP-RC1.2.md)
+3. [`docs/00-master/SINGLE-TRACK-EXECUTION.md`](docs/00-master/SINGLE-TRACK-EXECUTION.md)
+4. [`docs/00-master/RC1.2-CHANGE-REQUEST.md`](docs/00-master/RC1.2-CHANGE-REQUEST.md)
+5. [`docs/00-master/RC1-NORMATIVE-ADDENDUM.md`](docs/00-master/RC1-NORMATIVE-ADDENDUM.md)
+6. [`docs/00-master/MASTER-SPEC-RC1.md`](docs/00-master/MASTER-SPEC-RC1.md)
+7. [`docs/00-master/RC1-GATE-REVIEW.md`](docs/00-master/RC1-GATE-REVIEW.md)
+8. [`docs/00-master/CURRENT-STATE.md`](docs/00-master/CURRENT-STATE.md)
+9. [`docs/07-plans/ROADMAP-RC1.2.md`](docs/07-plans/ROADMAP-RC1.2.md)
 
 ## Documentación fuente de verdad
 
@@ -68,10 +69,13 @@ La aplicación será Android nativa, privada y offline-first, especializada en l
 ✅ 0.8 RC1.1 Product reconciliation
 ✅ 0.9 RC1.2 geographic-neutral scope + generic OCR
 ✅ 0.9 RC1.2 global olive scope + generic OCR
-▶ FASE 1 — Android Project Foundation
+✅ FASE 1 — Android Project Foundation
+✅ FASE 2 — Base application architecture
+✅ FASE 3 implementación — sistema visual + pantallas de referencia
+▶ GATE 3 — validación visual / accesibilidad
 ```
 
-**Fase activa:** únicamente Fase 1. No se permite empezar Fase 2 ni funcionalidades agrícolas hasta superar Gate 1.
+**Trabajo activo:** únicamente Gate 3. No se permite empezar Fase 4 ni persistencia/funcionalidad agrícola real hasta superar Gate 3.
 
 ## Regla para agentes
 
