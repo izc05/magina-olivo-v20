@@ -10,9 +10,11 @@
 - [x] Typography scale exists.
 - [x] Shape/radius tokens exist.
 - [x] Spacing/touch-size tokens exist.
-- [ ] Contrast review completed.
-- [ ] 360dp compact-width review completed.
-- [ ] 412dp common-width review completed.
+- [x] Token-level contrast review completed.
+- [ ] 360dp compact-width visual review completed.
+- [x] 360dp reference previews defined.
+- [ ] 412dp common-width visual review completed.
+- [x] 412dp reference previews defined.
 
 ## Reusable components
 
