@@ -12,39 +12,39 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.app.AppEnvironment
+import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 
 @Composable
 fun FoundationScreen(
     environment: AppEnvironment,
     modifier: Modifier = Modifier,
 ) {
-    MaterialTheme {
-        Surface(
-            modifier = modifier
-                .fillMaxSize()
-                .testTag("foundation-root"),
+    Surface(
+        modifier = modifier
+            .fillMaxSize()
+            .testTag("foundation-root"),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+    ) {
+        Column(
+            modifier = Modifier.padding(MoSpacing.lg),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            Text(
+                text = stringResource(R.string.foundation_title),
+                style = MaterialTheme.typography.headlineMedium,
+            )
+            Text(
+                text = stringResource(R.string.foundation_subtitle),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            if (environment != AppEnvironment.PRODUCTION) {
                 Text(
-                    text = stringResource(R.string.foundation_title),
-                    style = MaterialTheme.typography.headlineMedium,
+                    text = environment.name,
+                    style = MaterialTheme.typography.labelMedium,
                 )
-                Text(
-                    text = stringResource(R.string.foundation_subtitle),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                if (environment != AppEnvironment.PRODUCTION) {
-                    Text(
-                        text = environment.name,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
             }
         }
     }
