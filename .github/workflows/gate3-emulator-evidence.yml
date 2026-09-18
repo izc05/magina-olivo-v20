@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - qa/gate3-emulator-evidence-v2
+  pull_request:
+    branches:
+      - main
+      - qa/gate3-android-validation-v2
   workflow_dispatch:
 
 permissions:
