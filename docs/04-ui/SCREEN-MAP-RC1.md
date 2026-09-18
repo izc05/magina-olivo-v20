@@ -1,8 +1,8 @@
-# Mágina Olivo — Screen Map RC1 v1
+# Olive Farm App — Screen Map RC1.2
 
 **Status:** Phase 0.6 draft
 **Navigation root:** `Inicio · Mi Olivar · Registrar (+) · Calendario · Perfil`
-**Normative override:** `docs/00-master/RC1.1-PRODUCT-LOCK.md`.
+**Normative override:** `docs/00-master/RC1.2-PRODUCT-LOCK.md`. Public brand TBD.
 
 This document defines purpose, entry/exit and required states for every RC1 screen. UI implementation must not invent new top-level navigation without a baseline Change Request.
 
@@ -38,7 +38,7 @@ Global rules:
 
 Purpose: explain the product in 4–6 concise visual screens on first run.
 
-Narrative: farms/parcels → field work → harvest/delivery OCR → reminders → weather/market/cooperative/history.
+Narrative: farms/parcels → field work → harvest/delivery and invoice OCR → reminders → weather/market/cooperative/history.
 
 Rules:
 
