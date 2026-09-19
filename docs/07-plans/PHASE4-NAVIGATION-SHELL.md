@@ -1,6 +1,6 @@
 # Phase 4 — Production navigation shell implementation plan
 
-**Status:** In progress  
+**Status:** Complete — Gate 4 PASS  
 **Precondition:** Gate 3 PASS  
 **Branch:** `feat/android-navigation`  
 **Stacked base:** `integrate/android-magina-olivo-rc1`
@@ -57,3 +57,5 @@ This phase may route to approved reference content and explicit placeholders. It
 ## Gate decision rule
 
 Gate 4 remains FAIL until instrumentation navigation tests and Android emulator navigation smoke pass. A real-device navigation/install smoke remains required before RC1.
+
+Gate 4 passed on validated code commit `483fc145`; see `docs/06-testing/PHASE4-GATE-CHECKLIST.md` for the evidence and the false-positive instrumentation defect closed during validation.
