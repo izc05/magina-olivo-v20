@@ -40,3 +40,21 @@ enum class FarmStatus {
     ACTIVE,
     ARCHIVED,
 }
+
+enum class RecordStatus {
+    ACTIVE,
+    ARCHIVED,
+}
+
+enum class CampaignStatus {
+    PLANNED,
+    ACTIVE,
+    CLOSED,
+}
+
+enum class ActivityStatus {
+    DRAFT,
+    PLANNED,
+    COMPLETED,
+    CANCELLED,
+}

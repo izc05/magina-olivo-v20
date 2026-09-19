@@ -4,6 +4,9 @@ import androidx.room.TypeConverter
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
 import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
+import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
+import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import java.time.Instant
@@ -60,4 +63,22 @@ class RoomConverters {
 
     @TypeConverter
     fun stringToFarmStatus(value: String?): FarmStatus? = value?.let(FarmStatus::valueOf)
+
+    @TypeConverter
+    fun recordStatusToString(value: RecordStatus?): String? = value?.name
+
+    @TypeConverter
+    fun stringToRecordStatus(value: String?): RecordStatus? = value?.let(RecordStatus::valueOf)
+
+    @TypeConverter
+    fun campaignStatusToString(value: CampaignStatus?): String? = value?.name
+
+    @TypeConverter
+    fun stringToCampaignStatus(value: String?): CampaignStatus? = value?.let(CampaignStatus::valueOf)
+
+    @TypeConverter
+    fun activityStatusToString(value: ActivityStatus?): String? = value?.name
+
+    @TypeConverter
+    fun stringToActivityStatus(value: String?): ActivityStatus? = value?.let(ActivityStatus::valueOf)
 }
