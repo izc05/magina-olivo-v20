@@ -69,6 +69,21 @@ wait_for_home() {
   return 1
 }
 
+wait_for_onboarding() {
+  local destination="$1"
+
+  for _ in {1..20}; do
+    dump_ui "$destination"
+    if grep -q 'text="Saltar"' "$destination"; then
+      return 0
+    fi
+    sleep 0.25
+  done
+
+  echo "Onboarding did not become visible before evidence capture" >&2
+  return 1
+}
+
 tap_text_from_xml() {
   local text_to_find="$1"
   local xml_file="$2"
@@ -145,15 +160,8 @@ capture_variant() {
   adb shell am force-stop "$PKG"
   adb shell am start -W -S -n "$PKG/$ACTIVITY" > "$out/start-onboarding.txt"
   wait_for_app
-  sleep 1
-
+  wait_for_onboarding "$out/onboarding-ui.xml"
   adb exec-out screencap -p > "$out/onboarding.png"
-  dump_ui "$out/onboarding-ui.xml"
-
-  if ! grep -q 'text="Saltar"' "$out/onboarding-ui.xml"; then
-    echo "Onboarding accessibility tree does not expose 'Saltar' for $label" >&2
-    exit 1
-  fi
 
   tap_text_from_xml "Saltar" "$out/onboarding-ui.xml"
   wait_for_home "$out/home-ui.xml"
