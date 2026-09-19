@@ -2,6 +2,8 @@ package com.isivoltpro.maginaolivo.data.local
 
 import androidx.room.TypeConverter
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
+import com.isivoltpro.maginaolivo.data.local.model.OutboxStatus
+import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import java.time.Instant
@@ -46,4 +48,16 @@ class RoomConverters {
     @TypeConverter
     fun stringToSyncEntityType(value: String?): SyncEntityType? =
         value?.let(SyncEntityType::valueOf)
+
+    @TypeConverter
+    fun outboxStatusToString(value: OutboxStatus?): String? = value?.name
+
+    @TypeConverter
+    fun stringToOutboxStatus(value: String?): OutboxStatus? = value?.let(OutboxStatus::valueOf)
+
+    @TypeConverter
+    fun farmStatusToString(value: FarmStatus?): String? = value?.name
+
+    @TypeConverter
+    fun stringToFarmStatus(value: String?): FarmStatus? = value?.let(FarmStatus::valueOf)
 }

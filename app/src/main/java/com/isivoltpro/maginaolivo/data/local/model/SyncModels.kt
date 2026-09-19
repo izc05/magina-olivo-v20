@@ -28,3 +28,15 @@ enum class SyncEntityType {
     DOCUMENT,
     ALERT,
 }
+
+enum class OutboxStatus {
+    PENDING,
+    PROCESSING,
+    FAILED,
+    BLOCKED,
+}
+
+enum class FarmStatus {
+    ACTIVE,
+    ARCHIVED,
+}
