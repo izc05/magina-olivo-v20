@@ -98,7 +98,7 @@ class OfflineFirstFarmRepositoryTest {
             val archived = reopenedDatabase.farmDao().findById(farmId)
             assertEquals(FarmStatus.ARCHIVED, archived?.status)
             assertNotNull(archived?.metadata?.deletedAt)
-            assertEquals(2, archived?.metadata?.version)
+            assertEquals(2L, archived?.metadata?.version)
             assertEquals(
                 listOf(OutboxOperation.CREATE, OutboxOperation.DELETE),
                 reopenedDatabase
