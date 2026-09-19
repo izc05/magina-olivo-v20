@@ -8,6 +8,7 @@ ACTIVITY="com.isivoltpro.maginaolivo.MainActivity"
 TEST_PKG="com.isivoltpro.maginaolivo.dev.test"
 RUNNER="androidx.test.runner.AndroidJUnitRunner"
 SCREENSHOT_TEST="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest"
+OFFLINE_ROOM_TEST="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest"
 
 APP_APK="$(find app/build/outputs/apk/dev/debug -name '*.apk' | head -n 1)"
 TEST_APK="$(find app/build/outputs/apk/androidTest -name '*.apk' | head -n 1)"
@@ -30,6 +31,7 @@ if [[ -z "$PHYSICAL_WIDTH" || "$PHYSICAL_WIDTH" == "$PHYSICAL_SIZE" ]]; then
 fi
 
 cleanup() {
+  adb shell cmd connectivity airplane-mode disable >/dev/null 2>&1 || true
   adb shell wm density reset >/dev/null 2>&1 || true
   adb shell settings put system font_scale 1.0 >/dev/null 2>&1 || true
 }
@@ -166,6 +168,19 @@ assert_instrumentation_passed() {
   fi
 }
 
+set_airplane_mode() {
+  local command="$1"
+  local expected="$2"
+  local state
+
+  adb shell cmd connectivity airplane-mode "$command"
+  state="$(adb shell settings get global airplane_mode_on | tr -d '\r')"
+  if [[ "$state" != "$expected" ]]; then
+    echo "Airplane mode $command did not reach state $expected (actual=$state)" >&2
+    return 1
+  fi
+}
+
 capture_variant() {
   local target_dp="$1"
   local label="$2"
@@ -244,6 +259,27 @@ COMMON_DENSITY=$(( (PHYSICAL_WIDTH * 160 + 393 / 2) / 393 ))
 adb shell wm density "$COMMON_DENSITY"
 adb shell settings put system font_scale 1.0
 
+set_airplane_mode enable 1 | tee evidence/airplane-mode.txt
+{
+  echo "airplane_mode=$(adb shell settings get global airplane_mode_on | tr -d '\r')"
+  echo "wifi=$(adb shell dumpsys wifi | grep -m 1 'Wi-Fi is' | tr -d '\r' || true)"
+} >> evidence/airplane-mode.txt
+
+set +e
+adb shell am instrument -w \
+  -e class "$OFFLINE_ROOM_TEST" \
+  "$TEST_PKG/$RUNNER" > evidence/offline-room-instrumentation.txt 2>&1
+OFFLINE_ROOM_RC=$?
+set -e
+cat evidence/offline-room-instrumentation.txt
+
+assert_instrumentation_passed \
+  evidence/offline-room-instrumentation.txt \
+  "Airplane-mode Room CRUD instrumentation" \
+  "$OFFLINE_ROOM_RC"
+
+set_airplane_mode disable 0 | tee -a evidence/airplane-mode.txt
+
 set +e
 adb shell am instrument -w "$TEST_PKG/$RUNNER" > evidence/instrumentation-all.txt 2>&1
 INSTRUMENTATION_RC=$?
@@ -277,6 +313,7 @@ adb logcat -b crash -d -v threadtime > evidence/crash.txt 2>&1 || true
   echo "model=$(adb shell getprop ro.product.model | tr -d '\r')"
   echo "abi=$(adb shell getprop ro.product.cpu.abi | tr -d '\r')"
   echo "physical_size=$PHYSICAL_SIZE"
+  echo "offline_room_instrumentation_rc=$OFFLINE_ROOM_RC"
   echo "instrumentation_rc=$INSTRUMENTATION_RC"
   echo
   echo "--- cold-start summary ---"

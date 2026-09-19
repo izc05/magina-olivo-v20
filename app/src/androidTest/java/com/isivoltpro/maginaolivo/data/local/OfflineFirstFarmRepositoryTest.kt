@@ -147,6 +147,32 @@ class OfflineFirstFarmRepositoryTest {
         }
     }
 
+    @Test
+    fun devFixtureSeedIsDeterministicIdempotentAndDoesNotQueueSync() = runBlocking {
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            DevDatabaseSeeder.seed(database)
+            DevDatabaseSeeder.seed(database)
+
+            assertEquals(
+                "Mi olivar de muestra",
+                database.workspaceDao().findById(DevDatabaseSeeder.workspaceId)?.name,
+            )
+            assertEquals(
+                "La Solana",
+                database.farmDao().findById(DevDatabaseSeeder.farmId)?.name,
+            )
+            assertTrue(
+                database
+                    .syncOutboxDao()
+                    .listForEntity(SyncEntityType.FARM, DevDatabaseSeeder.farmId)
+                    .isEmpty(),
+            )
+        } finally {
+            database.close()
+        }
+    }
+
     private fun repository(
         database: MaginaOlivoDatabase,
         now: Instant,
