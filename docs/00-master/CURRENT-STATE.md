@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-09-18
+**Last reviewed:** 2026-09-19
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -20,15 +20,16 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 1 — Android Project Foundation
 ✅ Gate 2 — Base application architecture
 ✅ CR-003 — Mágina Olivo brand + canonical visual system approved
+✅ Gate 3 — Visual / accessibility / emulator validation
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 3 — GATE 3 VISUAL / ACCESSIBILITY VALIDATION
+▶ PHASE 4 — NAVIGATION SHELL
 ```
 
-Do not start Phase 4 navigation-shell implementation or agricultural persistence/features until Gate 3 passes.
+Gate 3 is recorded as PASS in `docs/06-testing/PHASE3-GATE-CHECKLIST.md`. Phase 4 may implement only the production navigation shell; agricultural persistence and features remain blocked until their own phases.
 
 ## Mandatory reading order for any agent
 
@@ -59,28 +60,21 @@ RC1.2 Product Lock is normative and overrides contradictory RC1-era wording unti
 
 CR-003 resolves the display brand as **Mágina Olivo** and freezes the visual references under `docs/design/`. Geographic-neutral domain/data architecture remains unchanged.
 
-Gate 2 passed on 2026-09-18. Phase 3 implementation is now merged into `main`: canonical Compose tokens/components, six-screen onboarding and all required reference screens are implemented. Gate 3 remains open only for validation/evidence.
+Gate 2 passed on 2026-09-18. Phase 3 implementation is merged into `main`: canonical Compose tokens/components, six-screen onboarding and all required reference screens are implemented.
+
+Gate 3 passed on integration commit `6f37b736` on 2026-09-19. Lint, 12 unit tests, 15 Android instrumentation tests, all debug environment builds, four rendering configurations, accessibility semantics, cold starts and crash-buffer checks passed. The installable DEV APK and emulator evidence are attached to GitHub Actions runs `35435717081` and `35435717079`.
+
+PR #197 integrates and supersedes the Android validation intent of draft PRs #195 and #196 without closing or deleting their historical record. `main` remains unchanged pending owner authorization.
 
 ## Next deliverable
 
-Do **not** create more product/reference screens unless Gate 3 validation identifies a defect.
+Implement the Phase 4 production navigation shell with the frozen roots:
 
-Close Gate 3 by producing and reviewing:
+`Inicio · Mi Olivar · Registrar (+) · Calendario · Perfil`
 
-1. 360 dp compact rendering;
-2. ~393–412 dp common-phone rendering;
-3. 480 dp large-phone rendering;
-4. font-scale verification;
-5. TalkBack/semantics review;
-6. reduced-motion review where relevant;
-7. outdoor contrast review;
-8. empty/loading/error/offline state review;
-9. representative Android screenshots compared with the canonical visual boards;
-10. final audit for stray/ad-hoc visual values.
+Phase 4 must provide a single coherent graph, predictable back behavior, state restoration and a context-aware Register entry. It may connect approved reference screens or explicit placeholders, but must not introduce Room or feature persistence ahead of Phase 5.
 
-Parcel Detail and Delivery/OCR Review are implemented in Compose but still need their representative Android screenshots added to canonical visual evidence.
-
-Only after Gate 3 PASS may Phase 4 begin the production navigation shell.
+Gate 4 requires instrumentation evidence with no dead routes or back-stack defects.
 
 ## Parallel-chat reconciliation
 
