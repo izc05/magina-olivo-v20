@@ -54,11 +54,27 @@ dump_ui() {
   adb pull /sdcard/gate3-window.xml "$destination" >/dev/null
 }
 
+dismiss_quickstep_anr() {
+  local xml_file="$1"
+
+  if grep -q "Quickstep isn't responding" "$xml_file" && grep -q 'text="Close app"' "$xml_file"; then
+    echo "Dismissing emulator launcher ANR overlay" >&2
+    tap_text_from_xml "Close app" "$xml_file"
+    sleep 0.5
+    return 0
+  fi
+
+  return 1
+}
+
 wait_for_home() {
   local destination="$1"
 
   for _ in {1..20}; do
     dump_ui "$destination"
+    if dismiss_quickstep_anr "$destination"; then
+      continue
+    fi
     if grep -q 'Buenos días' "$destination" || grep -q 'text="Inicio"' "$destination"; then
       return 0
     fi
@@ -74,6 +90,9 @@ wait_for_onboarding() {
 
   for _ in {1..20}; do
     dump_ui "$destination"
+    if dismiss_quickstep_anr "$destination"; then
+      continue
+    fi
     if grep -q 'text="Saltar"' "$destination"; then
       return 0
     fi
