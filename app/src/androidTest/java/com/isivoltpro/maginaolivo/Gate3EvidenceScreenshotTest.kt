@@ -42,7 +42,23 @@ class Gate3EvidenceScreenshotTest {
             }
         }
         composeRule.waitForIdle()
+        assertTicketAmountFitsPreview()
         saveNode(tag = "ocr-review-reference-root", prefix = "delivery-ocr-review")
+    }
+
+    private fun assertTicketAmountFitsPreview() {
+        val previewBounds = composeRule
+            .onNodeWithTag("ocr-ticket-preview")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val amountBounds = composeRule
+            .onNodeWithTag("ocr-ticket-amount")
+            .fetchSemanticsNode()
+            .boundsInRoot
+
+        check(amountBounds.top >= previewBounds.top && amountBounds.bottom <= previewBounds.bottom) {
+            "OCR amount is clipped by the ticket preview: amount=$amountBounds preview=$previewBounds"
+        }
     }
 
     private fun saveNode(

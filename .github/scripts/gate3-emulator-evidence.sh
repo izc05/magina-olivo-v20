@@ -54,6 +54,21 @@ dump_ui() {
   adb pull /sdcard/gate3-window.xml "$destination" >/dev/null
 }
 
+wait_for_home() {
+  local destination="$1"
+
+  for _ in {1..20}; do
+    dump_ui "$destination"
+    if grep -q 'Buenos días' "$destination" || grep -q 'text="Inicio"' "$destination"; then
+      return 0
+    fi
+    sleep 0.25
+  done
+
+  echo "Home did not become visible before evidence capture" >&2
+  return 1
+}
+
 tap_text_from_xml() {
   local text_to_find="$1"
   local xml_file="$2"
@@ -141,15 +156,8 @@ capture_variant() {
   fi
 
   tap_text_from_xml "Saltar" "$out/onboarding-ui.xml"
-  sleep 1
-
+  wait_for_home "$out/home-ui.xml"
   adb exec-out screencap -p > "$out/home.png"
-  dump_ui "$out/home-ui.xml"
-
-  if ! grep -q 'Buenos días' "$out/home-ui.xml" && ! grep -q 'text="Inicio"' "$out/home-ui.xml"; then
-    echo "Home accessibility tree does not expose the visible Home header/navigation for $label" >&2
-    exit 1
-  fi
 
   adb shell input swipe \
     "$((PHYSICAL_WIDTH / 2))" \
