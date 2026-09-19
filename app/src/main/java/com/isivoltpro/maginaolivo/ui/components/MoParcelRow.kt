@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,9 +33,12 @@ fun MoParcelRow(
     area: String,
     variety: String?,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = MoShape.card,
         colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
         border = BorderStroke(1.dp, MoOutline),

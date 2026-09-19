@@ -176,6 +176,7 @@ capture_variant() {
     adb shell wm density | tr -d '\r'
   } > "$out/display.txt"
 
+  adb shell pm clear "$PKG" > "$out/clear-app-data.txt"
   adb shell am force-stop "$PKG"
   adb shell am start -W -S -n "$PKG/$ACTIVITY" > "$out/start-onboarding.txt"
   wait_for_app

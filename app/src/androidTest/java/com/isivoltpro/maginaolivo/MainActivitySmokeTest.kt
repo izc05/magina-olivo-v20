@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo
 
+import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -10,12 +11,24 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Before
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class MainActivitySmokeTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
+
+    @Before
+    fun resetFirstRunState() {
+        composeRule.activity
+            .getSharedPreferences("magina_olivo_app_state", Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .commit()
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+    }
 
     @Test
     fun launcherShowsOnboardingReference() {

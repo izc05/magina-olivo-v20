@@ -28,6 +28,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 @Composable
 fun OlivarReferenceScreen(
     modifier: Modifier = Modifier,
+    onFarmSelected: (String) -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier
@@ -101,7 +102,10 @@ fun OlivarReferenceScreen(
                 area = "42,6 ha",
                 parcels = "3",
                 campaignStatus = "Campaña activa",
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("farm-La Solana"),
+                onClick = { onFarmSelected("la-solana") },
             )
 
             Spacer(Modifier.height(MoSpacing.md))
@@ -112,7 +116,10 @@ fun OlivarReferenceScreen(
                 area = "21,2 ha",
                 parcels = "2",
                 campaignStatus = "Sin campaña",
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("farm-El Portillo"),
+                onClick = { onFarmSelected("el-portillo") },
             )
 
             Spacer(Modifier.height(MoSpacing.xl))

@@ -40,6 +40,8 @@ object AppDestination {
     const val Weather = "weather"
     const val Analytics = "analytics"
     const val OcrReview = "ocr-review"
+    const val Harvest = "harvest"
+    const val Expenses = "expenses"
     const val DeveloperGallery = "developer-gallery"
 
     const val FarmPattern = "farm/{farmId}"
@@ -63,7 +65,7 @@ object AppDestination {
             MapCatastro,
             Analytics,
             -> RootDestination.Olivar
-            RootDestination.Register.route, OcrReview -> RootDestination.Register
+            RootDestination.Register.route, OcrReview, Harvest, Expenses -> RootDestination.Register
             RootDestination.Calendar.route -> RootDestination.Calendar
             RootDestination.Profile.route, DeveloperGallery -> RootDestination.Profile
             else -> null

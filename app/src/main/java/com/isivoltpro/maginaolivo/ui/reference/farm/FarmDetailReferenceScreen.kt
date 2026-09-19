@@ -38,6 +38,8 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 @Composable
 fun FarmDetailReferenceScreen(
     modifier: Modifier = Modifier,
+    onParcelSelected: (String) -> Unit = {},
+    onCampaignSelected: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier
@@ -118,18 +120,21 @@ fun FarmDetailReferenceScreen(
                 name = "Parcela Norte",
                 area = "12,4 ha",
                 variety = "Picual",
+                onClick = { onParcelSelected("north") },
             )
             Spacer(Modifier.height(MoSpacing.sm))
             MoParcelRow(
                 name = "Parcela Central",
                 area = "18,6 ha",
                 variety = "Picual",
+                onClick = { onParcelSelected("central") },
             )
             Spacer(Modifier.height(MoSpacing.sm))
             MoParcelRow(
                 name = "Parcela Sur",
                 area = "11,6 ha",
                 variety = "Hojiblanca",
+                onClick = { onParcelSelected("south") },
             )
 
             Spacer(Modifier.height(MoSpacing.md))
@@ -146,6 +151,7 @@ fun FarmDetailReferenceScreen(
             Spacer(Modifier.height(MoSpacing.sm))
 
             Card(
+                onClick = onCampaignSelected,
                 modifier = Modifier.fillMaxWidth(),
                 shape = MoShape.card,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

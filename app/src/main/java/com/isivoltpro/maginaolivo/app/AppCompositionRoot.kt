@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.app
 
+import android.content.Context
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.dispatchers.DefaultAppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
@@ -18,6 +19,7 @@ data class AppCompositionRoot(
     val logger: AppLogger,
     val regionalContext: RegionalContext,
     val unitPreferences: UnitPreferences,
+    val onboardingStateStore: OnboardingStateStore,
 ) {
     companion object {
         fun createDefault(environmentValue: String): AppCompositionRoot =
@@ -29,6 +31,15 @@ data class AppCompositionRoot(
                 logger = AndroidAppLogger(),
                 regionalContext = RegionalContext.spainDefault(),
                 unitPreferences = UnitPreferences(),
+                onboardingStateStore = InMemoryOnboardingStateStore(),
+            )
+
+        fun createAndroid(
+            context: Context,
+            environmentValue: String,
+        ): AppCompositionRoot =
+            createDefault(environmentValue).copy(
+                onboardingStateStore = AndroidOnboardingStateStore(context.applicationContext),
             )
     }
 }
