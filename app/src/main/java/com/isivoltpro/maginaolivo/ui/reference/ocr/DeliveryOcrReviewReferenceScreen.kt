@@ -69,10 +69,10 @@ fun DeliveryOcrReviewReferenceScreen(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Revisar entrega",
                         style = MaterialTheme.typography.headlineLarge,
