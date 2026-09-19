@@ -63,6 +63,31 @@ class AppNavigationTest {
     }
 
     @Test
+    fun activeRootSurvivesActivityRecreation() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Calendario").performClick()
+
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("calendar-root").assertIsDisplayed()
+        composeRule.onNodeWithTag("bottom-Calendario").assertIsSelected()
+    }
+
+    @Test
+    fun revisitingRootDoesNotAddDuplicateDestination() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Inicio").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+
+        pressBack()
+
+        composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
+        composeRule.onNodeWithTag("bottom-Inicio").assertIsSelected()
+    }
+
+    @Test
     fun registerRootOpensContextSheetBeforeFlow() {
         enterMainShell()
 
@@ -72,6 +97,18 @@ class AppNavigationTest {
 
         composeRule.onNodeWithTag("register-reference-root").assertIsDisplayed()
         composeRule.onNodeWithTag("bottom-Registrar").assertIsSelected()
+    }
+
+    @Test
+    fun registerSheetCanBeCancelledWithoutChangingRoot() {
+        enterMainShell()
+
+        composeRule.onNodeWithTag("bottom-Registrar").performClick()
+        composeRule.onNodeWithText("Cancelar").performClick()
+
+        composeRule.onNodeWithTag("register-action-sheet").assertDoesNotExist()
+        composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
+        composeRule.onNodeWithTag("bottom-Inicio").assertIsSelected()
     }
 
     @Test

@@ -161,7 +161,9 @@ fun AppNavigation(
                 )
             }
             composable(AppDestination.Expenses) { ExpensesDocumentsReferenceScreen() }
-            composable(AppDestination.DeveloperGallery) { ComponentCatalogueReferenceScreen() }
+            if (compositionRoot.environment == AppEnvironment.DEV) {
+                composable(AppDestination.DeveloperGallery) { ComponentCatalogueReferenceScreen() }
+            }
         }
     }
 
