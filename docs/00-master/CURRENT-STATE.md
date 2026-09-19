@@ -22,15 +22,16 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ CR-003 — Mágina Olivo brand + canonical visual system approved
 ✅ Gate 3 — Visual / accessibility / emulator validation
 ✅ Gate 4 — Production navigation shell
+✅ Gate 5 — Local database foundation
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 5 — LOCAL DATABASE FOUNDATION
+▶ PHASE 6 — FARMS RC1.2
 ```
 
-Gate 4 is recorded as PASS in `docs/06-testing/PHASE4-GATE-CHECKLIST.md`. Phase 5 may now implement the Room schema, migrations, local repositories and test fixtures; farm feature UI remains blocked until Gate 5 passes.
+Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Phase 6 may now implement the complete offline Farm lifecycle and production UI; Parcel implementation remains blocked until the Phase 6 gate passes.
 
 ## Mandatory reading order for any agent
 
@@ -71,18 +72,21 @@ Gate 4 passed on code commit `483fc145` on 2026-09-19. The app now has one produ
 
 Validation also closed a CI false positive: the evidence script now rejects JUnit `FAILURES!!!` even when `adb am instrument` returns zero. PR #198 contains the Phase 4 stack and remains separate from `main`.
 
+Gate 5 passed on code commit `ad61d6f4` on 2026-09-19. Room is now the wired local persistence foundation with committed v1/v2 schemas, an explicit migration, 13 core tables, client UUIDs, soft-delete/version/sync metadata, repository/DAO boundaries and transactional Farm + outbox proof. A deterministic fixture exists only in the DEV flavor.
+
+CI passed 22 unit tests and 28 Android instrumentation tests. The three repository tests were also executed separately with Android airplane mode enabled and Wi-Fi disabled; both the primary and independent API 35 emulator runs passed with empty crash buffers. Evidence and the installable DEV APK are attached to runs `35465669062` and `35465670678`. PR #199 contains the stacked Phase 5 implementation; `main` remains unchanged.
+
 ## Next deliverable
 
-Implement Phase 5 local database foundation:
+Implement Phase 6 Farms RC1.2:
 
-- Room schema with client UUIDs and explicit converters;
-- migration/exported-schema coverage;
-- soft-delete, version and synchronization metadata conventions;
-- local repository boundaries and observable reads;
-- attachment metadata and durable outbox tables;
-- deterministic DEV/test fixtures.
+- create, edit, archive and restore Farm operations;
+- local list/card/detail UI with loading, empty, success and error states;
+- optional cover-photo metadata reference and notes;
+- surface, parcel count, active campaign and productive-summary placeholders backed only by truthful local data;
+- 1/20/50+ farm behavior and complete offline operation.
 
-Gate 5 requires migration tests plus restart persistence and airplane-mode CRUD proof on test entities. Do not begin the production Farm feature UI before Gate 5 passes.
+Gate 6 requires the complete Farm lifecycle to survive restart and work offline. Do not begin production Parcel implementation before Gate 6 passes.
 
 ## Parallel-chat reconciliation
 
