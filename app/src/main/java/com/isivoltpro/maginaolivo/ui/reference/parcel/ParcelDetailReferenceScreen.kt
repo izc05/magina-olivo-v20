@@ -42,6 +42,8 @@ import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 @Composable
 fun ParcelDetailReferenceScreen(
     modifier: Modifier = Modifier,
+    onMapSelected: () -> Unit = {},
+    onCampaignSelected: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier
@@ -112,13 +114,14 @@ fun ParcelDetailReferenceScreen(
 
             MoSectionHeader(title = "Ubicación")
             Spacer(Modifier.height(MoSpacing.sm))
-            ParcelMapPreview()
+            ParcelMapPreview(onClick = onMapSelected)
 
             Spacer(Modifier.height(MoSpacing.lg))
 
             MoSectionHeader(title = "Campaña 2026/27")
             Spacer(Modifier.height(MoSpacing.sm))
             Card(
+                onClick = onCampaignSelected,
                 modifier = Modifier.fillMaxWidth(),
                 shape = MoShape.card,
                 colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
@@ -159,8 +162,9 @@ fun ParcelDetailReferenceScreen(
 }
 
 @Composable
-private fun ParcelMapPreview() {
+private fun ParcelMapPreview(onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(2.05f),

@@ -21,15 +21,16 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 2 — Base application architecture
 ✅ CR-003 — Mágina Olivo brand + canonical visual system approved
 ✅ Gate 3 — Visual / accessibility / emulator validation
+✅ Gate 4 — Production navigation shell
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 4 — NAVIGATION SHELL
+▶ PHASE 5 — LOCAL DATABASE FOUNDATION
 ```
 
-Gate 3 is recorded as PASS in `docs/06-testing/PHASE3-GATE-CHECKLIST.md`. Phase 4 may implement only the production navigation shell; agricultural persistence and features remain blocked until their own phases.
+Gate 4 is recorded as PASS in `docs/06-testing/PHASE4-GATE-CHECKLIST.md`. Phase 5 may now implement the Room schema, migrations, local repositories and test fixtures; farm feature UI remains blocked until Gate 5 passes.
 
 ## Mandatory reading order for any agent
 
@@ -66,15 +67,22 @@ Gate 3 passed on integration commit `6f37b736` on 2026-09-19. Lint, 12 unit test
 
 PR #197 integrates and supersedes the Android validation intent of draft PRs #195 and #196 without closing or deleting their historical record. `main` remains unchanged pending owner authorization.
 
+Gate 4 passed on code commit `483fc145` on 2026-09-19. The app now has one production `NavHost`, the five frozen roots, deterministic back behavior, contextual Register entry, persisted onboarding completion and DEV-only catalogue access. CI passed 17 unit tests and 24 Android instrumentation tests; emulator evidence and the installable DEV APK are attached to runs `35449235415` and `35449237218`.
+
+Validation also closed a CI false positive: the evidence script now rejects JUnit `FAILURES!!!` even when `adb am instrument` returns zero. PR #198 contains the Phase 4 stack and remains separate from `main`.
+
 ## Next deliverable
 
-Implement the Phase 4 production navigation shell with the frozen roots:
+Implement Phase 5 local database foundation:
 
-`Inicio · Mi Olivar · Registrar (+) · Calendario · Perfil`
+- Room schema with client UUIDs and explicit converters;
+- migration/exported-schema coverage;
+- soft-delete, version and synchronization metadata conventions;
+- local repository boundaries and observable reads;
+- attachment metadata and durable outbox tables;
+- deterministic DEV/test fixtures.
 
-Phase 4 must provide a single coherent graph, predictable back behavior, state restoration and a context-aware Register entry. It may connect approved reference screens or explicit placeholders, but must not introduce Room or feature persistence ahead of Phase 5.
-
-Gate 4 requires instrumentation evidence with no dead routes or back-stack defects.
+Gate 5 requires migration tests plus restart persistence and airplane-mode CRUD proof on test entities. Do not begin the production Farm feature UI before Gate 5 passes.
 
 ## Parallel-chat reconciliation
 
