@@ -10,6 +10,8 @@ import com.isivoltpro.maginaolivo.core.regional.RegionalContext
 import com.isivoltpro.maginaolivo.core.regional.UnitPreferences
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.core.time.SystemAppClock
+import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 
 data class AppCompositionRoot(
     val environment: AppEnvironment,
@@ -20,6 +22,7 @@ data class AppCompositionRoot(
     val regionalContext: RegionalContext,
     val unitPreferences: UnitPreferences,
     val onboardingStateStore: OnboardingStateStore,
+    val localPersistence: LocalPersistence?,
 ) {
     companion object {
         fun createDefault(environmentValue: String): AppCompositionRoot =
@@ -32,14 +35,26 @@ data class AppCompositionRoot(
                 regionalContext = RegionalContext.spainDefault(),
                 unitPreferences = UnitPreferences(),
                 onboardingStateStore = InMemoryOnboardingStateStore(),
+                localPersistence = null,
             )
 
         fun createAndroid(
             context: Context,
             environmentValue: String,
-        ): AppCompositionRoot =
-            createDefault(environmentValue).copy(
-                onboardingStateStore = AndroidOnboardingStateStore(context.applicationContext),
+        ): AppCompositionRoot {
+            val applicationContext = context.applicationContext
+            val defaults = createDefault(environmentValue)
+            val database = MaginaOlivoDatabase.getInstance(applicationContext)
+            val farmRepository = OfflineFirstFarmRepository(
+                database = database,
+                clock = defaults.clock,
+                idGenerator = defaults.idGenerator,
+                dispatchers = defaults.dispatchers,
             )
+            return defaults.copy(
+                onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
+                localPersistence = LocalPersistence(database, farmRepository),
+            )
+        }
     }
 }
