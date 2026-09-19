@@ -55,7 +55,7 @@ jobs:
           retention-days: 14
 
   gate3-emulator:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     steps:
@@ -81,60 +81,14 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Run Gate 3 instrumented QA on emulator
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 35
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: |
-            set -eu
-            mkdir -p gate3-evidence
-
-            adb shell wm size 1080x2400
-            adb shell wm density 480
-            adb shell settings put system font_scale 1.0
-            gradle --no-daemon connectedDevDebugAndroidTest
-            gradle --no-daemon installDevDebug
-            adb shell am force-stop com.isivoltpro.maginaolivo.dev
-            adb shell am start -W -n com.isivoltpro.maginaolivo.dev/com.isivoltpro.maginaolivo.MainActivity
-            sleep 2
-            adb exec-out screencap -p > gate3-evidence/360dp.png
-
-            adb shell wm density 440
-            adb shell settings put system font_scale 1.3
-            gradle --no-daemon connectedDevDebugAndroidTest
-            gradle --no-daemon installDevDebug
-            adb shell am force-stop com.isivoltpro.maginaolivo.dev
-            adb shell am start -W -n com.isivoltpro.maginaolivo.dev/com.isivoltpro.maginaolivo.MainActivity
-            sleep 2
-            adb exec-out screencap -p > gate3-evidence/393dp-font130.png
-
-            adb shell wm density 360
-            adb shell settings put system font_scale 1.0
-            gradle --no-daemon connectedDevDebugAndroidTest
-            gradle --no-daemon installDevDebug
-            adb shell am force-stop com.isivoltpro.maginaolivo.dev
-            adb shell am start -W -n com.isivoltpro.maginaolivo.dev/com.isivoltpro.maginaolivo.MainActivity
-            sleep 2
-            adb exec-out screencap -p > gate3-evidence/480dp.png
-
-            adb shell settings put global animator_duration_scale 0
-            adb shell settings put global transition_animation_scale 0
-            adb shell settings put global window_animation_scale 0
-            gradle --no-daemon connectedDevDebugAndroidTest
-
-            mkdir -p gate3-evidence/reference-screens
-            for file in \
-              parcel-detail-360dp-font100.png \
-              parcel-detail-393dp-font130.png \
-              parcel-detail-480dp-font100.png \
-              ocr-review-360dp-font100.png \
-              ocr-review-393dp-font130.png \
-              ocr-review-480dp-font100.png; do
-              adb shell test -f "/sdcard/gate3/$file"
-            done
-            adb pull /sdcard/gate3/. gate3-evidence/reference-screens/
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash .github/scripts/gate3-emulator-evidence.sh
 
       - name: Upload Gate 3 emulator evidence
         uses: actions/upload-artifact@v6
@@ -142,7 +96,7 @@ jobs:
         with:
           name: gate3-emulator-evidence
           path: |
-            gate3-evidence/
+            evidence/
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
           if-no-files-found: warn
