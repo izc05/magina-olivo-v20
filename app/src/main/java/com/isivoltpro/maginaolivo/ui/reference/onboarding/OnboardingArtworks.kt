@@ -25,11 +25,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
+import com.isivoltpro.maginaolivo.ui.theme.MoArtworkMapBase
+import com.isivoltpro.maginaolivo.ui.theme.MoArtworkMapGround
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoEarth
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
@@ -222,7 +223,7 @@ private fun MapArtwork(modifier: Modifier) {
     Card(
         modifier = modifier.padding(horizontal = MoSpacing.sm, vertical = MoSpacing.xs),
         shape = MoShape.hero,
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFD8D7C4)),
+        colors = CardDefaults.cardColors(containerColor = MoArtworkMapBase),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Box(Modifier.fillMaxSize()) {
@@ -230,7 +231,7 @@ private fun MapArtwork(modifier: Modifier) {
                 val w = size.width
                 val h = size.height
 
-                drawRect(Color(0xFFC8C2A1))
+                drawRect(MoArtworkMapGround)
                 repeat(9) { row ->
                     repeat(7) { col ->
                         drawCircle(

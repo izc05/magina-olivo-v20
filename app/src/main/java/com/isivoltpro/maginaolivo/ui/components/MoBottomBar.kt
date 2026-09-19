@@ -1,6 +1,6 @@
 package com.isivoltpro.maginaolivo.ui.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,8 +17,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
@@ -65,7 +66,11 @@ fun MoBottomBar(
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 54.dp)
-                        .clickable { onSelected(index) }
+                        .selectable(
+                            selected = selected,
+                            role = Role.Tab,
+                            onClick = { onSelected(index) },
+                        )
                         .testTag("bottom-${item.label}"),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
@@ -75,11 +80,12 @@ fun MoBottomBar(
                             modifier = Modifier.size(38.dp),
                             shape = CircleShape,
                             color = MoOlivePrimary,
-                            contentColor = Color.White,
+                            contentColor = MoWarmWhite,
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
                                     text = item.symbol,
+                                    modifier = Modifier.clearAndSetSemantics { },
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Normal,
                                 )
@@ -88,6 +94,7 @@ fun MoBottomBar(
                     } else {
                         Text(
                             text = item.symbol,
+                            modifier = Modifier.clearAndSetSemantics { },
                             style = MaterialTheme.typography.titleMedium,
                             color = color,
                         )

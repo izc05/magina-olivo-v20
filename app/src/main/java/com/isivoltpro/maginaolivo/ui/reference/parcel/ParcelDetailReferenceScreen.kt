@@ -31,6 +31,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
+import com.isivoltpro.maginaolivo.ui.theme.MoMapBase
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
@@ -164,7 +165,7 @@ private fun ParcelMapPreview() {
             .fillMaxWidth()
             .aspectRatio(2.05f),
         shape = MoShape.cardLarge,
-        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(0xFFD8D5BA)),
+        colors = CardDefaults.cardColors(containerColor = MoMapBase),
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width

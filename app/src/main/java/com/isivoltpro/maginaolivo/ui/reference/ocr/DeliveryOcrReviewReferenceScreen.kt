@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -69,10 +70,10 @@ fun DeliveryOcrReviewReferenceScreen(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Revisar entrega",
                         style = MaterialTheme.typography.headlineLarge,
@@ -194,7 +195,8 @@ private fun TicketPreview() {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(210.dp),
+            .heightIn(min = 210.dp)
+            .testTag("ocr-ticket-preview"),
         shape = MoShape.cardLarge,
         colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
         border = BorderStroke(1.dp, MoOutline),
@@ -215,7 +217,12 @@ private fun TicketPreview() {
             )
             Text("Nº A-18472", style = MaterialTheme.typography.bodyLarge)
             Text("18/11/2026", style = MaterialTheme.typography.bodyLarge)
-            Text("2.850 kg", style = MaterialTheme.typography.headlineMedium, color = MoOlivePrimary)
+            Text(
+                text = "2.850 kg",
+                modifier = Modifier.testTag("ocr-ticket-amount"),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MoOlivePrimary,
+            )
         }
     }
 }
