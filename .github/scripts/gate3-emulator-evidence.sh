@@ -153,6 +153,19 @@ pull_private_gate3_screens() {
   done <<<"$names"
 }
 
+assert_instrumentation_passed() {
+  local output_file="$1"
+  local label="$2"
+  local command_rc="$3"
+
+  if [[ "$command_rc" -ne 0 ]] || \
+    ! grep -Eq '^OK \([0-9]+ tests?\)$' "$output_file" || \
+    grep -Eq 'FAILURES!!!|INSTRUMENTATION_FAILED|shortMsg=Process crashed' "$output_file"; then
+    echo "$label failed (adb rc=$command_rc); see $output_file" >&2
+    return 1
+  fi
+}
+
 capture_variant() {
   local target_dp="$1"
   local label="$2"
@@ -214,10 +227,10 @@ capture_variant() {
 
   cat "$out/reference-instrumentation.txt"
 
-  if [[ "$screenshot_rc" -ne 0 ]]; then
-    echo "Reference screenshot instrumentation failed for $label" >&2
-    exit "$screenshot_rc"
-  fi
+  assert_instrumentation_passed \
+    "$out/reference-instrumentation.txt" \
+    "Reference screenshot instrumentation for $label" \
+    "$screenshot_rc"
 
   pull_private_gate3_screens "$out/reference"
 }
@@ -236,6 +249,11 @@ adb shell am instrument -w "$TEST_PKG/$RUNNER" > evidence/instrumentation-all.tx
 INSTRUMENTATION_RC=$?
 set -e
 cat evidence/instrumentation-all.txt
+
+assert_instrumentation_passed \
+  evidence/instrumentation-all.txt \
+  "Full instrumented test suite" \
+  "$INSTRUMENTATION_RC"
 
 adb logcat -c
 : > evidence/startup-runs.txt
@@ -275,8 +293,3 @@ adb logcat -b crash -d -v threadtime > evidence/crash.txt 2>&1 || true
 } > evidence/summary.txt
 
 cat evidence/summary.txt
-
-if [[ "$INSTRUMENTATION_RC" -ne 0 ]]; then
-  echo "Full instrumented test suite failed with rc=$INSTRUMENTATION_RC" >&2
-  exit "$INSTRUMENTATION_RC"
-fi
