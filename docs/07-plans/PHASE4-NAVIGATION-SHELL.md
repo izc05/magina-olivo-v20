@@ -1,6 +1,6 @@
 # Phase 4 — Production navigation shell implementation plan
 
-**Status:** Complete — Gate 4 PASS  
+**Status:** Complete — Gate 4 PASS
 **Precondition:** Gate 3 PASS  
 **Branch:** `feat/android-navigation`  
 **Stacked base:** `integrate/android-magina-olivo-rc1`
