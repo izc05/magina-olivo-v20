@@ -20,10 +20,10 @@ export type VisualAsset = {
 export const visualAssets: Record<VisualAssetKey, VisualAsset> = {
   hero: {
     key: "hero",
-    finalSrc: "/media/home/hero-farmer.webp",
+    finalSrc: "/media/home/hero-farmer-panel.webp",
     fallbackSrc: "/brand/hero-scene.svg",
     alt: "Agricultor consultando Mágina Olivo entre olivos de Sierra Mágina",
-    focalPoint: "68% 45%",
+    focalPoint: "58% 50%",
     status: "final",
   },
   territoryIntro: {
