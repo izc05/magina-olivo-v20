@@ -42,6 +42,9 @@ jobs:
         working-directory: web
         run: docker build -t magina-olivo-web:ci .
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
       - name: Smoke test Docker runtime
         run: |
           docker run -d --rm \
@@ -90,3 +93,5 @@ jobs:
             echo "${route} -> ${code}"
             test "${code}" = "200"
           done
+
+          PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run test:e2e
