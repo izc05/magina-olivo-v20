@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { SceneImage } from "@/components/SceneImage";
 import { visualAssets } from "@/lib/visualAssets";
@@ -105,9 +106,9 @@ export function PageCta({
           <h2>{title}</h2>
           <p>{copy}</p>
         </div>
-        <a className="button button-light" href={href}>
+        <Link className="button button-light" href={href}>
           {label} <span aria-hidden="true">→</span>
-        </a>
+        </Link>
       </div>
     </section>
   );
