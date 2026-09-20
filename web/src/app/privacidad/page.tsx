@@ -4,6 +4,7 @@ import { LegalPage } from "@/components/LegalPage";
 export const metadata: Metadata = {
   title: "Privacidad",
   description: "Información de privacidad de Mágina Olivo.",
+  alternates: { canonical: "/privacidad" },
 };
 
 export default function PrivacidadPage() {
