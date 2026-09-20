@@ -38,7 +38,18 @@ ALLOW_INDEXING=false
 
 En staging, `ALLOW_INDEXING` debe permanecer en `false`. La web publica `robots.txt` con bloqueo global y metadatos `noindex`.
 
-Solo en producción, después de confirmar el dominio definitivo:
+Estas variables se aplican también durante el **build Docker**, porque Next.js puede pre-generar metadatos y rutas SEO. El compose de staging ya las incluye como `build.args`.
+
+Solo en producción, después de confirmar el dominio definitivo, construye una imagen nueva con indexación activada:
+
+```bash
+docker build \
+  --build-arg SITE_URL=https://maginaolivo.es \
+  --build-arg ALLOW_INDEXING=true \
+  -t magina-olivo-web:production .
+```
+
+Y arráncala con las mismas variables en runtime:
 
 ```env
 SITE_URL=https://maginaolivo.es
