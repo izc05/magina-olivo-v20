@@ -26,8 +26,11 @@ export function FieldToPhoneSequence() {
       const progress = clamp01(-rect.top / travel);
 
       const personFocus = phase(progress, 0.08, 0.42);
-      const deviceEnter = phase(progress, 0.30, 0.64);
-      const deviceFocus = phase(progress, 0.55, 0.82);
+      const contextIn = phase(progress, 0.34, 0.54);
+      const contextOut = phase(progress, 0.68, 0.84);
+      const contextOpacity = contextIn * (1 - contextOut);
+      const deviceEnter = phase(progress, 0.56, 0.78);
+      const deviceFocus = phase(progress, 0.64, 0.86);
       const uiReveal = phase(progress, 0.72, 0.91);
       const finalReveal = phase(progress, 0.82, 0.98);
 
@@ -36,7 +39,10 @@ export function FieldToPhoneSequence() {
       stage.style.setProperty("--person-scale", String(1 + personFocus * 0.46));
       stage.style.setProperty("--person-x", `${personFocus * -17}vw`);
       stage.style.setProperty("--person-opacity", String(1 - phase(progress, 0.64, 0.86) * 0.64));
-      stage.style.setProperty("--hand-opacity", String(deviceEnter));
+      stage.style.setProperty("--context-opacity", String(contextOpacity));
+      stage.style.setProperty("--context-scale", String(1.08 - contextIn * 0.08 + contextOut * 0.04));
+      stage.style.setProperty("--context-y", `${(1 - contextIn) * 11 - contextOut * 5}vh`);
+      stage.style.setProperty("--hand-opacity", String(deviceEnter * (1 - contextOpacity)));
       stage.style.setProperty("--hand-y", `${(1 - deviceEnter) * 24}vh`);
       stage.style.setProperty("--device-opacity", String(deviceEnter));
       stage.style.setProperty("--device-y", `${(1 - deviceEnter) * 58}vh`);
@@ -80,6 +86,13 @@ export function FieldToPhoneSequence() {
           <span className="film-body" />
           <span className="film-arm film-arm-left" />
           <span className="film-arm film-arm-right" />
+        </div>
+
+        <div className="film-phone-context" aria-hidden="true">
+          <SceneImage
+            asset={visualAssets.phoneContext}
+            sizes="(max-width: 820px) 72vw, 38vw"
+          />
         </div>
 
         <div className="film-hand-layer" aria-hidden="true">
