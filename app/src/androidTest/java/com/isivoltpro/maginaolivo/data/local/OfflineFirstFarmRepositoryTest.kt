@@ -13,9 +13,11 @@ import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
 import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
 import com.isivoltpro.maginaolivo.domain.farm.FarmChanges
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
+import com.isivoltpro.maginaolivo.domain.parcel.NewParcel
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -333,6 +335,62 @@ class OfflineFirstFarmRepositoryTest {
                 database.syncOutboxDao()
                     .listForEntity(SyncEntityType.WORKSPACE, workspaceId)
                     .map { it.operation },
+            )
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun parcelLifecyclePreservesMembershipHistoryAndOutbox() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000080")
+        val farmId = uuid("20000000-0000-0000-0000-000000000080")
+        val parcelId = uuid("40000000-0000-0000-0000-000000000080")
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            assertEquals(
+                AppResult.Success(farmId),
+                repository(
+                    database, TEST_INSTANT,
+                    listOf(farmId, uuid("30000000-0000-0000-0000-000000000080")),
+                ).create(NewFarm(workspaceId, "La Solana")),
+            )
+            fun parcels(now: Instant, ids: List<UUID>) = OfflineFirstParcelRepository(
+                database, FixedClock(now), QueuedIdGenerator(ids), TestDispatchers,
+            )
+            assertEquals(
+                AppResult.Success(parcelId),
+                parcels(
+                    TEST_INSTANT,
+                    listOf(
+                        parcelId,
+                        uuid("50000000-0000-0000-0000-000000000080"),
+                        uuid("60000000-0000-0000-0000-000000000080"),
+                    ),
+                ).create(NewParcel(farmId, "Parcela Norte", managedAreaM2 = 12_400.0)),
+            )
+            assertEquals("Parcela Norte", database.parcelDao().observeActive(farmId).first().single().parcel.displayName)
+            assertEquals(
+                AppResult.Success(Unit),
+                parcels(
+                    TEST_INSTANT.plusSeconds(1),
+                    listOf(uuid("60000000-0000-0000-0000-000000000081")),
+                ).archive(parcelId),
+            )
+            assertTrue(database.parcelDao().observeActive(farmId).first().isEmpty())
+            val restored = parcels(
+                TEST_INSTANT.plusSeconds(2),
+                listOf(
+                    uuid("50000000-0000-0000-0000-000000000081"),
+                    uuid("60000000-0000-0000-0000-000000000082"),
+                ),
+            )
+            assertEquals(AppResult.Success(Unit), restored.restore(parcelId, farmId))
+            assertEquals(2, restored.membershipHistory(parcelId).size)
+            assertEquals(
+                listOf(OutboxOperation.CREATE, OutboxOperation.DELETE, OutboxOperation.UPDATE),
+                database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelId).map { it.operation },
             )
         } finally {
             database.close()

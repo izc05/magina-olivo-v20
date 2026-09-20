@@ -28,10 +28,10 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ GATE 6 — PARCELS (FARMS SLICE PASS; GATE 6 OVERALL IN PROGRESS)
+▶ GATE 6 — CAMPAIGNS (FARMS + PARCELS SLICES PASS; GATE 6 OVERALL IN PROGRESS)
 ```
 
-Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. The Gate 6 Farm slice is validated in `docs/06-testing/PHASE6-FARMS-SLICE.md`. Per the current owner mission, Gate 6 covers Farms + Parcels + Campaigns, so it remains FAIL/in progress while Parcel implementation begins.
+Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. The Gate 6 Farm and Parcel slices are validated in `docs/06-testing/PHASE6-FARMS-SLICE.md` and `docs/06-testing/PHASE6-PARCELS-SLICE.md`. Per the current owner mission, Gate 6 covers Farms + Parcels + Campaigns, so it remains FAIL/in progress while Campaign implementation begins.
 
 ## Mandatory reading order for any agent
 
@@ -78,17 +78,19 @@ CI passed 22 unit tests and 28 Android instrumentation tests. The three reposito
 
 The Gate 6 Farm slice passed on code commit `a2d2d475` on 2026-09-20. Production Mi Olivar now uses Room-backed Farm list/detail routes with create, edit, archive, restore, truthful derived summaries and durable cover-photo metadata. Every mutation is local-first and queues its synchronization intent. CI passed 27 unit tests, 37 API 35 instrumentation tests and 6 repository tests under airplane mode; the crash buffer was empty. Evidence and the verified DEV APK are attached to run `35480574641`. PR #200 contains this stacked slice.
 
+The Gate 6 Parcel slice passed on code commit `ee89b9f7` on 2026-09-20. Production Farm detail now lists persisted Parcels and supports manual create, detail, edit, archive and restore. Parcel identity is app-owned, Farm membership history is non-destructive, optional GeoJSON geometry is retained, and manual data is never presented as Catastro-verified. Mutations are local-first and enqueue deterministic outbox intents. CI passed 30 unit tests, 42 API 35 instrumentation tests and 7 repository tests under airplane mode; the crash buffer was empty. Evidence and the verified DEV APK are attached to run `35506482946`. PR #201 contains this stacked slice.
+
 ## Next deliverable
 
-Continue Gate 6 with Parcels:
+Continue Gate 6 with Campaigns:
 
-- create, edit, archive and restore Parcel operations;
-- associate each Parcel with a Farm through non-destructive membership history;
-- retain manual/cadastral source identity, geometry GeoJSON and known area without inventing data;
-- replace the production Parcel reference route and connect the Farm detail list;
-- prove offline persistence, outbox behavior, restart and navigation.
+- create and list historical Campaigns for a Farm/Parcel scope;
+- select exactly one active Campaign for its scope;
+- close and reopen Campaigns without destroying history;
+- provide truthful kg, delivery, yield and expense summaries from persisted data;
+- connect production Farm → Campaign navigation and prove offline persistence/outbox behavior.
 
-After the Parcel slice passes, implement Campaigns. Gate 6 must not be marked PASS until Farms, Parcels and Campaigns all pass together.
+Gate 6 must not be marked PASS until the Campaign slice and the combined Farm → Parcel → Campaign flow pass together.
 
 ## Parallel-chat reconciliation
 

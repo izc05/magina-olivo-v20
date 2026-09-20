@@ -22,6 +22,7 @@ import com.isivoltpro.maginaolivo.app.AppCompositionRoot
 import com.isivoltpro.maginaolivo.app.AppEnvironment
 import com.isivoltpro.maginaolivo.feature.farms.FarmDetailRoute
 import com.isivoltpro.maginaolivo.feature.farms.FarmListRoute
+import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
@@ -35,7 +36,6 @@ import com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.map.MapCatastroReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.parcel.ParcelDetailReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.register.RegisterActivityReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.weather.WeatherMarketReferenceScreen
 import java.util.UUID
@@ -154,15 +154,26 @@ fun AppNavigation(
                     FarmDetailRoute(
                         farmId = farmId,
                         persistence = persistence,
+                        onParcelSelected = { parcelId ->
+                            navController.navigate(AppDestination.parcel(parcelId.toString()))
+                        },
                         onArchived = { navController.popBackStack() },
                     )
                 }
             }
-            composable(AppDestination.ParcelPattern) {
-                ParcelDetailReferenceScreen(
-                    onMapSelected = { navController.navigate(AppDestination.MapCatastro) },
-                    onCampaignSelected = { navController.navigate(AppDestination.campaign("active")) },
-                )
+            composable(AppDestination.ParcelPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val parcelId = backStackEntry.arguments?.getString("parcelId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || parcelId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    ParcelDetailRoute(
+                        parcelId = parcelId,
+                        persistence = persistence,
+                        onArchived = { navController.popBackStack() },
+                    )
+                }
             }
             composable(AppDestination.CampaignPattern) {
                 CampaignReferenceScreen(

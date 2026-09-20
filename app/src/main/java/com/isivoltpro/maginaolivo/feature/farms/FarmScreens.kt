@@ -40,6 +40,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.farm.Farm
+import com.isivoltpro.maginaolivo.feature.parcels.FarmParcelsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoFarmCard
@@ -234,6 +235,7 @@ fun FarmListScreen(
 fun FarmDetailRoute(
     farmId: UUID,
     persistence: LocalPersistence,
+    onParcelSelected: (UUID) -> Unit,
     onArchived: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -256,6 +258,13 @@ fun FarmDetailRoute(
         onCoverSelected = viewModel::attachCover,
         onArchive = viewModel::archive,
         onArchived = onArchived,
+        parcelContent = {
+            FarmParcelsRoute(
+                farmId = farmId,
+                persistence = persistence,
+                onParcelSelected = onParcelSelected,
+            )
+        },
         modifier = modifier,
     )
 }
@@ -268,6 +277,7 @@ fun FarmDetailScreen(
     onCoverSelected: (String) -> Unit,
     onArchive: () -> Unit,
     onArchived: () -> Unit,
+    parcelContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
@@ -319,6 +329,7 @@ fun FarmDetailScreen(
                 onChooseCover = { coverPicker.launch(arrayOf("image/*")) },
                 onEdit = { editorVisible = true },
                 onArchive = { archiveConfirmation = true },
+                parcelContent = parcelContent,
                 modifier = Modifier.padding(innerPadding),
             )
         }
@@ -379,6 +390,7 @@ private fun FarmDetailContent(
     onChooseCover: () -> Unit,
     onEdit: () -> Unit,
     onArchive: () -> Unit,
+    parcelContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -428,11 +440,7 @@ private fun FarmDetailContent(
             MoSectionHeader(title = "Notas")
             Text(it, style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary)
         }
-        MoSectionHeader(title = "Parcelas")
-        MoEmptyState(
-            title = "Aún no hay parcelas",
-            body = "Las parcelas de esta finca se incorporarán en la siguiente fase.",
-        )
+        parcelContent()
         MoSecondaryButton(
             text = "Editar finca",
             onClick = onEdit,
@@ -510,6 +518,8 @@ private fun FarmEditor(
     var province by rememberSaveable(initial.province) { mutableStateOf(initial.province) }
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(
         modifier = Modifier
@@ -568,6 +578,8 @@ private fun FarmEditor(
         MoPrimaryButton(
             text = if (isSaving) "Guardando…" else "Guardar finca",
             onClick = {
+                focusManager.clearFocus(force = true)
+                keyboardController?.hide()
                 onSave(
                     initial.copy(
                         name = name,

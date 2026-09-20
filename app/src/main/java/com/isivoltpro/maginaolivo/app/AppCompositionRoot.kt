@@ -15,6 +15,7 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
 import com.isivoltpro.maginaolivo.data.repository.AndroidPersistedDocumentSource
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
 
 data class AppCompositionRoot(
     val environment: AppEnvironment,
@@ -68,12 +69,19 @@ data class AppCompositionRoot(
                 idGenerator = defaults.idGenerator,
                 dispatchers = defaults.dispatchers,
             )
+            val parcelRepository = OfflineFirstParcelRepository(
+                database = database,
+                clock = defaults.clock,
+                idGenerator = defaults.idGenerator,
+                dispatchers = defaults.dispatchers,
+            )
             return defaults.copy(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 localPersistence = LocalPersistence(
                     database = database,
                     farmRepository = farmRepository,
                     farmCoverRepository = farmCoverRepository,
+                    parcelRepository = parcelRepository,
                     workspaceRepository = workspaceRepository,
                 ),
             )

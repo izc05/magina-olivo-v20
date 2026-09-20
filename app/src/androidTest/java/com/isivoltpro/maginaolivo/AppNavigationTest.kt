@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -137,6 +138,42 @@ class AppNavigationTest {
         }
 
         composeRule.onNodeWithTag("farms-root").assertIsDisplayed()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").assertIsSelected()
+    }
+
+    @Test
+    fun parcelCanBeCreatedAndOpenedFromItsFarm() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("add-farm").performClick()
+        composeRule.onNodeWithTag("farm-name").performTextInput("Los Llanos")
+        composeRule.onNodeWithTag("save-farm").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Los Llanos").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("Los Llanos").performClick()
+
+        composeRule.onNodeWithText("Añadir").performScrollTo().performClick()
+        composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Alta")
+        composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("save-parcel").fetchSemanticsNodes().isEmpty() &&
+                composeRule.onAllNodesWithText("Parcela Alta").fetchSemanticsNodes().size == 1
+        }
+        composeRule.onNodeWithTag("parcel-row").performScrollTo().performClick()
+
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("parcel-detail-root").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("parcel-detail-root").assertIsDisplayed()
+        composeRule.onNodeWithText("Entrada manual").assertIsDisplayed()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Sin registrar", useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag("bottom-Mi Olivar").assertIsSelected()
     }
 

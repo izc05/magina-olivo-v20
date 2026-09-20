@@ -52,8 +52,21 @@ wait_for_app() {
 
 dump_ui() {
   local destination="$1"
-  adb shell uiautomator dump /sdcard/gate3-window.xml >/dev/null
-  adb pull /sdcard/gate3-window.xml "$destination" >/dev/null
+  local attempt=1
+
+  while [[ "$attempt" -le 10 ]]; do
+    adb shell rm -f /sdcard/gate3-window.xml >/dev/null 2>&1 || true
+    if adb shell uiautomator dump /sdcard/gate3-window.xml >/dev/null 2>&1 && \
+      adb pull /sdcard/gate3-window.xml "$destination" >/dev/null 2>&1 && \
+      [[ -s "$destination" ]]; then
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+
+  echo "UI hierarchy was unavailable after 10 attempts" >&2
+  return 1
 }
 
 dismiss_quickstep_anr() {

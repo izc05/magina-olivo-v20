@@ -73,9 +73,11 @@ object AppDestination {
     }
 
     private fun nestedRoute(prefix: String, identifier: String): String {
-        val safeIdentifier = identifier.trim()
-        require(safeIdentifier.isNotEmpty()) { "A navigation identifier cannot be blank" }
-        require('/' !in safeIdentifier) { "A navigation identifier cannot contain '/'" }
-        return "$prefix/$safeIdentifier"
+        return "$prefix/${safeIdentifier(identifier)}"
+    }
+
+    private fun safeIdentifier(identifier: String): String = identifier.trim().also {
+        require(it.isNotEmpty()) { "A navigation identifier cannot be blank" }
+        require('/' !in it) { "A navigation identifier cannot contain '/'" }
     }
 }
