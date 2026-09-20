@@ -8,7 +8,7 @@ ACTIVITY="com.isivoltpro.maginaolivo.MainActivity"
 TEST_PKG="com.isivoltpro.maginaolivo.dev.test"
 RUNNER="androidx.test.runner.AndroidJUnitRunner"
 SCREENSHOT_TEST="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest"
-OFFLINE_ROOM_TEST="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest"
+OFFLINE_ROOM_TESTS="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest"
 
 APP_APK="$(find app/build/outputs/apk/dev/debug -name '*.apk' | head -n 1)"
 TEST_APK="$(find app/build/outputs/apk/androidTest -name '*.apk' | head -n 1)"
@@ -280,7 +280,7 @@ set_airplane_mode enable 1 | tee evidence/airplane-mode.txt
 
 set +e
 adb shell am instrument -w \
-  -e class "$OFFLINE_ROOM_TEST" \
+  -e class "$OFFLINE_ROOM_TESTS" \
   "$TEST_PKG/$RUNNER" > evidence/offline-room-instrumentation.txt 2>&1
 OFFLINE_ROOM_RC=$?
 set -e
@@ -288,7 +288,7 @@ cat evidence/offline-room-instrumentation.txt
 
 assert_instrumentation_passed \
   evidence/offline-room-instrumentation.txt \
-  "Airplane-mode Room CRUD instrumentation" \
+  "Airplane-mode Room Farm and Campaign CRUD instrumentation" \
   "$OFFLINE_ROOM_RC"
 
 set_airplane_mode disable 0 | tee -a evidence/airplane-mode.txt
