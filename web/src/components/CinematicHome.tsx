@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import Image from "next/image";\nimport { FieldToPhoneSequence } from "@/components/FieldToPhoneSequence";
 
 type ScreenKind =
   | "welcome"
@@ -345,7 +345,7 @@ export function CinematicHome() {
         </div>
       </section>
 
-      <section className="scrolly" id="funciones">
+      <FieldToPhoneSequence />\n\n      <section className="scrolly" id="funciones">
         <div className="shell scrolly-grid">
           <div className="story-steps">
             {storySteps.map((step, index) => (
