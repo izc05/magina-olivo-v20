@@ -245,6 +245,8 @@ function PhoneScreen({ kind }: { kind: ScreenKind }) {
 
 export function CinematicHome() {
   const [activeStep, setActiveStep] = useState(0);
+  const [storyPosition, setStoryPosition] = useState(0);
+  const scrollyRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const nodes = Array.from(
