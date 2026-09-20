@@ -1,0 +1,62 @@
+import type { Metadata } from "next";
+import { EditorialSection, PageCta, PageHero } from "@/components/MarketingPage";
+import { SiteFooter } from "@/components/SiteFooter";
+import { SiteHeader } from "@/components/SiteHeader";
+
+export const metadata: Metadata = {
+  title: "Nuestra tierra",
+  description: "Sierra Mágina, olivar y territorio: el contexto del que nace Mágina Olivo.",
+};
+
+export default function TerritorioPage() {
+  return (
+    <main>
+      <SiteHeader />
+      <PageHero
+        eyebrow="Nuestra tierra"
+        title={<>Sierra Mágina. Una forma de <em>vivir el olivar.</em></>}
+        copy="Montaña, pueblos, olivares y campañas forman un paisaje que también es cultura, trabajo y conocimiento."
+        aside="Más que olivos, nuestra tierra."
+      />
+
+      <EditorialSection
+        eyebrow="Territorio"
+        title={<>Una herramienta<br />con raíces.</>}
+        copy="Mágina Olivo nace mirando al olivar de Jaén y a la realidad de quien trabaja con él. Esa cercanía marca la forma de diseñar la experiencia: lenguaje claro, utilidad inmediata y respeto por el conocimiento acumulado durante generaciones."
+      />
+
+      <section className="territory-gallery">
+        <div className="shell territory-gallery-grid">
+          <article className="territory-tile territory-tile-large">
+            <span>01</span>
+            <h3>Montaña y olivar</h3>
+            <p>Un paisaje que condiciona accesos, clima, ritmos de trabajo y forma de gestionar.</p>
+          </article>
+          <article className="territory-tile">
+            <span>02</span>
+            <h3>Pueblos</h3>
+            <p>El olivar también es economía local, cooperativas, familias y comunidad.</p>
+          </article>
+          <article className="territory-tile">
+            <span>03</span>
+            <h3>Campañas</h3>
+            <p>Cada año genera datos, experiencia y decisiones que merece la pena conservar.</p>
+          </article>
+        </div>
+      </section>
+
+      <EditorialSection
+        eyebrow="Tecnología que acompaña"
+        title={<>Innovar sin perder<br />la forma de hacer campo.</>}
+        copy="La app debe adaptarse a la realidad del agricultor, y no al revés. Por eso el diseño prioriza movilidad, lectura rápida, funcionamiento sin conexión y una estructura que pueda crecer con nuevas necesidades."
+        dark
+      />
+
+      <PageCta
+        title="La misma tierra. Nuevas herramientas."
+        copy="Mágina Olivo une el conocimiento de siempre con una forma más clara de organizarlo."
+      />
+      <SiteFooter />
+    </main>
+  );
+}
