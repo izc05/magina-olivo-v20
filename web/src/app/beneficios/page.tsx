@@ -20,10 +20,13 @@ const benefits = [
 
 export default function BeneficiosPage() {
   return (
-    <main>
+    <>
+      <a className="skip-link" href="#contenido-principal">Saltar al contenido</a>
       <SiteHeader />
+      <main id="contenido-principal">
       <PageHero
         eyebrow="Beneficios"
+        assetKey="benefits"
         title={<>Más control, menos ruido, <em>mejores campañas.</em></>}
         copy="La tecnología aporta valor cuando desaparece del camino y deja más tiempo para entender el olivar."
         aside="Un campo mejor organizado se entiende mejor."
@@ -54,7 +57,8 @@ export default function BeneficiosPage() {
         href="/producto"
         label="Ver el producto"
       />
+      </main>
       <SiteFooter />
-    </main>
+    </>
   );
 }
