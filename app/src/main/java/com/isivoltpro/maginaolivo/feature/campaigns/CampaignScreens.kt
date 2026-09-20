@@ -102,7 +102,7 @@ private fun CampaignRow(campaign: Campaign, onSelected: (UUID) -> Unit) {
 }
 
 @Composable
-private fun CampaignEditor(
+internal fun CampaignEditor(
     parcels: List<CampaignParcelOption>, nameError: String?, dateError: String?, isSaving: Boolean,
     onSave: (CampaignDraft) -> Unit, onCancel: () -> Unit, initial: CampaignDraft = CampaignDraft(),
 ) {
@@ -118,7 +118,7 @@ private fun CampaignEditor(
         if (parcels.isEmpty()) Text("Primero añade una parcela a esta finca.", color = MoTextSecondary)
         parcels.forEach { parcel ->
             val checked = parcel.id.toString() in selected
-            Row(Modifier.fillMaxWidth().clickable { selected = if (checked) selected - parcel.id.toString() else selected + parcel.id.toString() }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().testTag("campaign-parcel-option").clickable { selected = if (checked) selected - parcel.id.toString() else selected + parcel.id.toString() }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked, { value -> selected = if (value) selected + parcel.id.toString() else selected - parcel.id.toString() })
                 Text(parcel.name)
             }

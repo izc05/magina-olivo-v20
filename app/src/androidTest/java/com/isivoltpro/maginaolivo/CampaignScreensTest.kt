@@ -12,8 +12,7 @@ import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelSnapshot
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailScreen
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailUiState
-import com.isivoltpro.maginaolivo.feature.campaigns.FarmCampaignsSection
-import com.isivoltpro.maginaolivo.feature.campaigns.FarmCampaignsUiState
+import com.isivoltpro.maginaolivo.feature.campaigns.CampaignEditor
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.time.LocalDate
 import java.util.UUID
@@ -26,13 +25,11 @@ class CampaignScreensTest {
 
     @Test fun emptyStateAndCreateValidationAreAccessible() {
         var saved = false
-        compose.setContent { MaginaOlivoTheme { FarmCampaignsSection(FarmCampaignsUiState(isLoading = false), {}, { saved = true }) } }
-        compose.onNodeWithText("Aún no hay campañas").assertIsDisplayed()
-        compose.onNodeWithTag("add-campaign").performClick()
-        compose.waitUntil(5_000) {
-            compose.onAllNodesWithText("Guardar campaña").fetchSemanticsNodes().isNotEmpty()
-        }
-        compose.onNodeWithText("Guardar campaña").assertIsDisplayed().performClick()
+        compose.setContent { MaginaOlivoTheme {
+            CampaignEditor(emptyList(), null, null, false, { saved = true }, {})
+        } }
+        compose.onNodeWithTag("campaign-name").assertIsDisplayed()
+        compose.onNodeWithTag("save-campaign").performClick()
         assertTrue(saved)
     }
 

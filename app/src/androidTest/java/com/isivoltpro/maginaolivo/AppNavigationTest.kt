@@ -201,7 +201,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("add-campaign").performScrollTo().performClick()
         composeRule.onNodeWithTag("campaign-name").performTextInput("Campaña 2026/27 E2E")
         composeRule.onNodeWithTag("campaign-start-date").performTextInput("2026-10-01")
-        composeRule.onNodeWithText("Parcela Campaña E2E").performClick()
+        composeRule.onNodeWithTag("campaign-parcel-option").performClick()
         composeRule.onNodeWithTag("save-campaign").performScrollTo().performClick()
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Campaña 2026/27 E2E").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("Campaña 2026/27 E2E").performScrollTo().performClick()
