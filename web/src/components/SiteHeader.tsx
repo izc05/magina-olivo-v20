@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
@@ -54,13 +55,13 @@ export function SiteHeader() {
   return (
     <header className={`site-header ${solid ? "header-solid" : "header-overlay"}`}>
       <div className="shell header-inner">
-        <a className="brand" href="/" aria-label="Mágina Olivo, inicio">
+        <Link className="brand" href="/" aria-label="Mágina Olivo, inicio">
           <span className="brand-mark" aria-hidden="true" />
           <span className="brand-copy">
             <strong>Mágina</strong>
             <strong>Olivo</strong>
           </span>
-        </a>
+        </Link>
 
         <button
           className="menu-toggle"
@@ -80,18 +81,18 @@ export function SiteHeader() {
           aria-label="Navegación principal"
         >
           {links.map(([href, label]) => (
-            <a
+            <Link
               key={href}
               href={href}
               aria-current={pathname === href ? "page" : undefined}
               onClick={() => setOpen(false)}
             >
               {label}
-            </a>
+            </Link>
           ))}
-          <a className="nav-cta" href="/#descarga" onClick={() => setOpen(false)}>
+          <Link className="nav-cta" href="/#descarga" onClick={() => setOpen(false)}>
             Descubrir la app <span aria-hidden="true">→</span>
-          </a>
+          </Link>
         </nav>
       </div>
     </header>
