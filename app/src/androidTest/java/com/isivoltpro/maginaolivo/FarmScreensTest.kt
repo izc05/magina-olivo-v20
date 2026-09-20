@@ -5,7 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.feature.farms.FarmDraft
@@ -98,7 +98,8 @@ class FarmScreensTest {
             }
         }
 
-        composeRule.onNodeWithText("Finca 50").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("farm-list").performScrollToIndex(52)
+        composeRule.onNodeWithText("Finca 50").assertIsDisplayed()
     }
 
     @Test
@@ -116,7 +117,8 @@ class FarmScreensTest {
             }
         }
 
-        composeRule.onNodeWithText("Finca 20").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("farm-list").performScrollToIndex(22)
+        composeRule.onNodeWithText("Finca 20").assertIsDisplayed()
     }
 
     private fun farm(index: Int) = Farm(

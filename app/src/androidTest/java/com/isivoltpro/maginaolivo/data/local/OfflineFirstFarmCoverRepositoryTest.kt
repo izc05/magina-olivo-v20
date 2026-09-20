@@ -37,10 +37,14 @@ class OfflineFirstFarmCoverRepositoryTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
     @Before
-    fun clearDatabase() = context.deleteDatabase(TEST_DATABASE)
+    fun clearDatabase() {
+        context.deleteDatabase(TEST_DATABASE)
+    }
 
     @After
-    fun cleanUp() = context.deleteDatabase(TEST_DATABASE)
+    fun cleanUp() {
+        context.deleteDatabase(TEST_DATABASE)
+    }
 
     @Test
     fun retainedCoverAndOutboxSurviveRestart() = runBlocking {

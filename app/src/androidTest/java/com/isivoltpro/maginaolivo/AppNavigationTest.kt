@@ -131,6 +131,10 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("farm-detail-root").assertIsDisplayed()
 
         pressBack()
+        composeRule.waitForIdle()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("farms-root").fetchSemanticsNodes().isNotEmpty()
+        }
 
         composeRule.onNodeWithTag("farms-root").assertIsDisplayed()
         composeRule.onNodeWithTag("bottom-Mi Olivar").assertIsSelected()

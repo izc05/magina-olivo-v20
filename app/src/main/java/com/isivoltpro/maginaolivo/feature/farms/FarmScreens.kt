@@ -110,7 +110,8 @@ fun FarmListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .statusBarsPadding(),
+                .statusBarsPadding()
+                .testTag("farm-list"),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = MoSpacing.screen,
                 end = MoSpacing.screen,
