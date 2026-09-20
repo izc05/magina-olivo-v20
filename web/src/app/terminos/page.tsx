@@ -4,6 +4,7 @@ import { LegalPage } from "@/components/LegalPage";
 export const metadata: Metadata = {
   title: "Términos de uso",
   description: "Términos de uso de la web Mágina Olivo.",
+  alternates: { canonical: "/terminos" },
 };
 
 export default function TerminosPage() {
