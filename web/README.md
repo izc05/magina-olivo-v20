@@ -91,10 +91,10 @@ Características:
 - mantiene la preview en `noindex`;
 - sirve para validar diseño, scroll, responsive y navegación desde móvil/escritorio.
 
-El workflow responsable es:
+El workflow responsable es el CI principal de la web:
 
 ```
-.github/workflows/web-pages.yml
+.github/workflows/web.yml
 ```
 
-La preview se actualiza automáticamente con cambios en la rama de la web.
+Ese mismo workflow valida TypeScript, build normal, export estático, Docker y Playwright; solo después publica la preview. La preview se actualiza automáticamente con cambios en la rama de la web.
