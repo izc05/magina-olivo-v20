@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 export const metadata: Metadata = {
   title: "Contacto",
   description: "Contacta con el proyecto Mágina Olivo.",
+  alternates: { canonical: "/contacto" },
 };
 
 export default function ContactoPage() {
