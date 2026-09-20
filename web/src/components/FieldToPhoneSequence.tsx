@@ -13,6 +13,9 @@ export function FieldToPhoneSequence() {
   const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reducedMotion.matches) return;
+
     let frame = 0;
 
     const update = () => {
