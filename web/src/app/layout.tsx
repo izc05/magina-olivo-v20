@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ALLOW_INDEXING, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,7 +9,15 @@ export const metadata: Metadata = {
   },
   description:
     "Tu olivar, tus campañas y la información que importa, reunidos en una experiencia clara y cercana.",
-  metadataBase: new URL("https://maginaolivo.es"),
+  metadataBase: new URL(SITE_URL),
+  robots: {
+    index: ALLOW_INDEXING,
+    follow: ALLOW_INDEXING,
+    googleBot: {
+      index: ALLOW_INDEXING,
+      follow: ALLOW_INDEXING,
+    },
+  },
   openGraph: {
     title: "Mágina Olivo",
     description:
@@ -29,7 +38,7 @@ const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "Mágina Olivo",
-  url: "https://maginaolivo.es",
+  url: SITE_URL,
   inLanguage: "es",
   description:
     "Proyecto digital orientado a la gestión del olivar, con aplicación Android en desarrollo.",
@@ -41,7 +50,7 @@ const softwareJsonLd = {
   name: "Mágina Olivo",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Android",
-  url: "https://maginaolivo.es",
+  url: SITE_URL,
   description:
     "Aplicación Android en desarrollo para organizar fincas, parcelas, campañas y actividad del olivar.",
 };
