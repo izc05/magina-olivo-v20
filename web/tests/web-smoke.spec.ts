@@ -1,0 +1,85 @@
+import { expect, test } from "@playwright/test";
+
+const publicRoutes = [
+  "/",
+  "/producto",
+  "/beneficios",
+  "/territorio",
+  "/contacto",
+  "/privacidad",
+  "/terminos",
+  "/aviso-legal",
+];
+
+for (const route of publicRoutes) {
+  test(`${route} renders without runtime errors or horizontal overflow`, async ({ page }) => {
+    const runtimeErrors: string[] = [];
+
+    page.on("pageerror", (error) => runtimeErrors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") runtimeErrors.push(message.text());
+    });
+
+    const response = await page.goto(route, { waitUntil: "networkidle" });
+
+    expect(response?.status(), `unexpected HTTP status for ${route}`).toBeLessThan(400);
+    await expect(page.locator("body")).toBeVisible();
+
+    const overflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+
+    expect(
+      overflow.scrollWidth,
+      `horizontal overflow on ${route}: ${overflow.scrollWidth}px > ${overflow.clientWidth}px`,
+    ).toBeLessThanOrEqual(overflow.clientWidth + 2);
+
+    expect(runtimeErrors, `runtime errors on ${route}`).toEqual([]);
+  });
+}
+
+test("home keeps the cinematic structure and primary anchors", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  await expect(page.locator(".cinema-hero")).toBeVisible();
+  await expect(page.locator(".field-phone-film")).toHaveCount(1);
+  await expect(page.locator("#funciones")).toHaveCount(1);
+  await expect(page.locator("#descarga")).toHaveCount(1);
+  await expect(page.locator("#contacto")).toHaveCount(1);
+
+  const heroHeading = page.locator(".cinema-copy h1");
+  await expect(heroHeading).toBeVisible();
+  await expect(heroHeading).toContainText(/olivar/i);
+});
+
+test("mobile menu opens, locks navigation and closes with Escape", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile"), "mobile-only behavior");
+
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const toggle = page.locator(".menu-toggle");
+  await expect(toggle).toBeVisible();
+  await toggle.click();
+
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator(".nav")).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+});
+
+test("reduced motion mode remains usable", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  await expect(page.locator(".cinema-hero")).toBeVisible();
+  await expect(page.locator(".field-phone-film")).toBeVisible();
+
+  const overflow = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+
+  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 2);
+});
