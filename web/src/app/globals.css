@@ -3269,3 +3269,107 @@ button, a { -webkit-tap-highlight-color: transparent; }
     padding: 0 18px;
   }
 }
+
+
+/* Canonical olive branch decoration */
+
+.olive-decor {
+  position: absolute;
+  z-index: 3;
+  width: clamp(170px, 18vw, 300px);
+  height: auto;
+  pointer-events: none;
+  opacity: .8;
+  filter: drop-shadow(0 10px 18px rgba(28,49,33,.08));
+  transform-origin: 50% 85%;
+}
+
+.olive-decor-flip {
+  transform: scaleX(-1);
+}
+
+.hero-olive-left {
+  left: -48px;
+  top: 70px;
+  opacity: .72;
+  transform: rotate(-10deg);
+}
+
+.hero-olive-right {
+  right: -58px;
+  bottom: 72px;
+  opacity: .7;
+  transform: scaleX(-1) rotate(8deg);
+}
+
+.territory-olive-decor {
+  left: -74px;
+  bottom: -34px;
+  opacity: .42;
+  transform: rotate(9deg);
+}
+
+.benefits-section {
+  position: relative;
+}
+
+.benefits-olive-decor {
+  right: -72px;
+  top: 24px;
+  opacity: .35;
+  transform: scaleX(-1) rotate(-6deg);
+}
+
+.contact-olive-decor {
+  right: -34px;
+  bottom: -54px;
+  width: min(330px, 26vw);
+  opacity: .34;
+  transform: rotate(-10deg);
+  filter: none;
+}
+
+@supports (animation-timeline: view()) {
+  .territory-olive-decor,
+  .benefits-olive-decor {
+    animation-name: olive-drift;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: view();
+    animation-range: entry 0% exit 100%;
+  }
+}
+
+@keyframes olive-drift {
+  from { translate: 0 -12px; }
+  to { translate: 0 12px; }
+}
+
+@media (max-width: 820px) {
+  .hero-olive-left {
+    left: -90px;
+    top: 78px;
+    width: 210px;
+  }
+
+  .hero-olive-right {
+    right: -100px;
+    bottom: 105px;
+    width: 220px;
+  }
+
+  .territory-olive-decor,
+  .benefits-olive-decor {
+    width: 180px;
+  }
+
+  .contact-olive-decor {
+    width: 190px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .olive-decor {
+    animation: none !important;
+  }
+}
