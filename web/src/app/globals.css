@@ -3373,3 +3373,48 @@ button, a { -webkit-tap-highlight-color: transparent; }
     animation: none !important;
   }
 }
+
+
+/* Real approved hand + phone bridge */
+
+.field-phone-stage {
+  --context-opacity: 0;
+  --context-scale: 1.08;
+  --context-y: 11vh;
+}
+
+.film-phone-context {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  width: min(520px, 44vw);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 34px;
+  opacity: var(--context-opacity);
+  transform:
+    translate(-50%, -50%)
+    translateY(var(--context-y))
+    scale(var(--context-scale));
+  transform-origin: center;
+  box-shadow: 0 40px 85px rgba(17, 35, 24, .28);
+  will-change: opacity, transform;
+}
+
+.film-phone-context img {
+  object-fit: cover;
+}
+
+@media (max-width: 820px) {
+  .film-phone-context {
+    width: min(72vw, 360px);
+    border-radius: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .film-phone-context {
+    display: none;
+  }
+}
