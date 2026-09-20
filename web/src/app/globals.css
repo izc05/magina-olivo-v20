@@ -4479,3 +4479,30 @@ article[id] {
     font-size: 1.8rem;
   }
 }
+
+
+/* Overflow containment fixes from browser QA */
+
+.field-phone-film {
+  overflow-x: clip;
+  max-width: 100vw;
+}
+
+.field-phone-stage {
+  max-width: 100vw;
+}
+
+@media (max-width: 720px) {
+  .overview-devices {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+    padding-inline: 4px;
+    overscroll-behavior-inline: contain;
+  }
+
+  .overview-device-card {
+    flex: 0 0 min(73vw, 285px);
+    min-width: 0;
+  }
+}
