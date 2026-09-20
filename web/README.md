@@ -71,3 +71,30 @@ Guía completa: `docs/STAGING.md`.
 - CI valida TypeScript, build Next y build Docker.
 
 La publicación definitiva sigue bloqueada hasta revisión visual en navegador real y definición del dominio/canonical de producción.
+
+
+## Preview gratuita con GitHub Pages
+
+La rama `feat/web-magína-olivo` incluye un modo de exportación estática independiente del despliegue Docker.
+
+Objetivo de preview:
+
+```
+https://izc05.github.io/magina-olivo-v20/
+```
+
+Características:
+
+- no modifica el modo `standalone` usado por Docker;
+- usa `output: export` solo durante el workflow de Pages;
+- aplica automáticamente el base path `/magina-olivo-v20`;
+- mantiene la preview en `noindex`;
+- sirve para validar diseño, scroll, responsive y navegación desde móvil/escritorio.
+
+El workflow responsable es:
+
+```
+.github/workflows/web-pages.yml
+```
+
+La preview se actualiza automáticamente con cambios en la rama de la web.
