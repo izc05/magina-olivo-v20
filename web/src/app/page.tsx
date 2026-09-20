@@ -12,10 +12,13 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <main>
+    <>
+      <a className="skip-link" href="#contenido-principal">Saltar al contenido</a>
       <SiteHeader />
-      <CinematicHome />
+      <main id="contenido-principal">
+        <CinematicHome />
+      </main>
       <SiteFooter />
-    </main>
+    </>
   );
 }
