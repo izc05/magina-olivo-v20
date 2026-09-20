@@ -3,9 +3,12 @@ package com.isivoltpro.maginaolivo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -39,7 +42,7 @@ class AppNavigationTest {
         enterMainShell()
 
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick().assertIsSelected()
-        composeRule.onNodeWithTag("olivar-reference-root").assertIsDisplayed()
+        composeRule.onNodeWithTag("farms-root").assertIsDisplayed()
 
         composeRule.onNodeWithTag("bottom-Calendario").performClick().assertIsSelected()
         composeRule.onNodeWithTag("calendar-root").assertIsDisplayed()
@@ -115,12 +118,21 @@ class AppNavigationTest {
     fun nestedFarmRouteReturnsToOlivar() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
-        composeRule.onNodeWithTag("farm-La Solana").performClick()
-        composeRule.onNodeWithTag("farm-detail-reference-root").assertIsDisplayed()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("add-farm").performClick()
+        composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
+        composeRule.onNodeWithTag("save-farm").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("La Solana").fetchSemanticsNodes().size == 1
+        }
+        composeRule.onNodeWithText("La Solana").performClick()
+        composeRule.onNodeWithTag("farm-detail-root").assertIsDisplayed()
 
         pressBack()
 
-        composeRule.onNodeWithTag("olivar-reference-root").assertIsDisplayed()
+        composeRule.onNodeWithTag("farms-root").assertIsDisplayed()
         composeRule.onNodeWithTag("bottom-Mi Olivar").assertIsSelected()
     }
 
