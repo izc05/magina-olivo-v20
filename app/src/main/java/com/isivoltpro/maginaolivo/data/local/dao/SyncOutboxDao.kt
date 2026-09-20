@@ -35,4 +35,7 @@ interface SyncOutboxDao {
         entityType: SyncEntityType,
         entityId: UUID,
     ): List<SyncOutboxEntity>
+
+    @Query("DELETE FROM sync_outbox WHERE entity_type = :entityType AND entity_id = :entityId AND status IN ('PENDING', 'FAILED')")
+    suspend fun deletePendingForEntity(entityType: SyncEntityType, entityId: UUID)
 }
