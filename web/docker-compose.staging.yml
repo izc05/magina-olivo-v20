@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        SITE_URL: "http://localhost:3000"
+        ALLOW_INDEXING: "false"
     image: magina-olivo-web:staging
     container_name: magina-olivo-web
     restart: unless-stopped
