@@ -8,7 +8,7 @@ on:
   push:
     branches:
       - main
-      - "feat/web-magína-olivo"
+      - "feat/web-*"
     paths:
       - "web/**"
       - ".github/workflows/web.yml"
@@ -117,14 +117,14 @@ jobs:
           retention-days: 14
 
       - name: Upload GitHub Pages artifact
-        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feat/web-')
         uses: actions/upload-pages-artifact@v3
         with:
           path: web/out
 
 
   deploy-pages:
-    if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feat/web-')
     needs: validate-web
     runs-on: ubuntu-latest
     permissions:
