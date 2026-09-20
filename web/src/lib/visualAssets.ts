@@ -32,7 +32,7 @@ export const visualAssets: Record<VisualAssetKey, VisualAsset> = {
     fallbackSrc: "/brand/hero-scene.svg",
     alt: "Olivar y paisaje de Sierra Mágina",
     focalPoint: "48% 48%",
-    status: "placeholder",
+    status: "final",
   },
   heritage: {
     key: "heritage",
@@ -40,7 +40,7 @@ export const visualAssets: Record<VisualAssetKey, VisualAsset> = {
     fallbackSrc: "/brand/hero-scene.svg",
     alt: "Agricultor caminando entre olivos",
     focalPoint: "36% 52%",
-    status: "placeholder",
+    status: "final",
   },
   fieldSequence: {
     key: "fieldSequence",
@@ -56,7 +56,7 @@ export const visualAssets: Record<VisualAssetKey, VisualAsset> = {
     fallbackSrc: "/brand/hero-scene.svg",
     alt: "Mágina Olivo en la mano del agricultor",
     focalPoint: "50% 50%",
-    status: "placeholder",
+    status: "final",
   },
   benefits: {
     key: "benefits",
@@ -64,7 +64,7 @@ export const visualAssets: Record<VisualAssetKey, VisualAsset> = {
     fallbackSrc: "/brand/hero-scene.svg",
     alt: "Rama de olivo con aceitunas",
     focalPoint: "70% 45%",
-    status: "placeholder",
+    status: "final",
   },
   territoryFinal: {
     key: "territoryFinal",
