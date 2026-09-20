@@ -22,7 +22,7 @@ class FarmScreensTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun emptyAndErrorStatesRemainActionable() {
+    fun emptyStateRemainsActionable() {
         composeRule.setContent {
             MaginaOlivoTheme {
                 FarmListScreen(
@@ -37,7 +37,10 @@ class FarmScreensTest {
 
         composeRule.onNodeWithText("Aún no tienes fincas").assertIsDisplayed()
         composeRule.onNodeWithTag("add-farm").assertIsDisplayed()
+    }
 
+    @Test
+    fun errorStateExplainsLocalFailure() {
         composeRule.setContent {
             MaginaOlivoTheme {
                 FarmListScreen(
@@ -96,6 +99,24 @@ class FarmScreensTest {
         }
 
         composeRule.onNodeWithText("Finca 50").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun twentyFarmsStayReachableInLazyList() {
+        val farms = (1..20).map { index -> farm(index) }
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                FarmListScreen(
+                    state = FarmListUiState(isLoading = false, farms = farms),
+                    onFarmSelected = {},
+                    onCreate = {},
+                    onRestore = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Finca 20").performScrollTo().assertIsDisplayed()
     }
 
     private fun farm(index: Int) = Farm(
