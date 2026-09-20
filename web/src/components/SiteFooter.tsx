@@ -23,7 +23,11 @@ export function SiteFooter() {
 
       <div className="shell footer-legal">
         <span>© 2026 Mágina Olivo</span>
-        <span>Proyecto en desarrollo · Jaén</span>
+        <nav aria-label="Información legal">
+          <a href="/privacidad">Privacidad</a>
+          <a href="/terminos">Términos</a>
+          <a href="/aviso-legal">Aviso legal</a>
+        </nav>
       </div>
     </footer>
   );
