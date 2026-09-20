@@ -11,8 +11,10 @@ export function LegalPage({
   children: React.ReactNode;
 }) {
   return (
-    <main>
+    <>
+      <a className="skip-link" href="#contenido-principal">Saltar al contenido</a>
       <SiteHeader />
+      <main id="contenido-principal">
       <section className="legal-hero">
         <div className="shell">
           <p className="eyebrow">{eyebrow}</p>
@@ -23,7 +25,8 @@ export function LegalPage({
       <section className="legal-content">
         <div className="shell legal-prose">{children}</div>
       </section>
+      </main>
       <SiteFooter />
-    </main>
+    </>
   );
 }
