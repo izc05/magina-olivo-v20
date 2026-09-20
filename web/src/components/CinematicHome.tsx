@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { SceneImage } from "@/components/SceneImage";
 import { OliveDecor } from "@/components/OliveDecor";
@@ -402,7 +403,7 @@ export function CinematicHome() {
               se encuentran, nace una forma más clara de acompañar el trabajo
               del olivar.
             </p>
-            <a href="/territorio">Conoce nuestro territorio <span aria-hidden="true">→</span></a>
+            <Link href="/territorio">Conoce nuestro territorio <span aria-hidden="true">→</span></Link>
           </div>
           <div className="territory-ribbon-visual" aria-hidden="true">
             <SceneImage
@@ -682,9 +683,9 @@ export function CinematicHome() {
             <h2>¿Quieres conocer Mágina Olivo?</h2>
             <p>Estamos preparando la primera versión para probarla en el campo.</p>
           </div>
-          <a className="button button-primary" href="/contacto">
+          <Link className="button button-primary" href="/contacto">
             Contactar <span aria-hidden="true">→</span>
-          </a>
+          </Link>
         </div>
       </section>
     </>
