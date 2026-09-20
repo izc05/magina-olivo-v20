@@ -19,10 +19,13 @@ export function SceneImage({
 }: SceneImageProps) {
   const [failed, setFailed] = useState(false);
   const useFinal = asset.status === "final" && !failed;
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+  const source = useFinal ? asset.finalSrc : asset.fallbackSrc;
+  const src = source.startsWith("/") ? `${basePath}${source}` : source;
 
   return (
     <Image
-      src={useFinal ? asset.finalSrc : asset.fallbackSrc}
+      src={src}
       alt={asset.alt}
       fill
       priority={priority}
