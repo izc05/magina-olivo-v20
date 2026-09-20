@@ -25,34 +25,51 @@ export function FieldToPhoneSequence() {
       const travel = Math.max(1, section.offsetHeight - window.innerHeight);
       const progress = clamp01(-rect.top / travel);
 
-      const personFocus = phase(progress, 0.08, 0.42);
-      const contextIn = phase(progress, 0.34, 0.54);
-      const contextOut = phase(progress, 0.68, 0.84);
-      const contextOpacity = contextIn * (1 - contextOut);
-      const deviceEnter = phase(progress, 0.56, 0.78);
-      const deviceFocus = phase(progress, 0.64, 0.86);
-      const uiReveal = phase(progress, 0.72, 0.91);
-      const finalReveal = phase(progress, 0.82, 0.98);
+      const walkIn = phase(progress, 0.10, 0.22);
+      const walkOut = phase(progress, 0.28, 0.40);
+      const walkOpacity = walkIn * (1 - walkOut);
 
-      stage.style.setProperty("--landscape-scale", String(1 + progress * 0.13));
-      stage.style.setProperty("--landscape-x", `${-progress * 4}%`);
-      stage.style.setProperty("--person-scale", String(1 + personFocus * 0.46));
-      stage.style.setProperty("--person-x", `${personFocus * -17}vw`);
-      stage.style.setProperty("--person-opacity", String(1 - phase(progress, 0.64, 0.86) * 0.64));
+      const detailIn = phase(progress, 0.30, 0.42);
+      const detailOut = phase(progress, 0.48, 0.58);
+      const detailOpacity = detailIn * (1 - detailOut);
+
+      const contextIn = phase(progress, 0.48, 0.62);
+      const contextOut = phase(progress, 0.70, 0.82);
+      const contextOpacity = contextIn * (1 - contextOut);
+
+      const deviceEnter = phase(progress, 0.68, 0.84);
+      const deviceFocus = phase(progress, 0.74, 0.90);
+      const uiReveal = phase(progress, 0.82, 0.94);
+      const finalReveal = phase(progress, 0.88, 0.985);
+
+      stage.style.setProperty("--landscape-scale", String(1 + progress * 0.11));
+      stage.style.setProperty("--landscape-x", `${-progress * 3}%`);
+      stage.style.setProperty("--landscape-opacity", String(1 - phase(progress, 0.17, 0.33) * 0.36));
+
+      stage.style.setProperty("--walk-opacity", String(walkOpacity));
+      stage.style.setProperty("--walk-scale", String(1.08 - walkIn * 0.06 + walkOut * 0.04));
+      stage.style.setProperty("--walk-x", `${(1 - walkIn) * 5 - walkOut * 3}%`);
+
+      stage.style.setProperty("--detail-opacity", String(detailOpacity));
+      stage.style.setProperty("--detail-scale", String(1.18 - detailIn * 0.13 + detailOut * 0.05));
+
       stage.style.setProperty("--context-opacity", String(contextOpacity));
-      stage.style.setProperty("--context-scale", String(1.08 - contextIn * 0.08 + contextOut * 0.04));
-      stage.style.setProperty("--context-y", `${(1 - contextIn) * 11 - contextOut * 5}vh`);
-      stage.style.setProperty("--hand-opacity", String(deviceEnter * (1 - contextOpacity)));
-      stage.style.setProperty("--hand-y", `${(1 - deviceEnter) * 24}vh`);
+      stage.style.setProperty("--context-scale", String(1.10 - contextIn * 0.10 + contextOut * 0.04));
+      stage.style.setProperty("--context-y", `${(1 - contextIn) * 10 - contextOut * 4}vh`);
+
       stage.style.setProperty("--device-opacity", String(deviceEnter));
-      stage.style.setProperty("--device-y", `${(1 - deviceEnter) * 58}vh`);
+      stage.style.setProperty("--device-y", `${(1 - deviceEnter) * 54}vh`);
       stage.style.setProperty("--device-scale", String(0.62 + deviceFocus * 0.52));
-      stage.style.setProperty("--device-rotate", `${-10 + deviceFocus * 10}deg`);
+      stage.style.setProperty("--device-rotate", `${-9 + deviceFocus * 9}deg`);
       stage.style.setProperty("--device-ui-opacity", String(uiReveal));
-      stage.style.setProperty("--copy-a-opacity", String(1 - phase(progress, 0.17, 0.34)));
-      stage.style.setProperty("--copy-b-opacity", String(phase(progress, 0.26, 0.42) * (1 - phase(progress, 0.55, 0.70))));
+
+      stage.style.setProperty("--copy-a-opacity", String(1 - phase(progress, 0.12, 0.24)));
+      stage.style.setProperty(
+        "--copy-b-opacity",
+        String(phase(progress, 0.34, 0.46) * (1 - phase(progress, 0.62, 0.74))),
+      );
       stage.style.setProperty("--copy-c-opacity", String(finalReveal));
-      stage.style.setProperty("--film-wash", String(phase(progress, 0.72, 0.95) * 0.84));
+      stage.style.setProperty("--film-wash", String(phase(progress, 0.78, 0.96) * 0.86));
       stage.style.setProperty("--progress-width", `${progress * 100}%`);
     };
 
@@ -78,26 +95,38 @@ export function FieldToPhoneSequence() {
           <SceneImage asset={visualAssets.fieldSequence} sizes="100vw" />
         </div>
 
-        <div className="film-light-layer" aria-hidden="true" />
+        <div className="film-walk-layer" aria-hidden="true">
+          <SceneImage asset={visualAssets.heritage} sizes="100vw" />
+        </div>
 
-        <div className="film-person-layer" aria-hidden="true">
-          <span className="film-head" />
-          <span className="film-hat" />
-          <span className="film-body" />
-          <span className="film-arm film-arm-left" />
-          <span className="film-arm film-arm-right" />
+        <div className="film-detail-layer" aria-hidden="true">
+          <SceneImage asset={visualAssets.benefits} sizes="100vw" />
         </div>
 
         <div className="film-phone-context" aria-hidden="true">
           <SceneImage
             asset={visualAssets.phoneContext}
-            sizes="(max-width: 820px) 72vw, 38vw"
+            sizes="(max-width: 820px) 84vw, 44vw"
           />
         </div>
 
-        <div className="film-hand-layer" aria-hidden="true">
-          <span className="film-hand" />
-        </div>
+        <div className="film-light-layer" aria-hidden="true" />
+
+        {visualAssets.fieldSequence.status !== "final" && (
+          <div className="film-person-layer" aria-hidden="true">
+            <span className="film-head" />
+            <span className="film-hat" />
+            <span className="film-body" />
+            <span className="film-arm film-arm-left" />
+            <span className="film-arm film-arm-right" />
+          </div>
+        )}
+
+        {visualAssets.phoneContext.status !== "final" && (
+          <div className="film-hand-layer" aria-hidden="true">
+            <span className="film-hand" />
+          </div>
+        )}
 
         <div className="film-device" aria-hidden="true">
           <span className="film-device-camera" />
@@ -116,12 +145,13 @@ export function FieldToPhoneSequence() {
         <div className="film-copy film-copy-a">
           <p className="eyebrow light">Una mañana cualquiera</p>
           <h2>El campo<br />primero.</h2>
-          <p>Observas, comparas, recuerdas lo que hiciste y piensas qué toca después.</p>
+          <p>Observas el olivar, recorres la finca y compruebas cómo está cada zona.</p>
         </div>
 
         <div className="film-copy film-copy-b">
-          <p className="eyebrow light">En el momento adecuado</p>
-          <h2>La información<br />aparece en tu mano.</h2>
+          <p className="eyebrow light">De observar a decidir</p>
+          <h2>Todo empieza<br />con lo que ves.</h2>
+          <p>Una rama, una parcela, una labor pendiente. La información aparece cuando la necesitas.</p>
         </div>
 
         <div className="film-copy film-copy-c">
