@@ -11,10 +11,13 @@ export const metadata: Metadata = {
 
 export default function ContactoPage() {
   return (
-    <main>
+    <>
+      <a className="skip-link" href="#contenido-principal">Saltar al contenido</a>
       <SiteHeader />
+      <main id="contenido-principal">
       <PageHero
         eyebrow="Contacto"
+        assetKey="heritage"
         title={<>Hablemos de un olivar <em>mejor organizado.</em></>}
         copy="El proyecto está creciendo. Las dudas, ideas y experiencias reales del campo ayudan a construir una herramienta más útil."
         aside="Cerca del campo, siempre."
@@ -58,7 +61,8 @@ export default function ContactoPage() {
         </div>
       </section>
 
+      </main>
       <SiteFooter />
-    </main>
+    </>
   );
 }
