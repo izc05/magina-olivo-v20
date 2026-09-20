@@ -37,3 +37,7 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Build Docker image
+        working-directory: web
+        run: docker build -t magina-olivo-web:ci .
