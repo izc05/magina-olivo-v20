@@ -15,6 +15,8 @@ data class CampaignParcelSnapshot(
     val geometryGeoJson: String?,
 )
 
+data class CampaignParcelOption(val id: UUID, val name: String, val managedAreaM2: Double?)
+
 data class Campaign(
     val id: UUID,
     val workspaceId: UUID,
@@ -44,6 +46,7 @@ data class CampaignPreparationChanges(
 )
 
 interface CampaignRepository {
+    fun observeSelectableParcels(farmId: UUID): Flow<List<CampaignParcelOption>>
     fun observeForFarm(farmId: UUID): Flow<List<Campaign>>
     fun observe(id: UUID): Flow<Campaign?>
     suspend fun create(command: NewCampaign): AppResult<UUID>

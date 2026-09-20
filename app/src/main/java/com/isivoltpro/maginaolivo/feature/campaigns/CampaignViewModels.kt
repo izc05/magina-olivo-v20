@@ -7,6 +7,7 @@ import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignPreparationChanges
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
+import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelOption
 import com.isivoltpro.maginaolivo.domain.campaign.NewCampaign
 import java.time.LocalDate
 import java.util.UUID
@@ -27,6 +28,7 @@ data class FarmCampaignsUiState(
     val isSaving: Boolean = false,
     val current: List<Campaign> = emptyList(),
     val history: List<Campaign> = emptyList(),
+    val parcels: List<CampaignParcelOption> = emptyList(),
     val nameError: String? = null,
     val dateError: String? = null,
     val error: String? = null,
@@ -45,7 +47,9 @@ class FarmCampaignsViewModel(private val farmId: UUID, private val repository: C
                 history = campaigns.filter { it.status == CampaignStatus.CLOSED },
             )
         }
-    } }
+    }; viewModelScope.launch { repository.observeSelectableParcels(farmId).collect {
+        mutableState.value = mutableState.value.copy(parcels = it)
+    } } }
 
     fun create(draft: CampaignDraft) {
         if (!validate(draft)) return

@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.feature.parcels.FarmParcelsRoute
+import com.isivoltpro.maginaolivo.feature.campaigns.FarmCampaignsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoFarmCard
@@ -236,6 +237,7 @@ fun FarmDetailRoute(
     farmId: UUID,
     persistence: LocalPersistence,
     onParcelSelected: (UUID) -> Unit,
+    onCampaignSelected: (UUID) -> Unit,
     onArchived: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -265,6 +267,13 @@ fun FarmDetailRoute(
                 onParcelSelected = onParcelSelected,
             )
         },
+        campaignContent = {
+            FarmCampaignsRoute(
+                farmId = farmId,
+                persistence = persistence,
+                onCampaignSelected = onCampaignSelected,
+            )
+        },
         modifier = modifier,
     )
 }
@@ -278,6 +287,7 @@ fun FarmDetailScreen(
     onArchive: () -> Unit,
     onArchived: () -> Unit,
     parcelContent: @Composable () -> Unit = {},
+    campaignContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
@@ -330,6 +340,7 @@ fun FarmDetailScreen(
                 onEdit = { editorVisible = true },
                 onArchive = { archiveConfirmation = true },
                 parcelContent = parcelContent,
+                campaignContent = campaignContent,
                 modifier = Modifier.padding(innerPadding),
             )
         }
@@ -391,6 +402,7 @@ private fun FarmDetailContent(
     onEdit: () -> Unit,
     onArchive: () -> Unit,
     parcelContent: @Composable () -> Unit,
+    campaignContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -441,6 +453,7 @@ private fun FarmDetailContent(
             Text(it, style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary)
         }
         parcelContent()
+        campaignContent()
         MoSecondaryButton(
             text = "Editar finca",
             onClick = onEdit,

@@ -5,6 +5,7 @@ import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignPreparationChanges
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
+import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelOption
 import com.isivoltpro.maginaolivo.domain.campaign.NewCampaign
 import java.time.LocalDate
 import java.util.UUID
@@ -67,10 +68,12 @@ class CampaignViewModelTest {
     private class FakeRepository(initial: Campaign? = null) : CampaignRepository {
         val forFarm = MutableStateFlow<List<Campaign>>(emptyList())
         val detail = MutableStateFlow(initial)
+        val parcels = MutableStateFlow<List<CampaignParcelOption>>(emptyList())
         var created: NewCampaign? = null
         var lastAction: String? = null
         var fail = false
         override fun observeForFarm(farmId: UUID): Flow<List<Campaign>> = forFarm
+        override fun observeSelectableParcels(farmId: UUID): Flow<List<CampaignParcelOption>> = parcels
         override fun observe(id: UUID): Flow<Campaign?> = detail
         override suspend fun create(command: NewCampaign): AppResult<UUID> { created = command; return AppResult.Success(UUID.randomUUID()) }
         override suspend fun updatePreparation(id: UUID, changes: CampaignPreparationChanges) = result("update")

@@ -20,6 +20,7 @@ import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelSnapshot
+import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelOption
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignPreparationChanges
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.campaign.NewCampaign
@@ -37,6 +38,11 @@ class OfflineFirstCampaignRepository(
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
 ) : CampaignRepository {
+    override fun observeSelectableParcels(farmId: UUID): Flow<List<CampaignParcelOption>> =
+        database.parcelDao().observeActive(farmId).map { rows ->
+            rows.map { CampaignParcelOption(it.parcel.id, it.parcel.displayName, it.parcel.managedAreaM2) }
+        }.flowOn(dispatchers.io)
+
     override fun observeForFarm(farmId: UUID): Flow<List<Campaign>> =
         database.campaignDao().observeForFarm(farmId).map { rows ->
             rows.map { campaign -> CampaignWithSnapshots(campaign, database.campaignDao().listSnapshots(campaign.id)).toDomain() }
