@@ -71,10 +71,17 @@ export default function OpenGraphImage() {
             />
             <span>Mágina Olivo</span>
           </div>
-          <div style={{ fontSize: 86, lineHeight: 0.93, letterSpacing: "-4px" }}>
-            Tu olivar,
-            <br />
-            en buenas manos.
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              fontSize: 86,
+              lineHeight: 0.93,
+              letterSpacing: "-4px",
+            }}
+          >
+            <span>Tu olivar,</span>
+            <span>en buenas manos.</span>
           </div>
           <div
             style={{
