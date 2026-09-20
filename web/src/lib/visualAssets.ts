@@ -24,7 +24,7 @@ export const visualAssets: Record<VisualAssetKey, VisualAsset> = {
     fallbackSrc: "/brand/hero-scene.svg",
     alt: "Agricultor consultando Mágina Olivo entre olivos de Sierra Mágina",
     focalPoint: "68% 45%",
-    status: "placeholder",
+    status: "final",
   },
   territoryIntro: {
     key: "territoryIntro",
@@ -44,11 +44,11 @@ export const visualAssets: Record<VisualAssetKey, VisualAsset> = {
   },
   fieldSequence: {
     key: "fieldSequence",
-    finalSrc: "/media/home/sequence-field.webp",
+    finalSrc: "/media/home/hero-farmer.webp",
     fallbackSrc: "/brand/hero-scene.svg",
     alt: "Agricultor trabajando en el olivar antes de consultar el móvil",
-    focalPoint: "62% 50%",
-    status: "placeholder",
+    focalPoint: "70% 50%",
+    status: "final",
   },
   phoneContext: {
     key: "phoneContext",
