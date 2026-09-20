@@ -314,6 +314,52 @@ export function CinematicHome() {
         </a>
       </section>
 
+      <section className="territory-ribbon" aria-labelledby="territory-ribbon-title">
+        <div className="shell territory-ribbon-grid">
+          <div className="territory-ribbon-copy">
+            <p className="eyebrow">Nuestra tierra</p>
+            <h2 id="territory-ribbon-title">Un territorio<br />que da vida.</h2>
+            <p>
+              En el corazón de Sierra Mágina, donde la tradición y la naturaleza
+              se encuentran, nace una forma más clara de acompañar el trabajo
+              del olivar.
+            </p>
+            <a href="/territorio">Conoce nuestro territorio <span aria-hidden="true">→</span></a>
+          </div>
+          <div className="territory-ribbon-visual" aria-hidden="true">
+            <Image src="/brand/hero-scene.svg" alt="" fill sizes="(max-width: 820px) 100vw, 58vw" />
+            <span>Raíces que<br />dan futuro</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="heritage-section" aria-labelledby="heritage-title">
+        <div className="shell heritage-grid">
+          <div className="heritage-visual" aria-hidden="true">
+            <Image src="/brand/hero-scene.svg" alt="" fill sizes="(max-width: 820px) 100vw, 52vw" />
+            <div className="heritage-person">
+              <span className="heritage-hat" />
+              <span className="heritage-head" />
+              <span className="heritage-body" />
+            </div>
+          </div>
+          <div className="heritage-copy">
+            <p className="eyebrow">Tradición e innovación</p>
+            <h2 id="heritage-title">Detrás de cada olivo hay una gran historia.</h2>
+            <p>
+              Generaciones de esfuerzo, conocimiento y pasión. Mágina Olivo no
+              pretende sustituir esa experiencia: quiere ordenarla, conservarla
+              y hacer que sea más fácil consultarla cuando hace falta.
+            </p>
+            <div className="heritage-pillars">
+              <span><b>♧</b><strong>Tradición</strong></span>
+              <span><b>▥</b><strong>Innovación</strong></span>
+              <span><b>●●●</b><strong>Personas</strong></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="story-intro" id="historia">
         <div className="shell story-intro-grid">
           <div>
