@@ -1,21 +1,23 @@
+import Link from "next/link";
+
 export function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="shell footer-grid">
-        <a className="brand footer-brand" href="/" aria-label="Mágina Olivo, inicio">
+        <Link className="brand footer-brand" href="/" aria-label="Mágina Olivo, inicio">
           <span className="brand-mark" aria-hidden="true" />
           <span className="brand-copy">
             <strong>Mágina</strong>
             <strong>Olivo</strong>
           </span>
-        </a>
+        </Link>
 
         <nav className="footer-nav" aria-label="Navegación del pie">
-          <a href="/">Inicio</a>
-          <a href="/producto">Producto</a>
-          <a href="/beneficios">Beneficios</a>
-          <a href="/territorio">Nuestra tierra</a>
-          <a href="/contacto">Contacto</a>
+          <Link href="/">Inicio</Link>
+          <Link href="/producto">Producto</Link>
+          <Link href="/beneficios">Beneficios</Link>
+          <Link href="/territorio">Nuestra tierra</Link>
+          <Link href="/contacto">Contacto</Link>
         </nav>
 
         <p>Más que olivos, nuestra tierra.</p>
@@ -24,9 +26,9 @@ export function SiteFooter() {
       <div className="shell footer-legal">
         <span>© 2026 Mágina Olivo</span>
         <nav aria-label="Información legal">
-          <a href="/privacidad">Privacidad</a>
-          <a href="/terminos">Términos</a>
-          <a href="/aviso-legal">Aviso legal</a>
+          <Link href="/privacidad">Privacidad</Link>
+          <Link href="/terminos">Términos</Link>
+          <Link href="/aviso-legal">Aviso legal</Link>
         </nav>
       </div>
     </footer>
