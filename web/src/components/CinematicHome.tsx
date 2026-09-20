@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { FieldToPhoneSequence } from "@/components/FieldToPhoneSequence";
 
@@ -268,7 +268,41 @@ export function CinematicHome() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    let frame = 0;
+
+    const update = () => {
+      frame = 0;
+      const section = scrollyRef.current;
+      if (!section) return;
+
+      const rect = section.getBoundingClientRect();
+      const scrollable = Math.max(1, section.offsetHeight - window.innerHeight);
+      const progress = Math.min(1, Math.max(0, -rect.top / scrollable));
+      setStoryPosition(progress * (storySteps.length - 1));
+    };
+
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
   const current = storySteps[activeStep];
+  const fromIndex = Math.min(storySteps.length - 1, Math.floor(storyPosition));
+  const toIndex = Math.min(storySteps.length - 1, fromIndex + 1);
+  const blend = Math.max(0, Math.min(1, storyPosition - fromIndex));
+  const fromStep = storySteps[fromIndex];
+  const toStep = storySteps[toIndex];
 
   return (
     <>
@@ -394,7 +428,7 @@ export function CinematicHome() {
 
       <FieldToPhoneSequence />
 
-      <section className="scrolly" id="funciones">
+      <section className="scrolly" id="funciones" ref={scrollyRef}>
         <div className="shell scrolly-grid">
           <div className="story-steps">
             {storySteps.map((step, index) => (
@@ -422,9 +456,32 @@ export function CinematicHome() {
             <div className="phone-stage-glow" />
             <div className="phone-orbit phone-orbit-a" />
             <div className="phone-orbit phone-orbit-b" />
-            <div className="phone-shell">
+            <div
+              className="phone-shell phone-shell-story"
+              style={{ "--screen-blend": blend } as React.CSSProperties}
+            >
               <div className="phone-camera" />
-              <PhoneScreen kind={current.screen} />
+              <div className="phone-screen-stack" aria-hidden="true">
+                <div
+                  className="phone-screen-layer phone-screen-layer-from"
+                  style={{
+                    opacity: 1 - blend,
+                    transform: `translateY(${-blend * 10}px) scale(${1 - blend * 0.018})`,
+                  }}
+                >
+                  <PhoneScreen kind={fromStep.screen} />
+                </div>
+                <div
+                  className="phone-screen-layer phone-screen-layer-to"
+                  style={{
+                    opacity: toIndex === fromIndex ? 0 : blend,
+                    transform: `translateY(${(1 - blend) * 12}px) scale(${0.982 + blend * 0.018})`,
+                  }}
+                >
+                  <PhoneScreen kind={toStep.screen} />
+                </div>
+                <span className="phone-screen-sheen" />
+              </div>
             </div>
             <div className="stage-meta">
               <span>{current.number} / 06</span>
