@@ -6,7 +6,11 @@ RUN npm install --no-audit --no-fund
 
 FROM node:22-alpine AS builder
 WORKDIR /app
-ENV NEXT_TELEMETRY_DISABLED=1
+ARG SITE_URL=https://maginaolivo.es
+ARG ALLOW_INDEXING=false
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    SITE_URL=${SITE_URL} \
+    ALLOW_INDEXING=${ALLOW_INDEXING}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
