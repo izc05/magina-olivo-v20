@@ -164,6 +164,9 @@ class AppNavigationTest {
         }
         composeRule.onNodeWithText("Parcela Alta").performClick()
 
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("parcel-detail-root").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag("parcel-detail-root").assertIsDisplayed()
         composeRule.onNodeWithText("Entrada manual").assertIsDisplayed()
         composeRule.waitUntil(5_000) {
