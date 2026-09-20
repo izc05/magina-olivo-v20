@@ -70,8 +70,6 @@ jobs:
           curl -fsS http://127.0.0.1:3000/robots.txt | grep -q "Disallow: /"
           curl -fsSI http://127.0.0.1:3000/ | grep -qi "x-content-type-options: nosniff"
 
-      - name: Smoke test public routes
-        run: |
           routes=(
             "/"
             "/producto"
