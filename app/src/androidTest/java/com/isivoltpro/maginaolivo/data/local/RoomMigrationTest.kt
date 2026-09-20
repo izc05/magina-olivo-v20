@@ -111,13 +111,13 @@ class RoomMigrationTest {
             database.execSQL(
                 """
                 INSERT INTO farms (
-                    id, workspace_id, name, cover_document_id, location_label, latitude,
-                    longitude, managed_area_m2, notes, status, created_at, updated_at,
+                    id, workspace_id, name, description, municipality, province,
+                    cover_document_id, notes, status, created_at, updated_at,
                     deleted_at, version, sync_status, remote_version, last_synced_at
                 ) VALUES (
                     '33333333-3333-3333-3333-333333333333',
                     '11111111-1111-1111-1111-111111111111', 'La Solana', NULL, NULL,
-                    NULL, NULL, NULL, NULL, 'ACTIVE', 1000, 1000, NULL, 1,
+                    NULL, NULL, NULL, 'ACTIVE', 1000, 1000, NULL, 1,
                     'LOCAL_ONLY', NULL, NULL
                 )
                 """.trimIndent(),
