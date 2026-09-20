@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -14,7 +15,7 @@ export default function NotFound() {
           <p>
             La página que buscas no existe o ha cambiado de lugar.
           </p>
-          <a className="button button-primary" href="/">Volver al inicio →</a>
+          <Link className="button button-primary" href="/">Volver al inicio →</Link>
         </div>
       </section>
       </main>
