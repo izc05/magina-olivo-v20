@@ -2254,3 +2254,172 @@ button, a { -webkit-tap-highlight-color: transparent; }
     --film-wash: .74 !important;
   }
 }
+
+
+/* Product overview — visual master from approved landing reference */
+
+.app-cycle-overview {
+  position: relative;
+  z-index: 3;
+  padding: 135px 0 125px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(168,177,139,.18), transparent 28rem),
+    #fbf8ef;
+}
+
+.app-cycle-overview::before,
+.app-cycle-overview::after {
+  content: "";
+  position: absolute;
+  left: -10%;
+  width: 120%;
+  height: 88px;
+  border-radius: 50%;
+  background: #fbf8ef;
+  pointer-events: none;
+}
+
+.app-cycle-overview::before {
+  top: -48px;
+}
+
+.app-cycle-overview::after {
+  bottom: -48px;
+  box-shadow: 0 -1px 0 rgba(21,48,34,.05);
+}
+
+.overview-heading {
+  max-width: 850px;
+  margin: 0 auto 65px;
+  text-align: center;
+}
+
+.overview-heading h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.5rem, 6.7vw, 6.7rem);
+  font-weight: 500;
+  line-height: .9;
+  letter-spacing: -.055em;
+}
+
+.overview-heading > p:not(.eyebrow) {
+  max-width: 700px;
+  margin: 24px auto 0;
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.overview-devices {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.overview-device-card {
+  min-width: 0;
+  text-align: center;
+}
+
+.overview-phone-window {
+  height: 390px;
+  display: grid;
+  place-items: start center;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.phone-shell-overview {
+  width: 300px;
+  flex: 0 0 auto;
+  transform: scale(.62) !important;
+  transform-origin: top center !important;
+  box-shadow: 0 34px 65px rgba(30,48,34,.18);
+}
+
+.overview-device-card > span {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: .88rem;
+}
+
+.overview-device-card h3 {
+  min-height: 2.5em;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1.05;
+}
+
+.overview-device-card p {
+  max-width: 190px;
+  margin: 9px auto 0;
+  color: var(--ink-soft);
+  font-size: .82rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 1050px) {
+  .overview-devices {
+    grid-template-columns: repeat(3, 1fr);
+    row-gap: 48px;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-cycle-overview {
+    padding: 100px 0 90px;
+  }
+
+  .overview-heading {
+    margin-bottom: 42px;
+    text-align: left;
+  }
+
+  .overview-heading > p:not(.eyebrow) {
+    margin-left: 0;
+  }
+
+  .overview-devices {
+    display: flex;
+    gap: 13px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding: 0 13px 18px;
+    margin-inline: -13px;
+    scrollbar-width: none;
+  }
+
+  .overview-devices::-webkit-scrollbar {
+    display: none;
+  }
+
+  .overview-device-card {
+    min-width: min(73vw, 285px);
+    scroll-snap-align: center;
+  }
+
+  .overview-phone-window {
+    height: 420px;
+  }
+
+  .phone-shell-overview {
+    transform: scale(.67) !important;
+  }
+
+  .overview-device-card h3 {
+    min-height: auto;
+    font-size: 1.55rem;
+  }
+
+  .overview-device-card p {
+    max-width: 245px;
+    font-size: .88rem;
+  }
+}
