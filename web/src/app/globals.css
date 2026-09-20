@@ -4025,3 +4025,221 @@ button, a { -webkit-tap-highlight-color: transparent; }
     font-size: clamp(2.75rem, 13.2vw, 4.2rem);
   }
 }
+
+
+/* Approved final CTA composition */
+
+.download-section {
+  position: relative;
+  min-height: 78svh;
+  display: grid;
+  place-items: center;
+  padding: 150px 0 135px;
+  overflow: hidden;
+  color: white;
+  background: var(--olive-deep);
+}
+
+.download-section::after {
+  background: #f8f4e9;
+  transform: translateY(60%);
+}
+
+.download-scene {
+  position: absolute;
+  inset: 0;
+}
+
+.download-scene img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 70% 45%;
+  opacity: .48;
+  transform: scale(1.06);
+}
+
+.download-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(103,126,77,.22), transparent 36rem),
+    linear-gradient(90deg, rgba(24,55,36,.88), rgba(24,55,36,.58) 50%, rgba(24,55,36,.86)),
+    linear-gradient(180deg, rgba(24,55,36,.22), rgba(24,55,36,.72));
+}
+
+.download-cta {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.download-cta h2 {
+  max-width: 900px;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(4.1rem, 7.3vw, 7.4rem);
+  font-weight: 500;
+  line-height: .88;
+  letter-spacing: -.055em;
+}
+
+.download-cta > p:not(.eyebrow) {
+  max-width: 650px;
+  margin: 26px auto 0;
+  color: rgba(255,255,255,.78);
+  font-size: 1.08rem;
+  line-height: 1.68;
+}
+
+.store-row-centered {
+  justify-content: center;
+  margin-top: 34px;
+}
+
+.store-row-centered .store-badge {
+  min-width: 178px;
+  min-height: 58px;
+  justify-content: center;
+  text-align: left;
+  background: #0e110f;
+  box-shadow: 0 16px 35px rgba(0,0,0,.2);
+}
+
+.store-badge-outline {
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.34);
+  color: white;
+  background: rgba(255,255,255,.08) !important;
+  backdrop-filter: blur(10px);
+  text-align: center !important;
+}
+
+.download-handnote {
+  position: absolute;
+  right: 2%;
+  bottom: -58px;
+  color: rgba(255,255,255,.82);
+  font-family: "Segoe Script", "Bradley Hand", cursive;
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  line-height: 1.16;
+  text-align: right;
+  transform: rotate(-6deg);
+}
+
+.download-olive-left,
+.download-olive-right {
+  position: absolute;
+  z-index: 3;
+  width: min(330px, 25vw);
+  opacity: .42;
+  filter: none;
+}
+
+.download-olive-left {
+  left: -52px;
+  top: -22px;
+  transform: rotate(10deg);
+}
+
+.download-olive-right {
+  right: -64px;
+  bottom: -26px;
+  transform: scaleX(-1) rotate(-9deg);
+}
+
+.contact-strip {
+  position: relative;
+  color: var(--ink);
+  background: #f8f4e9;
+}
+
+.contact-strip-inner {
+  min-height: 245px;
+  padding-top: 58px;
+  padding-bottom: 58px;
+}
+
+.contact-strip h2 {
+  max-width: 760px;
+  color: var(--ink);
+  font-size: clamp(2.7rem, 4.6vw, 4.8rem);
+}
+
+.contact-strip-inner > div > p:not(.eyebrow) {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 820px) {
+  .download-section {
+    min-height: 72svh;
+    padding: 120px 0 125px;
+  }
+
+  .download-scene img {
+    object-position: 66% 48%;
+  }
+
+  .download-handnote {
+    position: static;
+    margin-top: 34px;
+    justify-self: end;
+    font-size: 1.25rem;
+  }
+
+  .download-olive-left {
+    left: -112px;
+    width: 240px;
+    opacity: .28;
+  }
+
+  .download-olive-right {
+    right: -120px;
+    width: 250px;
+    opacity: .28;
+  }
+
+  .contact-strip-inner {
+    min-height: 285px;
+    padding-top: 72px;
+    padding-bottom: 72px;
+  }
+}
+
+@media (max-width: 560px) {
+  .download-section {
+    min-height: 76svh;
+    padding-top: 112px;
+    padding-bottom: 126px;
+  }
+
+  .download-cta h2 {
+    font-size: clamp(3.35rem, 15.5vw, 5rem);
+  }
+
+  .download-cta > p:not(.eyebrow) {
+    max-width: 92%;
+    font-size: .96rem;
+  }
+
+  .store-row-centered {
+    width: min(100%, 330px);
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .store-row-centered .store-badge {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .contact-strip h2 {
+    font-size: clamp(2.65rem, 12vw, 4rem);
+  }
+
+  .contact-strip-inner {
+    gap: 28px;
+  }
+}
