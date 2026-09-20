@@ -4341,3 +4341,141 @@ article[id] {
     transform: scale(1.045);
   }
 }
+
+
+/* Marketing pages final polish */
+
+.page-hero::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  left: -8%;
+  right: -8%;
+  bottom: -1px;
+  height: 108px;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  background: #f7f3e8;
+  transform: translateY(58%);
+  pointer-events: none;
+}
+
+.page-hero-scene img {
+  transform: scale(1.025);
+}
+
+.page-feature-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition:
+    transform .35s cubic-bezier(.2,.7,.2,1),
+    box-shadow .35s ease,
+    border-color .35s ease;
+}
+
+.page-feature-card::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 210px;
+  height: 210px;
+  right: -96px;
+  top: -96px;
+  border-radius: 50%;
+  border: 1px solid rgba(83,103,62,.10);
+  box-shadow:
+    0 0 0 28px rgba(83,103,62,.025),
+    0 0 0 58px rgba(83,103,62,.018);
+}
+
+.page-feature-card:nth-child(2n) {
+  background: rgba(245,243,234,.78);
+}
+
+.page-feature-card:nth-child(3n) {
+  background: rgba(238,240,229,.72);
+}
+
+.page-feature-card > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-feature-card > span::after {
+  content: "";
+  width: 34px;
+  height: 1px;
+  background: rgba(185,154,96,.46);
+}
+
+@media (hover: hover) {
+  .page-feature-card:hover {
+    transform: translateY(-7px);
+    border-color: rgba(83,103,62,.2);
+    box-shadow: 0 26px 58px rgba(37,55,40,.10);
+  }
+
+  .contact-card > a:hover strong {
+    color: var(--olive-dark);
+  }
+
+  .contact-card > a:hover b {
+    transform: translateX(4px);
+  }
+}
+
+.contact-card > a strong,
+.contact-card > a b {
+  transition: color .2s ease, transform .2s ease;
+}
+
+.page-cta {
+  position: relative;
+  overflow: hidden;
+}
+
+.page-cta::before {
+  content: "";
+  position: absolute;
+  width: min(430px, 38vw);
+  aspect-ratio: 1;
+  right: -8vw;
+  top: 50%;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.08);
+  transform: translateY(-50%);
+  box-shadow:
+    0 0 0 44px rgba(255,255,255,.025),
+    0 0 0 96px rgba(255,255,255,.018);
+  pointer-events: none;
+}
+
+.page-cta-inner {
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 900px) {
+  .page-hero::after {
+    height: 88px;
+  }
+
+  .page-feature-card {
+    min-height: 285px;
+  }
+}
+
+@media (max-width: 560px) {
+  .page-hero::after {
+    height: 70px;
+  }
+
+  .page-feature-card {
+    min-height: 235px;
+  }
+
+  .page-feature-card h3 {
+    font-size: 1.8rem;
+  }
+}
