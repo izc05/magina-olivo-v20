@@ -2911,3 +2911,72 @@ button, a { -webkit-tap-highlight-color: transparent; }
     text-align: left;
   }
 }
+
+
+/* Continuous phone-screen interpolation */
+
+.phone-shell-story {
+  isolation: isolate;
+}
+
+.phone-screen-stack {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 39px;
+  background: #fbf8ee;
+}
+
+.phone-screen-layer {
+  position: absolute;
+  inset: 0;
+  transform-origin: center;
+  will-change: opacity, transform;
+}
+
+.phone-screen-layer .phone-screen {
+  height: 100%;
+}
+
+.phone-screen-layer-to {
+  z-index: 2;
+}
+
+.phone-screen-sheen {
+  position: absolute;
+  z-index: 4;
+  inset: -15%;
+  pointer-events: none;
+  opacity: calc((1 - abs(.5 - var(--screen-blend))) * .09);
+  background: linear-gradient(
+    108deg,
+    transparent 22%,
+    rgba(255,255,255,.8) 45%,
+    transparent 66%
+  );
+  transform: translateX(calc((var(--screen-blend) - .5) * 50%)) rotate(4deg);
+  mix-blend-mode: screen;
+}
+
+@supports not (opacity: calc((1 - abs(.5 - .5)) * .09)) {
+  .phone-screen-sheen {
+    opacity: .04;
+  }
+}
+
+@media (max-width: 820px) {
+  .phone-screen-stack {
+    border-radius: 25px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phone-screen-layer {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .phone-screen-sheen {
+    display: none;
+  }
+}
