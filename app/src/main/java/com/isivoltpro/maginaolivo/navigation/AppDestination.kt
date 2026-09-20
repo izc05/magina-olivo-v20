@@ -45,12 +45,13 @@ object AppDestination {
     const val DeveloperGallery = "developer-gallery"
 
     const val FarmPattern = "farm/{farmId}"
-    const val ParcelPattern = "parcel/{parcelId}"
+    const val ParcelPattern = "parcel/{parcelId}/{farmId}"
     const val CampaignPattern = "campaign/{campaignId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
 
-    fun parcel(parcelId: String): String = nestedRoute("parcel", parcelId)
+    fun parcel(parcelId: String, farmId: String): String =
+        "${nestedRoute("parcel", parcelId)}/${safeIdentifier(farmId)}"
 
     fun campaign(campaignId: String): String = nestedRoute("campaign", campaignId)
 
@@ -73,9 +74,11 @@ object AppDestination {
     }
 
     private fun nestedRoute(prefix: String, identifier: String): String {
-        val safeIdentifier = identifier.trim()
-        require(safeIdentifier.isNotEmpty()) { "A navigation identifier cannot be blank" }
-        require('/' !in safeIdentifier) { "A navigation identifier cannot contain '/'" }
-        return "$prefix/$safeIdentifier"
+        return "$prefix/${safeIdentifier(identifier)}"
+    }
+
+    private fun safeIdentifier(identifier: String): String = identifier.trim().also {
+        require(it.isNotEmpty()) { "A navigation identifier cannot be blank" }
+        require('/' !in it) { "A navigation identifier cannot contain '/'" }
     }
 }

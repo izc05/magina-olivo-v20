@@ -33,12 +33,13 @@ class AppDestinationTest {
     @Test
     fun nestedRouteBuildersRejectBlankIdentifiers() {
         assertEquals("farm/farm-1", AppDestination.farm("farm-1"))
-        assertEquals("parcel/parcel-1", AppDestination.parcel("parcel-1"))
+        assertEquals("parcel/parcel-1/farm-1", AppDestination.parcel("parcel-1", "farm-1"))
         assertEquals("campaign/campaign-1", AppDestination.campaign("campaign-1"))
 
         listOf(
             { AppDestination.farm(" ") },
-            { AppDestination.parcel("") },
+            { AppDestination.parcel("", "farm-1") },
+            { AppDestination.parcel("parcel-1", "") },
             { AppDestination.campaign("\t") },
         ).forEach { builder ->
             runCatching(builder).onSuccess {
