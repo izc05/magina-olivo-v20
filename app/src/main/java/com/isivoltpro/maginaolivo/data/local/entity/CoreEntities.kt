@@ -138,6 +138,55 @@ data class CampaignEntity(
 )
 
 @Entity(
+    tableName = "campaign_parcels",
+    foreignKeys = [
+        ForeignKey(
+            entity = WorkspaceEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["workspace_id"],
+            onDelete = ForeignKey.NO_ACTION,
+        ),
+        ForeignKey(
+            entity = CampaignEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["campaign_id"],
+            onDelete = ForeignKey.NO_ACTION,
+        ),
+        ForeignKey(
+            entity = ParcelEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["parcel_id"],
+            onDelete = ForeignKey.NO_ACTION,
+        ),
+        ForeignKey(
+            entity = FarmEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["farm_id_at_start"],
+            onDelete = ForeignKey.NO_ACTION,
+        ),
+    ],
+    indices = [
+        Index(value = ["campaign_id", "parcel_id"], unique = true),
+        Index(value = ["workspace_id"]),
+        Index(value = ["parcel_id"]),
+        Index(value = ["farm_id_at_start"]),
+    ],
+)
+data class CampaignParcelSnapshotEntity(
+    @PrimaryKey val id: UUID,
+    @ColumnInfo(name = "workspace_id") val workspaceId: UUID,
+    @ColumnInfo(name = "campaign_id") val campaignId: UUID,
+    @ColumnInfo(name = "parcel_id") val parcelId: UUID,
+    @ColumnInfo(name = "farm_id_at_start") val farmIdAtStart: UUID,
+    @ColumnInfo(name = "farm_name_at_start") val farmNameAtStart: String,
+    @ColumnInfo(name = "parcel_name_at_start") val parcelNameAtStart: String,
+    @ColumnInfo(name = "managed_area_m2_at_start") val managedAreaM2AtStart: Double? = null,
+    @ColumnInfo(name = "cadastral_reference_at_start") val cadastralReferenceAtStart: String? = null,
+    @ColumnInfo(name = "geometry_geo_json_snapshot") val geometryGeoJsonSnapshot: String? = null,
+    @Embedded val metadata: LocalMetadata,
+)
+
+@Entity(
     tableName = "activities",
     foreignKeys = [
         ForeignKey(

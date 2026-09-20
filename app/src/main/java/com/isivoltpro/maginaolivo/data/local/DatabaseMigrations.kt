@@ -11,7 +11,24 @@ object DatabaseMigrations {
             }
         }
 
-    val all: Array<Migration> = arrayOf(MIGRATION_1_2)
+    val MIGRATION_2_3 =
+        object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE `campaigns` SET `status` = 'PREPARATION' WHERE `status` = 'PLANNED'")
+                schemaVersion3Statements.forEach(db::execSQL)
+            }
+        }
+
+    val all: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+
+    private val schemaVersion3Statements =
+        arrayOf(
+            """CREATE TABLE IF NOT EXISTS `campaign_parcels` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `campaign_id` TEXT NOT NULL, `parcel_id` TEXT NOT NULL, `farm_id_at_start` TEXT NOT NULL, `farm_name_at_start` TEXT NOT NULL, `parcel_name_at_start` TEXT NOT NULL, `managed_area_m2_at_start` REAL, `cadastral_reference_at_start` TEXT, `geometry_geo_json_snapshot` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`campaign_id`) REFERENCES `campaigns`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`parcel_id`) REFERENCES `parcels`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`farm_id_at_start`) REFERENCES `farms`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )""",
+            """CREATE UNIQUE INDEX IF NOT EXISTS `index_campaign_parcels_campaign_id_parcel_id` ON `campaign_parcels` (`campaign_id`, `parcel_id`)""",
+            """CREATE INDEX IF NOT EXISTS `index_campaign_parcels_workspace_id` ON `campaign_parcels` (`workspace_id`)""",
+            """CREATE INDEX IF NOT EXISTS `index_campaign_parcels_parcel_id` ON `campaign_parcels` (`parcel_id`)""",
+            """CREATE INDEX IF NOT EXISTS `index_campaign_parcels_farm_id_at_start` ON `campaign_parcels` (`farm_id_at_start`)""",
+        )
 
     private val schemaVersion2Statements =
         arrayOf(

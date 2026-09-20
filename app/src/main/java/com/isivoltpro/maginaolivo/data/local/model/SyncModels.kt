@@ -47,8 +47,9 @@ enum class RecordStatus {
 }
 
 enum class CampaignStatus {
-    PLANNED,
+    PREPARATION,
     ACTIVE,
+    HARVEST,
     CLOSED,
 }
 
