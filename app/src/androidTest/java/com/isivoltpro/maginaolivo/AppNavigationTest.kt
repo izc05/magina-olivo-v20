@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -165,8 +166,15 @@ class AppNavigationTest {
         }
         composeRule.onNodeWithTag("parcel-row").performClick()
 
-        composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithTag("parcel-detail-root").fetchSemanticsNodes().isNotEmpty()
+        runCatching {
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag("parcel-detail-root").fetchSemanticsNodes().isNotEmpty()
+            }
+        }.getOrElse { cause ->
+            throw AssertionError(
+                "Parcel destination did not open. Current semantics:\n${composeRule.onRoot(useUnmergedTree = true).fetchSemanticsNode()}",
+                cause,
+            )
         }
         composeRule.onNodeWithTag("parcel-detail-root").assertIsDisplayed()
         composeRule.onNodeWithText("Entrada manual").assertIsDisplayed()
