@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.isivoltpro.maginaolivo.data.local.dao.FarmDao
 import com.isivoltpro.maginaolivo.data.local.dao.DocumentDao
+import com.isivoltpro.maginaolivo.data.local.dao.ParcelDao
 import com.isivoltpro.maginaolivo.data.local.dao.SyncOutboxDao
 import com.isivoltpro.maginaolivo.data.local.dao.WorkspaceDao
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
@@ -49,6 +50,8 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun farmDao(): FarmDao
 
     abstract fun documentDao(): DocumentDao
+
+    abstract fun parcelDao(): ParcelDao
 
     abstract fun syncOutboxDao(): SyncOutboxDao
 
