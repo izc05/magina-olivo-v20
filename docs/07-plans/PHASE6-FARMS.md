@@ -1,6 +1,6 @@
 # Phase 6 — Farms RC1.2 implementation plan
 
-**Status:** Farm slice PASS; Gate 6 overall remains in progress  
+**Status:** Farm slice PASS; Gate 6 overall remains in progress
 **Precondition:** Gate 5 PASS  
 **Branch:** `feat/android-farms`  
 **Stacked base:** `feat/android-room-core` / PR #199
