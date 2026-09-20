@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 export const metadata: Metadata = {
   title: "Nuestra tierra",
   description: "Sierra Mágina, olivar y territorio: el contexto del que nace Mágina Olivo.",
+  alternates: { canonical: "/territorio" },
 };
 
 export default function TerritorioPage() {
