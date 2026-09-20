@@ -108,7 +108,7 @@ fun FarmParcelsSection(
                 area = parcel.areaLabel(),
                 variety = parcel.municipality ?: "Municipio sin registrar",
                 onClick = { onParcelSelected(parcel.id) },
-                modifier = Modifier.testTag("parcel-${parcel.id}"),
+                modifier = Modifier.testTag("parcel-row"),
             )
         }
     }

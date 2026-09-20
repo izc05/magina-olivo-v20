@@ -52,7 +52,7 @@ class ParcelScreensTest {
             }
         }
 
-        composeRule.onNodeWithTag("parcel-${parcel.id}").performClick()
+        composeRule.onNodeWithTag("parcel-row").performClick()
         assertEquals(parcel.id, selected)
     }
 

@@ -163,7 +163,7 @@ class AppNavigationTest {
             composeRule.onAllNodesWithTag("save-parcel").fetchSemanticsNodes().isEmpty() &&
                 composeRule.onAllNodesWithText("Parcela Alta").fetchSemanticsNodes().size == 1
         }
-        composeRule.onNodeWithText("Parcela Alta").performClick()
+        composeRule.onNodeWithTag("parcel-row").performClick()
 
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithTag("parcel-detail-root").fetchSemanticsNodes().isNotEmpty()
