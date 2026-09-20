@@ -13,6 +13,8 @@ import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
+import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
+import com.isivoltpro.maginaolivo.domain.farm.FarmChanges
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
 import java.time.Instant
 import java.time.LocalDate
@@ -173,6 +175,170 @@ class OfflineFirstFarmRepositoryTest {
         }
     }
 
+    @Test
+    fun editArchiveAndRestoreSurviveRestartWithOrderedOutbox() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000020")
+        val farmId = uuid("20000000-0000-0000-0000-000000000020")
+        val ids = listOf(
+            farmId,
+            uuid("30000000-0000-0000-0000-000000000020"),
+            uuid("30000000-0000-0000-0000-000000000021"),
+            uuid("30000000-0000-0000-0000-000000000022"),
+            uuid("30000000-0000-0000-0000-000000000023"),
+        )
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            val repository = repository(database, TEST_INSTANT, ids)
+            assertEquals(
+                AppResult.Success(farmId),
+                repository.create(NewFarm(workspaceId = workspaceId, name = "La Solana")),
+            )
+            assertEquals(
+                AppResult.Success(Unit),
+                repository.update(
+                    farmId,
+                    FarmChanges(
+                        name = "Los Llanos",
+                        municipality = "Huelma",
+                        province = "Jaén",
+                        notes = "Linde norte revisada",
+                    ),
+                ),
+            )
+            assertEquals(AppResult.Success(Unit), repository.archive(farmId))
+            assertEquals(AppResult.Success(Unit), repository.restore(farmId))
+        } finally {
+            database.close()
+        }
+
+        val reopened = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            val farm = reopened.farmDao().findById(farmId)
+            assertEquals("Los Llanos", farm?.name)
+            assertEquals("Huelma", farm?.municipality)
+            assertEquals(FarmStatus.ACTIVE, farm?.status)
+            assertEquals(null, farm?.metadata?.deletedAt)
+            assertEquals(4L, farm?.metadata?.version)
+            assertEquals(
+                listOf(
+                    OutboxOperation.CREATE,
+                    OutboxOperation.UPDATE,
+                    OutboxOperation.DELETE,
+                    OutboxOperation.UPDATE,
+                ),
+                reopened
+                    .syncOutboxDao()
+                    .listForEntity(SyncEntityType.FARM, farmId)
+                    .map { it.operation },
+            )
+        } finally {
+            reopened.close()
+        }
+    }
+
+    @Test
+    fun activeSummaryDerivesCurrentParcelAreaAndCampaign() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000030")
+        val farmId = uuid("20000000-0000-0000-0000-000000000030")
+        val parcelId = uuid("40000000-0000-0000-0000-000000000030")
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            database.farmDao().upsert(
+                com.isivoltpro.maginaolivo.data.local.entity.FarmEntity(
+                    id = farmId,
+                    workspaceId = workspaceId,
+                    name = "La Solana",
+                    metadata = LocalMetadata(TEST_INSTANT, TEST_INSTANT),
+                ),
+            )
+            database.openHelper.writableDatabase.execSQL(
+                """
+                INSERT INTO parcels (
+                    id, workspace_id, display_name, cadastral_reference, cadastral_polygon,
+                    cadastral_parcel, municipality, province, source, geometry_geo_json,
+                    cadastral_area_m2, managed_area_m2, notes, status, created_at, updated_at,
+                    deleted_at, version, sync_status, remote_version, last_synced_at
+                ) VALUES (
+                    '$parcelId', '$workspaceId', 'Parcela Norte', NULL, NULL, NULL, 'Huelma',
+                    'Jaén', 'MANUAL', NULL, 16000.0, 15000.0, NULL, 'ACTIVE',
+                    1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            database.openHelper.writableDatabase.execSQL(
+                """
+                INSERT INTO farm_parcel_memberships (
+                    id, workspace_id, farm_id, parcel_id, valid_from, valid_until,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '50000000-0000-0000-0000-000000000030', '$workspaceId', '$farmId',
+                    '$parcelId', 1000, NULL, 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            database.openHelper.writableDatabase.execSQL(
+                """
+                INSERT INTO campaigns (
+                    id, workspace_id, farm_id, name, start_date, end_date, status, notes,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '60000000-0000-0000-0000-000000000030', '$workspaceId', '$farmId',
+                    '2026/27', '2026-09-01', NULL, 'ACTIVE', NULL,
+                    1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+
+            val summary = repository(database, TEST_INSTANT, emptyList())
+                .observeActive(workspaceId)
+                .first()
+                .single()
+
+            assertEquals(1L, summary.parcelCount)
+            assertEquals(15_000.0, summary.totalAreaM2 ?: 0.0, 0.0)
+            assertEquals("2026/27", summary.activeCampaignName)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun localWorkspaceBootstrapIsIdempotentAndQueuesCreateOnce() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000040")
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            val repository = LocalWorkspaceRepository(
+                database = database,
+                clock = FixedClock(TEST_INSTANT),
+                idGenerator = QueuedIdGenerator(
+                    listOf(
+                        workspaceId,
+                        uuid("90000000-0000-0000-0000-000000000040"),
+                        uuid("30000000-0000-0000-0000-000000000040"),
+                    ),
+                ),
+                dispatchers = TestDispatchers,
+                regionalContext = com.isivoltpro.maginaolivo.core.regional.RegionalContext.spainDefault(),
+            )
+
+            assertEquals(AppResult.Success(workspaceId), repository.ensureLocalWorkspace())
+            assertEquals(AppResult.Success(workspaceId), repository.ensureLocalWorkspace())
+            assertEquals("Mi olivar", database.workspaceDao().findById(workspaceId)?.name)
+            assertEquals(
+                listOf(OutboxOperation.CREATE),
+                database.syncOutboxDao()
+                    .listForEntity(SyncEntityType.WORKSPACE, workspaceId)
+                    .map { it.operation },
+            )
+        } finally {
+            database.close()
+        }
+    }
+
     private fun repository(
         database: MaginaOlivoDatabase,
         now: Instant,
@@ -222,5 +388,6 @@ class OfflineFirstFarmRepositoryTest {
 
     private companion object {
         const val TEST_DATABASE = "offline-farm-repository-test.db"
+        val TEST_INSTANT: Instant = Instant.parse("2026-09-19T17:00:00Z")
     }
 }

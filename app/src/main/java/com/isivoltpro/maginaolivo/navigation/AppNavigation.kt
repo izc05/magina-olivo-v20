@@ -20,6 +20,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.isivoltpro.maginaolivo.app.AppCompositionRoot
 import com.isivoltpro.maginaolivo.app.AppEnvironment
+import com.isivoltpro.maginaolivo.feature.farms.FarmDetailRoute
+import com.isivoltpro.maginaolivo.feature.farms.FarmListRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
@@ -28,16 +30,15 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.expenses.ExpensesDocumentsReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.farm.FarmDetailReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.harvest.HarvestReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.map.MapCatastroReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.olivar.OlivarReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.parcel.ParcelDetailReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.register.RegisterActivityReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.weather.WeatherMarketReferenceScreen
+import java.util.UUID
 
 private val bottomBarItems = RootDestination.entries.map { destination ->
     MoBottomBarItem(
@@ -113,9 +114,17 @@ fun AppNavigation(
                 )
             }
             composable(RootDestination.Olivar.route) {
-                OlivarReferenceScreen(
-                    onFarmSelected = { navController.navigate(AppDestination.farm("la-solana")) },
-                )
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    FarmListRoute(
+                        persistence = persistence,
+                        onFarmSelected = { farmId ->
+                            navController.navigate(AppDestination.farm(farmId.toString()))
+                        },
+                    )
+                }
             }
             composable(RootDestination.Register.route) { RegisterActivityReferenceScreen() }
             composable(RootDestination.Calendar.route) {
@@ -134,11 +143,20 @@ fun AppNavigation(
                     onDeveloperGallery = { navController.navigate(AppDestination.DeveloperGallery) },
                 )
             }
-            composable(AppDestination.FarmPattern) {
-                FarmDetailReferenceScreen(
-                    onParcelSelected = { navController.navigate(AppDestination.parcel(it)) },
-                    onCampaignSelected = { navController.navigate(AppDestination.campaign("active")) },
-                )
+            composable(AppDestination.FarmPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = backStackEntry.arguments
+                    ?.getString("farmId")
+                    ?.let { value -> runCatching { UUID.fromString(value) }.getOrNull() }
+                if (persistence == null || farmId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    FarmDetailRoute(
+                        farmId = farmId,
+                        persistence = persistence,
+                        onArchived = { navController.popBackStack() },
+                    )
+                }
             }
             composable(AppDestination.ParcelPattern) {
                 ParcelDetailReferenceScreen(
@@ -202,6 +220,15 @@ fun AppNavigation(
             }
         }
     }
+}
+
+@Composable
+private fun PersistenceUnavailableScreen() {
+    NavigationPlaceholderScreen(
+        title = "Datos locales no disponibles",
+        description = "No se ha podido abrir el almacenamiento de este dispositivo. Cierra y vuelve a abrir la aplicación.",
+        testTag = "local-persistence-error",
+    )
 }
 
 @Composable

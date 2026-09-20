@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-09-19
+**Last reviewed:** 2026-09-20
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -28,10 +28,10 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 6 — FARMS RC1.2
+▶ GATE 6 — PARCELS (FARMS SLICE PASS; GATE 6 OVERALL IN PROGRESS)
 ```
 
-Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Phase 6 may now implement the complete offline Farm lifecycle and production UI; Parcel implementation remains blocked until the Phase 6 gate passes.
+Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. The Gate 6 Farm slice is validated in `docs/06-testing/PHASE6-FARMS-SLICE.md`. Per the current owner mission, Gate 6 covers Farms + Parcels + Campaigns, so it remains FAIL/in progress while Parcel implementation begins.
 
 ## Mandatory reading order for any agent
 
@@ -76,17 +76,19 @@ Gate 5 passed on code commit `ad61d6f4` on 2026-09-19. Room is now the wired loc
 
 CI passed 22 unit tests and 28 Android instrumentation tests. The three repository tests were also executed separately with Android airplane mode enabled and Wi-Fi disabled; both the primary and independent API 35 emulator runs passed with empty crash buffers. Evidence and the installable DEV APK are attached to runs `35465669062` and `35465670678`. PR #199 contains the stacked Phase 5 implementation; `main` remains unchanged.
 
+The Gate 6 Farm slice passed on code commit `a2d2d475` on 2026-09-20. Production Mi Olivar now uses Room-backed Farm list/detail routes with create, edit, archive, restore, truthful derived summaries and durable cover-photo metadata. Every mutation is local-first and queues its synchronization intent. CI passed 27 unit tests, 37 API 35 instrumentation tests and 6 repository tests under airplane mode; the crash buffer was empty. Evidence and the verified DEV APK are attached to run `35480574641`. PR #200 contains this stacked slice.
+
 ## Next deliverable
 
-Implement Phase 6 Farms RC1.2:
+Continue Gate 6 with Parcels:
 
-- create, edit, archive and restore Farm operations;
-- local list/card/detail UI with loading, empty, success and error states;
-- optional cover-photo metadata reference and notes;
-- surface, parcel count, active campaign and productive-summary placeholders backed only by truthful local data;
-- 1/20/50+ farm behavior and complete offline operation.
+- create, edit, archive and restore Parcel operations;
+- associate each Parcel with a Farm through non-destructive membership history;
+- retain manual/cadastral source identity, geometry GeoJSON and known area without inventing data;
+- replace the production Parcel reference route and connect the Farm detail list;
+- prove offline persistence, outbox behavior, restart and navigation.
 
-Gate 6 requires the complete Farm lifecycle to survive restart and work offline. Do not begin production Parcel implementation before Gate 6 passes.
+After the Parcel slice passes, implement Campaigns. Gate 6 must not be marked PASS until Farms, Parcels and Campaigns all pass together.
 
 ## Parallel-chat reconciliation
 

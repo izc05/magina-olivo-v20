@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +15,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSage
@@ -27,6 +32,7 @@ fun MoPhotoCover(
     title: String,
     subtitle: String,
     modifier: Modifier = Modifier,
+    imageModel: Any? = null,
     badge: (@Composable () -> Unit)? = null,
 ) {
     Card(
@@ -43,6 +49,23 @@ fun MoPhotoCover(
                     .align(Alignment.Center)
                     .size(96.dp),
             )
+            if (imageModel != null) {
+                AsyncImage(
+                    model = imageModel,
+                    contentDescription = "Fotografía de portada de $title",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.68f)),
+                            ),
+                        ),
+                )
+            }
 
             Column(
                 modifier = Modifier
@@ -54,12 +77,12 @@ fun MoPhotoCover(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineLarge,
-                    color = MoOliveDark,
+                    color = if (imageModel == null) MoOliveDark else Color.White,
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MoTextSecondary,
+                    color = if (imageModel == null) MoTextSecondary else Color.White,
                 )
             }
         }
