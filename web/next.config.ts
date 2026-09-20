@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+const isGitHubPages = process.env.GITHUB_PAGES === "true";
+const pagesBasePath = process.env.PAGES_BASE_PATH || "/magina-olivo-v20";
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -13,19 +16,27 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
-  output: "standalone",
+  output: isGitHubPages ? "export" : "standalone",
+  basePath: isGitHubPages ? pagesBasePath : undefined,
+  assetPrefix: isGitHubPages ? pagesBasePath : undefined,
+  trailingSlash: isGitHubPages,
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 7,
+    unoptimized: isGitHubPages,
   },
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: securityHeaders,
-      },
-    ];
-  },
+  ...(isGitHubPages
+    ? {}
+    : {
+        async headers() {
+          return [
+            {
+              source: "/:path*",
+              headers: securityHeaders,
+            },
+          ];
+        },
+      }),
 };
 
 export default nextConfig;
