@@ -178,6 +178,48 @@ class AppNavigationTest {
     }
 
     @Test
+    fun farmParcelCampaignLifecyclePersistsAcrossRecreation() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("add-farm").performClick()
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Campaña E2E")
+        composeRule.onNodeWithTag("save-farm").performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Finca Campaña E2E").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("Finca Campaña E2E").performClick()
+
+        composeRule.onNodeWithText("Añadir").performScrollTo().performClick()
+        composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Campaña E2E")
+        composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Parcela Campaña E2E").fetchSemanticsNodes().isNotEmpty() }
+
+        composeRule.onNodeWithTag("add-campaign").performScrollTo().performClick()
+        composeRule.onNodeWithTag("campaign-name").performTextInput("Campaña 2026/27 E2E")
+        composeRule.onNodeWithTag("campaign-start-date").performTextInput("2026-10-01")
+        composeRule.onNodeWithText("Parcela Campaña E2E").performClick()
+        composeRule.onNodeWithTag("save-campaign").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Campaña 2026/27 E2E").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("Campaña 2026/27 E2E").performScrollTo().performClick()
+
+        composeRule.onNodeWithTag("activate-campaign").performClick()
+        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Iniciar recolección").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("Iniciar recolección").performClick()
+        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("close-campaign").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("close-campaign").performClick()
+        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Histórico protegido").fetchSemanticsNodes().isNotEmpty() }
+
+        pressBack()
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Campaña 2026/27 E2E").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("Campaña 2026/27 E2E").performScrollTo().performClick()
+        composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
+        composeRule.onNodeWithText("Finca Campaña E2E").assertIsDisplayed()
+        composeRule.onNodeWithText("Sin datos").assertIsDisplayed()
+    }
+
+    @Test
     fun developerGalleryIsReachableFromDevProfile() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Perfil").performClick()

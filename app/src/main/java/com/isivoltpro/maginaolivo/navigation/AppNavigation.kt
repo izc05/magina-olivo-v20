@@ -23,6 +23,7 @@ import com.isivoltpro.maginaolivo.app.AppEnvironment
 import com.isivoltpro.maginaolivo.feature.farms.FarmDetailRoute
 import com.isivoltpro.maginaolivo.feature.farms.FarmListRoute
 import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
+import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
@@ -107,7 +108,7 @@ fun AppNavigation(
                     showBottomBar = false,
                     onOlivarSelected = { navController.navigateToRoot(RootDestination.Olivar) },
                     onMapSelected = { navController.navigate(AppDestination.MapCatastro) },
-                    onCampaignSelected = { navController.navigate(AppDestination.campaign("active")) },
+                    onCampaignSelected = { navController.navigateToRoot(RootDestination.Olivar) },
                     onHarvestSelected = { navController.navigate(AppDestination.Harvest) },
                     onExpensesSelected = { navController.navigate(AppDestination.Expenses) },
                     onWeatherSelected = { navController.navigate(AppDestination.Weather) },
@@ -157,6 +158,9 @@ fun AppNavigation(
                         onParcelSelected = { parcelId ->
                             navController.navigate(AppDestination.parcel(parcelId.toString()))
                         },
+                        onCampaignSelected = { campaignId ->
+                            navController.navigate(AppDestination.campaign(campaignId.toString()))
+                        },
                         onArchived = { navController.popBackStack() },
                     )
                 }
@@ -175,10 +179,12 @@ fun AppNavigation(
                     )
                 }
             }
-            composable(AppDestination.CampaignPattern) {
-                CampaignReferenceScreen(
-                    onAnalyticsSelected = { navController.navigate(AppDestination.Analytics) },
-                )
+            composable(AppDestination.CampaignPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val campaignId = backStackEntry.arguments?.getString("campaignId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || campaignId == null) PersistenceUnavailableScreen()
+                else CampaignDetailRoute(campaignId, persistence)
             }
             composable(AppDestination.MapCatastro) { MapCatastroReferenceScreen() }
             composable(AppDestination.Weather) { WeatherMarketReferenceScreen() }
