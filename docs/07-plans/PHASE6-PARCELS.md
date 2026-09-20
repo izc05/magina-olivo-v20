@@ -1,6 +1,6 @@
 # Gate 6 — Parcels implementation plan
 
-**Status:** In progress
+**Status:** PASS — validated on commit `ee89b9f7`
 **Precondition:** Farm slice PASS
 **Branch:** `feat/android-parcels`
 **Stacked base:** `feat/android-farms` / PR #200
@@ -55,6 +55,6 @@ Implement the production offline Parcel lifecycle without pulling Map/Catastro s
 - CI, API 35 instrumentation and crash-buffer checks pass.
 
 ```text
-PARCELS SLICE = FAIL (IN PROGRESS)
+PARCELS SLICE = PASS
 GATE 6 = FAIL (IN PROGRESS)
 ```
