@@ -11,10 +11,13 @@ export const metadata: Metadata = {
 
 export default function TerritorioPage() {
   return (
-    <main>
+    <>
+      <a className="skip-link" href="#contenido-principal">Saltar al contenido</a>
       <SiteHeader />
+      <main id="contenido-principal">
       <PageHero
         eyebrow="Nuestra tierra"
+        assetKey="territoryIntro"
         title={<>Sierra Mágina. Una forma de <em>vivir el olivar.</em></>}
         copy="Montaña, pueblos, olivares y campañas forman un paisaje que también es cultura, trabajo y conocimiento."
         aside="Más que olivos, nuestra tierra."
@@ -57,7 +60,8 @@ export default function TerritorioPage() {
         title="La misma tierra. Nuevas herramientas."
         copy="Mágina Olivo une el conocimiento de siempre con una forma más clara de organizarlo."
       />
+      </main>
       <SiteFooter />
-    </main>
+    </>
   );
 }
