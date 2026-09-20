@@ -30,6 +30,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -96,8 +98,14 @@ fun FarmListScreen(
     modifier: Modifier = Modifier,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(state.message) {
-        if (state.message != null) editorVisible = false
+        if (state.message != null) {
+            editorVisible = false
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
     }
 
     Scaffold(
@@ -264,12 +272,18 @@ fun FarmDetailScreen(
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { onCoverSelected(it.toString()) }
     }
     LaunchedEffect(state.message) {
         if (state.message == "Finca archivada") onArchived()
-        if (state.message != null) editorVisible = false
+        if (state.message != null) {
+            editorVisible = false
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
     }
 
     Scaffold(
