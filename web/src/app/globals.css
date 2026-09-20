@@ -4243,3 +4243,42 @@ button, a { -webkit-tap-highlight-color: transparent; }
     gap: 28px;
   }
 }
+
+
+/* Accessibility and anchor polish */
+
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  left: 16px;
+  top: 14px;
+  padding: 11px 16px;
+  border-radius: 999px;
+  color: white;
+  background: var(--olive-dark);
+  box-shadow: 0 10px 30px rgba(0,0,0,.22);
+  transform: translateY(-150%);
+  transition: transform .2s ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid rgba(185,154,96,.92);
+  outline-offset: 4px;
+}
+
+section[id],
+article[id] {
+  scroll-margin-top: 92px;
+}
+
+@media (max-width: 820px) {
+  section[id],
+  article[id] {
+    scroll-margin-top: calc(78px + env(safe-area-inset-top));
+  }
+}
