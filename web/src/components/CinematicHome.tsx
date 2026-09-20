@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { SceneImage } from "@/components/SceneImage";
 import { visualAssets } from "@/lib/visualAssets";
 import { FieldToPhoneSequence } from "@/components/FieldToPhoneSequence";
@@ -535,35 +534,42 @@ export function CinematicHome() {
       </section>
 
       <section className="benefits-section" id="beneficios">
-        <div className="shell">
-          <div className="section-heading wide">
-            <div>
-              <p className="eyebrow">Más valor para tu olivar</p>
-              <h2>Menos ruido.<br />Más control.</h2>
-            </div>
+        <div className="shell benefits-story">
+          <div className="benefits-copy">
+            <p className="eyebrow">Más ventajas para ti y tu olivar</p>
+            <h2>Menos ruido.<br />Más control.</h2>
             <p>
-              Una herramienta que te ayuda a ahorrar tiempo, conservar el
-              histórico y entender mejor cada campaña sin convertir tu trabajo
-              en una pantalla llena de formularios.
+              Una herramienta diseñada para ayudarte a ahorrar tiempo,
+              conservar el histórico y tomar decisiones con toda la información
+              importante en su sitio.
             </p>
+
+            <ul className="benefits-checklist">
+              {[
+                "Fácil de usar",
+                "Información siempre organizada",
+                "Pensada para el agricultor",
+                "Tu explotación más eficiente",
+                "Un histórico útil campaña tras campaña",
+              ].map((item) => (
+                <li key={item}><span>✓</span>{item}</li>
+              ))}
+            </ul>
           </div>
 
-          <div className="benefit-grid">
-            {[
-              ["◷", "Ahorra tiempo", "Toda la información importante en un solo lugar."],
-              ["☷", "Organización clara", "Fincas, parcelas y campañas siempre localizadas."],
-              ["▥", "Decisiones con datos", "Compara producción, rendimientos y costes."],
-              ["▣", "Control de campaña", "Registra lo que ocurre paso a paso."],
-              ["◎", "Histórico útil", "Cada campaña construye conocimiento para la siguiente."],
-              ["♧", "Pensada para el campo", "Sencilla, legible y preparada para acompañarte."],
-            ].map(([icon, title, text]) => (
-              <article className="benefit-card" key={title}>
-                <span>{icon}</span>
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </article>
-            ))}
+          <div className="benefits-visual">
+            <SceneImage
+              asset={visualAssets.benefits}
+              sizes="(max-width: 900px) 100vw, 48vw"
+            />
+            <span className="benefits-handnote">Olivos hoy,<br />mañana también</span>
           </div>
+        </div>
+
+        <div className="shell benefits-pillars">
+          <span><b>♧</b><strong>Sostenibilidad</strong></span>
+          <span><b>▥</b><strong>Rentabilidad</strong></span>
+          <span><b>↟</b><strong>Futuro</strong></span>
         </div>
       </section>
 
@@ -608,10 +614,15 @@ export function CinematicHome() {
       </section>
 
       <section className="contact-strip" id="contacto">
+        <div className="contact-strip-scene" aria-hidden="true">
+          <SceneImage asset={visualAssets.ctaFinal} sizes="100vw" />
+        </div>
+        <div className="contact-strip-overlay" />
         <div className="shell contact-strip-inner">
           <div>
-            <p className="eyebrow light">Seguimos creciendo</p>
+            <p className="eyebrow light">Mágina Olivo</p>
             <h2>Una web y una app con la misma raíz.</h2>
+            <p>Seguimos construyendo una forma más clara de vivir y organizar el olivar.</p>
           </div>
           <a className="button button-light" href="mailto:hola@maginaolivo.es">
             Contactar <span aria-hidden="true">→</span>
