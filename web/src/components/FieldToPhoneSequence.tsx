@@ -3,6 +3,10 @@
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+const phase = (value: number, start: number, end: number) =>
+  clamp01((value - start) / (end - start));
+
 export function FieldToPhoneSequence() {
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -18,8 +22,31 @@ export function FieldToPhoneSequence() {
 
       const rect = section.getBoundingClientRect();
       const travel = Math.max(1, section.offsetHeight - window.innerHeight);
-      const progress = Math.min(1, Math.max(0, -rect.top / travel));
-      stage.style.setProperty("--film-progress", progress.toFixed(4));
+      const progress = clamp01(-rect.top / travel);
+
+      const personFocus = phase(progress, 0.08, 0.42);
+      const deviceEnter = phase(progress, 0.30, 0.64);
+      const deviceFocus = phase(progress, 0.55, 0.82);
+      const uiReveal = phase(progress, 0.72, 0.91);
+      const finalReveal = phase(progress, 0.82, 0.98);
+
+      stage.style.setProperty("--landscape-scale", String(1 + progress * 0.13));
+      stage.style.setProperty("--landscape-x", `${-progress * 4}%`);
+      stage.style.setProperty("--person-scale", String(1 + personFocus * 0.46));
+      stage.style.setProperty("--person-x", `${personFocus * -17}vw`);
+      stage.style.setProperty("--person-opacity", String(1 - phase(progress, 0.64, 0.86) * 0.64));
+      stage.style.setProperty("--hand-opacity", String(deviceEnter));
+      stage.style.setProperty("--hand-y", `${(1 - deviceEnter) * 24}vh`);
+      stage.style.setProperty("--device-opacity", String(deviceEnter));
+      stage.style.setProperty("--device-y", `${(1 - deviceEnter) * 58}vh`);
+      stage.style.setProperty("--device-scale", String(0.62 + deviceFocus * 0.52));
+      stage.style.setProperty("--device-rotate", `${-10 + deviceFocus * 10}deg`);
+      stage.style.setProperty("--device-ui-opacity", String(uiReveal));
+      stage.style.setProperty("--copy-a-opacity", String(1 - phase(progress, 0.17, 0.34)));
+      stage.style.setProperty("--copy-b-opacity", String(phase(progress, 0.26, 0.42) * (1 - phase(progress, 0.55, 0.70))));
+      stage.style.setProperty("--copy-c-opacity", String(finalReveal));
+      stage.style.setProperty("--film-wash", String(phase(progress, 0.72, 0.95) * 0.84));
+      stage.style.setProperty("--progress-width", `${progress * 100}%`);
     };
 
     const onScroll = () => {
@@ -45,6 +72,7 @@ export function FieldToPhoneSequence() {
         </div>
 
         <div className="film-light-layer" aria-hidden="true" />
+
         <div className="film-person-layer" aria-hidden="true">
           <span className="film-head" />
           <span className="film-hat" />
