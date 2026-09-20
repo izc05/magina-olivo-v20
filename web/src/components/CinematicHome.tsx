@@ -651,42 +651,38 @@ export function CinematicHome() {
       </section>
 
       <section className="download-section" id="descarga">
-        <div className="shell download-grid">
-          <div>
-            <p className="eyebrow">Mágina Olivo</p>
-            <h2>El futuro de tu olivar empieza hoy.</h2>
-            <p>
-              Estamos construyendo una aplicación Android pensada para gestionar
-              el olivar con claridad, incluso cuando estás lejos del escritorio.
-            </p>
-            <div className="store-row">
-              <span className="store-badge">ANDROID<br /><strong>Google Play</strong></span>
-              <span className="store-badge muted">PRÓXIMAMENTE</span>
-            </div>
-          </div>
+        <div className="download-scene" aria-hidden="true">
+          <SceneImage asset={visualAssets.ctaFinal} sizes="100vw" />
+        </div>
+        <div className="download-overlay" />
+        <OliveDecor className="download-olive-left" dark />
+        <OliveDecor className="download-olive-right" dark flip />
 
-          <div className="download-phone">
-            <div className="phone-shell phone-shell-small">
-              <div className="phone-camera" />
-              <PhoneScreen kind="welcome" />
-            </div>
+        <div className="shell download-cta">
+          <p className="eyebrow light">Mágina Olivo</p>
+          <h2>El futuro de tu olivar<br />empieza hoy.</h2>
+          <p>
+            Una aplicación Android pensada para gestionar el olivar con claridad,
+            desde la finca hasta el cierre de cada campaña.
+          </p>
+          <div className="store-row store-row-centered">
+            <span className="store-badge">DISPONIBLE PRÓXIMAMENTE<br /><strong>Google Play</strong></span>
+            <span className="store-badge store-badge-outline">ANDROID · MÁGINA OLIVO</span>
           </div>
+          <span className="download-handnote" aria-hidden="true">
+            Más que olivos,<br />nuestra tierra
+          </span>
         </div>
       </section>
 
       <section className="contact-strip" id="contacto">
-        <OliveDecor className="contact-olive-decor" dark />
-        <div className="contact-strip-scene" aria-hidden="true">
-          <SceneImage asset={visualAssets.ctaFinal} sizes="100vw" />
-        </div>
-        <div className="contact-strip-overlay" />
         <div className="shell contact-strip-inner">
           <div>
-            <p className="eyebrow light">Mágina Olivo</p>
-            <h2>Una web y una app con la misma raíz.</h2>
-            <p>Seguimos construyendo una forma más clara de vivir y organizar el olivar.</p>
+            <p className="eyebrow">Seguimos creciendo</p>
+            <h2>¿Quieres conocer Mágina Olivo?</h2>
+            <p>Estamos preparando la primera versión para probarla en el campo.</p>
           </div>
-          <a className="button button-light" href="mailto:hola@maginaolivo.es">
+          <a className="button button-primary" href="/contacto">
             Contactar <span aria-hidden="true">→</span>
           </a>
         </div>
