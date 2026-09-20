@@ -204,7 +204,9 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("campaign-parcel-option").performClick()
         composeRule.onNodeWithTag("save-campaign").performScrollTo().performClick()
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Campaña 2026/27 E2E").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("Campaña 2026/27 E2E").performScrollTo().performClick()
+        composeRule.onNodeWithTag("campaign-row").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("campaign-detail-root").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("activate-campaign").fetchSemanticsNodes().isNotEmpty() }
 
         composeRule.onNodeWithTag("activate-campaign").performClick()
         composeRule.onNodeWithTag("confirm-campaign-action").performClick()
