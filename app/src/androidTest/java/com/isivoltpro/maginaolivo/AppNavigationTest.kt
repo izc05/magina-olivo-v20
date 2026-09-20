@@ -1,6 +1,5 @@
 package com.isivoltpro.maginaolivo
 
-import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -8,7 +7,6 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -165,17 +163,10 @@ class AppNavigationTest {
             composeRule.onAllNodesWithTag("save-parcel").fetchSemanticsNodes().isEmpty() &&
                 composeRule.onAllNodesWithText("Parcela Alta").fetchSemanticsNodes().size == 1
         }
-        composeRule.onNodeWithTag("parcel-row").performClick()
+        composeRule.onNodeWithTag("parcel-row").performScrollTo().performClick()
 
-        runCatching {
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag("parcel-detail-root").fetchSemanticsNodes().isNotEmpty()
-            }
-        }.getOrElse { cause ->
-            throw AssertionError(
-                "Parcel destination did not open. Current semantics:\n${composeRule.onRoot(useUnmergedTree = true).fetchSemanticsNode().dumpTree()}",
-                cause,
-            )
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("parcel-detail-root").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("parcel-detail-root").assertIsDisplayed()
         composeRule.onNodeWithText("Entrada manual").assertIsDisplayed()
@@ -200,13 +191,4 @@ class AppNavigationTest {
         composeRule.onNodeWithText("Saltar").performClick()
         composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
     }
-}
-
-private fun SemanticsNode.dumpTree(depth: Int = 0): String = buildString {
-    append("  ".repeat(depth))
-    append("bounds=")
-    append(boundsInRoot)
-    append(" config=")
-    appendLine(config)
-    children.forEach { child -> append(child.dumpTree(depth + 1)) }
 }
