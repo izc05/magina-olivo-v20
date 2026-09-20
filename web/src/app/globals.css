@@ -1824,3 +1824,433 @@ button, a { -webkit-tap-highlight-color: transparent; }
     gap: 2px;
   }
 }
+
+
+/* Scroll film: field → person → phone */
+
+.field-phone-film {
+  position: relative;
+  height: 430vh;
+  background: var(--olive-dark);
+}
+
+.field-phone-stage {
+  --landscape-scale: 1;
+  --landscape-x: 0%;
+  --person-scale: 1;
+  --person-x: 0vw;
+  --person-opacity: 1;
+  --hand-opacity: 0;
+  --hand-y: 24vh;
+  --device-opacity: 0;
+  --device-y: 58vh;
+  --device-scale: .62;
+  --device-rotate: -10deg;
+  --device-ui-opacity: 0;
+  --copy-a-opacity: 1;
+  --copy-b-opacity: 0;
+  --copy-c-opacity: 0;
+  --film-wash: 0;
+  --progress-width: 0%;
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+  color: white;
+  background: #213a2a;
+}
+
+.film-landscape-layer {
+  position: absolute;
+  inset: -8%;
+  transform: translateX(var(--landscape-x)) scale(var(--landscape-scale));
+  transform-origin: center;
+  transition: transform .08s linear;
+}
+
+.film-landscape-layer img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.film-light-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    linear-gradient(90deg, rgba(10,31,20,.58), rgba(10,31,20,.06) 72%),
+    linear-gradient(180deg, rgba(10,31,20,.10), rgba(10,31,20,.48));
+}
+
+.film-light-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #f6f1e4;
+  opacity: var(--film-wash);
+}
+
+.film-person-layer {
+  position: absolute;
+  z-index: 3;
+  right: 11vw;
+  bottom: -6vh;
+  width: 370px;
+  height: 650px;
+  opacity: var(--person-opacity);
+  transform: translateX(var(--person-x)) scale(var(--person-scale));
+  transform-origin: 60% 82%;
+  filter: drop-shadow(0 24px 30px rgba(0,0,0,.2));
+}
+
+.film-head,
+.film-hat,
+.film-body,
+.film-arm {
+  position: absolute;
+  display: block;
+}
+
+.film-head {
+  left: 126px;
+  top: 88px;
+  width: 104px;
+  height: 128px;
+  border-radius: 48% 48% 46% 54%;
+  background: linear-gradient(115deg, #c18a61, #8c5f43);
+}
+
+.film-head::after {
+  content: "";
+  position: absolute;
+  right: -8px;
+  bottom: 8px;
+  width: 54px;
+  height: 53px;
+  border-radius: 28% 60% 55% 45%;
+  background: #695044;
+  opacity: .75;
+}
+
+.film-hat {
+  left: 76px;
+  top: 55px;
+  width: 205px;
+  height: 38px;
+  border-radius: 50%;
+  background: #9a7547;
+  box-shadow: 0 -37px 0 -5px #87673f;
+  transform: rotate(-4deg);
+}
+
+.film-body {
+  left: 52px;
+  top: 205px;
+  width: 255px;
+  height: 390px;
+  border-radius: 44% 44% 18% 18%;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 26px, rgba(230,221,196,.15) 27px 30px),
+    repeating-linear-gradient(0deg, transparent 0 30px, rgba(230,221,196,.11) 31px 34px),
+    #334438;
+}
+
+.film-arm {
+  top: 290px;
+  width: 75px;
+  height: 280px;
+  border-radius: 999px;
+  background: #a87655;
+  transform-origin: top center;
+}
+
+.film-arm-left {
+  left: 82px;
+  transform: rotate(-30deg);
+}
+
+.film-arm-right {
+  right: 56px;
+  transform: rotate(34deg);
+}
+
+.film-hand-layer {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  opacity: var(--hand-opacity);
+  transform: translateY(var(--hand-y));
+}
+
+.film-hand {
+  position: absolute;
+  left: 50%;
+  bottom: -16vh;
+  width: 270px;
+  height: 410px;
+  border-radius: 52% 48% 42% 58%;
+  background: linear-gradient(115deg, #bc8865, #84583f);
+  transform: translateX(-84%) rotate(17deg);
+  filter: drop-shadow(0 30px 35px rgba(0,0,0,.24));
+}
+
+.film-device {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  top: 50%;
+  width: min(340px, 36vw);
+  aspect-ratio: .49;
+  padding: 12px;
+  border: 4px solid #111713;
+  border-radius: 50px;
+  opacity: var(--device-opacity);
+  background: #0b0e0c;
+  box-shadow: 0 45px 90px rgba(0,0,0,.34), inset 0 0 0 2px #515853;
+  transform:
+    translate(-50%, -50%)
+    translateY(var(--device-y))
+    rotate(var(--device-rotate))
+    scale(var(--device-scale));
+  transform-origin: center;
+}
+
+.film-device-camera {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  top: 18px;
+  width: 13px;
+  height: 13px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: #030504;
+  box-shadow: inset 0 0 0 3px #1c2922;
+}
+
+.film-device-ui {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  justify-items: center;
+  overflow: hidden;
+  padding: 50px 18px 22px;
+  border-radius: 38px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 60% 16%, rgba(221,212,184,.3), transparent 34%),
+    #faf7ed;
+  opacity: var(--device-ui-opacity);
+}
+
+.film-device-logo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: Georgia, serif;
+  line-height: .8;
+}
+
+.film-device-logo .phone-leaf {
+  transform: scale(.82);
+}
+
+.film-device-ui > p {
+  margin: 34px 0 3px;
+  color: #6a706a;
+  font-size: .72rem;
+}
+
+.film-device-ui h3 {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: 2rem;
+  font-weight: 500;
+  letter-spacing: -.05em;
+}
+
+.film-device-landscape {
+  align-self: stretch;
+  width: calc(100% + 36px);
+  margin-top: 18px;
+  background:
+    linear-gradient(180deg, #ebe3c9 0 37%, transparent 38%),
+    radial-gradient(circle, #40563b 0 18%, transparent 20%) 0 0 / 36px 30px,
+    linear-gradient(#8e9b80, #536742);
+}
+
+.film-device-ui > b {
+  width: 100%;
+  margin-top: 18px;
+  padding: 12px;
+  border-radius: 999px;
+  color: white;
+  background: var(--olive);
+  font-size: .7rem;
+  text-align: center;
+}
+
+.film-copy {
+  position: absolute;
+  z-index: 8;
+  left: max(6vw, 28px);
+  top: 50%;
+  width: min(650px, 42vw);
+  transform: translateY(-50%);
+}
+
+.film-copy h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(4.2rem, 7vw, 7.6rem);
+  font-weight: 500;
+  line-height: .86;
+  letter-spacing: -.06em;
+}
+
+.film-copy > p:not(.eyebrow) {
+  max-width: 520px;
+  color: rgba(255,255,255,.76);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.film-copy-a {
+  opacity: var(--copy-a-opacity);
+}
+
+.film-copy-b {
+  opacity: var(--copy-b-opacity);
+}
+
+.film-copy-c {
+  color: var(--ink);
+  opacity: var(--copy-c-opacity);
+}
+
+.film-copy-c > a {
+  display: inline-flex;
+  gap: 12px;
+  margin-top: 26px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--olive);
+  color: var(--olive);
+  font-weight: 800;
+}
+
+.film-progress {
+  position: absolute;
+  z-index: 12;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255,255,255,.12);
+}
+
+.film-progress span {
+  display: block;
+  width: var(--progress-width);
+  height: 100%;
+  background: var(--olive-light);
+}
+
+@media (max-width: 820px) {
+  .field-phone-film {
+    height: 360vh;
+  }
+
+  .film-person-layer {
+    right: -55px;
+    bottom: -20px;
+    transform: translateX(var(--person-x)) scale(calc(var(--person-scale) * .75));
+  }
+
+  .film-device {
+    width: 230px;
+    border-radius: 35px;
+    padding: 8px;
+  }
+
+  .film-device-camera {
+    top: 13px;
+    width: 9px;
+    height: 9px;
+  }
+
+  .film-device-ui {
+    padding: 34px 12px 14px;
+    border-radius: 25px;
+  }
+
+  .film-device-ui > p {
+    margin-top: 20px;
+  }
+
+  .film-device-ui h3 {
+    font-size: 1.35rem;
+  }
+
+  .film-device-landscape {
+    width: calc(100% + 24px);
+  }
+
+  .film-copy {
+    top: auto;
+    left: 20px;
+    right: 20px;
+    bottom: 9vh;
+    width: auto;
+    transform: none;
+  }
+
+  .film-copy h2 {
+    font-size: clamp(3.4rem, 14vw, 5rem);
+  }
+
+  .film-copy > p:not(.eyebrow) {
+    max-width: 78%;
+    font-size: .92rem;
+  }
+
+  .film-copy-c {
+    bottom: 8vh;
+  }
+}
+
+@media (max-width: 560px) {
+  .film-person-layer {
+    right: -115px;
+  }
+
+  .film-hand {
+    left: 45%;
+    width: 220px;
+    height: 330px;
+  }
+
+  .film-copy > p:not(.eyebrow) {
+    max-width: 92%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-phone-film {
+    height: auto;
+  }
+
+  .field-phone-stage {
+    position: relative;
+    min-height: 100svh;
+    --device-opacity: 1 !important;
+    --device-y: 0vh !important;
+    --device-scale: .9 !important;
+    --device-rotate: 0deg !important;
+    --device-ui-opacity: 1 !important;
+    --person-opacity: .25 !important;
+    --copy-a-opacity: 0 !important;
+    --copy-b-opacity: 0 !important;
+    --copy-c-opacity: 1 !important;
+    --film-wash: .74 !important;
+  }
+}
