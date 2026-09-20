@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import { SceneImage } from "@/components/SceneImage";
+import { visualAssets } from "@/lib/visualAssets";
 import { useEffect, useRef } from "react";
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -68,7 +69,7 @@ export function FieldToPhoneSequence() {
     <section className="field-phone-film" ref={sectionRef} aria-label="Del campo a Mágina Olivo">
       <div className="field-phone-stage" ref={stageRef}>
         <div className="film-landscape-layer" aria-hidden="true">
-          <Image src="/brand/hero-scene.svg" alt="" fill sizes="100vw" />
+          <SceneImage asset={visualAssets.fieldSequence} sizes="100vw" />
         </div>
 
         <div className="film-light-layer" aria-hidden="true" />
