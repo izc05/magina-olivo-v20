@@ -8,8 +8,10 @@ on:
   push:
     branches:
       - main
+      - "feat/web-magína-olivo"
     paths:
       - "web/**"
+      - ".github/workflows/web.yml"
 
 jobs:
   validate-web:
