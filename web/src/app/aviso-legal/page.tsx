@@ -4,6 +4,7 @@ import { LegalPage } from "@/components/LegalPage";
 export const metadata: Metadata = {
   title: "Aviso legal",
   description: "Aviso legal de Mágina Olivo.",
+  alternates: { canonical: "/aviso-legal" },
 };
 
 export default function AvisoLegalPage() {
