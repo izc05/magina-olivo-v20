@@ -429,14 +429,25 @@ export function CinematicHome() {
         </div>
 
         <div className="story-film shell" aria-hidden="true">
-          <div className="film-frame film-field">
+          <div className="film-frame film-frame-real">
+            <SceneImage asset={visualAssets.territoryIntro} sizes="28vw" />
             <span className="frame-label">01 · EL OLIVAR</span>
           </div>
-          <div className="film-frame film-detail">
-            <span className="frame-label">02 · OBSERVAR</span>
+          <div className="film-frame film-frame-real">
+            <SceneImage asset={visualAssets.heritage} sizes="28vw" />
+            <span className="frame-label">02 · RECORRER</span>
           </div>
-          <div className="film-frame film-phone">
-            <span className="frame-label">03 · DECIDIR</span>
+          <div className="film-frame film-frame-real">
+            <SceneImage asset={visualAssets.benefits} sizes="28vw" />
+            <span className="frame-label">03 · OBSERVAR</span>
+          </div>
+          <div className="film-frame film-frame-real">
+            <SceneImage asset={visualAssets.fieldSequence} sizes="28vw" />
+            <span className="frame-label">04 · CONSULTAR</span>
+          </div>
+          <div className="film-frame film-frame-real">
+            <SceneImage asset={visualAssets.phoneContext} sizes="28vw" />
+            <span className="frame-label">05 · DECIDIR</span>
           </div>
         </div>
       </section>
