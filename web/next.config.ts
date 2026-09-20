@@ -20,6 +20,9 @@ const nextConfig: NextConfig = {
   basePath: isGitHubPages ? pagesBasePath : undefined,
   assetPrefix: isGitHubPages ? pagesBasePath : undefined,
   trailingSlash: isGitHubPages,
+  env: {
+    NEXT_PUBLIC_BASE_PATH: isGitHubPages ? pagesBasePath : "",
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 7,
