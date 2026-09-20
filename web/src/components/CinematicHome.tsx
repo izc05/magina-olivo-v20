@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { SceneImage } from "@/components/SceneImage";
+import { visualAssets } from "@/lib/visualAssets";
 import { FieldToPhoneSequence } from "@/components/FieldToPhoneSequence";
 
 type ScreenKind =
@@ -310,10 +312,8 @@ export function CinematicHome() {
     <>
       <section className="cinema-hero" id="inicio">
         <div className="hero-scene">
-          <Image
-            src="/brand/hero-scene.svg"
-            alt=""
-            fill
+          <SceneImage
+            asset={visualAssets.hero}
             priority
             className="hero-scene-image"
             sizes="100vw"
@@ -363,7 +363,10 @@ export function CinematicHome() {
             <a href="/territorio">Conoce nuestro territorio <span aria-hidden="true">→</span></a>
           </div>
           <div className="territory-ribbon-visual" aria-hidden="true">
-            <Image src="/brand/hero-scene.svg" alt="" fill sizes="(max-width: 820px) 100vw, 58vw" />
+            <SceneImage
+              asset={visualAssets.territoryIntro}
+              sizes="(max-width: 820px) 100vw, 58vw"
+            />
             <span>Raíces que<br />dan futuro</span>
           </div>
         </div>
@@ -372,7 +375,10 @@ export function CinematicHome() {
       <section className="heritage-section" aria-labelledby="heritage-title">
         <div className="shell heritage-grid">
           <div className="heritage-visual" aria-hidden="true">
-            <Image src="/brand/hero-scene.svg" alt="" fill sizes="(max-width: 820px) 100vw, 52vw" />
+            <SceneImage
+              asset={visualAssets.heritage}
+              sizes="(max-width: 820px) 100vw, 52vw"
+            />
             <div className="heritage-person">
               <span className="heritage-hat" />
               <span className="heritage-head" />
@@ -563,7 +569,7 @@ export function CinematicHome() {
 
       <section className="territory-section" id="territorio">
         <div className="territory-scene" aria-hidden="true">
-          <Image src="/brand/hero-scene.svg" alt="" fill sizes="100vw" />
+          <SceneImage asset={visualAssets.territoryFinal} sizes="100vw" />
         </div>
         <div className="territory-overlay" />
         <div className="shell territory-content">
