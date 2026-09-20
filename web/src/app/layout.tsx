@@ -9,9 +9,6 @@ export const metadata: Metadata = {
   description:
     "Tu olivar, tus campañas y la información que importa, reunidos en una experiencia clara y cercana.",
   metadataBase: new URL("https://maginaolivo.es"),
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     title: "Mágina Olivo",
     description:
