@@ -160,7 +160,8 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Alta")
         composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
         composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithText("Parcela Alta").fetchSemanticsNodes().size == 1
+            composeRule.onAllNodesWithTag("save-parcel").fetchSemanticsNodes().isEmpty() &&
+                composeRule.onAllNodesWithText("Parcela Alta").fetchSemanticsNodes().size == 1
         }
         composeRule.onNodeWithText("Parcela Alta").performClick()
 

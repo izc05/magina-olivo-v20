@@ -518,6 +518,8 @@ private fun FarmEditor(
     var province by rememberSaveable(initial.province) { mutableStateOf(initial.province) }
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(
         modifier = Modifier
@@ -576,6 +578,8 @@ private fun FarmEditor(
         MoPrimaryButton(
             text = if (isSaving) "Guardando…" else "Guardar finca",
             onClick = {
+                focusManager.clearFocus(force = true)
+                keyboardController?.hide()
                 onSave(
                     initial.copy(
                         name = name,

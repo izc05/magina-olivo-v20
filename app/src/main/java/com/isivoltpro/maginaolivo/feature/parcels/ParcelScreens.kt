@@ -267,6 +267,8 @@ private fun ParcelEditor(
     onCancel: () -> Unit,
 ) {
     var draft by remember(initial) { mutableStateOf(initial) }
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
@@ -281,7 +283,16 @@ private fun ParcelEditor(
         MoTextField(draft.province, { draft = draft.copy(province = it) }, "Provincia", Modifier.fillMaxWidth())
         MoTextField(draft.notes, { draft = draft.copy(notes = it) }, "Notas", Modifier.fillMaxWidth(), singleLine = false)
         Text("Los datos escritos aquí se guardan como entrada manual; la app no los presenta como verificados por Catastro.", color = MoTextSecondary)
-        MoPrimaryButton("Guardar parcela", { onSave(draft) }, Modifier.fillMaxWidth().testTag("save-parcel"), enabled = !isSaving)
+        MoPrimaryButton(
+            "Guardar parcela",
+            {
+                focusManager.clearFocus(force = true)
+                keyboard?.hide()
+                onSave(draft)
+            },
+            Modifier.fillMaxWidth().testTag("save-parcel"),
+            enabled = !isSaving,
+        )
         MoSecondaryButton("Cancelar", onCancel, Modifier.fillMaxWidth(), enabled = !isSaving)
         Spacer(Modifier.height(MoSpacing.lg))
     }
