@@ -128,3 +128,31 @@ test("reduced motion mode remains usable", async ({ page }) => {
     `reduced-motion horizontal overflow: ${overflow.scrollWidth}px > ${overflow.clientWidth}px; offenders=${JSON.stringify(overflow.offenders)}`,
   ).toBeLessThanOrEqual(overflow.clientWidth + 2);
 });
+
+
+test("captures visual evidence for the approved landing", async ({ page }, testInfo) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const suffix = testInfo.project.name.includes("mobile") ? "mobile" : "desktop";
+
+  await page.locator(".cinema-hero").screenshot({
+    path: `test-results/home-hero-${suffix}.png`,
+  });
+
+  const film = page.locator(".field-phone-film");
+  await film.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollBy(0, window.innerHeight * 1.9));
+  await page.waitForTimeout(150);
+  await page.screenshot({
+    path: `test-results/home-film-${suffix}.png`,
+    fullPage: false,
+  });
+
+  await page.locator(".app-cycle-overview").screenshot({
+    path: `test-results/home-app-cycle-${suffix}.png`,
+  });
+
+  await page.locator(".download-section").screenshot({
+    path: `test-results/home-download-${suffix}.png`,
+  });
+});
