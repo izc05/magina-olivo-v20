@@ -1,9 +1,11 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
@@ -27,6 +29,7 @@ class CampaignScreensTest {
         compose.setContent { MaginaOlivoTheme { FarmCampaignsSection(FarmCampaignsUiState(isLoading = false), {}, { saved = true }) } }
         compose.onNodeWithText("Aún no hay campañas").assertIsDisplayed()
         compose.onNodeWithTag("add-campaign").performClick()
+        compose.waitForIdle()
         compose.onNodeWithText("Guardar campaña").assertIsDisplayed().performClick()
         assertTrue(saved)
     }
@@ -38,7 +41,7 @@ class CampaignScreensTest {
         compose.onNodeWithText("Parcela histórica").assertIsDisplayed()
         compose.onNodeWithText("Finca histórica").assertIsDisplayed()
         compose.onNodeWithText("Histórico protegido").assertIsDisplayed()
-        compose.onNodeWithText("Sin datos").assertIsDisplayed()
+        compose.onAllNodesWithText("Sin datos").assertCountEquals(3)
         compose.onNodeWithTag("reopen-campaign").performClick()
         compose.onNodeWithText("Confirmar cambio").assertIsDisplayed()
     }

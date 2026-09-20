@@ -156,7 +156,7 @@ class AppNavigationTest {
         }
         composeRule.onNodeWithText("Los Llanos").performClick()
 
-        composeRule.onNodeWithText("Añadir").performScrollTo().performClick()
+        composeRule.onNodeWithTag("add-parcel").performScrollTo().performClick()
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Alta")
         composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
         composeRule.waitUntil(5_000) {
@@ -187,7 +187,7 @@ class AppNavigationTest {
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Finca Campaña E2E").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("Finca Campaña E2E").performClick()
 
-        composeRule.onNodeWithText("Añadir").performScrollTo().performClick()
+        composeRule.onNodeWithTag("add-parcel").performScrollTo().performClick()
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Campaña E2E")
         composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Parcela Campaña E2E").fetchSemanticsNodes().isNotEmpty() }

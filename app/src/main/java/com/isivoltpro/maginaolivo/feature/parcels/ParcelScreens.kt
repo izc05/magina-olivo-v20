@@ -94,7 +94,7 @@ fun FarmParcelsSection(
     }
     MoSectionHeader(
         title = "Parcelas",
-        action = { TextButton(onClick = { editorVisible = true }) { Text("Añadir") } },
+        action = { TextButton(onClick = { editorVisible = true }, modifier = Modifier.testTag("add-parcel")) { Text("Añadir") } },
     )
     when {
         state.isLoading -> CircularProgressIndicator()
