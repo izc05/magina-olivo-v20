@@ -41,3 +41,31 @@ jobs:
       - name: Build Docker image
         working-directory: web
         run: docker build -t magina-olivo-web:ci .
+
+      - name: Smoke test Docker runtime
+        run: |
+          docker run -d --rm \
+            --name magina-olivo-web-ci \
+            -p 127.0.0.1:3000:3000 \
+            -e SITE_URL=http://localhost:3000 \
+            -e ALLOW_INDEXING=false \
+            magina-olivo-web:ci
+
+          cleanup() {
+            docker stop magina-olivo-web-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health >/tmp/health.json; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+
+          test "$ready" = "1"
+          grep -q '"status":"ok"' /tmp/health.json
+          curl -fsS http://127.0.0.1:3000/robots.txt | grep -q "Disallow: /"
+          curl -fsSI http://127.0.0.1:3000/ | grep -qi "x-content-type-options: nosniff"
