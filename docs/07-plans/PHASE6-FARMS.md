@@ -1,6 +1,6 @@
 # Phase 6 — Farms RC1.2 implementation plan
 
-**Status:** In progress  
+**Status:** Farm slice PASS; Gate 6 overall remains in progress  
 **Precondition:** Gate 5 PASS  
 **Branch:** `feat/android-farms`  
 **Stacked base:** `feat/android-room-core` / PR #199
@@ -42,7 +42,7 @@ Replace the production Mi Olivar/Farm mock routes with a real, offline Farm life
 8. Run lint, unit tests, all debug environment builds and full API 35 instrumentation under offline evidence.
 9. Record Gate 6 evidence and update `CURRENT-STATE.md` only when all blockers are closed.
 
-## Gate 6 acceptance
+## Farm-slice acceptance
 
 - first-run workspace + Farm creation works with no network;
 - create/edit/archive/restore survives database close/reopen;
@@ -55,4 +55,4 @@ Replace the production Mi Olivar/Farm mock routes with a real, offline Farm life
 - lint, unit tests, instrumented tests and all debug builds are green;
 - emulator crash buffer is empty.
 
-Gate 6 remains FAIL until the full lifecycle and UI proofs pass on Android instrumentation.
+The Farm slice is complete after API 35 validation. Per the current RC mission, Gate 6 remains FAIL/in progress until the stacked Parcel and Campaign slices also pass.
