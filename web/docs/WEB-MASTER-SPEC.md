@@ -80,18 +80,23 @@ La elección prioriza SEO, rendimiento, accesibilidad, rendering híbrido y esca
 - documentación fuente de verdad.
 
 ### Fase Web 1 — Estructura pública
-- header/footer definitivos;
-- rutas principales;
-- componentes base;
-- navegación móvil;
-- páginas institucionales y de producto.
+- [x] header/footer compartidos;
+- [x] rutas principales;
+- [x] componentes base;
+- [x] navegación móvil;
+- [x] páginas Producto, Beneficios, Nuestra tierra y Contacto;
+- [x] sitemap y robots;
+- [x] Home con narrativa cinematográfica;
+- [x] secuencia sticky campo → persona → móvil;
+- [ ] validación visual final en navegador y Android;
+- [ ] sustitución de assets provisionales por fotogramas definitivos.
 
 ### Fase Web 2 — Contenido real
-- textos finales;
-- fotografía;
-- noticias;
-- cooperativas/territorio;
-- guías y contenidos.
+- [~] textos editoriales iniciales;
+- [ ] fotografía y fotogramas definitivos;
+- [ ] noticias;
+- [ ] cooperativas/territorio;
+- [ ] guías y contenidos.
 
 ### Fase Web 3 — Datos
 - meteorología;
