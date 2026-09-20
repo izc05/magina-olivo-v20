@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -172,7 +173,7 @@ class AppNavigationTest {
             }
         }.getOrElse { cause ->
             throw AssertionError(
-                "Parcel destination did not open. Current semantics:\n${composeRule.onRoot(useUnmergedTree = true).fetchSemanticsNode()}",
+                "Parcel destination did not open. Current semantics:\n${composeRule.onRoot(useUnmergedTree = true).fetchSemanticsNode().dumpTree()}",
                 cause,
             )
         }
@@ -199,4 +200,13 @@ class AppNavigationTest {
         composeRule.onNodeWithText("Saltar").performClick()
         composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
     }
+}
+
+private fun SemanticsNode.dumpTree(depth: Int = 0): String = buildString {
+    append("  ".repeat(depth))
+    append("bounds=")
+    append(boundsInRoot)
+    append(" config=")
+    appendLine(config)
+    children.forEach { child -> append(child.dumpTree(depth + 1)) }
 }
