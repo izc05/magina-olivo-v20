@@ -13,6 +13,8 @@ import com.isivoltpro.maginaolivo.core.time.SystemAppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
+import com.isivoltpro.maginaolivo.data.repository.AndroidPersistedDocumentSource
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepository
 
 data class AppCompositionRoot(
     val environment: AppEnvironment,
@@ -59,9 +61,21 @@ data class AppCompositionRoot(
                 dispatchers = defaults.dispatchers,
                 regionalContext = defaults.regionalContext,
             )
+            val farmCoverRepository = OfflineFirstFarmCoverRepository(
+                database = database,
+                documentSource = AndroidPersistedDocumentSource(applicationContext.contentResolver),
+                clock = defaults.clock,
+                idGenerator = defaults.idGenerator,
+                dispatchers = defaults.dispatchers,
+            )
             return defaults.copy(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
-                localPersistence = LocalPersistence(database, farmRepository, workspaceRepository),
+                localPersistence = LocalPersistence(
+                    database = database,
+                    farmRepository = farmRepository,
+                    farmCoverRepository = farmCoverRepository,
+                    workspaceRepository = workspaceRepository,
+                ),
             )
         }
     }

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.farms
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -229,13 +231,20 @@ fun FarmDetailRoute(
     val viewModel: FarmDetailViewModel = viewModel(
         key = "farm-$farmId",
         factory = viewModelFactory {
-            initializer { FarmDetailViewModel(farmId, persistence.farmRepository) }
+            initializer {
+                FarmDetailViewModel(
+                    farmId = farmId,
+                    farmRepository = persistence.farmRepository,
+                    farmCoverRepository = persistence.farmCoverRepository,
+                )
+            }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     FarmDetailScreen(
         state = state,
         onUpdate = viewModel::update,
+        onCoverSelected = viewModel::attachCover,
         onArchive = viewModel::archive,
         onArchived = onArchived,
         modifier = modifier,
@@ -247,12 +256,16 @@ fun FarmDetailRoute(
 fun FarmDetailScreen(
     state: FarmDetailUiState,
     onUpdate: (FarmDraft) -> Unit,
+    onCoverSelected: (String) -> Unit,
     onArchive: () -> Unit,
     onArchived: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { onCoverSelected(it.toString()) }
+    }
     LaunchedEffect(state.message) {
         if (state.message == "Finca archivada") onArchived()
         if (state.message != null) editorVisible = false
@@ -286,7 +299,9 @@ fun FarmDetailScreen(
             }
             else -> FarmDetailContent(
                 farm = state.farm,
+                coverUri = state.coverUri,
                 isSaving = state.isSaving,
+                onChooseCover = { coverPicker.launch(arrayOf("image/*")) },
                 onEdit = { editorVisible = true },
                 onArchive = { archiveConfirmation = true },
                 modifier = Modifier.padding(innerPadding),
@@ -344,7 +359,9 @@ fun FarmDetailScreen(
 @Composable
 private fun FarmDetailContent(
     farm: Farm,
+    coverUri: String?,
     isSaving: Boolean,
+    onChooseCover: () -> Unit,
     onEdit: () -> Unit,
     onArchive: () -> Unit,
     modifier: Modifier = Modifier,
@@ -361,6 +378,7 @@ private fun FarmDetailContent(
         MoPhotoCover(
             title = farm.name,
             subtitle = farm.locationLabel(),
+            imageModel = coverUri,
             modifier = Modifier.height(260.dp),
             badge = {
                 MoStatusChip(
@@ -368,6 +386,12 @@ private fun FarmDetailContent(
                     tone = if (farm.activeCampaignName == null) MoStatusTone.Neutral else MoStatusTone.Success,
                 )
             },
+        )
+        MoSecondaryButton(
+            text = if (coverUri == null) "Añadir foto de portada" else "Cambiar foto de portada",
+            onClick = onChooseCover,
+            enabled = !isSaving,
+            modifier = Modifier.fillMaxWidth(),
         )
         Row(
             modifier = Modifier.fillMaxWidth(),

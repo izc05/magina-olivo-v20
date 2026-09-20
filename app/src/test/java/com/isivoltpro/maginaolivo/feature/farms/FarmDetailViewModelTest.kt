@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo.feature.farms
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmChanges
+import com.isivoltpro.maginaolivo.domain.farm.FarmCoverRepository
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
 import java.util.UUID
@@ -35,7 +36,8 @@ class FarmDetailViewModelTest {
     @Test
     fun observesUpdatesAndArchivesWithoutNetwork() = runTest(dispatcher) {
         val repository = FakeFarmRepository(farm("La Solana"))
-        val viewModel = FarmDetailViewModel(farmId, repository)
+        val coverRepository = FakeFarmCoverRepository()
+        val viewModel = FarmDetailViewModel(farmId, repository, coverRepository)
         advanceUntilIdle()
 
         assertEquals("La Solana", viewModel.state.value.farm?.name)
@@ -50,12 +52,16 @@ class FarmDetailViewModelTest {
         advanceUntilIdle()
         assertEquals(farmId, repository.archivedId)
         assertEquals("Finca archivada", viewModel.state.value.message)
+
+        viewModel.attachCover("content://test/farm-cover")
+        advanceUntilIdle()
+        assertEquals("content://test/farm-cover", coverRepository.attachedUri)
     }
 
     @Test
     fun blankNameDoesNotOverwriteFarm() = runTest(dispatcher) {
         val repository = FakeFarmRepository(farm("La Solana"))
-        val viewModel = FarmDetailViewModel(farmId, repository)
+        val viewModel = FarmDetailViewModel(farmId, repository, FakeFarmCoverRepository())
         advanceUntilIdle()
 
         viewModel.update(FarmDraft(name = "   "))
@@ -102,5 +108,18 @@ class FarmDetailViewModelTest {
         }
 
         override suspend fun restore(farmId: UUID): AppResult<Unit> = error("Not used")
+    }
+
+    private class FakeFarmCoverRepository : FarmCoverRepository {
+        private val cover = MutableStateFlow<String?>(null)
+        var attachedUri: String? = null
+
+        override fun observeCoverUri(farmId: UUID): Flow<String?> = cover
+
+        override suspend fun attachCover(farmId: UUID, uri: String): AppResult<Unit> {
+            attachedUri = uri
+            cover.value = uri
+            return AppResult.Success(Unit)
+        }
     }
 }

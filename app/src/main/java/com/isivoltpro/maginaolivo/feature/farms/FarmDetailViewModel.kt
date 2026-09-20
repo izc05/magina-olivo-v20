@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmChanges
+import com.isivoltpro.maginaolivo.domain.farm.FarmCoverRepository
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,7 @@ data class FarmDetailUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val farm: Farm? = null,
+    val coverUri: String? = null,
     val nameError: String? = null,
     val error: String? = null,
     val message: String? = null,
@@ -24,6 +26,7 @@ data class FarmDetailUiState(
 class FarmDetailViewModel(
     private val farmId: UUID,
     private val farmRepository: FarmRepository,
+    private val farmCoverRepository: FarmCoverRepository,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(FarmDetailUiState())
     val state: StateFlow<FarmDetailUiState> = mutableState.asStateFlow()
@@ -36,6 +39,11 @@ class FarmDetailViewModel(
                     farm = farm,
                     error = if (farm == null) "La finca no está disponible" else null,
                 )
+            }
+        }
+        viewModelScope.launch {
+            farmCoverRepository.observeCoverUri(farmId).collect { coverUri ->
+                mutableState.value = mutableState.value.copy(coverUri = coverUri)
             }
         }
     }
@@ -64,6 +72,12 @@ class FarmDetailViewModel(
 
     fun archive() {
         mutate("Finca archivada") { farmRepository.archive(farmId) }
+    }
+
+    fun attachCover(uri: String) {
+        mutate("Portada guardada en este dispositivo") {
+            farmCoverRepository.attachCover(farmId, uri)
+        }
     }
 
     private fun mutate(
