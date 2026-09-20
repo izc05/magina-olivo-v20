@@ -25,14 +25,36 @@ for (const route of publicRoutes) {
     expect(response?.status(), `unexpected HTTP status for ${route}`).toBeLessThan(400);
     await expect(page.locator("body")).toBeVisible();
 
-    const overflow = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
+    const overflow = await page.evaluate(() => {
+      const clientWidth = document.documentElement.clientWidth;
+      const offenders = Array.from(document.querySelectorAll<HTMLElement>("body *"))
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          const rightOverflow = Math.max(0, rect.right - clientWidth);
+          const leftOverflow = Math.max(0, -rect.left);
+          return {
+            tag: element.tagName.toLowerCase(),
+            className: typeof element.className === "string" ? element.className : "",
+            left: Math.round(rect.left),
+            right: Math.round(rect.right),
+            width: Math.round(rect.width),
+            overflow: Math.round(Math.max(rightOverflow, leftOverflow)),
+          };
+        })
+        .filter((item) => item.overflow > 2)
+        .sort((a, b) => b.overflow - a.overflow)
+        .slice(0, 12);
+
+      return {
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth,
+        offenders,
+      };
+    });
 
     expect(
       overflow.scrollWidth,
-      `horizontal overflow on ${route}: ${overflow.scrollWidth}px > ${overflow.clientWidth}px`,
+      `horizontal overflow on ${route}: ${overflow.scrollWidth}px > ${overflow.clientWidth}px; offenders=${JSON.stringify(overflow.offenders)}`,
     ).toBeLessThanOrEqual(overflow.clientWidth + 2);
 
     expect(runtimeErrors, `runtime errors on ${route}`).toEqual([]);
@@ -76,10 +98,33 @@ test("reduced motion mode remains usable", async ({ page }) => {
   await expect(page.locator(".cinema-hero")).toBeVisible();
   await expect(page.locator(".field-phone-film")).toBeVisible();
 
-  const overflow = await page.evaluate(() => ({
-    scrollWidth: document.documentElement.scrollWidth,
-    clientWidth: document.documentElement.clientWidth,
-  }));
+  const overflow = await page.evaluate(() => {
+    const clientWidth = document.documentElement.clientWidth;
+    const offenders = Array.from(document.querySelectorAll<HTMLElement>("body *"))
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          tag: element.tagName.toLowerCase(),
+          className: typeof element.className === "string" ? element.className : "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          overflow: Math.round(Math.max(0, rect.right - clientWidth, -rect.left)),
+        };
+      })
+      .filter((item) => item.overflow > 2)
+      .sort((a, b) => b.overflow - a.overflow)
+      .slice(0, 12);
 
-  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 2);
+    return {
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth,
+      offenders,
+    };
+  });
+
+  expect(
+    overflow.scrollWidth,
+    `reduced-motion horizontal overflow: ${overflow.scrollWidth}px > ${overflow.clientWidth}px; offenders=${JSON.stringify(overflow.offenders)}`,
+  ).toBeLessThanOrEqual(overflow.clientWidth + 2);
 });
