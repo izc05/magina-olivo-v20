@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 export const metadata: Metadata = {
   title: "Producto",
   description: "Conoce cómo Mágina Olivo organiza fincas, parcelas, campañas, cosecha, gastos y datos útiles del olivar.",
+  alternates: { canonical: "/producto" },
 };
 
 const features = [
