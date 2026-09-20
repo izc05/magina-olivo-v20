@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso.pressBack
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
@@ -123,6 +124,7 @@ class AppNavigationTest {
         }
         composeRule.onNodeWithTag("add-farm").performClick()
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
+        closeSoftKeyboard()
         composeRule.onNodeWithTag("save-farm").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithText("La Solana").fetchSemanticsNodes().size == 1
