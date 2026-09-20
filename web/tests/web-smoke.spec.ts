@@ -156,3 +156,28 @@ test("captures visual evidence for the approved landing", async ({ page }, testI
     path: `test-results/home-download-${suffix}.png`,
   });
 });
+
+
+test("loads the approved hero photograph instead of the fallback", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const heroImage = page.locator(".hero-scene-image");
+  await expect(heroImage).toBeVisible();
+
+  const imageState = await heroImage.evaluate((image) => {
+    const element = image as HTMLImageElement;
+    return {
+      currentSrc: element.currentSrc,
+      naturalWidth: element.naturalWidth,
+      naturalHeight: element.naturalHeight,
+      complete: element.complete,
+    };
+  });
+
+  expect(imageState.complete).toBe(true);
+  expect(imageState.naturalWidth).toBeGreaterThan(0);
+  expect(
+    decodeURIComponent(imageState.currentSrc),
+    `hero currentSrc=${imageState.currentSrc}`,
+  ).toContain("/media/home/hero-farmer.webp");
+});
