@@ -249,6 +249,7 @@ export function CinematicHome() {
   const [activeStep, setActiveStep] = useState(0);
   const [storyPosition, setStoryPosition] = useState(0);
   const scrollyRef = useRef<HTMLElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const nodes = Array.from(
@@ -301,6 +302,44 @@ export function CinematicHome() {
     };
   }, []);
 
+  useEffect(() => {
+    let frame = 0;
+
+    const updateHero = () => {
+      frame = 0;
+      const hero = heroRef.current;
+      if (!hero) return;
+
+      const rect = hero.getBoundingClientRect();
+      const travel = Math.max(1, Math.min(hero.offsetHeight, window.innerHeight * 1.05));
+      const progress = Math.min(1, Math.max(0, -rect.top / travel));
+
+      hero.style.setProperty("--hero-scene-scale", String(1.025 + progress * 0.085));
+      hero.style.setProperty("--hero-scene-y", `${-progress * 2.2}%`);
+      hero.style.setProperty("--hero-copy-y", `${-progress * 42}px`);
+      hero.style.setProperty("--hero-copy-opacity", String(1 - progress * 0.72));
+      hero.style.setProperty("--hero-caption-x", `${progress * 42}px`);
+      hero.style.setProperty("--hero-caption-opacity", String(1 - progress * 0.82));
+      hero.style.setProperty("--hero-cue-opacity", String(1 - progress * 1.35));
+      hero.style.setProperty("--hero-vignette-opacity", String(1 - progress * 0.22));
+      hero.style.setProperty("--hero-wave-rise", `${54 - progress * 38}%`);
+    };
+
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(updateHero);
+    };
+
+    updateHero();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
   const current = storySteps[activeStep];
   const fromIndex = Math.min(storySteps.length - 1, Math.floor(storyPosition));
   const toIndex = Math.min(storySteps.length - 1, fromIndex + 1);
@@ -310,7 +349,7 @@ export function CinematicHome() {
 
   return (
     <>
-      <section className="cinema-hero" id="inicio">
+      <section className="cinema-hero" id="inicio" ref={heroRef}>
         <div className="hero-scene">
           <SceneImage
             asset={visualAssets.hero}
