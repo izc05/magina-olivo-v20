@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { EditorialSection, PageCta, PageHero } from "@/components/MarketingPage";
+import { SceneImage } from "@/components/SceneImage";
+import { visualAssets } from "@/lib/visualAssets";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -32,16 +34,28 @@ export default function TerritorioPage() {
       <section className="territory-gallery">
         <div className="shell territory-gallery-grid">
           <article className="territory-tile territory-tile-large">
+            <div className="territory-tile-media" aria-hidden="true">
+              <SceneImage asset={visualAssets.territoryIntro} sizes="(max-width: 900px) 100vw, 62vw" />
+            </div>
+            <div className="territory-tile-shade" />
             <span>01</span>
             <h3>Montaña y olivar</h3>
             <p>Un paisaje que condiciona accesos, clima, ritmos de trabajo y forma de gestionar.</p>
           </article>
           <article className="territory-tile">
+            <div className="territory-tile-media" aria-hidden="true">
+              <SceneImage asset={visualAssets.heritage} sizes="(max-width: 900px) 100vw, 32vw" />
+            </div>
+            <div className="territory-tile-shade" />
             <span>02</span>
-            <h3>Pueblos</h3>
+            <h3>Pueblos y personas</h3>
             <p>El olivar también es economía local, cooperativas, familias y comunidad.</p>
           </article>
           <article className="territory-tile">
+            <div className="territory-tile-media" aria-hidden="true">
+              <SceneImage asset={visualAssets.benefits} sizes="(max-width: 900px) 100vw, 32vw" />
+            </div>
+            <div className="territory-tile-shade" />
             <span>03</span>
             <h3>Campañas</h3>
             <p>Cada año genera datos, experiencia y decisiones que merece la pena conservar.</p>
