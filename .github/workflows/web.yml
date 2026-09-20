@@ -38,6 +38,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Build GitHub Pages export
+        env:
+          GITHUB_PAGES: "true"
+          PAGES_BASE_PATH: "/magina-olivo-v20"
+          SITE_URL: "https://izc05.github.io/magina-olivo-v20"
+          ALLOW_INDEXING: "false"
+        run: npm run build
+
       - name: Build Docker image
         working-directory: web
         run: docker build -t magina-olivo-web:ci .
