@@ -370,7 +370,9 @@ export function CinematicHome() {
               asset={visualAssets.territoryIntro}
               sizes="(max-width: 820px) 100vw, 58vw"
             />
-            <span>Raíces que<br />dan futuro</span>
+            {visualAssets.territoryIntro.status !== "final" && (
+              <span>Raíces que<br />dan futuro</span>
+            )}
           </div>
         </div>
       </section>
@@ -382,11 +384,13 @@ export function CinematicHome() {
               asset={visualAssets.heritage}
               sizes="(max-width: 820px) 100vw, 52vw"
             />
-            <div className="heritage-person">
-              <span className="heritage-hat" />
-              <span className="heritage-head" />
-              <span className="heritage-body" />
-            </div>
+            {visualAssets.heritage.status !== "final" && (
+              <div className="heritage-person">
+                <span className="heritage-hat" />
+                <span className="heritage-head" />
+                <span className="heritage-body" />
+              </div>
+            )}
           </div>
           <div className="heritage-copy">
             <p className="eyebrow">Tradición e innovación</p>
@@ -567,7 +571,9 @@ export function CinematicHome() {
               asset={visualAssets.benefits}
               sizes="(max-width: 900px) 100vw, 48vw"
             />
-            <span className="benefits-handnote">Olivos hoy,<br />mañana también</span>
+            {visualAssets.benefits.status !== "final" && (
+              <span className="benefits-handnote">Olivos hoy,<br />mañana también</span>
+            )}
           </div>
         </div>
 
