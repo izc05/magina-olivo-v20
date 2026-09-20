@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 
 data class CampaignDraft(
     val name: String = "",
@@ -81,6 +82,7 @@ data class CampaignDetailUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val campaign: Campaign? = null,
+    val parcels: List<CampaignParcelOption> = emptyList(),
     val error: String? = null,
     val message: String? = null,
 )
@@ -89,9 +91,15 @@ class CampaignDetailViewModel(private val campaignId: UUID, private val reposito
     private val mutableState = MutableStateFlow(CampaignDetailUiState())
     val state: StateFlow<CampaignDetailUiState> = mutableState.asStateFlow()
 
+    private var parcelsJob: Job? = null
     init { viewModelScope.launch { repository.observe(campaignId).collect { campaign ->
         mutableState.value = mutableState.value.copy(isLoading = false, campaign = campaign,
             error = if (campaign == null) "La campaña no está disponible" else null)
+        if (campaign != null && parcelsJob == null) {
+            parcelsJob = viewModelScope.launch { repository.observeSelectableParcels(campaign.farmId).collect { parcels ->
+                mutableState.value = mutableState.value.copy(parcels = parcels)
+            } }
+        }
     } } }
 
     fun update(draft: CampaignDraft) {

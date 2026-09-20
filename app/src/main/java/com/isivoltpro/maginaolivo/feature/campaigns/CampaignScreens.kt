@@ -85,7 +85,7 @@ fun FarmCampaignsSection(state: FarmCampaignsUiState, onCampaignSelected: (UUID)
         }
     }
     if (editor) ModalBottomSheet(onDismissRequest = { editor = false }) {
-        CampaignEditor(state.parcels, state.nameError, state.dateError, state.isSaving, onCreate) { editor = false }
+        CampaignEditor(state.parcels, state.nameError, state.dateError, state.isSaving, onCreate, { editor = false })
     }
 }
 
@@ -104,12 +104,12 @@ private fun CampaignRow(campaign: Campaign, onSelected: (UUID) -> Unit) {
 @Composable
 private fun CampaignEditor(
     parcels: List<CampaignParcelOption>, nameError: String?, dateError: String?, isSaving: Boolean,
-    onSave: (CampaignDraft) -> Unit, onCancel: () -> Unit,
+    onSave: (CampaignDraft) -> Unit, onCancel: () -> Unit, initial: CampaignDraft = CampaignDraft(),
 ) {
-    var name by rememberSaveable { mutableStateOf("") }
-    var date by rememberSaveable { mutableStateOf("") }
-    var notes by rememberSaveable { mutableStateOf("") }
-    var selected by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var name by rememberSaveable(initial.name) { mutableStateOf(initial.name) }
+    var date by rememberSaveable(initial.startDate) { mutableStateOf(initial.startDate?.toString().orEmpty()) }
+    var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
+    var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.md)) {
         Text("Nueva campaña", style = MaterialTheme.typography.headlineSmall)
         MoTextField(name, { name = it }, "Nombre", isError = nameError != null, supportingText = nameError, modifier = Modifier.testTag("campaign-name"))
@@ -135,16 +135,17 @@ fun CampaignDetailRoute(campaignId: UUID, persistence: LocalPersistence) {
         initializer { CampaignDetailViewModel(campaignId, persistence.campaignRepository) }
     })
     val state by vm.state.collectAsStateWithLifecycle()
-    CampaignDetailScreen(state, vm::activate, vm::markHarvest, vm::close, vm::reopen, vm::archivePreparation)
+    CampaignDetailScreen(state, vm::update, vm::activate, vm::markHarvest, vm::close, vm::reopen, vm::archivePreparation)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CampaignDetailScreen(
-    state: CampaignDetailUiState, onActivate: () -> Unit, onHarvest: () -> Unit,
+    state: CampaignDetailUiState, onUpdate: (CampaignDraft) -> Unit, onActivate: () -> Unit, onHarvest: () -> Unit,
     onClose: (LocalDate) -> Unit, onReopen: () -> Unit, onArchive: () -> Unit,
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
+    var editor by rememberSaveable { mutableStateOf(false) }
     Scaffold(Modifier.fillMaxSize().testTag("campaign-detail-root"), containerColor = MoCream) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState()).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.md)) {
             when {
@@ -171,7 +172,7 @@ fun CampaignDetailScreen(
                     }
                     MoMetricCard("Gastos", "Sin datos", Modifier.fillMaxWidth())
                     when (campaign.status) {
-                        CampaignStatus.PREPARATION -> { MoPrimaryButton("Activar campaña", { confirmation = "activate" }, modifier = Modifier.fillMaxWidth().testTag("activate-campaign"), enabled = !state.isSaving); MoSecondaryButton("Archivar borrador", { confirmation = "archive" }, modifier = Modifier.fillMaxWidth()) }
+                        CampaignStatus.PREPARATION -> { MoPrimaryButton("Editar campaña", { editor = true }, modifier = Modifier.fillMaxWidth().testTag("edit-campaign"), enabled = !state.isSaving); MoPrimaryButton("Activar campaña", { confirmation = "activate" }, modifier = Modifier.fillMaxWidth().testTag("activate-campaign"), enabled = !state.isSaving); MoSecondaryButton("Archivar borrador", { confirmation = "archive" }, modifier = Modifier.fillMaxWidth()) }
                         CampaignStatus.ACTIVE -> MoPrimaryButton("Iniciar recolección", { confirmation = "harvest" }, modifier = Modifier.fillMaxWidth(), enabled = !state.isSaving)
                         CampaignStatus.HARVEST -> MoPrimaryButton("Cerrar campaña", { confirmation = "close" }, modifier = Modifier.fillMaxWidth().testTag("close-campaign"), enabled = !state.isSaving)
                         CampaignStatus.CLOSED -> { Text("Histórico protegido", style = MaterialTheme.typography.titleMedium); MoSecondaryButton("Reabrir campaña", { confirmation = "reopen" }, modifier = Modifier.fillMaxWidth().testTag("reopen-campaign")) }
@@ -180,6 +181,11 @@ fun CampaignDetailScreen(
                 }
             }
         }
+    }
+    val campaign = state.campaign
+    if (editor && campaign != null) ModalBottomSheet(onDismissRequest = { editor = false }) {
+        CampaignEditor(state.parcels, null, null, state.isSaving, onUpdate, { editor = false },
+            CampaignDraft(campaign.name, campaign.startDate, campaign.snapshots.map { it.parcelId }.toSet(), campaign.notes.orEmpty()))
     }
     if (confirmation != null) ModalBottomSheet(onDismissRequest = { confirmation = null }) {
         Column(Modifier.fillMaxWidth().padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.md)) {

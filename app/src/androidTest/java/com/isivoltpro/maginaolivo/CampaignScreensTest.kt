@@ -33,7 +33,7 @@ class CampaignScreensTest {
 
     @Test fun closedDetailRendersFrozenSnapshotAndUnknownMetrics() {
         compose.setContent { MaginaOlivoTheme {
-            CampaignDetailScreen(CampaignDetailUiState(isLoading = false, campaign = campaign()), {}, {}, {}, {}, {})
+            CampaignDetailScreen(CampaignDetailUiState(isLoading = false, campaign = campaign()), {}, {}, {}, {}, {}, {})
         } }
         compose.onNodeWithText("Parcela histórica").assertIsDisplayed()
         compose.onNodeWithText("Finca histórica").assertIsDisplayed()
