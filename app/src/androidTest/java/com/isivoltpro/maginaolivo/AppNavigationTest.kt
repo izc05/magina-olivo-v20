@@ -181,7 +181,13 @@ class AppNavigationTest {
     fun farmParcelCampaignLifecyclePersistsAcrossRecreation() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag("add-farm").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Campaña E2E")
         composeRule.onNodeWithTag("save-farm").performClick()
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Finca Campaña E2E").fetchSemanticsNodes().isNotEmpty() }

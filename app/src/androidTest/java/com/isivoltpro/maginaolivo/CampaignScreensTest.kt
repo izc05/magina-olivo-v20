@@ -29,7 +29,9 @@ class CampaignScreensTest {
         compose.setContent { MaginaOlivoTheme { FarmCampaignsSection(FarmCampaignsUiState(isLoading = false), {}, { saved = true }) } }
         compose.onNodeWithText("Aún no hay campañas").assertIsDisplayed()
         compose.onNodeWithTag("add-campaign").performClick()
-        compose.waitForIdle()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("Guardar campaña").fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText("Guardar campaña").assertIsDisplayed().performClick()
         assertTrue(saved)
     }
