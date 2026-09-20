@@ -11,6 +11,8 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       HOSTNAME: 0.0.0.0
       PORT: "3000"
+      SITE_URL: "http://localhost:3000"
+      ALLOW_INDEXING: "false"
     ports:
       - "127.0.0.1:3000:3000"
     security_opt:
