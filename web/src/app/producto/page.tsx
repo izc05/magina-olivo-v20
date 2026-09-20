@@ -20,10 +20,13 @@ const features = [
 
 export default function ProductoPage() {
   return (
-    <main>
+    <>
+      <a className="skip-link" href="#contenido-principal">Saltar al contenido</a>
       <SiteHeader />
+      <main id="contenido-principal">
       <PageHero
         eyebrow="Producto"
+        assetKey="phoneContext"
         title={<>Todo lo que tu olivar necesita, <em>en una sola experiencia.</em></>}
         copy="Mágina Olivo reúne las tareas que hoy viven repartidas entre cuadernos, fotos, mensajes y memoria."
         aside="Sencillo por fuera. Estructurado por dentro."
@@ -54,7 +57,8 @@ export default function ProductoPage() {
         href="/#funciones"
         label="Ver la experiencia"
       />
+      </main>
       <SiteFooter />
-    </main>
+    </>
   );
 }
