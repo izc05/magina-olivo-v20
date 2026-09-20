@@ -68,19 +68,19 @@ export const visualAssets: Record<VisualAssetKey, VisualAsset> = {
   },
   territoryFinal: {
     key: "territoryFinal",
-    finalSrc: "/media/home/territory-final.webp",
+    finalSrc: "/media/home/territory-intro.webp",
     fallbackSrc: "/brand/hero-scene.svg",
     alt: "Panorámica de Sierra Mágina y sus olivares",
-    focalPoint: "50% 45%",
-    status: "placeholder",
+    focalPoint: "56% 48%",
+    status: "final",
   },
   ctaFinal: {
     key: "ctaFinal",
-    finalSrc: "/media/home/cta-olive-branches.webp",
+    finalSrc: "/media/home/benefits-olives.webp",
     fallbackSrc: "/brand/hero-scene.svg",
     alt: "Ramas de olivo en el cierre de Mágina Olivo",
-    focalPoint: "50% 50%",
-    status: "placeholder",
+    focalPoint: "70% 45%",
+    status: "final",
   },
 };
 
