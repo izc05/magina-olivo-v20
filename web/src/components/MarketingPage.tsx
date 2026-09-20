@@ -1,18 +1,28 @@
-import Image from "next/image";
 import type { ReactNode } from "react";
+import { SceneImage } from "@/components/SceneImage";
+import { visualAssets } from "@/lib/visualAssets";
+
+type HeroAssetKey = keyof typeof visualAssets;
 
 type PageHeroProps = {
   eyebrow: string;
   title: ReactNode;
   copy: string;
   aside?: string;
+  assetKey?: HeroAssetKey;
 };
 
-export function PageHero({ eyebrow, title, copy, aside }: PageHeroProps) {
+export function PageHero({
+  eyebrow,
+  title,
+  copy,
+  aside,
+  assetKey = "hero",
+}: PageHeroProps) {
   return (
     <section className="page-hero">
       <div className="page-hero-scene" aria-hidden="true">
-        <Image src="/brand/hero-scene.svg" alt="" fill priority sizes="100vw" />
+        <SceneImage asset={visualAssets[assetKey]} priority sizes="100vw" />
       </div>
       <div className="page-hero-overlay" />
       <div className="shell page-hero-inner">
