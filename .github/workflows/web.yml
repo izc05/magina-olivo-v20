@@ -69,3 +69,26 @@ jobs:
           grep -q '"status":"ok"' /tmp/health.json
           curl -fsS http://127.0.0.1:3000/robots.txt | grep -q "Disallow: /"
           curl -fsSI http://127.0.0.1:3000/ | grep -qi "x-content-type-options: nosniff"
+
+      - name: Smoke test public routes
+        run: |
+          routes=(
+            "/"
+            "/producto"
+            "/beneficios"
+            "/territorio"
+            "/contacto"
+            "/privacidad"
+            "/terminos"
+            "/aviso-legal"
+            "/manifest.webmanifest"
+            "/sitemap.xml"
+            "/robots.txt"
+            "/api/health"
+          )
+
+          for route in "${routes[@]}"; do
+            code="$(curl -sS -o /tmp/route-body -w "%{http_code}" "http://127.0.0.1:3000${route}" || true)"
+            echo "${route} -> ${code}"
+            test "${code}" = "200"
+          done
