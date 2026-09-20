@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SceneImage } from "@/components/SceneImage";
+import { OliveDecor } from "@/components/OliveDecor";
 import { visualAssets } from "@/lib/visualAssets";
 import { FieldToPhoneSequence } from "@/components/FieldToPhoneSequence";
 
@@ -318,6 +319,8 @@ export function CinematicHome() {
             sizes="100vw"
           />
           <div className="hero-vignette" />
+          <OliveDecor className="hero-olive-left" />
+          <OliveDecor className="hero-olive-right" flip />
         </div>
 
         <div className="shell cinema-hero-content">
@@ -350,6 +353,7 @@ export function CinematicHome() {
       </section>
 
       <section className="territory-ribbon" aria-labelledby="territory-ribbon-title">
+        <OliveDecor className="territory-olive-decor" />
         <div className="shell territory-ribbon-grid">
           <div className="territory-ribbon-copy">
             <p className="eyebrow">Nuestra tierra</p>
@@ -534,6 +538,7 @@ export function CinematicHome() {
       </section>
 
       <section className="benefits-section" id="beneficios">
+        <OliveDecor className="benefits-olive-decor" flip />
         <div className="shell benefits-story">
           <div className="benefits-copy">
             <p className="eyebrow">Más ventajas para ti y tu olivar</p>
@@ -614,6 +619,7 @@ export function CinematicHome() {
       </section>
 
       <section className="contact-strip" id="contacto">
+        <OliveDecor className="contact-olive-decor" dark />
         <div className="contact-strip-scene" aria-hidden="true">
           <SceneImage asset={visualAssets.ctaFinal} sizes="100vw" />
         </div>
