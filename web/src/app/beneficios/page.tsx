@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 export const metadata: Metadata = {
   title: "Beneficios",
   description: "Descubre los beneficios de organizar el olivar con Mágina Olivo.",
+  alternates: { canonical: "/beneficios" },
 };
 
 const benefits = [
