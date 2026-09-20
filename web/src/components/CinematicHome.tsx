@@ -390,6 +390,36 @@ export function CinematicHome() {
         </div>
       </section>
 
+      <section className="app-cycle-overview" aria-labelledby="app-cycle-title">
+        <div className="shell">
+          <div className="overview-heading">
+            <p className="eyebrow">Una app completa para todo el ciclo del olivar</p>
+            <h2 id="app-cycle-title">Todo conectado.<br />Todo en su sitio.</h2>
+            <p>
+              Cada herramienta tiene su momento, pero todas comparten la misma
+              estructura para que el agricultor no tenga que aprender una app
+              distinta para cada tarea.
+            </p>
+          </div>
+
+          <div className="overview-devices">
+            {storySteps.slice(1).map((step) => (
+              <article className="overview-device-card" key={`overview-${step.id}`}>
+                <div className="overview-phone-window" aria-hidden="true">
+                  <div className="phone-shell phone-shell-overview">
+                    <div className="phone-camera" />
+                    <PhoneScreen kind={step.screen} />
+                  </div>
+                </div>
+                <span>{step.number}</span>
+                <h3>{step.eyebrow}</h3>
+                <p>{step.bullets[0]}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="benefits-section" id="beneficios">
         <div className="shell">
           <div className="section-heading wide">
