@@ -57,3 +57,27 @@ La landing vertical aprobada el 20-09-2026 es la referencia maestra para:
 ## Estado actual
 
 Todos los assets continúan en `placeholder` hasta incorporar las imágenes finales.
+
+
+## Referencia maestra aprobada
+
+Fuente visual aprobada en conversación del 20-09-2026.
+
+- dimensiones: `724 × 2172 px`;
+- formato de referencia: JPEG;
+- SHA-256: `1078473e00e8d0026e9bd5c534786c3d49a3249f3ae068882bb9bda554fb0577`.
+
+### Mapa de lectura aproximado
+
+| Bloque | Y inicial | Y final |
+|---|---:|---:|
+| Hero | 0 | 450 |
+| Territorio inicial | 360 | 760 |
+| Historia / agricultor | 700 | 1070 |
+| Mano + móvil | 1000 | 1370 |
+| Ciclo de pantallas | 1300 | 1630 |
+| Beneficios | 1580 | 1890 |
+| Territorio final | 1820 | 2040 |
+| CTA + footer | 1980 | 2172 |
+
+Estas coordenadas sirven para comparación visual, no como cortes de producción definitivos.
