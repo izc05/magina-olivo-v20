@@ -27,6 +27,24 @@ Respuesta esperada:
 {"status":"ok","service":"magina-olivo-web","timestamp":"..."}
 ```
 
+## Variables de entorno
+
+El contenedor usa dos variables para URL pública e indexación:
+
+```env
+SITE_URL=http://localhost:3000
+ALLOW_INDEXING=false
+```
+
+En staging, `ALLOW_INDEXING` debe permanecer en `false`. La web publica `robots.txt` con bloqueo global y metadatos `noindex`.
+
+Solo en producción, después de confirmar el dominio definitivo:
+
+```env
+SITE_URL=https://maginaolivo.es
+ALLOW_INDEXING=true
+```
+
 ## Cloudflare Tunnel
 
 La configuración por defecto publica el contenedor solamente en `127.0.0.1:3000`.
