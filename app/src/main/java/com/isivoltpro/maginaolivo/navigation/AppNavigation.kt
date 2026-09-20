@@ -155,7 +155,7 @@ fun AppNavigation(
                         farmId = farmId,
                         persistence = persistence,
                         onParcelSelected = { parcelId ->
-                            navController.navigate(AppDestination.parcel(parcelId.toString(), farmId.toString()))
+                            navController.navigate(AppDestination.parcel(parcelId.toString()))
                         },
                         onArchived = { navController.popBackStack() },
                     )
@@ -165,14 +165,11 @@ fun AppNavigation(
                 val persistence = compositionRoot.localPersistence
                 val parcelId = backStackEntry.arguments?.getString("parcelId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-                val farmId = backStackEntry.arguments?.getString("farmId")
-                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-                if (persistence == null || parcelId == null || farmId == null) {
+                if (persistence == null || parcelId == null) {
                     PersistenceUnavailableScreen()
                 } else {
                     ParcelDetailRoute(
                         parcelId = parcelId,
-                        farmId = farmId,
                         persistence = persistence,
                         onArchived = { navController.popBackStack() },
                     )

@@ -108,7 +108,6 @@ data class ParcelDetailUiState(
 
 class ParcelDetailViewModel(
     private val parcelId: UUID,
-    private val farmId: UUID,
     private val repository: ParcelRepository,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(ParcelDetailUiState())
@@ -135,7 +134,14 @@ class ParcelDetailViewModel(
 
     fun archive() = mutate("Parcela archivada") { repository.archive(parcelId) }
 
-    fun restore() = mutate("Parcela restaurada") { repository.restore(parcelId, farmId) }
+    fun restore() {
+        val farmId = mutableState.value.parcel?.farmId
+        if (farmId == null) {
+            mutableState.value = mutableState.value.copy(error = "Selecciona una finca para restaurar la parcela")
+            return
+        }
+        mutate("Parcela restaurada") { repository.restore(parcelId, farmId) }
+    }
 
     private fun validate(draft: ParcelDraft): Double? {
         val parsedArea = parseArea(draft.managedAreaHectares)

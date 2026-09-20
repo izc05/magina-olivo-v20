@@ -45,13 +45,12 @@ object AppDestination {
     const val DeveloperGallery = "developer-gallery"
 
     const val FarmPattern = "farm/{farmId}"
-    const val ParcelPattern = "parcel/{parcelId}/{farmId}"
+    const val ParcelPattern = "parcel/{parcelId}"
     const val CampaignPattern = "campaign/{campaignId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
 
-    fun parcel(parcelId: String, farmId: String): String =
-        "${nestedRoute("parcel", parcelId)}/${safeIdentifier(farmId)}"
+    fun parcel(parcelId: String): String = nestedRoute("parcel", parcelId)
 
     fun campaign(campaignId: String): String = nestedRoute("campaign", campaignId)
 

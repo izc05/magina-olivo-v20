@@ -65,7 +65,7 @@ class ParcelViewModelTest {
     @Test
     fun detailEditsArchivesAndRestoresLocally() = runTest(dispatcher) {
         val repository = FakeParcelRepository(parcel())
-        val viewModel = ParcelDetailViewModel(parcelId, farmId, repository)
+        val viewModel = ParcelDetailViewModel(parcelId, repository)
         advanceUntilIdle()
 
         assertEquals("Parcela Norte", viewModel.state.value.parcel?.displayName)

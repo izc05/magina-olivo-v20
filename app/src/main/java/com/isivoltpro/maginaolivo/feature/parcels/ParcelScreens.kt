@@ -145,14 +145,13 @@ fun FarmParcelsSection(
 @Composable
 fun ParcelDetailRoute(
     parcelId: UUID,
-    farmId: UUID,
     persistence: LocalPersistence,
     onArchived: () -> Unit,
 ) {
     val viewModel: ParcelDetailViewModel = viewModel(
         key = "parcel-$parcelId",
         factory = viewModelFactory {
-            initializer { ParcelDetailViewModel(parcelId, farmId, persistence.parcelRepository) }
+            initializer { ParcelDetailViewModel(parcelId, persistence.parcelRepository) }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
