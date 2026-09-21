@@ -362,3 +362,42 @@ test("secondary marketing heroes keep HQ imagery", async ({ page }) => {
     ).toBeGreaterThanOrEqual(900);
   }
 });
+
+
+test("V2 4K video scrub progressively enhances the cinematic story", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const story = page.locator(".v2-story");
+  const videoRoot = page.locator(".v2-story-video-root");
+  const video = videoRoot.locator("video");
+  const canvas = page.locator(".v2-sequence-canvas");
+
+  await expect(videoRoot).toHaveCount(1);
+  await expect(video).toHaveCount(1);
+
+  const src = await video.getAttribute("src");
+  expect(src || "").toContain("20606525-uhd_3840_2160_24fps.mp4");
+
+  const targetY = await story.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const top = window.scrollY + rect.top;
+    const travel = Math.max(1, (element as HTMLElement).offsetHeight - window.innerHeight);
+    return top + travel * 0.62;
+  });
+
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), targetY);
+  await page.waitForTimeout(650);
+
+  const state = await videoRoot.evaluate((element) => ({
+    ready: (element as HTMLElement).dataset.videoReady,
+    failed: (element as HTMLElement).dataset.videoFailed,
+    time: Number((element as HTMLElement).dataset.videoTime || "0"),
+  }));
+
+  if (state.ready === "true") {
+    expect(state.failed).not.toBe("true");
+    expect(state.time).toBeGreaterThan(0);
+  } else {
+    await expect(canvas).toHaveAttribute("data-ready", "true");
+  }
+});
