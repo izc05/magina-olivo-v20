@@ -263,3 +263,32 @@ test("V2 review board exposes all canonical keyframes", async ({ page }) => {
   await expect(page.locator(".v2-review-card").filter({ hasText: "K01" }).first()).toBeVisible();
   await expect(page.locator(".v2-review-card").filter({ hasText: "K24" }).first()).toBeVisible();
 });
+
+
+test("V2 product scrollytelling reaches all eight core moments", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const product = page.locator("#producto");
+  const moments = page.locator("[data-v2-product-step]");
+
+  await expect(moments).toHaveCount(8);
+  await expect(page.locator(".v2-product-device")).toBeVisible();
+
+  const last = moments.nth(7);
+  await last.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(220);
+
+  await expect(last).toHaveClass(/is-active/);
+  await expect(page.locator(".phone-screen-history")).toHaveCount(1);
+  await expect(page.locator(".v2-product-progress > span").first()).toHaveText("08");
+
+  const bounds = await product.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      width: Math.round(rect.width),
+      viewport: document.documentElement.clientWidth,
+    };
+  });
+
+  expect(bounds.width).toBeLessThanOrEqual(bounds.viewport + 2);
+});
