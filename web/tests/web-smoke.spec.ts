@@ -334,3 +334,31 @@ test("V2 feature story keeps fullscreen photography at high resolution", async (
   expect(dimensions.naturalWidth).toBeGreaterThanOrEqual(1600);
   expect(dimensions.naturalHeight).toBeGreaterThanOrEqual(900);
 });
+
+
+test("secondary marketing heroes keep HQ imagery", async ({ page }) => {
+  for (const route of ["/producto", "/beneficios", "/territorio", "/contacto"]) {
+    await page.goto(route, { waitUntil: "networkidle" });
+
+    const image = page.locator(".page-hero-scene img");
+    await expect(image).toBeVisible();
+
+    const dimensions = await image.evaluate((node) => {
+      const element = node as HTMLImageElement;
+      return {
+        naturalWidth: element.naturalWidth,
+        naturalHeight: element.naturalHeight,
+      };
+    });
+
+    expect(
+      dimensions.naturalWidth,
+      `${route} hero width=${dimensions.naturalWidth}`,
+    ).toBeGreaterThanOrEqual(1600);
+
+    expect(
+      dimensions.naturalHeight,
+      `${route} hero height=${dimensions.naturalHeight}`,
+    ).toBeGreaterThanOrEqual(900);
+  }
+});
