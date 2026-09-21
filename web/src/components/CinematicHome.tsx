@@ -10,10 +10,13 @@ import { FieldToPhoneSequence } from "@/components/FieldToPhoneSequence";
 export type ScreenKind =
   | "welcome"
   | "farms"
+  | "parcel"
   | "map"
   | "campaign"
   | "harvest"
-  | "weather";
+  | "expenses"
+  | "weather"
+  | "history";
 
 type StoryStep = {
   id: string;
@@ -150,6 +153,33 @@ export function PhoneScreen({ kind }: { kind: ScreenKind }) {
         </div>
       )}
 
+      {kind === "parcel" && (
+        <div className="screen-content">
+          <h3>Tu parcela</h3>
+          <p>La información importante de cada parcela, en contexto.</p>
+          <div className="parcel-hero-card">
+            <div>
+              <small>PARCELA NORTE</small>
+              <strong>12,4 ha</strong>
+              <span>Picual · Campaña 2026/27</span>
+            </div>
+            <b>Activa</b>
+          </div>
+          <div className="parcel-metric-grid">
+            <div><small>Última labor</small><strong>Poda</strong><span>Hace 8 días</span></div>
+            <div><small>Próxima tarea</small><strong>Abonado</strong><span>En 4 días</span></div>
+            <div><small>Cosecha anterior</small><strong>4.860 kg</strong><span>18,1% rend.</span></div>
+            <div><small>Documentos</small><strong>7</strong><span>Todo al día</span></div>
+          </div>
+          <div className="parcel-activity-card">
+            <strong>Actividad reciente</strong>
+            <span><i>●</i> Poda registrada <small>12 sep</small></span>
+            <span><i>●</i> Foto añadida <small>10 sep</small></span>
+            <span><i>●</i> Gasto registrado <small>08 sep</small></span>
+          </div>
+        </div>
+      )}
+
       {kind === "map" && (
         <div className="screen-content">
           <h3>Mapa y Catastro</h3>
@@ -218,6 +248,30 @@ export function PhoneScreen({ kind }: { kind: ScreenKind }) {
         </div>
       )}
 
+      {kind === "expenses" && (
+        <div className="screen-content">
+          <h3>Gastos y documentos</h3>
+          <p>Tu campaña también se entiende mirando los números.</p>
+          <div className="expense-summary">
+            <small>Gasto acumulado · Campaña 2026/27</small>
+            <strong>3.120 €</strong>
+            <span>↓ 8% respecto a la campaña anterior</span>
+          </div>
+          <div className="expense-bars" aria-hidden="true">
+            <div><span>Labores</span><i><b style={{ width: "78%" }} /></i><em>1.420 €</em></div>
+            <div><span>Productos</span><i><b style={{ width: "54%" }} /></i><em>980 €</em></div>
+            <div><span>Riego</span><i><b style={{ width: "32%" }} /></i><em>420 €</em></div>
+            <div><span>Otros</span><i><b style={{ width: "24%" }} /></i><em>300 €</em></div>
+          </div>
+          <div className="documents-card compact-documents">
+            <strong>Documentos</strong>
+            {["Albarán entrega.pdf", "Factura abono.pdf", "Análisis suelo.pdf"].map((file) => (
+              <div key={file}><Icon>▤</Icon><span>{file}</span><b>→</b></div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {kind === "weather" && (
         <div className="screen-content">
           <h3>Tiempo, mercado<br />y alertas</h3>
@@ -226,7 +280,7 @@ export function PhoneScreen({ kind }: { kind: ScreenKind }) {
             <div>
               <small>Previsión en tu zona</small>
               <strong>☀ 18°C</strong>
-              <span>Tu zona · Jaén</span>
+              <span>Tu finca</span>
             </div>
             <div className="forecast"><span>LU<br />24°</span><span>MA<br />22°</span><span>MI<br />19°</span><span>JU<br />21°</span></div>
           </div>
@@ -242,6 +296,32 @@ export function PhoneScreen({ kind }: { kind: ScreenKind }) {
           </div>
         </div>
       )}
+      {kind === "history" && (
+        <div className="screen-content">
+          <h3>Tu histórico</h3>
+          <p>Compara campañas y entiende cómo evoluciona tu olivar.</p>
+          <div className="history-hero-card">
+            <small>Producción · últimas campañas</small>
+            <div className="history-bars" aria-hidden="true">
+              <span style={{ height: "42%" }}><i>22/23</i></span>
+              <span style={{ height: "66%" }}><i>23/24</i></span>
+              <span style={{ height: "52%" }}><i>24/25</i></span>
+              <span style={{ height: "78%" }}><i>25/26</i></span>
+              <span className="current" style={{ height: "88%" }}><i>26/27</i></span>
+            </div>
+          </div>
+          <div className="history-stats">
+            <div><small>Mejor campaña</small><strong>2026/27</strong><span>12.450 kg</span></div>
+            <div><small>Rendimiento medio</small><strong>18,3%</strong><span>+1,4 pts</span></div>
+            <div><small>Gasto / ha</small><strong>73 €</strong><span>-8%</span></div>
+          </div>
+          <div className="history-note">
+            <Icon>↗</Icon>
+            <span><strong>Más información, mejores decisiones.</strong><small>Todo queda para la siguiente campaña.</small></span>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
