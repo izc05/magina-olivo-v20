@@ -1,3 +1,5 @@
+import { getKeyframe } from "@/data/v2/keyframes";
+
 export type CinematicFrame = {
   src: string;
   focalX: number;
@@ -40,33 +42,53 @@ function densifyFrames(
   return frames;
 }
 
-const desktopAnchors: CinematicFrame[] = [
-  { src: "/media/home/heritage-farmer.webp", focalX: 0.34, focalY: 0.52, scale: 1.02 },
-  { src: "/media/home/heritage-farmer.webp", focalX: 0.37, focalY: 0.51, scale: 1.04 },
-  { src: "/media/home/heritage-farmer.webp", focalX: 0.40, focalY: 0.50, scale: 1.07 },
-  { src: "/media/home/benefits-olives.webp", focalX: 0.72, focalY: 0.48, scale: 1.12 },
-  { src: "/media/home/benefits-olives.webp", focalX: 0.69, focalY: 0.48, scale: 1.08 },
-  { src: "/media/home/benefits-olives.webp", focalX: 0.65, focalY: 0.49, scale: 1.04 },
-  { src: "/media/home/phone-in-hand.webp", focalX: 0.50, focalY: 0.54, scale: 1.15 },
-  { src: "/media/home/phone-in-hand.webp", focalX: 0.50, focalY: 0.52, scale: 1.11 },
-  { src: "/media/home/phone-in-hand.webp", focalX: 0.50, focalY: 0.50, scale: 1.07 },
-  { src: "/media/home/phone-in-hand.webp", focalX: 0.50, focalY: 0.49, scale: 1.04 },
-  { src: "/media/home/phone-in-hand.webp", focalX: 0.50, focalY: 0.48, scale: 1.02 },
-  { src: "/media/home/phone-in-hand.webp", focalX: 0.50, focalY: 0.47, scale: 1.00 },
-];
+const desktopAnchorSpec = [
+  ["K02", 1.02],
+  ["K02", 1.04],
+  ["K05", 1.07],
+  ["K03", 1.12],
+  ["K04", 1.08],
+  ["K04", 1.04],
+  ["K07", 1.15],
+  ["K08", 1.11],
+  ["K09", 1.07],
+  ["K10", 1.04],
+  ["K11", 1.02],
+  ["K12", 1.00],
+] as const;
 
-const mobileAnchors: CinematicFrame[] = [
-  { src: "/media/home/heritage-farmer.webp", focalX: 0.42, focalY: 0.54, scale: 1.08 },
-  { src: "/media/home/heritage-farmer.webp", focalX: 0.44, focalY: 0.53, scale: 1.10 },
-  { src: "/media/home/heritage-farmer.webp", focalX: 0.46, focalY: 0.52, scale: 1.13 },
-  { src: "/media/home/benefits-olives.webp", focalX: 0.64, focalY: 0.50, scale: 1.18 },
-  { src: "/media/home/benefits-olives.webp", focalX: 0.61, focalY: 0.50, scale: 1.13 },
-  { src: "/media/home/benefits-olives.webp", focalX: 0.58, focalY: 0.50, scale: 1.09 },
-  { src: "/media/home/phone-in-hand.webp", focalX: 0.50, focalY: 0.55, scale: 1.20 },
-  { src: "/media/home/phone-in-hand.webp", focalX: 0.50, focalY: 0.53, scale: 1.15 },
-  { src: "/media/home/phone-in-hand.webp", focalX: 0.50, focalY: 0.51, scale: 1.10 },
-  { src: "/media/home/phone-in-hand.webp", focalX: 0.50, focalY: 0.49, scale: 1.06 },
-];
+const mobileAnchorSpec = [
+  ["K02", 1.08],
+  ["K02", 1.10],
+  ["K05", 1.13],
+  ["K03", 1.18],
+  ["K04", 1.13],
+  ["K04", 1.09],
+  ["K07", 1.20],
+  ["K08", 1.15],
+  ["K09", 1.10],
+  ["K12", 1.06],
+] as const;
+
+const desktopAnchors: CinematicFrame[] = desktopAnchorSpec.map(([id, scale]) => {
+  const frame = getKeyframe(id).desktop;
+  return {
+    src: frame.src,
+    focalX: frame.focalX,
+    focalY: frame.focalY,
+    scale,
+  };
+});
+
+const mobileAnchors: CinematicFrame[] = mobileAnchorSpec.map(([id, scale]) => {
+  const frame = getKeyframe(id).mobile;
+  return {
+    src: frame.src,
+    focalX: frame.focalX,
+    focalY: frame.focalY,
+    scale,
+  };
+});
 
 export const pilotDesktopFrames = densifyFrames(desktopAnchors, 3);
 export const pilotMobileFrames = densifyFrames(mobileAnchors, 3);
