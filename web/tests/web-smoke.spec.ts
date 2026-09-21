@@ -97,7 +97,7 @@ test("reduced motion mode remains usable", async ({ page }) => {
 
   await expect(page.locator(".v2-hero")).toBeVisible();
   await expect(page.locator(".v2-story")).toBeVisible();
-  await expect(page.locator(".v2-story-scene-phone")).toBeVisible();
+  await expect(page.locator(".v2-sequence-poster")).toBeVisible();
 
   const overflow = await page.evaluate(() => {
     const clientWidth = document.documentElement.clientWidth;
@@ -178,5 +178,14 @@ test("loads the approved hero photograph instead of the fallback", async ({ page
   expect(
     decodeURIComponent(imageState.currentSrc),
     `hero currentSrc=${imageState.currentSrc}`,
-  ).toContain("/media/v2/hero-keyframe-01.webp");
+  ).toContain("/media/v2/hero-photo-clean.webp");
+});
+
+
+test("canvas sequence becomes ready in normal motion mode", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const canvas = page.locator(".v2-sequence-canvas");
+  await expect(canvas).toHaveCount(1);
+  await expect(canvas).toHaveAttribute("data-ready", "true", { timeout: 12_000 });
 });
