@@ -236,11 +236,10 @@ test("V2 canvas sequence advances with scroll", async ({ page }) => {
 });
 
 
-test("V2 product takeover becomes visible near sequence end", async ({ page }) => {
+test("V2 cinematic story stays photographic without oversized app mockup", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
 
   const story = page.locator(".v2-story");
-  const takeover = page.locator(".v2-story-device-takeover");
 
   const targetY = await story.evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -252,14 +251,10 @@ test("V2 product takeover becomes visible near sequence end", async ({ page }) =
   await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), targetY);
   await page.waitForTimeout(460);
 
-  await expect(takeover).toBeVisible();
-
-  const opacity = await takeover.evaluate((element) =>
-    Number.parseFloat(getComputedStyle(element).opacity),
-  );
-
-  expect(opacity).toBeGreaterThan(0.75);
-  await expect(takeover.locator(".phone-screen-welcome")).toHaveCount(1);
+  await expect(page.locator(".v2-story-device-takeover")).toHaveCount(0);
+  await expect(page.locator(".v2-product-device")).toHaveCount(0);
+  await expect(page.locator(".v2-sequence-canvas")).toBeVisible();
+  await expect(page.locator(".v2-story-copy-c")).toBeVisible();
 });
 
 
