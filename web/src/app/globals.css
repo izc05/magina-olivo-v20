@@ -5586,3 +5586,64 @@ article[id] {
     opacity: 1;
   }
 }
+
+
+/* V2 canvas sequence engine */
+
+.v2-story-canvas-root {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.v2-sequence-canvas,
+.v2-sequence-poster {
+  position: sticky;
+  top: 0;
+  display: block;
+  width: 100%;
+  height: 100svh;
+}
+
+.v2-sequence-canvas {
+  background: #10251a;
+  opacity: .01;
+  transition: opacity .35s ease;
+}
+
+.v2-sequence-canvas[data-ready="true"] {
+  opacity: 1;
+}
+
+.v2-sequence-poster {
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+.v2-story-sticky {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.v2-story-overlay {
+  z-index: 0;
+  pointer-events: none;
+}
+
+.v2-story-copy {
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-story-canvas-root {
+    position: absolute;
+    inset: 0;
+  }
+
+  .v2-sequence-poster {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+  }
+}
