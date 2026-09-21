@@ -211,12 +211,21 @@ class AppNavigationTest {
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("activate-campaign").fetchSemanticsNodes().isNotEmpty() }
 
         composeRule.onNodeWithTag("activate-campaign").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("confirm-campaign-action").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag("confirm-campaign-action").performClick()
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Iniciar recolección").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("Iniciar recolección").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("confirm-campaign-action").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag("confirm-campaign-action").performClick()
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("close-campaign").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithTag("close-campaign").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("confirm-campaign-action").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag("confirm-campaign-action").performClick()
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Histórico protegido").fetchSemanticsNodes().isNotEmpty() }
 
@@ -232,11 +241,17 @@ class AppNavigationTest {
         // explicit, confirmed action that returns the aggregate to an editable state.
         composeRule.onNodeWithText("Histórico protegido").assertIsDisplayed()
         composeRule.onNodeWithTag("reopen-campaign").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("confirm-campaign-action").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag("confirm-campaign-action").performClick()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithTag("close-campaign").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("close-campaign").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("confirm-campaign-action").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag("confirm-campaign-action").performClick()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithText("Histórico protegido").fetchSemanticsNodes().isNotEmpty()
