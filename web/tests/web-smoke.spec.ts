@@ -316,5 +316,5 @@ test("V2 mobile product sticky scene keeps active copy visible", async ({ page }
   const stickyCopy = page.locator(".v2-product-mobile-copy");
   await expect(stickyCopy).toBeVisible();
   await expect(stickyCopy.locator("h3")).toHaveText("Tu histórico.");
-  await expect(stickyCopy.locator("p")).toContainText("Compara campañas");
+  await expect(stickyCopy.locator("p")).toContainText("campaña a campaña");
 });
