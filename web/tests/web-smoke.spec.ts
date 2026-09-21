@@ -166,7 +166,7 @@ test("captures visual evidence for the V2 landing", async ({ page }, testInfo) =
   });
 });
 
-test("loads the approved hero photograph instead of the fallback", async ({ page }) => {
+test("loads a genuinely high-resolution V2 hero photograph", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
 
   const heroImage = page.locator(".v2-hero-media img");
@@ -183,13 +183,13 @@ test("loads the approved hero photograph instead of the fallback", async ({ page
   });
 
   expect(imageState.complete).toBe(true);
-  expect(imageState.naturalWidth).toBeGreaterThan(0);
+  expect(imageState.naturalWidth).toBeGreaterThanOrEqual(1600);
+  expect(imageState.naturalHeight).toBeGreaterThanOrEqual(900);
   expect(
     decodeURIComponent(imageState.currentSrc),
     `hero currentSrc=${imageState.currentSrc}`,
-  ).toContain("/media/v2/hero-photo-clean.webp");
+  ).toContain("images.pexels.com/photos/5035605/");
 });
-
 
 test("canvas sequence becomes ready in normal motion mode", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
@@ -313,4 +313,24 @@ test("V2 mobile real-field scene keeps active copy visible", async ({ page }, te
   await expect(page.locator(".v2-field-features-copy h2")).toHaveText("Tu histórico.");
   await expect(page.locator(".v2-field-features-copy > p").last()).toContainText("campaña a campaña");
   await expect(page.locator(".v2-product-device")).toHaveCount(0);
+});
+
+
+test("V2 feature story keeps fullscreen photography at high resolution", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const image = page.locator(".v2-field-features-media img");
+  await image.scrollIntoViewIfNeeded();
+  await expect(image).toBeVisible();
+
+  const dimensions = await image.evaluate((node) => {
+    const element = node as HTMLImageElement;
+    return {
+      naturalWidth: element.naturalWidth,
+      naturalHeight: element.naturalHeight,
+    };
+  });
+
+  expect(dimensions.naturalWidth).toBeGreaterThanOrEqual(1600);
+  expect(dimensions.naturalHeight).toBeGreaterThanOrEqual(900);
 });
