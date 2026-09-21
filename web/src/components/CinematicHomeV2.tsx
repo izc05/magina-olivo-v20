@@ -21,32 +21,50 @@ const productMoments: Array<{
   {
     number: "01",
     title: "Tus fincas.",
-    copy: "Todas tus fincas y parcelas, siempre localizadas.",
+    copy: "Todo empieza por saber qué tienes.",
     screen: "farms",
   },
   {
     number: "02",
-    title: "Tu mapa.",
-    copy: "Tu tierra delante de ti, con cada parcela en su sitio.",
-    screen: "map",
+    title: "Tus parcelas.",
+    copy: "Cada parcela con su información y su historia.",
+    screen: "parcel",
   },
   {
     number: "03",
+    title: "Tu mapa.",
+    copy: "Tu tierra delante de ti, siempre localizada.",
+    screen: "map",
+  },
+  {
+    number: "04",
     title: "Tu campaña.",
     copy: "Cada labor queda registrada cuando ocurre.",
     screen: "campaign",
   },
   {
-    number: "04",
+    number: "05",
     title: "Tu cosecha.",
-    copy: "Producción, entregas y resultados sin perder el hilo.",
+    copy: "Producción, entregas y rendimiento sin perder el hilo.",
     screen: "harvest",
   },
   {
-    number: "05",
+    number: "06",
+    title: "Tus números.",
+    copy: "Gastos y documentos para entender el resultado.",
+    screen: "expenses",
+  },
+  {
+    number: "07",
     title: "Tu tiempo.",
     copy: "Información útil cuando toca decidir.",
     screen: "weather",
+  },
+  {
+    number: "08",
+    title: "Tu histórico.",
+    copy: "Compara campañas y aprende de cada año.",
+    screen: "history",
   },
 ];
 
@@ -262,7 +280,12 @@ export function CinematicHomeV2() {
             <div className="v2-product-device">
               <div className="phone-shell phone-shell-small">
                 <div className="phone-camera" />
-                <PhoneScreen kind={productMoments[activeProduct]?.screen ?? "farms"} />
+                <div
+                  className="v2-product-screen-transition"
+                  key={productMoments[activeProduct]?.screen ?? "farms"}
+                >
+                  <PhoneScreen kind={productMoments[activeProduct]?.screen ?? "farms"} />
+                </div>
               </div>
             </div>
             <div className="v2-product-progress" aria-hidden="true">
