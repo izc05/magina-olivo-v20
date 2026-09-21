@@ -20,10 +20,10 @@ export type VisualAsset = {
 export const visualAssets: Record<VisualAssetKey, VisualAsset> = {
   hero: {
     key: "hero",
-    finalSrc: "/media/v2/hero-keyframe-01.webp",
+    finalSrc: "/media/v2/hero-photo-clean.webp",
     fallbackSrc: "/brand/hero-scene.svg",
     alt: "Agricultor trabajando en un olivar",
-    focalPoint: "70% 50%",
+    focalPoint: "67% 50%",
     status: "final",
   },
   territoryIntro: {
