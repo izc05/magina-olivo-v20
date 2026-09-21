@@ -6,7 +6,7 @@ export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE_URL;
-  const primary = ["", "/producto", "/beneficios", "/territorio", "/contacto"];
+  const primary = ["", "/producto", "/beneficios", "/contacto"];
   const legal = ["/privacidad", "/terminos", "/aviso-legal"];
 
   return [
