@@ -3,6 +3,7 @@
 import { CinematicScrollCanvas } from "@/components/CinematicScrollCanvas";
 import { PhoneScreen, type ScreenKind } from "@/components/CinematicHome";
 import { SceneImage } from "@/components/SceneImage";
+import { pilotDesktopFrames, pilotMobileFrames } from "@/data/v2/cinematicSequence";
 import { visualAssets } from "@/lib/visualAssets";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -185,23 +186,14 @@ export function CinematicHomeV2() {
         <CinematicScrollCanvas
           className="v2-story-canvas-root"
           reducedMotionPoster={`${basePath}${visualAssets.phoneContext.finalSrc}`}
-          images={[
-            {
-              src: `${basePath}${visualAssets.heritage.finalSrc}`,
-              focalX: 0.38,
-              focalY: 0.52,
-            },
-            {
-              src: `${basePath}${visualAssets.benefits.finalSrc}`,
-              focalX: 0.70,
-              focalY: 0.48,
-            },
-            {
-              src: `${basePath}${visualAssets.phoneContext.finalSrc}`,
-              focalX: 0.50,
-              focalY: 0.50,
-            },
-          ]}
+          desktopFrames={pilotDesktopFrames.map((frame) => ({
+            ...frame,
+            src: `${basePath}${frame.src}`,
+          }))}
+          mobileFrames={pilotMobileFrames.map((frame) => ({
+            ...frame,
+            src: `${basePath}${frame.src}`,
+          }))}
         />
         <div className="v2-story-sticky">
           <div className="v2-story-overlay" />
