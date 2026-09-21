@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
-type SequenceImage = {
-  src: string;
-  focalX?: number;
-  focalY?: number;
-};
+import type { CinematicFrame } from "@/data/v2/cinematicSequence";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type CinematicScrollCanvasProps = {
-  images: SequenceImage[];
+  desktopFrames: CinematicFrame[];
+  mobileFrames: CinematicFrame[];
   className?: string;
   reducedMotionPoster?: string;
 };
@@ -44,46 +40,71 @@ function drawCover(
 }
 
 export function CinematicScrollCanvas({
-  images,
+  desktopFrames,
+  mobileFrames,
   className,
   reducedMotionPoster,
 }: CinematicScrollCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const loadedRef = useRef<HTMLImageElement[]>([]);
+  const imageMapRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const [ready, setReady] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [mobile, setMobile] = useState(false);
+
+  const frames = useMemo(
+    () => (mobile ? mobileFrames : desktopFrames),
+    [desktopFrames, mobileFrames, mobile],
+  );
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => setReducedMotion(media.matches);
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const viewport = window.matchMedia("(max-width: 820px)");
+
+    const apply = () => {
+      setReducedMotion(motion.matches);
+      setMobile(viewport.matches);
+    };
+
     apply();
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
+    motion.addEventListener("change", apply);
+    viewport.addEventListener("change", apply);
+
+    return () => {
+      motion.removeEventListener("change", apply);
+      viewport.removeEventListener("change", apply);
+    };
   }, []);
 
   useEffect(() => {
-    if (!images.length || reducedMotion) return;
+    if (!frames.length || reducedMotion) return;
 
     let cancelled = false;
-    const loaded: HTMLImageElement[] = [];
+    setReady(false);
+
+    const uniqueSources = Array.from(new Set(frames.map((frame) => frame.src)));
 
     Promise.all(
-      images.map(
-        (item) =>
-          new Promise<HTMLImageElement>((resolve, reject) => {
+      uniqueSources.map(
+        (src) =>
+          new Promise<[string, HTMLImageElement]>((resolve, reject) => {
+            const existing = imageMapRef.current.get(src);
+            if (existing?.complete && existing.naturalWidth > 0) {
+              resolve([src, existing]);
+              return;
+            }
+
             const image = new Image();
             image.decoding = "async";
-            image.onload = () => resolve(image);
+            image.onload = () => resolve([src, image]);
             image.onerror = reject;
-            image.src = item.src;
+            image.src = src;
           }),
       ),
     )
-      .then((result) => {
+      .then((loaded) => {
         if (cancelled) return;
-        loaded.push(...result);
-        loadedRef.current = loaded;
+        loaded.forEach(([src, image]) => imageMapRef.current.set(src, image));
         setReady(true);
       })
       .catch(() => {
@@ -93,7 +114,7 @@ export function CinematicScrollCanvas({
     return () => {
       cancelled = true;
     };
-  }, [images, reducedMotion]);
+  }, [frames, reducedMotion]);
 
   useEffect(() => {
     if (!ready || reducedMotion) return;
@@ -114,11 +135,14 @@ export function CinematicScrollCanvas({
       const travel = Math.max(1, wrapper.offsetHeight - viewport);
       const progress = clamp(-rect.top / travel);
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+      const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 1.75);
       const width = Math.max(1, Math.round(window.innerWidth));
       const height = Math.max(1, Math.round(viewport));
 
-      if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+      if (
+        canvas.width !== Math.round(width * dpr) ||
+        canvas.height !== Math.round(height * dpr)
+      ) {
         canvas.width = Math.round(width * dpr);
         canvas.height = Math.round(height * dpr);
         canvas.style.width = `${width}px`;
@@ -130,24 +154,26 @@ export function CinematicScrollCanvas({
       ctx.fillStyle = "#10251a";
       ctx.fillRect(0, 0, width, height);
 
-      const frames = loadedRef.current;
       if (!frames.length) return;
 
-      const segmentFloat = progress * (frames.length - 1);
-      const fromIndex = Math.min(frames.length - 1, Math.floor(segmentFloat));
+      const frameFloat = progress * (frames.length - 1);
+      const fromIndex = Math.min(frames.length - 1, Math.floor(frameFloat));
       const toIndex = Math.min(frames.length - 1, fromIndex + 1);
-      const local = segmentFloat - fromIndex;
+      const local = frameFloat - fromIndex;
 
-      const fromMeta = images[fromIndex] ?? images[0];
-      const toMeta = images[toIndex] ?? fromMeta;
+      const fromMeta = frames[fromIndex] ?? frames[0];
+      const toMeta = frames[toIndex] ?? fromMeta;
+      const fromImage = imageMapRef.current.get(fromMeta.src);
+      const toImage = imageMapRef.current.get(toMeta.src) ?? fromImage;
+      if (!fromImage) return;
 
-      const focalX = lerp(fromMeta.focalX ?? 0.5, toMeta.focalX ?? 0.5, local);
-      const focalY = lerp(fromMeta.focalY ?? 0.5, toMeta.focalY ?? 0.5, local);
-      const scale = 1.035 + progress * 0.085;
+      const focalX = lerp(fromMeta.focalX, toMeta.focalX, local);
+      const focalY = lerp(fromMeta.focalY, toMeta.focalY, local);
+      const scale = lerp(fromMeta.scale, toMeta.scale, local);
 
       drawCover(
         ctx,
-        frames[fromIndex],
+        fromImage,
         width,
         height,
         scale,
@@ -156,18 +182,27 @@ export function CinematicScrollCanvas({
         1,
       );
 
-      if (toIndex !== fromIndex && local > 0.02) {
+      if (
+        toImage &&
+        toMeta.src !== fromMeta.src &&
+        toIndex !== fromIndex &&
+        local > 0.02
+      ) {
         drawCover(
           ctx,
-          frames[toIndex],
+          toImage,
           width,
           height,
-          scale + 0.012,
+          toMeta.scale,
           focalX,
           focalY,
           local,
         );
       }
+
+      wrapper.style.setProperty("--sequence-progress", String(progress));
+      wrapper.dataset.frame = String(fromIndex + 1);
+      wrapper.dataset.frames = String(frames.length);
     };
 
     const requestRender = () => {
@@ -183,9 +218,9 @@ export function CinematicScrollCanvas({
       window.removeEventListener("resize", requestRender);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [images, ready, reducedMotion]);
+  }, [frames, mobile, ready, reducedMotion]);
 
-  const poster = reducedMotionPoster || images[0]?.src;
+  const poster = reducedMotionPoster || frames[0]?.src;
 
   return (
     <div ref={wrapperRef} className={className}>
