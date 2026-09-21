@@ -9,6 +9,7 @@ const publicRoutes = [
   "/privacidad",
   "/terminos",
   "/aviso-legal",
+  "/v2-review",
 ];
 
 for (const route of publicRoutes) {
@@ -61,16 +62,16 @@ for (const route of publicRoutes) {
   });
 }
 
-test("home keeps the cinematic structure and primary anchors", async ({ page }) => {
+test("home keeps the V2 cinematic structure and primary anchors", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
 
-  await expect(page.locator(".cinema-hero")).toBeVisible();
-  await expect(page.locator(".field-phone-film")).toHaveCount(1);
-  await expect(page.locator("#funciones")).toHaveCount(1);
+  await expect(page.locator(".v2-hero")).toBeVisible();
+  await expect(page.locator(".v2-story")).toHaveCount(1);
+  await expect(page.locator("#historia")).toHaveCount(1);
+  await expect(page.locator("#producto")).toHaveCount(1);
   await expect(page.locator("#descarga")).toHaveCount(1);
-  await expect(page.locator("#contacto")).toHaveCount(1);
 
-  const heroHeading = page.locator(".cinema-copy h1");
+  const heroHeading = page.locator(".v2-hero-copy h1");
   await expect(heroHeading).toBeVisible();
   await expect(heroHeading).toContainText(/olivar/i);
 });
@@ -95,8 +96,9 @@ test("reduced motion mode remains usable", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/", { waitUntil: "networkidle" });
 
-  await expect(page.locator(".cinema-hero")).toBeVisible();
-  await expect(page.locator(".field-phone-film")).toBeVisible();
+  await expect(page.locator(".v2-hero")).toBeVisible();
+  await expect(page.locator(".v2-story")).toBeVisible();
+  await expect(page.locator(".v2-sequence-poster")).toBeVisible();
 
   const overflow = await page.evaluate(() => {
     const clientWidth = document.documentElement.clientWidth;
@@ -129,39 +131,45 @@ test("reduced motion mode remains usable", async ({ page }) => {
   ).toBeLessThanOrEqual(overflow.clientWidth + 2);
 });
 
-
-test("captures visual evidence for the approved landing", async ({ page }, testInfo) => {
+test("captures visual evidence for the V2 landing", async ({ page }, testInfo) => {
   await page.goto("/", { waitUntil: "networkidle" });
 
   const suffix = testInfo.project.name.includes("mobile") ? "mobile" : "desktop";
 
-  await page.locator(".cinema-hero").screenshot({
-    path: `test-results/home-hero-${suffix}.png`,
+  await page.locator(".v2-hero").screenshot({
+    path: `test-results/v2-home-hero-${suffix}.png`,
   });
 
-  const film = page.locator(".field-phone-film");
-  await film.scrollIntoViewIfNeeded();
-  await page.evaluate(() => window.scrollBy(0, window.innerHeight * 1.9));
-  await page.waitForTimeout(150);
+  const story = page.locator(".v2-story");
+  await story.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollBy(0, window.innerHeight * 1.7));
+  await page.waitForTimeout(460);
   await page.screenshot({
-    path: `test-results/home-film-${suffix}.png`,
+    path: `test-results/v2-home-story-${suffix}.png`,
     fullPage: false,
   });
 
-  await page.locator(".app-cycle-overview").screenshot({
-    path: `test-results/home-app-cycle-${suffix}.png`,
-  });
+  const productMoments = page.locator("[data-v2-product-step]");
 
-  await page.locator(".download-section").screenshot({
-    path: `test-results/home-download-${suffix}.png`,
+  for (const [label, index] of [["start", 0], ["middle", 3], ["end", 7]] as const) {
+    const moment = productMoments.nth(index);
+    await moment.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(460);
+    await page.screenshot({
+      path: `test-results/v2-home-product-${label}-${suffix}.png`,
+      fullPage: false,
+    });
+  }
+
+  await page.locator(".v2-final").screenshot({
+    path: `test-results/v2-home-final-${suffix}.png`,
   });
 });
 
-
-test("loads the approved hero photograph instead of the fallback", async ({ page }) => {
+test("loads a genuinely high-resolution V2 hero photograph", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
 
-  const heroImage = page.locator(".hero-scene-image");
+  const heroImage = page.locator(".v2-hero-media img");
   await expect(heroImage).toBeVisible();
 
   const imageState = await heroImage.evaluate((image) => {
@@ -175,9 +183,221 @@ test("loads the approved hero photograph instead of the fallback", async ({ page
   });
 
   expect(imageState.complete).toBe(true);
-  expect(imageState.naturalWidth).toBeGreaterThan(0);
+  expect(imageState.naturalWidth).toBeGreaterThanOrEqual(1600);
+  expect(imageState.naturalHeight).toBeGreaterThanOrEqual(900);
   expect(
     decodeURIComponent(imageState.currentSrc),
     `hero currentSrc=${imageState.currentSrc}`,
-  ).toContain("/media/home/hero-farmer-panel.webp");
+  ).toContain("images.pexels.com/photos/5035605/");
+});
+
+test("canvas sequence becomes ready in normal motion mode", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const canvas = page.locator(".v2-sequence-canvas");
+  await expect(canvas).toHaveCount(1);
+  await expect(canvas).toHaveAttribute("data-ready", "true", { timeout: 12_000 });
+});
+
+
+test("V2 canvas sequence advances with scroll", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const story = page.locator(".v2-story");
+  const engine = page.locator(".v2-story-canvas-root");
+  const canvas = page.locator(".v2-sequence-canvas");
+
+  await story.scrollIntoViewIfNeeded();
+  await expect(canvas).toHaveAttribute("data-ready", "true");
+
+  const before = await engine.evaluate((element) => ({
+    frame: Number((element as HTMLElement).dataset.frame || "0"),
+    frames: Number((element as HTMLElement).dataset.frames || "0"),
+  }));
+
+  const targetY = await story.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const top = window.scrollY + rect.top;
+    const travel = Math.max(1, (element as HTMLElement).offsetHeight - window.innerHeight);
+    return top + travel * 0.68;
+  });
+
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), targetY);
+  await page.waitForTimeout(460);
+
+  const after = await engine.evaluate((element) => ({
+    frame: Number((element as HTMLElement).dataset.frame || "0"),
+    frames: Number((element as HTMLElement).dataset.frames || "0"),
+  }));
+
+  expect(before.frames).toBeGreaterThanOrEqual(24);
+  expect(after.frames).toBe(before.frames);
+  expect(after.frame).toBeGreaterThan(before.frame);
+});
+
+
+test("V2 cinematic story stays photographic without oversized app mockup", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const story = page.locator(".v2-story");
+
+  const targetY = await story.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const top = window.scrollY + rect.top;
+    const travel = Math.max(1, (element as HTMLElement).offsetHeight - window.innerHeight);
+    return top + travel * 0.92;
+  });
+
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), targetY);
+  await page.waitForTimeout(460);
+
+  await expect(page.locator(".v2-story-device-takeover")).toHaveCount(0);
+  await expect(page.locator(".v2-product-device")).toHaveCount(0);
+  await expect(page.locator(".v2-sequence-canvas")).toBeVisible();
+  await expect(page.locator(".v2-story-copy-c")).toBeVisible();
+});
+
+
+test("V2 review board exposes all canonical keyframes", async ({ page }) => {
+  await page.goto("/v2-review", { waitUntil: "networkidle" });
+
+  await expect(page.locator(".v2-review")).toBeVisible();
+  await expect(page.locator(".v2-review-card")).toHaveCount(24);
+  await expect(page.locator(".v2-review-card").filter({ hasText: "K01" }).first()).toBeVisible();
+  await expect(page.locator(".v2-review-card").filter({ hasText: "K24" }).first()).toBeVisible();
+});
+
+
+test("V2 real-field feature story reaches all eight core moments", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const product = page.locator("#producto");
+  const moments = page.locator("[data-v2-product-step]");
+
+  await expect(moments).toHaveCount(8);
+  await expect(page.locator(".v2-field-features-media")).toBeVisible();
+  await expect(page.locator(".v2-product-device")).toHaveCount(0);
+
+  const last = moments.nth(7);
+  await last.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(460);
+
+  await expect(last).toHaveClass(/is-active/);
+  await expect(page.locator(".v2-field-features-copy h2")).toHaveText("Tu histórico.");
+  await expect(page.locator(".v2-field-features-copy > p").last()).toContainText("campaña a campaña");
+  await expect(page.locator(".v2-field-feature-progress > span").first()).toHaveText("08");
+
+  const bounds = await product.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      width: Math.round(rect.width),
+      viewport: document.documentElement.clientWidth,
+    };
+  });
+
+  expect(bounds.width).toBeLessThanOrEqual(bounds.viewport + 2);
+});
+
+
+test("V2 mobile real-field scene keeps active copy visible", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile"), "mobile-only behavior");
+
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const moments = page.locator("[data-v2-product-step]");
+  const finalMoment = moments.nth(7);
+
+  await finalMoment.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(460);
+
+  await expect(page.locator(".v2-field-features-copy h2")).toHaveText("Tu histórico.");
+  await expect(page.locator(".v2-field-features-copy > p").last()).toContainText("campaña a campaña");
+  await expect(page.locator(".v2-product-device")).toHaveCount(0);
+});
+
+
+test("V2 feature story keeps fullscreen photography at high resolution", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const image = page.locator(".v2-field-features-media img");
+  await image.scrollIntoViewIfNeeded();
+  await expect(image).toBeVisible();
+
+  const dimensions = await image.evaluate((node) => {
+    const element = node as HTMLImageElement;
+    return {
+      naturalWidth: element.naturalWidth,
+      naturalHeight: element.naturalHeight,
+    };
+  });
+
+  expect(dimensions.naturalWidth).toBeGreaterThanOrEqual(1600);
+  expect(dimensions.naturalHeight).toBeGreaterThanOrEqual(900);
+});
+
+
+test("secondary marketing heroes keep HQ imagery", async ({ page }) => {
+  for (const route of ["/producto", "/beneficios", "/territorio", "/contacto"]) {
+    await page.goto(route, { waitUntil: "networkidle" });
+
+    const image = page.locator(".page-hero-scene img");
+    await expect(image).toBeVisible();
+
+    const dimensions = await image.evaluate((node) => {
+      const element = node as HTMLImageElement;
+      return {
+        naturalWidth: element.naturalWidth,
+        naturalHeight: element.naturalHeight,
+      };
+    });
+
+    expect(
+      dimensions.naturalWidth,
+      `${route} hero width=${dimensions.naturalWidth}`,
+    ).toBeGreaterThanOrEqual(1600);
+
+    expect(
+      dimensions.naturalHeight,
+      `${route} hero height=${dimensions.naturalHeight}`,
+    ).toBeGreaterThanOrEqual(900);
+  }
+});
+
+
+test("V2 4K video scrub progressively enhances the cinematic story", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const story = page.locator(".v2-story");
+  const videoRoot = page.locator(".v2-story-video-root");
+  const video = videoRoot.locator("video");
+  const canvas = page.locator(".v2-sequence-canvas");
+
+  await expect(videoRoot).toHaveCount(1);
+  await expect(video).toHaveCount(1);
+
+  const src = await video.getAttribute("src");
+  expect(src || "").toContain("20606525-uhd_3840_2160_24fps.mp4");
+
+  const targetY = await story.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const top = window.scrollY + rect.top;
+    const travel = Math.max(1, (element as HTMLElement).offsetHeight - window.innerHeight);
+    return top + travel * 0.62;
+  });
+
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), targetY);
+  await page.waitForTimeout(650);
+
+  const state = await videoRoot.evaluate((element) => ({
+    ready: (element as HTMLElement).dataset.videoReady,
+    failed: (element as HTMLElement).dataset.videoFailed,
+    time: Number((element as HTMLElement).dataset.videoTime || "0"),
+  }));
+
+  if (state.ready === "true") {
+    expect(state.failed).not.toBe("true");
+    expect(state.time).toBeGreaterThan(0);
+  } else {
+    await expect(canvas).toHaveAttribute("data-ready", "true");
+  }
 });

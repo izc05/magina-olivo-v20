@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { CinematicHome } from "@/components/CinematicHome";
+import { CinematicHomeV2 } from "@/components/CinematicHomeV2";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const metadata: Metadata = {
   title: "Mágina Olivo",
   description:
-    "Tu olivar, tus campañas y la información que importa en una experiencia clara, cercana y conectada a Sierra Mágina.",
+    "Gestiona fincas, parcelas y campañas de olivar con una experiencia sencilla, visual y pensada para el trabajo real.",
   alternates: { canonical: "/" },
 };
 
@@ -16,7 +16,7 @@ export default function HomePage() {
       <a className="skip-link" href="#contenido-principal">Saltar al contenido</a>
       <SiteHeader />
       <main id="contenido-principal">
-        <CinematicHome />
+        <CinematicHomeV2 />
       </main>
       <SiteFooter />
     </>

@@ -54,7 +54,7 @@ export default function ProductoPage() {
       <PageCta
         title="Conoce Mágina Olivo desde el principio."
         copy="Vuelve a la experiencia cinematográfica y recorre cada función tal como la verá el agricultor."
-        href="/#funciones"
+        href="/#producto"
         label="Ver la experiencia"
       />
       </main>

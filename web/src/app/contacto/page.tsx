@@ -20,7 +20,7 @@ export default function ContactoPage() {
         assetKey="heritage"
         title={<>Hablemos de un olivar <em>mejor organizado.</em></>}
         copy="El proyecto está creciendo. Las dudas, ideas y experiencias reales del campo ayudan a construir una herramienta más útil."
-        aside="Cerca del campo, siempre."
+        aside="Pensado desde el campo."
       />
 
       <section className="contact-page">
@@ -36,7 +36,7 @@ export default function ContactoPage() {
               hola@maginaolivo.es <span aria-hidden="true">→</span>
             </a>
             <div className="contact-facts">
-              <span><strong>Origen</strong>Sierra Mágina · Jaén</span>
+              <span><strong>Origen</strong>Jaén · pensado para cualquier olivar</span>
               <span><strong>Producto</strong>Android · en desarrollo</span>
               <span><strong>Web</strong>Experiencia pública del proyecto</span>
             </div>

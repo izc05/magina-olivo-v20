@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Mágina Olivo",
     description:
-      "Gestión del olivar con una experiencia sencilla, visual y conectada al territorio.",
+      "Gestión del olivar con una experiencia sencilla, visual y pensada para el trabajo real.",
     type: "website",
     locale: "es_ES",
     siteName: "Mágina Olivo",
