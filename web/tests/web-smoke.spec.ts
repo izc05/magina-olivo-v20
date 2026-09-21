@@ -300,3 +300,21 @@ test("V2 product scrollytelling reaches all eight core moments", async ({ page }
 
   expect(bounds.width).toBeLessThanOrEqual(bounds.viewport + 2);
 });
+
+
+test("V2 mobile product sticky scene keeps active copy visible", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile"), "mobile-only behavior");
+
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const moments = page.locator("[data-v2-product-step]");
+  const finalMoment = moments.nth(7);
+
+  await finalMoment.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(460);
+
+  const stickyCopy = page.locator(".v2-product-mobile-copy");
+  await expect(stickyCopy).toBeVisible();
+  await expect(stickyCopy.locator("h3")).toHaveText("Tu histórico.");
+  await expect(stickyCopy.locator("p")).toContainText("Compara campañas");
+});
