@@ -1,8 +1,10 @@
 "use client";
 
 import { CinematicScrollCanvas } from "@/components/CinematicScrollCanvas";
+import { CinematicVideoScrub } from "@/components/CinematicVideoScrub";
 import { SceneImage } from "@/components/SceneImage";
 import { pilotDesktopFrames, pilotMobileFrames } from "@/data/v2/cinematicSequence";
+import { v2CinematicFieldFilm } from "@/data/v2/cinematicMedia";
 import { visualAssets } from "@/lib/visualAssets";
 import Image from "next/image";
 import type { CSSProperties } from "react";
@@ -198,6 +200,12 @@ export function CinematicHomeV2() {
             ...frame,
             src: withBasePath(frame.src),
           }))}
+        />
+        <CinematicVideoScrub
+          className="v2-story-video-root"
+          src={v2CinematicFieldFilm.video}
+          poster={v2CinematicFieldFilm.poster}
+          objectPosition="50% 50%"
         />
         <div className="v2-story-sticky">
           <div className="v2-story-overlay" />
