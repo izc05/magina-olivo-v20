@@ -260,6 +260,6 @@ test("V2 review board exposes all canonical keyframes", async ({ page }) => {
 
   await expect(page.locator(".v2-review")).toBeVisible();
   await expect(page.locator(".v2-review-card")).toHaveCount(24);
-  await expect(page.getByText("K01", { exact: true })).toBeVisible();
-  await expect(page.getByText("K24", { exact: true })).toBeVisible();
+  await expect(page.locator(".v2-review-card").filter({ hasText: "K01" }).first()).toBeVisible();
+  await expect(page.locator(".v2-review-card").filter({ hasText: "K24" }).first()).toBeVisible();
 });
