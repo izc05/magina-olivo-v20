@@ -1,19 +1,60 @@
 "use client";
 
 import { CinematicScrollCanvas } from "@/components/CinematicScrollCanvas";
+import { PhoneScreen, type ScreenKind } from "@/components/CinematicHome";
 import { SceneImage } from "@/components/SceneImage";
 import { visualAssets } from "@/lib/visualAssets";
 import Image from "next/image";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
 const phase = (value: number, start: number, end: number) =>
   clamp((value - start) / Math.max(0.001, end - start));
 
+const productMoments: Array<{
+  number: string;
+  title: string;
+  copy: string;
+  screen: ScreenKind;
+}> = [
+  {
+    number: "01",
+    title: "Tus fincas.",
+    copy: "Todas tus fincas y parcelas, siempre localizadas.",
+    screen: "farms",
+  },
+  {
+    number: "02",
+    title: "Tu mapa.",
+    copy: "Tu tierra delante de ti, con cada parcela en su sitio.",
+    screen: "map",
+  },
+  {
+    number: "03",
+    title: "Tu campaña.",
+    copy: "Cada labor queda registrada cuando ocurre.",
+    screen: "campaign",
+  },
+  {
+    number: "04",
+    title: "Tu cosecha.",
+    copy: "Producción, entregas y resultados sin perder el hilo.",
+    screen: "harvest",
+  },
+  {
+    number: "05",
+    title: "Tu tiempo.",
+    copy: "Información útil cuando toca decidir.",
+    screen: "weather",
+  },
+];
+
 export function CinematicHomeV2() {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
   const heroRef = useRef<HTMLElement>(null);
   const storyRef = useRef<HTMLElement>(null);
+  const productRef = useRef<HTMLElement>(null);
+  const [activeProduct, setActiveProduct] = useState(0);
 
   useEffect(() => {
     let frame = 0;
@@ -68,6 +109,31 @@ export function CinematicHomeV2() {
     };
   }, []);
 
+  useEffect(() => {
+    const nodes = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-v2-product-step]"),
+    );
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (!visible) return;
+        const index = Number((visible.target as HTMLElement).dataset.v2ProductStep);
+        if (!Number.isNaN(index)) setActiveProduct(index);
+      },
+      {
+        threshold: [0.25, 0.45, 0.62],
+        rootMargin: "-12% 0px -24% 0px",
+      },
+    );
+
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="v2-home">
       <section className="v2-hero" id="inicio" ref={heroRef}>
@@ -75,16 +141,6 @@ export function CinematicHomeV2() {
           <SceneImage asset={visualAssets.hero} priority sizes="100vw" />
         </div>
         <div className="v2-hero-shade" />
-
-        <div className="v2-hero-brand">
-          <Image
-            src={`${basePath}/brand/v2-lockup.svg`}
-            alt="Mágina Olivo"
-            width={360}
-            height={96}
-            priority
-          />
-        </div>
 
         <div className="v2-hero-copy shell">
           <p className="v2-kicker">Tecnología sencilla para quien vive del olivar</p>
@@ -165,28 +221,43 @@ export function CinematicHomeV2() {
         </div>
       </section>
 
-      <section className="v2-product" id="producto">
+      <section className="v2-product v2-product-scrolly" id="producto" ref={productRef}>
         <div className="shell v2-product-head">
           <p className="v2-kicker">Una sola app</p>
           <h2>Todo tu olivar.</h2>
-          <p>Sin menús interminables. Sin perder el hilo de la campaña.</p>
+          <p>Una función cada vez. Justo cuando la necesitas.</p>
         </div>
 
-        <div className="v2-product-flow shell">
-          {[
-            ["01", "Tus fincas", "Todo empieza por saber qué tienes y dónde está."],
-            ["02", "Tus parcelas", "Cada parcela con su información y su historia."],
-            ["03", "Tu campaña", "Labores, cosecha y evolución en contexto."],
-            ["04", "Tus números", "Gastos, documentos y resultados sin perder nada."],
-            ["05", "Tu tiempo", "Información útil cuando toca decidir."],
-            ["06", "Tu histórico", "Comparar campañas para entender mejor tu olivar."],
-          ].map(([number, title, copy]) => (
-            <article className="v2-product-step" key={number}>
-              <span>{number}</span>
-              <h3>{title}</h3>
-              <p>{copy}</p>
-            </article>
-          ))}
+        <div className="shell v2-product-story">
+          <div className="v2-product-steps">
+            {productMoments.map((moment, index) => (
+              <article
+                className={`v2-product-moment ${activeProduct === index ? "is-active" : ""}`}
+                data-v2-product-step={index}
+                key={moment.number}
+              >
+                <span>{moment.number}</span>
+                <h3>{moment.title}</h3>
+                <p>{moment.copy}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="v2-product-device-wrap" aria-label="Vista de la aplicación Mágina Olivo">
+            <div className="v2-product-device">
+              <div className="phone-shell phone-shell-small">
+                <div className="phone-camera" />
+                <PhoneScreen kind={productMoments[activeProduct]?.screen ?? "farms"} />
+              </div>
+            </div>
+            <div className="v2-product-progress" aria-hidden="true">
+              <span>{String(activeProduct + 1).padStart(2, "0")}</span>
+              <i>
+                <b style={{ width: `${((activeProduct + 1) / productMoments.length) * 100}%` }} />
+              </i>
+              <span>{String(productMoments.length).padStart(2, "0")}</span>
+            </div>
+          </div>
         </div>
       </section>
 
