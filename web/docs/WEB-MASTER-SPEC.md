@@ -1,5 +1,13 @@
 # Mágina Olivo Web — Master Spec 0.1
 
+> **SUPERSEDED FOR COMMERCIAL WEB V2 · 2026-09-21**  
+> Este documento se conserva como historial de la V1. Para cualquier trabajo nuevo de la Home/promoción usar como fuente de verdad:
+> - `WEB-V2-CINEMATIC-MASTER-SPEC.md`
+> - `WEB-V2-ROADMAP.md`
+>
+> La V2 elimina el enfoque territorial de Sierra Mágina en la Home comercial y pasa a un enfoque product-first, visual-first y válido para el olivar de Jaén y otras zonas.
+
+
 Estado: **ACTIVE DRAFT**  
 Rama inicial: `feat/web-magína-olivo`
 
