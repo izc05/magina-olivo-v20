@@ -9,6 +9,7 @@ const publicRoutes = [
   "/privacidad",
   "/terminos",
   "/aviso-legal",
+  "/v2-review",
 ];
 
 for (const route of publicRoutes) {
@@ -251,4 +252,14 @@ test("V2 product takeover becomes visible near sequence end", async ({ page }) =
 
   expect(opacity).toBeGreaterThan(0.75);
   await expect(takeover.locator(".phone-screen-welcome")).toHaveCount(1);
+});
+
+
+test("V2 review board exposes all canonical keyframes", async ({ page }) => {
+  await page.goto("/v2-review", { waitUntil: "networkidle" });
+
+  await expect(page.locator(".v2-review")).toBeVisible();
+  await expect(page.locator(".v2-review-card")).toHaveCount(24);
+  await expect(page.getByText("K01", { exact: true })).toBeVisible();
+  await expect(page.getByText("K24", { exact: true })).toBeVisible();
 });
