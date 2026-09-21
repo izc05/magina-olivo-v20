@@ -286,3 +286,49 @@ Una vez aprobados K01/K02:
 - no introducir otra estética.
 
 La calidad depende más de la continuidad que de producir muchos frames.
+
+
+## 14. Working G1 candidates
+
+Generated visual studies have been produced for review in the active design session.
+
+### Hero direction
+Current preferred direction:
+- mature farmer inspecting the olive tree;
+- golden-hour natural light;
+- large editorial headline;
+- minimal navigation;
+- strong photographic dominance;
+- little copy;
+- scroll cue visible;
+- no territorial/tourism messaging.
+
+### Logo direction
+Working vector assets:
+- `/public/brand/v2-mark.svg`
+- `/public/brand/v2-lockup.svg`
+
+The working mark uses:
+- olive branch;
+- two leaves;
+- one fruit;
+- restrained geometry;
+- no map, mountain, tractor or shield.
+
+### Copy direction
+Working hero:
+- “Tu olivar en buenas manos”
+- alternate: “Tu olivar. Más claro.”
+
+Working concept line:
+- “Tecnología sencilla para quien vive del olivar.”
+
+### Status
+These are **G1 candidates**, not final production assets.
+
+Do not close G1 until:
+- hero desktop approved;
+- hero mobile approved;
+- logo direction approved;
+- farmer continuity approved;
+- phone treatment approved.
