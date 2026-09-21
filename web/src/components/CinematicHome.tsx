@@ -135,8 +135,8 @@ export function PhoneScreen({ kind }: { kind: ScreenKind }) {
             <div className="farm-photo" />
             <div>
               <small>FINCA</small>
-              <strong>La Solana</strong>
-              <span>Jaén</span>
+              <strong>Finca El Olivar</strong>
+              <span>Tu explotación</span>
               <em>42,6 ha · 3 parcelas</em>
             </div>
           </div>
