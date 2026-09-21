@@ -132,3 +132,37 @@ Después:
 - sustituir fuentes piloto por assets definitivos;
 - mantener el motor;
 - aumentar densidad de frames reales progresivamente.
+
+
+## 4K video scrub enhancement
+
+Se ha añadido una segunda capa experimental sobre el canvas:
+
+- vídeo real 3840×2160;
+- reproducción automática desactivada;
+- el scroll controla `currentTime`;
+- avance y retroceso según la dirección del scroll;
+- `playsInline` y `muted`;
+- preload limitado a metadata;
+- canvas permanece debajo como fallback;
+- `prefers-reduced-motion` desactiva el scrub;
+- `Save-Data` desactiva el vídeo 4K y conserva fallback.
+
+Fuente candidata de preview:
+- Pexels video 20606525;
+- agricultor trabajando/podando olivos;
+- 3840×2160 · 24 fps;
+- uso gratuito según la página fuente.
+
+Este vídeo es un candidato de experiencia, no un asset final bloqueado. El objetivo es validar la sensación de “vídeo controlado con el dedo” antes de producir la película propia definitiva.
+
+## Quality gate añadido
+
+La V2 ya no acepta fullscreen final con thumbnails:
+
+- hero >= 1600×900 en QA;
+- feature story >= 1600×900;
+- héroes de Producto/Beneficios/Territorio/Contacto >= 1600×900;
+- fuente recomendada 2200–3200 px.
+
+Los antiguos crops de 260–640 px quedan solo como fallbacks/pilotos.
