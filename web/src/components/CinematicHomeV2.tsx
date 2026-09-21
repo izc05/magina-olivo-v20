@@ -295,6 +295,16 @@ export function CinematicHomeV2() {
               </i>
               <span>{String(productMoments.length).padStart(2, "0")}</span>
             </div>
+
+            <div
+              className="v2-product-mobile-copy"
+              key={`mobile-${productMoments[activeProduct]?.number ?? "01"}`}
+              aria-hidden="true"
+            >
+              <span>{productMoments[activeProduct]?.number}</span>
+              <h3>{productMoments[activeProduct]?.title}</h3>
+              <p>{productMoments[activeProduct]?.copy}</p>
+            </div>
           </div>
         </div>
       </section>
