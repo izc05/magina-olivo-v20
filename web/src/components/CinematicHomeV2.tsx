@@ -245,6 +245,12 @@ export function CinematicHomeV2() {
               <PhoneScreen kind="welcome" />
             </div>
           </div>
+
+          <div className="v2-story-timeline" aria-hidden="true">
+            <span>Campo</span>
+            <i><b /></i>
+            <span>Móvil</span>
+          </div>
         </div>
       </section>
 
