@@ -6,6 +6,8 @@ import Image from "next/image";
 import { useEffect, useRef } from "react";
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
+const phase = (value: number, start: number, end: number) =>
+  clamp((value - start) / Math.max(0.001, end - start));
 
 export function CinematicHomeV2() {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
@@ -28,7 +30,25 @@ export function CinematicHomeV2() {
         const rect = storyRef.current.getBoundingClientRect();
         const travel = Math.max(1, storyRef.current.offsetHeight - window.innerHeight);
         const progress = clamp(-rect.top / travel);
+        const fieldOut = phase(progress, 0.18, 0.38);
+        const detailIn = phase(progress, 0.18, 0.34);
+        const detailOut = phase(progress, 0.48, 0.66);
+        const phoneIn = phase(progress, 0.52, 0.72);
+        const phoneFocus = phase(progress, 0.68, 0.92);
+
         storyRef.current.style.setProperty("--v2-story-progress", String(progress));
+        storyRef.current.style.setProperty("--v2-field-opacity", String(1 - fieldOut * 0.92));
+        storyRef.current.style.setProperty("--v2-detail-opacity", String(detailIn * (1 - detailOut)));
+        storyRef.current.style.setProperty("--v2-phone-opacity", String(phoneIn));
+        storyRef.current.style.setProperty("--v2-field-scale", String(1.02 + progress * 0.09));
+        storyRef.current.style.setProperty("--v2-detail-scale", String(1.12 - detailIn * 0.08));
+        storyRef.current.style.setProperty("--v2-phone-scale", String(1.12 - phoneFocus * 0.12));
+        storyRef.current.style.setProperty("--v2-copy-a", String(1 - phase(progress, 0.12, 0.26)));
+        storyRef.current.style.setProperty(
+          "--v2-copy-b",
+          String(phase(progress, 0.24, 0.38) * (1 - phase(progress, 0.50, 0.62))),
+        );
+        storyRef.current.style.setProperty("--v2-copy-c", String(phase(progress, 0.64, 0.80)));
       }
     };
 
