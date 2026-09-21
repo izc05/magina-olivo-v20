@@ -1,19 +1,21 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const links = [
   ["/", "Inicio"],
-  ["/producto", "Producto"],
+  ["/#producto", "Producto"],
+  ["/#historia", "Cómo funciona"],
   ["/beneficios", "Beneficios"],
-  ["/territorio", "Nuestra tierra"],
   ["/contacto", "Contacto"],
 ] as const;
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -55,12 +57,14 @@ export function SiteHeader() {
   return (
     <header className={`site-header ${solid ? "header-solid" : "header-overlay"}`}>
       <div className="shell header-inner">
-        <Link className="brand" href="/" aria-label="Mágina Olivo, inicio">
-          <span className="brand-mark" aria-hidden="true" />
-          <span className="brand-copy">
-            <strong>Mágina</strong>
-            <strong>Olivo</strong>
-          </span>
+        <Link className="brand brand-v2" href="/" aria-label="Mágina Olivo, inicio">
+          <Image
+            src={`${basePath}/brand/v2-lockup.svg`}
+            alt="Mágina Olivo"
+            width={250}
+            height={67}
+            priority
+          />
         </Link>
 
         <button
@@ -91,7 +95,7 @@ export function SiteHeader() {
             </Link>
           ))}
           <Link className="nav-cta" href="/#descarga" onClick={() => setOpen(false)}>
-            Descubrir la app <span aria-hidden="true">→</span>
+            Conocer la app <span aria-hidden="true">→</span>
           </Link>
         </nav>
       </div>
