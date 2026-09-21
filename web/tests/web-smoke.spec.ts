@@ -189,3 +189,39 @@ test("canvas sequence becomes ready in normal motion mode", async ({ page }) => 
   await expect(canvas).toHaveCount(1);
   await expect(canvas).toHaveAttribute("data-ready", "true", { timeout: 12_000 });
 });
+
+
+test("V2 canvas sequence advances with scroll", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const story = page.locator(".v2-story");
+  const engine = page.locator(".v2-story-canvas-root");
+  const canvas = page.locator(".v2-sequence-canvas");
+
+  await story.scrollIntoViewIfNeeded();
+  await expect(canvas).toHaveAttribute("data-ready", "true");
+
+  const before = await engine.evaluate((element) => ({
+    frame: Number((element as HTMLElement).dataset.frame || "0"),
+    frames: Number((element as HTMLElement).dataset.frames || "0"),
+  }));
+
+  const targetY = await story.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const top = window.scrollY + rect.top;
+    const travel = Math.max(1, (element as HTMLElement).offsetHeight - window.innerHeight);
+    return top + travel * 0.68;
+  });
+
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), targetY);
+  await page.waitForTimeout(180);
+
+  const after = await engine.evaluate((element) => ({
+    frame: Number((element as HTMLElement).dataset.frame || "0"),
+    frames: Number((element as HTMLElement).dataset.frames || "0"),
+  }));
+
+  expect(before.frames).toBeGreaterThanOrEqual(10);
+  expect(after.frames).toBe(before.frames);
+  expect(after.frame).toBeGreaterThan(before.frame);
+});
