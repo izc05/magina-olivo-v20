@@ -178,5 +178,5 @@ test("loads the approved hero photograph instead of the fallback", async ({ page
   expect(
     decodeURIComponent(imageState.currentSrc),
     `hero currentSrc=${imageState.currentSrc}`,
-  ).toContain("/media/home/hero-farmer-panel.webp");
+  ).toContain("/media/v2/hero-keyframe-01.webp");
 });
