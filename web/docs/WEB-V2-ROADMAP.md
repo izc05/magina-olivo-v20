@@ -285,13 +285,13 @@ No añadir módulos territoriales a la Home comercial V2.
 ## Estado actual
 
 - G0 ✅
-- G1 ▶️ siguiente
-- G2 ⏳
-- G3 ⏳
-- G4 ⏳
-- G5 ⏳
-- G6 ⏳
-- G7 ⏳
+- G1 ▶️ en progreso — hero desktop/mobile y logo V2 ya tienen candidatos funcionales
+- G2 ▶️ en progreso — storyboard de 24 keyframes definido; faltan keyframes visuales críticos
+- G3 ▶️ POC activo — motor canvas scroll→imagen funcionando con keyframes provisionales
+- G4 ⏳ pendiente de secuencia fotográfica final
+- G5 ▶️ prototipo activo — móvil/product story ya integrado visualmente
+- G6 ▶️ prototipo activo — funciones principales en scrollytelling sticky
+- G7 ▶️ primera versión — regreso al campo y CTA implementados
 - G8 ⏳
-- G9 ⏳
+- G9 ▶️ QA continuo con Playwright, desktop/mobile y reduced-motion
 - G10 ⏳
