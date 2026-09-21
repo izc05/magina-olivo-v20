@@ -6,6 +6,7 @@ import { SceneImage } from "@/components/SceneImage";
 import { pilotDesktopFrames, pilotMobileFrames } from "@/data/v2/cinematicSequence";
 import { visualAssets } from "@/lib/visualAssets";
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
@@ -253,10 +254,17 @@ export function CinematicHomeV2() {
         </div>
       </section>
 
-      <section className="v2-field-features" id="producto">
+      <section
+        className="v2-field-features"
+        id="producto"
+        style={{
+          "--v2-feature-shift": `${-activeProduct * 0.34}%`,
+          "--v2-feature-scale": String(1.045 + activeProduct * 0.006),
+        } as CSSProperties}
+      >
         <div className="v2-field-features-sticky">
           <div className="v2-field-features-media" aria-hidden="true">
-            <SceneImage asset={visualAssets.heritage} sizes="100vw" />
+            <SceneImage asset={visualAssets.hero} sizes="100vw" />
           </div>
           <div className="v2-field-features-shade" />
 
