@@ -6838,3 +6838,51 @@ article[id] {
     animation: none;
   }
 }
+
+
+/* V2 cinematic story timeline */
+
+.v2-story-timeline {
+  position: absolute;
+  z-index: 5;
+  left: max(4vw, 24px);
+  right: max(4vw, 24px);
+  bottom: 28px;
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  color: rgba(255,255,255,.58);
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .20em;
+  text-transform: uppercase;
+}
+
+.v2-story-timeline i {
+  position: relative;
+  height: 1px;
+  overflow: hidden;
+  background: rgba(255,255,255,.18);
+}
+
+.v2-story-timeline i b {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--v2-story-progress) * 100%);
+  background: linear-gradient(90deg, rgba(255,255,255,.90), rgba(206,220,180,.78));
+  box-shadow: 0 0 16px rgba(206,220,180,.20);
+}
+
+.v2-story-timeline span:last-child {
+  text-align: right;
+}
+
+@media (max-width: 560px) {
+  .v2-story-timeline {
+    bottom: 18px;
+    font-size: .54rem;
+    letter-spacing: .16em;
+    gap: 9px;
+  }
+}
