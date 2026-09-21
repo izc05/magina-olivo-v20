@@ -61,6 +61,8 @@ const productMoments: Array<{
 
 export function CinematicHomeV2() {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+  const withBasePath = (src: string) =>
+    src.startsWith("/") ? `${basePath}${src}` : src;
   const heroRef = useRef<HTMLElement>(null);
   const storyRef = useRef<HTMLElement>(null);
   const [activeProduct, setActiveProduct] = useState(0);
@@ -173,7 +175,7 @@ export function CinematicHomeV2() {
 
         <div className="v2-hero-footer" aria-hidden="true">
           <span>01</span>
-          <p>Del campo a tu móvil.<br />Todo tu olivar, en un solo lugar.</p>
+          <p>Del campo a tu control.<br />Todo tu olivar, en un solo lugar.</p>
           <i />
           <span>01 / 06</span>
         </div>
@@ -187,14 +189,14 @@ export function CinematicHomeV2() {
       >
         <CinematicScrollCanvas
           className="v2-story-canvas-root"
-          reducedMotionPoster={`${basePath}${visualAssets.phoneContext.finalSrc}`}
+          reducedMotionPoster={withBasePath(visualAssets.hero.finalSrc)}
           desktopFrames={pilotDesktopFrames.map((frame) => ({
             ...frame,
-            src: `${basePath}${frame.src}`,
+            src: withBasePath(frame.src),
           }))}
           mobileFrames={pilotMobileFrames.map((frame) => ({
             ...frame,
-            src: `${basePath}${frame.src}`,
+            src: withBasePath(frame.src),
           }))}
         />
         <div className="v2-story-sticky">
@@ -216,7 +218,7 @@ export function CinematicHomeV2() {
           <div className="v2-story-timeline" aria-hidden="true">
             <span>Campo</span>
             <i><b /></i>
-            <span>Móvil</span>
+            <span>Control</span>
           </div>
         </div>
       </section>
