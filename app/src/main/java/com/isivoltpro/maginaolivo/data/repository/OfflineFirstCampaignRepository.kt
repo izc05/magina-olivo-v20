@@ -99,7 +99,8 @@ class OfflineFirstCampaignRepository(
     override suspend fun markHarvest(id: UUID) = transition(id, CampaignStatus.ACTIVE, CampaignStatus.HARVEST, "mark_harvest")
 
     override suspend fun close(id: UUID, endDate: LocalDate): AppResult<Unit> = mutate(id, "close_campaign") { current, now ->
-        if (current.status !in setOf(CampaignStatus.ACTIVE, CampaignStatus.HARVEST)) return@mutate conflict("illegal_campaign_transition")
+        // Canonical linear lifecycle: only HARVEST may be closed. ACTIVE must pass through HARVEST first.
+        if (current.status != CampaignStatus.HARVEST) return@mutate conflict("illegal_campaign_transition")
         if (endDate.isBefore(current.startDate)) return@mutate AppResult.Failure(AppError.Validation("endDate", "before_start"))
         database.campaignDao().upsert(current.copy(status = CampaignStatus.CLOSED, endDate = endDate, metadata = current.metadata.next(now)))
         enqueue(id, OutboxOperation.UPDATE, now)
@@ -114,7 +115,8 @@ class OfflineFirstCampaignRepository(
         AppResult.Success(Unit)
     }
 
-    override suspend fun archivePreparation(id: UUID): AppResult<Unit> = mutate(id, "archive_campaign") { current, now ->
+    override suspend fun archivePreparation(id: UUID): AppResult<Unit> = mutate(id, "archive_campaign", allowArchived = true) { current, now ->
+        if (current.metadata.deletedAt != null) return@mutate AppResult.Success(Unit)
         if (current.status != CampaignStatus.PREPARATION) return@mutate conflict("protected_campaign")
         database.campaignDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
         enqueue(id, OutboxOperation.DELETE, now)
@@ -151,9 +153,15 @@ class OfflineFirstCampaignRepository(
         database.syncOutboxDao().insert(SyncOutboxEntity(idGenerator.newId(), SyncEntityType.CAMPAIGN, id, operation, 1, createdAt = now, updatedAt = now))
     }
 
-    private suspend fun mutate(id: UUID, operation: String, block: suspend (CampaignEntity, Instant) -> AppResult<Unit>): AppResult<Unit> =
+    private suspend fun mutate(
+        id: UUID,
+        operation: String,
+        allowArchived: Boolean = false,
+        block: suspend (CampaignEntity, Instant) -> AppResult<Unit>,
+    ): AppResult<Unit> =
         withContext(dispatchers.io) { safely(operation) {
             val current = database.campaignDao().findById(id) ?: return@safely AppResult.Failure(AppError.NotFound("campaign"))
+            if (!allowArchived && current.metadata.deletedAt != null) return@safely conflict("archived_campaign")
             block(current, clock.nowInstant())
         } }
 

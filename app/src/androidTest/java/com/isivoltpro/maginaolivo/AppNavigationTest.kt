@@ -200,7 +200,9 @@ class AppNavigationTest {
 
         composeRule.onNodeWithTag("add-campaign").performScrollTo().performClick()
         composeRule.onNodeWithTag("campaign-name").performTextInput("Campaña 2026/27 E2E")
-        composeRule.onNodeWithTag("campaign-start-date").performTextInput("2026-10-01")
+        // Past start date: closing uses the device clock, so a future start would make
+        // the legal close date depend on the day the suite runs.
+        composeRule.onNodeWithTag("campaign-start-date").performTextInput("2026-01-01")
         composeRule.onNodeWithTag("campaign-parcel-option").performClick()
         composeRule.onNodeWithTag("save-campaign").performScrollTo().performClick()
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Campaña 2026/27 E2E").fetchSemanticsNodes().isNotEmpty() }
@@ -225,6 +227,21 @@ class AppNavigationTest {
         composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
         composeRule.onNodeWithText("Finca Campaña E2E").assertIsDisplayed()
         composeRule.onNodeWithText("Sin datos").assertIsDisplayed()
+
+        // A closed campaign stays protected after the restart, and reopening it is an
+        // explicit, confirmed action that returns the aggregate to an editable state.
+        composeRule.onNodeWithText("Histórico protegido").assertIsDisplayed()
+        composeRule.onNodeWithTag("reopen-campaign").performScrollTo().performClick()
+        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithTag("close-campaign").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("close-campaign").performScrollTo().performClick()
+        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Histórico protegido").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
     }
 
     @Test

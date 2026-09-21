@@ -80,15 +80,24 @@ The Gate 6 Farm slice passed on code commit `a2d2d475` on 2026-09-20. Production
 
 The Gate 6 Parcel slice passed on code commit `ee89b9f7` on 2026-09-20. Production Farm detail now lists persisted Parcels and supports manual create, detail, edit, archive and restore. Parcel identity is app-owned, Farm membership history is non-destructive, optional GeoJSON geometry is retained, and manual data is never presented as Catastro-verified. Mutations are local-first and enqueue deterministic outbox intents. CI passed 30 unit tests, 42 API 35 instrumentation tests and 7 repository tests under airplane mode; the crash buffer was empty. Evidence and the verified DEV APK are attached to run `35506482946`. PR #201 contains this stacked slice.
 
+The Gate 6 Campaign slice is implementation-complete on `feat/android-campaigns` (stacked on `5f1c6f9a`) but **VALIDATION PENDING**. Room schema v3, `MIGRATION_2_3`, the offline Campaign aggregate, ViewModel state contracts, production screens and the real Farm → Parcel → Campaign navigation are in place. Review added `CampaignLifecycleContractTest` (11 instrumented contract tests) and hardened the combined E2E to prove the audited reopen path. Review also found and fixed one real defect: soft-deleted Campaigns stayed mutable, so an archived draft could be resurrected and could take the Farm's single current-Campaign slot; `mutate` now rejects archived aggregates, matching the Farm repository pattern.
+
+No CI run, emulator run, airplane-mode run, crash-buffer check or DEV APK exists for this slice yet. Evidence and open risks are tracked in `docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md`.
+
+```text
+CAMPAIGNS IMPLEMENTATION COMPLETE / VALIDATION PENDING
+GATE 6 = FAIL (IN PROGRESS)
+```
+
 ## Next deliverable
 
-Continue Gate 6 with Campaigns:
+Validate the Gate 6 Campaign slice:
 
-- create and list historical Campaigns for a Farm/Parcel scope;
-- select exactly one active Campaign for its scope;
-- close and reopen Campaigns without destroying history;
-- provide truthful kg, delivery, yield and expense summaries from persisted data;
-- connect production Farm → Campaign navigation and prove offline persistence/outbox behavior.
+- run lint, unit tests, instrumented compilation and the three debug builds;
+- run the full API 35 emulator suite, the airplane-mode repository run and the crash-buffer check;
+- verify and hash the installable DEV APK;
+- fill every PENDING field in `docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md` with real run and artifact IDs;
+- decide the three open risks recorded there (close-date source, reopen target state, Campaign restore).
 
 Gate 6 must not be marked PASS until the Campaign slice and the combined Farm → Parcel → Campaign flow pass together.
 
