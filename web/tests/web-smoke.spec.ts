@@ -149,9 +149,17 @@ test("captures visual evidence for the V2 landing", async ({ page }, testInfo) =
     fullPage: false,
   });
 
-  await page.locator(".v2-product").screenshot({
-    path: `test-results/v2-home-product-${suffix}.png`,
-  });
+  const productMoments = page.locator("[data-v2-product-step]");
+
+  for (const [label, index] of [["start", 0], ["middle", 3], ["end", 7]] as const) {
+    const moment = productMoments.nth(index);
+    await moment.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(180);
+    await page.screenshot({
+      path: `test-results/v2-home-product-${label}-${suffix}.png`,
+      fullPage: false,
+    });
+  }
 
   await page.locator(".v2-final").screenshot({
     path: `test-results/v2-home-final-${suffix}.png`,
