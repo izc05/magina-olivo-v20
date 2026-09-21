@@ -6249,9 +6249,9 @@ article[id] {
 
 @keyframes v2-product-screen-enter {
   from {
-    opacity: .15;
-    transform: translateY(12px) scale(.985);
-    filter: blur(2px);
+    opacity: .58;
+    transform: translateY(8px) scale(.992);
+    filter: blur(.7px);
   }
   to {
     opacity: 1;
@@ -6694,5 +6694,24 @@ article[id] {
 
   .v2-product-device-wrap::after {
     top: 6%;
+  }
+}
+
+
+/* V2 product sticky release polish */
+
+.v2-product-story {
+  padding-bottom: 18vh;
+}
+
+@media (max-width: 900px) {
+  .v2-product-story {
+    padding-bottom: 12vh;
+  }
+}
+
+@media (max-width: 560px) {
+  .v2-product-story {
+    padding-bottom: 9vh;
   }
 }
