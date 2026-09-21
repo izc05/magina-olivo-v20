@@ -6565,3 +6565,134 @@ article[id] {
     width: min(210px, 64vw);
   }
 }
+
+
+/* V2 product cinematic focus */
+
+.v2-product-scrolly {
+  position: relative;
+  overflow: clip;
+}
+
+.v2-product-story {
+  position: relative;
+}
+
+.v2-product-steps {
+  position: relative;
+  z-index: 1;
+}
+
+.v2-product-moment {
+  position: relative;
+  isolation: isolate;
+  opacity: .16;
+}
+
+.v2-product-moment::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -8vw;
+  top: 50%;
+  width: min(720px, 56vw);
+  height: min(520px, 56vw);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(107,143,107,.11), rgba(107,143,107,.035) 46%, transparent 72%);
+  transform: translateY(-50%) scale(.82);
+  opacity: 0;
+  transition:
+    opacity .5s ease,
+    transform .7s cubic-bezier(.2,.7,.2,1);
+  pointer-events: none;
+}
+
+.v2-product-moment.is-active::before {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.v2-product-moment.is-active > span {
+  color: rgba(23,51,35,.62);
+}
+
+.v2-product-device-wrap {
+  isolation: isolate;
+}
+
+.v2-product-device-wrap::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  width: min(560px, 42vw);
+  height: min(690px, 72vh);
+  border-radius: 48px;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255,255,255,.9), rgba(238,240,226,.74) 58%, rgba(230,234,217,.50));
+  border: 1px solid rgba(45,74,47,.07);
+  box-shadow:
+    0 42px 90px rgba(37,55,40,.07),
+    inset 0 1px 0 rgba(255,255,255,.72);
+}
+
+.v2-product-device-wrap::after {
+  content: "MÁGINA OLIVO";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 9%;
+  transform: translateX(-50%);
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .28em;
+  color: rgba(23,51,35,.22);
+}
+
+.v2-product-device {
+  width: min(382px, 30vw);
+  transform: translateY(-2px);
+}
+
+.v2-product-progress {
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 900px) {
+  .v2-product-device-wrap::before {
+    width: min(92vw, 520px);
+    height: 49svh;
+    border-radius: 34px;
+  }
+
+  .v2-product-device-wrap::after {
+    top: 7%;
+  }
+
+  .v2-product-moment {
+    opacity: .12;
+  }
+
+  .v2-product-moment::before {
+    left: -28vw;
+    width: 110vw;
+    height: 78vw;
+  }
+
+  .v2-product-moment.is-active {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .v2-product-device-wrap::before {
+    width: calc(100vw - 24px);
+    height: 47svh;
+    border-radius: 28px;
+  }
+
+  .v2-product-device-wrap::after {
+    top: 6%;
+  }
+}
