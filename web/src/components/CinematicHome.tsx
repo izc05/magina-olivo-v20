@@ -114,7 +114,7 @@ export function PhoneScreen({ kind }: { kind: ScreenKind }) {
 
       {kind === "welcome" && (
         <div className="screen-content screen-welcome">
-          <p className="screen-kicker">SIERRA MÁGINA · JAÉN</p>
+          <p className="screen-kicker">TU OLIVAR</p>
           <h3>Bienvenido a<br />Mágina Olivo</h3>
           <p>Tu app para gestionar tu olivar de forma clara, sencilla y pensada para el agricultor.</p>
           <div className="screen-landscape">
@@ -122,7 +122,7 @@ export function PhoneScreen({ kind }: { kind: ScreenKind }) {
             <span className="mountain mountain-b" />
             <span className="olive-field" />
           </div>
-          <span className="screen-script">Más que olivos,<br />nuestra tierra</span>
+          <span className="screen-script">Tecnología sencilla,<br />pensada para el campo</span>
           <button tabIndex={-1}>Siguiente <span>→</span></button>
         </div>
       )}
@@ -136,7 +136,7 @@ export function PhoneScreen({ kind }: { kind: ScreenKind }) {
             <div>
               <small>FINCA</small>
               <strong>La Solana</strong>
-              <span>Huelma, Jaén</span>
+              <span>Jaén</span>
               <em>42,6 ha · 3 parcelas</em>
             </div>
           </div>
@@ -226,7 +226,7 @@ export function PhoneScreen({ kind }: { kind: ScreenKind }) {
             <div>
               <small>Previsión en tu zona</small>
               <strong>☀ 18°C</strong>
-              <span>Huelma · Jaén</span>
+              <span>Tu zona · Jaén</span>
             </div>
             <div className="forecast"><span>LU<br />24°</span><span>MA<br />22°</span><span>MI<br />19°</span><span>JU<br />21°</span></div>
           </div>
