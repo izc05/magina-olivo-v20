@@ -16,11 +16,10 @@ export function SiteFooter() {
           <Link href="/">Inicio</Link>
           <Link href="/producto">Producto</Link>
           <Link href="/beneficios">Beneficios</Link>
-          <Link href="/territorio">Nuestra tierra</Link>
-          <Link href="/contacto">Contacto</Link>
+                     <Link href="/contacto">Contacto</Link>
         </nav>
 
-        <p>Más que olivos, nuestra tierra.</p>
+        <p>Tecnología sencilla para quien vive del olivar.</p>
       </div>
 
       <div className="shell footer-legal">
