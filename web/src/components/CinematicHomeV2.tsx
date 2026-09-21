@@ -21,49 +21,49 @@ const productMoments: Array<{
   {
     number: "01",
     title: "Tus fincas.",
-    copy: "Todo empieza por saber qué tienes.",
+    copy: "Todas tus fincas, claras.",
     screen: "farms",
   },
   {
     number: "02",
     title: "Tus parcelas.",
-    copy: "Cada parcela con su información y su historia.",
+    copy: "Cada parcela, en contexto.",
     screen: "parcel",
   },
   {
     number: "03",
     title: "Tu mapa.",
-    copy: "Tu tierra delante de ti, siempre localizada.",
+    copy: "Tu tierra, localizada.",
     screen: "map",
   },
   {
     number: "04",
     title: "Tu campaña.",
-    copy: "Cada labor queda registrada cuando ocurre.",
+    copy: "Todo lo que haces, registrado.",
     screen: "campaign",
   },
   {
     number: "05",
     title: "Tu cosecha.",
-    copy: "Producción, entregas y rendimiento sin perder el hilo.",
+    copy: "Cosecha y rendimiento, de un vistazo.",
     screen: "harvest",
   },
   {
     number: "06",
     title: "Tus números.",
-    copy: "Gastos y documentos para entender el resultado.",
+    copy: "Tus números, sin perder nada.",
     screen: "expenses",
   },
   {
     number: "07",
     title: "Tu tiempo.",
-    copy: "Información útil cuando toca decidir.",
+    copy: "Lo que necesitas para decidir.",
     screen: "weather",
   },
   {
     number: "08",
     title: "Tu histórico.",
-    copy: "Compara campañas y aprende de cada año.",
+    copy: "Tu historia, campaña a campaña.",
     screen: "history",
   },
 ];
@@ -205,18 +205,12 @@ export function CinematicHomeV2() {
         </div>
       </section>
 
-      <section className="v2-intro" id="historia">
-        <div className="shell v2-intro-inner">
-          <p className="v2-kicker">Tu día empieza en el campo</p>
-          <h2>Mira. Decide.<br />Registra.</h2>
-          <p>
-            Mágina Olivo acompaña lo que ya haces cada día, sin convertirlo en
-            más trabajo.
-          </p>
-        </div>
-      </section>
-
-      <section className="v2-story" ref={storyRef} aria-label="Del campo a Mágina Olivo">
+      <section
+        className="v2-story"
+        id="historia"
+        ref={storyRef}
+        aria-label="Del campo a Mágina Olivo"
+      >
         <CinematicScrollCanvas
           className="v2-story-canvas-root"
           reducedMotionPoster={`${basePath}${visualAssets.phoneContext.finalSrc}`}
@@ -234,15 +228,15 @@ export function CinematicHomeV2() {
 
           <div className="v2-story-copy v2-story-copy-a">
             <span>01</span>
-            <h2>Tu tierra.</h2>
+            <h2>Mira.</h2>
           </div>
           <div className="v2-story-copy v2-story-copy-b">
             <span>02</span>
-            <h2>Cada detalle<br />importa.</h2>
+            <h2>Decide.</h2>
           </div>
           <div className="v2-story-copy v2-story-copy-c">
             <span>03</span>
-            <h2>Todo en<br />tu mano.</h2>
+            <h2>Registra.</h2>
           </div>
 
           <div className="v2-story-device-takeover" aria-hidden="true">
@@ -256,9 +250,9 @@ export function CinematicHomeV2() {
 
       <section className="v2-product v2-product-scrolly" id="producto" ref={productRef}>
         <div className="shell v2-product-head">
-          <p className="v2-kicker">Una sola app</p>
+          <p className="v2-kicker">Mágina Olivo</p>
           <h2>Todo tu olivar.</h2>
-          <p>Una función cada vez. Justo cuando la necesitas.</p>
+          <p>Sin ruido. Sin perder el hilo.</p>
         </div>
 
         <div className="shell v2-product-story">
