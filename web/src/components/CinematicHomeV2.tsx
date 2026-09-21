@@ -1,5 +1,6 @@
 "use client";
 
+import { CinematicScrollCanvas } from "@/components/CinematicScrollCanvas";
 import { SceneImage } from "@/components/SceneImage";
 import { visualAssets } from "@/lib/visualAssets";
 import Image from "next/image";
@@ -125,16 +126,28 @@ export function CinematicHomeV2() {
       </section>
 
       <section className="v2-story" ref={storyRef} aria-label="Del campo a Mágina Olivo">
+        <CinematicScrollCanvas
+          className="v2-story-canvas-root"
+          reducedMotionPoster={`${basePath}${visualAssets.phoneContext.finalSrc}`}
+          images={[
+            {
+              src: `${basePath}${visualAssets.heritage.finalSrc}`,
+              focalX: 0.38,
+              focalY: 0.52,
+            },
+            {
+              src: `${basePath}${visualAssets.benefits.finalSrc}`,
+              focalX: 0.70,
+              focalY: 0.48,
+            },
+            {
+              src: `${basePath}${visualAssets.phoneContext.finalSrc}`,
+              focalX: 0.50,
+              focalY: 0.50,
+            },
+          ]}
+        />
         <div className="v2-story-sticky">
-          <div className="v2-story-scene v2-story-scene-field" aria-hidden="true">
-            <SceneImage asset={visualAssets.heritage} sizes="100vw" />
-          </div>
-          <div className="v2-story-scene v2-story-scene-detail" aria-hidden="true">
-            <SceneImage asset={visualAssets.benefits} sizes="100vw" />
-          </div>
-          <div className="v2-story-scene v2-story-scene-phone" aria-hidden="true">
-            <SceneImage asset={visualAssets.phoneContext} sizes="100vw" />
-          </div>
           <div className="v2-story-overlay" />
 
           <div className="v2-story-copy v2-story-copy-a">
