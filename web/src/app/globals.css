@@ -6715,3 +6715,126 @@ article[id] {
     padding-bottom: 9vh;
   }
 }
+
+
+/* V2 mobile product scene composition */
+
+.v2-product-mobile-copy {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .v2-product-device-wrap {
+    min-height: 72svh;
+    grid-template-rows: auto auto auto;
+    align-content: start;
+    padding-top: 54px;
+    padding-bottom: 28px;
+  }
+
+  .v2-product-device-wrap::before {
+    height: 68svh;
+  }
+
+  .v2-product-mobile-copy {
+    width: min(100%, 520px);
+    margin-top: 24px;
+    display: block;
+    text-align: center;
+    animation: v2-mobile-product-copy-enter .42s cubic-bezier(.2,.7,.2,1) both;
+  }
+
+  .v2-product-mobile-copy > span {
+    display: block;
+    margin-bottom: 10px;
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .22em;
+    color: rgba(23,51,35,.42);
+  }
+
+  .v2-product-mobile-copy h3 {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2.8rem, 10vw, 4.3rem);
+    font-weight: 500;
+    line-height: .92;
+    letter-spacing: -.045em;
+    color: var(--v2-ink);
+  }
+
+  .v2-product-mobile-copy p {
+    max-width: 420px;
+    margin: 12px auto 0;
+    font-size: .92rem;
+    line-height: 1.5;
+    color: rgba(23,51,35,.58);
+  }
+
+  .v2-product-moment {
+    min-height: 54svh;
+    padding: 0;
+    border-color: transparent;
+  }
+
+  .v2-product-moment > span,
+  .v2-product-moment h3,
+  .v2-product-moment p {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .v2-product-moment::before {
+    display: none;
+  }
+
+  .v2-product-story {
+    padding-bottom: 6vh;
+  }
+}
+
+@media (max-width: 560px) {
+  .v2-product-device-wrap {
+    min-height: 70svh;
+    padding-top: 38px;
+  }
+
+  .v2-product-device-wrap::before {
+    height: 66svh;
+  }
+
+  .v2-product-mobile-copy {
+    margin-top: 18px;
+    padding-inline: 12px;
+  }
+
+  .v2-product-mobile-copy h3 {
+    font-size: clamp(2.55rem, 11vw, 3.6rem);
+  }
+
+  .v2-product-mobile-copy p {
+    max-width: 92%;
+    font-size: .88rem;
+  }
+
+  .v2-product-moment {
+    min-height: 50svh;
+  }
+}
+
+@keyframes v2-mobile-product-copy-enter {
+  from {
+    opacity: .25;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-product-mobile-copy {
+    animation: none;
+  }
+}
