@@ -31,6 +31,7 @@ export function SceneImage({
       priority={priority}
       className={className}
       sizes={sizes}
+      unoptimized={source.startsWith("http")}
       style={{ objectPosition: asset.focalPoint }}
       onError={() => setFailed(true)}
     />
