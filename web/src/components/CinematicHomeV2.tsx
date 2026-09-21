@@ -72,7 +72,6 @@ export function CinematicHomeV2() {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
   const heroRef = useRef<HTMLElement>(null);
   const storyRef = useRef<HTMLElement>(null);
-  const productRef = useRef<HTMLElement>(null);
   const [activeProduct, setActiveProduct] = useState(0);
 
   useEffect(() => {
@@ -254,58 +253,43 @@ export function CinematicHomeV2() {
         </div>
       </section>
 
-      <section className="v2-product v2-product-scrolly" id="producto" ref={productRef}>
-        <div className="shell v2-product-head">
-          <p className="v2-kicker">Mágina Olivo</p>
-          <h2>Todo tu olivar.</h2>
-          <p>Sin ruido. Sin perder el hilo.</p>
+      <section className="v2-field-features" id="producto">
+        <div className="v2-field-features-sticky">
+          <div className="v2-field-features-media" aria-hidden="true">
+            <SceneImage asset={visualAssets.heritage} sizes="100vw" />
+          </div>
+          <div className="v2-field-features-shade" />
+
+          <div className="shell v2-field-features-copy">
+            <p className="v2-kicker light">Mágina Olivo</p>
+            <span className="v2-field-feature-number">
+              {productMoments[activeProduct]?.number}
+            </span>
+            <h2 key={`title-${activeProduct}`}>
+              {productMoments[activeProduct]?.title}
+            </h2>
+            <p key={`copy-${activeProduct}`}>
+              {productMoments[activeProduct]?.copy}
+            </p>
+          </div>
+
+          <div className="v2-field-feature-progress" aria-hidden="true">
+            <span>{String(activeProduct + 1).padStart(2, "0")}</span>
+            <i>
+              <b style={{ width: `${((activeProduct + 1) / productMoments.length) * 100}%` }} />
+            </i>
+            <span>{String(productMoments.length).padStart(2, "0")}</span>
+          </div>
         </div>
 
-        <div className="shell v2-product-story">
-          <div className="v2-product-steps">
-            {productMoments.map((moment, index) => (
-              <article
-                className={`v2-product-moment ${activeProduct === index ? "is-active" : ""}`}
-                data-v2-product-step={index}
-                key={moment.number}
-              >
-                <span>{moment.number}</span>
-                <h3>{moment.title}</h3>
-                <p>{moment.copy}</p>
-              </article>
-            ))}
-          </div>
-
-          <div className="v2-product-device-wrap" aria-label="Vista de la aplicación Mágina Olivo">
-            <div className="v2-product-device">
-              <div className="phone-shell phone-shell-small">
-                <div className="phone-camera" />
-                <div
-                  className="v2-product-screen-transition"
-                  key={productMoments[activeProduct]?.screen ?? "farms"}
-                >
-                  <PhoneScreen kind={productMoments[activeProduct]?.screen ?? "farms"} />
-                </div>
-              </div>
-            </div>
-            <div className="v2-product-progress" aria-hidden="true">
-              <span>{String(activeProduct + 1).padStart(2, "0")}</span>
-              <i>
-                <b style={{ width: `${((activeProduct + 1) / productMoments.length) * 100}%` }} />
-              </i>
-              <span>{String(productMoments.length).padStart(2, "0")}</span>
-            </div>
-
+        <div className="v2-field-feature-triggers" aria-hidden="true">
+          {productMoments.map((moment, index) => (
             <div
-              className="v2-product-mobile-copy"
-              key={`mobile-${productMoments[activeProduct]?.number ?? "01"}`}
-              aria-hidden="true"
-            >
-              <span>{productMoments[activeProduct]?.number}</span>
-              <h3>{productMoments[activeProduct]?.title}</h3>
-              <p>{productMoments[activeProduct]?.copy}</p>
-            </div>
-          </div>
+              className="v2-field-feature-trigger"
+              data-v2-product-step={index}
+              key={moment.number}
+            />
+          ))}
         </div>
       </section>
 
