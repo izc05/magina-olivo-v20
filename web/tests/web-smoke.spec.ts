@@ -273,22 +273,24 @@ test("V2 review board exposes all canonical keyframes", async ({ page }) => {
 });
 
 
-test("V2 product scrollytelling reaches all eight core moments", async ({ page }) => {
+test("V2 real-field feature story reaches all eight core moments", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
 
   const product = page.locator("#producto");
   const moments = page.locator("[data-v2-product-step]");
 
   await expect(moments).toHaveCount(8);
-  await expect(page.locator(".v2-product-device")).toBeVisible();
+  await expect(page.locator(".v2-field-features-media")).toBeVisible();
+  await expect(page.locator(".v2-product-device")).toHaveCount(0);
 
   const last = moments.nth(7);
   await last.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(220);
+  await page.waitForTimeout(460);
 
   await expect(last).toHaveClass(/is-active/);
-  await expect(page.locator(".phone-screen-history")).toHaveCount(1);
-  await expect(page.locator(".v2-product-progress > span").first()).toHaveText("08");
+  await expect(page.locator(".v2-field-features-copy h2")).toHaveText("Tu histórico.");
+  await expect(page.locator(".v2-field-features-copy > p").last()).toContainText("campaña a campaña");
+  await expect(page.locator(".v2-field-feature-progress > span").first()).toHaveText("08");
 
   const bounds = await product.evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -302,7 +304,7 @@ test("V2 product scrollytelling reaches all eight core moments", async ({ page }
 });
 
 
-test("V2 mobile product sticky scene keeps active copy visible", async ({ page }, testInfo) => {
+test("V2 mobile real-field scene keeps active copy visible", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes("mobile"), "mobile-only behavior");
 
   await page.goto("/", { waitUntil: "networkidle" });
@@ -313,8 +315,7 @@ test("V2 mobile product sticky scene keeps active copy visible", async ({ page }
   await finalMoment.scrollIntoViewIfNeeded();
   await page.waitForTimeout(460);
 
-  const stickyCopy = page.locator(".v2-product-mobile-copy");
-  await expect(stickyCopy).toBeVisible();
-  await expect(stickyCopy.locator("h3")).toHaveText("Tu histórico.");
-  await expect(stickyCopy.locator("p")).toContainText("campaña a campaña");
+  await expect(page.locator(".v2-field-features-copy h2")).toHaveText("Tu histórico.");
+  await expect(page.locator(".v2-field-features-copy > p").last()).toContainText("campaña a campaña");
+  await expect(page.locator(".v2-product-device")).toHaveCount(0);
 });
