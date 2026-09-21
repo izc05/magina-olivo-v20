@@ -285,7 +285,7 @@ export function CinematicHomeV2() {
         <div className="v2-field-feature-triggers" aria-hidden="true">
           {productMoments.map((moment, index) => (
             <div
-              className="v2-field-feature-trigger"
+              className={`v2-field-feature-trigger ${activeProduct === index ? "is-active" : ""}`}
               data-v2-product-step={index}
               key={moment.number}
             />
