@@ -143,7 +143,7 @@ test("captures visual evidence for the V2 landing", async ({ page }, testInfo) =
   const story = page.locator(".v2-story");
   await story.scrollIntoViewIfNeeded();
   await page.evaluate(() => window.scrollBy(0, window.innerHeight * 1.7));
-  await page.waitForTimeout(180);
+  await page.waitForTimeout(460);
   await page.screenshot({
     path: `test-results/v2-home-story-${suffix}.png`,
     fullPage: false,
@@ -154,7 +154,7 @@ test("captures visual evidence for the V2 landing", async ({ page }, testInfo) =
   for (const [label, index] of [["start", 0], ["middle", 3], ["end", 7]] as const) {
     const moment = productMoments.nth(index);
     await moment.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(180);
+    await page.waitForTimeout(460);
     await page.screenshot({
       path: `test-results/v2-home-product-${label}-${suffix}.png`,
       fullPage: false,
@@ -223,7 +223,7 @@ test("V2 canvas sequence advances with scroll", async ({ page }) => {
   });
 
   await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), targetY);
-  await page.waitForTimeout(180);
+  await page.waitForTimeout(460);
 
   const after = await engine.evaluate((element) => ({
     frame: Number((element as HTMLElement).dataset.frame || "0"),
@@ -250,7 +250,7 @@ test("V2 product takeover becomes visible near sequence end", async ({ page }) =
   });
 
   await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), targetY);
-  await page.waitForTimeout(180);
+  await page.waitForTimeout(460);
 
   await expect(takeover).toBeVisible();
 
