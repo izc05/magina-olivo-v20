@@ -283,7 +283,7 @@ export function CinematicHomeV2() {
         <p className="v2-kicker light">Mágina Olivo</p>
         <h2>Todo tu olivar.<br />En un solo lugar.</h2>
         <p>La primera versión para Android está en desarrollo.</p>
-        <a className="v2-button v2-button-light" href="/contacto">
+        <a className="v2-button v2-button-light" href={`${basePath}/contacto`}>
           Quiero conocerla <span aria-hidden="true">→</span>
         </a>
       </section>
