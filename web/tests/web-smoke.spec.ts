@@ -221,7 +221,7 @@ test("V2 canvas sequence advances with scroll", async ({ page }) => {
     frames: Number((element as HTMLElement).dataset.frames || "0"),
   }));
 
-  expect(before.frames).toBeGreaterThanOrEqual(10);
+  expect(before.frames).toBeGreaterThanOrEqual(24);
   expect(after.frames).toBe(before.frames);
   expect(after.frame).toBeGreaterThan(before.frame);
 });
