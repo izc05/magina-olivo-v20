@@ -7,7 +7,7 @@ import { OliveDecor } from "@/components/OliveDecor";
 import { visualAssets } from "@/lib/visualAssets";
 import { FieldToPhoneSequence } from "@/components/FieldToPhoneSequence";
 
-type ScreenKind =
+export type ScreenKind =
   | "welcome"
   | "farms"
   | "map"
@@ -99,7 +99,7 @@ function Icon({ children }: { children: React.ReactNode }) {
   return <span className="mini-icon" aria-hidden="true">{children}</span>;
 }
 
-function PhoneScreen({ kind }: { kind: ScreenKind }) {
+export function PhoneScreen({ kind }: { kind: ScreenKind }) {
   return (
     <div className={`phone-screen phone-screen-${kind}`}>
       <div className="phone-topline">
