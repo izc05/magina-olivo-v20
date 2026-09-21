@@ -117,15 +117,18 @@ jobs:
           retention-days: 14
 
       - name: Upload GitHub Pages artifact
-        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feat/web-')) || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/web-') && github.event.pull_request.head.repo.full_name == github.repository)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feat/web-')
         uses: actions/upload-pages-artifact@v3
         with:
           path: web/out
 
 
   deploy-pages:
-    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feat/web-')) || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/web-') && github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feat/web-')
     needs: validate-web
+    concurrency:
+      group: magina-olivo-web-pages
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
