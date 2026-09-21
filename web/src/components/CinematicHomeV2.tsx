@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
 
 export function CinematicHomeV2() {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
   const heroRef = useRef<HTMLElement>(null);
   const storyRef = useRef<HTMLElement>(null);
 
@@ -56,7 +57,7 @@ export function CinematicHomeV2() {
 
         <div className="v2-hero-brand">
           <Image
-            src="/brand/v2-lockup.svg"
+            src={`${basePath}/brand/v2-lockup.svg`}
             alt="Mágina Olivo"
             width={360}
             height={96}
@@ -170,7 +171,7 @@ export function CinematicHomeV2() {
       <section className="v2-final" id="descarga">
         <Image
           className="v2-final-mark"
-          src="/brand/v2-mark.svg"
+          src={`${basePath}/brand/v2-mark.svg`}
           alt=""
           width={64}
           height={64}
