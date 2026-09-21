@@ -225,3 +225,30 @@ test("V2 canvas sequence advances with scroll", async ({ page }) => {
   expect(after.frames).toBe(before.frames);
   expect(after.frame).toBeGreaterThan(before.frame);
 });
+
+
+test("V2 product takeover becomes visible near sequence end", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  const story = page.locator(".v2-story");
+  const takeover = page.locator(".v2-story-device-takeover");
+
+  const targetY = await story.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const top = window.scrollY + rect.top;
+    const travel = Math.max(1, (element as HTMLElement).offsetHeight - window.innerHeight);
+    return top + travel * 0.92;
+  });
+
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), targetY);
+  await page.waitForTimeout(180);
+
+  await expect(takeover).toBeVisible();
+
+  const opacity = await takeover.evaluate((element) =>
+    Number.parseFloat(getComputedStyle(element).opacity),
+  );
+
+  expect(opacity).toBeGreaterThan(0.75);
+  await expect(takeover.locator(".phone-screen-welcome")).toHaveCount(1);
+});
