@@ -22,17 +22,37 @@ export function CinematicVideoScrub({
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [saveData, setSaveData] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => setReducedMotion(media.matches);
+    const connection = (
+      navigator as Navigator & {
+        connection?: {
+          saveData?: boolean;
+          addEventListener?: (type: string, listener: () => void) => void;
+          removeEventListener?: (type: string, listener: () => void) => void;
+        };
+      }
+    ).connection;
+
+    const apply = () => {
+      setReducedMotion(media.matches);
+      setSaveData(Boolean(connection?.saveData));
+    };
+
     apply();
     media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
+    connection?.addEventListener?.("change", apply);
+
+    return () => {
+      media.removeEventListener("change", apply);
+      connection?.removeEventListener?.("change", apply);
+    };
   }, []);
 
   useEffect(() => {
-    if (reducedMotion || failed) return;
+    if (reducedMotion || saveData || failed) return;
 
     const wrapper = wrapperRef.current;
     const video = videoRef.current;
@@ -91,7 +111,7 @@ export function CinematicVideoScrub({
       window.removeEventListener("resize", requestSync);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [failed, reducedMotion]);
+  }, [failed, reducedMotion, saveData]);
 
   return (
     <div
@@ -99,8 +119,9 @@ export function CinematicVideoScrub({
       className={className}
       data-video-ready={ready ? "true" : "false"}
       data-video-failed={failed ? "true" : "false"}
+      data-video-save-data={saveData ? "true" : "false"}
     >
-      {reducedMotion || failed ? (
+      {reducedMotion || saveData || failed ? (
         <img
           className="v2-video-scrub-poster"
           src={poster}
