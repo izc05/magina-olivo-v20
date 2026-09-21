@@ -1,7 +1,6 @@
 "use client";
 
 import { CinematicScrollCanvas } from "@/components/CinematicScrollCanvas";
-import { PhoneScreen, type ScreenKind } from "@/components/CinematicHome";
 import { SceneImage } from "@/components/SceneImage";
 import { pilotDesktopFrames, pilotMobileFrames } from "@/data/v2/cinematicSequence";
 import { visualAssets } from "@/lib/visualAssets";
@@ -17,55 +16,46 @@ const productMoments: Array<{
   number: string;
   title: string;
   copy: string;
-  screen: ScreenKind;
 }> = [
   {
     number: "01",
     title: "Tus fincas.",
     copy: "Todas tus fincas, claras.",
-    screen: "farms",
   },
   {
     number: "02",
     title: "Tus parcelas.",
     copy: "Cada parcela, en contexto.",
-    screen: "parcel",
   },
   {
     number: "03",
     title: "Tu mapa.",
     copy: "Tu tierra, localizada.",
-    screen: "map",
   },
   {
     number: "04",
     title: "Tu campaña.",
     copy: "Todo lo que haces, registrado.",
-    screen: "campaign",
   },
   {
     number: "05",
     title: "Tu cosecha.",
     copy: "Cosecha y rendimiento, de un vistazo.",
-    screen: "harvest",
   },
   {
     number: "06",
     title: "Tus números.",
     copy: "Tus números, sin perder nada.",
-    screen: "expenses",
   },
   {
     number: "07",
     title: "Tu tiempo.",
     copy: "Lo que necesitas para decidir.",
-    screen: "weather",
   },
   {
     number: "08",
     title: "Tu histórico.",
     copy: "Tu historia, campaña a campaña.",
-    screen: "history",
   },
 ];
 
@@ -96,8 +86,6 @@ export function CinematicHomeV2() {
         const detailOut = phase(progress, 0.48, 0.66);
         const phoneIn = phase(progress, 0.52, 0.72);
         const phoneFocus = phase(progress, 0.68, 0.92);
-        const takeover = phase(progress, 0.72, 0.93);
-        const canvasFade = phase(progress, 0.84, 0.98);
 
         storyRef.current.style.setProperty("--v2-story-progress", String(progress));
         storyRef.current.style.setProperty("--v2-field-opacity", String(1 - fieldOut * 0.92));
@@ -111,21 +99,7 @@ export function CinematicHomeV2() {
           "--v2-copy-b",
           String(phase(progress, 0.24, 0.38) * (1 - phase(progress, 0.50, 0.62))),
         );
-        storyRef.current.style.setProperty("--v2-copy-c", String(phase(progress, 0.64, 0.80)));
-        storyRef.current.style.setProperty("--v2-takeover", String(takeover));
-        storyRef.current.style.setProperty("--v2-canvas-fade", String(canvasFade));
-        storyRef.current.style.setProperty(
-          "--v2-takeover-scale",
-          String(0.72 + takeover * 0.28),
-        );
-        storyRef.current.style.setProperty(
-          "--v2-takeover-rotate",
-          `${-8 + takeover * 8}deg`,
-        );
-        storyRef.current.style.setProperty(
-          "--v2-takeover-y",
-          `${(1 - takeover) * 18}vh`,
-        );
+        storyRef.current.style.setProperty("--v2-copy-c", String(phase(progress, 0.64, 0.86)));
       }
     };
 
@@ -237,13 +211,6 @@ export function CinematicHomeV2() {
           <div className="v2-story-copy v2-story-copy-c">
             <span>03</span>
             <h2>Registra.</h2>
-          </div>
-
-          <div className="v2-story-device-takeover" aria-hidden="true">
-            <div className="phone-shell v2-story-phone-shell">
-              <div className="phone-camera" />
-              <PhoneScreen kind="welcome" />
-            </div>
           </div>
 
           <div className="v2-story-timeline" aria-hidden="true">
