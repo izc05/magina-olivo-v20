@@ -61,16 +61,16 @@ for (const route of publicRoutes) {
   });
 }
 
-test("home keeps the cinematic structure and primary anchors", async ({ page }) => {
+test("home keeps the V2 cinematic structure and primary anchors", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
 
-  await expect(page.locator(".cinema-hero")).toBeVisible();
-  await expect(page.locator(".field-phone-film")).toHaveCount(1);
-  await expect(page.locator("#funciones")).toHaveCount(1);
+  await expect(page.locator(".v2-hero")).toBeVisible();
+  await expect(page.locator(".v2-story")).toHaveCount(1);
+  await expect(page.locator("#historia")).toHaveCount(1);
+  await expect(page.locator("#producto")).toHaveCount(1);
   await expect(page.locator("#descarga")).toHaveCount(1);
-  await expect(page.locator("#contacto")).toHaveCount(1);
 
-  const heroHeading = page.locator(".cinema-copy h1");
+  const heroHeading = page.locator(".v2-hero-copy h1");
   await expect(heroHeading).toBeVisible();
   await expect(heroHeading).toContainText(/olivar/i);
 });
@@ -95,8 +95,9 @@ test("reduced motion mode remains usable", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/", { waitUntil: "networkidle" });
 
-  await expect(page.locator(".cinema-hero")).toBeVisible();
-  await expect(page.locator(".field-phone-film")).toBeVisible();
+  await expect(page.locator(".v2-hero")).toBeVisible();
+  await expect(page.locator(".v2-story")).toBeVisible();
+  await expect(page.locator(".v2-story-scene-phone")).toBeVisible();
 
   const overflow = await page.evaluate(() => {
     const clientWidth = document.documentElement.clientWidth;
@@ -129,39 +130,37 @@ test("reduced motion mode remains usable", async ({ page }) => {
   ).toBeLessThanOrEqual(overflow.clientWidth + 2);
 });
 
-
-test("captures visual evidence for the approved landing", async ({ page }, testInfo) => {
+test("captures visual evidence for the V2 landing", async ({ page }, testInfo) => {
   await page.goto("/", { waitUntil: "networkidle" });
 
   const suffix = testInfo.project.name.includes("mobile") ? "mobile" : "desktop";
 
-  await page.locator(".cinema-hero").screenshot({
-    path: `test-results/home-hero-${suffix}.png`,
+  await page.locator(".v2-hero").screenshot({
+    path: `test-results/v2-home-hero-${suffix}.png`,
   });
 
-  const film = page.locator(".field-phone-film");
-  await film.scrollIntoViewIfNeeded();
-  await page.evaluate(() => window.scrollBy(0, window.innerHeight * 1.9));
-  await page.waitForTimeout(150);
+  const story = page.locator(".v2-story");
+  await story.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollBy(0, window.innerHeight * 1.7));
+  await page.waitForTimeout(180);
   await page.screenshot({
-    path: `test-results/home-film-${suffix}.png`,
+    path: `test-results/v2-home-story-${suffix}.png`,
     fullPage: false,
   });
 
-  await page.locator(".app-cycle-overview").screenshot({
-    path: `test-results/home-app-cycle-${suffix}.png`,
+  await page.locator(".v2-product").screenshot({
+    path: `test-results/v2-home-product-${suffix}.png`,
   });
 
-  await page.locator(".download-section").screenshot({
-    path: `test-results/home-download-${suffix}.png`,
+  await page.locator(".v2-final").screenshot({
+    path: `test-results/v2-home-final-${suffix}.png`,
   });
 });
-
 
 test("loads the approved hero photograph instead of the fallback", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
 
-  const heroImage = page.locator(".hero-scene-image");
+  const heroImage = page.locator(".v2-hero-media img");
   await expect(heroImage).toBeVisible();
 
   const imageState = await heroImage.evaluate((image) => {
