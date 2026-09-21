@@ -180,82 +180,94 @@ class AppNavigationTest {
     @Test
     fun farmParcelCampaignLifecyclePersistsAcrossRecreation() {
         enterMainShell()
+
+        // Mi Olivar
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
-        composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
-        }
+        waitForTag("add-farm")
+
+        // Farm: open the editor, fill it, save, and wait for the persisted row.
         composeRule.onNodeWithTag("add-farm").performClick()
-        composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isNotEmpty()
-        }
+        waitForTag("farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Campaña E2E")
+        waitForTag("save-farm")
         composeRule.onNodeWithTag("save-farm").performClick()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Finca Campaña E2E").fetchSemanticsNodes().isNotEmpty() }
+        waitForText("Finca Campaña E2E")
+
+        // Farm detail
         composeRule.onNodeWithText("Finca Campaña E2E").performClick()
+        waitForTag("add-parcel")
 
+        // Parcel: open the editor, fill it, save, and wait for the persisted row.
         composeRule.onNodeWithTag("add-parcel").performScrollTo().performClick()
+        waitForTag("parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Campaña E2E")
+        waitForTag("save-parcel")
         composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Parcela Campaña E2E").fetchSemanticsNodes().isNotEmpty() }
+        waitForText("Parcela Campaña E2E")
 
+        // Campaign: open the editor, fill it, select the Parcel, save.
+        waitForTag("add-campaign")
         composeRule.onNodeWithTag("add-campaign").performScrollTo().performClick()
+        waitForTag("campaign-name")
         composeRule.onNodeWithTag("campaign-name").performTextInput("Campaña 2026/27 E2E")
         // Past start date: closing uses the device clock, so a future start would make
         // the legal close date depend on the day the suite runs.
+        waitForTag("campaign-start-date")
         composeRule.onNodeWithTag("campaign-start-date").performTextInput("2026-01-01")
+        waitForTag("campaign-parcel-option")
         composeRule.onNodeWithTag("campaign-parcel-option").performClick()
+        waitForTag("save-campaign")
         composeRule.onNodeWithTag("save-campaign").performScrollTo().performClick()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Campaña 2026/27 E2E").fetchSemanticsNodes().isNotEmpty() }
+        waitForText("Campaña 2026/27 E2E")
+
+        // Campaign detail
+        waitForTag("campaign-row")
         composeRule.onNodeWithTag("campaign-row").performScrollTo().performClick()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("campaign-detail-root").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("activate-campaign").fetchSemanticsNodes().isNotEmpty() }
+        waitForTag("campaign-detail-root")
 
+        // PREPARATION -> ACTIVE
+        waitForTag("activate-campaign")
         composeRule.onNodeWithTag("activate-campaign").performClick()
-        composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithTag("confirm-campaign-action").fetchSemanticsNodes().isNotEmpty()
-        }
-        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Iniciar recolección").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("Iniciar recolección").performClick()
-        composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithTag("confirm-campaign-action").fetchSemanticsNodes().isNotEmpty()
-        }
-        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("close-campaign").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithTag("close-campaign").performClick()
-        composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithTag("confirm-campaign-action").fetchSemanticsNodes().isNotEmpty()
-        }
-        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Histórico protegido").fetchSemanticsNodes().isNotEmpty() }
+        confirmCampaignAction()
 
+        // ACTIVE -> HARVEST
+        waitForText("Iniciar recolección")
+        composeRule.onNodeWithText("Iniciar recolección").performClick()
+        confirmCampaignAction()
+
+        // HARVEST -> CLOSED
+        waitForTag("close-campaign")
+        composeRule.onNodeWithTag("close-campaign").performClick()
+        confirmCampaignAction()
+        waitForText("Histórico protegido")
+
+        // Restart the process and prove the aggregate survived.
         pressBack()
         composeRule.activityRule.scenario.recreate()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Campaña 2026/27 E2E").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.waitForIdle()
+        waitForText("Campaña 2026/27 E2E")
         composeRule.onNodeWithText("Campaña 2026/27 E2E").performScrollTo().performClick()
+        waitForTag("campaign-detail-root")
+        waitForText("Parcela Campaña E2E")
         composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
         composeRule.onNodeWithText("Finca Campaña E2E").assertIsDisplayed()
         composeRule.onNodeWithText("Sin datos").assertIsDisplayed()
 
         // A closed campaign stays protected after the restart, and reopening it is an
         // explicit, confirmed action that returns the aggregate to an editable state.
+        waitForText("Histórico protegido")
         composeRule.onNodeWithText("Histórico protegido").assertIsDisplayed()
+
+        // CLOSED -> HARVEST
+        waitForTag("reopen-campaign")
         composeRule.onNodeWithTag("reopen-campaign").performScrollTo().performClick()
-        composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithTag("confirm-campaign-action").fetchSemanticsNodes().isNotEmpty()
-        }
-        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
-        composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithTag("close-campaign").fetchSemanticsNodes().isNotEmpty()
-        }
+        confirmCampaignAction()
+
+        // HARVEST -> CLOSED again
+        waitForTag("close-campaign")
         composeRule.onNodeWithTag("close-campaign").performScrollTo().performClick()
-        composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithTag("confirm-campaign-action").fetchSemanticsNodes().isNotEmpty()
-        }
-        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
-        composeRule.waitUntil(5_000) {
-            composeRule.onAllNodesWithText("Histórico protegido").fetchSemanticsNodes().isNotEmpty()
-        }
+        confirmCampaignAction()
+        waitForText("Histórico protegido")
         composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
     }
 
@@ -270,7 +282,40 @@ class AppNavigationTest {
     }
 
     private fun enterMainShell() {
+        waitForText("Saltar")
         composeRule.onNodeWithText("Saltar").performClick()
+        waitForTag("home-reference-root")
         composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
+    }
+
+    /**
+     * Waits for observable UI state instead of relying on timing luck.
+     *
+     * CI emulators are much slower than a developer machine: cold Room initialisation,
+     * the first composition of a ModalBottomSheet and activity recreation can each
+     * exceed a 5s budget, which is why this E2E failed at a different point on every
+     * run. Every asynchronous transition now waits for the state it depends on.
+     */
+    private fun waitForTag(tag: String, timeoutMillis: Long = UI_TIMEOUT_MS) {
+        composeRule.waitUntil(timeoutMillis) {
+            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun waitForText(text: String, timeoutMillis: Long = UI_TIMEOUT_MS) {
+        composeRule.waitUntil(timeoutMillis) {
+            composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    /** Confirms a Campaign lifecycle action once its ModalBottomSheet is actually composed. */
+    private fun confirmCampaignAction() {
+        waitForTag("confirm-campaign-action")
+        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
+    }
+
+    private companion object {
+        /** Generous enough for a cold CI emulator, still bounded so a real hang fails. */
+        const val UI_TIMEOUT_MS = 15_000L
     }
 }
