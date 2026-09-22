@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.isivoltpro.maginaolivo.data.local.dao.FarmDao
+import com.isivoltpro.maginaolivo.data.local.dao.ActivityDao
 import com.isivoltpro.maginaolivo.data.local.dao.CampaignDao
 import com.isivoltpro.maginaolivo.data.local.dao.DocumentDao
 import com.isivoltpro.maginaolivo.data.local.dao.ParcelDao
@@ -13,6 +14,7 @@ import com.isivoltpro.maginaolivo.data.local.dao.SyncOutboxDao
 import com.isivoltpro.maginaolivo.data.local.dao.WorkspaceDao
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
+import com.isivoltpro.maginaolivo.data.local.entity.ActivityParcelTargetEntity
 import com.isivoltpro.maginaolivo.data.local.entity.AlertEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
@@ -37,13 +39,14 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         CampaignEntity::class,
         CampaignParcelSnapshotEntity::class,
         ActivityEntity::class,
+        ActivityParcelTargetEntity::class,
         HarvestEntity::class,
         ExpenseEntity::class,
         DocumentEntity::class,
         WeatherCacheEntity::class,
         AlertEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -58,11 +61,13 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
 
     abstract fun campaignDao(): CampaignDao
 
+    abstract fun activityDao(): ActivityDao
+
     abstract fun syncOutboxDao(): SyncOutboxDao
 
     companion object {
         const val DATABASE_NAME = "magina-olivo.db"
-        const val VERSION = 3
+        const val VERSION = 4
 
         @Volatile
         private var instance: MaginaOlivoDatabase? = null

@@ -173,6 +173,104 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration3To4PreservesActivitiesAndAddsParcelTargets() {
+        migrationHelper.createDatabase(TEST_DATABASE, 3).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            database.execSQL(
+                """
+                INSERT INTO farms (
+                    id, workspace_id, name, description, municipality, province,
+                    cover_document_id, notes, status, created_at, updated_at,
+                    deleted_at, version, sync_status, remote_version, last_synced_at
+                ) VALUES (
+                    '33333333-3333-3333-3333-333333333333',
+                    '11111111-1111-1111-1111-111111111111', 'La Solana', NULL, NULL,
+                    NULL, NULL, NULL, 'ACTIVE', 1000, 1000, NULL, 1,
+                    'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            database.execSQL(
+                """
+                INSERT INTO activities (
+                    id, workspace_id, campaign_id, farm_id, activity_date, type, status,
+                    description, product, quantity, unit, cost_minor, currency, notes,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '55555555-5555-5555-5555-555555555555',
+                    '11111111-1111-1111-1111-111111111111', NULL,
+                    '33333333-3333-3333-3333-333333333333', '2026-01-15', 'PRUNING',
+                    'PLANNED', 'Poda de formación', NULL, NULL, NULL, NULL, NULL, NULL,
+                    1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+        }
+
+        migrationHelper
+            .runMigrationsAndValidate(
+                TEST_DATABASE,
+                4,
+                true,
+                DatabaseMigrations.MIGRATION_3_4,
+            ).use { database ->
+                // The migration is purely additive: no Activity is rewritten or dropped.
+                database
+                    .query("SELECT description, status, farm_id FROM activities")
+                    .use { cursor ->
+                        assertTrue(cursor.moveToFirst())
+                        assertEquals("Poda de formación", cursor.getString(0))
+                        assertEquals("PLANNED", cursor.getString(1))
+                        assertEquals("33333333-3333-3333-3333-333333333333", cursor.getString(2))
+                        assertTrue(cursor.count == 1)
+                    }
+
+                val targetColumns = mutableSetOf<String>()
+                database.query("PRAGMA table_info(activity_parcels)").use { cursor ->
+                    val nameIndex = cursor.getColumnIndexOrThrow("name")
+                    while (cursor.moveToNext()) targetColumns += cursor.getString(nameIndex)
+                }
+                assertTrue(
+                    targetColumns.containsAll(
+                        setOf(
+                            "id",
+                            "workspace_id",
+                            "activity_id",
+                            "parcel_id",
+                            "parcel_name_at_target",
+                            "area_affected_m2",
+                            "notes",
+                        ),
+                    ),
+                )
+
+                // The unique index is what makes "one Activity, many Parcels" safe to
+                // re-apply: targeting the same Parcel twice can never duplicate a row.
+                val indices = mutableSetOf<String>()
+                database
+                    .query(
+                        "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'activity_parcels'",
+                    ).use { cursor ->
+                        while (cursor.moveToNext()) indices += cursor.getString(0)
+                    }
+                assertTrue(indices.contains("index_activity_parcels_activity_id_parcel_id"))
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

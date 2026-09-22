@@ -8,7 +8,7 @@ ACTIVITY="com.isivoltpro.maginaolivo.MainActivity"
 TEST_PKG="com.isivoltpro.maginaolivo.dev.test"
 RUNNER="androidx.test.runner.AndroidJUnitRunner"
 SCREENSHOT_TEST="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest"
-OFFLINE_ROOM_TESTS="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest"
+OFFLINE_ROOM_TESTS="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest,com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest"
 
 APP_APK="$(find app/build/outputs/apk/dev/debug -name '*.apk' | head -n 1)"
 TEST_APK="$(find app/build/outputs/apk/androidTest -name '*.apk' | head -n 1)"
@@ -168,6 +168,46 @@ pull_private_gate3_screens() {
   done <<<"$names"
 }
 
+annotate_instrumentation_failure() {
+  local title="$1"
+  local file="$2"
+
+  python3 - "$title" "$file" <<'PYEOF'
+import sys
+
+title, path = sys.argv[1], sys.argv[2]
+try:
+    raw = open(path, errors="replace").read()
+except OSError:
+    print(f"::error title={title}::instrumentation output was not written")
+    raise SystemExit(0)
+
+lines = raw.splitlines()
+markers = (
+    "INSTRUMENTATION_STATUS: test=",
+    "INSTRUMENTATION_STATUS: class=",
+    "INSTRUMENTATION_STATUS: stack=",
+    "INSTRUMENTATION_STATUS_CODE: -",
+    "INSTRUMENTATION_FAILED",
+    "FAILURES!!!",
+    "shortMsg=",
+)
+keep = [
+    line
+    for line in lines
+    if line.startswith(markers)
+    or line.lstrip().startswith("at ")
+    or "Exception" in line
+    or "AssertionError" in line
+    or "ComposeTimeout" in line
+]
+body = "\n".join(keep[-150:]) or "\n".join(lines[-80:])
+body = body[:6000]
+encoded = body.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+print(f"::error title={title}::{encoded}")
+PYEOF
+}
+
 assert_instrumentation_passed() {
   local output_file="$1"
   local label="$2"
@@ -177,6 +217,7 @@ assert_instrumentation_passed() {
     ! grep -Eq '^OK \([0-9]+ tests?\)$' "$output_file" || \
     grep -Eq 'FAILURES!!!|INSTRUMENTATION_FAILED|shortMsg=Process crashed' "$output_file"; then
     echo "$label failed (adb rc=$command_rc); see $output_file" >&2
+    annotate_instrumentation_failure "$label" "$output_file"
     return 1
   fi
 }
@@ -343,3 +384,8 @@ adb logcat -b crash -d -v threadtime > evidence/crash.txt 2>&1 || true
 } > evidence/summary.txt
 
 cat evidence/summary.txt
+
+# The raw job log needs a GitHub session to read, so publish the evidence summary as
+# a workflow annotation: those are public and can be quoted verbatim in the slice doc.
+summary_annotation="$(sed -e 's/%/%25/g' -e 's/\r//g' evidence/summary.txt | awk 'BEGIN { ORS = "%0A" } { print }')"
+echo "::notice title=Gate 3 evidence summary::${summary_annotation}"

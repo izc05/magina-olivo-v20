@@ -35,7 +35,32 @@ jobs:
           cache-provider: basic
 
       - name: Build and unit-test Gate 3 candidate
-        run: gradle --no-daemon testDevDebugUnitTest assembleDevDebug assembleDevDebugAndroidTest
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon testDevDebugUnitTest assembleDevDebug assembleDevDebugAndroidTest 2>&1 | tee build-output.log
+
+      - name: Publish build diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo "## Build diagnostics"
+            echo "### Compiler errors"
+            echo '```'
+            grep -E "^(e: |FAILURE: |Caused by: |\* What went wrong:|\* Exception is:)" build-output.log | head -200 || true
+            echo '```'
+            echo "### Tail of build output"
+            echo '```'
+            tail -150 build-output.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          errors=$(grep -E "^(e: |FAILURE: |Caused by: |\* What went wrong:|\* Exception is:)" build-output.log | head -60)
+          if [ -z "$errors" ]; then
+            errors=$(tail -40 build-output.log)
+          fi
+          encoded=$(printf '%s' "$errors" | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN { ORS = "%0A" } { print }')
+          echo "::error title=Gradle build failure::${encoded}"
 
       - name: Enable KVM
         run: |

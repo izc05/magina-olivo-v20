@@ -105,7 +105,8 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("register-action-sheet").assertIsDisplayed()
         composeRule.onNodeWithText("Registrar actuación").performClick()
 
-        composeRule.onNodeWithTag("register-reference-root").assertIsDisplayed()
+        waitForTag("register-activity-root")
+        composeRule.onNodeWithTag("register-activity-root").assertIsDisplayed()
         composeRule.onNodeWithTag("bottom-Registrar").assertIsSelected()
     }
 
@@ -280,6 +281,120 @@ class AppNavigationTest {
     }
 
     @Test
+    fun oneActivityTargetsTwoParcelsAsASingleCanonicalRecord() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        waitForTag("add-farm")
+
+        composeRule.onNodeWithTag("add-farm").performClick()
+        waitForTag("farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Actuación E2E")
+        waitForTag("save-farm")
+        composeRule.onNodeWithTag("save-farm").performClick()
+        waitForText("Finca Actuación E2E")
+        composeRule.onNodeWithText("Finca Actuación E2E").performClick()
+        waitForTag("add-parcel")
+
+        createParcel("Parcela Norte E2E")
+        createParcel("Parcela Sur E2E")
+
+        // One activity, two parcels selected.
+        waitForTag("add-activity")
+        composeRule.onNodeWithTag("add-activity").performScrollTo().performClick()
+        waitForTag("activity-description")
+        composeRule.onNodeWithTag("activity-description").performTextInput("Poda multiparcela E2E")
+        waitForTag("activity-date")
+        composeRule.onNodeWithTag("activity-date").performTextInput("2026-01-15")
+        waitForTag("activity-parcel-option")
+        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        composeRule.onAllNodesWithTag("activity-parcel-option")[1].performScrollTo().performClick()
+        waitForTag("save-activity")
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        waitForText("Poda multiparcela E2E")
+
+        // Exactly ONE canonical Activity row, not one per parcel.
+        composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
+        composeRule.onNodeWithText("2 parcelas").performScrollTo().assertIsDisplayed()
+
+        waitForTag("activity-row")
+        composeRule.onNodeWithTag("activity-row").performScrollTo().performClick()
+        waitForTag("activity-detail-root")
+
+        // The single Activity carries both Parcel targets.
+        composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
+        composeRule.onNodeWithText("Parcela Norte E2E").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Parcela Sur E2E").performScrollTo().assertIsDisplayed()
+
+        // PLANNED -> COMPLETED, then protected until an explicit reopen.
+        clickLifecycleActionByTag("complete-activity")
+        confirmActivityAction()
+        waitForText("Registro protegido")
+
+        pressBack()
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+        waitForText("Poda multiparcela E2E")
+
+        // Still one canonical Activity after the restart.
+        composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
+        composeRule.onNodeWithText("Poda multiparcela E2E").performScrollTo().performClick()
+        waitForTag("activity-detail-root")
+        composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
+        composeRule.onNodeWithText("Registro protegido").performScrollTo().assertIsDisplayed()
+    }
+
+    /**
+     * The Registrar (+) entry point writes through the same aggregate as the Farm
+     * detail: it is the real editor, not a reference screen, and a single Farm needs
+     * no extra question.
+     */
+    @Test
+    fun registrarPlusCreatesARealActivityOnTheSelectedFarm() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        waitForTag("add-farm")
+
+        composeRule.onNodeWithTag("add-farm").performClick()
+        waitForTag("farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Registrar E2E")
+        waitForTag("save-farm")
+        composeRule.onNodeWithTag("save-farm").performClick()
+        waitForText("Finca Registrar E2E")
+        composeRule.onNodeWithText("Finca Registrar E2E").performClick()
+        waitForTag("add-parcel")
+        createParcel("Parcela Registrar E2E")
+
+        composeRule.onNodeWithTag("bottom-Registrar").performClick()
+        waitForTag("register-action-sheet")
+        composeRule.onNodeWithText("Registrar actuación").performClick()
+        waitForTag("register-activity-root")
+
+        // A single Farm resolves itself; when earlier tests have left other Farms in the
+        // same database the flow asks, and the answer is ours.
+        if (composeRule.onAllNodesWithTag("register-farm-option").fetchSemanticsNodes().isNotEmpty()) {
+            composeRule.onNodeWithText("Finca Registrar E2E").performScrollTo().performClick()
+        }
+        waitForTag("activity-description")
+        composeRule.onNodeWithTag("activity-description").performTextInput("Riego desde Registrar")
+        waitForTag("activity-date")
+        composeRule.onNodeWithTag("activity-date").performTextInput("2026-02-02")
+        waitForTag("activity-parcel-option")
+        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+
+        waitForText("Riego desde Registrar")
+        composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
+
+        // The same Activity is the one the Farm detail shows: one record, one home.
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        waitForText("Finca Registrar E2E")
+        composeRule.onNodeWithText("Finca Registrar E2E").performClick()
+        waitForTag("add-activity")
+        waitForText("Riego desde Registrar")
+        composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
+    }
+
+    @Test
     fun developerGalleryIsReachableFromDevProfile() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Perfil").performClick()
@@ -382,6 +497,25 @@ class AppNavigationTest {
             .assertIsEnabled()
             .assertHasClickAction()
             .performClick()
+    }
+
+    private fun createParcel(name: String) {
+        waitForTag("add-parcel")
+        composeRule.onNodeWithTag("add-parcel").performScrollTo().performClick()
+        waitForTag("parcel-name")
+        composeRule.onNodeWithTag("parcel-name").performTextInput(name)
+        waitForTag("save-parcel")
+        composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
+        waitForText(name)
+    }
+
+    /** Confirms an Activity lifecycle action once its ModalBottomSheet is actually composed. */
+    private fun confirmActivityAction() {
+        waitForNodeOrDump("confirmation sheet title") { composeRule.onAllNodesWithText("Confirmar cambio") }
+        waitForNodeOrDump("confirm-activity-action") {
+            composeRule.onAllNodesWithTag("confirm-activity-action", useUnmergedTree = true)
+        }
+        composeRule.onNodeWithTag("confirm-activity-action", useUnmergedTree = true).performClick()
     }
 
     /** Confirms a Campaign lifecycle action once its ModalBottomSheet is actually composed. */

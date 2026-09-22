@@ -47,12 +47,15 @@ object AppDestination {
     const val FarmPattern = "farm/{farmId}"
     const val ParcelPattern = "parcel/{parcelId}"
     const val CampaignPattern = "campaign/{campaignId}"
+    const val ActivityPattern = "activity/{activityId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
 
     fun parcel(parcelId: String): String = nestedRoute("parcel", parcelId)
 
     fun campaign(campaignId: String): String = nestedRoute("campaign", campaignId)
+
+    fun activity(activityId: String): String = nestedRoute("activity", activityId)
 
     fun rootForRoute(route: String?): RootDestination? {
         val prefix = route?.substringBefore('/') ?: return null
@@ -62,6 +65,7 @@ object AppDestination {
             "farm",
             "parcel",
             "campaign",
+            "activity",
             MapCatastro,
             Analytics,
             -> RootDestination.Olivar

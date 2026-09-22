@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.feature.parcels.FarmParcelsRoute
+import com.isivoltpro.maginaolivo.feature.activities.FarmActivitiesRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.FarmCampaignsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
@@ -238,6 +239,7 @@ fun FarmDetailRoute(
     persistence: LocalPersistence,
     onParcelSelected: (UUID) -> Unit,
     onCampaignSelected: (UUID) -> Unit,
+    onActivitySelected: (UUID) -> Unit,
     onArchived: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -274,6 +276,13 @@ fun FarmDetailRoute(
                 onCampaignSelected = onCampaignSelected,
             )
         },
+        activityContent = {
+            FarmActivitiesRoute(
+                farmId = farmId,
+                persistence = persistence,
+                onActivitySelected = onActivitySelected,
+            )
+        },
         modifier = modifier,
     )
 }
@@ -288,6 +297,7 @@ fun FarmDetailScreen(
     onArchived: () -> Unit,
     parcelContent: @Composable () -> Unit = {},
     campaignContent: @Composable () -> Unit = {},
+    activityContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
@@ -341,6 +351,7 @@ fun FarmDetailScreen(
                 onArchive = { archiveConfirmation = true },
                 parcelContent = parcelContent,
                 campaignContent = campaignContent,
+                activityContent = activityContent,
                 modifier = Modifier.padding(innerPadding),
             )
         }
@@ -403,6 +414,7 @@ private fun FarmDetailContent(
     onArchive: () -> Unit,
     parcelContent: @Composable () -> Unit,
     campaignContent: @Composable () -> Unit,
+    activityContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -454,6 +466,7 @@ private fun FarmDetailContent(
         }
         parcelContent()
         campaignContent()
+        activityContent()
         MoSecondaryButton(
             text = "Editar finca",
             onClick = onEdit,
