@@ -91,11 +91,17 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Also on a push, because a feature branch now reaches CI before a pull request
+      # exists, and the migration test cannot run until the compiler-exported schema is
+      # in the branch. Never on main: its schema arrives with the branch that made it.
       - name: Commit the exported Room schema
-        if: success() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: >-
+          success() && github.ref_name != 'main' &&
+          (github.event_name == 'push' ||
+           github.event.pull_request.head.repo.full_name == github.repository)
         shell: bash
         env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
         run: |
           if [ -z "$(git status --porcelain app/schemas)" ]; then
             echo "The exported schema already matches the committed one"
