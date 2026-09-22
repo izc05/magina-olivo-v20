@@ -2,6 +2,9 @@
 
 **Slice decision:** PASS  
 **Gate 6 overall:** FAIL — Campaign slice remains  
+
+> **Superseded status note (2026-09-22):** Gate 6 composite is now PASS after the Campaign slice and combined Farm → Parcel → Campaign validation. See `PHASE6-CAMPAIGNS-SLICE.md` and `CURRENT-STATE.md` for the final Gate 6 status. Everything below is the historical record of the Parcels slice as reviewed on 2026-09-20 and is not the current state.
+
 **Reviewed:** 2026-09-20  
 **Validated code commit:** `ee89b9f7`  
 **Stacked PR:** [#201](https://github.com/izc05/magina-olivo-v20/pull/201)
@@ -19,7 +22,7 @@
 - truthful unknown values without fabricated cadastral or agronomic data;
 - restart, rollback, validation, ViewModel, Compose and navigation coverage.
 
-MapLibre and live Catastro lookup are intentionally excluded from this slice and remain Gate 7 work.
+MapLibre and live Catastro lookup are intentionally excluded from this slice and belong to the Catastro technical spike / Geometry + Map phases.
 
 ## Automated evidence
 

@@ -39,12 +39,22 @@ The old monolithic Phase 3 PR #180 is superseded and must not be merged.
 ## 2. Current active work
 
 ```text
-▶ PHASE 3 — GATE 3 VISUAL / ACCESSIBILITY VALIDATION
+CURRENT:              Gate 6 composite = PASS
+                      (Phase 6 Farms + Phase 7 Parcels + Phase 8 Campaigns)
+
+NEXT PRODUCTION PHASE: Phase 9 — Activity engine  (NOT STARTED)
+
+BLOCKER:              do not start Phase 9 until the validated Android stack
+                      is integrated into `main`
 ```
 
-No additional reference/product screens should be created unless validation finds a defect.
+Gates 3, 4 and 5 passed. Gate 6 composite passed on 2026-09-22 on commit `164aaa48`;
+see `docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md` and `docs/00-master/CURRENT-STATE.md`.
 
-Phase 4 implementation is blocked until Gate 3 PASS.
+The validated Android stack lives on stacked branches through PRs #197–#201 and #205.
+`main` is still at the pre-Android-stack commit, so the integration strategy must be
+decided and executed before Phase 9 implementation begins. Section 3 below is retained
+as the historical record of how Gate 3 was closed.
 
 ## 3. Gate 3 closure order
 
@@ -130,6 +140,18 @@ Deliver:
 - test/dev fixtures.
 
 **Gate 5:** restart persistence + migration tests + airplane-mode CRUD proof.
+
+### Gate 6 composite — reconciliation (execution 2026-09)
+
+Phase 6 (Farms), Phase 7 (Parcels) and Phase 8 (Campaigns) were developed as stacked
+slices and validated **jointly** under one **Gate 6 composite**, together with the
+combined `Farm → Parcel → Campaign` end-to-end flow. Result: PASS.
+
+This is an execution fact, not a renumbering. Phase numbering in this document is
+unchanged: Phase 6 remains Farms, Phase 7 remains Parcels, Phase 8 remains Campaigns,
+Phase 9 remains the Activity engine, and every later phase keeps its number. Where the
+per-phase gates below read **Gate 6**, **Gate 7** and **Gate 8**, they were satisfied
+together by the Gate 6 composite.
 
 ### Phase 6 — Farms
 
