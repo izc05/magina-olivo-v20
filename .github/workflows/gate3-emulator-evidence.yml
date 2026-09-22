@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - qa/gate3-emulator-evidence-v2
+      - "feat/**"
+      - "hotfix/**"
   pull_request:
     branches:
       - main

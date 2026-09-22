@@ -5,7 +5,12 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    # Feature and hotfix branches are validated on push, so a branch can reach a green
+    # emulator run before anyone opens a pull request for it.
+    branches:
+      - main
+      - "feat/**"
+      - "hotfix/**"
 
 permissions:
   contents: read
