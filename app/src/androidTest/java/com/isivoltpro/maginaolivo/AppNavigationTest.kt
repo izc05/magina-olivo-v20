@@ -382,8 +382,13 @@ class AppNavigationTest {
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
 
         // The same Activity is the one the Farm detail shows: one record, one home.
+        // Wait for the Farm list itself: the Registrar screen also shows the Farm name,
+        // as the section header of the Farm it resolved, and a header has no click action.
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
-        waitForText("Finca Registrar E2E")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("register-activity-root").fetchSemanticsNodes().isEmpty() &&
+                composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
+        }
         clickByText("Finca Registrar E2E")
         waitForTag("add-activity")
         waitForText("Riego desde Registrar")
@@ -513,14 +518,28 @@ class AppNavigationTest {
             .performClick()
     }
 
+    /**
+     * Clicks the node carrying this text that can actually receive a click.
+     *
+     * The same words legitimately appear more than once — a Farm name is a row in the
+     * list and a section heading on the screen that resolved it — and only one of them
+     * is clickable. Picking that one keeps the assertion strict without making the test
+     * depend on which screen happens to be composed at that instant.
+     */
     private fun clickByText(text: String) {
         waitForNodeOrDump("clickable node \"$text\"") { composeRule.onAllNodesWithText(text) }
-        scrollIntoViewIfPossible { composeRule.onNodeWithText(text) }
-        composeRule.onNodeWithText(text)
-            .assertIsDisplayed()
-            .assertIsEnabled()
-            .assertHasClickAction()
-            .performClick()
+        val node = clickableNodeWithText(text)
+        scrollIntoViewIfPossible { node }
+        node.assertIsDisplayed().assertIsEnabled().assertHasClickAction().performClick()
+    }
+
+    private fun clickableNodeWithText(text: String): SemanticsNodeInteraction {
+        val matches = composeRule.onAllNodesWithText(text)
+        val count = matches.fetchSemanticsNodes().size
+        val index = (0 until count).firstOrNull { position ->
+            runCatching { matches[position].assertHasClickAction() }.isSuccess
+        }
+        return matches[index ?: 0]
     }
 
     /**
