@@ -80,26 +80,27 @@ The Gate 6 Farm slice passed on code commit `a2d2d475` on 2026-09-20. Production
 
 The Gate 6 Parcel slice passed on code commit `ee89b9f7` on 2026-09-20. Production Farm detail now lists persisted Parcels and supports manual create, detail, edit, archive and restore. Parcel identity is app-owned, Farm membership history is non-destructive, optional GeoJSON geometry is retained, and manual data is never presented as Catastro-verified. Mutations are local-first and enqueue deterministic outbox intents. CI passed 30 unit tests, 42 API 35 instrumentation tests and 7 repository tests under airplane mode; the crash buffer was empty. Evidence and the verified DEV APK are attached to run `35506482946`. PR #201 contains this stacked slice.
 
-The Gate 6 Campaign slice is implementation-complete on `feat/android-campaigns` (stacked on `5f1c6f9a`) but **VALIDATION PENDING**. Room schema v3, `MIGRATION_2_3`, the offline Campaign aggregate, ViewModel state contracts, production screens and the real Farm → Parcel → Campaign navigation are in place. Review added `CampaignLifecycleContractTest` (11 instrumented contract tests) and hardened the combined E2E to prove the audited reopen path. Review also found and fixed one real defect: soft-deleted Campaigns stayed mutable, so an archived draft could be resurrected and could take the Farm's single current-Campaign slot; `mutate` now rejects archived aggregates, matching the Farm repository pattern.
+The Gate 6 Campaign slice passed on code commit `164aaa48` on 2026-09-22. Production Farm detail now owns the full Campaign lifecycle: create, edit while in preparation, activate, move to harvest, close, explicit audited reopen and archive of a draft. Room schema v3 and `MIGRATION_2_3` back a Campaign aggregate whose `campaign_parcels` children are materialised atomically at activation, freezing Farm name, Parcel name, managed area, cadastral reference and geometry so closed history survives any later Farm or Parcel rename. Mutations are local-first and collapse into a single deterministic Campaign outbox intent.
 
-No CI run, emulator run, airplane-mode run, crash-buffer check or DEV APK exists for this slice yet. Evidence and open risks are tracked in `docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md`.
+The canonical lifecycle is strictly linear `PREPARATION → ACTIVE → HARVEST → CLOSED`; `ACTIVE → CLOSED` is an illegal transition and `CLOSED → HARVEST` is the only backwards edge. At most one ACTIVE or HARVEST Campaign may exist per Farm. `ACTIVE`, `HARVEST` and `CLOSED` are protected from normal deletion; an archived `PREPARATION` draft is soft-deleted, cannot be mutated or resurrected, and a repeated archive is idempotent. RC1 ships no Campaign restore, and closing uses the device date with no date picker, the repository rejecting an end date before the start date.
+
+Review added `CampaignLifecycleContractTest` (13 instrumented contract tests) and hardened the combined E2E. It also found and fixed one real defect: soft-deleted Campaigns stayed mutable, so an archived draft could be resurrected and could take the Farm's single current-Campaign slot; `mutate` now rejects archived aggregates with `archived_campaign`, matching the Farm repository pattern.
+
+Both emulator workflows passed on `164aaa48`: Android CI #315 (run `35686302694`) with `foundation` SUCCESS and `gate3-emulator` SUCCESS, and the independent Gate 3 Android Emulator Evidence #36 (run `35686302700`) SUCCESS. The full instrumented suite passed 61/61, including 13/13 Campaign contract tests, and the Farm and Campaign repository tests passed 9/9 with real airplane mode enabled via `adb shell cmd connectivity airplane-mode enable` and verified through `settings get global airplane_mode_on = 1`. The crash buffer was 0 bytes. The verified DEV APK is artifact `magina-olivo-dev-debug` (`10676852700`, 13,146,341 bytes, sha256 `118156bd…0948ff`); emulator evidence is artifacts `10676937872` and `10677092622`. Full detail is in `docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md`. PR #205 contains this stacked slice and remains open, draft and unmerged.
 
 ```text
-CAMPAIGNS IMPLEMENTATION COMPLETE / VALIDATION PENDING
-GATE 6 = FAIL (IN PROGRESS)
+GATE 6 = PASS (Farms + Parcels + Campaigns + combined flow)
 ```
 
 ## Next deliverable
 
-Validate the Gate 6 Campaign slice:
+Gate 6 is closed. No new implementation phase is authorised yet. The permitted work, in order:
 
-- run lint, unit tests, instrumented compilation and the three debug builds;
-- run the full API 35 emulator suite, the airplane-mode repository run and the crash-buffer check;
-- verify and hash the installable DEV APK;
-- fill every PENDING field in `docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md` with real run and artifact IDs;
-- decide the three open risks recorded there (close-date source, reopen target state, Campaign restore).
+1. **Reconcile the roadmap numbering.** `docs/07-plans/ROADMAP-RC1.2.md` and `docs/00-master/SINGLE-TRACK-EXECUTION.md` still describe Phase 6 = Farms, Phase 7 = Parcels, Phase 8 = Campaigns, Phase 9 = Activity engine, while the implementation, its plan files and its evidence files treat Farms, Parcels and Campaigns as three slices of a single Gate 6. A reconciliation proposal must be approved before any phase is renumbered.
+2. **Decide the integration strategy for `main`.** `feat/android-campaigns` is stacked many commits ahead of `main` (`0a1649d1`) through PRs #197–#201 and #205. No merge until the owner approves the strategy.
+3. **Only then**, begin the Activity engine.
 
-Gate 6 must not be marked PASS until the Campaign slice and the combined Farm → Parcel → Campaign flow pass together.
+Activity engine implementation must not begin before items 1 and 2 are settled.
 
 ## Parallel-chat reconciliation
 
