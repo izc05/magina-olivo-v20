@@ -31,6 +31,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
+import com.isivoltpro.maginaolivo.ui.theme.MoMapBase
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
@@ -41,6 +42,8 @@ import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 @Composable
 fun ParcelDetailReferenceScreen(
     modifier: Modifier = Modifier,
+    onMapSelected: () -> Unit = {},
+    onCampaignSelected: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier
@@ -111,13 +114,14 @@ fun ParcelDetailReferenceScreen(
 
             MoSectionHeader(title = "Ubicación")
             Spacer(Modifier.height(MoSpacing.sm))
-            ParcelMapPreview()
+            ParcelMapPreview(onClick = onMapSelected)
 
             Spacer(Modifier.height(MoSpacing.lg))
 
             MoSectionHeader(title = "Campaña 2026/27")
             Spacer(Modifier.height(MoSpacing.sm))
             Card(
+                onClick = onCampaignSelected,
                 modifier = Modifier.fillMaxWidth(),
                 shape = MoShape.card,
                 colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
@@ -158,13 +162,14 @@ fun ParcelDetailReferenceScreen(
 }
 
 @Composable
-private fun ParcelMapPreview() {
+private fun ParcelMapPreview(onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(2.05f),
         shape = MoShape.cardLarge,
-        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(0xFFD8D5BA)),
+        colors = CardDefaults.cardColors(containerColor = MoMapBase),
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width

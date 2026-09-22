@@ -7,7 +7,7 @@ import org.junit.Test
 
 class ArchitectureBoundaryTest {
     @Test
-    fun phase2DoesNotPullFutureInfrastructureIntoSource() {
+    fun futureInfrastructureRemainsBlockedUntilItsPhase() {
         val sourceRoot = sequenceOf(
             File("src/main/java"),
             File("app/src/main/java"),
@@ -16,7 +16,6 @@ class ArchitectureBoundaryTest {
         assertTrue("Could not locate main source directory", sourceRoot != null)
 
         val forbidden = listOf(
-            "androidx.room",
             "supabase",
             "maplibre",
             "workmanager",
@@ -29,8 +28,66 @@ class ArchitectureBoundaryTest {
             .lowercase()
 
         forbidden.forEach { token ->
-            assertFalse("Phase 2 source must not depend on $token", sourceText.contains(token))
+            assertFalse("Source must not depend on $token before its phase", sourceText.contains(token))
         }
+    }
+
+    @Test
+    fun uiAndNavigationDoNotAccessRoomOrDaosDirectly() {
+        val sourceRoot = sequenceOf(
+            File("src/main/java"),
+            File("app/src/main/java"),
+        ).firstOrNull { it.exists() }
+
+        assertTrue("Could not locate main source directory", sourceRoot != null)
+
+        val presentationFiles =
+            sourceRoot!!
+                .walkTopDown()
+                .filter { file ->
+                    file.isFile &&
+                        file.extension == "kt" &&
+                        ("/ui/" in file.invariantSeparatorsPath ||
+                            "/navigation/" in file.invariantSeparatorsPath)
+                }.toList()
+
+        assertTrue("No UI/navigation Kotlin sources found", presentationFiles.isNotEmpty())
+
+        val forbidden = listOf(
+            "androidx.room",
+            ".data.local.dao",
+            "MaginaOlivoDatabase",
+        )
+
+        presentationFiles.forEach { file ->
+            val text = file.readText()
+            forbidden.forEach { token ->
+                assertFalse("${file.name} must not access $token", text.contains(token))
+            }
+        }
+    }
+
+    @Test
+    fun localPersistenceLayerDoesNotDependOnCompose() {
+        val sourceRoot = sequenceOf(
+            File("src/main/java"),
+            File("app/src/main/java"),
+        ).firstOrNull { it.exists() }
+
+        assertTrue("Could not locate main source directory", sourceRoot != null)
+
+        val localDataRoot = File(sourceRoot, "com/isivoltpro/maginaolivo/data/local")
+        assertTrue("Could not locate Room persistence package", localDataRoot.exists())
+
+        localDataRoot
+            .walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .forEach { file ->
+                assertFalse(
+                    "${file.name} must not depend on Compose",
+                    file.readText().contains("androidx.compose"),
+                )
+            }
     }
 
     @Test

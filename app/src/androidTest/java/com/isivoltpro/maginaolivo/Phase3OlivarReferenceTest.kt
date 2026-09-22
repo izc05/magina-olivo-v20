@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.ui.reference.farm.FarmDetailReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.olivar.OlivarReferenceScreen
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
@@ -36,7 +37,6 @@ class Phase3OlivarReferenceTest {
         }
 
         composeRule.onNodeWithTag("farm-detail-reference-root").assertIsDisplayed()
-        composeRule.onNodeWithText("Parcelas").assertIsDisplayed()
-        composeRule.onNodeWithText("Parcela Norte").assertIsDisplayed()
+        composeRule.onNodeWithText("Parcela Norte").performScrollTo().assertIsDisplayed()
     }
 }

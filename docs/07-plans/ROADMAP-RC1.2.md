@@ -11,11 +11,20 @@
 ✅ Phase 1 — Android Project Foundation
 ✅ Phase 2 — Base application architecture
 ✅ CR-003 — Mágina Olivo brand + canonical visual system
-✅ Phase 3 implementation — design system + reference screens
-▶ Gate 3 — visual / accessibility validation
+✅ Phase 3 — design system + reference screens — Gate 3 PASS
+✅ Phase 4 — Navigation shell — Gate 4 PASS
+✅ Phase 5 — Local database foundation — Gate 5 PASS
+✅ Phase 6 — Farms          ─┐
+✅ Phase 7 — Parcels         ─┼─ validated together as GATE 6 COMPOSITE — PASS
+✅ Phase 8 — Campaigns       ─┘
+▶ Phase 9 — Activity engine — NOT STARTED
 ```
 
-The only currently allowed production work is **Gate 3 validation/evidence**. Phase 4 implementation remains blocked until Gate 3 PASS. The approved display brand is **Mágina Olivo**. Domain/data architecture remains geographic-neutral.
+Gate 6 composite passed on 2026-09-22 on commit `164aaa48`, documented in
+`docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md`. The next functional phase pending is
+**Phase 9 — Activity engine**, which has **not** started: the validated Android stack
+(PRs #197–#201 and #205) must first be integrated into `main`. The approved display
+brand is **Mágina Olivo**. Domain/data architecture remains geographic-neutral.
 
 Canonical execution/handoff plan: `docs/00-master/SINGLE-TRACK-EXECUTION.md`.
 
@@ -136,6 +145,34 @@ Frozen roots:
 - seed/dev fixtures.
 
 **Gate 5:** migration tests + process restart persistence + airplane-mode CRUD proof on test entities.
+
+## Normative note — Gate 6 composite (execution 2026-09)
+
+Phases 6, 7 and 8 keep their historical functional identities and their numbering.
+They are **not** renumbered.
+
+During the 2026-09 execution they were implemented as three consecutive stacked
+slices and validated jointly under a single **Gate 6 composite**:
+
+```text
+GATE 6 COMPOSITE
+  ├─ Farms slice            — PASS — commit a2d2d475
+  ├─ Parcels slice          — PASS — commit ee89b9f7
+  ├─ Campaigns slice        — PASS — commit 164aaa48
+  └─ combined Farm → Parcel → Campaign E2E — PASS — commit 164aaa48
+
+RESULT: PASS
+```
+
+Terminology, to avoid collisions:
+
+- **Phase** = functional block of this roadmap. Phase numbering is immutable.
+- **Gate 6 composite** = the validation milestone that grouped Phases 6, 7 and 8
+  during this execution.
+
+The per-phase conditions below (**Gate 6**, **Gate 7**, **Gate 8**) were therefore
+satisfied together by the Gate 6 composite, not by three separate validation runs.
+Phase 9 and every later phase keep their original numbers.
 
 ## Phase 6 — Farms RC1.2
 

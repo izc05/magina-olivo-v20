@@ -35,6 +35,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 @Composable
 fun HarvestReferenceScreen(
     modifier: Modifier = Modifier,
+    onDeliverySelected: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier
@@ -108,6 +109,7 @@ fun HarvestReferenceScreen(
                 destination = "Cooperativa de referencia",
                 status = "Confirmada",
                 tone = MoStatusTone.Success,
+                onClick = onDeliverySelected,
             )
             Spacer(Modifier.height(MoSpacing.xs))
             HarvestDelivery(
@@ -116,6 +118,7 @@ fun HarvestReferenceScreen(
                 destination = "Cooperativa de referencia",
                 status = "Rendimiento pendiente",
                 tone = MoStatusTone.Warning,
+                onClick = onDeliverySelected,
             )
             Spacer(Modifier.height(MoSpacing.xs))
             HarvestDelivery(
@@ -124,6 +127,7 @@ fun HarvestReferenceScreen(
                 destination = "Cooperativa de referencia",
                 status = "Confirmada",
                 tone = MoStatusTone.Success,
+                onClick = onDeliverySelected,
             )
 
             Spacer(Modifier.height(MoSpacing.lg))
@@ -147,8 +151,10 @@ private fun HarvestDelivery(
     destination: String,
     status: String,
     tone: MoStatusTone,
+    onClick: () -> Unit,
 ) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = MoShape.card,
         colors = CardDefaults.cardColors(containerColor = MoWarmWhite),

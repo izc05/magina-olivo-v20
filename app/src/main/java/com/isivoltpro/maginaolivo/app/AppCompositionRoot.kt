@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.app
 
+import android.content.Context
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.dispatchers.DefaultAppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
@@ -9,6 +10,13 @@ import com.isivoltpro.maginaolivo.core.regional.RegionalContext
 import com.isivoltpro.maginaolivo.core.regional.UnitPreferences
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.core.time.SystemAppClock
+import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
+import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
+import com.isivoltpro.maginaolivo.data.repository.AndroidPersistedDocumentSource
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstCampaignRepository
 
 data class AppCompositionRoot(
     val environment: AppEnvironment,
@@ -18,6 +26,8 @@ data class AppCompositionRoot(
     val logger: AppLogger,
     val regionalContext: RegionalContext,
     val unitPreferences: UnitPreferences,
+    val onboardingStateStore: OnboardingStateStore,
+    val localPersistence: LocalPersistence?,
 ) {
     companion object {
         fun createDefault(environmentValue: String): AppCompositionRoot =
@@ -29,6 +39,55 @@ data class AppCompositionRoot(
                 logger = AndroidAppLogger(),
                 regionalContext = RegionalContext.spainDefault(),
                 unitPreferences = UnitPreferences(),
+                onboardingStateStore = InMemoryOnboardingStateStore(),
+                localPersistence = null,
             )
+
+        fun createAndroid(
+            context: Context,
+            environmentValue: String,
+        ): AppCompositionRoot {
+            val applicationContext = context.applicationContext
+            val defaults = createDefault(environmentValue)
+            val database = MaginaOlivoDatabase.getInstance(applicationContext)
+            val farmRepository = OfflineFirstFarmRepository(
+                database = database,
+                clock = defaults.clock,
+                idGenerator = defaults.idGenerator,
+                dispatchers = defaults.dispatchers,
+            )
+            val workspaceRepository = LocalWorkspaceRepository(
+                database = database,
+                clock = defaults.clock,
+                idGenerator = defaults.idGenerator,
+                dispatchers = defaults.dispatchers,
+                regionalContext = defaults.regionalContext,
+            )
+            val farmCoverRepository = OfflineFirstFarmCoverRepository(
+                database = database,
+                documentSource = AndroidPersistedDocumentSource(applicationContext.contentResolver),
+                clock = defaults.clock,
+                idGenerator = defaults.idGenerator,
+                dispatchers = defaults.dispatchers,
+            )
+            val parcelRepository = OfflineFirstParcelRepository(
+                database = database,
+                clock = defaults.clock,
+                idGenerator = defaults.idGenerator,
+                dispatchers = defaults.dispatchers,
+            )
+            val campaignRepository = OfflineFirstCampaignRepository(database, defaults.clock, defaults.idGenerator, defaults.dispatchers)
+            return defaults.copy(
+                onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
+                localPersistence = LocalPersistence(
+                    database = database,
+                    farmRepository = farmRepository,
+                    farmCoverRepository = farmCoverRepository,
+                    parcelRepository = parcelRepository,
+                    campaignRepository = campaignRepository,
+                    workspaceRepository = workspaceRepository,
+                ),
+            )
+        }
     }
 }

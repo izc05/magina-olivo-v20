@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.ui.reference.campaign
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 @Composable
 fun CampaignReferenceScreen(
     modifier: Modifier = Modifier,
+    onAnalyticsSelected: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier
@@ -137,6 +139,7 @@ fun CampaignReferenceScreen(
             MoChartContainer(
                 title = "Evolución de producción",
                 description = "Comparativa de ejemplo; los datos reales se cargarán desde el histórico.",
+                modifier = Modifier.clickable(onClick = onAnalyticsSelected),
             ) {
                 Spacer(Modifier.height(MoSpacing.md))
                 CampaignBars(

@@ -44,6 +44,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoSage
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSoftGold
+import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldText
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
@@ -62,6 +63,13 @@ fun HomeReferenceScreen(
     modifier: Modifier = Modifier,
     selectedRoot: Int = 0,
     onRootSelected: (Int) -> Unit = {},
+    showBottomBar: Boolean = true,
+    onOlivarSelected: () -> Unit = {},
+    onMapSelected: () -> Unit = {},
+    onCampaignSelected: () -> Unit = {},
+    onHarvestSelected: () -> Unit = {},
+    onExpensesSelected: () -> Unit = {},
+    onWeatherSelected: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier
@@ -69,11 +77,13 @@ fun HomeReferenceScreen(
             .testTag("home-reference-root"),
         containerColor = MoCream,
         bottomBar = {
-            MoBottomBar(
-                items = rootItems,
-                selectedIndex = selectedRoot,
-                onSelected = onRootSelected,
-            )
+            if (showBottomBar) {
+                MoBottomBar(
+                    items = rootItems,
+                    selectedIndex = selectedRoot,
+                    onSelected = onRootSelected,
+                )
+            }
         },
     ) { innerPadding ->
         Column(
@@ -108,14 +118,22 @@ fun HomeReferenceScreen(
             ) {
                 WeatherSummaryCard(
                     modifier = Modifier.weight(1f),
+                    onClick = onWeatherSelected,
                 )
                 CampaignSummaryCard(
                     modifier = Modifier.weight(1f),
+                    onClick = onCampaignSelected,
                 )
             }
 
             Spacer(Modifier.height(MoSpacing.md))
-            QuickActions()
+            QuickActions(
+                onOlivarSelected = onOlivarSelected,
+                onMapSelected = onMapSelected,
+                onCampaignSelected = onCampaignSelected,
+                onHarvestSelected = onHarvestSelected,
+                onExpensesSelected = onExpensesSelected,
+            )
 
             Spacer(Modifier.height(MoSpacing.lg))
             OilMarketCard()
@@ -231,8 +249,12 @@ private fun TerritoryHero() {
 }
 
 @Composable
-private fun WeatherSummaryCard(modifier: Modifier = Modifier) {
+private fun WeatherSummaryCard(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     Card(
+        onClick = onClick,
         modifier = modifier,
         shape = MoShape.card,
         colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
@@ -251,8 +273,12 @@ private fun WeatherSummaryCard(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun CampaignSummaryCard(modifier: Modifier = Modifier) {
+private fun CampaignSummaryCard(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     Card(
+        onClick = onClick,
         modifier = modifier,
         shape = MoShape.card,
         colors = CardDefaults.cardColors(containerColor = MoOlivePrimary),
@@ -271,21 +297,28 @@ private fun CampaignSummaryCard(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun QuickActions() {
+private fun QuickActions(
+    onOlivarSelected: () -> Unit,
+    onMapSelected: () -> Unit,
+    onCampaignSelected: () -> Unit,
+    onHarvestSelected: () -> Unit,
+    onExpensesSelected: () -> Unit,
+) {
     val actions = listOf(
-        "Mis fincas" to "F",
-        "Mapa y\nCatastro" to "M",
-        "Campaña" to "C",
-        "Cosecha" to "O",
-        "Gastos" to "€",
+        Triple("Mis fincas", "F", onOlivarSelected),
+        Triple("Mapa y\nCatastro", "M", onMapSelected),
+        Triple("Campaña", "C", onCampaignSelected),
+        Triple("Cosecha", "O", onHarvestSelected),
+        Triple("Gastos", "€", onExpensesSelected),
     )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-        actions.forEach { (label, symbol) ->
+        actions.forEach { (label, symbol, onClick) ->
             Card(
+                onClick = onClick,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
@@ -384,7 +417,7 @@ private fun CooperativeNewsCard() {
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text("ACTUALIDAD", style = MaterialTheme.typography.labelMedium, color = MoSoftGold)
+                Text("ACTUALIDAD", style = MaterialTheme.typography.labelMedium, color = MoSoftGoldText)
                 Text("La cooperativa prepara la campaña", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text(
                     "Avisos y noticias de tu cooperativa de referencia aparecerán aquí.",

@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-09-18
+**Last reviewed:** 2026-09-20
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -20,15 +20,18 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 1 — Android Project Foundation
 ✅ Gate 2 — Base application architecture
 ✅ CR-003 — Mágina Olivo brand + canonical visual system approved
+✅ Gate 3 — Visual / accessibility / emulator validation
+✅ Gate 4 — Production navigation shell
+✅ Gate 5 — Local database foundation
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 3 — GATE 3 VISUAL / ACCESSIBILITY VALIDATION
+▶ GATE 6 — CAMPAIGNS (FARMS + PARCELS SLICES PASS; GATE 6 OVERALL IN PROGRESS)
 ```
 
-Do not start Phase 4 navigation-shell implementation or agricultural persistence/features until Gate 3 passes.
+Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. The Gate 6 Farm and Parcel slices are validated in `docs/06-testing/PHASE6-FARMS-SLICE.md` and `docs/06-testing/PHASE6-PARCELS-SLICE.md`. Per the current owner mission, Gate 6 covers Farms + Parcels + Campaigns, so it remains FAIL/in progress while Campaign implementation begins.
 
 ## Mandatory reading order for any agent
 
@@ -59,28 +62,45 @@ RC1.2 Product Lock is normative and overrides contradictory RC1-era wording unti
 
 CR-003 resolves the display brand as **Mágina Olivo** and freezes the visual references under `docs/design/`. Geographic-neutral domain/data architecture remains unchanged.
 
-Gate 2 passed on 2026-09-18. Phase 3 implementation is now merged into `main`: canonical Compose tokens/components, six-screen onboarding and all required reference screens are implemented. Gate 3 remains open only for validation/evidence.
+Gate 2 passed on 2026-09-18. Phase 3 implementation is merged into `main`: canonical Compose tokens/components, six-screen onboarding and all required reference screens are implemented.
+
+Gate 3 passed on integration commit `6f37b736` on 2026-09-19. Lint, 12 unit tests, 15 Android instrumentation tests, all debug environment builds, four rendering configurations, accessibility semantics, cold starts and crash-buffer checks passed. The installable DEV APK and emulator evidence are attached to GitHub Actions runs `35435717081` and `35435717079`.
+
+PR #197 integrates and supersedes the Android validation intent of draft PRs #195 and #196 without closing or deleting their historical record. `main` remains unchanged pending owner authorization.
+
+Gate 4 passed on code commit `483fc145` on 2026-09-19. The app now has one production `NavHost`, the five frozen roots, deterministic back behavior, contextual Register entry, persisted onboarding completion and DEV-only catalogue access. CI passed 17 unit tests and 24 Android instrumentation tests; emulator evidence and the installable DEV APK are attached to runs `35449235415` and `35449237218`.
+
+Validation also closed a CI false positive: the evidence script now rejects JUnit `FAILURES!!!` even when `adb am instrument` returns zero. PR #198 contains the Phase 4 stack and remains separate from `main`.
+
+Gate 5 passed on code commit `ad61d6f4` on 2026-09-19. Room is now the wired local persistence foundation with committed v1/v2 schemas, an explicit migration, 13 core tables, client UUIDs, soft-delete/version/sync metadata, repository/DAO boundaries and transactional Farm + outbox proof. A deterministic fixture exists only in the DEV flavor.
+
+CI passed 22 unit tests and 28 Android instrumentation tests. The three repository tests were also executed separately with Android airplane mode enabled and Wi-Fi disabled; both the primary and independent API 35 emulator runs passed with empty crash buffers. Evidence and the installable DEV APK are attached to runs `35465669062` and `35465670678`. PR #199 contains the stacked Phase 5 implementation; `main` remains unchanged.
+
+The Gate 6 Farm slice passed on code commit `a2d2d475` on 2026-09-20. Production Mi Olivar now uses Room-backed Farm list/detail routes with create, edit, archive, restore, truthful derived summaries and durable cover-photo metadata. Every mutation is local-first and queues its synchronization intent. CI passed 27 unit tests, 37 API 35 instrumentation tests and 6 repository tests under airplane mode; the crash buffer was empty. Evidence and the verified DEV APK are attached to run `35480574641`. PR #200 contains this stacked slice.
+
+The Gate 6 Parcel slice passed on code commit `ee89b9f7` on 2026-09-20. Production Farm detail now lists persisted Parcels and supports manual create, detail, edit, archive and restore. Parcel identity is app-owned, Farm membership history is non-destructive, optional GeoJSON geometry is retained, and manual data is never presented as Catastro-verified. Mutations are local-first and enqueue deterministic outbox intents. CI passed 30 unit tests, 42 API 35 instrumentation tests and 7 repository tests under airplane mode; the crash buffer was empty. Evidence and the verified DEV APK are attached to run `35506482946`. PR #201 contains this stacked slice.
+
+The Gate 6 Campaign slice passed on code commit `164aaa48` on 2026-09-22. Production Farm detail now owns the full Campaign lifecycle: create, edit while in preparation, activate, move to harvest, close, explicit audited reopen and archive of a draft. Room schema v3 and `MIGRATION_2_3` back a Campaign aggregate whose `campaign_parcels` children are materialised atomically at activation, freezing Farm name, Parcel name, managed area, cadastral reference and geometry so closed history survives any later Farm or Parcel rename. Mutations are local-first and collapse into a single deterministic Campaign outbox intent.
+
+The canonical lifecycle is strictly linear `PREPARATION → ACTIVE → HARVEST → CLOSED`; `ACTIVE → CLOSED` is an illegal transition and `CLOSED → HARVEST` is the only backwards edge. At most one ACTIVE or HARVEST Campaign may exist per Farm. `ACTIVE`, `HARVEST` and `CLOSED` are protected from normal deletion; an archived `PREPARATION` draft is soft-deleted, cannot be mutated or resurrected, and a repeated archive is idempotent. RC1 ships no Campaign restore, and closing uses the device date with no date picker, the repository rejecting an end date before the start date.
+
+Review added `CampaignLifecycleContractTest` (13 instrumented contract tests) and hardened the combined E2E. It also found and fixed one real defect: soft-deleted Campaigns stayed mutable, so an archived draft could be resurrected and could take the Farm's single current-Campaign slot; `mutate` now rejects archived aggregates with `archived_campaign`, matching the Farm repository pattern.
+
+Both emulator workflows passed on `164aaa48`: Android CI #315 (run `35686302694`) with `foundation` SUCCESS and `gate3-emulator` SUCCESS, and the independent Gate 3 Android Emulator Evidence #36 (run `35686302700`) SUCCESS. The full instrumented suite passed 61/61, including 13/13 Campaign contract tests, and the Farm and Campaign repository tests passed 9/9 with real airplane mode enabled via `adb shell cmd connectivity airplane-mode enable` and verified through `settings get global airplane_mode_on = 1`. The crash buffer was 0 bytes. The verified DEV APK is artifact `magina-olivo-dev-debug` (`10676852700`, 13,146,341 bytes, sha256 `118156bd…0948ff`); emulator evidence is artifacts `10676937872` and `10677092622`. Full detail is in `docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md`. PR #205 contains this stacked slice and remains open, draft and unmerged.
+
+```text
+GATE 6 = PASS (Farms + Parcels + Campaigns + combined flow)
+```
 
 ## Next deliverable
 
-Do **not** create more product/reference screens unless Gate 3 validation identifies a defect.
+Gate 6 is closed. No new implementation phase is authorised yet. The permitted work, in order:
 
-Close Gate 3 by producing and reviewing:
+1. **Reconcile the roadmap numbering.** `docs/07-plans/ROADMAP-RC1.2.md` and `docs/00-master/SINGLE-TRACK-EXECUTION.md` still describe Phase 6 = Farms, Phase 7 = Parcels, Phase 8 = Campaigns, Phase 9 = Activity engine, while the implementation, its plan files and its evidence files treat Farms, Parcels and Campaigns as three slices of a single Gate 6. A reconciliation proposal must be approved before any phase is renumbered.
+2. **Decide the integration strategy for `main`.** `feat/android-campaigns` is stacked many commits ahead of `main` (`0a1649d1`) through PRs #197–#201 and #205. No merge until the owner approves the strategy.
+3. **Only then**, begin the Activity engine.
 
-1. 360 dp compact rendering;
-2. ~393–412 dp common-phone rendering;
-3. 480 dp large-phone rendering;
-4. font-scale verification;
-5. TalkBack/semantics review;
-6. reduced-motion review where relevant;
-7. outdoor contrast review;
-8. empty/loading/error/offline state review;
-9. representative Android screenshots compared with the canonical visual boards;
-10. final audit for stray/ad-hoc visual values.
-
-Parcel Detail and Delivery/OCR Review are implemented in Compose but still need their representative Android screenshots added to canonical visual evidence.
-
-Only after Gate 3 PASS may Phase 4 begin the production navigation shell.
+Activity engine implementation must not begin before items 1 and 2 are settled.
 
 ## Parallel-chat reconciliation
 
