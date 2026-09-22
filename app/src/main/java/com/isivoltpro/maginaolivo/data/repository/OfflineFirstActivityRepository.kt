@@ -9,6 +9,14 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityParcelTargetEntity
+import com.isivoltpro.maginaolivo.data.local.entity.FertilizationDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.IncidentDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.IrrigationDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.IrrigationPriceSnapshotEntity
+import com.isivoltpro.maginaolivo.data.local.entity.MaintenanceDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.PruningDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.SoilWorkDetailEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
@@ -20,10 +28,12 @@ import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityChanges
+import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
+import com.isivoltpro.maginaolivo.domain.activity.IrrigationPrice
 import com.isivoltpro.maginaolivo.domain.activity.NewActivity
 import java.time.Instant
 import java.util.UUID
@@ -66,6 +76,7 @@ class OfflineFirstActivityRepository(
         if (!command.asDraft && command.parcelIds.isEmpty()) {
             return AppResult.Failure(AppError.Validation("parcelIds", "empty"))
         }
+        validateDetail(command.type, command.detail)?.let { return it }
         return withContext(dispatchers.io) {
             safely("create_activity") {
                 val farm = database.farmDao().findById(command.farmId)
@@ -89,6 +100,7 @@ class OfflineFirstActivityRepository(
                         metadata = pending(now),
                     ),
                 )
+                replaceDetail(id, farm.workspaceId, command.detail, now)
                 replaceTargets(id, command.parcelIds, now)
                 enqueue(id, OutboxOperation.CREATE, now)
                 AppResult.Success(id)
@@ -99,6 +111,7 @@ class OfflineFirstActivityRepository(
     override suspend fun update(id: UUID, changes: ActivityChanges): AppResult<Unit> {
         val description = changes.description.trim()
         if (description.isEmpty()) return AppResult.Failure(AppError.Validation("description", "blank"))
+        validateDetail(changes.type, changes.detail)?.let { return it }
         return mutate(id, "update_activity") { current, now ->
             if (current.status !in EDITABLE) return@mutate conflict("protected_activity")
             if (current.status == ActivityStatus.PLANNED && changes.parcelIds.isEmpty()) {
@@ -113,6 +126,7 @@ class OfflineFirstActivityRepository(
                     metadata = current.metadata.next(now),
                 ),
             )
+            replaceDetail(id, current.workspaceId, changes.detail, now)
             replaceTargets(id, changes.parcelIds, now)
             enqueue(id, OutboxOperation.UPDATE, now)
             AppResult.Success(Unit)
@@ -238,8 +252,222 @@ class OfflineFirstActivityRepository(
             targets = targets.map {
                 ActivityParcelTarget(it.parcelId, it.parcelNameAtTarget, it.areaAffectedM2, it.notes)
             },
+            detail = toDomainDetail(),
             version = activity.metadata.version,
         )
+
+    /**
+     * A typed detail belongs to exactly one Activity type.
+     *
+     * The rule is not that a detail is required — a draft may still be nothing but a
+     * header — but that whatever detail is present matches the Activity. An irrigation
+     * carrying fertilisation figures is rejected before anything is written, and the
+     * numeric fields are checked for the one thing that is always wrong: a negative
+     * amount of work, product, water or money.
+     */
+    private fun validateDetail(type: ActivityType, detail: ActivityDetail?): AppResult.Failure? {
+        if (detail == null) return null
+        if (detail.type != type) return AppResult.Failure(AppError.Validation("detail", "type_mismatch"))
+        return when (detail) {
+            is ActivityDetail.Pruning ->
+                notNegative("workerCount", detail.workerCount?.toDouble())
+                    ?: notNegative("hours", detail.hours)
+            is ActivityDetail.Fertilization ->
+                notNegative("totalQuantity", detail.totalQuantity)
+                    ?: notNegative("doseValue", detail.doseValue)
+            is ActivityDetail.Phytosanitary ->
+                notNegative("totalQuantity", detail.totalQuantity)
+                    ?: notNegative("doseValue", detail.doseValue)
+            is ActivityDetail.Irrigation ->
+                notNegative("durationMinutes", detail.durationMinutes?.toDouble())
+                    ?: notNegative("volumeM3", detail.volumeM3)
+                    ?: validatePrice(detail.price)
+            // Severity and state are enums, so an invalid value cannot even be built.
+            is ActivityDetail.Incident -> null
+            is ActivityDetail.SoilWork -> null
+            is ActivityDetail.Maintenance -> null
+        }
+    }
+
+    private fun notNegative(field: String, value: Double?): AppResult.Failure? =
+        if (value != null && value < 0) AppResult.Failure(AppError.Validation(field, "negative")) else null
+
+    private fun validatePrice(price: IrrigationPrice?): AppResult.Failure? {
+        if (price == null) return null
+        if (price.currency.isBlank()) return AppResult.Failure(AppError.Validation("currency", "blank"))
+        return notNegative("unitPriceMinor", price.unitPriceMinor?.toDouble())
+            ?: notNegative("quantity", price.quantity)
+            ?: notNegative("estimatedAmountMinor", price.estimatedAmountMinor?.toDouble())
+    }
+
+    /**
+     * Writes the Activity's one typed detail, replacing whatever it had.
+     *
+     * Every detail table is cleared first because retyping an Activity is a legitimate
+     * correction and the invariant is one matching detail: leaving the old row behind
+     * would hide a record under a type that can no longer read it. This runs inside the
+     * caller's transaction, so the header, the Parcel targets and the detail are one
+     * mutation and one outbox intent (RC1-NORMATIVE-ADDENDUM D5).
+     */
+    private suspend fun replaceDetail(
+        activityId: UUID,
+        workspaceId: UUID,
+        detail: ActivityDetail?,
+        now: Instant,
+    ) {
+        val dao = database.activityDao()
+        dao.deletePruning(activityId)
+        dao.deleteFertilization(activityId)
+        dao.deletePhytosanitary(activityId)
+        dao.deleteSoilWork(activityId)
+        dao.deleteIrrigation(activityId)
+        dao.deleteIrrigationPrice(activityId)
+        dao.deleteMaintenance(activityId)
+        dao.deleteIncident(activityId)
+        val metadata = pending(now)
+        when (detail) {
+            null -> Unit
+            is ActivityDetail.Pruning -> dao.upsertPruning(
+                PruningDetailEntity(
+                    activityId = activityId,
+                    workspaceId = workspaceId,
+                    pruningType = detail.pruningType.normalized(),
+                    workerCount = detail.workerCount,
+                    hours = detail.hours,
+                    residueManagement = detail.residueManagement.normalized(),
+                    metadata = metadata,
+                ),
+            )
+            is ActivityDetail.Fertilization -> dao.upsertFertilization(
+                FertilizationDetailEntity(
+                    activityId = activityId,
+                    workspaceId = workspaceId,
+                    productName = detail.productName.normalized(),
+                    totalQuantity = detail.totalQuantity,
+                    unit = detail.unit.normalized(),
+                    doseValue = detail.doseValue,
+                    doseUnit = detail.doseUnit.normalized(),
+                    applicationMethod = detail.applicationMethod.normalized(),
+                    metadata = metadata,
+                ),
+            )
+            is ActivityDetail.Phytosanitary -> dao.upsertPhytosanitary(
+                PhytosanitaryDetailEntity(
+                    activityId = activityId,
+                    workspaceId = workspaceId,
+                    productName = detail.productName.normalized(),
+                    activeSubstance = detail.activeSubstance.normalized(),
+                    totalQuantity = detail.totalQuantity,
+                    unit = detail.unit.normalized(),
+                    doseValue = detail.doseValue,
+                    doseUnit = detail.doseUnit.normalized(),
+                    reason = detail.reason.normalized(),
+                    equipmentText = detail.equipmentText.normalized(),
+                    metadata = metadata,
+                ),
+            )
+            is ActivityDetail.SoilWork -> dao.upsertSoilWork(
+                SoilWorkDetailEntity(
+                    activityId = activityId,
+                    workspaceId = workspaceId,
+                    workType = detail.workType.normalized(),
+                    method = detail.method.normalized(),
+                    metadata = metadata,
+                ),
+            )
+            is ActivityDetail.Irrigation -> {
+                dao.upsertIrrigation(
+                    IrrigationDetailEntity(
+                        activityId = activityId,
+                        workspaceId = workspaceId,
+                        durationMinutes = detail.durationMinutes,
+                        volumeM3 = detail.volumeM3,
+                        sectorText = detail.sectorText.normalized(),
+                        systemText = detail.systemText.normalized(),
+                        metadata = metadata,
+                    ),
+                )
+                detail.price?.let { price ->
+                    dao.upsertIrrigationPrice(
+                        IrrigationPriceSnapshotEntity(
+                            activityId = activityId,
+                            workspaceId = workspaceId,
+                            pricingBasis = price.basis,
+                            unitPriceMinor = price.unitPriceMinor,
+                            quantity = price.quantity,
+                            estimatedAmountMinor = price.estimatedAmountMinor,
+                            currency = price.currency,
+                            priceDate = price.priceDate,
+                            linkedExpenseId = price.linkedExpenseId,
+                            notes = price.notes.normalized(),
+                            metadata = metadata,
+                        ),
+                    )
+                }
+            }
+            is ActivityDetail.Maintenance -> dao.upsertMaintenance(
+                MaintenanceDetailEntity(
+                    activityId = activityId,
+                    workspaceId = workspaceId,
+                    maintenanceType = detail.maintenanceType.normalized(),
+                    assetText = detail.assetText.normalized(),
+                    metadata = metadata,
+                ),
+            )
+            is ActivityDetail.Incident -> dao.upsertIncident(
+                IncidentDetailEntity(
+                    activityId = activityId,
+                    workspaceId = workspaceId,
+                    category = detail.category.normalized(),
+                    severity = detail.severity,
+                    incidentStatus = detail.state,
+                    actionTaken = detail.actionTaken.normalized(),
+                    resolvedAt = detail.resolvedAt,
+                    metadata = metadata,
+                ),
+            )
+        }
+    }
+
+    private fun ActivityWithTargets.toDomainDetail(): ActivityDetail? {
+        pruning?.let {
+            return ActivityDetail.Pruning(it.pruningType, it.workerCount, it.hours, it.residueManagement)
+        }
+        fertilization?.let {
+            return ActivityDetail.Fertilization(
+                it.productName, it.totalQuantity, it.unit, it.doseValue, it.doseUnit, it.applicationMethod,
+            )
+        }
+        phytosanitary?.let {
+            return ActivityDetail.Phytosanitary(
+                it.productName, it.activeSubstance, it.totalQuantity, it.unit,
+                it.doseValue, it.doseUnit, it.reason, it.equipmentText,
+            )
+        }
+        soilWork?.let { return ActivityDetail.SoilWork(it.workType, it.method) }
+        irrigation?.let { row ->
+            val price = irrigationPrice?.let {
+                IrrigationPrice(
+                    basis = it.pricingBasis,
+                    priceDate = it.priceDate,
+                    unitPriceMinor = it.unitPriceMinor,
+                    quantity = it.quantity,
+                    estimatedAmountMinor = it.estimatedAmountMinor,
+                    currency = it.currency,
+                    linkedExpenseId = it.linkedExpenseId,
+                    notes = it.notes,
+                )
+            }
+            return ActivityDetail.Irrigation(
+                row.durationMinutes, row.volumeM3, row.sectorText, row.systemText, price,
+            )
+        }
+        maintenance?.let { return ActivityDetail.Maintenance(it.maintenanceType, it.assetText) }
+        incident?.let {
+            return ActivityDetail.Incident(it.category, it.severity, it.incidentStatus, it.actionTaken, it.resolvedAt)
+        }
+        return null
+    }
 
     private companion object {
         val EDITABLE = setOf(ActivityStatus.DRAFT, ActivityStatus.PLANNED)
