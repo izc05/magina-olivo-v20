@@ -1,8 +1,14 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.SemanticsNodeInteractionCollection
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -10,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.printToString
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -226,18 +233,15 @@ class AppNavigationTest {
         waitForTag("campaign-detail-root")
 
         // PREPARATION -> ACTIVE
-        waitForTag("activate-campaign")
-        composeRule.onNodeWithTag("activate-campaign").performClick()
+        clickLifecycleActionByTag("activate-campaign")
         confirmCampaignAction()
 
         // ACTIVE -> HARVEST
-        waitForText("Iniciar recolección")
-        composeRule.onNodeWithText("Iniciar recolección").performClick()
+        clickLifecycleActionByText("Iniciar recolección")
         confirmCampaignAction()
 
         // HARVEST -> CLOSED
-        waitForTag("close-campaign")
-        composeRule.onNodeWithTag("close-campaign").performClick()
+        clickLifecycleActionByTag("close-campaign")
         confirmCampaignAction()
         waitForText("Histórico protegido")
 
@@ -259,13 +263,11 @@ class AppNavigationTest {
         composeRule.onNodeWithText("Histórico protegido").assertIsDisplayed()
 
         // CLOSED -> HARVEST
-        waitForTag("reopen-campaign")
-        composeRule.onNodeWithTag("reopen-campaign").performScrollTo().performClick()
+        clickLifecycleActionByTag("reopen-campaign")
         confirmCampaignAction()
 
         // HARVEST -> CLOSED again
-        waitForTag("close-campaign")
-        composeRule.onNodeWithTag("close-campaign").performScrollTo().performClick()
+        clickLifecycleActionByTag("close-campaign")
         confirmCampaignAction()
         waitForText("Histórico protegido")
         composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
@@ -308,10 +310,62 @@ class AppNavigationTest {
         }
     }
 
+    /**
+     * Waits for a node and, on timeout, fails with the semantics of EVERY Compose root.
+     *
+     * A ModalBottomSheet renders in its own window, so a silent no-op click on the screen
+     * behind it and a sheet that opened without the expected child look identical from a
+     * bare timeout. The dump tells the two apart on the next CI run.
+     */
+    private fun waitForNodeOrDump(description: String, nodes: () -> SemanticsNodeInteractionCollection) {
+        try {
+            composeRule.waitUntil(UI_TIMEOUT_MS) { nodes().fetchSemanticsNodes().isNotEmpty() }
+        } catch (timeout: ComposeTimeoutException) {
+            throw AssertionError(
+                "Timed out waiting for $description.\nSemantics of every Compose root:\n" +
+                    composeRule.onAllNodes(isRoot(), useUnmergedTree = true).printToString(Int.MAX_VALUE),
+                timeout,
+            )
+        }
+    }
+
+    /**
+     * Clicks a Campaign lifecycle button, proving first that the click can actually land.
+     *
+     * The detail screen is a verticalScroll Column, so a composed button can sit outside
+     * the viewport: waitForTag then succeeds, performClick silently hits nothing and the
+     * sheet never opens. Scrolling to it and asserting displayed/enabled/clickable turns
+     * that silent no-op into a named failure.
+     */
+    private fun clickLifecycleActionByTag(tag: String) {
+        waitForNodeOrDump("lifecycle action <$tag>") { composeRule.onAllNodesWithTag(tag) }
+        composeRule.onNodeWithTag(tag).performScrollTo()
+        composeRule.onNodeWithTag(tag)
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .assertHasClickAction()
+            .performClick()
+    }
+
+    private fun clickLifecycleActionByText(text: String) {
+        waitForNodeOrDump("lifecycle action \"$text\"") { composeRule.onAllNodesWithText(text) }
+        composeRule.onNodeWithText(text).performScrollTo()
+        composeRule.onNodeWithText(text)
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .assertHasClickAction()
+            .performClick()
+    }
+
     /** Confirms a Campaign lifecycle action once its ModalBottomSheet is actually composed. */
     private fun confirmCampaignAction() {
-        waitForTag("confirm-campaign-action")
-        composeRule.onNodeWithTag("confirm-campaign-action").performClick()
+        // The sheet title proves the ModalBottomSheet window opened at all; only then is a
+        // missing button a defect inside the sheet rather than a click that never landed.
+        waitForNodeOrDump("confirmation sheet title") { composeRule.onAllNodesWithText("Confirmar cambio") }
+        waitForNodeOrDump("confirm-campaign-action") {
+            composeRule.onAllNodesWithTag("confirm-campaign-action", useUnmergedTree = true)
+        }
+        composeRule.onNodeWithTag("confirm-campaign-action", useUnmergedTree = true).performClick()
     }
 
     private companion object {
