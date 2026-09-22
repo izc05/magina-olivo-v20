@@ -10,6 +10,9 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.activity.NewActivity
+import com.isivoltpro.maginaolivo.domain.farm.Farm
+import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.Job
@@ -107,6 +110,64 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
         mutableState.value = when (operation()) {
             is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message)
             is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = "No se pudo guardar en este dispositivo")
+        }
+    }
+}
+
+/**
+ * Backs the "Registrar actuación" entry point of the Registrar (+) sheet.
+ *
+ * An Activity always belongs to a Farm, so the global entry point has to resolve one
+ * before the real editor can be shown. With a single Farm there is nothing to ask.
+ */
+data class RegisterActivityUiState(
+    val isLoading: Boolean = true,
+    val farms: List<Farm> = emptyList(),
+    val selectedFarmId: UUID? = null,
+    val error: String? = null,
+)
+
+class RegisterActivityViewModel(
+    private val farmRepository: FarmRepository,
+    private val workspaceRepository: WorkspaceRepository,
+) : ViewModel() {
+    private val mutableState = MutableStateFlow(RegisterActivityUiState())
+    val state: StateFlow<RegisterActivityUiState> = mutableState.asStateFlow()
+    private var observationJob: Job? = null
+
+    init {
+        load()
+    }
+
+    fun retry() = load()
+
+    fun selectFarm(farmId: UUID) {
+        mutableState.value = mutableState.value.copy(selectedFarmId = farmId)
+    }
+
+    fun changeFarm() {
+        mutableState.value = mutableState.value.copy(selectedFarmId = null)
+    }
+
+    private fun load() {
+        observationJob?.cancel()
+        mutableState.value = mutableState.value.copy(isLoading = true, error = null)
+        observationJob = viewModelScope.launch {
+            when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+                is AppResult.Failure -> mutableState.value = mutableState.value.copy(
+                    isLoading = false,
+                    error = "No se pudo abrir el almacenamiento de este dispositivo",
+                )
+                is AppResult.Success -> farmRepository.observeActive(workspace.value).collect { farms ->
+                    val current = mutableState.value
+                    val stillThere = current.selectedFarmId?.takeIf { id -> farms.any { it.id == id } }
+                    mutableState.value = current.copy(
+                        isLoading = false,
+                        farms = farms,
+                        selectedFarmId = stillThere ?: farms.singleOrNull()?.id,
+                    )
+                }
+            }
         }
     }
 }

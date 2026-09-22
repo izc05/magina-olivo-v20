@@ -105,7 +105,8 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("register-action-sheet").assertIsDisplayed()
         composeRule.onNodeWithText("Registrar actuación").performClick()
 
-        composeRule.onNodeWithTag("register-reference-root").assertIsDisplayed()
+        waitForTag("register-activity-root")
+        composeRule.onNodeWithTag("register-activity-root").assertIsDisplayed()
         composeRule.onNodeWithTag("bottom-Registrar").assertIsSelected()
     }
 
@@ -340,6 +341,57 @@ class AppNavigationTest {
         waitForTag("activity-detail-root")
         composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
         composeRule.onNodeWithText("Registro protegido").performScrollTo().assertIsDisplayed()
+    }
+
+    /**
+     * The Registrar (+) entry point writes through the same aggregate as the Farm
+     * detail: it is the real editor, not a reference screen, and a single Farm needs
+     * no extra question.
+     */
+    @Test
+    fun registrarPlusCreatesARealActivityOnTheSelectedFarm() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        waitForTag("add-farm")
+
+        composeRule.onNodeWithTag("add-farm").performClick()
+        waitForTag("farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Registrar E2E")
+        waitForTag("save-farm")
+        composeRule.onNodeWithTag("save-farm").performClick()
+        waitForText("Finca Registrar E2E")
+        composeRule.onNodeWithText("Finca Registrar E2E").performClick()
+        waitForTag("add-parcel")
+        createParcel("Parcela Registrar E2E")
+
+        composeRule.onNodeWithTag("bottom-Registrar").performClick()
+        waitForTag("register-action-sheet")
+        composeRule.onNodeWithText("Registrar actuación").performClick()
+        waitForTag("register-activity-root")
+
+        // A single Farm resolves itself; when earlier tests have left other Farms in the
+        // same database the flow asks, and the answer is ours.
+        if (composeRule.onAllNodesWithTag("register-farm-option").fetchSemanticsNodes().isNotEmpty()) {
+            composeRule.onNodeWithText("Finca Registrar E2E").performScrollTo().performClick()
+        }
+        waitForTag("activity-description")
+        composeRule.onNodeWithTag("activity-description").performTextInput("Riego desde Registrar")
+        waitForTag("activity-date")
+        composeRule.onNodeWithTag("activity-date").performTextInput("2026-02-02")
+        waitForTag("activity-parcel-option")
+        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+
+        waitForText("Riego desde Registrar")
+        composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
+
+        // The same Activity is the one the Farm detail shows: one record, one home.
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        waitForText("Finca Registrar E2E")
+        composeRule.onNodeWithText("Finca Registrar E2E").performClick()
+        waitForTag("add-activity")
+        waitForText("Riego desde Registrar")
+        composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
     }
 
     @Test

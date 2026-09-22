@@ -384,3 +384,8 @@ adb logcat -b crash -d -v threadtime > evidence/crash.txt 2>&1 || true
 } > evidence/summary.txt
 
 cat evidence/summary.txt
+
+# The raw job log needs a GitHub session to read, so publish the evidence summary as
+# a workflow annotation: those are public and can be quoted verbatim in the slice doc.
+summary_annotation="$(sed -e 's/%/%25/g' -e 's/\r//g' evidence/summary.txt | awk 'BEGIN { ORS = "%0A" } { print }')"
+echo "::notice title=Gate 3 evidence summary::${summary_annotation}"

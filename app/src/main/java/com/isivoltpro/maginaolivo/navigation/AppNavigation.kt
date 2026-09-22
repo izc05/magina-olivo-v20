@@ -24,6 +24,7 @@ import com.isivoltpro.maginaolivo.feature.farms.FarmDetailRoute
 import com.isivoltpro.maginaolivo.feature.farms.FarmListRoute
 import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
 import com.isivoltpro.maginaolivo.feature.activities.ActivityDetailRoute
+import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
@@ -38,7 +39,6 @@ import com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.map.MapCatastroReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.register.RegisterActivityReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.weather.WeatherMarketReferenceScreen
 import java.util.UUID
 
@@ -128,7 +128,19 @@ fun AppNavigation(
                     )
                 }
             }
-            composable(RootDestination.Register.route) { RegisterActivityReferenceScreen() }
+            composable(RootDestination.Register.route) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    RegisterActivityRoute(
+                        persistence = persistence,
+                        onActivitySelected = { activityId ->
+                            navController.navigate(AppDestination.activity(activityId.toString()))
+                        },
+                    )
+                }
+            }
             composable(RootDestination.Calendar.route) {
                 NavigationPlaceholderScreen(
                     title = "Calendario",

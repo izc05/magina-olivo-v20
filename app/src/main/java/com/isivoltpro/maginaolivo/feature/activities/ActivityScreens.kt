@@ -41,6 +41,7 @@ import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
+import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoMetricCard
@@ -51,6 +52,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
@@ -59,12 +61,17 @@ import java.time.LocalDate
 import java.util.UUID
 
 @Composable
-fun FarmActivitiesRoute(farmId: UUID, persistence: LocalPersistence, onActivitySelected: (UUID) -> Unit) {
+fun FarmActivitiesRoute(
+    farmId: UUID,
+    persistence: LocalPersistence,
+    onActivitySelected: (UUID) -> Unit,
+    startWithEditor: Boolean = false,
+) {
     val vm: FarmActivitiesViewModel = viewModel(key = "farm-activities-$farmId", factory = viewModelFactory {
         initializer { FarmActivitiesViewModel(farmId, persistence.activityRepository) }
     })
     val state by vm.state.collectAsStateWithLifecycle()
-    FarmActivitiesSection(state, onActivitySelected, vm::create)
+    FarmActivitiesSection(state, onActivitySelected, vm::create, startWithEditor)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,8 +80,9 @@ fun FarmActivitiesSection(
     state: FarmActivitiesUiState,
     onActivitySelected: (UUID) -> Unit,
     onCreate: (ActivityDraft, Boolean) -> Unit,
+    startWithEditor: Boolean = false,
 ) {
-    var editor by rememberSaveable { mutableStateOf(false) }
+    var editor by rememberSaveable { mutableStateOf(startWithEditor) }
     LaunchedEffect(state.message) { if (state.message != null) editor = false }
     MoSectionHeader(
         "Actuaciones",
@@ -110,6 +118,105 @@ fun FarmActivitiesSection(
                 onSave = { draft -> onCreate(draft, false) },
                 onSaveDraft = { draft -> onCreate(draft, true) },
                 onCancel = { editor = false },
+            )
+        }
+    }
+}
+
+/**
+ * The real "Registrar actuación" flow behind the Registrar (+) sheet.
+ *
+ * It is the same aggregate and the same editor the Farm detail uses: the only extra
+ * step is resolving which Farm the work belongs to, because a global entry point has
+ * no Farm in context. One Farm resolves itself.
+ */
+@Composable
+fun RegisterActivityRoute(persistence: LocalPersistence, onActivitySelected: (UUID) -> Unit) {
+    val vm: RegisterActivityViewModel = viewModel(factory = viewModelFactory {
+        initializer {
+            RegisterActivityViewModel(persistence.farmRepository, persistence.workspaceRepository)
+        }
+    })
+    val state by vm.state.collectAsStateWithLifecycle()
+    Scaffold(
+        modifier = Modifier.fillMaxSize().testTag("register-activity-root"),
+        containerColor = MoCream,
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = MoSpacing.screen),
+            verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
+        ) {
+            Text(
+                "Registrar actuación",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MoOliveDark,
+            )
+            when {
+                state.isLoading -> CircularProgressIndicator()
+                state.error != null -> MoErrorState(
+                    "No pudimos abrir tus fincas",
+                    state.error.orEmpty(),
+                    onRetry = vm::retry,
+                )
+                state.farms.isEmpty() -> MoEmptyState(
+                    "Aún no tienes fincas",
+                    "Crea una finca en Mi Olivar y podrás registrar actuaciones sobre sus parcelas.",
+                )
+                else -> {
+                    val selectedFarmId = state.selectedFarmId
+                    if (selectedFarmId == null) {
+                        MoSectionHeader("¿En qué finca?")
+                        state.farms.forEach { farm ->
+                            FarmChoiceRow(farm) { vm.selectFarm(farm.id) }
+                        }
+                    } else {
+                        val selectedFarm = state.farms.firstOrNull { it.id == selectedFarmId }
+                        val changeFarm: (@Composable () -> Unit)? =
+                            if (state.farms.size > 1) {
+                                {
+                                    TextButton(
+                                        onClick = vm::changeFarm,
+                                        modifier = Modifier.testTag("change-activity-farm"),
+                                    ) { Text("Cambiar finca") }
+                                }
+                            } else {
+                                null
+                            }
+                        MoSectionHeader(selectedFarm?.name ?: "Finca seleccionada", action = changeFarm)
+                        FarmActivitiesRoute(
+                            farmId = selectedFarmId,
+                            persistence = persistence,
+                            onActivitySelected = onActivitySelected,
+                            startWithEditor = true,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FarmChoiceRow(farm: Farm, onSelected: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("register-farm-option")
+            .clickable(role = Role.Button, onClick = onSelected),
+        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        border = BorderStroke(1.dp, MoOutline),
+    ) {
+        Column(Modifier.padding(MoSpacing.md)) {
+            Text(farm.name, style = MaterialTheme.typography.titleMedium)
+            Text(
+                "${farm.parcelCount} parcelas",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MoTextSecondary,
             )
         }
     }
