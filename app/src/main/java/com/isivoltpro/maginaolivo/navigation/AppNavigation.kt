@@ -23,6 +23,7 @@ import com.isivoltpro.maginaolivo.app.AppEnvironment
 import com.isivoltpro.maginaolivo.feature.farms.FarmDetailRoute
 import com.isivoltpro.maginaolivo.feature.farms.FarmListRoute
 import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
+import com.isivoltpro.maginaolivo.feature.activities.ActivityDetailRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
@@ -161,6 +162,9 @@ fun AppNavigation(
                         onCampaignSelected = { campaignId ->
                             navController.navigate(AppDestination.campaign(campaignId.toString()))
                         },
+                        onActivitySelected = { activityId ->
+                            navController.navigate(AppDestination.activity(activityId.toString()))
+                        },
                         onArchived = { navController.popBackStack() },
                     )
                 }
@@ -185,6 +189,13 @@ fun AppNavigation(
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 if (persistence == null || campaignId == null) PersistenceUnavailableScreen()
                 else CampaignDetailRoute(campaignId, persistence)
+            }
+            composable(AppDestination.ActivityPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val activityId = backStackEntry.arguments?.getString("activityId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || activityId == null) PersistenceUnavailableScreen()
+                else ActivityDetailRoute(activityId, persistence)
             }
             composable(AppDestination.MapCatastro) { MapCatastroReferenceScreen() }
             composable(AppDestination.Weather) { WeatherMarketReferenceScreen() }
