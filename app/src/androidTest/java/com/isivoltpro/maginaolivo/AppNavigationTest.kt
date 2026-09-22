@@ -104,7 +104,7 @@ class AppNavigationTest {
 
         composeRule.onNodeWithTag("bottom-Registrar").performClick()
         composeRule.onNodeWithTag("register-action-sheet").assertIsDisplayed()
-        clickByText("Registrar actuación")
+        clickInSheetByText("Registrar actuación")
 
         waitForTag("register-activity-root")
         composeRule.onNodeWithTag("register-activity-root").assertIsDisplayed()
@@ -132,7 +132,7 @@ class AppNavigationTest {
         }
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
-        clickByTag("save-farm")
+        clickInSheetByTag("save-farm")
         composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithText("La Solana").fetchSemanticsNodes().size == 1
         }
@@ -159,7 +159,7 @@ class AppNavigationTest {
         }
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Los Llanos")
-        clickByTag("save-farm")
+        clickInSheetByTag("save-farm")
         composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithText("Los Llanos").fetchSemanticsNodes().isNotEmpty()
         }
@@ -167,7 +167,7 @@ class AppNavigationTest {
 
         openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Alta")
-        clickByTag("save-parcel")
+        clickInSheetByTag("save-parcel")
         composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithTag("save-parcel").fetchSemanticsNodes().isEmpty() &&
                 composeRule.onAllNodesWithText("Parcela Alta").fetchSemanticsNodes().size == 1
@@ -198,7 +198,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Campaña E2E")
         waitForTag("save-farm")
-        clickByTag("save-farm")
+        clickInSheetByTag("save-farm")
         waitForText("Finca Campaña E2E")
 
         // Farm detail
@@ -209,7 +209,7 @@ class AppNavigationTest {
         openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Campaña E2E")
         waitForTag("save-parcel")
-        clickByTag("save-parcel")
+        clickInSheetByTag("save-parcel")
         waitForText("Parcela Campaña E2E")
 
         // Campaign: open the editor, fill it, select the Parcel, save.
@@ -221,9 +221,9 @@ class AppNavigationTest {
         waitForTag("campaign-start-date")
         composeRule.onNodeWithTag("campaign-start-date").performTextInput("2026-01-01")
         waitForTag("campaign-parcel-option")
-        composeRule.onNodeWithTag("campaign-parcel-option").performClick()
+        clickInSheetByTag("campaign-parcel-option")
         waitForTag("save-campaign")
-        clickByTag("save-campaign")
+        clickInSheetByTag("save-campaign")
         waitForText("Campaña 2026/27 E2E")
 
         // Campaign detail
@@ -288,7 +288,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Actuación E2E")
         waitForTag("save-farm")
-        clickByTag("save-farm")
+        clickInSheetByTag("save-farm")
         waitForText("Finca Actuación E2E")
         clickByText("Finca Actuación E2E")
         waitForTag("add-parcel")
@@ -306,7 +306,7 @@ class AppNavigationTest {
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
         composeRule.onAllNodesWithTag("activity-parcel-option")[1].performScrollTo().performClick()
         waitForTag("save-activity")
-        clickByTag("save-activity")
+        clickInSheetByTag("save-activity")
         waitForText("Poda multiparcela E2E")
 
         // Exactly ONE canonical Activity row, not one per parcel.
@@ -354,7 +354,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Registrar E2E")
         waitForTag("save-farm")
-        clickByTag("save-farm")
+        clickInSheetByTag("save-farm")
         waitForText("Finca Registrar E2E")
         clickByText("Finca Registrar E2E")
         waitForTag("add-parcel")
@@ -362,7 +362,7 @@ class AppNavigationTest {
 
         composeRule.onNodeWithTag("bottom-Registrar").performClick()
         waitForTag("register-action-sheet")
-        clickByText("Registrar actuación")
+        clickInSheetByText("Registrar actuación")
         waitForTag("register-activity-root")
 
         // A single Farm resolves itself; when earlier tests have left other Farms in the
@@ -376,7 +376,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("activity-date").performTextInput("2026-02-02")
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
-        clickByTag("save-activity")
+        clickInSheetByTag("save-activity")
 
         waitForText("Riego desde Registrar")
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
@@ -523,6 +523,33 @@ class AppNavigationTest {
             .performClick()
     }
 
+    /**
+     * Clicks a control inside a bottom-sheet editor.
+     *
+     * Sheet content is not always fully on screen: the soft keyboard opened by the text
+     * input just before it can cover the sheet's own footer, which is why requiring
+     * assertIsDisplayed here turned clicks that had always landed into failures. The
+     * scroll attempt still brings the control into view when the sheet scrolls, and the
+     * guarantees that matter are kept — the node exists, is enabled and is clickable.
+     */
+    private fun clickInSheetByTag(tag: String) {
+        waitForNodeOrDump("sheet control <$tag>") { composeRule.onAllNodesWithTag(tag) }
+        scrollIntoViewIfPossible { composeRule.onNodeWithTag(tag) }
+        composeRule.onNodeWithTag(tag)
+            .assertIsEnabled()
+            .assertHasClickAction()
+            .performClick()
+    }
+
+    private fun clickInSheetByText(text: String) {
+        waitForNodeOrDump("sheet control \"$text\"") { composeRule.onAllNodesWithText(text) }
+        scrollIntoViewIfPossible { composeRule.onNodeWithText(text) }
+        composeRule.onNodeWithText(text)
+            .assertIsEnabled()
+            .assertHasClickAction()
+            .performClick()
+    }
+
     private fun scrollIntoViewIfPossible(node: () -> SemanticsNodeInteraction) {
         runCatching { node().performScrollTo() }
     }
@@ -539,7 +566,7 @@ class AppNavigationTest {
         openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput(name)
         waitForTag("save-parcel")
-        clickByTag("save-parcel")
+        clickInSheetByTag("save-parcel")
         waitForText(name)
     }
 
