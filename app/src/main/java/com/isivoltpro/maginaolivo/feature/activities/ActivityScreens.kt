@@ -156,14 +156,6 @@ internal fun ActivityEditor(
     var type by rememberSaveable(initial.type) { mutableStateOf(initial.type.name) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
 
-    fun draft() = ActivityDraft(
-        type = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
-        activityDate = runCatching { LocalDate.parse(date) }.getOrNull(),
-        description = description,
-        parcelIds = selected.map(UUID::fromString).toSet(),
-        notes = notes,
-    )
-
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
@@ -212,12 +204,34 @@ internal fun ActivityEditor(
         }
         MoTextField(notes, { notes = it }, "Notas")
         MoPrimaryButton(
-            "Guardar actuación", { onSave(draft()) },
+            "Guardar actuación",
+            {
+                onSave(
+                    ActivityDraft(
+                runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
+                runCatching { LocalDate.parse(date) }.getOrNull(),
+                description,
+                selected.map(UUID::fromString).toSet(),
+                notes,
+            ),
+                )
+            },
             modifier = Modifier.fillMaxWidth().testTag("save-activity"), enabled = !isSaving,
         )
         onSaveDraft?.let { saveDraft ->
             MoSecondaryButton(
-                "Guardar borrador", { saveDraft(draft()) },
+                "Guardar borrador",
+                {
+                    saveDraft(
+                        ActivityDraft(
+                runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
+                runCatching { LocalDate.parse(date) }.getOrNull(),
+                description,
+                selected.map(UUID::fromString).toSet(),
+                notes,
+            ),
+                    )
+                },
                 modifier = Modifier.fillMaxWidth().testTag("save-activity-draft"),
             )
         }
