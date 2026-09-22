@@ -405,6 +405,69 @@ class AppNavigationTest {
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
     }
 
+    /**
+     * Phase 10: the editor shows the typed block of the chosen type and only that one.
+     *
+     * This is the no-giant-form guarantee expressed as behaviour: choosing a type swaps
+     * the block, the fields of the previous type are gone, and what the farmer typed in
+     * the block that was showing is what the saved Activity carries.
+     */
+    @Test
+    fun theActivityEditorShowsOnlyTheTypedBlockOfTheChosenType() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        waitForTag("add-farm")
+
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Tipada E2E")
+        waitForTag("save-farm")
+        clickInSheetByTag("save-farm")
+        waitForText("Finca Tipada E2E")
+        clickByText("Finca Tipada E2E")
+        waitForTag("add-parcel")
+        createParcel("Parcela Tipada E2E")
+
+        waitForTag("add-activity")
+        openSheet("add-activity", "activity-description")
+        composeRule.onNodeWithTag("activity-description").performTextInput("Trabajo tipado E2E")
+        waitForTag("activity-date")
+        composeRule.onNodeWithTag("activity-date").performTextInput("2026-04-08")
+
+        // Observación is the default type and has no structured fields at all.
+        composeRule.onAllNodesWithTag("activity-detail-block").assertCountEquals(0)
+
+        // Poda shows pruning fields, and only those.
+        clickInSheetByText("Poda")
+        waitForTag("detail-workerCount")
+        composeRule.onAllNodesWithTag("detail-volumeM3").assertCountEquals(0)
+
+        // Switching to Riego swaps the whole block: no pruning field is left behind.
+        clickInSheetByText("Riego")
+        waitForTag("detail-volumeM3")
+        composeRule.onAllNodesWithTag("detail-workerCount").assertCountEquals(0)
+        composeRule.onNodeWithTag("detail-volumeM3").performScrollTo().performTextInput("240")
+        composeRule.onNodeWithTag("detail-sectorText").performScrollTo().performTextInput("Sector 3")
+
+        waitForTag("activity-parcel-option")
+        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        clickInSheetByTag("save-activity")
+        waitForText("Trabajo tipado E2E")
+
+        // The saved Activity carries the irrigation block it was given, and one record.
+        composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
+        clickByTag("activity-row")
+        waitForTag("activity-detail-root")
+        waitForTag("activity-detail-summary")
+        assertTextVisible("Volumen (m³): 240")
+        assertTextVisible("Sector: Sector 3")
+
+        // It survives a restart as part of the same aggregate, not as a second record.
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+        waitForTag("activity-detail-summary")
+        assertTextVisible("Volumen (m³): 240")
+    }
+
     @Test
     fun developerGalleryIsReachableFromDevProfile() {
         enterMainShell()
