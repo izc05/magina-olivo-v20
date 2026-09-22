@@ -355,3 +355,39 @@ data class AlertEntity(
     @ColumnInfo(name = "acknowledged_at") val acknowledgedAt: Instant? = null,
     @Embedded val metadata: LocalMetadata,
 )
+
+@Entity(
+    tableName = "activity_parcels",
+    foreignKeys = [
+        ForeignKey(
+            entity = WorkspaceEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["workspace_id"],
+        ),
+        ForeignKey(
+            entity = ActivityEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["activity_id"],
+        ),
+        ForeignKey(
+            entity = ParcelEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["parcel_id"],
+        ),
+    ],
+    indices = [
+        Index(value = ["activity_id", "parcel_id"], unique = true),
+        Index(value = ["workspace_id"]),
+        Index(value = ["parcel_id"]),
+    ],
+)
+data class ActivityParcelTargetEntity(
+    @PrimaryKey val id: UUID,
+    @ColumnInfo(name = "workspace_id") val workspaceId: UUID,
+    @ColumnInfo(name = "activity_id") val activityId: UUID,
+    @ColumnInfo(name = "parcel_id") val parcelId: UUID,
+    @ColumnInfo(name = "parcel_name_at_target") val parcelNameAtTarget: String,
+    @ColumnInfo(name = "area_affected_m2") val areaAffectedM2: Double? = null,
+    val notes: String? = null,
+    @Embedded val metadata: LocalMetadata,
+)

@@ -19,7 +19,22 @@ object DatabaseMigrations {
             }
         }
 
-    val all: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+    val MIGRATION_3_4 =
+        object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                schemaVersion4Statements.forEach(db::execSQL)
+            }
+        }
+
+    val all: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+
+    private val schemaVersion4Statements =
+        arrayOf(
+            """CREATE TABLE IF NOT EXISTS `activity_parcels` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `activity_id` TEXT NOT NULL, `parcel_id` TEXT NOT NULL, `parcel_name_at_target` TEXT NOT NULL, `area_affected_m2` REAL, `notes` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`parcel_id`) REFERENCES `parcels`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )""",
+            """CREATE UNIQUE INDEX IF NOT EXISTS `index_activity_parcels_activity_id_parcel_id` ON `activity_parcels` (`activity_id`, `parcel_id`)""",
+            """CREATE INDEX IF NOT EXISTS `index_activity_parcels_workspace_id` ON `activity_parcels` (`workspace_id`)""",
+            """CREATE INDEX IF NOT EXISTS `index_activity_parcels_parcel_id` ON `activity_parcels` (`parcel_id`)""",
+        )
 
     private val schemaVersion3Statements =
         arrayOf(
