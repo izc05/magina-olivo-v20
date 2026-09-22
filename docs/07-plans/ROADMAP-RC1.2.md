@@ -17,14 +17,17 @@
 ✅ Phase 6 — Farms          ─┐
 ✅ Phase 7 — Parcels         ─┼─ validated together as GATE 6 COMPOSITE — PASS
 ✅ Phase 8 — Campaigns       ─┘
-▶ Phase 9 — Activity engine — NOT STARTED
+✅ Phase 9 — Activity engine — Gate 9 PASS
+▶ Phase 10 — Typed agricultural activities + irrigation — IN PROGRESS
 ```
 
 Gate 6 composite passed on 2026-09-22 on commit `164aaa48`, documented in
-`docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md`. The next functional phase pending is
-**Phase 9 — Activity engine**, which has **not** started: the validated Android stack
-(PRs #197–#201 and #205) must first be integrated into `main`. The approved display
-brand is **Mágina Olivo**. Domain/data architecture remains geographic-neutral.
+`docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md`, and the validated Android stack is in
+`main`. **Phase 9 — Activity engine** passed and was merged into `main` through PR #206,
+merge commit `f82be163`; its evidence is in
+`docs/06-testing/PHASE9-ACTIVITY-ENGINE-SLICE.md`. The phase now in progress is
+**Phase 10 — Typed agricultural activities + irrigation**. The approved display brand is
+**Mágina Olivo**. Domain/data architecture remains geographic-neutral.
 
 Canonical execution/handoff plan: `docs/00-master/SINGLE-TRACK-EXECUTION.md`.
 

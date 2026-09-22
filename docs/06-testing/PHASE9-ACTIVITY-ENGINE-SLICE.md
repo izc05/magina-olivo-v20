@@ -5,7 +5,7 @@
 **Base commit:** `5ddecdfc` (`main`, Gate 6 composite PASS)
 **Branch:** `feat/android-activity-engine`
 **Validated commit:** `3caaef94`
-**PR:** [#206](https://github.com/izc05/magina-olivo-v20/pull/206) — open, draft, base `main`
+**PR:** [#206](https://github.com/izc05/magina-olivo-v20/pull/206) — merged into `main` as `f82be163`
 
 > Every CI, emulator, APK and artifact figure below is copied from a real run.
 > Nothing here is estimated.
@@ -45,7 +45,7 @@ Three findings resolved before writing code; none required a product decision.
    `DRAFT, PLANNED, COMPLETED, CANCELLED`, which spans both the
    `DATA-MODEL-RC1-FUTURE` draft (`DRAFT|COMPLETED|CANCELLED`) and the RC1.2 Product
    Lock §9 notion of first-class planned work. No new state was invented.
-3. **Cost is deliberately absent.** `RC1-NORMATIVE-ADDENDUM` D3 supersedes
+3. **Cost is deliberately absent.** `RC1-NORMATIVE-ADDENDUM` D2 supersedes
    `activities.cost_cents` / `activities.currency`. The columns exist from v2; Phase 9
    never reads or writes them. Activity cost will arrive as a linked `expenses` row in
    its own phase.

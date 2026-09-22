@@ -24,15 +24,16 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 4 — Production navigation shell
 ✅ Gate 5 — Local database foundation
 ✅ Gate 6 — Farms + Parcels + Campaigns (composite)
+✅ Gate 9 — Activity engine
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 9 — ACTIVITY ENGINE (IMPLEMENTATION VALIDATED BY CI, NOT YET MERGED TO MAIN)
+▶ PHASE 10 — TYPED AGRICULTURAL ACTIVITIES + IRRIGATION (IN PROGRESS)
 ```
 
-Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices, and the validated Android stack is in `main` at `5ddecdfc`. Phase 9 builds on that base.
+Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
 
 ## Mandatory reading order for any agent
 
@@ -95,8 +96,9 @@ GATE 6 = PASS (Farms + Parcels + Campaigns + combined flow)
 
 ## Phase 9 — Activity engine
 
-The Activity engine is implemented and validated by CI on code commit `3caaef94`, on top
-of `main` at `5ddecdfc`. It is **not merged**; PR #206 remains open and draft.
+The Activity engine is complete, validated and **merged into `main`**: PR #206 was merged
+as commit `f82be163`, on top of `main` at `5ddecdfc`. Code commit `3caaef94` is the one
+whose CI evidence is quoted below.
 
 Phase 9 delivers the common Activity aggregate, not typed agronomic forms. `activities`
 already existed from schema v2, so the phase extends rather than creates: Room schema v4
@@ -137,18 +139,27 @@ instrumentation output and the emulator evidence summary are now published as wo
 annotations, which are readable without a GitHub session.
 
 ```text
-PHASE 9 = COMPLETE AND VALIDATED / NOT MERGED
+PHASE 9 = COMPLETE AND VALIDATED / MERGED TO MAIN (f82be163)
 ```
+
+### Post-merge correction
+
+Android CI #328, the first run of `main` after the merge, failed on the navigation E2E
+with the same tree that had passed three times on the branch: the suite was losing races
+on a cold emulator, not regressing. `hotfix/android-e2e-stability` fixes the suite only —
+editors now prove they opened before the test types into them, clicks are guarded, and
+the test no longer expects the Farm list when Mi Olivar restores the Farm detail it was
+left on. It also lets both workflows run on pushes to `feat/**` and `hotfix/**`, so a
+branch can reach a green emulator run before a pull request exists. Android CI #329-#331
+show the intermediate diagnoses; **Android CI #332 is green**.
 
 ## Next deliverable
 
-1. **Merge PR #206 into `main`.** Awaiting owner authorisation; the branch is green and
-   the working tree is clean.
-2. **Then Phase 10 — typed agronomic details** (pruning, fertilisation, treatment,
-   irrigation, clearing, machinery), which attach to the Activity aggregate through the
-   extension point Phase 9 leaves in place.
+**Phase 10 — Typed agricultural activities + irrigation**, in progress on
+`feat/android-typed-activities`, branched from the green hotfix so it carries that fix.
+It adds the typed agronomic detail tables as further children of the Activity aggregate.
 
-Activity cost stays out of `activities`: `RC1-NORMATIVE-ADDENDUM` D3 supersedes
+Activity cost stays out of `activities`: `RC1-NORMATIVE-ADDENDUM` D2 supersedes
 `activities.cost_cents` / `activities.currency`, and cost will arrive as a linked
 `expenses` row in its own phase.
 
