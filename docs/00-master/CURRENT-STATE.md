@@ -24,15 +24,17 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 4 — Production navigation shell
 ✅ Gate 5 — Local database foundation
 ✅ Gate 6 — Farms + Parcels + Campaigns (composite)
+✅ Gate 9 — Activity engine
+✅ Gate 10 — Typed activities + irrigation (validated, pending merge)
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 9 — ACTIVITY ENGINE (IMPLEMENTATION VALIDATED BY CI, NOT YET MERGED TO MAIN)
+▶ PHASE 10 — TYPED AGRICULTURAL ACTIVITIES + IRRIGATION (VALIDATED, NOT YET MERGED)
 ```
 
-Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices, and the validated Android stack is in `main` at `5ddecdfc`. Phase 9 builds on that base.
+Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
 
 ## Mandatory reading order for any agent
 
@@ -95,8 +97,9 @@ GATE 6 = PASS (Farms + Parcels + Campaigns + combined flow)
 
 ## Phase 9 — Activity engine
 
-The Activity engine is implemented and validated by CI on code commit `3caaef94`, on top
-of `main` at `5ddecdfc`. It is **not merged**; PR #206 remains open and draft.
+The Activity engine is complete, validated and **merged into `main`**: PR #206 was merged
+as commit `f82be163`, on top of `main` at `5ddecdfc`. Code commit `3caaef94` is the one
+whose CI evidence is quoted below.
 
 Phase 9 delivers the common Activity aggregate, not typed agronomic forms. `activities`
 already existed from schema v2, so the phase extends rather than creates: Room schema v4
@@ -137,18 +140,73 @@ instrumentation output and the emulator evidence summary are now published as wo
 annotations, which are readable without a GitHub session.
 
 ```text
-PHASE 9 = COMPLETE AND VALIDATED / NOT MERGED
+PHASE 9 = COMPLETE AND VALIDATED / MERGED TO MAIN (f82be163)
+```
+
+### Post-merge correction
+
+Android CI #328, the first run of `main` after the merge, failed on the navigation E2E
+with the same tree that had passed three times on the branch: the suite was losing races
+on a cold emulator, not regressing. `hotfix/android-e2e-stability` fixes the suite only —
+editors now prove they opened before the test types into them, clicks are guarded, and
+the test no longer expects the Farm list when Mi Olivar restores the Farm detail it was
+left on. It also lets both workflows run on pushes to `feat/**` and `hotfix/**`, so a
+branch can reach a green emulator run before a pull request exists. Android CI #329-#331
+show the intermediate diagnoses; **Android CI #332 is green**.
+
+## Phase 10 — Typed agricultural activities + irrigation
+
+Complete and validated by CI on code commit `526e1605`, on `feat/android-typed-activities`
+(branched from the green hotfix so it carries that fix). It is **not merged**.
+
+Phase 10 adds what kind of work an Activity was, as structured fields, without a second
+Activity and without a giant form. Room v5 and the additive `MIGRATION_4_5` create the
+seven typed detail tables the contract defines — pruning, fertilisation, phytosanitary,
+soil work, irrigation, maintenance and incident — plus the irrigation tariff snapshot from
+`RC1.2-PRODUCT-LOCK` §8. Each is one-to-one with its Activity, so the database itself
+enforces that an Activity carries only one, and `OBSERVATION` and `OTHER` carry none
+because the contract gives them no structured fields.
+
+A detail is an aggregate child, never an aggregate of its own: it is validated against the
+Activity's type before anything is written, then written in the same transaction as the
+header and the Parcel targets, it moves the Activity's own version, and it queues no
+synchronization intent of its own (`RC1-NORMATIVE-ADDENDUM` D5 and D10). Retyping an
+Activity replaces its detail in that same transaction. No fertilisation, irrigation or
+pruning outbox exists.
+
+The editor keeps its common header and shows exactly one typed block, the one belonging to
+the chosen type; switching type removes the previous block rather than hiding it. The
+irrigation block can record a historical tariff snapshot, which is an estimate for the
+farmer's own reading: `expenses` remains the only authoritative financial source, and
+`activities.cost_cents` / `activities.currency` are still neither read nor written
+(`RC1-NORMATIVE-ADDENDUM` D2). `product_id` is reserved, nullable and carries no foreign
+key, so a fertilisation or a treatment is recordable with no Products module (D8).
+
+Both workflows passed on `526e1605`: Android CI #336 (run `35778004863`) with `foundation`
+SUCCESS and `gate3-emulator` SUCCESS, and the independent Gate 3 Android Emulator Evidence
+#55 (run `35778004995`) SUCCESS. The full instrumented suite passed 94/94, including 17/17
+typed detail contract tests, 42 JVM unit tests passed, and 37 repository tests passed with
+real airplane mode. The crash buffer was 0 bytes. The verified DEV APK is artifact
+`magina-olivo-dev-debug` (13,338,868 bytes, sha256
+`435beb9316af0e47dd7ddb4605df04feed1b6597b44f2f9e35d03e5cf1a2969a`).
+
+`app/schemas/.../5.json` was generated by the Room annotation processor in CI and committed
+verbatim (`d7ea2914`), identityHash `a1fcd78acb39c2497f0f20efb5602598`; the hand-written
+migration was then verified against it column by column before the migration test ran. Full
+detail is in `docs/06-testing/PHASE10-TYPED-ACTIVITIES-SLICE.md`.
+
+```text
+PHASE 10 = COMPLETE AND VALIDATED / NOT MERGED
 ```
 
 ## Next deliverable
 
-1. **Merge PR #206 into `main`.** Awaiting owner authorisation; the branch is green and
-   the working tree is clean.
-2. **Then Phase 10 — typed agronomic details** (pruning, fertilisation, treatment,
-   irrigation, clearing, machinery), which attach to the Activity aggregate through the
-   extension point Phase 9 leaves in place.
+1. **Merge `hotfix/android-e2e-stability` and `feat/android-typed-activities` into `main`.**
+   Both are green and await owner authorisation; the Phase 10 branch already contains the
+   hotfix, so merging it alone also restores `main`.
+2. **Then Phase 11 — Attachments.**
 
-Activity cost stays out of `activities`: `RC1-NORMATIVE-ADDENDUM` D3 supersedes
+Activity cost stays out of `activities`: `RC1-NORMATIVE-ADDENDUM` D2 supersedes
 `activities.cost_cents` / `activities.currency`, and cost will arrive as a linked
 `expenses` row in its own phase.
 

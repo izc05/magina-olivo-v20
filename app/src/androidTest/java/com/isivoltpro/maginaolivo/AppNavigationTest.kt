@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionCollection
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
@@ -103,7 +104,7 @@ class AppNavigationTest {
 
         composeRule.onNodeWithTag("bottom-Registrar").performClick()
         composeRule.onNodeWithTag("register-action-sheet").assertIsDisplayed()
-        composeRule.onNodeWithText("Registrar actuación").performClick()
+        clickInSheetByText("Registrar actuación")
 
         waitForTag("register-activity-root")
         composeRule.onNodeWithTag("register-activity-root").assertIsDisplayed()
@@ -126,21 +127,22 @@ class AppNavigationTest {
     fun nestedFarmRouteReturnsToOlivar() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithTag("add-farm").performClick()
+        openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
-        composeRule.onNodeWithTag("save-farm").performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
+        clickInSheetByTag("save-farm")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithText("La Solana").fetchSemanticsNodes().size == 1
         }
-        composeRule.onNodeWithText("La Solana").performClick()
+        clickByText("La Solana")
+        waitForTag("farm-detail-root")
         composeRule.onNodeWithTag("farm-detail-root").assertIsDisplayed()
 
         pressBack()
         composeRule.waitForIdle()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithTag("farms-root").fetchSemanticsNodes().isNotEmpty()
         }
 
@@ -152,32 +154,32 @@ class AppNavigationTest {
     fun parcelCanBeCreatedAndOpenedFromItsFarm() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
-        composeRule.waitUntil(5_000) {
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithTag("add-farm").performClick()
+        openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Los Llanos")
-        composeRule.onNodeWithTag("save-farm").performClick()
-        composeRule.waitUntil(5_000) {
+        clickInSheetByTag("save-farm")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithText("Los Llanos").fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText("Los Llanos").performClick()
+        clickByText("Los Llanos")
 
-        composeRule.onNodeWithTag("add-parcel").performScrollTo().performClick()
+        openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Alta")
-        composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
-        composeRule.waitUntil(5_000) {
+        clickInSheetByTag("save-parcel")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithTag("save-parcel").fetchSemanticsNodes().isEmpty() &&
                 composeRule.onAllNodesWithText("Parcela Alta").fetchSemanticsNodes().size == 1
         }
-        composeRule.onNodeWithTag("parcel-row").performScrollTo().performClick()
+        clickByTag("parcel-row")
 
-        composeRule.waitUntil(5_000) {
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithTag("parcel-detail-root").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("parcel-detail-root").assertIsDisplayed()
         composeRule.onNodeWithText("Entrada manual").assertIsDisplayed()
-        composeRule.waitUntil(5_000) {
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithText("Sin registrar", useUnmergedTree = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
@@ -193,55 +195,52 @@ class AppNavigationTest {
         waitForTag("add-farm")
 
         // Farm: open the editor, fill it, save, and wait for the persisted row.
-        composeRule.onNodeWithTag("add-farm").performClick()
-        waitForTag("farm-name")
+        openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Campaña E2E")
         waitForTag("save-farm")
-        composeRule.onNodeWithTag("save-farm").performClick()
+        clickInSheetByTag("save-farm")
         waitForText("Finca Campaña E2E")
 
         // Farm detail
-        composeRule.onNodeWithText("Finca Campaña E2E").performClick()
+        clickByText("Finca Campaña E2E")
         waitForTag("add-parcel")
 
         // Parcel: open the editor, fill it, save, and wait for the persisted row.
-        composeRule.onNodeWithTag("add-parcel").performScrollTo().performClick()
-        waitForTag("parcel-name")
+        openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Campaña E2E")
         waitForTag("save-parcel")
-        composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
+        clickInSheetByTag("save-parcel")
         waitForText("Parcela Campaña E2E")
 
         // Campaign: open the editor, fill it, select the Parcel, save.
         waitForTag("add-campaign")
-        composeRule.onNodeWithTag("add-campaign").performScrollTo().performClick()
-        waitForTag("campaign-name")
+        openSheet("add-campaign", "campaign-name")
         composeRule.onNodeWithTag("campaign-name").performTextInput("Campaña 2026/27 E2E")
         // Past start date: closing uses the device clock, so a future start would make
         // the legal close date depend on the day the suite runs.
         waitForTag("campaign-start-date")
         composeRule.onNodeWithTag("campaign-start-date").performTextInput("2026-01-01")
         waitForTag("campaign-parcel-option")
-        composeRule.onNodeWithTag("campaign-parcel-option").performClick()
+        clickInSheetByTag("campaign-parcel-option")
         waitForTag("save-campaign")
-        composeRule.onNodeWithTag("save-campaign").performScrollTo().performClick()
+        clickInSheetByTag("save-campaign")
         waitForText("Campaña 2026/27 E2E")
 
         // Campaign detail
         waitForTag("campaign-row")
-        composeRule.onNodeWithTag("campaign-row").performScrollTo().performClick()
+        clickByTag("campaign-row")
         waitForTag("campaign-detail-root")
 
         // PREPARATION -> ACTIVE
-        clickLifecycleActionByTag("activate-campaign")
+        clickByTag("activate-campaign")
         confirmCampaignAction()
 
         // ACTIVE -> HARVEST
-        clickLifecycleActionByText("Iniciar recolección")
+        clickByText("Iniciar recolección")
         confirmCampaignAction()
 
         // HARVEST -> CLOSED
-        clickLifecycleActionByTag("close-campaign")
+        clickByTag("close-campaign")
         confirmCampaignAction()
         waitForText("Histórico protegido")
 
@@ -250,7 +249,7 @@ class AppNavigationTest {
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
         waitForText("Campaña 2026/27 E2E")
-        composeRule.onNodeWithText("Campaña 2026/27 E2E").performScrollTo().performClick()
+        clickByText("Campaña 2026/27 E2E")
         waitForTag("campaign-detail-root")
         waitForText("Parcela Campaña E2E")
         composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
@@ -270,11 +269,11 @@ class AppNavigationTest {
         composeRule.onNodeWithText("Histórico protegido").assertIsDisplayed()
 
         // CLOSED -> HARVEST
-        clickLifecycleActionByTag("reopen-campaign")
+        clickByTag("reopen-campaign")
         confirmCampaignAction()
 
         // HARVEST -> CLOSED again
-        clickLifecycleActionByTag("close-campaign")
+        clickByTag("close-campaign")
         confirmCampaignAction()
         waitForText("Histórico protegido")
         composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
@@ -286,13 +285,12 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
         waitForTag("add-farm")
 
-        composeRule.onNodeWithTag("add-farm").performClick()
-        waitForTag("farm-name")
+        openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Actuación E2E")
         waitForTag("save-farm")
-        composeRule.onNodeWithTag("save-farm").performClick()
+        clickInSheetByTag("save-farm")
         waitForText("Finca Actuación E2E")
-        composeRule.onNodeWithText("Finca Actuación E2E").performClick()
+        clickByText("Finca Actuación E2E")
         waitForTag("add-parcel")
 
         createParcel("Parcela Norte E2E")
@@ -300,8 +298,7 @@ class AppNavigationTest {
 
         // One activity, two parcels selected.
         waitForTag("add-activity")
-        composeRule.onNodeWithTag("add-activity").performScrollTo().performClick()
-        waitForTag("activity-description")
+        openSheet("add-activity", "activity-description")
         composeRule.onNodeWithTag("activity-description").performTextInput("Poda multiparcela E2E")
         waitForTag("activity-date")
         composeRule.onNodeWithTag("activity-date").performTextInput("2026-01-15")
@@ -309,24 +306,24 @@ class AppNavigationTest {
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
         composeRule.onAllNodesWithTag("activity-parcel-option")[1].performScrollTo().performClick()
         waitForTag("save-activity")
-        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        clickInSheetByTag("save-activity")
         waitForText("Poda multiparcela E2E")
 
         // Exactly ONE canonical Activity row, not one per parcel.
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
-        composeRule.onNodeWithText("2 parcelas").performScrollTo().assertIsDisplayed()
+        assertTextVisible("2 parcelas")
 
         waitForTag("activity-row")
-        composeRule.onNodeWithTag("activity-row").performScrollTo().performClick()
+        clickByTag("activity-row")
         waitForTag("activity-detail-root")
 
         // The single Activity carries both Parcel targets.
         composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
-        composeRule.onNodeWithText("Parcela Norte E2E").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Parcela Sur E2E").performScrollTo().assertIsDisplayed()
+        assertTextVisible("Parcela Norte E2E")
+        assertTextVisible("Parcela Sur E2E")
 
         // PLANNED -> COMPLETED, then protected until an explicit reopen.
-        clickLifecycleActionByTag("complete-activity")
+        clickByTag("complete-activity")
         confirmActivityAction()
         waitForText("Registro protegido")
 
@@ -337,10 +334,10 @@ class AppNavigationTest {
 
         // Still one canonical Activity after the restart.
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
-        composeRule.onNodeWithText("Poda multiparcela E2E").performScrollTo().performClick()
+        clickByText("Poda multiparcela E2E")
         waitForTag("activity-detail-root")
         composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
-        composeRule.onNodeWithText("Registro protegido").performScrollTo().assertIsDisplayed()
+        assertTextVisible("Registro protegido")
     }
 
     /**
@@ -354,25 +351,29 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
         waitForTag("add-farm")
 
-        composeRule.onNodeWithTag("add-farm").performClick()
-        waitForTag("farm-name")
+        openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Registrar E2E")
         waitForTag("save-farm")
-        composeRule.onNodeWithTag("save-farm").performClick()
+        clickInSheetByTag("save-farm")
         waitForText("Finca Registrar E2E")
-        composeRule.onNodeWithText("Finca Registrar E2E").performClick()
+        clickByText("Finca Registrar E2E")
         waitForTag("add-parcel")
         createParcel("Parcela Registrar E2E")
 
         composeRule.onNodeWithTag("bottom-Registrar").performClick()
         waitForTag("register-action-sheet")
-        composeRule.onNodeWithText("Registrar actuación").performClick()
+        clickInSheetByText("Registrar actuación")
         waitForTag("register-activity-root")
 
-        // A single Farm resolves itself; when earlier tests have left other Farms in the
-        // same database the flow asks, and the answer is ours.
-        if (composeRule.onAllNodesWithTag("register-farm-option").fetchSemanticsNodes().isNotEmpty()) {
-            composeRule.onNodeWithText("Finca Registrar E2E").performScrollTo().performClick()
+        // A single Farm resolves itself and the editor opens straight away; with more
+        // than one the flow asks first. Wait for whichever of the two actually arrives
+        // instead of sampling the screen before it has settled.
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("activity-description").fetchSemanticsNodes().isNotEmpty() ||
+                composeRule.onAllNodesWithTag("register-farm-option").fetchSemanticsNodes().isNotEmpty()
+        }
+        if (composeRule.onAllNodesWithTag("activity-description").fetchSemanticsNodes().isEmpty()) {
+            clickByText("Finca Registrar E2E")
         }
         waitForTag("activity-description")
         composeRule.onNodeWithTag("activity-description").performTextInput("Riego desde Registrar")
@@ -380,18 +381,91 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("activity-date").performTextInput("2026-02-02")
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
-        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        clickInSheetByTag("save-activity")
 
         waitForText("Riego desde Registrar")
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
 
         // The same Activity is the one the Farm detail shows: one record, one home.
+        //
+        // Mi Olivar restores its own saved back stack, so returning to it lands back on
+        // the Farm detail this test was already on rather than on the Farm list. Accept
+        // either, and only look the Farm up again when the list is what came back.
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
-        waitForText("Finca Registrar E2E")
-        composeRule.onNodeWithText("Finca Registrar E2E").performClick()
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("farm-detail-root").fetchSemanticsNodes().isNotEmpty() ||
+                composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
+        }
+        if (composeRule.onAllNodesWithTag("farm-detail-root").fetchSemanticsNodes().isEmpty()) {
+            clickByText("Finca Registrar E2E")
+        }
+        waitForTag("farm-detail-root")
         waitForTag("add-activity")
         waitForText("Riego desde Registrar")
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
+    }
+
+    /**
+     * Phase 10: the editor shows the typed block of the chosen type and only that one.
+     *
+     * This is the no-giant-form guarantee expressed as behaviour: choosing a type swaps
+     * the block, the fields of the previous type are gone, and what the farmer typed in
+     * the block that was showing is what the saved Activity carries.
+     */
+    @Test
+    fun theActivityEditorShowsOnlyTheTypedBlockOfTheChosenType() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        waitForTag("add-farm")
+
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Tipada E2E")
+        waitForTag("save-farm")
+        clickInSheetByTag("save-farm")
+        waitForText("Finca Tipada E2E")
+        clickByText("Finca Tipada E2E")
+        waitForTag("add-parcel")
+        createParcel("Parcela Tipada E2E")
+
+        waitForTag("add-activity")
+        openSheet("add-activity", "activity-description")
+        composeRule.onNodeWithTag("activity-description").performTextInput("Trabajo tipado E2E")
+        waitForTag("activity-date")
+        composeRule.onNodeWithTag("activity-date").performTextInput("2026-04-08")
+
+        // Observación is the default type and has no structured fields at all.
+        composeRule.onAllNodesWithTag("activity-detail-block").assertCountEquals(0)
+
+        // Poda shows pruning fields, and only those.
+        clickInSheetByText("Poda")
+        waitForTag("detail-workerCount")
+        composeRule.onAllNodesWithTag("detail-volumeM3").assertCountEquals(0)
+
+        // Switching to Riego swaps the whole block: no pruning field is left behind.
+        clickInSheetByText("Riego")
+        waitForTag("detail-volumeM3")
+        composeRule.onAllNodesWithTag("detail-workerCount").assertCountEquals(0)
+        composeRule.onNodeWithTag("detail-volumeM3").performScrollTo().performTextInput("240")
+        composeRule.onNodeWithTag("detail-sectorText").performScrollTo().performTextInput("Sector 3")
+
+        waitForTag("activity-parcel-option")
+        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        clickInSheetByTag("save-activity")
+        waitForText("Trabajo tipado E2E")
+
+        // The saved Activity carries the irrigation block it was given, and one record.
+        composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
+        clickByTag("activity-row")
+        waitForTag("activity-detail-root")
+        waitForTag("activity-detail-summary")
+        assertTextVisible("Volumen (m³): 240")
+        assertTextVisible("Sector: Sector 3")
+
+        // It survives a restart as part of the same aggregate, not as a second record.
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+        waitForTag("activity-detail-summary")
+        assertTextVisible("Volumen (m³): 240")
     }
 
     @Test
@@ -472,16 +546,44 @@ class AppNavigationTest {
         runCatching { nodes().fetchSemanticsNodes().size }.getOrElse { -1 }
 
     /**
-     * Clicks a Campaign lifecycle button, proving first that the click can actually land.
+     * Opens a bottom-sheet editor and proves it actually opened.
      *
-     * The detail screen is a verticalScroll Column, so a composed button can sit outside
-     * the viewport: waitForTag then succeeds, performClick silently hits nothing and the
-     * sheet never opens. Scrolling to it and asserting displayed/enabled/clickable turns
-     * that silent no-op into a named failure.
+     * A ModalBottomSheet composes into its own window after an animation. On a cold CI
+     * emulator the trigger click occasionally lands while the screen behind it is still
+     * settling and is swallowed, and the suite then fails much later, waiting for a field
+     * that was never composed. One bounded retry turns that into a pass; a second failure
+     * still fails loudly, with the diagnostic, so a real regression is never hidden.
      */
-    private fun clickLifecycleActionByTag(tag: String) {
-        waitForNodeOrDump("lifecycle action <$tag>") { composeRule.onAllNodesWithTag(tag) }
-        composeRule.onNodeWithTag(tag).performScrollTo()
+    private fun openSheet(triggerTag: String, expectedTag: String) {
+        clickByTag(triggerTag)
+        if (awaitTag(expectedTag, SHEET_TIMEOUT_MS)) return
+        clickByTag(triggerTag)
+        waitForNodeOrDump("<$expectedTag> after reopening <$triggerTag>") {
+            composeRule.onAllNodesWithTag(expectedTag)
+        }
+    }
+
+    private fun awaitTag(tag: String, timeoutMillis: Long): Boolean =
+        try {
+            waitForTag(tag, timeoutMillis)
+            true
+        } catch (timeout: ComposeTimeoutException) {
+            false
+        }
+
+    /**
+     * Clicks a node only once the click can actually land.
+     *
+     * Screens here are verticalScroll Columns, so a composed node can sit outside the
+     * viewport: the wait succeeds, performClick silently hits nothing, and the suite fails
+     * much later waiting for whatever that click should have produced. Scrolling first and
+     * asserting displayed/enabled/clickable turns the silent no-op into a named failure.
+     * The scroll is an attempt, because performScrollTo itself throws for a node that has
+     * no scrollable ancestor, and plenty of these nodes do not.
+     */
+    private fun clickByTag(tag: String) {
+        waitForNodeOrDump("clickable node <$tag>") { composeRule.onAllNodesWithTag(tag) }
+        scrollIntoViewIfPossible { composeRule.onNodeWithTag(tag) }
         composeRule.onNodeWithTag(tag)
             .assertIsDisplayed()
             .assertIsEnabled()
@@ -489,23 +591,74 @@ class AppNavigationTest {
             .performClick()
     }
 
-    private fun clickLifecycleActionByText(text: String) {
-        waitForNodeOrDump("lifecycle action \"$text\"") { composeRule.onAllNodesWithText(text) }
-        composeRule.onNodeWithText(text).performScrollTo()
-        composeRule.onNodeWithText(text)
-            .assertIsDisplayed()
+    /**
+     * Clicks the node carrying this text that can actually receive a click.
+     *
+     * The same words legitimately appear more than once — a Farm name is a row in the
+     * list and a section heading on the screen that resolved it — and only one of them
+     * is clickable. Picking that one keeps the assertion strict without making the test
+     * depend on which screen happens to be composed at that instant.
+     */
+    private fun clickByText(text: String) {
+        waitForNodeOrDump("clickable node \"$text\"") { composeRule.onAllNodesWithText(text) }
+        val node = clickableNodeWithText(text)
+        scrollIntoViewIfPossible { node }
+        node.assertIsDisplayed().assertIsEnabled().assertHasClickAction().performClick()
+    }
+
+    private fun clickableNodeWithText(text: String): SemanticsNodeInteraction {
+        val matches = composeRule.onAllNodesWithText(text)
+        val count = matches.fetchSemanticsNodes().size
+        val index = (0 until count).firstOrNull { position ->
+            runCatching { matches[position].assertHasClickAction() }.isSuccess
+        }
+        return matches[index ?: 0]
+    }
+
+    /**
+     * Clicks a control inside a bottom-sheet editor.
+     *
+     * Sheet content is not always fully on screen: the soft keyboard opened by the text
+     * input just before it can cover the sheet's own footer, which is why requiring
+     * assertIsDisplayed here turned clicks that had always landed into failures. The
+     * scroll attempt still brings the control into view when the sheet scrolls, and the
+     * guarantees that matter are kept — the node exists, is enabled and is clickable.
+     */
+    private fun clickInSheetByTag(tag: String) {
+        waitForNodeOrDump("sheet control <$tag>") { composeRule.onAllNodesWithTag(tag) }
+        scrollIntoViewIfPossible { composeRule.onNodeWithTag(tag) }
+        composeRule.onNodeWithTag(tag)
             .assertIsEnabled()
             .assertHasClickAction()
             .performClick()
     }
 
+    private fun clickInSheetByText(text: String) {
+        waitForNodeOrDump("sheet control \"$text\"") { composeRule.onAllNodesWithText(text) }
+        scrollIntoViewIfPossible { composeRule.onNodeWithText(text) }
+        composeRule.onNodeWithText(text)
+            .assertIsEnabled()
+            .assertHasClickAction()
+            .performClick()
+    }
+
+    private fun scrollIntoViewIfPossible(node: () -> SemanticsNodeInteraction) {
+        runCatching { node().performScrollTo() }
+    }
+
+    /** Asserts a text is really on screen, scrolling to it when the screen scrolls. */
+    private fun assertTextVisible(text: String) {
+        waitForText(text)
+        scrollIntoViewIfPossible { composeRule.onNodeWithText(text) }
+        composeRule.onNodeWithText(text).assertIsDisplayed()
+    }
+
     private fun createParcel(name: String) {
         waitForTag("add-parcel")
-        composeRule.onNodeWithTag("add-parcel").performScrollTo().performClick()
-        waitForTag("parcel-name")
+        openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput(name)
         waitForTag("save-parcel")
-        composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
+        clickInSheetByTag("save-parcel")
         waitForText(name)
     }
 
@@ -532,5 +685,6 @@ class AppNavigationTest {
     private companion object {
         /** Generous enough for a cold CI emulator, still bounded so a real hang fails. */
         const val UI_TIMEOUT_MS = 15_000L
+        const val SHEET_TIMEOUT_MS = 8_000L
     }
 }

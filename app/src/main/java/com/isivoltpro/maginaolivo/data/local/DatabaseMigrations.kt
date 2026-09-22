@@ -26,7 +26,41 @@ object DatabaseMigrations {
             }
         }
 
-    val all: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    /**
+     * Typed agronomic details (Phase 10).
+     *
+     * Purely additive: eight new child tables and their indices. No existing table is
+     * rewritten, no column is dropped and no row is touched, so every Activity and every
+     * `activity_parcels` relation created before this version survives untouched.
+     */
+    val MIGRATION_4_5 =
+        object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                schemaVersion5Statements.forEach(db::execSQL)
+            }
+        }
+
+    val all: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+
+    private val schemaVersion5Statements =
+        arrayOf(
+            """CREATE TABLE IF NOT EXISTS `pruning_details` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `pruning_type` TEXT, `worker_count` INTEGER, `hours` REAL, `residue_management` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`activity_id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )""",
+            """CREATE INDEX IF NOT EXISTS `index_pruning_details_workspace_id` ON `pruning_details` (`workspace_id`)""",
+            """CREATE TABLE IF NOT EXISTS `fertilization_details` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `product_name` TEXT, `product_id` TEXT, `total_quantity` REAL, `unit` TEXT, `dose_value` REAL, `dose_unit` TEXT, `application_method` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`activity_id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )""",
+            """CREATE INDEX IF NOT EXISTS `index_fertilization_details_workspace_id` ON `fertilization_details` (`workspace_id`)""",
+            """CREATE TABLE IF NOT EXISTS `phytosanitary_details` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `product_name` TEXT, `product_id` TEXT, `active_substance` TEXT, `total_quantity` REAL, `unit` TEXT, `dose_value` REAL, `dose_unit` TEXT, `reason` TEXT, `equipment_text` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`activity_id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )""",
+            """CREATE INDEX IF NOT EXISTS `index_phytosanitary_details_workspace_id` ON `phytosanitary_details` (`workspace_id`)""",
+            """CREATE TABLE IF NOT EXISTS `soil_work_details` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `work_type` TEXT, `method` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`activity_id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )""",
+            """CREATE INDEX IF NOT EXISTS `index_soil_work_details_workspace_id` ON `soil_work_details` (`workspace_id`)""",
+            """CREATE TABLE IF NOT EXISTS `irrigation_details` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `duration_minutes` INTEGER, `volume_m3` REAL, `sector_text` TEXT, `system_text` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`activity_id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )""",
+            """CREATE INDEX IF NOT EXISTS `index_irrigation_details_workspace_id` ON `irrigation_details` (`workspace_id`)""",
+            """CREATE TABLE IF NOT EXISTS `irrigation_price_snapshots` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `pricing_basis` TEXT NOT NULL, `unit_price_minor` INTEGER, `quantity` REAL, `estimated_amount_minor` INTEGER, `currency` TEXT NOT NULL, `price_date` TEXT NOT NULL, `linked_expense_id` TEXT, `notes` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`activity_id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )""",
+            """CREATE INDEX IF NOT EXISTS `index_irrigation_price_snapshots_workspace_id` ON `irrigation_price_snapshots` (`workspace_id`)""",
+            """CREATE TABLE IF NOT EXISTS `maintenance_details` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `maintenance_type` TEXT, `asset_text` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`activity_id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )""",
+            """CREATE INDEX IF NOT EXISTS `index_maintenance_details_workspace_id` ON `maintenance_details` (`workspace_id`)""",
+            """CREATE TABLE IF NOT EXISTS `incident_details` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `category` TEXT, `severity` TEXT, `incident_status` TEXT NOT NULL, `location_geometry` TEXT, `action_taken` TEXT, `resolved_at` INTEGER, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`activity_id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )""",
+            """CREATE INDEX IF NOT EXISTS `index_incident_details_workspace_id` ON `incident_details` (`workspace_id`)""",
+        )
 
     private val schemaVersion4Statements =
         arrayOf(

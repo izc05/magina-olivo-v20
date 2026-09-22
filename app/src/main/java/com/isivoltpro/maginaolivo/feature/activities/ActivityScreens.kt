@@ -24,9 +24,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -39,8 +42,12 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
+import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
+import com.isivoltpro.maginaolivo.domain.activity.IncidentSeverity
+import com.isivoltpro.maginaolivo.domain.activity.IncidentState
+import com.isivoltpro.maginaolivo.domain.activity.IrrigationPricingBasis
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
@@ -262,6 +269,11 @@ internal fun ActivityEditor(
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
     var type by rememberSaveable(initial.type) { mutableStateOf(initial.type.name) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
+    // Deliberately not rememberSaveable: the sheet itself does not survive process death,
+    // so saving the typed block alone would restore it into an editor that is not there.
+    val detailFields = remember(initial.detail) {
+        mutableStateMapOf<String, String>().apply { putAll(initial.detail.toFields()) }
+    }
 
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
@@ -290,6 +302,10 @@ internal fun ActivityEditor(
                 Text(option.label())
             }
         }
+        ActivityTypedDetailFields(
+            type = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
+            fields = detailFields,
+        )
         MoSectionHeader("Parcelas")
         // One canonical Activity may target many Parcels; selecting several never
         // creates several Activities.
@@ -320,6 +336,10 @@ internal fun ActivityEditor(
                         description,
                         selected.map(UUID::fromString).toSet(),
                         notes,
+                        buildActivityDetail(
+                            runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
+                            detailFields,
+                        ),
                     ),
                 )
             },
@@ -336,6 +356,10 @@ internal fun ActivityEditor(
                             description,
                             selected.map(UUID::fromString).toSet(),
                             notes,
+                            buildActivityDetail(
+                                runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
+                                detailFields,
+                            ),
                         ),
                     )
                 },
@@ -403,6 +427,8 @@ fun ActivityDetailScreen(
                     }
                     MoMetricCard("Parcelas", activity.targets.size.toString(), Modifier.fillMaxWidth())
 
+                    activity.detail?.let { ActivityDetailSummary(it) }
+
                     when (activity.status) {
                         ActivityStatus.DRAFT -> {
                             MoPrimaryButton("Editar borrador", { editor = true }, modifier = Modifier.fillMaxWidth().testTag("edit-activity"), enabled = !state.isSaving)
@@ -446,6 +472,7 @@ fun ActivityDetailScreen(
                     description = activity.description,
                     parcelIds = activity.targets.map { it.parcelId }.toSet(),
                     notes = activity.notes.orEmpty(),
+                    detail = activity.detail,
                 ),
                 title = "Editar actuación",
             )
@@ -486,6 +513,218 @@ private fun Activity.targetsLabel(): String = when (targets.size) {
     0 -> "Sin parcelas"
     1 -> targets.single().parcelName
     else -> "${targets.size} parcelas"
+}
+
+/**
+ * The typed agronomic block, and only the one that belongs to the chosen type.
+ *
+ * This is what keeps the editor from becoming a giant form: the common header is always
+ * there, and underneath it exactly one block appears — pruning, fertilisation, treatment,
+ * soil work, irrigation, maintenance or incident. Observation and Other show none,
+ * because the contract gives them no structured fields to show.
+ */
+@Composable
+private fun ActivityTypedDetailFields(type: ActivityType, fields: SnapshotStateMap<String, String>) {
+    if (!type.hasTypedDetail()) return
+    MoSectionHeader(type.detailSectionTitle())
+    Column(
+        Modifier.fillMaxWidth().testTag("activity-detail-block"),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+    ) {
+        when (type) {
+            ActivityType.PRUNING -> {
+                DetailField(fields, ActivityDetailFields.PRUNING_TYPE, "Tipo de poda")
+                DetailField(fields, ActivityDetailFields.WORKER_COUNT, "Nº de operarios")
+                DetailField(fields, ActivityDetailFields.HOURS, "Horas")
+                DetailField(fields, ActivityDetailFields.RESIDUE_MANAGEMENT, "Gestión de restos")
+            }
+            ActivityType.FERTILIZATION -> {
+                DetailField(fields, ActivityDetailFields.PRODUCT_NAME, "Producto")
+                DetailField(fields, ActivityDetailFields.TOTAL_QUANTITY, "Cantidad total")
+                DetailField(fields, ActivityDetailFields.UNIT, "Unidad")
+                DetailField(fields, ActivityDetailFields.DOSE_VALUE, "Dosis")
+                DetailField(fields, ActivityDetailFields.DOSE_UNIT, "Unidad de dosis")
+                DetailField(fields, ActivityDetailFields.APPLICATION_METHOD, "Método de aplicación")
+            }
+            ActivityType.PHYTOSANITARY -> {
+                DetailField(fields, ActivityDetailFields.PRODUCT_NAME, "Producto")
+                DetailField(fields, ActivityDetailFields.ACTIVE_SUBSTANCE, "Materia activa")
+                DetailField(fields, ActivityDetailFields.TOTAL_QUANTITY, "Cantidad total")
+                DetailField(fields, ActivityDetailFields.UNIT, "Unidad")
+                DetailField(fields, ActivityDetailFields.DOSE_VALUE, "Dosis")
+                DetailField(fields, ActivityDetailFields.DOSE_UNIT, "Unidad de dosis")
+                DetailField(fields, ActivityDetailFields.REASON, "Motivo")
+                DetailField(fields, ActivityDetailFields.EQUIPMENT_TEXT, "Equipo")
+            }
+            ActivityType.SOIL_WORK -> {
+                DetailField(fields, ActivityDetailFields.WORK_TYPE, "Tipo de labor")
+                DetailField(fields, ActivityDetailFields.METHOD, "Método")
+            }
+            ActivityType.IRRIGATION -> {
+                DetailField(fields, ActivityDetailFields.DURATION_MINUTES, "Duración (minutos)")
+                DetailField(fields, ActivityDetailFields.VOLUME_M3, "Volumen (m³)")
+                DetailField(fields, ActivityDetailFields.SECTOR_TEXT, "Sector")
+                DetailField(fields, ActivityDetailFields.SYSTEM_TEXT, "Sistema")
+                // A tariff snapshot, kept with the irrigation that used it. It is an
+                // estimate for the farmer's own reading: the expense ledger remains the
+                // authoritative cost, and nothing here is summed into a financial total.
+                Text(
+                    "Tarifa (opcional, histórica)",
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                DetailChoice(
+                    fields,
+                    ActivityDetailFields.PRICE_BASIS,
+                    IrrigationPricingBasis.entries.map { it.name to it.label() },
+                )
+                DetailField(fields, ActivityDetailFields.UNIT_PRICE, "Precio unitario (€)")
+                DetailField(fields, ActivityDetailFields.PRICED_QUANTITY, "Cantidad facturada")
+                DetailField(fields, ActivityDetailFields.PRICE_DATE, "Fecha de tarifa (AAAA-MM-DD)")
+            }
+            ActivityType.MAINTENANCE -> {
+                DetailField(fields, ActivityDetailFields.MAINTENANCE_TYPE, "Tipo de mantenimiento")
+                DetailField(fields, ActivityDetailFields.ASSET_TEXT, "Elemento o equipo")
+            }
+            ActivityType.INCIDENT -> {
+                DetailField(fields, ActivityDetailFields.CATEGORY, "Categoría")
+                Text("Gravedad", style = MaterialTheme.typography.titleSmall)
+                DetailChoice(
+                    fields,
+                    ActivityDetailFields.SEVERITY,
+                    IncidentSeverity.entries.map { it.name to it.label() },
+                )
+                Text("Estado", style = MaterialTheme.typography.titleSmall)
+                DetailChoice(
+                    fields,
+                    ActivityDetailFields.INCIDENT_STATE,
+                    IncidentState.entries.map { it.name to it.label() },
+                )
+                DetailField(fields, ActivityDetailFields.ACTION_TAKEN, "Actuación realizada")
+            }
+            ActivityType.OBSERVATION, ActivityType.OTHER -> Unit
+        }
+    }
+}
+
+@Composable
+private fun DetailField(fields: SnapshotStateMap<String, String>, key: String, label: String) {
+    MoTextField(
+        fields[key].orEmpty(),
+        { fields[key] = it },
+        label,
+        modifier = Modifier.fillMaxWidth().testTag("detail-$key"),
+    )
+}
+
+@Composable
+private fun DetailChoice(
+    fields: SnapshotStateMap<String, String>,
+    key: String,
+    options: List<Pair<String, String>>,
+) {
+    options.forEach { (value, label) ->
+        val checked = fields[key] == value
+        Row(
+            Modifier.fillMaxWidth().testTag("detail-$key-option")
+                .clickable(role = Role.Checkbox) { fields[key] = value }
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked, { fields[key] = value })
+            Text(label)
+        }
+    }
+}
+
+/** Shows the typed block of an Activity that already has one, without a second header. */
+@Composable
+private fun ActivityDetailSummary(detail: ActivityDetail) {
+    MoSectionHeader(detail.type.detailSectionTitle())
+    Column(
+        Modifier.fillMaxWidth().testTag("activity-detail-summary"),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        detail.toFields().forEach { (key, value) ->
+            Text(
+                "${key.detailFieldLabel()}: ${value.detailValueLabel()}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("activity-detail-value"),
+            )
+        }
+    }
+}
+
+private fun ActivityType.detailSectionTitle() = when (this) {
+    ActivityType.PRUNING -> "Datos de poda"
+    ActivityType.FERTILIZATION -> "Datos de abonado"
+    ActivityType.PHYTOSANITARY -> "Datos del tratamiento"
+    ActivityType.SOIL_WORK -> "Datos de la labor"
+    ActivityType.IRRIGATION -> "Datos de riego"
+    ActivityType.MAINTENANCE -> "Datos de mantenimiento"
+    ActivityType.INCIDENT -> "Datos de la incidencia"
+    ActivityType.OBSERVATION, ActivityType.OTHER -> "Datos"
+}
+
+private fun String.detailFieldLabel() = when (this) {
+    ActivityDetailFields.PRUNING_TYPE -> "Tipo de poda"
+    ActivityDetailFields.WORKER_COUNT -> "Operarios"
+    ActivityDetailFields.HOURS -> "Horas"
+    ActivityDetailFields.RESIDUE_MANAGEMENT -> "Gestión de restos"
+    ActivityDetailFields.PRODUCT_NAME -> "Producto"
+    ActivityDetailFields.ACTIVE_SUBSTANCE -> "Materia activa"
+    ActivityDetailFields.TOTAL_QUANTITY -> "Cantidad total"
+    ActivityDetailFields.UNIT -> "Unidad"
+    ActivityDetailFields.DOSE_VALUE -> "Dosis"
+    ActivityDetailFields.DOSE_UNIT -> "Unidad de dosis"
+    ActivityDetailFields.APPLICATION_METHOD -> "Método de aplicación"
+    ActivityDetailFields.REASON -> "Motivo"
+    ActivityDetailFields.EQUIPMENT_TEXT -> "Equipo"
+    ActivityDetailFields.WORK_TYPE -> "Tipo de labor"
+    ActivityDetailFields.METHOD -> "Método"
+    ActivityDetailFields.DURATION_MINUTES -> "Duración (min)"
+    ActivityDetailFields.VOLUME_M3 -> "Volumen (m³)"
+    ActivityDetailFields.SECTOR_TEXT -> "Sector"
+    ActivityDetailFields.SYSTEM_TEXT -> "Sistema"
+    ActivityDetailFields.PRICE_BASIS -> "Base de tarifa"
+    ActivityDetailFields.UNIT_PRICE -> "Precio unitario (€)"
+    ActivityDetailFields.PRICED_QUANTITY -> "Cantidad facturada"
+    ActivityDetailFields.PRICE_DATE -> "Fecha de tarifa"
+    ActivityDetailFields.MAINTENANCE_TYPE -> "Tipo de mantenimiento"
+    ActivityDetailFields.ASSET_TEXT -> "Elemento"
+    ActivityDetailFields.CATEGORY -> "Categoría"
+    ActivityDetailFields.SEVERITY -> "Gravedad"
+    ActivityDetailFields.INCIDENT_STATE -> "Estado"
+    ActivityDetailFields.ACTION_TAKEN -> "Actuación"
+    else -> this
+}
+
+private fun String.detailValueLabel(): String =
+    runCatching { IncidentSeverity.valueOf(this).label() }
+        .recoverCatching { IncidentState.valueOf(this).label() }
+        .recoverCatching { IrrigationPricingBasis.valueOf(this).label() }
+        .getOrDefault(this)
+
+private fun IncidentSeverity.label() = when (this) {
+    IncidentSeverity.LOW -> "Baja"
+    IncidentSeverity.MEDIUM -> "Media"
+    IncidentSeverity.HIGH -> "Alta"
+    IncidentSeverity.CRITICAL -> "Crítica"
+}
+
+private fun IncidentState.label() = when (this) {
+    IncidentState.OPEN -> "Abierta"
+    IncidentState.MONITORING -> "En observación"
+    IncidentState.RESOLVED -> "Resuelta"
+}
+
+private fun IrrigationPricingBasis.label() = when (this) {
+    IrrigationPricingBasis.PER_M3 -> "Por m³"
+    IrrigationPricingBasis.PER_HOUR -> "Por hora"
+    IrrigationPricingBasis.PER_EVENT -> "Por riego"
+    IrrigationPricingBasis.PER_HECTARE -> "Por hectárea"
+    IrrigationPricingBasis.INVOICE_TOTAL -> "Total factura"
+    IrrigationPricingBasis.OTHER -> "Otra"
 }
 
 private fun ActivityStatus.label() = when (this) {

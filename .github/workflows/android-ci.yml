@@ -5,7 +5,12 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    # Feature and hotfix branches are validated on push, so a branch can reach a green
+    # emulator run before anyone opens a pull request for it.
+    branches:
+      - main
+      - "feat/**"
+      - "hotfix/**"
 
 permissions:
   contents: read
@@ -66,11 +71,15 @@ jobs:
             tail -150 build-output.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          errors=$(grep -E "^(e: |FAILURE: |Caused by: |\* What went wrong:|\* Exception is:)" build-output.log | head -60)
-          if [ -z "$errors" ]; then
-            errors=$(tail -40 build-output.log)
-          fi
-          encoded=$(printf '%s' "$errors" | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN { ORS = "%0A" } { print }')
+          # Compiler errors first, then the tail unconditionally: Gradle puts the reason
+          # a build failed (a failing test, a missing file) in the lines that follow
+          # "What went wrong", which no single-line pattern catches.
+          {
+            grep -E "^(e: |w: .*error)" build-output.log | head -40
+            echo "--- tail ---"
+            tail -50 build-output.log
+          } > annotation.txt
+          encoded=$(sed -e 's/%/%25/g' -e 's/\r//g' annotation.txt | awk 'BEGIN { ORS = "%0A" } { print }')
           echo "::error title=Gradle build failure::${encoded}"
 
       - name: Publish exported Room schema
@@ -86,11 +95,17 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Also on a push, because a feature branch now reaches CI before a pull request
+      # exists, and the migration test cannot run until the compiler-exported schema is
+      # in the branch. Never on main: its schema arrives with the branch that made it.
       - name: Commit the exported Room schema
-        if: success() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: >-
+          success() && github.ref_name != 'main' &&
+          (github.event_name == 'push' ||
+           github.event.pull_request.head.repo.full_name == github.repository)
         shell: bash
         env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
         run: |
           if [ -z "$(git status --porcelain app/schemas)" ]; then
             echo "The exported schema already matches the committed one"
@@ -162,11 +177,15 @@ jobs:
             tail -150 build-output.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          errors=$(grep -E "^(e: |FAILURE: |Caused by: |\* What went wrong:|\* Exception is:)" build-output.log | head -60)
-          if [ -z "$errors" ]; then
-            errors=$(tail -40 build-output.log)
-          fi
-          encoded=$(printf '%s' "$errors" | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN { ORS = "%0A" } { print }')
+          # Compiler errors first, then the tail unconditionally: Gradle puts the reason
+          # a build failed (a failing test, a missing file) in the lines that follow
+          # "What went wrong", which no single-line pattern catches.
+          {
+            grep -E "^(e: |w: .*error)" build-output.log | head -40
+            echo "--- tail ---"
+            tail -50 build-output.log
+          } > annotation.txt
+          encoded=$(sed -e 's/%/%25/g' -e 's/\r//g' annotation.txt | awk 'BEGIN { ORS = "%0A" } { print }')
           echo "::error title=Gradle build failure::${encoded}"
 
       - name: Enable KVM

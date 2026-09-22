@@ -15,6 +15,14 @@ import com.isivoltpro.maginaolivo.data.local.dao.WorkspaceDao
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityParcelTargetEntity
+import com.isivoltpro.maginaolivo.data.local.entity.FertilizationDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.IncidentDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.IrrigationDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.IrrigationPriceSnapshotEntity
+import com.isivoltpro.maginaolivo.data.local.entity.MaintenanceDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.PruningDetailEntity
+import com.isivoltpro.maginaolivo.data.local.entity.SoilWorkDetailEntity
 import com.isivoltpro.maginaolivo.data.local.entity.AlertEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
@@ -40,13 +48,21 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         CampaignParcelSnapshotEntity::class,
         ActivityEntity::class,
         ActivityParcelTargetEntity::class,
+        PruningDetailEntity::class,
+        FertilizationDetailEntity::class,
+        PhytosanitaryDetailEntity::class,
+        SoilWorkDetailEntity::class,
+        IrrigationDetailEntity::class,
+        IrrigationPriceSnapshotEntity::class,
+        MaintenanceDetailEntity::class,
+        IncidentDetailEntity::class,
         HarvestEntity::class,
         ExpenseEntity::class,
         DocumentEntity::class,
         WeatherCacheEntity::class,
         AlertEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -67,7 +83,7 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
 
     companion object {
         const val DATABASE_NAME = "magina-olivo.db"
-        const val VERSION = 4
+        const val VERSION = 5
 
         @Volatile
         private var instance: MaginaOlivoDatabase? = null
