@@ -154,6 +154,19 @@ showing is what the saved Activity carries, across a process restart.
 `ActivityDetailFormTest` — JVM: what a block writes, the comma as a decimal separator, the
 derived tariff estimate, and an unreadable value dropped rather than guessed.
 
+## Room v5 schema
+
+Exported by the Room compiler during a real Gradle build and committed verbatim from CI
+(`d7ea2914`). The `identityHash` is the compiler's own,
+`a1fcd78acb39c2497f0f20efb5602598`, and was never written by hand. The hand-written
+`MIGRATION_4_5` statements were then checked column by column and index by index against
+that export before the migration test ran.
+
+A new Room version costs one bootstrap run: `foundation` and `gate3-emulator` start from
+the same commit, so the emulator job cannot see a schema that `foundation` commits during
+that same run. The first run after a version bump publishes the schema; the next one runs
+the migration test against it.
+
 ## Evidence
 
 PENDING — filled in from the green run.
