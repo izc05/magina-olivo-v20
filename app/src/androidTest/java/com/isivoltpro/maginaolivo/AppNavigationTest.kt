@@ -313,7 +313,7 @@ class AppNavigationTest {
 
         // Exactly ONE canonical Activity row, not one per parcel.
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
-        composeRule.onNodeWithText("2 parcelas").assertIsDisplayed()
+        composeRule.onNodeWithText("2 parcelas").performScrollTo().assertIsDisplayed()
 
         waitForTag("activity-row")
         composeRule.onNodeWithTag("activity-row").performScrollTo().performClick()
@@ -321,8 +321,8 @@ class AppNavigationTest {
 
         // The single Activity carries both Parcel targets.
         composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
-        composeRule.onNodeWithText("Parcela Norte E2E").assertIsDisplayed()
-        composeRule.onNodeWithText("Parcela Sur E2E").assertIsDisplayed()
+        composeRule.onNodeWithText("Parcela Norte E2E").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Parcela Sur E2E").performScrollTo().assertIsDisplayed()
 
         // PLANNED -> COMPLETED, then protected until an explicit reopen.
         clickLifecycleActionByTag("complete-activity")
@@ -339,7 +339,7 @@ class AppNavigationTest {
         composeRule.onNodeWithText("Poda multiparcela E2E").performScrollTo().performClick()
         waitForTag("activity-detail-root")
         composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
-        composeRule.onNodeWithText("Registro protegido").assertIsDisplayed()
+        composeRule.onNodeWithText("Registro protegido").performScrollTo().assertIsDisplayed()
     }
 
     @Test
