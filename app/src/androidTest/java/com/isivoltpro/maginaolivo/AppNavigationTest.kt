@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsNodeInteractionCollection
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -253,7 +254,14 @@ class AppNavigationTest {
         waitForText("Parcela Campaña E2E")
         composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
         composeRule.onNodeWithText("Finca Campaña E2E").assertIsDisplayed()
-        composeRule.onNodeWithText("Sin datos").assertIsDisplayed()
+        // Truthful summaries: the detail renders exactly three metric cards - kg, yield
+        // and expenses - and all three read "Sin datos" because no harvest, delivery or
+        // expense exists yet. The card labels are unique, so each one is addressed
+        // unambiguously; "Sin datos" alone matches all three and cannot be.
+        listOf("Kg recogidos", "Rendimiento", "Gastos").forEach { label ->
+            composeRule.onNodeWithText(label).performScrollTo().assertIsDisplayed()
+        }
+        composeRule.onAllNodesWithText("Sin datos").assertCountEquals(3)
 
         // A closed campaign stays protected after the restart, and reopening it is an
         // explicit, confirmed action that returns the aggregate to an editable state.
