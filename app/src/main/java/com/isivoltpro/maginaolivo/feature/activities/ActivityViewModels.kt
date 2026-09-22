@@ -6,6 +6,7 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityChanges
+import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
@@ -27,6 +28,8 @@ data class ActivityDraft(
     val description: String = "",
     val parcelIds: Set<UUID> = emptySet(),
     val notes: String = "",
+    /** The typed agronomic block of [type], built from the form the editor showed. */
+    val detail: ActivityDetail? = null,
 )
 
 data class FarmActivitiesUiState(
@@ -81,6 +84,7 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
                         parcelIds = draft.parcelIds,
                         notes = draft.notes.nullIfBlank(),
                         asDraft = asDraft,
+                        detail = draft.detail,
                     ),
                 )
             ) {
@@ -215,7 +219,14 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
         mutate("Cambios guardados") {
             repository.update(
                 activityId,
-                ActivityChanges(draft.type, draft.activityDate, draft.description.trim(), draft.parcelIds, draft.notes.nullIfBlank()),
+                ActivityChanges(
+                    draft.type,
+                    draft.activityDate,
+                    draft.description.trim(),
+                    draft.parcelIds,
+                    draft.notes.nullIfBlank(),
+                    draft.detail,
+                ),
             )
         }
     }
