@@ -35,7 +35,7 @@ data class ActivityParcelOption(val id: UUID, val name: String, val managedAreaM
 data class Activity(
     val id: UUID,
     val workspaceId: UUID,
-    val farmId: UUID,
+    val farmId: UUID?,
     val campaignId: UUID?,
     val type: ActivityType,
     val status: ActivityStatus,

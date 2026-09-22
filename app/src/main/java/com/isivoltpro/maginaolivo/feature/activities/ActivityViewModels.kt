@@ -134,9 +134,10 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                     activity = activity,
                     error = if (activity == null) "La actuación no está disponible" else null,
                 )
-                if (activity != null && parcelsJob == null) {
+                val farmId = activity?.farmId
+                if (farmId != null && parcelsJob == null) {
                     parcelsJob = viewModelScope.launch {
-                        repository.observeSelectableParcels(activity.farmId).collect { parcels ->
+                        repository.observeSelectableParcels(farmId).collect { parcels ->
                             mutableState.value = mutableState.value.copy(parcels = parcels)
                         }
                     }

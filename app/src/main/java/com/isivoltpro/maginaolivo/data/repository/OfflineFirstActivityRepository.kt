@@ -228,7 +228,7 @@ class OfflineFirstActivityRepository(
         Activity(
             id = activity.id,
             workspaceId = activity.workspaceId,
-            farmId = activity.farmId ?: activity.workspaceId,
+            farmId = activity.farmId,
             campaignId = activity.campaignId,
             type = runCatching { ActivityType.valueOf(activity.type) }.getOrDefault(ActivityType.OTHER),
             status = activity.status,
