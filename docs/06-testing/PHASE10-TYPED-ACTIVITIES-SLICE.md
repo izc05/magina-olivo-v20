@@ -1,9 +1,10 @@
 # Phase 10 — Typed agricultural activities + irrigation
 
-**Phase decision:** PENDING — filled in from a real run when CI is green
+**Phase decision:** PASS — implementation complete and validated by CI
 **Reviewed:** 2026-09-22
 **Base commit:** `f82be163` (`main`, Phase 9 merged)
 **Branch:** `feat/android-typed-activities`
+**Validated commit:** `526e1605`
 
 > Every CI, emulator and artifact figure below is copied from a real run. Nothing is
 > estimated, and no evidence from an earlier phase is reused or rewritten.
@@ -169,4 +170,99 @@ the migration test against it.
 
 ## Evidence
 
-PENDING — filled in from the green run.
+All figures below come from the runs named in the last column.
+
+| Check | Command / workflow | Result | Run |
+| --- | --- | --- | --- |
+| Lint | `:app:lintDevDebug` | PASS | [Android CI #336](https://github.com/izc05/magina-olivo-v20/actions/runs/35778004863) |
+| Unit tests | `:app:testDevDebugUnitTest` | PASS — 42 tests | Android CI #336 |
+| Instrumented compilation | `:app:assembleDevDebugAndroidTest` | PASS | Android CI #336 |
+| Debug builds | `assembleDevDebug assembleStagingDebug assembleProductionDebug` | PASS | Android CI #336 |
+| Full API 35 instrumentation | `gate3-emulator` | PASS — 94 instrumented tests, `instrumentation_rc=0` | Android CI #336, job `106916047904` |
+| Room 4→5 migration test | `RoomMigrationTest` | PASS | Android CI #336 |
+| Repository tests in airplane mode | `offline-room-instrumentation.txt` | PASS — 37 tests, `offline_room_instrumentation_rc=0` | Android CI #336 |
+| Emulator crash buffer | `gate3-emulator-evidence` | EMPTY — `0 evidence/crash.txt` | Android CI #336 |
+| Independent emulator run | `Gate 3 Android Emulator Evidence #55` | PASS | [run 35778004995](https://github.com/izc05/magina-olivo-v20/actions/runs/35778004995) |
+| Installable DEV APK | `magina-olivo-dev-debug` | 13 338 868 bytes | `sha256:435beb9316af0e47dd7ddb4605df04feed1b6597b44f2f9e35d03e5cf1a2969a` |
+| Evidence bundle | `gate3-emulator-evidence` | 3 257 501 bytes | `sha256:c521d4827c524274b47514b5ab7828dac297cf51f7fb48304cec889a6bde328c` |
+
+### Emulator and device
+
+```text
+serial=emulator-5554
+android_release=15
+sdk=35
+model=Android SDK built for x86_64
+abi=x86_64
+physical_size=1080x2400
+```
+
+Screenshot evidence was captured at 360dp, 393dp, 480dp and 393dp with font scale 1.3.
+
+### Cold start, three consecutive COLD launches
+
+| Run | TotalTime | WaitTime |
+| --- | --- | --- |
+| 1 | 1704 ms | 1705 ms |
+| 2 | 1764 ms | 1766 ms |
+| 3 | 1596 ms | 1600 ms |
+
+### Memory after the suite
+
+```text
+TOTAL PSS:    76833 kB      TOTAL RSS:   196356 kB     TOTAL SWAP:  0 kB
+Java Heap:    13300 kB      Native Heap:  10808 kB     Graphics:    0 kB
+Views:            8         Activities:       1        WebViews:    0
+```
+
+Eight new tables and a per-type form block cost nothing measurable: one Activity, eight
+views and 76 MB of PSS after the whole suite, the same shape as Phase 9. The gfx figures
+in the bundle remain unusable as a performance signal — four frames, software rendering.
+
+### Test counts
+
+| Suite | Phase 9 | Phase 10 |
+| --- | --- | --- |
+| Instrumented (all) | 75 | **94** |
+| of which typed detail contract | — | 17 |
+| of which E2E navigation | 13 | 14 |
+| Airplane-mode repository tests | 20 | **37** |
+| JVM unit tests | 32 | **42** |
+| Emulator crash buffer | 0 bytes | 0 bytes |
+
+## Definition of done
+
+| Requirement | State |
+| --- | --- |
+| schema / migration | Room v5, additive `MIGRATION_4_5`, validated against the compiler export |
+| typed persistence | seven detail tables plus the irrigation tariff snapshot |
+| atomic Activity aggregate | header, detail and targets in one transaction, one intent |
+| offline CRUD | create, edit, retype, clear; all local-first |
+| real UI | production editor and detail summary, canonical components only |
+| type-specific validation | type match plus negative-number rejection |
+| no giant-form regression | one block at a time, proved by E2E |
+| multi-parcel intact | one Activity, N targets, asserted with the detail present |
+| restart persistence | contract test and E2E |
+| airplane mode | 37 repository tests with real airplane mode |
+| E2E | typed editor E2E, plus the Phase 9 Registrar (+) E2E still green |
+| instrumented tests | 94 |
+| CI green | Android CI #336 and Gate 3 Emulator Evidence #55 |
+| crash buffer | 0 bytes |
+| evidence document | this file |
+| CURRENT-STATE updated | yes |
+
+## Known gaps
+
+- `operator_text` and `machinery_text` are in the data-model draft but not in the shipped
+  `activities` table. No Phase 10 detail needs them, so they were not added; the People
+  and Machinery modules will decide their shape.
+- `location_geometry` on `incident_details` exists and is never written: geometry capture
+  belongs to the map phase.
+- `linked_expense_id` on the tariff snapshot exists and is never written: the Expense
+  ledger arrives in Phase 12.
+- The seven undefined enum sets remain free text, pending a product decision.
+
+```text
+PHASE 10 = COMPLETE AND VALIDATED / NOT MERGED
+ROOM V5 SCHEMA EXPORTED BY THE COMPILER (a1fcd78acb39c2497f0f20efb5602598)
+```
