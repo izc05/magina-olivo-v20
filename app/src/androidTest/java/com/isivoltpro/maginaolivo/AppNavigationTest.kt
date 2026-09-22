@@ -6,9 +6,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -311,23 +309,44 @@ class AppNavigationTest {
     }
 
     /**
-     * Waits for a node and, on timeout, fails with the semantics of EVERY Compose root.
+     * Waits for a node and, on timeout, fails with a named diagnostic.
      *
      * A ModalBottomSheet renders in its own window, so a silent no-op click on the screen
      * behind it and a sheet that opened without the expected child look identical from a
-     * bare timeout. The dump tells the two apart on the next CI run.
+     * bare timeout. The diagnostic tells the two apart on the next CI run.
      */
     private fun waitForNodeOrDump(description: String, nodes: () -> SemanticsNodeInteractionCollection) {
         try {
             composeRule.waitUntil(UI_TIMEOUT_MS) { nodes().fetchSemanticsNodes().isNotEmpty() }
         } catch (timeout: ComposeTimeoutException) {
-            throw AssertionError(
-                "Timed out waiting for $description.\nSemantics of every Compose root:\n" +
-                    composeRule.onAllNodes(isRoot(), useUnmergedTree = true).printToString(Int.MAX_VALUE),
-                timeout,
-            )
+            throw AssertionError("Timed out waiting for $description.\n" + diagnostics(), timeout)
         }
     }
+
+    /**
+     * Built only from node collections this suite already uses, so the diagnostic can
+     * never be the reason the instrumented sources fail to compile, and every lookup is
+     * guarded so a missing node reports itself instead of masking the real failure.
+     */
+    private fun diagnostics(): String = buildString {
+        appendLine("Campaign detail screen:")
+        appendLine(dumpOrAbsent { composeRule.onAllNodesWithTag("campaign-detail-root", useUnmergedTree = true) })
+        appendLine("Confirmation sheet title:")
+        appendLine(dumpOrAbsent { composeRule.onAllNodesWithText("Confirmar cambio", useUnmergedTree = true) })
+        appendLine("Confirmation button:")
+        appendLine(dumpOrAbsent { composeRule.onAllNodesWithTag("confirm-campaign-action", useUnmergedTree = true) })
+        appendLine("Lifecycle nodes present:")
+        listOf("edit-campaign", "activate-campaign", "close-campaign", "reopen-campaign", "campaign-row")
+            .forEach { tag ->
+                appendLine("  $tag -> ${countOrZero { composeRule.onAllNodesWithTag(tag, useUnmergedTree = true) }}")
+            }
+    }
+
+    private fun dumpOrAbsent(nodes: () -> SemanticsNodeInteractionCollection): String =
+        runCatching { nodes().printToString(Int.MAX_VALUE) }.getOrElse { "  <not available: ${it.message}>" }
+
+    private fun countOrZero(nodes: () -> SemanticsNodeInteractionCollection): Int =
+        runCatching { nodes().fetchSemanticsNodes().size }.getOrElse { -1 }
 
     /**
      * Clicks a Campaign lifecycle button, proving first that the click can actually land.
