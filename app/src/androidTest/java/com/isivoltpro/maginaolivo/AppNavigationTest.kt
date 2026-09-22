@@ -365,9 +365,14 @@ class AppNavigationTest {
         clickInSheetByText("Registrar actuación")
         waitForTag("register-activity-root")
 
-        // A single Farm resolves itself; when earlier tests have left other Farms in the
-        // same database the flow asks, and the answer is ours.
-        if (composeRule.onAllNodesWithTag("register-farm-option").fetchSemanticsNodes().isNotEmpty()) {
+        // A single Farm resolves itself and the editor opens straight away; with more
+        // than one the flow asks first. Wait for whichever of the two actually arrives
+        // instead of sampling the screen before it has settled.
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("activity-description").fetchSemanticsNodes().isNotEmpty() ||
+                composeRule.onAllNodesWithTag("register-farm-option").fetchSemanticsNodes().isNotEmpty()
+        }
+        if (composeRule.onAllNodesWithTag("activity-description").fetchSemanticsNodes().isEmpty()) {
             clickByText("Finca Registrar E2E")
         }
         waitForTag("activity-description")
@@ -382,14 +387,19 @@ class AppNavigationTest {
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
 
         // The same Activity is the one the Farm detail shows: one record, one home.
-        // Wait for the Farm list itself: the Registrar screen also shows the Farm name,
-        // as the section header of the Farm it resolved, and a header has no click action.
+        //
+        // Mi Olivar restores its own saved back stack, so returning to it lands back on
+        // the Farm detail this test was already on rather than on the Farm list. Accept
+        // either, and only look the Farm up again when the list is what came back.
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
         composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithTag("register-activity-root").fetchSemanticsNodes().isEmpty() &&
+            composeRule.onAllNodesWithTag("farm-detail-root").fetchSemanticsNodes().isNotEmpty() ||
                 composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
         }
-        clickByText("Finca Registrar E2E")
+        if (composeRule.onAllNodesWithTag("farm-detail-root").fetchSemanticsNodes().isEmpty()) {
+            clickByText("Finca Registrar E2E")
+        }
+        waitForTag("farm-detail-root")
         waitForTag("add-activity")
         waitForText("Riego desde Registrar")
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
