@@ -208,12 +208,12 @@ internal fun ActivityEditor(
             {
                 onSave(
                     ActivityDraft(
-                runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
-                runCatching { LocalDate.parse(date) }.getOrNull(),
-                description,
-                selected.map(UUID::fromString).toSet(),
-                notes,
-            ),
+                        runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
+                        runCatching { LocalDate.parse(date) }.getOrNull(),
+                        description,
+                        selected.map(UUID::fromString).toSet(),
+                        notes,
+                    ),
                 )
             },
             modifier = Modifier.fillMaxWidth().testTag("save-activity"), enabled = !isSaving,
@@ -224,12 +224,12 @@ internal fun ActivityEditor(
                 {
                     saveDraft(
                         ActivityDraft(
-                runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
-                runCatching { LocalDate.parse(date) }.getOrNull(),
-                description,
-                selected.map(UUID::fromString).toSet(),
-                notes,
-            ),
+                            runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
+                            runCatching { LocalDate.parse(date) }.getOrNull(),
+                            description,
+                            selected.map(UUID::fromString).toSet(),
+                            notes,
+                        ),
                     )
                 },
                 modifier = Modifier.fillMaxWidth().testTag("save-activity-draft"),
@@ -389,9 +389,10 @@ private fun ActivityStatus.label() = when (this) {
 }
 
 private fun ActivityStatus.tone() = when (this) {
+    ActivityStatus.DRAFT -> MoStatusTone.Neutral
+    ActivityStatus.PLANNED -> MoStatusTone.Info
     ActivityStatus.COMPLETED -> MoStatusTone.Success
-    ActivityStatus.CANCELLED -> MoStatusTone.Neutral
-    else -> MoStatusTone.Success
+    ActivityStatus.CANCELLED -> MoStatusTone.Warning
 }
 
 private fun ActivityType.label() = when (this) {

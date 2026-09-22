@@ -351,6 +351,7 @@ fun FarmDetailScreen(
                 onArchive = { archiveConfirmation = true },
                 parcelContent = parcelContent,
                 campaignContent = campaignContent,
+                activityContent = activityContent,
                 modifier = Modifier.padding(innerPadding),
             )
         }
@@ -413,6 +414,7 @@ private fun FarmDetailContent(
     onArchive: () -> Unit,
     parcelContent: @Composable () -> Unit,
     campaignContent: @Composable () -> Unit,
+    activityContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
