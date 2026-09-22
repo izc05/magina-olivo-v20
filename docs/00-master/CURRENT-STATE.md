@@ -25,13 +25,13 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 5 — Local database foundation
 ✅ Gate 6 — Farms + Parcels + Campaigns (composite)
 ✅ Gate 9 — Activity engine
-✅ Gate 10 — Typed activities + irrigation (validated, pending merge)
+✅ Gate 10 — Typed activities + irrigation
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 10 — TYPED AGRICULTURAL ACTIVITIES + IRRIGATION (VALIDATED, NOT YET MERGED)
+▶ PHASE 11 — ATTACHMENTS (NOT STARTED)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -156,8 +156,9 @@ show the intermediate diagnoses; **Android CI #332 is green**.
 
 ## Phase 10 — Typed agricultural activities + irrigation
 
-Complete and validated by CI on code commit `526e1605`, on `feat/android-typed-activities`
-(branched from the green hotfix so it carries that fix). It is **not merged**.
+Complete, validated and **merged into `main`** as commit `4acc3ab9`, a normal merge
+commit whose parents are `f82be163` and `0a10fe67`. The branch carried
+`hotfix/android-e2e-stability`, so this one merge also restored `main` to green.
 
 Phase 10 adds what kind of work an Activity was, as structured fields, without a second
 Activity and without a giant form. Room v5 and the additive `MIGRATION_4_5` create the
@@ -195,16 +196,23 @@ verbatim (`d7ea2914`), identityHash `a1fcd78acb39c2497f0f20efb5602598`; the hand
 migration was then verified against it column by column before the migration test ran. Full
 detail is in `docs/06-testing/PHASE10-TYPED-ACTIVITIES-SLICE.md`.
 
+Post-merge verification: **Android CI #338** (run `35782182234`) on `4acc3ab9` passed with
+`foundation` SUCCESS and `gate3-emulator` SUCCESS. The DEV APK from that run is 13,338,872
+bytes, sha256 `d446b494f9b36d0a7c796d00a4ded6f3a8b65a365716834309f584f76e90045c`.
+
 ```text
-PHASE 10 = COMPLETE AND VALIDATED / NOT MERGED
+PHASE 10 = COMPLETE AND VALIDATED / MERGED TO MAIN (4acc3ab9)
+MAIN = GREEN
 ```
 
 ## Next deliverable
 
-1. **Merge `hotfix/android-e2e-stability` and `feat/android-typed-activities` into `main`.**
-   Both are green and await owner authorisation; the Phase 10 branch already contains the
-   hotfix, so merging it alone also restores `main`.
-2. **Then Phase 11 — Attachments.**
+**Phase 11 — Attachments**: camera and document picker, the local attachment lifecycle,
+thumbnails and local references, with attachments surviving a restart and a failed future
+upload. Not started.
+
+Both workflows still run on pushes to `feat/**` and `hotfix/**`, so a branch reaches a
+green emulator run before a pull request exists.
 
 Activity cost stays out of `activities`: `RC1-NORMATIVE-ADDENDUM` D2 supersedes
 `activities.cost_cents` / `activities.currency`, and cost will arrive as a linked

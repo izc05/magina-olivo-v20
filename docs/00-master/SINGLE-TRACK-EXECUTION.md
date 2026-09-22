@@ -39,11 +39,10 @@ The old monolithic Phase 3 PR #180 is superseded and must not be merged.
 ## 2. Current active work
 
 ```text
-CURRENT:              Phase 9 — Activity engine = PASS, merged into `main`
-                      (Gate 6 composite = Phase 6 Farms + Phase 7 Parcels +
-                       Phase 8 Campaigns, also in `main`)
+CURRENT:              Phase 10 — Typed activities + irrigation = PASS,
+                      merged into `main` as 4acc3ab9 and verified there
 
-NEXT PRODUCTION PHASE: Phase 10 — Typed activities + irrigation  (IN PROGRESS)
+NEXT PRODUCTION PHASE: Phase 11 — Attachments  (NOT STARTED)
 
 BLOCKER:              none
 ```
@@ -52,9 +51,10 @@ Gates 3, 4 and 5 passed. Gate 6 composite passed on 2026-09-22 on commit `164aaa
 see `docs/06-testing/PHASE6-CAMPAIGNS-SLICE.md` and `docs/00-master/CURRENT-STATE.md`.
 
 The validated Android stack was integrated into `main` through PRs #197–#201, #205 and
-finally #206, whose merge commit is `f82be163`. Phase 9 is complete, validated and
-merged; Phase 10 builds its typed agronomic details on top of that Activity aggregate.
-Section 3 below is retained as the historical record of how Gate 3 was closed.
+finally #206, whose merge commit is `f82be163`. Phase 9 is complete, validated and merged.
+Phase 10 added the typed agronomic details on top of that Activity aggregate and was
+merged as `4acc3ab9`. Section 3 below is retained as the historical record of how Gate 3
+was closed.
 
 ## 3. Gate 3 closure order
 

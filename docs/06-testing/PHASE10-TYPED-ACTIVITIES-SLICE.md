@@ -5,6 +5,7 @@
 **Base commit:** `f82be163` (`main`, Phase 9 merged)
 **Branch:** `feat/android-typed-activities`
 **Validated commit:** `526e1605`
+**Merged:** `4acc3ab9` (merge commit into `main`, parents `f82be163` and `0a10fe67`)
 
 > Every CI, emulator and artifact figure below is copied from a real run. Nothing is
 > estimated, and no evidence from an earlier phase is reused or rewritten.
@@ -262,7 +263,15 @@ in the bundle remain unusable as a performance signal — four frames, software 
   ledger arrives in Phase 12.
 - The seven undefined enum sets remain free text, pending a product decision.
 
+### Post-merge verification
+
+`main` at `4acc3ab9` was rebuilt from scratch by **Android CI #338**
+([run 35782182234](https://github.com/izc05/magina-olivo-v20/actions/runs/35782182234)):
+`foundation` SUCCESS and `gate3-emulator` SUCCESS. The DEV APK produced there is
+13 338 872 bytes, `sha256:d446b494f9b36d0a7c796d00a4ded6f3a8b65a365716834309f584f76e90045c`.
+
 ```text
-PHASE 10 = COMPLETE AND VALIDATED / NOT MERGED
+PHASE 10 = COMPLETE AND VALIDATED / MERGED TO MAIN (4acc3ab9)
+MAIN = GREEN
 ROOM V5 SCHEMA EXPORTED BY THE COMPILER (a1fcd78acb39c2497f0f20efb5602598)
 ```
