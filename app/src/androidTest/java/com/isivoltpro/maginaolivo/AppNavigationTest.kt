@@ -280,6 +280,69 @@ class AppNavigationTest {
     }
 
     @Test
+    fun oneActivityTargetsTwoParcelsAsASingleCanonicalRecord() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        waitForTag("add-farm")
+
+        composeRule.onNodeWithTag("add-farm").performClick()
+        waitForTag("farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Actuación E2E")
+        waitForTag("save-farm")
+        composeRule.onNodeWithTag("save-farm").performClick()
+        waitForText("Finca Actuación E2E")
+        composeRule.onNodeWithText("Finca Actuación E2E").performClick()
+        waitForTag("add-parcel")
+
+        createParcel("Parcela Norte E2E")
+        createParcel("Parcela Sur E2E")
+
+        // One activity, two parcels selected.
+        waitForTag("add-activity")
+        composeRule.onNodeWithTag("add-activity").performScrollTo().performClick()
+        waitForTag("activity-description")
+        composeRule.onNodeWithTag("activity-description").performTextInput("Poda multiparcela E2E")
+        waitForTag("activity-date")
+        composeRule.onNodeWithTag("activity-date").performTextInput("2026-01-15")
+        waitForTag("activity-parcel-option")
+        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        composeRule.onAllNodesWithTag("activity-parcel-option")[1].performScrollTo().performClick()
+        waitForTag("save-activity")
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        waitForText("Poda multiparcela E2E")
+
+        // Exactly ONE canonical Activity row, not one per parcel.
+        composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
+        composeRule.onNodeWithText("2 parcelas").assertIsDisplayed()
+
+        waitForTag("activity-row")
+        composeRule.onNodeWithTag("activity-row").performScrollTo().performClick()
+        waitForTag("activity-detail-root")
+
+        // The single Activity carries both Parcel targets.
+        composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
+        composeRule.onNodeWithText("Parcela Norte E2E").assertIsDisplayed()
+        composeRule.onNodeWithText("Parcela Sur E2E").assertIsDisplayed()
+
+        // PLANNED -> COMPLETED, then protected until an explicit reopen.
+        clickLifecycleActionByTag("complete-activity")
+        confirmActivityAction()
+        waitForText("Registro protegido")
+
+        pressBack()
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+        waitForText("Poda multiparcela E2E")
+
+        // Still one canonical Activity after the restart.
+        composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
+        composeRule.onNodeWithText("Poda multiparcela E2E").performScrollTo().performClick()
+        waitForTag("activity-detail-root")
+        composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
+        composeRule.onNodeWithText("Registro protegido").assertIsDisplayed()
+    }
+
+    @Test
     fun developerGalleryIsReachableFromDevProfile() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Perfil").performClick()
@@ -382,6 +445,25 @@ class AppNavigationTest {
             .assertIsEnabled()
             .assertHasClickAction()
             .performClick()
+    }
+
+    private fun createParcel(name: String) {
+        waitForTag("add-parcel")
+        composeRule.onNodeWithTag("add-parcel").performScrollTo().performClick()
+        waitForTag("parcel-name")
+        composeRule.onNodeWithTag("parcel-name").performTextInput(name)
+        waitForTag("save-parcel")
+        composeRule.onNodeWithTag("save-parcel").performScrollTo().performClick()
+        waitForText(name)
+    }
+
+    /** Confirms an Activity lifecycle action once its ModalBottomSheet is actually composed. */
+    private fun confirmActivityAction() {
+        waitForNodeOrDump("confirmation sheet title") { composeRule.onAllNodesWithText("Confirmar cambio") }
+        waitForNodeOrDump("confirm-activity-action") {
+            composeRule.onAllNodesWithTag("confirm-activity-action", useUnmergedTree = true)
+        }
+        composeRule.onNodeWithTag("confirm-activity-action", useUnmergedTree = true).performClick()
     }
 
     /** Confirms a Campaign lifecycle action once its ModalBottomSheet is actually composed. */
