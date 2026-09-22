@@ -57,11 +57,15 @@ jobs:
             tail -150 build-output.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          errors=$(grep -E "^(e: |FAILURE: |Caused by: |\* What went wrong:|\* Exception is:)" build-output.log | head -60)
-          if [ -z "$errors" ]; then
-            errors=$(tail -40 build-output.log)
-          fi
-          encoded=$(printf '%s' "$errors" | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN { ORS = "%0A" } { print }')
+          # Compiler errors first, then the tail unconditionally: Gradle puts the reason
+          # a build failed (a failing test, a missing file) in the lines that follow
+          # "What went wrong", which no single-line pattern catches.
+          {
+            grep -E "^(e: |w: .*error)" build-output.log | head -40
+            echo "--- tail ---"
+            tail -50 build-output.log
+          } > annotation.txt
+          encoded=$(sed -e 's/%/%25/g' -e 's/\r//g' annotation.txt | awk 'BEGIN { ORS = "%0A" } { print }')
           echo "::error title=Gradle build failure::${encoded}"
 
       - name: Enable KVM

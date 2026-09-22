@@ -60,11 +60,25 @@ class ActivityDetailFormTest {
 
     @Test
     fun `the tariff snapshot only exists once a basis is chosen`() {
+        // A price with no basis says nothing, so the snapshot is simply not created —
+        // the irrigation itself is still saved, because its own fields were filled in.
         val withoutBasis = buildActivityDetail(
             ActivityType.IRRIGATION,
-            mapOf(ActivityDetailFields.UNIT_PRICE to "0,12"),
+            mapOf(
+                ActivityDetailFields.VOLUME_M3 to "240",
+                ActivityDetailFields.UNIT_PRICE to "0,12",
+            ),
         ) as ActivityDetail.Irrigation
         assertNull(withoutBasis.price)
+        assertEquals(240.0, withoutBasis.volumeM3!!, 0.0001)
+
+        // With nothing but a price and no basis there is no irrigation to save at all.
+        assertNull(
+            buildActivityDetail(
+                ActivityType.IRRIGATION,
+                mapOf(ActivityDetailFields.UNIT_PRICE to "0,12"),
+            ),
+        )
 
         val withBasis = buildActivityDetail(
             ActivityType.IRRIGATION,
