@@ -44,7 +44,39 @@ jobs:
         run: gradle --version
 
       - name: Lint, unit test, compile instrumented tests and build all environments
-        run: gradle --no-daemon lintDevDebug testDevDebugUnitTest assembleDevDebug assembleStagingDebug assembleProductionDebug assembleDevDebugAndroidTest
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon lintDevDebug testDevDebugUnitTest assembleDevDebug assembleStagingDebug assembleProductionDebug assembleDevDebugAndroidTest 2>&1 | tee build-output.log
+
+      - name: Publish build diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo "## Build diagnostics"
+            echo "### Compiler errors"
+            echo '```'
+            grep -E "^(e: |FAILURE: |Caused by: |\* What went wrong:|\* Exception is:)" build-output.log | head -200 || true
+            echo '```'
+            echo "### Tail of build output"
+            echo '```'
+            tail -150 build-output.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish exported Room schema
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo "## Exported Room schema (latest version)"
+            latest=$(find app/schemas -name '*.json' | sort -V | tail -1)
+            echo "File: \`$latest\`"
+            echo '```json'
+            cat "$latest"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload DEV APK
         uses: actions/upload-artifact@v6
@@ -76,7 +108,26 @@ jobs:
           cache-provider: basic
 
       - name: Build Gate 3 candidate
-        run: gradle --no-daemon testDevDebugUnitTest assembleDevDebug assembleDevDebugAndroidTest
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon testDevDebugUnitTest assembleDevDebug assembleDevDebugAndroidTest 2>&1 | tee build-output.log
+
+      - name: Publish build diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo "## Build diagnostics"
+            echo "### Compiler errors"
+            echo '```'
+            grep -E "^(e: |FAILURE: |Caused by: |\* What went wrong:|\* Exception is:)" build-output.log | head -200 || true
+            echo '```'
+            echo "### Tail of build output"
+            echo '```'
+            tail -150 build-output.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Enable KVM
         run: |
