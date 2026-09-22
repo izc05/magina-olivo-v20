@@ -43,6 +43,8 @@ data class Activity(
     val description: String,
     val notes: String?,
     val targets: List<ActivityParcelTarget>,
+    /** At most one, and always of this Activity's own type. Null for OBSERVATION and OTHER. */
+    val detail: ActivityDetail? = null,
     val version: Long,
 )
 
@@ -56,6 +58,8 @@ data class NewActivity(
     val notes: String? = null,
     /** A draft is resumable and may be saved with no Parcel selected yet. */
     val asDraft: Boolean = false,
+    /** The typed agronomic detail. It must match [type], and may be absent. */
+    val detail: ActivityDetail? = null,
 )
 
 data class ActivityChanges(
@@ -64,6 +68,14 @@ data class ActivityChanges(
     val description: String,
     val parcelIds: Set<UUID>,
     val notes: String? = null,
+    /**
+     * The typed agronomic detail after the change.
+     *
+     * Retyping an Activity replaces its detail: the previous one is removed in the same
+     * transaction, because an Activity carries exactly one detail and it always matches
+     * the type. Passing null clears the detail.
+     */
+    val detail: ActivityDetail? = null,
 )
 
 /**
@@ -73,8 +85,13 @@ data class ActivityChanges(
  * (RC1-NORMATIVE-ADDENDUM D5). Every mutation commits locally first, bumps the
  * aggregate version and collapses into a single Activity outbox intent.
  *
- * Phase 9 deliberately exposes no cost field: RC1-NORMATIVE-ADDENDUM D3 supersedes
- * `activities.cost_cents` / `activities.currency` in favour of linked expenses.
+ * Phase 10 adds the typed agronomic details as further children of the same aggregate:
+ * they are written in the same transaction, share the Activity version and queue no
+ * synchronization intent of their own.
+ *
+ * No cost field is exposed: RC1-NORMATIVE-ADDENDUM D2 supersedes `activities.cost_cents`
+ * / `activities.currency` in favour of linked expenses, which remain the only
+ * authoritative financial source.
  */
 interface ActivityRepository {
     fun observeSelectableParcels(farmId: UUID): Flow<List<ActivityParcelOption>>

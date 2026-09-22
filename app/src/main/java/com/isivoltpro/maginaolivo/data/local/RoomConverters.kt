@@ -9,6 +9,9 @@ import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import com.isivoltpro.maginaolivo.domain.activity.IncidentSeverity
+import com.isivoltpro.maginaolivo.domain.activity.IncidentState
+import com.isivoltpro.maginaolivo.domain.activity.IrrigationPricingBasis
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -81,4 +84,23 @@ class RoomConverters {
 
     @TypeConverter
     fun stringToActivityStatus(value: String?): ActivityStatus? = value?.let(ActivityStatus::valueOf)
+
+    @TypeConverter
+    fun incidentSeverityToString(value: IncidentSeverity?): String? = value?.name
+
+    @TypeConverter
+    fun stringToIncidentSeverity(value: String?): IncidentSeverity? = value?.let(IncidentSeverity::valueOf)
+
+    @TypeConverter
+    fun incidentStateToString(value: IncidentState?): String? = value?.name
+
+    @TypeConverter
+    fun stringToIncidentState(value: String?): IncidentState? = value?.let(IncidentState::valueOf)
+
+    @TypeConverter
+    fun irrigationPricingBasisToString(value: IrrigationPricingBasis?): String? = value?.name
+
+    @TypeConverter
+    fun stringToIrrigationPricingBasis(value: String?): IrrigationPricingBasis? =
+        value?.let(IrrigationPricingBasis::valueOf)
 }
