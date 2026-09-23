@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
@@ -433,14 +434,14 @@ private fun WeatherArtwork(modifier: Modifier) {
 
 @Composable
 private fun OlivePhotoPlaceholder(modifier: Modifier) {
-    Box(
+    Image(
+        painter = painterResource(R.drawable.onboarding_welcome_olive_grove),
+        contentDescription = null,
         modifier = modifier
-            .background(MoSage.copy(alpha = 0.34f), RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
             .border(1.dp, MoOutline, RoundedCornerShape(16.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        OliveMark(modifier = Modifier.size(52.dp))
-    }
+        contentScale = ContentScale.Crop,
+    )
 }
 
 @Composable
