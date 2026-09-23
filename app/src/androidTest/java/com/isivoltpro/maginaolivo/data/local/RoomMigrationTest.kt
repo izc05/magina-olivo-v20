@@ -691,6 +691,58 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration10To11KeepsParcelsAndLeavesTheirGroveDescriptionEmpty() {
+        migrationHelper.createDatabase(TEST_DATABASE, 10).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            database.execSQL(
+                """
+                INSERT INTO parcels (
+                    id, workspace_id, display_name, source, managed_area_m2, status,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '33333333-3333-3333-3333-333333333333',
+                    '11111111-1111-1111-1111-111111111111', 'Parcela Norte', 'MANUAL',
+                    33800.0, 'ACTIVE', 1000, 1000, NULL, 3, 'SYNCED', 3, 1000
+                )
+                """.trimIndent(),
+            )
+        }
+
+        migrationHelper
+            .runMigrationsAndValidate(
+                TEST_DATABASE,
+                11,
+                true,
+                DatabaseMigrations.MIGRATION_10_11,
+            ).use { database ->
+                database.query(
+                    "SELECT display_name, managed_area_m2, version, olive_tree_count, variety, " +
+                        "irrigation_system, irrigation_network, irrigation_sector, irrigation_days FROM parcels",
+                ).use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals("Parcela Norte", cursor.getString(0))
+                    assertEquals(33800.0, cursor.getDouble(1), 0.0)
+                    // The migration adds columns only: no version bump, nothing invented.
+                    assertEquals(3, cursor.getInt(2))
+                    (3..8).forEach { column -> assertTrue(cursor.isNull(column)) }
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

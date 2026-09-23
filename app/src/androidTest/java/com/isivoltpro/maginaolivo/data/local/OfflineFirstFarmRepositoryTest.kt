@@ -17,7 +17,11 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
 import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
 import com.isivoltpro.maginaolivo.domain.farm.FarmChanges
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
+import com.isivoltpro.maginaolivo.domain.parcel.IrrigationSystem
 import com.isivoltpro.maginaolivo.domain.parcel.NewParcel
+import com.isivoltpro.maginaolivo.domain.parcel.ParcelAgronomy
+import com.isivoltpro.maginaolivo.domain.parcel.ParcelChanges
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -392,6 +396,45 @@ class OfflineFirstFarmRepositoryTest {
                 listOf(OutboxOperation.CREATE, OutboxOperation.DELETE, OutboxOperation.UPDATE),
                 database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelId).map { it.operation },
             )
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun groveDescriptionRoundTripsAndNonsenseIsRefused() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000090")
+        val farmId = uuid("20000000-0000-0000-0000-000000000090")
+        val parcelId = uuid("40000000-0000-0000-0000-000000000090")
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            repository(database, TEST_INSTANT, listOf(farmId, uuid("30000000-0000-0000-0000-000000000090")))
+                .create(NewFarm(workspaceId, "Cortijo"))
+            val parcels = OfflineFirstParcelRepository(
+                database, FixedClock(TEST_INSTANT),
+                QueuedIdGenerator(listOf(parcelId, uuid("50000000-0000-0000-0000-000000000090"), uuid("60000000-0000-0000-0000-000000000090"), uuid("60000000-0000-0000-0000-000000000091"))),
+                TestDispatchers,
+            )
+            val agronomy = ParcelAgronomy(
+                oliveTreeCount = 247,
+                variety = "  Picual ",
+                irrigationSystem = IrrigationSystem.DRIP,
+                irrigationNetwork = "Virgen de 4",
+                irrigationSector = "5",
+                irrigationDays = setOf(DayOfWeek.THURSDAY, DayOfWeek.MONDAY),
+            )
+            assertEquals(AppResult.Success(parcelId), parcels.create(NewParcel(farmId, "Parcela Norte", agronomy = agronomy)))
+            val stored = parcels.observeById(parcelId).first()!!.agronomy
+            assertEquals(agronomy.copy(variety = "Picual"), stored)
+            assertEquals("MONDAY,THURSDAY", database.parcelDao().findById(parcelId)!!.irrigationDays)
+
+            // A parcel without a description stays empty: nothing defaults to dryland or zero.
+            assertTrue(
+                parcels.create(NewParcel(farmId, "Sin datos", agronomy = ParcelAgronomy(oliveTreeCount = 0))) is AppResult.Failure,
+            )
+            assertEquals(AppResult.Success(Unit), parcels.update(parcelId, ParcelChanges("Parcela Norte")))
+            assertEquals(ParcelAgronomy(), parcels.observeById(parcelId).first()!!.agronomy)
         } finally {
             database.close()
         }

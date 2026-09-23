@@ -180,8 +180,9 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("parcel-detail-root").assertIsDisplayed()
         composeRule.onNodeWithText("Entrada manual").assertIsDisplayed()
         composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithText("Sin registrar", useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
+            // No area, trees or variety were given: the tiles say "—", never a number.
+            composeRule.onAllNodesWithText("—", useUnmergedTree = true)
+                .fetchSemanticsNodes().size >= 3
         }
         composeRule.onNodeWithTag("bottom-Mi Olivar").assertIsSelected()
     }

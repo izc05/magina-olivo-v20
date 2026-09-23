@@ -35,6 +35,12 @@ object MoIcons {
     val Home: ImageVector by lazy { line("home", "M4 11l8-7 8 7 M6 9.5V20h12V9.5 M10 20v-5h4v5") }
     val Person: ImageVector by lazy { line("person", "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4.5 20a7.5 7.5 0 0 1 15 0") }
     val Plus: ImageVector by lazy { line("plus", "M12 5v14 M5 12h14") }
+    // Design v3 (CR-004) additions, same grid and stroke.
+    val Drop: ImageVector by lazy { line("drop", "M12 3.5s-6 6.6-6 10.9a6 6 0 0 0 12 0C18 10.1 12 3.5 12 3.5z M9.2 14.6a2.9 2.9 0 0 0 2.8 2.8") }
+    val Leaf: ImageVector by lazy { line("leaf", "M5 19c0-8.5 5.5-14 15-14 0 9.5-5.5 15-14 15z M5 19l7.5-7.5") }
+    val Olive: ImageVector by lazy { line("olive", "M9.5 20.5a4 5.2 20 1 1 0-.01z M15.5 16a3.6 4.6-20 1 1 0-.01z M11 11.5C11.5 7 13.5 4.5 17.5 3.5") }
+    val History: ImageVector by lazy { line("history", "M4 12a8 8 0 1 0 2.4-5.7 M4 4.5v4h4 M12 8v4.5l3 1.8") }
+    val Warning: ImageVector by lazy { line("warning", "M12 4l9 16H3z M12 10v4.5 M12 17.3v.2") }
     val Tree: ImageVector by lazy { line("tree", "M12 21v-6 M12 15c-4.4 0-7-2.4-7-5.5S8 4 12 4s7 2.4 7 5.5-2.6 5.5-7 5.5z M9 21h6") }
 
     private fun line(name: String, pathData: String): ImageVector =
