@@ -54,10 +54,34 @@ object DatabaseMigrations {
             }
         }
 
-    val all: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    /**
+     * v7 — Harvest (Phase 13). `harvests` already existed; it gains its collection
+     * fields as nullable columns, so every harvest row is kept as it was. Its origin
+     * Parcels arrive in `harvest_parcels`, a child of the Harvest aggregate (D6).
+     */
+    val MIGRATION_6_7 =
+        object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                schemaVersion7Statements.forEach(db::execSQL)
+            }
+        }
+
+    val all: Array<Migration> =
+        arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
     private const val METADATA_COLUMNS =
         "`created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER"
+
+    private val schemaVersion7Statements =
+        arrayOf(
+            "ALTER TABLE `harvests` ADD COLUMN `collection_method` TEXT",
+            "ALTER TABLE `harvests` ADD COLUMN `worker_count` INTEGER",
+            "ALTER TABLE `harvests` ADD COLUMN `machinery_text` TEXT",
+            "CREATE TABLE IF NOT EXISTS `harvest_parcels` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `harvest_id` TEXT NOT NULL, `parcel_id` TEXT NOT NULL, `campaign_parcel_id` TEXT, `parcel_name_at_harvest` TEXT NOT NULL, `weight_grams` INTEGER, `allocation_mode` TEXT NOT NULL, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`harvest_id`) REFERENCES `harvests`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`parcel_id`) REFERENCES `parcels`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_harvest_parcels_harvest_id_parcel_id` ON `harvest_parcels` (`harvest_id`, `parcel_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_harvest_parcels_workspace_id` ON `harvest_parcels` (`workspace_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_harvest_parcels_parcel_id` ON `harvest_parcels` (`parcel_id`)",
+        )
 
     private val schemaVersion6Statements =
         arrayOf(

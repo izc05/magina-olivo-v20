@@ -26,6 +26,8 @@ import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
 import com.isivoltpro.maginaolivo.feature.activities.ActivityDetailRoute
 import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailRoute
+import com.isivoltpro.maginaolivo.feature.harvests.HarvestDetailRoute
+import com.isivoltpro.maginaolivo.feature.harvests.HarvestsRoute
 import com.isivoltpro.maginaolivo.feature.expenses.DocumentReviewRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpenseDetailRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpensesRoute
@@ -37,7 +39,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.harvest.HarvestReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.map.MapCatastroReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
@@ -217,9 +218,31 @@ fun AppNavigation(
             composable(AppDestination.Analytics) { CampaignReferenceScreen() }
             composable(AppDestination.OcrReview) { DeliveryOcrReviewReferenceScreen() }
             composable(AppDestination.Harvest) {
-                HarvestReferenceScreen(
-                    onDeliverySelected = { navController.navigate(AppDestination.OcrReview) },
-                )
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    HarvestsRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onHarvestSelected = { id -> navController.navigate(AppDestination.harvest(id.toString())) },
+                    )
+                }
+            }
+            composable(AppDestination.HarvestPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val harvestId = backStackEntry.arguments?.getString("harvestId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || harvestId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    HarvestDetailRoute(
+                        harvestId = harvestId,
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onDeleted = { navController.popBackStack() },
+                    )
+                }
             }
             composable(AppDestination.Expenses) {
                 val persistence = compositionRoot.localPersistence

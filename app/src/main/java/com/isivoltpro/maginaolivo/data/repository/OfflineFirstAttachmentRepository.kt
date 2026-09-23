@@ -210,6 +210,8 @@ class OfflineFirstAttachmentRepository(
                 ?.let { it.workspaceId to it.metadata.deletedAt }
             AttachmentOwnerType.EXPENSE -> database.expenseDao().findById(owner.id)
                 ?.let { it.workspaceId to it.metadata.deletedAt }
+            AttachmentOwnerType.HARVEST -> database.harvestDao().findById(owner.id)
+                ?.let { it.workspaceId to it.metadata.deletedAt }
             AttachmentOwnerType.DOCUMENT -> database.documentOcrDao().findById(owner.id)
                 ?.let { it.workspaceId to it.metadata.deletedAt }
         } ?: return AppResult.Failure(AppError.NotFound(owner.type.name.lowercase()))

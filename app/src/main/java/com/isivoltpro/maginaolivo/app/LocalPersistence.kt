@@ -7,6 +7,7 @@ import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentRepository
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseRepository
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentOcrRepository
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationRepository
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
@@ -23,5 +24,6 @@ data class LocalPersistence(
     val organizationRepository: OrganizationRepository,
     val expenseRepository: ExpenseRepository,
     val documentOcrRepository: DocumentOcrRepository,
+    val harvestRepository: HarvestRepository,
     val workspaceRepository: WorkspaceRepository,
 )

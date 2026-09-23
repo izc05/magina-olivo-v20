@@ -28,12 +28,13 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 10 — Typed activities + irrigation
 ✅ Gate 11 — Attachments
 ✅ Gate 12 — Expenses, purchases, organizations + generic OCR
+✅ Gate 13 — Harvest
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 13 — HARVEST (NEXT — starts after PR #208 is merged into main)
+▶ PHASE 14 — DELIVERIES + WEIGHT-TICKET OCR + LATER YIELD (NEXT — starts after PR #209 is merged)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -251,10 +252,29 @@ PR #208 head `d500b00` (a test-helper race fix plus evidence) was green again on
   shows a review form; confirming creates a DRAFT expense that counts only after a person
   posts it.
 
+**Merged into `main`** through PR #208 as merge commit `2fbeb935`.
+
+## Phase 13 — Harvest
+
+Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
+`docs/07-plans/PHASE13-HARVEST.md`, evidence in `docs/06-testing/PHASE13-HARVEST-SLICE.md`.
+**Gate 13 passed** on commit `b8fccb38`: Android CI #352 (run `35858239514`) with
+`foundation` and `gate3-emulator` SUCCESS, empty crash buffer, and the independent Gate 3
+Android Emulator Evidence #67 (run `35858242303`) SUCCESS.
+
+- Room v7: `harvests` gains collection method, worker count and machinery text;
+  new `harvest_parcels`, a child of the Harvest aggregate (D6).
+- A Harvest belongs to its Farm's running Campaign and its origin Parcels are that
+  Campaign's. Several Parcels default to "No conozco el reparto exacto"; exact kilos
+  must add up to the total to the gram; a partial split leaves the rest unattributed.
+- S70 shows campaign totals as known-per-Parcel kilos plus "sin repartir" kilos.
+
 ## Next deliverable
 
-**Phase 13 — Harvest**: Harvest distinct from Delivery, truthful mixed-origin handling
-and optional exact parcel allocation. Gate 13: no fabricated per-parcel split.
+**Phase 14 — Deliveries + weight-ticket OCR + later yield**: Delivery distinct from
+Harvest, `DELIVERY_TICKET` OCR through the generic service with mandatory review, yield as
+a separate later analysis. Gate 14: the original delivery survives OCR/yield updates
+unchanged; OCR cannot auto-confirm; weighted metrics are correct.
 
 Both workflows still run on pushes to `feat/**` and `hotfix/**`, so a branch reaches a
 green emulator run before a pull request exists.

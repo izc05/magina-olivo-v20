@@ -243,9 +243,13 @@ data class HarvestEntity(
     @ColumnInfo(name = "farm_id") val farmId: UUID? = null,
     @ColumnInfo(name = "harvest_date") val harvestDate: LocalDate,
     @ColumnInfo(name = "weight_grams") val weightGrams: Long,
+    /** Shipped in v2 and never written: where the olives went is a Delivery (Phase 14). */
     val destination: String? = null,
     val notes: String? = null,
     @Embedded val metadata: LocalMetadata,
+    @ColumnInfo(name = "collection_method") val collectionMethod: String? = null,
+    @ColumnInfo(name = "worker_count") val workerCount: Int? = null,
+    @ColumnInfo(name = "machinery_text") val machineryText: String? = null,
 )
 
 @Entity(

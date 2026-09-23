@@ -38,6 +38,8 @@ import com.isivoltpro.maginaolivo.data.local.entity.DocumentEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
 import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
+import com.isivoltpro.maginaolivo.data.local.entity.HarvestParcelEntity
+import com.isivoltpro.maginaolivo.data.local.dao.HarvestDao
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.entity.UserProfileEntity
@@ -65,6 +67,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         MaintenanceDetailEntity::class,
         IncidentDetailEntity::class,
         HarvestEntity::class,
+        HarvestParcelEntity::class,
         ExpenseEntity::class,
         DocumentEntity::class,
         WeatherCacheEntity::class,
@@ -75,7 +78,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         PurchaseItemEntity::class,
         DocumentOcrExtractionEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -100,9 +103,11 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
 
     abstract fun documentOcrDao(): DocumentOcrDao
 
+    abstract fun harvestDao(): HarvestDao
+
     companion object {
         const val DATABASE_NAME = "magina-olivo.db"
-        const val VERSION = 6
+        const val VERSION = 7
 
         @Volatile
         private var instance: MaginaOlivoDatabase? = null
