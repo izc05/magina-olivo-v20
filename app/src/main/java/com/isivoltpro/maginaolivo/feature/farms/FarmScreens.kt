@@ -31,22 +31,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
-import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
-import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.farm.Farm
-import com.isivoltpro.maginaolivo.feature.parcels.FarmParcelsRoute
-import com.isivoltpro.maginaolivo.feature.activities.FarmActivitiesRoute
-import com.isivoltpro.maginaolivo.feature.campaigns.FarmCampaignsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoFarmCard
@@ -61,33 +55,16 @@ import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoStat
 import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
 import com.isivoltpro.maginaolivo.ui.components.MoPhotoHeader
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
-import com.isivoltpro.maginaolivo.ui.theme.MoShape
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.LocalDate
-import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.UUID
@@ -307,9 +284,7 @@ fun FarmListScreen(
 fun FarmDetailRoute(
     farmId: UUID,
     persistence: LocalPersistence,
-    onParcelSelected: (UUID) -> Unit,
-    onCampaignSelected: (UUID) -> Unit,
-    onActivitySelected: (UUID) -> Unit,
+    onOpenSection: (FarmSection) -> Unit,
     onArchived: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -332,34 +307,7 @@ fun FarmDetailRoute(
         onCoverSelected = viewModel::attachCover,
         onArchive = viewModel::archive,
         onArchived = onArchived,
-        parcelContent = {
-            FarmParcelsRoute(
-                farmId = farmId,
-                persistence = persistence,
-                onParcelSelected = onParcelSelected,
-            )
-        },
-        campaignContent = {
-            FarmCampaignsRoute(
-                farmId = farmId,
-                persistence = persistence,
-                onCampaignSelected = onCampaignSelected,
-            )
-        },
-        activityContent = {
-            FarmActivitiesRoute(
-                farmId = farmId,
-                persistence = persistence,
-                onActivitySelected = onActivitySelected,
-            )
-        },
-        attachmentContent = {
-            AttachmentsRoute(
-                owner = AttachmentOwner(AttachmentOwnerType.FARM, farmId),
-                persistence = persistence,
-                title = "Documentos de la finca",
-            )
-        },
+        onOpenSection = onOpenSection,
         modifier = modifier,
     )
 }
@@ -372,10 +320,7 @@ fun FarmDetailScreen(
     onCoverSelected: (String) -> Unit,
     onArchive: () -> Unit,
     onArchived: () -> Unit,
-    parcelContent: @Composable () -> Unit = {},
-    campaignContent: @Composable () -> Unit = {},
-    activityContent: @Composable () -> Unit = {},
-    attachmentContent: @Composable () -> Unit = {},
+    onOpenSection: (FarmSection) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
@@ -428,10 +373,7 @@ fun FarmDetailScreen(
                 onChooseCover = { coverPicker.launch(arrayOf("image/*")) },
                 onEdit = { editorVisible = true },
                 onArchive = { archiveConfirmation = true },
-                parcelContent = parcelContent,
-                campaignContent = campaignContent,
-                activityContent = activityContent,
-                attachmentContent = attachmentContent,
+                onOpenSection = onOpenSection,
                 modifier = Modifier.padding(innerPadding),
             )
         }
@@ -485,10 +427,10 @@ fun FarmDetailScreen(
 }
 
 /**
- * UI polish v2: a compact Farm detail. Hero, three key figures and quick access to the
- * sections first; the long sections follow, reachable in one tap.
+ * Design v3 (CR-004, owner feedback 2026-09-23): a short Farm hub. Big photo header and the
+ * key figures; parcels, campaigns, work and documents each open their own screen instead of
+ * one long scroll.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FarmDetailContent(
     farm: Farm,
@@ -497,24 +439,15 @@ private fun FarmDetailContent(
     onChooseCover: () -> Unit,
     onEdit: () -> Unit,
     onArchive: () -> Unit,
-    parcelContent: @Composable () -> Unit,
-    campaignContent: @Composable () -> Unit,
-    activityContent: @Composable () -> Unit,
-    attachmentContent: @Composable () -> Unit,
+    onOpenSection: (FarmSection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scope = rememberCoroutineScope()
-    val parcels = remember { BringIntoViewRequester() }
-    val campaigns = remember { BringIntoViewRequester() }
-    val activities = remember { BringIntoViewRequester() }
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        // Design v3 (CR-004): the farm's own cover photo edge to edge; the bundled olive-grove
-        // photograph only while the farmer has not chosen one.
         MoPhotoHeader(
             title = farm.name,
             imageModel = coverUri,
@@ -523,7 +456,7 @@ private fun FarmDetailContent(
                 farm.totalAreaM2?.let(::formatArea),
                 if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas",
             ).joinToString(" · "),
-            height = 244.dp,
+            heightFraction = 0.40f,
             trailing = {
                 MoStatusChip(
                     text = farm.activeCampaignName ?: "Sin campaña activa",
@@ -535,90 +468,55 @@ private fun FarmDetailContent(
             Modifier.padding(horizontal = MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onChooseCover, enabled = !isSaving, modifier = Modifier.testTag("farm-cover-button")) {
-                Text(if (coverUri == null) "Añadir foto de portada" else "Cambiar foto")
-            }
-        }
-        MoStatStrip(
-            listOf(
-                MoStat("Superficie", farm.areaLabel(), MoIcons.Area),
-                MoStat("Parcelas", farm.parcelCount.toString(), MoIcons.Parcels),
-                MoStat("Olivos", farm.oliveTreeLabel(), MoIcons.Olive),
-                MoStat("Campaña", farm.activeCampaignName ?: "Ninguna", MoIcons.Campaign),
-            ),
-            Modifier.testTag("farm-stats"),
-        )
-        if (farm.totalAreaM2 == null) {
-            Text("Añade superficie a las parcelas para calcular rendimientos.", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            QuickAccess("Parcelas", MoIcons.Parcels, "farm-quick-parcels", Modifier.weight(1f)) { scope.launch { parcels.bringIntoView() } }
-            QuickAccess("Campañas", MoIcons.Campaign, "farm-quick-campaigns", Modifier.weight(1f)) { scope.launch { campaigns.bringIntoView() } }
-            QuickAccess("Trabajos", MoIcons.Checklist, "farm-quick-activities", Modifier.weight(1f)) { scope.launch { activities.bringIntoView() } }
-            // The map arrives with its own phase (land registry + geometry); until then it
-            // says so instead of opening sample data.
-            QuickAccess("Mapa", MoIcons.Map, "farm-quick-map", Modifier.weight(1f), enabled = false, note = "Pronto") {}
-        }
-        farm.description?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary) }
-        farm.notes?.let {
-            MoSectionHeader(title = "Notas")
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-        }
-        Column(Modifier.bringIntoViewRequester(parcels), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) { parcelContent() }
-        Column(Modifier.bringIntoViewRequester(campaigns), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) { campaignContent() }
-        Column(Modifier.bringIntoViewRequester(activities), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) { activityContent() }
-        attachmentContent()
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            MoSecondaryButton(
-                text = "Editar finca",
-                onClick = onEdit,
-                enabled = !isSaving,
-                modifier = Modifier.weight(1f),
+            MoStatStrip(
+                listOf(
+                    MoStat("Superficie", farm.areaLabel(), MoIcons.Area),
+                    MoStat("Parcelas", farm.parcelCount.toString(), MoIcons.Parcels),
+                    MoStat("Olivos", farm.oliveTreeLabel(), MoIcons.Olive),
+                ),
+                Modifier.testTag("farm-stats"),
             )
-            MoDestructiveButton(
+            SectionEntry(FarmSection.PARCELS, MoIcons.Parcels, if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas", onOpenSection)
+            SectionEntry(FarmSection.CAMPAIGNS, MoIcons.Campaign, farm.activeCampaignName ?: "Sin campaña activa", onOpenSection)
+            SectionEntry(FarmSection.ACTIVITIES, MoIcons.Checklist, "Planificados y realizados", onOpenSection)
+            SectionEntry(FarmSection.DOCUMENTS, MoIcons.Document, "Escrituras, facturas y fotos", onOpenSection)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                MoSecondaryButton(
+                    text = "Editar finca",
+                    onClick = onEdit,
+                    enabled = !isSaving,
+                    modifier = Modifier.weight(1f),
+                )
+                MoSecondaryButton(
+                    text = if (coverUri == null) "Poner foto" else "Cambiar foto",
+                    onClick = onChooseCover,
+                    enabled = !isSaving,
+                    modifier = Modifier.weight(1f).testTag("farm-cover-button"),
+                )
+            }
+            MoTertiaryButton(
                 text = "Archivar finca",
                 onClick = onArchive,
                 enabled = !isSaving,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth().testTag("farm-archive"),
             )
-        }
-        Spacer(Modifier.height(MoSpacing.lg))
+            Spacer(Modifier.height(MoSpacing.lg))
         }
     }
 }
 
 @Composable
-private fun QuickAccess(
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    tag: String,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    note: String? = null,
-    onClick: () -> Unit,
-) {
-    Surface(
-        modifier = modifier
-            .heightIn(min = 64.dp)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .semantics { if (!enabled && note != null) contentDescription = "$label, disponible próximamente" }
-            .testTag(tag),
-        shape = MoShape.card,
-        color = if (enabled) MoWarmWhite else MoSurfaceSoft,
-        border = BorderStroke(1.dp, MoOutline),
-    ) {
-        Column(
-            Modifier.padding(vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Icon(icon, contentDescription = null, tint = if (enabled) MoOliveMid else MoTextSecondary, modifier = Modifier.size(22.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, color = if (enabled) MoInk else MoTextSecondary)
-            if (note != null) Text(note, style = MaterialTheme.typography.labelSmall, color = MoTextSecondary)
-        }
-    }
+private fun SectionEntry(section: FarmSection, icon: ImageVector, subtitle: String, onOpen: (FarmSection) -> Unit) {
+    MoCompactListItem(
+        title = section.title,
+        subtitle = subtitle,
+        icon = icon,
+        onClick = { onOpen(section) },
+        modifier = Modifier.testTag("farm-section-${section.name.lowercase()}"),
+        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary) },
+    )
 }
+
 
 @Composable
 private fun FarmTotals(farms: List<Farm>) {

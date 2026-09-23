@@ -38,7 +38,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
 import com.isivoltpro.maginaolivo.ui.components.MoStat
 import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
 import com.isivoltpro.maginaolivo.ui.components.MoPhotoBrand
@@ -125,7 +124,7 @@ fun HomeScreen(
                 title = greeting(now),
                 location = state.location,
                 caption = state.today?.format(TODAY)?.replaceFirstChar { c -> c.titlecase(SPANISH) },
-                height = 236.dp,
+                heightFraction = 0.46f,
                 top = { MoPhotoBrand(Modifier.align(Alignment.TopStart).padding(MoSpacing.md)) },
             )
             Column(
@@ -152,8 +151,7 @@ fun HomeScreen(
                     ),
                     Modifier.testTag("home-stats"),
                 )
-                Text("MI OLIVAR", style = MaterialTheme.typography.labelMedium, color = MoOliveMid)
-                Text("Tu explotación, al día", style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
+
                 MoSectionHeader("Campaña en marcha")
                 if (state.campaigns.isEmpty()) {
                     MoEmptyState(
@@ -219,10 +217,8 @@ fun HomeScreen(
                 Quick("Entregas", MoIcons.Delivery, "home-quick-deliveries", onDeliveries, Modifier.weight(1f))
                 Quick("Gastos", MoIcons.Euro, "home-quick-expenses", onExpenses, Modifier.weight(1f))
             }
-            MoSectionHeader("Próximamente en Inicio")
-            Later("Tiempo y radar", "Previsión y lluvia de tu zona, con su hora de actualización.", "home-later-weather")
-            Later("Mercado del aceite", "AOVE, Virgen y Lampante desde una fuente oficial, con fecha.", "home-later-market")
-            Later("Avisos de tu cooperativa", "Cuando elijas tu cooperativa de referencia.", "home-later-news")
+            // One quiet line instead of three cards (owner feedback: less noise, less scroll).
+            Later("Tiempo, mercado y cooperativa", "Llegarán a Inicio con su fuente y su fecha.", "home-later")
             Spacer(Modifier.height(MoSpacing.lg))
             }
         }

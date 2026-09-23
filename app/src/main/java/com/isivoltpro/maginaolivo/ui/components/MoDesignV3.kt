@@ -28,11 +28,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.isivoltpro.maginaolivo.R
@@ -59,14 +61,18 @@ fun MoPhotoHeader(
     location: String? = null,
     caption: String? = null,
     height: Dp = 232.dp,
+    /** Share of the screen height; wins over [height] so the photo scales with the phone. */
+    heightFraction: Float? = null,
     trailing: (@Composable () -> Unit)? = null,
     overlay: (@Composable ColumnScope.() -> Unit)? = null,
     top: (@Composable BoxScope.() -> Unit)? = null,
 ) {
+    val screenHeight = LocalConfiguration.current.screenHeightDp
+    val resolved = heightFraction?.let { (screenHeight * it).dp.coerceIn(240.dp, 460.dp) } ?: height
     Box(
         modifier
             .fillMaxWidth()
-            .height(height)
+            .height(resolved)
             .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)),
     ) {
         if (imageModel != null) {

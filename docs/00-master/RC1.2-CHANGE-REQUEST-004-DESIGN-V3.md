@@ -17,6 +17,19 @@ not store yet.
 | "Mágina recomienda", "Revisar mosca", sanitary status | **NOT SHOWN** until a real, dated source exists (truth rule). |
 | Olive counts, kg, prices in the mockups | Illustrative only. The app shows the farmer's own data, "—" when unknown and "≥ N" when only part of the parcels carry a count. |
 
+## Owner follow-up (2026-09-23, same day)
+
+- **Bigger photo, less noise, shorter screens.** Photo headers now take a share of the screen
+  height (Inicio 46 %, Farm 40 %, Parcel 36 %, clamped 240–460 dp). Inicio keeps one quiet
+  "Tiempo, mercado y cooperativa · Pronto" line instead of three cards.
+- **Farm hub + sub-screens.** The Farm detail shows the photo, three figures and four entries;
+  Parcelas, Campañas, Trabajos and Documentos open as their own screens
+  (`farm-parcels|farm-campaigns|farm-activities|farm-documents/{farmId}`, all under the
+  Mi Olivar root, Quick Add keeps the Farm as context). No root or hierarchy change.
+- **Photo per municipality chosen by the farmer: DEFERRED.** Wanted by the owner; needs a
+  licensed photo set per olive-growing town and a profile choice. Until then the generic
+  bundled olive-grove photograph is used.
+
 ## Affected baseline sections
 `VISUAL_DESIGN_LOCK.md` (composition of Inicio, Mi Olivar, Farm and Parcel detail);
 `DATA-MODEL` parcel entity (new optional columns). Navigation, hierarchy, offline-first,

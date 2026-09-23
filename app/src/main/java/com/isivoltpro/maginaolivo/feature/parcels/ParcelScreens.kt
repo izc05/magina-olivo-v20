@@ -293,6 +293,7 @@ private fun ParcelDetailContent(
         // Design v3 (CR-004): photo header; the bundled photo is decorative, not this parcel.
         MoPhotoHeader(
             title = parcel.displayName,
+            heightFraction = 0.36f,
             location = listOfNotNull(farmName, parcel.municipality).joinToString(" · ").ifEmpty { null },
             trailing = {
                 MoStatusChip(
