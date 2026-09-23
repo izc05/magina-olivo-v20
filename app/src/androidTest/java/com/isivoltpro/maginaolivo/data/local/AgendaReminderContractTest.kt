@@ -204,6 +204,33 @@ class AgendaReminderContractTest {
         assertEquals(activities.observe(id).first()!!.reminders.map { it.id }.toSet(), alarms.active.keys)
     }
 
+    @Test
+    fun aTimeZoneChangeKeepsTheLocalMeaningOfEachReminder() = runBlocking {
+        val id = ok(
+            activities.create(
+                planned(
+                    ActivityPlanning(LocalTime.of(8, 0)),
+                    ReminderRequest(ReminderKind.PREVIOUS_DAY),
+                    ReminderRequest(ReminderKind.CUSTOM, LocalDateTime.parse("2026-11-18T12:00")),
+                ),
+            ),
+        )
+        val before = db.agendaDao().listForOwner("ACTIVITY", id).associateBy { it.kind }
+        assertEquals(Instant.parse("2026-11-19T18:00:00Z"), before.getValue("PREVIOUS_DAY").triggerAt)
+
+        // The phone travels to New York: 19:00 the evening before is 19:00 there.
+        val newYork = ReminderCoordinator(db, alarms, FixedClock(now)) { ZoneId.of("America/New_York") }
+        newYork.reconcile()
+
+        val after = db.agendaDao().listForOwner("ACTIVITY", id).associateBy { it.kind }
+        assertEquals(Instant.parse("2026-11-20T00:00:00Z"), after.getValue("PREVIOUS_DAY").triggerAt)
+        assertEquals(after.getValue("PREVIOUS_DAY").triggerAt, alarms.active.getValue(after.getValue("PREVIOUS_DAY").id).triggerAt)
+        // A moment the farmer chose is an instant, not a rule: it does not move.
+        assertEquals(before.getValue("CUSTOM").triggerAt, after.getValue("CUSTOM").triggerAt)
+        // Moving the moment is device state: the Activity is not edited.
+        assertEquals(1L, activities.observe(id).first()!!.version)
+    }
+
     // ------------------------------------------------------------ Android
 
     @Test
@@ -277,7 +304,7 @@ class AgendaReminderContractTest {
 
     private fun open() {
         db = MaginaOlivoDatabase.create(context, DB)
-        coordinator = ReminderCoordinator(db, alarms, FixedClock(now))
+        coordinator = ReminderCoordinator(db, alarms, FixedClock(now)) { madrid }
         activities = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers, coordinator) { madrid }
     }
 

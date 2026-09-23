@@ -57,5 +57,7 @@ Install the DEV APK above on a real Android phone, then:
 - Without the exact-alarm grant (Android 14+ default), reminders are inexact.
 - The Calendar and the planning block are covered by the repository contract and JVM
   rules; there is no Compose UI test of them yet.
-- A time-zone change keeps each reminder's instant; the wall-clock time is recomputed the
-  next time the Activity is edited.
+- A time-zone change re-reads previous-day and same-day reminders in the new zone at the
+  next reconcile (app start, `TIMEZONE_CHANGED`), so "19:00 the evening before" stays 19:00
+  local; custom reminders are an instant the farmer chose and do not move
+  (`AgendaReminderContractTest.aTimeZoneChangeKeepsTheLocalMeaningOfEachReminder`).
