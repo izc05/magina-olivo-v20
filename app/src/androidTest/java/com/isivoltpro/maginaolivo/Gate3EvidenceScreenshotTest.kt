@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.platform.testTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
@@ -44,6 +45,81 @@ class Gate3EvidenceScreenshotTest {
         composeRule.waitForIdle()
         assertTicketAmountFitsPreview()
         saveNode(tag = "ocr-review-reference-root", prefix = "delivery-ocr-review")
+    }
+
+    // ---------------------------------------------------------------- UI polish v2
+
+    @Test
+    fun captureUiPolishHome() = capture("home-reference-root", "ui-01-inicio") {
+        com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen(showBottomBar = false)
+    }
+
+    @Test
+    fun captureUiPolishOlivar() = capture("farms-root", "ui-02-mi-olivar") {
+        com.isivoltpro.maginaolivo.feature.farms.FarmListScreen(
+            state = com.isivoltpro.maginaolivo.feature.farms.FarmListUiState(isLoading = false, farms = UiPolishFixtures.farms),
+            onFarmSelected = {}, onCreate = {}, onRestore = {}, onRetry = {},
+        )
+    }
+
+    @Test
+    fun captureUiPolishFarm() = capture("farm-detail-root", "ui-03-finca") {
+        com.isivoltpro.maginaolivo.feature.farms.FarmDetailScreen(
+            state = com.isivoltpro.maginaolivo.feature.farms.FarmDetailUiState(isLoading = false, farm = UiPolishFixtures.farms.first()),
+            onUpdate = {}, onCoverSelected = {}, onArchive = {}, onArchived = {},
+        )
+    }
+
+    @Test
+    fun captureUiPolishCampaign() = capture("campaign-detail-root", "ui-04-campana") {
+        com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailScreen(
+            com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailUiState(isLoading = false, campaign = UiPolishFixtures.campaign),
+            {}, {}, {}, {}, {}, {},
+        )
+    }
+
+    @Test
+    fun captureUiPolishCalendarAgenda() = capture("calendar-root", "ui-05-calendario-agenda") {
+        com.isivoltpro.maginaolivo.feature.agenda.AgendaScreen(UiPolishFixtures.agenda, true, {}, {}, {}, {}, {})
+    }
+
+    /** The Registrar (+) sheet as it was before UI polish v2 (same content as AppNavigation). */
+    @Test
+    fun captureUiPolishQuickAdd() = capture("register-action-sheet", "ui-07-quick-add") {
+        com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet(
+            title = "¿Qué quieres registrar?",
+            body = "Elige el tipo de anotación. Podrás completar el contexto dentro del flujo.",
+            modifier = androidx.compose.ui.Modifier.testTag("register-action-sheet"),
+        ) {
+            listOf("Registrar actuación", "Registrar cosecha", "Registrar entrega", "Registrar gasto o documento").forEach {
+                com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton(text = it, onClick = {})
+            }
+            com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton(text = "Cancelar", onClick = {})
+        }
+    }
+
+    @Test
+    fun captureUiPolishActivity() = capture("activity-detail-root", "ui-08-actuacion") {
+        com.isivoltpro.maginaolivo.feature.activities.ActivityDetailScreen(
+            com.isivoltpro.maginaolivo.feature.activities.ActivityDetailUiState(isLoading = false, activity = UiPolishFixtures.activity),
+            {}, {}, {}, {}, {}, {},
+        )
+    }
+
+    @Test
+    fun captureUiPolishHarvest() = capture("harvests-root", "ui-09-cosecha") {
+        com.isivoltpro.maginaolivo.feature.harvests.HarvestsScreen(
+            state = UiPolishFixtures.harvestState,
+            today = UiPolishFixtures.today,
+            onCreate = {},
+            onHarvestSelected = {},
+        )
+    }
+
+    private fun capture(tag: String, prefix: String, content: @androidx.compose.runtime.Composable () -> Unit) {
+        composeRule.setContent { MaginaOlivoTheme { content() } }
+        composeRule.waitForIdle()
+        saveNode(tag = tag, prefix = prefix)
     }
 
     private fun assertTicketAmountFitsPreview() {
