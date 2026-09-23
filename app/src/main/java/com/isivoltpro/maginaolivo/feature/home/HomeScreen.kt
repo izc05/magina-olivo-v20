@@ -1,6 +1,8 @@
 package com.isivoltpro.maginaolivo.feature.home
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,13 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -28,6 +28,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.isivoltpro.maginaolivo.R
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -42,7 +47,7 @@ import com.isivoltpro.maginaolivo.feature.activities.label
 import com.isivoltpro.maginaolivo.ui.brand.MaginaOlivoWordmark
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
-import com.isivoltpro.maginaolivo.ui.components.MoFieldArtwork
+import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
@@ -52,9 +57,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoInfo
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
-import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
@@ -115,9 +118,14 @@ fun HomeScreen(
     onExpenses: () -> Unit,
     onActivitySelected: (UUID) -> Unit,
 ) {
-    Scaffold(Modifier.fillMaxSize().testTag("home-reference-root"), containerColor = MoCream) { padding ->
+    // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
+    Scaffold(
+        Modifier.fillMaxSize().testTag("home-reference-root"),
+        containerColor = MoCream,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
@@ -210,8 +218,10 @@ fun HomeScreen(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 Quick("Mis fincas", MoIcons.Tree, "home-quick-olivar", onOlivar, Modifier.weight(1f))
                 Quick("Cosecha", MoIcons.Harvest, "home-quick-harvest", onHarvest, Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 Quick("Entregas", MoIcons.Delivery, "home-quick-deliveries", onDeliveries, Modifier.weight(1f))
-                Quick("Gastos", MoIcons.Document, "home-quick-expenses", onExpenses, Modifier.weight(1f))
+                Quick("Gastos", MoIcons.Euro, "home-quick-expenses", onExpenses, Modifier.weight(1f))
             }
             MoSectionHeader("Próximamente en Inicio")
             Later("Tiempo y radar", "Previsión y lluvia de tu zona, con su hora de actualización.", "home-later-weather")
@@ -224,11 +234,18 @@ fun HomeScreen(
 
 @Composable
 private fun Hero() {
-    Box(Modifier.fillMaxWidth().aspectRatio(2.6f).clip(MoShape.hero)) {
-        MoFieldArtwork(Modifier.matchParentSize(), seed = 7)
+    // Visual identity pass (Codex): decorative olive-grove photograph, not a real farm.
+    Box(Modifier.fillMaxWidth().aspectRatio(2.15f).clip(MoShape.hero)) {
+        Image(
+            painter = painterResource(R.drawable.onboarding_welcome_olive_grove),
+            contentDescription = null,
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.Crop,
+        )
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, MoOliveDark.copy(alpha = 0.78f)))))
         Column(Modifier.align(Alignment.BottomStart).padding(MoSpacing.md)) {
-            Text("Tu olivar, de un vistazo", style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
-            Text("Todo se guarda en este teléfono, con o sin cobertura.", style = MaterialTheme.typography.bodySmall, color = MoInk)
+            Text("Tu olivar, de un vistazo", style = MaterialTheme.typography.titleLarge, color = MoWarmWhite)
+            Text("Todo se guarda en este teléfono, con o sin cobertura.", style = MaterialTheme.typography.bodySmall, color = MoWarmWhite)
         }
     }
 }
@@ -243,9 +260,13 @@ private fun Quick(label: String, icon: ImageVector, tag: String, onClick: () -> 
         color = MoWarmWhite,
         border = BorderStroke(1.dp, MoOutline),
     ) {
-        Column(Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(icon, contentDescription = null, tint = MoOliveMid, modifier = Modifier.size(22.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MoInk, maxLines = 1)
+        Row(
+            Modifier.fillMaxWidth().padding(MoSpacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MoIconBadge(icon)
+            Text(label, style = MaterialTheme.typography.labelLarge, color = MoOliveDark, maxLines = 2)
         }
     }
 }
