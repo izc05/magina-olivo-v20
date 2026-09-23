@@ -1,6 +1,6 @@
 # UI polish v2 — owner-directed usability pass
 
-**Status:** in progress on `feat/android-ui-polish-v2` (not merged)
+**Status:** implemented on `feat/android-ui-polish-v2` — Draft PR, not merged
 **Origin:** owner review on a physical Android device, 2026-09-23
 **Scope:** visual/usability only. No change to architecture, Room, repositories,
 synchronization, domain rules, offline behaviour or navigation roots.
@@ -26,3 +26,68 @@ the same dark olive and competed with each other.
 | Secondary buttons | `MoInk` on `MoWarmWhite`, border `MoOutlineStrong` `#D6D0C2` | | neutral, never competing with the CTA |
 
 All text pairs are asserted ≥ 4.5:1 (WCAG AA) in `DesignContrastTest`.
+
+Destructive actions (cancelar, eliminar, archivar, cerrar campaña) use soft red
+(`MoError` border, `MoErrorText` label) in `MoDestructiveButton`; no saturated colours.
+
+## Button roles
+
+| Role | Component | Look |
+|---|---|---|
+| Primary | `MoPrimaryButton` | filled dark olive — one per screen/sheet |
+| Secondary | `MoSecondaryButton` | outlined, warm ink |
+| Destructive | `MoDestructiveButton` | outlined soft red; the action it opens is still confirmed |
+| Tertiary | `MoTertiaryButton` | text only, warm grey (Cancelar, Volver) |
+
+## What changed, by owner priority
+
+1. **Quick Add (+)** — `navigation/QuickAddSheet.kt`: "¿Qué quieres registrar?", then the
+   context (Finca · Campaña · Parcela) when the screen behind has one, then five compact
+   rows with a line icon and one line of explanation (actuación, cosecha, entrega, gasto o
+   documento, planificar trabajo). Cancelar is tertiary. The sheet opens fully
+   (`skipPartiallyExpanded`) and scrolls, so nothing is cut on short phones. The Farm
+   context is applied to the activity/planning flow.
+2. **Calendar + date picker** — Agenda | Mes. Agenda groups *pendientes de días pasados*,
+   *hoy*, *esta semana*, *más adelante*. Mes is `MoMonthCalendar`: Monday first, 48dp day
+   targets, today ringed, selection filled, a dot per day with planned work; tapping a day
+   lists its work. Every date field is now `MoDateInputField`, which opens
+   `MoDatePickerSheet`: whole month, Hoy/Ayer, the chosen date spelt out, explicit
+   Confirmar. Forms keep the same ISO value, so no validation or rule changed.
+3. **Compaction** — editorial titles 27/23sp (were 30/26), section headers 17sp,
+   48dp buttons (were 54dp), 52dp fields, 2–3 column summary metrics (`MoSummaryMetric`,
+   `MoMetricGrid`), dense rows (`MoCompactListItem`).
+4. **Colour hierarchy** — section A above.
+5. **Farm cards** — `MoFarmCard` shows the cover photo or `MoFieldArtwork` (an illustrated
+   olive grove in the brand palette, decorative only), name, location, area, parcels,
+   campaign state and the next planned work when there is one. Farm detail: compact hero,
+   three figures, quick access to Parcelas / Campañas / Trabajos (scrolls to the section)
+   and Mapa, shown disabled with "Pronto" until the map phase exists.
+6. **Campaign summary** — header (name, state, farm, start, parcels) and a two-column
+   summary: kg recogidos, entregas, rendimiento graso, gastos, read from the Harvest,
+   Delivery and Expense ledgers that own them. Unknown values show "—" plus a sentence,
+   never zero. Links to Cosecha and Entregas. Cerrar campaña is destructive and confirmed.
+7. **Empty states** — `MoEmptyState` takes an icon, a title, a useful sentence and an
+   optional action ("Aún no has registrado cosecha", "Completa la ubicación para ver la
+   finca en el mapa", "Añade superficie a tus parcelas para calcular rendimientos").
+8. **Actions** — Activity detail leads with one card (type, state, date, parcels, hour,
+   duration, crew, reminder); Marcar completada primary, Editar secondary, Cancelar
+   actuación destructive. Harvest shows kg, registros, entregado and rendimiento first;
+   Registrar cosecha primary, Entregas a cooperativa secondary.
+
+Also: bottom bar with line icons (`MoIcons`) and a soft pill behind the active root, so the
+selection does not depend on colour alone; `windowSoftInputMode=adjustResize` so the
+keyboard never covers a field; every form's Cancelar is tertiary.
+
+## Not changed
+
+Room, migrations, repositories, sync/outbox, domain rules, campaigns, harvest, deliveries,
+machinery, the calendar's data, offline behaviour and the five frozen roots.
+
+## Evidence
+
+- Screenshots: `Gate3EvidenceScreenshotTest.captureUiPolish*` — Inicio, Mi Olivar, Finca,
+  Campaña, Calendario Agenda, Calendario Mes, Quick Add, Actuación, Cosecha — captured by the
+  Gate 3 emulator run at 360/393/480 dp and at 130 % font, from sample data kept in the test
+  sources (`UiPolishFixtures`). The "before" set comes from branch
+  `feat/android-ui-polish-v2-baseline` (the same test on `e3d625f`, evidence only, never merged).
+- `DesignContrastTest` asserts every new text/background pair ≥ 4.5:1.
