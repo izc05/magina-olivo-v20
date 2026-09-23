@@ -33,6 +33,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
+import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
@@ -160,6 +163,13 @@ fun ParcelDetailRoute(
         onUpdate = viewModel::update,
         onArchive = viewModel::archive,
         onArchived = onArchived,
+        attachmentContent = {
+            AttachmentsRoute(
+                owner = AttachmentOwner(AttachmentOwnerType.PARCEL, parcelId),
+                persistence = persistence,
+                title = "Documentos de la parcela",
+            )
+        },
     )
 }
 
@@ -170,6 +180,7 @@ fun ParcelDetailScreen(
     onUpdate: (ParcelDraft) -> Unit,
     onArchive: () -> Unit,
     onArchived: () -> Unit,
+    attachmentContent: @Composable () -> Unit = {},
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -195,6 +206,7 @@ fun ParcelDetailScreen(
                 parcel = state.parcel,
                 onEdit = { editorVisible = true },
                 onArchive = { archiveConfirmation = true },
+                attachmentContent = attachmentContent,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -224,7 +236,13 @@ fun ParcelDetailScreen(
 }
 
 @Composable
-private fun ParcelDetailContent(parcel: Parcel, onEdit: () -> Unit, onArchive: () -> Unit, modifier: Modifier) {
+private fun ParcelDetailContent(
+    parcel: Parcel,
+    onEdit: () -> Unit,
+    onArchive: () -> Unit,
+    attachmentContent: @Composable () -> Unit,
+    modifier: Modifier,
+) {
     Column(
         modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
@@ -243,6 +261,7 @@ private fun ParcelDetailContent(parcel: Parcel, onEdit: () -> Unit, onArchive: (
         ParcelValue("Notas", parcel.notes)
         MoSecondaryButton("Editar parcela", onEdit, Modifier.fillMaxWidth())
         MoSecondaryButton("Archivar parcela", onArchive, Modifier.fillMaxWidth())
+        attachmentContent()
         Spacer(Modifier.height(MoSpacing.xl))
     }
 }

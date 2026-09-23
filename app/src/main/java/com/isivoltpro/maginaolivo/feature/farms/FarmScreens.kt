@@ -38,6 +38,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
+import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.feature.parcels.FarmParcelsRoute
@@ -283,6 +286,13 @@ fun FarmDetailRoute(
                 onActivitySelected = onActivitySelected,
             )
         },
+        attachmentContent = {
+            AttachmentsRoute(
+                owner = AttachmentOwner(AttachmentOwnerType.FARM, farmId),
+                persistence = persistence,
+                title = "Documentos de la finca",
+            )
+        },
         modifier = modifier,
     )
 }
@@ -298,6 +308,7 @@ fun FarmDetailScreen(
     parcelContent: @Composable () -> Unit = {},
     campaignContent: @Composable () -> Unit = {},
     activityContent: @Composable () -> Unit = {},
+    attachmentContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
@@ -352,6 +363,7 @@ fun FarmDetailScreen(
                 parcelContent = parcelContent,
                 campaignContent = campaignContent,
                 activityContent = activityContent,
+                attachmentContent = attachmentContent,
                 modifier = Modifier.padding(innerPadding),
             )
         }
@@ -415,6 +427,7 @@ private fun FarmDetailContent(
     parcelContent: @Composable () -> Unit,
     campaignContent: @Composable () -> Unit,
     activityContent: @Composable () -> Unit,
+    attachmentContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -479,6 +492,7 @@ private fun FarmDetailContent(
             enabled = !isSaving,
             modifier = Modifier.fillMaxWidth(),
         )
+        attachmentContent()
         Spacer(Modifier.height(MoSpacing.xl))
     }
 }

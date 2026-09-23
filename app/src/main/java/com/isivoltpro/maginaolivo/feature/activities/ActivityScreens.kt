@@ -39,6 +39,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
+import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
@@ -376,7 +379,22 @@ fun ActivityDetailRoute(activityId: UUID, persistence: LocalPersistence) {
         initializer { ActivityDetailViewModel(activityId, persistence.activityRepository) }
     })
     val state by vm.state.collectAsStateWithLifecycle()
-    ActivityDetailScreen(state, vm::update, vm::plan, vm::complete, vm::cancel, vm::reopen, vm::archive)
+    ActivityDetailScreen(
+        state,
+        vm::update,
+        vm::plan,
+        vm::complete,
+        vm::cancel,
+        vm::reopen,
+        vm::archive,
+        attachmentContent = {
+            AttachmentsRoute(
+                owner = AttachmentOwner(AttachmentOwnerType.ACTIVITY, activityId),
+                persistence = persistence,
+                title = "Fotos y documentos",
+            )
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -389,6 +407,7 @@ fun ActivityDetailScreen(
     onCancelActivity: () -> Unit,
     onReopen: () -> Unit,
     onArchive: () -> Unit,
+    attachmentContent: @Composable () -> Unit = {},
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     var editor by rememberSaveable { mutableStateOf(false) }
@@ -451,6 +470,7 @@ fun ActivityDetailScreen(
                         }
                     }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    attachmentContent()
                 }
             }
         }

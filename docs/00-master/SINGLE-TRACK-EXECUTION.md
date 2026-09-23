@@ -42,7 +42,8 @@ The old monolithic Phase 3 PR #180 is superseded and must not be merged.
 CURRENT:              Phase 10 — Typed activities + irrigation = PASS,
                       merged into `main` as 4acc3ab9 and verified there
 
-NEXT PRODUCTION PHASE: Phase 11 — Attachments  (NOT STARTED)
+ACTIVE PRODUCTION PHASE: Phase 11 — Attachments  (GATE 11 PASS on branch
+                      claude/dreamy-dijkstra-tdui2c, awaiting merge)
 
 BLOCKER:              none
 ```
