@@ -131,10 +131,8 @@ fun HomeScreen(
             }
             Hero()
             if (state.isLoading) {
-                CircularProgressIndicator()
-                return@Column
-            }
-            if (state.farms.isEmpty()) {
+                CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally).testTag("home-loading"))
+            } else if (state.farms.isEmpty()) {
                 MoEmptyState(
                     "Empieza por tu primera finca",
                     "Crea una finca con sus parcelas y aquí verás tu campaña, tus kilos y tus próximos trabajos.",
