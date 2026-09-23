@@ -80,6 +80,7 @@ fun HarvestsRoute(
     persistence: LocalPersistence,
     clock: AppClock,
     onHarvestSelected: (UUID) -> Unit,
+    onDeliveries: () -> Unit = {},
 ) {
     val viewModel: HarvestsViewModel = viewModel(
         key = "harvests",
@@ -92,6 +93,7 @@ fun HarvestsRoute(
         onCreate = viewModel::create,
         onHarvestSelected = onHarvestSelected,
         onEditorClosed = viewModel::clearFormErrors,
+        onDeliveries = onDeliveries,
     )
 }
 
@@ -107,6 +109,7 @@ fun HarvestsScreen(
     onCreate: (HarvestForm) -> Unit,
     onHarvestSelected: (UUID) -> Unit,
     onEditorClosed: () -> Unit = {},
+    onDeliveries: () -> Unit = {},
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
@@ -130,6 +133,7 @@ fun HarvestsScreen(
                 Modifier.fillMaxWidth().testTag("add-harvest"),
                 enabled = state.contexts.isNotEmpty() && !state.isSaving,
             )
+            MoSecondaryButton("Entregas a la cooperativa", onDeliveries, Modifier.fillMaxWidth().testTag("open-deliveries"))
             if (!state.isLoading && state.contexts.isEmpty()) {
                 Text(
                     "Para registrar cosecha, una finca necesita una campaña activa o en recolección.",

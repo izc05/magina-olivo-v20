@@ -15,9 +15,12 @@ import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentRepository
+import com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft
+import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
+import com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketParser
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentExtraction
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentOcrRepository
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentType
@@ -26,6 +29,7 @@ import com.isivoltpro.maginaolivo.domain.ocr.OcrStatus
 import com.isivoltpro.maginaolivo.domain.ocr.PurchaseDocumentParser
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -49,8 +53,10 @@ class OfflineFirstDocumentOcrRepository(
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
+    private val zoneId: () -> ZoneId = ZoneId::systemDefault,
 ) : DocumentOcrRepository {
     private val writer = ExpenseLedgerWriter(database, idGenerator)
+    private val deliveries = DeliveryWriter(database, idGenerator)
 
     override fun observeOpen(): Flow<List<DocumentExtraction>> =
         database.documentOcrDao().observeOpen().map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
@@ -121,16 +127,17 @@ class OfflineFirstDocumentOcrRepository(
         } catch (error: Throwable) {
             return recordFailure(id, error.javaClass.simpleName)
         }
-        val proposal = if (row.documentType == DocumentType.GENERIC_AGRICULTURAL_DOCUMENT.name) {
-            null
-        } else {
-            PurchaseDocumentParser.parse(text.text)
+        val (json, hasEssentials) = when (row.documentType) {
+            DocumentType.GENERIC_AGRICULTURAL_DOCUMENT.name -> null to true
+            DocumentType.DELIVERY_TICKET.name -> DeliveryTicketParser.parse(text.text).let { proposal ->
+                proposalCodec.encodeDelivery(proposal) to (proposal.hasEssentials && !proposal.weightsDisagree)
+            }
+            else -> PurchaseDocumentParser.parse(text.text).let { proposal ->
+                proposalCodec.encode(proposal) to proposal.hasEssentials
+            }
         }
-        val status = when {
-            text.text.isBlank() -> OcrStatus.NEEDS_REVIEW
-            proposal == null || proposal.hasEssentials -> OcrStatus.EXTRACTED
-            else -> OcrStatus.NEEDS_REVIEW
-        }
+        // EXTRACTED still waits for a person: neither status writes a Delivery or money.
+        val status = if (text.text.isBlank() || !hasEssentials) OcrStatus.NEEDS_REVIEW else OcrStatus.EXTRACTED
         return transaction("record_extraction") {
             val current = database.documentOcrDao().findById(id)
                 ?: return@transaction AppResult.Failure(AppError.NotFound("extraction"))
@@ -143,7 +150,7 @@ class OfflineFirstDocumentOcrRepository(
                     engine = text.engine,
                     engineVersion = text.engineVersion,
                     rawText = text.text,
-                    extractedJson = proposal?.let(proposalCodec::encode),
+                    extractedJson = json,
                     status = status.name,
                     metadata = current.metadata.next(now),
                 ),
@@ -158,6 +165,10 @@ class OfflineFirstDocumentOcrRepository(
             val current = database.documentOcrDao().findById(id)
                 ?.takeIf { it.metadata.deletedAt == null }
                 ?: return@transaction AppResult.Failure(AppError.NotFound("extraction"))
+            if (current.documentType == DocumentType.DELIVERY_TICKET.name) {
+                // A weight ticket records kilos delivered, not money spent.
+                return@transaction AppResult.Failure(AppError.Validation("documentType", "delivery_ticket"))
+            }
             if (current.status == OcrStatus.CONFIRMED.name) {
                 return@transaction AppResult.Failure(AppError.Conflict("already_confirmed"))
             }
@@ -180,6 +191,35 @@ class OfflineFirstDocumentOcrRepository(
         }
         return result
     }
+
+    override suspend fun confirmDeliveryTicket(id: UUID, reviewed: DeliveryDraft): AppResult<UUID> =
+        transaction("confirm_delivery_ticket") {
+            val current = database.documentOcrDao().findById(id)
+                ?.takeIf { it.metadata.deletedAt == null }
+                ?: return@transaction AppResult.Failure(AppError.NotFound("extraction"))
+            if (current.documentType != DocumentType.DELIVERY_TICKET.name) {
+                return@transaction AppResult.Failure(AppError.Validation("documentType", "not_a_delivery_ticket"))
+            }
+            if (current.status == OcrStatus.CONFIRMED.name) {
+                return@transaction AppResult.Failure(AppError.Conflict("already_confirmed"))
+            }
+            val now = clock.nowInstant()
+            // The reviewed values, never the engine's: the proposal stays as it was read.
+            val delivery = deliveries.insert(reviewed, DeliverySource.TICKET_OCR, clock.today(zoneId()), now)
+            database.documentOcrDao().upsert(
+                current.copy(
+                    ownerType = AttachmentOwnerType.DELIVERY.name,
+                    ownerId = delivery.id,
+                    status = OcrStatus.CONFIRMED.name,
+                    reviewedAt = now,
+                    confirmedAt = now,
+                    metadata = current.metadata.next(now),
+                ),
+            )
+            reOwnAttachment(current.attachmentId, AttachmentOwner(AttachmentOwnerType.DELIVERY, delivery.id), now)
+            database.enqueueCollapsed(idGenerator, SyncEntityType.DOCUMENT_EXTRACTION, id, OutboxOperation.UPDATE, now)
+            AppResult.Success(delivery.id)
+        }
 
     override suspend fun confirmWithoutExpense(id: UUID): AppResult<Unit> =
         transaction("confirm_document") {
@@ -211,6 +251,9 @@ class OfflineFirstDocumentOcrRepository(
             if (current.status == OcrStatus.CONFIRMED.name && current.ownerType == AttachmentOwnerType.EXPENSE.name) {
                 // Its file now belongs to an expense; discarding the reading must not take it away.
                 return@transaction AppResult.Failure(AppError.Conflict("linked_to_expense"))
+            }
+            if (current.status == OcrStatus.CONFIRMED.name && current.ownerType == AttachmentOwnerType.DELIVERY.name) {
+                return@transaction AppResult.Failure(AppError.Conflict("linked_to_delivery"))
             }
             val now = clock.nowInstant()
             database.documentOcrDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
@@ -256,6 +299,10 @@ class OfflineFirstDocumentOcrRepository(
                 database.withTransaction { block() }
             } catch (error: InvalidExpense) {
                 AppResult.Failure(AppError.Validation(error.field, error.code))
+            } catch (error: InvalidDelivery) {
+                AppResult.Failure(AppError.Validation(error.field, error.code))
+            } catch (error: DeliveryConflict) {
+                AppResult.Failure(AppError.Conflict(error.code))
             } catch (error: Throwable) {
                 AppResult.Failure(AppError.Storage(operation, error))
             }
@@ -269,8 +316,11 @@ class OfflineFirstDocumentOcrRepository(
         status = OcrStatus.entries.firstOrNull { it.name == status } ?: OcrStatus.NEEDS_REVIEW,
         engine = engine,
         rawText = rawText,
-        proposal = extractedJson?.let(proposalCodec::decode),
+        proposal = extractedJson?.takeIf { documentType != DocumentType.DELIVERY_TICKET.name }?.let(proposalCodec::decode),
         expenseId = ownerId?.takeIf { ownerType == AttachmentOwnerType.EXPENSE.name },
+        deliveryProposal = extractedJson?.takeIf { documentType == DocumentType.DELIVERY_TICKET.name }
+            ?.let(proposalCodec::decodeDelivery),
+        deliveryId = ownerId?.takeIf { ownerType == AttachmentOwnerType.DELIVERY.name },
         createdAt = metadata.createdAt,
         reviewedAt = reviewedAt,
     )

@@ -560,6 +560,61 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration7To8AddsEmptyDeliveryTablesAndKeepsHarvests() {
+        migrationHelper.createDatabase(TEST_DATABASE, 7).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            database.execSQL(
+                """
+                INSERT INTO harvests (
+                    id, workspace_id, campaign_id, farm_id, harvest_date, weight_grams,
+                    destination, notes, created_at, updated_at, deleted_at, version,
+                    sync_status, remote_version, last_synced_at, collection_method,
+                    worker_count, machinery_text
+                ) VALUES (
+                    '99999999-9999-9999-9999-999999999999',
+                    '11111111-1111-1111-1111-111111111111', NULL, NULL, '2026-11-18',
+                    2850000, NULL, NULL, 1000, 1000, NULL, 1, 'PENDING', NULL, NULL,
+                    'TRUNK_SHAKER', 4, NULL
+                )
+                """.trimIndent(),
+            )
+        }
+
+        migrationHelper
+            .runMigrationsAndValidate(
+                TEST_DATABASE,
+                8,
+                true,
+                DatabaseMigrations.MIGRATION_7_8,
+            ).use { database ->
+                database.query("SELECT weight_grams, collection_method, worker_count FROM harvests").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(2_850_000L, cursor.getLong(0))
+                    assertEquals("TRUNK_SHAKER", cursor.getString(1))
+                    assertEquals(4, cursor.getInt(2))
+                }
+                listOf("deliveries", "delivery_parcels", "delivery_yield_analyses").forEach { table ->
+                    database.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                        assertTrue(cursor.moveToFirst())
+                        assertEquals(0, cursor.getInt(0))
+                    }
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

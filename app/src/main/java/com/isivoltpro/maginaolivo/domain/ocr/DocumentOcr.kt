@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.domain.ocr
 
 import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.PurchaseLine
 import java.time.Instant
@@ -54,6 +55,9 @@ data class DocumentExtraction(
     val rawText: String?,
     val proposal: PurchaseProposal?,
     val expenseId: UUID?,
+    /** For a `DELIVERY_TICKET`: what the ticket seems to say, never confirmed by itself. */
+    val deliveryProposal: DeliveryTicketProposal? = null,
+    val deliveryId: UUID? = null,
     val createdAt: Instant,
     val reviewedAt: Instant?,
 )
@@ -89,6 +93,13 @@ interface DocumentOcrRepository {
      * never a posted one, and the document is linked to it. Runs at most once.
      */
     suspend fun createExpenseDraft(id: UUID, reviewed: ExpenseDraft): AppResult<UUID>
+
+    /**
+     * The explicit reviewed command for a weight ticket: the values the person confirmed —
+     * not the engine's — become one Delivery, and the ticket file moves to it. Runs at most
+     * once; afterwards the reading can neither be run again nor change the Delivery.
+     */
+    suspend fun confirmDeliveryTicket(id: UUID, reviewed: DeliveryDraft): AppResult<UUID>
 
     /** Reviewed and kept as a document, with no money attached. */
     suspend fun confirmWithoutExpense(id: UUID): AppResult<Unit>

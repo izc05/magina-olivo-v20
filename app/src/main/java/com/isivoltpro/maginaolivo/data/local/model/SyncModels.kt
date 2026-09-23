@@ -29,6 +29,8 @@ enum class SyncEntityType {
     ALERT,
     ORGANIZATION,
     DOCUMENT_EXTRACTION,
+    DELIVERY,
+    DELIVERY_YIELD,
 }
 
 enum class OutboxStatus {

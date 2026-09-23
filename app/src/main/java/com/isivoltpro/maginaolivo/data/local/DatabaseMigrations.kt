@@ -66,11 +66,36 @@ object DatabaseMigrations {
             }
         }
 
+    /**
+     * v8 — Deliveries (Phase 14). Three new tables, created empty: deliveries, their origin
+     * Parcels, and the yield analyses that arrive later as separate records.
+     */
+    val MIGRATION_7_8 =
+        object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                schemaVersion8Statements.forEach(db::execSQL)
+            }
+        }
+
     val all: Array<Migration> =
-        arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
 
     private const val METADATA_COLUMNS =
         "`created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER"
+
+    private val schemaVersion8Statements =
+        arrayOf(
+            "CREATE TABLE IF NOT EXISTS `deliveries` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `farm_id` TEXT NOT NULL, `campaign_id` TEXT NOT NULL, `delivery_date` TEXT NOT NULL, `destination_organization_id` TEXT, `destination_name` TEXT NOT NULL, `net_grams` INTEGER NOT NULL, `gross_grams` INTEGER, `tare_grams` INTEGER, `delivery_number` TEXT, `ticket_number` TEXT, `source` TEXT NOT NULL, `notes` TEXT, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "CREATE INDEX IF NOT EXISTS `index_deliveries_workspace_id_delivery_date` ON `deliveries` (`workspace_id`, `delivery_date`)",
+            "CREATE INDEX IF NOT EXISTS `index_deliveries_campaign_id_delivery_date` ON `deliveries` (`campaign_id`, `delivery_date`)",
+            "CREATE TABLE IF NOT EXISTS `delivery_parcels` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `delivery_id` TEXT NOT NULL, `parcel_id` TEXT NOT NULL, `campaign_parcel_id` TEXT, `parcel_name_at_delivery` TEXT NOT NULL, `weight_grams` INTEGER, `allocation_mode` TEXT NOT NULL, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`delivery_id`) REFERENCES `deliveries`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`parcel_id`) REFERENCES `parcels`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_delivery_parcels_delivery_id_parcel_id` ON `delivery_parcels` (`delivery_id`, `parcel_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_delivery_parcels_workspace_id` ON `delivery_parcels` (`workspace_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_delivery_parcels_parcel_id` ON `delivery_parcels` (`parcel_id`)",
+            "CREATE TABLE IF NOT EXISTS `delivery_yield_analyses` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `delivery_id` TEXT NOT NULL, `analysis_date` TEXT, `fat_yield_hundredths` INTEGER, `industrial_yield_hundredths` INTEGER, `source_attachment_id` TEXT, `notes` TEXT, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`delivery_id`) REFERENCES `deliveries`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "CREATE INDEX IF NOT EXISTS `index_delivery_yield_analyses_delivery_id` ON `delivery_yield_analyses` (`delivery_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_delivery_yield_analyses_workspace_id` ON `delivery_yield_analyses` (`workspace_id`)",
+        )
 
     private val schemaVersion7Statements =
         arrayOf(
