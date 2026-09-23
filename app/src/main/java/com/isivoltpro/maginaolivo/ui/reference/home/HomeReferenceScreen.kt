@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -33,13 +34,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.R
 import com.isivoltpro.maginaolivo.ui.brand.MaginaOlivoWordmark
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
@@ -248,48 +249,46 @@ private fun QuickActions(
     onExpensesSelected: () -> Unit,
 ) {
     val actions = listOf(
-        Triple("Mis fincas", "F", onOlivarSelected),
-        Triple("Mapa y\nCatastro", "M", onMapSelected),
-        Triple("Campaña", "C", onCampaignSelected),
-        Triple("Cosecha", "O", onHarvestSelected),
-        Triple("Gastos", "€", onExpensesSelected),
+        Triple("Mis fincas", MoIcons.Tree, onOlivarSelected),
+        Triple("Mapa y Catastro", MoIcons.Map, onMapSelected),
+        Triple("Campaña", MoIcons.Campaign, onCampaignSelected),
+        Triple("Cosecha", MoIcons.Harvest, onHarvestSelected),
+        Triple("Gastos", MoIcons.Euro, onExpensesSelected),
     )
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        actions.forEach { (label, symbol, onClick) ->
-            Card(
-                onClick = onClick,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = MoSpacing.sm, horizontal = 5.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Surface(
-                        modifier = Modifier.size(34.dp),
-                        shape = CircleShape,
-                        color = MoOlivePrimary.copy(alpha = 0.10f),
+    Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+        actions.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                row.forEach { (label, icon, onClick) ->
+                    Card(
+                        onClick = onClick,
+                        modifier = if (row.size == 1) Modifier.fillMaxWidth() else Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(symbol, color = MoOlivePrimary, fontWeight = FontWeight.SemiBold)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(MoSpacing.sm),
+                            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(44.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                color = MoOlivePrimary.copy(alpha = 0.10f),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(icon, contentDescription = null, tint = MoOlivePrimary, modifier = Modifier.size(24.dp))
+                                }
+                            }
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MoOliveDark,
+                                maxLines = 2,
+                            )
                         }
                     }
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MoOliveDark,
-                        minLines = 2,
-                        maxLines = 2,
-                    )
                 }
             }
         }
