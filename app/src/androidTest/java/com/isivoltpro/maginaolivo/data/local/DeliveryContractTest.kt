@@ -137,7 +137,8 @@ class DeliveryContractTest {
         assertValidation("netGrams", deliveries.create(draft(2_850_000, north to null).copy(grossGrams = 12_340_000, tareGrams = 9_500_000)))
         assertEquals(0, count("deliveries"))
         assertEquals(0, count("sync_outbox"))
-        ok(deliveries.create(draft(2_850_000, north to 2_000_000, south to 850_000)))
+        val id = ok(deliveries.create(draft(2_850_000, north to 2_000_000, south to 850_000)))
+        assertEquals(0L, deliveries.observe(id).first()!!.unallocatedGrams)
     }
 
     // ------------------------------------------------------------ yield does not rewrite the delivery
