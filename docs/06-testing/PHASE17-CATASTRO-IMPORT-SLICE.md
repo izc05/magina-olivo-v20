@@ -39,9 +39,19 @@ allowed phase.
 The live test runs only in `.github/workflows/phase17-catastro.yml`; the ordinary emulator suite
 excludes it so everyday CI never depends on the external service.
 
+## CI evidence
+
+| Check | Result | Run |
+|---|---|---|
+| Live WFS lookup + confirmed import + Room reopen (`CatastroLiveImportTest`, API 35 emulator) | PASS on `2ab51c89` | [Phase 17 Catastro live import run 35912423582](https://github.com/izc05/magina-olivo-v20/actions/runs/35912423582) |
+| Independent emulator evidence (live test excluded) | PASS on `5a95b70d` | [Gate 3 run 35911510100](https://github.com/izc05/magina-olivo-v20/actions/runs/35911510100) |
+
+The first live runs found two real defects before any phone did: the workflow never launched the
+test (split command line), and Android's XML parser rejected the Xerces hardening flags, so every
+lookup failed on a device. Both are fixed on this branch.
+
 ## Pending before Gate 17 PASS
 
 - Gate 16 PASS and merge of the Phase 16 line.
-- Green live workflow run on the final head, recorded here with its run id.
 - Real-device check of the import path with coverage and without it.
 - Map rendering stays in Phase 18.
