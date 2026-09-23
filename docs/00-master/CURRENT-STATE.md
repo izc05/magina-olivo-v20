@@ -27,12 +27,13 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 9 — Activity engine
 ✅ Gate 10 — Typed activities + irrigation
 ✅ Gate 11 — Attachments
+✅ Gate 12 — Expenses, purchases, organizations + generic OCR
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 12 — EXPENSES, PURCHASES, ORGANIZATIONS + GENERIC OCR (IN PROGRESS — implemented, awaiting CI evidence)
+▶ PHASE 13 — HARVEST (NEXT — starts after PR #208 is merged into main)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -230,11 +231,15 @@ merge commit `e42754ac`, after the PR's own CI run was green.
 - No Room schema change: `documents` (schema v2) already carries the attachment
   contract, so the database stays at v5.
 
-## Phase 12 — Expenses, purchases, organizations + generic OCR (in progress)
+## Phase 12 — Expenses, purchases, organizations + generic OCR
 
 Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
 `docs/07-plans/PHASE12-EXPENSES-ORGANIZATIONS-OCR.md`, evidence in
-`docs/06-testing/PHASE12-EXPENSES-SLICE.md`. **Gate 12 is not yet PASS.**
+`docs/06-testing/PHASE12-EXPENSES-SLICE.md`. **Gate 12 passed** on commit `f0725b2a`:
+Android CI #346 (run `35853828444`) with `foundation` and `gate3-emulator` SUCCESS, the
+5→6 migration verified against the compiler-exported `6.json`, empty crash buffer. The
+PR #208 head `d500b00` (a test-helper race fix plus evidence) was green again on
+`foundation`, `gate3-emulator` and `gate3-evidence` before merging into `main`.
 
 - Room v6: `expenses` gains `status` (DRAFT | POSTED), `origin` and its Activity /
   Harvest / Delivery / supplier links; new `agricultural_organizations`,
@@ -248,7 +253,8 @@ Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
 
 ## Next deliverable
 
-Close Gate 12 with real CI evidence, merge it, then **Phase 13 — Harvest**.
+**Phase 13 — Harvest**: Harvest distinct from Delivery, truthful mixed-origin handling
+and optional exact parcel allocation. Gate 13: no fabricated per-parcel split.
 
 Both workflows still run on pushes to `feat/**` and `hotfix/**`, so a branch reaches a
 green emulator run before a pull request exists.

@@ -1,6 +1,6 @@
 # Phase 12 — Expenses, purchases, organizations + generic document OCR
 
-**Status:** IMPLEMENTED — awaiting CI evidence for Gate 12
+**Status:** Gate 12 PASS — validated on `f0725b2a` (Android CI #346), merged through PR #208
 **Precondition:** Gate 11 PASS, merged into `main` as `e42754ac`
 **Branch:** `claude/dreamy-dijkstra-tdui2c`
 
