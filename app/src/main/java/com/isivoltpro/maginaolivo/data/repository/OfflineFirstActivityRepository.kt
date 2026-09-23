@@ -37,6 +37,12 @@ import com.isivoltpro.maginaolivo.domain.activity.IrrigationPrice
 import com.isivoltpro.maginaolivo.domain.activity.NewActivity
 import java.time.Instant
 import java.util.UUID
+import com.isivoltpro.maginaolivo.data.local.entity.ActivityMachineEntity
+import com.isivoltpro.maginaolivo.domain.machinery.ActivityMachine
+import com.isivoltpro.maginaolivo.domain.machinery.MachineCategory
+import com.isivoltpro.maginaolivo.domain.machinery.MachineOption
+import com.isivoltpro.maginaolivo.domain.machinery.MachineRules
+import com.isivoltpro.maginaolivo.domain.machinery.MachineUseInput
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
@@ -78,11 +84,57 @@ class OfflineFirstActivityRepository(
         combine(
             database.activityDao().observeWithTargets(id),
             database.expenseDao().observeForActivity(id),
-        ) { row, expenses ->
+            database.machineDao().observeForActivity(id),
+        ) { row, expenses, uses ->
             row?.toDomain()?.copy(
                 costMinor = expenses.firstOrNull { it.origin == ExpenseOrigin.ACTIVITY_COST.name }?.amountMinor,
+                machines = machinesOf(uses),
             )
         }.flowOn(dispatchers.io)
+
+    override fun observeSelectableMachines(): Flow<List<MachineOption>> =
+        database.machineDao().observeByStatus(MACHINE_ACTIVE).map { rows ->
+            rows.map { MachineOption(it.id, it.name, it.category.toMachineCategory()) }
+        }.flowOn(dispatchers.io)
+
+    private suspend fun machinesOf(uses: List<ActivityMachineEntity>): List<ActivityMachine> {
+        if (uses.isEmpty()) return emptyList()
+        val machines = database.machineDao().findAll(uses.map { it.machineId }).associateBy { it.id }
+        return uses.mapNotNull { use ->
+            val machine = machines[use.machineId] ?: return@mapNotNull null
+            ActivityMachine(
+                machineId = machine.id,
+                name = machine.name,
+                category = machine.category.toMachineCategory(),
+                startHours = use.startHours,
+                endHours = use.endHours,
+                usageHours = use.usageHours,
+                archived = machine.status != MACHINE_ACTIVE,
+            )
+        }.sortedBy { it.name.lowercase() }
+    }
+
+    private fun String.toMachineCategory() =
+        MachineCategory.entries.firstOrNull { it.name == this } ?: MachineCategory.OTHER
+
+    /**
+     * Rewrites the Activity's machines inside its transaction (D5: children of the
+     * Activity aggregate, no intent of their own). A retired machine can no longer be
+     * chosen, but one the Activity already named stays, so editing old work never drops it.
+     */
+    private suspend fun replaceMachines(activityId: UUID, workspaceId: UUID, uses: List<MachineUseInput>) {
+        val kept = database.machineDao().listForActivity(activityId).map { it.machineId }.toSet()
+        val rows = uses.map { use ->
+            val machine = database.machineDao().findById(use.machineId)
+            if (machine == null || machine.metadata.deletedAt != null || machine.workspaceId != workspaceId) {
+                throw InvalidMachine("machine_not_found")
+            }
+            if (machine.status != MACHINE_ACTIVE && machine.id !in kept) throw InvalidMachine("archived_machine")
+            ActivityMachineEntity(activityId, machine.id, use.startHours, use.endHours, use.usageHours)
+        }
+        database.machineDao().deleteForActivity(activityId)
+        if (rows.isNotEmpty()) database.machineDao().insertUses(rows)
+    }
 
     override suspend fun create(command: NewActivity): AppResult<UUID> {
         val description = command.description.trim()
@@ -92,6 +144,7 @@ class OfflineFirstActivityRepository(
         }
         validateDetail(command.type, command.detail)?.let { return it }
         notNegative("costMinor", command.costMinor?.toDouble())?.let { return it }
+        MachineRules.validateUses(command.machines)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         return withContext(dispatchers.io) {
             safely("create_activity") {
                 val farm = database.farmDao().findById(command.farmId)
@@ -117,6 +170,7 @@ class OfflineFirstActivityRepository(
                 )
                 replaceDetail(id, farm.workspaceId, command.detail, now)
                 replaceTargets(id, command.parcelIds, now)
+                replaceMachines(id, farm.workspaceId, command.machines)
                 enqueue(id, OutboxOperation.CREATE, now)
                 syncCost(id, command.costMinor, now)
                 AppResult.Success(id)
@@ -129,6 +183,7 @@ class OfflineFirstActivityRepository(
         if (description.isEmpty()) return AppResult.Failure(AppError.Validation("description", "blank"))
         validateDetail(changes.type, changes.detail)?.let { return it }
         notNegative("costMinor", changes.costMinor?.toDouble())?.let { return it }
+        MachineRules.validateUses(changes.machines)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         return mutate(id, "update_activity") { current, now ->
             if (current.status !in EDITABLE) return@mutate conflict("protected_activity")
             if (current.status == ActivityStatus.PLANNED && changes.parcelIds.isEmpty()) {
@@ -145,6 +200,7 @@ class OfflineFirstActivityRepository(
             )
             replaceDetail(id, current.workspaceId, changes.detail, now)
             replaceTargets(id, changes.parcelIds, now)
+            replaceMachines(id, current.workspaceId, changes.machines)
             enqueue(id, OutboxOperation.UPDATE, now)
             syncCost(id, changes.costMinor, now)
             AppResult.Success(Unit)
@@ -288,6 +344,8 @@ class OfflineFirstActivityRepository(
             AppResult.Failure(AppError.Validation("parcelIds", error.message ?: "invalid"))
         } catch (error: InvalidExpense) {
             AppResult.Failure(AppError.Validation(error.field, error.code))
+        } catch (error: InvalidMachine) {
+            AppResult.Failure(AppError.Validation("machines", error.message ?: "invalid"))
         } catch (error: Throwable) {
             AppResult.Failure(AppError.Storage(operation, error))
         }
@@ -301,6 +359,8 @@ class OfflineFirstActivityRepository(
     private fun conflict(code: String): AppResult.Failure = AppResult.Failure(AppError.Conflict(code))
 
     private class InvalidSelection(message: String) : RuntimeException(message)
+
+    private class InvalidMachine(message: String) : RuntimeException(message)
 
     private fun ActivityWithTargets.toDomain() =
         Activity(
@@ -537,5 +597,6 @@ class OfflineFirstActivityRepository(
         const val DEFAULT_CURRENCY = "EUR"
         val EDITABLE = setOf(ActivityStatus.DRAFT, ActivityStatus.PLANNED)
         val ARCHIVABLE = setOf(ActivityStatus.DRAFT, ActivityStatus.CANCELLED)
+        const val MACHINE_ACTIVE = "ACTIVE"
     }
 }

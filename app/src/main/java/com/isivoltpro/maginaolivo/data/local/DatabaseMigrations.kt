@@ -77,11 +77,30 @@ object DatabaseMigrations {
             }
         }
 
+    /** v9 — Machinery (Phase 15): machines and the machines each Activity used, created empty. */
+    val MIGRATION_8_9 =
+        object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                schemaVersion9Statements.forEach(db::execSQL)
+            }
+        }
+
     val all: Array<Migration> =
-        arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+        arrayOf(
+            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
+            MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
+        )
 
     private const val METADATA_COLUMNS =
         "`created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER"
+
+    private val schemaVersion9Statements =
+        arrayOf(
+            "CREATE TABLE IF NOT EXISTS `machines` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `name` TEXT NOT NULL, `category` TEXT NOT NULL, `make` TEXT, `model` TEXT, `registration_or_serial` TEXT, `current_hours` REAL, `notes` TEXT, `status` TEXT NOT NULL, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "CREATE INDEX IF NOT EXISTS `index_machines_workspace_id_status` ON `machines` (`workspace_id`, `status`)",
+            "CREATE TABLE IF NOT EXISTS `activity_machines` (`activity_id` TEXT NOT NULL, `machine_id` TEXT NOT NULL, `start_hours` REAL, `end_hours` REAL, `usage_hours` REAL, PRIMARY KEY(`activity_id`, `machine_id`), FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`machine_id`) REFERENCES `machines`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "CREATE INDEX IF NOT EXISTS `index_activity_machines_machine_id` ON `activity_machines` (`machine_id`)",
+        )
 
     private val schemaVersion8Statements =
         arrayOf(

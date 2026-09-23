@@ -30,12 +30,13 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 12 — Expenses, purchases, organizations + generic OCR
 ✅ Gate 13 — Harvest
 ✅ Gate 14 — Deliveries + weight-ticket OCR + later yield
+✅ Gate 15 — Machinery
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 15 — MACHINERY (NEXT — starts after PR #210 is merged)
+▶ PHASE 16 — CALENDAR, AGENDA, REMINDERS AND ANDROID NOTIFICATIONS (NEXT — starts after PR #211 is merged)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -287,11 +288,24 @@ Gate 3 Android Emulator Evidence #72 (run `35861748914`) SUCCESS with an empty c
   confirmed, once.
 - S80 shows delivered kilos and fat/industrial yield weighted by kilos with its coverage.
 
+**Merged into `main`** through PR #210 as merge commit `a701d2b9`.
+
+## Phase 15 — Machinery
+
+Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
+`docs/07-plans/PHASE15-MACHINERY.md`, evidence in `docs/06-testing/PHASE15-MACHINERY-SLICE.md`.
+**Gate 15 passed** on commit `ce46234b`: Android CI run `35864581017` with `foundation` and
+`gate3-emulator` SUCCESS, and Gate 3 Android Emulator Evidence run `35864584360` SUCCESS
+with an empty crash buffer.
+
+- Room v9: `machines` (its own aggregate, archived rather than deleted) and
+  `activity_machines` (children of the Activity aggregate).
+- "Maquinaria" is reached from the Mi Olivar header; the Activity editor gains an optional
+  machinery section with optional hours. Nothing about an Activity becomes mandatory.
+
 ## Next deliverable
 
-**Phase 15 — Machinery**: machinery list/detail, activity relation, optional hours/usage,
-lightweight field workflow. Gate 15: machinery adds value without making activities
-mandatory/complex.
+**Phase 16 — Calendar, agenda, reminders and Android notifications**.
 
 ## Parallel-chat reconciliation
 

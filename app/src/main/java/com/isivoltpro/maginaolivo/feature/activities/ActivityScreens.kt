@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
+import com.isivoltpro.maginaolivo.domain.machinery.MachineOption
+import com.isivoltpro.maginaolivo.domain.machinery.MachineUseInput
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -122,6 +124,7 @@ fun FarmActivitiesSection(
         ModalBottomSheet(onDismissRequest = { editor = false }) {
             ActivityEditor(
                 parcels = state.parcels,
+                machines = state.machines,
                 descriptionError = state.descriptionError,
                 dateError = state.dateError,
                 parcelsError = state.parcelsError,
@@ -267,6 +270,8 @@ internal fun ActivityEditor(
     onSaveDraft: ((ActivityDraft) -> Unit)? = null,
     initial: ActivityDraft = ActivityDraft(),
     title: String = "Nueva actuación",
+    /** Machines that can be named; empty hides nothing but the choice (Phase 15). */
+    machines: List<MachineOption> = emptyList(),
 ) {
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
@@ -279,6 +284,25 @@ internal fun ActivityEditor(
     // so saving the typed block alone would restore it into an editor that is not there.
     val detailFields = remember(initial.detail) {
         mutableStateMapOf<String, String>().apply { putAll(initial.detail.toFields()) }
+    }
+    // Selected machine id → the hours typed for it ("" when not given).
+    val machineHours = remember(initial.machines) {
+        mutableStateMapOf<String, String>().apply {
+            initial.machines.forEach { use -> put(use.machineId.toString(), use.usageHours?.let(::editableHours).orEmpty()) }
+        }
+    }
+    var machinesError by rememberSaveable { mutableStateOf<String?>(null) }
+    fun readMachines(): List<MachineUseInput>? {
+        val uses = machineHours.entries.map { (id, hours) ->
+            val value = hours.replace(',', '.').trim()
+            if (value.isNotEmpty() && value.toDoubleOrNull() == null) {
+                machinesError = "Escribe las horas como 3 o 3,5"
+                return null
+            }
+            MachineUseInput(UUID.fromString(id), usageHours = value.toDoubleOrNull())
+        }
+        machinesError = null
+        return uses.sortedBy { it.machineId.toString() }
     }
 
     Column(
@@ -331,6 +355,32 @@ internal fun ActivityEditor(
                 Text(parcel.name)
             }
         }
+        // Phase 15: optional. An Activity never needs a machine, and hours are optional too.
+        if (machines.isNotEmpty()) {
+            MoSectionHeader("Maquinaria (opcional)")
+            machinesError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            machines.forEach { machine ->
+                val key = machine.id.toString()
+                val checked = key in machineHours
+                Row(
+                    Modifier.fillMaxWidth().testTag("activity-machine-option").clickable {
+                        if (checked) machineHours.remove(key) else machineHours[key] = ""
+                    }.padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked, { value -> if (value) machineHours[key] = "" else machineHours.remove(key) })
+                    Text(machine.name)
+                }
+                if (checked) {
+                    MoTextField(
+                        machineHours[key].orEmpty(),
+                        { machineHours[key] = it; machinesError = null },
+                        "Horas de ${machine.name} (opcional)",
+                        modifier = Modifier.fillMaxWidth().testTag("activity-machine-hours"),
+                    )
+                }
+            }
+        }
         MoTextField(notes, { notes = it }, "Notas")
         // D2: a convenience for the linked Expense, never a second number on the Activity.
         MoTextField(
@@ -349,6 +399,7 @@ internal fun ActivityEditor(
                     costError = "Escribe un importe como 65 o 65,50"
                     return@MoPrimaryButton
                 }
+                val machineUses = readMachines() ?: return@MoPrimaryButton
                 onSave(
                     ActivityDraft(
                         runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
@@ -361,6 +412,7 @@ internal fun ActivityEditor(
                             detailFields,
                         ),
                         costMinor,
+                        machines = machineUses,
                     ),
                 )
             },
@@ -375,6 +427,7 @@ internal fun ActivityEditor(
                         costError = "Escribe un importe como 65 o 65,50"
                         return@MoSecondaryButton
                     }
+                    val machineUses = readMachines() ?: return@MoSecondaryButton
                     saveDraft(
                         ActivityDraft(
                             runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
@@ -387,6 +440,7 @@ internal fun ActivityEditor(
                                 detailFields,
                             ),
                             costMinor,
+                            machines = machineUses,
                         ),
                     )
                 },
@@ -471,6 +525,18 @@ fun ActivityDetailScreen(
                     MoMetricCard("Parcelas", activity.targets.size.toString(), Modifier.fillMaxWidth())
 
                     activity.detail?.let { ActivityDetailSummary(it) }
+                    if (activity.machines.isNotEmpty()) {
+                        MoSectionHeader("Maquinaria")
+                        activity.machines.forEach { machine ->
+                            Text(
+                                listOfNotNull(
+                                    machine.name + if (machine.archived) " (retirada)" else "",
+                                    machine.hoursUsed?.let { "${editableHours(it)} h" },
+                                ).joinToString(" · "),
+                                modifier = Modifier.testTag("activity-machine"),
+                            )
+                        }
+                    }
                     activity.costMinor?.let { cost ->
                         MoMetricCard(
                             "Coste",
@@ -526,8 +592,12 @@ fun ActivityDetailScreen(
                     notes = activity.notes.orEmpty(),
                     detail = activity.detail,
                     costMinor = activity.costMinor,
+                    machines = activity.machines.map { MachineUseInput(it.machineId, it.startHours, it.endHours, it.usageHours) },
                 ),
                 title = "Editar actuación",
+                // A retired machine the Activity already named stays choosable here only.
+                machines = state.machines + activity.machines.filter { it.archived }
+                    .map { MachineOption(it.machineId, "${it.name} (retirada)", it.category) },
             )
         }
     }
@@ -805,3 +875,7 @@ private fun ActivityType.label() = when (this) {
     ActivityType.INCIDENT -> "Incidencia"
     ActivityType.OTHER -> "Otro"
 }
+
+/** "3", "3,5": hours as a farmer writes them. */
+internal fun editableHours(hours: Double): String =
+    java.math.BigDecimal.valueOf(hours).stripTrailingZeros().toPlainString().replace('.', ',')

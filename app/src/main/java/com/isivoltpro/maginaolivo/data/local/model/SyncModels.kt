@@ -31,6 +31,7 @@ enum class SyncEntityType {
     DOCUMENT_EXTRACTION,
     DELIVERY,
     DELIVERY_YIELD,
+    MACHINE,
 }
 
 enum class OutboxStatus {

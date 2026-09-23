@@ -45,6 +45,7 @@ object AppDestination {
     const val DeveloperGallery = "developer-gallery"
     const val Organizations = "organizations"
     const val Deliveries = "deliveries"
+    const val Machinery = "machinery"
 
     const val FarmPattern = "farm/{farmId}"
     const val ParcelPattern = "parcel/{parcelId}"
@@ -55,6 +56,7 @@ object AppDestination {
     const val HarvestPattern = "harvest/{harvestId}"
     const val DeliveryPattern = "delivery/{deliveryId}"
     const val TicketPattern = "delivery-ticket/{extractionId}"
+    const val MachinePattern = "machine/{machineId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
 
@@ -74,6 +76,8 @@ object AppDestination {
 
     fun ticket(extractionId: String): String = nestedRoute("delivery-ticket", extractionId)
 
+    fun machine(machineId: String): String = nestedRoute("machine", machineId)
+
     fun rootForRoute(route: String?): RootDestination? {
         val prefix = route?.substringBefore('/') ?: return null
         return when (prefix) {
@@ -85,6 +89,8 @@ object AppDestination {
             "activity",
             MapCatastro,
             Analytics,
+            Machinery,
+            "machine",
             -> RootDestination.Olivar
             RootDestination.Register.route,
             OcrReview,

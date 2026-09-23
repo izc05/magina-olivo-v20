@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +72,7 @@ fun FarmListRoute(
     persistence: LocalPersistence,
     onFarmSelected: (UUID) -> Unit,
     modifier: Modifier = Modifier,
+    onMachinery: () -> Unit = {},
 ) {
     val viewModel: FarmListViewModel = viewModel(
         factory = viewModelFactory {
@@ -90,6 +92,7 @@ fun FarmListRoute(
         onRestore = viewModel::restore,
         onRetry = viewModel::retry,
         modifier = modifier,
+        onMachinery = onMachinery,
     )
 }
 
@@ -102,6 +105,7 @@ fun FarmListScreen(
     onRestore: (UUID) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    onMachinery: () -> Unit = {},
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -135,11 +139,21 @@ fun FarmListScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
         ) {
             item {
-                Text(
-                    text = "Mis fincas",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MoOliveDark,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Mis fincas",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MoOliveDark,
+                    )
+                    // Machinery is a shared resource, not a Farm: reached from here, no new root.
+                    TextButton(onClick = onMachinery, modifier = Modifier.testTag("open-machinery")) {
+                        Text("Maquinaria")
+                    }
+                }
                 Text(
                     text = "Todo tu olivar organizado por fincas y parcelas.",
                     style = MaterialTheme.typography.bodyLarge,

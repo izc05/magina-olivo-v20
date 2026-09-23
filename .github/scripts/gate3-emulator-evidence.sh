@@ -8,7 +8,7 @@ ACTIVITY="com.isivoltpro.maginaolivo.MainActivity"
 TEST_PKG="com.isivoltpro.maginaolivo.dev.test"
 RUNNER="androidx.test.runner.AndroidJUnitRunner"
 SCREENSHOT_TEST="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest"
-OFFLINE_ROOM_TESTS="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest,com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest,com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmCoverRepositoryTest,com.isivoltpro.maginaolivo.data.local.AttachmentContractTest,com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest,com.isivoltpro.maginaolivo.data.local.HarvestContractTest,com.isivoltpro.maginaolivo.data.local.DeliveryContractTest"
+OFFLINE_ROOM_TESTS="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest,com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest,com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest,com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmCoverRepositoryTest,com.isivoltpro.maginaolivo.data.local.AttachmentContractTest,com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest,com.isivoltpro.maginaolivo.data.local.HarvestContractTest,com.isivoltpro.maginaolivo.data.local.DeliveryContractTest,com.isivoltpro.maginaolivo.data.local.MachineryContractTest"
 
 APP_APK="$(find app/build/outputs/apk/dev/debug -name '*.apk' | head -n 1)"
 TEST_APK="$(find app/build/outputs/apk/androidTest -name '*.apk' | head -n 1)"

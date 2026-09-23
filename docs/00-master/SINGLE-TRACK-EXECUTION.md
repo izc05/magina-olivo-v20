@@ -39,10 +39,11 @@ The old monolithic Phase 3 PR #180 is superseded and must not be merged.
 ## 2. Current active work
 
 ```text
-CURRENT:              Phase 14 — Deliveries + weight-ticket OCR + later yield
-                      = PASS, merged into `main` through PR #210
+CURRENT:              Phase 15 — Machinery = PASS, merged into `main` through
+                      PR #211
 
-ACTIVE PRODUCTION PHASE: Phase 15 — Machinery (NEXT)
+ACTIVE PRODUCTION PHASE: Phase 16 — Calendar, agenda, reminders and Android
+                      notifications (NEXT)
 
 BLOCKER:              none
 ```
