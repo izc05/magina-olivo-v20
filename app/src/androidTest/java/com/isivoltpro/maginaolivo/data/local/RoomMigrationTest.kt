@@ -498,6 +498,68 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration6To7KeepsExistingHarvestsAndAddsTheirOriginParcels() {
+        migrationHelper.createDatabase(TEST_DATABASE, 6).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            database.execSQL(
+                """
+                INSERT INTO harvests (
+                    id, workspace_id, campaign_id, farm_id, harvest_date, weight_grams,
+                    destination, notes, created_at, updated_at, deleted_at, version,
+                    sync_status, remote_version, last_synced_at
+                ) VALUES (
+                    '99999999-9999-9999-9999-999999999999',
+                    '11111111-1111-1111-1111-111111111111', NULL, NULL, '2026-11-18',
+                    2850000, NULL, 'Primer día', 1000, 1000, NULL, 2, 'PENDING', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+        }
+
+        migrationHelper
+            .runMigrationsAndValidate(
+                TEST_DATABASE,
+                7,
+                true,
+                DatabaseMigrations.MIGRATION_6_7,
+            ).use { database ->
+                // A harvest recorded before Phase 13 keeps its weight, version and sync
+                // state; its new collection fields are unknown, not invented.
+                database
+                    .query(
+                        "SELECT weight_grams, notes, version, sync_status, collection_method, worker_count, machinery_text FROM harvests",
+                    ).use { cursor ->
+                        assertTrue(cursor.moveToFirst())
+                        assertEquals(2_850_000L, cursor.getLong(0))
+                        assertEquals("Primer día", cursor.getString(1))
+                        assertEquals(2L, cursor.getLong(2))
+                        assertEquals("PENDING", cursor.getString(3))
+                        assertTrue(cursor.isNull(4))
+                        assertTrue(cursor.isNull(5))
+                        assertTrue(cursor.isNull(6))
+                        assertEquals(1, cursor.count)
+                    }
+                // No origin Parcel is guessed for it.
+                database.query("SELECT COUNT(*) FROM harvest_parcels").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

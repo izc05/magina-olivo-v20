@@ -20,6 +20,7 @@ enum class AttachmentOwnerType {
     CAMPAIGN,
     ACTIVITY,
     EXPENSE,
+    HARVEST,
 
     /** A document waiting for review: its owner is the OCR extraction reading it. */
     DOCUMENT,

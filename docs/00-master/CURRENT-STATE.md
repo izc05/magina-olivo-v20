@@ -33,7 +33,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 13 — HARVEST (NEXT — starts after PR #208 is merged into main)
+▶ PHASE 13 — HARVEST (IN PROGRESS — implemented, awaiting CI evidence)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -251,10 +251,24 @@ PR #208 head `d500b00` (a test-helper race fix plus evidence) was green again on
   shows a review form; confirming creates a DRAFT expense that counts only after a person
   posts it.
 
+**Merged into `main`** through PR #208 as merge commit `2fbeb935`.
+
+## Phase 13 — Harvest (in progress)
+
+Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
+`docs/07-plans/PHASE13-HARVEST.md`. **Gate 13 is not yet PASS.**
+
+- Room v7: `harvests` gains collection method, worker count and machinery text;
+  new `harvest_parcels`, a child of the Harvest aggregate (D6).
+- A Harvest belongs to its Farm's running Campaign and its origin Parcels are that
+  Campaign's. Several Parcels default to "No conozco el reparto exacto"; exact kilos
+  must add up to the total to the gram; a partial split leaves the rest unattributed.
+- S70 shows campaign totals as known-per-Parcel kilos plus "sin repartir" kilos.
+
 ## Next deliverable
 
-**Phase 13 — Harvest**: Harvest distinct from Delivery, truthful mixed-origin handling
-and optional exact parcel allocation. Gate 13: no fabricated per-parcel split.
+Close Gate 13 with real CI evidence, merge it, then **Phase 14 — Deliveries + weight-ticket
+OCR + later yield**.
 
 Both workflows still run on pushes to `feat/**` and `hotfix/**`, so a branch reaches a
 green emulator run before a pull request exists.

@@ -41,8 +41,10 @@ The old monolithic Phase 3 PR #180 is superseded and must not be merged.
 ```text
 CURRENT:              Phase 12 — Expenses / purchases / organizations /
                       generic OCR = PASS, merged into `main` through PR #208
+                      as 2fbeb935
 
-ACTIVE PRODUCTION PHASE: Phase 13 — Harvest (NEXT)
+ACTIVE PRODUCTION PHASE: Phase 13 — Harvest (IN PROGRESS — branch
+                      claude/dreamy-dijkstra-tdui2c)
 
 BLOCKER:              none
 ```
