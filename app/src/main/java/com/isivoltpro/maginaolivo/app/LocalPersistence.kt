@@ -14,6 +14,7 @@ import com.isivoltpro.maginaolivo.domain.ocr.DocumentOcrRepository
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationRepository
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderReconciler
 
 data class LocalPersistence(
     val database: MaginaOlivoDatabase,
@@ -30,4 +31,6 @@ data class LocalPersistence(
     val deliveryRepository: DeliveryRepository,
     val machineRepository: MachineRepository,
     val workspaceRepository: WorkspaceRepository,
+    /** Rebuilds planned-work alarms (Phase 16); run at start. Null where alarms do not exist. */
+    val reminders: ReminderReconciler? = null,
 )

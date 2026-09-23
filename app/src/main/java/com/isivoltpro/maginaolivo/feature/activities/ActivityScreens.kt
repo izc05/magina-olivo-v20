@@ -292,6 +292,15 @@ internal fun ActivityEditor(
         }
     }
     var machinesError by rememberSaveable { mutableStateOf<String?>(null) }
+    // Phase 16: optional planning and reminders. Not rememberSaveable, like the typed block.
+    var planning by remember(initial.planning, initial.reminders) {
+        mutableStateOf(PlanningInput.of(initial.planning, initial.reminders))
+    }
+    var planningError by remember { mutableStateOf<PlanningInput.Result.Invalid?>(null) }
+    fun readPlanning(): PlanningInput.Result.Ok? = when (val result = planning.read()) {
+        is PlanningInput.Result.Ok -> result.also { planningError = null }
+        is PlanningInput.Result.Invalid -> { planningError = result; null }
+    }
     fun readMachines(): List<MachineUseInput>? {
         val uses = machineHours.entries.map { (id, hours) ->
             val value = hours.replace(',', '.').trim()
@@ -381,6 +390,11 @@ internal fun ActivityEditor(
                 }
             }
         }
+        PlanningFields(
+            input = planning,
+            error = planningError,
+            onChange = { planning = it; planningError = null },
+        )
         MoTextField(notes, { notes = it }, "Notas")
         // D2: a convenience for the linked Expense, never a second number on the Activity.
         MoTextField(
@@ -400,6 +414,7 @@ internal fun ActivityEditor(
                     return@MoPrimaryButton
                 }
                 val machineUses = readMachines() ?: return@MoPrimaryButton
+                val planned = readPlanning() ?: return@MoPrimaryButton
                 onSave(
                     ActivityDraft(
                         runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
@@ -413,6 +428,8 @@ internal fun ActivityEditor(
                         ),
                         costMinor,
                         machines = machineUses,
+                        planning = planned.planning,
+                        reminders = planned.reminders,
                     ),
                 )
             },
@@ -428,6 +445,7 @@ internal fun ActivityEditor(
                         return@MoSecondaryButton
                     }
                     val machineUses = readMachines() ?: return@MoSecondaryButton
+                    val planned = readPlanning() ?: return@MoSecondaryButton
                     saveDraft(
                         ActivityDraft(
                             runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
@@ -441,6 +459,8 @@ internal fun ActivityEditor(
                             ),
                             costMinor,
                             machines = machineUses,
+                            planning = planned.planning,
+                            reminders = planned.reminders,
                         ),
                     )
                 },
@@ -537,6 +557,7 @@ fun ActivityDetailScreen(
                             )
                         }
                     }
+                    PlanningSummary(activity.planning, activity.reminders)
                     activity.costMinor?.let { cost ->
                         MoMetricCard(
                             "Coste",
@@ -593,6 +614,8 @@ fun ActivityDetailScreen(
                     detail = activity.detail,
                     costMinor = activity.costMinor,
                     machines = activity.machines.map { MachineUseInput(it.machineId, it.startHours, it.endHours, it.usageHours) },
+                    planning = activity.planning,
+                    reminders = activity.reminders.map { it.toRequest() },
                 ),
                 title = "Editar actuación",
                 // A retired machine the Activity already named stays choosable here only.
@@ -724,7 +747,7 @@ private fun ActivityTypedDetailFields(type: ActivityType, fields: SnapshotStateM
                 )
                 DetailField(fields, ActivityDetailFields.ACTION_TAKEN, "Actuación realizada")
             }
-            ActivityType.OBSERVATION, ActivityType.OTHER -> Unit
+            ActivityType.OBSERVATION, ActivityType.OTHER, ActivityType.HARVEST_DAY -> Unit
         }
     }
 }
@@ -786,7 +809,7 @@ private fun ActivityType.detailSectionTitle() = when (this) {
     ActivityType.IRRIGATION -> "Datos de riego"
     ActivityType.MAINTENANCE -> "Datos de mantenimiento"
     ActivityType.INCIDENT -> "Datos de la incidencia"
-    ActivityType.OBSERVATION, ActivityType.OTHER -> "Datos"
+    ActivityType.OBSERVATION, ActivityType.OTHER, ActivityType.HARVEST_DAY -> "Datos"
 }
 
 private fun String.detailFieldLabel() = when (this) {
@@ -864,7 +887,7 @@ private fun ActivityStatus.tone() = when (this) {
     ActivityStatus.CANCELLED -> MoStatusTone.Warning
 }
 
-private fun ActivityType.label() = when (this) {
+internal fun ActivityType.label() = when (this) {
     ActivityType.OBSERVATION -> "Observación"
     ActivityType.PRUNING -> "Poda"
     ActivityType.SOIL_WORK -> "Labores de suelo"
@@ -874,6 +897,7 @@ private fun ActivityType.label() = when (this) {
     ActivityType.MAINTENANCE -> "Mantenimiento"
     ActivityType.INCIDENT -> "Incidencia"
     ActivityType.OTHER -> "Otro"
+    ActivityType.HARVEST_DAY -> "Jornada de cosecha"
 }
 
 /** "3", "3,5": hours as a farmer writes them. */

@@ -16,6 +16,8 @@ import com.isivoltpro.maginaolivo.domain.activity.NewActivity
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
+import com.isivoltpro.maginaolivo.domain.agenda.ActivityPlanning
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderRequest
 import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.Job
@@ -36,6 +38,10 @@ data class ActivityDraft(
     val costMinor: Long? = null,
     /** Optional machines used (Phase 15). */
     val machines: List<MachineUseInput> = emptyList(),
+    /** Optional planning: hour, duration, people, crew (Phase 16). */
+    val planning: ActivityPlanning? = null,
+    /** Optional local reminders (Phase 16). */
+    val reminders: List<ReminderRequest> = emptyList(),
 )
 
 data class FarmActivitiesUiState(
@@ -99,6 +105,8 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
                         detail = draft.detail,
                         costMinor = draft.costMinor,
                         machines = draft.machines,
+                        planning = draft.planning,
+                        reminders = draft.reminders,
                     ),
                 )
             ) {
@@ -248,6 +256,8 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                     draft.detail,
                     draft.costMinor,
                     draft.machines,
+                    draft.planning,
+                    draft.reminders,
                 ),
             )
         }

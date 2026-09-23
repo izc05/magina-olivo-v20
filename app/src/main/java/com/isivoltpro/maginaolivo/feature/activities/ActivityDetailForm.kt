@@ -52,7 +52,7 @@ object ActivityDetailFields {
 
 /** Types that carry no structured fields: their common header already says everything. */
 fun ActivityType.hasTypedDetail(): Boolean =
-    this != ActivityType.OBSERVATION && this != ActivityType.OTHER
+    this != ActivityType.OBSERVATION && this != ActivityType.OTHER && this != ActivityType.HARVEST_DAY
 
 /**
  * Builds the typed detail for [type] from what the form holds.
@@ -110,7 +110,7 @@ fun buildActivityDetail(type: ActivityType, fields: Map<String, String>): Activi
                 ?: IncidentState.OPEN,
             actionTaken = fields.text(ActivityDetailFields.ACTION_TAKEN),
         )
-        ActivityType.OBSERVATION, ActivityType.OTHER -> null
+        ActivityType.OBSERVATION, ActivityType.OTHER, ActivityType.HARVEST_DAY -> null
     }
     return detail?.takeUnless { it.isEmpty() }
 }

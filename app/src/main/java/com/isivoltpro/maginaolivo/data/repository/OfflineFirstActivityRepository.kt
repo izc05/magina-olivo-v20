@@ -35,6 +35,17 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.activity.IrrigationPrice
 import com.isivoltpro.maginaolivo.domain.activity.NewActivity
+import com.isivoltpro.maginaolivo.domain.activity.AgendaEntry
+import com.isivoltpro.maginaolivo.data.local.entity.ActivityPlanningEntity
+import com.isivoltpro.maginaolivo.data.local.entity.ReminderEntity
+import com.isivoltpro.maginaolivo.domain.agenda.ActivityPlanning
+import com.isivoltpro.maginaolivo.domain.agenda.Reminder
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderKind
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderReconciler
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderRequest
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderRules
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.Instant
 import java.util.UUID
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityMachineEntity
@@ -66,6 +77,10 @@ class OfflineFirstActivityRepository(
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
+    /** Rebuilds device alarms after planned work changes. Null where no alarms exist (tests). */
+    private val reminderReconciler: ReminderReconciler? = null,
+    /** The wall clock reminders are read in: the phone's, because the phone rings them. */
+    private val zone: () -> ZoneId = ZoneId::systemDefault,
 ) : ActivityRepository {
     override fun observeSelectableParcels(farmId: UUID): Flow<List<ActivityParcelOption>> =
         database.parcelDao().observeActive(farmId).map { rows ->
@@ -90,6 +105,25 @@ class OfflineFirstActivityRepository(
                 costMinor = expenses.firstOrNull { it.origin == ExpenseOrigin.ACTIVITY_COST.name }?.amountMinor,
                 machines = machinesOf(uses),
             )
+        }.flowOn(dispatchers.io)
+
+    override fun observeAgenda(): Flow<List<AgendaEntry>> =
+        combine(database.agendaDao().observePlanned(), database.agendaDao().observeFarmNames()) { rows, farms ->
+            val names = farms.associate { it.id to it.name }
+            rows.map { row ->
+                val activity = row.toDomain()
+                AgendaEntry(
+                    activityId = activity.id,
+                    farmId = activity.farmId,
+                    farmName = activity.farmId?.let(names::get),
+                    type = activity.type,
+                    activityDate = activity.activityDate,
+                    description = activity.description,
+                    parcelNames = activity.targets.map { it.parcelName },
+                    planning = activity.planning,
+                    reminders = activity.reminders,
+                )
+            }
         }.flowOn(dispatchers.io)
 
     override fun observeSelectableMachines(): Flow<List<MachineOption>> =
@@ -145,6 +179,7 @@ class OfflineFirstActivityRepository(
         validateDetail(command.type, command.detail)?.let { return it }
         notNegative("costMinor", command.costMinor?.toDouble())?.let { return it }
         MachineRules.validateUses(command.machines)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
+        ReminderRules.validate(command.planning, command.reminders)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         return withContext(dispatchers.io) {
             safely("create_activity") {
                 val farm = database.farmDao().findById(command.farmId)
@@ -171,11 +206,13 @@ class OfflineFirstActivityRepository(
                 replaceDetail(id, farm.workspaceId, command.detail, now)
                 replaceTargets(id, command.parcelIds, now)
                 replaceMachines(id, farm.workspaceId, command.machines)
+                replacePlanning(id, farm.workspaceId, command.planning, now)
+                replaceReminders(id, command.reminders, now)
                 enqueue(id, OutboxOperation.CREATE, now)
                 syncCost(id, command.costMinor, now)
                 AppResult.Success(id)
             }
-        }
+        }.alsoReconcile()
     }
 
     override suspend fun update(id: UUID, changes: ActivityChanges): AppResult<Unit> {
@@ -184,6 +221,7 @@ class OfflineFirstActivityRepository(
         validateDetail(changes.type, changes.detail)?.let { return it }
         notNegative("costMinor", changes.costMinor?.toDouble())?.let { return it }
         MachineRules.validateUses(changes.machines)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
+        ReminderRules.validate(changes.planning, changes.reminders)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         return mutate(id, "update_activity") { current, now ->
             if (current.status !in EDITABLE) return@mutate conflict("protected_activity")
             if (current.status == ActivityStatus.PLANNED && changes.parcelIds.isEmpty()) {
@@ -201,10 +239,12 @@ class OfflineFirstActivityRepository(
             replaceDetail(id, current.workspaceId, changes.detail, now)
             replaceTargets(id, changes.parcelIds, now)
             replaceMachines(id, current.workspaceId, changes.machines)
+            replacePlanning(id, current.workspaceId, changes.planning, now)
+            replaceReminders(id, changes.reminders, now)
             enqueue(id, OutboxOperation.UPDATE, now)
             syncCost(id, changes.costMinor, now)
             AppResult.Success(Unit)
-        }
+        }.alsoReconcile()
     }
 
     override suspend fun plan(id: UUID): AppResult<Unit> = transition(id, setOf(ActivityStatus.DRAFT), ActivityStatus.PLANNED, "plan_activity", requireTargets = true)
@@ -223,7 +263,7 @@ class OfflineFirstActivityRepository(
         // Only DRAFT or CANCELLED work can be archived: its convenience cost goes with it.
         syncCost(id, null, now)
         AppResult.Success(Unit)
-    }
+    }.alsoReconcile()
 
     private suspend fun transition(
         id: UUID,
@@ -239,7 +279,82 @@ class OfflineFirstActivityRepository(
         database.activityDao().upsert(current.copy(status = to, metadata = current.metadata.next(now)))
         enqueue(id, OutboxOperation.UPDATE, now)
         AppResult.Success(Unit)
+    }.alsoReconcile()
+
+    /**
+     * Alarms follow the committed rows, never the other way round: a failed reconcile
+     * leaves the write intact and is repeated at the next start.
+     */
+    private suspend fun <T> AppResult<T>.alsoReconcile(): AppResult<T> {
+        if (this is AppResult.Success) runCatching { reminderReconciler?.reconcile() }
+        return this
     }
+
+    /** Planning is a child of the Activity aggregate (D5): same transaction, same intent. */
+    private suspend fun replacePlanning(activityId: UUID, workspaceId: UUID, planning: ActivityPlanning?, now: Instant) {
+        val dao = database.agendaDao()
+        if (planning == null || planning.isEmpty) {
+            dao.deletePlanning(activityId)
+            return
+        }
+        dao.upsertPlanning(
+            ActivityPlanningEntity(
+                activityId = activityId,
+                workspaceId = workspaceId,
+                plannedStartTime = planning.startTime?.format(TIME),
+                expectedDurationMinutes = planning.expectedDurationMinutes,
+                expectedPeopleCount = planning.expectedPeopleCount,
+                crewText = planning.crewText.normalized(),
+                metadata = pending(now),
+            ),
+        )
+    }
+
+    /**
+     * Reminders are children of the Activity aggregate too. A reminder of the same kind
+     * keeps its row — and so its alarm slot — when the date or hour moves; one the farmer
+     * dropped is switched off rather than deleted, so the next reconcile can still find
+     * and cancel its alarm.
+     */
+    private suspend fun replaceReminders(activityId: UUID, requests: List<ReminderRequest>, now: Instant) {
+        val dao = database.agendaDao()
+        val activity = database.activityDao().findById(activityId) ?: error("activity missing")
+        val zoneId = zone()
+        val startTime = dao.findPlannedStartTime(activityId)?.let(LocalTime::parse)
+        val remaining = dao.listForOwner(OWNER_ACTIVITY, activityId).toMutableList()
+        val rows = requests.map { request ->
+            val trigger = ReminderRules.triggerAt(activity.activityDate, startTime, request, zoneId)
+            val match = remaining.firstOrNull {
+                it.enabled && it.kind == request.kind.name && (request.kind != ReminderKind.CUSTOM || it.triggerAt == trigger)
+            } ?: remaining.firstOrNull { it.enabled && it.kind == request.kind.name }
+            if (match != null) {
+                remaining.remove(match)
+                if (match.triggerAt == trigger) {
+                    match
+                } else {
+                    match.copy(triggerAt = trigger, firedAt = passed(trigger, now), metadata = match.metadata.next(now))
+                }
+            } else {
+                val id = idGenerator.newId()
+                ReminderEntity(
+                    id = id,
+                    workspaceId = activity.workspaceId,
+                    ownerType = OWNER_ACTIVITY,
+                    ownerId = activityId,
+                    triggerAt = trigger,
+                    kind = request.kind.name,
+                    localNotificationId = id.hashCode(),
+                    firedAt = passed(trigger, now),
+                    metadata = pending(now),
+                )
+            }
+        }
+        val dropped = remaining.filter { it.enabled }.map { it.copy(enabled = false, metadata = it.metadata.next(now)) }
+        if (rows.isNotEmpty() || dropped.isNotEmpty()) dao.upsertReminders(rows + dropped)
+    }
+
+    /** A moment that has already gone by when saved is never rung late: it counts as spent. */
+    private fun passed(trigger: Instant, now: Instant): Instant? = if (trigger.isAfter(now)) null else now
 
     /**
      * `RC1-NORMATIVE-ADDENDUM` D2: the Activity form's Coste is a convenience for its one
@@ -378,6 +493,25 @@ class OfflineFirstActivityRepository(
             },
             detail = toDomainDetail(),
             version = activity.metadata.version,
+            planning = planning?.let {
+                ActivityPlanning(
+                    startTime = it.plannedStartTime?.let { time -> runCatching { LocalTime.parse(time) }.getOrNull() },
+                    expectedDurationMinutes = it.expectedDurationMinutes,
+                    expectedPeopleCount = it.expectedPeopleCount,
+                    crewText = it.crewText,
+                )
+            },
+            reminders = reminders.filter { it.enabled }.sortedBy { it.triggerAt }.mapNotNull { row ->
+                val kind = runCatching { ReminderKind.valueOf(row.kind) }.getOrNull() ?: return@mapNotNull null
+                Reminder(
+                    id = row.id,
+                    kind = kind,
+                    triggerAt = row.triggerAt,
+                    enabled = row.enabled,
+                    firedAt = row.firedAt,
+                    customAt = if (kind == ReminderKind.CUSTOM) row.triggerAt.atZone(zone()).toLocalDateTime() else null,
+                )
+            },
         )
 
     /**
@@ -598,5 +732,7 @@ class OfflineFirstActivityRepository(
         val EDITABLE = setOf(ActivityStatus.DRAFT, ActivityStatus.PLANNED)
         val ARCHIVABLE = setOf(ActivityStatus.DRAFT, ActivityStatus.CANCELLED)
         const val MACHINE_ACTIVE = "ACTIVE"
+        const val OWNER_ACTIVITY = "ACTIVITY"
+        val TIME: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
     }
 }

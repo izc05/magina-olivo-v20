@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.domain.activity
 
+import com.isivoltpro.maginaolivo.domain.agenda.ActivityPlanning
+import com.isivoltpro.maginaolivo.domain.agenda.Reminder
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderRequest
 import com.isivoltpro.maginaolivo.domain.machinery.ActivityMachine
 import com.isivoltpro.maginaolivo.domain.machinery.MachineOption
 import com.isivoltpro.maginaolivo.domain.machinery.MachineUseInput
@@ -12,6 +15,9 @@ import kotlinx.coroutines.flow.Flow
 /**
  * RC1 activity types. Harvest is intentionally absent: it owns separate
  * quantity/distribution/delivery semantics (DATA-MODEL-RC1-FUTURE section 8).
+ *
+ * [HARVEST_DAY] is only an appointment in the agenda (Phase 16): it says when the crew
+ * picks, never how many kilos — those always live in a Harvest record.
  */
 enum class ActivityType {
     OBSERVATION,
@@ -23,6 +29,7 @@ enum class ActivityType {
     MAINTENANCE,
     INCIDENT,
     OTHER,
+    HARVEST_DAY,
 }
 
 /** One Parcel targeted by a single canonical Activity. Never a duplicated Activity. */
@@ -56,6 +63,23 @@ data class Activity(
     val costMinor: Long? = null,
     /** Machines used, if the farmer said so. Always optional (Phase 15). */
     val machines: List<ActivityMachine> = emptyList(),
+    /** How the work is expected to go, if planned (Phase 16). */
+    val planning: ActivityPlanning? = null,
+    /** Its enabled local reminders (Phase 16). */
+    val reminders: List<Reminder> = emptyList(),
+)
+
+/** One planned Activity as the Calendar lists it. */
+data class AgendaEntry(
+    val activityId: UUID,
+    val farmId: UUID?,
+    val farmName: String?,
+    val type: ActivityType,
+    val activityDate: LocalDate,
+    val description: String,
+    val parcelNames: List<String>,
+    val planning: ActivityPlanning?,
+    val reminders: List<Reminder>,
 )
 
 data class NewActivity(
@@ -74,6 +98,10 @@ data class NewActivity(
     val costMinor: Long? = null,
     /** Optional machines; a child of the Activity aggregate, never required. */
     val machines: List<MachineUseInput> = emptyList(),
+    /** Optional planning: hour, duration, people, crew (Phase 16). */
+    val planning: ActivityPlanning? = null,
+    /** Optional local reminders (Phase 16). */
+    val reminders: List<ReminderRequest> = emptyList(),
 )
 
 data class ActivityChanges(
@@ -94,6 +122,10 @@ data class ActivityChanges(
     val costMinor: Long? = null,
     /** The machines after the change; an empty list removes them. */
     val machines: List<MachineUseInput> = emptyList(),
+    /** The planning after the change; null removes it. */
+    val planning: ActivityPlanning? = null,
+    /** The reminders after the change; an empty list turns them all off. */
+    val reminders: List<ReminderRequest> = emptyList(),
 )
 
 /**
@@ -112,6 +144,9 @@ data class ActivityChanges(
  * authoritative financial source.
  */
 interface ActivityRepository {
+    /** Planned work across every Farm, for the Calendar (Phase 16). */
+    fun observeAgenda(): Flow<List<AgendaEntry>>
+
     /** Machines in use that an Activity can name. Empty is fine: machinery is optional. */
     fun observeSelectableMachines(): Flow<List<MachineOption>>
 

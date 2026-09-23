@@ -653,6 +653,44 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration9To10AddsEmptyPlanningAndReminderTables() {
+        migrationHelper.createDatabase(TEST_DATABASE, 9).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+        }
+
+        migrationHelper
+            .runMigrationsAndValidate(
+                TEST_DATABASE,
+                10,
+                true,
+                DatabaseMigrations.MIGRATION_9_10,
+            ).use { database ->
+                listOf("activity_planning_details", "reminders").forEach { table ->
+                    database.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                        assertTrue(cursor.moveToFirst())
+                        assertEquals(0, cursor.getInt(0))
+                    }
+                }
+                database.query("SELECT COUNT(*) FROM workspaces").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(1, cursor.getInt(0))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

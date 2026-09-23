@@ -85,14 +85,32 @@ object DatabaseMigrations {
             }
         }
 
+    val MIGRATION_9_10 =
+        object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                schemaVersion10Statements.forEach(db::execSQL)
+            }
+        }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
+            MIGRATION_9_10,
         )
 
     private const val METADATA_COLUMNS =
         "`created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER"
+
+    private val schemaVersion10Statements =
+        arrayOf(
+            "CREATE TABLE IF NOT EXISTS `activity_planning_details` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `planned_start_time` TEXT, `expected_duration_minutes` INTEGER, `expected_people_count` INTEGER, `provider_organization_id` TEXT, `crew_text` TEXT, $METADATA_COLUMNS, PRIMARY KEY(`activity_id`), FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE INDEX IF NOT EXISTS `index_activity_planning_details_workspace_id` ON `activity_planning_details` (`workspace_id`)",
+            "CREATE TABLE IF NOT EXISTS `reminders` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `owner_type` TEXT NOT NULL, `owner_id` TEXT NOT NULL, `trigger_at` INTEGER NOT NULL, `kind` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `local_notification_id` INTEGER NOT NULL, `fired_at` INTEGER, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "CREATE INDEX IF NOT EXISTS `index_reminders_workspace_id` ON `reminders` (`workspace_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_reminders_owner_type_owner_id` ON `reminders` (`owner_type`, `owner_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_reminders_enabled_trigger_at` ON `reminders` (`enabled`, `trigger_at`)",
+        )
 
     private val schemaVersion9Statements =
         arrayOf(
