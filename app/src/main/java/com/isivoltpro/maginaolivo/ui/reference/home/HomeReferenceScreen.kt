@@ -168,7 +168,11 @@ private fun TerritoryHero() {
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(Color.Transparent, MoOliveDark.copy(alpha = 0.78f))))
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(colors = listOf(Color.Transparent, MoOliveDark.copy(alpha = 0.78f))),
+                ),
+            )
 
             Column(
                 modifier = Modifier
