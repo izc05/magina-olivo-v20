@@ -29,6 +29,14 @@ interface FarmDao {
              JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
                AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS total_area_m2,
+            (SELECT SUM(p.olive_tree_count)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS olive_tree_count,
+            (SELECT COUNT(p.olive_tree_count)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS counted_parcels,
             (SELECT c.name FROM campaigns c
              WHERE c.farm_id = f.id AND c.status = 'ACTIVE' AND c.deleted_at IS NULL
              ORDER BY c.start_date DESC, c.id LIMIT 1) AS active_campaign_name
@@ -49,6 +57,14 @@ interface FarmDao {
              FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
                AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS total_area_m2,
+            (SELECT SUM(p.olive_tree_count)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS olive_tree_count,
+            (SELECT COUNT(p.olive_tree_count)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS counted_parcels,
             (SELECT c.name FROM campaigns c
              WHERE c.farm_id = f.id AND c.status = 'ACTIVE' AND c.deleted_at IS NULL
              ORDER BY c.start_date DESC, c.id LIMIT 1) AS active_campaign_name
@@ -69,6 +85,14 @@ interface FarmDao {
              FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
                AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS total_area_m2,
+            (SELECT SUM(p.olive_tree_count)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS olive_tree_count,
+            (SELECT COUNT(p.olive_tree_count)
+             FROM farm_parcel_memberships m JOIN parcels p ON p.id = m.parcel_id
+             WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
+               AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS counted_parcels,
             (SELECT c.name FROM campaigns c
              WHERE c.farm_id = f.id AND c.status = 'ACTIVE' AND c.deleted_at IS NULL
              ORDER BY c.start_date DESC, c.id LIMIT 1) AS active_campaign_name

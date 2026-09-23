@@ -46,6 +46,16 @@ data class HomeUiState(
 ) {
     val parcelCount: Long get() = farms.sumOf { it.parcelCount }
     val knownAreaM2: Double? get() = farms.mapNotNull { it.totalAreaM2 }.takeIf { it.isNotEmpty() }?.sum()
+    /** Olive trees the farmer counted (CR-004); null when no parcel has a count. */
+    val oliveTrees: Long? get() = farms.mapNotNull { it.oliveTreeCount }.takeIf { it.isNotEmpty() }?.sum()
+    /** False when some farm or parcel has no count yet, so the total is only a lower bound. */
+    val oliveTreesComplete: Boolean get() = farms.isNotEmpty() && farms.all { it.oliveTreeCountComplete }
+    /** "Bedmar · Jaén" when every farm is in the same place; otherwise nothing is claimed. */
+    val location: String? get() = farms
+        .map { listOfNotNull(it.municipality, it.province).filter(String::isNotBlank).joinToString(" · ") }
+        .distinct()
+        .singleOrNull()
+        ?.ifEmpty { null }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

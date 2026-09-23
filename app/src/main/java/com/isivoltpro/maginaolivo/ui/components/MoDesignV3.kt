@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -60,6 +61,7 @@ fun MoPhotoHeader(
     height: Dp = 232.dp,
     trailing: (@Composable () -> Unit)? = null,
     overlay: (@Composable ColumnScope.() -> Unit)? = null,
+    top: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     Box(
         modifier
@@ -89,6 +91,7 @@ fun MoPhotoHeader(
                 ),
             ),
         )
+        top?.invoke(this)
         Column(
             Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(MoSpacing.md),
             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -224,5 +227,14 @@ fun MoSectionCard(
             }
             content()
         }
+    }
+}
+
+/** Brand line for photo headers: leaf mark and "Mágina Olivo" in the editorial serif, in white. */
+@Composable
+fun MoPhotoBrand(modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(MoIcons.Leaf, contentDescription = null, tint = MoWarmWhite, modifier = Modifier.size(26.dp))
+        Text("Mágina Olivo", style = MaterialTheme.typography.headlineMedium, color = MoWarmWhite)
     }
 }

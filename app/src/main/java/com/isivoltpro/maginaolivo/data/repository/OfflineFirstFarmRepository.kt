@@ -264,6 +264,8 @@ class OfflineFirstFarmRepository(
             activeCampaignName = activeCampaignName,
             archivedAt = farm.metadata.deletedAt,
             version = farm.metadata.version,
+            oliveTreeCount = oliveTreeCount,
+            oliveTreeCountComplete = oliveTreeCount != null && countedParcels == parcelCount,
         )
 
     private companion object {

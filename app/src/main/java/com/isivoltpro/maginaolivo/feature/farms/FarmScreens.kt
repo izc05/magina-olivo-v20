@@ -51,7 +51,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoFarmCard
 import com.isivoltpro.maginaolivo.ui.components.MoListSkeleton
-import com.isivoltpro.maginaolivo.ui.components.MoPhotoCover
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
@@ -77,8 +76,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
-import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
-import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
+import com.isivoltpro.maginaolivo.ui.components.MoStat
+import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
+import com.isivoltpro.maginaolivo.ui.components.MoPhotoHeader
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
@@ -204,7 +204,7 @@ fun FarmListScreen(
                     }
                 }
                 Text(
-                    text = "Todo tu olivar organizado por fincas y parcelas.",
+                    text = "Organiza tu explotación por fincas y parcelas.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoTextSecondary,
                 )
@@ -510,35 +510,44 @@ private fun FarmDetailContent(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = MoSpacing.screen),
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Spacer(Modifier.height(MoSpacing.xxs))
-        MoPhotoCover(
+        // Design v3 (CR-004): the farm's own cover photo edge to edge; the bundled olive-grove
+        // photograph only while the farmer has not chosen one.
+        MoPhotoHeader(
             title = farm.name,
-            subtitle = farm.locationLabel(),
             imageModel = coverUri,
-            modifier = Modifier.height(190.dp),
-            badge = {
+            location = listOfNotNull(farm.municipality, farm.province).filter { it.isNotBlank() }.joinToString(" · ").ifEmpty { null },
+            caption = listOfNotNull(
+                farm.totalAreaM2?.let(::formatArea),
+                if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas",
+            ).joinToString(" · "),
+            height = 244.dp,
+            trailing = {
                 MoStatusChip(
                     text = farm.activeCampaignName ?: "Sin campaña activa",
                     tone = if (farm.activeCampaignName == null) MoStatusTone.Neutral else MoStatusTone.Success,
                 )
             },
         )
+        Column(
+            Modifier.padding(horizontal = MoSpacing.screen),
+            verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+        ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = onChooseCover, enabled = !isSaving, modifier = Modifier.testTag("farm-cover-button")) {
                 Text(if (coverUri == null) "Añadir foto de portada" else "Cambiar foto")
             }
         }
-        MoMetricGrid(
-            columns = 3,
-            content = listOf(
-                { m -> MoSummaryMetric("Superficie", farm.areaLabel(), m, icon = MoIcons.Area) },
-                { m -> MoSummaryMetric("Parcelas", farm.parcelCount.toString(), m, icon = MoIcons.Parcels) },
-                { m -> MoSummaryMetric("Campaña", farm.activeCampaignName ?: "Ninguna", m, icon = MoIcons.Campaign) },
+        MoStatStrip(
+            listOf(
+                MoStat("Superficie", farm.areaLabel(), MoIcons.Area),
+                MoStat("Parcelas", farm.parcelCount.toString(), MoIcons.Parcels),
+                MoStat("Olivos", farm.oliveTreeLabel(), MoIcons.Olive),
+                MoStat("Campaña", farm.activeCampaignName ?: "Ninguna", MoIcons.Campaign),
             ),
+            Modifier.testTag("farm-stats"),
         )
         if (farm.totalAreaM2 == null) {
             Text("Añade superficie a las parcelas para calcular rendimientos.", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
@@ -575,6 +584,7 @@ private fun FarmDetailContent(
             )
         }
         Spacer(Modifier.height(MoSpacing.lg))
+        }
     }
 }
 
@@ -614,13 +624,13 @@ private fun QuickAccess(
 private fun FarmTotals(farms: List<Farm>) {
     val knownArea = farms.mapNotNull { it.totalAreaM2 }.sum().takeIf { farms.any { farm -> farm.totalAreaM2 != null } }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-        MoMetricGrid(
-            columns = 3,
-            content = listOf(
-                { m -> MoSummaryMetric("Fincas", farms.size.toString(), m, icon = MoIcons.Tree) },
-                { m -> MoSummaryMetric("Parcelas", farms.sumOf { it.parcelCount }.toString(), m, icon = MoIcons.Parcels) },
-                { m -> MoSummaryMetric("Superficie", knownArea?.let(::formatArea) ?: "—", m, icon = MoIcons.Area) },
+        MoStatStrip(
+            listOf(
+                MoStat("Fincas", farms.size.toString(), MoIcons.Tree),
+                MoStat("Parcelas", farms.sumOf { it.parcelCount }.toString(), MoIcons.Parcels),
+                MoStat("Superficie", knownArea?.let(::formatArea) ?: "—", MoIcons.Area),
             ),
+            Modifier.testTag("farm-totals"),
         )
         if (knownArea == null && farms.isNotEmpty()) {
             Text(
@@ -772,6 +782,13 @@ private fun Farm.locationLabel(): String = listOfNotNull(municipality, province)
     .ifBlank { "Completa la ubicación para ver la finca en el mapa" }
 
 private fun Farm.areaLabel(): String = totalAreaM2?.let(::formatArea) ?: "—"
+
+/** "—" when no parcel has a count; "≥ N" when only some do, so a partial sum never looks whole. */
+private fun Farm.oliveTreeLabel(): String {
+    val count = oliveTreeCount ?: return "—"
+    val number = NumberFormat.getIntegerInstance(Locale.forLanguageTag("es-ES")).format(count)
+    return if (oliveTreeCountComplete) number else "≥ $number"
+}
 
 private fun formatArea(areaM2: Double): String {
     val formatter = NumberFormat.getNumberInstance(Locale.forLanguageTag("es-ES")).apply {
