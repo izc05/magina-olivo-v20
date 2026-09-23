@@ -128,7 +128,7 @@ class ExpenseLedgerContractTest {
         assertEquals(6_500, linked.amountMinor)
         assertEquals(ExpenseOrigin.ACTIVITY_COST, linked.origin)
         assertEquals(ExpenseStatus.POSTED, linked.status)
-        assertEquals(6_500, activities.observe(activityId).first()!!.costMinor)
+        assertEquals(6_500L, activities.observe(activityId).first()!!.costMinor)
         // The Activity table never carries its own amount (D2).
         assertNull(db.activityDao().findById(activityId)!!.costMinor)
 
@@ -255,7 +255,7 @@ class ExpenseLedgerContractTest {
         val extraction = documents.observe(documentId).first()!!
         assertEquals(OcrStatus.EXTRACTED, extraction.status)
         assertEquals(INVOICE, extraction.rawText)
-        assertEquals(7_260, extraction.proposal?.totalMinor)
+        assertEquals(7_260L, extraction.proposal?.totalMinor)
         // Reading a document writes no money at all.
         assertTrue(expenses.observeAll().first().isEmpty())
 
