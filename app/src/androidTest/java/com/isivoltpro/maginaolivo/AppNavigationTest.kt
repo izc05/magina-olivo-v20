@@ -136,9 +136,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
         clickInSheetByTag("save-farm")
-        composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithText("La Solana").fetchSemanticsNodes().size == 1
-        }
+        waitForSaved("farm-name", "La Solana")
         clickByText("La Solana")
         waitForTag("farm-detail-root")
         composeRule.onNodeWithTag("farm-detail-root").assertIsDisplayed()
@@ -163,9 +161,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Los Llanos")
         clickInSheetByTag("save-farm")
-        composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithText("Los Llanos").fetchSemanticsNodes().isNotEmpty()
-        }
+        waitForSaved("farm-name", "Los Llanos")
         clickByText("Los Llanos")
 
         openSheet("add-parcel", "parcel-name")
@@ -202,7 +198,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Campaña E2E")
         waitForTag("save-farm")
         clickInSheetByTag("save-farm")
-        waitForText("Finca Campaña E2E")
+        waitForSaved("farm-name", "Finca Campaña E2E")
 
         // Farm detail
         clickByText("Finca Campaña E2E")
@@ -296,7 +292,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Actuación E2E")
         waitForTag("save-farm")
         clickInSheetByTag("save-farm")
-        waitForText("Finca Actuación E2E")
+        waitForSaved("farm-name", "Finca Actuación E2E")
         clickByText("Finca Actuación E2E")
         waitForTag("add-parcel")
 
@@ -366,7 +362,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Registrar E2E")
         waitForTag("save-farm")
         clickInSheetByTag("save-farm")
-        waitForText("Finca Registrar E2E")
+        waitForSaved("farm-name", "Finca Registrar E2E")
         clickByText("Finca Registrar E2E")
         waitForTag("add-parcel")
         createParcel("Parcela Registrar E2E")
@@ -437,7 +433,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Tipada E2E")
         waitForTag("save-farm")
         clickInSheetByTag("save-farm")
-        waitForText("Finca Tipada E2E")
+        waitForSaved("farm-name", "Finca Tipada E2E")
         clickByText("Finca Tipada E2E")
         waitForTag("add-parcel")
         createParcel("Parcela Tipada E2E")
@@ -511,6 +507,18 @@ class AppNavigationTest {
     private fun waitForTag(tag: String, timeoutMillis: Long = UI_TIMEOUT_MS) {
         composeRule.waitUntil(timeoutMillis) {
             composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    /**
+     * Waits until an editor sheet has closed and its saved name is on screen. Waiting for the
+     * text alone could match the sheet's own field while it animates away, and the next click
+     * then landed on the field instead of the new row.
+     */
+    private fun waitForSaved(editorTag: String, text: String, timeoutMillis: Long = UI_TIMEOUT_MS) {
+        composeRule.waitUntil(timeoutMillis) {
+            composeRule.onAllNodesWithTag(editorTag).fetchSemanticsNodes().isEmpty() &&
+                composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
@@ -710,7 +718,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("parcel-name").performTextInput(name)
         waitForTag("save-parcel")
         clickInSheetByTag("save-parcel")
-        waitForText(name)
+        waitForSaved("parcel-name", name)
     }
 
     /** Confirms an Activity lifecycle action once its ModalBottomSheet is actually composed. */
