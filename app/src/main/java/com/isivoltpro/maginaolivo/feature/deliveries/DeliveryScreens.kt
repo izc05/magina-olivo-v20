@@ -83,6 +83,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
 
 @Composable
 fun DeliveriesRoute(
@@ -373,7 +374,7 @@ private fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
                     MoStatusChip("Rendimiento pendiente", tone = MoStatusTone.Warning)
                 }
             }
-            Text(Weight.format(delivery.netGrams), style = MaterialTheme.typography.titleMedium, color = MoOlivePrimary)
+            Text(Weight.format(delivery.netGrams), style = MaterialTheme.typography.titleMedium, color = MoInk)
         }
     }
 }

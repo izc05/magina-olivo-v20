@@ -67,6 +67,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
 
 internal fun relationSource(persistence: LocalPersistence) = RelationSource(
     workspaces = persistence.workspaceRepository,
@@ -362,7 +363,7 @@ private fun CategoryRow(label: String, amountMinor: Long, totalMinor: Long) {
                 Text(label, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text("$share %", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
             }
-            Text(Money.format(amountMinor), style = MaterialTheme.typography.titleMedium, color = MoOlivePrimary)
+            Text(Money.format(amountMinor), style = MaterialTheme.typography.titleMedium, color = MoInk)
         }
     }
 }

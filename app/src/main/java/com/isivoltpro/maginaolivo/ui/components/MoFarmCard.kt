@@ -23,13 +23,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSage
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
 
 @Composable
 fun MoFarmCard(
@@ -90,8 +91,8 @@ fun MoFarmCard(
 
                     Surface(
                         shape = CircleShape,
-                        color = MoOlivePrimary.copy(alpha = 0.10f),
-                        contentColor = MoOlivePrimary,
+                        color = MoOliveTint,
+                        contentColor = MoOliveMid,
                     ) {
                         Text(
                             text = campaignStatus,

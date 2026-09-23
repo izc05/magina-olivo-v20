@@ -16,7 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoOutlineStrong
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
@@ -68,9 +69,11 @@ fun MoSecondaryButton(
         enabled = enabled,
         modifier = modifier.heightIn(min = MoSize.buttonHeight),
         shape = MoShape.field,
-        border = BorderStroke(1.dp, MoOutline),
+        // Secondary actions stay neutral so only the primary CTA reads as dark olive.
+        border = BorderStroke(1.dp, MoOutlineStrong),
         colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MoOlivePrimary,
+            containerColor = MoWarmWhite,
+            contentColor = MoInk,
         ),
     ) {
         Row(

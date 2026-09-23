@@ -74,6 +74,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
 
 @Composable
 fun HarvestsRoute(
@@ -253,7 +254,7 @@ private fun HarvestRow(harvest: Harvest, onClick: () -> Unit) {
                 )
                 MoStatusChip(harvest.allocationMode.label(), tone = harvest.allocationMode.tone())
             }
-            Text(Weight.format(harvest.totalGrams), style = MaterialTheme.typography.titleMedium, color = MoOlivePrimary)
+            Text(Weight.format(harvest.totalGrams), style = MaterialTheme.typography.titleMedium, color = MoInk)
         }
     }
 }

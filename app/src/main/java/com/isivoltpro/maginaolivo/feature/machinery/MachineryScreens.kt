@@ -53,12 +53,12 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
 
 @Composable
 fun MachineryRoute(persistence: LocalPersistence, onMachineSelected: (UUID) -> Unit) {
@@ -159,7 +159,7 @@ private fun MachineRow(machine: Machine, onClick: () -> Unit) {
                 )
             }
             machine.currentHours?.let {
-                Text("${editableHours(it)} h", style = MaterialTheme.typography.titleMedium, color = MoOlivePrimary)
+                Text("${editableHours(it)} h", style = MaterialTheme.typography.titleMedium, color = MoInk)
             }
         }
     }
