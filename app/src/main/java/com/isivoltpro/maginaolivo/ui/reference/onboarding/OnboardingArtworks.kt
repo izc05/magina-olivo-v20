@@ -1,13 +1,13 @@
 package com.isivoltpro.maginaolivo.ui.reference.onboarding
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,13 +26,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
+import com.isivoltpro.maginaolivo.R
 import com.isivoltpro.maginaolivo.ui.theme.MoArtworkMapBase
 import com.isivoltpro.maginaolivo.ui.theme.MoArtworkMapGround
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoEarth
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
@@ -74,56 +77,23 @@ private fun WelcomeArtwork(modifier: Modifier) {
         modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.90f),
-        ) {
-            val w = size.width
-            val h = size.height
-
-            drawCircle(
-                color = MoSoftGold.copy(alpha = 0.18f),
-                radius = w * 0.19f,
-                center = Offset(w * 0.76f, h * 0.22f),
-            )
-
-            val farHill = Path().apply {
-                moveTo(0f, h * 0.56f)
-                cubicTo(w * 0.18f, h * 0.40f, w * 0.31f, h * 0.50f, w * 0.45f, h * 0.37f)
-                cubicTo(w * 0.60f, h * 0.22f, w * 0.70f, h * 0.43f, w, h * 0.34f)
-                lineTo(w, h)
-                lineTo(0f, h)
-                close()
-            }
-            drawPath(farHill, MoSage.copy(alpha = 0.50f))
-
-            val nearHill = Path().apply {
-                moveTo(0f, h * 0.70f)
-                cubicTo(w * 0.20f, h * 0.58f, w * 0.34f, h * 0.70f, w * 0.53f, h * 0.57f)
-                cubicTo(w * 0.71f, h * 0.47f, w * 0.81f, h * 0.68f, w, h * 0.55f)
-                lineTo(w, h)
-                lineTo(0f, h)
-                close()
-            }
-            drawPath(nearHill, MoOlivePrimary.copy(alpha = 0.82f))
-
-            repeat(8) { index ->
-                val x = w * (0.10f + index * 0.115f)
-                val y = h * (0.70f + (index % 2) * 0.07f)
-                drawCircle(
-                    color = MoOliveDark.copy(alpha = 0.85f),
-                    radius = w * 0.033f,
-                    center = Offset(x, y),
-                )
-                drawLine(
-                    color = MoEarth,
-                    start = Offset(x, y + w * 0.028f),
-                    end = Offset(x, y + w * 0.080f),
-                    strokeWidth = w * 0.012f,
-                )
-            }
-        }
+        Image(
+            painter = painterResource(R.drawable.onboarding_welcome_olive_grove),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0.0f to MoCream,
+                    0.17f to MoCream.copy(alpha = 0.72f),
+                    0.35f to MoCream.copy(alpha = 0.05f),
+                    0.68f to MoCream.copy(alpha = 0.05f),
+                    1.0f to MoCream,
+                ),
+            ),
+        )
 
         Column(
             modifier = Modifier
@@ -135,11 +105,6 @@ private fun WelcomeArtwork(modifier: Modifier) {
                 text = "Más que olivos, nuestra tierra",
                 style = MaterialTheme.typography.titleMedium,
                 color = MoOliveDark,
-            )
-            Text(
-                text = "SIERRA MÁGINA · JAÉN",
-                style = MaterialTheme.typography.labelMedium,
-                color = MoTextSecondary,
             )
         }
     }
