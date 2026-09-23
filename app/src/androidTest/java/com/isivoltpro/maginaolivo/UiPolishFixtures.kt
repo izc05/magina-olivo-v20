@@ -104,4 +104,15 @@ internal object UiPolishFixtures {
         planning = planning?.copy(startTime = time),
         reminders = emptyList(),
     )
+
+    val home =
+        com.isivoltpro.maginaolivo.feature.home.HomeUiState(
+            isLoading = false,
+            today = today,
+            farms = farms,
+            campaigns = listOf(
+                com.isivoltpro.maginaolivo.feature.home.HomeCampaign("Campaña de ejemplo", "Finca de ejemplo", harvests.sumOf { it.totalGrams }, null),
+            ),
+            upcoming = entries,
+        )
 }

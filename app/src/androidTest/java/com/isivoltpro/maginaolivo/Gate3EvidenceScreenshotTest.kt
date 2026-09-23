@@ -51,7 +51,9 @@ class Gate3EvidenceScreenshotTest {
 
     @Test
     fun captureUiPolishHome() = capture("home-reference-root", "ui-01-inicio") {
-        com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen(showBottomBar = false)
+        com.isivoltpro.maginaolivo.feature.home.HomeScreen(
+            UiPolishFixtures.home, java.time.LocalTime.of(10, 0), {}, {}, {}, {}, {}, {},
+        )
     }
 
     @Test

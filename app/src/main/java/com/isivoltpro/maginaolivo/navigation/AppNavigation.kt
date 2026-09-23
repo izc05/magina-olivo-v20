@@ -40,13 +40,13 @@ import com.isivoltpro.maginaolivo.feature.harvests.HarvestsRoute
 import com.isivoltpro.maginaolivo.feature.expenses.DocumentReviewRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpenseDetailRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpensesRoute
+import com.isivoltpro.maginaolivo.feature.home.HomeRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.map.MapCatastroReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
@@ -143,15 +143,21 @@ fun AppNavigation(
                 )
             }
             composable(RootDestination.Home.route) {
-                HomeReferenceScreen(
-                    showBottomBar = false,
-                    onOlivarSelected = { navController.navigateToRoot(RootDestination.Olivar) },
-                    onMapSelected = { navController.navigate(AppDestination.MapCatastro) },
-                    onCampaignSelected = { navController.navigateToRoot(RootDestination.Olivar) },
-                    onHarvestSelected = { navController.navigate(AppDestination.Harvest) },
-                    onExpensesSelected = { navController.navigate(AppDestination.Expenses) },
-                    onWeatherSelected = { navController.navigate(AppDestination.Weather) },
-                )
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    HomeRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onOlivar = { navController.navigateToRoot(RootDestination.Olivar) },
+                        onCalendar = { navController.navigateToRoot(RootDestination.Calendar) },
+                        onHarvest = { navController.navigate(AppDestination.Harvest) },
+                        onDeliveries = { navController.navigate(AppDestination.Deliveries) },
+                        onExpenses = { navController.navigate(AppDestination.Expenses) },
+                        onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
+                    )
+                }
             }
             composable(RootDestination.Olivar.route) {
                 val persistence = compositionRoot.localPersistence
