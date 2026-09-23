@@ -37,7 +37,12 @@ import com.isivoltpro.maginaolivo.domain.activity.IrrigationPrice
 import com.isivoltpro.maginaolivo.domain.activity.NewActivity
 import java.time.Instant
 import java.util.UUID
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -67,8 +72,17 @@ class OfflineFirstActivityRepository(
     override fun observeForParcel(parcelId: UUID): Flow<List<Activity>> =
         database.activityDao().observeForParcel(parcelId).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
 
+    private val ledger = ExpenseLedgerWriter(database, idGenerator)
+
     override fun observe(id: UUID): Flow<Activity?> =
-        database.activityDao().observeWithTargets(id).map { it?.toDomain() }.flowOn(dispatchers.io)
+        combine(
+            database.activityDao().observeWithTargets(id),
+            database.expenseDao().observeForActivity(id),
+        ) { row, expenses ->
+            row?.toDomain()?.copy(
+                costMinor = expenses.firstOrNull { it.origin == ExpenseOrigin.ACTIVITY_COST.name }?.amountMinor,
+            )
+        }.flowOn(dispatchers.io)
 
     override suspend fun create(command: NewActivity): AppResult<UUID> {
         val description = command.description.trim()
@@ -77,6 +91,7 @@ class OfflineFirstActivityRepository(
             return AppResult.Failure(AppError.Validation("parcelIds", "empty"))
         }
         validateDetail(command.type, command.detail)?.let { return it }
+        notNegative("costMinor", command.costMinor?.toDouble())?.let { return it }
         return withContext(dispatchers.io) {
             safely("create_activity") {
                 val farm = database.farmDao().findById(command.farmId)
@@ -103,6 +118,7 @@ class OfflineFirstActivityRepository(
                 replaceDetail(id, farm.workspaceId, command.detail, now)
                 replaceTargets(id, command.parcelIds, now)
                 enqueue(id, OutboxOperation.CREATE, now)
+                syncCost(id, command.costMinor, now)
                 AppResult.Success(id)
             }
         }
@@ -112,6 +128,7 @@ class OfflineFirstActivityRepository(
         val description = changes.description.trim()
         if (description.isEmpty()) return AppResult.Failure(AppError.Validation("description", "blank"))
         validateDetail(changes.type, changes.detail)?.let { return it }
+        notNegative("costMinor", changes.costMinor?.toDouble())?.let { return it }
         return mutate(id, "update_activity") { current, now ->
             if (current.status !in EDITABLE) return@mutate conflict("protected_activity")
             if (current.status == ActivityStatus.PLANNED && changes.parcelIds.isEmpty()) {
@@ -129,6 +146,7 @@ class OfflineFirstActivityRepository(
             replaceDetail(id, current.workspaceId, changes.detail, now)
             replaceTargets(id, changes.parcelIds, now)
             enqueue(id, OutboxOperation.UPDATE, now)
+            syncCost(id, changes.costMinor, now)
             AppResult.Success(Unit)
         }
     }
@@ -146,6 +164,8 @@ class OfflineFirstActivityRepository(
         if (current.status !in ARCHIVABLE) return@mutate conflict("protected_activity")
         database.activityDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
         enqueue(id, OutboxOperation.DELETE, now)
+        // Only DRAFT or CANCELLED work can be archived: its convenience cost goes with it.
+        syncCost(id, null, now)
         AppResult.Success(Unit)
     }
 
@@ -163,6 +183,48 @@ class OfflineFirstActivityRepository(
         database.activityDao().upsert(current.copy(status = to, metadata = current.metadata.next(now)))
         enqueue(id, OutboxOperation.UPDATE, now)
         AppResult.Success(Unit)
+    }
+
+    /**
+     * `RC1-NORMATIVE-ADDENDUM` D2: the Activity form's Coste is a convenience for its one
+     * linked ACTIVITY_COST Expense, written in this same transaction. Editing it edits that
+     * Expense, clearing it deletes it, and it is never a second number on the Activity.
+     * Other Expenses a person linked to the Activity are left alone.
+     */
+    private suspend fun syncCost(activityId: UUID, costMinor: Long?, now: Instant) {
+        val activity = database.activityDao().findById(activityId) ?: return
+        val existing = database.expenseDao().findActivityCost(activityId)
+        if (costMinor == null || costMinor == 0L) {
+            existing?.let { ledger.delete(it, now) }
+            return
+        }
+        val draft = ExpenseDraft(
+            expenseDate = activity.activityDate,
+            concept = activity.description,
+            category = costCategory(activity.type),
+            amountMinor = costMinor,
+            currency = existing?.currency ?: DEFAULT_CURRENCY,
+            supplierOrganizationId = existing?.supplierOrganizationId,
+            supplierText = existing?.provider,
+            farmId = activity.farmId,
+            campaignId = activity.campaignId ?: existing?.campaignId,
+            activityId = activityId,
+            notes = existing?.notes,
+        )
+        if (existing == null) {
+            ledger.insert(activity.workspaceId, draft, ExpenseStatus.POSTED, ExpenseOrigin.ACTIVITY_COST, now)
+        } else {
+            ledger.rewrite(existing, draft, now)
+        }
+    }
+
+    private fun costCategory(type: String): ExpenseCategory = when (runCatching { ActivityType.valueOf(type) }.getOrNull()) {
+        ActivityType.FERTILIZATION, ActivityType.PHYTOSANITARY -> ExpenseCategory.PRODUCTS
+        ActivityType.IRRIGATION -> ExpenseCategory.IRRIGATION
+        ActivityType.PRUNING -> ExpenseCategory.LABOR
+        ActivityType.SOIL_WORK -> ExpenseCategory.MACHINERY
+        ActivityType.MAINTENANCE -> ExpenseCategory.REPAIR
+        else -> ExpenseCategory.OTHER
     }
 
     private suspend fun replaceTargets(activityId: UUID, parcelIds: Set<UUID>, now: Instant) {
@@ -224,6 +286,8 @@ class OfflineFirstActivityRepository(
             database.withTransaction { block() }
         } catch (error: InvalidSelection) {
             AppResult.Failure(AppError.Validation("parcelIds", error.message ?: "invalid"))
+        } catch (error: InvalidExpense) {
+            AppResult.Failure(AppError.Validation(error.field, error.code))
         } catch (error: Throwable) {
             AppResult.Failure(AppError.Storage(operation, error))
         }
@@ -470,6 +534,7 @@ class OfflineFirstActivityRepository(
     }
 
     private companion object {
+        const val DEFAULT_CURRENCY = "EUR"
         val EDITABLE = setOf(ActivityStatus.DRAFT, ActivityStatus.PLANNED)
         val ARCHIVABLE = setOf(ActivityStatus.DRAFT, ActivityStatus.CANCELLED)
     }

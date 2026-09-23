@@ -19,6 +19,10 @@ enum class AttachmentOwnerType {
     PARCEL,
     CAMPAIGN,
     ACTIVITY,
+    EXPENSE,
+
+    /** A document waiting for review: its owner is the OCR extraction reading it. */
+    DOCUMENT,
 }
 
 data class AttachmentOwner(

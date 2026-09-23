@@ -39,11 +39,11 @@ The old monolithic Phase 3 PR #180 is superseded and must not be merged.
 ## 2. Current active work
 
 ```text
-CURRENT:              Phase 10 — Typed activities + irrigation = PASS,
-                      merged into `main` as 4acc3ab9 and verified there
+CURRENT:              Phase 11 — Attachments = PASS, merged into `main`
+                      as e42754ac (PR #207)
 
-ACTIVE PRODUCTION PHASE: Phase 11 — Attachments  (GATE 11 PASS on branch
-                      claude/dreamy-dijkstra-tdui2c, awaiting merge)
+ACTIVE PRODUCTION PHASE: Phase 12 — Expenses / purchases / organizations /
+                      generic OCR (IN PROGRESS — branch claude/dreamy-dijkstra-tdui2c)
 
 BLOCKER:              none
 ```

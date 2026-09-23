@@ -30,6 +30,8 @@ data class ActivityDraft(
     val notes: String = "",
     /** The typed agronomic block of [type], built from the form the editor showed. */
     val detail: ActivityDetail? = null,
+    /** Optional convenience cost; it is saved as the linked Expense (D2). */
+    val costMinor: Long? = null,
 )
 
 data class FarmActivitiesUiState(
@@ -85,6 +87,7 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
                         notes = draft.notes.nullIfBlank(),
                         asDraft = asDraft,
                         detail = draft.detail,
+                        costMinor = draft.costMinor,
                     ),
                 )
             ) {
@@ -226,6 +229,7 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                     draft.parcelIds,
                     draft.notes.nullIfBlank(),
                     draft.detail,
+                    draft.costMinor,
                 ),
             )
         }

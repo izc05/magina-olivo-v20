@@ -27,6 +27,8 @@ enum class SyncEntityType {
     EXPENSE,
     DOCUMENT,
     ALERT,
+    ORGANIZATION,
+    DOCUMENT_EXTRACTION,
 }
 
 enum class OutboxStatus {

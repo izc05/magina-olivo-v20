@@ -1,6 +1,6 @@
 # Phase 11 — Attachments implementation plan
 
-**Status:** Gate 11 PASS on branch (Android CI #340 + independent emulator run #57); not yet merged
+**Status:** Gate 11 PASS — merged into `main` through PR #207 as `e42754ac`
 **Precondition:** Gate 10 PASS, merged into `main` as `4acc3ab9`
 **Base commit:** `ee948b1` (`main`)
 **Branch:** `claude/dreamy-dijkstra-tdui2c`

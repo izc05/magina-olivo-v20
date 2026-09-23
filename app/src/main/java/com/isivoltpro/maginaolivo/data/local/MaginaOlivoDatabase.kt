@@ -24,6 +24,14 @@ import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryDetailEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PruningDetailEntity
 import com.isivoltpro.maginaolivo.data.local.entity.SoilWorkDetailEntity
 import com.isivoltpro.maginaolivo.data.local.entity.AlertEntity
+import com.isivoltpro.maginaolivo.data.local.entity.AgriculturalOrganizationEntity
+import com.isivoltpro.maginaolivo.data.local.entity.DocumentOcrExtractionEntity
+import com.isivoltpro.maginaolivo.data.local.entity.OrganizationRoleEntity
+import com.isivoltpro.maginaolivo.data.local.entity.PurchaseEntity
+import com.isivoltpro.maginaolivo.data.local.entity.PurchaseItemEntity
+import com.isivoltpro.maginaolivo.data.local.dao.ExpenseDao
+import com.isivoltpro.maginaolivo.data.local.dao.OrganizationDao
+import com.isivoltpro.maginaolivo.data.local.dao.DocumentOcrDao
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DocumentEntity
@@ -61,8 +69,13 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         DocumentEntity::class,
         WeatherCacheEntity::class,
         AlertEntity::class,
+        AgriculturalOrganizationEntity::class,
+        OrganizationRoleEntity::class,
+        PurchaseEntity::class,
+        PurchaseItemEntity::class,
+        DocumentOcrExtractionEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -81,9 +94,15 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
 
     abstract fun syncOutboxDao(): SyncOutboxDao
 
+    abstract fun expenseDao(): ExpenseDao
+
+    abstract fun organizationDao(): OrganizationDao
+
+    abstract fun documentOcrDao(): DocumentOcrDao
+
     companion object {
         const val DATABASE_NAME = "magina-olivo.db"
-        const val VERSION = 5
+        const val VERSION = 6
 
         @Volatile
         private var instance: MaginaOlivoDatabase? = null
