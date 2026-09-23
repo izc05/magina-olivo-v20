@@ -19,7 +19,7 @@
 ✅ Phase 8 — Campaigns       ─┘
 ✅ Phase 9 — Activity engine — Gate 9 PASS
 ✅ Phase 10 — Typed agricultural activities + irrigation — Gate 10 PASS
-▶ Phase 11 — Attachments — IN PROGRESS (implemented, awaiting CI evidence)
+▶ Phase 11 — Attachments — Gate 11 PASS on branch, awaiting merge
 ```
 
 Gate 6 composite passed on 2026-09-22 on commit `164aaa48`, documented in
@@ -30,7 +30,7 @@ merge commit `f82be163`; its evidence is in
 activities + irrigation** passed and was merged into `main` as `4acc3ab9`, verified there
 by Android CI #338; its evidence is in
 `docs/06-testing/PHASE10-TYPED-ACTIVITIES-SLICE.md`. The current phase is **Phase 11 —
-Attachments**, implemented and awaiting CI evidence
+Attachments**, Gate 11 PASS on branch (Android CI #340), awaiting merge
 (`docs/07-plans/PHASE11-ATTACHMENTS.md`). The approved display brand is **Mágina Olivo**. Domain/data
 architecture remains geographic-neutral.
 

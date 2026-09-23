@@ -1,15 +1,17 @@
 # Phase 11 — Attachments
 
-**Phase decision:** PENDING — implementation complete, CI evidence not yet collected
+**Phase decision:** PASS — implementation complete and validated by CI
 **Reviewed:** 2026-09-23
 **Base commit:** `ee948b1` (`main`, Phase 10 merged and recorded)
 **Branch:** `claude/dreamy-dijkstra-tdui2c`
+**Validated commit:** `803d69b6`
+**Merged:** not yet — awaiting owner review
 **Plan:** `docs/07-plans/PHASE11-ATTACHMENTS.md`
 
-> No CI, emulator or artifact figure appears below until a real run produces it. The
-> implementation was written in an environment without the Android SDK, so it has not
-> been compiled locally either: the first Android CI run on this branch is the first
-> build.
+> Every CI, emulator and artifact figure below is copied from a real run. Nothing is
+> estimated, and no evidence from an earlier phase is reused. The code was written in an
+> environment without the Android SDK; the first build of it was Android CI #340, which
+> passed without any fix.
 
 ## Gate 11
 
@@ -50,17 +52,39 @@ remove, farmer-readable errors, status labels, sizes).
 
 ## Evidence
 
+Both workflows were started with `workflow_dispatch` on the branch, because pushes to
+`claude/**` do not trigger them.
+
 | Check | Command / workflow | Result | Run |
 | --- | --- | --- | --- |
-| Lint | `:app:lintDevDebug` | pending | — |
-| Unit tests | `:app:testDevDebugUnitTest` | pending | — |
-| Instrumented compilation | `:app:assembleDevDebugAndroidTest` | pending | — |
-| Debug builds | `assembleDevDebug assembleStagingDebug assembleProductionDebug` | pending | — |
-| Full API 35 instrumentation | `gate3-emulator` | pending | — |
-| Repository tests in airplane mode | `offline-room-instrumentation.txt` | pending | — |
-| Emulator crash buffer | `gate3-emulator-evidence` | pending | — |
-| Independent emulator run | `Gate 3 Android Emulator Evidence` | pending | — |
-| Room schema | unchanged at v5, identityHash `a1fcd78acb39c2497f0f20efb5602598` expected | pending | — |
+| Lint | `:app:lintDevDebug` | PASS | [Android CI #340](https://github.com/izc05/magina-olivo-v20/actions/runs/35840622582), job `foundation` |
+| Unit tests | `:app:testDevDebugUnitTest` | PASS (the log does not print a count) | Android CI #340 |
+| Instrumented compilation | `:app:assembleDevDebugAndroidTest` | PASS | Android CI #340 |
+| Debug builds | `assembleDevDebug assembleStagingDebug assembleProductionDebug` | PASS | Android CI #340 |
+| Full API 35 instrumentation | `gate3-emulator` | PASS — 111 instrumented tests, `instrumentation_rc=0` | Android CI #340, job `107114543985` |
+| Attachment contract | `AttachmentContractTest` | PASS — 14/14 | Android CI #340 |
+| Attachment section UI | `AttachmentsSectionTest` | PASS — 3/3 | Android CI #340 |
+| Room migrations | `RoomMigrationTest` | PASS — 4/4; no entity changed, schema stays v5 | Android CI #340 |
+| Repository tests in airplane mode | `offline-room-instrumentation.txt` | PASS — 52 tests, `offline_room_instrumentation_rc=0`, including `AttachmentContractTest` 14/14 and `OfflineFirstFarmCoverRepositoryTest` 1/1 | Android CI #340 |
+| Emulator crash buffer | `gate3-emulator-evidence` | EMPTY — `0 evidence/crash.txt` | Android CI #340 |
+| Independent emulator run | `Gate 3 Android Emulator Evidence #57` | PASS | [run 35842241545](https://github.com/izc05/magina-olivo-v20/actions/runs/35842241545) |
+| Installable DEV APK | `magina-olivo-dev-debug`, artifact `10740723939` | 13 402 191 bytes (zip) | `sha256:2e35ec1f7c62a3ced3461a3c70f524b6b5f3950ff32773b680eacd9bb3b13afe` |
+| Evidence bundle | `gate3-emulator-evidence`, artifact `10740754213` | 3 282 986 bytes | `sha256:bd20fc91473f53a32cd3c0c3d614488b2e00c3ac02089dc29295c88097662a11` |
+
+### Emulator and device
+
+```text
+serial=emulator-5554
+android_release=15
+sdk=35
+model=Android SDK built for x86_64
+abi=x86_64
+physical_size=1080x2400
+```
+
+```text
+GATE 11 = PASS (on branch, commit 803d69b6)
+```
 
 ## Known gaps
 

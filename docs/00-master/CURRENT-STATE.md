@@ -31,7 +31,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 11 — ATTACHMENTS (IN PROGRESS — implemented, awaiting CI evidence)
+▶ PHASE 11 — ATTACHMENTS (GATE 11 PASS ON BRANCH — awaiting merge into main)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -209,8 +209,11 @@ MAIN = GREEN
 
 Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
 `docs/07-plans/PHASE11-ATTACHMENTS.md`, evidence in
-`docs/06-testing/PHASE11-ATTACHMENTS-SLICE.md`. **Gate 11 is not yet PASS**: no CI run
-has validated the branch.
+`docs/06-testing/PHASE11-ATTACHMENTS-SLICE.md`. **Gate 11 passed** on commit `803d69b6`:
+Android CI #340 (run `35840622582`) with `foundation` and `gate3-emulator` SUCCESS —
+111/111 instrumented tests, 52/52 repository tests in airplane mode including 14/14
+attachment contract tests, empty crash buffer — and the independent Gate 3 Android
+Emulator Evidence #57 (run `35842241545`) SUCCESS. Not yet merged into `main`.
 
 - Camera capture (through the app's own `FileProvider`) and document picker for images
   and PDF, from a "Documentos" section in Farm, Parcel and Activity detail. No new root.
@@ -227,7 +230,7 @@ has validated the branch.
 
 ## Next deliverable
 
-Close Gate 11 with real CI evidence (Android CI + the independent emulator run), then
+Owner review and merge of Phase 11 into `main`, then
 **Phase 12 — Expenses, purchases, organizations + generic document OCR**.
 
 Both workflows still run on pushes to `feat/**` and `hotfix/**`, so a branch reaches a
