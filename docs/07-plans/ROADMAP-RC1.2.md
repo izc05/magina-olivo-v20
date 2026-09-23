@@ -23,7 +23,8 @@
 ✅ Phase 12 — Expenses, purchases, organizations + generic OCR — Gate 12 PASS
 ✅ Phase 13 — Harvest — Gate 13 PASS
 ✅ Phase 14 — Deliveries + weight-ticket OCR + later yield — Gate 14 PASS
-▶ Phase 15 — Machinery — IN PROGRESS
+✅ Phase 15 — Machinery — Gate 15 PASS
+▶ Phase 16 — Calendar, agenda, reminders and Android notifications — NEXT
 ```
 
 Gate 6 composite passed on 2026-09-22 on commit `164aaa48`, documented in
@@ -37,7 +38,8 @@ by Android CI #338; its evidence is in
 merged into `main` through PR #207 as `e42754ac`. **Phase 12 — Expenses, purchases, organizations + generic OCR** passed Gate 12 and is
 merged through PR #208 (`docs/06-testing/PHASE12-EXPENSES-SLICE.md`). **Phase 13 — Harvest** passed Gate 13
 (`docs/06-testing/PHASE13-HARVEST-SLICE.md`). **Phase 14 — Deliveries + weight-ticket OCR + later yield** passed Gate 14
-(`docs/06-testing/PHASE14-DELIVERIES-SLICE.md`). The current phase is **Phase 15 — Machinery**. The approved display brand is **Mágina Olivo**. Domain/data
+(`docs/06-testing/PHASE14-DELIVERIES-SLICE.md`). **Phase 15 — Machinery** passed Gate 15 (`docs/06-testing/PHASE15-MACHINERY-SLICE.md`). The
+current phase is **Phase 16 — Calendar, agenda, reminders and Android notifications**. The approved display brand is **Mágina Olivo**. Domain/data
 architecture remains geographic-neutral.
 
 Canonical execution/handoff plan: `docs/00-master/SINGLE-TRACK-EXECUTION.md`.

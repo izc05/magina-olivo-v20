@@ -1,6 +1,6 @@
 # Phase 15 — Machinery implementation plan
 
-**Status:** IMPLEMENTED — awaiting CI evidence for Gate 15
+**Status:** Gate 15 PASS — validated on `ce46234b` (Android CI run 35864581017), merged through PR #211
 **Precondition:** Gate 14 PASS, merged into `main` through PR #210 as `a701d2b9`
 **Branch:** `claude/dreamy-dijkstra-tdui2c`
 
