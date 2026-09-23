@@ -21,7 +21,8 @@
 ✅ Phase 10 — Typed agricultural activities + irrigation — Gate 10 PASS
 ✅ Phase 11 — Attachments — Gate 11 PASS
 ✅ Phase 12 — Expenses, purchases, organizations + generic OCR — Gate 12 PASS
-▶ Phase 13 — Harvest — IN PROGRESS
+✅ Phase 13 — Harvest — Gate 13 PASS
+▶ Phase 14 — Deliveries + weight-ticket OCR + later yield — NEXT
 ```
 
 Gate 6 composite passed on 2026-09-22 on commit `164aaa48`, documented in
@@ -33,8 +34,9 @@ activities + irrigation** passed and was merged into `main` as `4acc3ab9`, verif
 by Android CI #338; its evidence is in
 `docs/06-testing/PHASE10-TYPED-ACTIVITIES-SLICE.md`. **Phase 11 — Attachments** passed and was
 merged into `main` through PR #207 as `e42754ac`. **Phase 12 — Expenses, purchases, organizations + generic OCR** passed Gate 12 and is
-merged through PR #208 (`docs/06-testing/PHASE12-EXPENSES-SLICE.md`). The current phase
-is **Phase 13 — Harvest** (`docs/07-plans/PHASE13-HARVEST.md`). The approved display brand is **Mágina Olivo**. Domain/data
+merged through PR #208 (`docs/06-testing/PHASE12-EXPENSES-SLICE.md`). **Phase 13 — Harvest** passed Gate 13
+(`docs/06-testing/PHASE13-HARVEST-SLICE.md`). The current phase is **Phase 14 — Deliveries
++ weight-ticket OCR + later yield**. The approved display brand is **Mágina Olivo**. Domain/data
 architecture remains geographic-neutral.
 
 Canonical execution/handoff plan: `docs/00-master/SINGLE-TRACK-EXECUTION.md`.

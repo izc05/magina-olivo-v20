@@ -1,6 +1,6 @@
 # Phase 13 — Harvest implementation plan
 
-**Status:** IMPLEMENTED — awaiting CI evidence for Gate 13
+**Status:** Gate 13 PASS — validated on `b8fccb38` (Android CI #352), merged through PR #209
 **Precondition:** Gate 12 PASS, merged into `main` through PR #208 as `2fbeb935`
 **Branch:** `claude/dreamy-dijkstra-tdui2c`
 
