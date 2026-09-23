@@ -53,6 +53,7 @@ import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.feature.expenses.Choice
 import com.isivoltpro.maginaolivo.feature.expenses.ChoiceSheet
 import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
+import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoConfirmationSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
@@ -66,11 +67,15 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
+import com.isivoltpro.maginaolivo.domain.delivery.Percent
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
+import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
@@ -88,6 +93,7 @@ fun HarvestsRoute(
         factory = viewModelFactory { initializer { HarvestsViewModel(persistence.harvestRepository, clock) } },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val deliveries by remember { persistence.deliveryRepository.observeAll() }.collectAsStateWithLifecycle(emptyList())
     HarvestsScreen(
         state = state,
         today = clock.today(ZoneId.systemDefault()),
@@ -95,6 +101,7 @@ fun HarvestsRoute(
         onHarvestSelected = onHarvestSelected,
         onEditorClosed = viewModel::clearFormErrors,
         onDeliveries = onDeliveries,
+        deliverySummary = remember(deliveries) { DeliverySummary.of(deliveries) },
     )
 }
 
@@ -111,9 +118,12 @@ fun HarvestsScreen(
     onHarvestSelected: (UUID) -> Unit,
     onEditorClosed: () -> Unit = {},
     onDeliveries: () -> Unit = {},
+    /** Delivered kilos and yield, read from the Delivery ledger (never recomputed here). */
+    deliverySummary: DeliverySummary? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
+    val harvestedGrams = state.harvests.sumOf { it.totalGrams }
 
     Scaffold(Modifier.fillMaxSize().testTag("harvests-root"), containerColor = MoCream) { padding ->
         Column(
@@ -121,20 +131,47 @@ fun HarvestsScreen(
                 .padding(horizontal = MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-            Spacer(Modifier.height(MoSpacing.md))
+            Spacer(Modifier.height(MoSpacing.sm))
             Text("Cosecha", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             Text(
-                "Kilos recogidos en el campo. Las entregas a la cooperativa o almazara se registran aparte.",
-                style = MaterialTheme.typography.bodyLarge,
+                "Kilos recogidos en el campo. Las entregas se registran aparte.",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MoTextSecondary,
             )
+            // UI polish v2: the summary first, then the actions.
+            if (!state.isLoading) {
+                MoMetricGrid(
+                    content = listOf(
+                        { m -> MoSummaryMetric("Kg registrados", if (state.harvests.isEmpty()) "—" else Weight.format(harvestedGrams), m.testTag("harvest-metric-kg"), icon = MoIcons.Harvest) },
+                        { m -> MoSummaryMetric("Registros", state.harvests.size.toString(), m, icon = MoIcons.Checklist) },
+                        { m ->
+                            MoSummaryMetric(
+                                "Entregado",
+                                deliverySummary?.takeIf { it.deliveryCount > 0 }?.let { Weight.format(it.deliveredGrams) } ?: "—",
+                                m,
+                                icon = MoIcons.Delivery,
+                                supportingText = deliverySummary?.takeIf { it.deliveryCount > 0 }?.let { "${it.deliveryCount} entregas" } ?: "Aún sin entregas",
+                            )
+                        },
+                        { m ->
+                            MoSummaryMetric(
+                                "Rendimiento graso",
+                                deliverySummary?.fatYield?.let { Percent.format(it.hundredths) } ?: "—",
+                                m,
+                                icon = MoIcons.Percent,
+                                supportingText = if (deliverySummary?.fatYield == null) "Con los análisis de entrega" else "Ponderado por kilos",
+                            )
+                        },
+                    ),
+                )
+            }
             MoPrimaryButton(
                 "Registrar cosecha",
                 { editorVisible = true },
                 Modifier.fillMaxWidth().testTag("add-harvest"),
                 enabled = state.contexts.isNotEmpty() && !state.isSaving,
             )
-            MoSecondaryButton("Entregas a la cooperativa", onDeliveries, Modifier.fillMaxWidth().testTag("open-deliveries"))
+            MoSecondaryButton("Entregas a cooperativa", onDeliveries, Modifier.fillMaxWidth().testTag("open-deliveries"))
             if (!state.isLoading && state.contexts.isEmpty()) {
                 Text(
                     "Para registrar cosecha, una finca necesita una campaña activa o en recolección.",
@@ -150,7 +187,7 @@ fun HarvestsScreen(
             when {
                 state.isLoading -> CircularProgressIndicator()
                 state.harvests.isEmpty() -> MoEmptyState(
-                    "Aún no hay cosecha",
+                    "Aún no has registrado cosecha",
                     "Anota cada día de recogida con sus kilos y las parcelas de origen. Si no sabes cuánto salió de cada parcela, no hace falta inventarlo.",
                 )
                 else -> {
@@ -197,8 +234,8 @@ private fun CampaignHarvestCard(campaign: CampaignHarvest) {
             )
             Text(
                 Weight.format(campaign.summary.totalGrams),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MoOlivePrimary,
+                style = MaterialTheme.typography.titleLarge,
+                color = MoInk,
                 modifier = Modifier.testTag("campaign-harvest-total"),
             )
             Text(
@@ -310,8 +347,8 @@ internal fun HarvestEditor(
                 color = MoTextSecondary,
             )
         }
-        MoTextField(
-            form.date, { form = form.copy(date = it) }, "Fecha (AAAA-MM-DD)",
+        MoDateInputField(
+            form.date, { form = form.copy(date = it) }, "Fecha",
             isError = errors.date != null, supportingText = errors.date,
             modifier = Modifier.fillMaxWidth().testTag("harvest-date"),
         )

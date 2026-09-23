@@ -61,6 +61,7 @@ import com.isivoltpro.maginaolivo.feature.expenses.Choice
 import com.isivoltpro.maginaolivo.feature.expenses.ChoiceSheet
 import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
 import com.isivoltpro.maginaolivo.feature.expenses.tone
+import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoConfirmationSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
@@ -418,8 +419,8 @@ internal fun DeliveryEditor(
         }
         errors.farm?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         context?.let { Text("Campaña ${it.campaignName}", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary) }
-        MoTextField(
-            form.date, { form = form.copy(date = it) }, "Fecha (AAAA-MM-DD)",
+        MoDateInputField(
+            form.date, { form = form.copy(date = it) }, "Fecha",
             isError = errors.date != null, supportingText = errors.date,
             modifier = Modifier.fillMaxWidth().testTag("delivery-date"),
         )
@@ -738,10 +739,11 @@ private fun YieldEditor(
             isError = errors.industrial != null, supportingText = errors.industrial,
             modifier = Modifier.fillMaxWidth().testTag("yield-industrial"),
         )
-        MoTextField(
-            form.date, { form = form.copy(date = it) }, "Fecha del análisis (opcional, AAAA-MM-DD)",
+        MoDateInputField(
+            form.date, { form = form.copy(date = it) }, "Fecha del análisis (opcional)",
             isError = errors.date != null, supportingText = errors.date,
             modifier = Modifier.fillMaxWidth(),
+            optional = true,
         )
         MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
         MoPrimaryButton("Guardar rendimiento", { onSave(form) }, Modifier.fillMaxWidth().testTag("save-yield"), enabled = !isSaving)

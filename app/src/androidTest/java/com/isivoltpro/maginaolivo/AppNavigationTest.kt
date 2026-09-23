@@ -219,7 +219,7 @@ class AppNavigationTest {
         // Past start date: closing uses the device clock, so a future start would make
         // the legal close date depend on the day the suite runs.
         waitForTag("campaign-start-date")
-        composeRule.onNodeWithTag("campaign-start-date").performTextInput("2026-01-01")
+        pickDate("campaign-start-date", "2026-01-01")
         waitForTag("campaign-parcel-option")
         clickInSheetByTag("campaign-parcel-option")
         waitForTag("save-campaign")
@@ -301,7 +301,7 @@ class AppNavigationTest {
         openSheet("add-activity", "activity-description")
         composeRule.onNodeWithTag("activity-description").performTextInput("Poda multiparcela E2E")
         waitForTag("activity-date")
-        composeRule.onNodeWithTag("activity-date").performTextInput("2026-01-15")
+        pickDate("activity-date", "2026-01-15")
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
         composeRule.onAllNodesWithTag("activity-parcel-option")[1].performScrollTo().performClick()
@@ -378,7 +378,7 @@ class AppNavigationTest {
         waitForTag("activity-description")
         composeRule.onNodeWithTag("activity-description").performTextInput("Riego desde Registrar")
         waitForTag("activity-date")
-        composeRule.onNodeWithTag("activity-date").performTextInput("2026-02-02")
+        pickDate("activity-date", "2026-02-02")
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
         clickInSheetByTag("save-activity")
@@ -431,7 +431,7 @@ class AppNavigationTest {
         openSheet("add-activity", "activity-description")
         composeRule.onNodeWithTag("activity-description").performTextInput("Trabajo tipado E2E")
         waitForTag("activity-date")
-        composeRule.onNodeWithTag("activity-date").performTextInput("2026-04-08")
+        pickDate("activity-date", "2026-04-08")
 
         // Observación is the default type and has no structured fields at all.
         composeRule.onAllNodesWithTag("activity-detail-block").assertCountEquals(0)
@@ -639,6 +639,34 @@ class AppNavigationTest {
             .assertIsEnabled()
             .assertHasClickAction()
             .performClick()
+    }
+
+    /**
+     * UI polish v2: dates are chosen in the month picker sheet, never typed. Opens it from
+     * [fieldTag], walks from the current month to [iso]'s month and confirms that day.
+     */
+    private fun pickDate(fieldTag: String, iso: String) {
+        val target = java.time.LocalDate.parse(iso)
+        scrollIntoViewIfPossible { composeRule.onNodeWithTag(fieldTag) }
+        composeRule.onNodeWithTag(fieldTag).performClick()
+        waitForTag("date-picker-sheet")
+        val months = java.time.temporal.ChronoUnit.MONTHS.between(
+            java.time.YearMonth.now(),
+            java.time.YearMonth.from(target),
+        )
+        val step = if (months < 0) "date-picker-previous" else "date-picker-next"
+        repeat(kotlin.math.abs(months).toInt()) {
+            composeRule.onNodeWithTag(step).performClick()
+            composeRule.waitForIdle()
+        }
+        waitForTag("date-picker-day-$iso")
+        scrollIntoViewIfPossible { composeRule.onNodeWithTag("date-picker-day-$iso") }
+        composeRule.onNodeWithTag("date-picker-day-$iso").performClick()
+        scrollIntoViewIfPossible { composeRule.onNodeWithTag("date-picker-confirm") }
+        composeRule.onNodeWithTag("date-picker-confirm").performClick()
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("date-picker-sheet").fetchSemanticsNodes().isEmpty()
+        }
     }
 
     private fun clickInSheetByText(text: String) {

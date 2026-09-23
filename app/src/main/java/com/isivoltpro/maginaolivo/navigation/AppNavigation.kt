@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,11 +40,9 @@ import com.isivoltpro.maginaolivo.feature.expenses.DocumentReviewRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpenseDetailRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpensesRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
-import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
-import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
-import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen
@@ -58,6 +57,13 @@ private val bottomBarItems = RootDestination.entries.map { destination ->
         label = destination.label,
         symbol = destination.symbol,
         isPrimaryAction = destination.isPrimaryAction,
+        icon = when (destination) {
+            RootDestination.Home -> MoIcons.Home
+            RootDestination.Olivar -> MoIcons.Tree
+            RootDestination.Register -> MoIcons.Plus
+            RootDestination.Calendar -> MoIcons.Calendar
+            RootDestination.Profile -> MoIcons.Person
+        },
     )
 }
 
@@ -82,6 +88,15 @@ fun AppNavigation(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoot = AppDestination.rootForRoute(backStackEntry?.destination?.route)
     var registerSheetVisible by rememberSaveable { mutableStateOf(false) }
+    // The Farm the Quick Add context resolved, handed to the activity flow once.
+    var registerFarmId by rememberSaveable { mutableStateOf<String?>(null) }
+    val quickAddContext = rememberQuickAddContext(
+        persistence = compositionRoot.localPersistence,
+        route = backStackEntry?.destination?.route,
+        argumentId = backStackEntry?.arguments?.let { arguments ->
+            listOf("farmId", "parcelId", "campaignId", "activityId").firstNotNullOfOrNull { arguments.getString(it) }
+        },
+    )
     // A reminder opens its Activity over the Calendar, so Back returns to the agenda.
     LaunchedEffect(openActivityId, backStackEntry == null) {
         val id = openActivityId ?: return@LaunchedEffect
@@ -158,6 +173,8 @@ fun AppNavigation(
                 } else {
                     RegisterActivityRoute(
                         persistence = persistence,
+                        preselectedFarmId = registerFarmId?.let { runCatching { UUID.fromString(it) }.getOrNull() },
+                        onFarmPreselected = { registerFarmId = null },
                         onActivitySelected = { activityId ->
                             navController.navigate(AppDestination.activity(activityId.toString()))
                         },
@@ -229,7 +246,12 @@ fun AppNavigation(
                 val campaignId = backStackEntry.arguments?.getString("campaignId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 if (persistence == null || campaignId == null) PersistenceUnavailableScreen()
-                else CampaignDetailRoute(campaignId, persistence)
+                else CampaignDetailRoute(
+                    campaignId,
+                    persistence,
+                    onHarvests = { navController.navigate(AppDestination.Harvest) },
+                    onDeliveries = { navController.navigate(AppDestination.Deliveries) },
+                )
             }
             composable(AppDestination.ActivityPattern) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
@@ -390,45 +412,27 @@ fun AppNavigation(
     }
 
     if (registerSheetVisible) {
-        ModalBottomSheet(onDismissRequest = { registerSheetVisible = false }) {
-            MoBottomActionSheet(
-                title = "¿Qué quieres registrar?",
-                body = "Elige el tipo de anotación. Podrás completar el contexto dentro del flujo.",
-                modifier = Modifier.testTag("register-action-sheet"),
-            ) {
-                RegisterAction(
-                    text = "Registrar actuación",
-                    onClick = {
-                        registerSheetVisible = false
-                        navController.navigateToRoot(RootDestination.Register)
-                    },
-                )
-                RegisterAction(
-                    text = "Registrar cosecha",
-                    onClick = {
-                        registerSheetVisible = false
-                        navController.navigate(AppDestination.Harvest)
-                    },
-                )
-                RegisterAction(
-                    text = "Registrar entrega",
-                    onClick = {
-                        registerSheetVisible = false
-                        navController.navigate(AppDestination.Deliveries)
-                    },
-                )
-                RegisterAction(
-                    text = "Registrar gasto o documento",
-                    onClick = {
-                        registerSheetVisible = false
-                        navController.navigate(AppDestination.Expenses)
-                    },
-                )
-                MoSecondaryButton(
-                    text = "Cancelar",
-                    onClick = { registerSheetVisible = false },
-                )
-            }
+        // UI polish v2: open fully (never half-cut) and let the sheet scroll on short screens.
+        ModalBottomSheet(
+            onDismissRequest = { registerSheetVisible = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
+            QuickAddSheet(
+                context = quickAddContext,
+                onAction = { action ->
+                    registerSheetVisible = false
+                    when (action) {
+                        QuickAddAction.ACTIVITY, QuickAddAction.PLAN -> {
+                            registerFarmId = quickAddContext?.farmId?.toString()
+                            navController.navigateToRoot(RootDestination.Register)
+                        }
+                        QuickAddAction.HARVEST -> navController.navigate(AppDestination.Harvest)
+                        QuickAddAction.DELIVERY -> navController.navigate(AppDestination.Deliveries)
+                        QuickAddAction.EXPENSE -> navController.navigate(AppDestination.Expenses)
+                    }
+                },
+                onCancel = { registerSheetVisible = false },
+            )
         }
     }
 }
@@ -442,16 +446,6 @@ private fun PersistenceUnavailableScreen() {
     )
 }
 
-@Composable
-private fun RegisterAction(
-    text: String,
-    onClick: () -> Unit,
-) {
-    MoPrimaryButton(
-        text = text,
-        onClick = onClick,
-    )
-}
 
 private fun NavHostController.navigateToRoot(destination: RootDestination) {
     navigate(destination.route) {

@@ -11,12 +11,16 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -24,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
@@ -33,6 +38,8 @@ data class MoBottomBarItem(
     val label: String,
     val symbol: String,
     val isPrimaryAction: Boolean = false,
+    /** UI polish v2: a line icon replaces the text symbol when given. */
+    val icon: ImageVector? = null,
 )
 
 @Composable
@@ -54,7 +61,7 @@ fun MoBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = MoSpacing.xs, vertical = 7.dp),
+                .padding(horizontal = MoSpacing.xs, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -65,7 +72,7 @@ fun MoBottomBar(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = 54.dp)
+                        .heightIn(min = 52.dp)
                         .selectable(
                             selected = selected,
                             role = Role.Tab,
@@ -77,27 +84,45 @@ fun MoBottomBar(
                 ) {
                     if (item.isPrimaryAction) {
                         Surface(
-                            modifier = Modifier.size(38.dp),
+                            modifier = Modifier.size(40.dp),
                             shape = CircleShape,
                             color = MoOlivePrimary,
                             contentColor = MoWarmWhite,
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = item.symbol,
-                                    modifier = Modifier.clearAndSetSemantics { },
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Normal,
-                                )
+                                if (item.icon != null) {
+                                    Icon(item.icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = MoWarmWhite)
+                                } else {
+                                    Text(
+                                        text = item.symbol,
+                                        modifier = Modifier.clearAndSetSemantics { },
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Normal,
+                                    )
+                                }
                             }
                         }
                     } else {
-                        Text(
-                            text = item.symbol,
-                            modifier = Modifier.clearAndSetSemantics { },
-                            style = MaterialTheme.typography.titleMedium,
-                            color = color,
-                        )
+                        // The selected item gets a soft pill as well as colour and weight,
+                        // so the active root never depends on colour alone.
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = if (selected) MoOliveTint else Color.Transparent,
+                            contentColor = color,
+                        ) {
+                            Box(Modifier.padding(horizontal = 14.dp, vertical = 3.dp), contentAlignment = Alignment.Center) {
+                                if (item.icon != null) {
+                                    Icon(item.icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = color)
+                                } else {
+                                    Text(
+                                        text = item.symbol,
+                                        modifier = Modifier.clearAndSetSemantics { },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = color,
+                                    )
+                                }
+                            }
+                        }
                     }
                     Text(
                         text = item.label,

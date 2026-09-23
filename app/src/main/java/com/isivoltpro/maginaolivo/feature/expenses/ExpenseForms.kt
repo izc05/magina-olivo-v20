@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
+import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
@@ -116,8 +117,8 @@ internal fun ExpenseEditor(
             isError = errors.amount != null, supportingText = errors.amount,
             modifier = Modifier.fillMaxWidth().testTag("expense-amount"),
         )
-        MoTextField(
-            form.date, { form = form.copy(date = it) }, "Fecha (AAAA-MM-DD)",
+        MoDateInputField(
+            form.date, { form = form.copy(date = it) }, "Fecha",
             isError = errors.date != null, supportingText = errors.date,
             modifier = Modifier.fillMaxWidth().testTag("expense-date"),
         )
