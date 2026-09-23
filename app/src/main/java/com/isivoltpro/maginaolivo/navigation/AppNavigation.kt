@@ -47,7 +47,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.map.MapCatastroReferenceScreen
+import com.isivoltpro.maginaolivo.feature.catastro.CadastreImportRoute
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.weather.WeatherMarketReferenceScreen
@@ -260,7 +260,14 @@ fun AppNavigation(
                 if (persistence == null || activityId == null) PersistenceUnavailableScreen()
                 else ActivityDetailRoute(activityId, persistence)
             }
-            composable(AppDestination.MapCatastro) { MapCatastroReferenceScreen() }
+            composable(AppDestination.MapCatastro) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) PersistenceUnavailableScreen()
+                else CadastreImportRoute(
+                    persistence = persistence,
+                    onParcelImported = { id -> navController.navigate(AppDestination.parcel(id.toString())) },
+                )
+            }
             composable(AppDestination.Weather) { WeatherMarketReferenceScreen() }
             composable(AppDestination.Analytics) { CampaignReferenceScreen() }
             composable(AppDestination.OcrReview) { DeliveryOcrReviewReferenceScreen() }

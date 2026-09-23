@@ -52,6 +52,9 @@ class OfflineFirstParcelRepository(
         validateArea(command.cadastralAreaM2)?.let { return it }
         validateArea(command.managedAreaM2)?.let { return it }
         validateGeometry(command.geometryGeoJson)?.let { return it }
+        if (command.source == ParcelSource.CATASTRO &&
+            (command.cadastralReference.isNullOrBlank() || command.geometryGeoJson.isNullOrBlank())
+        ) return AppResult.Failure(AppError.Validation("catastro", "identity_and_geometry_required"))
         return withContext(dispatchers.io) {
             val now = clock.nowInstant()
             runCatching {
@@ -61,13 +64,21 @@ class OfflineFirstParcelRepository(
                     if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
                         return@withTransaction AppResult.Failure(AppError.Conflict("archived_farm"))
                     }
+                    if (command.source == ParcelSource.CATASTRO &&
+                        database.parcelDao().findActiveByCadastralReference(
+                            farm.workspaceId,
+                            command.cadastralReference!!.trim().uppercase(),
+                        ) != null
+                    ) return@withTransaction AppResult.Failure(AppError.Conflict("duplicate_cadastral_reference"))
                     val parcelId = idGenerator.newId()
                     database.parcelDao().upsert(
                         ParcelEntity(
                             id = parcelId,
                             workspaceId = farm.workspaceId,
                             displayName = (name as AppResult.Success).value,
-                            cadastralReference = command.cadastralReference.normalized(),
+                            cadastralReference = command.cadastralReference.normalized()?.let {
+                                if (command.source == ParcelSource.CATASTRO) it.uppercase() else it
+                            },
                             cadastralPolygon = command.cadastralPolygon.normalized(),
                             cadastralParcel = command.cadastralParcel.normalized(),
                             municipality = command.municipality.normalized(),
