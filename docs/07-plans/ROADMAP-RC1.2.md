@@ -23,7 +23,7 @@
 ✅ Phase 12 — Expenses, purchases, organizations + generic OCR — Gate 12 PASS
 ✅ Phase 13 — Harvest — Gate 13 PASS
 ✅ Phase 14 — Deliveries + weight-ticket OCR + later yield — Gate 14 PASS
-▶ Phase 15 — Machinery — NEXT
+▶ Phase 15 — Machinery — IN PROGRESS
 ```
 
 Gate 6 composite passed on 2026-09-22 on commit `164aaa48`, documented in

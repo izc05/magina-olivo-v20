@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.domain.activity
 
+import com.isivoltpro.maginaolivo.domain.machinery.ActivityMachine
+import com.isivoltpro.maginaolivo.domain.machinery.MachineOption
+import com.isivoltpro.maginaolivo.domain.machinery.MachineUseInput
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import java.time.LocalDate
@@ -51,6 +54,8 @@ data class Activity(
      * It is never stored on the Activity and never summed next to the Expense ledger.
      */
     val costMinor: Long? = null,
+    /** Machines used, if the farmer said so. Always optional (Phase 15). */
+    val machines: List<ActivityMachine> = emptyList(),
 )
 
 data class NewActivity(
@@ -67,6 +72,8 @@ data class NewActivity(
     val detail: ActivityDetail? = null,
     /** Optional convenience cost. Saving it writes the linked Expense, never the Activity. */
     val costMinor: Long? = null,
+    /** Optional machines; a child of the Activity aggregate, never required. */
+    val machines: List<MachineUseInput> = emptyList(),
 )
 
 data class ActivityChanges(
@@ -85,6 +92,8 @@ data class ActivityChanges(
     val detail: ActivityDetail? = null,
     /** The convenience cost after the change; null removes the linked cost Expense. */
     val costMinor: Long? = null,
+    /** The machines after the change; an empty list removes them. */
+    val machines: List<MachineUseInput> = emptyList(),
 )
 
 /**
@@ -103,6 +112,9 @@ data class ActivityChanges(
  * authoritative financial source.
  */
 interface ActivityRepository {
+    /** Machines in use that an Activity can name. Empty is fine: machinery is optional. */
+    fun observeSelectableMachines(): Flow<List<MachineOption>>
+
     fun observeSelectableParcels(farmId: UUID): Flow<List<ActivityParcelOption>>
     fun observeForFarm(farmId: UUID): Flow<List<Activity>>
     fun observeForParcel(parcelId: UUID): Flow<List<Activity>>

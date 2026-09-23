@@ -35,7 +35,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 15 — MACHINERY (NEXT — starts after PR #210 is merged)
+▶ PHASE 15 — MACHINERY (IN PROGRESS — implemented, awaiting CI evidence)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -287,11 +287,22 @@ Gate 3 Android Emulator Evidence #72 (run `35861748914`) SUCCESS with an empty c
   confirmed, once.
 - S80 shows delivered kilos and fat/industrial yield weighted by kilos with its coverage.
 
+**Merged into `main`** through PR #210 as merge commit `a701d2b9`.
+
+## Phase 15 — Machinery (in progress)
+
+Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
+`docs/07-plans/PHASE15-MACHINERY.md`. **Gate 15 is not yet PASS.**
+
+- Room v9: `machines` (its own aggregate, archived rather than deleted) and
+  `activity_machines` (children of the Activity aggregate).
+- "Maquinaria" is reached from the Mi Olivar header; the Activity editor gains an optional
+  machinery section with optional hours. Nothing about an Activity becomes mandatory.
+
 ## Next deliverable
 
-**Phase 15 — Machinery**: machinery list/detail, activity relation, optional hours/usage,
-lightweight field workflow. Gate 15: machinery adds value without making activities
-mandatory/complex.
+Close Gate 15 with real CI evidence, merge it, then **Phase 16 — Calendar, agenda,
+reminders and Android notifications**.
 
 ## Parallel-chat reconciliation
 

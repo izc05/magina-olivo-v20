@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
+import com.isivoltpro.maginaolivo.domain.machinery.MachineOption
+import com.isivoltpro.maginaolivo.domain.machinery.MachineUseInput
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.isivoltpro.maginaolivo.core.common.AppResult
@@ -32,6 +34,8 @@ data class ActivityDraft(
     val detail: ActivityDetail? = null,
     /** Optional convenience cost; it is saved as the linked Expense (D2). */
     val costMinor: Long? = null,
+    /** Optional machines used (Phase 15). */
+    val machines: List<MachineUseInput> = emptyList(),
 )
 
 data class FarmActivitiesUiState(
@@ -41,6 +45,7 @@ data class FarmActivitiesUiState(
     val planned: List<Activity> = emptyList(),
     val history: List<Activity> = emptyList(),
     val parcels: List<ActivityParcelOption> = emptyList(),
+    val machines: List<MachineOption> = emptyList(),
     val descriptionError: String? = null,
     val dateError: String? = null,
     val parcelsError: String? = null,
@@ -70,6 +75,11 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
                 mutableState.value = mutableState.value.copy(parcels = it)
             }
         }
+        viewModelScope.launch {
+            repository.observeSelectableMachines().collect {
+                mutableState.value = mutableState.value.copy(machines = it)
+            }
+        }
     }
 
     /** A planned activity requires at least one Parcel; a resumable draft does not. */
@@ -88,6 +98,7 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
                         asDraft = asDraft,
                         detail = draft.detail,
                         costMinor = draft.costMinor,
+                        machines = draft.machines,
                     ),
                 )
             ) {
@@ -184,6 +195,7 @@ data class ActivityDetailUiState(
     val isSaving: Boolean = false,
     val activity: Activity? = null,
     val parcels: List<ActivityParcelOption> = emptyList(),
+    val machines: List<MachineOption> = emptyList(),
     val error: String? = null,
     val message: String? = null,
 )
@@ -212,6 +224,11 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                 }
             }
         }
+        viewModelScope.launch {
+            repository.observeSelectableMachines().collect {
+                mutableState.value = mutableState.value.copy(machines = it)
+            }
+        }
     }
 
     fun update(draft: ActivityDraft) {
@@ -230,6 +247,7 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                     draft.notes.nullIfBlank(),
                     draft.detail,
                     draft.costMinor,
+                    draft.machines,
                 ),
             )
         }

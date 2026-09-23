@@ -28,6 +28,8 @@ import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailRoute
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestDetailRoute
 import com.isivoltpro.maginaolivo.feature.deliveries.DeliveriesRoute
+import com.isivoltpro.maginaolivo.feature.machinery.MachineDetailRoute
+import com.isivoltpro.maginaolivo.feature.machinery.MachineryRoute
 import com.isivoltpro.maginaolivo.feature.deliveries.DeliveryDetailRoute
 import com.isivoltpro.maginaolivo.feature.deliveries.TicketReviewRoute
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestsRoute
@@ -132,6 +134,7 @@ fun AppNavigation(
                         onFarmSelected = { farmId ->
                             navController.navigate(AppDestination.farm(farmId.toString()))
                         },
+                        onMachinery = { navController.navigate(AppDestination.Machinery) },
                     )
                 }
             }
@@ -247,6 +250,24 @@ fun AppNavigation(
                         onDeleted = { navController.popBackStack() },
                     )
                 }
+            }
+            composable(AppDestination.Machinery) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    MachineryRoute(
+                        persistence = persistence,
+                        onMachineSelected = { id -> navController.navigate(AppDestination.machine(id.toString())) },
+                    )
+                }
+            }
+            composable(AppDestination.MachinePattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val machineId = backStackEntry.arguments?.getString("machineId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || machineId == null) PersistenceUnavailableScreen()
+                else MachineDetailRoute(machineId, persistence)
             }
             composable(AppDestination.Deliveries) {
                 val persistence = compositionRoot.localPersistence
