@@ -1,6 +1,6 @@
 # Phase 16 — Calendar, agenda, reminders and Android notifications
 
-**Phase decision:** EMULATOR EVIDENCE PASS — physical-device clause of Gate 16 **pending owner verification**
+**Phase decision:** GATE 16 PASS — emulator evidence in CI + physical-device check confirmed by the owner on 2026-09-23
 **Reviewed:** 2026-09-23
 **Base commit:** `216d576b` (`main`, Phase 15 merged)
 **Branch:** `claude/dreamy-dijkstra-tdui2c` — PR #212
@@ -22,7 +22,7 @@ Reminders fire offline on physical Android under supported OS restrictions.
 | Reminders survive restarts | `remindersSurviveARestartAndAreRescheduled` (what the boot receiver does) | PASS (emulator) |
 | A notification is posted offline, once, with a deep link | `theNotifierPostsOnceAndStaysSilentForFinishedWork` (real `NotificationManager`, channel `planned_work`, `contentIntent` present; second fire refused; cancelled work silent) — run in airplane mode | PASS (emulator) |
 | The OS alarm service is used | `theAlarmServiceRegistersAndCancelsAReminder` (real `AlarmManager` PendingIntent registered and cancelled), `theReceiversAreDeclaredForAlarmsAndReboots` | PASS (emulator) |
-| **Fires offline on a physical phone** | Owner check below | **PENDING** |
+| **Fires offline on a physical phone** | Owner check below | **PASS (owner, 2026-09-23)** |
 
 Also `RoomMigrationTest.migration9To10AddsEmptyPlanningAndReminderTables`. JVM tests
 `ReminderRulesTest` (7), `AgendaTest` (3), `ReminderMessageTest` (2) and `PlanningInputTest` (6)
@@ -39,7 +39,15 @@ were compiled and run locally with the Kotlin 2.2.20 compiler before any CI run 
 | Suite size | same code on `c5059df9`, before `10.json` existed | 169 instrumented tests, 168 passing — the only failure was the migration test's missing `10.json`; 105/105 in airplane mode, including `AgendaReminderContractTest` 10/10 | Android CI run `35873707085`, job `107224072390` |
 | Hand-written migration vs compiler export | comparison of `MIGRATION_9_10` with `10.json` | 2 tables and 4 indices identical | `10.json` identityHash `b78eb793422aa350e54cc390edf47124` |
 
-## Physical-device check (owner) — required before Gate 16 PASS
+## Physical-device check (owner) — PASS
+
+On 2026-09-23 the owner reported that the whole check below works on their phone:
+the reminder arrived in airplane mode with the phone locked, tapping it opened the
+Activity, and a reminder planned before a reboot still arrived afterwards.
+Not reported yet, recorded as *pending to note*: phone model, Android version, the exact
+APK/run installed and whether "Alarmas y recordatorios" was allowed.
+
+### Procedure
 
 Install the DEV APK above on a real Android phone, then:
 

@@ -24,7 +24,8 @@
 ✅ Phase 13 — Harvest — Gate 13 PASS
 ✅ Phase 14 — Deliveries + weight-ticket OCR + later yield — Gate 14 PASS
 ✅ Phase 15 — Machinery — Gate 15 PASS
-▶ Phase 16 — Calendar, agenda, reminders and Android notifications — emulator evidence PASS, physical-device check pending
+✅ Phase 16 — Calendar, agenda, reminders and Android notifications — Gate 16 PASS
+▶ Phase 17 — Spain Catastro lookup and confirmed import — opens when PR #212 is merged
 ```
 
 Gate 6 composite passed on 2026-09-22 on commit `164aaa48`, documented in

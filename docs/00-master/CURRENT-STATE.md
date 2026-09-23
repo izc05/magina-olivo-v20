@@ -31,12 +31,13 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 13 — Harvest
 ✅ Gate 14 — Deliveries + weight-ticket OCR + later yield
 ✅ Gate 15 — Machinery
+✅ Gate 16 — Calendar, agenda, reminders (physical check confirmed by the owner 2026-09-23)
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 16 — CALENDAR, AGENDA, REMINDERS AND ANDROID NOTIFICATIONS (NEXT — starts after PR #211 is merged)
+▶ PHASE 17 — SPAIN CATASTRO LOOKUP AND CONFIRMED IMPORT (starts once PR #212 is merged into main)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
