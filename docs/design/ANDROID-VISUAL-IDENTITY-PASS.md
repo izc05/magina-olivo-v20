@@ -16,9 +16,14 @@ weather, prices and notices in the mockups are illustrative, not application dat
 - Use that landscape in Inicio's hero until a user cover photo can be wired in.
 - Remove sample weather, production, market and cooperative claims from Inicio;
   the cards now communicate their purpose without pretending to show live data.
+- Let the production navigation shell own system bar insets. The onboarding
+  and nested Inicio scaffold no longer add a second top inset, which had left
+  an oversized blank band above the logo on the phone screenshots.
 - The asset was generated with the built-in image tool using the owner's first
   onboarding mockup as a mood reference. It is decorative and does not claim to
   depict a particular real farm or geographic viewpoint.
+- The app bundles a 720 × 900 JPEG derivative to keep decode and emulator
+  rendering memory low; the full generated PNG remains outside the APK.
 
 ## Remaining visual sequence
 
