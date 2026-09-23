@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -36,6 +37,10 @@ class MainActivitySmokeTest {
 
         composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
         composeRule.onNodeWithTag("bottom-Inicio").assertIsSelected()
+        // Inicio grows once Room answers; scroll only after the loading block is gone.
+        composeRule.waitUntil(10_000) {
+            composeRule.onAllNodesWithTag("home-loading").fetchSemanticsNodes().isEmpty()
+        }
         composeRule.onNodeWithText("Mercado del aceite").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Inicio").assertIsDisplayed()
     }
