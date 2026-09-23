@@ -39,6 +39,7 @@ import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
@@ -105,6 +106,7 @@ fun FarmParcelsSection(
         state.active.isEmpty() -> MoEmptyState(
             title = "Aún no hay parcelas",
             body = "Añade una parcela manualmente. Podrás completar su geometría y Catastro más adelante.",
+            icon = MoIcons.Parcels,
         )
         else -> state.active.forEach { parcel ->
             MoParcelRow(

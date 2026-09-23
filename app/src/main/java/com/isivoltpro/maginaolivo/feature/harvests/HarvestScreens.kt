@@ -190,6 +190,7 @@ fun HarvestsScreen(
                 state.harvests.isEmpty() -> MoEmptyState(
                     "Aún no has registrado cosecha",
                     "Anota cada día de recogida con sus kilos y las parcelas de origen. Si no sabes cuánto salió de cada parcela, no hace falta inventarlo.",
+                    icon = MoIcons.Harvest,
                 )
                 else -> {
                     state.campaigns.forEach { campaign -> CampaignHarvestCard(campaign) }

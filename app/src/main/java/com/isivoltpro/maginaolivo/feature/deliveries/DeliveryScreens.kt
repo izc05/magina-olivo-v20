@@ -61,6 +61,7 @@ import com.isivoltpro.maginaolivo.feature.expenses.Choice
 import com.isivoltpro.maginaolivo.feature.expenses.ChoiceSheet
 import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
 import com.isivoltpro.maginaolivo.feature.expenses.tone
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
@@ -212,6 +213,7 @@ fun DeliveriesScreen(
                 state.deliveries.isEmpty() -> MoEmptyState(
                     "Aún no hay entregas",
                     "Registra cada entrega con sus kilos netos o lee el vale: revisarás los datos antes de guardarlos.",
+                    icon = MoIcons.Delivery,
                 )
                 else -> {
                     state.campaigns.forEach { campaign -> CampaignDeliveriesCard(campaign) }

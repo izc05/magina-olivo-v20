@@ -126,6 +126,16 @@ class Gate3EvidenceScreenshotTest {
         )
     }
 
+    @Test
+    fun captureUiPolishProfile() = capture("profile-root", "ui-10-perfil") {
+        com.isivoltpro.maginaolivo.feature.profile.ProfileScreen(
+            appVersion = "0.1.0",
+            notificationsOn = true,
+            onNotifications = {},
+            onMachinery = {},
+        )
+    }
+
     private fun capture(tag: String, prefix: String, content: @androidx.compose.runtime.Composable () -> Unit) {
         composeRule.setContent { MaginaOlivoTheme { content() } }
         composeRule.waitForIdle()

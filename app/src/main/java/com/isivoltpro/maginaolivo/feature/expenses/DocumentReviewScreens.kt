@@ -44,6 +44,7 @@ import com.isivoltpro.maginaolivo.domain.ocr.OcrStatus
 import com.isivoltpro.maginaolivo.domain.organization.Organization
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationDraft
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationRole
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoConfirmationSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
@@ -272,6 +273,7 @@ fun OrganizationsScreen(
                 state.organizations.isEmpty() -> MoEmptyState(
                     "Aún no hay organizaciones",
                     "Añade tu cooperativa o tus proveedores para elegirlos al anotar gastos.",
+                    icon = MoIcons.People,
                 )
                 else -> state.organizations.forEach { organization ->
                     OrganizationRow(organization, onEdit = { editing = organization.id.toString() })

@@ -113,7 +113,7 @@ fun FarmActivitiesSection(
         state.isLoading -> CircularProgressIndicator()
         state.error != null -> MoErrorState("No pudimos abrir las actuaciones", state.error)
         state.drafts.isEmpty() && state.planned.isEmpty() && state.history.isEmpty() ->
-            MoEmptyState("Aún no hay actuaciones", "Registra un trabajo y selecciona las parcelas donde se realiza.")
+            MoEmptyState("Aún no hay actuaciones", "Registra un trabajo y selecciona las parcelas donde se realiza.", icon = MoIcons.Activity)
         else -> {
             if (state.drafts.isNotEmpty()) {
                 MoSectionHeader("Borradores")
@@ -198,6 +198,7 @@ fun RegisterActivityRoute(
                 state.farms.isEmpty() -> MoEmptyState(
                     "Aún no tienes fincas",
                     "Crea una finca en Mi Olivar y podrás registrar actuaciones sobre sus parcelas.",
+                    icon = MoIcons.Tree,
                 )
                 else -> {
                     val selectedFarmId = state.selectedFarmId
