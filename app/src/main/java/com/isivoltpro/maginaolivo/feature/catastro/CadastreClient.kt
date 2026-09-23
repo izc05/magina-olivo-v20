@@ -98,14 +98,20 @@ class OfficialCadastreClient : CadastreClient {
 
 internal fun parseCadastralGml(xml: ByteArray, expectedReference: String): CadastralCandidate {
     if (xml.isEmpty() || xml.size > 2_000_000) throw CadastreException(CadastreError.RESPONSE)
+    // Catastro GML never carries a DTD. Refusing one here is the XXE guard that works on every
+    // parser: Android's DocumentBuilderFactory rejects the Xerces feature flags below, which
+    // made every real lookup fail on the phone, so those stay best effort for the JVM.
+    if (declaresDoctype(xml)) throw CadastreException(CadastreError.RESPONSE)
     val factory = DocumentBuilderFactory.newInstance().apply {
         isNamespaceAware = true
-        setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-        setFeature("http://xml.org/sax/features/external-general-entities", false)
-        setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-        setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-        setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
-        setXIncludeAware(false)
+        listOf(
+            "http://apache.org/xml/features/disallow-doctype-decl" to true,
+            "http://xml.org/sax/features/external-general-entities" to false,
+            "http://xml.org/sax/features/external-parameter-entities" to false,
+            "http://apache.org/xml/features/nonvalidating/load-external-dtd" to false,
+            XMLConstants.FEATURE_SECURE_PROCESSING to true,
+        ).forEach { (feature, value) -> runCatching { setFeature(feature, value) } }
+        runCatching { setXIncludeAware(false) }
         isExpandEntityReferences = false
     }
     val root = try {
@@ -153,6 +159,9 @@ internal fun parseCadastralGml(xml: ByteArray, expectedReference: String): Cadas
     val area = parcel.firstText(CP_NS, "areaValue")?.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0 }
     return CadastralCandidate(expectedReference, area, polygons)
 }
+
+private fun declaresDoctype(xml: ByteArray): Boolean =
+    String(xml, Charsets.UTF_8).contains("<!DOCTYPE", ignoreCase = true)
 
 private fun parseRing(boundary: Element): List<Pair<Double, Double>> {
     val posList = boundary.getElementsByTagNameNS(GML_NS, "posList").item(0) as? Element

@@ -71,4 +71,15 @@ class CadastreClientTest {
             assertEquals(CadastreError.INVALID_GEOMETRY, error.kind)
         }
     }
+
+    @Test fun refusesAnyDocumentThatDeclaresADoctype() {
+        val xml = """<?xml version="1.0"?><!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/hosts">]>
+            <wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0">&e;</wfs:FeatureCollection>""".toByteArray()
+        try {
+            parseCadastralGml(xml, "23044A00400021")
+            fail("A DTD must never be parsed")
+        } catch (error: CadastreException) {
+            assertEquals(CadastreError.RESPONSE, error.kind)
+        }
+    }
 }
