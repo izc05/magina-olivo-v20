@@ -116,8 +116,8 @@ fun FarmParcelsSection(
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    LaunchedEffect(state.message) {
-        if (state.message == "Parcela guardada en este dispositivo") {
+    LaunchedEffect(state.savedCount) {
+        if (state.savedCount > 0 && state.message == "Parcela guardada en este dispositivo") {
             editorVisible = false
             focusManager.clearFocus(force = true)
             keyboard?.hide()

@@ -55,6 +55,8 @@ data class FarmParcelsUiState(
     val oliveError: String? = null,
     val error: String? = null,
     val message: String? = null,
+    /** Grows on every successful save, so a second identical "saved" message still closes the editor. */
+    val savedCount: Int = 0,
 )
 
 class FarmParcelsViewModel(
@@ -108,7 +110,11 @@ class FarmParcelsViewModel(
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
             mutableState.value = when (operation()) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message)
+                is AppResult.Success -> mutableState.value.copy(
+                    isSaving = false,
+                    message = message,
+                    savedCount = mutableState.value.savedCount + 1,
+                )
                 is AppResult.Failure -> mutableState.value.copy(
                     isSaving = false,
                     error = "No se pudo guardar en este dispositivo",
