@@ -1,0 +1,33 @@
+name: Catastro spike (research)
+
+# Phase 17 research only: probes the official DG Catastro INSPIRE WFS and records what it
+# returns. It builds nothing, ships nothing and runs only on the spike branch or on demand.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "docs/phase17-*"
+    paths:
+      - "spikes/catastro/**"
+      - ".github/workflows/catastro-spike.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyproj==3.7.1
+      - run: python spikes/catastro/probe.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catastro-spike-output
+          path: spikes/catastro/out/
+          retention-days: 14
