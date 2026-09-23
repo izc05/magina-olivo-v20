@@ -311,7 +311,7 @@ class AppNavigationTest {
         composeRule.onAllNodesWithTag("activity-parcel-option")[1].performScrollTo().performClick()
         waitForTag("save-activity")
         clickInSheetByTag("save-activity")
-        waitForText("Poda multiparcela E2E")
+        waitForSaved("activity-description", "Poda multiparcela E2E")
         // The typed description is on screen before the save lands; wait for the saved row.
         waitForTag("activity-row")
 
@@ -463,7 +463,8 @@ class AppNavigationTest {
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
         clickInSheetByTag("save-activity")
-        waitForText("Trabajo tipado E2E")
+        waitForSaved("activity-description", "Trabajo tipado E2E")
+        waitForTag("activity-row")
 
         // The saved Activity carries the irrigation block it was given, and one record.
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
