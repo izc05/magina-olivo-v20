@@ -1,6 +1,9 @@
 package com.isivoltpro.maginaolivo.data.local
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.isivoltpro.maginaolivo.core.common.AppResult
@@ -13,9 +16,10 @@ import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
-import com.isivoltpro.maginaolivo.data.repository.PersistedDocument
-import com.isivoltpro.maginaolivo.data.repository.PersistedDocumentSource
+import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -26,8 +30,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,18 +42,25 @@ import org.junit.runner.RunWith
 class OfflineFirstFarmCoverRepositoryTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
+    private val attachments = File(context.filesDir, AndroidAttachmentFileStore.ROOT_DIRECTORY)
+    private val sources = File(context.cacheDir, "camera")
+
     @Before
     fun clearDatabase() {
         context.deleteDatabase(TEST_DATABASE)
+        attachments.deleteRecursively()
+        sources.deleteRecursively()
     }
 
     @After
     fun cleanUp() {
         context.deleteDatabase(TEST_DATABASE)
+        attachments.deleteRecursively()
+        sources.deleteRecursively()
     }
 
     @Test
-    fun retainedCoverAndOutboxSurviveRestart() = runBlocking {
+    fun copiedCoverAndOutboxSurviveRestart() = runBlocking {
         val workspaceId = uuid("10000000-0000-0000-0000-000000000070")
         val farmId = uuid("20000000-0000-0000-0000-000000000070")
         val documentId = uuid("40000000-0000-0000-0000-000000000070")
@@ -78,7 +91,7 @@ class OfflineFirstFarmCoverRepositoryTest {
             )
             val coverRepository = OfflineFirstFarmCoverRepository(
                 database = database,
-                documentSource = FakeDocumentSource,
+                fileStore = AndroidAttachmentFileStore(context),
                 clock = FixedClock(now.plusSeconds(30)),
                 idGenerator = FixedIds(
                     documentId,
@@ -88,11 +101,18 @@ class OfflineFirstFarmCoverRepositoryTest {
                 dispatchers = TestDispatchers,
             )
 
+            val bytes = jpeg()
+            val source = File(sources.apply { mkdirs() }, "olivar.jpg").apply { writeBytes(bytes) }
+            val sourceUri = FileProvider.getUriForFile(context, "${context.packageName}.attachments", source)
             assertEquals(
                 AppResult.Success(Unit),
-                coverRepository.attachCover(farmId, COVER_URI),
+                coverRepository.attachCover(farmId, sourceUri.toString()),
             )
-            assertEquals(COVER_URI, coverRepository.observeCoverUri(farmId).first())
+            // The cover is the app's own copy, not the picked file.
+            assertTrue(source.delete())
+            val coverUri = coverRepository.observeCoverUri(farmId).first()!!
+            assertEquals("file", Uri.parse(coverUri).scheme)
+            assertArrayEquals(bytes, File(Uri.parse(coverUri).path!!).readBytes())
             assertEquals(documentId, database.farmDao().findById(farmId)?.coverDocumentId)
             assertEquals(
                 listOf(OutboxOperation.UPLOAD_ATTACHMENT),
@@ -113,7 +133,8 @@ class OfflineFirstFarmCoverRepositoryTest {
         val reopened = MaginaOlivoDatabase.create(context, TEST_DATABASE)
         try {
             assertNotNull(reopened.farmDao().findById(farmId)?.coverDocumentId)
-            assertEquals(COVER_URI, reopened.documentDao().observeFarmCoverUri(farmId).first())
+            val coverUri = reopened.documentDao().observeFarmCoverUri(farmId).first()!!
+            assertTrue(File(Uri.parse(coverUri).path!!).isFile)
         } finally {
             reopened.close()
         }
@@ -135,19 +156,18 @@ class OfflineFirstFarmCoverRepositoryTest {
         override val main: CoroutineDispatcher = Dispatchers.Unconfined
     }
 
-    private object FakeDocumentSource : PersistedDocumentSource {
-        override fun retain(uri: String) = PersistedDocument(
-            uri = uri,
-            mimeType = "image/jpeg",
-            displayName = "olivar.jpg",
-            sizeBytes = 1_024,
-        )
+    private fun jpeg(): ByteArray {
+        val bitmap = Bitmap.createBitmap(64, 48, Bitmap.Config.ARGB_8888)
+        return ByteArrayOutputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+            bitmap.recycle()
+            output.toByteArray()
+        }
     }
 
     private fun uuid(value: String): UUID = UUID.fromString(value)
 
     private companion object {
         const val TEST_DATABASE = "farm-cover-test.db"
-        const val COVER_URI = "content://test/olivar.jpg"
     }
 }

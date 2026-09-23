@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Photos being taken: temporary, copied into attachments/ once the camera returns. -->
+    <cache-path name="camera" path="camera/" />
+    <!-- App-owned attachment copies, shared read-only with a viewer on request. -->
+    <files-path name="attachments" path="attachments/" />
+</paths>

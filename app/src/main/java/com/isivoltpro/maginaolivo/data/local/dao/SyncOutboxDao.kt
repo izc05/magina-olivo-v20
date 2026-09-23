@@ -38,4 +38,29 @@ interface SyncOutboxDao {
 
     @Query("DELETE FROM sync_outbox WHERE entity_type = :entityType AND entity_id = :entityId AND status IN ('PENDING', 'FAILED')")
     suspend fun deletePendingForEntity(entityType: SyncEntityType, entityId: UUID)
+
+    /**
+     * Records a failed attempt on the upload intents of one entity. The intent stays in the
+     * queue, so a later attempt can retry it; nothing here touches the entity itself.
+     */
+    @Query(
+        """
+        UPDATE sync_outbox
+        SET status = 'FAILED',
+            attempt_count = attempt_count + 1,
+            last_error_code = :errorCode,
+            last_error_message = :errorMessage,
+            updated_at = :nowEpochMillis
+        WHERE entity_type = :entityType AND entity_id = :entityId
+          AND operation = 'UPLOAD_ATTACHMENT'
+          AND status IN ('PENDING', 'PROCESSING', 'FAILED')
+        """,
+    )
+    suspend fun recordUploadFailure(
+        entityType: SyncEntityType,
+        entityId: UUID,
+        errorCode: String,
+        errorMessage: String?,
+        nowEpochMillis: Long,
+    ): Int
 }

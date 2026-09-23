@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-09-22
+**Last reviewed:** 2026-09-23
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -31,7 +31,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 11 — ATTACHMENTS (NOT STARTED)
+▶ PHASE 11 — ATTACHMENTS (IN PROGRESS — implemented, awaiting CI evidence)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -205,11 +205,30 @@ PHASE 10 = COMPLETE AND VALIDATED / MERGED TO MAIN (4acc3ab9)
 MAIN = GREEN
 ```
 
+## Phase 11 — Attachments (in progress)
+
+Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
+`docs/07-plans/PHASE11-ATTACHMENTS.md`, evidence in
+`docs/06-testing/PHASE11-ATTACHMENTS-SLICE.md`. **Gate 11 is not yet PASS**: no CI run
+has validated the branch.
+
+- Camera capture (through the app's own `FileProvider`) and document picker for images
+  and PDF, from a "Documentos" section in Farm, Parcel and Activity detail. No new root.
+- Every attachment is copied into `filesDir/attachments/` with its SHA-256 and size
+  before its `documents` row and single `UPLOAD_ATTACHMENT` intent are written in one
+  transaction; a failed transaction releases the copy.
+- Derived thumbnails for photos (EXIF-rotated) and the first page of PDFs.
+- `recordUploadFailure` records a failed upload without touching the local URI, the
+  file or the version — the Gate 11 guarantee.
+- The Farm cover is now a copied Farm photo; covers saved before Phase 11 keep their
+  content URI.
+- No Room schema change: `documents` (schema v2) already carries the attachment
+  contract, so the database stays at v5.
+
 ## Next deliverable
 
-**Phase 11 — Attachments**: camera and document picker, the local attachment lifecycle,
-thumbnails and local references, with attachments surviving a restart and a failed future
-upload. Not started.
+Close Gate 11 with real CI evidence (Android CI + the independent emulator run), then
+**Phase 12 — Expenses, purchases, organizations + generic document OCR**.
 
 Both workflows still run on pushes to `feat/**` and `hotfix/**`, so a branch reaches a
 green emulator run before a pull request exists.

@@ -16,5 +16,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Phase 11: hands the camera a place to write, and viewers a read-only grant. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.attachments"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/attachment_paths" />
+        </provider>
+
     </application>
 </manifest>

@@ -7,12 +7,13 @@ import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
-import com.isivoltpro.maginaolivo.data.local.entity.DocumentEntity
-import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentKind
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.farm.FarmCoverRepository
 import java.time.Instant
 import java.util.UUID
@@ -20,9 +21,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 
+/**
+ * The Farm cover is an ordinary Farm photo attachment that the Farm points at
+ * (`DATA-MODEL-RC1.1-ADDENDUM` §1). Since Phase 11 the image is copied into app storage
+ * first, so the cover no longer depends on the picked file or its permission grant. A
+ * replaced cover stays in the Farm's attachments: the original remains available.
+ */
 class OfflineFirstFarmCoverRepository(
     private val database: MaginaOlivoDatabase,
-    private val documentSource: PersistedDocumentSource,
+    private val fileStore: AttachmentFileStore,
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
@@ -34,41 +41,32 @@ class OfflineFirstFarmCoverRepository(
         farmId: UUID,
         uri: String,
     ): AppResult<Unit> = withContext(dispatchers.io) {
-        val persisted = runCatching { documentSource.retain(uri) }
-            .getOrElse { error ->
-                return@withContext AppResult.Failure(
-                    if (error is IllegalArgumentException) {
-                        AppError.Validation(field = "cover", code = "invalid_image_uri", cause = error)
-                    } else {
-                        AppError.Permission(operation = "retain_document_uri", cause = error)
-                    },
-                )
-            }
+        val owner = AttachmentOwner(AttachmentOwnerType.FARM, farmId)
+        val existing = database.farmDao().findById(farmId)
+            ?: return@withContext AppResult.Failure(AppError.NotFound("farm"))
+        if (existing.metadata.deletedAt != null) {
+            return@withContext AppResult.Failure(AppError.Validation(field = "owner", code = "archived_owner"))
+        }
+        val documentId = idGenerator.newId()
+        val stored = runCatching {
+            fileStore.importFile(uri, documentId) { AttachmentKind.fromMimeType(it) == AttachmentKind.PHOTO }
+        }.getOrElse { error ->
+            return@withContext AppResult.Failure(
+                if (error is RejectedAttachmentException) {
+                    AppError.Validation(field = "cover", code = error.code, cause = error)
+                } else {
+                    error.toCopyError()
+                },
+            )
+        }
         val now = clock.nowInstant()
 
-        runCatching {
+        val result = runCatching {
             database.withTransaction {
                 val farm = database.farmDao().findById(farmId)
                     ?: return@withTransaction AppResult.Failure(AppError.NotFound("farm"))
-                val documentId = idGenerator.newId()
                 database.documentDao().insert(
-                    DocumentEntity(
-                        id = documentId,
-                        workspaceId = farm.workspaceId,
-                        ownerType = "FARM",
-                        ownerId = farmId,
-                        type = "COVER",
-                        mimeType = persisted.mimeType,
-                        displayName = persisted.displayName,
-                        fileSizeBytes = persisted.sizeBytes,
-                        localUri = persisted.uri,
-                        uploadStatus = "PENDING",
-                        metadata = LocalMetadata(
-                            createdAt = now,
-                            updatedAt = now,
-                            syncStatus = SyncStatus.PENDING,
-                        ),
-                    ),
+                    stored.toEntity(documentId, farm.workspaceId, owner, AttachmentKind.PHOTO, now),
                 )
                 database.farmDao().upsert(
                     farm.copy(
@@ -87,6 +85,8 @@ class OfflineFirstFarmCoverRepository(
         }.getOrElse { error ->
             AppResult.Failure(AppError.Storage(operation = "attach_farm_cover", cause = error))
         }
+        if (result is AppResult.Failure) fileStore.delete(stored.localUri, documentId)
+        result
     }
 
     private suspend fun enqueue(
