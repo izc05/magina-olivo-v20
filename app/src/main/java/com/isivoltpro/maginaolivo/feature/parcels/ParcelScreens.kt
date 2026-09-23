@@ -39,6 +39,7 @@ import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
+import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoMetricCard
@@ -229,7 +230,7 @@ fun ParcelDetailScreen(
             Text("Archivar parcela", style = MaterialTheme.typography.headlineSmall)
             Text("Se conservarán sus datos y el histórico de pertenencia a la finca.", color = MoTextSecondary)
             MoPrimaryButton("Archivar", { archiveConfirmation = false; onArchive() }, Modifier.fillMaxWidth())
-            MoSecondaryButton("Cancelar", { archiveConfirmation = false }, Modifier.fillMaxWidth())
+            MoTertiaryButton("Cancelar", { archiveConfirmation = false }, Modifier.fillMaxWidth())
             Spacer(Modifier.height(MoSpacing.md))
         }
     }
@@ -311,7 +312,7 @@ private fun ParcelEditor(
             Modifier.fillMaxWidth().testTag("save-parcel"),
             enabled = !isSaving,
         )
-        MoSecondaryButton("Cancelar", onCancel, Modifier.fillMaxWidth(), enabled = !isSaving)
+        MoTertiaryButton("Cancelar", onCancel, Modifier.fillMaxWidth(), enabled = !isSaving)
         Spacer(Modifier.height(MoSpacing.lg))
     }
 }

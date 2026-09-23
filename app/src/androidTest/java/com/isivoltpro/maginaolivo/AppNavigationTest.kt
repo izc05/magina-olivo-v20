@@ -315,6 +315,8 @@ class AppNavigationTest {
         waitForTag("save-activity")
         clickInSheetByTag("save-activity")
         waitForText("Poda multiparcela E2E")
+        // The typed description is on screen before the save lands; wait for the saved row.
+        waitForTag("activity-row")
 
         // Exactly ONE canonical Activity row, not one per parcel.
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
@@ -338,6 +340,8 @@ class AppNavigationTest {
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
         waitForText("Poda multiparcela E2E")
+        // The typed description is on screen before the save lands; wait for the saved row.
+        waitForTag("activity-row")
 
         // Still one canonical Activity after the restart.
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
@@ -391,6 +395,8 @@ class AppNavigationTest {
         clickInSheetByTag("save-activity")
 
         waitForText("Riego desde Registrar")
+        // The typed description is on screen before the save lands; wait for the saved row.
+        waitForTag("activity-row")
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
 
         // The same Activity is the one the Farm detail shows: one record, one home.
@@ -409,6 +415,8 @@ class AppNavigationTest {
         waitForTag("farm-detail-root")
         waitForTag("add-activity")
         waitForText("Riego desde Registrar")
+        // The typed description is on screen before the save lands; wait for the saved row.
+        waitForTag("activity-row")
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
     }
 

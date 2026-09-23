@@ -485,7 +485,7 @@ internal fun ActivityEditor(
                 modifier = Modifier.fillMaxWidth().testTag("save-activity-draft"),
             )
         }
-        MoSecondaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
+        MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
     }
 }
 

@@ -142,7 +142,7 @@ internal fun CampaignEditor(
         }
         MoTextField(notes, { notes = it }, "Notas")
         MoPrimaryButton("Guardar campaña", { onSave(CampaignDraft(name, runCatching { LocalDate.parse(date) }.getOrNull(), selected.map(UUID::fromString).toSet(), notes)) }, modifier = Modifier.fillMaxWidth().testTag("save-campaign"), enabled = !isSaving)
-        MoSecondaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
+        MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
     }
 }
 

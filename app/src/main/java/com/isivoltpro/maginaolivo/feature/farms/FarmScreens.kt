@@ -747,7 +747,7 @@ private fun FarmEditor(
                 .fillMaxWidth()
                 .testTag("save-farm"),
         )
-        MoSecondaryButton(
+        MoTertiaryButton(
             text = "Cancelar",
             onClick = onCancel,
             enabled = !isSaving,
