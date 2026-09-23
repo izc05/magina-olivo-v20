@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -670,9 +671,19 @@ class AppNavigationTest {
      */
     private fun pickDate(fieldTag: String, iso: String) {
         val target = java.time.LocalDate.parse(iso)
+        // The field usually follows a text input: close the keyboard first so the resize it
+        // causes cannot swallow the tap, and tap once more if the picker still did not open.
+        closeSoftKeyboard()
+        composeRule.waitForIdle()
         scrollIntoViewIfPossible { composeRule.onNodeWithTag(fieldTag) }
         composeRule.onNodeWithTag(fieldTag).performClick()
-        waitForTag("date-picker-sheet")
+        if (!awaitTag("date-picker-sheet", SHEET_TIMEOUT_MS)) {
+            scrollIntoViewIfPossible { composeRule.onNodeWithTag(fieldTag) }
+            composeRule.onNodeWithTag(fieldTag).performClick()
+            waitForNodeOrDump("<date-picker-sheet> after tapping <$fieldTag> again") {
+                composeRule.onAllNodesWithTag("date-picker-sheet")
+            }
+        }
         val months = java.time.temporal.ChronoUnit.MONTHS.between(
             java.time.YearMonth.now(),
             java.time.YearMonth.from(target),
