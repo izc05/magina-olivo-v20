@@ -24,6 +24,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyproj==3.7.1
+      - run: python -m unittest discover -s spikes/catastro -p 'test_*.py' -v
       - run: python spikes/catastro/probe.py
       - if: always()
         uses: actions/upload-artifact@v4

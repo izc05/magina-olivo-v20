@@ -72,12 +72,24 @@ def parcels(body):
         ref = parcel.findtext("cp:nationalCadastralReference", default=None, namespaces=NS)
         area = parcel.findtext("cp:areaValue", default=None, namespaces=NS)
         polygons = []
-        for polygon in parcel.iter("{%s}Polygon" % NS["gml"]):
+        # The official WFS currently returns MultiSurface/Surface/PolygonPatch.
+        # Keep Polygon as a fallback for other valid GML 3.2 responses.
+        for polygon in parcel.iter():
+            if polygon.tag not in ("{%s}PolygonPatch" % NS["gml"], "{%s}Polygon" % NS["gml"]):
+                continue
             rings = []
-            for ring in polygon.iter("{%s}posList" % NS["gml"]):
-                values = [float(v) for v in ring.text.split()]
+            for boundary in polygon:
+                if boundary.tag not in ("{%s}exterior" % NS["gml"], "{%s}interior" % NS["gml"]):
+                    continue
+                positions = boundary.find(".//gml:posList", NS)
+                if positions is None or not positions.text:
+                    continue
+                values = [float(v) for v in positions.text.split()]
+                if len(values) < 8 or len(values) % 2:
+                    continue
                 rings.append(list(zip(values[0::2], values[1::2])))
-            polygons.append(rings)
+            if rings:
+                polygons.append(rings)
         found.append((ref, float(area) if area else None, polygons))
     return found
 
@@ -139,7 +151,8 @@ def main():
                 entry["samples"].append(sample)
                 continue
             sample["returned_refs"] = [p[0] for p in p_utm]
-            if not p_utm or not p_geo:
+            if not p_utm or not p_geo or not p_utm[0][2] or not p_geo[0][2]:
+                sample["geometry_error"] = "No polygon geometry in one of the WFS responses"
                 entry["samples"].append(sample)
                 continue
             ref_utm, area_value, polys_utm = p_utm[0]
