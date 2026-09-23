@@ -1,6 +1,6 @@
 # Phase 17 — Spain Catastro technical spike (preparation)
 
-**Status:** research line prepared while Gate 16 waits for its physical-device check.
+**Status:** WFS probe passed on 2026-09-23 while Gate 16 waits for its physical-device check.
 No production code: nothing here is compiled into the app.
 **Branch:** `docs/phase17-catastro-spike` (auxiliary research line, `SINGLE-TRACK-EXECUTION`)
 **Contract:** `docs/03-maps/CADASTRE-CONTRACT-RC1.md` (§20 test matrix, §21 gate)
@@ -38,6 +38,18 @@ Timings (ms) are recorded for every call, to size timeouts and retry policy (§1
    `cadastralAreaM2`.
 4. **Error mapping:** real service responses → the contract's error model (§15).
 5. **Timeouts/retries** from measured latencies.
+
+## Measured result (GitHub Actions run 35905672255)
+
+- Small BBOX queries returned 3 parcels near Huelma, 30 near Bedmar and 6 near Jimena.
+- Six parcels were resolved again by their own 14-character reference. Every returned reference matched.
+- The service returned `gml:MultiSurface` with `gml:Surface/gml:PolygonPatch`, not `gml:Polygon`; the probe now parses exterior and interior rings explicitly.
+- `EPSG::4326` coordinates arrived in **latitude, longitude** order. Comparison with `EPSG::25830` converted to WGS84 differed by at most 0.198 m across the six samples. The Android adapter can request 4326 directly and normalize coordinates to GeoJSON longitude, latitude order.
+- The provider's `areaValue` differed from the UTM shoelace calculation by at most 0.5 m² in these samples. Store the provider value as cadastral area when present; preserve the geometry independently.
+- Reference lookups took 732–797 ms; BBOX lookups took 976–2338 ms in this run. Use a bounded timeout and retry only transient transport errors, then verify with more runs before freezing limits.
+- Malformed, unknown and oversized BBOX requests all returned HTTP 200 with an exception message and zero parcels. The adapter must inspect the XML body, not use HTTP status alone.
+
+This result validates the service shape for the sampled Sierra Mágina locations. It does not yet prove polygons with holes or multipart parcels in live responses; those cases need fixtures and an additional real sample before the production parser is final. Gate 17 remains open until the Android confirmation and offline save flow works with a real parcel.
 
 ## Out of scope here
 
