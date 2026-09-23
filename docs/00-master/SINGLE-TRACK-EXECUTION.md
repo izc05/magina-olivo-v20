@@ -40,10 +40,10 @@ The old monolithic Phase 3 PR #180 is superseded and must not be merged.
 
 ```text
 CURRENT:              Phase 13 — Harvest = PASS, merged into `main`
-                      through PR #209
+                      through PR #209 as c75cad56
 
 ACTIVE PRODUCTION PHASE: Phase 14 — Deliveries + weight-ticket OCR + later
-                      yield (NEXT)
+                      yield (IN PROGRESS — branch claude/dreamy-dijkstra-tdui2c)
 
 BLOCKER:              none
 ```

@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.domain.harvest
 
+import com.isivoltpro.maginaolivo.domain.production.ParcelSplit
 import java.time.LocalDate
 import java.util.UUID
 
@@ -104,19 +105,8 @@ object HarvestRules {
         if (draft.shares.map { it.parcelId }.toSet().size != draft.shares.size) {
             return HarvestProblem("parcels", "duplicate")
         }
-        if (draft.shares.any { (it.weightGrams ?: 1) <= 0 }) return HarvestProblem("parcels", "not_positive")
         if ((draft.workerCount ?: 0) < 0) return HarvestProblem("workerCount", "negative")
-        val exact = draft.shares.mapNotNull { it.weightGrams }
-        val allocated = exact.sum()
-        val someUnknown = exact.size < draft.shares.size
-        return when {
-            allocated > total -> HarvestProblem("parcels", "exceeds_total")
-            !someUnknown && allocated != total -> HarvestProblem("parcels", "does_not_reconcile")
-            // Parcels marked unknown must share something: otherwise the form is saying
-            // they contributed nothing, which is an exact split in disguise.
-            someUnknown && allocated == total -> HarvestProblem("parcels", "nothing_left_unallocated")
-            else -> null
-        }
+        return ParcelSplit.problem(total, draft.shares.map { it.weightGrams })?.let { HarvestProblem("parcels", it) }
     }
 }
 

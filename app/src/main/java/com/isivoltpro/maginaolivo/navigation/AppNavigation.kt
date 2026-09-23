@@ -27,6 +27,9 @@ import com.isivoltpro.maginaolivo.feature.activities.ActivityDetailRoute
 import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailRoute
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestDetailRoute
+import com.isivoltpro.maginaolivo.feature.deliveries.DeliveriesRoute
+import com.isivoltpro.maginaolivo.feature.deliveries.DeliveryDetailRoute
+import com.isivoltpro.maginaolivo.feature.deliveries.TicketReviewRoute
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestsRoute
 import com.isivoltpro.maginaolivo.feature.expenses.DocumentReviewRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpenseDetailRoute
@@ -226,6 +229,7 @@ fun AppNavigation(
                         persistence = persistence,
                         clock = compositionRoot.clock,
                         onHarvestSelected = { id -> navController.navigate(AppDestination.harvest(id.toString())) },
+                        onDeliveries = { navController.navigate(AppDestination.Deliveries) },
                     )
                 }
             }
@@ -241,6 +245,54 @@ fun AppNavigation(
                         persistence = persistence,
                         clock = compositionRoot.clock,
                         onDeleted = { navController.popBackStack() },
+                    )
+                }
+            }
+            composable(AppDestination.Deliveries) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    DeliveriesRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onDeliverySelected = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
+                        onTicketSelected = { id -> navController.navigate(AppDestination.ticket(id.toString())) },
+                    )
+                }
+            }
+            composable(AppDestination.DeliveryPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val deliveryId = backStackEntry.arguments?.getString("deliveryId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || deliveryId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    DeliveryDetailRoute(
+                        deliveryId = deliveryId,
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onDeleted = { navController.popBackStack() },
+                    )
+                }
+            }
+            composable(AppDestination.TicketPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val extractionId = backStackEntry.arguments?.getString("extractionId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || extractionId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    TicketReviewRoute(
+                        extractionId = extractionId,
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onDeliveryCreated = { id ->
+                            navController.navigate(AppDestination.delivery(id.toString())) {
+                                popUpTo(AppDestination.TicketPattern) { inclusive = true }
+                            }
+                        },
+                        onClosed = { navController.popBackStack() },
                     )
                 }
             }
@@ -316,6 +368,13 @@ fun AppNavigation(
                     onClick = {
                         registerSheetVisible = false
                         navController.navigate(AppDestination.Harvest)
+                    },
+                )
+                RegisterAction(
+                    text = "Registrar entrega",
+                    onClick = {
+                        registerSheetVisible = false
+                        navController.navigate(AppDestination.Deliveries)
                     },
                 )
                 RegisterAction(

@@ -44,6 +44,7 @@ object AppDestination {
     const val Expenses = "expenses"
     const val DeveloperGallery = "developer-gallery"
     const val Organizations = "organizations"
+    const val Deliveries = "deliveries"
 
     const val FarmPattern = "farm/{farmId}"
     const val ParcelPattern = "parcel/{parcelId}"
@@ -52,6 +53,8 @@ object AppDestination {
     const val ExpensePattern = "expense/{expenseId}"
     const val DocumentPattern = "document/{extractionId}"
     const val HarvestPattern = "harvest/{harvestId}"
+    const val DeliveryPattern = "delivery/{deliveryId}"
+    const val TicketPattern = "delivery-ticket/{extractionId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
 
@@ -66,6 +69,10 @@ object AppDestination {
     fun document(extractionId: String): String = nestedRoute("document", extractionId)
 
     fun harvest(harvestId: String): String = nestedRoute(Harvest, harvestId)
+
+    fun delivery(deliveryId: String): String = nestedRoute("delivery", deliveryId)
+
+    fun ticket(extractionId: String): String = nestedRoute("delivery-ticket", extractionId)
 
     fun rootForRoute(route: String?): RootDestination? {
         val prefix = route?.substringBefore('/') ?: return null
@@ -84,6 +91,9 @@ object AppDestination {
             Harvest,
             Expenses,
             Organizations,
+            Deliveries,
+            "delivery",
+            "delivery-ticket",
             "expense",
             "document",
             -> RootDestination.Register

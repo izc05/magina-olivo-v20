@@ -34,7 +34,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 14 — DELIVERIES + WEIGHT-TICKET OCR + LATER YIELD (NEXT — starts after PR #209 is merged)
+▶ PHASE 14 — DELIVERIES + WEIGHT-TICKET OCR + LATER YIELD (IN PROGRESS — implemented, awaiting CI evidence)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -269,19 +269,23 @@ Android Emulator Evidence #67 (run `35858242303`) SUCCESS.
   must add up to the total to the gram; a partial split leaves the rest unattributed.
 - S70 shows campaign totals as known-per-Parcel kilos plus "sin repartir" kilos.
 
+**Merged into `main`** through PR #209 as merge commit `c75cad56`.
+
+## Phase 14 — Deliveries + weight-ticket OCR + later yield (in progress)
+
+Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
+`docs/07-plans/PHASE14-DELIVERIES-TICKET-OCR-YIELD.md`. **Gate 14 is not yet PASS.**
+
+- Room v8: `deliveries`, `delivery_parcels` (same split rule as Harvest) and
+  `delivery_yield_analyses`, a separate record so a later yield never changes the delivery.
+- A weight ticket is read on the device by the generic OCR service (`DELIVERY_TICKET`);
+  the Delivery is created only by the explicit reviewed command, from the values the farmer
+  confirmed, once.
+- S80 shows delivered kilos and fat/industrial yield weighted by kilos with its coverage.
+
 ## Next deliverable
 
-**Phase 14 — Deliveries + weight-ticket OCR + later yield**: Delivery distinct from
-Harvest, `DELIVERY_TICKET` OCR through the generic service with mandatory review, yield as
-a separate later analysis. Gate 14: the original delivery survives OCR/yield updates
-unchanged; OCR cannot auto-confirm; weighted metrics are correct.
-
-Both workflows still run on pushes to `feat/**` and `hotfix/**`, so a branch reaches a
-green emulator run before a pull request exists.
-
-Activity cost stays out of `activities`: `RC1-NORMATIVE-ADDENDUM` D2 supersedes
-`activities.cost_cents` / `activities.currency`, and cost will arrive as a linked
-`expenses` row in its own phase.
+Close Gate 14 with real CI evidence, merge it, then **Phase 15 — Machinery**.
 
 ## Parallel-chat reconciliation
 

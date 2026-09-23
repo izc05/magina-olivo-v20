@@ -20,6 +20,7 @@ import com.isivoltpro.maginaolivo.data.repository.MlKitOcrEngine
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDocumentOcrRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstExpenseRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstHarvestRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDeliveryRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstOrganizationRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
@@ -113,6 +114,9 @@ data class AppCompositionRoot(
             val harvestRepository = OfflineFirstHarvestRepository(
                 database, defaults.clock, defaults.idGenerator, defaults.dispatchers,
             )
+            val deliveryRepository = OfflineFirstDeliveryRepository(
+                database, defaults.clock, defaults.idGenerator, defaults.dispatchers,
+            )
             return defaults.copy(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 localPersistence = LocalPersistence(
@@ -127,6 +131,7 @@ data class AppCompositionRoot(
                     expenseRepository = expenseRepository,
                     documentOcrRepository = documentOcrRepository,
                     harvestRepository = harvestRepository,
+                    deliveryRepository = deliveryRepository,
                     workspaceRepository = workspaceRepository,
                 ),
             )

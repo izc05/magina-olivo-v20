@@ -208,7 +208,10 @@ class ExpensesViewModel(
         }
         viewModelScope.launch {
             documents.observeOpen().catch { }.collect { open ->
-                mutableState.value = mutableState.value.copy(openDocuments = open)
+                // Weight tickets are reviewed with Deliveries, where they become kilos, not money.
+                mutableState.value = mutableState.value.copy(
+                    openDocuments = open.filter { it.documentType != DocumentType.DELIVERY_TICKET },
+                )
             }
         }
         relations.collectInto(viewModelScope) { options ->

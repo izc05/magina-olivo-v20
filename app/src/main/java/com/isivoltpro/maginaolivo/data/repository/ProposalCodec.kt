@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.data.repository
 
 import com.isivoltpro.maginaolivo.domain.expense.PurchaseLine
+import com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketProposal
 import com.isivoltpro.maginaolivo.domain.ocr.PurchaseProposal
 import java.time.LocalDate
 import org.json.JSONArray
@@ -11,6 +12,10 @@ interface ProposalCodec {
     fun encode(proposal: PurchaseProposal): String
 
     fun decode(json: String): PurchaseProposal?
+
+    fun encodeDelivery(proposal: DeliveryTicketProposal): String
+
+    fun decodeDelivery(json: String): DeliveryTicketProposal?
 }
 
 class JsonProposalCodec : ProposalCodec {
@@ -45,6 +50,7 @@ class JsonProposalCodec : ProposalCodec {
 
     override fun decode(json: String): PurchaseProposal? = runCatching {
         val root = JSONObject(json)
+        if (root.optString("schema") == "delivery_ticket_v1") return@runCatching null
         val items = root.optJSONArray("items") ?: JSONArray()
         PurchaseProposal(
             supplierName = root.optStringOrNull("supplier_name"),
@@ -65,6 +71,34 @@ class JsonProposalCodec : ProposalCodec {
                     lineTotalMinor = item.optLongOrNull("line_total_minor"),
                 )
             },
+        )
+    }.getOrNull()
+
+    override fun encodeDelivery(proposal: DeliveryTicketProposal): String =
+        JSONObject().apply {
+            put("schema", "delivery_ticket_v1")
+            putOpt("organization_name", proposal.organizationName)
+            putOpt("ticket_number", proposal.ticketNumber)
+            putOpt("delivery_date", proposal.deliveryDate?.toString())
+            putOpt("gross_grams", proposal.grossGrams)
+            putOpt("tare_grams", proposal.tareGrams)
+            putOpt("net_grams", proposal.netGrams)
+            putOpt("member_reference", proposal.memberReference)
+            putOpt("vehicle_reference", proposal.vehicleReference)
+        }.toString()
+
+    override fun decodeDelivery(json: String): DeliveryTicketProposal? = runCatching {
+        val root = JSONObject(json)
+        if (root.optString("schema") != "delivery_ticket_v1") return@runCatching null
+        DeliveryTicketProposal(
+            organizationName = root.optStringOrNull("organization_name"),
+            ticketNumber = root.optStringOrNull("ticket_number"),
+            deliveryDate = root.optStringOrNull("delivery_date")?.let(LocalDate::parse),
+            grossGrams = root.optLongOrNull("gross_grams"),
+            tareGrams = root.optLongOrNull("tare_grams"),
+            netGrams = root.optLongOrNull("net_grams"),
+            memberReference = root.optStringOrNull("member_reference"),
+            vehicleReference = root.optStringOrNull("vehicle_reference"),
         )
     }.getOrNull()
 
