@@ -24,6 +24,7 @@ import com.isivoltpro.maginaolivo.app.AppCompositionRoot
 import com.isivoltpro.maginaolivo.app.AppEnvironment
 import com.isivoltpro.maginaolivo.feature.farms.FarmDetailRoute
 import com.isivoltpro.maginaolivo.feature.agenda.AgendaRoute
+import com.isivoltpro.maginaolivo.feature.profile.ProfileRoute
 import com.isivoltpro.maginaolivo.feature.farms.FarmListRoute
 import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
 import com.isivoltpro.maginaolivo.feature.activities.ActivityDetailRoute
@@ -195,10 +196,9 @@ fun AppNavigation(
                 }
             }
             composable(RootDestination.Profile.route) {
-                NavigationPlaceholderScreen(
-                    title = "Perfil y ajustes",
-                    description = "Cuenta, preferencias, ayuda y estado de sincronización se incorporarán en sus fases correspondientes.",
-                    testTag = "profile-root",
+                ProfileRoute(
+                    appVersion = com.isivoltpro.maginaolivo.BuildConfig.VERSION_NAME,
+                    onMachinery = { navController.navigate(AppDestination.Machinery) },
                     developerGalleryEnabled = compositionRoot.environment == AppEnvironment.DEV,
                     onDeveloperGallery = { navController.navigate(AppDestination.DeveloperGallery) },
                 )
