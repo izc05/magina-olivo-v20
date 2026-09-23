@@ -13,6 +13,9 @@ weather, prices and notices in the mockups are illustrative, not application dat
 - Use the same mark for the Android launcher icon on a warm cream background.
 - Replace the welcome screen's abstract hills with a photographic olive grove
   asset, with a cream fade to preserve text legibility.
+- Use that landscape in Inicio's hero until a user cover photo can be wired in.
+- Remove sample weather, production, market and cooperative claims from Inicio;
+  the cards now communicate their purpose without pretending to show live data.
 - The asset was generated with the built-in image tool using the owner's first
   onboarding mockup as a mood reference. It is decorative and does not claim to
   depict a particular real farm or geographic viewpoint.
