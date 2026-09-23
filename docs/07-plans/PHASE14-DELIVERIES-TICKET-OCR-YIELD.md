@@ -1,6 +1,6 @@
 # Phase 14 — Deliveries, weight-ticket OCR and later yield
 
-**Status:** IMPLEMENTED — awaiting CI evidence for Gate 14
+**Status:** Gate 14 PASS — validated on `a90068e4` (Android CI #358), merged through PR #210
 **Precondition:** Gate 13 PASS, merged into `main` through PR #209 as `c75cad56`
 **Branch:** `claude/dreamy-dijkstra-tdui2c`
 

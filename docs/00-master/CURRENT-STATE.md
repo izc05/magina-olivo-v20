@@ -29,12 +29,13 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 11 — Attachments
 ✅ Gate 12 — Expenses, purchases, organizations + generic OCR
 ✅ Gate 13 — Harvest
+✅ Gate 14 — Deliveries + weight-ticket OCR + later yield
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 14 — DELIVERIES + WEIGHT-TICKET OCR + LATER YIELD (IN PROGRESS — implemented, awaiting CI evidence)
+▶ PHASE 15 — MACHINERY (NEXT — starts after PR #210 is merged)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -271,10 +272,13 @@ Android Emulator Evidence #67 (run `35858242303`) SUCCESS.
 
 **Merged into `main`** through PR #209 as merge commit `c75cad56`.
 
-## Phase 14 — Deliveries + weight-ticket OCR + later yield (in progress)
+## Phase 14 — Deliveries + weight-ticket OCR + later yield
 
 Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
-`docs/07-plans/PHASE14-DELIVERIES-TICKET-OCR-YIELD.md`. **Gate 14 is not yet PASS.**
+`docs/07-plans/PHASE14-DELIVERIES-TICKET-OCR-YIELD.md`, evidence in
+`docs/06-testing/PHASE14-DELIVERIES-SLICE.md`. **Gate 14 passed** on commit `a90068e4`:
+Android CI #358 (run `35861745903`) with `foundation` and `gate3-emulator` SUCCESS, and
+Gate 3 Android Emulator Evidence #72 (run `35861748914`) SUCCESS with an empty crash buffer.
 
 - Room v8: `deliveries`, `delivery_parcels` (same split rule as Harvest) and
   `delivery_yield_analyses`, a separate record so a later yield never changes the delivery.
@@ -285,7 +289,9 @@ Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
 
 ## Next deliverable
 
-Close Gate 14 with real CI evidence, merge it, then **Phase 15 — Machinery**.
+**Phase 15 — Machinery**: machinery list/detail, activity relation, optional hours/usage,
+lightweight field workflow. Gate 15: machinery adds value without making activities
+mandatory/complex.
 
 ## Parallel-chat reconciliation
 
