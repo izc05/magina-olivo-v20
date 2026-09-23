@@ -107,8 +107,6 @@ internal fun parseCadastralGml(xml: ByteArray, expectedReference: String): Cadas
         setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
         setXIncludeAware(false)
         isExpandEntityReferences = false
-        setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
-        setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
     }
     val root = try {
         factory.newDocumentBuilder().parse(xml.inputStream()).documentElement
