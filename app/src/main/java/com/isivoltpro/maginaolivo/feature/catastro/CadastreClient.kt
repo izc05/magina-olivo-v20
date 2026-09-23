@@ -168,7 +168,7 @@ private fun parseRing(boundary: Element): List<Pair<Double, Double>> {
         val latitude = pair[0].toDoubleOrNull()
         val longitude = pair[1].toDoubleOrNull()
         if (latitude == null || longitude == null || !latitude.isFinite() || !longitude.isFinite() ||
-            latitude !in 35.0..44.0 || longitude !in -10.0..5.0
+            latitude !in SPAIN_LATITUDE || longitude !in SPAIN_LONGITUDE
         ) throw CadastreException(CadastreError.INVALID_GEOMETRY)
         longitude to latitude
     }
@@ -180,6 +180,11 @@ private fun parseRing(boundary: Element): List<Pair<Double, Double>> {
 
 private fun Element.firstText(namespace: String, localName: String): String? =
     getElementsByTagNameNS(namespace, localName).item(0)?.textContent?.trim()?.takeIf(String::isNotEmpty)
+
+// Whole Catastro coverage, Canary Islands, Ceuta and Melilla included. A point outside it
+// means swapped axes or the wrong CRS, never a real Spanish parcel.
+private val SPAIN_LATITUDE = 27.0..44.5
+private val SPAIN_LONGITUDE = -18.5..4.6
 
 private const val CP_NS = "http://inspire.ec.europa.eu/schemas/cp/4.0"
 private const val GML_NS = "http://www.opengis.net/gml/3.2"

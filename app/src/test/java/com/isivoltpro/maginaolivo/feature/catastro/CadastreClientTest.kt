@@ -47,4 +47,28 @@ class CadastreClientTest {
         assertEquals(2, candidate.polygons[0].size)
         assertTrue(candidate.geometryGeoJson.contains("\"MultiPolygon\""))
     }
+
+    @Test fun acceptsCanaryIslandsParcelsAndRejectsSwappedAxes() {
+        fun gml(posList: String) = """<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0"
+            xmlns:cp="http://inspire.ec.europa.eu/schemas/cp/4.0"
+            xmlns:gml="http://www.opengis.net/gml/3.2"><wfs:member><cp:CadastralParcel>
+            <cp:nationalCadastralReference>38001A00100001</cp:nationalCadastralReference>
+            <cp:geometry><gml:MultiSurface><gml:surfaceMember><gml:Surface srsName="EPSG::4326">
+            <gml:patches><gml:PolygonPatch>
+            <gml:exterior><gml:LinearRing><gml:posList>$posList</gml:posList></gml:LinearRing></gml:exterior>
+            </gml:PolygonPatch></gml:patches></gml:Surface></gml:surfaceMember></gml:MultiSurface></cp:geometry>
+            </cp:CadastralParcel></wfs:member></wfs:FeatureCollection>""".toByteArray()
+
+        // Tenerife, latitude first as Catastro serves EPSG::4326.
+        val canary = parseCadastralGml(gml("28.3 -16.5 28.3 -16.49 28.31 -16.49 28.3 -16.5"), "38001A00100001")
+        assertEquals(-16.5, canary.polygons[0][0][0].first, 0.0)
+        assertEquals(28.3, canary.polygons[0][0][0].second, 0.0)
+
+        try {
+            parseCadastralGml(gml("-16.5 28.3 -16.49 28.3 -16.49 28.31 -16.5 28.3"), "38001A00100001")
+            fail("Longitude-first coordinates must not be stored as a parcel")
+        } catch (error: CadastreException) {
+            assertEquals(CadastreError.INVALID_GEOMETRY, error.kind)
+        }
+    }
 }

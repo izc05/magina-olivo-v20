@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo.feature.parcels
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,6 +64,7 @@ fun FarmParcelsRoute(
     farmId: UUID,
     persistence: LocalPersistence,
     onParcelSelected: (UUID) -> Unit,
+    onImportFromCatastro: (() -> Unit)? = null,
 ) {
     val viewModel: FarmParcelsViewModel = viewModel(
         key = "farm-parcels-$farmId",
@@ -76,6 +78,7 @@ fun FarmParcelsRoute(
         onParcelSelected = onParcelSelected,
         onCreate = viewModel::create,
         onRestore = viewModel::restore,
+        onImportFromCatastro = onImportFromCatastro,
     )
 }
 
@@ -86,6 +89,7 @@ fun FarmParcelsSection(
     onParcelSelected: (UUID) -> Unit,
     onCreate: (ParcelDraft) -> Unit,
     onRestore: (UUID) -> Unit,
+    onImportFromCatastro: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -99,13 +103,24 @@ fun FarmParcelsSection(
     }
     MoSectionHeader(
         title = "Parcelas",
-        action = { TextButton(onClick = { editorVisible = true }, modifier = Modifier.testTag("add-parcel")) { Text("Añadir") } },
+        action = {
+            Row {
+                onImportFromCatastro?.let {
+                    TextButton(onClick = it, modifier = Modifier.testTag("import-catastro")) { Text("Catastro") }
+                }
+                TextButton(onClick = { editorVisible = true }, modifier = Modifier.testTag("add-parcel")) { Text("Añadir") }
+            }
+        },
     )
     when {
         state.isLoading -> CircularProgressIndicator()
         state.active.isEmpty() -> MoEmptyState(
             title = "Aún no hay parcelas",
-            body = "Añade una parcela manualmente. Podrás completar su geometría y Catastro más adelante.",
+            body = if (onImportFromCatastro != null) {
+                "Añádela a mano o búscala en Catastro por su referencia catastral."
+            } else {
+                "Añade una parcela manualmente. Podrás completar su geometría y Catastro más adelante."
+            },
             icon = MoIcons.Parcels,
         )
         else -> state.active.forEach { parcel ->

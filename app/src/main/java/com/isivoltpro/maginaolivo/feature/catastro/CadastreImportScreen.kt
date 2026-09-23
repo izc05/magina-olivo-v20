@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,6 +41,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
+import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
@@ -52,25 +52,31 @@ import java.util.UUID
 @Composable
 fun CadastreImportRoute(
     persistence: LocalPersistence,
+    preselectedFarmId: UUID?,
     onParcelImported: (UUID) -> Unit,
 ) {
-    val model: CadastreImportViewModel = viewModel(factory = viewModelFactory {
+    val model: CadastreImportViewModel = viewModel(key = "catastro-$preselectedFarmId", factory = viewModelFactory {
         initializer { CadastreImportViewModel(persistence, OfficialCadastreClient()) }
     })
     val state by model.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.savedParcelId) { state.savedParcelId?.let(onParcelImported) }
-    CadastreImportScreen(state, model::search, model::import)
+    CadastreImportScreen(state, preselectedFarmId, model::search, model::import)
 }
 
 @Composable
 fun CadastreImportScreen(
     state: CadastreImportState,
+    preselectedFarmId: UUID?,
     onSearch: (String) -> Unit,
     onImport: (UUID?, String) -> Unit,
 ) {
     var reference by rememberSaveable { mutableStateOf("") }
     var alias by rememberSaveable { mutableStateOf("") }
-    var selectedFarm by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedFarm by rememberSaveable { mutableStateOf(preselectedFarmId?.toString()) }
+    // With a single farm there is nothing to choose.
+    LaunchedEffect(state.farms) {
+        if (selectedFarm == null) state.farms.singleOrNull()?.let { selectedFarm = it.id.toString() }
+    }
     LaunchedEffect(state.candidate?.reference) {
         state.candidate?.let { alias = "Parcela ${it.reference.takeLast(5)}" }
     }
@@ -108,7 +114,7 @@ fun CadastreImportScreen(
 
             state.candidate?.let { candidate ->
                 Card(
-                    shape = RoundedCornerShape(22.dp),
+                    shape = MoShape.card,
                     colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
                     modifier = Modifier.fillMaxWidth().testTag("catastro-candidate"),
                 ) {

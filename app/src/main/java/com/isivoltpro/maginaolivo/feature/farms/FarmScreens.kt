@@ -312,6 +312,7 @@ fun FarmDetailRoute(
     onActivitySelected: (UUID) -> Unit,
     onArchived: () -> Unit,
     modifier: Modifier = Modifier,
+    onImportFromCatastro: (() -> Unit)? = null,
 ) {
     val viewModel: FarmDetailViewModel = viewModel(
         key = "farm-$farmId",
@@ -337,6 +338,7 @@ fun FarmDetailRoute(
                 farmId = farmId,
                 persistence = persistence,
                 onParcelSelected = onParcelSelected,
+                onImportFromCatastro = onImportFromCatastro,
             )
         },
         campaignContent = {

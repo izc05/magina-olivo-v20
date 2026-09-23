@@ -224,6 +224,7 @@ fun AppNavigation(
                             navController.navigate(AppDestination.activity(activityId.toString()))
                         },
                         onArchived = { navController.popBackStack() },
+                        onImportFromCatastro = { navController.navigate(AppDestination.catastro(farmId.toString())) },
                     )
                 }
             }
@@ -265,7 +266,28 @@ fun AppNavigation(
                 if (persistence == null) PersistenceUnavailableScreen()
                 else CadastreImportRoute(
                     persistence = persistence,
-                    onParcelImported = { id -> navController.navigate(AppDestination.parcel(id.toString())) },
+                    preselectedFarmId = null,
+                    onParcelImported = { id ->
+                        navController.navigate(AppDestination.parcel(id.toString())) {
+                            popUpTo(AppDestination.MapCatastro) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable(AppDestination.CatastroPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = backStackEntry.arguments?.getString("farmId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || farmId == null) PersistenceUnavailableScreen()
+                else CadastreImportRoute(
+                    persistence = persistence,
+                    preselectedFarmId = farmId,
+                    onParcelImported = { id ->
+                        // Back from the new parcel returns to its farm, not to the search.
+                        navController.navigate(AppDestination.parcel(id.toString())) {
+                            popUpTo(AppDestination.CatastroPattern) { inclusive = true }
+                        }
+                    },
                 )
             }
             composable(AppDestination.Weather) { WeatherMarketReferenceScreen() }

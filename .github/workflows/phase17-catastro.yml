@@ -44,8 +44,8 @@ jobs:
           script: |
             adb install -r -t "$(find app/build/outputs/apk/dev/debug -name '*.apk' | head -n 1)"
             adb install -r -t "$(find app/build/outputs/apk/androidTest -name '*.apk' | head -n 1)"
-            adb shell am instrument -w -e class com.isivoltpro.maginaolivo.CatastroLiveImportTest \
-              com.isivoltpro.maginaolivo.dev.test/androidx.test.runner.AndroidJUnitRunner | tee catastro-live-test.txt
+            # The emulator runner executes each line on its own: keep every command on one line.
+            adb shell am instrument -w -e class com.isivoltpro.maginaolivo.CatastroLiveImportTest com.isivoltpro.maginaolivo.dev.test/androidx.test.runner.AndroidJUnitRunner | tee catastro-live-test.txt
             grep -q 'OK (1 test)' catastro-live-test.txt
       - name: Upload Gate 17 evidence
         if: always()
