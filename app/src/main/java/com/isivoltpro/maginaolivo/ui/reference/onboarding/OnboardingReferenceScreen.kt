@@ -9,9 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
@@ -87,8 +85,6 @@ fun OnboardingReferenceScreen(
         modifier = modifier
             .fillMaxSize()
             .background(MoCream)
-            .statusBarsPadding()
-            .navigationBarsPadding()
             .testTag("onboarding-root")
             .padding(horizontal = MoSpacing.screen),
         horizontalAlignment = Alignment.CenterHorizontally,

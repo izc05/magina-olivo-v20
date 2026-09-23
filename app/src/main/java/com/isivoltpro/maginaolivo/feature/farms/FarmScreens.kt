@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -172,12 +172,12 @@ fun FarmListScreen(
             .fillMaxSize()
             .testTag("farms-root"),
         containerColor = MoCream,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .statusBarsPadding()
                 .testTag("farm-list"),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = MoSpacing.screen,
@@ -399,6 +399,7 @@ fun FarmDetailScreen(
             .fillMaxSize()
             .testTag("farm-detail-root"),
         containerColor = MoCream,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         when {
             state.isLoading -> Column(
@@ -509,7 +510,6 @@ private fun FarmDetailContent(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = MoSpacing.screen),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
