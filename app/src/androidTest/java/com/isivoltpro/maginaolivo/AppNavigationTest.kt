@@ -583,6 +583,14 @@ class AppNavigationTest {
      */
     private fun clickByTag(tag: String) {
         waitForNodeOrDump("clickable node <$tag>") { composeRule.onAllNodesWithTag(tag) }
+        // A control can be composed before the screen behind it finishes loading, and
+        // stays disabled until it does. Wait for that, bounded; the assertion below still
+        // fails loudly if it never becomes enabled.
+        runCatching {
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                runCatching { composeRule.onNodeWithTag(tag).assertIsEnabled() }.isSuccess
+            }
+        }
         scrollIntoViewIfPossible { composeRule.onNodeWithTag(tag) }
         composeRule.onNodeWithTag(tag)
             .assertIsDisplayed()
