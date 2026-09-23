@@ -43,9 +43,10 @@ CURRENT:              Phase 15 — Machinery = PASS, merged into `main` through
                       PR #211
 
 ACTIVE PRODUCTION PHASE: Phase 16 — Calendar, agenda, reminders and Android
-                      notifications (NEXT)
+                      notifications — implemented in PR #212, emulator evidence
+                      PASS on `5566c8ec`
 
-BLOCKER:              none
+BLOCKER:              Gate 16 physical-device clause pending owner verification
 ```
 
 Gates 3, 4 and 5 passed. Gate 6 composite passed on 2026-09-22 on commit `164aaa48`;

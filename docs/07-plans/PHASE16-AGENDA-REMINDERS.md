@@ -1,6 +1,6 @@
 # Phase 16 — Calendar, agenda, reminders and Android notifications
 
-**Status:** in progress — implementation on `claude/dreamy-dijkstra-tdui2c`, pending CI evidence
+**Status:** emulator evidence PASS on `5566c8ec` (PR #212); Gate 16 physical-device clause pending owner verification
 **Precondition:** Gate 15 PASS, merged into `main` through PR #211 as `216d576b`
 **Branch:** `claude/dreamy-dijkstra-tdui2c`
 
