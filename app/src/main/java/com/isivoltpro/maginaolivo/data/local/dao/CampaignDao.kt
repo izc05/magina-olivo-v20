@@ -34,4 +34,13 @@ interface CampaignDao {
     @Transaction
     @Query("SELECT * FROM campaigns WHERE id = :id AND deleted_at IS NULL LIMIT 1")
     fun observeWithSnapshots(id: UUID): Flow<CampaignWithSnapshots?>
+
+    @Query(
+        """
+        SELECT * FROM campaigns
+        WHERE farm_id = :farmId AND deleted_at IS NULL AND status IN ('ACTIVE', 'HARVEST')
+        LIMIT 1
+        """,
+    )
+    suspend fun findCurrent(farmId: UUID): CampaignEntity?
 }

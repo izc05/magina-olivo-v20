@@ -40,7 +40,50 @@ object DatabaseMigrations {
             }
         }
 
-    val all: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+    /**
+     * Phase 12. `expenses` gains its Activity/Harvest/Delivery/supplier links plus the
+     * DRAFT/POSTED status and the origin marker. SQLite cannot add a NOT NULL column
+     * without a default, so the table is rebuilt and every existing row is carried over
+     * as POSTED/MANUAL — the only kind of expense that could exist before this phase.
+     * The five new tables are created empty.
+     */
+    val MIGRATION_5_6 =
+        object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                schemaVersion6Statements.forEach(db::execSQL)
+            }
+        }
+
+    val all: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+
+    private const val METADATA_COLUMNS =
+        "`created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER"
+
+    private val schemaVersion6Statements =
+        arrayOf(
+            "CREATE TABLE IF NOT EXISTS `expenses_new` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `campaign_id` TEXT, `farm_id` TEXT, `parcel_id` TEXT, `activity_id` TEXT, `harvest_id` TEXT, `delivery_id` TEXT, `supplier_organization_id` TEXT, `expense_date` TEXT NOT NULL, `concept` TEXT NOT NULL, `category` TEXT NOT NULL, `amount_minor` INTEGER NOT NULL, `currency` TEXT NOT NULL, `provider` TEXT, `notes` TEXT, `status` TEXT NOT NULL, `origin` TEXT NOT NULL, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "INSERT INTO `expenses_new` (`id`, `workspace_id`, `campaign_id`, `farm_id`, `parcel_id`, `expense_date`, `concept`, `category`, `amount_minor`, `currency`, `provider`, `notes`, `status`, `origin`, `created_at`, `updated_at`, `deleted_at`, `version`, `sync_status`, `remote_version`, `last_synced_at`) SELECT `id`, `workspace_id`, `campaign_id`, `farm_id`, `parcel_id`, `expense_date`, `concept`, `category`, `amount_minor`, `currency`, `provider`, `notes`, 'POSTED', 'MANUAL', `created_at`, `updated_at`, `deleted_at`, `version`, `sync_status`, `remote_version`, `last_synced_at` FROM `expenses`",
+            "DROP TABLE `expenses`",
+            "ALTER TABLE `expenses_new` RENAME TO `expenses`",
+            "CREATE INDEX IF NOT EXISTS `index_expenses_workspace_id_expense_date` ON `expenses` (`workspace_id`, `expense_date`)",
+            "CREATE INDEX IF NOT EXISTS `index_expenses_campaign_id_expense_date` ON `expenses` (`campaign_id`, `expense_date`)",
+            "CREATE INDEX IF NOT EXISTS `index_expenses_farm_id_expense_date` ON `expenses` (`farm_id`, `expense_date`)",
+            "CREATE INDEX IF NOT EXISTS `index_expenses_parcel_id_expense_date` ON `expenses` (`parcel_id`, `expense_date`)",
+            "CREATE INDEX IF NOT EXISTS `index_expenses_activity_id` ON `expenses` (`activity_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_expenses_workspace_id_status` ON `expenses` (`workspace_id`, `status`)",
+            "CREATE TABLE IF NOT EXISTS `agricultural_organizations` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `name` TEXT NOT NULL, `tax_id` TEXT, `municipality` TEXT, `province` TEXT, `address` TEXT, `phone` TEXT, `website` TEXT, `notes` TEXT, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "CREATE INDEX IF NOT EXISTS `index_agricultural_organizations_workspace_id` ON `agricultural_organizations` (`workspace_id`)",
+            "CREATE TABLE IF NOT EXISTS `organization_roles` (`organization_id` TEXT NOT NULL, `role` TEXT NOT NULL, PRIMARY KEY(`organization_id`, `role`), FOREIGN KEY(`organization_id`) REFERENCES `agricultural_organizations`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE INDEX IF NOT EXISTS `index_organization_roles_role` ON `organization_roles` (`role`)",
+            "CREATE TABLE IF NOT EXISTS `purchases` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `expense_id` TEXT NOT NULL, `supplier_organization_id` TEXT, `purchase_date` TEXT NOT NULL, `invoice_number` TEXT, `notes` TEXT, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`expense_id`) REFERENCES `expenses`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_purchases_expense_id` ON `purchases` (`expense_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_purchases_workspace_id` ON `purchases` (`workspace_id`)",
+            "CREATE TABLE IF NOT EXISTS `purchase_items` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `purchase_id` TEXT NOT NULL, `position` INTEGER NOT NULL, `product_name` TEXT NOT NULL, `quantity` REAL, `unit` TEXT, `unit_price_minor` INTEGER, `line_total_minor` INTEGER, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`purchase_id`) REFERENCES `purchases`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE INDEX IF NOT EXISTS `index_purchase_items_purchase_id` ON `purchase_items` (`purchase_id`)",
+            "CREATE TABLE IF NOT EXISTS `document_ocr_extractions` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `attachment_id` TEXT NOT NULL, `document_type` TEXT NOT NULL, `owner_type` TEXT, `owner_id` TEXT, `engine` TEXT NOT NULL, `engine_version` TEXT, `raw_text` TEXT, `extracted_json` TEXT, `confidence_json` TEXT, `status` TEXT NOT NULL, `reviewed_at` INTEGER, `confirmed_at` INTEGER, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            "CREATE INDEX IF NOT EXISTS `index_document_ocr_extractions_attachment_id` ON `document_ocr_extractions` (`attachment_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_document_ocr_extractions_workspace_id_status` ON `document_ocr_extractions` (`workspace_id`, `status`)",
+        )
 
     private val schemaVersion5Statements =
         arrayOf(

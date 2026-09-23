@@ -46,6 +46,11 @@ data class Activity(
     /** At most one, and always of this Activity's own type. Null for OBSERVATION and OTHER. */
     val detail: ActivityDetail? = null,
     val version: Long,
+    /**
+     * The convenience cost, read from its linked Expense (`RC1-NORMATIVE-ADDENDUM` D2).
+     * It is never stored on the Activity and never summed next to the Expense ledger.
+     */
+    val costMinor: Long? = null,
 )
 
 data class NewActivity(
@@ -60,6 +65,8 @@ data class NewActivity(
     val asDraft: Boolean = false,
     /** The typed agronomic detail. It must match [type], and may be absent. */
     val detail: ActivityDetail? = null,
+    /** Optional convenience cost. Saving it writes the linked Expense, never the Activity. */
+    val costMinor: Long? = null,
 )
 
 data class ActivityChanges(
@@ -76,6 +83,8 @@ data class ActivityChanges(
      * the type. Passing null clears the detail.
      */
     val detail: ActivityDetail? = null,
+    /** The convenience cost after the change; null removes the linked cost Expense. */
+    val costMinor: Long? = null,
 )
 
 /**

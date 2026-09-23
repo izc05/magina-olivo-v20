@@ -85,6 +85,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.coil.compose)
+    // Phase 12: on-device OCR with the bundled Latin model — no network, no upload.
+    implementation(libs.mlkit.text.recognition)
     // Navigation requests serialization 1.7.3 while Room's schema reader requires 1.8.1.
     // One BOM keeps the production and instrumented runtime classpaths binary-aligned.
     implementation(platform(libs.kotlinx.serialization.bom))

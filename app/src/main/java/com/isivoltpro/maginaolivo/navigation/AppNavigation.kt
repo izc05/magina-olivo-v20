@@ -26,6 +26,10 @@ import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
 import com.isivoltpro.maginaolivo.feature.activities.ActivityDetailRoute
 import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailRoute
+import com.isivoltpro.maginaolivo.feature.expenses.DocumentReviewRoute
+import com.isivoltpro.maginaolivo.feature.expenses.ExpenseDetailRoute
+import com.isivoltpro.maginaolivo.feature.expenses.ExpensesRoute
+import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
@@ -33,7 +37,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.expenses.ExpensesDocumentsReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.harvest.HarvestReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.map.MapCatastroReferenceScreen
@@ -218,7 +221,53 @@ fun AppNavigation(
                     onDeliverySelected = { navController.navigate(AppDestination.OcrReview) },
                 )
             }
-            composable(AppDestination.Expenses) { ExpensesDocumentsReferenceScreen() }
+            composable(AppDestination.Expenses) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    ExpensesRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onExpenseSelected = { id -> navController.navigate(AppDestination.expense(id.toString())) },
+                        onDocumentSelected = { id -> navController.navigate(AppDestination.document(id.toString())) },
+                        onOrganizations = { navController.navigate(AppDestination.Organizations) },
+                    )
+                }
+            }
+            composable(AppDestination.ExpensePattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val expenseId = backStackEntry.arguments?.getString("expenseId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || expenseId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    ExpenseDetailRoute(expenseId, persistence, onDeleted = { navController.popBackStack() })
+                }
+            }
+            composable(AppDestination.DocumentPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val extractionId = backStackEntry.arguments?.getString("extractionId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || extractionId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    DocumentReviewRoute(
+                        extractionId = extractionId,
+                        persistence = persistence,
+                        onExpenseCreated = { expenseId ->
+                            navController.navigate(AppDestination.expense(expenseId.toString())) {
+                                popUpTo(AppDestination.DocumentPattern) { inclusive = true }
+                            }
+                        },
+                        onClosed = { navController.popBackStack() },
+                    )
+                }
+            }
+            composable(AppDestination.Organizations) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) PersistenceUnavailableScreen() else OrganizationsRoute(persistence)
+            }
             if (compositionRoot.environment == AppEnvironment.DEV) {
                 composable(AppDestination.DeveloperGallery) { ComponentCatalogueReferenceScreen() }
             }

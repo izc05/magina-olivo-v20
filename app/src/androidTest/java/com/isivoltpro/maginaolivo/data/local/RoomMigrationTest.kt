@@ -415,6 +415,89 @@ class RoomMigrationTest {
             }
     }
 
+
+    @Test
+    fun migration5To6KeepsExistingExpensesAsPostedMoneyAndAddsTheLedgerTables() {
+        migrationHelper.createDatabase(TEST_DATABASE, 5).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            database.execSQL(
+                """
+                INSERT INTO expenses (
+                    id, workspace_id, campaign_id, farm_id, parcel_id, expense_date, concept,
+                    category, amount_minor, currency, provider, notes, created_at, updated_at,
+                    deleted_at, version, sync_status, remote_version, last_synced_at
+                ) VALUES (
+                    '88888888-8888-8888-8888-888888888888',
+                    '11111111-1111-1111-1111-111111111111', NULL, NULL, NULL, '2026-03-02',
+                    'Gasóleo', 'FUEL', 9500, 'EUR', 'Estación Sur', NULL, 1000, 1000, NULL, 3,
+                    'PENDING', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+        }
+
+        migrationHelper
+            .runMigrationsAndValidate(
+                TEST_DATABASE,
+                6,
+                true,
+                DatabaseMigrations.MIGRATION_5_6,
+            ).use { database ->
+                // The only expenses that could exist before Phase 12 were typed by a person:
+                // they stay counted money, unchanged, with their version and sync state.
+                database
+                    .query(
+                        "SELECT concept, amount_minor, provider, status, origin, version, sync_status, activity_id FROM expenses",
+                    ).use { cursor ->
+                        assertTrue(cursor.moveToFirst())
+                        assertEquals("Gasóleo", cursor.getString(0))
+                        assertEquals(9500L, cursor.getLong(1))
+                        assertEquals("Estación Sur", cursor.getString(2))
+                        assertEquals("POSTED", cursor.getString(3))
+                        assertEquals("MANUAL", cursor.getString(4))
+                        assertEquals(3L, cursor.getLong(5))
+                        assertEquals("PENDING", cursor.getString(6))
+                        assertTrue(cursor.isNull(7))
+                        assertEquals(1, cursor.count)
+                    }
+
+                val tables = mutableSetOf<String>()
+                database
+                    .query("SELECT name FROM sqlite_master WHERE type = 'table'")
+                    .use { cursor ->
+                        while (cursor.moveToNext()) tables += cursor.getString(0)
+                    }
+                assertTrue(
+                    tables.containsAll(
+                        setOf(
+                            "agricultural_organizations",
+                            "organization_roles",
+                            "purchases",
+                            "purchase_items",
+                            "document_ocr_extractions",
+                        ),
+                    ),
+                )
+                assertTrue("expenses_new" !in tables)
+                database.query("SELECT COUNT(*) FROM purchases").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

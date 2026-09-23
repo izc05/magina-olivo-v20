@@ -298,7 +298,7 @@ private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM 
 private fun authority(context: Context) = "${context.packageName}.attachments"
 
 /** A fresh file the camera app may write to. Earlier captures were copied already. */
-private fun createCaptureUri(context: Context): Uri {
+internal fun createCaptureUri(context: Context): Uri {
     val directory = File(context.cacheDir, "camera")
     directory.listFiles()?.forEach(File::delete)
     if (!directory.isDirectory && !directory.mkdirs()) error("camera directory unavailable")

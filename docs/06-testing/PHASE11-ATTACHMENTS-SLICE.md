@@ -5,7 +5,7 @@
 **Base commit:** `ee948b1` (`main`, Phase 10 merged and recorded)
 **Branch:** `claude/dreamy-dijkstra-tdui2c`
 **Validated commit:** `803d69b6`
-**Merged:** not yet — awaiting owner review
+**Merged:** PR #207, merge commit `e42754ac`
 **Plan:** `docs/07-plans/PHASE11-ATTACHMENTS.md`
 
 > Every CI, emulator and artifact figure below is copied from a real run. Nothing is

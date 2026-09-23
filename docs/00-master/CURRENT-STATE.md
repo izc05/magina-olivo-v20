@@ -26,12 +26,14 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 6 — Farms + Parcels + Campaigns (composite)
 ✅ Gate 9 — Activity engine
 ✅ Gate 10 — Typed activities + irrigation
+✅ Gate 11 — Attachments
+✅ Gate 12 — Expenses, purchases, organizations + generic OCR
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 11 — ATTACHMENTS (GATE 11 PASS ON BRANCH — awaiting merge into main)
+▶ PHASE 13 — HARVEST (NEXT — starts after PR #208 is merged into main)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -205,7 +207,7 @@ PHASE 10 = COMPLETE AND VALIDATED / MERGED TO MAIN (4acc3ab9)
 MAIN = GREEN
 ```
 
-## Phase 11 — Attachments (in progress)
+## Phase 11 — Attachments
 
 Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
 `docs/07-plans/PHASE11-ATTACHMENTS.md`, evidence in
@@ -213,7 +215,8 @@ Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
 Android CI #340 (run `35840622582`) with `foundation` and `gate3-emulator` SUCCESS —
 111/111 instrumented tests, 52/52 repository tests in airplane mode including 14/14
 attachment contract tests, empty crash buffer — and the independent Gate 3 Android
-Emulator Evidence #57 (run `35842241545`) SUCCESS. Not yet merged into `main`.
+Emulator Evidence #57 (run `35842241545`) SUCCESS. **Merged into `main`** through PR #207 as
+merge commit `e42754ac`, after the PR's own CI run was green.
 
 - Camera capture (through the app's own `FileProvider`) and document picker for images
   and PDF, from a "Documentos" section in Farm, Parcel and Activity detail. No new root.
@@ -228,10 +231,30 @@ Emulator Evidence #57 (run `35842241545`) SUCCESS. Not yet merged into `main`.
 - No Room schema change: `documents` (schema v2) already carries the attachment
   contract, so the database stays at v5.
 
+## Phase 12 — Expenses, purchases, organizations + generic OCR
+
+Implemented on branch `claude/dreamy-dijkstra-tdui2c`; plan and decisions in
+`docs/07-plans/PHASE12-EXPENSES-ORGANIZATIONS-OCR.md`, evidence in
+`docs/06-testing/PHASE12-EXPENSES-SLICE.md`. **Gate 12 passed** on commit `f0725b2a`:
+Android CI #346 (run `35853828444`) with `foundation` and `gate3-emulator` SUCCESS, the
+5→6 migration verified against the compiler-exported `6.json`, empty crash buffer. The
+PR #208 head `d500b00` (a test-helper race fix plus evidence) was green again on
+`foundation`, `gate3-emulator` and `gate3-evidence` before merging into `main`.
+
+- Room v6: `expenses` gains `status` (DRAFT | POSTED), `origin` and its Activity /
+  Harvest / Delivery / supplier links; new `agricultural_organizations`,
+  `organization_roles`, `purchases`, `purchase_items`, `document_ocr_extractions`.
+- Every total is computed from POSTED expenses only. The Activity form's "Coste" edits
+  its one linked ACTIVITY_COST Expense in the same transaction (D2).
+- Organizations carry several roles and are chosen, not duplicated.
+- "Subir documento" keeps the file, reads it on the device (ML Kit, bundled model), and
+  shows a review form; confirming creates a DRAFT expense that counts only after a person
+  posts it.
+
 ## Next deliverable
 
-Owner review and merge of Phase 11 into `main`, then
-**Phase 12 — Expenses, purchases, organizations + generic document OCR**.
+**Phase 13 — Harvest**: Harvest distinct from Delivery, truthful mixed-origin handling
+and optional exact parcel allocation. Gate 13: no fabricated per-parcel split.
 
 Both workflows still run on pushes to `feat/**` and `hotfix/**`, so a branch reaches a
 green emulator run before a pull request exists.

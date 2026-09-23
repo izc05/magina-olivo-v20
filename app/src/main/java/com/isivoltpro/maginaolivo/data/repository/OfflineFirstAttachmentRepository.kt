@@ -208,6 +208,10 @@ class OfflineFirstAttachmentRepository(
                 ?.let { it.workspaceId to it.metadata.deletedAt }
             AttachmentOwnerType.ACTIVITY -> database.activityDao().findById(owner.id)
                 ?.let { it.workspaceId to it.metadata.deletedAt }
+            AttachmentOwnerType.EXPENSE -> database.expenseDao().findById(owner.id)
+                ?.let { it.workspaceId to it.metadata.deletedAt }
+            AttachmentOwnerType.DOCUMENT -> database.documentOcrDao().findById(owner.id)
+                ?.let { it.workspaceId to it.metadata.deletedAt }
         } ?: return AppResult.Failure(AppError.NotFound(owner.type.name.lowercase()))
         if (deletedAt != null) {
             return AppResult.Failure(AppError.Validation(field = "owner", code = "archived_owner"))

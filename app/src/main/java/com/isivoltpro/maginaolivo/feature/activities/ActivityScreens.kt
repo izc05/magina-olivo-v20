@@ -43,6 +43,7 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.app.LocalPersistence
+import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
@@ -270,6 +271,8 @@ internal fun ActivityEditor(
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
+    var cost by rememberSaveable(initial.costMinor) { mutableStateOf(Money.editable(initial.costMinor)) }
+    var costError by rememberSaveable { mutableStateOf<String?>(null) }
     var type by rememberSaveable(initial.type) { mutableStateOf(initial.type.name) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
     // Deliberately not rememberSaveable: the sheet itself does not survive process death,
@@ -329,9 +332,23 @@ internal fun ActivityEditor(
             }
         }
         MoTextField(notes, { notes = it }, "Notas")
+        // D2: a convenience for the linked Expense, never a second number on the Activity.
+        MoTextField(
+            cost,
+            { cost = it; costError = null },
+            "Coste (opcional, €)",
+            isError = costError != null,
+            supportingText = costError ?: "Se anota en Gastos, una sola vez.",
+            modifier = Modifier.testTag("activity-cost"),
+        )
         MoPrimaryButton(
             "Guardar actuación",
             {
+                val costMinor = Money.parseMinor(cost)
+                if (cost.isNotBlank() && costMinor == null) {
+                    costError = "Escribe un importe como 65 o 65,50"
+                    return@MoPrimaryButton
+                }
                 onSave(
                     ActivityDraft(
                         runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
@@ -343,6 +360,7 @@ internal fun ActivityEditor(
                             runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
                             detailFields,
                         ),
+                        costMinor,
                     ),
                 )
             },
@@ -352,6 +370,11 @@ internal fun ActivityEditor(
             MoSecondaryButton(
                 "Guardar borrador",
                 {
+                    val costMinor = Money.parseMinor(cost)
+                    if (cost.isNotBlank() && costMinor == null) {
+                        costError = "Escribe un importe como 65 o 65,50"
+                        return@MoSecondaryButton
+                    }
                     saveDraft(
                         ActivityDraft(
                             runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
@@ -363,6 +386,7 @@ internal fun ActivityEditor(
                                 runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
                                 detailFields,
                             ),
+                            costMinor,
                         ),
                     )
                 },
@@ -447,6 +471,14 @@ fun ActivityDetailScreen(
                     MoMetricCard("Parcelas", activity.targets.size.toString(), Modifier.fillMaxWidth())
 
                     activity.detail?.let { ActivityDetailSummary(it) }
+                    activity.costMinor?.let { cost ->
+                        MoMetricCard(
+                            "Coste",
+                            Money.format(cost),
+                            Modifier.fillMaxWidth().testTag("activity-cost-summary"),
+                            supportingText = "Anotado en Gastos",
+                        )
+                    }
 
                     when (activity.status) {
                         ActivityStatus.DRAFT -> {
@@ -493,6 +525,7 @@ fun ActivityDetailScreen(
                     parcelIds = activity.targets.map { it.parcelId }.toSet(),
                     notes = activity.notes.orEmpty(),
                     detail = activity.detail,
+                    costMinor = activity.costMinor,
                 ),
                 title = "Editar actuación",
             )

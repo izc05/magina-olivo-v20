@@ -15,6 +15,11 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
 import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstAttachmentRepository
+import com.isivoltpro.maginaolivo.data.repository.JsonProposalCodec
+import com.isivoltpro.maginaolivo.data.repository.MlKitOcrEngine
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDocumentOcrRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstExpenseRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstOrganizationRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstActivityRepository
@@ -88,6 +93,22 @@ data class AppCompositionRoot(
                 idGenerator = defaults.idGenerator,
                 dispatchers = defaults.dispatchers,
             )
+            val organizationRepository = OfflineFirstOrganizationRepository(
+                database, workspaceRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,
+            )
+            val expenseRepository = OfflineFirstExpenseRepository(
+                database, workspaceRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,
+            )
+            val documentOcrRepository = OfflineFirstDocumentOcrRepository(
+                database = database,
+                attachments = attachmentRepository,
+                workspaceRepository = workspaceRepository,
+                engine = MlKitOcrEngine(applicationContext),
+                proposalCodec = JsonProposalCodec(),
+                clock = defaults.clock,
+                idGenerator = defaults.idGenerator,
+                dispatchers = defaults.dispatchers,
+            )
             return defaults.copy(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 localPersistence = LocalPersistence(
@@ -98,6 +119,9 @@ data class AppCompositionRoot(
                     campaignRepository = campaignRepository,
                     activityRepository = activityRepository,
                     attachmentRepository = attachmentRepository,
+                    organizationRepository = organizationRepository,
+                    expenseRepository = expenseRepository,
+                    documentOcrRepository = documentOcrRepository,
                     workspaceRepository = workspaceRepository,
                 ),
             )

@@ -43,11 +43,14 @@ object AppDestination {
     const val Harvest = "harvest"
     const val Expenses = "expenses"
     const val DeveloperGallery = "developer-gallery"
+    const val Organizations = "organizations"
 
     const val FarmPattern = "farm/{farmId}"
     const val ParcelPattern = "parcel/{parcelId}"
     const val CampaignPattern = "campaign/{campaignId}"
     const val ActivityPattern = "activity/{activityId}"
+    const val ExpensePattern = "expense/{expenseId}"
+    const val DocumentPattern = "document/{extractionId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
 
@@ -56,6 +59,10 @@ object AppDestination {
     fun campaign(campaignId: String): String = nestedRoute("campaign", campaignId)
 
     fun activity(activityId: String): String = nestedRoute("activity", activityId)
+
+    fun expense(expenseId: String): String = nestedRoute("expense", expenseId)
+
+    fun document(extractionId: String): String = nestedRoute("document", extractionId)
 
     fun rootForRoute(route: String?): RootDestination? {
         val prefix = route?.substringBefore('/') ?: return null
@@ -69,7 +76,14 @@ object AppDestination {
             MapCatastro,
             Analytics,
             -> RootDestination.Olivar
-            RootDestination.Register.route, OcrReview, Harvest, Expenses -> RootDestination.Register
+            RootDestination.Register.route,
+            OcrReview,
+            Harvest,
+            Expenses,
+            Organizations,
+            "expense",
+            "document",
+            -> RootDestination.Register
             RootDestination.Calendar.route -> RootDestination.Calendar
             RootDestination.Profile.route, DeveloperGallery -> RootDestination.Profile
             else -> null

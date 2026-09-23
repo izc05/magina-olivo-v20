@@ -263,6 +263,8 @@ data class HarvestEntity(
         Index(value = ["campaign_id", "expense_date"]),
         Index(value = ["farm_id", "expense_date"]),
         Index(value = ["parcel_id", "expense_date"]),
+        Index(value = ["activity_id"]),
+        Index(value = ["workspace_id", "status"]),
     ],
 )
 data class ExpenseEntity(
@@ -271,6 +273,10 @@ data class ExpenseEntity(
     @ColumnInfo(name = "campaign_id") val campaignId: UUID? = null,
     @ColumnInfo(name = "farm_id") val farmId: UUID? = null,
     @ColumnInfo(name = "parcel_id") val parcelId: UUID? = null,
+    @ColumnInfo(name = "activity_id") val activityId: UUID? = null,
+    @ColumnInfo(name = "harvest_id") val harvestId: UUID? = null,
+    @ColumnInfo(name = "delivery_id") val deliveryId: UUID? = null,
+    @ColumnInfo(name = "supplier_organization_id") val supplierOrganizationId: UUID? = null,
     @ColumnInfo(name = "expense_date") val expenseDate: LocalDate,
     val concept: String,
     val category: String,
@@ -278,6 +284,10 @@ data class ExpenseEntity(
     val currency: String,
     val provider: String? = null,
     val notes: String? = null,
+    /** DRAFT or POSTED. Only POSTED money is ever summed (Phase 12, Gate 12). */
+    val status: String = "POSTED",
+    /** MANUAL, ACTIVITY_COST or DOCUMENT_OCR: how the row came to exist. */
+    val origin: String = "MANUAL",
     @Embedded val metadata: LocalMetadata,
 )
 
