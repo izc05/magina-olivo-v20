@@ -136,7 +136,7 @@ class AppNavigationTest {
         }
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
-        clickInSheetByTag("save-farm")
+        saveEditor("save-farm", "farm-name")
         waitForSaved("farm-name", "La Solana")
         clickByText("La Solana")
         waitForTag("farm-detail-root")
@@ -161,14 +161,14 @@ class AppNavigationTest {
         }
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Los Llanos")
-        clickInSheetByTag("save-farm")
+        saveEditor("save-farm", "farm-name")
         waitForSaved("farm-name", "Los Llanos")
         clickByText("Los Llanos")
         openFarmSection("parcels")
 
         openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Alta")
-        clickInSheetByTag("save-parcel")
+        saveEditor("save-parcel", "parcel-name")
         composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithTag("save-parcel").fetchSemanticsNodes().isEmpty() &&
                 composeRule.onAllNodesWithText("Parcela Alta").fetchSemanticsNodes().size == 1
@@ -200,7 +200,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Campaña E2E")
         waitForTag("save-farm")
-        clickInSheetByTag("save-farm")
+        saveEditor("save-farm", "farm-name")
         waitForSaved("farm-name", "Finca Campaña E2E")
 
         // Farm detail
@@ -212,7 +212,7 @@ class AppNavigationTest {
         openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Campaña E2E")
         waitForTag("save-parcel")
-        clickInSheetByTag("save-parcel")
+        saveEditor("save-parcel", "parcel-name")
         waitForSaved("parcel-name", "Parcela Campaña E2E")
 
         // Campaign: back to the Farm hub, open Campañas, fill the editor, select the Parcel, save.
@@ -297,7 +297,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Actuación E2E")
         waitForTag("save-farm")
-        clickInSheetByTag("save-farm")
+        saveEditor("save-farm", "farm-name")
         waitForSaved("farm-name", "Finca Actuación E2E")
         clickByText("Finca Actuación E2E")
         openFarmSection("parcels")
@@ -370,7 +370,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Registrar E2E")
         waitForTag("save-farm")
-        clickInSheetByTag("save-farm")
+        saveEditor("save-farm", "farm-name")
         waitForSaved("farm-name", "Finca Registrar E2E")
         clickByText("Finca Registrar E2E")
         openFarmSection("parcels")
@@ -447,7 +447,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Tipada E2E")
         waitForTag("save-farm")
-        clickInSheetByTag("save-farm")
+        saveEditor("save-farm", "farm-name")
         waitForSaved("farm-name", "Finca Tipada E2E")
         clickByText("Finca Tipada E2E")
         openFarmSection("parcels")
@@ -741,6 +741,29 @@ class AppNavigationTest {
         composeRule.onNodeWithText(text).assertIsDisplayed()
     }
 
+    /**
+     * Saves an editor sheet and makes sure the tap landed. The keyboard is closed first so the
+     * resize it causes cannot swallow the tap; if the sheet is still open after the usual wait
+     * (the tap was lost, never "saved twice": a stored save closes the sheet in milliseconds),
+     * the save button is tapped once more before the caller's own wait reports the dump.
+     */
+    private fun saveEditor(saveTag: String, editorTag: String) {
+        closeSoftKeyboard()
+        composeRule.waitForIdle()
+        clickInSheetByTag(saveTag)
+        val closed = try {
+            composeRule.waitUntil(SHEET_TIMEOUT_MS) {
+                composeRule.onAllNodesWithTag(editorTag).fetchSemanticsNodes().isEmpty()
+            }
+            true
+        } catch (timeout: ComposeTimeoutException) {
+            false
+        }
+        if (!closed && composeRule.onAllNodesWithTag(saveTag).fetchSemanticsNodes().isNotEmpty()) {
+            clickInSheetByTag(saveTag)
+        }
+    }
+
     /** Design v3: parcels, campaigns, work and documents open from the Farm hub. */
     private fun openFarmSection(section: String) {
         waitForTag("farm-section-$section")
@@ -758,7 +781,7 @@ class AppNavigationTest {
         openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput(name)
         waitForTag("save-parcel")
-        clickInSheetByTag("save-parcel")
+        saveEditor("save-parcel", "parcel-name")
         waitForSaved("parcel-name", name)
     }
 
