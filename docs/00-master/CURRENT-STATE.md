@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-09-23
+**Last reviewed:** 2026-09-24
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -32,6 +32,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 14 — Deliveries + weight-ticket OCR + later yield
 ✅ Gate 15 — Machinery
 ✅ Gate 16 — Calendar, agenda, reminders (physical check confirmed by the owner 2026-09-23)
+✅ CR-005 — Cuaderno de campaña / recolección IA approved; documentation only until Gate 18 closes
 ```
 
 ## Current allowed phase
@@ -49,17 +50,26 @@ Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6
 3. `docs/00-master/SINGLE-TRACK-EXECUTION.md`
 4. `docs/00-master/RC1.2-CHANGE-REQUEST.md`
 5. `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
-6. `docs/design/VISUAL_DESIGN_LOCK.md`
-7. `docs/design/DESIGN_SYSTEM.md`
-8. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
-9. `docs/00-master/RC1.1-CHANGE-REQUEST.md`
-10. `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`
-11. `docs/00-master/MASTER-SPEC-RC1.md`
-12. `docs/00-master/RC1-GATE-REVIEW.md`
-13. `docs/07-plans/ROADMAP-RC1.2.md`
-14. `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`
+6. `docs/00-master/RC1.2-CHANGE-REQUEST-004-DESIGN-V3.md`
+7. `docs/00-master/RC1.2-CHANGE-REQUEST-005-CUADERNO-CAMPANA.md`
+8. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
+9. `docs/design/VISUAL_DESIGN_LOCK.md`
+10. `docs/design/DESIGN_SYSTEM.md`
+11. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
+12. `docs/00-master/RC1.1-CHANGE-REQUEST.md`
+13. `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`
+14. `docs/00-master/MASTER-SPEC-RC1.md`
+15. `docs/00-master/RC1-GATE-REVIEW.md`
+16. `docs/07-plans/ROADMAP-RC1.2.md`
+17. `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`
 
 Then read only the domain/architecture/UI contracts needed by the current phase.
+
+## Approved preparation after current Gate
+
+CR-005 is approved as the next product-workflow refinement. It reorganizes the Farm experience around a **Cuaderno** with two visual areas — **Trabajos del año** and **Recolección** — while keeping the frozen root navigation and canonical domain boundaries. User-facing **Pesada** maps to Delivery; every Pesada owns its cooperative/mill selection and later yield remains a separate analysis. Individual harvest labour, equipment quantities and harvest-expense links are specified for later implementation.
+
+**Do not implement CR-005 production code while Phase 18 is active.** Documentation/specification work is allowed; the first production slice starts with Phase 19 after Gate 18 closes.
 
 ## Hard stop rule
 
