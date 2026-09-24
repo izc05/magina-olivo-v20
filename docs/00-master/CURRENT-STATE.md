@@ -37,7 +37,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 17 — SPAIN CATASTRO LOOKUP AND CONFIRMED IMPORT (starts once PR #212 is merged into main)
+▶ PHASE 18 — LAND REGISTRY GEOMETRIES + MAP (next; Gate 17 physical acceptance pending on the owner phone)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -317,13 +317,20 @@ in airplane mode.
 - The Calendario root shows planned work; reminders are local `AlarmManager` alarms
   rebuilt from the stored rows; notifications open the Activity.
 
-**Gate 16 is not yet PASS:** its physical-device clause is pending owner verification
-(checklist in the evidence document).
+**Gate 16 PASS** (owner physical-device check, 2026-09-23). Merged into `main` through PR #212.
+
+## Merged on 2026-09-24 (owner request)
+
+- #212 Phase 16 · #213 UI polish v2 · #214 Inicio with real data + identity pass (#215)
+- #218 Design v3 / CR-004 (Room v11 grove description, big photo headers, Farm hub + sub-screens)
+- #217 Phase 17 — Catastro lookup and confirmed import. CI evidence PASS, including the live WFS
+  import (`docs/06-testing/PHASE17-CATASTRO-IMPORT-SLICE.md`). **Gate 17 physical-device
+  acceptance is pending** on the owner phone with the `main` APK.
 
 ## Next deliverable
 
-Owner physical-device verification of Gate 16. **Phase 17 — Spain Catastro technical spike**
-starts only after Gate 16 PASS.
+Owner phone test of the `main` APK (Catastro import with and without coverage) to close Gate 17,
+then **Phase 18 — Land registry geometries + map**.
 
 ## Parallel-chat reconciliation
 

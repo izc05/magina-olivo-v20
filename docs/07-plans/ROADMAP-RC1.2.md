@@ -25,7 +25,8 @@
 ✅ Phase 14 — Deliveries + weight-ticket OCR + later yield — Gate 14 PASS
 ✅ Phase 15 — Machinery — Gate 15 PASS
 ✅ Phase 16 — Calendar, agenda, reminders and Android notifications — Gate 16 PASS
-▶ Phase 17 — Spain Catastro lookup and confirmed import — opens when PR #212 is merged
+✅ Phase 17 — Spain Catastro lookup and confirmed import — merged; Gate 17 physical acceptance pending
+▶ Phase 18 — Land registry geometries + map
 ```
 
 Gate 6 composite passed on 2026-09-22 on commit `164aaa48`, documented in
