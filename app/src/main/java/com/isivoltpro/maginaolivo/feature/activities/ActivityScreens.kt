@@ -272,11 +272,12 @@ private fun ActivityRow(activity: Activity, onSelected: (UUID) -> Unit) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(activity.description, style = MaterialTheme.typography.titleSmall, maxLines = 2)
                 Text(
-                    "${activity.type.label()} · ${activity.activityDate.format(ROW_DATE)} · ${activity.targetsLabel()}",
+                    "${activity.type.label()} · ${activity.activityDate.format(ROW_DATE)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MoTextSecondary,
-                    maxLines = 2,
+                    maxLines = 1,
                 )
+                Text(activity.targetsLabel(), style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, maxLines = 1)
             }
             MoStatusChip(activity.status.label(), tone = activity.status.tone())
         }

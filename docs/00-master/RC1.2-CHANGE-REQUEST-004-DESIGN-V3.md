@@ -81,7 +81,7 @@ recognise". Scope, within `VISUAL_DESIGN_LOCK` (same outlined family, same palet
 - New outlined icons in the same stroke: tractor, tijeras de poda, pulverizador, saco de
   abono, llave. Each `ActivityType` now has its own icon (shared `ActivityType.icon()`), and
   Maquinaria no longer borrows the olive-tree icon.
-- Less noise: Activity rows lead with their icon and read in two lines with a Spanish date
+- Less noise: Activity rows lead with their icon and use a Spanish date
   instead of an ISO date; Calendar rows lead with the work icon and show the warning chip only
   when the work is overdue (the type moves into the text line).
 - Colour never works alone: every icon keeps its text label. New tint pairs are covered by
