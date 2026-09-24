@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.parcels
 
+import androidx.compose.ui.unit.dp
+import java.time.ZoneId
+import com.isivoltpro.maginaolivo.feature.maps.ParcelMap
+import com.isivoltpro.maginaolivo.feature.maps.MapParcel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -37,6 +41,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -88,6 +93,7 @@ fun FarmParcelsRoute(
     persistence: LocalPersistence,
     onParcelSelected: (UUID) -> Unit,
     onImportFromCatastro: (() -> Unit)? = null,
+    onMap: (() -> Unit)? = null,
 ) {
     val viewModel: FarmParcelsViewModel = viewModel(
         key = "farm-parcels-$farmId",
@@ -102,6 +108,7 @@ fun FarmParcelsRoute(
         onCreate = viewModel::create,
         onRestore = viewModel::restore,
         onImportFromCatastro = onImportFromCatastro,
+        onMap = onMap,
     )
 }
 
@@ -113,6 +120,7 @@ fun FarmParcelsSection(
     onCreate: (ParcelDraft) -> Unit,
     onRestore: (UUID) -> Unit,
     onImportFromCatastro: (() -> Unit)? = null,
+    onMap: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -128,7 +136,9 @@ fun FarmParcelsSection(
         title = "Parcelas",
         action = {
             Row {
-                onImportFromCatastro?.let {
+                onMap?.let { TextButton(onClick = it, modifier = Modifier.testTag("parcels-map")) { Text("Mapa") } }
+                // With the farm map, Catastro is reached from there (several parcels at once).
+                onImportFromCatastro?.takeIf { onMap == null }?.let {
                     TextButton(onClick = it, modifier = Modifier.testTag("import-catastro")) { Text("Catastro") }
                 }
                 TextButton(onClick = { editorVisible = true }, modifier = Modifier.testTag("add-parcel")) { Text("Añadir") }
@@ -139,7 +149,9 @@ fun FarmParcelsSection(
         state.isLoading -> CircularProgressIndicator()
         state.active.isEmpty() -> MoEmptyState(
             title = "Aún no hay parcelas",
-            body = if (onImportFromCatastro != null) {
+            body = if (onMap != null) {
+                "Añádela a mano o pulsa «Mapa» y marca tus parcelas de Catastro."
+            } else if (onImportFromCatastro != null) {
                 "Añádela a mano o búscala en Catastro por su referencia catastral."
             } else {
                 "Añade una parcela manualmente o consulta Catastro desde Mapa y Catastro en Inicio."
@@ -196,6 +208,7 @@ fun ParcelDetailRoute(
     parcelId: UUID,
     persistence: LocalPersistence,
     onArchived: () -> Unit,
+    onLocate: ((UUID) -> Unit)? = null,
 ) {
     val viewModel: ParcelDetailViewModel = viewModel(
         key = "parcel-$parcelId",
@@ -211,6 +224,7 @@ fun ParcelDetailRoute(
         onUpdate = viewModel::update,
         onArchive = viewModel::archive,
         onArchived = onArchived,
+        onLocate = onLocate,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.PARCEL, parcelId),
@@ -229,6 +243,7 @@ fun ParcelDetailScreen(
     onArchive: () -> Unit,
     onArchived: () -> Unit,
     attachmentContent: @Composable () -> Unit = {},
+    onLocate: ((UUID) -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -259,6 +274,10 @@ fun ParcelDetailScreen(
                 onArchive = { archiveConfirmation = true },
                 attachmentContent = attachmentContent,
                 modifier = Modifier.padding(padding),
+                // Only a parcel without a boundary is offered; one on a farm, active.
+                onLocate = state.parcel.farmId
+                    ?.takeIf { state.parcel.geometryGeoJson == null && state.parcel.archivedAt == null }
+                    ?.let { farmId -> onLocate?.let { locate -> { locate(farmId) } } },
             )
         }
     }
@@ -296,6 +315,7 @@ private fun ParcelDetailContent(
     onArchive: () -> Unit,
     attachmentContent: @Composable () -> Unit,
     modifier: Modifier,
+    onLocate: (() -> Unit)? = null,
 ) {
     var tab by rememberSaveable { mutableStateOf(ParcelTab.ACTIVITY) }
     Column(
@@ -329,11 +349,29 @@ private fun ParcelDetailContent(
                 MoStatTile(MoStat("Variedad", agronomy.variety ?: "—", MoIcons.Leaf), Modifier.weight(1f).testTag("parcel-stat-variety"))
                 MoStatTile(MoStat("Riego", agronomy.irrigationSystem?.shortLabel() ?: "—", MoIcons.Drop), Modifier.weight(1f).testTag("parcel-stat-irrigation"))
             }
+            onLocate?.let {
+                MoCompactListItem(
+                    title = "Ubicar en el mapa",
+                    subtitle = "Toca tu parcela y se añaden su referencia y su contorno de Catastro",
+                    icon = MoIcons.Map,
+                    onClick = it,
+                    modifier = Modifier.testTag("parcel-locate"),
+                    trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary) },
+                )
+            }
             IrrigationCard(agronomy, onEdit)
             ParcelTabs(tab) { tab = it }
             when (tab) {
                 ParcelTab.ACTIVITY -> ParcelActivities(activities)
                 ParcelTab.DATA -> Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                    // Phase 18: the saved boundary, drawn from this phone's copy (works offline).
+                    parcel.geometryGeoJson?.let { geometry ->
+                        ParcelMap(
+                            listOf(MapParcel(parcel.id.toString(), parcel.displayName, geometry)),
+                            Modifier.fillMaxWidth().height(300.dp).testTag("parcel-map"),
+                            base = com.isivoltpro.maginaolivo.feature.maps.MapBase.MAP,
+                        )
+                    }
                     ParcelValue("Superficie catastral", parcel.cadastralAreaM2?.let {
                         "${NumberFormat.getNumberInstance(SPANISH).apply { maximumFractionDigits = 2 }.format(it / 10_000)} ha"
                     })
@@ -341,7 +379,8 @@ private fun ParcelDetailContent(
                     ParcelValue("Municipio", parcel.municipality)
                     ParcelValue("Polígono", parcel.cadastralPolygon)
                     ParcelValue("Parcela", parcel.cadastralParcel)
-                    ParcelValue("Geometría", if (parcel.geometryGeoJson == null) null else "Polígono guardado")
+                    ParcelValue("Geometría", if (parcel.geometryGeoJson == null) null else "Polígono guardado en el teléfono")
+                    ParcelValue("Importada el", parcel.sourceImportedAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.format(IMPORT_DATE))
                     ParcelValue("Notas", parcel.notes)
                 }
                 ParcelTab.DOCUMENTS -> attachmentContent()
@@ -575,3 +614,4 @@ internal fun Set<DayOfWeek>.label(): String? {
     }
 }
 
+private val IMPORT_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy", SPANISH)

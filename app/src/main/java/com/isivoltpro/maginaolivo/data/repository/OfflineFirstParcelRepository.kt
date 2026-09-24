@@ -26,13 +26,14 @@ import com.isivoltpro.maginaolivo.domain.parcel.ParcelChanges
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelMembership
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
+import com.isivoltpro.maginaolivo.domain.parcel.RegistryLink
 import java.time.DayOfWeek
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 
 class OfflineFirstParcelRepository(
     private val database: MaginaOlivoDatabase,
@@ -48,6 +49,11 @@ class OfflineFirstParcelRepository(
 
     override fun observeById(parcelId: UUID): Flow<Parcel?> =
         database.parcelDao().observeById(parcelId).map { it?.toDomain() }.flowOn(dispatchers.io)
+
+    override suspend fun findActiveByCadastralReference(workspaceId: UUID, reference: String): UUID? =
+        withContext(dispatchers.io) {
+            database.parcelDao().findActiveByCadastralReference(workspaceId, reference.trim().uppercase())
+        }
 
     override suspend fun create(command: NewParcel): AppResult<UUID> {
         val name = normalizedName(command.displayName)
@@ -88,6 +94,8 @@ class OfflineFirstParcelRepository(
                             municipality = command.municipality.normalized(),
                             province = command.province.normalized(),
                             source = command.source.name,
+                            sourceProvider = command.sourceProvider,
+                            sourceImportedAt = command.sourceImportedAt,
                             geometryGeoJson = command.geometryGeoJson.normalized(),
                             cadastralAreaM2 = command.cadastralAreaM2,
                             managedAreaM2 = command.managedAreaM2,
@@ -135,6 +143,35 @@ class OfflineFirstParcelRepository(
                     notes = changes.notes.normalized(),
                     metadata = current.metadata.next(now),
                 ).withAgronomy(changes.agronomy),
+            )
+            enqueue(parcelId, OutboxOperation.UPDATE, now)
+            AppResult.Success(Unit)
+        }
+    }
+
+    override suspend fun linkToRegistry(parcelId: UUID, link: RegistryLink): AppResult<Unit> {
+        val reference = link.cadastralReference.trim().uppercase()
+        if (reference.isEmpty()) return AppResult.Failure(AppError.Validation("catastro", "identity_and_geometry_required"))
+        validateArea(link.cadastralAreaM2)?.let { return it }
+        validateGeometry(link.geometryGeoJson)?.let { return it }
+        return mutate(parcelId, "link_parcel") { current, now ->
+            if (current.metadata.deletedAt != null) return@mutate AppResult.Failure(AppError.Conflict("archived_parcel"))
+            val holder = database.parcelDao().findActiveByCadastralReference(current.workspaceId, reference)
+            if (holder != null && holder != parcelId) {
+                return@mutate AppResult.Failure(AppError.Conflict("duplicate_cadastral_reference"))
+            }
+            database.parcelDao().upsert(
+                current.copy(
+                    cadastralReference = reference,
+                    cadastralPolygon = link.cadastralPolygon.normalized(),
+                    cadastralParcel = link.cadastralParcel.normalized(),
+                    source = ParcelSource.CATASTRO.name,
+                    sourceProvider = link.sourceProvider,
+                    sourceImportedAt = link.sourceImportedAt,
+                    geometryGeoJson = link.geometryGeoJson.trim(),
+                    cadastralAreaM2 = link.cadastralAreaM2,
+                    metadata = current.metadata.next(now),
+                ),
             )
             enqueue(parcelId, OutboxOperation.UPDATE, now)
             AppResult.Success(Unit)
@@ -265,6 +302,7 @@ class OfflineFirstParcelRepository(
         cadastralAreaM2 = parcel.cadastralAreaM2, managedAreaM2 = parcel.managedAreaM2,
         notes = parcel.notes, archivedAt = parcel.metadata.deletedAt, version = parcel.metadata.version,
         agronomy = parcel.agronomy(),
+        sourceProvider = parcel.sourceProvider, sourceImportedAt = parcel.sourceImportedAt,
     )
 
     private companion object {

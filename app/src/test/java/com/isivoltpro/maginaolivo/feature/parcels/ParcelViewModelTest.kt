@@ -6,6 +6,7 @@ import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelChanges
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelMembership
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
+import com.isivoltpro.maginaolivo.domain.parcel.RegistryLink
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -123,6 +124,9 @@ class ParcelViewModelTest {
         override fun observeActive(farmId: UUID): Flow<List<Parcel>> = active
         override fun observeArchived(farmId: UUID): Flow<List<Parcel>> = archived
         override fun observeById(parcelId: UUID): Flow<Parcel?> = selected
+        override suspend fun linkToRegistry(parcelId: UUID, link: RegistryLink): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun findActiveByCadastralReference(workspaceId: UUID, reference: String): UUID? =
+            active.value.firstOrNull { it.workspaceId == workspaceId && it.cadastralReference == reference }?.id
         override suspend fun create(command: NewParcel): AppResult<UUID> {
             created = command
             return AppResult.Success(UUID.randomUUID())

@@ -59,6 +59,8 @@ data class ParcelEntity(
     val province: String? = null,
     val source: String,
     @ColumnInfo(name = "geometry_geo_json") val geometryGeoJson: String? = null,
+    @ColumnInfo(name = "source_provider") val sourceProvider: String? = null,
+    @ColumnInfo(name = "source_imported_at") val sourceImportedAt: Instant? = null,
     @ColumnInfo(name = "cadastral_area_m2") val cadastralAreaM2: Double? = null,
     @ColumnInfo(name = "managed_area_m2") val managedAreaM2: Double? = null,
     val notes: String? = null,

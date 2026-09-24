@@ -3,43 +3,11 @@ package com.isivoltpro.maginaolivo.feature.catastro
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import javax.xml.XMLConstants
-import javax.xml.parsers.DocumentBuilderFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.w3c.dom.Element
-import org.xml.sax.SAXException
 
-/** Public parcel identity and geometry only; no ownership or protected Catastro data. */
-data class CadastralCandidate(
-    val reference: String,
-    val areaM2: Double?,
-    /** Polygons, then rings, then WGS84 longitude/latitude points. Ring 0 is the exterior. */
-    val polygons: List<List<List<Pair<Double, Double>>>>,
-) {
-    val geometryGeoJson: String get() = buildString {
-        val multi = polygons.size > 1
-        append("{\"type\":\"").append(if (multi) "MultiPolygon" else "Polygon").append("\",\"coordinates\":")
-        if (multi) append('[')
-        polygons.forEachIndexed { polygonIndex, rings ->
-            if (polygonIndex > 0) append(',')
-            append('[')
-            rings.forEachIndexed { ringIndex, points ->
-                if (ringIndex > 0) append(',')
-                append('[')
-                points.forEachIndexed { pointIndex, point ->
-                    if (pointIndex > 0) append(',')
-                    append('[').append(point.first).append(',').append(point.second).append(']')
-                }
-                append(']')
-            }
-            append(']')
-        }
-        if (multi) append(']')
-        append('}')
-    }
-}
+typealias CadastralCandidate = com.isivoltpro.maginaolivo.domain.registry.ParcelCandidate
 
 enum class CadastreError { INVALID_REFERENCE, NOT_FOUND, NETWORK, SERVICE, INVALID_GEOMETRY, RESPONSE }
 
@@ -47,15 +15,52 @@ class CadastreException(val kind: CadastreError, cause: Throwable? = null) : Exc
 
 interface CadastreClient {
     suspend fun findByReference(reference: String): CadastralCandidate
+    suspend fun findNear(latitude: Double, longitude: Double): List<CadastralCandidate> = emptyList()
+
+    /** Rural lookup by the data printed on PAC, cooperative and deed papers. */
+    suspend fun findByPolygonParcel(
+        province: String,
+        municipality: String,
+        polygon: String,
+        parcel: String,
+    ): List<CadastralCandidate> = emptyList()
 }
 
 /** WFS GetParcel is kept behind this boundary; the rest of the app never sees GML. */
 class OfficialCadastreClient : CadastreClient {
-    override suspend fun findByReference(reference: String): CadastralCandidate = withContext(Dispatchers.IO) {
+    override suspend fun findByReference(reference: String): CadastralCandidate {
         val normalized = reference.trim().uppercase()
         if (!REFERENCE.matches(normalized)) throw CadastreException(CadastreError.INVALID_REFERENCE)
-        val url = URL("$ENDPOINT?service=WFS&version=2.0.0&request=GetFeature" +
-            "&STOREDQUERIE_ID=GetParcel&refcat=$normalized&srsname=EPSG::4326")
+        return parseCadastralGml(fetch("STOREDQUERIE_ID=GetParcel&refcat=$normalized"), normalized)
+    }
+
+    override suspend fun findNear(latitude: Double, longitude: Double): List<CadastralCandidate> {
+        val bbox = try {
+            boundedBbox(latitude, longitude, radiusMeters = 120.0)
+        } catch (_: IllegalArgumentException) {
+            throw CadastreException(CadastreError.NOT_FOUND)
+        }
+        return readGmlParcels(fetch("typeNames=CP:CadastralParcel&bbox=${bbox.parameter}&count=200"))
+    }
+
+    override suspend fun findByPolygonParcel(
+        province: String,
+        municipality: String,
+        polygon: String,
+        parcel: String,
+    ): List<CadastralCandidate> {
+        val query = polygonParcelQuery(province, municipality, polygon, parcel)
+            ?: throw CadastreException(CadastreError.INVALID_REFERENCE)
+        val references = parseDnpppReferences(download(URL("$LOCATOR?$query")))
+        if (references.isEmpty()) throw CadastreException(CadastreError.NOT_FOUND)
+        // One polygon/parcel pair is normally one reference; a handful at most (subparcels).
+        return references.take(MAX_LOCATED).map { findByReference(it) }
+    }
+
+    private suspend fun fetch(query: String): ByteArray =
+        download(URL("$ENDPOINT?service=WFS&version=2.0.0&request=GetFeature&$query&srsname=EPSG::4326"))
+
+    private suspend fun download(url: URL): ByteArray = withContext(Dispatchers.IO) {
         try {
             val connection = url.openConnection() as HttpURLConnection
             connection.connectTimeout = 10_000
@@ -74,7 +79,7 @@ class OfficialCadastreClient : CadastreClient {
                     }
                     output.toByteArray()
                 }
-                parseCadastralGml(body, normalized)
+                body
             } finally {
                 connection.disconnect()
             }
@@ -91,116 +96,37 @@ class OfficialCadastreClient : CadastreClient {
 
     companion object {
         private const val ENDPOINT = "https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx"
+        private const val LOCATOR = "https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPPP"
+        private const val MAX_LOCATED = 5
         private const val MAX_XML_BYTES = 2_000_000
         private val REFERENCE = Regex("[A-Z0-9]{14}")
     }
 }
 
-internal fun parseCadastralGml(xml: ByteArray, expectedReference: String): CadastralCandidate {
-    if (xml.isEmpty() || xml.size > 2_000_000) throw CadastreException(CadastreError.RESPONSE)
-    // Catastro GML never carries a DTD. Refusing one here is the XXE guard that works on every
-    // parser: Android's DocumentBuilderFactory rejects the Xerces feature flags below, which
-    // made every real lookup fail on the phone, so those stay best effort for the JVM.
-    // The official response uses an ASCII-compatible encoding. Reject NUL-bearing UTF-16/32
-    // before scanning so another encoding cannot hide a DTD on Android's parser.
-    if (xml.any { it == 0.toByte() } || declaresDoctype(xml)) throw CadastreException(CadastreError.RESPONSE)
-    val factory = DocumentBuilderFactory.newInstance().apply {
-        isNamespaceAware = true
-        listOf(
-            "http://apache.org/xml/features/disallow-doctype-decl" to true,
-            "http://xml.org/sax/features/external-general-entities" to false,
-            "http://xml.org/sax/features/external-parameter-entities" to false,
-            "http://apache.org/xml/features/nonvalidating/load-external-dtd" to false,
-            XMLConstants.FEATURE_SECURE_PROCESSING to true,
-        ).forEach { (feature, value) -> runCatching { setFeature(feature, value) } }
-        runCatching { setXIncludeAware(false) }
-        isExpandEntityReferences = false
-    }
-    val root = try {
-        factory.newDocumentBuilder().apply {
-            setEntityResolver { _, _ -> throw SAXException("External entities are not allowed") }
-        }.parse(xml.inputStream()).documentElement
-    } catch (error: Exception) {
-        throw CadastreException(CadastreError.RESPONSE, error)
-    }
-    if (root.getElementsByTagNameNS("*", "ExceptionReport").length > 0) {
-        throw CadastreException(CadastreError.NOT_FOUND)
-    }
-    val parcels = root.getElementsByTagNameNS(CP_NS, "CadastralParcel")
-    var matching: Element? = null
-    for (index in 0 until parcels.length) {
-        val parcel = parcels.item(index) as? Element ?: continue
-        if (parcel.firstText(CP_NS, "nationalCadastralReference")?.uppercase() == expectedReference) {
-            matching = parcel
-            break
-        }
-    }
-    val parcel = matching ?: throw CadastreException(CadastreError.NOT_FOUND)
-    val geometry = parcel.getElementsByTagNameNS(CP_NS, "geometry").item(0) as? Element
-        ?: throw CadastreException(CadastreError.INVALID_GEOMETRY)
-    val polygons = mutableListOf<List<List<Pair<Double, Double>>>>()
-    // Catastro currently uses MultiSurface/Surface/PolygonPatch. Polygon is valid GML too.
-    val patches = geometry.getElementsByTagNameNS(GML_NS, "PolygonPatch")
-    val shapes = if (patches.length > 0) patches else geometry.getElementsByTagNameNS(GML_NS, "Polygon")
-    if (shapes.length == 0 || shapes.length > 64) throw CadastreException(CadastreError.INVALID_GEOMETRY)
-    for (index in 0 until shapes.length) {
-        val shape = shapes.item(index) as? Element ?: continue
-        var ancestor: Element? = shape
-        while (ancestor != null && ancestor != parcel) {
-            val srs = ancestor.getAttribute("srsName")
-            if (srs.isNotEmpty() && srs !in WGS84_NAMES) throw CadastreException(CadastreError.INVALID_GEOMETRY)
-            ancestor = ancestor.parentNode as? Element
-        }
-        val rings = mutableListOf<List<Pair<Double, Double>>>()
-        val exterior = shape.getElementsByTagNameNS(GML_NS, "exterior").item(0) as? Element
-            ?: throw CadastreException(CadastreError.INVALID_GEOMETRY)
-        rings += parseRing(exterior)
-        val interiors = shape.getElementsByTagNameNS(GML_NS, "interior")
-        if (interiors.length > 64) throw CadastreException(CadastreError.INVALID_GEOMETRY)
-        for (ringIndex in 0 until interiors.length) {
-            rings += parseRing(interiors.item(ringIndex) as Element)
-        }
-        polygons += rings
-    }
-    val area = parcel.firstText(CP_NS, "areaValue")?.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0 }
-    return CadastralCandidate(expectedReference, area, polygons)
+internal data class CadastreBbox(
+    val south: Double,
+    val west: Double,
+    val north: Double,
+    val east: Double,
+    val approximateAreaM2: Double,
+) {
+    val parameter: String = "$south,$west,$north,$east,urn:ogc:def:crs:EPSG::4326"
 }
 
-private fun declaresDoctype(xml: ByteArray): Boolean =
-    String(xml, Charsets.UTF_8).contains("<!DOCTYPE", ignoreCase = true)
-
-private fun parseRing(boundary: Element): List<Pair<Double, Double>> {
-    val posList = boundary.getElementsByTagNameNS(GML_NS, "posList").item(0) as? Element
-        ?: throw CadastreException(CadastreError.INVALID_GEOMETRY)
-    if (posList.getAttribute("srsDimension").let { it.isNotEmpty() && it != "2" }) {
-        throw CadastreException(CadastreError.INVALID_GEOMETRY)
-    }
-    val values = posList.textContent.trim().split(Regex("\\s+"))
-    if (values.size < 8 || values.size % 2 != 0 || values.size > 20_000) {
-        throw CadastreException(CadastreError.INVALID_GEOMETRY)
-    }
-    val points = values.chunked(2).map { pair ->
-        val latitude = pair[0].toDoubleOrNull()
-        val longitude = pair[1].toDoubleOrNull()
-        if (latitude == null || longitude == null || !latitude.isFinite() || !longitude.isFinite() ||
-            latitude !in SPAIN_LATITUDE || longitude !in SPAIN_LONGITUDE
-        ) throw CadastreException(CadastreError.INVALID_GEOMETRY)
-        longitude to latitude
-    }
-    if (points.first() != points.last() || points.toSet().size < 3) {
-        throw CadastreException(CadastreError.INVALID_GEOMETRY)
-    }
-    return points
+internal fun boundedBbox(latitude: Double, longitude: Double, radiusMeters: Double): CadastreBbox {
+    require(latitude in 27.0..44.5 && longitude in -18.5..4.6)
+    require(radiusMeters.isFinite() && radiusMeters in 1.0..500.0)
+    val latitudeDelta = radiusMeters / 111_320.0
+    val longitudeDelta = latitudeDelta / kotlin.math.cos(Math.toRadians(latitude))
+    return CadastreBbox(
+        south = latitude - latitudeDelta,
+        west = longitude - longitudeDelta,
+        north = latitude + latitudeDelta,
+        east = longitude + longitudeDelta,
+        approximateAreaM2 = 4 * radiusMeters * radiusMeters,
+    )
 }
 
-private fun Element.firstText(namespace: String, localName: String): String? =
-    getElementsByTagNameNS(namespace, localName).item(0)?.textContent?.trim()?.takeIf(String::isNotEmpty)
-
-// Whole Catastro coverage, Canary Islands, Ceuta and Melilla included. A point outside it
-// means swapped axes or the wrong CRS, never a real Spanish parcel.
-private val SPAIN_LATITUDE = 27.0..44.5
-private val SPAIN_LONGITUDE = -18.5..4.6
-
-private const val CP_NS = "http://inspire.ec.europa.eu/schemas/cp/4.0"
-private const val GML_NS = "http://www.opengis.net/gml/3.2"
-private val WGS84_NAMES = setOf("EPSG::4326", "EPSG:4326", "urn:ogc:def:crs:EPSG::4326", "http://www.opengis.net/def/crs/EPSG/0/4326")
+internal fun parseCadastralGml(xml: ByteArray, expectedReference: String): CadastralCandidate =
+    readGmlParcels(xml).firstOrNull { it.reference == expectedReference }
+        ?: throw CadastreException(CadastreError.NOT_FOUND)

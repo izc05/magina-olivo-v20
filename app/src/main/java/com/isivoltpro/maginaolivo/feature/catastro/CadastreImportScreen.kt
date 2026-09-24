@@ -61,7 +61,14 @@ fun CadastreImportRoute(
     })
     val state by model.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.savedParcelId) { state.savedParcelId?.let(onParcelImported) }
-    CadastreImportScreen(state, preselectedFarmId, model::search, model::import)
+    val resolver = androidx.compose.ui.platform.LocalContext.current.contentResolver
+    val file = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let { model.importFile(resolver, it) } }
+    CadastreImportScreen(state, preselectedFarmId, model::search, model::import,
+        onNear = model::searchNear, onSelect = model::selectCandidate,
+        onFile = { file.launch(arrayOf("*/*")) }, onOpenExisting = onParcelImported)
+
 }
 
 @Composable
@@ -70,7 +77,14 @@ fun CadastreImportScreen(
     preselectedFarmId: UUID?,
     onSearch: (String) -> Unit,
     onImport: (UUID?, String) -> Unit,
+    onNear: ((Double, Double) -> Unit)? = null,
+    onSelect: (String) -> Unit = {},
+    onFile: (() -> Unit)? = null,
+    onOpenExisting: (UUID) -> Unit = {},
 ) {
+    var showMap by rememberSaveable { mutableStateOf(false) }
+    var base by rememberSaveable { mutableStateOf(com.isivoltpro.maginaolivo.feature.maps.MapBase.MAP) }
+    val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
     var reference by rememberSaveable { mutableStateOf("") }
     var alias by rememberSaveable { mutableStateOf("") }
     var selectedFarm by rememberSaveable { mutableStateOf(preselectedFarmId?.toString()) }
@@ -98,6 +112,52 @@ fun CadastreImportScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MoTextSecondary,
             )
+            Row {
+                onNear?.let { androidx.compose.material3.TextButton(onClick = { showMap = !showMap }) { Text(if (showMap) "Cerrar mapa" else "Elegir en mapa") } }
+                onFile?.let { androidx.compose.material3.TextButton(onClick = it, enabled = !state.saving && !state.searching) { Text("Abrir GML") } }
+            }
+            if (showMap) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Toca la zona y luego el número de tu parcela.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoTextSecondary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    com.isivoltpro.maginaolivo.feature.maps.MapBase.entries.forEach { option ->
+                        androidx.compose.material3.FilterChip(
+                            selected = base == option,
+                            onClick = { base = option },
+                            label = { Text(option.label, style = MaterialTheme.typography.labelSmall) },
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
+                    }
+                }
+                // A tall map, numbers drawn on each parcel: no list of every number underneath.
+                com.isivoltpro.maginaolivo.feature.maps.ParcelMap(
+                    parcels = state.candidates.map {
+                        com.isivoltpro.maginaolivo.feature.maps.MapParcel(
+                            it.reference, it.reference, it.geometryGeoJson,
+                            com.isivoltpro.maginaolivo.feature.maps.MapParcelKind.CANDIDATE,
+                            com.isivoltpro.maginaolivo.feature.maps.parcelNumber(it.reference),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().height((screenHeight * 0.62f).dp).testTag("catastro-map"),
+                    base = base,
+                    selectedId = state.candidate?.reference, onSelected = onSelect,
+                    onTap = { latitude, longitude -> if (!state.saving) onNear?.invoke(latitude, longitude) },
+                )
+            }
+            // Several parcels from a GML file and no map open: choose by number here instead.
+            if (!showMap && state.candidates.size > 1) {
+                Text("Elige una de las ${state.candidates.size} parcelas del archivo", color = MoTextSecondary)
+                state.candidates.forEach { option ->
+                    androidx.compose.material3.TextButton(onClick = { onSelect(option.reference) }, enabled = !state.saving) { Text(option.reference) }
+                }
+            }
+            state.duplicateId?.let { id ->
+                androidx.compose.material3.TextButton(onClick = { onOpenExisting(id) }) { Text("Abrir parcela existente") }
+            }
             MoTextField(
                 value = reference,
                 onValueChange = { reference = it.uppercase().filter(Char::isLetterOrDigit).take(14) },
@@ -120,12 +180,17 @@ fun CadastreImportScreen(
                     modifier = Modifier.fillMaxWidth().testTag("catastro-candidate"),
                 ) {
                     Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-                        Text("Parcela encontrada", style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
-                        Text("Referencia ${candidate.reference}", style = MaterialTheme.typography.bodyLarge)
-                        candidate.areaM2?.let {
-                            Text("Superficie catastral: ${formatHectares(it)} ha", style = MaterialTheme.typography.bodyLarge)
-                        }
-                        CandidateGeometryPreview(candidate, Modifier.fillMaxWidth().height(180.dp))
+                        Text(
+                            com.isivoltpro.maginaolivo.feature.maps.defaultParcelName(candidate.reference),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MoOliveDark,
+                        )
+                        Text(
+                            listOfNotNull(candidate.reference, candidate.areaM2?.let { "${formatHectares(it)} ha" }).joinToString(" · "),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        // The map already shows it; the small drawing is only for a reference search.
+                        if (!showMap) CandidateGeometryPreview(candidate, Modifier.fillMaxWidth().height(140.dp))
                         Text(
                             "Contorno recibido del servicio INSPIRE de la Dirección General del Catastro. La copia guardada no es un certificado catastral actualizado.",
                             style = MaterialTheme.typography.bodySmall,
@@ -158,7 +223,7 @@ fun CadastreImportScreen(
                     text = if (state.saving) "Guardando…" else "Confirmar e incorporar",
                     onClick = { onImport(selectedFarm?.let(UUID::fromString), alias) },
                     modifier = Modifier.fillMaxWidth().testTag("catastro-import"),
-                    enabled = !state.saving && !state.searching && state.farms.isNotEmpty(),
+                    enabled = !state.saving && !state.searching && state.farms.any { it.id.toString() == selectedFarm } && alias.isNotBlank(),
                 )
             }
             Spacer(Modifier.height(MoSpacing.lg))

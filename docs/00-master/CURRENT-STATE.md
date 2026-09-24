@@ -38,7 +38,11 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 18 — LAND REGISTRY GEOMETRIES + MAP (next; Gate 17 physical acceptance pending on the owner phone)
+▶ PHASE 18 — LAND REGISTRY GEOMETRIES + MAP — merged to main 2026-09-24 (PR #227, owner: "si está todo bien fusiona")
+  Gate 18: CI PASS (live import → airplane mode → offline render; live polygon/parcel lookup;
+  IGN/PNOA tiles answer). Owner device feedback on the Phase 18 APK: "funciona bastante bien".
+  Explicit Gate 18 (and Gate 17) PASS on the merged main APK still pending from the owner.
+  Phase 19 production stays closed until that explicit PASS.
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.

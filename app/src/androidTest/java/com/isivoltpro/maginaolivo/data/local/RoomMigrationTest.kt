@@ -743,6 +743,60 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration11To12BackfillsCatastroProvenanceAndKeepsManualRowsEmpty() {
+        migrationHelper.createDatabase(TEST_DATABASE, 11).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            fun insertParcel(id: String, source: String, reference: String?, createdAt: Long) {
+                val ref = reference?.let { "'$it'" } ?: "NULL"
+                database.execSQL(
+                    """
+                    INSERT INTO parcels (
+                        id, workspace_id, display_name, cadastral_reference, source,
+                        managed_area_m2, olive_tree_count, status, created_at, updated_at,
+                        deleted_at, version, sync_status, remote_version, last_synced_at
+                    ) VALUES (
+                        '$id', '11111111-1111-1111-1111-111111111111', 'Parcela', $ref, '$source',
+                        1200.0, 150, 'ACTIVE', $createdAt, $createdAt, NULL, 2, 'SYNCED', 2, $createdAt
+                    )
+                    """.trimIndent(),
+                )
+            }
+            insertParcel("66666666-6666-6666-6666-666666666666", "CATASTRO", "23044A00400021", 5000)
+            insertParcel("77777777-7777-7777-7777-777777777777", "MANUAL", null, 6000)
+        }
+
+        migrationHelper
+            .runMigrationsAndValidate(TEST_DATABASE, 12, true, DatabaseMigrations.MIGRATION_11_12)
+            .use { database ->
+                database.query(
+                    "SELECT source_provider, source_imported_at, olive_tree_count, version FROM parcels ORDER BY id",
+                ).use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals("ES_CATASTRO", cursor.getString(0))
+                    assertEquals(5000L, cursor.getLong(1))
+                    // v11 grove data survives and the backfill is not an edit: no version bump.
+                    assertEquals(150, cursor.getInt(2))
+                    assertEquals(2, cursor.getInt(3))
+                    assertTrue(cursor.moveToNext())
+                    assertTrue(cursor.isNull(0))
+                    assertTrue(cursor.isNull(1))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }
