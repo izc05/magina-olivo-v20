@@ -1,8 +1,9 @@
-# Phase 17 — Spain Catastro technical spike (preparation)
+# Phase 17 — Spain Catastro technical spike and Android import
 
-**Status:** WFS probe passed on 2026-09-23 while Gate 16 waits for its physical-device check.
-No production code: nothing here is compiled into the app.
-**Branch:** `docs/phase17-catastro-spike` (auxiliary research line, `SINGLE-TRACK-EXECUTION`)
+**Status:** WFS probe and Android live import passed in CI. The owner requested the complete
+Phase 17 implementation on an isolated branch; merging remains held for Gate 16's physical-device check.
+**Branch:** `codex/phase17-catastro`, PR #217. The original probe was prepared on `docs/phase17-catastro-spike`.
+**Android evidence and remaining checks:** `docs/06-testing/PHASE17-CATASTRO-IMPORT-SLICE.md`.
 **Contract:** `docs/03-maps/CADASTRE-CONTRACT-RC1.md` (§20 test matrix, §21 gate)
 
 **Gate 17:** a real Spanish parcel can be located/imported without scraping or invented geometry.
@@ -27,7 +28,7 @@ the job log and keeps the raw GML as an artifact.
 
 Timings (ms) are recorded for every call, to size timeouts and retry policy (§15–16).
 
-## Decisions the spike must close before Phase 17 production work
+## Decisions evaluated by the spike
 
 1. **App CRS path:** request `EPSG::4326` directly (no projection code on the phone) or request
    `EPSG::25830/25829/25831` and convert in the adapter — depends on the measured deviation and
@@ -53,6 +54,9 @@ This result validates the service shape for the sampled Sierra Mágina locations
 
 ## Out of scope here
 
-Map rendering (Phase 18), Room changes, UI, WMS overlay, protected ownership data (§18),
-bulk downloads. Gate 17 is not claimed from this preparation: it needs the Android import
-path on a real parcel, which starts only after Gate 16 PASS.
+Interactive map rendering (Phase 18), WMS overlay, protected ownership data (§18), and
+bulk downloads remain out of scope. Android now provides reference lookup, a contour preview,
+explicit confirmation, farm assignment, duplicate protection, and local persistence through the
+existing repository (no schema migration). The live emulator test imports an official parcel and
+checks persistence after database reopening. This evidence does not close the physical-device checks
+or authorize merging before Gate 16 PASS.

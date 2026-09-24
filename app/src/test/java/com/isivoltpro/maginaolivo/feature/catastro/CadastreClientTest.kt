@@ -82,4 +82,28 @@ class CadastreClientTest {
             assertEquals(CadastreError.RESPONSE, error.kind)
         }
     }
+
+    @Test fun refusesDoctypeInUtf16BeforeXmlParsing() {
+        val xml = """<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE x [<!ENTITY e SYSTEM "file:///nonexistent">]><x>&e;</x>"""
+        listOf(Charsets.UTF_16, Charsets.UTF_16LE, Charsets.UTF_16BE).forEach { encoding ->
+            try {
+                parseCadastralGml(xml.toByteArray(encoding), "23044A00400021")
+                fail("DTD must be refused regardless of byte order")
+            } catch (error: CadastreException) {
+                assertEquals(CadastreError.RESPONSE, error.kind)
+                assertEquals(null, error.cause)
+            }
+        }
+    }
+
+    @Test fun rejectsUnrecognizedCrsEvenWhenItsNameContains4326() {
+        val xml = requireNotNull(javaClass.getResourceAsStream("/catastro/real-huelma-parcel.gml"))
+            .use { it.readBytes().toString(Charsets.UTF_8) }
+        try {
+            parseCadastralGml(xml.replace("4326", "14326").toByteArray(), "23044A00400021")
+            fail("CRS identifiers must match exactly")
+        } catch (error: CadastreException) {
+            assertEquals(CadastreError.INVALID_GEOMETRY, error.kind)
+        }
+    }
 }

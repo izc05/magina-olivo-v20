@@ -119,7 +119,7 @@ fun FarmParcelsSection(
             body = if (onImportFromCatastro != null) {
                 "Añádela a mano o búscala en Catastro por su referencia catastral."
             } else {
-                "Añade una parcela manualmente. Podrás completar su geometría y Catastro más adelante."
+                "Añade una parcela manualmente o consulta Catastro desde Mapa y Catastro en Inicio."
             },
             icon = MoIcons.Parcels,
         )
@@ -267,10 +267,13 @@ private fun ParcelDetailContent(
     ) {
         Text(parcel.displayName, style = MaterialTheme.typography.headlineMedium)
         MoStatusChip(
-            text = if (parcel.source == ParcelSource.CATASTRO) "Catastro verificado" else "Entrada manual",
+            text = if (parcel.source == ParcelSource.CATASTRO) "Importada de Catastro" else "Entrada manual",
             tone = if (parcel.source == ParcelSource.CATASTRO) MoStatusTone.Success else MoStatusTone.Neutral,
         )
         MoMetricCard("Superficie gestionada", parcel.areaLabel(), Modifier.fillMaxWidth())
+        ParcelValue("Superficie catastral", parcel.cadastralAreaM2?.let {
+            "${NumberFormat.getNumberInstance(Locale.forLanguageTag("es-ES")).format(it / 10_000)} ha"
+        })
         ParcelValue("Referencia catastral", parcel.cadastralReference)
         ParcelValue("Municipio", parcel.municipality)
         ParcelValue("Polígono", parcel.cadastralPolygon)

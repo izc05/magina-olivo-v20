@@ -9,7 +9,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.w3c.dom.Element
-import org.w3c.dom.Node
+import org.xml.sax.SAXException
 
 /** Public parcel identity and geometry only; no ownership or protected Catastro data. */
 data class CadastralCandidate(
@@ -101,7 +101,9 @@ internal fun parseCadastralGml(xml: ByteArray, expectedReference: String): Cadas
     // Catastro GML never carries a DTD. Refusing one here is the XXE guard that works on every
     // parser: Android's DocumentBuilderFactory rejects the Xerces feature flags below, which
     // made every real lookup fail on the phone, so those stay best effort for the JVM.
-    if (declaresDoctype(xml)) throw CadastreException(CadastreError.RESPONSE)
+    // The official response uses an ASCII-compatible encoding. Reject NUL-bearing UTF-16/32
+    // before scanning so another encoding cannot hide a DTD on Android's parser.
+    if (xml.any { it == 0.toByte() } || declaresDoctype(xml)) throw CadastreException(CadastreError.RESPONSE)
     val factory = DocumentBuilderFactory.newInstance().apply {
         isNamespaceAware = true
         listOf(
@@ -115,7 +117,9 @@ internal fun parseCadastralGml(xml: ByteArray, expectedReference: String): Cadas
         isExpandEntityReferences = false
     }
     val root = try {
-        factory.newDocumentBuilder().parse(xml.inputStream()).documentElement
+        factory.newDocumentBuilder().apply {
+            setEntityResolver { _, _ -> throw SAXException("External entities are not allowed") }
+        }.parse(xml.inputStream()).documentElement
     } catch (error: Exception) {
         throw CadastreException(CadastreError.RESPONSE, error)
     }
@@ -134,7 +138,6 @@ internal fun parseCadastralGml(xml: ByteArray, expectedReference: String): Cadas
     val parcel = matching ?: throw CadastreException(CadastreError.NOT_FOUND)
     val geometry = parcel.getElementsByTagNameNS(CP_NS, "geometry").item(0) as? Element
         ?: throw CadastreException(CadastreError.INVALID_GEOMETRY)
-    val surfaces = geometry.getElementsByTagNameNS(GML_NS, "Surface")
     val polygons = mutableListOf<List<List<Pair<Double, Double>>>>()
     // Catastro currently uses MultiSurface/Surface/PolygonPatch. Polygon is valid GML too.
     val patches = geometry.getElementsByTagNameNS(GML_NS, "PolygonPatch")
@@ -142,9 +145,12 @@ internal fun parseCadastralGml(xml: ByteArray, expectedReference: String): Cadas
     if (shapes.length == 0 || shapes.length > 64) throw CadastreException(CadastreError.INVALID_GEOMETRY)
     for (index in 0 until shapes.length) {
         val shape = shapes.item(index) as? Element ?: continue
-        val surface = if (surfaces.length > 0) surfaces.item(0) as? Element else shape
-        val srs = surface?.getAttribute("srsName").orEmpty()
-        if (srs.isNotEmpty() && !srs.contains("4326")) throw CadastreException(CadastreError.INVALID_GEOMETRY)
+        var ancestor: Element? = shape
+        while (ancestor != null && ancestor != parcel) {
+            val srs = ancestor.getAttribute("srsName")
+            if (srs.isNotEmpty() && srs !in WGS84_NAMES) throw CadastreException(CadastreError.INVALID_GEOMETRY)
+            ancestor = ancestor.parentNode as? Element
+        }
         val rings = mutableListOf<List<Pair<Double, Double>>>()
         val exterior = shape.getElementsByTagNameNS(GML_NS, "exterior").item(0) as? Element
             ?: throw CadastreException(CadastreError.INVALID_GEOMETRY)
@@ -197,3 +203,4 @@ private val SPAIN_LONGITUDE = -18.5..4.6
 
 private const val CP_NS = "http://inspire.ec.europa.eu/schemas/cp/4.0"
 private const val GML_NS = "http://www.opengis.net/gml/3.2"
+private val WGS84_NAMES = setOf("EPSG::4326", "EPSG:4326", "urn:ogc:def:crs:EPSG::4326", "http://www.opengis.net/def/crs/EPSG/0/4326")

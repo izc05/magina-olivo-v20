@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -172,7 +173,8 @@ private fun CandidateGeometryPreview(candidate: CadastralCandidate, modifier: Mo
     val maxLon = points.maxOf { it.first }
     val minLat = points.minOf { it.second }
     val maxLat = points.maxOf { it.second }
-    val lonSpan = (maxLon - minLon).takeIf { it > 0 } ?: 1.0
+    val longitudeScale = kotlin.math.cos(Math.toRadians((minLat + maxLat) / 2))
+    val lonSpan = ((maxLon - minLon) * longitudeScale).takeIf { it > 0 } ?: 1.0
     val latSpan = (maxLat - minLat).takeIf { it > 0 } ?: 1.0
     Canvas(modifier.testTag("catastro-geometry-preview")) {
         val scale = minOf(size.width.toDouble() * 0.84 / lonSpan, size.height.toDouble() * 0.84 / latSpan).toFloat()
@@ -181,17 +183,17 @@ private fun CandidateGeometryPreview(candidate: CadastralCandidate, modifier: Mo
         val left = (size.width - usedWidth) / 2
         val top = (size.height - usedHeight) / 2
         candidate.polygons.forEach { polygon ->
-            polygon.forEachIndexed { ringIndex, ring ->
-                val path = Path()
+            val path = Path().apply { fillType = PathFillType.EvenOdd }
+            polygon.forEach { ring ->
                 ring.forEachIndexed { index, point ->
-                    val x = left + ((point.first - minLon) * scale).toFloat()
+                    val x = left + ((point.first - minLon) * longitudeScale * scale).toFloat()
                     val y = top + usedHeight - ((point.second - minLat) * scale).toFloat()
                     if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
                 }
                 path.close()
-                if (ringIndex == 0) drawPath(path, MoOlivePrimary.copy(alpha = 0.20f))
-                drawPath(path, MoOliveDark, style = Stroke(width = 3.dp.toPx()))
             }
+            drawPath(path, MoOlivePrimary.copy(alpha = 0.20f))
+            drawPath(path, MoOliveDark, style = Stroke(width = 3.dp.toPx()))
         }
     }
 }
