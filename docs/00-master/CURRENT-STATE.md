@@ -40,6 +40,14 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ▶ PHASE 18 — LAND REGISTRY GEOMETRIES + MAP (next; Gate 17 physical acceptance pending on the owner phone)
 ```
 
+### Approved product direction prepared for Phase 19
+
+**CR-005 — Cuaderno de campaña simple + recolección por jornadas, pesadas y rendimiento**
+is approved as product direction (2026-09-24). It does not change the current Phase 18 gate.
+It reorganizes the existing Activity/Harvest/Delivery/Expense/Machinery/Document capabilities
+into a simpler farmer-facing Cuaderno and defines the later implementation slices in
+`docs/07-plans/PHASE19-CAMPAIGN-NOTEBOOK-ANALYTICS.md`.
+
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
 
 ## Mandatory reading order for any agent
@@ -49,15 +57,18 @@ Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6
 3. `docs/00-master/SINGLE-TRACK-EXECUTION.md`
 4. `docs/00-master/RC1.2-CHANGE-REQUEST.md`
 5. `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
-6. `docs/design/VISUAL_DESIGN_LOCK.md`
-7. `docs/design/DESIGN_SYSTEM.md`
-8. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
-9. `docs/00-master/RC1.1-CHANGE-REQUEST.md`
-10. `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`
-11. `docs/00-master/MASTER-SPEC-RC1.md`
-12. `docs/00-master/RC1-GATE-REVIEW.md`
-13. `docs/07-plans/ROADMAP-RC1.2.md`
-14. `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`
+6. `docs/00-master/RC1.2-CHANGE-REQUEST-004-DESIGN-V3.md`
+7. `docs/00-master/RC1.2-CHANGE-REQUEST-005-CAMPAIGN-NOTEBOOK.md`
+8. `docs/design/VISUAL_DESIGN_LOCK.md`
+9. `docs/design/DESIGN_SYSTEM.md`
+10. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
+11. `docs/00-master/RC1.1-CHANGE-REQUEST.md`
+12. `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`
+13. `docs/00-master/MASTER-SPEC-RC1.md`
+14. `docs/00-master/RC1-GATE-REVIEW.md`
+15. `docs/07-plans/ROADMAP-RC1.2.md`
+16. `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`
+
 
 Then read only the domain/architecture/UI contracts needed by the current phase.
 
