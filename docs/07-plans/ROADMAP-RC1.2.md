@@ -330,16 +330,27 @@ Validate Spain official lookup/import paths, geometry parsing, GML, error modes 
 
 **Gate 18:** imported parcel geometry remains usable in airplane mode after restart.
 
-## Phase 19 — Historical analytics
+## Phase 19 — Cuaderno de campaña + historical analytics
 
-- kg by campaign;
-- kg by date;
-- delivery dates;
-- yield series;
-- weighted campaign yield + coverage;
-- cross-campaign comparison.
+**Execution plan:** `docs/07-plans/PHASE19-CAMPAIGN-NOTEBOOK-ANALYTICS.md`  
+**Product decision:** `docs/00-master/RC1.2-CHANGE-REQUEST-005-CAMPAIGN-NOTEBOOK.md`
 
-**Gate 19:** charts derive from canonical truth and expose partial/unknown data correctly.
+- Farm hub user-facing entry `Cuaderno` instead of a separate `Trabajos` silo;
+- Campaign-scoped projection of Activities, Harvest/Recollection, Deliveries/Pesadas,
+  Expenses and Documents without copying canonical rows;
+- recollection by Jornada with zero/one/many weighings;
+- cooperative/mill selected independently on every weighing;
+- fast later-yield lookup by ticket/cooperative/date/Farm;
+- lightweight jornales and equipment quantities;
+- recollection expense shortcuts through the existing authoritative Expense ledger;
+- kg by Campaign/date and cumulative harvest;
+- weighted yield series + analysed-kilo coverage;
+- truthful Farm/Parcel yield according to origin-allocation coverage;
+- expenses, jornales, cost/kg and cross-Campaign comparison.
+
+**Gate 19:** the Cuaderno reconciles with canonical source records; multiple weighings per
+Jornada remain truthful; charts expose partial/unknown data; mixed origin never creates a
+fabricated Parcel yield.
 
 ## Phase 20 — Home contextual services + weather visuals
 
