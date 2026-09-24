@@ -6,6 +6,9 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
+import com.isivoltpro.maginaolivo.domain.delivery.ParcelYield
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaSearch
+import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
@@ -52,6 +55,12 @@ data class CampaignNotebook(
             .map { (date, items) -> RecollectionDay(date, items.sortedBy { it.order }) }
 
     val isEmpty: Boolean = works.isEmpty() && recollectionDays.isEmpty()
+
+    /** Phase 19C: Pesadas still waiting for their yield analysis. */
+    val pendingYieldCount: Int = deliveries.count { PesadaSearch.statusOf(it) == YieldStatus.PENDING }
+
+    /** Phase 19C: per-Parcel yield from single-origin or exactly split Pesadas only. */
+    val parcelYields: List<ParcelYield> = ParcelYield.of(deliveries)
 
     /** Phase 19B: how many of this Campaign's Pesadas belong to one Jornada. */
     fun pesadaCount(harvestId: java.util.UUID): Int = deliveries.count { it.harvestId == harvestId }

@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
@@ -69,6 +70,8 @@ data class NotebookActions(
     val onWorks: () -> Unit = {},
     val onHarvests: () -> Unit = {},
     val onDeliveries: () -> Unit = {},
+    /** Phase 19C: the Pesadas still waiting for their yield. */
+    val onPendingYields: () -> Unit = {},
     val onExpenses: () -> Unit = {},
     val onCampaigns: () -> Unit = {},
 )
@@ -225,6 +228,13 @@ private fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions
         MoSecondaryButton("Pesada", actions.onDeliveries, Modifier.weight(1f).testTag("notebook-open-deliveries"))
         MoSecondaryButton("Gasto", actions.onExpenses, Modifier.weight(1f).testTag("notebook-open-expenses"))
     }
+    if (notebook.pendingYieldCount > 0) {
+        MoSecondaryButton(
+            if (notebook.pendingYieldCount == 1) "1 pesada sin rendimiento" else "${notebook.pendingYieldCount} pesadas sin rendimiento",
+            actions.onPendingYields,
+            Modifier.fillMaxWidth().testTag("notebook-pending-yields"),
+        )
+    }
     if (notebook.recollectionDays.isEmpty()) {
         MoEmptyState(
             "Aún no hay recolección",
@@ -346,6 +356,47 @@ private fun SummaryTab(notebook: CampaignNotebook) {
                 Text(Money.format(amount, expenses.currency), style = MaterialTheme.typography.bodyMedium, color = MoOliveDark)
             }
         }
+        ParcelYields(notebook)
+    }
+}
+
+/**
+ * Phase 19C: yield per Parcel, only from Pesadas whose kilos there are known (one origin
+ * Parcel or an exact split). Mixed loads count in the campaign yield above, never here.
+ */
+@Composable
+private fun ParcelYields(notebook: CampaignNotebook) {
+    if (notebook.deliveries.isEmpty()) return
+    MoSectionHeader("Rendimiento por parcela")
+    if (notebook.parcelYields.isEmpty()) {
+        Text(
+            "Las pesadas de esta campaña mezclan parcelas sin reparto conocido: su rendimiento cuenta solo en el total.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("notebook-parcel-yield-none"),
+        )
+        return
+    }
+    notebook.parcelYields.forEach { parcel ->
+        Row(Modifier.fillMaxWidth().testTag("notebook-parcel-yield"), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(parcel.parcelName, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    parcel.fatYield?.let { "Sobre el ${parcel.coveragePercent} % de ${Weight.format(parcel.attributedGrams)}" }
+                        ?: "${Weight.format(parcel.attributedGrams)} · rendimiento pendiente",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoTextSecondary,
+                )
+            }
+            Text(parcel.fatYield?.let { Percent.format(it.hundredths) } ?: "—", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+        }
+    }
+    if (notebook.deliverySummary.unallocatedGrams > 0) {
+        Text(
+            "${Weight.format(notebook.deliverySummary.unallocatedGrams)} sin reparto por parcela cuentan solo en el total de la campaña.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+        )
     }
 }
 

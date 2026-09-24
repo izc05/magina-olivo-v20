@@ -200,7 +200,7 @@ rewrite historical meaning merely to fit the new UI.
   `DeliveryRulesTest`. Airplane mode: all paths are local Room writes with no network call;
   the owner/Codex emulator check is the device evidence.
 
-### 19C preparation — design only (not production; starts after 19B merges)
+### 19C implementation notes (Claude, branch `claude/phase19c-rendimientos`; design prepared during 19B review)
 
 Prepared by Claude while 19B was in review. Executor Claude, reviewer Codex (handoff table).
 No schema change is expected: 19C reads existing `deliveries` + `delivery_yield_analyses`.
@@ -227,3 +227,14 @@ No schema change is expected: 19C reads existing `deliveries` + `delivery_yield_
   later changes only `delivery_yield_analyses` (Delivery row, version and outbox unchanged)
   and the derived metrics; Compose test for the pending list + add-yield path.
 - **Gate 19C evidence:** as in the slice definition above.
+- **Implemented as designed**, with these concrete choices: `domain/delivery/PesadaSearch.kt`
+  (`PesadaQuery`, `YieldStatus`, `PesadaSearch.filter/statusOf/cooperativeKey`, `ParcelYield.of`).
+  Search is in **Entregas → Pesadas** (the screen the Cuaderno's *Pesada* action opens); the
+  Cuaderno → Recolección shows `N pesadas sin rendimiento`, which opens the same list filtered to
+  pending (`deliveries/pending`). *Añadir rendimiento* on a pending row opens the Pesada directly
+  on its yield form (`delivery/{id}/yield`). Cuaderno → Resumen gains *Rendimiento por parcela*
+  with coverage; mixed-load kilos are stated as counting only in the campaign total.
+- **Tests:** `PesadaSearchTest` (ticket digits, status, cooperative, dates, parcel yield never
+  leaks a mixed load), `JornadaPesadasContractTest.aYieldAddedDaysLater…` (Delivery and Jornada
+  rows unchanged, one outbox intent for the yield only), `PesadaSearchScreenTest`.
+

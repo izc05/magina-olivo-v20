@@ -20,6 +20,11 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstHarvestRepository
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
+import com.isivoltpro.maginaolivo.domain.delivery.ParcelYield
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaQuery
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaSearch
+import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
+import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestDraft
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestShareInput
@@ -169,6 +174,32 @@ class JornadaPesadasContractTest {
         // Nothing was written by the refused Pesadas.
         assertTrue(deliveries.observeAll().first().isEmpty())
         assertEquals(3_000_000L, harvests.observe(exact).first()!!.totalGrams)
+    }
+
+    @Test
+    fun aYieldAddedDaysLaterChangesOnlyTheYieldRecordAndTheDerivedMetrics() = runBlocking {
+        // Phase 19C (Gate 19C): the Pesada, its Jornada and their outbox stay as they were.
+        val first = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-45872").copy(newJornada = true)))
+        val jornadaId = deliveries.observe(first).first()!!.harvestId!!
+        val mixed = ok(deliveries.create(pesada(3_000_000, "Coop. San Isidro", "V-45873").copy(harvestId = jornadaId)))
+        val deliveryBefore = db.deliveryDao().findById(first)
+        val harvestBefore = db.harvestDao().findById(jornadaId)
+        val outboxBefore = db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM sync_outbox").use { it.moveToFirst(); it.getInt(0) }
+
+        val found = PesadaSearch.filter(deliveries.observeAll().first(), PesadaQuery(text = "45872", status = YieldStatus.PENDING))
+        assertEquals(listOf(first), found.map { it.id })
+        ok(deliveries.recordYield(first, YieldDraft(day.plusDays(3), 2_150, null)))
+
+        assertEquals(deliveryBefore, db.deliveryDao().findById(first))
+        assertEquals(harvestBefore, db.harvestDao().findById(jornadaId))
+        val outboxAfter = db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM sync_outbox").use { it.moveToFirst(); it.getInt(0) }
+        assertEquals(outboxBefore + 1, outboxAfter) // one intent, for the yield record only
+        val all = deliveries.observeAll().first()
+        assertEquals(YieldStatus.WITH_YIELD, PesadaSearch.statusOf(all.first { it.id == first }))
+        assertEquals(listOf(mixed), PesadaSearch.filter(all, PesadaQuery(status = YieldStatus.PENDING)).map { it.id })
+        // Both Pesadas mix Norte and Sur with an unknown split: no Parcel yield is invented.
+        assertTrue(ParcelYield.of(all).isEmpty())
+        assertEquals(2_150, DeliverySummary.of(all).fatYield!!.hundredths)
     }
 
     private fun pesada(net: Long, cooperative: String, ticket: String, time: String? = null) = DeliveryDraft(

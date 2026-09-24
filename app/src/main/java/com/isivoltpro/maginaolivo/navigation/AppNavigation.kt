@@ -33,6 +33,7 @@ import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailRoute
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestDetailRoute
 import com.isivoltpro.maginaolivo.feature.deliveries.DeliveriesRoute
+import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
 import com.isivoltpro.maginaolivo.feature.machinery.MachineDetailRoute
 import com.isivoltpro.maginaolivo.feature.machinery.MachineryRoute
 import com.isivoltpro.maginaolivo.feature.deliveries.DeliveryDetailRoute
@@ -256,6 +257,7 @@ fun AppNavigation(
                                 onWorks = { navController.navigate(AppDestination.farmSection(FarmSection.ACTIVITIES.route, farmId.toString())) },
                                 onHarvests = { navController.navigate(AppDestination.Harvest) },
                                 onDeliveries = { navController.navigate(AppDestination.Deliveries) },
+                                onPendingYields = { navController.navigate(AppDestination.PendingYieldsRoute) },
                                 onExpenses = { navController.navigate(AppDestination.Expenses) },
                                 onCampaigns = { navController.navigate(AppDestination.farmSection(FarmSection.CAMPAIGNS.route, farmId.toString())) },
                             ),
@@ -413,6 +415,7 @@ fun AppNavigation(
                         clock = compositionRoot.clock,
                         onDeliverySelected = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
                         onTicketSelected = { id -> navController.navigate(AppDestination.ticket(id.toString())) },
+                        onAddYield = { id -> navController.navigate(AppDestination.deliveryYield(id.toString())) },
                     )
                 }
             }
@@ -444,6 +447,37 @@ fun AppNavigation(
                         persistence = persistence,
                         clock = compositionRoot.clock,
                         onDeleted = { navController.popBackStack() },
+                    )
+                }
+            }
+            composable(AppDestination.DeliveryYieldPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val deliveryId = backStackEntry.arguments?.getString("deliveryId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || deliveryId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    DeliveryDetailRoute(
+                        deliveryId = deliveryId,
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onDeleted = { navController.popBackStack() },
+                        openYield = true,
+                    )
+                }
+            }
+            composable(AppDestination.PendingYieldsRoute) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    DeliveriesRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onDeliverySelected = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
+                        onTicketSelected = { id -> navController.navigate(AppDestination.ticket(id.toString())) },
+                        initialStatus = YieldStatus.PENDING,
+                        onAddYield = { id -> navController.navigate(AppDestination.deliveryYield(id.toString())) },
                     )
                 }
             }

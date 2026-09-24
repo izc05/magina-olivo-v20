@@ -1,5 +1,10 @@
 package com.isivoltpro.maginaolivo.feature.deliveries
 
+import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaSearch
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaQuery
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material3.FilterChip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import android.content.ActivityNotFoundException
@@ -99,9 +104,11 @@ fun DeliveriesRoute(
     onDeliverySelected: (UUID) -> Unit,
     onTicketSelected: (UUID) -> Unit,
     jornadaId: UUID? = null,
+    initialStatus: YieldStatus? = null,
+    onAddYield: (UUID) -> Unit = onDeliverySelected,
 ) {
     val viewModel: DeliveriesViewModel = viewModel(
-        key = "deliveries-${jornadaId ?: "all"}",
+        key = "deliveries-${jornadaId ?: initialStatus ?: "all"}",
         factory = viewModelFactory {
             initializer {
                 DeliveriesViewModel(
@@ -132,6 +139,8 @@ fun DeliveriesRoute(
         onEditorClosed = viewModel::editorClosed,
         onCreateAndAddAnother = { form -> viewModel.create(form, again = true) },
         jornadaId = jornadaId,
+        initialStatus = initialStatus,
+        onAddYield = onAddYield,
     )
 }
 
@@ -152,7 +161,13 @@ fun DeliveriesScreen(
     onEditorClosed: () -> Unit = {},
     onCreateAndAddAnother: ((DeliveryForm) -> Unit)? = null,
     jornadaId: UUID? = null,
+    initialStatus: YieldStatus? = null,
+    onAddYield: (UUID) -> Unit = onDeliverySelected,
 ) {
+    // Phase 19C: find a Pesada by its ticket days later, and the ones still without yield.
+    var searchText by rememberSaveable { mutableStateOf("") }
+    var statusName by rememberSaveable { mutableStateOf(initialStatus?.name) }
+    var cooperative by rememberSaveable { mutableStateOf<String?>(null) }
     // Opened from a Jornada ("Añadir pesada"), the editor starts open on that Jornada.
     var editorVisible by rememberSaveable { mutableStateOf(jornadaId != null) }
     var ticketVisible by rememberSaveable { mutableStateOf(false) }
@@ -228,8 +243,63 @@ fun DeliveriesScreen(
                 )
                 else -> {
                     state.campaigns.forEach { campaign -> CampaignDeliveriesCard(campaign) }
-                    MoSectionHeader("Registros")
-                    state.deliveries.forEach { delivery -> DeliveryRow(delivery) { onDeliverySelected(delivery.id) } }
+                    MoSectionHeader("Pesadas")
+                    val status = YieldStatus.entries.firstOrNull { it.name == statusName }
+                    val query = PesadaQuery(text = searchText, status = status, cooperative = cooperative)
+                    MoTextField(
+                        searchText, { searchText = it }, "Buscar nº de pesada o vale",
+                        modifier = Modifier.fillMaxWidth().testTag("pesada-search"),
+                    )
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                    ) {
+                        val pending = state.deliveries.count { PesadaSearch.statusOf(it) == YieldStatus.PENDING }
+                        FilterChip(
+                            selected = status == YieldStatus.PENDING,
+                            onClick = { statusName = if (status == YieldStatus.PENDING) null else YieldStatus.PENDING.name },
+                            label = { Text("Pendiente de rendimiento ($pending)") },
+                            modifier = Modifier.testTag("pesada-filter-pending"),
+                        )
+                        FilterChip(
+                            selected = status == YieldStatus.WITH_YIELD,
+                            onClick = { statusName = if (status == YieldStatus.WITH_YIELD) null else YieldStatus.WITH_YIELD.name },
+                            label = { Text("Con rendimiento") },
+                            modifier = Modifier.testTag("pesada-filter-with-yield"),
+                        )
+                    }
+                    val cooperatives = state.deliveries.distinctBy { PesadaSearch.cooperativeKey(it) }
+                    if (cooperatives.size > 1) {
+                        Row(
+                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                        ) {
+                            cooperatives.forEach { delivery ->
+                                val key = PesadaSearch.cooperativeKey(delivery)
+                                FilterChip(
+                                    selected = cooperative == key,
+                                    onClick = { cooperative = if (cooperative == key) null else key },
+                                    label = { Text(delivery.destinationName) },
+                                    modifier = Modifier.testTag("pesada-filter-cooperative"),
+                                )
+                            }
+                        }
+                    }
+                    val found = PesadaSearch.filter(state.deliveries, query)
+                    if (found.isEmpty()) {
+                        Text(
+                            when {
+                                searchText.isNotBlank() -> "Ninguna pesada con ese número. Revisa el vale o quita filtros."
+                                status == YieldStatus.PENDING -> "Todas las pesadas tienen su rendimiento."
+                                else -> "Ninguna pesada con estos filtros."
+                            },
+                            color = MoTextSecondary,
+                            modifier = Modifier.testTag("pesada-search-empty"),
+                        )
+                    }
+                    found.forEach { delivery ->
+                        DeliveryRow(delivery, onAddYield = { onAddYield(delivery.id) }) { onDeliverySelected(delivery.id) }
+                    }
                 }
             }
             Spacer(Modifier.height(MoSpacing.xl))
@@ -391,7 +461,7 @@ private fun YieldLine(label: String, hundredths: Int?, coverage: Int, tag: Strin
 }
 
 @Composable
-private fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
+private fun DeliveryRow(delivery: Delivery, onAddYield: (() -> Unit)? = null, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("delivery-row"),
         shape = MoShape.card,
@@ -422,6 +492,9 @@ private fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
                     MoStatusChip("Rendimiento ${Percent.format(analysis.fatYieldHundredths)}", tone = MoStatusTone.Success)
                 } else {
                     MoStatusChip("Rendimiento pendiente", tone = MoStatusTone.Warning)
+                    if (onAddYield != null && delivery.analysis == null) {
+                        MoTertiaryButton("Añadir rendimiento", onAddYield, Modifier.testTag("pesada-add-yield"))
+                    }
                 }
             }
             Text(Weight.format(delivery.netGrams), style = MaterialTheme.typography.titleMedium, color = MoInk)
@@ -661,6 +734,7 @@ fun DeliveryDetailRoute(
     persistence: LocalPersistence,
     clock: AppClock,
     onDeleted: () -> Unit,
+    openYield: Boolean = false,
 ) {
     val viewModel: DeliveryDetailViewModel = viewModel(
         key = "delivery-$deliveryId",
@@ -682,6 +756,7 @@ fun DeliveryDetailRoute(
         onRecordYield = viewModel::recordYield,
         onRemoveYield = viewModel::removeYield,
         onEditorClosed = viewModel::clearFormErrors,
+        openYield = openYield,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.DELIVERY, deliveryId),
@@ -706,8 +781,10 @@ fun DeliveryDetailScreen(
     onRemoveYield: () -> Unit,
     onEditorClosed: () -> Unit = {},
     attachmentContent: @Composable () -> Unit = {},
+    openYield: Boolean = false,
 ) {
-    var sheet by rememberSaveable { mutableStateOf<String?>(null) }
+    // Phase 19C: "Añadir rendimiento" from the list opens the yield form in one tap.
+    var sheet by rememberSaveable { mutableStateOf(if (openYield) "yield" else null) }
     LaunchedEffect(state.message) { if (state.message != null) sheet = null }
 
     Scaffold(Modifier.fillMaxSize().testTag("delivery-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
