@@ -22,6 +22,12 @@ Older prompts or chat instructions never override these files.
 > **Update 2026-09-24:** Gate 18 PASS (owner). Phase 18 was finished by Claude at the
 > owner's request (Codex out of tokens) on `codex/phase18-map-v2`, merged as PR #227.
 > **Phase 19 is open; slice 19A (Claude executes, Codex reviews) starts now.**
+>
+> **Update 2026-09-24 (later):** 19A merged to `main` as PR #233 (owner: "fusiona y continúa";
+> CI green: unit, E2E through the Cuaderno, Gate 3 evidence). Codex may still post review
+> comments on #233; fixes go to a `claude/phase19a-*` follow-up branch.
+> **Next slice: 19B — Jornada + multiple Pesadas (executor Codex, reviewer Claude)** on
+> `codex/phase19b-jornada-pesadas` from the latest `main`.
 
 ## Production owner during Phase 18 (closed) — Codex, finished by Claude
 
