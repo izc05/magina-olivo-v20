@@ -24,11 +24,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
-import com.isivoltpro.maginaolivo.ui.theme.MoInfo
-import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.util.UUID
@@ -92,8 +88,6 @@ fun QuickAddSheet(
                 title = action.title,
                 subtitle = action.description,
                 icon = action.icon(),
-                iconTint = if (action == QuickAddAction.PLAN) MoInfoText else MoOliveMid,
-                iconContainer = if (action == QuickAddAction.PLAN) MoInfo.copy(alpha = 0.14f) else MoOliveTint,
                 onClick = { onAction(action) },
                 modifier = Modifier.testTag(action.tag),
             )
@@ -123,7 +117,7 @@ private fun QuickAddAction.icon(): ImageVector = when (this) {
     QuickAddAction.ACTIVITY -> MoIcons.Activity
     QuickAddAction.HARVEST -> MoIcons.Harvest
     QuickAddAction.DELIVERY -> MoIcons.Delivery
-    QuickAddAction.EXPENSE -> MoIcons.Document
+    QuickAddAction.EXPENSE -> MoIcons.Euro
     QuickAddAction.PLAN -> MoIcons.Calendar
 }
 

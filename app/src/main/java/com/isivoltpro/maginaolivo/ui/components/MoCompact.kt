@@ -24,8 +24,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
@@ -33,13 +31,16 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 
-/** A small tinted square holding a line icon: the leading mark of compact rows and metrics. */
+/**
+ * A small tinted square holding a line icon: the leading mark of compact rows and metrics.
+ * Colours default to the icon's family ([MoIconTone]).
+ */
 @Composable
 fun MoIconBadge(
     icon: ImageVector,
     modifier: Modifier = Modifier,
-    tint: Color = MoOliveMid,
-    container: Color = MoOliveTint,
+    tint: Color = MoIconTone.of(icon).tint,
+    container: Color = MoIconTone.of(icon).container,
     size: Int = 40,
 ) {
     Surface(modifier = modifier.size(size.dp), shape = RoundedCornerShape(12.dp), color = container, contentColor = tint) {
@@ -69,7 +70,7 @@ fun MoSummaryMetric(
     ) {
         Column(Modifier.padding(horizontal = MoSpacing.sm, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MoTextSecondary)
+                if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MoIconTone.of(icon).tint)
                 Text(label, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(value, style = MaterialTheme.typography.titleMedium, color = MoInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -104,8 +105,8 @@ fun MoCompactListItem(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: ImageVector? = null,
-    iconTint: Color = MoOliveMid,
-    iconContainer: Color = MoOliveTint,
+    iconTint: Color? = null,
+    iconContainer: Color? = null,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
@@ -123,7 +124,10 @@ fun MoCompactListItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-            if (icon != null) MoIconBadge(icon, tint = iconTint, container = iconContainer)
+            if (icon != null) {
+                val tone = MoIconTone.of(icon)
+                MoIconBadge(icon, tint = iconTint ?: tone.tint, container = iconContainer ?: tone.container)
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, color = MoInk, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (subtitle != null) {

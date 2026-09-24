@@ -63,3 +63,28 @@ Adopting the mockups' navigation (rejected by the owner); storing grove data in 
 
 ## Decision
 APPROVED as scoped above.
+
+## Addendum A — icon colour families (2026-09-24)
+
+Owner request after the device test: "more colour on the icons so each one is easy to
+recognise". Scope, within `VISUAL_DESIGN_LOCK` (same outlined family, same palette):
+
+- Every icon badge takes the colour of its family (`MoIconTone`), a text-strength shade of a
+  palette token on a light tint of the same token:
+  - **Olivar / trabajo de campo** (`MoOliveMid`): olivo, hoja, finca, actuación, campaña, poda,
+    tratamiento, abonado.
+  - **Tierra y recursos** (`MoEarth`): parcelas, superficie, mapa, ubicación, personas,
+    maquinaria.
+  - **Agua y planificación** (`MoInfo`): riego, calendario, hora, avisos, histórico, documentos.
+  - **Valor** (`MoSoftGold`): cosecha, entregas, kg, rendimiento, dinero.
+  - **Aviso** (`MoWarning`): incidencias.
+- New outlined icons in the same stroke: tractor, tijeras de poda, pulverizador, saco de
+  abono, llave. Each `ActivityType` now has its own icon (shared `ActivityType.icon()`), and
+  Maquinaria no longer borrows the olive-tree icon.
+- Less noise: Activity rows lead with their icon and read in two lines with a Spanish date
+  instead of an ISO date; Calendar rows lead with the work icon and show the warning chip only
+  when the work is overdue (the type moves into the text line).
+- Colour never works alone: every icon keeps its text label. New tint pairs are covered by
+  `DesignContrastTest` (all ≥ 4.5:1).
+
+No navigation, data, sync or Gate change. Decision: APPROVED by the owner's request.

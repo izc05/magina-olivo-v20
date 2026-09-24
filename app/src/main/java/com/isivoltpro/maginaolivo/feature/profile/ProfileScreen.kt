@@ -43,8 +43,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoInfo
-import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
@@ -115,7 +113,7 @@ fun ProfileScreen(
         MoCompactListItem(
             title = "Maquinaria",
             subtitle = "Tus máquinas, para anotarlas en las actuaciones",
-            icon = MoIcons.Tree,
+            icon = MoIcons.Tractor,
             onClick = onMachinery,
             modifier = Modifier.testTag("profile-machinery"),
             trailing = { Chevron() },
@@ -125,8 +123,6 @@ fun ProfileScreen(
             title = "Notificaciones",
             subtitle = "Avisos de los trabajos planificados",
             icon = MoIcons.Bell,
-            iconTint = MoInfoText,
-            iconContainer = MoInfo.copy(alpha = 0.14f),
             onClick = onNotifications,
             modifier = Modifier.testTag("profile-notifications"),
             trailing = {
@@ -156,7 +152,7 @@ fun ProfileScreen(
         MoCompactListItem(
             title = "Mágina Olivo",
             subtitle = "Versión $appVersion",
-            icon = MoIcons.Document,
+            icon = MoIcons.Leaf,
             modifier = Modifier.testTag("profile-about"),
         )
         MoCompactListItem(

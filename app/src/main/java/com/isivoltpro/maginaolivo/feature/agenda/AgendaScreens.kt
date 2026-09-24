@@ -54,8 +54,10 @@ import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.activity.AgendaEntry
 import com.isivoltpro.maginaolivo.domain.agenda.AgendaBucket
+import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
 import com.isivoltpro.maginaolivo.feature.activities.planningLine
+import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoConfirmationSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoOfflineBanner
@@ -338,12 +340,14 @@ private fun AgendaRow(
         border = BorderStroke(1.dp, MoOutline),
     ) {
         Column(Modifier.padding(start = MoSpacing.sm, end = MoSpacing.xs, top = 10.dp, bottom = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                MoIconBadge(entry.type.icon(), size = 36)
                 Text(entry.description, style = MaterialTheme.typography.titleSmall, color = MoInk, modifier = Modifier.weight(1f))
-                MoStatusChip(entry.type.label(), tone = if (overdue) MoStatusTone.Warning else MoStatusTone.Info)
+                if (overdue) MoStatusChip("Atrasado", tone = MoStatusTone.Warning)
             }
             Text(
                 listOfNotNull(
+                    entry.type.label(),
                     dayLabel(entry.activityDate, today) + (entry.planning?.startTime?.let { " · ${it.format(HOUR)}" } ?: ""),
                     entry.farmName,
                     entry.parcelNames.takeIf { it.isNotEmpty() }?.joinToString(", "),

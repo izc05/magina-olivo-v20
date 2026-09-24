@@ -52,6 +52,10 @@ class DesignContrastTest {
             Triple("mid olive text action on warm white", MoOliveMid, MoWarmWhite),
             Triple("mid olive chip on olive tint", MoOliveMid, MoOliveTint),
             Triple("light text on mid olive", MoWarmWhite, MoOliveMid),
+            Triple("earth icon on earth tint", MoEarthText, MoEarthTint),
+            Triple("info icon on info tint", MoInfoText, MoInfoTint),
+            Triple("gold icon on gold tint", MoSoftGoldText, MoSoftGoldTint),
+            Triple("warning icon on warning tint", MoWarningText, MoWarningTint),
         )
 
         pairs.forEach { (label, foreground, background) ->

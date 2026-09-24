@@ -7,10 +7,20 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
+import com.isivoltpro.maginaolivo.ui.theme.MoEarthText
+import com.isivoltpro.maginaolivo.ui.theme.MoEarthTint
+import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
+import com.isivoltpro.maginaolivo.ui.theme.MoInfoTint
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
+import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldText
+import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldTint
+import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
+import com.isivoltpro.maginaolivo.ui.theme.MoWarningTint
 
 /**
  * UI polish v2 — one coherent family of outlined agricultural icons (DESIGN_SYSTEM §7),
- * drawn on a 24-unit grid with a medium round stroke. Tinted by the caller.
+ * drawn on a 24-unit grid with a medium round stroke. Coloured by [MoIconTone].
  */
 object MoIcons {
     val Activity: ImageVector by lazy { line("activity", "M12 20v-7 M12 13C12 9 9.2 6.2 5 6.2c0 4 2.8 6.8 7 6.8z M12 15c0-3.6 2.6-6.2 6.8-6.2 0 3.6-2.6 6.2-6.8 6.2z M7 20h10") }
@@ -42,6 +52,11 @@ object MoIcons {
     val History: ImageVector by lazy { line("history", "M4 12a8 8 0 1 0 2.4-5.7 M4 4.5v4h4 M12 8v4.5l3 1.8") }
     val Warning: ImageVector by lazy { line("warning", "M12 4l9 16H3z M12 10v4.5 M12 17.3v.2") }
     val Tree: ImageVector by lazy { line("tree", "M12 21v-6 M12 15c-4.4 0-7-2.4-7-5.5S8 4 12 4s7 2.4 7 5.5-2.6 5.5-7 5.5z M9 21h6") }
+    val Tractor: ImageVector by lazy { line("tractor", "M7.5 20a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M18 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z M4.5 14V6h5.5l1.5 6.5H19v4 M11 16.5h5 M16 12.5V9") }
+    val Shears: ImageVector by lazy { line("shears", "M6.5 20.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M17.5 20.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M8.2 16.1L15.5 4 M15.8 16.1L8.5 4") }
+    val Spray: ImageVector by lazy { line("spray", "M7 21h8v-9l-1.5-3h-5L7 12z M9 9V6h4v3 M13 7h3l1.5 1.5 M19.5 5v.1 M20.5 8.5v.1 M19.5 12v.1") }
+    val Sack: ImageVector by lazy { line("sack", "M8.5 8c-2 3-3.5 6.5-3.5 9.5A3 3 0 0 0 8 20.5h8a3 3 0 0 0 3-3C19 14.5 17.5 11 15.5 8z M8.5 8L7.5 4.5h9L15.5 8 M9.5 14h5") }
+    val Wrench: ImageVector by lazy { line("wrench", "M15.5 3.5a5 5 0 0 0-4.7 6.7L4 17a2.1 2.1 0 0 0 3 3l6.8-6.8a5 5 0 0 0 6.7-4.7l-3.2 1.2-2.5-2.5z") }
 
     private fun line(name: String, pathData: String): ImageVector =
         ImageVector.Builder(
@@ -58,4 +73,42 @@ object MoIcons {
             strokeLineCap = StrokeCap.Round,
             strokeLineJoin = StrokeJoin.Round,
         ).build()
+}
+
+/**
+ * Colour family of an icon, so the farmer recognises each kind of thing at a glance
+ * (CR-004 addendum). Only palette tokens: the shape still carries the meaning and every
+ * icon keeps its text label, so colour never communicates alone.
+ */
+enum class MoIconTone(val tint: Color, val container: Color) {
+    /** Olivar and field work. */
+    GROVE(MoOliveMid, MoOliveTint),
+    /** Land and resources: parcels, surface, map, place, people, machinery. */
+    LAND(MoEarthText, MoEarthTint),
+    /** Water, planning and records: irrigation, calendar, reminders, documents. */
+    WATER(MoInfoText, MoInfoTint),
+    /** Value: harvest, deliveries, kg, yield, money. */
+    VALUE(MoSoftGoldText, MoSoftGoldTint),
+    /** Incidents and notices. */
+    ALERT(MoWarningText, MoWarningTint),
+    ;
+
+    companion object {
+        private val byName: Map<String, MoIconTone> by lazy {
+            buildMap {
+                listOf(MoIcons.Tree, MoIcons.Leaf, MoIcons.Olive, MoIcons.Activity, MoIcons.Checklist, MoIcons.Campaign, MoIcons.Home, MoIcons.Shears, MoIcons.Spray, MoIcons.Sack)
+                    .forEach { put(it.name, GROVE) }
+                listOf(MoIcons.Parcels, MoIcons.Area, MoIcons.Map, MoIcons.Location, MoIcons.People, MoIcons.Person, MoIcons.Tractor, MoIcons.Wrench)
+                    .forEach { put(it.name, LAND) }
+                listOf(MoIcons.Drop, MoIcons.Calendar, MoIcons.Clock, MoIcons.Bell, MoIcons.History, MoIcons.Document)
+                    .forEach { put(it.name, WATER) }
+                listOf(MoIcons.Harvest, MoIcons.Delivery, MoIcons.Weight, MoIcons.Percent, MoIcons.Euro)
+                    .forEach { put(it.name, VALUE) }
+                put(MoIcons.Warning.name, ALERT)
+            }
+        }
+
+        /** Family of [icon]; icons outside the table (chevrons, plus) stay olive. */
+        fun of(icon: ImageVector): MoIconTone = byName[icon.name] ?: GROVE
+    }
 }

@@ -41,6 +41,15 @@ val MoWarningText = Color(0xFF805B18)
 val MoError = Color(0xFFB5534F)
 val MoErrorText = Color(0xFFA34844)
 
+// Icon families (CR-004 addendum): the icon line takes the text-strength shade of a palette
+// token and sits on a light tint of the same token, so each kind of thing is recognised by
+// colour as well as by shape. All line colours keep ≥ 4.5:1 on their tint.
+val MoInfoTint = Color(0xFFE6EDF0)
+val MoSoftGoldTint = Color(0xFFF6EFD9)
+val MoEarthText = Color(0xFF7D5438)
+val MoEarthTint = Color(0xFFF4EAE1)
+val MoWarningTint = Color(0xFFF7EDD6)
+
 val MoLightColorScheme = lightColorScheme(
     // Material's own "primary" drives text buttons, checkboxes and progress: those are
     // selection/secondary accents, so they take the mid olive. The dark olive CTA is

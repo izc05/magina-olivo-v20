@@ -33,6 +33,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
+import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
@@ -46,8 +47,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoInfo
-import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
@@ -200,9 +199,7 @@ fun HomeScreen(
                             entry.type.label(),
                             entry.farmName,
                         ).joinToString(" · "),
-                        icon = MoIcons.Calendar,
-                        iconTint = MoInfoText,
-                        iconContainer = MoInfo.copy(alpha = 0.14f),
+                        icon = entry.type.icon(),
                         onClick = { onActivitySelected(entry.activityId) },
                         modifier = Modifier.testTag("home-upcoming"),
                     )
