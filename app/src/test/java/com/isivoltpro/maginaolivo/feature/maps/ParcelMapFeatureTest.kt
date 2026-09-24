@@ -25,4 +25,22 @@ class ParcelMapFeatureTest {
         assertEquals(0, collection.getAsJsonArray("features").size())
         assertFalse(collection.has("not-json"))
     }
+
+    @Test fun eachBaseLayerIsLightByDefaultAndCatastroLinesOnlyWhenAsked() {
+        fun layers(style: String) = JsonParser.parseString(style).asJsonObject.getAsJsonArray("layers").map { it.asJsonObject.get("id").asString }
+        assertEquals(listOf("background", "base", "parcels-fill", "parcels-line"), layers(parcelStyle(MapBase.MAP, cadastreLines = false)))
+        assertEquals(listOf("background", "base", "cadastre", "parcels-fill", "parcels-line"), layers(parcelStyle(MapBase.AERIAL, cadastreLines = true)))
+        // Offline-safe: only the saved boundaries, never a remote source.
+        val none = parcelStyle(MapBase.NONE, cadastreLines = true)
+        assertEquals(listOf("background", "parcels-fill", "parcels-line"), layers(none))
+        assertFalse(none.contains("https://"))
+        // Fewer, larger tiles keep the phone fluid.
+        assertTrue(parcelStyle(MapBase.AERIAL, cadastreLines = false).contains("\"tileSize\":512"))
+    }
+
+    @Test fun theNumberOnTheMapIsTheCatastroParcelNumber() {
+        assertEquals("120", parcelNumber("23044A00400120"))
+        assertEquals("21", parcelNumber("23044A00400021"))
+        assertEquals("Pol. 4 · Parc. 120", defaultParcelName("23044A00400120"))
+    }
 }

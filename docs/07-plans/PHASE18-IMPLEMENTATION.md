@@ -99,3 +99,19 @@ location. Decision (no root navigation change; entry stays Farm → Parcelas →
   `FarmMapViewModelTest` (multi-import, taken references, link), `FarmMapScreenTest`,
   `OfflineFirstFarmRepositoryTest.handMadeParcelLinkedToCatastro…` and the live
   `Phase18PolygonParcelLookupTest` in the Phase 18 workflow.
+
+### Owner device feedback #2 → lighter, larger, quieter map (2026-09-24)
+
+- **Layer choice:** *Mapa* (IGN base map, default), *Foto aérea* (PNOA) and *Solo parcelas*
+  (no remote source; the offline one). Raster sources declared at 512 px so the phone fetches
+  and decodes about a quarter of the tiles. Catastro's WMS boundary lines are opt-in
+  ("Ver linderos de Catastro"): they were the slowest layer. The Phase 18 workflow checks that
+  the IGN base map and PNOA answer with images.
+- **Numbers on the map, not a list under it:** each Catastro candidate shows its parcel number
+  on the map (from zoom 15.5, at most 60, refreshed when the camera stops, hidden while it
+  moves); the panel shows one line for the marked parcel ("Pol. 4 · Parc. 120 · reference ·
+  ha"). The number list survives only for a GML file with several parcels and no map open.
+- **Larger map, less empty space:** the farm map fills the screen and its controls float
+  over it (collapsible search, floating +/−/frame buttons, compact bottom panel); the Catastro
+  screen's map takes ~62 % of the screen height and the drawn preview is only shown for a
+  reference search.

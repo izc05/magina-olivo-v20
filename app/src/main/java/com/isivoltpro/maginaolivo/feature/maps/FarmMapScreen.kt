@@ -1,5 +1,12 @@
 package com.isivoltpro.maginaolivo.feature.maps
 
+import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoShape
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -119,91 +126,124 @@ fun FarmMapScreen(
     showMap: Boolean = true,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    // Aerial photo by default: without it an empty base shows nothing to find the land by.
-    var imagery by rememberSaveable { mutableStateOf(true) }
+    // The light IGN map by default: the aerial photo is heavier on the phone and is one tap away.
+    var base by rememberSaveable { mutableStateOf(MapBase.MAP) }
+    var cadastreLines by rememberSaveable { mutableStateOf(false) }
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var layerMenu by remember { mutableStateOf(false) }
     var polygonSheet by rememberSaveable { mutableStateOf(false) }
     var reviewSheet by rememberSaveable { mutableStateOf(false) }
     val mapped = remember(state.parcels, state.candidates, state.taken) {
         state.parcels.mapNotNull { p -> p.geometryGeoJson?.let { MapParcel(p.id.toString(), p.displayName, it) } } +
             state.candidates.filter { it.reference !in state.taken }
-                .map { MapParcel(it.reference, it.reference, it.geometryGeoJson, MapParcelKind.CANDIDATE) }
+                .map { MapParcel(it.reference, it.reference, it.geometryGeoJson, MapParcelKind.CANDIDATE, parcelNumber(it.reference)) }
     }
     val withBoundary = state.parcels.count { it.geometryGeoJson != null }
 
-    Surface(color = MoCream, modifier = Modifier.fillMaxSize().testTag("farm-map-root")) {
-        Column(
-            Modifier.fillMaxSize().padding(horizontal = MoSpacing.screen),
-            verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+    Box(Modifier.fillMaxSize().background(MoCream).testTag("farm-map-root")) {
+        if (showMap) {
+            ParcelMap(
+                parcels = mapped,
+                modifier = Modifier.fillMaxSize(),
+                base = base,
+                cadastreLines = cadastreLines,
+                selectedId = state.selectedSavedId?.toString(),
+                selectedIds = state.selected,
+                onSelected = onTapParcel,
+                onTap = { latitude, longitude -> onTapMap(latitude, longitude) },
+                focus = state.focus,
+            )
+        }
+        // Everything floats over the map, so the map takes the whole screen.
+        Surface(
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(8.dp),
+            shape = MoShape.card,
+            color = MoWarmWhite.copy(alpha = 0.97f),
+            shadowElevation = 3.dp,
         ) {
-            Spacer(Modifier.height(MoSpacing.xs))
-            Text(
-                if (state.mode == FarmMapMode.LOCATE) "Ubicar parcela" else "Mapa de la finca",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MoOliveDark,
-            )
-            Text(
-                when (state.mode) {
-                    FarmMapMode.LOCATE -> "Toca en el mapa donde está «${state.locateParcel?.displayName.orEmpty()}» y elige su parcela de Catastro."
-                    FarmMapMode.ADD -> "Toca en el mapa donde están tus parcelas y marca todas las que quieras añadir."
-                    FarmMapMode.VIEW -> listOfNotNull(
-                        state.farm?.name,
-                        "$withBoundary con límites",
-                        (state.parcels.size - withBoundary).takeIf { it > 0 }?.let { "$it sin ubicar" },
-                    ).joinToString(" · ")
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
-                modifier = Modifier.testTag("farm-map-hint"),
-            )
-            if (state.mode != FarmMapMode.LOCATE) {
-                Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                    FilterChip(
-                        selected = state.mode == FarmMapMode.VIEW,
-                        onClick = { onMode(FarmMapMode.VIEW) },
-                        label = { Text("Mis parcelas") },
-                        modifier = Modifier.testTag("farm-map-mode-view"),
-                    )
-                    FilterChip(
-                        selected = state.mode == FarmMapMode.ADD,
-                        onClick = { onMode(FarmMapMode.ADD) },
-                        label = { Text("Añadir de Catastro") },
-                        modifier = Modifier.testTag("farm-map-mode-add"),
-                    )
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    if (state.mode == FarmMapMode.LOCATE) "Ubicar «${state.locateParcel?.displayName.orEmpty()}»" else state.farm?.name ?: "Mapa de la finca",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MoOliveDark,
+                    maxLines = 1,
+                )
+                Text(
+                    when (state.mode) {
+                        FarmMapMode.LOCATE -> "Toca donde está tu parcela y elige su número."
+                        FarmMapMode.ADD -> "Toca donde están tus parcelas y marca sus números."
+                        FarmMapMode.VIEW -> listOfNotNull(
+                            "$withBoundary con límites",
+                            (state.parcels.size - withBoundary).takeIf { it > 0 }?.let { "$it sin ubicar" },
+                        ).joinToString(" · ")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoTextSecondary,
+                    maxLines = 2,
+                    modifier = Modifier.testTag("farm-map-hint"),
+                )
+                if (state.mode != FarmMapMode.LOCATE) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                        FilterChip(
+                            selected = state.mode == FarmMapMode.VIEW,
+                            onClick = { onMode(FarmMapMode.VIEW) },
+                            label = { Text("Mis parcelas") },
+                            modifier = Modifier.testTag("farm-map-mode-view"),
+                        )
+                        FilterChip(
+                            selected = state.mode == FarmMapMode.ADD,
+                            onClick = { onMode(FarmMapMode.ADD) },
+                            label = { Text("Añadir de Catastro") },
+                            modifier = Modifier.testTag("farm-map-mode-add"),
+                        )
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { searchOpen = !searchOpen }, modifier = Modifier.testTag("farm-map-search-toggle")) {
+                        Text(if (searchOpen) "Cerrar búsqueda" else "Buscar")
+                    }
+                    TextButton(onClick = onMyLocation, modifier = Modifier.testTag("farm-map-my-location")) { Text("Mi ubicación") }
+                    Box {
+                        TextButton(onClick = { layerMenu = true }, modifier = Modifier.testTag("farm-map-layer")) { Text(base.label) }
+                        DropdownMenu(expanded = layerMenu, onDismissRequest = { layerMenu = false }) {
+                            MapBase.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(if (option == base) "✓ ${option.label}" else option.label) },
+                                    onClick = { base = option; layerMenu = false },
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text(if (cadastreLines) "Ocultar linderos de Catastro" else "Ver linderos de Catastro") },
+                                onClick = { cadastreLines = !cadastreLines; layerMenu = false },
+                                enabled = base != MapBase.NONE,
+                            )
+                        }
+                    }
+                }
+                if (searchOpen) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        MoTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            label = "Coordenadas (37.636, -3.480)",
+                            modifier = Modifier.weight(1f).testTag("farm-map-coordinates"),
+                        )
+                        TextButton(onClick = { onSearchCoordinates(query) }, modifier = Modifier.testTag("farm-map-go")) { Text("Ir") }
+                    }
+                    TextButton(onClick = { polygonSheet = true }, modifier = Modifier.testTag("farm-map-polygon")) {
+                        Text("Buscar por polígono y parcela")
+                    }
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                MoTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    label = "Coordenadas (37.636, -3.480)",
-                    modifier = Modifier.weight(1f).testTag("farm-map-coordinates"),
-                )
-                TextButton(onClick = { onSearchCoordinates(query) }, modifier = Modifier.testTag("farm-map-go")) { Text("Ir") }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                MoTertiaryButton("Mi ubicación", onMyLocation, Modifier.testTag("farm-map-my-location"))
-                MoTertiaryButton("Polígono y parcela", { polygonSheet = true }, Modifier.testTag("farm-map-polygon"))
-                MoTertiaryButton(if (imagery) "Sin foto" else "Foto aérea", { imagery = !imagery })
-            }
-            if (showMap) {
-                ParcelMap(
-                    parcels = mapped,
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    imagery = imagery,
-                    selectedId = state.selectedSavedId?.toString(),
-                    selectedIds = state.selected,
-                    onSelected = onTapParcel,
-                    onTap = { latitude, longitude -> onTapMap(latitude, longitude) },
-                    focus = state.focus,
-                )
-            } else {
-                Spacer(Modifier.weight(1f))
-            }
-            if (state.searching) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-            state.error?.let { Text(it, color = MoErrorText, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("farm-map-error")) }
-            state.message?.let { Text(it, color = MoSuccessText, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("farm-map-message")) }
+        }
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (state.searching) Notice("Consultando Catastro…", MoTextSecondary, progress = true)
+            state.error?.let { Notice(it, MoErrorText, Modifier.testTag("farm-map-error")) }
+            state.message?.let { Notice(it, MoSuccessText, Modifier.testTag("farm-map-message")) }
             BottomPanel(state, onOpenParcel, onSearchByReference, onReview = { reviewSheet = true }, onLink = onLink)
-            Spacer(Modifier.height(MoSpacing.xs))
         }
     }
 
@@ -214,6 +254,7 @@ fun FarmMapScreen(
                 municipality = state.farm?.municipality.orEmpty(),
                 onSearch = { province, municipality, polygon, parcel ->
                     polygonSheet = false
+                    searchOpen = false
                     onSearchPolygonParcel(province, municipality, polygon, parcel)
                 },
             )
@@ -227,6 +268,16 @@ fun FarmMapScreen(
                 saving = state.saving,
                 onConfirm = { names -> reviewSheet = false; onImport(names) },
             )
+        }
+    }
+}
+
+@Composable
+private fun Notice(text: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier, progress: Boolean = false) {
+    Surface(modifier, shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 2.dp) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (progress) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            Text(text, color = color, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -251,41 +302,56 @@ private fun BottomPanel(
                     MoPrimaryButton("Abrir parcela", { onOpenParcel(parcel.id) }, Modifier.fillMaxWidth())
                 }
             } else if (state.parcels.none { it.geometryGeoJson != null }) {
-                Text(
-                    "Pulsa «Añadir de Catastro» para marcar tus parcelas en el mapa.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                Notice("Pulsa «Añadir de Catastro» para marcar tus parcelas en el mapa.", MoTextSecondary)
+            }
+        }
+        FarmMapMode.ADD -> Surface(shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 3.dp) {
+            Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                // One short line per marked parcel instead of a list of every number under the map.
+                state.selectedCandidates.lastOrNull()?.let { last ->
+                    Text(
+                        selectionLine(last) + if (state.selected.size > 1) " · y ${state.selected.size - 1} más" else "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MoOliveDark,
+                        maxLines = 1,
+                        modifier = Modifier.testTag("farm-map-selection"),
+                    )
+                }
+                MoPrimaryButton(
+                    text = when (state.selected.size) {
+                        0 -> "Toca los números de tus parcelas"
+                        1 -> "Añadir 1 parcela"
+                        else -> "Añadir ${state.selected.size} parcelas"
+                    },
+                    onClick = onReview,
+                    enabled = state.selected.isNotEmpty() && !state.saving,
+                    modifier = Modifier.fillMaxWidth().testTag("farm-map-add-selected"),
+                )
+                MoTertiaryButton("Tengo la referencia catastral", onSearchByReference, Modifier.align(Alignment.CenterHorizontally))
+            }
+        }
+        FarmMapMode.LOCATE -> Surface(shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 3.dp) {
+            val candidate = state.selectedCandidates.singleOrNull()
+            Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                candidate?.let { Text(selectionLine(it), style = MaterialTheme.typography.bodyMedium, color = MoOliveDark, maxLines = 1) }
+                MoPrimaryButton(
+                    text = when {
+                        state.saving -> "Guardando…"
+                        candidate == null -> "Toca el número de tu parcela"
+                        else -> "Vincular con ${candidate.reference}" + (candidate.areaM2?.let { " · ${hectares(it)}" } ?: "")
+                    },
+                    onClick = onLink,
+                    enabled = candidate != null && !state.saving,
+                    modifier = Modifier.fillMaxWidth().testTag("farm-map-link"),
                 )
             }
         }
-        FarmMapMode.ADD -> Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            MoPrimaryButton(
-                text = when (state.selected.size) {
-                    0 -> "Marca tus parcelas en el mapa"
-                    1 -> "Añadir 1 parcela"
-                    else -> "Añadir ${state.selected.size} parcelas"
-                },
-                onClick = onReview,
-                enabled = state.selected.isNotEmpty() && !state.saving,
-                modifier = Modifier.fillMaxWidth().testTag("farm-map-add-selected"),
-            )
-            MoTertiaryButton("Tengo la referencia catastral", onSearchByReference, Modifier.align(Alignment.CenterHorizontally))
-        }
-        FarmMapMode.LOCATE -> {
-            val candidate = state.selectedCandidates.singleOrNull()
-            MoPrimaryButton(
-                text = when {
-                    state.saving -> "Guardando…"
-                    candidate == null -> "Toca tu parcela en el mapa"
-                    else -> "Vincular con ${candidate.reference}" + (candidate.areaM2?.let { " · ${hectares(it)}" } ?: "")
-                },
-                onClick = onLink,
-                enabled = candidate != null && !state.saving,
-                modifier = Modifier.fillMaxWidth().testTag("farm-map-link"),
-            )
-        }
     }
 }
+
+/** "Pol. 4 · Parc. 120 · 23044A00400120 · 1,2 ha" — what the farmer checks before confirming. */
+private fun selectionLine(candidate: CadastralCandidate): String =
+    listOfNotNull(defaultParcelName(candidate.reference), candidate.reference, candidate.areaM2?.let(::hectares)).joinToString(" · ")
 
 @Composable
 private fun PolygonParcelForm(

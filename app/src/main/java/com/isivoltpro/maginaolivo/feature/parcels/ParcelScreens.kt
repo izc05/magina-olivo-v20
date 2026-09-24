@@ -369,6 +369,7 @@ private fun ParcelDetailContent(
                         ParcelMap(
                             listOf(MapParcel(parcel.id.toString(), parcel.displayName, geometry)),
                             Modifier.fillMaxWidth().height(300.dp).testTag("parcel-map"),
+                            base = com.isivoltpro.maginaolivo.feature.maps.MapBase.MAP,
                         )
                     }
                     ParcelValue("Superficie catastral", parcel.cadastralAreaM2?.let {

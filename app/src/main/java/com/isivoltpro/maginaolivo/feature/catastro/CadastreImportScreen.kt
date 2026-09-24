@@ -83,7 +83,8 @@ fun CadastreImportScreen(
     onOpenExisting: (UUID) -> Unit = {},
 ) {
     var showMap by rememberSaveable { mutableStateOf(false) }
-    var imagery by rememberSaveable { mutableStateOf(true) }
+    var base by rememberSaveable { mutableStateOf(com.isivoltpro.maginaolivo.feature.maps.MapBase.MAP) }
+    val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
     var reference by rememberSaveable { mutableStateOf("") }
     var alias by rememberSaveable { mutableStateOf("") }
     var selectedFarm by rememberSaveable { mutableStateOf(preselectedFarmId?.toString()) }
@@ -116,17 +117,40 @@ fun CadastreImportScreen(
                 onFile?.let { androidx.compose.material3.TextButton(onClick = it, enabled = !state.saving && !state.searching) { Text("Abrir GML") } }
             }
             if (showMap) {
-                Text("Acerca el mapa y toca la zona que quieres consultar. Cada consulta abarca 240 metros.")
-                androidx.compose.material3.TextButton(onClick = { imagery = !imagery }) { Text(if (imagery) "Quitar fotografía aérea" else "Mostrar fotografía aérea") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Toca la zona y luego el número de tu parcela.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoTextSecondary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    com.isivoltpro.maginaolivo.feature.maps.MapBase.entries.forEach { option ->
+                        androidx.compose.material3.FilterChip(
+                            selected = base == option,
+                            onClick = { base = option },
+                            label = { Text(option.label, style = MaterialTheme.typography.labelSmall) },
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
+                    }
+                }
+                // A tall map, numbers drawn on each parcel: no list of every number underneath.
                 com.isivoltpro.maginaolivo.feature.maps.ParcelMap(
-                    parcels = state.candidates.map { com.isivoltpro.maginaolivo.feature.maps.MapParcel(it.reference, it.reference, it.geometryGeoJson) },
-                    modifier = Modifier.fillMaxWidth().height(390.dp), imagery = imagery,
+                    parcels = state.candidates.map {
+                        com.isivoltpro.maginaolivo.feature.maps.MapParcel(
+                            it.reference, it.reference, it.geometryGeoJson,
+                            com.isivoltpro.maginaolivo.feature.maps.MapParcelKind.CANDIDATE,
+                            com.isivoltpro.maginaolivo.feature.maps.parcelNumber(it.reference),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().height((screenHeight * 0.62f).dp).testTag("catastro-map"),
+                    base = base,
                     selectedId = state.candidate?.reference, onSelected = onSelect,
                     onTap = { latitude, longitude -> if (!state.saving) onNear?.invoke(latitude, longitude) },
                 )
             }
-            if (state.candidates.size > 1) {
-                Text("Elige una de las ${state.candidates.size} parcelas encontradas")
+            // Several parcels from a GML file and no map open: choose by number here instead.
+            if (!showMap && state.candidates.size > 1) {
+                Text("Elige una de las ${state.candidates.size} parcelas del archivo", color = MoTextSecondary)
                 state.candidates.forEach { option ->
                     androidx.compose.material3.TextButton(onClick = { onSelect(option.reference) }, enabled = !state.saving) { Text(option.reference) }
                 }
@@ -156,12 +180,17 @@ fun CadastreImportScreen(
                     modifier = Modifier.fillMaxWidth().testTag("catastro-candidate"),
                 ) {
                     Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-                        Text("Parcela encontrada", style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
-                        Text("Referencia ${candidate.reference}", style = MaterialTheme.typography.bodyLarge)
-                        candidate.areaM2?.let {
-                            Text("Superficie catastral: ${formatHectares(it)} ha", style = MaterialTheme.typography.bodyLarge)
-                        }
-                        CandidateGeometryPreview(candidate, Modifier.fillMaxWidth().height(180.dp))
+                        Text(
+                            com.isivoltpro.maginaolivo.feature.maps.defaultParcelName(candidate.reference),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MoOliveDark,
+                        )
+                        Text(
+                            listOfNotNull(candidate.reference, candidate.areaM2?.let { "${formatHectares(it)} ha" }).joinToString(" · "),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        // The map already shows it; the small drawing is only for a reference search.
+                        if (!showMap) CandidateGeometryPreview(candidate, Modifier.fillMaxWidth().height(140.dp))
                         Text(
                             "Contorno recibido del servicio INSPIRE de la Dirección General del Catastro. La copia guardada no es un certificado catastral actualizado.",
                             style = MaterialTheme.typography.bodySmall,

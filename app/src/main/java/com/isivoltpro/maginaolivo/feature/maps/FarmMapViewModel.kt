@@ -263,6 +263,10 @@ fun defaultParcelName(reference: String): String {
     return if (polygon != null && parcel != null) "Pol. $polygon · Parc. $parcel" else "Parcela ${reference.takeLast(5)}"
 }
 
+/** The number drawn on a Catastro parcel in the map: its parcel number ("120"). */
+fun parcelNumber(reference: String): String =
+    ruralPart(reference, 9, 14)?.toIntOrNull()?.toString() ?: reference.takeLast(4)
+
 private fun ruralPart(reference: String, from: Int, to: Int): String? =
     if (RURAL.matches(reference)) reference.substring(from, to) else null
 

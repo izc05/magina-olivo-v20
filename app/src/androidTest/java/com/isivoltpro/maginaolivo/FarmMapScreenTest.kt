@@ -47,6 +47,9 @@ class FarmMapScreenTest {
             }
         }
         composeRule.onNodeWithTag("farm-map-add-selected").assertIsEnabled().assertTextContains("Añadir 2 parcelas", substring = true)
+        // The marked parcel is named once in the panel; no list of every number under the map.
+        composeRule.onNodeWithTag("farm-map-selection").assertTextContains("Pol. 4 · Parc. 22", substring = true)
+        composeRule.onNodeWithTag("farm-map-selection").assertTextContains("y 1 más", substring = true)
     }
 
     @Test fun locatingAHandMadeParcelWaitsForOneTappedParcel() {
@@ -57,7 +60,7 @@ class FarmMapScreenTest {
         )
         val state = mutableStateOfLocate(manual)
         composeRule.setContent { MaginaOlivoTheme { screen(state.value, onLink = { linked = true }) } }
-        composeRule.onNodeWithTag("farm-map-hint").assertTextContains("La del camino", substring = true)
+        composeRule.onNodeWithText("Ubicar «La del camino»").assertExists()
         composeRule.onNodeWithTag("farm-map-link").assertIsNotEnabled()
 
         state.value = state.value.copy(candidates = listOf(candidate("23044A00400021")), selected = setOf("23044A00400021"))

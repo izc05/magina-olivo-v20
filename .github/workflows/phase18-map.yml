@@ -24,6 +24,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.4.1"
+      - name: Map base layers answer with images (IGN base map, PNOA)
+        run: |
+          set -e
+          tile() { curl -sS -o /tmp/tile -w '%{http_code} %{content_type}\n' "$1" | tee /dev/stderr | grep -q '^200 image/' && test -s /tmp/tile; }
+          tile "https://www.ign.es/wmts/ign-base?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNBaseTodo&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX=15&TILEROW=12676&TILECOL=16067"
+          tile "https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX=15&TILEROW=12676&TILECOL=16067"
       - name: Build application and Phase 18 tests
         run: gradle --no-daemon testDevDebugUnitTest assembleDevDebug assembleDevDebugAndroidTest
       - name: Enable KVM
