@@ -11,6 +11,7 @@ enum class JornadaExpenseKind(val label: String, val category: ExpenseCategory) 
     LUBRICANT("Aceite/lubricante", ExpenseCategory.MACHINERY),
     RENTAL("Maquinaria/alquiler", ExpenseCategory.MACHINERY),
     TRANSPORT("Transporte", ExpenseCategory.TRANSPORT),
+    REPAIR("Reparaciones", ExpenseCategory.REPAIR),
     OTHER("Otro", ExpenseCategory.HARVEST),
 }
 

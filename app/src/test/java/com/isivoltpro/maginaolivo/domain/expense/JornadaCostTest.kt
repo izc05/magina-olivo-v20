@@ -28,7 +28,8 @@ class JornadaCostTest {
         assertEquals(ExpenseCategory.FUEL, JornadaExpenseKind.PETROL.category)
         assertEquals(ExpenseCategory.LABOR, JornadaExpenseKind.LABOUR.category)
         assertEquals(ExpenseCategory.TRANSPORT, JornadaExpenseKind.TRANSPORT.category)
-        assertEquals(7, JornadaExpenseKind.entries.size)
+        assertEquals(ExpenseCategory.REPAIR, JornadaExpenseKind.REPAIR.category)
+        assertEquals(8, JornadaExpenseKind.entries.size)
     }
 
     private fun expense(minor: Long, status: ExpenseStatus, category: ExpenseCategory) = Expense(

@@ -291,7 +291,7 @@ No schema change is expected: 19C reads existing `deliveries` + `delivery_yield_
   editing a Jornada cost never unlinks it.
 - **Quick kinds** (`JornadaExpenseKind`) are shortcuts to existing categories: Jornales/servicio
   (LABOR), Gasoil and Gasolina (FUEL), Aceite/lubricante and Maquinaria/alquiler (MACHINERY),
-  Transporte (TRANSPORT), Otro (HARVEST). The concept defaults to the kind's name.
+  Transporte (TRANSPORT), Reparaciones (REPAIR), Otro (HARVEST). The concept defaults to the kind's name.
 - **Jornada cost** (`JornadaCost`) = `ExpenseSummary` of the Expenses linked to it: posted only,
   drafts named "sin contar". It is read from the ledger, never stored, so it equals the posted
   rows exactly and each Expense is counted once in the Campaign.
