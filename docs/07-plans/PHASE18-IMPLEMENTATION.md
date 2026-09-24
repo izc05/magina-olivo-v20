@@ -63,3 +63,13 @@ test invocations and the captured map evidence, not merely an APK compilation.
 - Codex's CI evidence on the reference branch (run 35982709499: live import → force stop →
   airplane mode → offline reopen with the boundary rendered) must be repeated on this branch
   before Gate 18 can be proposed.
+
+### CI evidence on `codex/phase18-map-v2`
+
+| Check | Commit | Result |
+|---|---|---|
+| Phase 18 offline parcel map (live import → force stop → airplane mode → offline render) | `3b0a86b7` | PASS — run 35986351160 |
+| Android CI `foundation` (lint, unit tests, all environments, APK) | `3b0a86b7` | PASS — run 35986482377 |
+| Android CI `gate3-emulator` | `3b0a86b7` | 1 failure: `migration11To12…` could not find `12.json`, which CI exports during that same run and publishes as `29cd5fbc`; re-run pending with the schema present |
+
+Gate 18 still needs the full suite green on the final commit and the owner's device check.
