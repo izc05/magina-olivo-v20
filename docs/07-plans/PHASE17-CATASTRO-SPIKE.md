@@ -50,7 +50,7 @@ Timings (ms) are recorded for every call, to size timeouts and retry policy (§1
 - Reference lookups took 732–797 ms; BBOX lookups took 976–2338 ms in this run. Use a bounded timeout and retry only transient transport errors, then verify with more runs before freezing limits.
 - Malformed, unknown and oversized BBOX requests all returned HTTP 200 with an exception message and zero parcels. The adapter must inspect the XML body, not use HTTP status alone.
 
-This result validates the service shape for the sampled Sierra Mágina locations. It does not yet prove polygons with holes or multipart parcels in live responses; those cases need fixtures and an additional real sample before the production parser is final. Gate 17 remains open until the Android confirmation and offline save flow works with a real parcel.
+This result validates the service shape for the sampled Sierra Mágina locations. Holes and multipart parcels have synthetic parser coverage, but have not been sampled from the live service. The Android import and Room reopen test now passes with a real parcel; physical-device acceptance and Gate 16 remain pending as detailed in the import-slice evidence document.
 
 ## Out of scope here
 
