@@ -39,15 +39,13 @@ The old monolithic Phase 3 PR #180 is superseded and must not be merged.
 ## 2. Current active work
 
 ```text
-CURRENT:              Phase 15 — Machinery = PASS, merged into `main` through
-                      PR #211
+CURRENT:              Phase 16 = PASS (#212) and Phase 17 (#217) merged into
+                      `main` on 2026-09-24, with UI polish v2 and design v3
 
-ACTIVE PRODUCTION PHASE: Phase 16 — Calendar, agenda, reminders and Android
-                      notifications — implemented in PR #212, emulator evidence
-                      PASS on `5566c8ec`
+GATE 17:              CI PASS (live Catastro import); physical-device
+                      acceptance pending on the owner phone
 
-GATE 16:              PASS — physical-device check confirmed by the owner on
-                      2026-09-23; Phase 17 opens when PR #212 is merged
+NEXT PRODUCTION PHASE: Phase 18 — Land registry geometries + map
 ```
 
 Gates 3, 4 and 5 passed. Gate 6 composite passed on 2026-09-22 on commit `164aaa48`;
