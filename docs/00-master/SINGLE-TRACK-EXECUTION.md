@@ -39,13 +39,12 @@ The old monolithic Phase 3 PR #180 is superseded and must not be merged.
 ## 2. Current active work
 
 ```text
-CURRENT:              Phase 16 = PASS (#212) and Phase 17 (#217) merged into
-                      `main` on 2026-09-24, with UI polish v2 and design v3
+CURRENT:              Phases 16–18 PASS and merged into `main` (#212, #217, #227),
+                      with UI polish (#228 navigation, #231 walkthrough polish)
 
-GATE 17:              CI PASS (live Catastro import); physical-device
-                      acceptance pending on the owner phone
+GATES 17/18:          PASS — CI evidence + owner device confirmation 2026-09-24
 
-NEXT PRODUCTION PHASE: Phase 18 — Land registry geometries + map
+NEXT PRODUCTION PHASE: Phase 19 — Cuaderno de campaña (slice 19A first)
 ```
 
 Gates 3, 4 and 5 passed. Gate 6 composite passed on 2026-09-22 on commit `164aaa48`;
