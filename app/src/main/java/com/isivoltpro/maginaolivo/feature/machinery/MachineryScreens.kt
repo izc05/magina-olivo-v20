@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -41,6 +42,7 @@ import com.isivoltpro.maginaolivo.feature.activities.editableHours
 import com.isivoltpro.maginaolivo.feature.expenses.Choice
 import com.isivoltpro.maginaolivo.feature.expenses.ChoiceSheet
 import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
+import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoConfirmationSheet
@@ -113,7 +115,7 @@ fun MachineryScreen(
                 state.active.isEmpty() -> MoEmptyState(
                     "Aún no has añadido máquinas",
                     "No es obligatorio: las actuaciones se registran igual sin maquinaria.",
-                    icon = MoIcons.Tree,
+                    icon = MoIcons.Tractor,
                 )
                 else -> state.active.forEach { machine -> MachineRow(machine) { onMachineSelected(machine.id) } }
             }
@@ -148,10 +150,11 @@ private fun MachineRow(machine: Machine, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(MoSpacing.md),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            Modifier.fillMaxWidth().padding(horizontal = MoSpacing.sm, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            MoIconBadge(MoIcons.Tractor)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
                 Text(machine.name, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text(

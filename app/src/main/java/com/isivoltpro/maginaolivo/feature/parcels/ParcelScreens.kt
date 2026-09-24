@@ -10,9 +10,9 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.ui.draw.clip
 import com.isivoltpro.maginaolivo.domain.activity.Activity
-import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.parcel.IrrigationSystem
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelAgronomy
+import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
@@ -21,8 +21,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoPhotoHeader
 import com.isivoltpro.maginaolivo.ui.components.MoSectionCard
 import com.isivoltpro.maginaolivo.ui.components.MoStat
 import com.isivoltpro.maginaolivo.ui.components.MoStatTile
-import com.isivoltpro.maginaolivo.ui.theme.MoInfo
-import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
@@ -387,8 +385,6 @@ private fun IrrigationCard(agronomy: ParcelAgronomy, onEdit: () -> Unit) {
     MoSectionCard(
         title = "Riego",
         icon = MoIcons.Drop,
-        iconTint = MoInfoText,
-        iconContainer = MoInfo.copy(alpha = 0.14f),
         modifier = Modifier.testTag("parcel-irrigation"),
     ) {
         val known = agronomy.irrigationSystem != null || agronomy.irrigationNetwork != null ||
@@ -579,10 +575,3 @@ internal fun Set<DayOfWeek>.label(): String? {
     }
 }
 
-private fun ActivityType.icon() = when (this) {
-    ActivityType.IRRIGATION -> MoIcons.Drop
-    ActivityType.PHYTOSANITARY, ActivityType.FERTILIZATION, ActivityType.OBSERVATION -> MoIcons.Leaf
-    ActivityType.HARVEST_DAY -> MoIcons.Harvest
-    ActivityType.INCIDENT -> MoIcons.Warning
-    else -> MoIcons.Activity
-}

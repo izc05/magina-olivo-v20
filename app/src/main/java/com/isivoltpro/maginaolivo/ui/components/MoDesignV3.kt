@@ -218,11 +218,8 @@ fun MoSectionCard(
     ) {
         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-                if (iconTint != null && iconContainer != null) {
-                    MoIconBadge(icon, tint = iconTint, container = iconContainer)
-                } else {
-                    MoIconBadge(icon)
-                }
+                val tone = MoIconTone.of(icon)
+                MoIconBadge(icon, tint = iconTint ?: tone.tint, container = iconContainer ?: tone.container)
                 Text(
                     title,
                     style = MaterialTheme.typography.titleLarge,

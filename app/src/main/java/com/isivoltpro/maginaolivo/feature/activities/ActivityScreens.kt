@@ -72,6 +72,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import androidx.compose.foundation.layout.size
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
+import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
@@ -263,14 +264,20 @@ private fun ActivityRow(activity: Activity, onSelected: (UUID) -> Unit) {
         border = BorderStroke(1.dp, MoOutline),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(MoSpacing.md),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            Modifier.fillMaxWidth().padding(horizontal = MoSpacing.sm, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text(activity.description, style = MaterialTheme.typography.titleMedium)
-                Text("${activity.type.label()} · ${activity.activityDate}", color = MoTextSecondary)
-                Text(activity.targetsLabel(), color = MoTextSecondary)
+            MoIconBadge(activity.type.icon())
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(activity.description, style = MaterialTheme.typography.titleSmall, maxLines = 2)
+                Text(
+                    "${activity.type.label()} · ${activity.activityDate.format(ROW_DATE)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoTextSecondary,
+                    maxLines = 1,
+                )
+                Text(activity.targetsLabel(), style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, maxLines = 1)
             }
             MoStatusChip(activity.status.label(), tone = activity.status.tone())
         }
@@ -948,7 +955,7 @@ private fun ActivityHeaderCard(activity: Activity) {
                 Text(activity.description, style = MaterialTheme.typography.headlineMedium, color = MoOliveDark, modifier = Modifier.weight(1f))
                 MoStatusChip(activity.status.label(), tone = activity.status.tone())
             }
-            HeaderLine(MoIcons.Activity, activity.type.label())
+            HeaderLine(activity.type.icon(), activity.type.label())
             HeaderLine(MoIcons.Calendar, activity.activityDate.format(HEADER_DATE).replaceFirstChar { it.titlecase(SPANISH_LOCALE) })
             activity.targets.takeIf { it.isNotEmpty() }?.let { targets ->
                 HeaderLine(MoIcons.Parcels, if (targets.size == 1) targets.single().parcelName else "${targets.size} parcelas")
@@ -962,10 +969,11 @@ private fun ActivityHeaderCard(activity: Activity) {
 @Composable
 private fun HeaderLine(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        androidx.compose.material3.Icon(icon, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(18.dp))
+        androidx.compose.material3.Icon(icon, contentDescription = null, tint = com.isivoltpro.maginaolivo.ui.components.MoIconTone.of(icon).tint, modifier = Modifier.size(18.dp))
         Text(text, style = MaterialTheme.typography.bodyMedium, color = com.isivoltpro.maginaolivo.ui.theme.MoInk)
     }
 }
 
 private val SPANISH_LOCALE: java.util.Locale = java.util.Locale.forLanguageTag("es-ES")
+private val ROW_DATE: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", SPANISH_LOCALE)
 private val HEADER_DATE: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("EEEE d 'de' MMMM yyyy", SPANISH_LOCALE)
