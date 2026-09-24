@@ -32,17 +32,19 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 14 — Deliveries + weight-ticket OCR + later yield
 ✅ Gate 15 — Machinery
 ✅ Gate 16 — Calendar, agenda, reminders (physical check confirmed by the owner 2026-09-23)
-✅ CR-005 — Cuaderno de campaña / recolección IA approved; documentation only until Gate 18 closes
+✅ CR-005 — Cuaderno de campaña / recolección IA approved
+✅ Gate 17 — Spain Catastro lookup + confirmed import (owner device PASS 2026-09-24: "17 y 18 OK")
+✅ Gate 18 — Land registry geometries + offline map (owner device PASS 2026-09-24 on the main APK
+   of 3516ad45; CI: live import → airplane mode → offline render, live polygon/parcel lookup)
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 18 — LAND REGISTRY GEOMETRIES + MAP — merged to main 2026-09-24 (PR #227, owner: "si está todo bien fusiona")
-  Gate 18: CI PASS (live import → airplane mode → offline render; live polygon/parcel lookup;
-  IGN/PNOA tiles answer). Owner device feedback on the Phase 18 APK: "funciona bastante bien".
-  Explicit Gate 18 (and Gate 17) PASS on the merged main APK still pending from the owner.
-  Phase 19 production stays closed until that explicit PASS.
+▶ PHASE 19 — CUADERNO DE CAMPAÑA + HISTORICAL ANALYTICS (opened 2026-09-24 after Gate 18 PASS)
+  First slice: 19A — Cuaderno projection/navigation (executor Claude, reviewer Codex),
+  per docs/07-plans/AGENT-HANDOFF-PHASE18-19.md and docs/07-plans/PHASE19-CAMPAIGN-NOTEBOOK-ANALYTICS.md.
+  Device model/Android version of the Gate 17/18 check: not reported by the owner.
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
