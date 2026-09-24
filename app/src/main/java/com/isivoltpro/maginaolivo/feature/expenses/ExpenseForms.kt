@@ -229,7 +229,7 @@ internal fun ExpenseEditor(
             { key ->
                 val farmId = key?.let(UUID::fromString)
                 if (farmId != form.farmId) {
-                    form = form.copy(farmId = farmId, parcelId = null, activityId = null)
+                    form = form.copy(farmId = farmId, parcelId = null, activityId = null, harvestId = null)
                     onFarmSelected(farmId)
                 }
             },

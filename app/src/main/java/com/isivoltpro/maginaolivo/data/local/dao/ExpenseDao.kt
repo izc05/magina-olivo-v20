@@ -46,6 +46,19 @@ interface ExpenseDao {
     )
     fun observeForActivity(activityId: UUID): Flow<List<ExpenseEntity>>
 
+    /** Phase 19F: the Expenses of one Jornada. */
+    @Query(
+        """
+        SELECT * FROM expenses
+        WHERE harvest_id = :harvestId AND deleted_at IS NULL
+        ORDER BY expense_date DESC, created_at DESC, id
+        """,
+    )
+    fun observeForHarvest(harvestId: UUID): Flow<List<ExpenseEntity>>
+
+    @Query("SELECT * FROM expenses WHERE harvest_id = :harvestId AND deleted_at IS NULL")
+    suspend fun listForHarvest(harvestId: UUID): List<ExpenseEntity>
+
     /** The single convenience-cost row an Activity form edits (`RC1-NORMATIVE-ADDENDUM` D2). */
     @Query(
         """

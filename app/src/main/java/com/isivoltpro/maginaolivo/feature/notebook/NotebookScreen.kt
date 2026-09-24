@@ -31,6 +31,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
@@ -249,7 +250,7 @@ private fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions
         MoSectionHeader(day.date.format(LONG_DAY).replaceFirstChar { it.titlecase(SPANISH) })
         day.items.forEach { item ->
             when (item) {
-                is RecollectionItem.HarvestItem -> HarvestRow(item.harvest, notebook.pesadaCount(item.harvest.id), notebook.labourFor(item.harvest.id)) {
+                is RecollectionItem.HarvestItem -> HarvestRow(item.harvest, notebook.pesadaCount(item.harvest.id), notebook.labourFor(item.harvest.id), notebook.jornadaCost(item.harvest.id)) {
                     actions.onHarvest(item.harvest.id)
                 }
                 is RecollectionItem.DeliveryItem -> DeliveryRow(item.delivery) { actions.onDelivery(item.delivery.id) }
@@ -261,7 +262,7 @@ private fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions
 }
 
 @Composable
-private fun HarvestRow(harvest: Harvest, pesadas: Int, labour: LabourSummary, onClick: () -> Unit) {
+private fun HarvestRow(harvest: Harvest, pesadas: Int, labour: LabourSummary, cost: ExpenseSummary, onClick: () -> Unit) {
     MoCompactListItem(
         title = "Jornada · ${Weight.format(harvest.totalGrams)}",
         subtitle = listOfNotNull(
@@ -276,6 +277,7 @@ private fun HarvestRow(harvest: Harvest, pesadas: Int, labour: LabourSummary, on
                 else -> "$pesadas pesadas"
             },
             labour.takeUnless { it.isEmpty }?.let { if (it.people == 1) "1 jornal" else "${it.people} jornales" },
+            cost.takeIf { it.postedCount > 0 }?.let { Money.format(it.totalMinor, it.currency) },
         ).joinToString(" · "),
         icon = MoIcons.Harvest,
         onClick = onClick,

@@ -52,6 +52,8 @@ data class ExpenseForm(
     val invoiceNumber: String = "",
     val lines: List<LineForm> = emptyList(),
     val notes: String = "",
+    /** Phase 19F: kept from the Expense so editing it never unlinks it from its Jornada. */
+    val harvestId: UUID? = null,
 )
 
 data class LineForm(
@@ -115,6 +117,7 @@ internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDra
         invoiceNumber = invoiceNumber.trim().ifEmpty { null },
         lines = parsedLines,
         notes = notes.trim().ifEmpty { null },
+        harvestId = harvestId,
     ) to errors
 }
 
@@ -128,6 +131,7 @@ internal fun Expense.toForm() = ExpenseForm(
     farmId = farmId,
     parcelId = parcelId,
     activityId = activityId,
+    harvestId = harvestId,
     invoiceNumber = invoiceNumber.orEmpty(),
     lines = lines.map {
         LineForm(

@@ -13,6 +13,10 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestProblem
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
+import com.isivoltpro.maginaolivo.domain.expense.Expense
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseRepository
+import com.isivoltpro.maginaolivo.domain.expense.JornadaExpenseKind
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentRepository
 import com.isivoltpro.maginaolivo.domain.harvest.Jornada
@@ -124,6 +128,12 @@ data class HarvestDetailUiState(
     val machines: List<Machine> = emptyList(),
     val equipmentSaved: Int = 0,
     val equipmentError: String? = null,
+    /** Phase 19F: the ledger Expenses linked to this Jornada. */
+    val costs: List<Expense> = emptyList(),
+    val costSaved: Int = 0,
+    val costError: String? = null,
+    /** Set when a cost was saved with "añadir foto": the Expense to open for its ticket. */
+    val openExpenseId: UUID? = null,
 )
 
 class HarvestDetailViewModel(
@@ -134,6 +144,7 @@ class HarvestDetailViewModel(
     private val labour: LabourRepository? = null,
     private val equipment: EquipmentRepository? = null,
     machines: MachineRepository? = null,
+    private val expenses: ExpenseRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HarvestDetailUiState())
     val state: StateFlow<HarvestDetailUiState> = mutableState.asStateFlow()
@@ -189,6 +200,41 @@ class HarvestDetailViewModel(
                 repository.observeActive().catch { }.collect { mutableState.value = mutableState.value.copy(machines = it) }
             }
         }
+        expenses?.let { repository ->
+            viewModelScope.launch {
+                repository.observeForHarvest(harvestId).catch { }.collect { mutableState.value = mutableState.value.copy(costs = it) }
+            }
+        }
+    }
+
+    /** Phase 19F: a posted Expense of this Jornada, in the one ledger. */
+    fun addCost(kind: JornadaExpenseKind, amountMinor: Long, concept: String?, openAfter: Boolean) {
+        val repository = expenses ?: return
+        val harvest = mutableState.value.harvest ?: return
+        viewModelScope.launch {
+            mutableState.value = mutableState.value.copy(isSaving = true, costError = null)
+            val draft = ExpenseDraft(
+                expenseDate = harvest.harvestDate,
+                concept = concept ?: kind.label,
+                category = kind.category,
+                amountMinor = amountMinor,
+                farmId = harvest.farmId,
+                campaignId = harvest.campaignId,
+                harvestId = harvest.id,
+            )
+            mutableState.value = when (val result = repository.create(draft)) {
+                is AppResult.Success -> mutableState.value.copy(
+                    isSaving = false,
+                    costSaved = mutableState.value.costSaved + 1,
+                    openExpenseId = if (openAfter) result.value else null,
+                )
+                is AppResult.Failure -> mutableState.value.copy(isSaving = false, costError = "No se pudo guardar el gasto. Revisa el importe.")
+            }
+        }
+    }
+
+    fun expenseOpened() {
+        mutableState.value = mutableState.value.copy(openExpenseId = null)
     }
 
     /** Phase 19E: the whole equipment sheet in one save. */

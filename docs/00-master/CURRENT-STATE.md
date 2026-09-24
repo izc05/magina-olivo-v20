@@ -48,7 +48,9 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   pending — Codex review quota was exhausted on #235.
   19C — Rendimientos pendientes: MERGED (PR #236, 2026-09-24, owner "continuamos"; CI green).
   19D — Jornales: MERGED (PR #237, 2026-09-24, owner "puedes continuar"; CI green; Room v14).
-  19E — Equipment usage: IN PROGRESS (executor Claude; branch claude/phase19e-equipment; Room v15).
+  19E — Equipment usage: MERGED (PR #238, 2026-09-24, owner "continúa"; CI green; Room v15).
+  19F — Recollection expenses/documents: IN PROGRESS (executor Claude; branch claude/phase19f-gastos;
+  no schema change — reuses expenses.harvest_id).
   per docs/07-plans/AGENT-HANDOFF-PHASE18-19.md and docs/07-plans/PHASE19-CAMPAIGN-NOTEBOOK-ANALYTICS.md.
   Device model/Android version of the Gate 17/18 check: not reported by the owner.
 ```

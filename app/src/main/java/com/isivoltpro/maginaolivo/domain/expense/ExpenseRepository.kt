@@ -4,6 +4,7 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Phase 12 — the authoritative Expense ledger (`RC1-NORMATIVE-ADDENDUM` D2).
@@ -56,6 +57,8 @@ data class Expense(
     val invoiceNumber: String? = null,
     val lines: List<PurchaseLine> = emptyList(),
     val notes: String? = null,
+    /** Phase 19F: the Jornada (Harvest) this cost belongs to. The Expense stays the only ledger. */
+    val harvestId: UUID? = null,
 )
 
 data class ExpenseDraft(
@@ -74,6 +77,8 @@ data class ExpenseDraft(
     val invoiceNumber: String? = null,
     val lines: List<PurchaseLine> = emptyList(),
     val notes: String? = null,
+    /** Phase 19F: a recollection cost of one Jornada; its Farm and Campaign follow from it. */
+    val harvestId: UUID? = null,
 )
 
 /** Derived, never stored: posted money only. */
@@ -105,6 +110,10 @@ interface ExpenseRepository {
     fun observe(id: UUID): Flow<Expense?>
 
     fun observeForActivity(activityId: UUID): Flow<List<Expense>>
+
+    /** Phase 19F: the Expenses of one Jornada (drafts included; only posted ones are summed). */
+    fun observeForHarvest(harvestId: UUID): Flow<List<Expense>> =
+        observeAll().map { rows -> rows.filter { it.harvestId == harvestId } }
 
     /** A person entered this amount: it is posted immediately. */
     suspend fun create(draft: ExpenseDraft): AppResult<UUID>

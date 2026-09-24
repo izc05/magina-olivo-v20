@@ -95,7 +95,16 @@ internal class ExpenseLedgerWriter(
         if (status == ExpenseStatus.POSTED && draft.amountMinor == 0L) throw InvalidExpense("amountMinor", "not_positive")
         if (draft.currency.isBlank()) throw InvalidExpense("currency", "blank")
 
-        val farm = draft.farmId?.let { farmId ->
+        // Phase 19F: a Jornada cost belongs to the Jornada's Farm and Campaign.
+        val harvest = draft.harvestId?.let { harvestId ->
+            database.harvestDao().findById(harvestId)
+                ?.takeIf { it.workspaceId == workspaceId && it.metadata.deletedAt == null }
+                ?: throw InvalidExpense("harvestId", "not_found")
+        }
+        if (harvest != null && draft.farmId != null && draft.farmId != harvest.farmId) {
+            throw InvalidExpense("harvestId", "not_in_farm")
+        }
+        val farm = (draft.farmId ?: harvest?.farmId)?.let { farmId ->
             database.farmDao().findById(farmId)?.takeIf { it.workspaceId == workspaceId && it.metadata.deletedAt == null }
                 ?: throw InvalidExpense("farmId", "not_found")
         }
@@ -115,7 +124,7 @@ internal class ExpenseLedgerWriter(
             }
             if (farm != null && activity.farmId != farm.id) throw InvalidExpense("activityId", "not_in_farm")
         }
-        val campaignId = draft.campaignId ?: farm?.let { database.campaignDao().findCurrent(it.id)?.id }
+        val campaignId = harvest?.campaignId ?: draft.campaignId ?: farm?.let { database.campaignDao().findCurrent(it.id)?.id }
         val organization = draft.supplierOrganizationId?.let { organizationId ->
             database.organizationDao().findById(organizationId)?.takeIf { it.workspaceId == workspaceId }
                 ?: throw InvalidExpense("supplierOrganizationId", "not_found")
@@ -127,6 +136,7 @@ internal class ExpenseLedgerWriter(
             farmId = farm?.id,
             parcelId = draft.parcelId,
             activityId = draft.activityId,
+            harvestId = harvest?.id,
             supplierOrganizationId = organization?.id,
             expenseDate = draft.expenseDate,
             concept = concept,
