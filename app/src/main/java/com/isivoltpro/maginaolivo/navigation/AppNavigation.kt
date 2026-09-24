@@ -527,12 +527,15 @@ private fun PersistenceUnavailableScreen() {
 }
 
 
+/**
+ * A bottom-bar tab always opens its own root screen, from wherever the farmer is: Inicio is
+ * always Inicio, Mi Olivar is always the farm list. Nothing is kept or restored per tab (that
+ * made a tab reopen a screen left deep inside it), so Back simply walks the screens visited,
+ * and from any root it returns to Inicio.
+ */
 private fun NavHostController.navigateToRoot(destination: RootDestination) {
     navigate(destination.route) {
-        popUpTo(RootDestination.Home.route) {
-            saveState = true
-        }
+        popUpTo(RootDestination.Home.route)
         launchSingleTop = true
-        restoreState = true
     }
 }
