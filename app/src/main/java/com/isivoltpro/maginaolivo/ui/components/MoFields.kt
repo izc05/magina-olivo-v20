@@ -7,12 +7,12 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
 
 @Composable
 fun MoTextField(
@@ -48,11 +48,11 @@ fun MoTextField(
         shape = MoShape.field,
         textStyle = MaterialTheme.typography.bodyLarge,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MoOlivePrimary,
+            focusedBorderColor = MoOliveMid,
             unfocusedBorderColor = MoOutline,
             focusedContainerColor = MoSurfaceSoft,
             unfocusedContainerColor = MoSurfaceSoft,
-            focusedLabelColor = MoOlivePrimary,
+            focusedLabelColor = MoOliveMid,
             unfocusedLabelColor = MoTextSecondary,
         ),
     )

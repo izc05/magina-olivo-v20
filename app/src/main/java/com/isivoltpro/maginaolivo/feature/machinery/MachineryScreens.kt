@@ -41,6 +41,8 @@ import com.isivoltpro.maginaolivo.feature.activities.editableHours
 import com.isivoltpro.maginaolivo.feature.expenses.Choice
 import com.isivoltpro.maginaolivo.feature.expenses.ChoiceSheet
 import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoConfirmationSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
@@ -53,12 +55,12 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
 
 @Composable
 fun MachineryRoute(persistence: LocalPersistence, onMachineSelected: (UUID) -> Unit) {
@@ -111,6 +113,7 @@ fun MachineryScreen(
                 state.active.isEmpty() -> MoEmptyState(
                     "Aún no has añadido máquinas",
                     "No es obligatorio: las actuaciones se registran igual sin maquinaria.",
+                    icon = MoIcons.Tree,
                 )
                 else -> state.active.forEach { machine -> MachineRow(machine) { onMachineSelected(machine.id) } }
             }
@@ -159,7 +162,7 @@ private fun MachineRow(machine: Machine, onClick: () -> Unit) {
                 )
             }
             machine.currentHours?.let {
-                Text("${editableHours(it)} h", style = MaterialTheme.typography.titleMedium, color = MoOlivePrimary)
+                Text("${editableHours(it)} h", style = MaterialTheme.typography.titleMedium, color = MoInk)
             }
         }
     }
@@ -202,7 +205,7 @@ internal fun MachineEditor(
         )
         MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
         MoPrimaryButton(saveText, { onSave(form) }, Modifier.fillMaxWidth().testTag("save-machine"), enabled = !isSaving)
-        MoSecondaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
+        MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(MoSpacing.lg))
     }
     if (picker) {

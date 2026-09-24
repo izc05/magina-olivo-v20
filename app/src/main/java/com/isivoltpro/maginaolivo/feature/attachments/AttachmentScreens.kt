@@ -50,6 +50,7 @@ import com.isivoltpro.maginaolivo.domain.attachment.Attachment
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentKind
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentUploadState
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoConfirmationSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
@@ -133,6 +134,7 @@ fun AttachmentsSection(
         state.attachments.isEmpty() -> MoEmptyState(
             "Sin documentos ni fotos",
             "Haz una foto o añade un PDF o una imagen. Se guarda primero en este dispositivo.",
+            icon = MoIcons.Document,
         )
         else -> state.attachments.forEach { attachment ->
             AttachmentRow(

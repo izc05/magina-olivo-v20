@@ -11,8 +11,9 @@ class DesignContrastTest {
     @Test
     fun semanticStatusForegroundsMeetWcagAaOnTintedBackgrounds() {
         val tones = listOf(
-            "neutral" to MoOlivePrimary,
-            "success" to MoSuccessText,
+            "neutral" to MoTextSecondary,
+            "success" to MoOliveMid,
+            "legacy success" to MoSuccessText,
             "info" to MoInfoText,
             "warning" to MoWarningText,
             "error" to MoErrorText,
@@ -45,6 +46,12 @@ class DesignContrastTest {
             Triple("secondary text on warm white", MoTextSecondary, MoWarmWhite),
             Triple("light text on olive primary", MoWarmWhite, MoOlivePrimary),
             Triple("dark text on sage", MoOliveDark, MoSage),
+            Triple("body ink on cream", MoInk, MoCream),
+            Triple("body ink on warm white", MoInk, MoWarmWhite),
+            Triple("mid olive text action on cream", MoOliveMid, MoCream),
+            Triple("mid olive text action on warm white", MoOliveMid, MoWarmWhite),
+            Triple("mid olive chip on olive tint", MoOliveMid, MoOliveTint),
+            Triple("light text on mid olive", MoWarmWhite, MoOliveMid),
         )
 
         pairs.forEach { (label, foreground, background) ->

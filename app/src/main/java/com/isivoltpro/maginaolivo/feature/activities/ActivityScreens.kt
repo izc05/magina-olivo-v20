@@ -55,9 +55,9 @@ import com.isivoltpro.maginaolivo.domain.activity.IncidentSeverity
 import com.isivoltpro.maginaolivo.domain.activity.IncidentState
 import com.isivoltpro.maginaolivo.domain.activity.IrrigationPricingBasis
 import com.isivoltpro.maginaolivo.domain.farm.Farm
+import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
-import com.isivoltpro.maginaolivo.ui.components.MoMetricCard
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
@@ -70,6 +70,12 @@ import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import androidx.compose.foundation.layout.size
+import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
+import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
+import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import java.time.LocalDate
 import java.util.UUID
 
@@ -107,7 +113,7 @@ fun FarmActivitiesSection(
         state.isLoading -> CircularProgressIndicator()
         state.error != null -> MoErrorState("No pudimos abrir las actuaciones", state.error)
         state.drafts.isEmpty() && state.planned.isEmpty() && state.history.isEmpty() ->
-            MoEmptyState("Aún no hay actuaciones", "Registra un trabajo y selecciona las parcelas donde se realiza.")
+            MoEmptyState("Aún no hay actuaciones", "Registra un trabajo y selecciona las parcelas donde se realiza.", icon = MoIcons.Activity)
         else -> {
             if (state.drafts.isNotEmpty()) {
                 MoSectionHeader("Borradores")
@@ -145,13 +151,25 @@ fun FarmActivitiesSection(
  * no Farm in context. One Farm resolves itself.
  */
 @Composable
-fun RegisterActivityRoute(persistence: LocalPersistence, onActivitySelected: (UUID) -> Unit) {
+fun RegisterActivityRoute(
+    persistence: LocalPersistence,
+    onActivitySelected: (UUID) -> Unit,
+    preselectedFarmId: UUID? = null,
+    onFarmPreselected: () -> Unit = {},
+) {
     val vm: RegisterActivityViewModel = viewModel(factory = viewModelFactory {
         initializer {
             RegisterActivityViewModel(persistence.farmRepository, persistence.workspaceRepository)
         }
     })
     val state by vm.state.collectAsStateWithLifecycle()
+    // Quick Add opened from a Farm's screen: that Farm is already the answer.
+    LaunchedEffect(preselectedFarmId) {
+        if (preselectedFarmId != null) {
+            vm.selectFarm(preselectedFarmId)
+            onFarmPreselected()
+        }
+    }
     Scaffold(
         modifier = Modifier.fillMaxSize().testTag("register-activity-root"),
         containerColor = MoCream,
@@ -180,6 +198,7 @@ fun RegisterActivityRoute(persistence: LocalPersistence, onActivitySelected: (UU
                 state.farms.isEmpty() -> MoEmptyState(
                     "Aún no tienes fincas",
                     "Crea una finca en Mi Olivar y podrás registrar actuaciones sobre sus parcelas.",
+                    icon = MoIcons.Tree,
                 )
                 else -> {
                     val selectedFarmId = state.selectedFarmId
@@ -324,8 +343,8 @@ internal fun ActivityEditor(
             isError = descriptionError != null, supportingText = descriptionError,
             modifier = Modifier.testTag("activity-description"),
         )
-        MoTextField(
-            date, { date = it }, "Fecha (AAAA-MM-DD)",
+        MoDateInputField(
+            date, { date = it }, "Fecha",
             isError = dateError != null, supportingText = dateError,
             modifier = Modifier.testTag("activity-date"),
         )
@@ -467,7 +486,7 @@ internal fun ActivityEditor(
                 modifier = Modifier.fillMaxWidth().testTag("save-activity-draft"),
             )
         }
-        MoSecondaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
+        MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -521,28 +540,27 @@ fun ActivityDetailScreen(
                     MoErrorState("Actuación no disponible", state.error ?: "No está guardada en este dispositivo.")
                 else -> {
                     val activity = state.activity
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(activity.description, style = MaterialTheme.typography.headlineLarge)
-                        MoStatusChip(activity.status.label(), tone = activity.status.tone())
-                    }
-                    Text("${activity.type.label()} · ${activity.activityDate}", color = MoTextSecondary)
-                    activity.notes?.let { Text(it, color = MoTextSecondary) }
-
-                    MoSectionHeader("Parcelas afectadas")
-                    if (activity.targets.isEmpty()) {
-                        Text("Sin parcelas seleccionadas todavía.", color = MoTextSecondary)
+                    // UI polish v2: one first card with what the farmer needs at a glance.
+                    ActivityHeaderCard(activity)
+                    activity.notes?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary) }
+                    if (activity.targets.size > 1) {
+                        MoSectionHeader("Parcelas afectadas")
                     }
                     activity.targets.forEach { target ->
-                        Column(Modifier.fillMaxWidth().testTag("activity-target")) {
-                            Text(target.parcelName, style = MaterialTheme.typography.titleMedium)
-                            target.areaAffectedM2?.let { Text("Superficie: ${it.toLong()} m²", color = MoTextSecondary) }
-                        }
+                        MoCompactListItem(
+                            title = target.parcelName,
+                            subtitle = target.areaAffectedM2?.let { "Superficie: ${it.toLong()} m²" },
+                            icon = MoIcons.Parcels,
+                            modifier = Modifier.testTag("activity-target"),
+                        )
                     }
-                    MoMetricCard("Parcelas", activity.targets.size.toString(), Modifier.fillMaxWidth())
+                    if (activity.targets.isEmpty()) {
+                        MoEmptyState(
+                            "Sin parcelas todavía",
+                            "Edita la actuación y elige dónde se hace el trabajo.",
+                            icon = MoIcons.Parcels,
+                        )
+                    }
 
                     activity.detail?.let { ActivityDetailSummary(it) }
                     if (activity.machines.isNotEmpty()) {
@@ -559,33 +577,41 @@ fun ActivityDetailScreen(
                     }
                     PlanningSummary(activity.planning, activity.reminders)
                     activity.costMinor?.let { cost ->
-                        MoMetricCard(
+                        MoSummaryMetric(
                             "Coste",
                             Money.format(cost),
                             Modifier.fillMaxWidth().testTag("activity-cost-summary"),
+                            icon = MoIcons.Euro,
                             supportingText = "Anotado en Gastos",
                         )
                     }
 
+                    // Principal / secundaria / destructiva — never three large green buttons.
                     when (activity.status) {
                         ActivityStatus.DRAFT -> {
-                            MoPrimaryButton("Editar borrador", { editor = true }, modifier = Modifier.fillMaxWidth().testTag("edit-activity"), enabled = !state.isSaving)
                             MoPrimaryButton("Planificar", { confirmation = "plan" }, modifier = Modifier.fillMaxWidth().testTag("plan-activity"), enabled = !state.isSaving)
-                            MoSecondaryButton("Archivar borrador", { confirmation = "archive" }, modifier = Modifier.fillMaxWidth().testTag("archive-activity"))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                                MoSecondaryButton("Editar borrador", { editor = true }, modifier = Modifier.weight(1f).testTag("edit-activity"), enabled = !state.isSaving)
+                                MoDestructiveButton("Archivar borrador", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"))
+                            }
                         }
                         ActivityStatus.PLANNED -> {
-                            MoPrimaryButton("Editar actuación", { editor = true }, modifier = Modifier.fillMaxWidth().testTag("edit-activity"), enabled = !state.isSaving)
                             MoPrimaryButton("Marcar completada", { confirmation = "complete" }, modifier = Modifier.fillMaxWidth().testTag("complete-activity"), enabled = !state.isSaving)
-                            MoSecondaryButton("Cancelar actuación", { confirmation = "cancel" }, modifier = Modifier.fillMaxWidth().testTag("cancel-activity"))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                                MoSecondaryButton("Editar", { editor = true }, modifier = Modifier.weight(1f).testTag("edit-activity"), enabled = !state.isSaving)
+                                MoDestructiveButton("Cancelar actuación", { confirmation = "cancel" }, modifier = Modifier.weight(1f).testTag("cancel-activity"))
+                            }
                         }
                         ActivityStatus.COMPLETED -> {
-                            Text("Registro protegido", style = MaterialTheme.typography.titleMedium)
+                            Text("Registro protegido", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
                             MoSecondaryButton("Reabrir actuación", { confirmation = "reopen" }, modifier = Modifier.fillMaxWidth().testTag("reopen-activity"))
                         }
                         ActivityStatus.CANCELLED -> {
-                            Text("Actuación cancelada", style = MaterialTheme.typography.titleMedium)
-                            MoSecondaryButton("Reabrir actuación", { confirmation = "reopen" }, modifier = Modifier.fillMaxWidth().testTag("reopen-activity"))
-                            MoSecondaryButton("Archivar", { confirmation = "archive" }, modifier = Modifier.fillMaxWidth().testTag("archive-activity"))
+                            Text("Actuación cancelada", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                                MoSecondaryButton("Reabrir", { confirmation = "reopen" }, modifier = Modifier.weight(1f).testTag("reopen-activity"))
+                                MoDestructiveButton("Archivar", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"))
+                            }
                         }
                     }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -635,21 +661,22 @@ fun ActivityDetailScreen(
                     "Esta acción actualizará el estado de la actuación guardada en este dispositivo.",
                     color = MoTextSecondary,
                 )
-                MoPrimaryButton(
-                    "Confirmar",
-                    {
-                        when (confirmation) {
-                            "plan" -> onPlan()
-                            "complete" -> onComplete()
-                            "cancel" -> onCancelActivity()
-                            "reopen" -> onReopen()
-                            "archive" -> onArchive()
-                        }
-                        confirmation = null
-                    },
-                    modifier = Modifier.fillMaxWidth().testTag("confirm-activity-action"),
-                )
-                MoSecondaryButton("Cancelar", { confirmation = null }, modifier = Modifier.fillMaxWidth())
+                val confirm = {
+                    when (confirmation) {
+                        "plan" -> onPlan()
+                        "complete" -> onComplete()
+                        "cancel" -> onCancelActivity()
+                        "reopen" -> onReopen()
+                        "archive" -> onArchive()
+                    }
+                    confirmation = null
+                }
+                if (confirmation == "cancel" || confirmation == "archive") {
+                    MoDestructiveButton("Confirmar", confirm, modifier = Modifier.fillMaxWidth().testTag("confirm-activity-action"))
+                } else {
+                    MoPrimaryButton("Confirmar", confirm, modifier = Modifier.fillMaxWidth().testTag("confirm-activity-action"))
+                }
+                MoTertiaryButton("Volver", { confirmation = null }, modifier = Modifier.fillMaxWidth())
             }
         }
     }
@@ -903,3 +930,42 @@ internal fun ActivityType.label() = when (this) {
 /** "3", "3,5": hours as a farmer writes them. */
 internal fun editableHours(hours: Double): String =
     java.math.BigDecimal.valueOf(hours).stripTrailingZeros().toPlainString().replace('.', ',')
+
+/**
+ * UI polish v2: the Activity's first card — type, state, date, farm parcels, planned
+ * hour/duration and reminder — so the detail reads in one glance.
+ */
+@Composable
+private fun ActivityHeaderCard(activity: Activity) {
+    androidx.compose.material3.Surface(
+        modifier = Modifier.fillMaxWidth().testTag("activity-header"),
+        shape = com.isivoltpro.maginaolivo.ui.theme.MoShape.card,
+        color = MoWarmWhite,
+        border = BorderStroke(1.dp, MoOutline),
+    ) {
+        Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                Text(activity.description, style = MaterialTheme.typography.headlineMedium, color = MoOliveDark, modifier = Modifier.weight(1f))
+                MoStatusChip(activity.status.label(), tone = activity.status.tone())
+            }
+            HeaderLine(MoIcons.Activity, activity.type.label())
+            HeaderLine(MoIcons.Calendar, activity.activityDate.format(HEADER_DATE).replaceFirstChar { it.titlecase(SPANISH_LOCALE) })
+            activity.targets.takeIf { it.isNotEmpty() }?.let { targets ->
+                HeaderLine(MoIcons.Parcels, if (targets.size == 1) targets.single().parcelName else "${targets.size} parcelas")
+            }
+            planningLine(activity.planning)?.let { HeaderLine(MoIcons.Clock, it) }
+            activity.reminders.firstOrNull()?.let { HeaderLine(MoIcons.Bell, reminderLabel(it)) }
+        }
+    }
+}
+
+@Composable
+private fun HeaderLine(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+        androidx.compose.material3.Icon(icon, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(18.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = com.isivoltpro.maginaolivo.ui.theme.MoInk)
+    }
+}
+
+private val SPANISH_LOCALE: java.util.Locale = java.util.Locale.forLanguageTag("es-ES")
+private val HEADER_DATE: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("EEEE d 'de' MMMM yyyy", SPANISH_LOCALE)

@@ -91,7 +91,7 @@ internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDra
                 (line.total.isNotBlank() && Money.parseMinor(line.total) == null))
     }
     val errors = ExpenseFormErrors(
-        date = if (parsedDate == null) "Escribe la fecha como AAAA-MM-DD" else null,
+        date = if (parsedDate == null) "Elige una fecha" else null,
         amount = when {
             amount.isBlank() && requireAmount -> "Escribe el importe"
             amount.isNotBlank() && amountMinor == null -> "Escribe un importe como 65 o 65,50"

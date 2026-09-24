@@ -83,7 +83,8 @@ fun MoSectionHeader(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
+            // UI polish v2: section titles step down so screens stay compact.
+            style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
         )
         action?.invoke()

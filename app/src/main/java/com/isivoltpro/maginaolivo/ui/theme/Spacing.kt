@@ -16,6 +16,7 @@ object MoSpacing {
 
 object MoSize {
     val minTouchTarget = 48.dp
-    val buttonHeight = 54.dp
-    val fieldMinHeight = 54.dp
+    // UI polish v2: compact controls that still keep the 48dp touch target.
+    val buttonHeight = 48.dp
+    val fieldMinHeight = 52.dp
 }

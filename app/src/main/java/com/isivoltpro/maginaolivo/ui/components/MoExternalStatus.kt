@@ -17,13 +17,13 @@ import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoInfo
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarning
 import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
 
 enum class MoSyncState {
     Synced,
@@ -98,7 +98,7 @@ fun MoSyncStatus(
     modifier: Modifier = Modifier,
 ) {
     val (label, tone) = when (state) {
-        MoSyncState.Synced -> "Sincronizado" to MoOlivePrimary
+        MoSyncState.Synced -> "Sincronizado" to MoOliveMid
         MoSyncState.Pending -> "Pendiente de sincronizar" to MoWarningText
         MoSyncState.Offline -> "Solo en este dispositivo" to MoTextSecondary
     }

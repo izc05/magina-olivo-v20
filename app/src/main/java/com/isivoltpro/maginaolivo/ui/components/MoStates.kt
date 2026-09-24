@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
 import com.isivoltpro.maginaolivo.ui.theme.MoError
@@ -27,6 +29,10 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 
+/**
+ * UI polish v2: an empty state says what is missing and how to get it, compactly.
+ * Prefer a specific sentence ("Aún no has registrado cosecha") over a generic "Sin datos".
+ */
 @Composable
 fun MoEmptyState(
     title: String,
@@ -34,33 +40,41 @@ fun MoEmptyState(
     modifier: Modifier = Modifier,
     actionText: String? = null,
     onAction: (() -> Unit)? = null,
+    icon: ImageVector? = null,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = MoShape.cardLarge,
+        shape = MoShape.card,
         colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
         border = androidx.compose.foundation.BorderStroke(1.dp, MoOutline),
     ) {
-        Column(
-            modifier = Modifier.padding(MoSpacing.lg),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+        Row(
+            modifier = Modifier.padding(MoSpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+            verticalAlignment = Alignment.Top,
         ) {
-            OliveMark(modifier = Modifier.size(64.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
-            )
-            if (actionText != null && onAction != null) {
-                MoPrimaryButton(
-                    text = actionText,
-                    onClick = onAction,
+            if (icon != null) {
+                MoIconBadge(icon)
+            } else {
+                OliveMark(modifier = Modifier.size(40.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs), modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
                 )
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MoTextSecondary,
+                )
+                if (actionText != null && onAction != null) {
+                    MoSecondaryButton(
+                        text = actionText,
+                        onClick = onAction,
+                        modifier = Modifier.padding(top = MoSpacing.xxs),
+                    )
+                }
             }
         }
     }

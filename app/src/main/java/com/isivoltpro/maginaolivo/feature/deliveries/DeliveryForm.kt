@@ -56,7 +56,7 @@ internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, Delive
         parcelIds.any { id -> weights[id].orEmpty().isNotBlank() && Weight.parseGrams(weights[id]) == null }
     val errors = DeliveryFormErrors(
         farm = if (farmId == null) "Elige la finca" else null,
-        date = if (parsedDate == null) "Escribe la fecha como AAAA-MM-DD" else null,
+        date = if (parsedDate == null) "Elige una fecha" else null,
         destination = if (destinationOrganizationId == null && destinationText.isBlank()) {
             "Elige la cooperativa o almazara, o escribe su nombre"
         } else {
@@ -183,7 +183,7 @@ internal fun YieldForm.toDraft(today: LocalDate): Pair<YieldDraft?, YieldFormErr
     val fatValue = Percent.parseHundredths(fat)
     val industrialValue = Percent.parseHundredths(industrial)
     val errors = YieldFormErrors(
-        date = if (date.isNotBlank() && parsedDate == null) "Escribe la fecha como AAAA-MM-DD" else null,
+        date = if (date.isNotBlank() && parsedDate == null) "Elige una fecha" else null,
         fat = if (fat.isNotBlank() && fatValue == null) "Escribe el rendimiento como 21,5" else null,
         industrial = if (industrial.isNotBlank() && industrialValue == null) "Escribe el rendimiento como 18,2" else null,
     )

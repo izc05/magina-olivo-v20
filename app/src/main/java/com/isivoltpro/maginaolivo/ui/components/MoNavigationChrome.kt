@@ -22,12 +22,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
 
 @Composable
 fun MoIconButton(
@@ -43,7 +43,7 @@ fun MoIconButton(
             .clickable(role = Role.Button, onClick = onClick),
         shape = CircleShape,
         color = MoSurfaceSoft,
-        contentColor = MoOlivePrimary,
+        contentColor = MoInk,
         border = BorderStroke(1.dp, MoOutline),
     ) {
         Box(contentAlignment = Alignment.Center) {

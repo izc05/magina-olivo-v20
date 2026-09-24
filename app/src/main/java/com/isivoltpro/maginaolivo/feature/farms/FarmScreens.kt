@@ -51,7 +51,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoFarmCard
 import com.isivoltpro.maginaolivo.ui.components.MoListSkeleton
-import com.isivoltpro.maginaolivo.ui.components.MoMetricCard
 import com.isivoltpro.maginaolivo.ui.components.MoPhotoCover
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
@@ -63,6 +62,32 @@ import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
+import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
+import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
+import com.isivoltpro.maginaolivo.ui.theme.MoOutline
+import com.isivoltpro.maginaolivo.ui.theme.MoShape
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
+import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import java.time.LocalDate
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.UUID
@@ -85,6 +110,13 @@ fun FarmListRoute(
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val agenda by remember { persistence.activityRepository.observeAgenda() }.collectAsStateWithLifecycle(emptyList())
+    val today = remember { LocalDate.now() }
+    val nextWork = remember(agenda) {
+        agenda.filter { !it.activityDate.isBefore(today) && it.farmId != null }
+            .groupBy { it.farmId!! }
+            .mapValues { (_, entries) -> entries.minBy { it.activityDate } }
+    }
     FarmListScreen(
         state = state,
         onFarmSelected = onFarmSelected,
@@ -93,7 +125,20 @@ fun FarmListRoute(
         onRetry = viewModel::retry,
         modifier = modifier,
         onMachinery = onMachinery,
+        cover = { farmId ->
+            val uri by remember(farmId) { persistence.farmCoverRepository.observeCoverUri(farmId) }.collectAsStateWithLifecycle(null)
+            uri
+        },
+        nextWork = { farmId -> nextWork[farmId]?.let { "Próximo: ${it.description} · ${relativeDay(it.activityDate, today)}" } },
     )
+}
+
+private val DAY_MONTH = java.time.format.DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-ES"))
+
+internal fun relativeDay(date: LocalDate, today: LocalDate): String = when (date) {
+    today -> "hoy"
+    today.plusDays(1) -> "mañana"
+    else -> date.format(DAY_MONTH)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,6 +151,10 @@ fun FarmListScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     onMachinery: () -> Unit = {},
+    /** The Farm's cover photo, when one was chosen (UI polish v2). */
+    cover: @Composable (UUID) -> String? = { null },
+    /** A short line for the next planned work of a Farm, when there is one. */
+    nextWork: (UUID) -> String? = { null },
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -133,10 +182,10 @@ fun FarmListScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = MoSpacing.screen,
                 end = MoSpacing.screen,
-                top = MoSpacing.lg,
-                bottom = MoSpacing.xl,
+                top = MoSpacing.sm,
+                bottom = MoSpacing.lg,
             ),
-            verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             item {
                 Row(
@@ -156,7 +205,7 @@ fun FarmListScreen(
                 }
                 Text(
                     text = "Todo tu olivar organizado por fincas y parcelas.",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MoTextSecondary,
                 )
             }
@@ -172,9 +221,7 @@ fun FarmListScreen(
                     text = "Añadir finca",
                     onClick = { editorVisible = true },
                     enabled = !state.isLoading && !state.isSaving,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("add-farm"),
+                    modifier = Modifier.testTag("add-farm"),
                 )
             }
 
@@ -193,13 +240,19 @@ fun FarmListScreen(
                         body = "Crea tu primera finca. Se guardará en este dispositivo aunque no tengas cobertura.",
                         actionText = "Crear mi primera finca",
                         onAction = { editorVisible = true },
+                        icon = MoIcons.Tree,
                     )
                 }
                 else -> items(
                     items = state.farms,
                     key = { farm -> farm.id },
                 ) { farm ->
-                    FarmCard(farm = farm, onClick = { onFarmSelected(farm.id) })
+                    FarmCard(
+                        farm = farm,
+                        coverUri = cover(farm.id),
+                        nextWork = nextWork(farm.id),
+                        onClick = { onFarmSelected(farm.id) },
+                    )
                 }
             }
 
@@ -410,7 +463,7 @@ fun FarmDetailScreen(
                     "La finca desaparecerá de la lista activa, pero conservará sus datos y podrás restaurarla.",
                     color = MoTextSecondary,
                 )
-                MoPrimaryButton(
+                MoDestructiveButton(
                     text = "Archivar",
                     onClick = {
                         archiveConfirmation = false
@@ -419,7 +472,7 @@ fun FarmDetailScreen(
                     enabled = !state.isSaving,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                MoSecondaryButton(
+                MoTertiaryButton(
                     text = "Cancelar",
                     onClick = { archiveConfirmation = false },
                     modifier = Modifier.fillMaxWidth(),
@@ -430,6 +483,11 @@ fun FarmDetailScreen(
     }
 }
 
+/**
+ * UI polish v2: a compact Farm detail. Hero, three key figures and quick access to the
+ * sections first; the long sections follow, reachable in one tap.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FarmDetailContent(
     farm: Farm,
@@ -444,117 +502,157 @@ private fun FarmDetailContent(
     attachmentContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scope = rememberCoroutineScope()
+    val parcels = remember { BringIntoViewRequester() }
+    val campaigns = remember { BringIntoViewRequester() }
+    val activities = remember { BringIntoViewRequester() }
     Column(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = MoSpacing.screen),
-        verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Spacer(Modifier.height(MoSpacing.xs))
+        Spacer(Modifier.height(MoSpacing.xxs))
         MoPhotoCover(
             title = farm.name,
             subtitle = farm.locationLabel(),
             imageModel = coverUri,
-            modifier = Modifier.height(260.dp),
+            modifier = Modifier.height(190.dp),
             badge = {
                 MoStatusChip(
-                    text = farm.activeCampaignName ?: "Sin campaña",
+                    text = farm.activeCampaignName ?: "Sin campaña activa",
                     tone = if (farm.activeCampaignName == null) MoStatusTone.Neutral else MoStatusTone.Success,
                 )
             },
         )
-        MoSecondaryButton(
-            text = if (coverUri == null) "Añadir foto de portada" else "Cambiar foto de portada",
-            onClick = onChooseCover,
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
-        ) {
-            MoMetricCard(
-                label = "Superficie",
-                value = farm.areaLabel(),
-                modifier = Modifier.weight(1f),
-            )
-            MoMetricCard(
-                label = "Parcelas",
-                value = farm.parcelCount.toString(),
-                modifier = Modifier.weight(1f),
-            )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onChooseCover, enabled = !isSaving, modifier = Modifier.testTag("farm-cover-button")) {
+                Text(if (coverUri == null) "Añadir foto de portada" else "Cambiar foto")
+            }
         }
-        farm.description?.let { Text(it, color = MoTextSecondary) }
+        MoMetricGrid(
+            columns = 3,
+            content = listOf(
+                { m -> MoSummaryMetric("Superficie", farm.areaLabel(), m, icon = MoIcons.Area) },
+                { m -> MoSummaryMetric("Parcelas", farm.parcelCount.toString(), m, icon = MoIcons.Parcels) },
+                { m -> MoSummaryMetric("Campaña", farm.activeCampaignName ?: "Ninguna", m, icon = MoIcons.Campaign) },
+            ),
+        )
+        if (farm.totalAreaM2 == null) {
+            Text("Añade superficie a las parcelas para calcular rendimientos.", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            QuickAccess("Parcelas", MoIcons.Parcels, "farm-quick-parcels", Modifier.weight(1f)) { scope.launch { parcels.bringIntoView() } }
+            QuickAccess("Campañas", MoIcons.Campaign, "farm-quick-campaigns", Modifier.weight(1f)) { scope.launch { campaigns.bringIntoView() } }
+            QuickAccess("Trabajos", MoIcons.Checklist, "farm-quick-activities", Modifier.weight(1f)) { scope.launch { activities.bringIntoView() } }
+            // The map arrives with its own phase (land registry + geometry); until then it
+            // says so instead of opening sample data.
+            QuickAccess("Mapa", MoIcons.Map, "farm-quick-map", Modifier.weight(1f), enabled = false, note = "Pronto") {}
+        }
+        farm.description?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary) }
         farm.notes?.let {
             MoSectionHeader(title = "Notas")
-            Text(it, style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary)
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
         }
-        parcelContent()
-        campaignContent()
-        activityContent()
-        MoSecondaryButton(
-            text = "Editar finca",
-            onClick = onEdit,
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        MoSecondaryButton(
-            text = "Archivar finca",
-            onClick = onArchive,
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Column(Modifier.bringIntoViewRequester(parcels), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) { parcelContent() }
+        Column(Modifier.bringIntoViewRequester(campaigns), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) { campaignContent() }
+        Column(Modifier.bringIntoViewRequester(activities), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) { activityContent() }
         attachmentContent()
-        Spacer(Modifier.height(MoSpacing.xl))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            MoSecondaryButton(
+                text = "Editar finca",
+                onClick = onEdit,
+                enabled = !isSaving,
+                modifier = Modifier.weight(1f),
+            )
+            MoDestructiveButton(
+                text = "Archivar finca",
+                onClick = onArchive,
+                enabled = !isSaving,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(Modifier.height(MoSpacing.lg))
+    }
+}
+
+@Composable
+private fun QuickAccess(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tag: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    note: String? = null,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = modifier
+            .heightIn(min = 64.dp)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { if (!enabled && note != null) contentDescription = "$label, disponible próximamente" }
+            .testTag(tag),
+        shape = MoShape.card,
+        color = if (enabled) MoWarmWhite else MoSurfaceSoft,
+        border = BorderStroke(1.dp, MoOutline),
+    ) {
+        Column(
+            Modifier.padding(vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = if (enabled) MoOliveMid else MoTextSecondary, modifier = Modifier.size(22.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, color = if (enabled) MoInk else MoTextSecondary)
+            if (note != null) Text(note, style = MaterialTheme.typography.labelSmall, color = MoTextSecondary)
+        }
     }
 }
 
 @Composable
 private fun FarmTotals(farms: List<Farm>) {
     val knownArea = farms.mapNotNull { it.totalAreaM2 }.sum().takeIf { farms.any { farm -> farm.totalAreaM2 != null } }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
-    ) {
-        MoMetricCard(
-            label = "Fincas",
-            value = farms.size.toString(),
-            supportingText = "En este dispositivo",
-            modifier = Modifier.weight(1f),
+    Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
+        MoMetricGrid(
+            columns = 3,
+            content = listOf(
+                { m -> MoSummaryMetric("Fincas", farms.size.toString(), m, icon = MoIcons.Tree) },
+                { m -> MoSummaryMetric("Parcelas", farms.sumOf { it.parcelCount }.toString(), m, icon = MoIcons.Parcels) },
+                { m -> MoSummaryMetric("Superficie", knownArea?.let(::formatArea) ?: "—", m, icon = MoIcons.Area) },
+            ),
         )
-        MoMetricCard(
-            label = "Parcelas",
-            value = farms.sumOf { it.parcelCount }.toString(),
-            supportingText = "Asociaciones activas",
-            modifier = Modifier.weight(1f),
-        )
+        if (knownArea == null && farms.isNotEmpty()) {
+            Text(
+                "Añade superficie a tus parcelas para calcular rendimientos.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MoTextSecondary,
+            )
+        }
     }
-    Spacer(Modifier.height(MoSpacing.sm))
-    MoMetricCard(
-        label = "Superficie conocida",
-        value = knownArea?.let(::formatArea) ?: "Sin registrar",
-        supportingText = "Derivada de parcelas activas",
-        modifier = Modifier.fillMaxWidth(),
-    )
 }
 
 @Composable
 private fun FarmCard(
     farm: Farm,
+    coverUri: String?,
+    nextWork: String?,
     onClick: () -> Unit,
 ) {
     MoFarmCard(
         name = farm.name,
         municipality = farm.locationLabel(),
-        area = farm.areaLabel(),
+        area = farm.totalAreaM2?.let(::formatArea) ?: "Añade superficie",
         parcels = farm.parcelCount.toString(),
-        campaignStatus = farm.activeCampaignName ?: "Sin campaña",
+        campaignStatus = farm.activeCampaignName ?: "Sin campaña activa",
         modifier = Modifier
             .fillMaxWidth()
             .testTag("farm-${farm.id}"),
         onClick = onClick,
+        imageModel = coverUri,
+        nextWork = nextWork,
+        campaignActive = farm.activeCampaignName != null,
+        artworkSeed = farm.id.hashCode(),
     )
 }
 
@@ -649,7 +747,7 @@ private fun FarmEditor(
                 .fillMaxWidth()
                 .testTag("save-farm"),
         )
-        MoSecondaryButton(
+        MoTertiaryButton(
             text = "Cancelar",
             onClick = onCancel,
             enabled = !isSaving,
@@ -671,9 +769,9 @@ private fun Farm.toDraft() = FarmDraft(
 private fun Farm.locationLabel(): String = listOfNotNull(municipality, province)
     .filter { it.isNotBlank() }
     .joinToString(", ")
-    .ifBlank { "Ubicación sin registrar" }
+    .ifBlank { "Completa la ubicación para ver la finca en el mapa" }
 
-private fun Farm.areaLabel(): String = totalAreaM2?.let(::formatArea) ?: "Sin registrar"
+private fun Farm.areaLabel(): String = totalAreaM2?.let(::formatArea) ?: "—"
 
 private fun formatArea(areaM2: Double): String {
     val formatter = NumberFormat.getNumberInstance(Locale.forLanguageTag("es-ES")).apply {

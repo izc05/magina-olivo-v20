@@ -69,6 +69,25 @@ import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import com.isivoltpro.maginaolivo.domain.agenda.Agenda
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoMonthCalendar
+import com.isivoltpro.maginaolivo.ui.theme.MoErrorText
+import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
+import com.isivoltpro.maginaolivo.ui.theme.MoShape
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
+import java.time.YearMonth
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -121,7 +140,11 @@ private fun notificationsAllowed(context: Context): Boolean =
     permissionGranted(context) && NotificationManagerCompat.from(context).areNotificationsEnabled()
 
 /**
- * Calendario — the planned work of every Farm, soonest first, grouped by when it falls.
+ * Calendario — the planned work of every Farm (UI polish v2: two views).
+ *
+ * - Agenda: pendientes de días pasados, hoy, esta semana, más adelante.
+ * - Mes: a real month grid with a dot on each day that has work; tapping a day lists it.
+ *
  * It reads only this phone's data, so it works the same in the field with no signal.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,21 +159,35 @@ fun AgendaScreen(
     onCancel: (UUID) -> Unit,
 ) {
     var pending by rememberSaveable { mutableStateOf<Pair<String, String>?>(null) }
+    var view by rememberSaveable { mutableStateOf(AgendaView.AGENDA) }
+    val today = state.today ?: LocalDate.now()
+    var month by rememberSaveable { mutableStateOf(YearMonth.from(today).toString()) }
+    var selectedDay by rememberSaveable { mutableStateOf(today.toString()) }
+    val entries = remember(state.sections) { state.sections.flatMap { it.items } }
+    val row: @Composable (AgendaEntry, Boolean) -> Unit = { entry, overdue ->
+        AgendaRow(
+            entry = entry,
+            today = state.today,
+            overdue = overdue,
+            enabled = !state.isSaving,
+            onSelected = { onActivitySelected(entry.activityId) },
+            onComplete = { pending = "complete" to entry.activityId.toString() },
+            onCancel = { pending = "cancel" to entry.activityId.toString() },
+        )
+    }
 
     Scaffold(Modifier.fillMaxSize().testTag("calendar-root"), containerColor = MoCream) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen),
-            verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
-            Spacer(Modifier.height(MoSpacing.md))
-            Text("Calendario", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
-            Text(
-                "Los trabajos que has planificado, con sus avisos en este teléfono.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MoTextSecondary,
-            )
-            MoPrimaryButton("Planificar trabajo", onPlanWork, Modifier.fillMaxWidth().testTag("agenda-plan-work"))
+            Spacer(Modifier.height(MoSpacing.sm))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Calendario", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark, modifier = Modifier.weight(1f))
+                MoPrimaryButton("Planificar trabajo", onPlanWork, Modifier.testTag("agenda-plan-work"))
+            }
+            AgendaViewSwitch(view) { view = it }
             if (state.hasReminders && !notificationsOn) {
                 MoOfflineBanner(
                     modifier = Modifier.testTag("agenda-notifications-off"),
@@ -164,32 +201,51 @@ fun AgendaScreen(
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("agenda-error")) }
             when {
                 state.isLoading -> CircularProgressIndicator()
-                state.sections.isEmpty() -> MoEmptyState(
-                    "No hay trabajos planificados",
-                    "Planifica una poda, un riego, un tratamiento o la cosecha y aparecerá aquí con su aviso.",
-                    modifier = Modifier.testTag("agenda-empty"),
-                )
-                else -> state.sections.forEach { section ->
-                    MoSectionHeader(section.bucket.title(), Modifier.testTag("agenda-section-${section.bucket.name}"))
-                    section.items.forEach { entry ->
-                        AgendaRow(
-                            entry = entry,
-                            today = state.today,
-                            overdue = section.bucket == AgendaBucket.OVERDUE,
-                            enabled = !state.isSaving,
-                            onSelected = { onActivitySelected(entry.activityId) },
-                            onComplete = { pending = "complete" to entry.activityId.toString() },
-                            onCancel = { pending = "cancel" to entry.activityId.toString() },
+                view == AgendaView.MONTH -> {
+                    val shown = YearMonth.parse(month)
+                    val day = LocalDate.parse(selectedDay)
+                    Surface(shape = MoShape.card, color = MoWarmWhite, border = BorderStroke(1.dp, MoOutline)) {
+                        MoMonthCalendar(
+                            month = shown,
+                            selected = day,
+                            today = today,
+                            onMonthChange = { month = it.toString() },
+                            onDaySelected = { selectedDay = it.toString() },
+                            markers = entries.groupingBy { it.activityDate }.eachCount(),
+                            modifier = Modifier.padding(MoSpacing.xs).testTag("agenda-month"),
                         )
                     }
+                    MoSectionHeader(dayLabel(day, state.today), Modifier.testTag("agenda-day-title"))
+                    val ofDay = entries.filter { it.activityDate == day }
+                        .sortedWith(compareBy(nullsFirst()) { it.planning?.startTime })
+                    if (ofDay.isEmpty()) {
+                        MoEmptyState(
+                            "Nada planificado este día",
+                            "Elige otro día o planifica un trabajo para él.",
+                            icon = MoIcons.Calendar,
+                            modifier = Modifier.testTag("agenda-day-empty"),
+                        )
+                    } else {
+                        ofDay.forEach { row(it, it.activityDate.isBefore(today)) }
+                    }
+                }
+                entries.isEmpty() -> MoEmptyState(
+                    "No hay trabajos planificados",
+                    "Planifica una poda, un riego, un tratamiento o la cosecha y aparecerá aquí con su aviso.",
+                    icon = MoIcons.Calendar,
+                    modifier = Modifier.testTag("agenda-empty"),
+                )
+                else -> AgendaGroup.of(entries, today).forEach { (group, items) ->
+                    MoSectionHeader(group.title, Modifier.testTag("agenda-section-${group.name}"))
+                    items.forEach { row(it, group == AgendaGroup.OVERDUE) }
                 }
             }
-            Spacer(Modifier.height(MoSpacing.xl))
+            Spacer(Modifier.height(MoSpacing.lg))
         }
     }
 
     pending?.let { (action, id) ->
-        ModalBottomSheet(onDismissRequest = { pending = null }) {
+        ModalBottomSheet(onDismissRequest = { pending = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
             MoConfirmationSheet(
                 title = if (action == "complete") "¿Trabajo hecho?" else "¿Cancelar este trabajo?",
                 body = if (action == "complete") {
@@ -211,6 +267,60 @@ fun AgendaScreen(
     }
 }
 
+private enum class AgendaView { AGENDA, MONTH }
+
+@Composable
+private fun AgendaViewSwitch(view: AgendaView, onChange: (AgendaView) -> Unit) {
+    Surface(shape = MoShape.pill, color = MoSurfaceSoft, border = BorderStroke(1.dp, MoOutline), modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(4.dp)) {
+            listOf(AgendaView.AGENDA to "Agenda", AgendaView.MONTH to "Mes").forEach { (option, label) ->
+                val active = option == view
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 40.dp)
+                        .selectable(selected = active, role = Role.Tab, onClick = { onChange(option) })
+                        .testTag("agenda-view-${option.name.lowercase()}"),
+                    shape = MoShape.pill,
+                    color = if (active) MoOlivePrimary else Color.Transparent,
+                    contentColor = if (active) MoWarmWhite else MoInk,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** How the Agenda view reads the domain buckets: tomorrow and the next days are "this week". */
+private enum class AgendaGroup(val title: String) {
+    OVERDUE("Pendientes de días pasados"),
+    TODAY("Hoy"),
+    WEEK("Esta semana"),
+    LATER("Más adelante"),
+    ;
+
+    companion object {
+        fun of(entries: List<AgendaEntry>, today: LocalDate): List<Pair<AgendaGroup, List<AgendaEntry>>> =
+            Agenda.group(entries, today, { it.activityDate }, { it.planning?.startTime })
+                .groupBy(
+                    { section ->
+                        when (section.bucket) {
+                            AgendaBucket.OVERDUE -> OVERDUE
+                            AgendaBucket.TODAY -> TODAY
+                            AgendaBucket.TOMORROW, AgendaBucket.NEXT_7_DAYS -> WEEK
+                            AgendaBucket.LATER -> LATER
+                        }
+                    },
+                    { it.items },
+                )
+                .map { (group, lists) -> group to lists.flatten() }
+                .sortedBy { it.first.ordinal }
+    }
+}
+
 @Composable
 private fun AgendaRow(
     entry: AgendaEntry,
@@ -221,53 +331,55 @@ private fun AgendaRow(
     onComplete: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth().testTag("agenda-row").clickable(role = Role.Button, onClick = onSelected),
-        colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
+        shape = MoShape.card,
+        color = MoWarmWhite,
         border = BorderStroke(1.dp, MoOutline),
     ) {
-        Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(entry.description, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+        Column(Modifier.padding(start = MoSpacing.sm, end = MoSpacing.xs, top = 10.dp, bottom = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                Text(entry.description, style = MaterialTheme.typography.titleSmall, color = MoInk, modifier = Modifier.weight(1f))
                 MoStatusChip(entry.type.label(), tone = if (overdue) MoStatusTone.Warning else MoStatusTone.Info)
             }
-            Text(dayLabel(entry.activityDate, today), color = MoTextSecondary)
-            listOfNotNull(entry.farmName, entry.parcelNames.takeIf { it.isNotEmpty() }?.joinToString(", "))
-                .joinToString(" · ").takeIf { it.isNotEmpty() }
-                ?.let { Text(it, color = MoTextSecondary) }
-            planningLine(entry.planning)?.let { Text(it, color = MoTextSecondary, modifier = Modifier.testTag("agenda-planning")) }
-            if (entry.reminders.isNotEmpty()) {
-                val waiting = entry.reminders.count { it.firedAt == null }
-                Text(
-                    if (waiting == 0) "Avisos ya enviados" else if (waiting == 1) "1 aviso programado" else "$waiting avisos programados",
-                    color = MoTextSecondary,
-                    modifier = Modifier.testTag("agenda-reminders"),
-                )
+            Text(
+                listOfNotNull(
+                    dayLabel(entry.activityDate, today) + (entry.planning?.startTime?.let { " · ${it.format(HOUR)}" } ?: ""),
+                    entry.farmName,
+                    entry.parcelNames.takeIf { it.isNotEmpty() }?.joinToString(", "),
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MoTextSecondary,
+            )
+            planningLine(entry.planning?.copy(startTime = null))?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("agenda-planning"))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (entry.reminders.isNotEmpty()) {
+                    val waiting = entry.reminders.count { it.firedAt == null }
+                    Icon(MoIcons.Bell, contentDescription = null, tint = MoInfoText, modifier = Modifier.size(16.dp))
+                    Text(
+                        if (waiting == 0) " Avisos enviados" else if (waiting == 1) " 1 aviso" else " $waiting avisos",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MoInfoText,
+                        modifier = Modifier.testTag("agenda-reminders"),
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onCancel, enabled = enabled, modifier = Modifier.testTag("agenda-cancel")) {
+                    Text("Cancelar", color = MoErrorText)
+                }
                 TextButton(onClick = onComplete, enabled = enabled, modifier = Modifier.testTag("agenda-complete")) { Text("Hecho") }
-                TextButton(onClick = onCancel, enabled = enabled, modifier = Modifier.testTag("agenda-cancel")) { Text("Cancelar") }
             }
         }
     }
 }
 
 private val DAY = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es-ES"))
+private val HOUR = DateTimeFormatter.ofPattern("HH:mm")
 
 private fun dayLabel(date: LocalDate, today: LocalDate?): String = when (date) {
     today -> "Hoy"
     today?.plusDays(1) -> "Mañana"
     else -> date.format(DAY).replaceFirstChar { it.titlecase(Locale.forLanguageTag("es-ES")) }
-}
-
-private fun AgendaBucket.title() = when (this) {
-    AgendaBucket.OVERDUE -> "Pendientes de días pasados"
-    AgendaBucket.TODAY -> "Hoy"
-    AgendaBucket.TOMORROW -> "Mañana"
-    AgendaBucket.NEXT_7_DAYS -> "Próximos 7 días"
-    AgendaBucket.LATER -> "Más adelante"
 }

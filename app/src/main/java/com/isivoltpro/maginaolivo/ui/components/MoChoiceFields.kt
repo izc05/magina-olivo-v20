@@ -18,12 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOlivePrimary
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
 
 @Composable
 fun MoSelectField(
@@ -102,7 +102,7 @@ private fun MoChoiceField(
             Text(
                 text = symbol,
                 style = MaterialTheme.typography.titleMedium,
-                color = MoOlivePrimary,
+                color = MoOliveMid,
             )
         }
     }

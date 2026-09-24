@@ -68,7 +68,7 @@ internal fun HarvestForm.toDraft(today: LocalDate): Pair<HarvestDraft?, HarvestF
     val workerCount = workers.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
     val errors = HarvestFormErrors(
         farm = if (farmId == null) "Elige la finca" else null,
-        date = if (parsedDate == null) "Escribe la fecha como AAAA-MM-DD" else null,
+        date = if (parsedDate == null) "Elige una fecha" else null,
         total = when {
             total.isBlank() -> "Escribe los kilos recogidos"
             totalGrams == null -> "Escribe los kilos como 2850 o 2.850,5"

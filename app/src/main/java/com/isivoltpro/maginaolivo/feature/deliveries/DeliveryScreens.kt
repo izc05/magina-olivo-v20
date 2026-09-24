@@ -61,6 +61,9 @@ import com.isivoltpro.maginaolivo.feature.expenses.Choice
 import com.isivoltpro.maginaolivo.feature.expenses.ChoiceSheet
 import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
 import com.isivoltpro.maginaolivo.feature.expenses.tone
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
+import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoConfirmationSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
@@ -83,6 +86,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
 
 @Composable
 fun DeliveriesRoute(
@@ -209,6 +213,7 @@ fun DeliveriesScreen(
                 state.deliveries.isEmpty() -> MoEmptyState(
                     "Aún no hay entregas",
                     "Registra cada entrega con sus kilos netos o lee el vale: revisarás los datos antes de guardarlos.",
+                    icon = MoIcons.Delivery,
                 )
                 else -> {
                     state.campaigns.forEach { campaign -> CampaignDeliveriesCard(campaign) }
@@ -373,7 +378,7 @@ private fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
                     MoStatusChip("Rendimiento pendiente", tone = MoStatusTone.Warning)
                 }
             }
-            Text(Weight.format(delivery.netGrams), style = MaterialTheme.typography.titleMedium, color = MoOlivePrimary)
+            Text(Weight.format(delivery.netGrams), style = MaterialTheme.typography.titleMedium, color = MoInk)
         }
     }
 }
@@ -417,8 +422,8 @@ internal fun DeliveryEditor(
         }
         errors.farm?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         context?.let { Text("Campaña ${it.campaignName}", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary) }
-        MoTextField(
-            form.date, { form = form.copy(date = it) }, "Fecha (AAAA-MM-DD)",
+        MoDateInputField(
+            form.date, { form = form.copy(date = it) }, "Fecha",
             isError = errors.date != null, supportingText = errors.date,
             modifier = Modifier.fillMaxWidth().testTag("delivery-date"),
         )
@@ -502,7 +507,7 @@ internal fun DeliveryEditor(
         MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
         MoPrimaryButton(saveText, { onSave(form) }, Modifier.fillMaxWidth().testTag("save-delivery"), enabled = !isSaving)
         extraActions()
-        MoSecondaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
+        MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(MoSpacing.lg))
     }
 
@@ -737,14 +742,15 @@ private fun YieldEditor(
             isError = errors.industrial != null, supportingText = errors.industrial,
             modifier = Modifier.fillMaxWidth().testTag("yield-industrial"),
         )
-        MoTextField(
-            form.date, { form = form.copy(date = it) }, "Fecha del análisis (opcional, AAAA-MM-DD)",
+        MoDateInputField(
+            form.date, { form = form.copy(date = it) }, "Fecha del análisis (opcional)",
             isError = errors.date != null, supportingText = errors.date,
             modifier = Modifier.fillMaxWidth(),
+            optional = true,
         )
         MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
         MoPrimaryButton("Guardar rendimiento", { onSave(form) }, Modifier.fillMaxWidth().testTag("save-yield"), enabled = !isSaving)
-        MoSecondaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
+        MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(MoSpacing.lg))
     }
 }

@@ -8,6 +8,9 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -219,7 +222,7 @@ class AppNavigationTest {
         // Past start date: closing uses the device clock, so a future start would make
         // the legal close date depend on the day the suite runs.
         waitForTag("campaign-start-date")
-        composeRule.onNodeWithTag("campaign-start-date").performTextInput("2026-01-01")
+        pickDate("campaign-start-date", "2026-01-01")
         waitForTag("campaign-parcel-option")
         clickInSheetByTag("campaign-parcel-option")
         waitForTag("save-campaign")
@@ -254,14 +257,18 @@ class AppNavigationTest {
         waitForText("Parcela Campaña E2E")
         composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
         composeRule.onNodeWithText("Finca Campaña E2E").assertIsDisplayed()
-        // Truthful summaries: the detail renders exactly three metric cards - kg, yield
-        // and expenses - and all three read "Sin datos" because no harvest, delivery or
-        // expense exists yet. The card labels are unique, so each one is addressed
-        // unambiguously; "Sin datos" alone matches all three and cannot be.
-        listOf("Kg recogidos", "Rendimiento", "Gastos").forEach { label ->
-            composeRule.onNodeWithText(label).performScrollTo().assertIsDisplayed()
+        // No harvest, delivery, yield analysis or expense has been recorded. Each
+        // summary keeps its own label and displays an unknown value, never zero.
+        listOf(
+            "campaign-metric-harvest" to "Kg recogidos",
+            "campaign-metric-deliveries" to "Entregas",
+            "campaign-metric-yield" to "Rendimiento graso",
+            "campaign-metric-expenses" to "Gastos",
+        ).forEach { (tag, label) ->
+            composeRule.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
+            composeRule.onNode(hasTestTag(tag) and hasAnyDescendant(hasText(label)) and hasAnyDescendant(hasText("—")))
+                .assertExists()
         }
-        composeRule.onAllNodesWithText("Sin datos").assertCountEquals(3)
 
         // A closed campaign stays protected after the restart, and reopening it is an
         // explicit, confirmed action that returns the aggregate to an editable state.
@@ -301,13 +308,15 @@ class AppNavigationTest {
         openSheet("add-activity", "activity-description")
         composeRule.onNodeWithTag("activity-description").performTextInput("Poda multiparcela E2E")
         waitForTag("activity-date")
-        composeRule.onNodeWithTag("activity-date").performTextInput("2026-01-15")
+        pickDate("activity-date", "2026-01-15")
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
         composeRule.onAllNodesWithTag("activity-parcel-option")[1].performScrollTo().performClick()
         waitForTag("save-activity")
         clickInSheetByTag("save-activity")
         waitForText("Poda multiparcela E2E")
+        // The typed description is on screen before the save lands; wait for the saved row.
+        waitForTag("activity-row")
 
         // Exactly ONE canonical Activity row, not one per parcel.
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
@@ -331,6 +340,8 @@ class AppNavigationTest {
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
         waitForText("Poda multiparcela E2E")
+        // The typed description is on screen before the save lands; wait for the saved row.
+        waitForTag("activity-row")
 
         // Still one canonical Activity after the restart.
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
@@ -378,12 +389,14 @@ class AppNavigationTest {
         waitForTag("activity-description")
         composeRule.onNodeWithTag("activity-description").performTextInput("Riego desde Registrar")
         waitForTag("activity-date")
-        composeRule.onNodeWithTag("activity-date").performTextInput("2026-02-02")
+        pickDate("activity-date", "2026-02-02")
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
         clickInSheetByTag("save-activity")
 
         waitForText("Riego desde Registrar")
+        // The typed description is on screen before the save lands; wait for the saved row.
+        waitForTag("activity-row")
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
 
         // The same Activity is the one the Farm detail shows: one record, one home.
@@ -402,6 +415,8 @@ class AppNavigationTest {
         waitForTag("farm-detail-root")
         waitForTag("add-activity")
         waitForText("Riego desde Registrar")
+        // The typed description is on screen before the save lands; wait for the saved row.
+        waitForTag("activity-row")
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
     }
 
@@ -431,7 +446,7 @@ class AppNavigationTest {
         openSheet("add-activity", "activity-description")
         composeRule.onNodeWithTag("activity-description").performTextInput("Trabajo tipado E2E")
         waitForTag("activity-date")
-        composeRule.onNodeWithTag("activity-date").performTextInput("2026-04-08")
+        pickDate("activity-date", "2026-04-08")
 
         // Observación is the default type and has no structured fields at all.
         composeRule.onAllNodesWithTag("activity-detail-block").assertCountEquals(0)
@@ -639,6 +654,34 @@ class AppNavigationTest {
             .assertIsEnabled()
             .assertHasClickAction()
             .performClick()
+    }
+
+    /**
+     * UI polish v2: dates are chosen in the month picker sheet, never typed. Opens it from
+     * [fieldTag], walks from the current month to [iso]'s month and confirms that day.
+     */
+    private fun pickDate(fieldTag: String, iso: String) {
+        val target = java.time.LocalDate.parse(iso)
+        scrollIntoViewIfPossible { composeRule.onNodeWithTag(fieldTag) }
+        composeRule.onNodeWithTag(fieldTag).performClick()
+        waitForTag("date-picker-sheet")
+        val months = java.time.temporal.ChronoUnit.MONTHS.between(
+            java.time.YearMonth.now(),
+            java.time.YearMonth.from(target),
+        )
+        val step = if (months < 0) "date-picker-previous" else "date-picker-next"
+        repeat(kotlin.math.abs(months).toInt()) {
+            composeRule.onNodeWithTag(step).performClick()
+            composeRule.waitForIdle()
+        }
+        waitForTag("date-picker-day-$iso")
+        scrollIntoViewIfPossible { composeRule.onNodeWithTag("date-picker-day-$iso") }
+        composeRule.onNodeWithTag("date-picker-day-$iso").performClick()
+        scrollIntoViewIfPossible { composeRule.onNodeWithTag("date-picker-confirm") }
+        composeRule.onNodeWithTag("date-picker-confirm").performClick()
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("date-picker-sheet").fetchSemanticsNodes().isEmpty()
+        }
     }
 
     private fun clickInSheetByText(text: String) {

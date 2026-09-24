@@ -47,6 +47,7 @@ import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentExtraction
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentType
 import com.isivoltpro.maginaolivo.feature.attachments.createCaptureUri
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoMetricCard
@@ -67,6 +68,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
 
 internal fun relationSource(persistence: LocalPersistence) = RelationSource(
     workspaces = persistence.workspaceRepository,
@@ -209,6 +211,7 @@ fun ExpensesScreen(
                 posted.isEmpty() -> MoEmptyState(
                     "Aún no hay gastos",
                     "Añade un gasto a mano o sube una factura: la leeremos para que solo tengas que revisarla.",
+                    icon = MoIcons.Document,
                 )
                 else -> posted.forEach { expense -> ExpenseRow(expense) { onExpenseSelected(expense.id) } }
             }
@@ -362,7 +365,7 @@ private fun CategoryRow(label: String, amountMinor: Long, totalMinor: Long) {
                 Text(label, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text("$share %", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
             }
-            Text(Money.format(amountMinor), style = MaterialTheme.typography.titleMedium, color = MoOlivePrimary)
+            Text(Money.format(amountMinor), style = MaterialTheme.typography.titleMedium, color = MoInk)
         }
     }
 }
