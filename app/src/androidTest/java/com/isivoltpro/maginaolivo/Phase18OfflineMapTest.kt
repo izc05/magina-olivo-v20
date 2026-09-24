@@ -104,12 +104,16 @@ class Phase18OfflineReopenTest {
         composeRule.waitForIdle()
 
         val renderedMap = requireNotNull(snapshot.get())
-        assertTrue("Map snapshot must contain the saved parcel boundary", renderedMap.countBoundaryPixels() > 50)
         val output = File(context.getExternalFilesDir(null), "phase18-offline-map.png")
         FileOutputStream(output).use { stream ->
             renderedMap.compress(Bitmap.CompressFormat.PNG, 100, stream)
         }
         assertTrue(output.length() > 10_000)
+        val boundaryPixels = renderedMap.countBoundaryPixels()
+        assertTrue(
+            "Map snapshot must contain the saved parcel boundary; matched $boundaryPixels pixels",
+            boundaryPixels > 50,
+        )
     }
 }
 
