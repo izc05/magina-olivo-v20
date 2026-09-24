@@ -93,7 +93,8 @@ fun CadastreImportScreen(
         if (selectedFarm == null) state.farms.singleOrNull()?.let { selectedFarm = it.id.toString() }
     }
     LaunchedEffect(state.candidate?.reference) {
-        state.candidate?.let { alias = "Parcela ${it.reference.takeLast(5)}" }
+        // The same name the card shows ("Pol. 4 · Parc. 120"), as on PAC and deed papers.
+        state.candidate?.let { alias = com.isivoltpro.maginaolivo.feature.maps.defaultParcelName(it.reference) }
     }
 
     Scaffold(

@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 
+import androidx.compose.foundation.layout.WindowInsets
 import android.content.ActivityNotFoundException
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -139,7 +140,7 @@ fun ExpensesScreen(
     var uploadVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
 
-    Scaffold(Modifier.fillMaxSize().testTag("expenses-root"), containerColor = MoCream) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("expenses-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen),

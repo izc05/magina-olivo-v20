@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.deliveries
 
+import androidx.compose.foundation.layout.WindowInsets
 import android.content.ActivityNotFoundException
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -147,7 +148,7 @@ fun DeliveriesScreen(
     var ticketVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
 
-    Scaffold(Modifier.fillMaxSize().testTag("deliveries-root"), containerColor = MoCream) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("deliveries-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen),
@@ -604,7 +605,7 @@ fun DeliveryDetailScreen(
     var sheet by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(state.message) { if (state.message != null) sheet = null }
 
-    Scaffold(Modifier.fillMaxSize().testTag("delivery-detail-root"), containerColor = MoCream) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("delivery-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(MoSpacing.screen),
@@ -864,7 +865,7 @@ fun TicketReviewScreen(
     attachmentContent: @Composable () -> Unit = {},
 ) {
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
-    Scaffold(Modifier.fillMaxSize().testTag("ticket-review-root"), containerColor = MoCream) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("ticket-review-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.md),

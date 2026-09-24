@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -97,7 +98,7 @@ fun ExpenseDetailScreen(
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
 
-    Scaffold(Modifier.fillMaxSize().testTag("expense-detail-root"), containerColor = MoCream) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("expense-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(MoSpacing.screen),

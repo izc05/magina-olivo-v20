@@ -111,7 +111,12 @@ fun MoPhotoHeader(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).semantics { heading() },
                 )
-                trailing?.invoke()
+                // A status chip on a photo needs its own light backing to stay legible.
+                trailing?.let { chip ->
+                    Surface(shape = RoundedCornerShape(50), color = MoWarmWhite.copy(alpha = 0.92f)) {
+                        Box(Modifier.padding(2.dp)) { chip() }
+                    }
+                }
             }
             location?.let {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

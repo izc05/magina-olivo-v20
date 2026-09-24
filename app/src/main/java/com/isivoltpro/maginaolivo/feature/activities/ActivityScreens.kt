@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
+import androidx.compose.foundation.layout.WindowInsets
 import com.isivoltpro.maginaolivo.domain.machinery.MachineOption
 import com.isivoltpro.maginaolivo.domain.machinery.MachineUseInput
 import androidx.compose.foundation.BorderStroke
@@ -174,6 +175,7 @@ fun RegisterActivityRoute(
     Scaffold(
         modifier = Modifier.fillMaxSize().testTag("register-activity-root"),
         containerColor = MoCream,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -535,7 +537,7 @@ fun ActivityDetailScreen(
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     var editor by rememberSaveable { mutableStateOf(false) }
-    Scaffold(Modifier.fillMaxSize().testTag("activity-detail-root"), containerColor = MoCream) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("activity-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding()
                 .verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
@@ -556,7 +558,7 @@ fun ActivityDetailScreen(
                     activity.targets.forEach { target ->
                         MoCompactListItem(
                             title = target.parcelName,
-                            subtitle = target.areaAffectedM2?.let { "Superficie: ${it.toLong()} m²" },
+                            subtitle = target.areaAffectedM2?.let { "Superficie trabajada: ${hectaresLabel(it)}" },
                             icon = MoIcons.Parcels,
                             modifier = Modifier.testTag("activity-target"),
                         )
@@ -960,8 +962,7 @@ private fun ActivityHeaderCard(activity: Activity) {
             activity.targets.takeIf { it.isNotEmpty() }?.let { targets ->
                 HeaderLine(MoIcons.Parcels, if (targets.size == 1) targets.single().parcelName else "${targets.size} parcelas")
             }
-            planningLine(activity.planning)?.let { HeaderLine(MoIcons.Clock, it) }
-            activity.reminders.firstOrNull()?.let { HeaderLine(MoIcons.Bell, reminderLabel(it)) }
+            // Time, people and reminders are told once, in the Planificación block below.
         }
     }
 }
@@ -977,3 +978,6 @@ private fun HeaderLine(icon: androidx.compose.ui.graphics.vector.ImageVector, te
 private val SPANISH_LOCALE: java.util.Locale = java.util.Locale.forLanguageTag("es-ES")
 private val ROW_DATE: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", SPANISH_LOCALE)
 private val HEADER_DATE: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("EEEE d 'de' MMMM yyyy", SPANISH_LOCALE)
+
+private fun hectaresLabel(areaM2: Double): String =
+    "${java.text.NumberFormat.getNumberInstance(SPANISH_LOCALE).apply { maximumFractionDigits = 2 }.format(areaM2 / 10_000)} ha"

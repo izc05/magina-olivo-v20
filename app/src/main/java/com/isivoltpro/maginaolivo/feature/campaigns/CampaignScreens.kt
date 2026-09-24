@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.campaigns
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -210,7 +211,7 @@ fun CampaignDetailScreen(
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     var editor by rememberSaveable { mutableStateOf(false) }
-    Scaffold(Modifier.fillMaxSize().testTag("campaign-detail-root"), containerColor = MoCream) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("campaign-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen, vertical = MoSpacing.sm),
