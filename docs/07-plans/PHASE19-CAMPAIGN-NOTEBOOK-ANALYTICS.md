@@ -305,3 +305,30 @@ No schema change is expected: 19C reads existing `deliveries` + `delivery_yield_
   (Gate 19F: cost = SQL sum of posted rows, counted once in the Campaign, edits/deletes follow,
   other Farm refused, removed Jornada keeps the money), `JornadaCostScreenTest`.
 
+
+### 19G preparation — design only (not production; starts after 19F merges)
+
+Prepared by Claude while 19F was in CI. No schema change: every figure is a pure projection of
+the canonical rows already in Room (Harvest, Delivery, Yield analysis, Expense, Labour).
+
+- **Domain (`domain/analytics`, JVM-tested, no Android):**
+  - `CampaignSeries.of(campaign, harvests, deliveries, expenses, labour)` → per-day points:
+    harvested kg, delivered kg, cumulative delivered kg, fat-yield weighted by analysed kg with
+    the analysed kg alongside (so coverage is always known); days without analysis carry `null`,
+    never 0.
+  - `CampaignComparison.of(campaigns…)` → per Campaign: delivered kg, weighted yield + coverage,
+    posted expenses (by category), jornales (people/days kept apart), **cost per kg** only when
+    both posted cost and delivered kg exist (otherwise "sin datos"), year-over-year delta.
+  - `YieldByCooperative` → weighted yield + coverage per cooperative (copied destination name).
+  - Parcel view reuses 19C `ParcelYield`: partial allocation shows "N kg sin reparto conocido".
+- **Charts:** hand-drawn Compose `Canvas` (no new dependency), brand tokens only: bars for kg by
+  day/Campaign, a line for cumulative kg, dots for yield with a coverage label; each chart has a
+  text summary row and an accessible `contentDescription` built from the same numbers. Empty or
+  partial data renders an explicit "Sin datos" / "Cobertura 60 %" state — never an interpolated
+  value.
+- **Where:** Cuaderno → Resumen gains *Gráficas* (current Campaign) and *Comparar campañas*
+  (Farm). No new root tab (navigation frozen).
+- **Tests planned:** `CampaignSeriesTest` (sums reconcile with `HarvestSummary`/`DeliverySummary`/
+  `ExpenseSummary` exactly; missing yield stays null), `CampaignComparisonTest` (cost/kg only
+  with both sides; YoY), Compose test that the chart's summary text equals the raw totals.
+- **Gate 19G / Phase 19:** charts reconcile with raw records and expose partial/unknown data.
