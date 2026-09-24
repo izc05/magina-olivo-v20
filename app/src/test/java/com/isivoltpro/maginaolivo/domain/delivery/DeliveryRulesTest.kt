@@ -136,4 +136,12 @@ class DeliveryRulesTest {
             analysis = if (fat == null && industrial == null) null else YieldAnalysis(UUID.randomUUID(), id, today, fat, industrial, null, 1),
         )
     }
+
+    @Test
+    fun aPesadaEitherJoinsAJornadaOrOpensOneNeverBoth() {
+        val joined = draft(2_850_000, north to null).copy(harvestId = UUID.randomUUID())
+        assertNull(DeliveryRules.validate(joined, today))
+        assertNull(DeliveryRules.validate(draft(2_850_000, north to null).copy(newJornada = true), today))
+        assertEquals(DeliveryProblem("harvestId", "ambiguous"), DeliveryRules.validate(joined.copy(newJornada = true), today))
+    }
 }

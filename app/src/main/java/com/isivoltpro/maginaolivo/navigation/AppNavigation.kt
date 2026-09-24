@@ -380,6 +380,8 @@ fun AppNavigation(
                         persistence = persistence,
                         clock = compositionRoot.clock,
                         onDeleted = { navController.popBackStack() },
+                        onAddPesada = { id -> navController.navigate(AppDestination.jornadaPesada(id.toString())) },
+                        onPesadaSelected = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
                     )
                 }
             }
@@ -411,6 +413,22 @@ fun AppNavigation(
                         clock = compositionRoot.clock,
                         onDeliverySelected = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
                         onTicketSelected = { id -> navController.navigate(AppDestination.ticket(id.toString())) },
+                    )
+                }
+            }
+            composable(AppDestination.JornadaPesadaPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val harvestId = backStackEntry.arguments?.getString("harvestId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || harvestId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    DeliveriesRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onDeliverySelected = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
+                        onTicketSelected = { id -> navController.navigate(AppDestination.ticket(id.toString())) },
+                        jornadaId = harvestId,
                     )
                 }
             }

@@ -113,11 +113,23 @@ object DatabaseMigrations {
         }
     }
 
+    /**
+     * Phase 19B: a Pesada (Delivery) may belong to one Jornada (Harvest) and keep the hour it
+     * was weighed. Existing Deliveries stay unlinked, without an hour: nothing is guessed.
+     */
+    val MIGRATION_12_13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE deliveries ADD COLUMN harvest_id TEXT")
+            db.execSQL("ALTER TABLE deliveries ADD COLUMN delivery_time TEXT")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_deliveries_harvest_id` ON `deliveries` (`harvest_id`)")
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
-            MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
+            MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
         )
 
     private val schemaVersion11Statements =

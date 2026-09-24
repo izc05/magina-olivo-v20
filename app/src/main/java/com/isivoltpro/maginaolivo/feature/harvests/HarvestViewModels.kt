@@ -5,11 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.domain.delivery.Delivery
+import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestProblem
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
+import com.isivoltpro.maginaolivo.domain.harvest.Jornada
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -96,12 +99,15 @@ data class HarvestDetailUiState(
     val message: String? = null,
     val error: String? = null,
     val deleted: Boolean = false,
+    /** Phase 19B: the Pesadas linked to this Jornada, oldest first. */
+    val pesadas: List<Delivery> = emptyList(),
 )
 
 class HarvestDetailViewModel(
     private val harvestId: UUID,
     private val harvests: HarvestRepository,
     private val clock: AppClock,
+    deliveries: DeliveryRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HarvestDetailUiState())
     val state: StateFlow<HarvestDetailUiState> = mutableState.asStateFlow()
@@ -125,6 +131,13 @@ class HarvestDetailViewModel(
                 mutableState.value = mutableState.value.copy(
                     context = rows.firstOrNull { it.campaignId == mutableState.value.harvest?.campaignId },
                 )
+            }
+        }
+        deliveries?.let { repository ->
+            viewModelScope.launch {
+                repository.observeAll().catch { }.collect { rows ->
+                    mutableState.value = mutableState.value.copy(pesadas = Jornada.linkedTo(harvestId, rows))
+                }
             }
         }
     }

@@ -124,6 +124,8 @@ internal fun harvestProblemMessage(problem: HarvestProblem): String = when (prob
     "parcel_not_in_campaign" -> "Esa parcela no forma parte de la campaña"
     "negative" -> "El número de personas no puede ser negativo"
     "cannot_change" -> "Una cosecha no puede cambiar de finca"
+    "exact_with_pesadas" -> "Con pesadas enlazadas, los kilos se cuentan en total: no se reparten por parcela"
+    "after_pesadas" -> "La jornada no puede ser posterior a sus pesadas"
     else -> "Revisa los datos de la cosecha"
 }
 

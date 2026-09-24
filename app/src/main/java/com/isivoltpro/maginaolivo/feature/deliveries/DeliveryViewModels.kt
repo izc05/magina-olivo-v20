@@ -9,7 +9,9 @@ import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryProblem
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
+import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentExtraction
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentOcrRepository
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentType
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 internal val DESTINATION_ROLES = setOf(OrganizationRole.COOPERATIVE, OrganizationRole.MILL)
@@ -47,6 +50,11 @@ data class DeliveriesUiState(
     val message: String? = null,
     val error: String? = null,
     val openedTicketId: UUID? = null,
+    /** Phase 19B: Jornadas of the running Campaigns, for the Pesada's explicit choice. */
+    val jornadas: List<Harvest> = emptyList(),
+    /** Set after "Guardar y añadir otra": the editor stays open on this form. */
+    val nextForm: DeliveryForm? = null,
+    val nextFormGeneration: Int = 0,
 )
 
 class DeliveriesViewModel(
@@ -54,6 +62,7 @@ class DeliveriesViewModel(
     private val documents: DocumentOcrRepository,
     organizations: OrganizationRepository,
     private val clock: AppClock,
+    harvests: HarvestRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(DeliveriesUiState())
     val state: StateFlow<DeliveriesUiState> = mutableState.asStateFlow()
@@ -79,6 +88,12 @@ class DeliveriesViewModel(
             organizations.observeWithAnyRole(DESTINATION_ROLES).catch { }
                 .collect { mutableState.value = mutableState.value.copy(destinations = it) }
         }
+        harvests?.let { repository ->
+            viewModelScope.launch {
+                repository.observeAll().catch { }
+                    .collect { rows -> mutableState.value = mutableState.value.copy(jornadas = rows.filter { it.editable }) }
+            }
+        }
         viewModelScope.launch {
             documents.observeOpen().catch { }.collect { open ->
                 mutableState.value = mutableState.value.copy(
@@ -88,17 +103,38 @@ class DeliveriesViewModel(
         }
     }
 
-    fun create(form: DeliveryForm) {
+    /** With [again], the editor stays open for the next Pesada of the same day (Phase 19B). */
+    fun create(form: DeliveryForm, again: Boolean = false) {
         val (draft, errors) = form.toDraft(today())
         mutableState.value = mutableState.value.copy(formErrors = errors, message = null)
         if (draft == null) return
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null)
             mutableState.value = when (val result = deliveries.create(draft)) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Entrega guardada", formErrors = DeliveryFormErrors())
+                is AppResult.Success -> if (again) {
+                    // A new Jornada opened with this Pesada is the one the next Pesada joins.
+                    val jornada = deliveries.observe(result.value).first()?.harvestId
+                    mutableState.value.copy(
+                        isSaving = false,
+                        formErrors = DeliveryFormErrors(),
+                        nextForm = form.nextPesada(jornada),
+                        nextFormGeneration = mutableState.value.nextFormGeneration + 1,
+                    )
+                } else {
+                    mutableState.value.copy(
+                        isSaving = false,
+                        message = "Pesada guardada",
+                        formErrors = DeliveryFormErrors(),
+                        nextForm = null,
+                    )
+                }
                 is AppResult.Failure -> mutableState.value.failed(result.error)
             }
         }
+    }
+
+    fun editorClosed() {
+        mutableState.value = mutableState.value.copy(formErrors = DeliveryFormErrors(), nextForm = null)
     }
 
     /** Keeps the ticket, reads it on the device, then opens its review. Nothing is recorded yet. */
@@ -151,6 +187,7 @@ data class DeliveryDetailUiState(
     val message: String? = null,
     val error: String? = null,
     val deleted: Boolean = false,
+    val jornadas: List<Harvest> = emptyList(),
 )
 
 class DeliveryDetailViewModel(
@@ -158,6 +195,7 @@ class DeliveryDetailViewModel(
     private val deliveries: DeliveryRepository,
     organizations: OrganizationRepository,
     private val clock: AppClock,
+    harvests: HarvestRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(DeliveryDetailUiState())
     val state: StateFlow<DeliveryDetailUiState> = mutableState.asStateFlow()
@@ -186,6 +224,12 @@ class DeliveryDetailViewModel(
         viewModelScope.launch {
             organizations.observeWithAnyRole(DESTINATION_ROLES).catch { }
                 .collect { mutableState.value = mutableState.value.copy(destinations = it) }
+        }
+        harvests?.let { repository ->
+            viewModelScope.launch {
+                repository.observeAll().catch { }
+                    .collect { rows -> mutableState.value = mutableState.value.copy(jornadas = rows) }
+            }
         }
     }
 

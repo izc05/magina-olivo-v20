@@ -53,6 +53,9 @@ data class CampaignNotebook(
 
     val isEmpty: Boolean = works.isEmpty() && recollectionDays.isEmpty()
 
+    /** Phase 19B: how many of this Campaign's Pesadas belong to one Jornada. */
+    fun pesadaCount(harvestId: java.util.UUID): Int = deliveries.count { it.harvestId == harvestId }
+
     companion object {
         val RECOLLECTION_CATEGORIES = setOf(ExpenseCategory.HARVEST, ExpenseCategory.TRANSPORT)
 

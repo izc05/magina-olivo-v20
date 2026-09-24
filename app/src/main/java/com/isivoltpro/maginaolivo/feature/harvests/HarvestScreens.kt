@@ -44,6 +44,7 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
+import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.harvest.CollectionMethod
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
@@ -321,10 +322,13 @@ internal fun HarvestEditor(
     onSave: (HarvestForm) -> Unit,
     onCancel: () -> Unit,
     farmLocked: Boolean = false,
+    pesadaCount: Int = 0,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
     var picker by rememberSaveable { mutableStateOf<String?>(null) }
     val context = contexts.firstOrNull { it.farmId == form.farmId }
+    // Phase 19B: with Pesadas, the kilos are theirs; the farmer never types them twice.
+    val kilosFromPesadas = pesadaCount > 0
 
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen)
@@ -357,8 +361,13 @@ internal fun HarvestEditor(
         )
         MoTextField(
             form.total, { form = form.copy(total = it) }, "Kilos recogidos",
+            enabled = !kilosFromPesadas,
             isError = errors.total != null,
-            supportingText = errors.total ?: Weight.parseGrams(form.total)?.let { "= ${Weight.format(it)}" },
+            supportingText = when {
+                errors.total != null -> errors.total
+                kilosFromPesadas -> if (pesadaCount == 1) "Son los kilos de su pesada" else "Suma de sus $pesadaCount pesadas"
+                else -> Weight.parseGrams(form.total)?.let { "= ${Weight.format(it)}" }
+            },
             modifier = Modifier.fillMaxWidth().testTag("harvest-total"),
         )
 
@@ -382,7 +391,7 @@ internal fun HarvestEditor(
         }
         errors.parcels?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("harvest-parcels-error")) }
 
-        if (form.parcelIds.size > 1 && context != null) {
+        if (form.parcelIds.size > 1 && context != null && !kilosFromPesadas) {
             MoSectionHeader("Reparto entre parcelas")
             SplitOption(
                 "No conozco el reparto exacto",
@@ -499,11 +508,13 @@ fun HarvestDetailRoute(
     persistence: LocalPersistence,
     clock: AppClock,
     onDeleted: () -> Unit,
+    onAddPesada: (UUID) -> Unit = {},
+    onPesadaSelected: (UUID) -> Unit = {},
 ) {
     val viewModel: HarvestDetailViewModel = viewModel(
         key = "harvest-$harvestId",
         factory = viewModelFactory {
-            initializer { HarvestDetailViewModel(harvestId, persistence.harvestRepository, clock) }
+            initializer { HarvestDetailViewModel(harvestId, persistence.harvestRepository, clock, persistence.deliveryRepository) }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -513,6 +524,8 @@ fun HarvestDetailRoute(
         onUpdate = viewModel::update,
         onDelete = viewModel::delete,
         onEditorClosed = viewModel::clearFormErrors,
+        onAddPesada = { onAddPesada(harvestId) },
+        onPesadaSelected = onPesadaSelected,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.HARVEST, harvestId),
@@ -532,6 +545,8 @@ fun HarvestDetailScreen(
     onDelete: () -> Unit,
     onEditorClosed: () -> Unit = {},
     attachmentContent: @Composable () -> Unit = {},
+    onAddPesada: () -> Unit = {},
+    onPesadaSelected: (UUID) -> Unit = {},
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -548,7 +563,8 @@ fun HarvestDetailScreen(
                 state.isLoading -> CircularProgressIndicator()
                 harvest == null -> MoErrorState("Cosecha no disponible", state.error ?: "No está guardada en este dispositivo.")
                 else -> {
-                    HarvestSummaryBlock(harvest)
+                    HarvestSummaryBlock(harvest, state.pesadas.size)
+                    JornadaPesadas(state.pesadas, harvest.editable, onAddPesada, onPesadaSelected)
                     if (harvest.editable) {
                         MoSecondaryButton(
                             "Editar cosecha", { editorVisible = true },
@@ -590,6 +606,7 @@ fun HarvestDetailScreen(
                 onSave = onUpdate,
                 onCancel = { editorVisible = false; onEditorClosed() },
                 farmLocked = true,
+                pesadaCount = state.pesadas.size,
             )
         }
     }
@@ -597,7 +614,11 @@ fun HarvestDetailScreen(
         ModalBottomSheet(onDismissRequest = { confirmDelete = false }) {
             MoConfirmationSheet(
                 title = "Eliminar cosecha",
-                body = "Estos kilos dejarán de contar en la campaña. Esta acción no se puede deshacer.",
+                body = if (state.pesadas.isEmpty()) {
+                    "Estos kilos dejarán de contar en la campaña. Esta acción no se puede deshacer."
+                } else {
+                    "Sus pesadas se conservan, sin jornada, y siguen contando como entregas. Esta acción no se puede deshacer."
+                },
                 confirmText = "Eliminar",
                 onConfirm = { confirmDelete = false; onDelete() },
                 onCancel = { confirmDelete = false },
@@ -608,10 +629,68 @@ fun HarvestDetailScreen(
     }
 }
 
+/**
+ * Phase 19B — the Pesadas of this Jornada. Each shows its own cooperative, ticket and hour;
+ * the Jornada only lists them. "Añadir pesada" opens the Pesada form on this Jornada.
+ */
 @Composable
-private fun HarvestSummaryBlock(harvest: Harvest) {
+private fun JornadaPesadas(
+    pesadas: List<Delivery>,
+    editable: Boolean,
+    onAddPesada: () -> Unit,
+    onPesadaSelected: (UUID) -> Unit,
+) {
+    MoSectionHeader("Pesadas de la jornada")
+    if (pesadas.isEmpty()) {
+        Text(
+            "Aún no hay pesadas enlazadas. Añádelas según lleguen: cada una con su cooperativa y su vale.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("jornada-no-pesadas"),
+        )
+    } else {
+        val destinations = pesadas.map { it.destinationName }.distinct()
+        Text(
+            listOf(
+                if (pesadas.size == 1) "1 pesada" else "${pesadas.size} pesadas",
+                Weight.format(pesadas.sumOf { it.netGrams }),
+                destinations.joinToString(", "),
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MoOliveDark,
+            modifier = Modifier.testTag("jornada-pesadas-summary"),
+        )
+        pesadas.forEach { pesada ->
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { onPesadaSelected(pesada.id) }
+                    .testTag("jornada-pesada"),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(pesada.destinationName, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        listOfNotNull(
+                            pesada.deliveryTime?.toString(),
+                            (pesada.ticketNumber ?: pesada.deliveryNumber)?.let { "Vale $it" },
+                        ).ifEmpty { listOf(DATE_FORMAT.format(pesada.deliveryDate)) }.joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoTextSecondary,
+                    )
+                }
+                Text(Weight.format(pesada.netGrams), style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+            }
+        }
+    }
+    if (editable) {
+        MoPrimaryButton("Añadir pesada", onAddPesada, Modifier.fillMaxWidth().testTag("jornada-add-pesada"))
+    }
+}
+
+@Composable
+private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
     Text(
-        "Cosecha del ${DATE_FORMAT.format(harvest.harvestDate)}",
+        "Jornada del ${DATE_FORMAT.format(harvest.harvestDate)}",
         style = MaterialTheme.typography.headlineMedium,
         color = MoOliveDark,
     )
@@ -624,7 +703,11 @@ private fun HarvestSummaryBlock(harvest: Harvest) {
         "Kilos recogidos",
         Weight.format(harvest.totalGrams),
         Modifier.fillMaxWidth().testTag("harvest-total-value"),
-        supportingText = harvest.allocationMode.label(),
+        supportingText = when (pesadaCount) {
+            0 -> harvest.allocationMode.label()
+            1 -> "Los de su pesada"
+            else -> "Suma de sus $pesadaCount pesadas"
+        },
     )
     MoSectionHeader("Parcelas de origen")
     harvest.shares.forEach { share ->

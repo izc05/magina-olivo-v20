@@ -25,6 +25,7 @@ import java.util.UUID
     indices = [
         Index(value = ["workspace_id", "delivery_date"]),
         Index(value = ["campaign_id", "delivery_date"]),
+        Index(value = ["harvest_id"]),
     ],
 )
 data class DeliveryEntity(
@@ -43,6 +44,10 @@ data class DeliveryEntity(
     val source: String,
     val notes: String? = null,
     @Embedded val metadata: LocalMetadata,
+    /** Phase 19B: the Jornada (Harvest) this Pesada belongs to; checked by the writer. */
+    @ColumnInfo(name = "harvest_id") val harvestId: UUID? = null,
+    /** Phase 19B: the hour on the ticket, "HH:mm", when the farmer gives it. */
+    @ColumnInfo(name = "delivery_time") val deliveryTime: String? = null,
 )
 
 /** One origin Parcel of a Delivery: a child of the Delivery aggregate, as for a Harvest. */

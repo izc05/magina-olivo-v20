@@ -237,7 +237,9 @@ private fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions
         MoSectionHeader(day.date.format(LONG_DAY).replaceFirstChar { it.titlecase(SPANISH) })
         day.items.forEach { item ->
             when (item) {
-                is RecollectionItem.HarvestItem -> HarvestRow(item.harvest) { actions.onHarvest(item.harvest.id) }
+                is RecollectionItem.HarvestItem -> HarvestRow(item.harvest, notebook.pesadaCount(item.harvest.id)) {
+                    actions.onHarvest(item.harvest.id)
+                }
                 is RecollectionItem.DeliveryItem -> DeliveryRow(item.delivery) { actions.onDelivery(item.delivery.id) }
                 is RecollectionItem.HarvestDayItem -> WorkRow(item.activity) { actions.onActivity(item.activity.id) }
                 is RecollectionItem.ExpenseItem -> ExpenseRow(item.expense) { actions.onExpense(item.expense.id) }
@@ -247,14 +249,21 @@ private fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions
 }
 
 @Composable
-private fun HarvestRow(harvest: Harvest, onClick: () -> Unit) {
+private fun HarvestRow(harvest: Harvest, pesadas: Int, onClick: () -> Unit) {
     MoCompactListItem(
-        title = "Cosecha · ${Weight.format(harvest.totalGrams)}",
-        subtitle = when {
-            harvest.shares.isEmpty() -> "Toda la finca"
-            harvest.shares.size == 1 -> harvest.shares.single().parcelName
-            else -> "${harvest.shares.size} parcelas"
-        },
+        title = "Jornada · ${Weight.format(harvest.totalGrams)}",
+        subtitle = listOfNotNull(
+            when {
+                harvest.shares.isEmpty() -> "Toda la finca"
+                harvest.shares.size == 1 -> harvest.shares.single().parcelName
+                else -> "${harvest.shares.size} parcelas"
+            },
+            when (pesadas) {
+                0 -> null
+                1 -> "1 pesada"
+                else -> "$pesadas pesadas"
+            },
+        ).joinToString(" · "),
         icon = MoIcons.Harvest,
         onClick = onClick,
         modifier = Modifier.testTag("notebook-harvest"),
