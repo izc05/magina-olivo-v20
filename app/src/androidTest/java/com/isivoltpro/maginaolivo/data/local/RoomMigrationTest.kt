@@ -691,6 +691,56 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration10To11BackfillsCatastroProvenanceAndPreservesManualRows() {
+        migrationHelper.createDatabase(TEST_DATABASE, 10).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status, remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            fun insertParcel(id: String, source: String, reference: String?) {
+                val ref = reference?.let { "'$it'" } ?: "NULL"
+                database.execSQL(
+                    """
+                    INSERT INTO parcels (
+                        id, workspace_id, display_name, cadastral_reference, cadastral_polygon,
+                        cadastral_parcel, municipality, province, source, geometry_geo_json,
+                        cadastral_area_m2, managed_area_m2, notes, status, created_at,
+                        updated_at, deleted_at, version, sync_status, remote_version, last_synced_at
+                    ) VALUES (
+                        '$id', '11111111-1111-1111-1111-111111111111', 'Parcela', $ref, NULL,
+                        NULL, NULL, NULL, '$source', NULL, NULL, 1200.0, NULL, 'ACTIVE',
+                        1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                    )
+                    """.trimIndent(),
+                )
+            }
+            insertParcel("66666666-6666-6666-6666-666666666666", "CATASTRO", "23044A00400021")
+            insertParcel("77777777-7777-7777-7777-777777777777", "MANUAL", null)
+        }
+
+        migrationHelper.runMigrationsAndValidate(
+            TEST_DATABASE, 11, true, DatabaseMigrations.MIGRATION_10_11,
+        ).use { database ->
+            database.query("SELECT source_provider, source_imported_at FROM parcels ORDER BY id").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("ES_CATASTRO", cursor.getString(0))
+                assertEquals(1000L, cursor.getLong(1))
+                assertTrue(cursor.moveToNext())
+                assertTrue(cursor.isNull(0))
+                assertTrue(cursor.isNull(1))
+            }
+        }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

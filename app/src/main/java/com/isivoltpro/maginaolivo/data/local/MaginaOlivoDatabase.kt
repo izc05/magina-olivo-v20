@@ -95,7 +95,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         PurchaseItemEntity::class,
         DocumentOcrExtractionEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -130,7 +130,7 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
 
     companion object {
         const val DATABASE_NAME = "magina-olivo.db"
-        const val VERSION = 10
+        const val VERSION = 11
 
         @Volatile
         private var instance: MaginaOlivoDatabase? = null

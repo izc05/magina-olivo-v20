@@ -46,6 +46,11 @@ class OfflineFirstParcelRepository(
     override fun observeById(parcelId: UUID): Flow<Parcel?> =
         database.parcelDao().observeById(parcelId).map { it?.toDomain() }.flowOn(dispatchers.io)
 
+    override suspend fun findActiveByCadastralReference(workspaceId: UUID, reference: String): UUID? =
+        withContext(dispatchers.io) {
+            database.parcelDao().findActiveByCadastralReference(workspaceId, reference.trim().uppercase())
+        }
+
     override suspend fun create(command: NewParcel): AppResult<UUID> {
         val name = normalizedName(command.displayName)
         if (name is AppResult.Failure) return name
@@ -84,6 +89,8 @@ class OfflineFirstParcelRepository(
                             municipality = command.municipality.normalized(),
                             province = command.province.normalized(),
                             source = command.source.name,
+                            sourceProvider = command.sourceProvider,
+                            sourceImportedAt = command.sourceImportedAt,
                             geometryGeoJson = command.geometryGeoJson.normalized(),
                             cadastralAreaM2 = command.cadastralAreaM2,
                             managedAreaM2 = command.managedAreaM2,
@@ -228,6 +235,7 @@ class OfflineFirstParcelRepository(
         cadastralPolygon = parcel.cadastralPolygon, cadastralParcel = parcel.cadastralParcel,
         municipality = parcel.municipality, province = parcel.province,
         source = ParcelSource.valueOf(parcel.source), geometryGeoJson = parcel.geometryGeoJson,
+        sourceProvider = parcel.sourceProvider, sourceImportedAt = parcel.sourceImportedAt,
         cadastralAreaM2 = parcel.cadastralAreaM2, managedAreaM2 = parcel.managedAreaM2,
         notes = parcel.notes, archivedAt = parcel.metadata.deletedAt, version = parcel.metadata.version,
     )

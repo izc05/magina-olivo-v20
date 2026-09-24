@@ -92,11 +92,19 @@ object DatabaseMigrations {
             }
         }
 
+    val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE parcels ADD COLUMN source_provider TEXT")
+            db.execSQL("ALTER TABLE parcels ADD COLUMN source_imported_at INTEGER")
+            db.execSQL("UPDATE parcels SET source_provider = 'ES_CATASTRO', source_imported_at = created_at WHERE source = 'CATASTRO'")
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
-            MIGRATION_9_10,
+            MIGRATION_9_10, MIGRATION_10_11,
         )
 
     private const val METADATA_COLUMNS =

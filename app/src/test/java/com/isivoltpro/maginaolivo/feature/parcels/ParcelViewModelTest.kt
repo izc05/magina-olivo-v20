@@ -123,6 +123,8 @@ class ParcelViewModelTest {
         override fun observeActive(farmId: UUID): Flow<List<Parcel>> = active
         override fun observeArchived(farmId: UUID): Flow<List<Parcel>> = archived
         override fun observeById(parcelId: UUID): Flow<Parcel?> = selected
+        override suspend fun findActiveByCadastralReference(workspaceId: UUID, reference: String): UUID? =
+            active.value.firstOrNull { it.workspaceId == workspaceId && it.cadastralReference == reference }?.id
         override suspend fun create(command: NewParcel): AppResult<UUID> {
             created = command
             return AppResult.Success(UUID.randomUUID())
