@@ -10,12 +10,16 @@ Before changing code or architecture, read:
 2. `docs/00-master/RC1.2-PRODUCT-LOCK.md`
 3. `docs/00-master/SINGLE-TRACK-EXECUTION.md`
 4. `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
-5. `docs/design/VISUAL_DESIGN_LOCK.md`
-6. `docs/design/DESIGN_SYSTEM.md`
-7. `docs/00-master/CURRENT-STATE.md`
-8. `docs/07-plans/ROADMAP-RC1.2.md`
-9. the current phase execution plan, when one exists
-10. only then the domain/architecture/UI contracts needed for that phase
+5. `docs/00-master/RC1.2-CHANGE-REQUEST-004-DESIGN-V3.md`
+6. `docs/00-master/RC1.2-CHANGE-REQUEST-005-CUADERNO-CAMPANA.md`
+7. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
+8. `docs/design/VISUAL_DESIGN_LOCK.md`
+9. `docs/design/DESIGN_SYSTEM.md`
+10. `docs/00-master/CURRENT-STATE.md`
+11. `docs/07-plans/ROADMAP-RC1.2.md`
+12. the current phase execution plan, when one exists
+13. `docs/07-plans/AGENT-HANDOFF-PHASE18-19.md` while Phase 18/19 is active
+14. only then the domain/architecture/UI contracts needed for that phase
 
 If an older RC1/RC1.1 document conflicts with the RC1.2 Product Lock, RC1.2 wins.
 
@@ -86,6 +90,8 @@ Never:
 - machinery as operational resource;
 - reusable organizations for cooperative/mill/supplier/irrigation provider;
 - purchases linked to the Expense ledger;
+- Cuaderno as a Farm/Campaign orchestration surface: annual work and recolección are visually separated without duplicating canonical data;
+- user-facing `Pesada` maps to canonical Delivery; each Pesada selects its own cooperative/mill and later yield remains separate;
 - Harvest distinct from Delivery;
 - delivery ticket/photo/PDF + OCR review;
 - later yield analysis as separate linked data;
@@ -118,6 +124,17 @@ A broad prompt such as “improve the app” is **not** permission to reuse old 
 - Keep one phase/task scope per branch where practical.
 - Do not mix later-phase product features into a foundation PR.
 - Review `git diff` for scope creep before opening/merging a PR.
+
+## Current Codex / Claude coordination
+
+While Phase 18/19 is active, `docs/07-plans/AGENT-HANDOFF-PHASE18-19.md` is normative for
+agent ownership.
+
+- Only one production slice is implemented at a time.
+- Codex and Claude must not create competing production implementations for the same slice.
+- The non-executor may review, prepare tests or documentation.
+- `codex/phase18-parcel-map` is stale/reference-only; do not merge or continue it directly.
+- Phase 19 production is forbidden until Gate 18 is explicitly PASS and merged.
 
 ## Definition of Done
 
