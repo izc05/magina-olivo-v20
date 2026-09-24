@@ -27,6 +27,8 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepositor
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstActivityRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstCampaignRepository
+import com.isivoltpro.maginaolivo.data.reminder.AndroidReminderScheduler
+import com.isivoltpro.maginaolivo.data.reminder.ReminderCoordinator
 
 data class AppCompositionRoot(
     val environment: AppEnvironment,
@@ -88,7 +90,10 @@ data class AppCompositionRoot(
                 dispatchers = defaults.dispatchers,
             )
             val campaignRepository = OfflineFirstCampaignRepository(database, defaults.clock, defaults.idGenerator, defaults.dispatchers)
-            val activityRepository = OfflineFirstActivityRepository(database, defaults.clock, defaults.idGenerator, defaults.dispatchers)
+            val reminders = ReminderCoordinator(database, AndroidReminderScheduler(applicationContext), defaults.clock)
+            val activityRepository = OfflineFirstActivityRepository(
+                database, defaults.clock, defaults.idGenerator, defaults.dispatchers, reminders,
+            )
             val attachmentRepository = OfflineFirstAttachmentRepository(
                 database = database,
                 fileStore = attachmentFileStore,
@@ -138,6 +143,7 @@ data class AppCompositionRoot(
                     deliveryRepository = deliveryRepository,
                     machineRepository = machineRepository,
                     workspaceRepository = workspaceRepository,
+                    reminders = reminders,
                 ),
             )
         }

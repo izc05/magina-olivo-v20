@@ -3,6 +3,8 @@ package com.isivoltpro.maginaolivo.data.local.model
 import androidx.room.Embedded
 import androidx.room.Relation
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
+import com.isivoltpro.maginaolivo.data.local.entity.ActivityPlanningEntity
+import com.isivoltpro.maginaolivo.data.local.entity.ReminderEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityParcelTargetEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FertilizationDetailEntity
 import com.isivoltpro.maginaolivo.data.local.entity.IncidentDetailEntity
@@ -41,4 +43,10 @@ data class ActivityWithTargets(
     val maintenance: MaintenanceDetailEntity? = null,
     @Relation(parentColumn = "id", entityColumn = "activity_id")
     val incident: IncidentDetailEntity? = null,
+    /** Phase 16: how the work is expected to go, if the farmer planned it. */
+    @Relation(parentColumn = "id", entityColumn = "activity_id")
+    val planning: ActivityPlanningEntity? = null,
+    /** Phase 16: its local reminders. Owner ids are UUIDs, so they only ever match this Activity. */
+    @Relation(parentColumn = "id", entityColumn = "owner_id")
+    val reminders: List<ReminderEntity> = emptyList(),
 )

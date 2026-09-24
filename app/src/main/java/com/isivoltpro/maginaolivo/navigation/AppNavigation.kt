@@ -6,6 +6,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.isivoltpro.maginaolivo.app.AppCompositionRoot
 import com.isivoltpro.maginaolivo.app.AppEnvironment
 import com.isivoltpro.maginaolivo.feature.farms.FarmDetailRoute
+import com.isivoltpro.maginaolivo.feature.agenda.AgendaRoute
 import com.isivoltpro.maginaolivo.feature.farms.FarmListRoute
 import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
 import com.isivoltpro.maginaolivo.feature.activities.ActivityDetailRoute
@@ -65,6 +67,9 @@ fun AppNavigation(
     compositionRoot: AppCompositionRoot,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
+    /** Planned work to open, from a tapped reminder (Phase 16). */
+    openActivityId: UUID? = null,
+    onActivityOpened: () -> Unit = {},
 ) {
     val onboardingStateStore = compositionRoot.onboardingStateStore
     val startDestination = remember {
@@ -77,6 +82,14 @@ fun AppNavigation(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoot = AppDestination.rootForRoute(backStackEntry?.destination?.route)
     var registerSheetVisible by rememberSaveable { mutableStateOf(false) }
+    // A reminder opens its Activity over the Calendar, so Back returns to the agenda.
+    LaunchedEffect(openActivityId, backStackEntry == null) {
+        val id = openActivityId ?: return@LaunchedEffect
+        if (backStackEntry == null || startDestination == AppDestination.Onboarding) return@LaunchedEffect
+        navController.navigateToRoot(RootDestination.Calendar)
+        navController.navigate(AppDestination.activity(id.toString()))
+        onActivityOpened()
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -152,11 +165,17 @@ fun AppNavigation(
                 }
             }
             composable(RootDestination.Calendar.route) {
-                NavigationPlaceholderScreen(
-                    title = "Calendario",
-                    description = "Aquí aparecerán las actuaciones planificadas y los recordatorios cuando se active su fase de datos.",
-                    testTag = "calendar-root",
-                )
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    AgendaRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
+                        onPlanWork = { navController.navigateToRoot(RootDestination.Register) },
+                    )
+                }
             }
             composable(RootDestination.Profile.route) {
                 NavigationPlaceholderScreen(

@@ -31,12 +31,13 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 13 — Harvest
 ✅ Gate 14 — Deliveries + weight-ticket OCR + later yield
 ✅ Gate 15 — Machinery
+✅ Gate 16 — Calendar, agenda, reminders (physical check confirmed by the owner 2026-09-23)
 ```
 
 ## Current allowed phase
 
 ```text
-▶ PHASE 16 — CALENDAR, AGENDA, REMINDERS AND ANDROID NOTIFICATIONS (NEXT — starts after PR #211 is merged)
+▶ PHASE 17 — SPAIN CATASTRO LOOKUP AND CONFIRMED IMPORT (starts once PR #212 is merged into main)
 ```
 
 Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6 is closed as a composite PASS across its Farm, Parcel and Campaign slices. Phase 9 is closed as PASS and merged into `main`. Phase 10 builds the typed agronomic details on the Activity aggregate Phase 9 delivered.
@@ -303,9 +304,26 @@ with an empty crash buffer.
 - "Maquinaria" is reached from the Mi Olivar header; the Activity editor gains an optional
   machinery section with optional hours. Nothing about an Activity becomes mandatory.
 
+## Phase 16 — Calendar, agenda, reminders and Android notifications
+
+Implemented on branch `claude/dreamy-dijkstra-tdui2c` (PR #212); plan and decisions in
+`docs/07-plans/PHASE16-AGENDA-REMINDERS.md`, evidence in
+`docs/06-testing/PHASE16-AGENDA-REMINDERS-SLICE.md`. Emulator evidence passed on commit
+`5566c8ec`: Android CI run `35874808659` (`foundation`, `gate3-emulator` SUCCESS) and Gate 3
+Android Emulator Evidence run `35874811956` SUCCESS, with `AgendaReminderContractTest` 10/10
+in airplane mode.
+
+- Room v10: `activity_planning_details` and `reminders` (children of the Activity aggregate).
+- The Calendario root shows planned work; reminders are local `AlarmManager` alarms
+  rebuilt from the stored rows; notifications open the Activity.
+
+**Gate 16 is not yet PASS:** its physical-device clause is pending owner verification
+(checklist in the evidence document).
+
 ## Next deliverable
 
-**Phase 16 — Calendar, agenda, reminders and Android notifications**.
+Owner physical-device verification of Gate 16. **Phase 17 — Spain Catastro technical spike**
+starts only after Gate 16 PASS.
 
 ## Parallel-chat reconciliation
 
