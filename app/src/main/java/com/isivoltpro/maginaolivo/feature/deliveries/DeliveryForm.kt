@@ -13,6 +13,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketProposal
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 
 /**
@@ -34,7 +35,40 @@ data class DeliveryForm(
     val splitKnown: Boolean = false,
     val weights: Map<UUID, String> = emptyMap(),
     val notes: String = "",
+    /** Phase 19B: the hour on the ticket, "9:30". Optional. */
+    val time: String = "",
+    /** Phase 19B: the Jornada this Pesada joins, chosen explicitly; never guessed. */
+    val harvestId: UUID? = null,
+    val newJornada: Boolean = false,
 )
+
+/**
+ * "Guardar y añadir otra": the next Pesada of the same day keeps the Farm, date, Jornada,
+ * cooperative and origin Parcels; its own weighing (kilos, ticket, hour) starts empty.
+ */
+internal fun DeliveryForm.nextPesada(harvestId: UUID?): DeliveryForm = copy(
+    net = "",
+    gross = "",
+    tare = "",
+    deliveryNumber = "",
+    ticketNumber = "",
+    notes = "",
+    time = "",
+    weights = emptyMap(),
+    splitKnown = false,
+    harvestId = harvestId,
+    newJornada = false,
+)
+
+private val TIME = Regex("""^(\d{1,2})[:.h](\d{2})$""")
+
+/** "9:30", "09.30" or "9h30" → 09:30; anything else is not an hour. */
+internal fun parseHour(text: String): LocalTime? {
+    val match = TIME.matchEntire(text.trim()) ?: return null
+    val hour = match.groupValues[1].toInt()
+    val minute = match.groupValues[2].toInt()
+    return if (hour in 0..23 && minute in 0..59) LocalTime.of(hour, minute) else null
+}
 
 data class DeliveryFormErrors(
     val farm: String? = null,
@@ -43,8 +77,10 @@ data class DeliveryFormErrors(
     val net: String? = null,
     val gross: String? = null,
     val parcels: String? = null,
+    val time: String? = null,
+    val jornada: String? = null,
 ) {
-    val isEmpty: Boolean get() = listOf(farm, date, destination, net, gross, parcels).all { it == null }
+    val isEmpty: Boolean get() = listOf(farm, date, destination, net, gross, parcels, time, jornada).all { it == null }
 }
 
 internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, DeliveryFormErrors> {
@@ -73,6 +109,7 @@ internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, Delive
             else -> null
         },
         parcels = if (badWeight) "Revisa los kilos de las parcelas: escribe como 1200 o 1.200,5" else null,
+        time = if (time.isNotBlank() && parseHour(time) == null) "Escribe la hora como 9:30" else null,
     )
     if (!errors.isEmpty) return null to errors
     val shares = when {
@@ -92,6 +129,9 @@ internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, Delive
         deliveryNumber = deliveryNumber.trim().ifEmpty { null },
         ticketNumber = ticketNumber.trim().ifEmpty { null },
         notes = notes.trim().ifEmpty { null },
+        harvestId = harvestId.takeUnless { newJornada },
+        deliveryTime = parseHour(time),
+        newJornada = newJornada,
     )
     DeliveryRules.validate(draft, today)?.let { return null to it.toFormErrors() }
     return draft to errors
@@ -103,6 +143,7 @@ internal fun DeliveryProblem.toFormErrors(): DeliveryFormErrors = when (field) {
     "grossGrams" -> DeliveryFormErrors(gross = deliveryProblemMessage(this))
     "destination" -> DeliveryFormErrors(destination = deliveryProblemMessage(this))
     "farmId" -> DeliveryFormErrors(farm = deliveryProblemMessage(this))
+    "harvestId" -> DeliveryFormErrors(jornada = deliveryProblemMessage(this))
     else -> DeliveryFormErrors(parcels = deliveryProblemMessage(this))
 }
 
@@ -128,9 +169,18 @@ internal fun deliveryProblemMessage(problem: DeliveryProblem): String = when (pr
     "nothing_left_unallocated" ->
         "Ya has repartido todo el neto: escribe también los kilos de las demás parcelas o quítalas"
     "parcel_not_in_campaign" -> "Esa parcela no forma parte de la campaña"
-    "not_found" -> if (problem.field == "destination") "Esa cooperativa ya no está guardada" else "La finca no está en este dispositivo"
+    "not_found" -> when (problem.field) {
+        "destination" -> "Esa cooperativa ya no está guardada"
+        "harvestId" -> "Esa jornada ya no está en este dispositivo"
+        else -> "La finca no está en este dispositivo"
+    }
     "cannot_change" -> "Una entrega no puede cambiar de finca"
     "out_of_range" -> "El rendimiento debe estar entre 0 y 100 %"
+    "other_campaign" -> "Esa jornada es de otra finca o campaña"
+    "before_jornada" -> "La pesada no puede ser anterior a su jornada"
+    "exact_split" -> "Esa jornada tiene kilos repartidos por parcela. Quita el reparto exacto para enlazarle pesadas."
+    "no_parcels" -> "Esta campaña no tiene parcelas para abrir la jornada"
+    "ambiguous" -> "Elige una jornada o crea una nueva, no las dos"
     else -> "Revisa los datos de la entrega"
 }
 
@@ -150,6 +200,8 @@ internal fun Delivery.toForm(): DeliveryForm {
         splitKnown = shares.size > 1 && exact.isNotEmpty(),
         weights = if (shares.size > 1) exact.associate { it.parcelId to Weight.editable(it.weightGrams) } else emptyMap(),
         notes = notes.orEmpty(),
+        time = deliveryTime?.toString().orEmpty(),
+        harvestId = harvestId,
     )
 }
 

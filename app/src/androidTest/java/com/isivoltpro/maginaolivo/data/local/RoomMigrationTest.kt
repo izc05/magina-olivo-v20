@@ -797,6 +797,55 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration12To13KeepsEveryPesadaUnlinkedAndWithoutAnHour() {
+        migrationHelper.createDatabase(TEST_DATABASE, 12).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            database.execSQL(
+                """
+                INSERT INTO deliveries (
+                    id, workspace_id, farm_id, campaign_id, delivery_date, destination_name,
+                    net_grams, ticket_number, source, created_at, updated_at, deleted_at,
+                    version, sync_status, remote_version, last_synced_at
+                ) VALUES (
+                    '88888888-8888-8888-8888-888888888888', '11111111-1111-1111-1111-111111111111',
+                    '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444',
+                    '2025-11-24', 'Coop. San Isidro', 2850000, 'V-118', 'MANUAL', 5000, 5000, NULL,
+                    3, 'SYNCED', 3, 5000
+                )
+                """.trimIndent(),
+            )
+        }
+
+        migrationHelper
+            .runMigrationsAndValidate(TEST_DATABASE, 13, true, DatabaseMigrations.MIGRATION_12_13)
+            .use { database ->
+                database.query(
+                    "SELECT harvest_id, delivery_time, net_grams, ticket_number, version FROM deliveries",
+                ).use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertTrue(cursor.isNull(0))
+                    assertTrue(cursor.isNull(1))
+                    // The weighing itself is untouched and the migration is not an edit.
+                    assertEquals(2850000L, cursor.getLong(2))
+                    assertEquals("V-118", cursor.getString(3))
+                    assertEquals(3, cursor.getInt(4))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

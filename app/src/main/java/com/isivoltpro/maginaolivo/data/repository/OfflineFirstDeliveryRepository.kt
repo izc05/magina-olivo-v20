@@ -26,6 +26,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestParcelOption
 import java.time.Instant
+import java.time.LocalTime
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -97,6 +98,7 @@ class OfflineFirstDeliveryRepository(
             val now = clock.nowInstant()
             database.deliveryDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
             database.enqueueCollapsed(idGenerator, SyncEntityType.DELIVERY, id, OutboxOperation.DELETE, now)
+            writer.afterDelete(current, now)
             // Its analysis only describes this Delivery: it goes with it.
             database.deliveryDao().findLiveAnalysis(id)?.let { analysis -> tombstone(analysis, now) }
             AppResult.Success(Unit)
@@ -205,6 +207,8 @@ class OfflineFirstDeliveryRepository(
         farmName = farmName,
         campaignName = campaign?.name,
         editable = campaign != null && campaign.status in setOf(CampaignStatus.ACTIVE, CampaignStatus.HARVEST),
+        harvestId = delivery.harvestId,
+        deliveryTime = delivery.deliveryTime?.let { runCatching { LocalTime.parse(it) }.getOrNull() },
     )
 
     private fun LocalMetadata.next(now: Instant) =

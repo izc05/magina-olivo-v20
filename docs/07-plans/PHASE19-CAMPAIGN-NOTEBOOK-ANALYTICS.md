@@ -168,3 +168,35 @@ rewrite historical meaning merely to fit the new UI.
 - Campaign in view: harvest first, then active, else the most recent; chips when several.
 - Tests: `CampaignNotebookTest` (membership, reconciliation, coverage, draft exclusion) and the
   E2E flows now reach the work list through the Cuaderno.
+
+### 19B implementation notes (Claude, branch `claude/phase19b-jornada-pesadas`)
+
+- **Model.** A Jornada is the existing Harvest (no new table). Room v13 (`MIGRATION_12_13`)
+  adds `deliveries.harvest_id` (nullable, indexed, app-enforced) and `deliveries.delivery_time`
+  ("HH:mm", nullable). Existing Pesadas stay unlinked and without an hour.
+- **Linking is explicit.** The Pesada form has `Jornada de recolección`: *Sin jornada* (default),
+  *Nueva jornada de este día*, or one of the Farm's running-Campaign Jornadas. Nothing is
+  linked silently. Opening from a Jornada ("Añadir pesada") preselects that Jornada.
+- **Rules (`JornadaLedger`, inside the write transaction).** A Pesada may join a live Jornada of
+  the same Farm and Campaign, not dated after the Pesada, whose kilos are not split exactly
+  among several Parcels. "Nueva jornada" opens a Harvest on the Pesada's day with its origin
+  Parcels (or the whole Farm) all *UNALLOCATED* — no per-Parcel kilos are invented.
+- **One truthful total.** While a Jornada has live Pesadas, its kilos are their exact sum; every
+  create/edit/delete/move of a Pesada re-reconciles it (version bump + outbox intent). The
+  Jornada editor shows the kilos read-only ("Suma de sus N pesadas") and rejects an exact
+  split. If its last Pesada leaves, the Jornada keeps its kilos as its own editable figure
+  (never zeroed). Removing a Jornada releases its Pesadas intact (unlinked).
+- **Each Pesada keeps its own** cooperative/mill, net kg, ticket/albarán, hour, attachments/OCR
+  and later yield; the Jornada only lists them. "Guardar y añadir otra" keeps Farm, day,
+  Jornada, cooperative and Parcels and clears the weighing (kg, ticket, hour).
+- **UI.** Jornada detail: "Jornada del …", *Pesadas de la jornada* (`3 pesadas · 5.430 kg ·
+  Coop A, Coop B`, one row per Pesada) and *Añadir pesada*. Pesada detail shows its hour and
+  that it belongs to a Jornada. Cuaderno → Recolección rows read `Jornada · kg` with the
+  Pesada count. A ticket read by OCR chooses its Jornada in the same review (Confirmar entrega).
+- **Tests.** `JornadaPesadasContractTest` (Gate 19B: three Pesadas on one date to two
+  cooperatives survive a database reopen as one Jornada of 5.430 kg; corrections/removals keep
+  the total equal; refused links write nothing; removing a Jornada releases its Pesadas),
+  `RoomMigrationTest` 12→13, `DeliveryContractTest` (OCR ticket joins a Jornada), `JornadaScreenTest`, `JornadaTest`, `DeliveryFormTest`,
+  `DeliveryRulesTest`. Airplane mode: all paths are local Room writes with no network call;
+  the owner/Codex emulator check is the device evidence.
+

@@ -4,6 +4,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
 import com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketProposal
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -63,5 +64,46 @@ class DeliveryFormTest {
         assertEquals(YieldDraft(null, 2_150, null), YieldForm(fat = "21,5").toDraft(today).first)
         assertNotNull(YieldForm().toDraft(today).second.fat)
         assertNotNull(YieldForm(fat = "veinte").toDraft(today).second.fat)
+    }
+
+    @Test
+    fun theHourIsOptionalAndReadAsAFarmerWritesIt() {
+        assertEquals(LocalTime.of(9, 30), parseHour("9:30"))
+        assertEquals(LocalTime.of(9, 30), parseHour("09.30"))
+        assertEquals(LocalTime.of(17, 5), parseHour("17h05"))
+        assertNull(parseHour("25:00"))
+        assertNull(parseHour("mañana"))
+        assertNull(base.toDraft(today).first!!.deliveryTime)
+        assertEquals(LocalTime.of(13, 5), base.copy(time = "13:05").toDraft(today).first!!.deliveryTime)
+        val (draft, errors) = base.copy(time = "a las tres").toDraft(today)
+        assertNull(draft)
+        assertNotNull(errors.time)
+    }
+
+    @Test
+    fun aJornadaIsOnlyLinkedWhenChosen() {
+        val jornada = UUID.fromString("00000000-0000-0000-0000-0000000000c1")
+        assertNull(base.toDraft(today).first!!.harvestId)
+        assertEquals(jornada, base.copy(harvestId = jornada).toDraft(today).first!!.harvestId)
+        val opened = base.copy(harvestId = jornada, newJornada = true).toDraft(today).first!!
+        assertEquals(true, opened.newJornada)
+        assertNull(opened.harvestId)
+    }
+
+    @Test
+    fun theNextPesadaKeepsTheDayAndStartsItsOwnWeighingEmpty() {
+        val jornada = UUID.fromString("00000000-0000-0000-0000-0000000000c2")
+        val done = base.copy(ticketNumber = "V-101", time = "9:40", gross = "5.000", tare = "2.150", newJornada = true)
+        val next = done.nextPesada(jornada)
+        assertEquals(farm, next.farmId)
+        assertEquals("2026-11-18", next.date)
+        assertEquals("Cooperativa San Isidro", next.destinationText)
+        assertEquals(listOf(north, south), next.parcelIds)
+        assertEquals(jornada, next.harvestId)
+        assertEquals(false, next.newJornada)
+        assertEquals("", next.net)
+        assertEquals("", next.ticketNumber)
+        assertEquals("", next.time)
+        assertEquals("", next.gross)
     }
 }

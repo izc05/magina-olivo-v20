@@ -5,6 +5,7 @@ import com.isivoltpro.maginaolivo.domain.production.ParcelSplit
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 
 /** Where a Delivery's figures came from. A ticket read by OCR is still confirmed by a person. */
@@ -42,6 +43,10 @@ data class Delivery(
     val farmName: String? = null,
     val campaignName: String? = null,
     val editable: Boolean = true,
+    /** Phase 19B: the Jornada this Pesada belongs to, if the farmer linked it. */
+    val harvestId: UUID? = null,
+    /** Phase 19B: the hour on the ticket, if given. */
+    val deliveryTime: LocalTime? = null,
 ) {
     val unallocatedGrams: Long
         get() = netGrams - shares.sumOf { if (it.allocation == HarvestAllocation.EXACT) it.weightGrams ?: 0 else 0 }
@@ -61,6 +66,11 @@ data class DeliveryDraft(
     val deliveryNumber: String? = null,
     val ticketNumber: String? = null,
     val notes: String? = null,
+    /** Phase 19B: link this Pesada to an existing Jornada (a Harvest of the same Farm and Campaign). */
+    val harvestId: UUID? = null,
+    val deliveryTime: LocalTime? = null,
+    /** Phase 19B: open a new Jornada for this Pesada's date and link it. Never with [harvestId]. */
+    val newJornada: Boolean = false,
 )
 
 data class DeliveryProblem(val field: String, val code: String)
@@ -84,6 +94,7 @@ object DeliveryRules {
         if (draft.shares.map { it.parcelId }.toSet().size != draft.shares.size) {
             return DeliveryProblem("parcels", "duplicate")
         }
+        if (draft.newJornada && draft.harvestId != null) return DeliveryProblem("harvestId", "ambiguous")
         return ParcelSplit.problem(net, draft.shares.map { it.weightGrams })?.let { DeliveryProblem("parcels", it) }
     }
 }

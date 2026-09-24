@@ -48,4 +48,7 @@ interface DeliveryDao {
 
     @Query("SELECT * FROM delivery_yield_analyses WHERE delivery_id = :deliveryId AND deleted_at IS NULL LIMIT 1")
     suspend fun findLiveAnalysis(deliveryId: UUID): DeliveryYieldAnalysisEntity?
+
+    @Query("SELECT * FROM deliveries WHERE harvest_id = :harvestId AND deleted_at IS NULL")
+    suspend fun listLiveForHarvest(harvestId: UUID): List<DeliveryEntity>
 }

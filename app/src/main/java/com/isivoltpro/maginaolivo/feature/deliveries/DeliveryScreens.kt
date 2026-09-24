@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.deliveries
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import android.content.ActivityNotFoundException
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,6 +53,7 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
+import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
@@ -95,9 +98,10 @@ fun DeliveriesRoute(
     clock: AppClock,
     onDeliverySelected: (UUID) -> Unit,
     onTicketSelected: (UUID) -> Unit,
+    jornadaId: UUID? = null,
 ) {
     val viewModel: DeliveriesViewModel = viewModel(
-        key = "deliveries",
+        key = "deliveries-${jornadaId ?: "all"}",
         factory = viewModelFactory {
             initializer {
                 DeliveriesViewModel(
@@ -105,6 +109,7 @@ fun DeliveriesRoute(
                     persistence.documentOcrRepository,
                     persistence.organizationRepository,
                     clock,
+                    persistence.harvestRepository,
                 )
             }
         },
@@ -119,12 +124,14 @@ fun DeliveriesRoute(
     DeliveriesScreen(
         state = state,
         today = clock.today(ZoneId.systemDefault()),
-        onCreate = viewModel::create,
+        onCreate = { form -> viewModel.create(form) },
         onTicketPicked = viewModel::importTicket,
         onProblem = viewModel::reportProblem,
         onDeliverySelected = onDeliverySelected,
         onTicketSelected = onTicketSelected,
-        onEditorClosed = viewModel::clearFormErrors,
+        onEditorClosed = viewModel::editorClosed,
+        onCreateAndAddAnother = { form -> viewModel.create(form, again = true) },
+        jornadaId = jornadaId,
     )
 }
 
@@ -143,8 +150,11 @@ fun DeliveriesScreen(
     onDeliverySelected: (UUID) -> Unit,
     onTicketSelected: (UUID) -> Unit,
     onEditorClosed: () -> Unit = {},
+    onCreateAndAddAnother: ((DeliveryForm) -> Unit)? = null,
+    jornadaId: UUID? = null,
 ) {
-    var editorVisible by rememberSaveable { mutableStateOf(false) }
+    // Opened from a Jornada ("Añadir pesada"), the editor starts open on that Jornada.
+    var editorVisible by rememberSaveable { mutableStateOf(jornadaId != null) }
     var ticketVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
 
@@ -226,19 +236,46 @@ fun DeliveriesScreen(
         }
     }
 
-    if (editorVisible) {
+    val jornada = jornadaId?.let { id -> state.jornadas.firstOrNull { it.id == id } }
+    // Wait for the Jornada before opening its editor, so its Farm and day are preset.
+    if (editorVisible && (jornadaId == null || jornada != null || !state.isLoading)) {
+        val start = remember(jornada?.id, state.contexts.size) {
+            if (jornada != null) {
+                DeliveryForm(
+                    farmId = jornada.farmId,
+                    date = jornada.harvestDate.toString(),
+                    parcelIds = jornada.shares.map { it.parcelId },
+                    harvestId = jornada.id,
+                )
+            } else {
+                DeliveryForm(farmId = state.contexts.singleOrNull()?.farmId, date = today.toString())
+            }
+        }
         ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
-            DeliveryEditor(
-                title = "Registrar entrega",
-                initial = DeliveryForm(farmId = state.contexts.singleOrNull()?.farmId, date = today.toString()),
-                contexts = state.contexts,
-                destinations = state.destinations,
-                errors = state.formErrors,
-                isSaving = state.isSaving,
-                saveText = "Guardar entrega",
-                onSave = onCreate,
-                onCancel = { editorVisible = false; onEditorClosed() },
-            )
+            val next = state.nextForm
+            key(state.nextFormGeneration) {
+                if (next != null) {
+                    Text(
+                        "Pesada guardada. Registra la siguiente.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MoOliveDark,
+                        modifier = Modifier.padding(horizontal = MoSpacing.screen).testTag("delivery-saved-next"),
+                    )
+                }
+                DeliveryEditor(
+                    title = "Registrar pesada",
+                    initial = next ?: start,
+                    contexts = state.contexts,
+                    destinations = state.destinations,
+                    errors = state.formErrors,
+                    isSaving = state.isSaving,
+                    saveText = "Guardar pesada",
+                    onSave = onCreate,
+                    onCancel = { editorVisible = false; onEditorClosed() },
+                    jornadas = state.jornadas,
+                    onSaveAndAddAnother = onCreateAndAddAnother,
+                )
+            }
         }
     }
     if (ticketVisible) {
@@ -366,9 +403,17 @@ private fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-                Text(DATE_FORMAT.format(delivery.deliveryDate), style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text(
-                    listOfNotNull(delivery.destinationName, delivery.ticketNumber?.let { "vale $it" }).joinToString(" · "),
+                    listOfNotNull(DATE_FORMAT.format(delivery.deliveryDate), delivery.deliveryTime?.toString()).joinToString(" · "),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MoOliveDark,
+                )
+                Text(
+                    listOfNotNull(
+                        delivery.destinationName,
+                        delivery.ticketNumber?.let { "vale $it" },
+                        if (delivery.harvestId != null) "en jornada" else null,
+                    ).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoTextSecondary,
                 )
@@ -404,6 +449,8 @@ internal fun DeliveryEditor(
     subtitle: String = "Se guardará primero en este dispositivo.",
     scrollable: Boolean = true,
     extraActions: @Composable () -> Unit = {},
+    jornadas: List<Harvest> = emptyList(),
+    onSaveAndAddAnother: ((DeliveryForm) -> Unit)? = null,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
     var picker by rememberSaveable { mutableStateOf<String?>(null) }
@@ -423,11 +470,30 @@ internal fun DeliveryEditor(
         }
         errors.farm?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         context?.let { Text("Campaña ${it.campaignName}", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary) }
-        MoDateInputField(
-            form.date, { form = form.copy(date = it) }, "Fecha",
-            isError = errors.date != null, supportingText = errors.date,
-            modifier = Modifier.fillMaxWidth().testTag("delivery-date"),
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            Box(Modifier.weight(2f)) {
+                MoDateInputField(
+                    form.date, { form = form.copy(date = it) }, "Fecha",
+                    isError = errors.date != null, supportingText = errors.date,
+                    modifier = Modifier.fillMaxWidth().testTag("delivery-date"),
+                )
+            }
+            MoTextField(
+                form.time, { form = form.copy(time = it) }, "Hora",
+                isError = errors.time != null, supportingText = errors.time,
+                modifier = Modifier.weight(1f).testTag("delivery-time"),
+            )
+        }
+        val farmJornadas = jornadas.filter { it.farmId == form.farmId && it.campaignId == context?.campaignId }
+        if (context != null) {
+            MoSelectField(
+                "Jornada de recolección",
+                jornadaLabel(form, farmJornadas),
+                { picker = "jornada" },
+                Modifier.testTag("delivery-jornada"),
+            )
+            errors.jornada?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("delivery-jornada-error")) }
+        }
         val destination = destinations.firstOrNull { it.id == form.destinationOrganizationId }
         MoSelectField(
             "Cooperativa o almazara", destination?.name ?: "Escribir a mano", { picker = "destination" },
@@ -507,6 +573,14 @@ internal fun DeliveryEditor(
         }
         MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
         MoPrimaryButton(saveText, { onSave(form) }, Modifier.fillMaxWidth().testTag("save-delivery"), enabled = !isSaving)
+        onSaveAndAddAnother?.let { again ->
+            MoSecondaryButton(
+                "Guardar y añadir otra",
+                { again(form) },
+                Modifier.fillMaxWidth().testTag("save-delivery-again"),
+                enabled = !isSaving,
+            )
+        }
         extraActions()
         MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(MoSpacing.lg))
@@ -532,7 +606,35 @@ internal fun DeliveryEditor(
             { picker = null },
             "delivery-destination-sheet",
         )
+        "jornada" -> ChoiceSheet(
+            "Jornada de recolección",
+            listOf(Choice(null, "Sin jornada"), Choice(NEW_JORNADA, "Nueva jornada de este día")) +
+                jornadas.filter { it.farmId == form.farmId && it.campaignId == context?.campaignId }
+                    .sortedByDescending { it.harvestDate }
+                    .map { Choice(it.id.toString(), it.choiceLabel()) },
+            if (form.newJornada) NEW_JORNADA else form.harvestId?.toString(),
+            { key ->
+                form = when (key) {
+                    null -> form.copy(harvestId = null, newJornada = false)
+                    NEW_JORNADA -> form.copy(harvestId = null, newJornada = true)
+                    else -> form.copy(harvestId = UUID.fromString(key), newJornada = false)
+                }
+            },
+            { picker = null },
+            "delivery-jornada-sheet",
+        )
     }
+}
+
+private const val NEW_JORNADA = "new"
+
+private fun Harvest.choiceLabel(): String = "Jornada del ${DATE_FORMAT.format(harvestDate)} · ${Weight.format(totalGrams)}"
+
+/** Never a silent link: with no choice the Pesada stays out of any Jornada. */
+private fun jornadaLabel(form: DeliveryForm, jornadas: List<Harvest>): String = when {
+    form.newJornada -> "Nueva jornada de este día"
+    form.harvestId != null -> jornadas.firstOrNull { it.id == form.harvestId }?.choiceLabel() ?: "Jornada enlazada"
+    else -> "Sin jornada"
 }
 
 private fun DeliveryForm.toggle(parcelId: UUID, selected: Boolean): DeliveryForm =
@@ -564,7 +666,10 @@ fun DeliveryDetailRoute(
         key = "delivery-$deliveryId",
         factory = viewModelFactory {
             initializer {
-                DeliveryDetailViewModel(deliveryId, persistence.deliveryRepository, persistence.organizationRepository, clock)
+                DeliveryDetailViewModel(
+                    deliveryId, persistence.deliveryRepository, persistence.organizationRepository, clock,
+                    persistence.harvestRepository,
+                )
             }
         },
     )
@@ -682,6 +787,7 @@ fun DeliveryDetailScreen(
                     onSave = onUpdate,
                     onCancel = { sheet = null; onEditorClosed() },
                     farmLocked = true,
+                    jornadas = state.jornadas.filter { it.editable || it.id == delivery.harvestId },
                 )
             }
         }
@@ -773,6 +879,15 @@ private fun DeliverySummaryBlock(delivery: Delivery) {
     if (delivery.source == DeliverySource.TICKET_OCR) {
         MoStatusChip("Leído del vale y confirmado por ti", tone = MoStatusTone.Info)
     }
+    delivery.deliveryTime?.let { DetailValue("Hora", it.toString()) }
+    if (delivery.harvestId != null) {
+        Text(
+            "Forma parte de una jornada de recolección: sus kilos cuentan en el total de ese día.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("delivery-in-jornada"),
+        )
+    }
     DetailValue("Peso bruto", delivery.grossGrams?.let(Weight::format))
     DetailValue("Tara", delivery.tareGrams?.let(Weight::format))
     DetailValue("Nº de vale", delivery.ticketNumber)
@@ -825,6 +940,7 @@ fun TicketReviewRoute(
                     persistence.documentOcrRepository,
                     persistence.deliveryRepository,
                     persistence.organizationRepository,
+                    persistence.harvestRepository,
                 )
             }
         },
@@ -913,6 +1029,7 @@ fun TicketReviewScreen(
                         onSave = onConfirm,
                         onCancel = { confirmDiscard = true },
                         scrollable = false,
+                        jornadas = state.jornadas,
                         extraActions = {
                             MoSecondaryButton("Leer otra vez", onReadAgain, Modifier.fillMaxWidth(), enabled = !state.isSaving)
                         },

@@ -50,6 +50,8 @@ class OfflineFirstHarvestRepository(
     private val dispatchers: AppDispatchers,
     private val zoneId: () -> ZoneId = ZoneId::systemDefault,
 ) : HarvestRepository {
+    private val jornadas = JornadaLedger(database, idGenerator)
+
     override fun observeAll(): Flow<List<Harvest>> =
         database.harvestDao().observeAll().map { rows -> rows.toDomain() }.flowOn(dispatchers.io)
 
@@ -124,11 +126,24 @@ class OfflineFirstHarvestRepository(
             if (draft.harvestDate.isBefore(campaign.startDate)) {
                 return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "before_campaign"))
             }
+            // Phase 19B: a Jornada with Pesadas takes its kilos from them, never from the form.
+            val pesadas = database.deliveryDao().listLiveForHarvest(id)
+            val pesadaGrams = pesadas.sumOf { it.netGrams }
+            var shares = draft.shares
+            if (pesadas.isNotEmpty()) {
+                if (shares.size > 1 && shares.any { it.weightGrams != null }) {
+                    return@inTransaction AppResult.Failure(AppError.Validation("parcels", "exact_with_pesadas"))
+                }
+                if (pesadas.any { it.deliveryDate.isBefore(draft.harvestDate) }) {
+                    return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "after_pesadas"))
+                }
+                shares = shares.map { if (it.weightGrams != null) it.copy(weightGrams = pesadaGrams) else it }
+            }
             val now = clock.nowInstant()
             database.harvestDao().upsert(
                 current.copy(
                     harvestDate = draft.harvestDate,
-                    weightGrams = draft.totalGrams!!,
+                    weightGrams = if (pesadas.isEmpty()) draft.totalGrams!! else pesadaGrams,
                     notes = draft.notes.normalized(),
                     collectionMethod = draft.collectionMethod?.name,
                     workerCount = draft.workerCount,
@@ -136,7 +151,7 @@ class OfflineFirstHarvestRepository(
                     metadata = current.metadata.next(now),
                 ),
             )
-            replaceShares(id, current.workspaceId, campaign.id, draft.shares, now)
+            replaceShares(id, current.workspaceId, campaign.id, shares, now)
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, id, OutboxOperation.UPDATE, now)
             AppResult.Success(Unit)
         }
@@ -152,6 +167,7 @@ class OfflineFirstHarvestRepository(
             val now = clock.nowInstant()
             database.harvestDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, id, OutboxOperation.DELETE, now)
+            jornadas.release(id, now)
             AppResult.Success(Unit)
         }
 

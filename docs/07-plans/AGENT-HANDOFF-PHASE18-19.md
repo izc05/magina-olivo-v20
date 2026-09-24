@@ -28,6 +28,11 @@ Older prompts or chat instructions never override these files.
 > comments on #233; fixes go to a `claude/phase19a-*` follow-up branch.
 > **Next slice: 19B — Jornada + multiple Pesadas (executor Codex, reviewer Claude)** on
 > `codex/phase19b-jornada-pesadas` from the latest `main`.
+>
+> **Update 2026-09-24 (owner):** roles for 19B swapped — "Claude sigue programando, Codex
+> está probando la app en el emulador y revisando". **19B executor Claude, reviewer and
+> emulator tester Codex**, branch `claude/phase19b-jornada-pesadas`. Codex must not open a
+> competing 19B implementation; findings go to the 19B PR as review comments.
 
 ## Production owner during Phase 18 (closed) — Codex, finished by Claude
 
@@ -95,7 +100,7 @@ editing the same slice in parallel:
 | Slice | Executor | Reviewer | Suggested branch |
 | --- | --- | --- | --- |
 | 19A — Cuaderno projection/navigation | Claude | Codex | `claude/phase19a-cuaderno-projection` |
-| 19B — Jornada + multiple Pesadas | Codex | Claude | `codex/phase19b-jornada-pesadas` |
+| 19B — Jornada + multiple Pesadas | Claude (owner swap) | Codex (review + emulator) | `claude/phase19b-jornada-pesadas` |
 | 19C — Rendimientos pendientes | Claude | Codex | `claude/phase19c-rendimientos` |
 | 19D — Jornales | Codex | Claude | `codex/phase19d-jornales` |
 | 19E — Equipment quantities | Claude | Codex | `claude/phase19e-equipment` |

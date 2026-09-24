@@ -17,6 +17,8 @@ import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 internal class InvalidDelivery(val field: String, val code: String) : RuntimeException("$field:$code")
@@ -32,12 +34,23 @@ internal class DeliveryWriter(
     private val database: MaginaOlivoDatabase,
     private val idGenerator: IdGenerator,
 ) {
+    private val jornadas = JornadaLedger(database, idGenerator)
+
     suspend fun insert(draft: DeliveryDraft, source: DeliverySource, today: LocalDate, now: Instant): DeliveryEntity {
         DeliveryRules.validate(draft, today)?.let { throw InvalidDelivery(it.field, it.code) }
         val farm = database.farmDao().findById(draft.farmId) ?: throw InvalidDelivery("farmId", "not_found")
         if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) throw DeliveryConflict("archived_farm")
         val campaign = database.campaignDao().findCurrent(farm.id) ?: throw DeliveryConflict("no_running_campaign")
         checkDate(draft, campaign)
+        draft.harvestId?.let { jornadas.checkLink(it, farm.id, campaign.id, draft.deliveryDate) }
+        val harvestId = if (draft.newJornada) {
+            jornadas.open(
+                farm.workspaceId, farm.id, campaign.id, draft.deliveryDate,
+                draft.shares.map { it.parcelId }, draft.netGrams!!, now,
+            )
+        } else {
+            draft.harvestId
+        }
         val row = DeliveryEntity(
             id = idGenerator.newId(),
             workspaceId = farm.workspaceId,
@@ -54,10 +67,13 @@ internal class DeliveryWriter(
             source = source.name,
             notes = draft.notes.normalized(),
             metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
+            harvestId = harvestId,
+            deliveryTime = draft.deliveryTime?.let { formatTime(it) },
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
         database.enqueueCollapsed(idGenerator, SyncEntityType.DELIVERY, row.id, OutboxOperation.CREATE, now)
+        jornadas.reconcile(row.harvestId, now)
         return row
     }
 
@@ -66,6 +82,15 @@ internal class DeliveryWriter(
         if (current.farmId != draft.farmId) throw InvalidDelivery("farmId", "cannot_change")
         val campaign = runningCampaign(current)
         checkDate(draft, campaign)
+        draft.harvestId?.let { jornadas.checkLink(it, current.farmId, campaign.id, draft.deliveryDate) }
+        val harvestId = if (draft.newJornada) {
+            jornadas.open(
+                current.workspaceId, current.farmId, campaign.id, draft.deliveryDate,
+                draft.shares.map { it.parcelId }, draft.netGrams!!, now,
+            )
+        } else {
+            draft.harvestId
+        }
         val row = current.copy(
             deliveryDate = draft.deliveryDate,
             destinationOrganizationId = draft.destinationOrganizationId,
@@ -77,11 +102,18 @@ internal class DeliveryWriter(
             ticketNumber = draft.ticketNumber.normalized(),
             notes = draft.notes.normalized(),
             metadata = current.metadata.next(now),
+            harvestId = harvestId,
+            deliveryTime = draft.deliveryTime?.let { formatTime(it) },
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
         database.enqueueCollapsed(idGenerator, SyncEntityType.DELIVERY, row.id, OutboxOperation.UPDATE, now)
+        jornadas.reconcile(row.harvestId, now)
+        if (current.harvestId != row.harvestId) jornadas.reconcile(current.harvestId, now)
     }
+
+    /** After a Pesada is removed, its Jornada's kilos follow the Pesadas that remain. */
+    suspend fun afterDelete(current: DeliveryEntity, now: Instant) = jornadas.reconcile(current.harvestId, now)
 
     /** A Delivery of a closed Campaign is history: it is neither edited nor deleted. */
     suspend fun runningCampaign(current: DeliveryEntity): CampaignEntity {
@@ -129,7 +161,10 @@ internal class DeliveryWriter(
 
     private fun String?.normalized() = this?.trim()?.ifEmpty { null }
 
+    private fun formatTime(time: LocalTime): String = time.format(HOUR)
+
     private companion object {
         val RUNNING = setOf(CampaignStatus.ACTIVE, CampaignStatus.HARVEST)
+        val HOUR: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     }
 }
