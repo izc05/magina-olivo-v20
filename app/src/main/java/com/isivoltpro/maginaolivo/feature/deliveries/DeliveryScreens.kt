@@ -403,9 +403,17 @@ private fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-                Text(DATE_FORMAT.format(delivery.deliveryDate), style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text(
-                    listOfNotNull(delivery.destinationName, delivery.ticketNumber?.let { "vale $it" }).joinToString(" · "),
+                    listOfNotNull(DATE_FORMAT.format(delivery.deliveryDate), delivery.deliveryTime?.toString()).joinToString(" · "),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MoOliveDark,
+                )
+                Text(
+                    listOfNotNull(
+                        delivery.destinationName,
+                        delivery.ticketNumber?.let { "vale $it" },
+                        if (delivery.harvestId != null) "en jornada" else null,
+                    ).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoTextSecondary,
                 )
