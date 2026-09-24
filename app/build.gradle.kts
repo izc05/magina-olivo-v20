@@ -79,6 +79,10 @@ room {
 }
 
 dependencies {
+    implementation("org.maplibre.gl:android-sdk-opengl:13.6.1")
+    implementation("org.locationtech.jts:jts-core:1.20.0")
+    implementation("org.locationtech.proj4j:proj4j:1.4.0")
+    implementation("org.locationtech.proj4j:proj4j-epsg:1.4.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.kotlinx.coroutines.android)

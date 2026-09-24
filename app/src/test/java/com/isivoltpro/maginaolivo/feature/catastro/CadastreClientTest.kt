@@ -36,7 +36,7 @@ class CadastreClientTest {
             <cp:geometry><gml:MultiSurface><gml:surfaceMember><gml:Surface srsName="EPSG::4326">
             <gml:patches><gml:PolygonPatch>
             <gml:exterior><gml:LinearRing><gml:posList>37 -3 37 -2.9 37.1 -2.9 37 -3</gml:posList></gml:LinearRing></gml:exterior>
-            <gml:interior><gml:LinearRing><gml:posList>37.01 -2.99 37.02 -2.99 37.02 -2.98 37.01 -2.99</gml:posList></gml:LinearRing></gml:interior>
+            <gml:interior><gml:LinearRing><gml:posList>37.01 -2.95 37.02 -2.95 37.02 -2.94 37.01 -2.95</gml:posList></gml:LinearRing></gml:interior>
             </gml:PolygonPatch></gml:patches></gml:Surface></gml:surfaceMember>
             <gml:surfaceMember><gml:Surface srsName="EPSG::4326"><gml:patches><gml:PolygonPatch>
             <gml:exterior><gml:LinearRing><gml:posList>37.2 -3 37.2 -2.9 37.3 -2.9 37.2 -3</gml:posList></gml:LinearRing></gml:exterior>
@@ -106,4 +106,43 @@ class CadastreClientTest {
             assertEquals(CadastreError.INVALID_GEOMETRY, error.kind)
         }
     }
+
+    @Test fun convertsOfficialUtm30CoordinatesToStoredWgs84Order() {
+        val xml = parcelGml(
+            crs = "EPSG::25830",
+            positions = "457717.89 4165357.47 457726.57 4165374.26 457739.02 4165392.02 457717.89 4165357.47",
+        )
+
+        val point = readGmlParcels(xml).single().polygons.single().single().first()
+
+        assertEquals(-3.479217, point.first, 0.00002)
+        assertEquals(37.634377, point.second, 0.00002)
+    }
+
+    @Test fun rejectsSelfIntersectingParcelInsteadOfRepairingIt() {
+        val crossed = parcelGml(
+            crs = "EPSG::4326",
+            positions = "37.0 -3.0 37.1 -2.9 37.0 -2.9 37.1 -3.0 37.0 -3.0",
+        )
+
+        try {
+            readGmlParcels(crossed)
+            fail("Self-intersection must be rejected")
+        } catch (error: CadastreException) {
+            assertEquals(CadastreError.INVALID_GEOMETRY, error.kind)
+        }
+    }
+
+    private fun parcelGml(crs: String, positions: String) = """
+        <wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0"
+            xmlns:cp="http://inspire.ec.europa.eu/schemas/cp/4.0"
+            xmlns:gml="http://www.opengis.net/gml/3.2"><wfs:member><cp:CadastralParcel>
+          <cp:nationalCadastralReference>23044A00400021</cp:nationalCadastralReference>
+          <cp:geometry><gml:MultiSurface srsName="$crs"><gml:surfaceMember><gml:Surface>
+            <gml:patches><gml:PolygonPatch><gml:exterior><gml:LinearRing>
+              <gml:posList srsDimension="2">$positions</gml:posList>
+            </gml:LinearRing></gml:exterior></gml:PolygonPatch></gml:patches>
+          </gml:Surface></gml:surfaceMember></gml:MultiSurface></cp:geometry>
+        </cp:CadastralParcel></wfs:member></wfs:FeatureCollection>
+    """.trimIndent().toByteArray()
 }
