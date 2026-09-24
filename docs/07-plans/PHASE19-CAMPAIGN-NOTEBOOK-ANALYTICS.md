@@ -279,4 +279,6 @@ No schema change is expected: 19C reads existing `deliveries` + `delivery_yield_
 - **Tests:** `EquipmentTest`, `EquipmentContractTest` (Gate 19E: the example with 0 machines
   created; deterministic replace; registered machine referenced; closed campaign; Jornada
   removal), `RoomMigrationTest` 14→15, `EquipmentScreenTest`.
+- **CI note:** as with every Room version bump, the first run lacks `15.json` until the CI bot
+  publishes the exported schema; the migration test is re-run on the next commit.
 
