@@ -71,6 +71,16 @@ CR-005 is approved as the next product-workflow refinement. It reorganizes the F
 
 **Do not implement CR-005 production code while Phase 18 is active.** Documentation/specification work is allowed; the first production slice starts with Phase 19 after Gate 18 closes.
 
+### Codex / Claude coordination
+
+Canonical handoff: `docs/07-plans/AGENT-HANDOFF-PHASE18-19.md`.
+
+- **Codex** owns Phase 18 production from a fresh branch based on latest `main`.
+- The old `codex/phase18-parcel-map` branch is stale/diverged and is reference-only.
+- **Claude** is review + Phase 19 preparation until Gate 18 passes.
+- After Gate 18 merges, Phase 19 executes sequentially as 19A–19G with alternating executor/reviewer roles.
+- No two agents may implement the same production slice in parallel.
+
 ## Hard stop rule
 
 If implementation requires changing an immutable baseline decision, stop feature work and open a Change Request. Do not silently adapt architecture because a library, agent or generated template prefers another approach.
