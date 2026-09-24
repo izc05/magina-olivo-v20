@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -136,9 +137,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
         clickInSheetByTag("save-farm")
-        composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithText("La Solana").fetchSemanticsNodes().size == 1
-        }
+        waitForSaved("farm-name", "La Solana")
         clickByText("La Solana")
         waitForTag("farm-detail-root")
         composeRule.onNodeWithTag("farm-detail-root").assertIsDisplayed()
@@ -163,9 +162,7 @@ class AppNavigationTest {
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Los Llanos")
         clickInSheetByTag("save-farm")
-        composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithText("Los Llanos").fetchSemanticsNodes().isNotEmpty()
-        }
+        waitForSaved("farm-name", "Los Llanos")
         clickByText("Los Llanos")
 
         openSheet("add-parcel", "parcel-name")
@@ -202,7 +199,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Campaña E2E")
         waitForTag("save-farm")
         clickInSheetByTag("save-farm")
-        waitForText("Finca Campaña E2E")
+        waitForSaved("farm-name", "Finca Campaña E2E")
 
         // Farm detail
         clickByText("Finca Campaña E2E")
@@ -296,7 +293,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Actuación E2E")
         waitForTag("save-farm")
         clickInSheetByTag("save-farm")
-        waitForText("Finca Actuación E2E")
+        waitForSaved("farm-name", "Finca Actuación E2E")
         clickByText("Finca Actuación E2E")
         waitForTag("add-parcel")
 
@@ -314,7 +311,7 @@ class AppNavigationTest {
         composeRule.onAllNodesWithTag("activity-parcel-option")[1].performScrollTo().performClick()
         waitForTag("save-activity")
         clickInSheetByTag("save-activity")
-        waitForText("Poda multiparcela E2E")
+        waitForSaved("activity-description", "Poda multiparcela E2E")
         // The typed description is on screen before the save lands; wait for the saved row.
         waitForTag("activity-row")
 
@@ -366,7 +363,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Registrar E2E")
         waitForTag("save-farm")
         clickInSheetByTag("save-farm")
-        waitForText("Finca Registrar E2E")
+        waitForSaved("farm-name", "Finca Registrar E2E")
         clickByText("Finca Registrar E2E")
         waitForTag("add-parcel")
         createParcel("Parcela Registrar E2E")
@@ -437,7 +434,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("farm-name").performTextInput("Finca Tipada E2E")
         waitForTag("save-farm")
         clickInSheetByTag("save-farm")
-        waitForText("Finca Tipada E2E")
+        waitForSaved("farm-name", "Finca Tipada E2E")
         clickByText("Finca Tipada E2E")
         waitForTag("add-parcel")
         createParcel("Parcela Tipada E2E")
@@ -466,7 +463,8 @@ class AppNavigationTest {
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
         clickInSheetByTag("save-activity")
-        waitForText("Trabajo tipado E2E")
+        waitForSaved("activity-description", "Trabajo tipado E2E")
+        waitForTag("activity-row")
 
         // The saved Activity carries the irrigation block it was given, and one record.
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
@@ -511,6 +509,18 @@ class AppNavigationTest {
     private fun waitForTag(tag: String, timeoutMillis: Long = UI_TIMEOUT_MS) {
         composeRule.waitUntil(timeoutMillis) {
             composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    /**
+     * Waits until an editor sheet has closed and its saved name is on screen. Waiting for the
+     * text alone could match the sheet's own field while it animates away, and the next click
+     * then landed on the field instead of the new row.
+     */
+    private fun waitForSaved(editorTag: String, text: String, timeoutMillis: Long = UI_TIMEOUT_MS) {
+        composeRule.waitUntil(timeoutMillis) {
+            composeRule.onAllNodesWithTag(editorTag).fetchSemanticsNodes().isEmpty() &&
+                composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
@@ -662,9 +672,19 @@ class AppNavigationTest {
      */
     private fun pickDate(fieldTag: String, iso: String) {
         val target = java.time.LocalDate.parse(iso)
+        // The field usually follows a text input: close the keyboard first so the resize it
+        // causes cannot swallow the tap, and tap once more if the picker still did not open.
+        closeSoftKeyboard()
+        composeRule.waitForIdle()
         scrollIntoViewIfPossible { composeRule.onNodeWithTag(fieldTag) }
         composeRule.onNodeWithTag(fieldTag).performClick()
-        waitForTag("date-picker-sheet")
+        if (!awaitTag("date-picker-sheet", SHEET_TIMEOUT_MS)) {
+            scrollIntoViewIfPossible { composeRule.onNodeWithTag(fieldTag) }
+            composeRule.onNodeWithTag(fieldTag).performClick()
+            waitForNodeOrDump("<date-picker-sheet> after tapping <$fieldTag> again") {
+                composeRule.onAllNodesWithTag("date-picker-sheet")
+            }
+        }
         val months = java.time.temporal.ChronoUnit.MONTHS.between(
             java.time.YearMonth.now(),
             java.time.YearMonth.from(target),
@@ -710,7 +730,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("parcel-name").performTextInput(name)
         waitForTag("save-parcel")
         clickInSheetByTag("save-parcel")
-        waitForText(name)
+        waitForSaved("parcel-name", name)
     }
 
     /** Confirms an Activity lifecycle action once its ModalBottomSheet is actually composed. */

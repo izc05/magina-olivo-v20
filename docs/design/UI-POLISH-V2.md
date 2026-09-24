@@ -91,3 +91,18 @@ machinery, the calendar's data, offline behaviour and the five frozen roots.
   sources (`UiPolishFixtures`). The "before" set comes from branch
   `feat/android-ui-polish-v2-baseline` (the same test on `e3d625f`, evidence only, never merged).
 - `DesignContrastTest` asserts every new text/background pair ≥ 4.5:1.
+
+## Inicio con datos reales (`feat/home-real-data`)
+
+La revisión general detectó que Inicio seguía mostrando la pantalla de referencia con cifras
+fijas (temperatura, kilos, precios de mercado y noticias). Eso incumple la regla de verdad del
+producto. Inicio pasa a `feature/home` y solo lee lo que ya hay en Room:
+
+- fincas, parcelas y superficie conocida (sin superficie si ninguna parcela la tiene);
+- campañas en marcha con kilos recogidos y entregados de sus propios registros;
+- los tres próximos trabajos planificados y el número de trabajos pendientes de días pasados;
+- accesos rápidos a Mi Olivar, Cosecha, Entregas y Gastos.
+
+Tiempo, mercado del aceite y avisos de cooperativa conservan su hueco con la etiqueta
+«Pronto»: no se añade ningún servicio externo (Fase 20). Sin cambios en Room, migraciones,
+repositorios, sync ni navegación raíz.
