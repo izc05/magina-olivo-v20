@@ -33,6 +33,9 @@ Older prompts or chat instructions never override these files.
 > está probando la app en el emulador y revisando". **19B executor Claude, reviewer and
 > emulator tester Codex**, branch `claude/phase19b-jornada-pesadas`. Codex must not open a
 > competing 19B implementation; findings go to the 19B PR as review comments.
+>
+> **Update 2026-09-24 (later):** 19B merged (PR #235). **19C — Rendimientos pendientes**
+> (executor Claude, reviewer Codex) on `claude/phase19c-rendimientos`.
 
 ## Production owner during Phase 18 (closed) — Codex, finished by Claude
 

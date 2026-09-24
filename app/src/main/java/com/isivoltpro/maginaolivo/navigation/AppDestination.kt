@@ -56,6 +56,8 @@ object AppDestination {
     const val HarvestPattern = "harvest/{harvestId}"
     const val DeliveryPattern = "delivery/{deliveryId}"
     const val JornadaPesadaPattern = "deliveries/jornada/{harvestId}"
+    const val PendingYieldsRoute = "deliveries/pending"
+    const val DeliveryYieldPattern = "delivery/{deliveryId}/yield"
     const val TicketPattern = "delivery-ticket/{extractionId}"
     const val MachinePattern = "machine/{machineId}"
     const val FarmMapPattern = "farm-map/{farmId}"
@@ -84,6 +86,9 @@ object AppDestination {
     fun harvest(harvestId: String): String = nestedRoute(Harvest, harvestId)
 
     fun delivery(deliveryId: String): String = nestedRoute("delivery", deliveryId)
+
+    /** Phase 19C: a Pesada opened on its yield form. */
+    fun deliveryYield(deliveryId: String): String = "${delivery(deliveryId)}/yield"
 
     /** Phase 19B: the Pesada form opened on one Jornada. */
     fun jornadaPesada(harvestId: String): String = "$Deliveries/jornada/${android.net.Uri.encode(harvestId)}"

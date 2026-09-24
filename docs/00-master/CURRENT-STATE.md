@@ -43,8 +43,11 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ```text
 ▶ PHASE 19 — CUADERNO DE CAMPAÑA + HISTORICAL ANALYTICS (opened 2026-09-24 after Gate 18 PASS)
   19A — Cuaderno projection/navigation: MERGED (PR #233, 2026-09-24).
-  19B — Jornada + multiple Pesadas: IN PROGRESS (owner decision 2026-09-24: executor Claude,
-  reviewer/emulator tester Codex; branch claude/phase19b-jornada-pesadas; Room v13).
+  19B — Jornada + multiple Pesadas: MERGED (PR #235, 2026-09-24, owner "puedes seguir"; CI green:
+  unit, 201 instrumented tests, Gate 3 evidence; Room v13). Emulator/airplane-mode check by Codex
+  pending — Codex review quota was exhausted on #235.
+  19C — Rendimientos pendientes: IN PROGRESS (executor Claude, reviewer Codex;
+  branch claude/phase19c-rendimientos; no schema change).
   per docs/07-plans/AGENT-HANDOFF-PHASE18-19.md and docs/07-plans/PHASE19-CAMPAIGN-NOTEBOOK-ANALYTICS.md.
   Device model/Android version of the Gate 17/18 check: not reported by the owner.
 ```
