@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.agenda
 
+import androidx.compose.foundation.layout.WindowInsets
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -178,7 +179,7 @@ fun AgendaScreen(
         )
     }
 
-    Scaffold(Modifier.fillMaxSize().testTag("calendar-root"), containerColor = MoCream) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("calendar-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = MoSpacing.screen),

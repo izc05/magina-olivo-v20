@@ -452,10 +452,7 @@ private fun FarmDetailContent(
             title = farm.name,
             imageModel = coverUri,
             location = listOfNotNull(farm.municipality, farm.province).filter { it.isNotBlank() }.joinToString(" · ").ifEmpty { null },
-            caption = listOfNotNull(
-                farm.totalAreaM2?.let(::formatArea),
-                if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas",
-            ).joinToString(" · "),
+            // Area and parcels are in the strip right below; the photo does not repeat them.
             heightFraction = 0.40f,
             trailing = {
                 MoStatusChip(
@@ -550,7 +547,7 @@ private fun FarmCard(
     MoFarmCard(
         name = farm.name,
         municipality = farm.locationLabel(),
-        area = farm.totalAreaM2?.let(::formatArea) ?: "Añade superficie",
+        area = farm.totalAreaM2?.let(::formatArea) ?: "—",
         parcels = farm.parcelCount.toString(),
         campaignStatus = farm.activeCampaignName ?: "Sin campaña activa",
         modifier = Modifier

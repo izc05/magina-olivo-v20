@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -112,7 +113,7 @@ fun DocumentReviewScreen(
     var rawTextVisible by rememberSaveable { mutableStateOf(false) }
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold(Modifier.fillMaxSize().testTag("document-review-root"), containerColor = MoCream) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("document-review-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
@@ -255,7 +256,7 @@ fun OrganizationsScreen(
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(state.message) { if (state.message != null) editing = null }
 
-    Scaffold(Modifier.fillMaxSize().testTag("organizations-root"), containerColor = MoCream) { padding ->
+    Scaffold(Modifier.fillMaxSize().testTag("organizations-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
                 .padding(MoSpacing.screen),

@@ -432,13 +432,23 @@ private fun IrrigationCard(agronomy: ParcelAgronomy, onEdit: () -> Unit) {
             Text("Aún no has indicado cómo se riega esta parcela.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
             TextButton(onClick = onEdit) { Text("Añadir datos de riego") }
         } else {
-            Row(Modifier.fillMaxWidth()) {
-                MoLabeledValue("Tipo", agronomy.irrigationSystem?.label(), Modifier.weight(1f))
-                MoLabeledValue("Sector", agronomy.irrigationSector, Modifier.weight(1f))
+            // Only what the farmer told us: no grid of dashes.
+            val facts = listOfNotNull(
+                agronomy.irrigationSystem?.label()?.let { "Tipo" to it },
+                agronomy.irrigationSector?.let { "Sector" to it },
+                agronomy.irrigationNetwork?.let { "Comunidad / red" to it },
+                agronomy.irrigationDays.label()?.let { "Días habituales" to it },
+            )
+            facts.chunked(2).forEach { pair ->
+                Row(Modifier.fillMaxWidth()) {
+                    pair.forEach { (label, value) -> MoLabeledValue(label, value, Modifier.weight(1f)) }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
             }
-            Row(Modifier.fillMaxWidth()) {
-                MoLabeledValue("Comunidad / red", agronomy.irrigationNetwork, Modifier.weight(1f))
-                MoLabeledValue("Días habituales", agronomy.irrigationDays.label(), Modifier.weight(1f))
+            if (facts.size < 4) {
+                TextButton(onClick = onEdit, modifier = Modifier.testTag("parcel-irrigation-complete")) {
+                    Text("Completar riego")
+                }
             }
         }
     }

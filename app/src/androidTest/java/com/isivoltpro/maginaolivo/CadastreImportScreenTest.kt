@@ -40,7 +40,7 @@ class CadastreImportScreenTest {
         composeRule.runOnIdle {
             assertEquals(1, imports)
             assertEquals(selected.id, importedFarm)
-            assertEquals("Parcela 00021", importedName)
+            assertEquals("Pol. 4 · Parc. 21", importedName)
         }
     }
 
