@@ -51,8 +51,10 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   19E — Equipment usage: MERGED (PR #238, 2026-09-24, owner "continúa"; CI green; Room v15).
   19F — Recollection expenses/documents: MERGED (PR #239, 2026-09-24, owner "ya puedes fusionar";
   CI green; no schema change — reuses expenses.harvest_id).
-  19G — Visual historical analytics: IN PROGRESS (executor Claude; branch claude/phase19g-analytics;
+  19G — Visual historical analytics: MERGED (PR #240, 2026-09-24, owner "si ok"; CI green;
   no schema change — pure projection of Room rows).
+  GATE 19: PENDING — automated evidence complete; device/airplane-mode evidence pending
+  (docs/06-testing/PHASE19-GATE-CHECKLIST.md). Phase 20 is NOT open until Gate 19 PASS.
   per docs/07-plans/AGENT-HANDOFF-PHASE18-19.md and docs/07-plans/PHASE19-CAMPAIGN-NOTEBOOK-ANALYTICS.md.
   Device model/Android version of the Gate 17/18 check: not reported by the owner.
 ```
