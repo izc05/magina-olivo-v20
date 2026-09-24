@@ -128,7 +128,8 @@ class JornadaPesadasContractTest {
     @Test
     fun aJornadaWithPesadasNeverTakesKilosFromItsFormAndReleasesThemWhenRemoved() = runBlocking {
         val yesterday = day.minusDays(1)
-        val jornadaId = ok(harvests.create(HarvestDraft(farmId, yesterday, 1_000_000, listOf(HarvestShareInput(north, null)))))
+        // As the form sends it: a single Parcel carries the whole total.
+        val jornadaId = ok(harvests.create(HarvestDraft(farmId, yesterday, 1_000_000, listOf(HarvestShareInput(north, 1_000_000)))))
         val a = ok(deliveries.create(pesada(2_200_000, "Coop. San Isidro", "V-9").copy(deliveryDate = yesterday, harvestId = jornadaId)))
         // Single Parcel: it carries the whole total, and follows the Pesadas.
         assertEquals(2_200_000L, harvests.observe(jornadaId).first()!!.shares.single().weightGrams)
