@@ -909,14 +909,14 @@ private fun IrrigationPricingBasis.label() = when (this) {
     IrrigationPricingBasis.OTHER -> "Otra"
 }
 
-private fun ActivityStatus.label() = when (this) {
+internal fun ActivityStatus.label() = when (this) {
     ActivityStatus.DRAFT -> "Borrador"
     ActivityStatus.PLANNED -> "Planificada"
     ActivityStatus.COMPLETED -> "Completada"
     ActivityStatus.CANCELLED -> "Cancelada"
 }
 
-private fun ActivityStatus.tone() = when (this) {
+internal fun ActivityStatus.tone() = when (this) {
     ActivityStatus.DRAFT -> MoStatusTone.Neutral
     ActivityStatus.PLANNED -> MoStatusTone.Info
     ActivityStatus.COMPLETED -> MoStatusTone.Success

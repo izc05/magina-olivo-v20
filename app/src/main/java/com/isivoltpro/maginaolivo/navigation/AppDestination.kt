@@ -98,6 +98,7 @@ object AppDestination {
             "farm",
             "farm-parcels",
             "farm-campaigns",
+            "farm-notebook",
             "farm-activities",
             "farm-documents",
             "farm-map",

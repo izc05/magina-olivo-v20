@@ -248,6 +248,17 @@ fun AppNavigation(
                             onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
                             onImportFromCatastro = { navController.navigate(AppDestination.catastro(farmId.toString())) },
                             onMap = { navController.navigate(AppDestination.farmMap(farmId.toString())) },
+                            notebookActions = com.isivoltpro.maginaolivo.feature.notebook.NotebookActions(
+                                onActivity = { id -> navController.navigate(AppDestination.activity(id.toString())) },
+                                onHarvest = { id -> navController.navigate(AppDestination.harvest(id.toString())) },
+                                onDelivery = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
+                                onExpense = { id -> navController.navigate(AppDestination.expense(id.toString())) },
+                                onWorks = { navController.navigate(AppDestination.farmSection(FarmSection.ACTIVITIES.route, farmId.toString())) },
+                                onHarvests = { navController.navigate(AppDestination.Harvest) },
+                                onDeliveries = { navController.navigate(AppDestination.Deliveries) },
+                                onExpenses = { navController.navigate(AppDestination.Expenses) },
+                                onCampaigns = { navController.navigate(AppDestination.farmSection(FarmSection.CAMPAIGNS.route, farmId.toString())) },
+                            ),
                         )
                     }
                 }
