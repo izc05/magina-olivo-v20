@@ -474,8 +474,8 @@ private fun FarmDetailContent(
                 Modifier.testTag("farm-stats"),
             )
             SectionEntry(FarmSection.PARCELS, MoIcons.Parcels, if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas", onOpenSection)
+            SectionEntry(FarmSection.NOTEBOOK, MoIcons.Checklist, "Trabajos del año, recolección y resumen", onOpenSection)
             SectionEntry(FarmSection.CAMPAIGNS, MoIcons.Campaign, farm.activeCampaignName ?: "Sin campaña activa", onOpenSection)
-            SectionEntry(FarmSection.ACTIVITIES, MoIcons.Checklist, "Planificados y realizados", onOpenSection)
             SectionEntry(FarmSection.DOCUMENTS, MoIcons.Document, "Escrituras, facturas y fotos", onOpenSection)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 MoSecondaryButton(

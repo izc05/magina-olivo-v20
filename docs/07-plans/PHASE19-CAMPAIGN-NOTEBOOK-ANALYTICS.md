@@ -150,3 +150,21 @@ rewrite historical meaning merely to fit the new UI.
 - SIEX/RETO integration;
 - settlement/payment accounting;
 - changing the five root destinations.
+
+## 19A — implementation notes (2026-09-24, executor Claude, reviewer Codex)
+
+- Farm hub: `Parcelas · Cuaderno · Campañas · Documentos`. The `farm-activities` route is kept
+  (deep links, tests) and opened from Cuaderno → Trabajos → "Registrar o planificar trabajo".
+- `domain/notebook/CampaignNotebook` is a pure projection: it stores and copies nothing.
+  Membership: records linked to the Campaign, plus the Farm's records saved without a
+  Campaign whose date falls inside the Campaign's dates. Totals are the same
+  `HarvestSummary`, `DeliverySummary` and `ExpenseSummary` the Cosecha/Entregas/Gastos screens
+  use (drafts listed, never summed), so the Cuaderno reconciles by construction.
+- Cuaderno tabs: **Trabajos** (by month, status chip, tap → Activity), **Recolección** (summary
+  strip: recogido, entregado, rendimiento with coverage; Cosecha/Pesada/Gasto actions; rows by
+  day: harvests, Pesadas with cooperative and yield-or-pending, harvest days, harvest/transport
+  expenses) and **Resumen** (works done/planned, kg, pesadas, weighted yield + coverage,
+  expenses by category). Jornada, Jornales and equipment arrive in 19B/19D/19E.
+- Campaign in view: harvest first, then active, else the most recent; chips when several.
+- Tests: `CampaignNotebookTest` (membership, reconciliation, coverage, draft exclusion) and the
+  E2E flows now reach the work list through the Cuaderno.

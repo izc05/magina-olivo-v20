@@ -808,13 +808,26 @@ class AppNavigationTest {
 
     /** Design v3: parcels, campaigns, work and documents open from the Farm hub. */
     private fun openFarmSection(section: String) {
+        // Phase 19A: the Farm's work list is reached through its Cuaderno (Trabajos).
+        if (section == "activities") {
+            openFarmSection("notebook")
+            waitForTag("notebook-open-works")
+            clickByTag("notebook-open-works")
+            waitForTag("add-activity")
+            return
+        }
         waitForTag("farm-section-$section")
         clickByTag("farm-section-$section")
         waitForTag("farm-section-root")
     }
 
     private fun backToFarmHub() {
-        pressBack()
+        // From the work list Back first returns to the Cuaderno, then to the hub.
+        repeat(3) {
+            if (composeRule.onAllNodesWithTag("farm-detail-root").fetchSemanticsNodes().isNotEmpty()) return
+            pressBack()
+            composeRule.waitForIdle()
+        }
         waitForTag("farm-detail-root")
     }
 
