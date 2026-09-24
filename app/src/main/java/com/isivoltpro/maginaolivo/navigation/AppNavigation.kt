@@ -225,6 +225,7 @@ fun AppNavigation(
                         },
                         onArchived = { navController.popBackStack() },
                         onImportFromCatastro = { navController.navigate(AppDestination.catastro(farmId.toString())) },
+                        onMap = { navController.navigate(AppDestination.farmMap(farmId.toString())) },
                     )
                 }
             }
@@ -260,6 +261,15 @@ fun AppNavigation(
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 if (persistence == null || activityId == null) PersistenceUnavailableScreen()
                 else ActivityDetailRoute(activityId, persistence)
+            }
+            composable(AppDestination.FarmMapPattern) { entry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = entry.arguments?.getString("farmId")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || farmId == null) PersistenceUnavailableScreen()
+                else com.isivoltpro.maginaolivo.feature.maps.FarmMapRoute(farmId, persistence,
+                    onOpenParcel = { navController.navigate(AppDestination.parcel(it.toString())) },
+                    onImport = { navController.navigate(AppDestination.catastro(farmId.toString())) },
+                )
             }
             composable(AppDestination.MapCatastro) {
                 val persistence = compositionRoot.localPersistence

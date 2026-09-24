@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -65,6 +66,7 @@ fun FarmParcelsRoute(
     persistence: LocalPersistence,
     onParcelSelected: (UUID) -> Unit,
     onImportFromCatastro: (() -> Unit)? = null,
+    onMap: (() -> Unit)? = null,
 ) {
     val viewModel: FarmParcelsViewModel = viewModel(
         key = "farm-parcels-$farmId",
@@ -79,6 +81,7 @@ fun FarmParcelsRoute(
         onCreate = viewModel::create,
         onRestore = viewModel::restore,
         onImportFromCatastro = onImportFromCatastro,
+        onMap = onMap,
     )
 }
 
@@ -90,6 +93,7 @@ fun FarmParcelsSection(
     onCreate: (ParcelDraft) -> Unit,
     onRestore: (UUID) -> Unit,
     onImportFromCatastro: (() -> Unit)? = null,
+    onMap: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -105,6 +109,7 @@ fun FarmParcelsSection(
         title = "Parcelas",
         action = {
             Row {
+                onMap?.let { TextButton(onClick = it) { Text("Mapa") } }
                 onImportFromCatastro?.let {
                     TextButton(onClick = it, modifier = Modifier.testTag("import-catastro")) { Text("Catastro") }
                 }
@@ -278,6 +283,13 @@ private fun ParcelDetailContent(
         ParcelValue("Municipio", parcel.municipality)
         ParcelValue("Polígono", parcel.cadastralPolygon)
         ParcelValue("Parcela", parcel.cadastralParcel)
+        parcel.geometryGeoJson?.let { geometry ->
+            com.isivoltpro.maginaolivo.feature.maps.ParcelMap(
+                listOf(com.isivoltpro.maginaolivo.feature.maps.MapParcel(parcel.id.toString(), parcel.displayName, geometry)),
+                Modifier.fillMaxWidth().height(360.dp),
+            )
+        }
+        ParcelValue("Importada el", parcel.sourceImportedAt?.atZone(java.time.ZoneId.systemDefault())?.toLocalDate()?.toString())
         ParcelValue("Geometría", if (parcel.geometryGeoJson == null) null else "Polígono guardado")
         ParcelValue("Notas", parcel.notes)
         MoSecondaryButton("Editar parcela", onEdit, Modifier.fillMaxWidth())

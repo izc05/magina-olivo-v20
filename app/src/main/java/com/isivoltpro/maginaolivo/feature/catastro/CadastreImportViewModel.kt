@@ -21,6 +21,8 @@ data class CadastreImportState(
     val searching: Boolean = false,
     val saving: Boolean = false,
     val candidate: CadastralCandidate? = null,
+    val candidates: List<CadastralCandidate> = emptyList(),
+    val duplicateId: UUID? = null,
     val error: String? = null,
     val savedParcelId: UUID? = null,
 )
@@ -49,12 +51,14 @@ class CadastreImportViewModel(
     fun search(reference: String) {
         searchJob?.cancel()
         mutableState.value = mutableState.value.copy(
-            searching = true, candidate = null, error = null, savedParcelId = null,
+            searching = true, candidate = null, candidates = emptyList(), error = null, savedParcelId = null, duplicateId = null,
         )
         searchJob = viewModelScope.launch {
             try {
                 val candidate = client.findByReference(reference)
-                mutableState.value = mutableState.value.copy(searching = false, candidate = candidate)
+                mutableState.value = mutableState.value.copy(
+                    searching = false, candidate = candidate, candidates = listOf(candidate),
+                )
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: CadastreException) {
@@ -68,7 +72,54 @@ class CadastreImportViewModel(
         }
     }
 
+    fun selectCandidate(reference: String) {
+        mutableState.value.candidates.firstOrNull { it.reference == reference }?.let {
+            mutableState.value = mutableState.value.copy(candidate = it, error = null, duplicateId = null)
+        }
+    }
+
+    fun searchNear(latitude: Double, longitude: Double) = loadCandidates {
+        client.findNear(latitude, longitude)
+    }
+
+    fun importFile(resolver: android.content.ContentResolver, uri: android.net.Uri) = loadCandidates {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val bytes = resolver.openInputStream(uri)?.use { input ->
+                val out = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    if (out.size() + count > 2_000_000) throw CadastreException(CadastreError.RESPONSE)
+                    out.write(buffer, 0, count)
+                }
+                out.toByteArray()
+            } ?: throw CadastreException(CadastreError.RESPONSE)
+            readGmlParcels(bytes)
+        }
+    }
+
+    private fun loadCandidates(load: suspend () -> List<CadastralCandidate>) {
+        if (mutableState.value.saving) return
+        searchJob?.cancel()
+        mutableState.value = mutableState.value.copy(searching = true, candidate = null,
+            candidates = emptyList(), error = null, duplicateId = null)
+        searchJob = viewModelScope.launch {
+            try {
+                val results = load()
+                mutableState.value = mutableState.value.copy(searching = false, candidates = results,
+                    candidate = results.singleOrNull(),
+                    error = if (results.isEmpty()) "No encontramos parcelas en esa consulta." else null)
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                mutableState.value = mutableState.value.copy(searching = false,
+                    error = (error as? CadastreException)?.userMessage() ?: "No se pudo leer la parcela. Revisa el archivo o la conexión.")
+            }
+        }
+    }
+
     fun import(farmId: UUID?, alias: String) {
+        if (mutableState.value.searching) return
         val candidate = mutableState.value.candidate ?: return
         if (farmId == null || mutableState.value.farms.none { it.id == farmId }) {
             mutableState.value = mutableState.value.copy(error = "Elige la finca que recibirá la parcela.")
@@ -81,6 +132,15 @@ class CadastreImportViewModel(
         if (mutableState.value.saving) return
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(saving = true, error = null)
+            val farm = mutableState.value.farms.first { it.id == farmId }
+            val existing = persistence.parcelRepository.findActiveByCadastralReference(
+                farm.workspaceId, candidate.reference,
+            )
+            if (existing != null) {
+                mutableState.value = mutableState.value.copy(saving = false, duplicateId = existing,
+                    error = "Esta referencia ya está guardada en tu olivar.")
+                return@launch
+            }
             val rural = Regex("\\d{5}[A-Z]\\d{8}").matches(candidate.reference)
             when (val result = persistence.parcelRepository.create(
                 NewParcel(
@@ -90,6 +150,8 @@ class CadastreImportViewModel(
                     cadastralPolygon = if (rural) candidate.reference.substring(6, 9) else null,
                     cadastralParcel = if (rural) candidate.reference.substring(9, 14) else null,
                     source = ParcelSource.CATASTRO,
+                    sourceProvider = candidate.provider,
+                    sourceImportedAt = candidate.importedAt,
                     geometryGeoJson = candidate.geometryGeoJson,
                     cadastralAreaM2 = candidate.areaM2,
                 ),

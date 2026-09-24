@@ -61,7 +61,14 @@ fun CadastreImportRoute(
     })
     val state by model.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.savedParcelId) { state.savedParcelId?.let(onParcelImported) }
-    CadastreImportScreen(state, preselectedFarmId, model::search, model::import)
+    val resolver = androidx.compose.ui.platform.LocalContext.current.contentResolver
+    val file = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let { model.importFile(resolver, it) } }
+    CadastreImportScreen(state, preselectedFarmId, model::search, model::import,
+        onNear = model::searchNear, onSelect = model::selectCandidate,
+        onFile = { file.launch(arrayOf("*/*")) }, onOpenExisting = onParcelImported)
+
 }
 
 @Composable
@@ -70,7 +77,13 @@ fun CadastreImportScreen(
     preselectedFarmId: UUID?,
     onSearch: (String) -> Unit,
     onImport: (UUID?, String) -> Unit,
+    onNear: ((Double, Double) -> Unit)? = null,
+    onSelect: (String) -> Unit = {},
+    onFile: (() -> Unit)? = null,
+    onOpenExisting: (UUID) -> Unit = {},
 ) {
+    var showMap by rememberSaveable { mutableStateOf(false) }
+    var imagery by rememberSaveable { mutableStateOf(true) }
     var reference by rememberSaveable { mutableStateOf("") }
     var alias by rememberSaveable { mutableStateOf("") }
     var selectedFarm by rememberSaveable { mutableStateOf(preselectedFarmId?.toString()) }
@@ -98,6 +111,29 @@ fun CadastreImportScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MoTextSecondary,
             )
+            Row {
+                onNear?.let { androidx.compose.material3.TextButton(onClick = { showMap = !showMap }) { Text(if (showMap) "Cerrar mapa" else "Elegir en mapa") } }
+                onFile?.let { androidx.compose.material3.TextButton(onClick = it, enabled = !state.saving && !state.searching) { Text("Abrir GML") } }
+            }
+            if (showMap) {
+                Text("Acerca el mapa y toca la zona que quieres consultar. Cada consulta abarca 240 metros.")
+                androidx.compose.material3.TextButton(onClick = { imagery = !imagery }) { Text(if (imagery) "Quitar fotografía aérea" else "Mostrar fotografía aérea") }
+                com.isivoltpro.maginaolivo.feature.maps.ParcelMap(
+                    parcels = state.candidates.map { com.isivoltpro.maginaolivo.feature.maps.MapParcel(it.reference, it.reference, it.geometryGeoJson) },
+                    modifier = Modifier.fillMaxWidth().height(390.dp), imagery = imagery,
+                    selectedId = state.candidate?.reference, onSelected = onSelect,
+                    onTap = { latitude, longitude -> if (!state.saving) onNear?.invoke(latitude, longitude) },
+                )
+            }
+            if (state.candidates.size > 1) {
+                Text("Elige una de las ${state.candidates.size} parcelas encontradas")
+                state.candidates.forEach { option ->
+                    androidx.compose.material3.TextButton(onClick = { onSelect(option.reference) }, enabled = !state.saving) { Text(option.reference) }
+                }
+            }
+            state.duplicateId?.let { id ->
+                androidx.compose.material3.TextButton(onClick = { onOpenExisting(id) }) { Text("Abrir parcela existente") }
+            }
             MoTextField(
                 value = reference,
                 onValueChange = { reference = it.uppercase().filter(Char::isLetterOrDigit).take(14) },
@@ -158,7 +194,7 @@ fun CadastreImportScreen(
                     text = if (state.saving) "Guardando…" else "Confirmar e incorporar",
                     onClick = { onImport(selectedFarm?.let(UUID::fromString), alias) },
                     modifier = Modifier.fillMaxWidth().testTag("catastro-import"),
-                    enabled = !state.saving && !state.searching && state.farms.isNotEmpty(),
+                    enabled = !state.saving && !state.searching && state.farms.any { it.id.toString() == selectedFarm } && alias.isNotBlank(),
                 )
             }
             Spacer(Modifier.height(MoSpacing.lg))

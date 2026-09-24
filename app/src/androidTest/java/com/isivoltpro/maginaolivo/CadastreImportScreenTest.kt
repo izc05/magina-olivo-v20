@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.farm.Farm
@@ -55,6 +56,40 @@ class CadastreImportScreenTest {
             }
         }
         composeRule.onNodeWithTag("catastro-import").performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test fun multipleMapOrFileCandidatesRequireExplicitSelection() {
+        val second = candidate().copy(reference = "23044A00400022")
+        var selected: String? = null
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                CadastreImportScreen(
+                    state = CadastreImportState(candidates = listOf(candidate(), second)),
+                    preselectedFarmId = null,
+                    onSearch = {}, onImport = { _, _ -> }, onSelect = { selected = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("23044A00400022").performClick()
+        composeRule.runOnIdle { assertEquals("23044A00400022", selected) }
+    }
+
+    @Test fun duplicateOffersOpeningTheExistingParcel() {
+        val existing = UUID.randomUUID()
+        var opened: UUID? = null
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                CadastreImportScreen(
+                    state = CadastreImportState(duplicateId = existing, error = "Ya está guardada"),
+                    preselectedFarmId = null,
+                    onSearch = {}, onImport = { _, _ -> }, onOpenExisting = { opened = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Abrir parcela existente").performClick()
+        composeRule.runOnIdle { assertEquals(existing, opened) }
     }
 
     private fun farm(name: String) = Farm(

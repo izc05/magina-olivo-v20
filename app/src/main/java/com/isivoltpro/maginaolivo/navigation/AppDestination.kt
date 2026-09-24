@@ -57,6 +57,9 @@ object AppDestination {
     const val DeliveryPattern = "delivery/{deliveryId}"
     const val TicketPattern = "delivery-ticket/{extractionId}"
     const val MachinePattern = "machine/{machineId}"
+    const val FarmMapPattern = "farm-map/{farmId}"
+    fun farmMap(farmId: String): String = nestedRoute("farm-map", farmId)
+
     const val CatastroPattern = "map-catastro/{farmId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
@@ -86,7 +89,7 @@ object AppDestination {
         return when (prefix) {
             RootDestination.Home.route, Weather -> RootDestination.Home
             RootDestination.Olivar.route,
-            "farm",
+            "farm", "farm-map",
             "parcel",
             "campaign",
             "activity",
