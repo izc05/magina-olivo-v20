@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.data.local
 
+import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
+import com.isivoltpro.maginaolivo.domain.parcel.RegistryLink
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -435,6 +437,62 @@ class OfflineFirstFarmRepositoryTest {
             )
             assertEquals(AppResult.Success(Unit), parcels.update(parcelId, ParcelChanges("Parcela Norte")))
             assertEquals(ParcelAgronomy(), parcels.observeById(parcelId).first()!!.agronomy)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun handMadeParcelLinkedToCatastroKeepsItsOwnDataAndRefusesATakenReference() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000180")
+        val farmId = uuid("20000000-0000-0000-0000-000000000180")
+        val manualId = uuid("40000000-0000-0000-0000-000000000180")
+        val importedId = uuid("40000000-0000-0000-0000-000000000181")
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            repository(database, TEST_INSTANT, listOf(farmId, uuid("30000000-0000-0000-0000-000000000180")))
+                .create(NewFarm(workspaceId, "Cortijo"))
+            val parcels = OfflineFirstParcelRepository(
+                database, FixedClock(TEST_INSTANT),
+                // create() takes 3 ids (parcel, membership, outbox); linkToRegistry takes 1 (outbox).
+                QueuedIdGenerator(listOf(manualId) + (1..2).map { uuid("50000000-0000-0000-0000-00000000018$it") } +
+                    listOf(importedId) + (3..9).map { uuid("50000000-0000-0000-0000-00000000018$it") }),
+                TestDispatchers,
+            )
+            val geometry = """{"type":"Polygon","coordinates":[[[-3.48,37.63],[-3.47,37.63],[-3.47,37.64],[-3.48,37.63]]]}"""
+            assertEquals(
+                AppResult.Success(manualId),
+                parcels.create(NewParcel(farmId, "La del camino", managedAreaM2 = 9_000.0, agronomy = ParcelAgronomy(oliveTreeCount = 120))),
+            )
+            assertEquals(
+                AppResult.Success(importedId),
+                parcels.create(
+                    NewParcel(
+                        farmId, "Ya importada", cadastralReference = "23044A00400022", source = ParcelSource.CATASTRO,
+                        geometryGeoJson = geometry, sourceProvider = "ES_CATASTRO", sourceImportedAt = TEST_INSTANT,
+                    ),
+                ),
+            )
+            val link = RegistryLink(
+                cadastralReference = "23044a00400021", cadastralPolygon = "004", cadastralParcel = "00021",
+                geometryGeoJson = geometry, cadastralAreaM2 = 12_000.0, sourceProvider = "ES_CATASTRO",
+                sourceImportedAt = TEST_INSTANT,
+            )
+
+            assertEquals(AppResult.Success(Unit), parcels.linkToRegistry(manualId, link))
+            val linked = parcels.observeById(manualId).first()!!
+            assertEquals("La del camino", linked.displayName)
+            assertEquals(9_000.0, linked.managedAreaM2!!, 0.0)
+            assertEquals(120, linked.agronomy.oliveTreeCount)
+            assertEquals(ParcelSource.CATASTRO, linked.source)
+            assertEquals("23044A00400021", linked.cadastralReference)
+            assertEquals("ES_CATASTRO", linked.sourceProvider)
+            assertEquals(2L, linked.version)
+
+            // Another parcel already owns this reference: refused, nothing changes.
+            assertTrue(parcels.linkToRegistry(manualId, link.copy(cadastralReference = "23044A00400022")) is AppResult.Failure)
+            assertEquals("23044A00400021", parcels.observeById(manualId).first()!!.cadastralReference)
         } finally {
             database.close()
         }

@@ -338,7 +338,7 @@ set +e
 # The live Catastro WFS check has its own Gate 17 workflow; ordinary emulator
 # validation remains deterministic when the external service is unavailable.
 adb shell am instrument -w \
-  -e notClass com.isivoltpro.maginaolivo.CatastroLiveImportTest,com.isivoltpro.maginaolivo.Phase18OnlineImportTest,com.isivoltpro.maginaolivo.Phase18OfflineReopenTest \
+  -e notClass com.isivoltpro.maginaolivo.CatastroLiveImportTest,com.isivoltpro.maginaolivo.Phase18OnlineImportTest,com.isivoltpro.maginaolivo.Phase18OfflineReopenTest,com.isivoltpro.maginaolivo.Phase18PolygonParcelLookupTest \
   "$TEST_PKG/$RUNNER" > evidence/instrumentation-all.txt 2>&1
 INSTRUMENTATION_RC=$?
 set -e

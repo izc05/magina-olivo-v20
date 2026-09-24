@@ -260,7 +260,22 @@ fun AppNavigation(
                     farmId = farmId,
                     persistence = persistence,
                     onOpenParcel = { navController.navigate(AppDestination.parcel(it.toString())) },
-                    onImport = { navController.navigate(AppDestination.catastro(farmId.toString())) },
+                    onSearchByReference = { navController.navigate(AppDestination.catastro(farmId.toString())) },
+                )
+            }
+            composable(AppDestination.FarmMapLocatePattern) { entry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = entry.arguments?.getString("farmId")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val parcelId = entry.arguments?.getString("parcelId")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || farmId == null || parcelId == null) PersistenceUnavailableScreen()
+                else FarmMapRoute(
+                    farmId = farmId,
+                    persistence = persistence,
+                    onOpenParcel = { navController.navigate(AppDestination.parcel(it.toString())) },
+                    onSearchByReference = { navController.navigate(AppDestination.catastro(farmId.toString())) },
+                    locateParcelId = parcelId,
+                    // Back on the parcel it came from, now with its boundary.
+                    onLocated = { navController.popBackStack() },
                 )
             }
             composable(AppDestination.ParcelPattern) { backStackEntry ->
@@ -274,6 +289,7 @@ fun AppNavigation(
                         parcelId = parcelId,
                         persistence = persistence,
                         onArchived = { navController.popBackStack() },
+                        onLocate = { farmId -> navController.navigate(AppDestination.farmMapLocate(farmId.toString(), parcelId.toString())) },
                     )
                 }
             }

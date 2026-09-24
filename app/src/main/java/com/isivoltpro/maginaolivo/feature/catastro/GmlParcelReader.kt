@@ -11,25 +11,7 @@ import org.xml.sax.SAXException
 
 /** INSPIRE CP v4 file/WFS adapter. All returned coordinates are longitude, latitude. */
 fun readGmlParcels(xml: ByteArray): List<CadastralCandidate> {
-    if (xml.isEmpty() || xml.size > 2_000_000 || xml.any { it == 0.toByte() } ||
-        xml.toString(Charsets.ISO_8859_1).contains("<!DOCTYPE", true)
-    ) throw CadastreException(CadastreError.RESPONSE)
-    val root = try {
-        DocumentBuilderFactory.newInstance().apply {
-            isNamespaceAware = true
-            isExpandEntityReferences = false
-            runCatching { setXIncludeAware(false) }
-            listOf(
-                XMLConstants.FEATURE_SECURE_PROCESSING to true,
-                "http://apache.org/xml/features/disallow-doctype-decl" to true,
-                "http://xml.org/sax/features/external-general-entities" to false,
-                "http://xml.org/sax/features/external-parameter-entities" to false,
-                "http://apache.org/xml/features/nonvalidating/load-external-dtd" to false,
-            ).forEach { (name, enabled) -> runCatching { setFeature(name, enabled) } }
-        }.newDocumentBuilder().apply {
-            setEntityResolver { _, _ -> throw SAXException("External entities refused") }
-        }.parse(xml.inputStream()).documentElement
-    } catch (error: Exception) { throw CadastreException(CadastreError.RESPONSE, error) }
+    val root = parseSecureXml(xml)
     if (root.localName == "ExceptionReport" || root.getElementsByTagNameNS("*", "Exception").length > 0) {
         throw CadastreException(CadastreError.NOT_FOUND)
     }
@@ -105,3 +87,30 @@ private fun Element.text(ns: String, name: String): String? =
 
 private const val CP = "http://inspire.ec.europa.eu/schemas/cp/4.0"
 private const val GML = "http://www.opengis.net/gml/3.2"
+
+/**
+ * Parses a Catastro response without ever resolving a DTD or external entity. Any DOCTYPE,
+ * NUL-bearing encoding or oversize body is refused before the parser sees it (Android's
+ * parser ignores some Xerces hardening flags, so the pre-check is the real guard).
+ */
+internal fun parseSecureXml(xml: ByteArray): Element {
+    if (xml.isEmpty() || xml.size > 2_000_000 || xml.any { it == 0.toByte() } ||
+        xml.toString(Charsets.ISO_8859_1).contains("<!DOCTYPE", true)
+    ) throw CadastreException(CadastreError.RESPONSE)
+    return try {
+        DocumentBuilderFactory.newInstance().apply {
+            isNamespaceAware = true
+            isExpandEntityReferences = false
+            runCatching { setXIncludeAware(false) }
+            listOf(
+                XMLConstants.FEATURE_SECURE_PROCESSING to true,
+                "http://apache.org/xml/features/disallow-doctype-decl" to true,
+                "http://xml.org/sax/features/external-general-entities" to false,
+                "http://xml.org/sax/features/external-parameter-entities" to false,
+                "http://apache.org/xml/features/nonvalidating/load-external-dtd" to false,
+            ).forEach { (name, enabled) -> runCatching { setFeature(name, enabled) } }
+        }.newDocumentBuilder().apply {
+            setEntityResolver { _, _ -> throw SAXException("External entities refused") }
+        }.parse(xml.inputStream()).documentElement
+    } catch (error: Exception) { throw CadastreException(CadastreError.RESPONSE, error) }
+}

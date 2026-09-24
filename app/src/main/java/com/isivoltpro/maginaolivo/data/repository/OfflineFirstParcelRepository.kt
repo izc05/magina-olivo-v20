@@ -26,6 +26,7 @@ import com.isivoltpro.maginaolivo.domain.parcel.ParcelChanges
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelMembership
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
+import com.isivoltpro.maginaolivo.domain.parcel.RegistryLink
 import java.time.DayOfWeek
 import java.time.Instant
 import java.util.UUID
@@ -142,6 +143,35 @@ class OfflineFirstParcelRepository(
                     notes = changes.notes.normalized(),
                     metadata = current.metadata.next(now),
                 ).withAgronomy(changes.agronomy),
+            )
+            enqueue(parcelId, OutboxOperation.UPDATE, now)
+            AppResult.Success(Unit)
+        }
+    }
+
+    override suspend fun linkToRegistry(parcelId: UUID, link: RegistryLink): AppResult<Unit> {
+        val reference = link.cadastralReference.trim().uppercase()
+        if (reference.isEmpty()) return AppResult.Failure(AppError.Validation("catastro", "identity_and_geometry_required"))
+        validateArea(link.cadastralAreaM2)?.let { return it }
+        validateGeometry(link.geometryGeoJson)?.let { return it }
+        return mutate(parcelId, "link_parcel") { current, now ->
+            if (current.metadata.deletedAt != null) return@mutate AppResult.Failure(AppError.Conflict("archived_parcel"))
+            val holder = database.parcelDao().findActiveByCadastralReference(current.workspaceId, reference)
+            if (holder != null && holder != parcelId) {
+                return@mutate AppResult.Failure(AppError.Conflict("duplicate_cadastral_reference"))
+            }
+            database.parcelDao().upsert(
+                current.copy(
+                    cadastralReference = reference,
+                    cadastralPolygon = link.cadastralPolygon.normalized(),
+                    cadastralParcel = link.cadastralParcel.normalized(),
+                    source = ParcelSource.CATASTRO.name,
+                    sourceProvider = link.sourceProvider,
+                    sourceImportedAt = link.sourceImportedAt,
+                    geometryGeoJson = link.geometryGeoJson.trim(),
+                    cadastralAreaM2 = link.cadastralAreaM2,
+                    metadata = current.metadata.next(now),
+                ),
             )
             enqueue(parcelId, OutboxOperation.UPDATE, now)
             AppResult.Success(Unit)

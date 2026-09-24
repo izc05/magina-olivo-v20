@@ -26,7 +26,18 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.sources.GeoJsonSource
 
-data class MapParcel(val id: String, val name: String, val geometry: String)
+/** Saved parcels are the farmer's own; candidates are Catastro answers not yet incorporated. */
+enum class MapParcelKind { SAVED, CANDIDATE }
+
+data class MapParcel(
+    val id: String,
+    val name: String,
+    val geometry: String,
+    val kind: MapParcelKind = MapParcelKind.SAVED,
+)
+
+/** A camera request; a new [token] moves the map again to the same place. */
+data class MapFocus(val point: GeoPoint, val zoom: Double = 16.5, val token: Long = System.nanoTime())
 
 /** No remote style, sprites or fonts are needed for the authoritative local parcel layer. */
 @Composable
@@ -39,6 +50,8 @@ fun ParcelMap(
     onTap: ((Double, Double) -> Unit)? = null,
     onReady: () -> Unit = {},
     onMapSnapshot: ((Bitmap) -> Unit)? = null,
+    selectedIds: Set<String> = emptySet(),
+    focus: MapFocus? = null,
 ) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
@@ -48,6 +61,8 @@ fun ParcelMap(
     val snapshot by rememberUpdatedState(onMapSnapshot)
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleReady by remember { mutableStateOf(false) }
+    // Frame the farmer's own parcels when they change, not on every selection tap.
+    var framedKey by remember { mutableStateOf<List<String>?>(null) }
     val view = remember {
         MapLibre.getInstance(context)
         MapView(context).apply { onCreate(Bundle()) }
@@ -85,7 +100,8 @@ fun ParcelMap(
         styleReady = false
         map?.setStyle(Style.Builder().fromJson(parcelStyle(imagery))) { styleReady = true }
     }
-    val data = remember(parcels, selectedId) { mapFeatureCollection(parcels, selectedId) }
+    val selection = remember(selectedId, selectedIds) { selectedIds + listOfNotNull(selectedId) }
+    val data = remember(parcels, selection) { mapFeatureCollection(parcels, selection) }
     DisposableEffect(map, styleReady, data, parcels.map { it.id }, snapshot != null) {
         val current = map
         if (!styleReady || current == null) return@DisposableEffect onDispose {}
@@ -106,16 +122,25 @@ fun ParcelMap(
             view.addOnDidFinishRenderingMapListener(listener)
         }
         current.style?.getSourceAs<GeoJsonSource>("saved-parcels")?.setGeoJson(data)
-        fitParcels(current, parcels)
+        val saved = parcels.filter { it.kind == MapParcelKind.SAVED }
+        val savedKey = saved.map { it.id }
+        if (framedKey != savedKey && focus == null) {
+            fitParcels(current, saved)
+            framedKey = savedKey
+        }
         if (snapshot == null) ready()
 
         onDispose { listener?.let(view::removeOnDidFinishRenderingMapListener) }
+    }
+    LaunchedEffect(map, focus) {
+        val current = map ?: return@LaunchedEffect
+        focus?.let { current.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.point.latitude, it.point.longitude), it.zoom)) }
     }
     Column(modifier) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             TextButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) }) { Text("Acercar +") }
             TextButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomOut()) }) { Text("Alejar −") }
-            TextButton(onClick = { map?.let { fitParcels(it, parcels) } }) { Text("Encuadrar") }
+            TextButton(onClick = { map?.let { fitParcels(it, parcels.filter { p -> p.kind == MapParcelKind.SAVED }.ifEmpty { parcels }) } }) { Text("Encuadrar") }
         }
         AndroidView(factory = { view }, modifier = Modifier.fillMaxWidth().weight(1f).testTag("parcel-map-view"))
         Text(if (imagery) "© IGN / PNOA · © Dirección General del Catastro. Base con conexión."
@@ -123,13 +148,17 @@ fun ParcelMap(
     }
 }
 
-fun mapFeatureCollection(parcels: List<MapParcel>, selectedId: String?): String {
+fun mapFeatureCollection(parcels: List<MapParcel>, selectedId: String?): String =
+    mapFeatureCollection(parcels, setOfNotNull(selectedId))
+
+fun mapFeatureCollection(parcels: List<MapParcel>, selectedIds: Set<String>): String {
     val features = JsonArray()
     parcels.forEach { parcel ->
         val geometry = runCatching { JsonParser.parseString(parcel.geometry).asJsonObject }.getOrNull() ?: return@forEach
         val properties = JsonObject().apply {
             addProperty("id", parcel.id)
-            addProperty("selected", parcel.id == selectedId)
+            addProperty("selected", parcel.id in selectedIds)
+            addProperty("kind", parcel.kind.name)
         }
         features.add(JsonObject().apply {
             addProperty("type", "Feature")
@@ -163,6 +192,6 @@ internal fun parcelStyle(imagery: Boolean): String {
         {"id":"cadastre","type":"raster","source":"cadastre","minzoom":15},""" else ""
     return """{"version":8,"sources":{"saved-parcels":{"type":"geojson","data":{"type":"FeatureCollection","features":[]}}$remoteSources},
         "layers":[{"id":"background","type":"background","paint":{"background-color":"#F3F1E6"}},$remoteLayers
-        {"id":"parcels-fill","type":"fill","source":"saved-parcels","paint":{"fill-color":["case",["get","selected"],"#CDA449","#567342"],"fill-opacity":0.38}},
-        {"id":"parcels-line","type":"line","source":"saved-parcels","paint":{"line-color":"#25371C","line-width":3}}]}"""
+        {"id":"parcels-fill","type":"fill","source":"saved-parcels","paint":{"fill-color":["case",["get","selected"],"#CDA449",["==",["get","kind"],"CANDIDATE"],"#F4EAD0","#567342"],"fill-opacity":["case",["get","selected"],0.55,["==",["get","kind"],"CANDIDATE"],0.30,0.38]}},
+        {"id":"parcels-line","type":"line","source":"saved-parcels","paint":{"line-color":["case",["==",["get","kind"],"CANDIDATE"],"#8A6A1F","#25371C"],"line-width":["case",["get","selected"],4,["==",["get","kind"],"CANDIDATE"],2,3]}}]}"""
 }

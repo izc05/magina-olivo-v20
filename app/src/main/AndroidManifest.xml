@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Phase 18: one position when the farmer taps "Mi ubicación" on the farm map. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <!-- Phase 16: local reminders for planned work. Notifications are asked for in context. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

@@ -16,6 +16,14 @@ class CadastreException(val kind: CadastreError, cause: Throwable? = null) : Exc
 interface CadastreClient {
     suspend fun findByReference(reference: String): CadastralCandidate
     suspend fun findNear(latitude: Double, longitude: Double): List<CadastralCandidate> = emptyList()
+
+    /** Rural lookup by the data printed on PAC, cooperative and deed papers. */
+    suspend fun findByPolygonParcel(
+        province: String,
+        municipality: String,
+        polygon: String,
+        parcel: String,
+    ): List<CadastralCandidate> = emptyList()
 }
 
 /** WFS GetParcel is kept behind this boundary; the rest of the app never sees GML. */
@@ -35,8 +43,24 @@ class OfficialCadastreClient : CadastreClient {
         return readGmlParcels(fetch("typeNames=CP:CadastralParcel&bbox=${bbox.parameter}&count=200"))
     }
 
-    private suspend fun fetch(query: String): ByteArray = withContext(Dispatchers.IO) {
-        val url = URL("$ENDPOINT?service=WFS&version=2.0.0&request=GetFeature&$query&srsname=EPSG::4326")
+    override suspend fun findByPolygonParcel(
+        province: String,
+        municipality: String,
+        polygon: String,
+        parcel: String,
+    ): List<CadastralCandidate> {
+        val query = polygonParcelQuery(province, municipality, polygon, parcel)
+            ?: throw CadastreException(CadastreError.INVALID_REFERENCE)
+        val references = parseDnpppReferences(download(URL("$LOCATOR?$query")))
+        if (references.isEmpty()) throw CadastreException(CadastreError.NOT_FOUND)
+        // One polygon/parcel pair is normally one reference; a handful at most (subparcels).
+        return references.take(MAX_LOCATED).map { findByReference(it) }
+    }
+
+    private suspend fun fetch(query: String): ByteArray =
+        download(URL("$ENDPOINT?service=WFS&version=2.0.0&request=GetFeature&$query&srsname=EPSG::4326"))
+
+    private suspend fun download(url: URL): ByteArray = withContext(Dispatchers.IO) {
         try {
             val connection = url.openConnection() as HttpURLConnection
             connection.connectTimeout = 10_000
@@ -72,6 +96,8 @@ class OfficialCadastreClient : CadastreClient {
 
     companion object {
         private const val ENDPOINT = "https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx"
+        private const val LOCATOR = "https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPPP"
+        private const val MAX_LOCATED = 5
         private const val MAX_XML_BYTES = 2_000_000
         private val REFERENCE = Regex("[A-Z0-9]{14}")
     }

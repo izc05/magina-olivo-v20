@@ -72,6 +72,17 @@ class Phase18OnlineImportTest {
     }
 }
 
+/** Live: the farmer finds the same parcel by the polygon/parcel printed on PAC or deed papers. */
+@RunWith(AndroidJUnit4::class)
+class Phase18PolygonParcelLookupTest {
+    @Test fun polygonAndParcelLeadToTheOfficialReferenceAndBoundary() = runBlocking {
+        val found = OfficialCadastreClient().findByPolygonParcel("Jaén", "Huelma", "4", "21")
+        val parcel = found.firstOrNull { it.reference == REFERENCE }
+        assertNotNull("Polygon 4 / parcel 21 of Huelma did not return $REFERENCE: ${found.map { it.reference }}", parcel)
+        assertTrue(parcel!!.polygons.isNotEmpty())
+    }
+}
+
 @RunWith(AndroidJUnit4::class)
 class Phase18OfflineReopenTest {
     @get:Rule val composeRule = createComposeRule()

@@ -58,10 +58,12 @@ object AppDestination {
     const val TicketPattern = "delivery-ticket/{extractionId}"
     const val MachinePattern = "machine/{machineId}"
     const val FarmMapPattern = "farm-map/{farmId}"
+    const val FarmMapLocatePattern = "farm-map/{farmId}/locate/{parcelId}"
     const val CatastroPattern = "map-catastro/{farmId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
     fun farmMap(farmId: String): String = nestedRoute("farm-map", farmId)
+    fun farmMapLocate(farmId: String, parcelId: String): String = "${farmMap(farmId)}/locate/${android.net.Uri.encode(parcelId)}"
 
     /** Design v3: a Farm section on its own screen, e.g. `farm-parcels/{farmId}`. */
     fun farmSection(prefix: String, farmId: String): String = nestedRoute(prefix, farmId)

@@ -80,6 +80,20 @@ data class ParcelChanges(
     val agronomy: ParcelAgronomy = ParcelAgronomy(),
 )
 
+/**
+ * Land-registry identity and boundary attached to a Parcel the farmer already has (Phase 18
+ * "Ubicar en el mapa"). The Parcel keeps its own name, managed area, grove data and history.
+ */
+data class RegistryLink(
+    val cadastralReference: String,
+    val cadastralPolygon: String?,
+    val cadastralParcel: String?,
+    val geometryGeoJson: String,
+    val cadastralAreaM2: Double?,
+    val sourceProvider: String,
+    val sourceImportedAt: Instant,
+)
+
 data class ParcelMembership(
     val id: UUID,
     val farmId: UUID,
@@ -95,6 +109,7 @@ interface ParcelRepository {
     suspend fun findActiveByCadastralReference(workspaceId: UUID, reference: String): UUID?
     suspend fun create(command: NewParcel): AppResult<UUID>
     suspend fun update(parcelId: UUID, changes: ParcelChanges): AppResult<Unit>
+    suspend fun linkToRegistry(parcelId: UUID, link: RegistryLink): AppResult<Unit>
     suspend fun archive(parcelId: UUID): AppResult<Unit>
     suspend fun restore(parcelId: UUID, farmId: UUID): AppResult<Unit>
     suspend fun membershipHistory(parcelId: UUID): List<ParcelMembership>

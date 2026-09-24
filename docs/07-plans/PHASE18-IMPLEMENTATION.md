@@ -73,3 +73,29 @@ test invocations and the captured map evidence, not merely an APK compilation.
 | Android CI `gate3-emulator` | `3b0a86b7` | 1 failure: `migration11To12…` could not find `12.json`, which CI exports during that same run and publishes as `29cd5fbc`; re-run pending with the schema present |
 
 Gate 18 still needs the full suite green on the final commit and the owner's device check.
+
+### Owner device feedback → farm map as the parcel hub (2026-09-24, approved "plan completo")
+
+Feedback: only the aerial photo is useful to find land; the owner wants to search without
+being at the farm, add several parcels at once per farm, and give hand-made parcels a
+location. Decision (no root navigation change; entry stays Farm → Parcelas → Mapa):
+
+- **Farm map modes:** *Mis parcelas* (view/select saved parcels) and *Añadir de Catastro*
+  (tap the map, Catastro returns the parcels around the point, mark several, review names,
+  incorporate all into this farm in one go). References already in the olivar are never
+  offered again. Aerial photo is on by default; without connection only the saved
+  boundaries are drawn.
+- **Search without being there:** coordinates (Google Maps decimal, Spanish decimal commas,
+  degrees/minutes/seconds with N/S/E/W/O), *Polígono y parcela* (province + municipality +
+  polygon + parcel via Catastro `Consulta_DNPPP`, prefilled with the farm's place) and
+  *Mi ubicación* (one position on demand; coarse/fine location permission requested only
+  then; nothing tracked or stored).
+- **Ubicar en el mapa** on a parcel without boundary: tap its Catastro parcel and
+  `ParcelRepository.linkToRegistry` attaches reference, boundary, cadastral area and
+  provenance, keeping the parcel's own name, managed area, grove data and history (version
+  +1, outbox UPDATE, a reference owned by another parcel is refused). No schema change.
+- The single-reference search remains reachable ("Tengo la referencia catastral").
+- Tests: `MapSearchTest`, `CadastreLocatorTest` (query, Ñ, list/error answers, DOCTYPE),
+  `FarmMapViewModelTest` (multi-import, taken references, link), `FarmMapScreenTest`,
+  `OfflineFirstFarmRepositoryTest.handMadeParcelLinkedToCatastro…` and the live
+  `Phase18PolygonParcelLookupTest` in the Phase 18 workflow.
