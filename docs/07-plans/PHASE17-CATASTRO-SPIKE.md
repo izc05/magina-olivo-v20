@@ -1,7 +1,7 @@
 # Phase 17 — Spain Catastro technical spike and Android import
 
 **Status:** WFS probe and Android live import passed in CI. The owner requested the complete
-Phase 17 implementation on an isolated branch; merging remains held for Gate 16's physical-device check.
+Phase 17 implementation on an isolated branch; Gate 16 passed on 2026-09-23, so it merges after the Phase 16 line reaches `main`.
 **Branch:** `codex/phase17-catastro`, PR #217. The original probe was prepared on `docs/phase17-catastro-spike`.
 **Android evidence and remaining checks:** `docs/06-testing/PHASE17-CATASTRO-IMPORT-SLICE.md`.
 **Contract:** `docs/03-maps/CADASTRE-CONTRACT-RC1.md` (§20 test matrix, §21 gate)
@@ -50,7 +50,7 @@ Timings (ms) are recorded for every call, to size timeouts and retry policy (§1
 - Reference lookups took 732–797 ms; BBOX lookups took 976–2338 ms in this run. Use a bounded timeout and retry only transient transport errors, then verify with more runs before freezing limits.
 - Malformed, unknown and oversized BBOX requests all returned HTTP 200 with an exception message and zero parcels. The adapter must inspect the XML body, not use HTTP status alone.
 
-This result validates the service shape for the sampled Sierra Mágina locations. Holes and multipart parcels have synthetic parser coverage, but have not been sampled from the live service. The Android import and Room reopen test now passes with a real parcel; physical-device acceptance and Gate 16 remain pending as detailed in the import-slice evidence document.
+This result validates the service shape for the sampled Sierra Mágina locations. Holes and multipart parcels have synthetic parser coverage, but have not been sampled from the live service. The Android import and Room reopen test now passes with a real parcel; Gate 16 passed on 2026-09-23; physical-device acceptance of the import remains pending as detailed in the import-slice evidence document.
 
 ## Out of scope here
 

@@ -61,6 +61,11 @@ object AppDestination {
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
 
+    /** Design v3: a Farm section on its own screen, e.g. `farm-parcels/{farmId}`. */
+    fun farmSection(prefix: String, farmId: String): String = nestedRoute(prefix, farmId)
+
+    fun farmSectionPattern(prefix: String): String = "$prefix/{farmId}"
+
     fun parcel(parcelId: String): String = nestedRoute("parcel", parcelId)
 
     fun campaign(campaignId: String): String = nestedRoute("campaign", campaignId)
@@ -87,6 +92,10 @@ object AppDestination {
             RootDestination.Home.route, Weather -> RootDestination.Home
             RootDestination.Olivar.route,
             "farm",
+            "farm-parcels",
+            "farm-campaigns",
+            "farm-activities",
+            "farm-documents",
             "parcel",
             "campaign",
             "activity",

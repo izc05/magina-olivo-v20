@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo.navigation
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -40,13 +41,15 @@ import com.isivoltpro.maginaolivo.feature.harvests.HarvestsRoute
 import com.isivoltpro.maginaolivo.feature.expenses.DocumentReviewRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpenseDetailRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpensesRoute
+import com.isivoltpro.maginaolivo.feature.farms.FarmSection
+import com.isivoltpro.maginaolivo.feature.farms.FarmSectionRoute
+import com.isivoltpro.maginaolivo.feature.home.HomeRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.home.HomeReferenceScreen
 import com.isivoltpro.maginaolivo.feature.catastro.CadastreImportRoute
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
@@ -129,7 +132,7 @@ fun AppNavigation(
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
         ) {
             composable(AppDestination.Onboarding) {
                 OnboardingReferenceScreen(
@@ -143,15 +146,21 @@ fun AppNavigation(
                 )
             }
             composable(RootDestination.Home.route) {
-                HomeReferenceScreen(
-                    showBottomBar = false,
-                    onOlivarSelected = { navController.navigateToRoot(RootDestination.Olivar) },
-                    onMapSelected = { navController.navigate(AppDestination.MapCatastro) },
-                    onCampaignSelected = { navController.navigateToRoot(RootDestination.Olivar) },
-                    onHarvestSelected = { navController.navigate(AppDestination.Harvest) },
-                    onExpensesSelected = { navController.navigate(AppDestination.Expenses) },
-                    onWeatherSelected = { navController.navigate(AppDestination.Weather) },
-                )
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    HomeRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onOlivar = { navController.navigateToRoot(RootDestination.Olivar) },
+                        onCalendar = { navController.navigateToRoot(RootDestination.Calendar) },
+                        onHarvest = { navController.navigate(AppDestination.Harvest) },
+                        onDeliveries = { navController.navigate(AppDestination.Deliveries) },
+                        onExpenses = { navController.navigate(AppDestination.Expenses) },
+                        onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
+                    )
+                }
             }
             composable(RootDestination.Olivar.route) {
                 val persistence = compositionRoot.localPersistence
@@ -214,18 +223,31 @@ fun AppNavigation(
                     FarmDetailRoute(
                         farmId = farmId,
                         persistence = persistence,
-                        onParcelSelected = { parcelId ->
-                            navController.navigate(AppDestination.parcel(parcelId.toString()))
-                        },
-                        onCampaignSelected = { campaignId ->
-                            navController.navigate(AppDestination.campaign(campaignId.toString()))
-                        },
-                        onActivitySelected = { activityId ->
-                            navController.navigate(AppDestination.activity(activityId.toString()))
+                        onOpenSection = { section ->
+                            navController.navigate(AppDestination.farmSection(section.route, farmId.toString()))
                         },
                         onArchived = { navController.popBackStack() },
-                        onImportFromCatastro = { navController.navigate(AppDestination.catastro(farmId.toString())) },
                     )
+                }
+            }
+            FarmSection.entries.forEach { section ->
+                composable(AppDestination.farmSectionPattern(section.route)) { backStackEntry ->
+                    val persistence = compositionRoot.localPersistence
+                    val farmId = backStackEntry.arguments?.getString("farmId")
+                        ?.let { value -> runCatching { UUID.fromString(value) }.getOrNull() }
+                    if (persistence == null || farmId == null) {
+                        PersistenceUnavailableScreen()
+                    } else {
+                        FarmSectionRoute(
+                            farmId = farmId,
+                            section = section,
+                            persistence = persistence,
+                            onParcelSelected = { id -> navController.navigate(AppDestination.parcel(id.toString())) },
+                            onCampaignSelected = { id -> navController.navigate(AppDestination.campaign(id.toString())) },
+                            onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
+                            onImportFromCatastro = { navController.navigate(AppDestination.catastro(farmId.toString())) },
+                        )
+                    }
                 }
             }
             composable(AppDestination.ParcelPattern) { backStackEntry ->

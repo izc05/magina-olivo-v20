@@ -92,11 +92,29 @@ object DatabaseMigrations {
             }
         }
 
+    /** v11 — CR-004: optional grove description on each parcel; existing rows keep NULL ("—"). */
+    val MIGRATION_10_11 =
+        object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                schemaVersion11Statements.forEach(db::execSQL)
+            }
+        }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
-            MIGRATION_9_10,
+            MIGRATION_9_10, MIGRATION_10_11,
+        )
+
+    private val schemaVersion11Statements =
+        arrayOf(
+            "ALTER TABLE `parcels` ADD COLUMN `olive_tree_count` INTEGER",
+            "ALTER TABLE `parcels` ADD COLUMN `variety` TEXT",
+            "ALTER TABLE `parcels` ADD COLUMN `irrigation_system` TEXT",
+            "ALTER TABLE `parcels` ADD COLUMN `irrigation_network` TEXT",
+            "ALTER TABLE `parcels` ADD COLUMN `irrigation_sector` TEXT",
+            "ALTER TABLE `parcels` ADD COLUMN `irrigation_days` TEXT",
         )
 
     private const val METADATA_COLUMNS =

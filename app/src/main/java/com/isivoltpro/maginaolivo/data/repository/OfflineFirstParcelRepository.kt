@@ -18,12 +18,15 @@ import com.isivoltpro.maginaolivo.data.local.model.ParcelRow
 import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import com.isivoltpro.maginaolivo.domain.parcel.IrrigationSystem
 import com.isivoltpro.maginaolivo.domain.parcel.NewParcel
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
+import com.isivoltpro.maginaolivo.domain.parcel.ParcelAgronomy
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelChanges
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelMembership
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
+import java.time.DayOfWeek
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -55,6 +58,7 @@ class OfflineFirstParcelRepository(
         if (command.source == ParcelSource.CATASTRO &&
             (command.cadastralReference.isNullOrBlank() || command.geometryGeoJson.isNullOrBlank())
         ) return AppResult.Failure(AppError.Validation("catastro", "identity_and_geometry_required"))
+        validateAgronomy(command.agronomy)?.let { return it }
         return withContext(dispatchers.io) {
             val now = clock.nowInstant()
             runCatching {
@@ -89,7 +93,7 @@ class OfflineFirstParcelRepository(
                             managedAreaM2 = command.managedAreaM2,
                             notes = command.notes.normalized(),
                             metadata = pendingMetadata(now),
-                        ),
+                        ).withAgronomy(command.agronomy),
                     )
                     database.parcelDao().upsertMembership(
                         FarmParcelMembershipEntity(
@@ -114,6 +118,7 @@ class OfflineFirstParcelRepository(
         validateArea(changes.cadastralAreaM2)?.let { return it }
         validateArea(changes.managedAreaM2)?.let { return it }
         validateGeometry(changes.geometryGeoJson)?.let { return it }
+        validateAgronomy(changes.agronomy)?.let { return it }
         return mutate(parcelId, "update_parcel") { current, now ->
             if (current.metadata.deletedAt != null) return@mutate AppResult.Failure(AppError.Conflict("archived_parcel"))
             database.parcelDao().upsert(
@@ -129,7 +134,7 @@ class OfflineFirstParcelRepository(
                     managedAreaM2 = changes.managedAreaM2,
                     notes = changes.notes.normalized(),
                     metadata = current.metadata.next(now),
-                ),
+                ).withAgronomy(changes.agronomy),
             )
             enqueue(parcelId, OutboxOperation.UPDATE, now)
             AppResult.Success(Unit)
@@ -220,6 +225,35 @@ class OfflineFirstParcelRepository(
             AppResult.Failure(AppError.Validation("geometry", "polygon_required"))
         } else null
     }
+    private fun validateAgronomy(value: ParcelAgronomy): AppResult.Failure? = when {
+        value.oliveTreeCount != null && value.oliveTreeCount !in 1..MAX_OLIVE_TREES ->
+            AppResult.Failure(AppError.Validation("oliveTreeCount", "out_of_range"))
+        listOf(value.variety, value.irrigationNetwork, value.irrigationSector)
+            .any { (it?.trim()?.length ?: 0) > MAX_TEXT } ->
+            AppResult.Failure(AppError.Validation("agronomy", "too_long"))
+        else -> null
+    }
+
+    private fun ParcelEntity.withAgronomy(agronomy: ParcelAgronomy) = copy(
+        oliveTreeCount = agronomy.oliveTreeCount,
+        variety = agronomy.variety.normalized(),
+        irrigationSystem = agronomy.irrigationSystem?.name,
+        irrigationNetwork = agronomy.irrigationNetwork.normalized(),
+        irrigationSector = agronomy.irrigationSector.normalized(),
+        irrigationDays = agronomy.irrigationDays.sorted().joinToString(",") { it.name }.ifEmpty { null },
+    )
+
+    private fun ParcelEntity.agronomy() = ParcelAgronomy(
+        oliveTreeCount = oliveTreeCount,
+        variety = variety,
+        irrigationSystem = irrigationSystem?.let { runCatching { IrrigationSystem.valueOf(it) }.getOrNull() },
+        irrigationNetwork = irrigationNetwork,
+        irrigationSector = irrigationSector,
+        irrigationDays = irrigationDays.orEmpty().split(',').mapNotNull {
+            runCatching { DayOfWeek.valueOf(it.trim()) }.getOrNull()
+        }.toSet(),
+    )
+
     private fun pendingMetadata(now: Instant) = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING)
     private fun LocalMetadata.next(now: Instant) = copy(updatedAt = now, version = version + 1, syncStatus = SyncStatus.PENDING)
     private fun ParcelRow.toDomain() = Parcel(
@@ -230,5 +264,11 @@ class OfflineFirstParcelRepository(
         source = ParcelSource.valueOf(parcel.source), geometryGeoJson = parcel.geometryGeoJson,
         cadastralAreaM2 = parcel.cadastralAreaM2, managedAreaM2 = parcel.managedAreaM2,
         notes = parcel.notes, archivedAt = parcel.metadata.deletedAt, version = parcel.metadata.version,
+        agronomy = parcel.agronomy(),
     )
+
+    private companion object {
+        const val MAX_OLIVE_TREES = 1_000_000
+        const val MAX_TEXT = 80
+    }
 }

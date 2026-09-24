@@ -1,7 +1,8 @@
 # Phase 17 — Catastro reference lookup and confirmed import (prepared, gate-bound)
 
-**Status:** prepared on `codex/phase17-catastro`, **not mergeable** until Gate 16 is PASS
-(physical-device reminder check). The owner decided on 2026-09-23 to finish this line and keep
+**Status:** prepared on `codex/phase17-catastro`. Gate 16 passed on 2026-09-23 (owner confirmed
+the physical-device reminder check, recorded on the Phase 16 branch); merge after PR #212 lands in
+`main`. Integrated with design v3 (PR #218): the Catastro entry lives on the Farm's Parcelas screen. The owner decided on 2026-09-23 to finish this line and keep
 it waiting, instead of opening Phase 17 early. `CURRENT-STATE.md` still names Phase 16 as the
 allowed phase.
 **Contract:** `docs/03-maps/CADASTRE-CONTRACT-RC1.md` · spike: `docs/07-plans/PHASE17-CATASTRO-SPIKE.md`
@@ -9,8 +10,8 @@ allowed phase.
 
 ## Flow
 
-1. Farm detail → Parcelas → **Catastro** (`import-catastro`) opens the search with that farm already
-   chosen. With a single farm the farm is chosen automatically too.
+1. Farm hub → **Parcelas** screen → **Catastro** (`import-catastro`) opens the search with that farm
+   already chosen. With a single farm the farm is chosen automatically too.
 2. The farmer types the 14-character reference. `OfficialCadastreClient` calls the INSPIRE WFS
    `GetParcel` stored query in `EPSG::4326`, reads the XML body (the service answers HTTP 200 even for
    errors) and keeps only the parcel whose reference matches.
@@ -60,7 +61,7 @@ lookup failed on a device. Both are fixed on this branch.
 
 ## Pending before Gate 17 PASS
 
-- Gate 16 PASS and merge of the Phase 16 line.
+- Merge of the Phase 16 line (Gate 16 already PASS) and of the design v3 stack it sits on.
 - Real-device check of the import path with coverage and without it.
 - Map rendering stays in Phase 18.
 

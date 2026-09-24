@@ -64,6 +64,13 @@ data class ParcelEntity(
     val notes: String? = null,
     val status: RecordStatus = RecordStatus.ACTIVE,
     @Embedded val metadata: LocalMetadata,
+    // v11 (CR-004): the farmer's description of the grove, all optional.
+    @ColumnInfo(name = "olive_tree_count") val oliveTreeCount: Int? = null,
+    val variety: String? = null,
+    @ColumnInfo(name = "irrigation_system") val irrigationSystem: String? = null,
+    @ColumnInfo(name = "irrigation_network") val irrigationNetwork: String? = null,
+    @ColumnInfo(name = "irrigation_sector") val irrigationSector: String? = null,
+    @ColumnInfo(name = "irrigation_days") val irrigationDays: String? = null,
 )
 
 @Entity(

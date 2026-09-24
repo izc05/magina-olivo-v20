@@ -19,6 +19,10 @@ data class Farm(
     val activeCampaignName: String?,
     val archivedAt: Instant?,
     val version: Long,
+    /** Olive trees across the farm's parcels (CR-004); null when no parcel has a count. */
+    val oliveTreeCount: Long? = null,
+    /** True only when every active parcel has a count, so the sum is the whole farm. */
+    val oliveTreeCountComplete: Boolean = false,
 )
 
 data class NewFarm(
