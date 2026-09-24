@@ -192,11 +192,11 @@ rewrite historical meaning merely to fit the new UI.
 - **UI.** Jornada detail: "Jornada del …", *Pesadas de la jornada* (`3 pesadas · 5.430 kg ·
   Coop A, Coop B`, one row per Pesada) and *Añadir pesada*. Pesada detail shows its hour and
   that it belongs to a Jornada. Cuaderno → Recolección rows read `Jornada · kg` with the
-  Pesada count. A ticket read by OCR is linked afterwards from the Pesada's edit form.
+  Pesada count. A ticket read by OCR chooses its Jornada in the same review (Confirmar entrega).
 - **Tests.** `JornadaPesadasContractTest` (Gate 19B: three Pesadas on one date to two
   cooperatives survive a database reopen as one Jornada of 5.430 kg; corrections/removals keep
   the total equal; refused links write nothing; removing a Jornada releases its Pesadas),
-  `RoomMigrationTest` 12→13, `JornadaScreenTest`, `JornadaTest`, `DeliveryFormTest`,
+  `RoomMigrationTest` 12→13, `DeliveryContractTest` (OCR ticket joins a Jornada), `JornadaScreenTest`, `JornadaTest`, `DeliveryFormTest`,
   `DeliveryRulesTest`. Airplane mode: all paths are local Room writes with no network call;
   the owner/Codex emulator check is the device evidence.
 

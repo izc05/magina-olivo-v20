@@ -273,6 +273,20 @@ class DeliveryContractTest {
     }
 
     @Test
+    fun aConfirmedTicketCanJoinAJornadaWhoseKilosFollowIt() = runBlocking {
+        // Phase 19B: the Pesada read from a ticket joins the day's Jornada in the same review.
+        val jornadaId = ok(harvests.create(HarvestDraft(farmId, day, 1_000_000, listOf(HarvestShareInput(north, null), HarvestShareInput(south, null)))))
+        engine.text = TICKET
+        val extractionId = ok(documents.importDocument(DocumentType.DELIVERY_TICKET, source("ticket.jpg")))
+        ok(documents.runExtraction(extractionId))
+        val deliveryId = ok(
+            documents.confirmDeliveryTicket(extractionId, draft(2_850_000, north to null, south to null).copy(harvestId = jornadaId)),
+        )
+        assertEquals(jornadaId, deliveries.observe(deliveryId).first()!!.harvestId)
+        assertEquals(2_850_000L, harvests.observe(jornadaId).first()!!.totalGrams)
+    }
+
+    @Test
     fun anIncompleteReadingNeedsReviewAndAnInvalidReviewWritesNothing() = runBlocking {
         engine.text = "Cooperativa San Isidro\nBruto 12.340\nTara 9.490"
         val extractionId = ok(documents.importDocument(DocumentType.DELIVERY_TICKET, source("ticket.jpg")))

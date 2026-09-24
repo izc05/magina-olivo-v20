@@ -932,6 +932,7 @@ fun TicketReviewRoute(
                     persistence.documentOcrRepository,
                     persistence.deliveryRepository,
                     persistence.organizationRepository,
+                    persistence.harvestRepository,
                 )
             }
         },
@@ -1020,6 +1021,7 @@ fun TicketReviewScreen(
                         onSave = onConfirm,
                         onCancel = { confirmDiscard = true },
                         scrollable = false,
+                        jornadas = state.jornadas,
                         extraActions = {
                             MoSecondaryButton("Leer otra vez", onReadAgain, Modifier.fillMaxWidth(), enabled = !state.isSaving)
                         },

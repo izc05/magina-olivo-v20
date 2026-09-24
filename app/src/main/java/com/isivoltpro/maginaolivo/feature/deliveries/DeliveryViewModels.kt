@@ -301,6 +301,7 @@ data class TicketReviewUiState(
     val error: String? = null,
     val createdDeliveryId: UUID? = null,
     val closed: Boolean = false,
+    val jornadas: List<Harvest> = emptyList(),
 )
 
 /**
@@ -312,6 +313,7 @@ class TicketReviewViewModel(
     private val documents: DocumentOcrRepository,
     deliveries: DeliveryRepository,
     organizations: OrganizationRepository,
+    harvests: HarvestRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(TicketReviewUiState())
     val state: StateFlow<TicketReviewUiState> = mutableState.asStateFlow()
@@ -328,6 +330,12 @@ class TicketReviewViewModel(
         viewModelScope.launch {
             organizations.observeWithAnyRole(DESTINATION_ROLES).catch { }
                 .collect { mutableState.value = mutableState.value.copy(destinations = it) }
+        }
+        harvests?.let { repository ->
+            viewModelScope.launch {
+                repository.observeAll().catch { }
+                    .collect { rows -> mutableState.value = mutableState.value.copy(jornadas = rows.filter { it.editable }) }
+            }
         }
     }
 
