@@ -34,6 +34,7 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
+import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import com.isivoltpro.maginaolivo.domain.notebook.RecollectionItem
 import com.isivoltpro.maginaolivo.feature.activities.icon
@@ -85,6 +86,7 @@ fun NotebookRoute(farmId: UUID, persistence: LocalPersistence, actions: Notebook
                 NotebookViewModel(
                     farmId, persistence.campaignRepository, persistence.activityRepository,
                     persistence.harvestRepository, persistence.deliveryRepository, persistence.expenseRepository,
+                    persistence.labourRepository,
                 )
             }
         },
@@ -247,7 +249,7 @@ private fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions
         MoSectionHeader(day.date.format(LONG_DAY).replaceFirstChar { it.titlecase(SPANISH) })
         day.items.forEach { item ->
             when (item) {
-                is RecollectionItem.HarvestItem -> HarvestRow(item.harvest, notebook.pesadaCount(item.harvest.id)) {
+                is RecollectionItem.HarvestItem -> HarvestRow(item.harvest, notebook.pesadaCount(item.harvest.id), notebook.labourFor(item.harvest.id)) {
                     actions.onHarvest(item.harvest.id)
                 }
                 is RecollectionItem.DeliveryItem -> DeliveryRow(item.delivery) { actions.onDelivery(item.delivery.id) }
@@ -259,7 +261,7 @@ private fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions
 }
 
 @Composable
-private fun HarvestRow(harvest: Harvest, pesadas: Int, onClick: () -> Unit) {
+private fun HarvestRow(harvest: Harvest, pesadas: Int, labour: LabourSummary, onClick: () -> Unit) {
     MoCompactListItem(
         title = "Jornada · ${Weight.format(harvest.totalGrams)}",
         subtitle = listOfNotNull(
@@ -273,6 +275,7 @@ private fun HarvestRow(harvest: Harvest, pesadas: Int, onClick: () -> Unit) {
                 1 -> "1 pesada"
                 else -> "$pesadas pesadas"
             },
+            labour.takeUnless { it.isEmpty }?.let { if (it.people == 1) "1 jornal" else "${it.people} jornales" },
         ).joinToString(" · "),
         icon = MoIcons.Harvest,
         onClick = onClick,
@@ -337,6 +340,15 @@ private fun SummaryTab(notebook: CampaignNotebook) {
                 "Rendimiento", deliveries.fatYield?.let { Percent.format(it.hundredths) } ?: "—", Modifier.weight(1f),
                 icon = MoIcons.Percent,
                 supportingText = deliveries.fatYield?.let { "Sobre el ${deliveries.coveragePercent(it)} % de los kilos" } ?: "Pendiente de análisis",
+            )
+        }
+        if (!notebook.labourSummary.isEmpty) {
+            MoSummaryMetric(
+                "Jornales",
+                if (notebook.labourSummary.people == 1) "1 persona" else "${notebook.labourSummary.people} personas",
+                Modifier.fillMaxWidth().testTag("notebook-summary-labour"),
+                icon = MoIcons.People,
+                supportingText = notebook.labourSummary.label(),
             )
         }
         MoSummaryMetric(

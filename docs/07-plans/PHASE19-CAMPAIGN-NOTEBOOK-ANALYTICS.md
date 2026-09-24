@@ -238,3 +238,26 @@ No schema change is expected: 19C reads existing `deliveries` + `delivery_yield_
   leaks a mixed load), `JornadaPesadasContractTest.aYieldAddedDaysLater…` (Delivery and Jornada
   rows unchanged, one outbox intent for the yield only), `PesadaSearchScreenTest`.
 
+### 19D implementation notes (Claude, branch `claude/phase19d-jornales`)
+
+- **Room v14** (`MIGRATION_13_14`): `workers` (reusable person/alias; not payroll/HR) and
+  `harvest_labour` (Jornada child: `worker_id` + name snapshot for a named person, or a quick
+  count with no person; `quantity`, `unit` FULL_DAY/HALF_DAY/HOURS, `minutes` per person for
+  hours). **No money column**: a labour cost is an Expense (recolección), the only ledger.
+- **Rules** (`domain/labour`): one line per named person per Jornada (`already_recorded`), a
+  named line always counts one person, hours only with HOURS and ≤ 24 h; a closed Campaign's
+  Jornada takes no labour; removing a Jornada tombstones its labour. Each line and each person
+  has its own outbox intent (`HARVEST_LABOUR`, `WORKER`).
+- **Deterministic totals** (`LabourSummary`): people, whole days, half days and hours are kept
+  apart — never converted into one another — and do not depend on line order.
+- **UI:** Jornada detail → *Jornales* (summary `7 personas · 5 jornadas · 2 medias`, one row
+  per line with *Quitar*) and *Registrar jornales*: *Por personas* (chips, *+ Persona*,
+  *Repetir cuadrilla anterior (N)* from the Farm's previous Jornada with a named crew,
+  `5 seleccionadas`, `Guardar 5 jornales`) or *Solo número*; *Jornada completa / Media
+  jornada / Horas* for everyone saved together. Cuaderno: Recolección rows add `N jornales`;
+  Resumen adds *Jornales*.
+- **Tests:** `LabourTest` (summary, rules, hours parsing), `LabourContractTest` (Gate 19D: five
+  people in one save; totals after edits/removal/reopen; no expenses written; no duplicate
+  person; repeat previous crew; closed campaign; Jornada removal), `RoomMigrationTest` 13→14,
+  `LabourScreenTest` (repeat crew + one → `Guardar 5 jornales`).
+

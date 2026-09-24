@@ -14,6 +14,8 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
+import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
+import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
 import java.time.LocalDate
 
 /**
@@ -32,7 +34,14 @@ data class CampaignNotebook(
     val deliveries: List<Delivery>,
     /** Every Expense of the Campaign; drafts are listed but only posted ones are summed. */
     val expenses: List<Expense>,
+    /** Phase 19D: the jornales of this Campaign's Jornadas. */
+    val labour: List<LabourEntry> = emptyList(),
 ) {
+    val labourSummary: LabourSummary = LabourSummary.of(labour.filter { entry -> harvests.any { it.id == entry.harvestId } })
+
+    /** Phase 19D: the jornales of one Jornada. */
+    fun labourFor(harvestId: java.util.UUID): LabourSummary = LabourSummary.of(labour.filter { it.harvestId == harvestId })
+
     val harvestSummary: HarvestSummary = HarvestSummary.of(harvests)
     val deliverySummary: DeliverySummary = DeliverySummary.of(deliveries)
     val expenseSummary: ExpenseSummary = ExpenseSummary.of(expenses)
@@ -79,6 +88,7 @@ data class CampaignNotebook(
             harvests: List<Harvest>,
             deliveries: List<Delivery>,
             expenses: List<Expense>,
+            labour: List<LabourEntry> = emptyList(),
         ): CampaignNotebook {
             fun belongs(campaignId: java.util.UUID?, farmId: java.util.UUID?, date: LocalDate): Boolean =
                 campaignId == campaign.id ||
@@ -93,6 +103,7 @@ data class CampaignNotebook(
                 deliveries = deliveries.filter { belongs(it.campaignId, it.farmId, it.deliveryDate) },
                 expenses = expenses.filter { belongs(it.campaignId, it.farmId, it.expenseDate) }
                     .sortedByDescending { it.expenseDate },
+                labour = labour,
             )
         }
 

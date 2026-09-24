@@ -51,6 +51,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocationMode
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
+import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
 import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.feature.expenses.Choice
 import com.isivoltpro.maginaolivo.feature.expenses.ChoiceSheet
@@ -514,7 +515,11 @@ fun HarvestDetailRoute(
     val viewModel: HarvestDetailViewModel = viewModel(
         key = "harvest-$harvestId",
         factory = viewModelFactory {
-            initializer { HarvestDetailViewModel(harvestId, persistence.harvestRepository, clock, persistence.deliveryRepository) }
+            initializer {
+                HarvestDetailViewModel(
+                    harvestId, persistence.harvestRepository, clock, persistence.deliveryRepository, persistence.labourRepository,
+                )
+            }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -526,6 +531,13 @@ fun HarvestDetailRoute(
         onEditorClosed = viewModel::clearFormErrors,
         onAddPesada = { onAddPesada(harvestId) },
         onPesadaSelected = onPesadaSelected,
+        labourActions = LabourActions(
+            onSaveCrew = viewModel::recordCrew,
+            onSaveCount = viewModel::recordCount,
+            onAddWorker = viewModel::addWorker,
+            onRemove = viewModel::removeLabour,
+            onClear = viewModel::clearLabourMessages,
+        ),
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.HARVEST, harvestId),
@@ -547,9 +559,13 @@ fun HarvestDetailScreen(
     attachmentContent: @Composable () -> Unit = {},
     onAddPesada: () -> Unit = {},
     onPesadaSelected: (UUID) -> Unit = {},
+    labourActions: LabourActions = LabourActions(),
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    var labourVisible by rememberSaveable { mutableStateOf(false) }
+    // A saved set of jornales closes the sheet; its confirmation stays on the Jornada.
+    LaunchedEffect(state.labourMessage) { if (state.labourMessage != null && state.labourMessage != "Persona añadida") labourVisible = false }
     LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
 
     Scaffold(Modifier.fillMaxSize().testTag("harvest-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
@@ -565,6 +581,14 @@ fun HarvestDetailScreen(
                 else -> {
                     HarvestSummaryBlock(harvest, state.pesadas.size)
                     JornadaPesadas(state.pesadas, harvest.editable, onAddPesada, onPesadaSelected)
+                    JornadaLabour(
+                        labour = state.labour,
+                        editable = harvest.editable,
+                        message = state.labourMessage.takeUnless { labourVisible },
+                        error = state.labourError.takeUnless { labourVisible },
+                        onRegister = { labourActions.onClear(); labourVisible = true },
+                        onRemove = labourActions.onRemove,
+                    )
                     if (harvest.editable) {
                         MoSecondaryButton(
                             "Editar cosecha", { editorVisible = true },
@@ -610,15 +634,35 @@ fun HarvestDetailScreen(
             )
         }
     }
+    if (labourVisible && harvest != null) {
+        ModalBottomSheet(onDismissRequest = { labourVisible = false; labourActions.onClear() }) {
+            LabourSheet(
+                workers = state.workers,
+                alreadyRecorded = state.labour.mapNotNull { it.workerId }.toSet(),
+                previousCrew = state.previousCrew,
+                isSaving = state.isSaving,
+                error = state.labourError,
+                onSaveCrew = labourActions.onSaveCrew,
+                onSaveCount = labourActions.onSaveCount,
+                onAddWorker = labourActions.onAddWorker,
+                onCancel = { labourVisible = false; labourActions.onClear() },
+            )
+        }
+    }
     if (confirmDelete) {
         ModalBottomSheet(onDismissRequest = { confirmDelete = false }) {
             MoConfirmationSheet(
                 title = "Eliminar cosecha",
-                body = if (state.pesadas.isEmpty()) {
-                    "Estos kilos dejarán de contar en la campaña. Esta acción no se puede deshacer."
-                } else {
-                    "Sus pesadas se conservan, sin jornada, y siguen contando como entregas. Esta acción no se puede deshacer."
-                },
+                body = listOfNotNull(
+                    if (state.pesadas.isEmpty()) {
+                        "Estos kilos dejarán de contar en la campaña."
+                    } else {
+                        "Sus pesadas se conservan, sin jornada, y siguen contando como entregas."
+                    },
+                    // Phase 19D: its jornales only describe this Jornada and go with it.
+                    if (state.labour.isNotEmpty()) "Sus jornales se quitan con ella." else null,
+                    "Esta acción no se puede deshacer.",
+                ).joinToString(" "),
                 confirmText = "Eliminar",
                 onConfirm = { confirmDelete = false; onDelete() },
                 onCancel = { confirmDelete = false },
@@ -628,6 +672,15 @@ fun HarvestDetailScreen(
         }
     }
 }
+
+/** Phase 19D: what the Jornada screen can do with its jornales. */
+data class LabourActions(
+    val onSaveCrew: (List<UUID>, LabourUnit, Int?) -> Unit = { _, _, _ -> },
+    val onSaveCount: (Int, LabourUnit, Int?) -> Unit = { _, _, _ -> },
+    val onAddWorker: (String) -> Unit = {},
+    val onRemove: (UUID) -> Unit = {},
+    val onClear: () -> Unit = {},
+)
 
 /**
  * Phase 19B — the Pesadas of this Jornada. Each shows its own cooperative, ticket and hour;

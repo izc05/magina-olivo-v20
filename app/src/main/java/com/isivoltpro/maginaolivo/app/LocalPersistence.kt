@@ -9,6 +9,7 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentRepository
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseRepository
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
+import com.isivoltpro.maginaolivo.domain.labour.LabourRepository
 import com.isivoltpro.maginaolivo.domain.machinery.MachineRepository
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentOcrRepository
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationRepository
@@ -30,6 +31,8 @@ data class LocalPersistence(
     val harvestRepository: HarvestRepository,
     val deliveryRepository: DeliveryRepository,
     val machineRepository: MachineRepository,
+    /** Phase 19D: jornales of each Jornada. */
+    val labourRepository: LabourRepository,
     val workspaceRepository: WorkspaceRepository,
     /** Rebuilds planned-work alarms (Phase 16); run at start. Null where alarms do not exist. */
     val reminders: ReminderReconciler? = null,

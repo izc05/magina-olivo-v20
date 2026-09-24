@@ -36,6 +36,11 @@ Older prompts or chat instructions never override these files.
 >
 > **Update 2026-09-24 (later):** 19B merged (PR #235). **19C — Rendimientos pendientes**
 > (executor Claude, reviewer Codex) on `claude/phase19c-rendimientos`.
+>
+> **Update 2026-09-24 (evening):** 19C merged (PR #236). The owner keeps Claude programming
+> ("continuamos") while Codex tests on the emulator; Codex's GitHub review quota is exhausted.
+> **19D — Jornales: executor Claude** (table said Codex) on `claude/phase19d-jornales`; Codex
+> reviews/tests when available.
 
 ## Production owner during Phase 18 (closed) — Codex, finished by Claude
 
