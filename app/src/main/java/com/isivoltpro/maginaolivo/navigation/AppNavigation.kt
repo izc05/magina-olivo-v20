@@ -51,6 +51,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
 import com.isivoltpro.maginaolivo.feature.catastro.CadastreImportRoute
+import com.isivoltpro.maginaolivo.feature.maps.FarmMapRoute
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.weather.WeatherMarketReferenceScreen
@@ -246,9 +247,21 @@ fun AppNavigation(
                             onCampaignSelected = { id -> navController.navigate(AppDestination.campaign(id.toString())) },
                             onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
                             onImportFromCatastro = { navController.navigate(AppDestination.catastro(farmId.toString())) },
+                            onMap = { navController.navigate(AppDestination.farmMap(farmId.toString())) },
                         )
                     }
                 }
+            }
+            composable(AppDestination.FarmMapPattern) { entry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = entry.arguments?.getString("farmId")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || farmId == null) PersistenceUnavailableScreen()
+                else FarmMapRoute(
+                    farmId = farmId,
+                    persistence = persistence,
+                    onOpenParcel = { navController.navigate(AppDestination.parcel(it.toString())) },
+                    onImport = { navController.navigate(AppDestination.catastro(farmId.toString())) },
+                )
             }
             composable(AppDestination.ParcelPattern) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence

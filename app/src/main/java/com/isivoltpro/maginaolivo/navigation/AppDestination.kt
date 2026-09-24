@@ -57,9 +57,11 @@ object AppDestination {
     const val DeliveryPattern = "delivery/{deliveryId}"
     const val TicketPattern = "delivery-ticket/{extractionId}"
     const val MachinePattern = "machine/{machineId}"
+    const val FarmMapPattern = "farm-map/{farmId}"
     const val CatastroPattern = "map-catastro/{farmId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
+    fun farmMap(farmId: String): String = nestedRoute("farm-map", farmId)
 
     /** Design v3: a Farm section on its own screen, e.g. `farm-parcels/{farmId}`. */
     fun farmSection(prefix: String, farmId: String): String = nestedRoute(prefix, farmId)
@@ -96,6 +98,7 @@ object AppDestination {
             "farm-campaigns",
             "farm-activities",
             "farm-documents",
+            "farm-map",
             "parcel",
             "campaign",
             "activity",

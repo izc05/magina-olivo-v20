@@ -7,7 +7,7 @@ import org.junit.Test
 
 class ArchitectureBoundaryTest {
     @Test
-    fun futureInfrastructureRemainsBlockedUntilItsPhase() {
+    fun infrastructureBeyondPhase18RemainsBlocked() {
         val sourceRoot = sequenceOf(
             File("src/main/java"),
             File("app/src/main/java"),
@@ -17,7 +17,6 @@ class ArchitectureBoundaryTest {
 
         val forbidden = listOf(
             "supabase",
-            "maplibre",
             "workmanager",
         )
 

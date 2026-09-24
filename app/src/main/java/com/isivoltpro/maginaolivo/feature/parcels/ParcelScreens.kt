@@ -1,5 +1,9 @@
 package com.isivoltpro.maginaolivo.feature.parcels
 
+import androidx.compose.ui.unit.dp
+import java.time.ZoneId
+import com.isivoltpro.maginaolivo.feature.maps.ParcelMap
+import com.isivoltpro.maginaolivo.feature.maps.MapParcel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -88,6 +92,7 @@ fun FarmParcelsRoute(
     persistence: LocalPersistence,
     onParcelSelected: (UUID) -> Unit,
     onImportFromCatastro: (() -> Unit)? = null,
+    onMap: (() -> Unit)? = null,
 ) {
     val viewModel: FarmParcelsViewModel = viewModel(
         key = "farm-parcels-$farmId",
@@ -102,6 +107,7 @@ fun FarmParcelsRoute(
         onCreate = viewModel::create,
         onRestore = viewModel::restore,
         onImportFromCatastro = onImportFromCatastro,
+        onMap = onMap,
     )
 }
 
@@ -113,6 +119,7 @@ fun FarmParcelsSection(
     onCreate: (ParcelDraft) -> Unit,
     onRestore: (UUID) -> Unit,
     onImportFromCatastro: (() -> Unit)? = null,
+    onMap: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -128,6 +135,7 @@ fun FarmParcelsSection(
         title = "Parcelas",
         action = {
             Row {
+                onMap?.let { TextButton(onClick = it, modifier = Modifier.testTag("parcels-map")) { Text("Mapa") } }
                 onImportFromCatastro?.let {
                     TextButton(onClick = it, modifier = Modifier.testTag("import-catastro")) { Text("Catastro") }
                 }
@@ -334,6 +342,13 @@ private fun ParcelDetailContent(
             when (tab) {
                 ParcelTab.ACTIVITY -> ParcelActivities(activities)
                 ParcelTab.DATA -> Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                    // Phase 18: the saved boundary, drawn from this phone's copy (works offline).
+                    parcel.geometryGeoJson?.let { geometry ->
+                        ParcelMap(
+                            listOf(MapParcel(parcel.id.toString(), parcel.displayName, geometry)),
+                            Modifier.fillMaxWidth().height(300.dp).testTag("parcel-map"),
+                        )
+                    }
                     ParcelValue("Superficie catastral", parcel.cadastralAreaM2?.let {
                         "${NumberFormat.getNumberInstance(SPANISH).apply { maximumFractionDigits = 2 }.format(it / 10_000)} ha"
                     })
@@ -341,7 +356,8 @@ private fun ParcelDetailContent(
                     ParcelValue("Municipio", parcel.municipality)
                     ParcelValue("Polígono", parcel.cadastralPolygon)
                     ParcelValue("Parcela", parcel.cadastralParcel)
-                    ParcelValue("Geometría", if (parcel.geometryGeoJson == null) null else "Polígono guardado")
+                    ParcelValue("Geometría", if (parcel.geometryGeoJson == null) null else "Polígono guardado en el teléfono")
+                    ParcelValue("Importada el", parcel.sourceImportedAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.format(IMPORT_DATE))
                     ParcelValue("Notas", parcel.notes)
                 }
                 ParcelTab.DOCUMENTS -> attachmentContent()
@@ -575,3 +591,4 @@ internal fun Set<DayOfWeek>.label(): String? {
     }
 }
 
+private val IMPORT_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy", SPANISH)

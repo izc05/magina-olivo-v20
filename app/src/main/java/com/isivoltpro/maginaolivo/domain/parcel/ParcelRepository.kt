@@ -43,6 +43,9 @@ data class Parcel(
     val archivedAt: Instant?,
     val version: Long,
     val agronomy: ParcelAgronomy = ParcelAgronomy(),
+    /** Land registry the geometry came from (e.g. `ES_CATASTRO`); null for manual parcels. */
+    val sourceProvider: String? = null,
+    val sourceImportedAt: Instant? = null,
 )
 
 data class NewParcel(
@@ -59,6 +62,8 @@ data class NewParcel(
     val managedAreaM2: Double? = null,
     val notes: String? = null,
     val agronomy: ParcelAgronomy = ParcelAgronomy(),
+    val sourceProvider: String? = null,
+    val sourceImportedAt: Instant? = null,
 )
 
 data class ParcelChanges(
@@ -87,6 +92,7 @@ interface ParcelRepository {
     fun observeActive(farmId: UUID): Flow<List<Parcel>>
     fun observeArchived(farmId: UUID): Flow<List<Parcel>>
     fun observeById(parcelId: UUID): Flow<Parcel?>
+    suspend fun findActiveByCadastralReference(workspaceId: UUID, reference: String): UUID?
     suspend fun create(command: NewParcel): AppResult<UUID>
     suspend fun update(parcelId: UUID, changes: ParcelChanges): AppResult<Unit>
     suspend fun archive(parcelId: UUID): AppResult<Unit>
