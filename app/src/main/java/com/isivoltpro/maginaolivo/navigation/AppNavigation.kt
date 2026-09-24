@@ -41,6 +41,8 @@ import com.isivoltpro.maginaolivo.feature.harvests.HarvestsRoute
 import com.isivoltpro.maginaolivo.feature.expenses.DocumentReviewRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpenseDetailRoute
 import com.isivoltpro.maginaolivo.feature.expenses.ExpensesRoute
+import com.isivoltpro.maginaolivo.feature.farms.FarmSection
+import com.isivoltpro.maginaolivo.feature.farms.FarmSectionRoute
 import com.isivoltpro.maginaolivo.feature.home.HomeRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
@@ -221,17 +223,30 @@ fun AppNavigation(
                     FarmDetailRoute(
                         farmId = farmId,
                         persistence = persistence,
-                        onParcelSelected = { parcelId ->
-                            navController.navigate(AppDestination.parcel(parcelId.toString()))
-                        },
-                        onCampaignSelected = { campaignId ->
-                            navController.navigate(AppDestination.campaign(campaignId.toString()))
-                        },
-                        onActivitySelected = { activityId ->
-                            navController.navigate(AppDestination.activity(activityId.toString()))
+                        onOpenSection = { section ->
+                            navController.navigate(AppDestination.farmSection(section.route, farmId.toString()))
                         },
                         onArchived = { navController.popBackStack() },
                     )
+                }
+            }
+            FarmSection.entries.forEach { section ->
+                composable(AppDestination.farmSectionPattern(section.route)) { backStackEntry ->
+                    val persistence = compositionRoot.localPersistence
+                    val farmId = backStackEntry.arguments?.getString("farmId")
+                        ?.let { value -> runCatching { UUID.fromString(value) }.getOrNull() }
+                    if (persistence == null || farmId == null) {
+                        PersistenceUnavailableScreen()
+                    } else {
+                        FarmSectionRoute(
+                            farmId = farmId,
+                            section = section,
+                            persistence = persistence,
+                            onParcelSelected = { id -> navController.navigate(AppDestination.parcel(id.toString())) },
+                            onCampaignSelected = { id -> navController.navigate(AppDestination.campaign(id.toString())) },
+                            onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
+                        )
+                    }
                 }
             }
             composable(AppDestination.ParcelPattern) { backStackEntry ->

@@ -1,14 +1,10 @@
 package com.isivoltpro.maginaolivo.feature.home
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,12 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import com.isivoltpro.maginaolivo.R
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -44,16 +34,17 @@ import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.feature.activities.label
-import com.isivoltpro.maginaolivo.ui.brand.MaginaOlivoWordmark
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
-import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
+import com.isivoltpro.maginaolivo.ui.components.MoStat
+import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
+import com.isivoltpro.maginaolivo.ui.components.MoPhotoBrand
+import com.isivoltpro.maginaolivo.ui.components.MoPhotoHeader
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoInfo
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
@@ -125,19 +116,21 @@ fun HomeScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
-                .padding(horizontal = MoSpacing.screen),
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-            Spacer(Modifier.height(MoSpacing.xs))
-            MaginaOlivoWordmark(compact = true)
-            Column {
-                Text(greeting(now), style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
-                state.today?.let {
-                    Text(it.format(TODAY).replaceFirstChar { c -> c.titlecase(SPANISH) }, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-                }
-            }
-            Hero()
+            // Design v3 (CR-004): brand, greeting and place over the olive-grove photograph.
+            MoPhotoHeader(
+                title = greeting(now),
+                location = state.location,
+                caption = state.today?.format(TODAY)?.replaceFirstChar { c -> c.titlecase(SPANISH) },
+                heightFraction = 0.46f,
+                top = { MoPhotoBrand(Modifier.align(Alignment.TopStart).padding(MoSpacing.md)) },
+            )
+            Column(
+                Modifier.padding(horizontal = MoSpacing.screen),
+                verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+            ) {
             if (state.isLoading) {
                 CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally).testTag("home-loading"))
             } else if (state.farms.isEmpty()) {
@@ -150,14 +143,15 @@ fun HomeScreen(
                     modifier = Modifier.testTag("home-no-farms"),
                 )
             } else {
-                MoMetricGrid(
-                    columns = 3,
-                    content = listOf(
-                        { m -> MoSummaryMetric("Fincas", state.farms.size.toString(), m, icon = MoIcons.Tree) },
-                        { m -> MoSummaryMetric("Parcelas", state.parcelCount.toString(), m, icon = MoIcons.Parcels) },
-                        { m -> MoSummaryMetric("Superficie", state.knownAreaM2?.let(::hectares) ?: "—", m, icon = MoIcons.Area) },
+                MoStatStrip(
+                    listOf(
+                        MoStat("Superficie", state.knownAreaM2?.let(::hectares) ?: "—", MoIcons.Area),
+                        MoStat("Parcelas", state.parcelCount.toString(), MoIcons.Parcels),
+                        MoStat("Olivos", state.oliveTreesLabel(), MoIcons.Olive),
                     ),
+                    Modifier.testTag("home-stats"),
                 )
+
                 MoSectionHeader("Campaña en marcha")
                 if (state.campaigns.isEmpty()) {
                     MoEmptyState(
@@ -223,29 +217,10 @@ fun HomeScreen(
                 Quick("Entregas", MoIcons.Delivery, "home-quick-deliveries", onDeliveries, Modifier.weight(1f))
                 Quick("Gastos", MoIcons.Euro, "home-quick-expenses", onExpenses, Modifier.weight(1f))
             }
-            MoSectionHeader("Próximamente en Inicio")
-            Later("Tiempo y radar", "Previsión y lluvia de tu zona, con su hora de actualización.", "home-later-weather")
-            Later("Mercado del aceite", "AOVE, Virgen y Lampante desde una fuente oficial, con fecha.", "home-later-market")
-            Later("Avisos de tu cooperativa", "Cuando elijas tu cooperativa de referencia.", "home-later-news")
+            // One quiet line instead of three cards (owner feedback: less noise, less scroll).
+            Later("Tiempo, mercado y cooperativa", "Llegarán a Inicio con su fuente y su fecha.", "home-later")
             Spacer(Modifier.height(MoSpacing.lg))
-        }
-    }
-}
-
-@Composable
-private fun Hero() {
-    // Visual identity pass (Codex): decorative olive-grove photograph, not a real farm.
-    Box(Modifier.fillMaxWidth().aspectRatio(2.15f).clip(MoShape.hero)) {
-        Image(
-            painter = painterResource(R.drawable.onboarding_welcome_olive_grove),
-            contentDescription = null,
-            modifier = Modifier.matchParentSize(),
-            contentScale = ContentScale.Crop,
-        )
-        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, MoOliveDark.copy(alpha = 0.78f)))))
-        Column(Modifier.align(Alignment.BottomStart).padding(MoSpacing.md)) {
-            Text("Tu olivar, de un vistazo", style = MaterialTheme.typography.titleLarge, color = MoWarmWhite)
-            Text("Todo se guarda en este teléfono, con o sin cobertura.", style = MaterialTheme.typography.bodySmall, color = MoWarmWhite)
+            }
         }
     }
 }
@@ -304,4 +279,10 @@ private fun dayLabel(date: LocalDate, today: LocalDate?): String = when (date) {
 private fun hectares(areaM2: Double): String {
     val format = NumberFormat.getNumberInstance(SPANISH).apply { maximumFractionDigits = 2 }
     return "${format.format(areaM2 / 10_000.0)} ha"
+}
+
+private fun HomeUiState.oliveTreesLabel(): String {
+    val count = oliveTrees ?: return "—"
+    val number = NumberFormat.getIntegerInstance(SPANISH).format(count)
+    return if (oliveTreesComplete) number else "≥ $number"
 }

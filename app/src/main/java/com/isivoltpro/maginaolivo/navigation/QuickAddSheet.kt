@@ -143,6 +143,8 @@ fun rememberQuickAddContext(
         if (persistence == null || id == null) return@remember flowOf(null)
         when (route) {
             AppDestination.FarmPattern -> farmContext(persistence, id, parcelName = null)
+            // Design v3: a Farm section screen keeps its Farm as context.
+            in farmSectionPatterns -> farmContext(persistence, id, parcelName = null)
             AppDestination.ParcelPattern -> persistence.parcelRepository.observeById(id).flatMapLatest { parcel ->
                 val farmId = parcel?.farmId ?: return@flatMapLatest flowOf(null)
                 farmContext(persistence, farmId, parcel.displayName)
@@ -168,3 +170,7 @@ private fun farmContext(persistence: LocalPersistence, farmId: UUID, parcelName:
             QuickAddContext(it.id, it.name, it.activeCampaignName, parcel)
         }
     }
+
+private val farmSectionPatterns = com.isivoltpro.maginaolivo.feature.farms.FarmSection.entries
+    .map { AppDestination.farmSectionPattern(it.route) }
+    .toSet()

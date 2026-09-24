@@ -1,11 +1,29 @@
 package com.isivoltpro.maginaolivo.domain.parcel
 
 import com.isivoltpro.maginaolivo.core.common.AppResult
+import java.time.DayOfWeek
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 
 enum class ParcelSource { MANUAL, CATASTRO }
+
+/** How the parcel is watered. Null in [ParcelAgronomy] means "not told yet", never dryland. */
+enum class IrrigationSystem { DRYLAND, DRIP, SPRINKLER, OTHER }
+
+/**
+ * The farmer's own description of the grove (CR-004): every field is optional and shown as
+ * "—" until filled in. Irrigation network/sector are what the farmer calls them; linking them
+ * to an irrigation provider's alerts belongs to the backend phase.
+ */
+data class ParcelAgronomy(
+    val oliveTreeCount: Int? = null,
+    val variety: String? = null,
+    val irrigationSystem: IrrigationSystem? = null,
+    val irrigationNetwork: String? = null,
+    val irrigationSector: String? = null,
+    val irrigationDays: Set<DayOfWeek> = emptySet(),
+)
 
 data class Parcel(
     val id: UUID,
@@ -24,6 +42,7 @@ data class Parcel(
     val notes: String?,
     val archivedAt: Instant?,
     val version: Long,
+    val agronomy: ParcelAgronomy = ParcelAgronomy(),
 )
 
 data class NewParcel(
@@ -39,6 +58,7 @@ data class NewParcel(
     val cadastralAreaM2: Double? = null,
     val managedAreaM2: Double? = null,
     val notes: String? = null,
+    val agronomy: ParcelAgronomy = ParcelAgronomy(),
 )
 
 data class ParcelChanges(
@@ -52,6 +72,7 @@ data class ParcelChanges(
     val cadastralAreaM2: Double? = null,
     val managedAreaM2: Double? = null,
     val notes: String? = null,
+    val agronomy: ParcelAgronomy = ParcelAgronomy(),
 )
 
 data class ParcelMembership(

@@ -164,6 +164,7 @@ class AppNavigationTest {
         clickInSheetByTag("save-farm")
         waitForSaved("farm-name", "Los Llanos")
         clickByText("Los Llanos")
+        openFarmSection("parcels")
 
         openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Alta")
@@ -180,8 +181,9 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("parcel-detail-root").assertIsDisplayed()
         composeRule.onNodeWithText("Entrada manual").assertIsDisplayed()
         composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithText("Sin registrar", useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
+            // No area, trees or variety were given: the tiles say "—", never a number.
+            composeRule.onAllNodesWithText("—", useUnmergedTree = true)
+                .fetchSemanticsNodes().size >= 3
         }
         composeRule.onNodeWithTag("bottom-Mi Olivar").assertIsSelected()
     }
@@ -203,6 +205,7 @@ class AppNavigationTest {
 
         // Farm detail
         clickByText("Finca Campaña E2E")
+        openFarmSection("parcels")
         waitForTag("add-parcel")
 
         // Parcel: open the editor, fill it, save, and wait for the persisted row.
@@ -210,9 +213,11 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Campaña E2E")
         waitForTag("save-parcel")
         clickInSheetByTag("save-parcel")
-        waitForText("Parcela Campaña E2E")
+        waitForSaved("parcel-name", "Parcela Campaña E2E")
 
-        // Campaign: open the editor, fill it, select the Parcel, save.
+        // Campaign: back to the Farm hub, open Campañas, fill the editor, select the Parcel, save.
+        backToFarmHub()
+        openFarmSection("campaigns")
         waitForTag("add-campaign")
         openSheet("add-campaign", "campaign-name")
         composeRule.onNodeWithTag("campaign-name").performTextInput("Campaña 2026/27 E2E")
@@ -295,12 +300,15 @@ class AppNavigationTest {
         clickInSheetByTag("save-farm")
         waitForSaved("farm-name", "Finca Actuación E2E")
         clickByText("Finca Actuación E2E")
+        openFarmSection("parcels")
         waitForTag("add-parcel")
 
         createParcel("Parcela Norte E2E")
         createParcel("Parcela Sur E2E")
 
         // One activity, two parcels selected.
+        backToFarmHub()
+        openFarmSection("activities")
         waitForTag("add-activity")
         openSheet("add-activity", "activity-description")
         composeRule.onNodeWithTag("activity-description").performTextInput("Poda multiparcela E2E")
@@ -365,6 +373,7 @@ class AppNavigationTest {
         clickInSheetByTag("save-farm")
         waitForSaved("farm-name", "Finca Registrar E2E")
         clickByText("Finca Registrar E2E")
+        openFarmSection("parcels")
         waitForTag("add-parcel")
         createParcel("Parcela Registrar E2E")
 
@@ -398,18 +407,23 @@ class AppNavigationTest {
 
         // The same Activity is the one the Farm detail shows: one record, one home.
         //
-        // Mi Olivar restores its own saved back stack, so returning to it lands back on
-        // the Farm detail this test was already on rather than on the Farm list. Accept
-        // either, and only look the Farm up again when the list is what came back.
+        // Mi Olivar restores its own saved back stack, so returning to it lands back where
+        // this test left it (the Parcelas screen of the Farm) rather than on the Farm list.
+        // Accept any of the three, and walk to the Farm's Trabajos from there.
         composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
         composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithTag("farm-detail-root").fetchSemanticsNodes().isNotEmpty() ||
-                composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
+            listOf("farm-section-root", "farm-detail-root", "add-farm").any { tag ->
+                composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        if (composeRule.onAllNodesWithTag("farm-section-root").fetchSemanticsNodes().isNotEmpty()) {
+            backToFarmHub()
         }
         if (composeRule.onAllNodesWithTag("farm-detail-root").fetchSemanticsNodes().isEmpty()) {
             clickByText("Finca Registrar E2E")
         }
         waitForTag("farm-detail-root")
+        openFarmSection("activities")
         waitForTag("add-activity")
         waitForText("Riego desde Registrar")
         // The typed description is on screen before the save lands; wait for the saved row.
@@ -436,9 +450,12 @@ class AppNavigationTest {
         clickInSheetByTag("save-farm")
         waitForSaved("farm-name", "Finca Tipada E2E")
         clickByText("Finca Tipada E2E")
+        openFarmSection("parcels")
         waitForTag("add-parcel")
         createParcel("Parcela Tipada E2E")
 
+        backToFarmHub()
+        openFarmSection("activities")
         waitForTag("add-activity")
         openSheet("add-activity", "activity-description")
         composeRule.onNodeWithTag("activity-description").performTextInput("Trabajo tipado E2E")
@@ -722,6 +739,18 @@ class AppNavigationTest {
         waitForText(text)
         scrollIntoViewIfPossible { composeRule.onNodeWithText(text) }
         composeRule.onNodeWithText(text).assertIsDisplayed()
+    }
+
+    /** Design v3: parcels, campaigns, work and documents open from the Farm hub. */
+    private fun openFarmSection(section: String) {
+        waitForTag("farm-section-$section")
+        clickByTag("farm-section-$section")
+        waitForTag("farm-section-root")
+    }
+
+    private fun backToFarmHub() {
+        pressBack()
+        waitForTag("farm-detail-root")
     }
 
     private fun createParcel(name: String) {
