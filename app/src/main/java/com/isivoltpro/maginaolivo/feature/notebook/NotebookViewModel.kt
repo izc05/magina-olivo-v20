@@ -9,6 +9,8 @@ import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseRepository
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentRepository
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourRepository
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
@@ -46,6 +48,7 @@ class NotebookViewModel(
     private val deliveries: DeliveryRepository,
     private val expenses: ExpenseRepository,
     private val labour: LabourRepository? = null,
+    private val equipment: EquipmentRepository? = null,
 ) : ViewModel() {
     private val chosen = MutableStateFlow<UUID?>(null)
 
@@ -60,13 +63,16 @@ class NotebookViewModel(
                     harvests.observeForCampaign(campaign.id),
                     deliveries.observeForCampaign(campaign.id),
                     expenses.observeAll(),
-                    labour?.observeForCampaign(campaign.id) ?: flowOf(emptyList<LabourEntry>()),
-                ) { acts, crops, weighings, costs, jornales ->
+                    combine(
+                        labour?.observeForCampaign(campaign.id) ?: flowOf(emptyList<LabourEntry>()),
+                        equipment?.observeForCampaign(campaign.id) ?: flowOf(emptyList<EquipmentLine>()),
+                    ) { jornales, maquinaria -> jornales to maquinaria },
+                ) { acts, crops, weighings, costs, (jornales, maquinaria) ->
                     NotebookUiState(
                         isLoading = false,
                         campaigns = list,
                         selectedCampaignId = campaign.id,
-                        notebook = CampaignNotebook.project(campaign, acts, crops, weighings, costs, jornales),
+                        notebook = CampaignNotebook.project(campaign, acts, crops, weighings, costs, jornales, maquinaria),
                     )
                 }
             }

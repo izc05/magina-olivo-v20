@@ -261,3 +261,22 @@ No schema change is expected: 19C reads existing `deliveries` + `delivery_yield_
   person; repeat previous crew; closed campaign; Jornada removal), `RoomMigrationTest` 13→14,
   `LabourScreenTest` (repeat crew + one → `Guardar 5 jornales`).
 
+### 19E implementation notes (Claude, branch `claude/phase19e-equipment`)
+
+- **Room v15** (`MIGRATION_14_15`): `harvest_equipment` (Jornada child): `type`
+  TRACTOR/SHAKER/COMB/TRAILER/BLOWER/OTHER, `label` (the farmer's word for OTHER, or the
+  Machine's name), `quantity`, optional `machine_id` (then the line is that one machine).
+- **No fake assets:** type + quantity lines never create a Machine; a registered Machine is
+  only referenced (it must be live and in the workspace). Rules: 1–50 per line, one line per
+  kind / named other / machine, OTHER needs a name.
+- **One save:** the sheet replaces the Jornada's lines in one transaction (add / update /
+  tombstone), so saving the same sheet twice changes nothing; each line has its own outbox
+  intent (`HARVEST_EQUIPMENT`). Removing a Jornada removes its equipment.
+- **UI:** Jornada → *Maquinaria* (`1 tractor · 2 vibradoras · 1 peine eléctrico`) and
+  *Anotar maquinaria*: `Tractor − 1 +`, `Vibradora − 2 +`, `Peine eléctrico`, `Remolque`,
+  `Sopladora`, *Otra (nombre)*, and registered machines as optional chips. Cuaderno → Resumen:
+  *Maquinaria (días de uso)*.
+- **Tests:** `EquipmentTest`, `EquipmentContractTest` (Gate 19E: the example with 0 machines
+  created; deterministic replace; registered machine referenced; closed campaign; Jornada
+  removal), `RoomMigrationTest` 14→15, `EquipmentScreenTest`.
+

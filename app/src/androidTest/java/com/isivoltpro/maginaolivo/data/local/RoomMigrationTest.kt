@@ -880,6 +880,19 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration14To15AddsAnEmptyEquipmentTable() {
+        migrationHelper.createDatabase(TEST_DATABASE, 14).close()
+        migrationHelper
+            .runMigrationsAndValidate(TEST_DATABASE, 15, true, DatabaseMigrations.MIGRATION_14_15)
+            .use { database ->
+                database.query("SELECT COUNT(*) FROM harvest_equipment").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

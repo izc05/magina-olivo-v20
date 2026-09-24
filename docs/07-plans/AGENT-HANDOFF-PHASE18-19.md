@@ -41,6 +41,9 @@ Older prompts or chat instructions never override these files.
 > ("continuamos") while Codex tests on the emulator; Codex's GitHub review quota is exhausted.
 > **19D — Jornales: executor Claude** (table said Codex) on `claude/phase19d-jornales`; Codex
 > reviews/tests when available.
+>
+> **Update 2026-09-24 (night):** 19D merged (PR #237). **19E — Equipment usage** (executor
+> Claude, as in the table) on `claude/phase19e-equipment`.
 
 ## Production owner during Phase 18 (closed) — Codex, finished by Claude
 

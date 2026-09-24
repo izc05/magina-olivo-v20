@@ -34,6 +34,7 @@ enum class SyncEntityType {
     MACHINE,
     WORKER,
     HARVEST_LABOUR,
+    HARVEST_EQUIPMENT,
 }
 
 enum class OutboxStatus {

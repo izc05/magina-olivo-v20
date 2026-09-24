@@ -175,6 +175,11 @@ class OfflineFirstHarvestRepository(
                 )
                 database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, line.id, OutboxOperation.DELETE, now)
             }
+            // Phase 19E: and so does its equipment.
+            database.equipmentDao().listForHarvest(id).forEach { line ->
+                database.equipmentDao().upsert(listOf(line.copy(metadata = line.metadata.next(now).copy(deletedAt = now))))
+                database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_EQUIPMENT, line.id, OutboxOperation.DELETE, now)
+            }
             AppResult.Success(Unit)
         }
 

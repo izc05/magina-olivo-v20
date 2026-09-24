@@ -86,7 +86,7 @@ fun NotebookRoute(farmId: UUID, persistence: LocalPersistence, actions: Notebook
                 NotebookViewModel(
                     farmId, persistence.campaignRepository, persistence.activityRepository,
                     persistence.harvestRepository, persistence.deliveryRepository, persistence.expenseRepository,
-                    persistence.labourRepository,
+                    persistence.labourRepository, persistence.equipmentRepository,
                 )
             }
         },
@@ -349,6 +349,14 @@ private fun SummaryTab(notebook: CampaignNotebook) {
                 Modifier.fillMaxWidth().testTag("notebook-summary-labour"),
                 icon = MoIcons.People,
                 supportingText = notebook.labourSummary.label(),
+            )
+        }
+        if (!notebook.equipmentSummary.isEmpty) {
+            MoSummaryMetric(
+                "Maquinaria (días de uso)",
+                notebook.equipmentSummary.label(),
+                Modifier.fillMaxWidth().testTag("notebook-summary-equipment"),
+                icon = MoIcons.Tractor,
             )
         }
         MoSummaryMetric(

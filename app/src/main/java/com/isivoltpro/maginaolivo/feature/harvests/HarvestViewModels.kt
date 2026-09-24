@@ -12,7 +12,12 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestProblem
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentRepository
 import com.isivoltpro.maginaolivo.domain.harvest.Jornada
+import com.isivoltpro.maginaolivo.domain.machinery.Machine
+import com.isivoltpro.maginaolivo.domain.machinery.MachineRepository
 import com.isivoltpro.maginaolivo.domain.labour.CountDraft
 import com.isivoltpro.maginaolivo.domain.labour.CrewDraft
 import com.isivoltpro.maginaolivo.domain.labour.LabourChange
@@ -114,6 +119,11 @@ data class HarvestDetailUiState(
     val previousCrew: List<UUID> = emptyList(),
     val labourMessage: String? = null,
     val labourError: String? = null,
+    /** Phase 19E: equipment used on this Jornada, and the registered machines to pick from. */
+    val equipment: List<EquipmentLine> = emptyList(),
+    val machines: List<Machine> = emptyList(),
+    val equipmentSaved: Int = 0,
+    val equipmentError: String? = null,
 )
 
 class HarvestDetailViewModel(
@@ -122,6 +132,8 @@ class HarvestDetailViewModel(
     private val clock: AppClock,
     deliveries: DeliveryRepository? = null,
     private val labour: LabourRepository? = null,
+    private val equipment: EquipmentRepository? = null,
+    machines: MachineRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HarvestDetailUiState())
     val state: StateFlow<HarvestDetailUiState> = mutableState.asStateFlow()
@@ -164,6 +176,36 @@ class HarvestDetailViewModel(
             }
             viewModelScope.launch {
                 mutableState.value = mutableState.value.copy(previousCrew = repository.previousCrew(harvestId))
+            }
+        }
+        equipment?.let { repository ->
+            viewModelScope.launch {
+                repository.observeForHarvest(harvestId).catch { }
+                    .collect { mutableState.value = mutableState.value.copy(equipment = it) }
+            }
+        }
+        machines?.let { repository ->
+            viewModelScope.launch {
+                repository.observeActive().catch { }.collect { mutableState.value = mutableState.value.copy(machines = it) }
+            }
+        }
+    }
+
+    /** Phase 19E: the whole equipment sheet in one save. */
+    fun saveEquipment(lines: List<EquipmentDraftLine>) {
+        val repository = equipment ?: return
+        viewModelScope.launch {
+            mutableState.value = mutableState.value.copy(isSaving = true, equipmentError = null)
+            mutableState.value = when (val result = repository.replaceForHarvest(harvestId, lines)) {
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, equipmentSaved = mutableState.value.equipmentSaved + 1)
+                is AppResult.Failure -> mutableState.value.copy(
+                    isSaving = false,
+                    equipmentError = when (result.error) {
+                        is AppError.Conflict -> "La campaña está cerrada: esta jornada ya es histórico"
+                        is AppError.Validation -> "Revisa la maquinaria: cantidades de 1 a 50 y un nombre para «Otra»"
+                        else -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."
+                    },
+                )
             }
         }
     }
