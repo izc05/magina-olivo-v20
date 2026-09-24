@@ -653,11 +653,16 @@ fun HarvestDetailScreen(
         ModalBottomSheet(onDismissRequest = { confirmDelete = false }) {
             MoConfirmationSheet(
                 title = "Eliminar cosecha",
-                body = if (state.pesadas.isEmpty()) {
-                    "Estos kilos dejarán de contar en la campaña. Esta acción no se puede deshacer."
-                } else {
-                    "Sus pesadas se conservan, sin jornada, y siguen contando como entregas. Esta acción no se puede deshacer."
-                },
+                body = listOfNotNull(
+                    if (state.pesadas.isEmpty()) {
+                        "Estos kilos dejarán de contar en la campaña."
+                    } else {
+                        "Sus pesadas se conservan, sin jornada, y siguen contando como entregas."
+                    },
+                    // Phase 19D: its jornales only describe this Jornada and go with it.
+                    if (state.labour.isNotEmpty()) "Sus jornales se quitan con ella." else null,
+                    "Esta acción no se puede deshacer.",
+                ).joinToString(" "),
                 confirmText = "Eliminar",
                 onConfirm = { confirmDelete = false; onDelete() },
                 onCancel = { confirmDelete = false },
