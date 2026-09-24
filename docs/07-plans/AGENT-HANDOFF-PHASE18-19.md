@@ -53,6 +53,10 @@ Older prompts or chat instructions never override these files.
 > analytics** (executor Claude, as in the table; reviewer Codex) on `claude/phase19g-analytics`.
 > After 19G merges, Phase 19 gate closure needs the owner/Codex device + airplane-mode evidence
 > still pending since 19B.
+>
+> **Update 2026-09-24 (close):** 19G merged (PR #240). All Phase 19 slices are on `main`.
+> Gate 19 is PENDING on device evidence — see `docs/06-testing/PHASE19-GATE-CHECKLIST.md`.
+> No production work on a later phase until the owner records Gate 19 PASS.
 
 ## Production owner during Phase 18 (closed) — Codex, finished by Claude
 
