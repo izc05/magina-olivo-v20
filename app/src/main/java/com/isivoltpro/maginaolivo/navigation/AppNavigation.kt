@@ -384,6 +384,7 @@ fun AppNavigation(
                         onDeleted = { navController.popBackStack() },
                         onAddPesada = { id -> navController.navigate(AppDestination.jornadaPesada(id.toString())) },
                         onPesadaSelected = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
+                        onExpenseSelected = { id -> navController.navigate(AppDestination.expense(id.toString())) },
                     )
                 }
             }

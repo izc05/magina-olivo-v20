@@ -88,4 +88,11 @@ class ExpenseFormTest {
         assertEquals("Ya existe una organización con ese nombre", expenseErrorMessage(AppError.Conflict("duplicate_organization")))
         assertEquals("Este documento ya se revisó", expenseErrorMessage(AppError.Conflict("already_confirmed")))
     }
+
+    @Test
+    fun editingAJornadaCostKeepsItsJornada() {
+        val jornada = java.util.UUID.randomUUID()
+        val (draft, _) = ExpenseForm(date = "2026-11-27", amount = "45,50", concept = "Gasoil", harvestId = jornada).toDraft()
+        assertEquals(jornada, draft!!.harvestId)
+    }
 }

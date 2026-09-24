@@ -41,6 +41,9 @@ class OfflineFirstExpenseRepository(
         database.expenseDao().observeForActivity(activityId).map { rows -> rows.map { it.toDomain() } }
             .flowOn(dispatchers.io)
 
+    override fun observeForHarvest(harvestId: UUID): Flow<List<Expense>> =
+        database.expenseDao().observeForHarvest(harvestId).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+
     override fun observe(id: UUID): Flow<Expense?> =
         combine(
             database.expenseDao().observeById(id),
@@ -120,6 +123,7 @@ internal fun ExpenseEntity.toDomain(
     parcelId = parcelId,
     campaignId = campaignId,
     activityId = activityId,
+    harvestId = harvestId,
     invoiceNumber = purchase?.invoiceNumber,
     lines = items.map {
         PurchaseLine(it.productName, it.quantity, it.unit, it.unitPriceMinor, it.lineTotalMinor)

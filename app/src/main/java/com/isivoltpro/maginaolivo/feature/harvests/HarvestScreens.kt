@@ -52,6 +52,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocationMode
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
+import com.isivoltpro.maginaolivo.domain.expense.JornadaExpenseKind
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
 import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.feature.expenses.Choice
@@ -512,6 +513,7 @@ fun HarvestDetailRoute(
     onDeleted: () -> Unit,
     onAddPesada: (UUID) -> Unit = {},
     onPesadaSelected: (UUID) -> Unit = {},
+    onExpenseSelected: (UUID) -> Unit = {},
 ) {
     val viewModel: HarvestDetailViewModel = viewModel(
         key = "harvest-$harvestId",
@@ -519,13 +521,20 @@ fun HarvestDetailRoute(
             initializer {
                 HarvestDetailViewModel(
                     harvestId, persistence.harvestRepository, clock, persistence.deliveryRepository, persistence.labourRepository,
-                    persistence.equipmentRepository, persistence.machineRepository,
+                    persistence.equipmentRepository, persistence.machineRepository, persistence.expenseRepository,
                 )
             }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.deleted) { if (state.deleted) onDeleted() }
+    // Phase 19F: "Guardar y añadir foto" opens the new Expense, where its ticket is attached.
+    LaunchedEffect(state.openExpenseId) {
+        state.openExpenseId?.let { id ->
+            viewModel.expenseOpened()
+            onExpenseSelected(id)
+        }
+    }
     HarvestDetailScreen(
         state = state,
         onUpdate = viewModel::update,
@@ -541,6 +550,8 @@ fun HarvestDetailRoute(
             onClear = viewModel::clearLabourMessages,
         ),
         onSaveEquipment = viewModel::saveEquipment,
+        onAddCost = viewModel::addCost,
+        onExpenseSelected = onExpenseSelected,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.HARVEST, harvestId),
@@ -564,7 +575,11 @@ fun HarvestDetailScreen(
     onPesadaSelected: (UUID) -> Unit = {},
     labourActions: LabourActions = LabourActions(),
     onSaveEquipment: (List<EquipmentDraftLine>) -> Unit = {},
+    onAddCost: (JornadaExpenseKind, Long, String?, Boolean) -> Unit = { _, _, _, _ -> },
+    onExpenseSelected: (UUID) -> Unit = {},
 ) {
+    var costVisible by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.costSaved) { if (state.costSaved > 0) costVisible = false }
     var equipmentVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.equipmentSaved) { if (state.equipmentSaved > 0) equipmentVisible = false }
     var editorVisible by rememberSaveable { mutableStateOf(false) }
@@ -600,6 +615,13 @@ fun HarvestDetailScreen(
                         editable = harvest.editable,
                         error = state.equipmentError.takeUnless { equipmentVisible },
                         onEdit = { equipmentVisible = true },
+                    )
+                    JornadaCosts(
+                        expenses = state.costs,
+                        editable = harvest.editable,
+                        error = state.costError.takeUnless { costVisible },
+                        onAdd = { costVisible = true },
+                        onExpenseSelected = onExpenseSelected,
                     )
                     if (harvest.editable) {
                         MoSecondaryButton(
@@ -646,6 +668,16 @@ fun HarvestDetailScreen(
             )
         }
     }
+    if (costVisible && harvest != null) {
+        ModalBottomSheet(onDismissRequest = { costVisible = false }) {
+            CostSheet(
+                isSaving = state.isSaving,
+                error = state.costError,
+                onSave = onAddCost,
+                onCancel = { costVisible = false },
+            )
+        }
+    }
     if (equipmentVisible && harvest != null) {
         ModalBottomSheet(onDismissRequest = { equipmentVisible = false }) {
             EquipmentSheet(
@@ -686,6 +718,7 @@ fun HarvestDetailScreen(
                     // Phase 19D: its jornales only describe this Jornada and go with it.
                     if (state.labour.isNotEmpty()) "Sus jornales se quitan con ella." else null,
                     if (state.equipment.isNotEmpty()) "Su maquinaria anotada también." else null,
+                    if (state.costs.isNotEmpty()) "Sus gastos siguen en Gastos, sin jornada." else null,
                     "Esta acción no se puede deshacer.",
                 ).joinToString(" "),
                 confirmText = "Eliminar",

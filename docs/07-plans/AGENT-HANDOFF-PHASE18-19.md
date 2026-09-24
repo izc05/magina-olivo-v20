@@ -44,6 +44,10 @@ Older prompts or chat instructions never override these files.
 >
 > **Update 2026-09-24 (night):** 19D merged (PR #237). **19E — Equipment usage** (executor
 > Claude, as in the table) on `claude/phase19e-equipment`.
+>
+> **Update 2026-09-24 (night, later):** 19E merged (PR #238). **19F — Recollection
+> expenses/documents: executor Claude** (table said Codex; same owner decision as 19D) on
+> `claude/phase19f-gastos`.
 
 ## Production owner during Phase 18 (closed) — Codex, finished by Claude
 

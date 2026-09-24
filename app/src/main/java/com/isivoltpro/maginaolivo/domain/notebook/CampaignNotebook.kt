@@ -53,8 +53,14 @@ data class CampaignNotebook(
     val deliverySummary: DeliverySummary = DeliverySummary.of(deliveries)
     val expenseSummary: ExpenseSummary = ExpenseSummary.of(expenses)
 
-    /** Expenses the farmer files under recolección (harvest and transport). */
-    val recollectionExpenses: List<Expense> = expenses.filter { it.category in RECOLLECTION_CATEGORIES }
+    /**
+     * Expenses the farmer files under recolección: harvest and transport, and (Phase 19F) any
+     * cost linked to a Jornada. Each Expense is listed once; nothing is copied.
+     */
+    val recollectionExpenses: List<Expense> = expenses.filter { it.category in RECOLLECTION_CATEGORIES || it.harvestId != null }
+
+    /** Phase 19F: the cost of one Jornada — its posted ledger Expenses, nothing else. */
+    fun jornadaCost(harvestId: java.util.UUID): ExpenseSummary = ExpenseSummary.of(expenses.filter { it.harvestId == harvestId })
     val recollectionExpenseSummary: ExpenseSummary = ExpenseSummary.of(recollectionExpenses)
 
     val completedWorks: Int = works.count { it.status == ActivityStatus.COMPLETED }

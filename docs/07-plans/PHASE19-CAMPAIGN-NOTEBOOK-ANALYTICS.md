@@ -282,3 +282,26 @@ No schema change is expected: 19C reads existing `deliveries` + `delivery_yield_
 - **CI note:** as with every Room version bump, the first run lacks `15.json` until the CI bot
   publishes the exported schema; the migration test is re-run on the next commit.
 
+### 19F implementation notes (Claude, branch `claude/phase19f-gastos`)
+
+- **No new ledger, no schema change.** The Phase 12 `expenses.harvest_id` column (present since
+  v6, unused until now) links an ordinary Expense to its Jornada. `Expense.harvestId`,
+  `ExpenseDraft.harvestId`; `ExpenseLedgerWriter` checks the Jornada is live and in the same
+  workspace/Farm, and takes the Farm and Campaign from it. The Expense form carries the link, so
+  editing a Jornada cost never unlinks it.
+- **Quick kinds** (`JornadaExpenseKind`) are shortcuts to existing categories: Jornales/servicio
+  (LABOR), Gasoil and Gasolina (FUEL), Aceite/lubricante and Maquinaria/alquiler (MACHINERY),
+  Transporte (TRANSPORT), Otro (HARVEST). The concept defaults to the kind's name.
+- **Jornada cost** (`JornadaCost`) = `ExpenseSummary` of the Expenses linked to it: posted only,
+  drafts named "sin contar". It is read from the ledger, never stored, so it equals the posted
+  rows exactly and each Expense is counted once in the Campaign.
+- **Documents:** *Guardar y añadir foto del tique* saves the Expense and opens it, where the
+  existing attachments (photo/PDF) and document OCR already work.
+- **Removing a Jornada** keeps its costs in Gastos (real money) and only unlinks them.
+- **UI:** Jornada → *Gastos de la jornada* (`Coste 165,50 € · 1 borrador sin contar`, rows open
+  the Expense) and *Añadir gasto* (kind chips, importe, concepto opcional). Cuaderno → Recolección
+  lists Jornada costs and each Jornada row shows its cost.
+- **Tests:** `JornadaCostTest`, `ExpenseFormTest` (edit keeps the Jornada), `JornadaCostContractTest`
+  (Gate 19F: cost = SQL sum of posted rows, counted once in the Campaign, edits/deletes follow,
+  other Farm refused, removed Jornada keeps the money), `JornadaCostScreenTest`.
+
