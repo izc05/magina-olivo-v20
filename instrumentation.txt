@@ -1,0 +1,9 @@
+
+com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest:............
+com.isivoltpro.maginaolivo.WalkthroughScreenshotTest:.....
+
+Time: 57.625
+
+OK (17 tests)
+
+
