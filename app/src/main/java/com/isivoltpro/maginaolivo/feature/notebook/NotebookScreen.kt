@@ -27,6 +27,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.activity.Activity
+import com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison
+import com.isivoltpro.maginaolivo.domain.analytics.CampaignSeries
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.domain.expense.Expense
@@ -140,7 +142,7 @@ fun NotebookSection(state: NotebookUiState, onSelectCampaign: (UUID) -> Unit, ac
             when (tab) {
                 NotebookTab.WORKS -> WorksTab(notebook, actions)
                 NotebookTab.RECOLLECTION -> RecollectionTab(notebook, actions)
-                NotebookTab.SUMMARY -> SummaryTab(notebook)
+                NotebookTab.SUMMARY -> SummaryTab(notebook, state.comparison)
             }
         }
     }
@@ -315,7 +317,7 @@ private fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SummaryTab(notebook: CampaignNotebook) {
+private fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignComparison> = emptyList()) {
     val harvest = notebook.harvestSummary
     val deliveries = notebook.deliverySummary
     val expenses = notebook.expenseSummary
@@ -379,6 +381,9 @@ private fun SummaryTab(notebook: CampaignNotebook) {
             }
         }
         ParcelYields(notebook)
+        // Phase 19G: charts and year-over-year, all derived from the same records.
+        CampaignCharts(CampaignSeries.of(notebook))
+        CampaignComparisonList(comparison)
     }
 }
 

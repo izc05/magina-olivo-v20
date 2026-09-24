@@ -332,3 +332,27 @@ the canonical rows already in Room (Harvest, Delivery, Yield analysis, Expense, 
   `ExpenseSummary` exactly; missing yield stays null), `CampaignComparisonTest` (cost/kg only
   with both sides; YoY), Compose test that the chart's summary text equals the raw totals.
 - **Gate 19G / Phase 19:** charts reconcile with raw records and expose partial/unknown data.
+
+### 19G implementation notes (Claude, branch `claude/phase19g-analytics`)
+
+No schema change (Room stays v15). Every figure is a projection of the rows the Cuaderno lists.
+
+- `domain/analytics/CampaignAnalytics.kt`:
+  - `CampaignSeries.of(notebook)` → `DayPoint`s (harvested kg, delivered kg, cumulative
+    delivered kg, day fat-yield weighted by analysed kg). A day without analysis, or without
+    deliveries, has `fatYield == null` — never 0, never interpolated. `CooperativeYield` per
+    copied destination name, with coverage %.
+  - `CampaignComparison.of(notebooks)` → per Campaign, oldest first: harvested/delivered kg
+    (null when there are no records), weighted yield + coverage, posted expenses only (drafts
+    excluded, single ledger), `costPerKgMinor` only when posted cost > 0 and delivered kg > 0,
+    delivered change % against the previous Campaign.
+- `NotebookViewModel` adds `comparison` (all Campaigns of the Farm, read-only projection).
+- `feature/notebook/NotebookCharts.kt`: Cuaderno → Resumen gains *Gráficas* (Canvas bars of
+  kg/day + cumulative line; yield dots; per-cooperative rows) and *Comparar campañas* (only with
+  ≥ 2 Campaigns). Each chart has a text summary and a `contentDescription` built from the same
+  numbers; empty data shows "Sin datos de recolección todavía." / "Aún no hay análisis de
+  rendimiento."; unknown comparison values read "sin datos". No new dependency, no new tab.
+- Tests: `CampaignAnalyticsTest` (JVM: series reconcile with `HarvestSummary`/`DeliverySummary`,
+  unknown yield stays null, cooperative coverage, YoY %, cost/kg only with both sides, drafts
+  never counted), `CampaignChartsScreenTest` (summary text equals raw totals, explicit empty
+  state, comparison never shows an invented cost).

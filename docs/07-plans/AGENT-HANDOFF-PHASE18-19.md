@@ -48,6 +48,11 @@ Older prompts or chat instructions never override these files.
 > **Update 2026-09-24 (night, later):** 19E merged (PR #238). **19F — Recollection
 > expenses/documents: executor Claude** (table said Codex; same owner decision as 19D) on
 > `claude/phase19f-gastos`.
+>
+> **Update 2026-09-24 (night, last):** 19F merged (PR #239). **19G — Visual historical
+> analytics** (executor Claude, as in the table; reviewer Codex) on `claude/phase19g-analytics`.
+> After 19G merges, Phase 19 gate closure needs the owner/Codex device + airplane-mode evidence
+> still pending since 19B.
 
 ## Production owner during Phase 18 (closed) — Codex, finished by Claude
 
