@@ -330,16 +330,37 @@ Validate Spain official lookup/import paths, geometry parsing, GML, error modes 
 
 **Gate 18:** imported parcel geometry remains usable in airplane mode after restart.
 
-## Phase 19 — Historical analytics
+## Phase 19 — Cuaderno reconciliation + historical analytics
+
+**Approved refinement:** CR-005 + `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`.
+
+First reconcile the farmer-facing workflow without changing the five root destinations:
+
+- Farm hub user-facing `Trabajos` entry becomes **Cuaderno**;
+- Cuaderno separates **Trabajos del año** from **Recolección** while projecting existing canonical records;
+- user-facing **Pesada** maps to canonical Delivery;
+- each Pesada selects its own cooperative/mill, ticket number, kg, optional document and truthful Parcel allocation;
+- searchable ticket/weighing number + pending-yield queue for analysis received days later;
+- explicit harvest-day ↔ Pesada reconciliation so kg are never mandatory duplicate entry;
+- individual harvest labour records;
+- harvest equipment usage with quantity and optional registered Machine reference;
+- harvest-related Expense links/categories, with Expense remaining the authoritative money ledger;
+- fitosanitario invoice/purchase linking polish through the existing generic OCR flow.
+
+Then build historical analytics from that same canonical truth:
 
 - kg by campaign;
 - kg by date;
-- delivery dates;
+- delivery/Pesada dates;
 - yield series;
 - weighted campaign yield + coverage;
+- Farm and truthful Parcel yield averages;
+- harvest cost breakdown;
+- jornales by campaign;
+- cost/kg when data is complete;
 - cross-campaign comparison.
 
-**Gate 19:** charts derive from canonical truth and expose partial/unknown data correctly.
+**Gate 19:** the Cuaderno workflow stays simple and offline-first; no kg, Parcel split or money is duplicated/fabricated; each Pesada can target a different cooperative; later yield does not mutate the Pesada; charts derive from canonical truth and expose partial/unknown data correctly.
 
 ## Phase 20 — Home contextual services + weather visuals
 
