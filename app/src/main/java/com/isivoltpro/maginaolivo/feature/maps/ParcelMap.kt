@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.maps
 
 import android.os.Bundle
+import android.graphics.Bitmap
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,12 +38,14 @@ fun ParcelMap(
     onSelected: (String) -> Unit = {},
     onTap: ((Double, Double) -> Unit)? = null,
     onReady: () -> Unit = {},
+    onMapSnapshot: ((Bitmap) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
     val select by rememberUpdatedState(onSelected)
     val tap by rememberUpdatedState(onTap)
     val ready by rememberUpdatedState(onReady)
+    val snapshot by rememberUpdatedState(onMapSnapshot)
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleReady by remember { mutableStateOf(false) }
     val view = remember {
@@ -80,13 +83,34 @@ fun ParcelMap(
     }
     LaunchedEffect(map, imagery) {
         styleReady = false
-        map?.setStyle(Style.Builder().fromJson(parcelStyle(imagery))) { styleReady = true; ready() }
+        map?.setStyle(Style.Builder().fromJson(parcelStyle(imagery))) { styleReady = true }
     }
     val data = remember(parcels, selectedId) { mapFeatureCollection(parcels, selectedId) }
-    LaunchedEffect(map, styleReady, data) {
-        if (styleReady) map?.style?.getSourceAs<GeoJsonSource>("saved-parcels")?.setGeoJson(data)
+    DisposableEffect(map, styleReady, data, parcels.map { it.id }, snapshot != null) {
+        val current = map
+        if (!styleReady || current == null) return@DisposableEffect onDispose {}
+
+        var delivered = false
+        var listener: MapView.OnDidFinishRenderingMapListener? = null
+        if (snapshot != null) {
+            listener = MapView.OnDidFinishRenderingMapListener { fullyRendered ->
+                if (fullyRendered && !delivered) {
+                    delivered = true
+                    listener?.let(view::removeOnDidFinishRenderingMapListener)
+                    current.snapshot { bitmap ->
+                        snapshot?.invoke(bitmap)
+                        ready()
+                    }
+                }
+            }
+            view.addOnDidFinishRenderingMapListener(listener)
+        }
+        current.style?.getSourceAs<GeoJsonSource>("saved-parcels")?.setGeoJson(data)
+        fitParcels(current, parcels)
+        if (snapshot == null) ready()
+
+        onDispose { listener?.let(view::removeOnDidFinishRenderingMapListener) }
     }
-    LaunchedEffect(map, styleReady, parcels.map { it.id }) { if (styleReady) map?.let { fitParcels(it, parcels) } }
     Column(modifier) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             TextButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) }) { Text("Acercar +") }

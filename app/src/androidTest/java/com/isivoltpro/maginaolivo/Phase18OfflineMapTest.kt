@@ -7,7 +7,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.DefaultAppDispatchers
 import com.isivoltpro.maginaolivo.core.id.UuidGenerator
@@ -28,6 +27,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -89,27 +89,44 @@ class Phase18OfflineReopenTest {
         assertEquals("ES_CATASTRO", parcel.sourceProvider)
         assertNotNull(parcel.sourceImportedAt)
         assertNotNull(parcel.geometryGeoJson)
-        var ready = false
+        val snapshot = AtomicReference<Bitmap>()
         composeRule.setContent {
             MaginaOlivoTheme {
                 ParcelMap(
                     parcels = listOf(MapParcel(parcel.id.toString(), parcel.displayName, parcel.geometryGeoJson!!)),
                     imagery = false,
-                    onReady = { ready = true },
+                    onMapSnapshot = snapshot::set,
                 )
             }
         }
-        composeRule.waitUntil(15_000) { ready }
+        composeRule.waitUntil(15_000) { snapshot.get() != null }
         composeRule.onNodeWithTag("parcel-map-view").assertIsDisplayed()
         composeRule.waitForIdle()
 
+        val renderedMap = requireNotNull(snapshot.get())
+        assertTrue("Map snapshot must contain the saved parcel boundary", renderedMap.countBoundaryPixels() > 50)
         val output = File(context.getExternalFilesDir(null), "phase18-offline-map.png")
         FileOutputStream(output).use { stream ->
-            InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-                .compress(Bitmap.CompressFormat.PNG, 100, stream)
+            renderedMap.compress(Bitmap.CompressFormat.PNG, 100, stream)
         }
         assertTrue(output.length() > 10_000)
     }
+}
+
+private fun Bitmap.countBoundaryPixels(): Int {
+    var matches = 0
+    for (y in 0 until height step 2) {
+        for (x in 0 until width step 2) {
+            val pixel = getPixel(x, y)
+            val red = android.graphics.Color.red(pixel)
+            val green = android.graphics.Color.green(pixel)
+            val blue = android.graphics.Color.blue(pixel)
+            if (kotlin.math.abs(red - 37) <= 16 && kotlin.math.abs(green - 55) <= 16 &&
+                kotlin.math.abs(blue - 28) <= 16
+            ) matches++
+        }
+    }
+    return matches
 }
 
 private const val DATABASE = "phase18-offline-map.db"
