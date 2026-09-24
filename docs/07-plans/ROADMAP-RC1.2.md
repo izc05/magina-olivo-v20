@@ -330,37 +330,31 @@ Validate Spain official lookup/import paths, geometry parsing, GML, error modes 
 
 **Gate 18:** imported parcel geometry remains usable in airplane mode after restart.
 
-## Phase 19 — Cuaderno reconciliation + historical analytics
+## Phase 19 — Cuaderno de campaña + historical analytics
 
-**Approved refinement:** CR-005 + `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`.
+**Approved refinement:** CR-005 + `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`.  
+**Execution plan:** `docs/07-plans/PHASE19-CAMPAIGN-NOTEBOOK-ANALYTICS.md`.  
+**Agent coordination:** `docs/07-plans/AGENT-HANDOFF-PHASE18-19.md`.
 
-First reconcile the farmer-facing workflow without changing the five root destinations:
+Implementation is deliberately split and gate-bound:
 
-- Farm hub user-facing `Trabajos` entry becomes **Cuaderno**;
-- Cuaderno separates **Trabajos del año** from **Recolección** while projecting existing canonical records;
-- user-facing **Pesada** maps to canonical Delivery;
-- each Pesada selects its own cooperative/mill, ticket number, kg, optional document and truthful Parcel allocation;
-- searchable ticket/weighing number + pending-yield queue for analysis received days later;
-- explicit harvest-day ↔ Pesada reconciliation so kg are never mandatory duplicate entry;
-- individual harvest labour records;
-- harvest equipment usage with quantity and optional registered Machine reference;
-- harvest-related Expense links/categories, with Expense remaining the authoritative money ledger;
-- fitosanitario invoice/purchase linking polish through the existing generic OCR flow.
+- **19A — Cuaderno projection/navigation:** Farm hub exposes **Cuaderno** and Campaign-scoped
+  `Trabajos del año · Recolección · Resumen` without copying canonical rows.
+- **19B — Jornada + multiple Pesadas:** one Jornada can link zero/one/many Pesadas; every
+  Pesada selects its own cooperative/mill, ticket, kg, document and truthful origin.
+- **19C — Rendimientos pendientes:** fast lookup by ticket/cooperative/date/Farm; later
+  Yield remains separate; weighted averages show analysed-kg coverage.
+- **19D — Jornales:** quick count or reusable people/crew; whole/half/hours; no payroll.
+- **19E — Equipment:** type + quantity with optional registered Machine reference.
+- **19F — Recollection expenses/documents:** fast contextual entry through the existing
+  authoritative Expense ledger; no second money ledger.
+- **19G — Historical analytics:** kg/date/cumulative series, yield/cooperative/date,
+  coverage, expenses, jornales, cost/kg and cross-Campaign comparison.
 
-Then build historical analytics from that same canonical truth:
-
-- kg by campaign;
-- kg by date;
-- delivery/Pesada dates;
-- yield series;
-- weighted campaign yield + coverage;
-- Farm and truthful Parcel yield averages;
-- harvest cost breakdown;
-- jornales by campaign;
-- cost/kg when data is complete;
-- cross-campaign comparison.
-
-**Gate 19:** the Cuaderno workflow stays simple and offline-first; no kg, Parcel split or money is duplicated/fabricated; each Pesada can target a different cooperative; later yield does not mutate the Pesada; charts derive from canonical truth and expose partial/unknown data correctly.
+**Gate 19:** the Cuaderno workflow stays simple and offline-first; no kg, Parcel split,
+yield or money is duplicated/fabricated; each Pesada can target a different cooperative;
+later yield does not mutate the Pesada; charts derive from canonical truth and expose
+partial/unknown data correctly.
 
 ## Phase 20 — Home contextual services + weather visuals
 
