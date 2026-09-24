@@ -13,6 +13,8 @@ import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentSummary
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
@@ -36,7 +38,12 @@ data class CampaignNotebook(
     val expenses: List<Expense>,
     /** Phase 19D: the jornales of this Campaign's Jornadas. */
     val labour: List<LabourEntry> = emptyList(),
+    /** Phase 19E: equipment used on this Campaign's Jornadas. */
+    val equipment: List<EquipmentLine> = emptyList(),
 ) {
+    /** Equipment-days across the Campaign's Jornadas ("6 vibradoras" = six vibradora-days). */
+    val equipmentSummary: EquipmentSummary = EquipmentSummary.of(equipment.filter { line -> harvests.any { it.id == line.harvestId } })
+
     val labourSummary: LabourSummary = LabourSummary.of(labour.filter { entry -> harvests.any { it.id == entry.harvestId } })
 
     /** Phase 19D: the jornales of one Jornada. */
@@ -89,6 +96,7 @@ data class CampaignNotebook(
             deliveries: List<Delivery>,
             expenses: List<Expense>,
             labour: List<LabourEntry> = emptyList(),
+            equipment: List<EquipmentLine> = emptyList(),
         ): CampaignNotebook {
             fun belongs(campaignId: java.util.UUID?, farmId: java.util.UUID?, date: LocalDate): Boolean =
                 campaignId == campaign.id ||
@@ -104,6 +112,7 @@ data class CampaignNotebook(
                 expenses = expenses.filter { belongs(it.campaignId, it.farmId, it.expenseDate) }
                     .sortedByDescending { it.expenseDate },
                 labour = labour,
+                equipment = equipment,
             )
         }
 

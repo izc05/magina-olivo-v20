@@ -41,12 +41,14 @@ import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
 import com.isivoltpro.maginaolivo.data.local.entity.HarvestParcelEntity
 import com.isivoltpro.maginaolivo.data.local.dao.HarvestDao
 import com.isivoltpro.maginaolivo.data.local.dao.DeliveryDao
+import com.isivoltpro.maginaolivo.data.local.dao.EquipmentDao
 import com.isivoltpro.maginaolivo.data.local.dao.LabourDao
 import com.isivoltpro.maginaolivo.data.local.dao.MachineDao
 import com.isivoltpro.maginaolivo.data.local.dao.AgendaDao
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityPlanningEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ReminderEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityMachineEntity
+import com.isivoltpro.maginaolivo.data.local.entity.HarvestEquipmentEntity
 import com.isivoltpro.maginaolivo.data.local.entity.HarvestLabourEntity
 import com.isivoltpro.maginaolivo.data.local.entity.MachineEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkerEntity
@@ -99,8 +101,9 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         DocumentOcrExtractionEntity::class,
         WorkerEntity::class,
         HarvestLabourEntity::class,
+        HarvestEquipmentEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -135,9 +138,11 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
 
     abstract fun labourDao(): LabourDao
 
+    abstract fun equipmentDao(): EquipmentDao
+
     companion object {
         const val DATABASE_NAME = "magina-olivo.db"
-        const val VERSION = 14
+        const val VERSION = 15
 
         @Volatile
         private var instance: MaginaOlivoDatabase? = null

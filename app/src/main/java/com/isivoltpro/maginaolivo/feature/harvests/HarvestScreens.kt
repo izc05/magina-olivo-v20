@@ -51,6 +51,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocationMode
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
 import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.feature.expenses.Choice
@@ -518,6 +519,7 @@ fun HarvestDetailRoute(
             initializer {
                 HarvestDetailViewModel(
                     harvestId, persistence.harvestRepository, clock, persistence.deliveryRepository, persistence.labourRepository,
+                    persistence.equipmentRepository, persistence.machineRepository,
                 )
             }
         },
@@ -538,6 +540,7 @@ fun HarvestDetailRoute(
             onRemove = viewModel::removeLabour,
             onClear = viewModel::clearLabourMessages,
         ),
+        onSaveEquipment = viewModel::saveEquipment,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.HARVEST, harvestId),
@@ -560,7 +563,10 @@ fun HarvestDetailScreen(
     onAddPesada: () -> Unit = {},
     onPesadaSelected: (UUID) -> Unit = {},
     labourActions: LabourActions = LabourActions(),
+    onSaveEquipment: (List<EquipmentDraftLine>) -> Unit = {},
 ) {
+    var equipmentVisible by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.equipmentSaved) { if (state.equipmentSaved > 0) equipmentVisible = false }
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var labourVisible by rememberSaveable { mutableStateOf(false) }
@@ -588,6 +594,12 @@ fun HarvestDetailScreen(
                         error = state.labourError.takeUnless { labourVisible },
                         onRegister = { labourActions.onClear(); labourVisible = true },
                         onRemove = labourActions.onRemove,
+                    )
+                    JornadaEquipment(
+                        lines = state.equipment,
+                        editable = harvest.editable,
+                        error = state.equipmentError.takeUnless { equipmentVisible },
+                        onEdit = { equipmentVisible = true },
                     )
                     if (harvest.editable) {
                         MoSecondaryButton(
@@ -634,6 +646,18 @@ fun HarvestDetailScreen(
             )
         }
     }
+    if (equipmentVisible && harvest != null) {
+        ModalBottomSheet(onDismissRequest = { equipmentVisible = false }) {
+            EquipmentSheet(
+                current = state.equipment,
+                machines = state.machines,
+                isSaving = state.isSaving,
+                onSave = onSaveEquipment,
+                onCancel = { equipmentVisible = false },
+            )
+            state.equipmentError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = MoSpacing.screen)) }
+        }
+    }
     if (labourVisible && harvest != null) {
         ModalBottomSheet(onDismissRequest = { labourVisible = false; labourActions.onClear() }) {
             LabourSheet(
@@ -661,6 +685,7 @@ fun HarvestDetailScreen(
                     },
                     // Phase 19D: its jornales only describe this Jornada and go with it.
                     if (state.labour.isNotEmpty()) "Sus jornales se quitan con ella." else null,
+                    if (state.equipment.isNotEmpty()) "Su maquinaria anotada también." else null,
                     "Esta acción no se puede deshacer.",
                 ).joinToString(" "),
                 confirmText = "Eliminar",

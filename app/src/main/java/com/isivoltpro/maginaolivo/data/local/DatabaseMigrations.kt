@@ -147,11 +147,28 @@ object DatabaseMigrations {
         }
     }
 
+    /** Phase 19E: equipment used on each Jornada, by type and quantity or a registered Machine. */
+    val MIGRATION_14_15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `harvest_equipment` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `harvest_id` TEXT NOT NULL, " +
+                    "`type` TEXT NOT NULL, `label` TEXT, `quantity` INTEGER NOT NULL, `machine_id` TEXT, `notes` TEXT, " +
+                    "$METADATA_COLUMNS, PRIMARY KEY(`id`), " +
+                    "FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , " +
+                    "FOREIGN KEY(`harvest_id`) REFERENCES `harvests`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , " +
+                    "FOREIGN KEY(`machine_id`) REFERENCES `machines`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_harvest_equipment_harvest_id` ON `harvest_equipment` (`harvest_id`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_harvest_equipment_machine_id` ON `harvest_equipment` (`machine_id`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_harvest_equipment_workspace_id` ON `harvest_equipment` (`workspace_id`)")
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
-            MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
+            MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
         )
 
     private val schemaVersion11Statements =
