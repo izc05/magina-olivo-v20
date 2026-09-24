@@ -188,7 +188,8 @@ class JornadaPesadasContractTest {
 
         val found = PesadaSearch.filter(deliveries.observeAll().first(), PesadaQuery(text = "45872", status = YieldStatus.PENDING))
         assertEquals(listOf(first), found.map { it.id })
-        ok(deliveries.recordYield(first, YieldDraft(day.plusDays(3), 2_150, null)))
+        // The test clock is the weighing day; the analysis date may not be in the future.
+        ok(deliveries.recordYield(first, YieldDraft(day, 2_150, null)))
 
         assertEquals(deliveryBefore, db.deliveryDao().findById(first))
         assertEquals(harvestBefore, db.harvestDao().findById(jornadaId))
