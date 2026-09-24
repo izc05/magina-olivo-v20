@@ -103,6 +103,48 @@ class AppNavigationTest {
     }
 
     @Test
+    fun aTabAlwaysOpensItsOwnRootScreenFromWhereverTheFarmerIs() {
+        enterMainShell()
+        // Deep inside Inicio (Cosecha), then Mi Olivar deep inside (Maquinaria)...
+        composeRule.onNodeWithTag("home-quick-harvest").performScrollTo().performClick()
+        waitForTag("harvests-root")
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        clickByTag("open-machinery")
+        waitForTag("machinery-root")
+
+        // ...Inicio is Inicio, not the Cosecha screen left open under it.
+        composeRule.onNodeWithTag("bottom-Inicio").performClick()
+        waitForTag("home-reference-root")
+        composeRule.onNodeWithTag("harvests-root").assertDoesNotExist()
+
+        // Mi Olivar is the farm list, not the Maquinaria screen left open under it.
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        waitForTag("add-farm")
+        composeRule.onNodeWithTag("machinery-root").assertDoesNotExist()
+
+        // Tapping the tab already showing stays on its root; Back returns to Inicio.
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        waitForTag("add-farm")
+        pressBack()
+        waitForTag("home-reference-root")
+        composeRule.onNodeWithTag("bottom-Inicio").assertIsSelected()
+    }
+
+    @Test
+    fun backWalksTheScreensActuallyVisited() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        clickByTag("open-machinery")
+        waitForTag("machinery-root")
+
+        pressBack()
+        waitForTag("add-farm")
+        composeRule.onNodeWithTag("bottom-Mi Olivar").assertIsSelected()
+        pressBack()
+        waitForTag("home-reference-root")
+    }
+
+    @Test
     fun registerRootOpensContextSheetBeforeFlow() {
         enterMainShell()
 
