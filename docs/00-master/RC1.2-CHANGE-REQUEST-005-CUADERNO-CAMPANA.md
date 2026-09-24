@@ -42,7 +42,7 @@ The Farm detail remains the short visual hub approved by CR-004, but its four ma
 
 Cuaderno groups existing and future canonical records for the selected Farm + Campaign.
 
-It has two visually distinct areas:
+It has three visually distinct areas:
 
 #### A. Trabajos del año
 
@@ -64,6 +64,19 @@ It has two visually distinct areas:
 - fuel, lubricant, transport and other harvest-related expenses;
 - later yield;
 - campaign harvest summary.
+
+#### C. Resumen
+
+A visual Campaign/Farm summary derived from canonical records:
+
+- total delivered kg;
+- number of harvesting days and Pesadas;
+- weighted yield + analysed-kilo coverage;
+- recorded jornales;
+- recollection expenses and cost/kg when data is complete;
+- production and yield by date;
+- comparison with earlier Campaigns;
+- Parcel figures only when origin allocation is truthful enough to support them.
 
 The same canonical entities continue to power history, reports and synchronization. Cuaderno never copies an Activity, Delivery or Expense merely to display it.
 
@@ -127,9 +140,13 @@ Yield metrics:
 
 A Jornada represents how the work was carried out on a date and Farm, with optional Parcel scope.
 
-User entry must be short:
+The Jornada is a compact day shell, not one long form. After inheriting date + Farm and an
+optional Parcel scope, it exposes four large actions:
 
-`Finca → Parcela(s) opcional → Jornales → Maquinaria → Gastos → Guardar`
+`⚖️ Registrar pesada · 👷 Jornales · 🚜 Maquinaria · 💶 Gastos`
+
+Each action saves independently and returns to the Jornada. A Jornada can remain in progress
+while more Pesadas arrive during the day.
 
 Important rule: **the farmer must never be required to type the same kilograms twice**.
 
@@ -139,9 +156,10 @@ The implementation plan must preserve the existing Harvest-vs-Delivery distincti
 
 Recollection labour is recorded per person at the end of the day.
 
-Fast path:
+Fast paths:
 
-- select one or several reusable people;
+- **quick count** when names do not matter: e.g. `5 jornales`;
+- **people/crew** when the farmer wants names/aliases: select one or several reusable people;
 - whole day / half day / hours;
 - optional Parcel scope inherited from the Jornada;
 - “repetir cuadrilla anterior” convenience;
@@ -267,7 +285,7 @@ Farm hub:
 
 Cuaderno:
 
-`Trabajos del año` and `Recolección`
+`Trabajos del año · Recolección · Resumen`
 
 Registrar (+) continues to provide direct shortcuts so Cuaderno is never a mandatory detour.
 
