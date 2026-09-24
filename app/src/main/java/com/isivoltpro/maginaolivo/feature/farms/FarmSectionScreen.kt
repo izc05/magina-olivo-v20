@@ -45,6 +45,7 @@ fun FarmSectionRoute(
     onParcelSelected: (UUID) -> Unit,
     onCampaignSelected: (UUID) -> Unit,
     onActivitySelected: (UUID) -> Unit,
+    onImportFromCatastro: (() -> Unit)? = null,
 ) {
     val farmFlow = remember(farmId) { persistence.farmRepository.observeById(farmId) }
     val farm by farmFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -71,6 +72,7 @@ fun FarmSectionRoute(
                     farmId = farmId,
                     persistence = persistence,
                     onParcelSelected = onParcelSelected,
+                    onImportFromCatastro = onImportFromCatastro,
                 )
                 FarmSection.CAMPAIGNS -> FarmCampaignsRoute(farmId, persistence, onCampaignSelected)
                 FarmSection.ACTIVITIES -> FarmActivitiesRoute(

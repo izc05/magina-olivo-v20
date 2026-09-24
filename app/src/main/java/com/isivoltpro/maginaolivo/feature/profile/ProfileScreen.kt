@@ -159,6 +159,12 @@ fun ProfileScreen(
             icon = MoIcons.Document,
             modifier = Modifier.testTag("profile-about"),
         )
+        MoCompactListItem(
+            title = "Datos de parcelas",
+            subtitle = "Consulta al servicio INSPIRE de la Dirección General del Catastro. La copia guardada no sustituye una certificación oficial.",
+            icon = MoIcons.Map,
+            modifier = Modifier.testTag("profile-catastro-source"),
+        )
         if (developerGalleryEnabled) {
             MoCompactListItem(
                 title = "Catálogo de diseño (DEV)",

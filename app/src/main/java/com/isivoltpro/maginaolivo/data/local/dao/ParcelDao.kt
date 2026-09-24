@@ -17,6 +17,9 @@ interface ParcelDao {
     @Query("SELECT * FROM parcels WHERE id = :id LIMIT 1")
     suspend fun findById(id: UUID): ParcelEntity?
 
+    @Query("SELECT id FROM parcels WHERE workspace_id = :workspaceId AND cadastral_reference = :reference AND status = 'ACTIVE' AND deleted_at IS NULL LIMIT 1")
+    suspend fun findActiveByCadastralReference(workspaceId: UUID, reference: String): UUID?
+
     @Query("SELECT * FROM farm_parcel_memberships WHERE parcel_id = :parcelId AND valid_until IS NULL AND deleted_at IS NULL LIMIT 1")
     suspend fun findCurrentMembership(parcelId: UUID): FarmParcelMembershipEntity?
 

@@ -335,7 +335,11 @@ assert_instrumentation_passed \
 set_airplane_mode disable 0 | tee -a evidence/airplane-mode.txt
 
 set +e
-adb shell am instrument -w "$TEST_PKG/$RUNNER" > evidence/instrumentation-all.txt 2>&1
+# The live Catastro WFS check has its own Gate 17 workflow; ordinary emulator
+# validation remains deterministic when the external service is unavailable.
+adb shell am instrument -w \
+  -e notClass com.isivoltpro.maginaolivo.CatastroLiveImportTest \
+  "$TEST_PKG/$RUNNER" > evidence/instrumentation-all.txt 2>&1
 INSTRUMENTATION_RC=$?
 set -e
 cat evidence/instrumentation-all.txt

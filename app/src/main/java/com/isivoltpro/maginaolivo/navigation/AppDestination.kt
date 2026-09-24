@@ -57,6 +57,7 @@ object AppDestination {
     const val DeliveryPattern = "delivery/{deliveryId}"
     const val TicketPattern = "delivery-ticket/{extractionId}"
     const val MachinePattern = "machine/{machineId}"
+    const val CatastroPattern = "map-catastro/{farmId}"
 
     fun farm(farmId: String): String = nestedRoute("farm", farmId)
 
@@ -82,6 +83,8 @@ object AppDestination {
     fun ticket(extractionId: String): String = nestedRoute("delivery-ticket", extractionId)
 
     fun machine(machineId: String): String = nestedRoute("machine", machineId)
+
+    fun catastro(farmId: String): String = nestedRoute(MapCatastro, farmId)
 
     fun rootForRoute(route: String?): RootDestination? {
         val prefix = route?.substringBefore('/') ?: return null

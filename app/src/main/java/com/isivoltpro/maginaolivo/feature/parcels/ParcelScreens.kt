@@ -89,6 +89,7 @@ fun FarmParcelsRoute(
     farmId: UUID,
     persistence: LocalPersistence,
     onParcelSelected: (UUID) -> Unit,
+    onImportFromCatastro: (() -> Unit)? = null,
 ) {
     val viewModel: FarmParcelsViewModel = viewModel(
         key = "farm-parcels-$farmId",
@@ -102,6 +103,7 @@ fun FarmParcelsRoute(
         onParcelSelected = onParcelSelected,
         onCreate = viewModel::create,
         onRestore = viewModel::restore,
+        onImportFromCatastro = onImportFromCatastro,
     )
 }
 
@@ -112,6 +114,7 @@ fun FarmParcelsSection(
     onParcelSelected: (UUID) -> Unit,
     onCreate: (ParcelDraft) -> Unit,
     onRestore: (UUID) -> Unit,
+    onImportFromCatastro: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -125,13 +128,24 @@ fun FarmParcelsSection(
     }
     MoSectionHeader(
         title = "Parcelas",
-        action = { TextButton(onClick = { editorVisible = true }, modifier = Modifier.testTag("add-parcel")) { Text("Añadir") } },
+        action = {
+            Row {
+                onImportFromCatastro?.let {
+                    TextButton(onClick = it, modifier = Modifier.testTag("import-catastro")) { Text("Catastro") }
+                }
+                TextButton(onClick = { editorVisible = true }, modifier = Modifier.testTag("add-parcel")) { Text("Añadir") }
+            }
+        },
     )
     when {
         state.isLoading -> CircularProgressIndicator()
         state.active.isEmpty() -> MoEmptyState(
             title = "Aún no hay parcelas",
-            body = "Añade una parcela manualmente. Podrás completar su geometría y Catastro más adelante.",
+            body = if (onImportFromCatastro != null) {
+                "Añádela a mano o búscala en Catastro por su referencia catastral."
+            } else {
+                "Añade una parcela manualmente o consulta Catastro desde Mapa y Catastro en Inicio."
+            },
             icon = MoIcons.Parcels,
         )
         else -> state.active.forEach { parcel ->
@@ -307,7 +321,7 @@ private fun ParcelDetailContent(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             MoStatusChip(
-                text = if (parcel.source == ParcelSource.CATASTRO) "Catastro verificado" else "Entrada manual",
+                text = if (parcel.source == ParcelSource.CATASTRO) "Importada de Catastro" else "Entrada manual",
                 tone = if (parcel.source == ParcelSource.CATASTRO) MoStatusTone.Success else MoStatusTone.Neutral,
             )
             val agronomy = parcel.agronomy
@@ -322,6 +336,9 @@ private fun ParcelDetailContent(
             when (tab) {
                 ParcelTab.ACTIVITY -> ParcelActivities(activities)
                 ParcelTab.DATA -> Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                    ParcelValue("Superficie catastral", parcel.cadastralAreaM2?.let {
+                        "${NumberFormat.getNumberInstance(SPANISH).apply { maximumFractionDigits = 2 }.format(it / 10_000)} ha"
+                    })
                     ParcelValue("Referencia catastral", parcel.cadastralReference)
                     ParcelValue("Municipio", parcel.municipality)
                     ParcelValue("Polígono", parcel.cadastralPolygon)

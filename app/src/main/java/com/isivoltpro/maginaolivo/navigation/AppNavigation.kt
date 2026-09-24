@@ -50,7 +50,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.map.MapCatastroReferenceScreen
+import com.isivoltpro.maginaolivo.feature.catastro.CadastreImportRoute
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.weather.WeatherMarketReferenceScreen
@@ -245,6 +245,7 @@ fun AppNavigation(
                             onParcelSelected = { id -> navController.navigate(AppDestination.parcel(id.toString())) },
                             onCampaignSelected = { id -> navController.navigate(AppDestination.campaign(id.toString())) },
                             onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
+                            onImportFromCatastro = { navController.navigate(AppDestination.catastro(farmId.toString())) },
                         )
                     }
                 }
@@ -282,7 +283,35 @@ fun AppNavigation(
                 if (persistence == null || activityId == null) PersistenceUnavailableScreen()
                 else ActivityDetailRoute(activityId, persistence)
             }
-            composable(AppDestination.MapCatastro) { MapCatastroReferenceScreen() }
+            composable(AppDestination.MapCatastro) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) PersistenceUnavailableScreen()
+                else CadastreImportRoute(
+                    persistence = persistence,
+                    preselectedFarmId = null,
+                    onParcelImported = { id ->
+                        navController.navigate(AppDestination.parcel(id.toString())) {
+                            popUpTo(AppDestination.MapCatastro) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable(AppDestination.CatastroPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = backStackEntry.arguments?.getString("farmId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || farmId == null) PersistenceUnavailableScreen()
+                else CadastreImportRoute(
+                    persistence = persistence,
+                    preselectedFarmId = farmId,
+                    onParcelImported = { id ->
+                        // Back from the new parcel returns to its farm, not to the search.
+                        navController.navigate(AppDestination.parcel(id.toString())) {
+                            popUpTo(AppDestination.CatastroPattern) { inclusive = true }
+                        }
+                    },
+                )
+            }
             composable(AppDestination.Weather) { WeatherMarketReferenceScreen() }
             composable(AppDestination.Analytics) { CampaignReferenceScreen() }
             composable(AppDestination.OcrReview) { DeliveryOcrReviewReferenceScreen() }
