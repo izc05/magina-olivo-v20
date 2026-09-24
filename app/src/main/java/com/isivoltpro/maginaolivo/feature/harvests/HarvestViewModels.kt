@@ -13,6 +13,13 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestProblem
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Jornada
+import com.isivoltpro.maginaolivo.domain.labour.CountDraft
+import com.isivoltpro.maginaolivo.domain.labour.CrewDraft
+import com.isivoltpro.maginaolivo.domain.labour.LabourChange
+import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
+import com.isivoltpro.maginaolivo.domain.labour.LabourRepository
+import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
+import com.isivoltpro.maginaolivo.domain.labour.Worker
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -101,6 +108,12 @@ data class HarvestDetailUiState(
     val deleted: Boolean = false,
     /** Phase 19B: the Pesadas linked to this Jornada, oldest first. */
     val pesadas: List<Delivery> = emptyList(),
+    /** Phase 19D: the jornales of this Jornada and the people to choose from. */
+    val labour: List<LabourEntry> = emptyList(),
+    val workers: List<Worker> = emptyList(),
+    val previousCrew: List<UUID> = emptyList(),
+    val labourMessage: String? = null,
+    val labourError: String? = null,
 )
 
 class HarvestDetailViewModel(
@@ -108,6 +121,7 @@ class HarvestDetailViewModel(
     private val harvests: HarvestRepository,
     private val clock: AppClock,
     deliveries: DeliveryRepository? = null,
+    private val labour: LabourRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HarvestDetailUiState())
     val state: StateFlow<HarvestDetailUiState> = mutableState.asStateFlow()
@@ -138,6 +152,51 @@ class HarvestDetailViewModel(
                 repository.observeAll().catch { }.collect { rows ->
                     mutableState.value = mutableState.value.copy(pesadas = Jornada.linkedTo(harvestId, rows))
                 }
+            }
+        }
+        labour?.let { repository ->
+            viewModelScope.launch {
+                repository.observeForHarvest(harvestId).catch { }
+                    .collect { mutableState.value = mutableState.value.copy(labour = it) }
+            }
+            viewModelScope.launch {
+                repository.observeWorkers().catch { }.collect { mutableState.value = mutableState.value.copy(workers = it) }
+            }
+            viewModelScope.launch {
+                mutableState.value = mutableState.value.copy(previousCrew = repository.previousCrew(harvestId))
+            }
+        }
+    }
+
+    /** Phase 19D: several people in one save. */
+    fun recordCrew(workerIds: List<UUID>, unit: LabourUnit, minutes: Int?) =
+        labourCall({ if (it == 1) "1 jornal guardado" else "$it jornales guardados" }) {
+            labour!!.recordCrew(CrewDraft(harvestId, workerIds, unit, minutes))
+        }
+
+    /** Phase 19D: "N jornales" without names. */
+    fun recordCount(count: Int, unit: LabourUnit, minutes: Int?) =
+        labourCall({ if (count == 1) "1 jornal guardado" else "$count jornales guardados" }) {
+            labour!!.recordCount(CountDraft(harvestId, count, unit, minutes))
+        }
+
+    fun updateLabour(entryId: UUID, change: LabourChange) = labourCall({ "Jornal corregido" }) { labour!!.update(entryId, change) }
+
+    fun removeLabour(entryId: UUID) = labourCall({ "Jornal quitado" }) { labour!!.remove(entryId) }
+
+    fun addWorker(name: String) = labourCall({ "Persona añadida" }) { labour!!.addWorker(name) }
+
+    fun clearLabourMessages() {
+        mutableState.value = mutableState.value.copy(labourMessage = null, labourError = null)
+    }
+
+    private fun <T> labourCall(message: (T) -> String, operation: suspend () -> AppResult<T>) {
+        if (labour == null) return
+        viewModelScope.launch {
+            mutableState.value = mutableState.value.copy(isSaving = true, labourError = null, labourMessage = null)
+            mutableState.value = when (val result = operation()) {
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, labourMessage = message(result.value))
+                is AppResult.Failure -> mutableState.value.copy(isSaving = false, labourError = labourErrorMessage(result.error))
             }
         }
     }
@@ -177,6 +236,22 @@ class HarvestDetailViewModel(
 /** A validation the repository refused, shown next to the field it concerns. */
 private fun AppError.asProblem(): HarvestProblem? =
     (this as? AppError.Validation)?.let { HarvestProblem(it.field ?: "parcels", it.code) }
+
+internal fun labourErrorMessage(error: AppError): String = when (error) {
+    is AppError.Validation -> when (error.code) {
+        "empty" -> "Elige al menos una persona"
+        "already_recorded" -> "Alguna de esas personas ya tiene su jornal en esta jornada"
+        "required" -> if (error.field == "name") "Escribe el nombre o apodo" else "Escribe las horas por persona"
+        "too_long" -> if (error.field == "name") "El nombre es demasiado largo" else "No puede pasar de 24 horas por persona"
+        "not_positive" -> "El número de personas debe ser mayor que cero"
+        "too_many" -> "Son demasiadas personas para un día"
+        "one_person" -> "Una persona con nombre cuenta un solo jornal"
+        else -> "Revisa los jornales"
+    }
+    is AppError.Conflict -> "La campaña está cerrada: esta jornada ya es histórico"
+    is AppError.NotFound -> "Ese jornal ya no está en este dispositivo"
+    else -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."
+}
 
 internal fun harvestErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> harvestProblemMessage(HarvestProblem(error.field ?: "parcels", error.code))

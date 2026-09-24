@@ -9,6 +9,8 @@ import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseRepository
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
+import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
+import com.isivoltpro.maginaolivo.domain.labour.LabourRepository
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import java.util.UUID
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -43,6 +45,7 @@ class NotebookViewModel(
     private val harvests: HarvestRepository,
     private val deliveries: DeliveryRepository,
     private val expenses: ExpenseRepository,
+    private val labour: LabourRepository? = null,
 ) : ViewModel() {
     private val chosen = MutableStateFlow<UUID?>(null)
 
@@ -57,12 +60,13 @@ class NotebookViewModel(
                     harvests.observeForCampaign(campaign.id),
                     deliveries.observeForCampaign(campaign.id),
                     expenses.observeAll(),
-                ) { acts, crops, weighings, costs ->
+                    labour?.observeForCampaign(campaign.id) ?: flowOf(emptyList<LabourEntry>()),
+                ) { acts, crops, weighings, costs, jornales ->
                     NotebookUiState(
                         isLoading = false,
                         campaigns = list,
                         selectedCampaignId = campaign.id,
-                        notebook = CampaignNotebook.project(campaign, acts, crops, weighings, costs),
+                        notebook = CampaignNotebook.project(campaign, acts, crops, weighings, costs, jornales),
                     )
                 }
             }

@@ -125,11 +125,33 @@ object DatabaseMigrations {
         }
     }
 
+    /** Phase 19D: reusable people and the labour (jornales) of each Jornada. No money here. */
+    val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `workers` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `name` TEXT NOT NULL, " +
+                    "$METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_workers_workspace_id` ON `workers` (`workspace_id`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `harvest_labour` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `harvest_id` TEXT NOT NULL, " +
+                    "`worker_id` TEXT, `worker_name` TEXT, `quantity` INTEGER NOT NULL, `unit` TEXT NOT NULL, `minutes` INTEGER, `notes` TEXT, " +
+                    "$METADATA_COLUMNS, PRIMARY KEY(`id`), " +
+                    "FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , " +
+                    "FOREIGN KEY(`harvest_id`) REFERENCES `harvests`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , " +
+                    "FOREIGN KEY(`worker_id`) REFERENCES `workers`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_harvest_labour_harvest_id` ON `harvest_labour` (`harvest_id`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_harvest_labour_worker_id` ON `harvest_labour` (`worker_id`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_harvest_labour_workspace_id` ON `harvest_labour` (`workspace_id`)")
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
-            MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+            MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
         )
 
     private val schemaVersion11Statements =

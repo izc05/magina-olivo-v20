@@ -168,6 +168,13 @@ class OfflineFirstHarvestRepository(
             database.harvestDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, id, OutboxOperation.DELETE, now)
             jornadas.release(id, now)
+            // Phase 19D: its jornales only describe this Jornada; they go with it.
+            database.labourDao().listForHarvest(id).forEach { line ->
+                database.labourDao().upsertLabour(
+                    listOf(line.copy(metadata = line.metadata.next(now).copy(deletedAt = now))),
+                )
+                database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, line.id, OutboxOperation.DELETE, now)
+            }
             AppResult.Success(Unit)
         }
 
