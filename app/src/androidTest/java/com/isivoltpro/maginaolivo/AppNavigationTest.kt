@@ -373,7 +373,9 @@ class AppNavigationTest {
         clickByTag("activity-row")
         waitForTag("activity-detail-root")
 
-        // The single Activity carries both Parcel targets.
+        // The single Activity carries both Parcel targets. The screen's root exists while the
+        // Activity is still loading, so wait for its targets before counting them.
+        waitForTag("activity-target")
         composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
         assertTextVisible("Parcela Norte E2E")
         assertTextVisible("Parcela Sur E2E")
