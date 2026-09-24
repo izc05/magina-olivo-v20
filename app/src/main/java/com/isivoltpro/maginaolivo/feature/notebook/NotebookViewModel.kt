@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
+import com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
@@ -33,6 +34,8 @@ data class NotebookUiState(
     val selectedCampaignId: UUID? = null,
     val notebook: CampaignNotebook? = null,
     val error: String? = null,
+    /** Phase 19G: every Campaign of the Farm, oldest first, for the year-over-year view. */
+    val comparison: List<CampaignComparison> = emptyList(),
 )
 
 /**
@@ -52,7 +55,7 @@ class NotebookViewModel(
 ) : ViewModel() {
     private val chosen = MutableStateFlow<UUID?>(null)
 
-    val state: StateFlow<NotebookUiState> = combine(campaigns.observeForFarm(farmId), chosen) { list, pick -> list to pick }
+    private val current = combine(campaigns.observeForFarm(farmId), chosen) { list, pick -> list to pick }
         .flatMapLatest { (list, pick) ->
             val campaign = list.firstOrNull { it.id == pick } ?: defaultCampaign(list)
             if (campaign == null) {
@@ -77,6 +80,21 @@ class NotebookViewModel(
                 }
             }
         }
+
+    /** Phase 19G: the same projection for every Campaign of the Farm (read-only). */
+    private val comparison = combine(
+        campaigns.observeForFarm(farmId),
+        activities.observeForFarm(farmId),
+        harvests.observeAll(),
+        deliveries.observeAll(),
+        expenses.observeAll(),
+    ) { list, acts, crops, weighings, costs ->
+        CampaignComparison.of(list.map { CampaignNotebook.project(it, acts, crops, weighings, costs) })
+    }
+
+    val state: StateFlow<NotebookUiState> = combine(current, comparison) { base, years ->
+        base.copy(comparison = years)
+    }
         .catch { emit(NotebookUiState(isLoading = false, error = "No hemos podido abrir el cuaderno en este dispositivo.")) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NotebookUiState())
 
