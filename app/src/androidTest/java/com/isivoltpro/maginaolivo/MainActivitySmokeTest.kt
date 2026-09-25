@@ -41,7 +41,7 @@ class MainActivitySmokeTest {
         composeRule.waitUntil(10_000) {
             composeRule.onAllNodesWithTag("home-loading").fetchSemanticsNodes().isEmpty()
         }
-        composeRule.onNodeWithTag("home-later").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("home-market").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Inicio").assertIsDisplayed()
     }
 }

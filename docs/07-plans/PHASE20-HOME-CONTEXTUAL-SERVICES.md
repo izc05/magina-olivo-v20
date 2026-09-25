@@ -88,3 +88,25 @@ make Home external feeds a dependency for field work").
 - No push notifications from feeds; no background polling workers for feeds in this phase.
 - No Profile screen work (Phase 21) beyond reading what exists.
 - No price prediction, no advice derived from market data.
+
+## 20A implementation notes (Claude, branch `claude/phase20a-feeds`)
+
+- **No schema change (Room stays v15).** The `weather_cache` table shipped in v1 and was never
+  used; 20A reuses it as the device cache for feeds (`cache_key` = `FEED|place`), with its
+  `source`, `fetched_at` and `expires_at`. Not synchronised, no outbox (device cache, not
+  domain data). This replaces the "Room v16 `external_feed_cache`" line of the plan above.
+- `domain/feed/Feed.kt`: `FeedKind` (freshness windows), `FeedState` (NotConfigured /
+  NoLocation / Unavailable / Value with source, fetchedAt, stale), `FeedAge` ("Actualizado
+  hace …"), `FeedLocation.common(...)` — the one municipality/province all farms share,
+  accent- and case-insensitive; several places or none → no location (no GPS).
+- `domain/weather/Weather.kt`: `WeatherNow`, `WeatherCondition`, `WeatherSource` (20B: AEMET),
+  `WeatherFeed`, `WeatherCodec` (plain `key=value`, partial values rejected).
+- `data/repository/CachedWeatherFeed.kt`: UI reads only the cache; `refreshIfStale` asks the
+  source only when stale/missing, 10 s timeout; any failure keeps the last value and its time.
+  Wired with `source = null` until 20B, so the app says "Sin fuente configurada".
+- Inicio: `HomeContext` replaces the single "Pronto" line — weather (all states), oil market
+  "Sin fuente configurada" (D3), cooperative notices "llegarán con el panel de administración"
+  (D4). External cards stay below the farm, campaign, work and quick access.
+- Tests: `FeedTest` (JVM), `WeatherFeedContractTest` (cache-first, no refetch when fresh, stale
+  value survives a failure, one cache per place), `HomeFeedsScreenTest` (Gate 20 core: every
+  feed failing leaves the farm usable; source/age/stale shown).

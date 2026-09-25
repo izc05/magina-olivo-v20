@@ -32,6 +32,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.domain.feed.FeedAge
+import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
@@ -55,6 +57,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.text.NumberFormat
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -83,19 +86,20 @@ fun HomeRoute(
                     persistence.harvestRepository,
                     persistence.deliveryRepository,
                     clock,
+                    weatherFeed = persistence.weatherFeed,
                 )
             }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
-    HomeScreen(state, LocalTime.now(), onOlivar, onCalendar, onHarvest, onDeliveries, onExpenses, onActivitySelected)
+    HomeScreen(state, LocalTime.now(), onOlivar, onCalendar, onHarvest, onDeliveries, onExpenses, onActivitySelected, clock.nowInstant())
 }
 
 /**
  * Inicio — the farmer's situation in seconds, from this phone's data only (VISUAL_DESIGN_LOCK
  * "Pantalla Inicio"): greeting, territory hero, olive-grove summary, running campaign,
- * upcoming work and quick access. Weather, oil market and cooperative notices keep their
- * place but say they arrive with their own phase — never sample figures.
+ * upcoming work and quick access. Weather, oil market and cooperative notices come last
+ * (Phase 20), each saying what it knows and from when — never sample figures.
  */
 @Composable
 fun HomeScreen(
@@ -107,6 +111,7 @@ fun HomeScreen(
     onDeliveries: () -> Unit,
     onExpenses: () -> Unit,
     onActivitySelected: (UUID) -> Unit,
+    feedNow: Instant = Instant.now(),
 ) {
     // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
     Scaffold(
@@ -214,8 +219,8 @@ fun HomeScreen(
                 Quick("Entregas", MoIcons.Delivery, "home-quick-deliveries", onDeliveries, Modifier.weight(1f))
                 Quick("Gastos", MoIcons.Euro, "home-quick-expenses", onExpenses, Modifier.weight(1f))
             }
-            // One quiet line instead of three cards (owner feedback: less noise, less scroll).
-            Later("Tiempo, mercado y cooperativa", "Llegarán a Inicio con su fuente y su fecha.", "home-later")
+            // Phase 20: external context after the farm, each with an honest state.
+            HomeContext(state, feedNow)
             Spacer(Modifier.height(MoSpacing.lg))
             }
         }
@@ -243,16 +248,67 @@ private fun Quick(label: String, icon: ImageVector, tag: String, onClick: () -> 
     }
 }
 
+/**
+ * Phase 20A — weather, oil market and cooperative, below the farm. Every state is said in
+ * words: not configured, no place, nothing yet, or the value with its source and age.
+ */
 @Composable
-private fun Later(title: String, body: String, tag: String) {
+private fun HomeContext(state: HomeUiState, now: Instant) {
+    MoSectionHeader("Tiempo, mercado y cooperativa")
+    when (val weather = state.weather) {
+        is FeedState.Value -> {
+            val value = weather.value
+            MoCompactListItem(
+                title = "${value.temperatureC} °C · ${value.condition.label}",
+                subtitle = listOfNotNull(
+                    value.rainProbabilityPercent?.let { "Lluvia $it %" },
+                    value.windKmh?.let { "Viento $it km/h" },
+                    state.weatherLocation?.label,
+                ).joinToString(" · "),
+                icon = MoIcons.Weather,
+                modifier = Modifier.testTag("home-weather-value"),
+                trailing = if (weather.stale) {
+                    { MoStatusChip("Desactualizado", tone = MoStatusTone.Warning, modifier = Modifier.testTag("home-weather-stale")) }
+                } else {
+                    null
+                },
+            )
+            Text(
+                "Fuente: ${weather.source} · ${FeedAge.label(weather.fetchedAt, now)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("home-weather-source"),
+            )
+        }
+        FeedState.NotConfigured -> Quiet("Tiempo", "Sin fuente configurada en esta versión.", MoIcons.Weather, "home-weather-not-configured")
+        FeedState.NoLocation -> Quiet(
+            "Tiempo",
+            "Indica el municipio en la ficha de tu finca para ver su tiempo.",
+            MoIcons.Weather,
+            "home-weather-no-location",
+        )
+        FeedState.Unavailable -> Quiet(
+            "Tiempo${state.weatherLocation?.let { " · ${it.label}" } ?: ""}",
+            "Aún sin datos. Se actualizará cuando haya conexión.",
+            MoIcons.Weather,
+            "home-weather-unavailable",
+        )
+    }
+    // Owner decision D3: no licensed source yet, so no figure is shown.
+    Quiet("Mercado del aceite", "Sin fuente configurada.", MoIcons.Euro, "home-market")
+    // Owner decision D4: notices arrive with the private administration panel.
+    Quiet("Mi cooperativa", "Los avisos de tu cooperativa llegarán con el panel de administración.", MoIcons.Bell, "home-cooperative")
+}
+
+@Composable
+private fun Quiet(title: String, body: String, icon: ImageVector, tag: String) {
     MoCompactListItem(
         title = title,
         subtitle = body,
-        icon = MoIcons.Clock,
+        icon = icon,
         iconTint = MoTextSecondary,
         iconContainer = MoSurfaceSoft,
         modifier = Modifier.testTag(tag),
-        trailing = { MoStatusChip("Pronto", tone = MoStatusTone.Neutral) },
     )
 }
 

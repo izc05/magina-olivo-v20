@@ -42,7 +42,9 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 
 ```text
 ▶ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS)
-  Not started: planning first (docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md), then slices.
+  Plan: docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md (owner decisions D1–D4 recorded).
+  20A — Feed foundation + Home external cards: IN PROGRESS (executor Claude; branch
+  claude/phase20a-feeds; no schema change — reuses the v1 weather_cache table).
   Gate 20: failure of every external feed still leaves Mi Olivar fully operational.
 
 ✔ PHASE 19 — CUADERNO DE CAMPAÑA + HISTORICAL ANALYTICS: CLOSED (Gate 19 PASS 2026-09-25)
