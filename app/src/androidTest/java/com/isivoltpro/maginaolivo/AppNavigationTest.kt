@@ -396,6 +396,8 @@ class AppNavigationTest {
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
         clickByText("Poda multiparcela E2E")
         waitForTag("activity-detail-root")
+        // Same race as above: the root is on screen before the Activity's targets load.
+        waitForTag("activity-target")
         composeRule.onAllNodesWithTag("activity-target").assertCountEquals(2)
         assertTextVisible("Registro protegido")
     }

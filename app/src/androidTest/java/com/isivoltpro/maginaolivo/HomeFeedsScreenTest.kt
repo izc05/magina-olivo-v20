@@ -2,6 +2,9 @@ package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollTo
@@ -34,7 +37,9 @@ class HomeFeedsScreenTest {
         composeRule.onNodeWithTag("home-campaign").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("home-quick-harvest").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("home-weather-unavailable").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("home-market").performScrollTo().assertTextContains("Sin fuente configurada.", substring = true)
+        composeRule.onNodeWithTag("home-market").performScrollTo()
+        // The card is a container; its texts are its children.
+        composeRule.onNode(hasTestTag("home-market") and hasAnyDescendant(hasText("Sin fuente configurada."))).assertExists()
         composeRule.onNodeWithTag("home-cooperative").performScrollTo().assertIsDisplayed()
     }
 
@@ -47,7 +52,7 @@ class HomeFeedsScreenTest {
             ),
         )
         composeRule.onNodeWithTag("home-weather-value").performScrollTo()
-            .assertTextContains("22 °C · Parcialmente nublado", substring = true)
+        composeRule.onNode(hasTestTag("home-weather-value") and hasAnyDescendant(hasText("22 °C · Parcialmente nublado"))).assertExists()
         composeRule.onNodeWithTag("home-weather-stale").assertIsDisplayed()
         composeRule.onNodeWithTag("home-weather-source").assertTextContains("Fuente: AEMET · Actualizado hace 5 h")
     }
