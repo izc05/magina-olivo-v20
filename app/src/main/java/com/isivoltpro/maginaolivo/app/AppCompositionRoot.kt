@@ -45,6 +45,8 @@ data class AppCompositionRoot(
     val unitPreferences: UnitPreferences,
     val onboardingStateStore: OnboardingStateStore,
     val localPersistence: LocalPersistence?,
+    /** UX-C: the Farm Mi Cuaderno opens on (device preference). */
+    val activeFarmStore: ActiveFarmStore = InMemoryActiveFarmStore(),
 ) {
     companion object {
         fun createDefault(environmentValue: String): AppCompositionRoot =
@@ -147,6 +149,7 @@ data class AppCompositionRoot(
             )
             return defaults.copy(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
+                activeFarmStore = AndroidActiveFarmStore(applicationContext),
                 localPersistence = LocalPersistence(
                     database = database,
                     farmRepository = farmRepository,

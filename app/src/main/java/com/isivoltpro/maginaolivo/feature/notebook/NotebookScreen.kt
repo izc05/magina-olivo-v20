@@ -174,8 +174,10 @@ private fun NotebookTabs(selected: NotebookTab, onSelect: (NotebookTab) -> Unit)
 }
 
 @Composable
-private fun WorksTab(notebook: CampaignNotebook, actions: NotebookActions) {
-    MoPrimaryButton("Registrar o planificar trabajo", actions.onWorks, Modifier.fillMaxWidth().testTag("notebook-open-works"))
+internal fun WorksTab(notebook: CampaignNotebook, actions: NotebookActions, showRegister: Boolean = true) {
+    if (showRegister) {
+        MoPrimaryButton("Registrar o planificar trabajo", actions.onWorks, Modifier.fillMaxWidth().testTag("notebook-open-works"))
+    }
     if (notebook.works.isEmpty()) {
         MoEmptyState(
             "Sin trabajos en esta campaña",
@@ -191,7 +193,7 @@ private fun WorksTab(notebook: CampaignNotebook, actions: NotebookActions) {
 }
 
 @Composable
-private fun WorkRow(work: Activity, onClick: () -> Unit) {
+internal fun WorkRow(work: Activity, onClick: () -> Unit) {
     MoCompactListItem(
         title = work.description,
         subtitle = listOfNotNull(
@@ -207,7 +209,7 @@ private fun WorkRow(work: Activity, onClick: () -> Unit) {
 }
 
 @Composable
-private fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions) {
+internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions) {
     val deliveries = notebook.deliverySummary
     val fat = deliveries.fatYield
     MoStatStrip(
@@ -305,7 +307,7 @@ private fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
+internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
     MoCompactListItem(
         title = expense.concept,
         subtitle = "${expense.category.label()} · ${Money.format(expense.amountMinor, expense.currency)}",
@@ -317,7 +319,7 @@ private fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignComparison> = emptyList()) {
+internal fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignComparison> = emptyList()) {
     val harvest = notebook.harvestSummary
     val deliveries = notebook.deliverySummary
     val expenses = notebook.expenseSummary

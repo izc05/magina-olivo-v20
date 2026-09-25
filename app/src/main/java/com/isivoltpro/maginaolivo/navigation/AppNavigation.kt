@@ -53,6 +53,8 @@ import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
 import com.isivoltpro.maginaolivo.feature.catastro.CadastreImportRoute
 import com.isivoltpro.maginaolivo.feature.maps.FarmMapRoute
+import com.isivoltpro.maginaolivo.feature.notebook.NotebookActions
+import com.isivoltpro.maginaolivo.feature.notebook.NotebookQuickAction
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookRootRoute
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
@@ -181,10 +183,32 @@ fun AppNavigation(
                 } else {
                     NotebookRootRoute(
                         persistence = persistence,
-                        onRegisterToday = { registerSheetVisible = true },
-                        onOpenFarmNotebook = { farmId ->
-                            navController.navigate(AppDestination.farmSection(FarmSection.NOTEBOOK.route, farmId.toString()))
+                        activeFarmStore = compositionRoot.activeFarmStore,
+                        onRegisterToday = { farmId ->
+                            registerFarmId = farmId?.toString()
+                            registerSheetVisible = true
                         },
+                        onQuickAction = { action, farmId, inRecollection ->
+                            // UX-C: each quick action opens the existing flow; UX-D preselects the type.
+                            when (action) {
+                                NotebookQuickAction.WORK,
+                                NotebookQuickAction.IRRIGATION,
+                                NotebookQuickAction.TREATMENT,
+                                NotebookQuickAction.MACHINERY,
+                                -> {
+                                    registerFarmId = farmId.toString()
+                                    navController.navigate(AppDestination.Register) { launchSingleTop = true }
+                                }
+                                // CR-007: jornales of a Jornada in recolección; otherwise a LABOR Expense.
+                                NotebookQuickAction.LABOUR ->
+                                    navController.navigate(if (inRecollection) AppDestination.Harvest else AppDestination.Expenses)
+                                NotebookQuickAction.HARVEST -> navController.navigate(AppDestination.Harvest)
+                                NotebookQuickAction.DELIVERY -> navController.navigate(AppDestination.Deliveries)
+                                NotebookQuickAction.EXPENSE, NotebookQuickAction.DOCUMENT -> navController.navigate(AppDestination.Expenses)
+                            }
+                        },
+                        actionsFor = { farmId -> navController.notebookActions(farmId) },
+                        onGoToFields = { navController.navigateToRoot(RootDestination.Olivar) },
                     )
                 }
             }
@@ -264,18 +288,7 @@ fun AppNavigation(
                             onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
                             onImportFromCatastro = { navController.navigate(AppDestination.catastro(farmId.toString())) },
                             onMap = { navController.navigate(AppDestination.farmMap(farmId.toString())) },
-                            notebookActions = com.isivoltpro.maginaolivo.feature.notebook.NotebookActions(
-                                onActivity = { id -> navController.navigate(AppDestination.activity(id.toString())) },
-                                onHarvest = { id -> navController.navigate(AppDestination.harvest(id.toString())) },
-                                onDelivery = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
-                                onExpense = { id -> navController.navigate(AppDestination.expense(id.toString())) },
-                                onWorks = { navController.navigate(AppDestination.farmSection(FarmSection.ACTIVITIES.route, farmId.toString())) },
-                                onHarvests = { navController.navigate(AppDestination.Harvest) },
-                                onDeliveries = { navController.navigate(AppDestination.Deliveries) },
-                                onPendingYields = { navController.navigate(AppDestination.PendingYieldsRoute) },
-                                onExpenses = { navController.navigate(AppDestination.Expenses) },
-                                onCampaigns = { navController.navigate(AppDestination.farmSection(FarmSection.CAMPAIGNS.route, farmId.toString())) },
-                            ),
+                            notebookActions = navController.notebookActions(farmId),
                         )
                     }
                 }
@@ -582,7 +595,8 @@ fun AppNavigation(
                     registerSheetVisible = false
                     when (action) {
                         QuickAddAction.ACTIVITY, QuickAddAction.PLAN -> {
-                            registerFarmId = quickAddContext?.farmId?.toString()
+                            // The screen's own Farm wins; from Mi Cuaderno it is the active Farm set just before.
+                            registerFarmId = quickAddContext?.farmId?.toString() ?: registerFarmId
                             navController.navigate(AppDestination.Register) { launchSingleTop = true }
                         }
                         QuickAddAction.HARVEST -> navController.navigate(AppDestination.Harvest)
@@ -618,3 +632,17 @@ private fun NavHostController.navigateToRoot(destination: RootDestination) {
         launchSingleTop = true
     }
 }
+
+/** The Cuaderno's links, the same from Mi Cuaderno and from a Farm in Mi Campo. */
+private fun NavHostController.notebookActions(farmId: UUID) = NotebookActions(
+    onActivity = { id -> navigate(AppDestination.activity(id.toString())) },
+    onHarvest = { id -> navigate(AppDestination.harvest(id.toString())) },
+    onDelivery = { id -> navigate(AppDestination.delivery(id.toString())) },
+    onExpense = { id -> navigate(AppDestination.expense(id.toString())) },
+    onWorks = { navigate(AppDestination.farmSection(FarmSection.ACTIVITIES.route, farmId.toString())) },
+    onHarvests = { navigate(AppDestination.Harvest) },
+    onDeliveries = { navigate(AppDestination.Deliveries) },
+    onPendingYields = { navigate(AppDestination.PendingYieldsRoute) },
+    onExpenses = { navigate(AppDestination.Expenses) },
+    onCampaigns = { navigate(AppDestination.farmSection(FarmSection.CAMPAIGNS.route, farmId.toString())) },
+)
