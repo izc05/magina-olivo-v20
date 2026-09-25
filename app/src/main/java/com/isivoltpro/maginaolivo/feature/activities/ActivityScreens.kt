@@ -90,12 +90,22 @@ fun FarmActivitiesRoute(
     /** UX-D: what "Registrar hoy" already knows (type, today's date). */
     initialDraft: ActivityDraft = ActivityDraft(),
     editorTitle: String = "Nueva actuación",
+    /** The Cuaderno already asked for the type, so the editor must not ask again. */
+    lockInitialType: Boolean = false,
 ) {
     val vm: FarmActivitiesViewModel = viewModel(key = "farm-activities-$farmId", factory = viewModelFactory {
         initializer { FarmActivitiesViewModel(farmId, persistence.activityRepository) }
     })
     val state by vm.state.collectAsStateWithLifecycle()
-    FarmActivitiesSection(state, onActivitySelected, vm::create, startWithEditor, initialDraft, editorTitle)
+    FarmActivitiesSection(
+        state = state,
+        onActivitySelected = onActivitySelected,
+        onCreate = vm::create,
+        startWithEditor = startWithEditor,
+        initialDraft = initialDraft,
+        editorTitle = editorTitle,
+        lockInitialType = lockInitialType,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -107,6 +117,7 @@ fun FarmActivitiesSection(
     startWithEditor: Boolean = false,
     initialDraft: ActivityDraft = ActivityDraft(),
     editorTitle: String = "Nueva actuación",
+    lockInitialType: Boolean = false,
 ) {
     var editor by rememberSaveable { mutableStateOf(startWithEditor) }
     LaunchedEffect(state.message) { if (state.message != null) editor = false }
@@ -151,6 +162,7 @@ fun FarmActivitiesSection(
                 onCancel = { editor = false },
                 initial = initialDraft,
                 title = editorTitle,
+                lockInitialType = lockInitialType,
             )
         }
     }
@@ -245,6 +257,7 @@ fun RegisterActivityRoute(
                             // Today by default (editable); the type already chosen; the Farm in the title.
                             initialDraft = ActivityDraft(type = presetType ?: ActivityType.OBSERVATION, activityDate = LocalDate.now()),
                             editorTitle = listOfNotNull(presetType?.label() ?: "Nueva actuación", selectedFarm?.name).joinToString(" · "),
+                            lockInitialType = presetType != null,
                         )
                     }
                 }
@@ -316,6 +329,8 @@ internal fun ActivityEditor(
     title: String = "Nueva actuación",
     /** Machines that can be named; empty hides nothing but the choice (Phase 15). */
     machines: List<MachineOption> = emptyList(),
+    /** True when the preceding Cuaderno choice already fixed the work type. */
+    lockInitialType: Boolean = false,
 ) {
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
@@ -373,16 +388,18 @@ internal fun ActivityEditor(
             isError = dateError != null, supportingText = dateError,
             modifier = Modifier.testTag("activity-date"),
         )
-        MoSectionHeader("Tipo de trabajo")
-        ActivityType.entries.forEach { option ->
-            val checked = option.name == type
-            Row(
-                Modifier.fillMaxWidth().testTag("activity-type-option").clickable { type = option.name }
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(checked, { type = option.name })
-                Text(option.label())
+        if (!lockInitialType) {
+            MoSectionHeader("Tipo de trabajo")
+            ActivityType.entries.forEach { option ->
+                val checked = option.name == type
+                Row(
+                    Modifier.fillMaxWidth().testTag("activity-type-option").clickable { type = option.name }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked, { type = option.name })
+                    Text(option.label())
+                }
             }
         }
         ActivityTypedDetailFields(
