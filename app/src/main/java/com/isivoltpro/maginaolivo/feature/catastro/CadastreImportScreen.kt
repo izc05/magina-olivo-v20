@@ -201,7 +201,7 @@ fun CadastreImportScreen(
                 }
                 Text("Incorporar a una finca", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 if (state.farms.isEmpty()) {
-                    Text("Crea primero una finca en Mi Olivar.", color = MoTextSecondary)
+                    Text("Crea primero una finca en Mi Campo.", color = MoTextSecondary)
                 } else {
                     state.farms.forEach { farm ->
                         Card(

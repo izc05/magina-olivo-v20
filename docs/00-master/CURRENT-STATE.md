@@ -41,7 +41,15 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS)
+▶ UX REORGANIZATION — Issue #246 / CR-007 (2026-09-25): functional phases PAUSED.
+  UX-A — audit: APPROVED by the owner.
+  UX-B — navigation shell (Inicio · Mi Campo · Cuaderno · Avisos · Perfil): IN PROGRESS
+  (executor Claude; branch claude/ux-b-navigation; no schema change).
+  UX-C … UX-G pending, one small PR each (Issue #246 §8).
+
+⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS; paused)
+  20B deploy: functions deployed and validated live by the manual workflow (run #5: forecast 200,
+  radar 200, keyless 401); PR #247 (token secret) and saving the real responses wait on the owner.
   Plan: docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md (owner decisions D1–D4 recorded).
   20A — Feed foundation + Home external cards: MERGED (PR #243, 2026-09-25, owner OK; CI green;
   no schema change — reuses the v1 weather_cache table).

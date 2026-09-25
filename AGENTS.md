@@ -13,14 +13,15 @@ Before changing code or architecture, read:
 5. `docs/00-master/RC1.2-CHANGE-REQUEST-004-DESIGN-V3.md`
 6. `docs/00-master/RC1.2-CHANGE-REQUEST-005-CUADERNO-CAMPANA.md`
 7. `docs/00-master/RC1.2-CHANGE-REQUEST-006-WEATHER-EDGE-FUNCTIONS.md`
-8. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
-9. `docs/design/VISUAL_DESIGN_LOCK.md`
-10. `docs/design/DESIGN_SYSTEM.md`
-11. `docs/00-master/CURRENT-STATE.md`
-12. `docs/07-plans/ROADMAP-RC1.2.md`
-13. the current phase execution plan, when one exists
-14. `docs/07-plans/AGENT-HANDOFF-PHASE18-19.md` while Phase 18/19 is active
-15. only then the domain/architecture/UI contracts needed for that phase
+8. `docs/00-master/RC1.2-CHANGE-REQUEST-007-CUADERNO-NAVIGATION.md`
+9. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
+10. `docs/design/VISUAL_DESIGN_LOCK.md`
+11. `docs/design/DESIGN_SYSTEM.md`
+12. `docs/00-master/CURRENT-STATE.md`
+13. `docs/07-plans/ROADMAP-RC1.2.md`
+14. the current phase execution plan, when one exists
+15. `docs/07-plans/AGENT-HANDOFF-PHASE18-19.md` while Phase 18/19 is active
+16. only then the domain/architecture/UI contracts needed for that phase
 
 If an older RC1/RC1.1 document conflicts with the RC1.2 Product Lock, RC1.2 wins.
 
@@ -36,9 +37,10 @@ Do not turn the new Android app back into the old territorial V20 portal. **Mág
 
 ## Frozen primary navigation
 
-`Inicio · Mi Olivar · Registrar (+) · Calendario · Perfil`
+`Inicio · Mi Campo · Cuaderno · Avisos · Perfil` (CR-007, Issue #246)
 
-Do not redesign or add root tabs without an approved Change Request.
+Cuaderno is the centre and holds "Registrar hoy"; `Registrar (+)` is no longer a root and the
+agenda lives under Avisos. Do not redesign or add root tabs without an approved Change Request.
 
 ## Current phase rule
 

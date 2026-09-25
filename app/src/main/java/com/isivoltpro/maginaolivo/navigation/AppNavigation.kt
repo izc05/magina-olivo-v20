@@ -53,6 +53,7 @@ import com.isivoltpro.maginaolivo.ui.reference.campaign.CampaignReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.components.ComponentCatalogueReferenceScreen
 import com.isivoltpro.maginaolivo.feature.catastro.CadastreImportRoute
 import com.isivoltpro.maginaolivo.feature.maps.FarmMapRoute
+import com.isivoltpro.maginaolivo.feature.notebook.NotebookRootRoute
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.weather.WeatherMarketReferenceScreen
@@ -66,8 +67,8 @@ private val bottomBarItems = RootDestination.entries.map { destination ->
         icon = when (destination) {
             RootDestination.Home -> MoIcons.Home
             RootDestination.Olivar -> MoIcons.Tree
-            RootDestination.Register -> MoIcons.Plus
-            RootDestination.Calendar -> MoIcons.Calendar
+            RootDestination.Notebook -> MoIcons.Notebook
+            RootDestination.Alerts -> MoIcons.Bell
             RootDestination.Profile -> MoIcons.Person
         },
     )
@@ -107,7 +108,8 @@ fun AppNavigation(
     LaunchedEffect(openActivityId, backStackEntry == null) {
         val id = openActivityId ?: return@LaunchedEffect
         if (backStackEntry == null || startDestination == AppDestination.Onboarding) return@LaunchedEffect
-        navController.navigateToRoot(RootDestination.Calendar)
+        // UX-B: the agenda lives under Avisos.
+        navController.navigateToRoot(RootDestination.Alerts)
         navController.navigate(AppDestination.activity(id.toString()))
         onActivityOpened()
     }
@@ -119,14 +121,8 @@ fun AppNavigation(
                 MoBottomBar(
                     items = bottomBarItems,
                     selectedIndex = currentRoot.ordinal,
-                    onSelected = { index ->
-                        val destination = RootDestination.entries[index]
-                        if (destination == RootDestination.Register) {
-                            registerSheetVisible = true
-                        } else {
-                            navController.navigateToRoot(destination)
-                        }
-                    },
+                    // UX-B (Issue #246): every tab is a real root; "Registrar hoy" lives in Cuaderno.
+                    onSelected = { index -> navController.navigateToRoot(RootDestination.entries[index]) },
                 )
             }
         },
@@ -156,7 +152,7 @@ fun AppNavigation(
                         persistence = persistence,
                         clock = compositionRoot.clock,
                         onOlivar = { navController.navigateToRoot(RootDestination.Olivar) },
-                        onCalendar = { navController.navigateToRoot(RootDestination.Calendar) },
+                        onCalendar = { navController.navigate(AppDestination.Calendar) },
                         onHarvest = { navController.navigate(AppDestination.Harvest) },
                         onDeliveries = { navController.navigate(AppDestination.Deliveries) },
                         onExpenses = { navController.navigate(AppDestination.Expenses) },
@@ -178,7 +174,21 @@ fun AppNavigation(
                     )
                 }
             }
-            composable(RootDestination.Register.route) {
+            composable(RootDestination.Notebook.route) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    NotebookRootRoute(
+                        persistence = persistence,
+                        onRegisterToday = { registerSheetVisible = true },
+                        onOpenFarmNotebook = { farmId ->
+                            navController.navigate(AppDestination.farmSection(FarmSection.NOTEBOOK.route, farmId.toString()))
+                        },
+                    )
+                }
+            }
+            composable(AppDestination.Register) {
                 val persistence = compositionRoot.localPersistence
                 if (persistence == null) {
                     PersistenceUnavailableScreen()
@@ -193,17 +203,22 @@ fun AppNavigation(
                     )
                 }
             }
-            composable(RootDestination.Calendar.route) {
-                val persistence = compositionRoot.localPersistence
-                if (persistence == null) {
-                    PersistenceUnavailableScreen()
-                } else {
-                    AgendaRoute(
-                        persistence = persistence,
-                        clock = compositionRoot.clock,
-                        onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
-                        onPlanWork = { navController.navigateToRoot(RootDestination.Register) },
-                    )
+            // UX-B: Avisos shows the agenda (overdue, today, next days, reminders); the old
+            // `calendar` route opens the same screen, now under Avisos.
+            listOf(RootDestination.Alerts.route to "Avisos", AppDestination.Calendar to "Calendario").forEach { (route, title) ->
+                composable(route) {
+                    val persistence = compositionRoot.localPersistence
+                    if (persistence == null) {
+                        PersistenceUnavailableScreen()
+                    } else {
+                        AgendaRoute(
+                            persistence = persistence,
+                            clock = compositionRoot.clock,
+                            onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
+                            onPlanWork = { navController.navigate(AppDestination.Register) },
+                            title = title,
+                        )
+                    }
                 }
             }
             composable(RootDestination.Profile.route) {
@@ -568,7 +583,7 @@ fun AppNavigation(
                     when (action) {
                         QuickAddAction.ACTIVITY, QuickAddAction.PLAN -> {
                             registerFarmId = quickAddContext?.farmId?.toString()
-                            navController.navigateToRoot(RootDestination.Register)
+                            navController.navigate(AppDestination.Register) { launchSingleTop = true }
                         }
                         QuickAddAction.HARVEST -> navController.navigate(AppDestination.Harvest)
                         QuickAddAction.DELIVERY -> navController.navigate(AppDestination.Deliveries)
@@ -593,7 +608,7 @@ private fun PersistenceUnavailableScreen() {
 
 /**
  * A bottom-bar tab always opens its own root screen, from wherever the farmer is: Inicio is
- * always Inicio, Mi Olivar is always the farm list. Nothing is kept or restored per tab (that
+ * always Inicio, Mi Campo is always the farm list. Nothing is kept or restored per tab (that
  * made a tab reopen a screen left deep inside it), so Back simply walks the screens visited,
  * and from any root it returns to Inicio.
  */

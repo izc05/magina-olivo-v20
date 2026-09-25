@@ -8,7 +8,7 @@ class AppDestinationTest {
     @Test
     fun rootDestinationsFollowFrozenOrder() {
         assertEquals(
-            listOf("Inicio", "Mi Olivar", "Registrar", "Calendario", "Perfil"),
+            listOf("Inicio", "Mi Campo", "Cuaderno", "Avisos", "Perfil"),
             RootDestination.entries.map { it.label },
         )
     }
@@ -19,7 +19,13 @@ class AppDestinationTest {
         assertEquals(RootDestination.Olivar, AppDestination.rootForRoute("parcel/demo-parcel"))
         assertEquals(RootDestination.Olivar, AppDestination.rootForRoute("campaign/demo-campaign"))
         assertEquals(RootDestination.Olivar, AppDestination.rootForRoute(AppDestination.MapCatastro))
-        assertEquals(RootDestination.Register, AppDestination.rootForRoute(AppDestination.OcrReview))
+        // UX-B (Issue #246): registering lives under Cuaderno; the agenda under Avisos.
+        assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.OcrReview))
+        assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.Register))
+        assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.Harvest))
+        assertEquals(RootDestination.Notebook, AppDestination.rootForRoute("delivery/demo"))
+        assertEquals(RootDestination.Alerts, AppDestination.rootForRoute(AppDestination.Calendar))
+        assertEquals(RootDestination.Notebook, RootDestination.entries.single { it.isPrimaryAction })
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))
     }
 

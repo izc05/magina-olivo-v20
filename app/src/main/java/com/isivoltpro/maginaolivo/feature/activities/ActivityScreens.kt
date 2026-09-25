@@ -200,7 +200,7 @@ fun RegisterActivityRoute(
                 )
                 state.farms.isEmpty() -> MoEmptyState(
                     "Aún no tienes fincas",
-                    "Crea una finca en Mi Olivar y podrás registrar actuaciones sobre sus parcelas.",
+                    "Crea una finca en Mi Campo y podrás registrar actuaciones sobre sus parcelas.",
                     icon = MoIcons.Tree,
                 )
                 else -> {

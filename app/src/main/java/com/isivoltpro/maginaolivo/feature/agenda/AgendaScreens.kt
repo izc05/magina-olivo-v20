@@ -102,6 +102,8 @@ fun AgendaRoute(
     clock: AppClock,
     onActivitySelected: (UUID) -> Unit,
     onPlanWork: () -> Unit,
+    /** UX-B (Issue #246): the same agenda is the Avisos root. */
+    title: String = "Calendario",
 ) {
     val viewModel: AgendaViewModel = viewModel(
         key = "agenda",
@@ -132,6 +134,7 @@ fun AgendaRoute(
         onPlanWork = onPlanWork,
         onComplete = viewModel::complete,
         onCancel = viewModel::cancel,
+        title = title,
     )
 }
 
@@ -160,6 +163,7 @@ fun AgendaScreen(
     onPlanWork: () -> Unit,
     onComplete: (UUID) -> Unit,
     onCancel: (UUID) -> Unit,
+    title: String = "Calendario",
 ) {
     var pending by rememberSaveable { mutableStateOf<Pair<String, String>?>(null) }
     var view by rememberSaveable { mutableStateOf(AgendaView.AGENDA) }
@@ -187,7 +191,7 @@ fun AgendaScreen(
         ) {
             Spacer(Modifier.height(MoSpacing.sm))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Calendario", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark, modifier = Modifier.weight(1f))
+                Text(title, style = MaterialTheme.typography.headlineLarge, color = MoOliveDark, modifier = Modifier.weight(1f))
                 MoPrimaryButton("Planificar trabajo", onPlanWork, Modifier.testTag("agenda-plan-work"))
             }
             AgendaViewSwitch(view) { view = it }
