@@ -59,16 +59,16 @@ import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.util.UUID
 
 /** Issue #246 §2: the nine things a farmer writes down, one tap each. */
-enum class NotebookQuickAction(val label: String, val tag: String) {
-    WORK("Trabajo", "notebook-quick-work"),
-    IRRIGATION("Riego", "notebook-quick-irrigation"),
-    TREATMENT("Tratamiento", "notebook-quick-treatment"),
-    LABOUR("Jornal", "notebook-quick-labour"),
-    HARVEST("Cosecha", "notebook-quick-harvest"),
-    DELIVERY("Entrega", "notebook-quick-delivery"),
-    EXPENSE("Gasto", "notebook-quick-expense"),
-    MACHINERY("Maquinaria", "notebook-quick-machinery"),
-    DOCUMENT("Documento", "notebook-quick-document"),
+enum class NotebookQuickAction(val label: String, val tag: String, val description: String) {
+    WORK("Trabajo", "notebook-quick-work", "Poda, abonado, labores del suelo…"),
+    IRRIGATION("Riego", "notebook-quick-irrigation", "Horas, m³ y sector"),
+    TREATMENT("Tratamiento", "notebook-quick-treatment", "Producto, dosis y motivo"),
+    LABOUR("Jornal", "notebook-quick-labour", "Quién trabajó y cuánto"),
+    HARVEST("Cosecha", "notebook-quick-harvest", "Kilos recogidos en el campo"),
+    DELIVERY("Entrega", "notebook-quick-delivery", "Pesada en la cooperativa o almazara"),
+    EXPENSE("Gasto", "notebook-quick-expense", "Facturas, tickets y pagos"),
+    MACHINERY("Maquinaria", "notebook-quick-machinery", "Uso del tractor u otra máquina"),
+    DOCUMENT("Documento", "notebook-quick-document", "Foto o PDF de un papel"),
 }
 
 /** Issue #246 §4: Diario · Fitosanitario · Gastos · Campaña — views of the same records. */
@@ -79,7 +79,7 @@ enum class NotebookHubTab(val label: String, val tag: String) {
     CAMPAIGN("Campaña", "notebook-tab-campaign"),
 }
 
-private fun NotebookQuickAction.icon(): ImageVector = when (this) {
+internal fun NotebookQuickAction.icon(): ImageVector = when (this) {
     NotebookQuickAction.WORK -> MoIcons.Activity
     NotebookQuickAction.IRRIGATION -> MoIcons.Drop
     NotebookQuickAction.TREATMENT -> MoIcons.Spray
@@ -95,7 +95,8 @@ private fun NotebookQuickAction.icon(): ImageVector = when (this) {
 fun NotebookRootRoute(
     persistence: LocalPersistence,
     activeFarmStore: ActiveFarmStore,
-    onRegisterToday: (farmId: UUID?) -> Unit,
+    /** The active Farm, whether its Campaign is in recolección, and the "Finca · Campaña" line. */
+    onRegisterToday: (farmId: UUID?, inRecollection: Boolean, context: String?) -> Unit,
     /** The quick action, the active Farm, and whether its Campaign is in recolección. */
     onQuickAction: (NotebookQuickAction, UUID, Boolean) -> Unit,
     actionsFor: (UUID) -> NotebookActions,
@@ -139,7 +140,14 @@ fun NotebookRootRoute(
             activeFarmStore.set(id)
         },
         onSelectCampaign = { id -> notebook?.second?.selectCampaign(id) },
-        onRegisterToday = { onRegisterToday(activeFarm?.id) },
+        onRegisterToday = {
+            val campaign = notebook?.first?.notebook?.campaign
+            onRegisterToday(
+                activeFarm?.id,
+                campaign?.status == CampaignStatus.HARVEST,
+                activeFarm?.let { contextLine(it, campaign?.name) },
+            )
+        },
         onQuickAction = { action ->
             val farm = activeFarm ?: return@NotebookHomeScreen
             onQuickAction(action, farm.id, notebook?.first?.notebook?.campaign?.status == CampaignStatus.HARVEST)
@@ -204,11 +212,7 @@ fun NotebookHomeScreen(
                     // Context always visible: which Farm and which Campaign this writes into.
                     val campaign = notebook?.notebook?.campaign
                     Text(
-                        listOfNotNull(
-                            activeFarm.name,
-                            campaign?.name?.let { if (it.startsWith("Campaña", ignoreCase = true)) it else "Campaña $it" } ?: "Sin campaña en marcha",
-                        )
-                            .joinToString(" · "),
+                        contextLine(activeFarm, campaign?.name),
                         style = MaterialTheme.typography.titleMedium,
                         color = MoOliveDark,
                         modifier = Modifier.testTag("notebook-context"),
@@ -355,3 +359,9 @@ private fun NotebookHub(
         }
     }
 }
+
+/** "Finca · Campaña 2026/27" — the context shown before anything is written. */
+internal fun contextLine(farm: Farm, campaignName: String?): String = listOf(
+    farm.name,
+    campaignName?.let { if (it.startsWith("Campaña", ignoreCase = true)) it else "Campaña $it" } ?: "Sin campaña en marcha",
+).joinToString(" · ")

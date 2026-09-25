@@ -87,12 +87,15 @@ fun FarmActivitiesRoute(
     persistence: LocalPersistence,
     onActivitySelected: (UUID) -> Unit,
     startWithEditor: Boolean = false,
+    /** UX-D: what "Registrar hoy" already knows (type, today's date). */
+    initialDraft: ActivityDraft = ActivityDraft(),
+    editorTitle: String = "Nueva actuación",
 ) {
     val vm: FarmActivitiesViewModel = viewModel(key = "farm-activities-$farmId", factory = viewModelFactory {
         initializer { FarmActivitiesViewModel(farmId, persistence.activityRepository) }
     })
     val state by vm.state.collectAsStateWithLifecycle()
-    FarmActivitiesSection(state, onActivitySelected, vm::create, startWithEditor)
+    FarmActivitiesSection(state, onActivitySelected, vm::create, startWithEditor, initialDraft, editorTitle)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,9 +105,15 @@ fun FarmActivitiesSection(
     onActivitySelected: (UUID) -> Unit,
     onCreate: (ActivityDraft, Boolean) -> Unit,
     startWithEditor: Boolean = false,
+    initialDraft: ActivityDraft = ActivityDraft(),
+    editorTitle: String = "Nueva actuación",
 ) {
     var editor by rememberSaveable { mutableStateOf(startWithEditor) }
     LaunchedEffect(state.message) { if (state.message != null) editor = false }
+    // UX-D: saving is confirmed where the farmer is looking, not only by the closed sheet.
+    state.message?.let { message ->
+        MoStatusChip(message, tone = MoStatusTone.Success, modifier = Modifier.testTag("activities-saved"))
+    }
     MoSectionHeader(
         "Actuaciones",
         action = {
@@ -140,6 +149,8 @@ fun FarmActivitiesSection(
                 onSave = { draft -> onCreate(draft, false) },
                 onSaveDraft = { draft -> onCreate(draft, true) },
                 onCancel = { editor = false },
+                initial = initialDraft,
+                title = editorTitle,
             )
         }
     }
@@ -158,6 +169,8 @@ fun RegisterActivityRoute(
     onActivitySelected: (UUID) -> Unit,
     preselectedFarmId: UUID? = null,
     onFarmPreselected: () -> Unit = {},
+    /** UX-D: the type chosen in "Registrar hoy" (Riego, Tratamiento…); null lets the farmer pick. */
+    presetType: ActivityType? = null,
 ) {
     val vm: RegisterActivityViewModel = viewModel(factory = viewModelFactory {
         initializer {
@@ -229,6 +242,9 @@ fun RegisterActivityRoute(
                             persistence = persistence,
                             onActivitySelected = onActivitySelected,
                             startWithEditor = true,
+                            // Today by default (editable); the type already chosen; the Farm in the title.
+                            initialDraft = ActivityDraft(type = presetType ?: ActivityType.OBSERVATION, activityDate = LocalDate.now()),
+                            editorTitle = listOfNotNull(presetType?.label() ?: "Nueva actuación", selectedFarm?.name).joinToString(" · "),
                         )
                     }
                 }

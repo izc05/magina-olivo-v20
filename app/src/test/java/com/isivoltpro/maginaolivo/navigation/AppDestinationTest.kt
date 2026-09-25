@@ -25,6 +25,9 @@ class AppDestinationTest {
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.Harvest))
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute("delivery/demo"))
         assertEquals(RootDestination.Alerts, AppDestination.rootForRoute(AppDestination.Calendar))
+        // UX-D: the register flow with a preset type stays under Cuaderno.
+        assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.RegisterPattern))
+        assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.register("PHYTOSANITARY")))
         assertEquals(RootDestination.Notebook, RootDestination.entries.single { it.isPrimaryAction })
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))
     }

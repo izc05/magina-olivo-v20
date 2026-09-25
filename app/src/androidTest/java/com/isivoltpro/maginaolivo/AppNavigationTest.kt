@@ -155,7 +155,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         clickByTag("notebook-register-today")
         composeRule.onNodeWithTag("register-action-sheet").assertIsDisplayed()
-        clickInSheetByText("Registrar actuación")
+        clickInSheetByTag("register-today-work")
 
         waitForTag("register-activity-root")
         composeRule.onNodeWithTag("register-activity-root").assertIsDisplayed()
@@ -432,7 +432,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         clickByTag("notebook-register-today")
         waitForTag("register-action-sheet")
-        clickInSheetByText("Registrar actuación")
+        clickInSheetByTag("register-today-work")
         waitForTag("register-activity-root")
 
         // A single Farm resolves itself and the editor opens straight away; with more
