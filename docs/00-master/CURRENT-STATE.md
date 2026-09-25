@@ -46,12 +46,18 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   UX-B — navigation shell (Inicio · Mi Campo · Cuaderno · Avisos · Perfil): MERGED (PR #248,
   2026-09-25, owner OK; CI green; no schema change).
   UX-C — Mi Cuaderno shell (context, Registrar hoy, 9 quick actions, Diario · Fitosanitario ·
-  Gastos · Campaña): IN PROGRESS, stacked on UX-B (branch claude/ux-c-notebook-shell; active Farm
-  is a device preference, no Room change).
+  Gastos · Campaña): MERGED (PR #249, 2026-09-25, owner OK; CI green; active Farm is a device
+  preference, no Room change).
   UX-D — Registrar hoy (¿Qué has hecho hoy? → existing form with the type preset, today's date,
-  Farm/Campaign context shown, saved confirmation): IN PROGRESS, stacked on UX-C
-  (branch claude/ux-d-register-today; no Room change).
-  UX-E … UX-G pending, one small PR each (Issue #246 §8).
+  Farm/Campaign context shown, saved confirmation): MERGED (PR #250, 2026-09-25, owner OK; CI green;
+  no Room change).
+  UX-E — Diario + specialised views: IN PROGRESS (branch claude/ux-e-diario; no Room change).
+  Diario = one timeline of work, jornadas, pesadas and expenses (an Activity's own cost is not
+  listed twice); Fitosanitario = the treatment Activities with product, active substance, dose,
+  parcel/surface, reason, machinery and "Falta: …" for missing values (legal model still open);
+  Gastos = the one ledger grouped by jornales, maquinaria and facturas/documentos; Campaña = the
+  summary plus "Pendiente de entregar" (only when picked ≥ delivered) and pending yields.
+  UX-F … UX-G pending, one small PR each (Issue #246 §8).
 
 ⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS; paused)
   20B deploy: functions deployed and validated live by the manual workflow (run #5: forecast 200,

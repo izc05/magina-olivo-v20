@@ -40,8 +40,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.ActiveFarmStore
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
-import com.isivoltpro.maginaolivo.domain.activity.ActivityType
-import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityViewModel
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
@@ -49,7 +47,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
-import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
@@ -309,52 +306,12 @@ private fun NotebookHub(
                     )
                 }
             }
+            // UX-E: four views of the same records; nothing is copied or totalled twice.
             when (tab) {
-                // Diario: the year's work, then the recolección days (UX-E makes it one timeline).
-                NotebookHubTab.DIARY -> {
-                    WorksTab(notebook, actions, showRegister = false)
-                    if (notebook.recollectionDays.isNotEmpty()) {
-                        MoSectionHeader("Recolección")
-                        RecollectionTab(notebook, actions)
-                    }
-                }
-                // Fitosanitario: the same treatment Activities, nothing re-entered.
-                NotebookHubTab.PHYTO -> {
-                    val treatments = notebook.works.filter { it.type == ActivityType.PHYTOSANITARY }
-                    if (treatments.isEmpty()) {
-                        MoEmptyState(
-                            "Sin tratamientos en esta campaña",
-                            "Los tratamientos que registres aparecerán aquí con su producto y su dosis.",
-                            icon = MoIcons.Spray,
-                            modifier = Modifier.testTag("notebook-phyto-empty"),
-                        )
-                    } else {
-                        treatments.forEach { work -> WorkRow(work) { actions.onActivity(work.id) } }
-                    }
-                }
-                // Gastos: the one Expense ledger of the Campaign; only posted money is summed.
-                NotebookHubTab.EXPENSES -> {
-                    val summary = notebook.expenseSummary
-                    Text(
-                        if (summary.postedCount > 0) "Total contabilizado: ${Money.format(summary.totalMinor, summary.currency)}" else "Sin gastos contabilizados",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MoOliveDark,
-                        modifier = Modifier.testTag("notebook-expenses-total"),
-                    )
-                    if (notebook.expenses.isEmpty()) {
-                        MoEmptyState(
-                            "Sin gastos en esta campaña",
-                            "Gastos, jornales pagados y facturas aparecerán aquí.",
-                            icon = MoIcons.Euro,
-                            modifier = Modifier.testTag("notebook-expenses-empty"),
-                        )
-                    } else {
-                        notebook.expenses.sortedByDescending { it.expenseDate }.forEach { expense ->
-                            ExpenseRow(expense) { actions.onExpense(expense.id) }
-                        }
-                    }
-                }
-                NotebookHubTab.CAMPAIGN -> SummaryTab(notebook, state.comparison)
+                NotebookHubTab.DIARY -> DiaryView(notebook, actions)
+                NotebookHubTab.PHYTO -> PhytoView(notebook, actions)
+                NotebookHubTab.EXPENSES -> CostsView(notebook, actions)
+                NotebookHubTab.CAMPAIGN -> CampaignView(notebook, state, actions)
             }
         }
     }
