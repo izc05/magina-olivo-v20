@@ -43,6 +43,8 @@ object AppDestination {
     const val Onboarding = "onboarding"
     /** Activity register flow (was the `+` root; now opened from Cuaderno → Registrar hoy). */
     const val Register = "register"
+    /** UX-D: the register flow with the type chosen in "Registrar hoy" (optional). */
+    const val RegisterPattern = "register?type={type}"
     /** The agenda (was the Calendario root; now under Avisos). */
     const val Calendar = "calendar"
     const val MapCatastro = "map-catastro"
@@ -108,8 +110,11 @@ object AppDestination {
 
     fun catastro(farmId: String): String = nestedRoute(MapCatastro, farmId)
 
+    /** `register` or `register?type=IRRIGATION`. */
+    fun register(type: String?): String = if (type.isNullOrBlank()) Register else "$Register?type=$type"
+
     fun rootForRoute(route: String?): RootDestination? {
-        val prefix = route?.substringBefore('/') ?: return null
+        val prefix = route?.substringBefore('?')?.substringBefore('/') ?: return null
         return when (prefix) {
             RootDestination.Home.route, Weather -> RootDestination.Home
             RootDestination.Olivar.route,

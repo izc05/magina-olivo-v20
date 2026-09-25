@@ -56,6 +56,10 @@ import com.isivoltpro.maginaolivo.feature.maps.FarmMapRoute
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookActions
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookQuickAction
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookRootRoute
+import com.isivoltpro.maginaolivo.feature.notebook.RegisterTodaySheet
+import com.isivoltpro.maginaolivo.domain.activity.ActivityType
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.weather.WeatherMarketReferenceScreen
@@ -99,13 +103,9 @@ fun AppNavigation(
     var registerSheetVisible by rememberSaveable { mutableStateOf(false) }
     // The Farm the Quick Add context resolved, handed to the activity flow once.
     var registerFarmId by rememberSaveable { mutableStateOf<String?>(null) }
-    val quickAddContext = rememberQuickAddContext(
-        persistence = compositionRoot.localPersistence,
-        route = backStackEntry?.destination?.route,
-        argumentId = backStackEntry?.arguments?.let { arguments ->
-            listOf("farmId", "parcelId", "campaignId", "activityId").firstNotNullOfOrNull { arguments.getString(it) }
-        },
-    )
+    // UX-D: what "Registrar hoy" knows about the active Farm, shown before anything is saved.
+    var registerInRecollection by rememberSaveable { mutableStateOf(false) }
+    var registerContext by rememberSaveable { mutableStateOf<String?>(null) }
     // A reminder opens its Activity over the Calendar, so Back returns to the agenda.
     LaunchedEffect(openActivityId, backStackEntry == null) {
         val id = openActivityId ?: return@LaunchedEffect
@@ -184,40 +184,33 @@ fun AppNavigation(
                     NotebookRootRoute(
                         persistence = persistence,
                         activeFarmStore = compositionRoot.activeFarmStore,
-                        onRegisterToday = { farmId ->
+                        onRegisterToday = { farmId, inRecollection, context ->
                             registerFarmId = farmId?.toString()
+                            registerInRecollection = inRecollection
+                            registerContext = context
                             registerSheetVisible = true
                         },
                         onQuickAction = { action, farmId, inRecollection ->
-                            // UX-C: each quick action opens the existing flow; UX-D preselects the type.
-                            when (action) {
-                                NotebookQuickAction.WORK,
-                                NotebookQuickAction.IRRIGATION,
-                                NotebookQuickAction.TREATMENT,
-                                NotebookQuickAction.MACHINERY,
-                                -> {
-                                    registerFarmId = farmId.toString()
-                                    navController.navigate(AppDestination.Register) { launchSingleTop = true }
-                                }
-                                // CR-007: jornales of a Jornada in recolección; otherwise a LABOR Expense.
-                                NotebookQuickAction.LABOUR ->
-                                    navController.navigate(if (inRecollection) AppDestination.Harvest else AppDestination.Expenses)
-                                NotebookQuickAction.HARVEST -> navController.navigate(AppDestination.Harvest)
-                                NotebookQuickAction.DELIVERY -> navController.navigate(AppDestination.Deliveries)
-                                NotebookQuickAction.EXPENSE, NotebookQuickAction.DOCUMENT -> navController.navigate(AppDestination.Expenses)
-                            }
+                            registerFarmId = farmId.toString()
+                            navController.openQuickAction(action, inRecollection)
                         },
                         actionsFor = { farmId -> navController.notebookActions(farmId) },
                         onGoToFields = { navController.navigateToRoot(RootDestination.Olivar) },
                     )
                 }
             }
-            composable(AppDestination.Register) {
+            composable(
+                AppDestination.RegisterPattern,
+                arguments = listOf(navArgument("type") { type = NavType.StringType; nullable = true; defaultValue = null }),
+            ) { entry ->
                 val persistence = compositionRoot.localPersistence
+                val presetType = entry.arguments?.getString("type")
+                    ?.let { name -> ActivityType.entries.firstOrNull { it.name == name } }
                 if (persistence == null) {
                     PersistenceUnavailableScreen()
                 } else {
                     RegisterActivityRoute(
+                        presetType = presetType,
                         persistence = persistence,
                         preselectedFarmId = registerFarmId?.let { runCatching { UUID.fromString(it) }.getOrNull() },
                         onFarmPreselected = { registerFarmId = null },
@@ -589,20 +582,11 @@ fun AppNavigation(
             onDismissRequest = { registerSheetVisible = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
-            QuickAddSheet(
-                context = quickAddContext,
-                onAction = { action ->
+            RegisterTodaySheet(
+                context = registerContext,
+                onChoose = { action ->
                     registerSheetVisible = false
-                    when (action) {
-                        QuickAddAction.ACTIVITY, QuickAddAction.PLAN -> {
-                            // The screen's own Farm wins; from Mi Cuaderno it is the active Farm set just before.
-                            registerFarmId = quickAddContext?.farmId?.toString() ?: registerFarmId
-                            navController.navigate(AppDestination.Register) { launchSingleTop = true }
-                        }
-                        QuickAddAction.HARVEST -> navController.navigate(AppDestination.Harvest)
-                        QuickAddAction.DELIVERY -> navController.navigate(AppDestination.Deliveries)
-                        QuickAddAction.EXPENSE -> navController.navigate(AppDestination.Expenses)
-                    }
+                    navController.openQuickAction(action, registerInRecollection)
                 },
                 onCancel = { registerSheetVisible = false },
             )
@@ -646,3 +630,23 @@ private fun NavHostController.notebookActions(farmId: UUID) = NotebookActions(
     onExpenses = { navigate(AppDestination.Expenses) },
     onCampaigns = { navigate(AppDestination.farmSection(FarmSection.CAMPAIGNS.route, farmId.toString())) },
 )
+
+/**
+ * UX-D: where each "Registrar hoy" choice goes — the existing forms, nothing new. Activity
+ * kinds open the register flow with their type already chosen and today's date.
+ */
+private fun NavHostController.openQuickAction(action: NotebookQuickAction, inRecollection: Boolean) {
+    when (action) {
+        NotebookQuickAction.WORK, NotebookQuickAction.MACHINERY ->
+            navigate(AppDestination.register(null)) { launchSingleTop = true }
+        NotebookQuickAction.IRRIGATION ->
+            navigate(AppDestination.register(ActivityType.IRRIGATION.name)) { launchSingleTop = true }
+        NotebookQuickAction.TREATMENT ->
+            navigate(AppDestination.register(ActivityType.PHYTOSANITARY.name)) { launchSingleTop = true }
+        // CR-007: the jornales of a Jornada in recolección; otherwise a LABOR Expense.
+        NotebookQuickAction.LABOUR -> navigate(if (inRecollection) AppDestination.Harvest else AppDestination.Expenses)
+        NotebookQuickAction.HARVEST -> navigate(AppDestination.Harvest)
+        NotebookQuickAction.DELIVERY -> navigate(AppDestination.Deliveries)
+        NotebookQuickAction.EXPENSE, NotebookQuickAction.DOCUMENT -> navigate(AppDestination.Expenses)
+    }
+}
