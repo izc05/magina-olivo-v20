@@ -43,8 +43,10 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ```text
 ▶ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS)
   Plan: docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md (owner decisions D1–D4 recorded).
-  20A — Feed foundation + Home external cards: IN PROGRESS (executor Claude; branch
-  claude/phase20a-feeds; no schema change — reuses the v1 weather_cache table).
+  20A — Feed foundation + Home external cards: MERGED (PR #243, 2026-09-25, owner OK; CI green;
+  no schema change — reuses the v1 weather_cache table).
+  20B — Weather via Supabase Edge Functions (AEMET → MET Norway) under CR-006: IN PROGRESS
+  (executor Claude; branch claude/phase20b-weather; no schema change).
   Gate 20: failure of every external feed still leaves Mi Olivar fully operational.
 
 ✔ PHASE 19 — CUADERNO DE CAMPAÑA + HISTORICAL ANALYTICS: CLOSED (Gate 19 PASS 2026-09-25)
@@ -76,16 +78,17 @@ Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6
 5. `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
 6. `docs/00-master/RC1.2-CHANGE-REQUEST-004-DESIGN-V3.md`
 7. `docs/00-master/RC1.2-CHANGE-REQUEST-005-CUADERNO-CAMPANA.md`
-8. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
-9. `docs/design/VISUAL_DESIGN_LOCK.md`
-10. `docs/design/DESIGN_SYSTEM.md`
-11. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
-12. `docs/00-master/RC1.1-CHANGE-REQUEST.md`
-13. `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`
-14. `docs/00-master/MASTER-SPEC-RC1.md`
-15. `docs/00-master/RC1-GATE-REVIEW.md`
-16. `docs/07-plans/ROADMAP-RC1.2.md`
-17. `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`
+8. `docs/00-master/RC1.2-CHANGE-REQUEST-006-WEATHER-EDGE-FUNCTIONS.md`
+9. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
+10. `docs/design/VISUAL_DESIGN_LOCK.md`
+11. `docs/design/DESIGN_SYSTEM.md`
+12. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
+13. `docs/00-master/RC1.1-CHANGE-REQUEST.md`
+14. `docs/00-master/RC1-NORMATIVE-ADDENDUM.md`
+15. `docs/00-master/MASTER-SPEC-RC1.md`
+16. `docs/00-master/RC1-GATE-REVIEW.md`
+17. `docs/07-plans/ROADMAP-RC1.2.md`
+18. `docs/07-plans/PHASE3-DESIGN-REFERENCE.md`
 
 Then read only the domain/architecture/UI contracts needed by the current phase.
 

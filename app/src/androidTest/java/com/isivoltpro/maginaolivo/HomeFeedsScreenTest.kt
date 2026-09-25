@@ -57,6 +57,18 @@ class HomeFeedsScreenTest {
         composeRule.onNodeWithTag("home-weather-source").assertTextContains("Fuente: AEMET · Actualizado hace 5 h")
     }
 
+    @Test fun theFallbackProviderIsNamedAndCredited() {
+        val weather = WeatherNow(
+            17, WeatherCondition.RAIN, null, 14, now.minusSeconds(1800),
+            updatedAt = now.minusSeconds(40 * 60),
+            attribution = "Datos de MET Norway (Instituto Meteorológico de Noruega), licencia CC BY 4.0.",
+        )
+        show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Value(weather, "MET Norway", now.minusSeconds(60), stale = false)))
+        composeRule.onNodeWithTag("home-weather-source").performScrollTo()
+            .assertTextContains("Fuente: MET Norway · Actualizado hace 40 min")
+        composeRule.onNodeWithTag("home-weather-attribution").assertTextContains("CC BY 4.0", substring = true)
+    }
+
     @Test fun noPlaceAsksForTheFarmMunicipality() {
         show(UiPolishFixtures.home.copy(weather = FeedState.NoLocation))
         composeRule.onNodeWithTag("home-weather-no-location").performScrollTo().assertIsDisplayed()

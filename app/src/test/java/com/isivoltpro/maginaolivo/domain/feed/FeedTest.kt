@@ -43,6 +43,12 @@ class FeedTest {
     fun theCacheCodecRoundTripsAndRefusesPartialValues() {
         val weather = WeatherNow(22, WeatherCondition.PARTLY_CLOUDY, 15, null, Instant.parse("2026-11-26T10:00:00Z"))
         assertEquals(weather, WeatherCodec.decode(WeatherCodec.encode(weather)))
+        val credited = weather.copy(
+            condition = WeatherCondition.HAZE,
+            updatedAt = Instant.parse("2026-11-26T09:40:00Z"),
+            attribution = "© AEMET. Información elaborada por la Agencia Estatal de Meteorología.",
+        )
+        assertEquals(credited, WeatherCodec.decode(WeatherCodec.encode(credited)))
         assertNull(WeatherCodec.decode("t=22\nc=CLEAR"))
         assertNull(WeatherCodec.decode("t=22\nc=HAIL\nat=1"))
         assertNull(WeatherCodec.decode(""))

@@ -14,6 +14,7 @@ enum class WeatherCondition(val label: String) {
     STORM("Tormenta"),
     SNOW("Nieve"),
     FOG("Niebla"),
+    HAZE("Calima"),
 }
 
 /** The weather for the coming hours; every optional figure is null when the source omits it. */
@@ -24,14 +25,21 @@ data class WeatherNow(
     val windKmh: Int?,
     /** The hour the figures are for, as the source gives it. */
     val validAt: Instant,
+    /** When the provider produced this forecast (20B); "Actualizado hace …" reads this. */
+    val updatedAt: Instant? = null,
+    /** The provider's required credit, shown with the value (20B). */
+    val attribution: String? = null,
 )
 
-/** A weather provider (20B: AEMET OpenData). Throws on any failure; callers keep the cache. */
-interface WeatherSource {
-    /** Shown next to every value, e.g. "AEMET". */
-    val name: String
+/** What a source answered: the provider that actually produced it, and the value. */
+data class WeatherReading(val provider: String, val weather: WeatherNow)
 
-    suspend fun fetch(location: FeedLocation): WeatherNow
+/**
+ * A weather source. 20B: the `weather-forecast` Edge Function, which asks AEMET and falls
+ * back to MET Norway and says which one answered. Throws on any failure; callers keep the cache.
+ */
+interface WeatherSource {
+    suspend fun fetch(location: FeedLocation): WeatherReading
 }
 
 /** Inicio's weather: cached value first, a refresh only when it is stale or missing. */
@@ -50,6 +58,8 @@ object WeatherCodec {
         weather.rainProbabilityPercent?.let { "p=$it" },
         weather.windKmh?.let { "w=$it" },
         "at=${weather.validAt.epochSecond}",
+        weather.updatedAt?.let { "u=${it.epochSecond}" },
+        weather.attribution?.let { "a=${it.replace('\n', ' ')}" },
     ).joinToString("\n")
 
     /** Null when the stored text is not a complete weather value (never a partial guess). */
@@ -60,6 +70,14 @@ object WeatherCodec {
         val temperature = fields["t"]?.toIntOrNull() ?: return null
         val condition = fields["c"]?.let { name -> WeatherCondition.entries.firstOrNull { it.name == name } } ?: return null
         val validAt = fields["at"]?.toLongOrNull()?.let(Instant::ofEpochSecond) ?: return null
-        return WeatherNow(temperature, condition, fields["p"]?.toIntOrNull(), fields["w"]?.toIntOrNull(), validAt)
+        return WeatherNow(
+            temperature,
+            condition,
+            fields["p"]?.toIntOrNull(),
+            fields["w"]?.toIntOrNull(),
+            validAt,
+            fields["u"]?.toLongOrNull()?.let(Instant::ofEpochSecond),
+            fields["a"]?.takeIf { it.isNotBlank() },
+        )
     }
 }

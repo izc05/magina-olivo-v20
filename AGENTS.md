@@ -12,14 +12,15 @@ Before changing code or architecture, read:
 4. `docs/00-master/RC1.2-CHANGE-REQUEST-003-BRAND-VISUAL.md`
 5. `docs/00-master/RC1.2-CHANGE-REQUEST-004-DESIGN-V3.md`
 6. `docs/00-master/RC1.2-CHANGE-REQUEST-005-CUADERNO-CAMPANA.md`
-7. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
-8. `docs/design/VISUAL_DESIGN_LOCK.md`
-9. `docs/design/DESIGN_SYSTEM.md`
-10. `docs/00-master/CURRENT-STATE.md`
-11. `docs/07-plans/ROADMAP-RC1.2.md`
-12. the current phase execution plan, when one exists
-13. `docs/07-plans/AGENT-HANDOFF-PHASE18-19.md` while Phase 18/19 is active
-14. only then the domain/architecture/UI contracts needed for that phase
+7. `docs/00-master/RC1.2-CHANGE-REQUEST-006-WEATHER-EDGE-FUNCTIONS.md`
+8. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
+9. `docs/design/VISUAL_DESIGN_LOCK.md`
+10. `docs/design/DESIGN_SYSTEM.md`
+11. `docs/00-master/CURRENT-STATE.md`
+12. `docs/07-plans/ROADMAP-RC1.2.md`
+13. the current phase execution plan, when one exists
+14. `docs/07-plans/AGENT-HANDOFF-PHASE18-19.md` while Phase 18/19 is active
+15. only then the domain/architecture/UI contracts needed for that phase
 
 If an older RC1/RC1.1 document conflicts with the RC1.2 Product Lock, RC1.2 wins.
 

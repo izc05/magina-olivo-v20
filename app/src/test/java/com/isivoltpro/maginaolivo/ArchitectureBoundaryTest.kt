@@ -19,15 +19,26 @@ class ArchitectureBoundaryTest {
             "supabase",
             "workmanager",
         )
+        // CR-006 (Phase 20B): the weather Edge Function client is the one place allowed to name
+        // the backend, and only over plain HTTPS. The Supabase SDK stays forbidden everywhere.
+        val weatherEdgeClient = "/data/remote/weather/"
 
-        val sourceText = sourceRoot!!
+        val sources = sourceRoot!!
             .walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
+            .toList()
+        val sourceText = sources
+            .filterNot { weatherEdgeClient in it.invariantSeparatorsPath }
             .joinToString("\n") { it.readText() }
             .lowercase()
 
         forbidden.forEach { token ->
             assertFalse("Source must not depend on $token before its phase", sourceText.contains(token))
+        }
+        val sdk = listOf("io.github.jan.supabase", "supabase-kt", "gotrue", "postgrest", "realtime")
+        sources.filter { weatherEdgeClient in it.invariantSeparatorsPath }.forEach { file ->
+            val text = file.readText().lowercase()
+            sdk.forEach { token -> assertFalse("${file.name} must stay plain HTTPS (CR-006): $token", text.contains(token)) }
         }
     }
 

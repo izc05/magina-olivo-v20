@@ -1,0 +1,11 @@
+[
+  {"id": "id23019", "nombre": "Bedmar y Garcíez", "latitud_dec": "37.8216", "longitud_dec": "-3.4101"},
+  {"id": "id23050", "nombre": "Jódar", "latitud_dec": "37.8421", "longitud_dec": "-3.3526"},
+  {"id": "id23049", "nombre": "Jimena", "latitud_dec": "37.8434", "longitud_dec": "-3.4757"},
+  {"id": "id23002", "nombre": "Albanchez de Mágina", "latitud_dec": "37.7928", "longitud_dec": "-3.4661"},
+  {"id": "id23024", "nombre": "Carolina, La", "latitud_dec": "38.2765", "longitud_dec": "-3.6154"},
+  {"id": "id23095", "nombre": "Villanueva del Arzobispo", "latitud_dec": "38.1683", "longitud_dec": "-3.0058"},
+  {"id": "id23096", "nombre": "Villanueva de la Reina", "latitud_dec": "38.0036", "longitud_dec": "-3.9150"},
+  {"id": "id41039", "nombre": "Écija", "latitud_dec": "37.5410", "longitud_dec": "-5.0826"},
+  {"id": "id18111", "nombre": "Jimena de Prueba", "latitud_dec": "37.1", "longitud_dec": "-3.6"}
+]

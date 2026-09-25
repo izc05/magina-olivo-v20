@@ -5,6 +5,31 @@ plugins {
     alias(libs.plugins.room)
 }
 
+// CR-006 (Phase 20B): the weather Edge Functions are called with the project's PUBLIC anon key
+// only. It comes from a Gradle property, the environment (CI secret) or local.properties, and is
+// never committed. A secret/service_role key stops the build: it must never ship in an APK.
+val weatherFunctionsUrl = "https://zzelvbcuxsboafibfxch.supabase.co/functions/v1"
+val weatherAnonKey: String = run {
+    val local = java.util.Properties().apply {
+        rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    }
+    (providers.gradleProperty("SUPABASE_ANON_KEY").orNull
+        ?: providers.environmentVariable("SUPABASE_ANON_KEY").orNull
+        ?: local.getProperty("SUPABASE_ANON_KEY")).orEmpty().trim()
+}
+run {
+    check(!weatherAnonKey.startsWith("sb_secret_")) { "SUPABASE_ANON_KEY is a secret key; use the public anon key" }
+    val payload = weatherAnonKey.split('.').getOrNull(1)
+    if (payload != null) {
+        val claims = runCatching {
+            String(java.util.Base64.getUrlDecoder().decode(payload.padEnd((payload.length + 3) / 4 * 4, '=')))
+        }.getOrDefault("")
+        check(!claims.replace(" ", "").contains("\"role\":\"service_role\"")) {
+            "SUPABASE_ANON_KEY is a service_role key; use the public anon key"
+        }
+    }
+}
+
 android {
     namespace = "com.isivoltpro.maginaolivo"
     compileSdk = 37
@@ -17,6 +42,9 @@ android {
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "WEATHER_FUNCTIONS_URL", "\"$weatherFunctionsUrl\"")
+        buildConfigField("String", "WEATHER_ANON_KEY", "\"$weatherAnonKey\"")
     }
 
     flavorDimensions += "environment"

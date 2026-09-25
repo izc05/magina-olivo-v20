@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.app
 
 import android.content.Context
+import com.isivoltpro.maginaolivo.BuildConfig
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.dispatchers.DefaultAppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
@@ -11,6 +12,7 @@ import com.isivoltpro.maginaolivo.core.regional.UnitPreferences
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.core.time.SystemAppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.remote.weather.EdgeWeatherSource
 import com.isivoltpro.maginaolivo.data.repository.CachedWeatherFeed
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
@@ -135,9 +137,13 @@ data class AppCompositionRoot(
             val equipmentRepository = OfflineFirstEquipmentRepository(
                 database, defaults.clock, defaults.idGenerator, defaults.dispatchers,
             )
-            // Phase 20A: the cache is ready; the AEMET source (owner decision D1) arrives in 20B.
+            // Phase 20B (CR-006): AEMET -> MET Norway through the weather Edge Function. Without
+            // the public anon key in this build the card says the weather is not configured.
+            val weatherSource = BuildConfig.WEATHER_ANON_KEY.takeIf { it.isNotBlank() }?.let { key ->
+                EdgeWeatherSource(BuildConfig.WEATHER_FUNCTIONS_URL, key)
+            }
             val weatherFeed = CachedWeatherFeed(
-                database, source = null, workspaces = workspaceRepository, clock = defaults.clock, dispatchers = defaults.dispatchers,
+                database, source = weatherSource, workspaces = workspaceRepository, clock = defaults.clock, dispatchers = defaults.dispatchers,
             )
             return defaults.copy(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),

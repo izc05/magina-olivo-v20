@@ -273,12 +273,16 @@ private fun HomeContext(state: HomeUiState, now: Instant) {
                     null
                 },
             )
+            // The provider that actually answered, and when it produced the forecast (20B).
             Text(
-                "Fuente: ${weather.source} · ${FeedAge.label(weather.fetchedAt, now)}",
+                "Fuente: ${weather.source} · ${FeedAge.label(value.updatedAt ?: weather.fetchedAt, now)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MoTextSecondary,
                 modifier = Modifier.testTag("home-weather-source"),
             )
+            value.attribution?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall, color = MoTextSecondary, modifier = Modifier.testTag("home-weather-attribution"))
+            }
         }
         FeedState.NotConfigured -> Quiet("Tiempo", "Sin fuente configurada en esta versión.", MoIcons.Weather, "home-weather-not-configured")
         FeedState.NoLocation -> Quiet(
