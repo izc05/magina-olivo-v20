@@ -110,3 +110,37 @@ make Home external feeds a dependency for field work").
 - Tests: `FeedTest` (JVM), `WeatherFeedContractTest` (cache-first, no refetch when fresh, stale
   value survives a failure, one cache per place), `HomeFeedsScreenTest` (Gate 20 core: every
   feed failing leaves the farm usable; source/age/stale shown).
+
+## 20B implementation notes (Claude, branch `claude/phase20b-weather`, CR-006)
+
+Owner decisions (2026-09-25): AEMET key only in Supabase Edge Functions secrets; MET Norway as
+automatic keyless fallback **inside** `weather-forecast`; `verify_jwt = true` with the public anon
+key; generic municipality resolution; fixtures only in CI. This supersedes the "API key in
+BuildConfig" note of the 20B slice above.
+
+- **`supabase/functions/weather-forecast/`** (versioned, no secrets):
+  - `handler.ts`: AEMET hourly municipal forecast → MET Norway only on error, timeout, rate
+    limit (429) or invalid document; `502 providers_unavailable` when both fail. Never a second
+    call when AEMET answers.
+  - `municipalities.ts`: any Spanish municipality from AEMET's master list, by name within the
+    province ("Bedmar" → "Bedmar y Garcíez", "La Carolina" ↔ "Carolina, La"); ambiguous names
+    are refused (409), never guessed. The old four-town allowlist is gone.
+  - Response: `provider`, `providerName`, `attribution`, `updatedAt` (provider), `fetchedAt`,
+    `location`, `current` (temp, condition, rain probability or null, wind km/h or null).
+  - `forecast.test.ts`: primary provider, fallback on error/429/timeout/invalid, double failure,
+    coordinates fallback without the master list, bad requests, generic resolution.
+- **`supabase/functions/weather-radar/`**: `{"operation":"frames"}` → RainViewer past frames as
+  tile templates with time, provider and attribution; `radar.test.ts`. The radar screen in the
+  app is the next slice (20B-radar); it is not part of this PR.
+- **CI**: `.github/workflows/edge-functions.yml` runs the fixture tests with Node 22.
+- **Android**:
+  - `data/remote/weather/EdgeWeatherSource.kt`: HTTPS POST `{municipality, province}` with the
+    anon key; `EdgeWeatherResponse` parses the contract strictly (unknown → failure).
+  - The cache stores the provider that answered; Inicio shows "Fuente: AEMET/MET Norway ·
+    Actualizado hace …" (provider time) and the provider's credit.
+  - Anon key: Gradle property / env / `local.properties` `SUPABASE_ANON_KEY`; CI secret
+    `SUPABASE_ANON_KEY` for the APK artifact only. Empty → "Sin fuente configurada". A
+    `service_role`/secret key fails the build.
+  - `ArchitectureBoundaryTest` updated per CR-006.
+- **Deploy (owner):** `supabase functions deploy weather-forecast` and `weather-radar` from this
+  source (keep JWT verification). Until then the deployed functions keep their old contract.

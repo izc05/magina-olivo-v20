@@ -11,6 +11,7 @@ import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.weather.WeatherCondition
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
+import com.isivoltpro.maginaolivo.domain.weather.WeatherReading
 import com.isivoltpro.maginaolivo.domain.weather.WeatherSource
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.io.IOException
@@ -94,6 +95,15 @@ class WeatherFeedContractTest {
     }
 
     @Test
+    fun theCacheRecordsTheProviderThatActuallyAnswered() = runBlocking {
+        // AEMET failed inside the Edge Function; MET Norway answered and the function said so.
+        source.provider = "MET Norway"
+        val weather = feed()
+        weather.refreshIfStale(bedmar)
+        assertEquals("MET Norway", (weather.observe(bedmar).first() as FeedState.Value).source)
+    }
+
+    @Test
     fun theSamePlaceSpelledDifferentlySharesItsCache() = runBlocking {
         val weather = feed()
         weather.refreshIfStale(bedmar)
@@ -106,17 +116,17 @@ class WeatherFeedContractTest {
     )
 
     private inner class ScriptedSource : WeatherSource {
-        override val name = "AEMET"
+        var provider = "AEMET"
         var calls = 0
         var failNext = false
 
-        override suspend fun fetch(location: FeedLocation): WeatherNow {
+        override suspend fun fetch(location: FeedLocation): WeatherReading {
             calls++
             if (failNext) {
                 failNext = false
                 throw IOException("offline")
             }
-            return sunny
+            return WeatherReading(provider, sunny)
         }
     }
 

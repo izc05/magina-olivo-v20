@@ -51,7 +51,7 @@ class CachedWeatherFeed(
                 return@withContext
             }
             val workspaceId = (workspaces.ensureLocalWorkspace() as? AppResult.Success)?.value ?: return@withContext
-            val weather = try {
+            val reading = try {
                 withTimeout(timeoutMillis) { provider.fetch(location) }
             } catch (cancelled: CancellationException) {
                 // A timeout is a failed fetch; a cancelled caller is not.
@@ -64,8 +64,9 @@ class CachedWeatherFeed(
                 WeatherCacheEntity(
                     cacheKey = key,
                     workspaceId = workspaceId,
-                    source = provider.name,
-                    payloadJson = WeatherCodec.encode(weather),
+                    // The provider that actually answered (AEMET or MET Norway), never assumed.
+                    source = reading.provider,
+                    payloadJson = WeatherCodec.encode(reading.weather),
                     fetchedAt = now,
                     expiresAt = now.plus(FeedKind.WEATHER.freshFor),
                 ),

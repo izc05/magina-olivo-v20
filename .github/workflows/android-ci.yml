@@ -52,6 +52,11 @@ jobs:
 
       - name: Lint, unit test, compile instrumented tests and build all environments
         shell: bash
+        # CR-006: the public anon key for the weather Edge Functions goes into the APK artifact.
+        # Empty when the secret is missing: the app then says the weather is not configured.
+        # Emulator jobs build without it, so no test ever calls the live functions.
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           set -o pipefail
           gradle --no-daemon lintDevDebug testDevDebugUnitTest assembleDevDebug assembleStagingDebug assembleProductionDebug assembleDevDebugAndroidTest 2>&1 | tee build-output.log

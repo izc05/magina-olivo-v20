@@ -1,0 +1,27 @@
+[{
+  "origen": {"productor": "Agencia Estatal de Meteorología - AEMET. Gobierno de España", "copyright": "© AEMET. Autorizado el uso de la información y su reproducción citando a AEMET como autora de la misma."},
+  "elaborado": "2026-09-25T07:40:00",
+  "nombre": "Bedmar y Garcíez",
+  "provincia": "Jaén",
+  "prediccion": {"dia": [{
+    "estadoCielo": [
+      {"value": "11n", "periodo": "07", "descripcion": "Despejado noche"},
+      {"value": "13", "periodo": "08", "descripcion": "Intervalos nubosos"},
+      {"value": "24", "periodo": "09", "descripcion": "Nuboso con lluvia"}
+    ],
+    "precipitacion": [{"value": "0", "periodo": "08"}, {"value": "0.4", "periodo": "09"}],
+    "probPrecipitacion": [{"value": "0", "periodo": "0208"}, {"value": "15", "periodo": "0814"}, {"value": "40", "periodo": "1420"}],
+    "temperatura": [{"value": "14", "periodo": "07"}, {"value": "16", "periodo": "08"}, {"value": "19", "periodo": "09"}],
+    "vientoAndRachaMax": [
+      {"direccion": ["NO"], "velocidad": ["9"], "periodo": "07"},
+      {"value": "20", "periodo": "07"},
+      {"direccion": ["O"], "velocidad": ["11"], "periodo": "08"},
+      {"value": "24", "periodo": "08"}
+    ],
+    "fecha": "2026-09-25T00:00:00",
+    "orto": "07:55",
+    "ocaso": "19:52"
+  }]},
+  "id": "23019",
+  "version": "1.0"
+}]
