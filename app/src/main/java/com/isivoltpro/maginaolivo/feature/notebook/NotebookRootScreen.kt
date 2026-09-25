@@ -24,6 +24,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -98,6 +99,12 @@ fun NotebookRootRoute(
     onQuickAction: (NotebookQuickAction, UUID, Boolean) -> Unit,
     actionsFor: (UUID) -> NotebookActions,
     onGoToFields: () -> Unit,
+    /**
+     * UX-F (Issue #246 §5): "Registrar" pressed on a Farm or Parcel in Mi Campo. The notebook
+     * switches to that Farm and opens "Registrar hoy" with its context, once.
+     */
+    registerRequestFarmId: UUID? = null,
+    onRegisterRequestHandled: () -> Unit = {},
 ) {
     // The same Farm list the register flow already uses; no second source.
     val farmsViewModel: RegisterActivityViewModel = viewModel(
@@ -124,6 +131,24 @@ fun NotebookRootRoute(
         )
         val state by viewModel.state.collectAsStateWithLifecycle()
         state to viewModel
+    }
+    LaunchedEffect(registerRequestFarmId) {
+        registerRequestFarmId?.let { chosen = it.toString() }
+    }
+    val notebookReady = notebook?.first?.isLoading == false
+    LaunchedEffect(registerRequestFarmId, activeFarm?.id, notebookReady, farms.isLoading) {
+        val requested = registerRequestFarmId ?: return@LaunchedEffect
+        if (farms.isLoading) return@LaunchedEffect
+        // The Farm is gone (archived meanwhile): nothing to open.
+        if (farms.farms.none { it.id == requested }) {
+            onRegisterRequestHandled()
+            return@LaunchedEffect
+        }
+        val farm = activeFarm?.takeIf { it.id == requested } ?: return@LaunchedEffect
+        if (!notebookReady) return@LaunchedEffect
+        val campaign = notebook?.first?.notebook?.campaign
+        onRegisterToday(farm.id, campaign?.status == CampaignStatus.HARVEST, contextLine(farm, campaign?.name))
+        onRegisterRequestHandled()
     }
     NotebookHomeScreen(
         isLoading = farms.isLoading,

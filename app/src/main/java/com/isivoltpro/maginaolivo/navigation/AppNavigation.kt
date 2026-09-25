@@ -106,6 +106,17 @@ fun AppNavigation(
     // UX-D: what "Registrar hoy" knows about the active Farm, shown before anything is saved.
     var registerInRecollection by rememberSaveable { mutableStateOf(false) }
     var registerContext by rememberSaveable { mutableStateOf<String?>(null) }
+    // UX-F: "Registrar" pressed in Mi Campo — the Farm to open in Cuaderno and, from a Parcel, the Parcel.
+    var registerRequestFarmId by rememberSaveable { mutableStateOf<String?>(null) }
+    var registerParcelId by rememberSaveable { mutableStateOf<String?>(null) }
+    var registerParcelName by rememberSaveable { mutableStateOf<String?>(null) }
+    val registerFromFields: (UUID, UUID?, String?) -> Unit = { farmId, parcelId, parcelName ->
+        compositionRoot.activeFarmStore.set(farmId)
+        registerParcelId = parcelId?.toString()
+        registerParcelName = parcelName
+        registerRequestFarmId = farmId.toString()
+        navController.navigateToRoot(RootDestination.Notebook)
+    }
     // A reminder opens its Activity over the Calendar, so Back returns to the agenda.
     LaunchedEffect(openActivityId, backStackEntry == null) {
         val id = openActivityId ?: return@LaunchedEffect
@@ -185,17 +196,26 @@ fun AppNavigation(
                         persistence = persistence,
                         activeFarmStore = compositionRoot.activeFarmStore,
                         onRegisterToday = { farmId, inRecollection, context ->
+                            // Opened from Cuaderno itself: no Parcel from an earlier Mi Campo visit.
+                            if (registerRequestFarmId == null) {
+                                registerParcelId = null
+                                registerParcelName = null
+                            }
                             registerFarmId = farmId?.toString()
                             registerInRecollection = inRecollection
-                            registerContext = context
+                            registerContext = listOfNotNull(context, registerParcelName).joinToString(" · ").ifEmpty { null }
                             registerSheetVisible = true
                         },
                         onQuickAction = { action, farmId, inRecollection ->
+                            registerParcelId = null
+                            registerParcelName = null
                             registerFarmId = farmId.toString()
                             navController.openQuickAction(action, inRecollection)
                         },
                         actionsFor = { farmId -> navController.notebookActions(farmId) },
                         onGoToFields = { navController.navigateToRoot(RootDestination.Olivar) },
+                        registerRequestFarmId = registerRequestFarmId?.let { runCatching { UUID.fromString(it) }.getOrNull() },
+                        onRegisterRequestHandled = { registerRequestFarmId = null },
                     )
                 }
             }
@@ -214,6 +234,7 @@ fun AppNavigation(
                         persistence = persistence,
                         preselectedFarmId = registerFarmId?.let { runCatching { UUID.fromString(it) }.getOrNull() },
                         onFarmPreselected = { registerFarmId = null },
+                        preselectedParcelId = registerParcelId?.let { runCatching { UUID.fromString(it) }.getOrNull() },
                         onActivitySelected = { activityId ->
                             navController.navigate(AppDestination.activity(activityId.toString()))
                         },
@@ -261,6 +282,7 @@ fun AppNavigation(
                             navController.navigate(AppDestination.farmSection(section.route, farmId.toString()))
                         },
                         onArchived = { navController.popBackStack() },
+                        onRegister = { registerFromFields(farmId, null, null) },
                     )
                 }
             }
@@ -324,6 +346,7 @@ fun AppNavigation(
                         persistence = persistence,
                         onArchived = { navController.popBackStack() },
                         onLocate = { farmId -> navController.navigate(AppDestination.farmMapLocate(farmId.toString(), parcelId.toString())) },
+                        onRegister = { farmId, parcelName -> registerFromFields(farmId, parcelId, parcelName) },
                     )
                 }
             }
