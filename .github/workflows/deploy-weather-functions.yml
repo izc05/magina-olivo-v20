@@ -34,7 +34,7 @@ jobs:
 
       - name: Check required secrets
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_FULL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           test -n "$SUPABASE_ACCESS_TOKEN" || { echo "::error::SUPABASE_ACCESS_TOKEN secret is missing"; exit 1; }
@@ -48,7 +48,7 @@ jobs:
 
       - name: Deploy (verify_jwt stays on)
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_FULL }}
         run: |
           supabase functions deploy weather-forecast --project-ref "$PROJECT_REF"
           supabase functions deploy weather-radar --project-ref "$PROJECT_REF"
