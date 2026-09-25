@@ -53,10 +53,14 @@ class AppNavigationTest {
     fun allFrozenRootsAreReachableAndSelected() {
         enterMainShell()
 
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick().assertIsSelected()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick().assertIsSelected()
         composeRule.onNodeWithTag("farms-root").assertIsDisplayed()
 
-        composeRule.onNodeWithTag("bottom-Calendario").performClick().assertIsSelected()
+        // UX-B (Issue #246): Cuaderno is the centre; Avisos holds the agenda.
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick().assertIsSelected()
+        composeRule.onNodeWithTag("notebook-root").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("bottom-Avisos").performClick().assertIsSelected()
         composeRule.onNodeWithTag("calendar-root").assertIsDisplayed()
 
         composeRule.onNodeWithTag("bottom-Perfil").performClick().assertIsSelected()
@@ -80,21 +84,21 @@ class AppNavigationTest {
     @Test
     fun activeRootSurvivesActivityRecreation() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Calendario").performClick()
+        composeRule.onNodeWithTag("bottom-Avisos").performClick()
 
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag("calendar-root").assertIsDisplayed()
-        composeRule.onNodeWithTag("bottom-Calendario").assertIsSelected()
+        composeRule.onNodeWithTag("bottom-Avisos").assertIsSelected()
     }
 
     @Test
     fun revisitingRootDoesNotAddDuplicateDestination() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         composeRule.onNodeWithTag("bottom-Inicio").performClick()
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
 
         pressBack()
 
@@ -105,10 +109,10 @@ class AppNavigationTest {
     @Test
     fun aTabAlwaysOpensItsOwnRootScreenFromWhereverTheFarmerIs() {
         enterMainShell()
-        // Deep inside Inicio (Cosecha), then Mi Olivar deep inside (Maquinaria)...
+        // Deep inside Inicio (Cosecha), then Mi Campo deep inside (Maquinaria)...
         composeRule.onNodeWithTag("home-quick-harvest").performScrollTo().performClick()
         waitForTag("harvests-root")
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         clickByTag("open-machinery")
         waitForTag("machinery-root")
 
@@ -117,13 +121,13 @@ class AppNavigationTest {
         waitForTag("home-reference-root")
         composeRule.onNodeWithTag("harvests-root").assertDoesNotExist()
 
-        // Mi Olivar is the farm list, not the Maquinaria screen left open under it.
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        // Mi Campo is the farm list, not the Maquinaria screen left open under it.
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         waitForTag("add-farm")
         composeRule.onNodeWithTag("machinery-root").assertDoesNotExist()
 
         // Tapping the tab already showing stays on its root; Back returns to Inicio.
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         waitForTag("add-farm")
         pressBack()
         waitForTag("home-reference-root")
@@ -133,46 +137,48 @@ class AppNavigationTest {
     @Test
     fun backWalksTheScreensActuallyVisited() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         clickByTag("open-machinery")
         waitForTag("machinery-root")
 
         pressBack()
         waitForTag("add-farm")
-        composeRule.onNodeWithTag("bottom-Mi Olivar").assertIsSelected()
+        composeRule.onNodeWithTag("bottom-Mi Campo").assertIsSelected()
         pressBack()
         waitForTag("home-reference-root")
     }
 
     @Test
-    fun registerRootOpensContextSheetBeforeFlow() {
+    fun cuadernoRegisterTodayOpensTheChoicesBeforeTheFlow() {
         enterMainShell()
 
-        composeRule.onNodeWithTag("bottom-Registrar").performClick()
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        clickByTag("notebook-register-today")
         composeRule.onNodeWithTag("register-action-sheet").assertIsDisplayed()
         clickInSheetByText("Registrar actuación")
 
         waitForTag("register-activity-root")
         composeRule.onNodeWithTag("register-activity-root").assertIsDisplayed()
-        composeRule.onNodeWithTag("bottom-Registrar").assertIsSelected()
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 
     @Test
-    fun registerSheetCanBeCancelledWithoutChangingRoot() {
+    fun registerSheetCanBeCancelledWithoutLeavingCuaderno() {
         enterMainShell()
 
-        composeRule.onNodeWithTag("bottom-Registrar").performClick()
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        clickByTag("notebook-register-today")
         composeRule.onNodeWithText("Cancelar").performClick()
 
         composeRule.onNodeWithTag("register-action-sheet").assertDoesNotExist()
-        composeRule.onNodeWithTag("home-reference-root").assertIsDisplayed()
-        composeRule.onNodeWithTag("bottom-Inicio").assertIsSelected()
+        composeRule.onNodeWithTag("notebook-root").assertIsDisplayed()
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 
     @Test
     fun nestedFarmRouteReturnsToOlivar() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
         }
@@ -191,13 +197,13 @@ class AppNavigationTest {
         }
 
         composeRule.onNodeWithTag("farms-root").assertIsDisplayed()
-        composeRule.onNodeWithTag("bottom-Mi Olivar").assertIsSelected()
+        composeRule.onNodeWithTag("bottom-Mi Campo").assertIsSelected()
     }
 
     @Test
     fun parcelCanBeCreatedAndOpenedFromItsFarm() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
         }
@@ -227,7 +233,7 @@ class AppNavigationTest {
             composeRule.onAllNodesWithText("—", useUnmergedTree = true)
                 .fetchSemanticsNodes().size >= 3
         }
-        composeRule.onNodeWithTag("bottom-Mi Olivar").assertIsSelected()
+        composeRule.onNodeWithTag("bottom-Mi Campo").assertIsSelected()
     }
 
     @Test
@@ -235,7 +241,7 @@ class AppNavigationTest {
         enterMainShell()
 
         // Mi Olivar
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         waitForTag("add-farm")
 
         // Farm: open the editor, fill it, save, and wait for the persisted row.
@@ -333,7 +339,7 @@ class AppNavigationTest {
     @Test
     fun oneActivityTargetsTwoParcelsAsASingleCanonicalRecord() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         waitForTag("add-farm")
 
         openSheet("add-farm", "farm-name")
@@ -410,7 +416,7 @@ class AppNavigationTest {
     @Test
     fun registrarPlusCreatesARealActivityOnTheSelectedFarm() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         waitForTag("add-farm")
 
         openSheet("add-farm", "farm-name")
@@ -423,7 +429,8 @@ class AppNavigationTest {
         waitForTag("add-parcel")
         createParcel("Parcela Registrar E2E")
 
-        composeRule.onNodeWithTag("bottom-Registrar").performClick()
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        clickByTag("notebook-register-today")
         waitForTag("register-action-sheet")
         clickInSheetByText("Registrar actuación")
         waitForTag("register-activity-root")
@@ -453,10 +460,10 @@ class AppNavigationTest {
 
         // The same Activity is the one the Farm detail shows: one record, one home.
         //
-        // Mi Olivar restores its own saved back stack, so returning to it lands back where
+        // Mi Campo restores its own saved back stack, so returning to it lands back where
         // this test left it (the Parcelas screen of the Farm) rather than on the Farm list.
         // Accept any of the three, and walk to the Farm's Trabajos from there.
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         composeRule.waitUntil(UI_TIMEOUT_MS) {
             listOf("farm-section-root", "farm-detail-root", "add-farm").any { tag ->
                 composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
@@ -487,7 +494,7 @@ class AppNavigationTest {
     @Test
     fun theActivityEditorShowsOnlyTheTypedBlockOfTheChosenType() {
         enterMainShell()
-        composeRule.onNodeWithTag("bottom-Mi Olivar").performClick()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         waitForTag("add-farm")
 
         openSheet("add-farm", "farm-name")

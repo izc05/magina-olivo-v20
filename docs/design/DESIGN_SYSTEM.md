@@ -248,9 +248,9 @@ The **visual appearance** of navigation follows the approved references:
 - generous touch areas;
 - minimal dividers/shadows.
 
-The **root destinations** remain the frozen RC1.2 contract until Phase 4:
+The **root destinations** (CR-007, Issue #246):
 
-`Inicio · Mi Olivar · Registrar (+) · Calendario · Perfil`
+`Inicio · Mi Campo · Cuaderno · Avisos · Perfil` — Cuaderno is the centre item.
 
 Reference images with alternative labels remain composition/style references only.
 

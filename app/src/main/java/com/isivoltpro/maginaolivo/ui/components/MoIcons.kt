@@ -58,6 +58,7 @@ object MoIcons {
     val Sack: ImageVector by lazy { line("sack", "M8.5 8c-2 3-3.5 6.5-3.5 9.5A3 3 0 0 0 8 20.5h8a3 3 0 0 0 3-3C19 14.5 17.5 11 15.5 8z M8.5 8L7.5 4.5h9L15.5 8 M9.5 14h5") }
     val Wrench: ImageVector by lazy { line("wrench", "M15.5 3.5a5 5 0 0 0-4.7 6.7L4 17a2.1 2.1 0 0 0 3 3l6.8-6.8a5 5 0 0 0 6.7-4.7l-3.2 1.2-2.5-2.5z") }
     val Weather: ImageVector by lazy { line("weather", "M8 3v1.5 M3.5 8H5 M4.8 4.8l1 1 M11.2 4.8l-1 1 M6.2 10.2A3 3 0 1 1 11 6.6 M8 20h9.5a3.5 3.5 0 0 0 .5-7 5 5 0 0 0-9.6-1A4 4 0 0 0 8 20z") }
+    val Notebook: ImageVector by lazy { line("notebook", "M6 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M8 3v18 M11 8h4 M11 12h4") }
 
     private fun line(name: String, pathData: String): ImageVector =
         ImageVector.Builder(

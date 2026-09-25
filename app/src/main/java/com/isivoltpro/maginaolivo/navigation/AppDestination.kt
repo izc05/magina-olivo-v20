@@ -1,5 +1,10 @@
 package com.isivoltpro.maginaolivo.navigation
 
+/**
+ * The five roots of the bottom bar. UX-B (Issue #246, CR-007): Inicio · Mi Campo · Cuaderno ·
+ * Avisos · Perfil. Cuaderno is the centre (daily register); the old `register` and `calendar`
+ * routes stay as nested routes under Cuaderno and Avisos, so nothing that opened them breaks.
+ */
 enum class RootDestination(
     val route: String,
     val label: String,
@@ -13,19 +18,19 @@ enum class RootDestination(
     ),
     Olivar(
         route = "olivar",
-        label = "Mi Olivar",
+        label = "Mi Campo",
         symbol = "♧",
     ),
-    Register(
-        route = "register",
-        label = "Registrar",
-        symbol = "+",
+    Notebook(
+        route = "cuaderno",
+        label = "Cuaderno",
+        symbol = "▤",
         isPrimaryAction = true,
     ),
-    Calendar(
-        route = "calendar",
-        label = "Calendario",
-        symbol = "▦",
+    Alerts(
+        route = "avisos",
+        label = "Avisos",
+        symbol = "!",
     ),
     Profile(
         route = "profile",
@@ -36,6 +41,10 @@ enum class RootDestination(
 
 object AppDestination {
     const val Onboarding = "onboarding"
+    /** Activity register flow (was the `+` root; now opened from Cuaderno → Registrar hoy). */
+    const val Register = "register"
+    /** The agenda (was the Calendario root; now under Avisos). */
+    const val Calendar = "calendar"
     const val MapCatastro = "map-catastro"
     const val Weather = "weather"
     const val Analytics = "analytics"
@@ -119,7 +128,8 @@ object AppDestination {
             Machinery,
             "machine",
             -> RootDestination.Olivar
-            RootDestination.Register.route,
+            RootDestination.Notebook.route,
+            Register,
             OcrReview,
             Harvest,
             Expenses,
@@ -129,8 +139,8 @@ object AppDestination {
             "delivery-ticket",
             "expense",
             "document",
-            -> RootDestination.Register
-            RootDestination.Calendar.route -> RootDestination.Calendar
+            -> RootDestination.Notebook
+            RootDestination.Alerts.route, Calendar -> RootDestination.Alerts
             RootDestination.Profile.route, DeveloperGallery -> RootDestination.Profile
             else -> null
         }
