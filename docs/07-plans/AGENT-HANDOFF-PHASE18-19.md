@@ -57,6 +57,10 @@ Older prompts or chat instructions never override these files.
 > **Update 2026-09-24 (close):** 19G merged (PR #240). All Phase 19 slices are on `main`.
 > Gate 19 is PENDING on device evidence — see `docs/06-testing/PHASE19-GATE-CHECKLIST.md`.
 > No production work on a later phase until the owner records Gate 19 PASS.
+>
+> **Update 2026-09-25:** owner reported the device checks "TODO OK" → **Gate 19 PASS**.
+> Phase 19 is closed. Phase 20 (Home contextual services) opens with a planning document
+> first; this handoff file is historical from here on.
 
 ## Production owner during Phase 18 (closed) — Codex, finished by Claude
 

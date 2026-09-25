@@ -1,10 +1,10 @@
 # Phase 19 Gate Checklist — Cuaderno de campaña + historical analytics
 
-Status: **PENDING — automated evidence complete; device evidence pending** (2026-09-24).
+Status: **PASS** (2026-09-25) — automated evidence complete; owner reported the device checks
+as "TODO OK". Device model/Android version: not reported by the owner.
 
-Phase 19 production slices 19A–19G are all merged into `main`. The Gate is **not** PASS
-until the owner/Codex device checks below are reported. Nothing here is claimed as verified on
-a device.
+Phase 19 production slices 19A–19G are all merged into `main`. The device checks below were
+run by the owner/Codex, not by Claude; Claude records the owner's report only.
 
 ## Slices merged
 
@@ -43,21 +43,21 @@ a device.
 | jornales | Resumen labour card (19D), not a drawn chart |
 | Parcel analytics with partial allocation | `ParcelYields` (19C): only single-origin/exact kg, coverage shown |
 
-## Pending device evidence (owner / Codex)
+## Device evidence (owner / Codex) — reported "TODO OK" on 2026-09-25
 
 Report device model + Android version with each item.
 
-- [ ] Install `magina-olivo-dev-debug` APK from the latest `main` CI run.
-- [ ] Airplane mode: create a Jornada with three Pesadas (two cooperatives), kill the app,
+- [x] Install `magina-olivo-dev-debug` APK from the latest `main` CI run.
+- [x] Airplane mode: create a Jornada with three Pesadas (two cooperatives), kill the app,
       reopen: all three present, jornada kg = sum.
-- [ ] Add a yield analysis to one Pesada days later: only that Pesada and derived yields change.
-- [ ] Register five jornales and an equipment line (2 vibradoras + 1 peine + 1 tractor).
-- [ ] Add two quick costs to the Jornada; Cuaderno cost equals them, no duplicate.
-- [ ] Cuaderno → Resumen: Gráficas summary kg equals the Recolección total; a day without
+- [x] Add a yield analysis to one Pesada days later: only that Pesada and derived yields change.
+- [x] Register five jornales and an equipment line (2 vibradoras + 1 peine + 1 tractor).
+- [x] Add two quick costs to the Jornada; Cuaderno cost equals them, no duplicate.
+- [x] Cuaderno → Resumen: Gráficas summary kg equals the Recolección total; a day without
       analysis shows no yield dot; with a second Campaign, "Comparar campañas" shows
       "sin datos" where cost or kg is missing.
-- [ ] Reduced motion / large font: charts and summary lines remain legible.
+- [x] Reduced motion / large font: charts and summary lines remain legible.
 
 ## Decision
 
-- [ ] Gate 19 PASS — owner sign-off after the device evidence above.
+- [x] Gate 19 PASS — owner sign-off "TODO OK" (2026-09-25).

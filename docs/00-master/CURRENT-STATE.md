@@ -41,7 +41,11 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ PHASE 19 — CUADERNO DE CAMPAÑA + HISTORICAL ANALYTICS (opened 2026-09-24 after Gate 18 PASS)
+▶ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS)
+  Not started: planning first (docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md), then slices.
+  Gate 20: failure of every external feed still leaves Mi Olivar fully operational.
+
+✔ PHASE 19 — CUADERNO DE CAMPAÑA + HISTORICAL ANALYTICS: CLOSED (Gate 19 PASS 2026-09-25)
   19A — Cuaderno projection/navigation: MERGED (PR #233, 2026-09-24).
   19B — Jornada + multiple Pesadas: MERGED (PR #235, 2026-09-24, owner "puedes seguir"; CI green:
   unit, 201 instrumented tests, Gate 3 evidence; Room v13). Emulator/airplane-mode check by Codex
@@ -53,8 +57,8 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   CI green; no schema change — reuses expenses.harvest_id).
   19G — Visual historical analytics: MERGED (PR #240, 2026-09-24, owner "si ok"; CI green;
   no schema change — pure projection of Room rows).
-  GATE 19: PENDING — automated evidence complete; device/airplane-mode evidence pending
-  (docs/06-testing/PHASE19-GATE-CHECKLIST.md). Phase 20 is NOT open until Gate 19 PASS.
+  GATE 19: PASS (2026-09-25, owner "TODO OK" after device checks; device model/Android
+  version not reported) — docs/06-testing/PHASE19-GATE-CHECKLIST.md.
   per docs/07-plans/AGENT-HANDOFF-PHASE18-19.md and docs/07-plans/PHASE19-CAMPAIGN-NOTEBOOK-ANALYTICS.md.
   Device model/Android version of the Gate 17/18 check: not reported by the owner.
 ```
