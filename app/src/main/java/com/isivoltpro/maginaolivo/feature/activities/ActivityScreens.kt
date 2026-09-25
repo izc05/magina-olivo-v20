@@ -175,7 +175,7 @@ fun RegisterActivityRoute(
     preselectedParcelId: UUID? = null,
 ) {
     // The Farm the Parcel belongs to, kept after the Farm preselection is consumed.
-    val parcelFarmId = rememberSaveable { preselectedFarmId?.toString() }
+    val parcelFarmId = rememberSaveable<String?> { preselectedFarmId?.toString() }
     val vm: RegisterActivityViewModel = viewModel(factory = viewModelFactory {
         initializer {
             RegisterActivityViewModel(persistence.farmRepository, persistence.workspaceRepository)
