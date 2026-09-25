@@ -1,3 +1,6 @@
+import java.util.Base64
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -10,8 +13,8 @@ plugins {
 // never committed. A secret/service_role key stops the build: it must never ship in an APK.
 val weatherFunctionsUrl = "https://zzelvbcuxsboafibfxch.supabase.co/functions/v1"
 val weatherAnonKey: String = run {
-    val local = java.util.Properties().apply {
-        rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    val local = Properties().apply {
+        rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { stream -> load(stream) }
     }
     (providers.gradleProperty("SUPABASE_ANON_KEY").orNull
         ?: providers.environmentVariable("SUPABASE_ANON_KEY").orNull
@@ -21,8 +24,8 @@ run {
     check(!weatherAnonKey.startsWith("sb_secret_")) { "SUPABASE_ANON_KEY is a secret key; use the public anon key" }
     val payload = weatherAnonKey.split('.').getOrNull(1)
     if (payload != null) {
-        val claims = runCatching {
-            String(java.util.Base64.getUrlDecoder().decode(payload.padEnd((payload.length + 3) / 4 * 4, '=')))
+        val claims: String = runCatching {
+            String(Base64.getUrlDecoder().decode(payload.padEnd((payload.length + 3) / 4 * 4, '=')))
         }.getOrDefault("")
         check(!claims.replace(" ", "").contains("\"role\":\"service_role\"")) {
             "SUPABASE_ANON_KEY is a service_role key; use the public anon key"
