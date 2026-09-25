@@ -40,6 +40,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import com.isivoltpro.maginaolivo.domain.notebook.RecollectionItem
+import com.isivoltpro.maginaolivo.domain.notebook.pendingDeliveryGrams
 import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
 import com.isivoltpro.maginaolivo.feature.activities.tone
@@ -266,7 +267,7 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
 }
 
 @Composable
-private fun HarvestRow(harvest: Harvest, pesadas: Int, labour: LabourSummary, cost: ExpenseSummary, onClick: () -> Unit) {
+internal fun HarvestRow(harvest: Harvest, pesadas: Int, labour: LabourSummary, cost: ExpenseSummary, onClick: () -> Unit) {
     MoCompactListItem(
         title = "Jornada · ${Weight.format(harvest.totalGrams)}",
         subtitle = listOfNotNull(
@@ -290,7 +291,7 @@ private fun HarvestRow(harvest: Harvest, pesadas: Int, labour: LabourSummary, co
 }
 
 @Composable
-private fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
+internal fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
     // The cooperative is never hidden on a Pesada row (CR-005 §5).
     MoCompactListItem(
         title = listOfNotNull("Pesada", (delivery.ticketNumber ?: delivery.deliveryNumber)?.let { "nº $it" }).joinToString(" "),
@@ -333,7 +334,10 @@ internal fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignCom
             MoSummaryMetric(
                 "Recogido", if (notebook.harvests.isEmpty()) "—" else Weight.format(harvest.totalGrams), Modifier.weight(1f),
                 icon = MoIcons.Harvest,
-                supportingText = if (harvest.unallocatedGrams > 0) "${Weight.format(harvest.unallocatedGrams)} sin repartir" else null,
+                supportingText = listOfNotNull(
+                    notebook.harvests.size.takeIf { it > 0 }?.let { if (it == 1) "1 jornada" else "$it jornadas" },
+                    harvest.unallocatedGrams.takeIf { it > 0 }?.let { "${Weight.format(it)} sin repartir" },
+                ).joinToString(" · ").ifEmpty { null },
             )
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
@@ -346,6 +350,17 @@ internal fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignCom
                 "Rendimiento", deliveries.fatYield?.let { Percent.format(it.hundredths) } ?: "—", Modifier.weight(1f),
                 icon = MoIcons.Percent,
                 supportingText = deliveries.fatYield?.let { "Sobre el ${deliveries.coveragePercent(it)} % de los kilos" } ?: "Pendiente de análisis",
+            )
+        }
+        // UX-E: picked minus delivered, only when both are known and add up (never invented).
+        if (notebook.harvests.isNotEmpty()) {
+            val pending = notebook.pendingDeliveryGrams
+            MoSummaryMetric(
+                "Pendiente de entregar",
+                pending?.let(Weight::format) ?: "—",
+                Modifier.fillMaxWidth().testTag("notebook-summary-pending-delivery"),
+                icon = MoIcons.Delivery,
+                supportingText = if (pending == null) "Hay más kilos entregados que recogidos anotados" else null,
             )
         }
         if (!notebook.labourSummary.isEmpty) {
@@ -429,7 +444,7 @@ private fun ParcelYields(notebook: CampaignNotebook) {
     }
 }
 
-private val SPANISH: Locale = Locale.forLanguageTag("es-ES")
+internal val SPANISH: Locale = Locale.forLanguageTag("es-ES")
 private val MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", SPANISH)
 private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", SPANISH)
-private val LONG_DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", SPANISH)
+internal val LONG_DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", SPANISH)

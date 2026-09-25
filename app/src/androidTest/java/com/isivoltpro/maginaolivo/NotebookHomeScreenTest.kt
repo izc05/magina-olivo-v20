@@ -49,13 +49,33 @@ class NotebookHomeScreenTest {
 
     @Test fun theFourTabsShowTheSameRecords() {
         show()
+        // UX-E Diario: the treatment is in the one timeline, under its day.
         composeRule.onNodeWithTag("notebook-tab-diary").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("notebook-tab-phyto").performClick()
+        composeRule.onNodeWithTag("notebook-diary").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-work").performScrollTo().assertIsDisplayed()
+        // Fitosanitario: the same Activity read as a treatment entry.
+        composeRule.onNodeWithTag("notebook-tab-phyto").performScrollTo().performClick()
         composeRule.onAllNodesWithTag("notebook-phyto-empty").fetchSemanticsNodes().let { assertEquals(0, it.size) }
-        composeRule.onNodeWithTag("notebook-tab-expenses").performClick()
+        composeRule.onNodeWithTag("notebook-phyto-summary").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-phyto-record").performScrollTo().assertIsDisplayed()
+        // Gastos: the one ledger, grouped by people, machines and papers.
+        composeRule.onNodeWithTag("notebook-tab-expenses").performScrollTo().performClick()
         composeRule.onNodeWithTag("notebook-expenses-total").performScrollTo().assertTextContains("Sin gastos contabilizados")
-        composeRule.onNodeWithTag("notebook-expenses-empty").assertIsDisplayed()
-        composeRule.onNodeWithTag("notebook-tab-campaign").performClick()
+        composeRule.onNodeWithTag("notebook-costs-labour").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-costs-machinery").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-costs-documents").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-expenses-empty").performScrollTo().assertIsDisplayed()
+        // Campaña: the summary derived from the same records.
+        composeRule.onNodeWithTag("notebook-tab-campaign").performScrollTo().performClick()
+        composeRule.onNodeWithTag("notebook-summary").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun anEmptyCampaignSaysSoInTheDiary() {
+        show(state = NotebookUiState(
+            isLoading = false, campaigns = listOf(campaign), selectedCampaignId = campaign.id,
+            notebook = CampaignNotebook.project(campaign, emptyList(), emptyList(), emptyList(), emptyList()),
+        ))
+        composeRule.onNodeWithTag("notebook-diary-empty").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun withoutFarmsRegisterStaysAndMiCampoIsOffered() {
