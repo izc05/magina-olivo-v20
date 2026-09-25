@@ -38,12 +38,20 @@ make Home external feeds a dependency for field work").
   with every feed failing (Gate 20 core).
 
 ### 20B — Weather hero + radar entry
-- `WeatherSource` over HTTPS, keyless provider (candidate: Open-Meteo forecast API;
-  attribution shown with the value). Current temp, condition, rain probability next hours,
-  wind; optional alert chip only if the source provides one.
+- `WeatherSource` over HTTPS: **AEMET OpenData** (owner decision D1, 2026-09-25).
+  - Hourly municipal forecast `prediccion/especifica/municipio/horaria/{INE}`: two-step call
+    (metadata → `datos` URL). Temp, sky state, rain probability, wind for the next hours.
+  - Municipality resolved to its INE code with AEMET's municipality master list
+    (`maestro/municipios`, cached), matched by Farm municipality/province or nearest to the
+    parcel centroid.
+  - **API key:** requested by the owner at AEMET; never committed. Read at build time from
+    `local.properties`/environment (`AEMET_API_KEY`) into `BuildConfig`. Without a key the
+    weather card shows *"Tiempo sin configurar"* (state NOT_CONFIGURED), never sample data.
+  - Source line: "Fuente: AEMET" with the update time. Spain only; outside Spain the card
+    says the source does not cover the location (architecture stays provider-neutral).
 - Refresh on Home open when stale (short timeout), never in a loop; manual retry.
-- "Ver radar": requires connection and says so offline (spec §10). Radar tiles provider to
-  be confirmed (candidate: RainViewer tiles on the existing MapLibre view).
+- "Ver radar": **RainViewer** tiles on the existing MapLibre view (owner decision D2).
+  Requires connection and says so offline (spec §10); shows the radar frame time and source.
 - Tests: parsing from recorded fixtures, stale marking, offline radar message.
 
 ### 20C — Weather-responsive visual layer
@@ -67,14 +75,14 @@ make Home external feeds a dependency for field work").
   feed (e.g. RSS). Preferred cooperative itself belongs to Phase 21 Profile; 20E may read an
   Organization marked as preferred only if that is approved as an interim step.
 
-## Owner decisions needed
+## Owner decisions (answered 2026-09-25)
 
 | # | Decision | Needed before |
 |---|---|---|
-| D1 | Weather provider (proposal: Open-Meteo, keyless, CC BY 4.0 attribution) | 20B |
-| D2 | Radar tiles provider (proposal: RainViewer) or radar deferred | 20B radar |
-| D3 | Oil-market source and its terms of use | 20D |
-| D4 | Cooperative notices source (Admin surface vs. feed) and interim preferred cooperative | 20E |
+| D1 | Weather provider | **AEMET OpenData** (owner, 2026-09-25); owner obtains the API key |
+| D2 | Radar tiles provider | **RainViewer** (owner, 2026-09-25) |
+| D3 | Oil-market source and its terms of use | **Blocked** — card shows "Sin fuente configurada" |
+| D4 | Cooperative notices source | **Wait for the private Admin surface**; until then the card offers choosing a cooperative and shows no notices |
 
 ## Non-goals
 - No push notifications from feeds; no background polling workers for feeds in this phase.
