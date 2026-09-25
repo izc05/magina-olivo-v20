@@ -42,6 +42,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.HarvestParcelEntity
 import com.isivoltpro.maginaolivo.data.local.dao.HarvestDao
 import com.isivoltpro.maginaolivo.data.local.dao.DeliveryDao
 import com.isivoltpro.maginaolivo.data.local.dao.EquipmentDao
+import com.isivoltpro.maginaolivo.data.local.dao.WeatherCacheDao
 import com.isivoltpro.maginaolivo.data.local.dao.LabourDao
 import com.isivoltpro.maginaolivo.data.local.dao.MachineDao
 import com.isivoltpro.maginaolivo.data.local.dao.AgendaDao
@@ -139,6 +140,8 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun labourDao(): LabourDao
 
     abstract fun equipmentDao(): EquipmentDao
+
+    abstract fun weatherCacheDao(): WeatherCacheDao
 
     companion object {
         const val DATABASE_NAME = "magina-olivo.db"

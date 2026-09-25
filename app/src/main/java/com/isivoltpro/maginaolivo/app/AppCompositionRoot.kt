@@ -11,6 +11,7 @@ import com.isivoltpro.maginaolivo.core.regional.UnitPreferences
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.core.time.SystemAppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.repository.CachedWeatherFeed
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
 import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
@@ -134,6 +135,10 @@ data class AppCompositionRoot(
             val equipmentRepository = OfflineFirstEquipmentRepository(
                 database, defaults.clock, defaults.idGenerator, defaults.dispatchers,
             )
+            // Phase 20A: the cache is ready; the AEMET source (owner decision D1) arrives in 20B.
+            val weatherFeed = CachedWeatherFeed(
+                database, source = null, workspaces = workspaceRepository, clock = defaults.clock, dispatchers = defaults.dispatchers,
+            )
             return defaults.copy(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 localPersistence = LocalPersistence(
@@ -154,6 +159,7 @@ data class AppCompositionRoot(
                     equipmentRepository = equipmentRepository,
                     workspaceRepository = workspaceRepository,
                     reminders = reminders,
+                    weatherFeed = weatherFeed,
                 ),
             )
         }

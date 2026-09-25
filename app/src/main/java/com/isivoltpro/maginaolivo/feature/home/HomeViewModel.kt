@@ -9,7 +9,11 @@ import com.isivoltpro.maginaolivo.domain.activity.AgendaEntry
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
+import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
+import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
+import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
+import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.LocalDate
 import java.time.ZoneId
@@ -18,6 +22,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -32,9 +41,9 @@ data class HomeCampaign(
 )
 
 /**
- * Inicio (UI polish v2): a summary built only from this phone's data. External services
- * (weather, oil market, cooperative notices) belong to their own phase and are announced,
- * never shown with sample numbers.
+ * Inicio: a summary built from this phone's data first. External feeds (Phase 20: weather,
+ * oil market, cooperative notices) come after it, each with an honest state — never sample
+ * numbers, and never a reason for the farm part to wait.
  */
 data class HomeUiState(
     val isLoading: Boolean = true,
@@ -43,6 +52,9 @@ data class HomeUiState(
     val campaigns: List<HomeCampaign> = emptyList(),
     val upcoming: List<AgendaEntry> = emptyList(),
     val overdueCount: Int = 0,
+    /** Phase 20A: the place asked about for weather; null when the farms give none (or several). */
+    val weatherLocation: FeedLocation? = null,
+    val weather: FeedState<WeatherNow> = FeedState.NotConfigured,
 ) {
     val parcelCount: Long get() = farms.sumOf { it.parcelCount }
     val knownAreaM2: Double? get() = farms.mapNotNull { it.totalAreaM2 }.takeIf { it.isNotEmpty() }?.sum()
@@ -67,6 +79,8 @@ class HomeViewModel(
     deliveries: DeliveryRepository,
     private val clock: AppClock,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
+    /** Phase 20A: null where no weather feed exists (tests, previews). */
+    private val weatherFeed: WeatherFeed? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = mutableState.asStateFlow()
@@ -78,9 +92,18 @@ class HomeViewModel(
                 is AppResult.Failure -> flowOf(emptyList())
             }
         }
+        val sharedFarms = activeFarms.shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+        val location = sharedFarms
+            .map { list -> FeedLocation.common(list.map { it.municipality to it.province }) }
+            .distinctUntilChanged()
+            // A stale or missing value is refreshed in the background; Inicio never waits for it.
+            .onEach { place -> if (place != null && weatherFeed != null) viewModelScope.launch { weatherFeed.refreshIfStale(place) } }
+        val weather = location.flatMapLatest { place ->
+            (weatherFeed?.observe(place) ?: flowOf(FeedState.NotConfigured)).map { place to it }
+        }
         viewModelScope.launch {
             combine(
-                activeFarms,
+                sharedFarms,
                 activities.observeAgenda(),
                 harvests.observeContexts(),
                 harvests.observeAll(),
@@ -106,7 +129,14 @@ class HomeViewModel(
                         .take(3),
                     overdueCount = agenda.count { it.activityDate.isBefore(today) },
                 )
-            }.collect { mutableState.value = it }
+            }.collect { base ->
+                mutableState.value = base.copy(weatherLocation = mutableState.value.weatherLocation, weather = mutableState.value.weather)
+            }
+        }
+        viewModelScope.launch {
+            weather.collect { (place, value) ->
+                mutableState.value = mutableState.value.copy(weatherLocation = place, weather = value)
+            }
         }
     }
 }
