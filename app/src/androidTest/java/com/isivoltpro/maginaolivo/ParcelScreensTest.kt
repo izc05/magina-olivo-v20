@@ -74,6 +74,26 @@ class ParcelScreensTest {
         composeRule.onNodeWithText("Parcela Norte").assertIsDisplayed()
     }
 
+    @Test
+    fun registerOnAParcelHandsItsFarmAndNameToCuaderno() {
+        val parcel = parcel()
+        var registered: Pair<UUID, String>? = null
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ParcelDetailScreen(
+                    state = ParcelDetailUiState(isLoading = false, parcel = parcel),
+                    onUpdate = {},
+                    onArchive = {},
+                    onArchived = {},
+                    onRegister = { farmId, name -> registered = farmId to name },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("parcel-register").performClick()
+        composeRule.runOnIdle { assertEquals(parcel.farmId!! to "Parcela Norte", registered) }
+    }
+
     private fun parcel() = Parcel(
         id = UUID.fromString("30000000-0000-0000-0000-000000000080"),
         workspaceId = UUID.fromString("10000000-0000-0000-0000-000000000080"),

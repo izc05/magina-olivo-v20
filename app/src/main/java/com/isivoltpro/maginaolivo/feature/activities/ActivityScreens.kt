@@ -171,7 +171,11 @@ fun RegisterActivityRoute(
     onFarmPreselected: () -> Unit = {},
     /** UX-D: the type chosen in "Registrar hoy" (Riego, Tratamiento…); null lets the farmer pick. */
     presetType: ActivityType? = null,
+    /** UX-F: the Parcel "Registrar" was pressed on; it belongs to [preselectedFarmId]. */
+    preselectedParcelId: UUID? = null,
 ) {
+    // The Farm the Parcel belongs to, kept after the Farm preselection is consumed.
+    val parcelFarmId = rememberSaveable { preselectedFarmId?.toString() }
     val vm: RegisterActivityViewModel = viewModel(factory = viewModelFactory {
         initializer {
             RegisterActivityViewModel(persistence.farmRepository, persistence.workspaceRepository)
@@ -243,7 +247,15 @@ fun RegisterActivityRoute(
                             onActivitySelected = onActivitySelected,
                             startWithEditor = true,
                             // Today by default (editable); the type already chosen; the Farm in the title.
-                            initialDraft = ActivityDraft(type = presetType ?: ActivityType.OBSERVATION, activityDate = LocalDate.now()),
+                            initialDraft = ActivityDraft(
+                                type = presetType ?: ActivityType.OBSERVATION,
+                                activityDate = LocalDate.now(),
+                                // Only while the Parcel's own Farm is the one chosen.
+                                parcelIds = preselectedParcelId
+                                    ?.takeIf { selectedFarmId.toString() == parcelFarmId }
+                                    ?.let { setOf(it) }
+                                    .orEmpty(),
+                            ),
                             editorTitle = listOfNotNull(presetType?.label() ?: "Nueva actuación", selectedFarm?.name).joinToString(" · "),
                         )
                     }

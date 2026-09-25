@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -172,6 +173,27 @@ class AppNavigationTest {
 
         composeRule.onNodeWithTag("register-action-sheet").assertDoesNotExist()
         composeRule.onNodeWithTag("notebook-root").assertIsDisplayed()
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+    }
+
+    @Test
+    fun registerFromAFarmOpensCuadernoRegisterTodayWithThatFarm() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
+        }
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("El Cerro")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "El Cerro")
+        clickByText("El Cerro")
+        waitForTag("farm-detail-root")
+
+        // UX-F (Issue #246 §5): Mi Campo does not write; it opens Cuaderno with the Farm chosen.
+        clickByTag("farm-register")
+        waitForTag("register-action-sheet")
+        composeRule.onNodeWithTag("register-today-context").assertTextContains("El Cerro", substring = true)
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 
