@@ -79,11 +79,13 @@ export async function handleOilMarket(rawBody: unknown, deps: Deps): Promise<Res
     console.error("oil-market: junta page not understood:", (failure as Error).message);
     return { status: 502, body: { error: "source_unreadable" } };
   }
+  // The window is the latest `weeks` published weeks for all categories together, so a category
+  // missing a week shows the gap instead of reaching back for an older week.
+  const periods = new Set([...new Set(values.map((value) => value.periodStart))].sort().slice(-weeks));
   const series = CATEGORIES.map((category): Series => {
     const own = values
-      .filter((value) => value.category === category)
-      .sort((a, b) => a.periodStart.localeCompare(b.periodStart))
-      .slice(-weeks);
+      .filter((value) => value.category === category && periods.has(value.periodStart))
+      .sort((a, b) => a.periodStart.localeCompare(b.periodStart));
     return {
       sourceId: JUNTA_SOURCE_ID,
       sourceName: JUNTA_SOURCE_NAME,

@@ -55,6 +55,13 @@ test("a '--' or empty cell stays missing — never zero, never filled in", async
   assert.equal(aov.observations.at(-1)!.periodStart, "2026-09-07");
   const aove = body.series.find((s) => s.category === "AOVE")!;
   assert.equal(aove.observations[0].periodStart, "2026-08-03");
+  // A 2-week window is the same two weeks for every category: AOV shows week 37 only, not 36–37.
+  const two = (await handleOilMarket({ operation: "series", geography: "andalucia", weeks: 2 }, page(gap))).body as Body;
+  assert.deepEqual(two.series.find((s) => s.category === "AOV")!.observations.map((o) => o.periodStart), ["2026-09-07"]);
+  assert.deepEqual(two.series.find((s) => s.category === "AOL")!.observations.map((o) => o.periodStart), ["2026-09-07", "2026-09-14"]);
+  // "latest" never answers an older week for a category missing the newest one.
+  const latest = (await handleOilMarket({ operation: "latest", geography: "andalucia" }, page(gap))).body as Body;
+  assert.deepEqual(latest.series.map((s) => s.category), ["AOVE", "AOL"]);
 });
 
 test("an unknown category, an odd value or a changed page is refused, not guessed", async () => {
