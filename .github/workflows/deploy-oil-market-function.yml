@@ -79,9 +79,10 @@ jobs:
         run: |
           body='{"operation":"series","geography":"andalucia","weeks":12}'
           mkdir -p evidence
-          status=$(curl -sS -m 60 -X POST "$FUNCTIONS_URL/oil-market" \
+          # Same 10 s deadline as the app (EdgeOilMarketSource): a slower answer would not reach a phone.
+          status=$(curl -sS -m 10 -X POST "$FUNCTIONS_URL/oil-market" \
             -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" -H "x-region: eu-west-3" \
-            -H "Content-Type: application/json" -d "$body" -o evidence/oil-market-andalucia.json -w "%{http_code}")
+            -H "Content-Type: application/json" -d "$body" -o evidence/oil-market-andalucia.json -w "%{http_code}" || true)
           # JWT verification proof: the same call without the key must be refused.
           unauth=$(curl -sS -m 30 -X POST "$FUNCTIONS_URL/oil-market" -H "Content-Type: application/json" \
             -d "$body" -o /dev/null -w "%{http_code}")

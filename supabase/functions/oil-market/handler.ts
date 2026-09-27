@@ -72,7 +72,9 @@ export async function handleOilMarket(rawBody: unknown, deps: Deps): Promise<Res
   try {
     const response = await deps.fetch(JUNTA_URL, {
       headers: { accept: "text/html", "user-agent": USER_AGENT },
-      signal: AbortSignal.timeout(deps.timeoutMs ?? 15_000),
+      // Below the app's 10 s deadline for the whole call (EdgeOilMarketSource), so an answer that
+      // reaches the phone is never one it already gave up on.
+      signal: AbortSignal.timeout(deps.timeoutMs ?? 8_000),
     });
     if (!response.ok) return unavailable(`http_${response.status}`);
     html = await response.text();
