@@ -34,6 +34,7 @@ import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.feed.FeedAge
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
+import com.isivoltpro.maginaolivo.domain.weather.WeatherMoods
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
@@ -119,6 +120,8 @@ fun HomeScreen(
     onActivitySelected: (UUID) -> Unit,
     feedNow: Instant = Instant.now(),
     onRadar: (() -> Unit)? = null,
+    /** Phase 20C: null follows the phone (reduced motion, low memory); tests pass false. */
+    weatherMotion: Boolean? = null,
 ) {
     // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
     Scaffold(
@@ -136,7 +139,13 @@ fun HomeScreen(
                 location = state.location,
                 caption = state.today?.format(TODAY)?.replaceFirstChar { c -> c.titlecase(SPANISH) },
                 heightFraction = 0.46f,
-                top = { MoPhotoBrand(Modifier.align(Alignment.TopStart).padding(MoSpacing.md)) },
+                top = {
+                    // Phase 20C: the current sky over the photo, under the text; none if unknown.
+                    val mood = WeatherMoods.of(state.weather)
+                    if (weatherMotion == null) WeatherMoodLayer(mood, Modifier.matchParentSize())
+                    else WeatherMoodLayer(mood, Modifier.matchParentSize(), animate = weatherMotion)
+                    MoPhotoBrand(Modifier.align(Alignment.TopStart).padding(MoSpacing.md))
+                },
             )
             Column(
                 Modifier.padding(horizontal = MoSpacing.screen),

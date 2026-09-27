@@ -72,8 +72,8 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   (not Bedmar), and AEMET hourly failed on that call so MET Norway answered. Next slices
   (20B-fix, 20B-radar, 20C) planned in the Phase 20 plan. 20B-fix MERGED (PR #257; deploy run #6
   green by name; its artifact could not be read from this session — owner to paste the summary).
-  20B-radar IN PROGRESS (branch claude/phase20b-radar; no Room change). Issue #246 device check
-  (D1–D12) still pending.
+  20B-radar MERGED (PR #259, owner OK; CI green). 20C (weather look on Inicio's header) IN PROGRESS
+  (branch claude/phase20c-weather-mood; no Room change). Issue #246 device check (D1–D12) still pending.
   Plan: docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md (owner decisions D1–D4 recorded).
   20A — Feed foundation + Home external cards: MERGED (PR #243, 2026-09-25, owner OK; CI green;
   no schema change — reuses the v1 weather_cache table).
