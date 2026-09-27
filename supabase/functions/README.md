@@ -42,10 +42,13 @@ supabase functions deploy oil-market --project-ref zzelvbcuxsboafibfxch
 ```
 
 Or run the manual workflow **Deploy oil-market function** (`.github/workflows/deploy-oil-market-function.yml`):
-it first downloads the live Junta page from the runner and runs the function's parser on it
-(it does not deploy if the page is not understood), then deploys, makes one real call, checks
-that a call without the key is refused (401) and keeps the live page and the response as the
-`oil-market-validation` artifact.
+it deploys, then makes one real call from Supabase's Paris region (`x-region: eu-west-3`, as a phone
+in Spain would), checks that a call without the key is refused (401) and keeps the response as the
+`oil-market-validation` artifact. The job is red unless that call returns the Junta series; a 502
+says why (`source_unavailable` + `detail`: `timeout`, `network`, `http_NNN`; or `source_unreadable`
++ the parser's reason). The runner's own attempt to read the page is informative only (GitHub's
+runners could not connect to juntadeandalucia.es on 2026-09-27). The app's
+`OIL_MARKET_FUNCTION_DEPLOYED` stays off until a green run.
 
 For the weather, run the manual workflow **Deploy weather functions** (`.github/workflows/deploy-weather-functions.yml`).
 It needs two repository secrets: `SUPABASE_ACCESS_TOKEN_FULL` (a Supabase personal access token

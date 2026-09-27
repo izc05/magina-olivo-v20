@@ -75,7 +75,10 @@ test("an unknown category, an odd value or a changed page is refused, not guesse
 });
 
 test("source failures and bad requests are refused, never faked", async () => {
-  assert.equal((await handleOilMarket({ operation: "series", geography: "andalucia" }, deps(async () => new Response("", { status: 503 })))).status, 502);
+  const down = await handleOilMarket({ operation: "series", geography: "andalucia" }, deps(async () => new Response("", { status: 503 })));
+  assert.deepEqual([down.status, down.body], [502, { error: "source_unavailable", detail: "http_503" }]);
+  const changed = await handleOilMarket({ operation: "series", geography: "andalucia" }, page("<html><p>Mantenimiento</p></html>"));
+  assert.deepEqual(changed.body, { error: "source_unreadable", detail: "junta_no_week_header" });
   assert.equal((await handleOilMarket({ operation: "series", geography: "andalucia" }, deps(async () => { throw new Error("timeout"); }))).status, 502);
   assert.equal((await handleOilMarket({ operation: "today", geography: "andalucia" }, page(PAGE))).status, 400);
   assert.equal((await handleOilMarket({ operation: "series", geography: "jaen" }, page(PAGE))).status, 400);

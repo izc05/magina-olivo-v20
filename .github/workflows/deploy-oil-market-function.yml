@@ -1,9 +1,12 @@
 name: Deploy oil-market function
 
-# Phase 20D-2: reads the live Junta page from this runner first (the repository's fixtures are
-# synthetic markup around the owner's verified values), refuses to deploy if the parser does not
-# understand it, then deploys `oil-market` with JWT verification ON (no --no-verify-jwt) and makes
-# ONE real call. The live page and both responses are kept as the validation artifact. Manual only.
+# Phase 20D-2: deploys `oil-market` with JWT verification ON (no --no-verify-jwt) and makes ONE
+# real call from Supabase's Paris region (x-region: eu-west-3), which is how a phone in Spain
+# reaches it. The real call is the gate: the job is red unless the function read the live Junta
+# page. The app keeps the source switched off until then, so a deployed-but-unreadable function
+# shows nothing new to farmers. Before deploying, this runner also tries to read the page itself
+# (informative only: run #1 showed GitHub's runners cannot connect to juntadeandalucia.es).
+# The live page (when reachable) and the responses are kept as the validation artifact. Manual only.
 on:
   workflow_dispatch:
 
@@ -34,17 +37,22 @@ jobs:
       - name: Fixture tests before deploying
         run: node --experimental-strip-types --test supabase/functions/*/*.test.ts
 
-      - name: Read the live Junta page with the function's parser
+      - name: Try the live Junta page from this runner (informative)
+        continue-on-error: true
         run: |
           mkdir -p evidence
-          curl -sS -L -m 30 "$JUNTA_URL" -o evidence/junta-ultimos-precios.live.html -w "%{http_code}\n" | tee evidence/junta-page.status
+          status=$(curl -sS -L -m 45 "$JUNTA_URL" -o evidence/junta-ultimos-precios.live.html -w "%{http_code}" || true)
           {
-            echo "## Live Junta page — what oil-market reads"
+            echo "## Live Junta page from the GitHub runner (informative)"
+            echo "- HTTP: $status"
             echo '```'
-            node --experimental-strip-types supabase/functions/oil-market/check-live.ts evidence/junta-ultimos-precios.live.html 2>&1 | tee evidence/junta-parsed.txt
+            if [ -s evidence/junta-ultimos-precios.live.html ]; then
+              node --experimental-strip-types supabase/functions/oil-market/check-live.ts evidence/junta-ultimos-precios.live.html 2>&1 | tail -30 || true
+            else
+              echo "page not downloaded"
+            fi
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          test -s evidence/junta-parsed.txt && ! grep -q "Error" evidence/junta-parsed.txt
 
       - name: Check required secrets
         env:
@@ -65,20 +73,23 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_FULL }}
         run: supabase functions deploy oil-market --project-ref "$PROJECT_REF"
 
-      - name: Real call — Andalucía, 12 weeks
+      - name: Real call from Supabase (Paris region) — Andalucía, 12 weeks
         env:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           body='{"operation":"series","geography":"andalucia","weeks":12}'
-          status=$(curl -sS -m 30 -X POST "$FUNCTIONS_URL/oil-market" \
-            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+          mkdir -p evidence
+          status=$(curl -sS -m 60 -X POST "$FUNCTIONS_URL/oil-market" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" -H "x-region: eu-west-3" \
             -H "Content-Type: application/json" -d "$body" -o evidence/oil-market-andalucia.json -w "%{http_code}")
           # JWT verification proof: the same call without the key must be refused.
           unauth=$(curl -sS -m 30 -X POST "$FUNCTIONS_URL/oil-market" -H "Content-Type: application/json" \
             -d "$body" -o /dev/null -w "%{http_code}")
           {
             echo "## oil-market — real validation"
-            echo "- oil-market (andalucia, 12 weeks): HTTP $status"
+            echo "- oil-market (andalucia, 12 weeks, region eu-west-3): HTTP $status"
+            echo "- 502 source_unavailable = the function could not reach the Junta (detail says how);"
+            echo "  502 source_unreadable = it reached it but the page is not the table we expect."
             echo "- without key: HTTP $unauth (must be 401)"
             echo '```json'
             cat evidence/oil-market-andalucia.json
