@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -79,15 +80,30 @@ class FarmScreensTest {
 
         composeRule.onNodeWithText("Crear mi primera finca").performClick()
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
+        listOf(
+            "Municipio (opcional)",
+            "Provincia (opcional)",
+            "Descripción (opcional)",
+            "Notas (opcional)",
+        ).forEach { label -> composeRule.onAllNodesWithText(label).assertCountEquals(0) }
         composeRule.onNodeWithText("Más detalles").performClick()
-        composeRule.onNodeWithText("Municipio (opcional)").assertIsDisplayed()
+        listOf(
+            "Municipio (opcional)",
+            "Provincia (opcional)",
+            "Descripción (opcional)",
+            "Notas (opcional)",
+        ).forEach { label -> composeRule.onNodeWithText(label).assertIsDisplayed() }
         composeRule.onNodeWithText("Municipio (opcional)").performTextInput("Huelma")
         composeRule.onNodeWithText("Provincia (opcional)").performTextInput("Jaén")
+        composeRule.onNodeWithText("Descripción (opcional)").performScrollTo().performTextInput("Olivar de secano")
+        composeRule.onNodeWithText("Notas (opcional)").performScrollTo().performTextInput("Acceso por el camino del norte")
         composeRule.onNodeWithTag("save-farm").performScrollTo().performClick()
 
         assertEquals("La Solana", captured?.name)
         assertEquals("Huelma", captured?.municipality)
         assertEquals("Jaén", captured?.province)
+        assertEquals("Olivar de secano", captured?.description)
+        assertEquals("Acceso por el camino del norte", captured?.notes)
     }
 
     @Test
