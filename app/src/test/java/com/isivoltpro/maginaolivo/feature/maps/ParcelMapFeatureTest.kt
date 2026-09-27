@@ -38,6 +38,20 @@ class ParcelMapFeatureTest {
         assertTrue(parcelStyle(MapBase.AERIAL, cadastreLines = false).contains("\"tileSize\":512"))
     }
 
+    @Test fun theRadarIsDrawnOverTheBaseAndUnderTheParcels() {
+        val tiles = "https://tilecache.rainviewer.com/v2/radar/5415fe0e827c/256/{z}/{x}/{y}/2/1_1.png"
+        val style = JsonParser.parseString(parcelStyle(MapBase.MAP, cadastreLines = false, overlayTiles = tiles)).asJsonObject
+        assertEquals(
+            listOf("background", "base", "overlay", "parcels-fill", "parcels-line"),
+            style.getAsJsonArray("layers").map { it.asJsonObject.get("id").asString },
+        )
+        val overlay = style.getAsJsonObject("sources").getAsJsonObject("overlay")
+        assertEquals(tiles, overlay.getAsJsonArray("tiles")[0].asString)
+        assertEquals(256, overlay.get("tileSize").asInt)
+        // Without a radar the style is exactly the one the farm map always used.
+        assertEquals(parcelStyle(MapBase.MAP, cadastreLines = false), parcelStyle(MapBase.MAP, cadastreLines = false, overlayTiles = null))
+    }
+
     @Test fun theNumberOnTheMapIsTheCatastroParcelNumber() {
         assertEquals("120", parcelNumber("23044A00400120"))
         assertEquals("21", parcelNumber("23044A00400021"))

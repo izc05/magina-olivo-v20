@@ -96,6 +96,10 @@ fun ParcelMap(
     cadastreLines: Boolean = false,
     /** Floating +, − and frame buttons; off for small embedded maps. */
     controls: Boolean = true,
+    /** Phase 20B-radar: a live raster drawn over the base ({z}/{x}/{y} template), under the parcels. */
+    overlayTiles: String? = null,
+    /** Credit for [overlayTiles], added to the map's attribution line. */
+    overlayAttribution: String? = null,
 ) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
@@ -146,9 +150,9 @@ fun ParcelMap(
             view.onDestroy()
         }
     }
-    LaunchedEffect(map, effectiveBase, cadastreLines) {
+    LaunchedEffect(map, effectiveBase, cadastreLines, overlayTiles) {
         styleReady = false
-        map?.setStyle(Style.Builder().fromJson(parcelStyle(effectiveBase, cadastreLines))) { styleReady = true }
+        map?.setStyle(Style.Builder().fromJson(parcelStyle(effectiveBase, cadastreLines, overlayTiles))) { styleReady = true }
     }
     val selection = remember(selectedId, selectedIds) { selectedIds + listOfNotNull(selectedId) }
     val data = remember(parcels, selection) { mapFeatureCollection(parcels, selection) }
@@ -224,7 +228,7 @@ fun ParcelMap(
                 MapBase.AERIAL -> "© IGN · PNOA" + if (cadastreLines) " · © DG Catastro" else ""
                 MapBase.MAP -> "© IGN · Mapa base" + if (cadastreLines) " · © DG Catastro" else ""
                 MapBase.NONE -> "Límites guardados en el teléfono"
-            },
+            } + (overlayAttribution?.let { " · $it" } ?: ""),
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
             color = MoInk,
             modifier = Modifier.align(Alignment.BottomStart).padding(4.dp)
@@ -318,7 +322,7 @@ internal fun parcelStyle(imagery: Boolean): String = parcelStyle(if (imagery) Ma
  * Raster sources are declared at 512 px: the phone downloads and decodes about a quarter of
  * the tiles of a 256 px declaration, which is what keeps the aerial photo fluid.
  */
-internal fun parcelStyle(base: MapBase, cadastreLines: Boolean): String {
+internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: String? = null): String {
     val sources = buildList {
         add(""""saved-parcels":{"type":"geojson","data":{"type":"FeatureCollection","features":[]}}""")
         when (base) {
@@ -329,11 +333,14 @@ internal fun parcelStyle(base: MapBase, cadastreLines: Boolean): String {
         if (cadastreLines && base != MapBase.NONE) {
             add(""""cadastre":{"type":"raster","tileSize":512,"tiles":["$CADASTRE_WMS"]}""")
         }
+        // Radar pictures are published up to a low zoom; MapLibre enlarges them beyond it.
+        overlayTiles?.let { add(""""overlay":{"type":"raster","tileSize":256,"maxzoom":$OVERLAY_MAX_ZOOM,"tiles":["$it"]}""") }
     }.joinToString(",")
     val layers = buildList {
         add("""{"id":"background","type":"background","paint":{"background-color":"#F3F1E6"}}""")
         if (base != MapBase.NONE) add("""{"id":"base","type":"raster","source":"base"}""")
         if (cadastreLines && base != MapBase.NONE) add("""{"id":"cadastre","type":"raster","source":"cadastre","minzoom":15}""")
+        if (overlayTiles != null) add("""{"id":"overlay","type":"raster","source":"overlay","paint":{"raster-opacity":0.7}}""")
         add("""{"id":"parcels-fill","type":"fill","source":"saved-parcels","paint":{"fill-color":["case",["get","selected"],"#CDA449",["==",["get","kind"],"CANDIDATE"],"#F4EAD0","#567342"],"fill-opacity":["case",["get","selected"],0.55,["==",["get","kind"],"CANDIDATE"],0.30,0.38]}}""")
         add("""{"id":"parcels-line","type":"line","source":"saved-parcels","paint":{"line-color":["case",["==",["get","kind"],"CANDIDATE"],"#8A6A1F","#25371C"],"line-width":["case",["get","selected"],4,["==",["get","kind"],"CANDIDATE"],2,3]}}""")
     }.joinToString(",")
@@ -341,6 +348,7 @@ internal fun parcelStyle(base: MapBase, cadastreLines: Boolean): String {
 }
 
 private const val LABEL_MIN_ZOOM = 15.5
+private const val OVERLAY_MAX_ZOOM = 7
 private const val MAX_LABELS = 60
 private const val PNOA = "https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
 private const val IGN_BASE = "https://www.ign.es/wmts/ign-base?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNBaseTodo&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"

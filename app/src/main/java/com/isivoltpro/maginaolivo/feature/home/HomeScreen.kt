@@ -45,6 +45,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoStat
 import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
 import com.isivoltpro.maginaolivo.ui.components.MoPhotoBrand
 import com.isivoltpro.maginaolivo.ui.components.MoPhotoHeader
+import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
@@ -74,6 +75,8 @@ fun HomeRoute(
     onDeliveries: () -> Unit,
     onExpenses: () -> Unit,
     onActivitySelected: (UUID) -> Unit,
+    /** Phase 20B-radar: offered only when this build can reach the radar. */
+    onRadar: () -> Unit = {},
 ) {
     val viewModel: HomeViewModel = viewModel(
         key = "home",
@@ -92,7 +95,10 @@ fun HomeRoute(
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
-    HomeScreen(state, LocalTime.now(), onOlivar, onCalendar, onHarvest, onDeliveries, onExpenses, onActivitySelected, clock.nowInstant())
+    HomeScreen(
+        state, LocalTime.now(), onOlivar, onCalendar, onHarvest, onDeliveries, onExpenses, onActivitySelected, clock.nowInstant(),
+        onRadar = onRadar.takeIf { persistence.radarSource != null },
+    )
 }
 
 /**
@@ -112,6 +118,7 @@ fun HomeScreen(
     onExpenses: () -> Unit,
     onActivitySelected: (UUID) -> Unit,
     feedNow: Instant = Instant.now(),
+    onRadar: (() -> Unit)? = null,
 ) {
     // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
     Scaffold(
@@ -220,7 +227,7 @@ fun HomeScreen(
                 Quick("Gastos", MoIcons.Euro, "home-quick-expenses", onExpenses, Modifier.weight(1f))
             }
             // Phase 20: external context after the farm, each with an honest state.
-            HomeContext(state, feedNow)
+            HomeContext(state, feedNow, onRadar)
             Spacer(Modifier.height(MoSpacing.lg))
             }
         }
@@ -253,7 +260,7 @@ private fun Quick(label: String, icon: ImageVector, tag: String, onClick: () -> 
  * words: not configured, no place, nothing yet, or the value with its source and age.
  */
 @Composable
-private fun HomeContext(state: HomeUiState, now: Instant) {
+private fun HomeContext(state: HomeUiState, now: Instant, onRadar: (() -> Unit)? = null) {
     MoSectionHeader("Tiempo, mercado y cooperativa")
     when (val weather = state.weather) {
         is FeedState.Value -> {
@@ -298,6 +305,8 @@ private fun HomeContext(state: HomeUiState, now: Instant) {
             "home-weather-unavailable",
         )
     }
+    // Phase 20B-radar: live picture over the farm; its own screen says when it needs signal.
+    onRadar?.let { MoSecondaryButton("Ver radar de lluvia", it, Modifier.fillMaxWidth().testTag("home-weather-radar")) }
     // Owner decision D3: no licensed source yet, so no figure is shown.
     Quiet("Mercado del aceite", "Sin fuente configurada.", MoIcons.Euro, "home-market")
     // Owner decision D4: notices arrive with the private administration panel.
