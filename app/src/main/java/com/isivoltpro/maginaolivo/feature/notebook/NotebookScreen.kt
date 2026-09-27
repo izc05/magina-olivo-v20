@@ -51,8 +51,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
-import com.isivoltpro.maginaolivo.ui.components.MoStat
-import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
+import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
@@ -213,27 +212,54 @@ internal fun WorkRow(work: Activity, onClick: () -> Unit) {
 internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions) {
     val deliveries = notebook.deliverySummary
     val fat = deliveries.fatYield
-    MoStatStrip(
-        listOf(
-            MoStat("Kg pesados", deliveries.deliveredGrams.takeIf { deliveries.deliveryCount > 0 }?.let(Weight::format) ?: "—", MoIcons.Delivery),
-            MoStat("Pesadas", deliveries.deliveryCount.toString(), MoIcons.Checklist),
-            MoStat("Rendimiento", fat?.let { Percent.format(it.hundredths) } ?: "—", MoIcons.Percent),
+    val costs = notebook.recollectionExpenseSummary
+    // #254 (254-B): the four figures of the recolección, 2×2, straight from their ledgers.
+    MoMetricGrid(
+        modifier = Modifier.testTag("notebook-recollection-summary"),
+        content = listOf(
+            { m ->
+                MoSummaryMetric(
+                    "Kg pesados",
+                    deliveries.deliveredGrams.takeIf { deliveries.deliveryCount > 0 }?.let(Weight::format) ?: "—",
+                    m.testTag("notebook-recollection-kg"),
+                    icon = MoIcons.Delivery,
+                )
+            },
+            { m ->
+                MoSummaryMetric(
+                    "Pesadas",
+                    deliveries.deliveryCount.toString(),
+                    m.testTag("notebook-recollection-count"),
+                    icon = MoIcons.Checklist,
+                )
+            },
+            { m ->
+                MoSummaryMetric(
+                    "Rendimiento medio",
+                    fat?.let { Percent.format(it.hundredths) } ?: "—",
+                    m.testTag("notebook-recollection-yield"),
+                    icon = MoIcons.Percent,
+                    supportingText = when {
+                        fat != null -> "Ponderado por kilos · ${deliveries.coveragePercent(fat)} % de los kilos"
+                        deliveries.deliveryCount > 0 -> "Pendiente de análisis"
+                        else -> null
+                    },
+                )
+            },
+            { m ->
+                MoSummaryMetric(
+                    "Gastos",
+                    if (costs.postedCount == 0) "—" else Money.format(costs.totalMinor, costs.currency),
+                    m.testTag("notebook-recollection-costs"),
+                    icon = MoIcons.Euro,
+                    supportingText = if (costs.draftCount > 0) "${costs.draftCount} en borrador sin contar" else null,
+                )
+            },
         ),
-        Modifier.testTag("notebook-recollection-summary"),
     )
-    Text(
-        listOfNotNull(
-            if (deliveries.deliveryCount == 1) "1 pesada" else "${deliveries.deliveryCount} pesadas",
-            fat?.let { "rendimiento sobre el ${deliveries.coveragePercent(it)} % de los kilos" }
-                ?: if (deliveries.deliveryCount > 0) "rendimiento pendiente" else null,
-            notebook.recollectionExpenseSummary.takeIf { it.postedCount > 0 }?.let { "gastos ${Money.format(it.totalMinor, it.currency)}" },
-        ).joinToString(" · "),
-        style = MaterialTheme.typography.bodySmall,
-        color = MoTextSecondary,
-    )
+    MoPrimaryButton("+ Nueva pesada", actions.onDeliveries, Modifier.fillMaxWidth().testTag("notebook-open-deliveries"))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         MoSecondaryButton("Jornadas", actions.onHarvests, Modifier.weight(1f).testTag("notebook-open-harvests"))
-        MoSecondaryButton("Nueva pesada", actions.onDeliveries, Modifier.weight(1f).testTag("notebook-open-deliveries"))
         MoSecondaryButton("Gasto", actions.onExpenses, Modifier.weight(1f).testTag("notebook-open-expenses"))
     }
     if (notebook.pendingYieldCount > 0) {
