@@ -53,8 +53,8 @@ Login, account deletion, cloud backup and multi-device sync (Phases 22–23); pr
 mode (post-RC1.2); loyalty/Mi Olivo.
 
 ## Owner decisions needed
-| # | Decision | Default if not answered |
+| # | Decision | Answer (owner «Ok», 2026-09-27) |
 |---|---|---|
-| P1 | Store the profile in Room (sync-ready, v17) or device preferences | Room v17 |
-| P2 | Default reminder advance for planned work | 1 day before, 08:00 |
-| P3 | «Exportar copia» in 21C or wait for Phase 25 | wait for Phase 25 |
+| P1 | Store the profile in Room (sync-ready, v17) or device preferences | **Room v17** |
+| P2 | Default reminder advance for planned work | **1 day before, 08:00** |
+| P3 | «Exportar copia» in 21C or wait for Phase 25 | **wait for Phase 25** |
