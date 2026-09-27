@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -27,7 +28,8 @@ class MainActivitySmokeTest {
     @Test
     fun launcherShowsOnboardingReference() {
         composeRule.onNodeWithTag("onboarding-root").assertIsDisplayed()
-        composeRule.onNodeWithText("Mágina\nOlivo").assertIsDisplayed()
+        // The official wordmark is an image (Codex brand pass); it is announced by its name.
+        composeRule.onNodeWithContentDescription("Mágina Olivo").assertIsDisplayed()
         composeRule.onNodeWithText("Saltar").assertIsDisplayed()
     }
 

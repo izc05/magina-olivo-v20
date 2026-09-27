@@ -176,7 +176,7 @@ fun HomeScreen(
                 if (state.campaigns.isEmpty()) {
                     MoEmptyState(
                         "Sin campaña en marcha",
-                        "Activa una campaña en tu finca para registrar cosecha y entregas.",
+                        "Activa una campaña en tu finca para registrar jornadas y pesadas.",
                         icon = MoIcons.Campaign,
                         modifier = Modifier.testTag("home-no-campaign"),
                     )
@@ -184,12 +184,10 @@ fun HomeScreen(
                 state.campaigns.forEach { campaign ->
                     MoCompactListItem(
                         title = "${campaign.name} · ${campaign.farmName}",
-                        subtitle = listOf(
-                            campaign.harvestedGrams?.let { "Recogido ${Weight.format(it)}" } ?: "Aún no has registrado cosecha",
-                            campaign.deliveredGrams?.let { "Entregado ${Weight.format(it)}" } ?: "sin entregas",
-                        ).joinToString(" · "),
-                        icon = MoIcons.Harvest,
-                        onClick = onHarvest,
+                        subtitle = campaign.deliveredGrams?.let { "Pesado ${Weight.format(it)}" }
+                            ?: "Aún no hay pesadas",
+                        icon = MoIcons.Delivery,
+                        onClick = onDeliveries,
                         modifier = Modifier.testTag("home-campaign"),
                     )
                 }
@@ -207,7 +205,7 @@ fun HomeScreen(
                 if (state.upcoming.isEmpty()) {
                     MoEmptyState(
                         "Nada planificado",
-                        "Planifica una poda, un riego o la cosecha y te avisaremos en este teléfono.",
+                        "Planifica una poda, un riego o la recolección y te avisaremos en este teléfono.",
                         icon = MoIcons.Calendar,
                         modifier = Modifier.testTag("home-no-upcoming"),
                     )
@@ -229,10 +227,10 @@ fun HomeScreen(
             MoSectionHeader("Accesos rápidos")
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 Quick("Mis fincas", MoIcons.Tree, "home-quick-olivar", onOlivar, Modifier.weight(1f))
-                Quick("Cosecha", MoIcons.Harvest, "home-quick-harvest", onHarvest, Modifier.weight(1f))
+                Quick("Jornadas", MoIcons.Harvest, "home-quick-jornadas", onHarvest, Modifier.weight(1f))
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                Quick("Entregas", MoIcons.Delivery, "home-quick-deliveries", onDeliveries, Modifier.weight(1f))
+                Quick("Pesadas", MoIcons.Delivery, "home-quick-pesadas", onDeliveries, Modifier.weight(1f))
                 Quick("Gastos", MoIcons.Euro, "home-quick-expenses", onExpenses, Modifier.weight(1f))
             }
             // Phase 20: external context after the farm, each with an honest state.

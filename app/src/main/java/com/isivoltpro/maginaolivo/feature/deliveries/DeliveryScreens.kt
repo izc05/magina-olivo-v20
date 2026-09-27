@@ -145,7 +145,7 @@ fun DeliveriesRoute(
 }
 
 /**
- * S80 — Entregas. Delivered kilos per Campaign with the yield weighted by kilos and the
+ * S80 — Pesadas. Weighed kilos per Campaign with the yield weighted by kilos and the
  * share of kilos it covers. A Delivery without analysis counts in kilos, never in yield.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -180,7 +180,7 @@ fun DeliveriesScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.md))
-            Text("Entregas", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Pesadas", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             Text(
                 "Lo que llevas a la cooperativa o almazara. El rendimiento se añade cuando llega el análisis.",
                 style = MaterialTheme.typography.bodyLarge,
@@ -189,7 +189,7 @@ fun DeliveriesScreen(
             val canRecord = state.contexts.isNotEmpty() && !state.isSaving
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                 MoPrimaryButton(
-                    "Registrar entrega",
+                    "+ Nueva pesada",
                     { editorVisible = true },
                     Modifier.weight(1f).testTag("add-delivery"),
                     enabled = canRecord,
@@ -203,7 +203,7 @@ fun DeliveriesScreen(
             }
             if (!state.isLoading && state.contexts.isEmpty()) {
                 Text(
-                    "Para registrar entregas, una finca necesita una campaña activa o en recolección.",
+                    "Para registrar una pesada, una finca necesita una campaña activa o en recolección.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoTextSecondary,
                     modifier = Modifier.testTag("delivery-no-campaign"),
@@ -237,8 +237,8 @@ fun DeliveriesScreen(
             when {
                 state.isLoading -> CircularProgressIndicator()
                 state.deliveries.isEmpty() -> MoEmptyState(
-                    "Aún no hay entregas",
-                    "Registra cada entrega con sus kilos netos o lee el vale: revisarás los datos antes de guardarlos.",
+                    "Aún no hay pesadas",
+                    "Registra cada pesada con sus kilos netos o lee el vale: revisarás los datos antes de guardarlos.",
                     icon = MoIcons.Delivery,
                 )
                 else -> {
@@ -373,7 +373,7 @@ private fun TicketCaptureSheet(onPicked: (String) -> Unit, onProblem: (String) -
     ModalBottomSheet(onDismissRequest = onDismiss) {
         MoBottomActionSheet(
             title = "Leer vale de entrega",
-            body = "Leeremos el vale en este dispositivo. Nada cuenta como entregado hasta que confirmes los datos.",
+            body = "Leeremos el vale en este dispositivo. La pesada no se guarda hasta que confirmes los datos.",
             modifier = Modifier.padding(horizontal = MoSpacing.md).testTag("ticket-capture-sheet"),
         ) {
             MoPrimaryButton(
@@ -431,7 +431,7 @@ private fun CampaignDeliveriesCard(campaign: CampaignDeliveries) {
                 modifier = Modifier.testTag("campaign-delivered-total"),
             )
             Text(
-                "${summary.deliveryCount} ${if (summary.deliveryCount == 1) "entrega" else "entregas"}",
+                "${summary.deliveryCount} ${if (summary.deliveryCount == 1) "pesada" else "pesadas"}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MoTextSecondary,
             )
@@ -503,7 +503,7 @@ private fun DeliveryRow(delivery: Delivery, onAddYield: (() -> Unit)? = null, on
 }
 
 /**
- * S81 — Nueva/Editar entrega. The destination is a saved cooperative or mill, or a name
+ * S81 — Nueva/Editar pesada. The destination is a saved cooperative or mill, or a name
  * typed by hand; origin Parcels come from the running Campaign, and a mixed load keeps
  * its kilos unallocated unless the person knows them.
  */
@@ -580,7 +580,7 @@ internal fun DeliveryEditor(
             )
         }
         MoTextField(
-            form.net, { form = form.copy(net = it) }, "Kilos netos entregados",
+            form.net, { form = form.copy(net = it) }, "Kilos pesados",
             isError = errors.net != null,
             supportingText = errors.net ?: Weight.parseGrams(form.net)?.let { "= ${Weight.format(it)}" },
             modifier = Modifier.fillMaxWidth().testTag("delivery-net"),
@@ -768,7 +768,7 @@ fun DeliveryDetailRoute(
 }
 
 /**
- * S82 — Detalle entrega. The confirmed delivery on top, the later yield analysis below it
+ * S82 — Detalle de la pesada. The confirmed delivery on top, the later yield analysis below it
  * as a separate section: editing the analysis never edits the delivery.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -796,14 +796,14 @@ fun DeliveryDetailScreen(
             val delivery = state.delivery
             when {
                 state.isLoading -> CircularProgressIndicator()
-                delivery == null -> MoErrorState("Entrega no disponible", state.error ?: "No está guardada en este dispositivo.")
+                delivery == null -> MoErrorState("Pesada no disponible", state.error ?: "No está guardada en este dispositivo.")
                 else -> {
                     DeliverySummaryBlock(delivery)
                     MoSectionHeader("Rendimiento")
                     val analysis = delivery.analysis
                     if (analysis == null) {
                         Text(
-                            "Sin análisis todavía. La entrega cuenta en kilos; su rendimiento se añade cuando llegue.",
+                            "Sin análisis todavía. La pesada cuenta en kilos; su rendimiento se añade cuando llegue.",
                             color = MoTextSecondary,
                             modifier = Modifier.testTag("delivery-yield-pending"),
                         )
@@ -822,20 +822,20 @@ fun DeliveryDetailScreen(
                         MoSecondaryButton("Quitar rendimiento", { sheet = "remove-yield" }, Modifier.fillMaxWidth())
                     }
                     if (delivery.editable) {
-                        MoSectionHeader("Entrega")
+                        MoSectionHeader("Pesada")
                         MoSecondaryButton(
-                            "Editar entrega", { sheet = "edit" },
+                            "Editar pesada", { sheet = "edit" },
                             Modifier.fillMaxWidth().testTag("edit-delivery"),
                             enabled = state.context != null && !state.isSaving,
                         )
                         MoSecondaryButton(
-                            "Eliminar entrega", { sheet = "delete" },
+                            "Eliminar pesada", { sheet = "delete" },
                             Modifier.fillMaxWidth().testTag("delete-delivery"),
                             enabled = !state.isSaving,
                         )
                     } else {
                         Text(
-                            "La campaña está cerrada: la entrega forma parte del histórico. El rendimiento sí puede añadirse.",
+                            "La campaña está cerrada: la pesada forma parte del histórico. El rendimiento sí puede añadirse.",
                             color = MoTextSecondary,
                             modifier = Modifier.testTag("delivery-read-only"),
                         )
@@ -854,7 +854,7 @@ fun DeliveryDetailScreen(
         "edit" -> state.context?.let { context ->
             ModalBottomSheet(onDismissRequest = { sheet = null; onEditorClosed() }) {
                 DeliveryEditor(
-                    title = "Editar entrega",
+                    title = "Editar pesada",
                     initial = delivery.toForm(),
                     contexts = listOf(context),
                     destinations = state.destinations,
@@ -877,11 +877,11 @@ fun DeliveryDetailScreen(
         "delete", "remove-yield" -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
             val deleting = sheet == "delete"
             MoConfirmationSheet(
-                title = if (deleting) "Eliminar entrega" else "Quitar rendimiento",
+                title = if (deleting) "Eliminar pesada" else "Quitar rendimiento",
                 body = if (deleting) {
                     "Estos kilos y su rendimiento dejarán de contar en la campaña. Esta acción no se puede deshacer."
                 } else {
-                    "La entrega se queda igual; solo deja de tener rendimiento."
+                    "La pesada se queda igual; solo deja de tener rendimiento."
                 },
                 confirmText = if (deleting) "Eliminar" else "Quitar",
                 onConfirm = {
@@ -910,9 +910,9 @@ private fun YieldEditor(
             .testTag("yield-editor"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Rendimiento de la entrega", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text("Rendimiento de la pesada", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(
-            "Se guarda aparte: la entrega no cambia.",
+            "Se guarda aparte: la pesada no cambia.",
             style = MaterialTheme.typography.bodyMedium,
             color = MoTextSecondary,
         )
@@ -941,14 +941,14 @@ private fun YieldEditor(
 
 @Composable
 private fun DeliverySummaryBlock(delivery: Delivery) {
-    Text("Entrega del ${DATE_FORMAT.format(delivery.deliveryDate)}", style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
+    Text("Pesada del ${DATE_FORMAT.format(delivery.deliveryDate)}", style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
     Text(
         listOfNotNull(delivery.farmName, delivery.campaignName).joinToString(" · "),
         style = MaterialTheme.typography.bodyLarge,
         color = MoTextSecondary,
     )
     MoMetricCard(
-        "Kilos netos entregados",
+        "Kilos pesados",
         Weight.format(delivery.netGrams),
         Modifier.fillMaxWidth().testTag("delivery-net-value"),
         supportingText = delivery.destinationName,
@@ -1068,7 +1068,7 @@ fun TicketReviewScreen(
                 state.isLoading -> CircularProgressIndicator(Modifier.padding(MoSpacing.screen))
                 extraction == null -> MoErrorState("Vale no disponible", state.error ?: "No está guardado en este dispositivo.")
                 extraction.status == OcrStatus.CONFIRMED -> Text(
-                    "Este vale ya se confirmó como entrega.",
+                    "Este vale ya se confirmó como pesada.",
                     color = MoTextSecondary,
                     modifier = Modifier.padding(horizontal = MoSpacing.screen),
                 )
@@ -1095,14 +1095,14 @@ fun TicketReviewScreen(
                         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     }
                     DeliveryEditor(
-                        title = "Confirmar entrega",
+                        title = "Confirmar pesada",
                         subtitle = "Los datos vienen del vale. Corrige lo que no coincida: solo cuenta lo que confirmes.",
                         initial = extraction.deliveryProposal.toForm(state.contexts.singleOrNull()?.farmId, today),
                         contexts = state.contexts,
                         destinations = state.destinations,
                         errors = state.formErrors,
                         isSaving = state.isSaving,
-                        saveText = "Confirmar entrega",
+                        saveText = "Confirmar pesada",
                         onSave = onConfirm,
                         onCancel = { confirmDiscard = true },
                         scrollable = false,
@@ -1127,7 +1127,7 @@ fun TicketReviewScreen(
         ModalBottomSheet(onDismissRequest = { confirmDiscard = false }) {
             MoConfirmationSheet(
                 title = "Descartar vale",
-                body = "Se borra el vale y lo leído. No se registra ninguna entrega.",
+                body = "Se borra el vale y lo leído. No se registra ninguna pesada.",
                 confirmText = "Descartar",
                 onConfirm = { confirmDiscard = false; onDiscard() },
                 onCancel = { confirmDiscard = false },

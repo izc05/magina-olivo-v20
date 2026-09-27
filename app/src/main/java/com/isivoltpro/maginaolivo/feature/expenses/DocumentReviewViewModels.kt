@@ -237,7 +237,7 @@ internal fun ExpenseCategory.label(): String = when (this) {
     ExpenseCategory.IRRIGATION -> "Riego"
     ExpenseCategory.EXTERNAL_SERVICE -> "Servicios externos"
     ExpenseCategory.REPAIR -> "Reparaciones"
-    ExpenseCategory.HARVEST -> "Cosecha"
+    ExpenseCategory.HARVEST -> "Recolección"
     ExpenseCategory.TRANSPORT -> "Transporte"
     ExpenseCategory.OTHER -> "Otros"
 }

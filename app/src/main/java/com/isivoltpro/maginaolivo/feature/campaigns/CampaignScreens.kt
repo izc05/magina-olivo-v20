@@ -240,20 +240,20 @@ fun CampaignDetailScreen(
                         content = listOf(
                             { m ->
                                 MoSummaryMetric(
-                                    "Kg recogidos",
-                                    summary.harvestedGrams?.let(Weight::format) ?: "—",
-                                    m.testTag("campaign-metric-harvest"),
-                                    icon = MoIcons.Harvest,
-                                    supportingText = if (summary.harvestedGrams == null) "Aún no has registrado cosecha" else "${summary.harvestCount} registros",
+                                    "Kg pesados",
+                                    summary.deliveredGrams?.let(Weight::format) ?: "—",
+                                    m.testTag("campaign-metric-weighed"),
+                                    icon = MoIcons.Delivery,
+                                    supportingText = if (summary.deliveredGrams == null) "Aún no hay kilos pesados" else "Suma de todas las pesadas",
                                 )
                             },
                             { m ->
                                 MoSummaryMetric(
-                                    "Entregas",
-                                    summary.deliveredGrams?.let(Weight::format) ?: "—",
-                                    m.testTag("campaign-metric-deliveries"),
-                                    icon = MoIcons.Delivery,
-                                    supportingText = if (summary.deliveredGrams == null) "Aún sin entregas" else "${summary.deliveryCount} entregas",
+                                    "Pesadas",
+                                    summary.deliveryCount.toString(),
+                                    m.testTag("campaign-metric-weighings"),
+                                    icon = MoIcons.Checklist,
+                                    supportingText = if (summary.deliveryCount == 0) "Aún no hay pesadas" else "En cooperativa o almazara",
                                 )
                             },
                             { m ->
@@ -262,7 +262,7 @@ fun CampaignDetailScreen(
                                     summary.fatYieldHundredths?.let(Percent::format) ?: "—",
                                     m.testTag("campaign-metric-yield"),
                                     icon = MoIcons.Percent,
-                                    supportingText = if (summary.fatYieldHundredths == null) "Llegará con los análisis de entrega" else "Ponderado por kilos",
+                                    supportingText = if (summary.fatYieldHundredths == null) "Llegará con los análisis de las pesadas" else "Ponderado por kilos",
                                 )
                             },
                             { m ->
@@ -290,16 +290,16 @@ fun CampaignDetailScreen(
                     }
                     MoSectionHeader("Producción")
                     MoCompactListItem(
-                        title = "Cosecha",
-                        subtitle = if (summary.harvestCount == 0) "Registrar los kilos recogidos" else "${summary.harvestCount} registros",
+                        title = "Jornadas",
+                        subtitle = if (summary.harvestCount == 0) "Se crean al registrar la primera pesada del día" else "${summary.harvestCount} jornadas",
                         icon = MoIcons.Harvest,
                         onClick = onHarvests,
                         modifier = Modifier.testTag("campaign-open-harvests"),
                         trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(18.dp)) },
                     )
                     MoCompactListItem(
-                        title = "Entregas a cooperativa",
-                        subtitle = if (summary.deliveryCount == 0) "Registrar entregas y tickets" else "${summary.deliveryCount} entregas",
+                        title = "Pesadas",
+                        subtitle = if (summary.deliveryCount == 0) "Registrar kilos y vale de entrega" else "${summary.deliveryCount} pesadas",
                         icon = MoIcons.Delivery,
                         onClick = onDeliveries,
                         modifier = Modifier.testTag("campaign-open-deliveries"),

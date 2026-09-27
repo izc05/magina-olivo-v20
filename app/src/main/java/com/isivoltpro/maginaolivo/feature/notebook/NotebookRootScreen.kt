@@ -56,14 +56,13 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.util.UUID
 
-/** Issue #246 §2: the nine things a farmer writes down, one tap each. */
+/** Issue #246 §4B: daily actions, with one canonical Pesada instead of Cosecha + Entrega. */
 enum class NotebookQuickAction(val label: String, val tag: String, val description: String) {
     WORK("Trabajo", "notebook-quick-work", "Poda, abonado, labores del suelo…"),
     IRRIGATION("Riego", "notebook-quick-irrigation", "Horas, m³ y sector"),
     TREATMENT("Tratamiento", "notebook-quick-treatment", "Producto, dosis y motivo"),
     LABOUR("Jornal", "notebook-quick-labour", "Quién trabajó y cuánto"),
-    HARVEST("Cosecha", "notebook-quick-harvest", "Kilos recogidos en el campo"),
-    DELIVERY("Entrega", "notebook-quick-delivery", "Pesada en la cooperativa o almazara"),
+    WEIGHING("Pesada", "notebook-quick-weighing", "Kilos pesados en la cooperativa o almazara"),
     EXPENSE("Gasto", "notebook-quick-expense", "Facturas, tickets y pagos"),
     MACHINERY("Maquinaria", "notebook-quick-machinery", "Uso del tractor u otra máquina"),
     DOCUMENT("Documento", "notebook-quick-document", "Foto o PDF de un papel"),
@@ -82,8 +81,7 @@ internal fun NotebookQuickAction.icon(): ImageVector = when (this) {
     NotebookQuickAction.IRRIGATION -> MoIcons.Drop
     NotebookQuickAction.TREATMENT -> MoIcons.Spray
     NotebookQuickAction.LABOUR -> MoIcons.People
-    NotebookQuickAction.HARVEST -> MoIcons.Harvest
-    NotebookQuickAction.DELIVERY -> MoIcons.Delivery
+    NotebookQuickAction.WEIGHING -> MoIcons.Delivery
     NotebookQuickAction.EXPENSE -> MoIcons.Euro
     NotebookQuickAction.MACHINERY -> MoIcons.Tractor
     NotebookQuickAction.DOCUMENT -> MoIcons.Document

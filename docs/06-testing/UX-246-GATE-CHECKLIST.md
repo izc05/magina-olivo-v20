@@ -25,7 +25,7 @@ No Room schema change in the whole reorganisation (still v15); no migration.
 | Bottom bar Inicio · Mi Campo · Cuaderno · Avisos · Perfil; every root reachable and selected | `AppNavigationTest.allFrozenRootsAreReachableAndSelected`, `AppDestinationTest` |
 | Old routes (`register`, `calendar`) keep their owning root (Cuaderno, Avisos) | `AppDestinationTest.nestedRoutesKeepTheirOwningRootSelected` |
 | Reminder notification opens its work over Avisos | not covered by CI — device check D10 |
-| Cuaderno: context, Registrar hoy, nine quick actions, four tabs | `NotebookHomeScreenTest` |
+| Cuaderno: context, Registrar hoy, the quick actions (Pesada as the single productive one, #254), four tabs | `NotebookHomeScreenTest` |
 | Registrar hoy → ¿Qué has hecho hoy? → existing form, type preset, today, context shown | `RegisterTodaySheetTest`, `AppNavigationTest.cuadernoRegisterTodayOpensTheChoicesBeforeTheFlow` |
 | One record, one home (Registrar writes the same Activity the Farm shows) | `AppNavigationTest.registrarPlusCreatesARealActivityOnTheSelectedFarm` |
 | **Success criterion:** register → visible at once in Diario → still there after a cold reopen, same active Farm | `AppNavigationTest.registerTodayShowsInTheDiaryAndSurvivesARestart` |

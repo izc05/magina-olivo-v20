@@ -152,8 +152,8 @@ fun ProfileScreen(
         MoCompactListItem(
             title = "Mágina Olivo",
             subtitle = "Versión $appVersion",
-            icon = MoIcons.Leaf,
             modifier = Modifier.testTag("profile-about"),
+            trailing = { OliveMark(Modifier.size(32.dp)) },
         )
         MoCompactListItem(
             title = "Datos de parcelas",

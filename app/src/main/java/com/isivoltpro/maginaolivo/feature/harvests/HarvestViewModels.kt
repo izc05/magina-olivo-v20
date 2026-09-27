@@ -66,7 +66,7 @@ class HarvestsViewModel(
     init {
         viewModelScope.launch {
             harvests.observeAll()
-                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer la cosecha") }
+                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer las jornadas") }
                 .collect { rows ->
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
@@ -89,7 +89,7 @@ class HarvestsViewModel(
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null)
             mutableState.value = when (val result = harvests.create(draft)) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Cosecha guardada", formErrors = HarvestFormErrors())
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Jornada guardada", formErrors = HarvestFormErrors())
                 is AppResult.Failure -> mutableState.value.failed(result.error)
             }
         }
@@ -153,7 +153,7 @@ class HarvestDetailViewModel(
     init {
         viewModelScope.launch {
             harvests.observe(harvestId)
-                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer la cosecha") }
+                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer la jornada") }
                 .collect { harvest ->
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
@@ -343,10 +343,10 @@ internal fun labourErrorMessage(error: AppError): String = when (error) {
 
 internal fun harvestErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> harvestProblemMessage(HarvestProblem(error.field ?: "parcels", error.code))
-    is AppError.NotFound -> "La cosecha o la finca ya no está en este dispositivo"
+    is AppError.NotFound -> "La jornada o la finca ya no está en este dispositivo"
     is AppError.Conflict -> when (error.resource) {
         "no_running_campaign" -> "Esta finca no tiene una campaña activa o en recolección"
-        "closed_campaign" -> "La campaña está cerrada: esta cosecha ya es histórico y no se modifica"
+        "closed_campaign" -> "La campaña está cerrada: esta jornada ya es histórico y no se modifica"
         "archived_farm" -> "La finca está archivada"
         else -> "No se pudo guardar por un conflicto con otros datos"
     }

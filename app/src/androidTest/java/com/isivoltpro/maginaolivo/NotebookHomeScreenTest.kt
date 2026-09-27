@@ -20,7 +20,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
-/** UX-C (Issue #246) — Mi Cuaderno: context, Registrar hoy, nine quick actions, four tabs. */
+/** UX-C + #246 §4B — Mi Cuaderno: context, one Pesada action, and four views. */
 class NotebookHomeScreenTest {
     @get:Rule val composeRule = createComposeRule()
 
@@ -34,7 +34,7 @@ class NotebookHomeScreenTest {
     )
     private val notebook = CampaignNotebook.project(campaign, listOf(treatment), emptyList(), emptyList(), emptyList())
 
-    @Test fun contextRegisterAndTheNineQuickActionsAreAlwaysAtHand() {
+    @Test fun contextRegisterAndCanonicalQuickActionsAreAlwaysAtHand() {
         val tapped = mutableListOf<NotebookQuickAction>()
         var registered = 0
         show(onQuickAction = { tapped += it }, onRegisterToday = { registered++ })
@@ -46,6 +46,7 @@ class NotebookHomeScreenTest {
         composeRule.runOnIdle {
             assertEquals(1, registered)
             assertEquals(NotebookQuickAction.entries.toList(), tapped)
+            assertEquals(listOf("Pesada"), NotebookQuickAction.entries.map { it.label }.filter { it in setOf("Cosecha", "Entrega", "Pesada") })
         }
     }
 

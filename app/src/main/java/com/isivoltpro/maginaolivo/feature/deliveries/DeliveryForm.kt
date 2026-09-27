@@ -99,7 +99,7 @@ internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, Delive
             null
         },
         net = when {
-            net.isBlank() -> "Escribe los kilos netos entregados"
+            net.isBlank() -> "Escribe los kilos de la pesada"
             netGrams == null -> "Escribe los kilos como 2850 o 2.850"
             else -> null
         },
@@ -151,7 +151,7 @@ internal fun deliveryProblemMessage(problem: DeliveryProblem): String = when (pr
     "required" -> when (problem.field) {
         "destination" -> "Elige la cooperativa o almazara, o escribe su nombre"
         "yield" -> "Escribe al menos un rendimiento"
-        else -> "Escribe los kilos netos entregados"
+        else -> "Escribe los kilos de la pesada"
     }
     "not_positive" -> when (problem.field) {
         "netGrams" -> "Los kilos deben ser más que cero"
@@ -161,10 +161,10 @@ internal fun deliveryProblemMessage(problem: DeliveryProblem): String = when (pr
     "gross_tare_mismatch" -> "Bruto menos tara no da el neto. Revisa los tres pesos del vale."
     "future" -> "La fecha no puede ser posterior a hoy"
     "before_campaign" -> "La fecha es anterior al inicio de la campaña"
-    "before_delivery" -> "El análisis no puede ser anterior a la entrega"
+    "before_delivery" -> "El análisis no puede ser anterior a la pesada"
     "empty" -> "Elige al menos una parcela de origen"
     "duplicate" -> "Cada parcela solo puede aparecer una vez"
-    "exceeds_total" -> "Las parcelas suman más kilos que la entrega"
+    "exceeds_total" -> "Las parcelas suman más kilos que la pesada"
     "does_not_reconcile" -> "Los kilos de las parcelas deben sumar el neto exacto. Deja en blanco las que no conozcas."
     "nothing_left_unallocated" ->
         "Ya has repartido todo el neto: escribe también los kilos de las demás parcelas o quítalas"
@@ -174,14 +174,14 @@ internal fun deliveryProblemMessage(problem: DeliveryProblem): String = when (pr
         "harvestId" -> "Esa jornada ya no está en este dispositivo"
         else -> "La finca no está en este dispositivo"
     }
-    "cannot_change" -> "Una entrega no puede cambiar de finca"
+    "cannot_change" -> "Una pesada no puede cambiar de finca"
     "out_of_range" -> "El rendimiento debe estar entre 0 y 100 %"
     "other_campaign" -> "Esa jornada es de otra finca o campaña"
     "before_jornada" -> "La pesada no puede ser anterior a su jornada"
     "exact_split" -> "Esa jornada tiene kilos repartidos por parcela. Quita el reparto exacto para enlazarle pesadas."
     "no_parcels" -> "Esta campaña no tiene parcelas para abrir la jornada"
     "ambiguous" -> "Elige una jornada o crea una nueva, no las dos"
-    else -> "Revisa los datos de la entrega"
+    else -> "Revisa los datos de la pesada"
 }
 
 internal fun Delivery.toForm(): DeliveryForm {

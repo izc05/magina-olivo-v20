@@ -70,7 +70,7 @@ class DeliveriesViewModel(
     init {
         viewModelScope.launch {
             deliveries.observeAll()
-                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer las entregas") }
+                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer las pesadas") }
                 .collect { rows ->
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
@@ -204,7 +204,7 @@ class DeliveryDetailViewModel(
     init {
         viewModelScope.launch {
             deliveries.observe(deliveryId)
-                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer la entrega") }
+                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer la pesada") }
                 .collect { delivery ->
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
@@ -387,13 +387,13 @@ private fun AppError.asProblem(): DeliveryProblem? =
 
 internal fun deliveryErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> deliveryProblemMessage(DeliveryProblem(error.field ?: "parcels", error.code))
-    is AppError.NotFound -> "La entrega o el vale ya no está en este dispositivo"
+    is AppError.NotFound -> "La pesada o el vale ya no está en este dispositivo"
     is AppError.Conflict -> when (error.resource) {
         "no_running_campaign" -> "Esta finca no tiene una campaña activa o en recolección"
-        "closed_campaign" -> "La campaña está cerrada: esta entrega ya es histórico y no se modifica"
+        "closed_campaign" -> "La campaña está cerrada: esta pesada ya es histórico y no se modifica"
         "archived_farm" -> "La finca está archivada"
-        "already_confirmed" -> "Este vale ya se confirmó como entrega"
-        "linked_to_delivery" -> "Este vale pertenece a una entrega y se conserva con ella"
+        "already_confirmed" -> "Este vale ya se confirmó como pesada"
+        "linked_to_delivery" -> "Este vale pertenece a una pesada y se conserva con ella"
         else -> "No se pudo guardar por un conflicto con otros datos"
     }
     is AppError.Storage -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."

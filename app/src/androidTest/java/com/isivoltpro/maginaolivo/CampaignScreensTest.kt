@@ -40,9 +40,8 @@ class CampaignScreensTest {
         compose.onNodeWithText("Parcela histórica").assertIsDisplayed()
         compose.onNodeWithText("Finca histórica").assertIsDisplayed()
         compose.onNodeWithText("Histórico protegido").assertIsDisplayed()
-        // UI polish v2: unknown figures say what is missing instead of "Sin datos".
-        compose.onNodeWithText("Aún no has registrado cosecha").assertIsDisplayed()
-        compose.onNodeWithText("Aún sin entregas").assertIsDisplayed()
+        compose.onNodeWithText("Aún no hay kilos pesados").assertIsDisplayed()
+        compose.onNodeWithText("Aún no hay pesadas").assertIsDisplayed()
         compose.onAllNodesWithText("Sin datos").assertCountEquals(0)
         compose.onNodeWithTag("reopen-campaign").performClick()
         compose.onNodeWithText("Confirmar cambio").assertIsDisplayed()

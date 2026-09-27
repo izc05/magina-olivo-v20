@@ -5,7 +5,7 @@
 ## Marca
 
 ### Identidad + logo
-![Identidad y logo](./01-brand.svg)
+![Identidad y logo oficial](./01-brand.png)
 
 ## Aplicación
 

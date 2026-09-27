@@ -37,7 +37,8 @@ class HomeFeedsScreenTest {
         show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Unavailable))
         composeRule.onNodeWithTag("home-stats").assertIsDisplayed()
         composeRule.onNodeWithTag("home-campaign").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("home-quick-harvest").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("home-quick-jornadas").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("home-quick-pesadas").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("home-weather-unavailable").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("home-market").performScrollTo()
         // The card is a container; its texts are its children.
