@@ -11,6 +11,27 @@
 
 Las capturas están en [`artifacts/audit-20260927/`](../../artifacts/audit-20260927/). La captura `01-current` ya existía al comenzar esta continuación y se ha preservado.
 
+## Decisiones confirmadas por el propietario (2026-09-27)
+
+Estas decisiones quedan cerradas para la PR de implementación de Claude; Codex mantiene el rol de auditor y no modifica producción:
+
+1. La opción general que registra el coste cambia de «Jornal» a **«Gasto de jornales»**. **«Jornales»** nombra la asistencia/personas dentro de una Jornada de recolección.
+2. Una Jornada se puede crear antes de cualquier Pesada; corregir el texto y el estado vacío que afirmen o insinúen que nace con la primera Pesada.
+3. En Cuaderno, quitar solo la fila duplicada de accesos bajo «Registrar hoy»; conservar la hoja de opciones.
+4. Al activar una campaña sin parcelas, explicar qué falta y ofrecer acceso a **Editar campaña**.
+5. En Riego, compactar tarifas y campos secundarios y usar selectores de hora/fecha cuando corresponda, sin eliminar datos ni opciones.
+6. El número de olivos sigue siendo opcional. No bloquear fincas ni estimar ingresos usando el número de árboles.
+7. El alcance del precio de 20D es exclusivamente mercado del aceite: **AOVE, Virgen y Lampante**. El precio pagado por kg de aceituna de una cooperativa y la estimación económica de una finca son conceptos distintos, fuera de 20D.
+8. Claude implementa todo lo anterior en su propia PR. No iniciar fases ni ampliar el alcance. Codex revisará el diff, pruebas, APK y emulador.
+
+### Revalidación de Tiempo y radar
+
+Se corrigió la lectura inicial de esta auditoría: el propietario confirma que `weather-forecast` y `weather-radar` están desplegados y operativos. Además, el workflow manual **Deploy weather functions** ejecutó correctamente el 2026-09-27: [run 36306333591](https://github.com/izc05/magina-olivo-v20/actions/runs/36306333591). Su paso «Real call — Bedmar (by name) and radar» pasó, y el workflow solo concluye con éxito si las llamadas autenticadas de pronóstico y radar responden HTTP 200 y el pronóstico sin clave responde 401.
+
+La captura del emulador anterior sí muestra «Sin fuente configurada en esta versión», pero esto no contradice que el backend esté operativo. En `AppCompositionRoot`, las fuentes Android solo se construyen si `BuildConfig.WEATHER_ANON_KEY` no está vacío; `app/build.gradle.kts` obtiene ese valor de Gradle, entorno o `local.properties`. `android-ci.yml` inyecta el secreto público en sus builds. Así que la captura indica que esa APK concreta se compiló o instaló sin fuente configurada (o no es el artefacto CI con la clave), no que fallen las Edge Functions.
+
+**Comprobación de auditoría pendiente:** identificar el SHA/artefacto exacto instalado; reinstalar el APK de CI de `main` con configuración actual, abrir Inicio con red y comprobar fuente/actualización de previsión y radar; luego repetir en modo avión y confirmar uso de caché. No esconder el estado si una build realmente carece de configuración, pero tampoco aceptar ese estado como resultado final de una build correctamente configurada.
+
 ## Hallazgos y propuesta
 
 ### 1. Activar campaña — error reproducible, prioridad alta
@@ -62,7 +83,7 @@ El diseño aprobado deja opcional el número de olivos y muestra «—» si falt
 
 «Precio por oliva» puede significar cosas distintas: precio de la aceituna por kg, precio de aceite por kg/litro, o estimación de valor de una finca a partir de kilos realmente recogidos. El recuento de árboles por sí solo no determina producción ni ingresos.
 
-En Inicio se muestra el Pulso diario de AOVE.net con atribución. El tiempo dice «Sin fuente configurada» en esta instalación, y la tendencia semanal oficial está sin configurar hasta desplegar la función de mercado; no implica que falle el registro de labores. La gráfica de tendencia semanal de precios está prevista para el slice 20D-3, después del despliegue manual pendiente.
+En la APK inspeccionada, Inicio muestra el Pulso diario de AOVE.net con atribución y el tiempo dice «Sin fuente configurada». Sin embargo, la función de pronóstico y radar está desplegada y el workflow en vivo pasó; queda diagnosticar la configuración de esa APK conforme a la sección de revalidación. La tendencia semanal oficial del mercado del aceite es independiente: su función `oil-market` y el slice 20D-3 siguen siendo asunto distinto.
 
 **Propuesta:** mantener separados (a) precio de mercado por fecha y categoría, con líneas/series diferenciadas cuando se active la fuente oficial, y (b) ingresos reales de la explotación calculados únicamente desde kilos/precios guardados en Pesadas/Gastos. Para una estimación por parcela hacen falta cosecha atribuida y precio; no multiplicar precio por número de olivos.
 
@@ -81,7 +102,7 @@ Evidencia: [Cuaderno tras reabrir](../../artifacts/audit-20260927/10-notebook-af
 3. Quitar la fila duplicada de accesos bajo «Registrar hoy» si no rompe el flujo.
 4. Afinar riego y selectores de hora/avisos, manteniendo cada campo y tarifa existente.
 5. Registrar decisión de producto sobre olivos obligatorios y sobre qué precio se quiere representar; no implementar una estimación engañosa.
-6. Desplegar/verificar fuentes de clima/mercado y terminar la gráfica semanal cuando toque el gate 20D-3.
+6. Reinstalar un build Android de `main` que incluya la clave pública, validar forecast/radar online y offline; mantener el mercado oficial y su gráfica semanal dentro del gate 20D-3, sin mezclar fuentes ni tipos de precio.
 
 ## Validación y límites
 
