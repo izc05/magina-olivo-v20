@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -11,6 +12,7 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookActions
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookHomeScreen
+import com.isivoltpro.maginaolivo.feature.notebook.NotebookHubTab
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookQuickAction
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookUiState
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
@@ -76,6 +78,18 @@ class NotebookHomeScreenTest {
             notebook = CampaignNotebook.project(campaign, emptyList(), emptyList(), emptyList(), emptyList()),
         ))
         composeRule.onNodeWithTag("notebook-diary-empty").performScrollTo().assertIsDisplayed()
+    }
+
+    /** UX-G accessibility: icon + text, never an icon alone; every control is a real button. */
+    @Test fun quickActionsAndTabsAreLabelledControls() {
+        show()
+        composeRule.onNodeWithTag("notebook-register-today").assertHasClickAction().assertTextContains("Registrar hoy")
+        NotebookQuickAction.entries.forEach { action ->
+            composeRule.onNodeWithTag(action.tag).performScrollTo().assertHasClickAction().assertTextContains(action.label)
+        }
+        NotebookHubTab.entries.forEach { tab ->
+            composeRule.onNodeWithTag(tab.tag).performScrollTo().assertHasClickAction().assertTextContains(tab.label)
+        }
     }
 
     @Test fun withoutFarmsRegisterStaysAndMiCampoIsOffered() {

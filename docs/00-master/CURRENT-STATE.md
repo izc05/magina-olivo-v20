@@ -57,11 +57,13 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   parcel/surface, reason, machinery and "Falta: …" for missing values (legal model still open);
   Gastos = the one ledger grouped by jornales, maquinaria and facturas/documentos; Campaña = the
   summary plus "Pendiente de entregar" (only when picked ≥ delivered) and pending yields.
-  UX-F — Registrar from Mi Campo: IN PROGRESS (branch claude/ux-f-register-from-fields; no Room
-  change). "Registrar en esta finca/parcela" opens Cuaderno → Registrar hoy with that Farm active
+  UX-F — Registrar from Mi Campo: MERGED (PR #252, owner OK; CI green; no Room change).
+  "Registrar en esta finca/parcela" opens Cuaderno → Registrar hoy with that Farm active
   (and the Parcel in the context line and preselected in the work form); Mi Campo keeps reading
   the same records (Farm Cuaderno section, Parcel Actividad tab).
-  UX-G pending (QA, airplane mode, cold start, accessibility, physical device).
+  UX-G — QA: IN PROGRESS (branch claude/ux-g-qa). E2E success criterion (register → Diario →
+  cold reopen), accessibility labels, gate checklist docs/06-testing/UX-246-GATE-CHECKLIST.md.
+  The reorganisation closes only after the owner's device checks D1–D12.
 
 ⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS; paused)
   20B deploy: functions deployed and validated live by the manual workflow (run #5: forecast 200,
