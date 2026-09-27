@@ -11,7 +11,17 @@ Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.
 Para saber qué lleva un APK: mira la versión en el Perfil y busca abajo su bloque; la compilación
 concreta está en la ejecución de CI con ese número (Actions → Android CI → #número).
 
-## 0.3.0 — en curso
+## 0.4.0 — en curso
+
+- Mercado del aceite en Inicio (Fase 20D-1, Issue #271):
+  - «Pulso diario»: el widget gratuito de AOVE.net tal como lo publica su autor (solo con conexión,
+    con su crédito; sus cifras no se copian a la app).
+  - «Tendencia oficial semanal»: AOVE, Virgen y Lampante de la Junta de Andalucía con su cambio
+    respecto a la semana anterior («AOVE ↓ 5,7 % esta semana»), semana y fuente; «Dato antiguo»
+    cuando ya debería haber una semana nueva. Se activa cuando esté desplegada la función del
+    servidor (20D-2); hasta entonces dice «Sin fuente configurada».
+
+## 0.3.0 — 27/09/2026
 
 - Jornales por persona en el resumen de la campaña: una fila por trabajador (por su identificador,
   aunque cambie de nombre) y los jornales anotados solo como número, aparte («Sin nombre»); la

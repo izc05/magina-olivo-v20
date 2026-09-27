@@ -12,6 +12,8 @@ import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
+import com.isivoltpro.maginaolivo.domain.market.OilMarketFeed
+import com.isivoltpro.maginaolivo.domain.market.OilMarketSeries
 import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
@@ -55,6 +57,8 @@ data class HomeUiState(
     /** Phase 20A: the place asked about for weather; null when the farms give none (or several). */
     val weatherLocation: FeedLocation? = null,
     val weather: FeedState<WeatherNow> = FeedState.NotConfigured,
+    /** Phase 20D: the official weekly oil series (Junta de Andalucía), from the phone's cache. */
+    val oilMarket: FeedState<OilMarketSeries> = FeedState.NotConfigured,
 ) {
     val parcelCount: Long get() = farms.sumOf { it.parcelCount }
     val knownAreaM2: Double? get() = farms.mapNotNull { it.totalAreaM2 }.takeIf { it.isNotEmpty() }?.sum()
@@ -81,6 +85,8 @@ class HomeViewModel(
     private val zone: () -> ZoneId = ZoneId::systemDefault,
     /** Phase 20A: null where no weather feed exists (tests, previews). */
     private val weatherFeed: WeatherFeed? = null,
+    /** Phase 20D: null where no oil-market feed exists (tests, previews). */
+    private val oilMarketFeed: OilMarketFeed? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = mutableState.asStateFlow()
@@ -130,8 +136,17 @@ class HomeViewModel(
                     overdueCount = agenda.count { it.activityDate.isBefore(today) },
                 )
             }.collect { base ->
-                mutableState.value = base.copy(weatherLocation = mutableState.value.weatherLocation, weather = mutableState.value.weather)
+                mutableState.value = base.copy(
+                    weatherLocation = mutableState.value.weatherLocation,
+                    weather = mutableState.value.weather,
+                    oilMarket = mutableState.value.oilMarket,
+                )
             }
+        }
+        oilMarketFeed?.let { feed ->
+            // Cache first; a refresh runs in the background and never holds Inicio up.
+            viewModelScope.launch { feed.refreshIfStale() }
+            viewModelScope.launch { feed.observe().collect { value -> mutableState.value = mutableState.value.copy(oilMarket = value) } }
         }
         viewModelScope.launch {
             weather.collect { (place, value) ->

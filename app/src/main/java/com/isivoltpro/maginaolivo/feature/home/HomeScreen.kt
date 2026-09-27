@@ -91,6 +91,7 @@ fun HomeRoute(
                     persistence.deliveryRepository,
                     clock,
                     weatherFeed = persistence.weatherFeed,
+                    oilMarketFeed = persistence.oilMarketFeed,
                 )
             }
         },
@@ -99,6 +100,7 @@ fun HomeRoute(
     HomeScreen(
         state, LocalTime.now(), onOlivar, onCalendar, onHarvest, onDeliveries, onExpenses, onActivitySelected, clock.nowInstant(),
         onRadar = onRadar.takeIf { persistence.radarSource != null },
+        oilPulse = { AoveNetPulse() },
     )
 }
 
@@ -122,6 +124,8 @@ fun HomeScreen(
     onRadar: (() -> Unit)? = null,
     /** Phase 20C: null follows the phone (reduced motion, low memory); tests pass false. */
     weatherMotion: Boolean? = null,
+    /** Phase 20D: AOVE.net's daily widget; null in tests and previews (no network there). */
+    oilPulse: (@Composable () -> Unit)? = null,
 ) {
     // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
     Scaffold(
@@ -234,7 +238,7 @@ fun HomeScreen(
                 Quick("Gastos", MoIcons.Euro, "home-quick-expenses", onExpenses, Modifier.weight(1f))
             }
             // Phase 20: external context after the farm, each with an honest state.
-            HomeContext(state, feedNow, onRadar)
+            HomeContext(state, feedNow, onRadar, oilPulse)
             Spacer(Modifier.height(MoSpacing.lg))
             }
         }
@@ -267,7 +271,12 @@ private fun Quick(label: String, icon: ImageVector, tag: String, onClick: () -> 
  * words: not configured, no place, nothing yet, or the value with its source and age.
  */
 @Composable
-private fun HomeContext(state: HomeUiState, now: Instant, onRadar: (() -> Unit)? = null) {
+private fun HomeContext(
+    state: HomeUiState,
+    now: Instant,
+    onRadar: (() -> Unit)? = null,
+    oilPulse: (@Composable () -> Unit)? = null,
+) {
     MoSectionHeader("Tiempo, mercado y cooperativa")
     when (val weather = state.weather) {
         is FeedState.Value -> {
@@ -314,8 +323,8 @@ private fun HomeContext(state: HomeUiState, now: Instant, onRadar: (() -> Unit)?
     }
     // Phase 20B-radar: live picture over the farm; its own screen says when it needs signal.
     onRadar?.let { MoSecondaryButton("Ver radar de lluvia", it, Modifier.fillMaxWidth().testTag("home-weather-radar")) }
-    // Owner decision D3: no licensed source yet, so no figure is shown.
-    Quiet("Mercado del aceite", "Sin fuente configurada.", MoIcons.Euro, "home-market")
+    // Phase 20D: AOVE.net's daily pulse (publisher-hosted) and the Junta's official weekly trend.
+    OilMarketCard(state.oilMarket, oilPulse)
     // Owner decision D4: notices arrive with the private administration panel.
     Quiet("Mi cooperativa", "Los avisos de tu cooperativa llegarán con el panel de administración.", MoIcons.Bell, "home-cooperative")
 }

@@ -36,7 +36,7 @@ run {
 // App versioning: the marketing version is written here and in docs/CHANGELOG-APP.md; every CI
 // build adds its own number (GitHub's run number, always increasing), so an APK on a phone says
 // exactly which build it is. Local builds are build 0.
-val appVersionName = "0.3.0"
+val appVersionName = "0.4.0"
 val appBuildNumber: Int = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull?.toIntOrNull() ?: 0
 
 android {

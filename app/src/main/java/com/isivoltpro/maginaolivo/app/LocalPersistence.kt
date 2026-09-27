@@ -18,6 +18,7 @@ import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderReconciler
 import com.isivoltpro.maginaolivo.domain.weather.RadarSource
+import com.isivoltpro.maginaolivo.domain.market.OilMarketFeed
 import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
 
 data class LocalPersistence(
@@ -45,4 +46,6 @@ data class LocalPersistence(
     val weatherFeed: WeatherFeed? = null,
     /** Phase 20B-radar: live radar pictures, never cached. Null where not configured. */
     val radarSource: RadarSource? = null,
+    /** Phase 20D: the official weekly oil series, cache first. Null where no feed exists (tests). */
+    val oilMarketFeed: OilMarketFeed? = null,
 )
