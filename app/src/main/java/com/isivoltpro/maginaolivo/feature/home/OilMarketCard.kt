@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.webkit.WebResourceError
@@ -23,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,7 +98,9 @@ private fun OfficialTrend(official: FeedState.Value<OilMarketSeries>) {
     val series = official.value
     val trends = OilTrends.all(series)
     val latest = trends.maxByOrNull { it.latest.periodEnd }?.latest ?: return
-    trends.forEach { trend -> TrendRow(trend) }
+    // A category the source has not published for the newest week keeps its own week on the row,
+    // so an older price is never read under the newest week's footer.
+    trends.forEach { trend -> TrendRow(trend, lagging = trend.latest.periodEnd.isBefore(latest.periodEnd)) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         Text(
             "Semana ${OilTrends.week(latest)} (${latest.periodStart.format(DAY)}–${latest.periodEnd.format(DAY)}) · " +
@@ -110,7 +114,7 @@ private fun OfficialTrend(official: FeedState.Value<OilMarketSeries>) {
 }
 
 @Composable
-private fun TrendRow(trend: OilTrend) {
+private fun TrendRow(trend: OilTrend, lagging: Boolean) {
     val tint = when (trend.direction) {
         TrendDirection.UP -> MoSuccessText
         TrendDirection.DOWN -> MoErrorText
@@ -122,8 +126,15 @@ private fun TrendRow(trend: OilTrend) {
     ) {
         Text(trend.category.label, style = MaterialTheme.typography.bodyMedium, color = MoInk, modifier = Modifier.weight(1f))
         Text(OilTrends.euros(trend.latest.valueEurPerKg), style = MaterialTheme.typography.titleSmall, color = MoInk)
+        val change = OilTrends.label(trend).removePrefix(trend.category.label).trim().takeIf { trend.direction != null }
+        val ownWeek = "semana ${OilTrends.week(trend.latest)}"
+        val text = when {
+            !lagging -> change.orEmpty()
+            change == null -> ownWeek
+            else -> change.replace("esta semana", "· $ownWeek")
+        }
         Text(
-            "  " + OilTrends.label(trend).removePrefix(trend.category.label).trim().takeIf { trend.direction != null }.orEmpty(),
+            "  $text",
             style = MaterialTheme.typography.bodySmall,
             color = tint,
         )
@@ -145,6 +156,17 @@ private fun Note(text: String, tag: String) {
 internal fun AoveNetPulse() {
     val context = LocalContext.current
     var failed by remember { mutableStateOf(!isOnline(context)) }
+    // When a connection comes (back), the widget is tried again instead of staying "sin conexión".
+    DisposableEffect(context) {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java)
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                failed = false
+            }
+        }
+        val registered = runCatching { connectivity?.registerDefaultNetworkCallback(callback) }.isSuccess && connectivity != null
+        onDispose { if (registered) runCatching { connectivity?.unregisterNetworkCallback(callback) } }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs), modifier = Modifier.testTag("home-market-pulse")) {
         if (failed) {
             Note("Pulso diario no disponible sin conexión.", "home-market-pulse-offline")
