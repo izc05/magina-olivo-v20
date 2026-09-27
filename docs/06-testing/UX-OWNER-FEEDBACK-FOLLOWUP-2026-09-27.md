@@ -36,6 +36,14 @@ El código explica el texto observado: `AppCompositionRoot` construye `EdgeWeath
 
 **Pendiente de auditoría visual:** abrir el artefacto CI actual en una instalación aislada/dispositivo con firma compatible; verificar Inicio conectado (fuente y frescura), abrir radar, y repetir en modo avión para confirmar el uso de caché. El backend está validado; este recorrido móvil aún no.
 
+## Revisión de la PR #279 — altura del Pulso diario (2026-09-27)
+
+- PR propia de Claude: [`#279`](https://github.com/izc05/magina-olivo-v20/pull/279), `claude/pulse-widget-height`, base `main`, head `345a458d0187d2c995a45176fcc224ab07ee00b7`.
+- Estado observado: abierta, no draft, sin decisión de review; estado de merge `CLEAN`. Los tres checks de Android CI (`foundation`, `gate3-emulator`, `gate3-evidence`) pasaron en run [36351103847](https://github.com/izc05/magina-olivo-v20/actions/runs/36351103847).
+- Alcance del diff: `OilMarketCard.kt` + línea de changelog. La altura se mide periódicamente, se detiene tras altura estable o 20 s y se limita a 160–560 dp; no añade puente JavaScript. Revisión estática: no encontré un bloqueo de código evidente. La medición es altura HTML actual, no una garantía de que el proveedor no cambie su widget más tarde.
+- Límite: no pude instalar ese APK CI sobre la instalación persistente porque Android rechazó la firma distinta; la segunda instancia del mismo AVD tampoco pudo arrancar con el principal activo. Por ello **el ajuste aún requiere confirmación visual conectado**: las tres categorías completas, incluida Lampante, sin scroll interior y sin cortar el contenido. La propia documentación Android describe `WebView.getContentHeight()` como la altura del contenido HTML; la prueba dinámica del widget real sigue siendo necesaria ([Android API](https://developer.android.com/reference/android/webkit/WebView#getContentHeight())).
+- La #279 no contiene los cambios de Cuaderno, Jornadas, campaña ni Riego confirmados en este informe; mantenerlos en la PR UX propia de Claude, como acordó el propietario. No se fusionó nada ni se emitió aprobación de merge.
+
 ## Hallazgos y propuesta
 
 ### 1. Activar campaña — error reproducible, prioridad alta
