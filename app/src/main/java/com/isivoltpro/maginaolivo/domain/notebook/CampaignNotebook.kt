@@ -6,6 +6,7 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
+import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.domain.delivery.ParcelYield
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaSearch
 import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
@@ -72,12 +73,18 @@ data class CampaignNotebook(
     val completedWorks: Int = works.count { it.status == ActivityStatus.COMPLETED }
     val plannedWorks: Int = works.count { it.status == ActivityStatus.PLANNED }
 
+    /** 254-E: ids of the Jornadas listed here; their own Pesadas and costs are shown inside them. */
+    private val listedJornadas: Set<java.util.UUID> = harvests.map { it.id }.toSet()
+
+    /** Pesadas and Expenses not already shown inside a listed Jornada (no kilo or euro twice). */
+    internal fun standsAlone(harvestId: java.util.UUID?): Boolean = harvestId == null || harvestId !in listedJornadas
+
     /** Recolección rows, grouped by day, newest day first. */
     val recollectionDays: List<RecollectionDay> =
         (harvests.map { RecollectionItem.HarvestItem(it) } +
-            deliveries.map { RecollectionItem.DeliveryItem(it) } +
+            deliveries.filter { standsAlone(it.harvestId) }.map { RecollectionItem.DeliveryItem(it) } +
             harvestDays.map { RecollectionItem.HarvestDayItem(it) } +
-            recollectionExpenses.map { RecollectionItem.ExpenseItem(it) })
+            recollectionExpenses.filter { standsAlone(it.harvestId) }.map { RecollectionItem.ExpenseItem(it) })
             .groupBy { it.date }
             .toSortedMap(compareByDescending { it })
             .map { (date, items) -> RecollectionDay(date, items.sortedBy { it.order }) }
@@ -92,6 +99,16 @@ data class CampaignNotebook(
 
     /** Phase 19B: how many of this Campaign's Pesadas belong to one Jornada. */
     fun pesadaCount(harvestId: java.util.UUID): Int = deliveries.count { it.harvestId == harvestId }
+
+    /** The kilo-weighted yield of a Jornada's Pesadas, or "pendiente" while any has none; null without Pesadas. */
+    fun jornadaYieldLabel(harvestId: java.util.UUID): String? {
+        val own = deliveries.filter { it.harvestId == harvestId }
+        if (own.isEmpty()) return null
+        val summary = DeliverySummary.of(own)
+        val fat = summary.fatYield ?: return "rend. pendiente"
+        val pending = own.any { PesadaSearch.statusOf(it) == YieldStatus.PENDING }
+        return "rend. ${Percent.format(fat.hundredths)}" + if (pending) " (parcial)" else ""
+    }
 
     companion object {
         val RECOLLECTION_CATEGORIES = setOf(ExpenseCategory.HARVEST, ExpenseCategory.TRANSPORT)

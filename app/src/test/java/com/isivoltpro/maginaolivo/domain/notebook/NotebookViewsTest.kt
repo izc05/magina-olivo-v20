@@ -132,6 +132,27 @@ class NotebookViewsTest {
         assertNull(project(deliveries = listOf(delivery(1_000_000, day1))).pendingDeliveryGrams)
     }
 
+    @Test fun aJornadasOwnPesadaAndCostAreReadInsideItNotRepeated() {
+        // 254-E: the owner saw "Jornada · 2.390 kg" and "Pesada nº 1 · 2.390 kg" as two rows.
+        val jornada = harvest(2_390_000, day2)
+        val own = delivery(2_390_000, day2).copy(harvestId = jornada.id)
+        val loose = delivery(1_000_000, day2)
+        val diesel = expense(5_000, ExpenseCategory.FUEL, day2).copy(harvestId = jornada.id)
+        val notebook = project(harvests = listOf(jornada), deliveries = listOf(own, loose), expenses = listOf(diesel))
+
+        val diary = notebook.diary.single().entries
+        assertEquals(2, diary.size) // the Jornada and the loose Pesada; not its own Pesada nor its diesel
+        assertTrue(diary.none { it is DiaryEntry.DeliveryEntry && it.delivery.id == own.id })
+        assertTrue(diary.none { it is DiaryEntry.ExpenseEntry })
+        val recollection = notebook.recollectionDays.single().items
+        assertTrue(recollection.none { it is RecollectionItem.DeliveryItem && it.delivery.id == own.id })
+        // Totals still count everything exactly once.
+        assertEquals(3_390_000L, notebook.deliverySummary.deliveredGrams)
+        assertEquals(5_000L, notebook.jornadaCost(jornada.id).totalMinor)
+        assertEquals(5_000L, notebook.expenseSummary.totalMinor)
+        assertEquals("rend. pendiente", notebook.jornadaYieldLabel(jornada.id))
+    }
+
     private fun project(
         activities: List<Activity> = emptyList(),
         harvests: List<Harvest> = emptyList(),
