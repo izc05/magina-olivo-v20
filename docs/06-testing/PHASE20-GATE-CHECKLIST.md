@@ -13,12 +13,12 @@ Status: **PENDING owner device check** (prepared 2026-09-27).
 | 20B-fix — validation body + provider in the run summary | #257 | — | merged |
 | 20B-radar — «Ver radar» (RainViewer), live-only | #259 | — | merged |
 | 20C — weather look on Inicio's header (reduced-motion safe) | #260 | — | merged |
-| 20D — oil-market reference | — | — | **blocked**: no approved source (owner decision D3) |
-| 20E — preferred-cooperative notices | — | — | **blocked**: waits for the private Admin surface (D4) |
+| 20D — oil-market reference | — | — | **source approved 2026-09-27**: Junta de Andalucía Observatorio; implementation pending its own PR |
+| 20E — preferred-cooperative notices | — | — | **deferred**: waits for the private Admin surface / approved per-cooperative feed (D4) |
 
-Proposal for the owner: close Gate 20 with 20D/20E **deferred** (their cards already say
-«Sin fuente configurada» / offer choosing a cooperative and show no notices), and reopen them
-when D3/D4 are decided. Nothing in Mi Olivar depends on them.
+Owner update 2026-09-27: D3 is now decided. 20D may be implemented from the official Junta de
+Andalucía Observatorio source in a separate PR, after documenting stable access/reuse and fixtures.
+20E remains deferred. Nothing in Mi Olivar depends on 20E, and no cooperative notice is invented.
 
 ## Automated evidence (CI, fixtures only — no live AEMET/MET Norway/RainViewer calls)
 
