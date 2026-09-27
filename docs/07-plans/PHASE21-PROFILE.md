@@ -17,6 +17,10 @@ currency; reusable Organizations (cooperative/mill/supplier/irrigation) already 
 - Geographic-neutral model; Spain is the first data set (municipality list as for weather).
 - No duplicate cooperative: the preferred cooperative is a reference to an existing
   Organization, not a copied name.
+- Directory research: DOP Sierra Mágina is an official territorial reference for entity/brand
+  verification, but its current legal notice reserves commercial reuse. Do not bulk-import or
+  automate its directory into production without permission/licensing; allow user-created
+  Organizations and keep the model source-agnostic.
 
 ## Slices (one PR each)
 
