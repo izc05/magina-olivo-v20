@@ -1,0 +1,32 @@
+# Mágina Olivo (Android) — registro de versiones
+
+Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.0-dev · compilación 531».
+
+- **Versión** (`0.2.0`): se sube a mano en `app/build.gradle.kts` (`appVersionName`) cuando se entrega un
+  bloque de cambios al propietario, y se anota aquí.
+- **Compilación** (`531`): la pone la CI sola (número de ejecución de GitHub Actions, siempre creciente).
+  También es el `versionCode`, así que un APK nuevo siempre es «más nuevo» para Android.
+  Una compilación local muestra «compilación local».
+
+Para saber qué lleva un APK: mira la versión en el Perfil y busca abajo su bloque; la compilación
+concreta está en la ejecución de CI con ese número (Actions → Android CI → #número).
+
+## 0.2.0 — 27/09/2026 (en curso)
+
+Recolección, Cuaderno y formularios, tras las pruebas del propietario en el móvil.
+
+- Marca oficial: icono de la app, logotipo y monocromo (PR #261).
+- «Pesada» como única acción de recolección; vocabulario Jornada/Pesada (#261).
+- Formulario con el tipo ya elegido desde «Registrar hoy» (#253 → #261).
+- Origen de la aceituna en cada Pesada: Árbol/vuelo · Suelo; pesadas antiguas «Sin indicar» (#262, base de datos v16).
+- Recolección: resumen 2×2 (kg pesados, pesadas, rendimiento medio ponderado, gastos) y «+ Nueva pesada» (#263).
+- Jornada: rendimiento de cada pesada y rendimiento ponderado de la jornada (#264).
+- Cuaderno: línea de día «Hoy / Ayer / Mañana», hecho frente a planificado con marca ✓/🕒, colores por tipo en Recolección (#265).
+- Formulario de actuación corto: tipo en fichas, parcelas en fichas, «Más opciones» plegado (#266).
+- Versión y número de compilación visibles en el Perfil (#267).
+
+## 0.1.0 — hasta el 26/09/2026
+
+Base RC1.2: fincas, parcelas y mapa, campañas, actuaciones tipadas, cosecha/jornadas, pesadas y
+rendimientos, jornales y maquinaria de jornada, gastos, agenda y avisos, Cuaderno (Diario,
+Fitosanitario, Gastos, Campaña), tiempo y radar. Todas las compilaciones mostraban «0.1.0-dev».

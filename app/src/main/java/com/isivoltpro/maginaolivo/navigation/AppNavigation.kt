@@ -26,6 +26,7 @@ import com.isivoltpro.maginaolivo.app.AppEnvironment
 import com.isivoltpro.maginaolivo.feature.farms.FarmDetailRoute
 import com.isivoltpro.maginaolivo.feature.agenda.AgendaRoute
 import com.isivoltpro.maginaolivo.feature.profile.ProfileRoute
+import com.isivoltpro.maginaolivo.feature.profile.appVersionLabel
 import com.isivoltpro.maginaolivo.feature.farms.FarmListRoute
 import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
 import com.isivoltpro.maginaolivo.feature.activities.ActivityDetailRoute
@@ -272,7 +273,10 @@ fun AppNavigation(
             }
             composable(RootDestination.Profile.route) {
                 ProfileRoute(
-                    appVersion = com.isivoltpro.maginaolivo.BuildConfig.VERSION_NAME,
+                    appVersion = appVersionLabel(
+                        com.isivoltpro.maginaolivo.BuildConfig.VERSION_NAME,
+                        com.isivoltpro.maginaolivo.BuildConfig.BUILD_NUMBER,
+                    ),
                     onMachinery = { navController.navigate(AppDestination.Machinery) },
                     developerGalleryEnabled = compositionRoot.environment == AppEnvironment.DEV,
                     onDeveloperGallery = { navController.navigate(AppDestination.DeveloperGallery) },

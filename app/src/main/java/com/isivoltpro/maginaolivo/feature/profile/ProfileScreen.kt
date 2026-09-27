@@ -178,3 +178,7 @@ fun ProfileScreen(
 private fun Chevron() {
     Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(18.dp))
 }
+
+/** "0.2.0-dev · compilación 531": the version plus the CI build, so each APK is identifiable. */
+internal fun appVersionLabel(versionName: String, buildNumber: Int): String =
+    if (buildNumber > 0) "$versionName · compilación $buildNumber" else "$versionName · compilación local"
