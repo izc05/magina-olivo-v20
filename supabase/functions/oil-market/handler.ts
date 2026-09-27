@@ -43,7 +43,15 @@ export interface Deps {
 
 export interface Result {
   status: number;
-  body: OilMarketResponse | { error: string };
+  body: OilMarketResponse | { error: string; detail?: string };
+}
+
+// A plain identification of who is reading; some public servers refuse requests without one.
+const USER_AGENT = "MaginaOlivo/1.0 (oil-market; precios oficiales semanales)";
+
+function unavailable(detail: string): Result {
+  console.error("oil-market: junta page unavailable:", detail);
+  return { status: 502, body: { error: "source_unavailable", detail } };
 }
 
 const CATEGORIES: Category[] = ["AOVE", "AOV", "AOL"];
@@ -63,21 +71,25 @@ export async function handleOilMarket(rawBody: unknown, deps: Deps): Promise<Res
   let html: string;
   try {
     const response = await deps.fetch(JUNTA_URL, {
-      headers: { accept: "text/html" },
-      signal: AbortSignal.timeout(deps.timeoutMs ?? 10_000),
+      headers: { accept: "text/html", "user-agent": USER_AGENT },
+      // Below the app's 10 s deadline for the whole call (EdgeOilMarketSource), so an answer that
+      // reaches the phone is never one it already gave up on.
+      signal: AbortSignal.timeout(deps.timeoutMs ?? 8_000),
     });
-    if (!response.ok) return { status: 502, body: { error: "source_unavailable" } };
+    if (!response.ok) return unavailable(`http_${response.status}`);
     html = await response.text();
-  } catch {
-    return { status: 502, body: { error: "source_unavailable" } };
+  } catch (failure) {
+    return unavailable((failure as Error)?.name === "TimeoutError" ? "timeout" : "network");
   }
   let values;
   try {
     values = parseJuntaPage(html, now);
   } catch (failure) {
-    // The page changed or says something we do not understand: refuse rather than guess.
+    // The page changed or says something we do not understand: refuse rather than guess. The
+    // parser's reason (no secret, no page content) goes back so a deploy run can say why.
+    const reason = (failure as Error).message.split(":")[0];
     console.error("oil-market: junta page not understood:", (failure as Error).message);
-    return { status: 502, body: { error: "source_unreadable" } };
+    return { status: 502, body: { error: "source_unreadable", detail: reason } };
   }
   // The window is the latest `weeks` published weeks for all categories together, so a category
   // missing a week shows the gap instead of reaching back for an older week.
