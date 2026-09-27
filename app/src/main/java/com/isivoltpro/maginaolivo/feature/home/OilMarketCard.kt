@@ -1,0 +1,206 @@
+package com.isivoltpro.maginaolivo.feature.home
+
+import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.Uri
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.BorderStroke
+import com.isivoltpro.maginaolivo.domain.feed.FeedState
+import com.isivoltpro.maginaolivo.domain.market.OilMarketSeries
+import com.isivoltpro.maginaolivo.domain.market.OilTrend
+import com.isivoltpro.maginaolivo.domain.market.OilTrends
+import com.isivoltpro.maginaolivo.domain.market.TrendDirection
+import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
+import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
+import com.isivoltpro.maginaolivo.ui.theme.MoErrorText
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
+import com.isivoltpro.maginaolivo.ui.theme.MoOutline
+import com.isivoltpro.maginaolivo.ui.theme.MoShape
+import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
+import com.isivoltpro.maginaolivo.ui.theme.MoSuccessText
+import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
+import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+/**
+ * Phase 20D (Issue #271) — «Mercado del aceite» on Inicio, two layers kept apart:
+ * - **Pulso diario**: AOVE.net's own embeddable widget, shown as the publisher hosts it (online
+ *   only, with its credit); its figures are never copied into the app.
+ * - **Tendencia oficial semanal**: the Junta de Andalucía weeks from the phone's cache, with the
+ *   change from the previous week. A weekly figure is never called "hoy".
+ */
+@Composable
+internal fun OilMarketCard(official: FeedState<OilMarketSeries>, pulse: (@Composable () -> Unit)?) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().testTag("home-market"),
+        shape = MoShape.card,
+        color = MoWarmWhite,
+        border = BorderStroke(1.dp, MoOutline),
+    ) {
+        Column(Modifier.padding(MoSpacing.sm), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                MoIconBadge(MoIcons.Euro)
+                Text("Mercado del aceite", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+            }
+            pulse?.let {
+                Text("Pulso diario", style = MaterialTheme.typography.labelLarge, color = MoOliveDark)
+                it()
+            }
+            Text("Tendencia oficial semanal", style = MaterialTheme.typography.labelLarge, color = MoOliveDark)
+            when (official) {
+                is FeedState.Value -> OfficialTrend(official)
+                FeedState.NotConfigured -> Note("Sin fuente configurada.", "home-market-official-not-configured")
+                FeedState.NoLocation, FeedState.Unavailable ->
+                    Note("Aún sin datos oficiales. Se actualizará cuando haya conexión.", "home-market-official-unavailable")
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfficialTrend(official: FeedState.Value<OilMarketSeries>) {
+    val series = official.value
+    val trends = OilTrends.all(series)
+    val latest = trends.maxByOrNull { it.latest.periodEnd }?.latest ?: return
+    trends.forEach { trend -> TrendRow(trend) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+        Text(
+            "Semana ${OilTrends.week(latest)} (${latest.periodStart.format(DAY)}–${latest.periodEnd.format(DAY)}) · " +
+                "${series.sourceName} · precio en almazara",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+            modifier = Modifier.weight(1f).testTag("home-market-official-source"),
+        )
+        if (official.stale) MoStatusChip("Dato antiguo", tone = MoStatusTone.Warning, modifier = Modifier.testTag("home-market-official-stale"))
+    }
+}
+
+@Composable
+private fun TrendRow(trend: OilTrend) {
+    val tint = when (trend.direction) {
+        TrendDirection.UP -> MoSuccessText
+        TrendDirection.DOWN -> MoErrorText
+        else -> MoTextSecondary
+    }
+    Row(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("home-market-trend"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(trend.category.label, style = MaterialTheme.typography.bodyMedium, color = MoInk, modifier = Modifier.weight(1f))
+        Text(OilTrends.euros(trend.latest.valueEurPerKg), style = MaterialTheme.typography.titleSmall, color = MoInk)
+        Text(
+            "  " + OilTrends.label(trend).removePrefix(trend.category.label).trim().takeIf { trend.direction != null }.orEmpty(),
+            style = MaterialTheme.typography.bodySmall,
+            color = tint,
+        )
+    }
+}
+
+@Composable
+private fun Note(text: String, tag: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag(tag))
+}
+
+/**
+ * AOVE.net's free widget (https://aove.net/insertar-widget-precio-aceite-oliva/), loaded as the
+ * publisher serves it: no cache (never an old page passed off as today's), no file or app bridge,
+ * links open in the browser. Offline, or if it fails, it says so and shows nothing else.
+ */
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+internal fun AoveNetPulse() {
+    val context = LocalContext.current
+    var failed by remember { mutableStateOf(!isOnline(context)) }
+    Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs), modifier = Modifier.testTag("home-market-pulse")) {
+        if (failed) {
+            Note("Pulso diario no disponible sin conexión.", "home-market-pulse-offline")
+        } else {
+            AndroidView(
+                modifier = Modifier.fillMaxWidth().height(260.dp),
+                factory = { viewContext ->
+                    WebView(viewContext).apply {
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.cacheMode = WebSettings.LOAD_NO_CACHE
+                        settings.allowFileAccess = false
+                        settings.allowContentAccess = false
+                        webViewClient = object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                                openInBrowser(viewContext, request.url)
+                                return true
+                            }
+
+                            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                                if (request.isForMainFrame) failed = true
+                            }
+                        }
+                        loadUrl(AOVE_NET_WIDGET)
+                    }
+                },
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Fuente: AOVE.net · referencia orientativa diaria, no es una cotización oficial",
+                style = MaterialTheme.typography.labelSmall,
+                color = MoTextSecondary,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = { openInBrowser(context, Uri.parse(AOVE_NET_DETAIL)) }, modifier = Modifier.testTag("home-market-pulse-detail")) {
+                Text("Ver detalle")
+            }
+        }
+    }
+}
+
+private fun isOnline(context: Context): Boolean {
+    val connectivity = context.getSystemService(ConnectivityManager::class.java) ?: return false
+    val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork) ?: return false
+    return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+}
+
+private fun openInBrowser(context: Context, uri: Uri) {
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (_: ActivityNotFoundException) {
+        // No browser on the phone: the card keeps its own text.
+    }
+}
+
+private const val AOVE_NET_WIDGET = "https://aove.net/widget/precio-aceite-oliva-hoy/"
+private const val AOVE_NET_DETAIL = "https://aove.net/"
+private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-ES"))

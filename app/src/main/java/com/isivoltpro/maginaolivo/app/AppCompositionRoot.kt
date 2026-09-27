@@ -13,7 +13,9 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.core.time.SystemAppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.remote.weather.EdgeRadarSource
+import com.isivoltpro.maginaolivo.data.remote.market.EdgeOilMarketSource
 import com.isivoltpro.maginaolivo.data.remote.weather.EdgeWeatherSource
+import com.isivoltpro.maginaolivo.data.repository.CachedOilMarketFeed
 import com.isivoltpro.maginaolivo.data.repository.CachedWeatherFeed
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 import com.isivoltpro.maginaolivo.data.repository.LocalWorkspaceRepository
@@ -152,6 +154,14 @@ data class AppCompositionRoot(
             val weatherFeed = CachedWeatherFeed(
                 database, source = weatherSource, workspaces = workspaceRepository, clock = defaults.clock, dispatchers = defaults.dispatchers,
             )
+            // Phase 20D: the official Junta series comes from the `oil-market` Edge Function. Until
+            // that function is deployed (20D-2) the source stays off and the card says so.
+            val oilSource = BuildConfig.WEATHER_ANON_KEY.takeIf { it.isNotBlank() && OIL_MARKET_FUNCTION_DEPLOYED }?.let { key ->
+                EdgeOilMarketSource(BuildConfig.WEATHER_FUNCTIONS_URL, key)
+            }
+            val oilMarketFeed = CachedOilMarketFeed(
+                database, source = oilSource, workspaces = workspaceRepository, clock = defaults.clock, dispatchers = defaults.dispatchers,
+            )
             return defaults.copy(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 activeFarmStore = AndroidActiveFarmStore(applicationContext),
@@ -175,8 +185,12 @@ data class AppCompositionRoot(
                     reminders = reminders,
                     weatherFeed = weatherFeed,
                     radarSource = radarSource,
+                    oilMarketFeed = oilMarketFeed,
                 ),
             )
         }
     }
 }
+
+/** Phase 20D-2 turns this on once the `oil-market` Edge Function is deployed and validated live. */
+private const val OIL_MARKET_FUNCTION_DEPLOYED = false
