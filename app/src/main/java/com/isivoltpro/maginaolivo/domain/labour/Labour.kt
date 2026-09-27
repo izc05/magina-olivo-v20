@@ -91,6 +91,31 @@ data class LabourSummary(
     }
 }
 
+/**
+ * #254 (254-D): one person's labour over a set of Jornadas, grouped by their stable worker id
+ * (so a renamed person stays one row). Lines typed as a bare count have no person and are
+ * totalled apart, never shared out among names.
+ */
+data class WorkerLabour(val workerId: UUID, val name: String, val jornadas: Int, val summary: LabourSummary)
+
+object LabourByWorker {
+    fun of(entries: List<LabourEntry>): List<WorkerLabour> =
+        entries.filter { it.workerId != null }
+            .groupBy { it.workerId!! }
+            .map { (id, rows) ->
+                WorkerLabour(
+                    workerId = id,
+                    name = rows.lastOrNull { !it.workerName.isNullOrBlank() }?.workerName ?: "Sin nombre",
+                    jornadas = rows.map { it.harvestId }.distinct().size,
+                    summary = LabourSummary.of(rows),
+                )
+            }
+            .sortedWith(compareByDescending<WorkerLabour> { it.summary.fullDays * 2 + it.summary.halfDays }.thenBy { it.name })
+
+    /** The lines recorded only as "N personas", without names. */
+    fun unnamed(entries: List<LabourEntry>): LabourSummary = LabourSummary.of(entries.filter { it.workerId == null })
+}
+
 interface LabourRepository {
     fun observeWorkers(): Flow<List<Worker>>
 
