@@ -171,7 +171,7 @@ reason still needs the owner's Supabase log line; no timeout change without it.
   `timeoutMs` for the AEMET call only (the MET Norway fallback keeps the card alive meanwhile).
 - DoD: fixture tests green; one manual deploy run with new evidence stored beside the old one.
 
-### 20B-radar — "Ver radar" screen — IN PROGRESS (branch claude/phase20b-radar)
+### 20B-radar — "Ver radar" screen — MERGED (PR #259, owner OK)
 Implemented: `domain/weather/Radar.kt` (RadarFrames, RadarSource), `EdgeRadarSource` +
 `EdgeRadarResponse` (strict: https template with {z}/{x}/{y}, attribution, ≥1 frame), shared
 `EdgeFunctionHttp` POST (the forecast client uses it too, same behaviour), `RadarScreen` nested
@@ -192,7 +192,12 @@ lluvia" only when the build has the public key. No Room change; radar is never c
 - Tests: parse from the stored real response (`weather-radar-frames.json`) and from fixtures;
   offline state; frame time shown; `ArchitectureBoundaryTest` still passes.
 
-### 20C — weather-responsive visual layer
+### 20C — weather-responsive visual layer — IN PROGRESS (branch claude/phase20c-weather-mood)
+Implemented: `domain/weather/WeatherMood.kt` (`WeatherMoods.of`: current value only; stale,
+unknown or snow → none; wind ≥ 35 km/h turns clear/cloudy into WIND), `WeatherMoodLayer` drawn in
+Inicio's photo header under the text (low opacity Canvas: glow, clouds, rain, streaks, fog,
+storm with a soft 4 %-of-cycle glow, never a strobe). Still frame when the system animator scale
+is 0 or the phone is low-RAM; the progress is read in the draw phase only (no recomposition).
 - Pure mapping `WeatherCondition → WeatherMood` (CLEAR / CLOUDY / RAIN / WIND / FOG / STORM);
   unknown or stale → no mood (static header).
 - Lightweight Compose drawing behind the Inicio header only; off when system animations are

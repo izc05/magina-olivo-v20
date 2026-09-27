@@ -90,10 +90,24 @@ class HomeFeedsScreenTest {
         composeRule.onNodeWithTag("home-weather-radar").assertDoesNotExist()
     }
 
+    /** Phase 20C: a current sky gives the header its look; unknown or stale gives none. */
+    @Test fun theHeaderFollowsTheCurrentSkyAndStaysStillInTests() {
+        val rain = WeatherNow(14, WeatherCondition.RAIN, 80, 12, now.minusSeconds(600))
+        show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Value(rain, "AEMET", now.minusSeconds(600), stale = false)))
+        composeRule.onNodeWithTag("home-weather-mood-rain-static").assertExists()
+    }
+
+    @Test fun anOutOfDateSkyDrawsNothingOverThePhoto() {
+        val rain = WeatherNow(14, WeatherCondition.RAIN, 80, 12, now.minusSeconds(5 * 3600))
+        show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Value(rain, "AEMET", now.minusSeconds(5 * 3600), stale = true)))
+        composeRule.onNodeWithTag("home-weather-mood-rain-static").assertDoesNotExist()
+        composeRule.onNodeWithTag("home-weather-mood-rain-animated").assertDoesNotExist()
+    }
+
     private fun show(state: HomeUiState, onRadar: (() -> Unit)? = null) {
         composeRule.setContent {
             MaginaOlivoTheme {
-                HomeScreen(state, LocalTime.of(10, 0), {}, {}, {}, {}, {}, {}, now, onRadar = onRadar)
+                HomeScreen(state, LocalTime.of(10, 0), {}, {}, {}, {}, {}, {}, now, onRadar = onRadar, weatherMotion = false)
             }
         }
     }
