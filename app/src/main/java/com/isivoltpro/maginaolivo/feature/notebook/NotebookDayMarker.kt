@@ -36,7 +36,8 @@ internal fun NotebookDayMarker(date: LocalDate, today: LocalDate, modifier: Modi
     val isToday = date == today
     val tint = if (isToday) MoOliveMid else MoTextSecondary
     Row(
-        modifier.fillMaxWidth().padding(top = MoSpacing.xs).semantics { heading() }
+        // One heading for TalkBack ("Hoy · domingo 27 sept"), not three loose pieces.
+        modifier.fillMaxWidth().padding(top = MoSpacing.xs).semantics(mergeDescendants = true) { heading() }
             .testTag(if (isToday) "notebook-day-today" else "notebook-day"),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
