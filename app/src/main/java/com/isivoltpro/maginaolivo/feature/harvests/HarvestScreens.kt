@@ -758,6 +758,7 @@ private fun JornadaPesadas(
                     Text(
                         listOfNotNull(
                             pesada.deliveryTime?.toString(),
+                            pesada.origin?.label,
                             (pesada.ticketNumber ?: pesada.deliveryNumber)?.let { "Vale $it" },
                         ).ifEmpty { listOf(DATE_FORMAT.format(pesada.deliveryDate)) }.joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,

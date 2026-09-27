@@ -48,6 +48,8 @@ data class DeliveryEntity(
     @ColumnInfo(name = "harvest_id") val harvestId: UUID? = null,
     /** Phase 19B: the hour on the ticket, "HH:mm", when the farmer gives it. */
     @ColumnInfo(name = "delivery_time") val deliveryTime: String? = null,
+    /** Issue #254 (Room v16): "TREE" (árbol/vuelo) or "GROUND" (suelo); null on older Pesadas. */
+    @ColumnInfo(name = "harvest_origin") val origin: String? = null,
 )
 
 /** One origin Parcel of a Delivery: a child of the Delivery aggregate, as for a Harvest. */

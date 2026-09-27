@@ -6,6 +6,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.DeliveryProblem
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRules
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.delivery.YieldAnalysis
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
 import com.isivoltpro.maginaolivo.domain.delivery.YieldRules
@@ -40,6 +41,8 @@ data class DeliveryForm(
     /** Phase 19B: the Jornada this Pesada joins, chosen explicitly; never guessed. */
     val harvestId: UUID? = null,
     val newJornada: Boolean = false,
+    /** Issue #254: árbol/vuelo or suelo, chosen on every Pesada. */
+    val origin: PesadaOrigin? = null,
 )
 
 /**
@@ -58,6 +61,8 @@ internal fun DeliveryForm.nextPesada(harvestId: UUID?): DeliveryForm = copy(
     splitKnown = false,
     harvestId = harvestId,
     newJornada = false,
+    // A day often has vuelo and suelo loads: the next Pesada says its own origin.
+    origin = null,
 )
 
 private val TIME = Regex("""^(\d{1,2})[:.h](\d{2})$""")
@@ -79,8 +84,9 @@ data class DeliveryFormErrors(
     val parcels: String? = null,
     val time: String? = null,
     val jornada: String? = null,
+    val origin: String? = null,
 ) {
-    val isEmpty: Boolean get() = listOf(farm, date, destination, net, gross, parcels, time, jornada).all { it == null }
+    val isEmpty: Boolean get() = listOf(farm, date, destination, net, gross, parcels, time, jornada, origin).all { it == null }
 }
 
 internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, DeliveryFormErrors> {
@@ -110,6 +116,7 @@ internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, Delive
         },
         parcels = if (badWeight) "Revisa los kilos de las parcelas: escribe como 1200 o 1.200,5" else null,
         time = if (time.isNotBlank() && parseHour(time) == null) "Escribe la hora como 9:30" else null,
+        origin = if (origin == null) "Indica si la aceituna es de árbol/vuelo o de suelo" else null,
     )
     if (!errors.isEmpty) return null to errors
     val shares = when {
@@ -132,6 +139,7 @@ internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, Delive
         harvestId = harvestId.takeUnless { newJornada },
         deliveryTime = parseHour(time),
         newJornada = newJornada,
+        origin = origin,
     )
     DeliveryRules.validate(draft, today)?.let { return null to it.toFormErrors() }
     return draft to errors
@@ -202,6 +210,7 @@ internal fun Delivery.toForm(): DeliveryForm {
         notes = notes.orEmpty(),
         time = deliveryTime?.toString().orEmpty(),
         harvestId = harvestId,
+        origin = origin,
     )
 }
 

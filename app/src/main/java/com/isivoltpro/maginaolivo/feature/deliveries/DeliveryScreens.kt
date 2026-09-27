@@ -58,6 +58,7 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
@@ -481,6 +482,7 @@ private fun DeliveryRow(delivery: Delivery, onAddYield: (() -> Unit)? = null, on
                 Text(
                     listOfNotNull(
                         delivery.destinationName,
+                        delivery.origin?.label,
                         delivery.ticketNumber?.let { "vale $it" },
                         if (delivery.harvestId != null) "en jornada" else null,
                     ).joinToString(" · "),
@@ -585,6 +587,19 @@ internal fun DeliveryEditor(
             supportingText = errors.net ?: Weight.parseGrams(form.net)?.let { "= ${Weight.format(it)}" },
             modifier = Modifier.fillMaxWidth().testTag("delivery-net"),
         )
+        // Issue #254 (CODEX-3): every Pesada says where its olives were picked.
+        Text("Origen de la aceituna", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+        Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            PesadaOrigin.entries.forEach { option ->
+                FilterChip(
+                    selected = form.origin == option,
+                    onClick = { form = form.copy(origin = option) },
+                    label = { Text(option.label) },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("delivery-origin-${option.name.lowercase()}"),
+                )
+            }
+        }
+        errors.origin?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("delivery-origin-error")) }
         Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             MoTextField(
                 form.gross, { form = form.copy(gross = it) }, "Bruto (opcional)",
@@ -957,6 +972,7 @@ private fun DeliverySummaryBlock(delivery: Delivery) {
         MoStatusChip("Leído del vale y confirmado por ti", tone = MoStatusTone.Info)
     }
     delivery.deliveryTime?.let { DetailValue("Hora", it.toString()) }
+    DetailValue("Origen de la aceituna", delivery.origin?.label ?: "Sin indicar")
     if (delivery.harvestId != null) {
         Text(
             "Forma parte de una jornada de recolección: sus kilos cuentan en el total de ese día.",

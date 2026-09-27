@@ -31,6 +31,7 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.WeightedYield
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
@@ -318,6 +319,20 @@ class DeliveryContractTest {
         assertEquals(2_850_000L, delivery.netGrams)
         assertEquals(0L, delivery.unallocatedGrams)
         assertEquals(2_150, delivery.analysis!!.fatYieldHundredths)
+    }
+
+    /** Issue #254: árbol/vuelo or suelo is stored with the Pesada, kept on edit, survives a restart. */
+    @Test
+    fun theOriginOfTheOlivesIsKeptWithThePesada() = runBlocking {
+        val id = ok(deliveries.create(draft(2_390_000, north to null, south to null).copy(origin = PesadaOrigin.TREE)))
+        assertEquals(PesadaOrigin.TREE, deliveries.observe(id).first()!!.origin)
+        // An edit that does not mention the origin keeps the one stored.
+        ok(deliveries.update(id, draft(2_400_000, north to null, south to null)))
+        assertEquals(PesadaOrigin.TREE, deliveries.observe(id).first()!!.origin)
+        ok(deliveries.update(id, draft(2_400_000, north to null, south to null).copy(origin = PesadaOrigin.GROUND)))
+        db.close()
+        open()
+        assertEquals(PesadaOrigin.GROUND, deliveries.observe(id).first()!!.origin)
     }
 
     private fun open() {
