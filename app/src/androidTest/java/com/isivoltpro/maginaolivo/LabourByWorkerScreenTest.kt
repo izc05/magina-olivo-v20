@@ -44,11 +44,24 @@ class LabourByWorkerScreenTest {
         composeRule.setContent {
             MaginaOlivoTheme { Column(Modifier.verticalScroll(rememberScrollState())) { SummaryTab(notebook) } }
         }
-        composeRule.onNodeWithText("5 jornales").performScrollTo()
-        composeRule.onNodeWithText("2 personas", substring = true).assertExists()
+        // 1 + 3 whole days and 1 half day: never "5 jornales" mixing both.
+        composeRule.onNodeWithText("4 jornadas · 1 media").performScrollTo()
+        composeRule.onNodeWithText("2 personas con nombre").assertExists()
         composeRule.onAllNodesWithTag("notebook-worker-labour").assertCountEquals(2)
         composeRule.onAllNodesWithTag("notebook-worker-labour")[0].assertTextContains("Juan Pérez", substring = true)
         composeRule.onNodeWithTag("notebook-worker-labour-unnamed").performScrollTo().assertTextContains("3 jornadas", substring = true)
+    }
+
+    @Test fun onlyCountsStillSayTheyHaveNoName() {
+        val notebook = CampaignNotebook.project(
+            campaign, emptyList(), listOf(harvest), emptyList(), emptyList(),
+            labour = listOf(line(null, null, LabourUnit.FULL_DAY, quantity = 5)),
+        )
+        composeRule.setContent {
+            MaginaOlivoTheme { Column(Modifier.verticalScroll(rememberScrollState())) { SummaryTab(notebook) } }
+        }
+        composeRule.onAllNodesWithTag("notebook-worker-labour").assertCountEquals(0)
+        composeRule.onNodeWithTag("notebook-worker-labour-unnamed").performScrollTo().assertTextContains("5 jornadas", substring = true)
     }
 
     private fun line(worker: UUID?, name: String?, unit: LabourUnit, quantity: Int = 1) =

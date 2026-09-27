@@ -38,12 +38,13 @@ interface LabourDao {
     @Query("SELECT * FROM harvest_labour WHERE harvest_id = :harvestId AND deleted_at IS NULL")
     suspend fun listForHarvest(harvestId: UUID): List<HarvestLabourEntity>
 
-    /** The live labour of every live Jornada of one Campaign. */
+    /** The live labour of every live Jornada of one Campaign, in recording order (newest last). */
     @Query(
         """
         SELECT harvest_labour.* FROM harvest_labour
         JOIN harvests ON harvests.id = harvest_labour.harvest_id
         WHERE harvests.campaign_id = :campaignId AND harvests.deleted_at IS NULL AND harvest_labour.deleted_at IS NULL
+        ORDER BY harvest_labour.created_at, harvest_labour.id
         """,
     )
     fun observeForCampaign(campaignId: UUID): Flow<List<HarvestLabourEntity>>

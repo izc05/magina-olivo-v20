@@ -99,6 +99,7 @@ data class LabourSummary(
 data class WorkerLabour(val workerId: UUID, val name: String, val jornadas: Int, val summary: LabourSummary)
 
 object LabourByWorker {
+    /** [entries] in recording order (as the DAO returns them): a person shows their latest name. */
     fun of(entries: List<LabourEntry>): List<WorkerLabour> =
         entries.filter { it.workerId != null }
             .groupBy { it.workerId!! }
