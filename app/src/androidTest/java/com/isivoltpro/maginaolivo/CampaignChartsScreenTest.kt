@@ -47,8 +47,8 @@ class CampaignChartsScreenTest {
         )
         show(CampaignSeries.of(notebook), emptyList())
         composeRule.onNodeWithTag("chart-kg-summary")
-            .assertTextContains("Entregado ${Weight.format(notebook.deliverySummary.deliveredGrams)} en 2 días", substring = true)
-        composeRule.onNodeWithTag("chart-yield-summary").assertTextContains("1 de 2 días de entrega con análisis", substring = true)
+            .assertTextContains("Pesado ${Weight.format(notebook.deliverySummary.deliveredGrams)} en 2 días", substring = true)
+        composeRule.onNodeWithTag("chart-yield-summary").assertTextContains("1 de 2 días con pesadas analizadas", substring = true)
         composeRule.onAllNodesWithTag("chart-cooperative").assertCountEquals(1)
     }
 

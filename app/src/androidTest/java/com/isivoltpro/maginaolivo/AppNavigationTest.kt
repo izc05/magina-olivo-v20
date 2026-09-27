@@ -110,14 +110,14 @@ class AppNavigationTest {
     @Test
     fun aTabAlwaysOpensItsOwnRootScreenFromWhereverTheFarmerIs() {
         enterMainShell()
-        // Deep inside Inicio (Cosecha), then Mi Campo deep inside (Maquinaria)...
-        composeRule.onNodeWithTag("home-quick-harvest").performScrollTo().performClick()
+        // Deep inside Inicio (Jornadas), then Mi Campo deep inside (Maquinaria)...
+        composeRule.onNodeWithTag("home-quick-jornadas").performScrollTo().performClick()
         waitForTag("harvests-root")
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         clickByTag("open-machinery")
         waitForTag("machinery-root")
 
-        // ...Inicio is Inicio, not the Cosecha screen left open under it.
+        // ...Inicio is Inicio, not the Jornadas screen left open under it.
         composeRule.onNodeWithTag("bottom-Inicio").performClick()
         waitForTag("home-reference-root")
         composeRule.onNodeWithTag("harvests-root").assertDoesNotExist()
@@ -329,11 +329,10 @@ class AppNavigationTest {
         waitForText("Parcela Campaña E2E")
         composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
         composeRule.onNodeWithText("Finca Campaña E2E").assertIsDisplayed()
-        // No harvest, delivery, yield analysis or expense has been recorded. Each
-        // summary keeps its own label and displays an unknown value, never zero.
+        // No weighing, yield analysis or expense has been recorded. Unknown
+        // amounts stay unknown; the record counter is the honest value zero.
         listOf(
-            "campaign-metric-harvest" to "Kg recogidos",
-            "campaign-metric-deliveries" to "Entregas",
+            "campaign-metric-weighed" to "Kg pesados",
             "campaign-metric-yield" to "Rendimiento graso",
             "campaign-metric-expenses" to "Gastos",
         ).forEach { (tag, label) ->
@@ -341,6 +340,11 @@ class AppNavigationTest {
             composeRule.onNode(hasTestTag(tag) and hasAnyDescendant(hasText(label)) and hasAnyDescendant(hasText("—")))
                 .assertExists()
         }
+        composeRule.onNode(
+            hasTestTag("campaign-metric-weighings") and
+                hasAnyDescendant(hasText("Pesadas")) and
+                hasAnyDescendant(hasText("0")),
+        ).assertExists()
 
         // A closed campaign stays protected after the restart, and reopening it is an
         // explicit, confirmed action that returns the aggregate to an editable state.

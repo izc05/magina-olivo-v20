@@ -111,10 +111,7 @@ fun HarvestsRoute(
     )
 }
 
-/**
- * S70 — Cosecha. Collected kilos only: deliveries to the cooperative are a separate record.
- * Per-Parcel figures are only what was typed; the rest is shown as "sin repartir".
- */
+/** #246 §4B — Recolección: Jornadas derived from their canonical Pesadas. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HarvestsScreen(
@@ -127,10 +124,6 @@ fun HarvestsScreen(
     /** Delivered kilos and yield, read from the Delivery ledger (never recomputed here). */
     deliverySummary: DeliverySummary? = null,
 ) {
-    var editorVisible by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
-    val harvestedGrams = state.harvests.sumOf { it.totalGrams }
-
     Scaffold(Modifier.fillMaxSize().testTag("harvests-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())
@@ -138,9 +131,9 @@ fun HarvestsScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.sm))
-            Text("Cosecha", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Recolección", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             Text(
-                "Kilos recogidos en el campo. Las entregas se registran aparte.",
+                "Cada jornada reúne sus pesadas, jornales y gastos. Los kilos se obtienen de las pesadas.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MoTextSecondary,
             )
@@ -148,15 +141,15 @@ fun HarvestsScreen(
             if (!state.isLoading) {
                 MoMetricGrid(
                     content = listOf(
-                        { m -> MoSummaryMetric("Kg registrados", if (state.harvests.isEmpty()) "—" else Weight.format(harvestedGrams), m.testTag("harvest-metric-kg"), icon = MoIcons.Harvest) },
-                        { m -> MoSummaryMetric("Registros", state.harvests.size.toString(), m, icon = MoIcons.Checklist) },
+                        { m -> MoSummaryMetric("Kg pesados", deliverySummary?.takeIf { it.deliveryCount > 0 }?.let { Weight.format(it.deliveredGrams) } ?: "—", m.testTag("harvest-metric-kg"), icon = MoIcons.Delivery) },
+                        { m -> MoSummaryMetric("Pesadas", (deliverySummary?.deliveryCount ?: 0).toString(), m, icon = MoIcons.Checklist) },
                         { m ->
                             MoSummaryMetric(
-                                "Entregado",
-                                deliverySummary?.takeIf { it.deliveryCount > 0 }?.let { Weight.format(it.deliveredGrams) } ?: "—",
+                                "Jornadas",
+                                state.harvests.size.toString(),
                                 m,
-                                icon = MoIcons.Delivery,
-                                supportingText = deliverySummary?.takeIf { it.deliveryCount > 0 }?.let { "${it.deliveryCount} entregas" } ?: "Aún sin entregas",
+                                icon = MoIcons.Harvest,
+                                supportingText = if (state.harvests.isEmpty()) "La primera nace con una pesada" else "Días de recolección",
                             )
                         },
                         { m ->
@@ -165,22 +158,21 @@ fun HarvestsScreen(
                                 deliverySummary?.fatYield?.let { Percent.format(it.hundredths) } ?: "—",
                                 m,
                                 icon = MoIcons.Percent,
-                                supportingText = if (deliverySummary?.fatYield == null) "Con los análisis de entrega" else "Ponderado por kilos",
+                                supportingText = if (deliverySummary?.fatYield == null) "Con los análisis de las pesadas" else "Ponderado por kilos",
                             )
                         },
                     ),
                 )
             }
             MoPrimaryButton(
-                "Registrar cosecha",
-                { editorVisible = true },
-                Modifier.fillMaxWidth().testTag("add-harvest"),
+                "+ Nueva pesada",
+                onDeliveries,
+                Modifier.fillMaxWidth().testTag("add-pesada"),
                 enabled = state.contexts.isNotEmpty() && !state.isSaving,
             )
-            MoSecondaryButton("Entregas a cooperativa", onDeliveries, Modifier.fillMaxWidth().testTag("open-deliveries"))
             if (!state.isLoading && state.contexts.isEmpty()) {
                 Text(
-                    "Para registrar cosecha, una finca necesita una campaña activa o en recolección.",
+                    "Para registrar una pesada, una finca necesita una campaña activa o en recolección.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoTextSecondary,
                     modifier = Modifier.testTag("harvest-no-campaign"),
@@ -193,13 +185,13 @@ fun HarvestsScreen(
             when {
                 state.isLoading -> CircularProgressIndicator()
                 state.harvests.isEmpty() -> MoEmptyState(
-                    "Aún no has registrado cosecha",
-                    "Anota cada día de recogida con sus kilos y las parcelas de origen. Si no sabes cuánto salió de cada parcela, no hace falta inventarlo.",
+                    "Aún no hay jornadas",
+                    "Registra la primera pesada del día y Mágina abrirá su jornada sin pedir los kilos otra vez.",
                     icon = MoIcons.Harvest,
                 )
                 else -> {
                     state.campaigns.forEach { campaign -> CampaignHarvestCard(campaign) }
-                    MoSectionHeader("Registros")
+                    MoSectionHeader("Jornadas")
                     state.harvests.forEach { harvest -> HarvestRow(harvest) { onHarvestSelected(harvest.id) } }
                 }
             }
@@ -207,23 +199,6 @@ fun HarvestsScreen(
         }
     }
 
-    if (editorVisible) {
-        ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
-            HarvestEditor(
-                title = "Registrar cosecha",
-                initial = HarvestForm(
-                    farmId = state.contexts.singleOrNull()?.farmId,
-                    date = today.toString(),
-                ),
-                contexts = state.contexts,
-                errors = state.formErrors,
-                isSaving = state.isSaving,
-                saveText = "Guardar cosecha",
-                onSave = onCreate,
-                onCancel = { editorVisible = false; onEditorClosed() },
-            )
-        }
-    }
 }
 
 @Composable
@@ -310,7 +285,7 @@ private fun HarvestAllocationMode.tone(): MoStatusTone = when (this) {
 }
 
 /**
- * S71 — Nueva/Editar cosecha. The origin Parcels come from the Farm's running Campaign.
+ * Legacy Jornada editor. The origin Parcels come from the Farm's running Campaign.
  * With several Parcels the split is an explicit choice, and "No conozco el reparto
  * exacto" is the default: nothing is attributed to a Parcel unless it was typed.
  */
@@ -363,7 +338,7 @@ internal fun HarvestEditor(
             modifier = Modifier.fillMaxWidth().testTag("harvest-date"),
         )
         MoTextField(
-            form.total, { form = form.copy(total = it) }, "Kilos recogidos",
+            form.total, { form = form.copy(total = it) }, "Kilos históricos",
             enabled = !kilosFromPesadas,
             isError = errors.total != null,
             supportingText = when {
@@ -562,7 +537,7 @@ fun HarvestDetailRoute(
     )
 }
 
-/** S72 — Detalle cosecha: the total and how it is split, stated plainly. */
+/** S72 — Detalle de Jornada; legacy kilos remain readable when no Pesadas exist. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HarvestDetailScreen(
@@ -598,7 +573,7 @@ fun HarvestDetailScreen(
             val harvest = state.harvest
             when {
                 state.isLoading -> CircularProgressIndicator()
-                harvest == null -> MoErrorState("Cosecha no disponible", state.error ?: "No está guardada en este dispositivo.")
+                harvest == null -> MoErrorState("Jornada no disponible", state.error ?: "No está guardada en este dispositivo.")
                 else -> {
                     HarvestSummaryBlock(harvest, state.pesadas.size)
                     JornadaPesadas(state.pesadas, harvest.editable, onAddPesada, onPesadaSelected)
@@ -625,18 +600,18 @@ fun HarvestDetailScreen(
                     )
                     if (harvest.editable) {
                         MoSecondaryButton(
-                            "Editar cosecha", { editorVisible = true },
+                            "Editar jornada", { editorVisible = true },
                             Modifier.fillMaxWidth().testTag("edit-harvest"),
                             enabled = state.context != null && !state.isSaving,
                         )
                         MoSecondaryButton(
-                            "Eliminar cosecha", { confirmDelete = true },
+                            "Eliminar jornada", { confirmDelete = true },
                             Modifier.fillMaxWidth().testTag("delete-harvest"),
                             enabled = !state.isSaving,
                         )
                     } else {
                         Text(
-                            "La campaña está cerrada: esta cosecha forma parte del histórico y no se modifica.",
+                            "La campaña está cerrada: esta jornada forma parte del histórico y no se modifica.",
                             color = MoTextSecondary,
                             modifier = Modifier.testTag("harvest-read-only"),
                         )
@@ -655,7 +630,7 @@ fun HarvestDetailScreen(
     if (editorVisible && harvest != null && context != null) {
         ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             HarvestEditor(
-                title = "Editar cosecha",
+                title = "Editar jornada",
                 initial = harvest.toForm(),
                 contexts = listOf(context),
                 errors = state.formErrors,
@@ -708,12 +683,12 @@ fun HarvestDetailScreen(
     if (confirmDelete) {
         ModalBottomSheet(onDismissRequest = { confirmDelete = false }) {
             MoConfirmationSheet(
-                title = "Eliminar cosecha",
+                title = "Eliminar jornada",
                 body = listOfNotNull(
                     if (state.pesadas.isEmpty()) {
                         "Estos kilos dejarán de contar en la campaña."
                     } else {
-                        "Sus pesadas se conservan, sin jornada, y siguen contando como entregas."
+                        "Sus pesadas se conservan, sin jornada, y siguen contando en la campaña."
                     },
                     // Phase 19D: its jornales only describe this Jornada and go with it.
                     if (state.labour.isNotEmpty()) "Sus jornales se quitan con ella." else null,
@@ -811,7 +786,7 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
         color = MoTextSecondary,
     )
     MoMetricCard(
-        "Kilos recogidos",
+        if (pesadaCount == 0) "Kilos históricos" else "Kilos pesados",
         Weight.format(harvest.totalGrams),
         Modifier.fillMaxWidth().testTag("harvest-total-value"),
         supportingText = when (pesadaCount) {

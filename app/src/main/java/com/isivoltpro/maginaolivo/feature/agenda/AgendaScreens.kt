@@ -238,7 +238,7 @@ fun AgendaScreen(
                 }
                 entries.isEmpty() -> MoEmptyState(
                     "No hay trabajos planificados",
-                    "Planifica una poda, un riego, un tratamiento o la cosecha y aparecerá aquí con su aviso.",
+                    "Planifica una poda, un riego, un tratamiento o la recolección y aparecerá aquí con su aviso.",
                     icon = MoIcons.Calendar,
                     modifier = Modifier.testTag("agenda-empty"),
                 )

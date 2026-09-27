@@ -45,8 +45,7 @@ data class QuickAddContext(
 
 enum class QuickAddAction(val title: String, val description: String, val tag: String) {
     ACTIVITY("Registrar actuación", "Riego, abono, tratamiento…", "quick-add-activity"),
-    HARVEST("Registrar cosecha", "Kilos recogidos en el campo", "quick-add-harvest"),
-    DELIVERY("Registrar entrega", "Cooperativa o almazara", "quick-add-delivery"),
+    WEIGHING("Nueva pesada", "Kilos pesados en cooperativa o almazara", "quick-add-weighing"),
     EXPENSE("Gasto o documento", "Facturas, tickets, fotos", "quick-add-expense"),
     PLAN("Planificar trabajo", "Añadir al calendario", "quick-add-plan"),
 }
@@ -115,8 +114,7 @@ private fun QuickAddContextLine(context: QuickAddContext) {
 
 private fun QuickAddAction.icon(): ImageVector = when (this) {
     QuickAddAction.ACTIVITY -> MoIcons.Activity
-    QuickAddAction.HARVEST -> MoIcons.Harvest
-    QuickAddAction.DELIVERY -> MoIcons.Delivery
+    QuickAddAction.WEIGHING -> MoIcons.Delivery
     QuickAddAction.EXPENSE -> MoIcons.Euro
     QuickAddAction.PLAN -> MoIcons.Calendar
 }

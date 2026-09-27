@@ -668,8 +668,7 @@ private fun NavHostController.openQuickAction(action: NotebookQuickAction, inRec
             navigate(AppDestination.register(ActivityType.PHYTOSANITARY.name)) { launchSingleTop = true }
         // CR-007: the jornales of a Jornada in recolección; otherwise a LABOR Expense.
         NotebookQuickAction.LABOUR -> navigate(if (inRecollection) AppDestination.Harvest else AppDestination.Expenses)
-        NotebookQuickAction.HARVEST -> navigate(AppDestination.Harvest)
-        NotebookQuickAction.DELIVERY -> navigate(AppDestination.Deliveries)
+        NotebookQuickAction.WEIGHING -> navigate(AppDestination.Deliveries)
         NotebookQuickAction.EXPENSE, NotebookQuickAction.DOCUMENT -> navigate(AppDestination.Expenses)
     }
 }

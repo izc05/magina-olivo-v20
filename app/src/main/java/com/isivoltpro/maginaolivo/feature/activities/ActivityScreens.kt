@@ -961,7 +961,7 @@ internal fun ActivityType.label() = when (this) {
     ActivityType.MAINTENANCE -> "Mantenimiento"
     ActivityType.INCIDENT -> "Incidencia"
     ActivityType.OTHER -> "Otro"
-    ActivityType.HARVEST_DAY -> "Jornada de cosecha"
+    ActivityType.HARVEST_DAY -> "Jornada de recolección"
 }
 
 /** "3", "3,5": hours as a farmer writes them. */

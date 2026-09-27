@@ -47,9 +47,9 @@ internal fun CampaignCharts(series: CampaignSeries) {
     }
     val first = series.days.first().date
     val last = series.days.last().date
-    val summary = "Entregado ${Weight.format(series.deliveredGrams)} en ${series.days.count { it.deliveredGrams > 0 }} días, " +
+    val summary = "Pesado ${Weight.format(series.deliveredGrams)} en ${series.days.count { it.deliveredGrams > 0 }} días, " +
         "del ${first.format(SHORT_DAY)} al ${last.format(SHORT_DAY)}"
-    Text("Kilos entregados por día y acumulado", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+    Text("Kilos pesados por día y acumulado", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
     val bar = MaterialTheme.colorScheme.primary
     val line = MoOliveDark
     Canvas(
@@ -82,7 +82,7 @@ internal fun CampaignCharts(series: CampaignSeries) {
         val low = analysed.minOf { it.fatYield!!.hundredths }
         val high = analysed.maxOf { it.fatYield!!.hundredths }
         val yieldSummary = "De ${Percent.format(low)} a ${Percent.format(high)}; " +
-            "${analysed.size} de ${series.days.count { it.deliveredGrams > 0 }} días de entrega con análisis"
+            "${analysed.size} de ${series.days.count { it.deliveredGrams > 0 }} días con pesadas analizadas"
         val dot = MoOliveDark
         Canvas(
             Modifier.fillMaxWidth().height(90.dp).testTag("chart-yield").semantics { contentDescription = yieldSummary },
@@ -138,7 +138,7 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>) {
                     listOf(
                         row.deliveredGrams?.let { kg ->
                             Weight.format(kg) + (row.deliveredChangePercent?.let { if (it >= 0) " (+$it %)" else " ($it %)" } ?: "")
-                        } ?: "Entregado: sin datos",
+                        } ?: "Pesado: sin datos",
                         row.fatYield?.let { "rend. ${Percent.format(it.hundredths)} sobre el ${row.yieldCoveragePercent} %" } ?: "rend. sin datos",
                         row.costPerKgMinor?.let { "coste ${Money.format(it, row.currency)}/kg" } ?: "coste/kg sin datos",
                     ).joinToString(" · "),

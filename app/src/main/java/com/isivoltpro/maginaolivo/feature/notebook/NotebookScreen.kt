@@ -215,8 +215,8 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
     val fat = deliveries.fatYield
     MoStatStrip(
         listOf(
-            MoStat("Recogido", notebook.harvestSummary.totalGrams.takeIf { notebook.harvests.isNotEmpty() }?.let(Weight::format) ?: "—", MoIcons.Harvest),
-            MoStat("Entregado", deliveries.deliveredGrams.takeIf { deliveries.deliveryCount > 0 }?.let(Weight::format) ?: "—", MoIcons.Delivery),
+            MoStat("Kg pesados", deliveries.deliveredGrams.takeIf { deliveries.deliveryCount > 0 }?.let(Weight::format) ?: "—", MoIcons.Delivery),
+            MoStat("Pesadas", deliveries.deliveryCount.toString(), MoIcons.Checklist),
             MoStat("Rendimiento", fat?.let { Percent.format(it.hundredths) } ?: "—", MoIcons.Percent),
         ),
         Modifier.testTag("notebook-recollection-summary"),
@@ -232,8 +232,8 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
         color = MoTextSecondary,
     )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        MoSecondaryButton("Cosecha", actions.onHarvests, Modifier.weight(1f).testTag("notebook-open-harvests"))
-        MoSecondaryButton("Pesada", actions.onDeliveries, Modifier.weight(1f).testTag("notebook-open-deliveries"))
+        MoSecondaryButton("Jornadas", actions.onHarvests, Modifier.weight(1f).testTag("notebook-open-harvests"))
+        MoSecondaryButton("Nueva pesada", actions.onDeliveries, Modifier.weight(1f).testTag("notebook-open-deliveries"))
         MoSecondaryButton("Gasto", actions.onExpenses, Modifier.weight(1f).testTag("notebook-open-expenses"))
     }
     if (notebook.pendingYieldCount > 0) {
@@ -246,7 +246,7 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
     if (notebook.recollectionDays.isEmpty()) {
         MoEmptyState(
             "Aún no hay recolección",
-            "Los kilos recogidos, las pesadas y los gastos de la cosecha aparecerán aquí por días.",
+            "Las jornadas, pesadas y gastos de la recolección aparecerán aquí por días.",
             icon = MoIcons.Harvest,
         )
         return
@@ -321,7 +321,6 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
 
 @Composable
 internal fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignComparison> = emptyList()) {
-    val harvest = notebook.harvestSummary
     val deliveries = notebook.deliverySummary
     val expenses = notebook.expenseSummary
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs), modifier = Modifier.testTag("notebook-summary")) {
@@ -332,17 +331,16 @@ internal fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignCom
                 supportingText = if (notebook.plannedWorks == 0) "Nada planificado" else "${notebook.plannedWorks} planificados",
             )
             MoSummaryMetric(
-                "Recogido", if (notebook.harvests.isEmpty()) "—" else Weight.format(harvest.totalGrams), Modifier.weight(1f),
+                "Jornadas", notebook.harvests.size.toString(), Modifier.weight(1f),
                 icon = MoIcons.Harvest,
                 supportingText = listOfNotNull(
-                    notebook.harvests.size.takeIf { it > 0 }?.let { if (it == 1) "1 jornada" else "$it jornadas" },
-                    harvest.unallocatedGrams.takeIf { it > 0 }?.let { "${Weight.format(it)} sin repartir" },
+                    notebook.harvests.size.takeIf { it > 0 }?.let { "Días de recolección" },
                 ).joinToString(" · ").ifEmpty { null },
             )
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             MoSummaryMetric(
-                "Entregado", if (deliveries.deliveryCount == 0) "—" else Weight.format(deliveries.deliveredGrams), Modifier.weight(1f),
+                "Kg pesados", if (deliveries.deliveryCount == 0) "—" else Weight.format(deliveries.deliveredGrams), Modifier.weight(1f),
                 icon = MoIcons.Delivery,
                 supportingText = if (deliveries.deliveryCount == 1) "1 pesada" else "${deliveries.deliveryCount} pesadas",
             )
@@ -350,17 +348,6 @@ internal fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignCom
                 "Rendimiento", deliveries.fatYield?.let { Percent.format(it.hundredths) } ?: "—", Modifier.weight(1f),
                 icon = MoIcons.Percent,
                 supportingText = deliveries.fatYield?.let { "Sobre el ${deliveries.coveragePercent(it)} % de los kilos" } ?: "Pendiente de análisis",
-            )
-        }
-        // UX-E: picked minus delivered, only when both are known and add up (never invented).
-        if (notebook.harvests.isNotEmpty()) {
-            val pending = notebook.pendingDeliveryGrams
-            MoSummaryMetric(
-                "Pendiente de entregar",
-                pending?.let(Weight::format) ?: "—",
-                Modifier.fillMaxWidth().testTag("notebook-summary-pending-delivery"),
-                icon = MoIcons.Delivery,
-                supportingText = if (pending == null) "Hay más kilos entregados que recogidos anotados" else null,
             )
         }
         if (!notebook.labourSummary.isEmpty) {
