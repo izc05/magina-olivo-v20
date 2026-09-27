@@ -736,11 +736,14 @@ private fun JornadaPesadas(
         )
     } else {
         val destinations = pesadas.map { it.destinationName }.distinct()
+        // #254 (254-C): the Jornada's yield is its Pesadas' own, weighted by kilos; never typed here.
+        val summary = DeliverySummary.of(pesadas)
         Text(
-            listOf(
+            listOfNotNull(
                 if (pesadas.size == 1) "1 pesada" else "${pesadas.size} pesadas",
                 Weight.format(pesadas.sumOf { it.netGrams }),
                 destinations.joinToString(", "),
+                summary.fatYield?.let { "rend. ${Percent.format(it.hundredths)}" },
             ).joinToString(" · "),
             style = MaterialTheme.typography.bodyLarge,
             color = MoOliveDark,
@@ -760,6 +763,7 @@ private fun JornadaPesadas(
                             pesada.deliveryTime?.toString(),
                             pesada.origin?.label,
                             (pesada.ticketNumber ?: pesada.deliveryNumber)?.let { "Vale $it" },
+                            pesada.analysis?.fatYieldHundredths?.let { "Rend. ${Percent.format(it)}" } ?: "Rend. pendiente",
                         ).ifEmpty { listOf(DATE_FORMAT.format(pesada.deliveryDate)) }.joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MoTextSecondary,

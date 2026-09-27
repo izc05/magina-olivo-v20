@@ -10,6 +10,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
+import com.isivoltpro.maginaolivo.domain.delivery.Percent
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
+import com.isivoltpro.maginaolivo.domain.delivery.YieldAnalysis
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestDetailScreen
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestDetailUiState
@@ -70,6 +73,31 @@ class JornadaScreenTest {
         }
         composeRule.onNodeWithTag("jornada-no-pesadas").assertTextContains("Aún no hay pesadas", substring = true)
         composeRule.onAllNodesWithTag("jornada-pesada").assertCountEquals(0)
+    }
+
+    @Test fun eachPesadaSaysItsOriginAndYieldAndTheJornadaWeighsThem() {
+        val analysed = pesada(2_000_000, "Coop. Bedmarense", "V-1", LocalTime.of(10, 0)).let {
+            it.copy(origin = PesadaOrigin.TREE, analysis = YieldAnalysis(UUID.randomUUID(), it.id, day.plusDays(4), 2_000, null, null, 1))
+        }
+        val second = pesada(1_000_000, "Coop. Bedmarense", "V-2", LocalTime.of(12, 0)).let {
+            it.copy(origin = PesadaOrigin.GROUND, analysis = YieldAnalysis(UUID.randomUUID(), it.id, day.plusDays(4), 2_300, null, null, 1))
+        }
+        val pending = pesada(500_000, "Coop. Bedmarense", "V-3", LocalTime.of(14, 0)).copy(origin = PesadaOrigin.TREE)
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                HarvestDetailScreen(
+                    state = HarvestDetailUiState(isLoading = false, harvest = harvest, pesadas = listOf(analysed, second, pending)),
+                    onUpdate = {},
+                    onDelete = {},
+                )
+            }
+        }
+        // (2.000 kg × 20 % + 1.000 kg × 23 %) / 3.000 kg analysed = 21 %; the pending one never counts as 0 %.
+        composeRule.onNodeWithTag("jornada-pesadas-summary").assertTextContains("rend. ${Percent.format(2_100)}", substring = true)
+        val rows = composeRule.onAllNodesWithTag("jornada-pesada")
+        rows[0].assertTextContains("Árbol / vuelo · Vale V-1 · Rend. ${Percent.format(2_000)}", substring = true)
+        rows[1].assertTextContains("Suelo · Vale V-2 · Rend. ${Percent.format(2_300)}", substring = true)
+        rows[2].assertTextContains("Rend. pendiente", substring = true)
     }
 
     private fun pesada(net: Long, cooperative: String, ticket: String, time: LocalTime) = Delivery(
