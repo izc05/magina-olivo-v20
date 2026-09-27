@@ -60,6 +60,11 @@ import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
+import com.isivoltpro.maginaolivo.ui.components.MoIconTone
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
@@ -174,42 +179,53 @@ private fun NotebookTabs(selected: NotebookTab, onSelect: (NotebookTab) -> Unit)
 }
 
 @Composable
-internal fun WorksTab(notebook: CampaignNotebook, actions: NotebookActions, showRegister: Boolean = true) {
+internal fun WorksTab(
+    notebook: CampaignNotebook,
+    actions: NotebookActions,
+    showRegister: Boolean = true,
+    today: LocalDate = LocalDate.now(),
+) {
     if (showRegister) {
         MoPrimaryButton("Registrar o planificar trabajo", actions.onWorks, Modifier.fillMaxWidth().testTag("notebook-open-works"))
     }
     if (notebook.works.isEmpty()) {
         MoEmptyState(
             "Sin trabajos en esta campaña",
-            "Poda, abonado, tratamientos o riegos aparecerán aquí por meses.",
+            "Poda, abonado, tratamientos o riegos aparecerán aquí, día a día.",
             icon = MoIcons.Checklist,
         )
         return
     }
+    // Month, then a small line per day: yesterday's work never runs into today's.
     notebook.works.groupBy { it.activityDate.withDayOfMonth(1) }.forEach { (month, works) ->
         MoSectionHeader(month.format(MONTH).replaceFirstChar { it.titlecase(SPANISH) })
-        works.forEach { work -> WorkRow(work) { actions.onActivity(work.id) } }
+        works.groupBy { it.activityDate }.forEach { (day, dayWorks) ->
+            NotebookDayMarker(day, today)
+            dayWorks.forEach { work -> WorkRow(work) { actions.onActivity(work.id) } }
+        }
     }
 }
 
 @Composable
 internal fun WorkRow(work: Activity, onClick: () -> Unit) {
+    val pending = work.status == ActivityStatus.PLANNED || work.status == ActivityStatus.DRAFT
     MoCompactListItem(
         title = work.description,
+        // The day is on the day line above, so the row starts with what was done.
         subtitle = listOfNotNull(
-            work.activityDate.format(DAY),
             work.type.label(),
             work.targets.takeIf { it.isNotEmpty() }?.let { if (it.size == 1) it.single().parcelName else "${it.size} parcelas" },
         ).joinToString(" · "),
         icon = work.type.icon(),
         onClick = onClick,
         modifier = Modifier.testTag("notebook-work"),
-        trailing = { MoStatusChip(work.status.label(), tone = work.status.tone()) },
+        container = if (pending) MoSurfaceSoft else MoWarmWhite,
+        trailing = { MoStatusChip(work.status.label(), tone = work.status.tone(), icon = work.status.chipIcon()) },
     )
 }
 
 @Composable
-internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions) {
+internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions, today: LocalDate = LocalDate.now()) {
     val deliveries = notebook.deliverySummary
     val fat = deliveries.fatYield
     val costs = notebook.recollectionExpenseSummary
@@ -278,7 +294,7 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
         return
     }
     notebook.recollectionDays.forEach { day ->
-        MoSectionHeader(day.date.format(LONG_DAY).replaceFirstChar { it.titlecase(SPANISH) })
+        NotebookDayMarker(day.date, today)
         day.items.forEach { item ->
             when (item) {
                 is RecollectionItem.HarvestItem -> HarvestRow(item.harvest, notebook.pesadaCount(item.harvest.id), notebook.labourFor(item.harvest.id), notebook.jornadaCost(item.harvest.id)) {
@@ -311,6 +327,9 @@ internal fun HarvestRow(harvest: Harvest, pesadas: Int, labour: LabourSummary, c
             cost.takeIf { it.postedCount > 0 }?.let { Money.format(it.totalMinor, it.currency) },
         ).joinToString(" · "),
         icon = MoIcons.Harvest,
+        // The Jornada is field work (olive); its Pesadas are value (gold); its costs are earth.
+        iconTint = MoIconTone.GROVE.tint,
+        iconContainer = MoIconTone.GROVE.container,
         onClick = onClick,
         modifier = Modifier.testTag("notebook-harvest"),
     )
@@ -339,8 +358,11 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
         title = expense.concept,
         subtitle = "${expense.category.label()} · ${Money.format(expense.amountMinor, expense.currency)}",
         icon = MoIcons.Euro,
+        iconTint = MoIconTone.LAND.tint,
+        iconContainer = MoIconTone.LAND.container,
         onClick = onClick,
         modifier = Modifier.testTag("notebook-expense"),
+        container = if (expense.status == ExpenseStatus.DRAFT) MoSurfaceSoft else MoWarmWhite,
         trailing = { if (expense.status == ExpenseStatus.DRAFT) MoStatusChip("Borrador", tone = MoStatusTone.Neutral) },
     )
 }
@@ -461,3 +483,10 @@ internal val SPANISH: Locale = Locale.forLanguageTag("es-ES")
 private val MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", SPANISH)
 private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", SPANISH)
 internal val LONG_DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", SPANISH)
+
+/** Done and planned differ by mark as well as colour (✓ / clock). */
+internal fun ActivityStatus.chipIcon(): ImageVector? = when (this) {
+    ActivityStatus.COMPLETED -> MoIcons.Check
+    ActivityStatus.PLANNED -> MoIcons.Clock
+    else -> null
+}

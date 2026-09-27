@@ -44,6 +44,7 @@ object MoIcons {
     val Area: ImageVector by lazy { line("area", "M4 8V4h4 M16 4h4v4 M20 16v4h-4 M8 20H4v-4 M8 8h8v8H8z") }
     val Home: ImageVector by lazy { line("home", "M4 11l8-7 8 7 M6 9.5V20h12V9.5 M10 20v-5h4v5") }
     val Person: ImageVector by lazy { line("person", "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4.5 20a7.5 7.5 0 0 1 15 0") }
+    val Check: ImageVector by lazy { line("check", "M5 12.5l4.5 4.5L19 7.5") }
     val Plus: ImageVector by lazy { line("plus", "M12 5v14 M5 12h14") }
     // Design v3 (CR-004) additions, same grid and stroke.
     val Drop: ImageVector by lazy { line("drop", "M12 3.5s-6 6.6-6 10.9a6 6 0 0 0 12 0C18 10.1 12 3.5 12 3.5z M9.2 14.6a2.9 2.9 0 0 0 2.8 2.8") }
