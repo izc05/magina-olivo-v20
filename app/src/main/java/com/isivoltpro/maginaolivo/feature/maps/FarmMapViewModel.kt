@@ -47,6 +47,8 @@ data class FarmMapState(
     val message: String? = null,
     /** Set once a LOCATE link is saved, so the screen can return to the parcel. */
     val linkedParcelId: UUID? = null,
+    /** True only after the entire selected batch has been saved successfully. */
+    val importCompleted: Boolean = false,
 ) {
     val selectedCandidates: List<CadastralCandidate> get() = candidates.filter { it.reference in selected }
 }
@@ -79,7 +81,7 @@ class FarmMapViewModel(
         searchJob?.cancel()
         mutableState.update {
             it.copy(mode = mode, candidates = emptyList(), selected = emptySet(), selectedSavedId = null,
-                searching = false, error = null, message = null)
+                searching = false, error = null, message = null, importCompleted = false)
         }
     }
 
@@ -136,7 +138,7 @@ class FarmMapViewModel(
     fun importSelected(names: Map<String, String>) {
         val current = mutableState.value
         if (current.saving || current.mode != FarmMapMode.ADD || current.selected.isEmpty()) return
-        mutableState.update { it.copy(saving = true, error = null, message = null) }
+        mutableState.update { it.copy(saving = true, error = null, message = null, importCompleted = false) }
         viewModelScope.launch {
             var added = 0
             val failed = mutableListOf<String>()
@@ -170,6 +172,7 @@ class FarmMapViewModel(
                         1 -> "1 parcela incorporada a la finca."
                         else -> "$added parcelas incorporadas a la finca."
                     },
+                    importCompleted = failed.isEmpty() && added > 0,
                     error = if (failed.isEmpty()) null else "No pudimos guardar ${failed.joinToString()}. Revisa si ya están en otra finca.",
                 )
             }

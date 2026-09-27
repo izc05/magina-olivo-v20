@@ -2,9 +2,12 @@ package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import com.isivoltpro.maginaolivo.domain.farm.Farm
@@ -36,7 +39,9 @@ class FarmScreensTest {
         }
 
         composeRule.onNodeWithText("Aún no tienes fincas").assertIsDisplayed()
-        composeRule.onNodeWithTag("add-farm").assertIsDisplayed()
+        assertEquals(1, composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().size)
+        composeRule.onNodeWithText("Crear mi primera finca").assertIsDisplayed()
+        assertEquals(0, composeRule.onAllNodesWithText("Maquinaria").fetchSemanticsNodes().size)
     }
 
     @Test
@@ -72,11 +77,14 @@ class FarmScreensTest {
             }
         }
 
-        composeRule.onNodeWithTag("add-farm").performClick()
+        composeRule.onNodeWithText("Crear mi primera finca").performClick()
+        composeRule.onNodeWithText("Más detalles").assertIsDisplayed()
+        assertEquals(0, composeRule.onAllNodesWithText("Municipio (opcional)").fetchSemanticsNodes().size)
+        composeRule.onNodeWithText("Más detalles").performClick()
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
         composeRule.onNodeWithText("Municipio (opcional)").performTextInput("Huelma")
         composeRule.onNodeWithText("Provincia (opcional)").performTextInput("Jaén")
-        composeRule.onNodeWithTag("save-farm").performClick()
+        composeRule.onNodeWithTag("save-farm").performScrollTo().performClick()
 
         assertEquals("La Solana", captured?.name)
         assertEquals("Huelma", captured?.municipality)

@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.printToString
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
@@ -236,7 +237,7 @@ class AppNavigationTest {
         clickByText("Los Llanos")
         openFarmSection("parcels")
 
-        openSheet("add-parcel", "parcel-name")
+        openParcelManual()
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Alta")
         saveEditor("save-parcel", "parcel-name")
         composeRule.waitUntil(UI_TIMEOUT_MS) {
@@ -279,7 +280,7 @@ class AppNavigationTest {
         waitForTag("add-parcel")
 
         // Parcel: open the editor, fill it, save, and wait for the persisted row.
-        openSheet("add-parcel", "parcel-name")
+        openParcelManual()
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Campaña E2E")
         waitForTag("save-parcel")
         saveEditor("save-parcel", "parcel-name")
@@ -461,23 +462,23 @@ class AppNavigationTest {
         clickInSheetByTag("register-today-work")
         waitForTag("register-activity-root")
 
-        // A single Farm resolves itself and the editor opens straight away; with more
-        // than one the flow asks first. Wait for whichever of the two actually arrives
-        // instead of sampling the screen before it has settled.
+        // The farm is known from Cuaderno, then choose the specific task before its form.
         composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithTag("activity-description").fetchSemanticsNodes().isNotEmpty() ||
+            composeRule.onAllNodesWithTag("register-activity-type-irrigation").fetchSemanticsNodes().isNotEmpty() ||
                 composeRule.onAllNodesWithTag("register-farm-option").fetchSemanticsNodes().isNotEmpty()
         }
-        if (composeRule.onAllNodesWithTag("activity-description").fetchSemanticsNodes().isEmpty()) {
+        if (composeRule.onAllNodesWithTag("register-activity-type-irrigation").fetchSemanticsNodes().isEmpty()) {
             clickByText("Finca Registrar E2E")
         }
+        composeRule.onNodeWithTag("register-activity-type-irrigation").performClick()
         waitForTag("activity-description")
+        composeRule.onNodeWithTag("activity-description").performTextClearance()
         composeRule.onNodeWithTag("activity-description").performTextInput("Riego desde Registrar")
         waitForTag("activity-date")
         pickDate("activity-date", "2026-02-02")
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
-        clickInSheetByTag("save-activity")
+        clickByTag("save-activity")
 
         waitForText("Riego desde Registrar")
         // The typed description is on screen before the save lands; wait for the saved row.
@@ -548,15 +549,23 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("register-today-context").assertTextContains("Finca Diario E2E", substring = true)
         clickInSheetByTag("register-today-work")
         waitForTag("register-activity-root")
-        // The Cuaderno's Farm is already the answer: the editor opens straight away.
+        // Choose the work type first; the following page contains only pruning fields.
+        waitForTag("register-activity-type-pruning")
+        composeRule.onNodeWithTag("register-activity-type-pruning").performClick()
         waitForTag("activity-description")
+        composeRule.onNodeWithTag("activity-description").performTextClearance()
         composeRule.onNodeWithTag("activity-description").performTextInput("Poda anotada hoy E2E")
+        composeRule.onNodeWithTag("activity-type-chooser").assertDoesNotExist()
+        composeRule.onNodeWithTag("activity-type-option").assertDoesNotExist()
+        composeRule.onNodeWithTag("activity-detail-more").performScrollTo().performClick()
+        composeRule.onNodeWithText("Tipo de poda").assertIsDisplayed()
         waitForTag("activity-date")
         pickDate("activity-date", "2026-02-02")
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
-        clickInSheetByTag("save-activity")
+        clickByTag("save-activity")
         waitForTag("activity-row")
+        assertTextVisible("Completada")
 
         // Back in Mi Cuaderno, the Diario already shows it: saved once, read everywhere.
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
@@ -611,6 +620,7 @@ class AppNavigationTest {
 
         // Poda shows pruning fields, and only those.
         clickInSheetByText("Poda")
+        clickInSheetByTag("activity-detail-more")
         waitForTag("detail-workerCount")
         composeRule.onAllNodesWithTag("detail-volumeM3").assertCountEquals(0)
 
@@ -953,11 +963,17 @@ class AppNavigationTest {
 
     private fun createParcel(name: String) {
         waitForTag("add-parcel")
-        openSheet("add-parcel", "parcel-name")
+        openParcelManual()
         composeRule.onNodeWithTag("parcel-name").performTextInput(name)
         waitForTag("save-parcel")
         saveEditor("save-parcel", "parcel-name")
         waitForSaved("parcel-name", name)
+    }
+
+    private fun openParcelManual() {
+        clickByTag("add-parcel")
+        clickByTag("add-parcel-manual")
+        waitForTag("parcel-name")
     }
 
     /** Confirms an Activity lifecycle action once its ModalBottomSheet is actually composed. */

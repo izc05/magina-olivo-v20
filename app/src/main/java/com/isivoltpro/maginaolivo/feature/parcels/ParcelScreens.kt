@@ -5,6 +5,8 @@ import java.time.ZoneId
 import com.isivoltpro.maginaolivo.feature.maps.ParcelMap
 import com.isivoltpro.maginaolivo.feature.maps.MapParcel
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -59,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -112,6 +115,39 @@ fun FarmParcelsRoute(
     )
 }
 
+@Composable
+internal fun ParcelAddMethodOptions(
+    onManual: () -> Unit,
+    onMap: (() -> Unit)?,
+    onDismiss: () -> Unit,
+    mapTitle: String = "Desde el mapa y Catastro",
+    mapSubtitle: String = "Marca una o varias parcelas",
+) {
+    Column(
+        Modifier.fillMaxWidth().padding(top = MoSpacing.xs).padding(bottom = MoSpacing.sm),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+    ) {
+        Text("¿Cómo quieres añadirla?", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+        MoCompactListItem(
+            title = "A mano",
+            subtitle = "Escribe el nombre y los datos que tengas",
+            icon = MoIcons.Parcels,
+            onClick = onManual,
+            modifier = Modifier.testTag("add-parcel-manual"),
+        )
+        if (onMap != null) {
+            MoCompactListItem(
+                title = mapTitle,
+                subtitle = mapSubtitle,
+                icon = MoIcons.Map,
+                onClick = onMap,
+                modifier = Modifier.testTag("add-parcel-map"),
+            )
+        }
+        MoTertiaryButton("Cancelar", onDismiss, Modifier.fillMaxWidth())
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FarmParcelsSection(
@@ -122,6 +158,7 @@ fun FarmParcelsSection(
     onImportFromCatastro: (() -> Unit)? = null,
     onMap: (() -> Unit)? = null,
 ) {
+    var addOptionsVisible by rememberSaveable { mutableStateOf(false) }
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -135,24 +172,24 @@ fun FarmParcelsSection(
     MoSectionHeader(
         title = "Parcelas",
         action = {
-            Row {
-                onMap?.let { TextButton(onClick = it, modifier = Modifier.testTag("parcels-map")) { Text("Mapa") } }
-                // With the farm map, Catastro is reached from there (several parcels at once).
-                onImportFromCatastro?.takeIf { onMap == null }?.let {
-                    TextButton(onClick = it, modifier = Modifier.testTag("import-catastro")) { Text("Catastro") }
-                }
-                TextButton(onClick = { editorVisible = true }, modifier = Modifier.testTag("add-parcel")) { Text("Añadir") }
-            }
+            TextButton(onClick = { addOptionsVisible = true }, modifier = Modifier.testTag("add-parcel")) { Text("Añadir") }
         },
     )
+    if (addOptionsVisible) {
+        ParcelAddMethodOptions(
+            onManual = { addOptionsVisible = false; editorVisible = true },
+            onMap = onMap ?: onImportFromCatastro,
+            onDismiss = { addOptionsVisible = false },
+            mapTitle = if (onMap != null) "Desde el mapa y Catastro" else "Buscar en Catastro",
+            mapSubtitle = if (onMap != null) "Marca una o varias parcelas" else "Con la referencia catastral",
+        )
+    }
     when {
         state.isLoading -> CircularProgressIndicator()
         state.active.isEmpty() -> MoEmptyState(
             title = "Aún no hay parcelas",
-            body = if (onMap != null) {
-                "Añádela a mano o pulsa «Mapa» y marca tus parcelas de Catastro."
-            } else if (onImportFromCatastro != null) {
-                "Añádela a mano o búscala en Catastro por su referencia catastral."
+            body = if (onMap != null || onImportFromCatastro != null) {
+                "Añade una parcela a mano o búscala en Catastro."
             } else {
                 "Añade una parcela manualmente o consulta Catastro desde Mapa y Catastro en Inicio."
             },
@@ -498,7 +535,7 @@ private fun ParcelValue(label: String, value: String?) {
 }
 
 @Composable
-private fun ParcelEditor(
+internal fun ParcelEditor(
     title: String,
     initial: ParcelDraft,
     isSaving: Boolean,
@@ -509,6 +546,14 @@ private fun ParcelEditor(
     oliveError: String? = null,
 ) {
     var draft by remember(initial) { mutableStateOf(initial) }
+    var moreOpen by remember(initial) {
+        mutableStateOf(
+            initial.oliveTreeCount.isNotBlank() || initial.variety.isNotBlank() || initial.irrigationSystem != null ||
+                initial.cadastralReference.isNotBlank() || initial.cadastralPolygon.isNotBlank() ||
+                initial.cadastralParcel.isNotBlank() || initial.municipality.isNotBlank() ||
+                initial.notes.isNotBlank(),
+        )
+    }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     Column(
@@ -518,14 +563,28 @@ private fun ParcelEditor(
         Text(title, style = MaterialTheme.typography.headlineSmall)
         MoTextField(draft.displayName, { draft = draft.copy(displayName = it) }, "Alias *", Modifier.fillMaxWidth().testTag("parcel-name"), isError = nameError != null, supportingText = nameError)
         MoTextField(draft.managedAreaHectares, { draft = draft.copy(managedAreaHectares = it) }, "Superficie gestionada (ha)", Modifier.fillMaxWidth(), isError = areaError != null, supportingText = areaError)
-        GroveFields(draft, oliveError) { draft = it }
-        MoTextField(draft.cadastralReference, { draft = draft.copy(cadastralReference = it) }, "Referencia catastral", Modifier.fillMaxWidth())
-        MoTextField(draft.cadastralPolygon, { draft = draft.copy(cadastralPolygon = it) }, "Polígono", Modifier.fillMaxWidth())
-        MoTextField(draft.cadastralParcel, { draft = draft.copy(cadastralParcel = it) }, "Parcela", Modifier.fillMaxWidth())
-        MoTextField(draft.municipality, { draft = draft.copy(municipality = it) }, "Municipio", Modifier.fillMaxWidth())
-        MoTextField(draft.province, { draft = draft.copy(province = it) }, "Provincia", Modifier.fillMaxWidth())
-        MoTextField(draft.notes, { draft = draft.copy(notes = it) }, "Notas", Modifier.fillMaxWidth(), singleLine = false)
-        Text("Los datos escritos aquí se guardan como entrada manual; la app no los presenta como verificados por Catastro.", color = MoTextSecondary)
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { moreOpen = !moreOpen }
+                .testTag("parcel-more-details"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+        ) {
+            Icon(if (moreOpen) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoOliveDark)
+            Column(Modifier.weight(1f)) {
+                Text("Más datos del olivar", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+                if (!moreOpen) Text("Olivos, riego y Catastro", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+            }
+        }
+        if (moreOpen) {
+            GroveFields(draft, oliveError) { draft = it }
+            MoTextField(draft.cadastralReference, { draft = draft.copy(cadastralReference = it) }, "Referencia catastral", Modifier.fillMaxWidth())
+            MoTextField(draft.cadastralPolygon, { draft = draft.copy(cadastralPolygon = it) }, "Polígono", Modifier.fillMaxWidth())
+            MoTextField(draft.cadastralParcel, { draft = draft.copy(cadastralParcel = it) }, "Parcela catastral", Modifier.fillMaxWidth())
+            MoTextField(draft.municipality, { draft = draft.copy(municipality = it) }, "Municipio", Modifier.fillMaxWidth())
+            MoTextField(draft.province, { draft = draft.copy(province = it) }, "Provincia", Modifier.fillMaxWidth())
+            MoTextField(draft.notes, { draft = draft.copy(notes = it) }, "Notas", Modifier.fillMaxWidth(), singleLine = false)
+            Text("Los datos escritos aquí se guardan como entrada manual; la app no los presenta como verificados por Catastro.", color = MoTextSecondary)
+        }
         MoPrimaryButton(
             "Guardar parcela",
             {

@@ -4,13 +4,18 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
 import com.isivoltpro.maginaolivo.feature.parcels.FarmParcelsSection
 import com.isivoltpro.maginaolivo.feature.parcels.FarmParcelsUiState
+import com.isivoltpro.maginaolivo.feature.parcels.ParcelAddMethodOptions
 import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailScreen
 import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailUiState
+import com.isivoltpro.maginaolivo.feature.parcels.ParcelDraft
+import com.isivoltpro.maginaolivo.feature.parcels.ParcelEditor
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.util.UUID
 import org.junit.Assert.assertEquals
@@ -35,6 +40,48 @@ class ParcelScreensTest {
 
         composeRule.onNodeWithText("Aún no hay parcelas").assertIsDisplayed()
         composeRule.onNodeWithText("Añadir").assertIsDisplayed()
+    }
+
+    @Test
+    fun addOffersManualOrMapWithoutDuplicatingTheHeaderAction() {
+        var openedMap = false
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ParcelAddMethodOptions(
+                    onManual = {},
+                    onMap = { openedMap = true },
+                    onDismiss = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("¿Cómo quieres añadirla?").assertIsDisplayed()
+        composeRule.onNodeWithText("A mano").assertIsDisplayed()
+        composeRule.onNodeWithTag("add-parcel-map").assertIsDisplayed().performClick()
+        composeRule.runOnIdle { assert(openedMap) }
+    }
+
+    @Test
+    fun manualParcelFormKeepsSecondaryFieldsAvailableButFolded() {
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ParcelEditor(
+                    title = "Nueva parcela",
+                    initial = ParcelDraft(),
+                    isSaving = false,
+                    nameError = null,
+                    areaError = null,
+                    onSave = {},
+                    onCancel = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("parcel-name").assertIsDisplayed()
+        composeRule.onNodeWithText("Más datos del olivar").assertIsDisplayed()
+        assertEquals(0, composeRule.onAllNodesWithText("Variedad (Picual, Hojiblanca…)").fetchSemanticsNodes().size)
+        composeRule.onNodeWithText("Más datos del olivar").performClick()
+        composeRule.onNodeWithText("Variedad (Picual, Hojiblanca…)").assertIsDisplayed()
     }
 
     @Test

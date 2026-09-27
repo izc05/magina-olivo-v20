@@ -76,6 +76,7 @@ fun FarmMapRoute(
     onSearchByReference: () -> Unit,
     locateParcelId: UUID? = null,
     onLocated: (UUID) -> Unit = onOpenParcel,
+    onImported: () -> Unit = {},
 ) {
     val viewModel: FarmMapViewModel = viewModel(
         key = "farm-map-$farmId-$locateParcelId",
@@ -87,6 +88,7 @@ fun FarmMapRoute(
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.linkedParcelId) { state.linkedParcelId?.let(onLocated) }
+    LaunchedEffect(state.importCompleted) { if (state.importCompleted) onImported() }
     val context = LocalContext.current
     val locate = {
         requestCurrentLocation(context) { point -> if (point != null) viewModel.goTo(point) else viewModel.locationUnavailable() }

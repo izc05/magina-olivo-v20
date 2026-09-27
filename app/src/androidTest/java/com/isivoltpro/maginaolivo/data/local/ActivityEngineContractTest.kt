@@ -157,6 +157,22 @@ class ActivityEngineContractTest {
     }
 
     @Test
+    fun registerTodayCreatesCompletedWorkWhilePlanningRemainsPlanned() = runBlocking {
+        val todayId = (repository.create(
+            NewActivity(
+                farmId, null, ActivityType.PRUNING, LocalDate.now(), "Poda de hoy", setOf(parcelA),
+                completeImmediately = true,
+            ),
+        ) as AppResult.Success).value
+        val plannedId = (repository.create(
+            NewActivity(farmId, null, ActivityType.IRRIGATION, date, "Riego pendiente", setOf(parcelA)),
+        ) as AppResult.Success).value
+
+        assertEquals(ActivityStatus.COMPLETED, db.activityDao().findById(todayId)?.status)
+        assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(plannedId)?.status)
+    }
+
+    @Test
     fun aDraftMayBeSavedEmptyAndResumedIntoPlanned() = runBlocking {
         val id = (repository.create(
             NewActivity(farmId, null, ActivityType.PRUNING, date, "Borrador", emptySet(), asDraft = true),

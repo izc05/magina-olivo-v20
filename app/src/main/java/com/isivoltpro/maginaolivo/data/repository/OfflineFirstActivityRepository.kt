@@ -197,7 +197,11 @@ class OfflineFirstActivityRepository(
                         farmId = farm.id,
                         activityDate = command.activityDate,
                         type = command.type.name,
-                        status = if (command.asDraft) ActivityStatus.DRAFT else ActivityStatus.PLANNED,
+                        status = when {
+                            command.asDraft -> ActivityStatus.DRAFT
+                            command.completeImmediately -> ActivityStatus.COMPLETED
+                            else -> ActivityStatus.PLANNED
+                        },
                         description = description,
                         notes = command.notes.normalized(),
                         metadata = pending(now),
