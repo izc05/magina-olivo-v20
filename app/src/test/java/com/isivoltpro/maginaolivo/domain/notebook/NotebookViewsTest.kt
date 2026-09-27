@@ -9,6 +9,7 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
+import com.isivoltpro.maginaolivo.domain.delivery.YieldAnalysis
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
@@ -130,6 +131,40 @@ class NotebookViewsTest {
         // More delivered than picked: part of the harvest is unrecorded, so no difference is shown.
         assertNull(project(harvests = picked, deliveries = listOf(delivery(3_500_000, day1))).pendingDeliveryGrams)
         assertNull(project(deliveries = listOf(delivery(1_000_000, day1))).pendingDeliveryGrams)
+    }
+
+    @Test fun aJornadasOwnPesadaAndCostAreReadInsideItNotRepeated() {
+        // 254-E: the owner saw "Jornada · 2.390 kg" and "Pesada nº 1 · 2.390 kg" as two rows.
+        val jornada = harvest(2_390_000, day2)
+        val own = delivery(2_390_000, day2).copy(harvestId = jornada.id)
+        val loose = delivery(1_000_000, day2)
+        val diesel = expense(5_000, ExpenseCategory.FUEL, day2).copy(harvestId = jornada.id)
+        val notebook = project(harvests = listOf(jornada), deliveries = listOf(own, loose), expenses = listOf(diesel))
+
+        val diary = notebook.diary.single().entries
+        assertEquals(2, diary.size) // the Jornada and the loose Pesada; not its own Pesada nor its diesel
+        assertTrue(diary.none { it is DiaryEntry.DeliveryEntry && it.delivery.id == own.id })
+        assertTrue(diary.none { it is DiaryEntry.ExpenseEntry })
+        val recollection = notebook.recollectionDays.single().items
+        assertTrue(recollection.none { it is RecollectionItem.DeliveryItem && it.delivery.id == own.id })
+        // Totals still count everything exactly once.
+        assertEquals(3_390_000L, notebook.deliverySummary.deliveredGrams)
+        assertEquals(5_000L, notebook.jornadaCost(jornada.id).totalMinor)
+        assertEquals(5_000L, notebook.expenseSummary.totalMinor)
+        assertEquals("rend. pendiente", notebook.jornadaYieldLabel(jornada.id))
+    }
+
+    @Test fun aJornadaYieldIsPartialWhenItCoversOnlySomeOfItsKilos() {
+        val jornada = harvest(3_000_000, day2)
+        val fat = delivery(2_000_000, day2).let {
+            it.copy(harvestId = jornada.id, analysis = YieldAnalysis(UUID.randomUUID(), it.id, day2, 2_100, null, null, 1))
+        }
+        // Only an industrial yield: "with yield" for the search, but no fat figure for its kilos.
+        val industrialOnly = delivery(1_000_000, day2).let {
+            it.copy(harvestId = jornada.id, analysis = YieldAnalysis(UUID.randomUUID(), it.id, day2, null, 1_800, null, 1))
+        }
+        assertEquals("rend. 21 % (parcial)", project(harvests = listOf(jornada), deliveries = listOf(fat, industrialOnly)).jornadaYieldLabel(jornada.id))
+        assertEquals("rend. 21 %", project(harvests = listOf(jornada), deliveries = listOf(fat)).jornadaYieldLabel(jornada.id))
     }
 
     private fun project(

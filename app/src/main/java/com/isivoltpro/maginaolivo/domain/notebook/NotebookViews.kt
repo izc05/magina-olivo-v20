@@ -37,8 +37,10 @@ val CampaignNotebook.diary: List<DiaryDay>
     get() = (
         (works + harvestDays).map { DiaryEntry.Work(it) } +
             harvests.map { DiaryEntry.HarvestEntry(it) } +
-            deliveries.map { DiaryEntry.DeliveryEntry(it) } +
-            expenses.filter { it.activityId == null && it.origin != ExpenseOrigin.ACTIVITY_COST }.map { DiaryEntry.ExpenseEntry(it) }
+            // 254-E: a Jornada's own Pesadas and costs are read inside its row, not repeated.
+            deliveries.filter { standsAlone(it.harvestId) }.map { DiaryEntry.DeliveryEntry(it) } +
+            expenses.filter { it.activityId == null && it.origin != ExpenseOrigin.ACTIVITY_COST && standsAlone(it.harvestId) }
+                .map { DiaryEntry.ExpenseEntry(it) }
         )
         .groupBy { it.date }
         .toSortedMap(compareByDescending { it })

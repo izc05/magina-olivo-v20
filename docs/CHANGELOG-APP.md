@@ -15,7 +15,12 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 - Jornales por persona en el resumen de la campaña: una fila por trabajador (por su identificador,
   aunque cambie de nombre) y los jornales anotados solo como número, aparte («Sin nombre»); la
-  tarjeta dice «N jornales · M personas» en lugar de «N personas» (254-D).
+  tarjeta muestra el desglose real («4 jornadas · 1 media») y «M personas con nombre» (254-D, #268).
+- Sin duplicados en Diario y Recolección: las pesadas y gastos de una Jornada se leen dentro de su
+  fila (con su rendimiento, «rend. 21 %» o «rend. pendiente»), no repetidos debajo; los totales no
+  cambian (254-E).
+- Prueba completa del flujo de recolección: Campanil · 2.390 kg · Árbol/vuelo · Bedmarense · vale +
+  foto → Jornada → 5 jornales → gasto → totales, sobreviviendo a un reinicio (254-E).
 
 ## 0.2.0 — 27/09/2026 (compilación 532)
 

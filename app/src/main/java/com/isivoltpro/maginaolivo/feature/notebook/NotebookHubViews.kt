@@ -61,6 +61,7 @@ internal fun DiaryView(notebook: CampaignNotebook, actions: NotebookActions, tod
                         notebook.pesadaCount(entry.harvest.id),
                         notebook.labourFor(entry.harvest.id),
                         notebook.jornadaCost(entry.harvest.id),
+                        notebook.jornadaYieldLabel(entry.harvest.id),
                     ) { actions.onHarvest(entry.harvest.id) }
                     is DiaryEntry.DeliveryEntry -> DeliveryRow(entry.delivery) { actions.onDelivery(entry.delivery.id) }
                     is DiaryEntry.ExpenseEntry -> ExpenseRow(entry.expense) { actions.onExpense(entry.expense.id) }

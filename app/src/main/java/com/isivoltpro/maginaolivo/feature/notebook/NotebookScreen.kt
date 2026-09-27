@@ -298,7 +298,13 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
         NotebookDayMarker(day.date, today)
         day.items.forEach { item ->
             when (item) {
-                is RecollectionItem.HarvestItem -> HarvestRow(item.harvest, notebook.pesadaCount(item.harvest.id), notebook.labourFor(item.harvest.id), notebook.jornadaCost(item.harvest.id)) {
+                is RecollectionItem.HarvestItem -> HarvestRow(
+                    item.harvest,
+                    notebook.pesadaCount(item.harvest.id),
+                    notebook.labourFor(item.harvest.id),
+                    notebook.jornadaCost(item.harvest.id),
+                    notebook.jornadaYieldLabel(item.harvest.id),
+                ) {
                     actions.onHarvest(item.harvest.id)
                 }
                 is RecollectionItem.DeliveryItem -> DeliveryRow(item.delivery) { actions.onDelivery(item.delivery.id) }
@@ -310,7 +316,15 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
 }
 
 @Composable
-internal fun HarvestRow(harvest: Harvest, pesadas: Int, labour: LabourSummary, cost: ExpenseSummary, onClick: () -> Unit) {
+internal fun HarvestRow(
+    harvest: Harvest,
+    pesadas: Int,
+    labour: LabourSummary,
+    cost: ExpenseSummary,
+    /** "rend. 21 %" / "rend. pendiente": the Pesadas are not listed again, so their yield shows here. */
+    yieldLabel: String? = null,
+    onClick: () -> Unit,
+) {
     MoCompactListItem(
         title = "Jornada · ${Weight.format(harvest.totalGrams)}",
         subtitle = listOfNotNull(
@@ -326,6 +340,7 @@ internal fun HarvestRow(harvest: Harvest, pesadas: Int, labour: LabourSummary, c
             },
             labour.takeUnless { it.isEmpty }?.let { if (it.people == 1) "1 jornal" else "${it.people} jornales" },
             cost.takeIf { it.postedCount > 0 }?.let { Money.format(it.totalMinor, it.currency) },
+            yieldLabel,
         ).joinToString(" · "),
         icon = MoIcons.Harvest,
         // The Jornada is field work (olive); its Pesadas are value (gold); its costs are earth.
