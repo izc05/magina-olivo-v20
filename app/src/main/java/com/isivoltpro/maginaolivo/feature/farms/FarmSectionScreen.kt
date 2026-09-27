@@ -12,13 +12,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
@@ -28,9 +28,8 @@ import com.isivoltpro.maginaolivo.feature.attachments.AttachmentsRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.FarmCampaignsRoute
 import com.isivoltpro.maginaolivo.feature.parcels.FarmParcelsRoute
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
-import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
+import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import java.util.UUID
 
 /**
@@ -42,6 +41,7 @@ fun FarmSectionRoute(
     farmId: UUID,
     section: FarmSection,
     persistence: LocalPersistence,
+    onBack: () -> Unit,
     onParcelSelected: (UUID) -> Unit,
     onCampaignSelected: (UUID) -> Unit,
     onActivitySelected: (UUID) -> Unit,
@@ -63,13 +63,13 @@ fun FarmSectionRoute(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.sm))
-            Text(
-                section.title,
-                style = MaterialTheme.typography.headlineLarge,
-                color = MoOliveDark,
-                modifier = Modifier.semantics { heading() },
-            )
-            farm?.let { Text(it.name, style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary) }
+            TextButton(
+                onClick = onBack,
+                modifier = Modifier.testTag("farm-section-back"),
+            ) {
+                Icon(MoIcons.ChevronLeft, contentDescription = null)
+                Text("Volver a ${farm?.name ?: "la finca"}")
+            }
             when (section) {
                 FarmSection.PARCELS -> FarmParcelsRoute(
                     farmId = farmId,

@@ -235,6 +235,11 @@ class AppNavigationTest {
         waitForSaved("farm-name", "Los Llanos")
         clickByText("Los Llanos")
         openFarmSection("parcels")
+        composeRule.onNodeWithTag("farm-section-back").assertIsDisplayed()
+        composeRule.onNodeWithText("Volver a Los Llanos").assertIsDisplayed()
+        composeRule.onNodeWithTag("farm-section-back").performClick()
+        waitForTag("farm-detail-root")
+        openFarmSection("parcels")
 
         openSheet("add-parcel", "parcel-name")
         composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Alta")

@@ -313,6 +313,7 @@ fun AppNavigation(
                             farmId = farmId,
                             section = section,
                             persistence = persistence,
+                            onBack = { navController.popBackStack() },
                             onParcelSelected = { id -> navController.navigate(AppDestination.parcel(id.toString())) },
                             onCampaignSelected = { id -> navController.navigate(AppDestination.campaign(id.toString())) },
                             onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
