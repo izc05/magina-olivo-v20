@@ -121,6 +121,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch --depth=1 origin "$HEAD_REF"
+          # The push and pull_request runs of one commit race to publish the same new schema:
+          # drop the local export (kept in $staging) so the branch that already carries it checks out.
+          git checkout -- app/schemas
+          git clean -fdq app/schemas
           git checkout -B schema-export FETCH_HEAD
           mkdir -p app/schemas
           cp -R "$staging/." app/schemas/
