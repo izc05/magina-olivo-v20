@@ -80,6 +80,41 @@ make Home external feeds a dependency for field work").
   `https://www.juntadeandalucia.es/agriculturaypesca/observatorio/servlet/FrontController?action=UltimosPrecios&posicion=2291332&producto=33000&subsector=33`
 - Implementation may proceed as its own PR once the access/reuse note and fixtures are included.
 
+#### 20D source hierarchy for charts (owner direction 2026-09-27)
+
+Do not collapse different methodologies into one synthetic price. Store each observation with
+`source`, `geography`, `category`, `periodStart`, `periodEnd`, `unit`, `fetchedAt` and
+`methodologyLabel` so charts can compare without implying equivalence.
+
+1. **Andalucía — primary official source:** Junta de Andalucía, Observatorio de Precios y
+   Mercados. Weekly validated prices at almazara/bodega for Virgen Extra, Virgen and Lampante.
+   Best default series for the Home card and Andalucía chart.
+2. **Spain / CCAA — official comparison source:** Ministerio de Agricultura, Pesca y
+   Alimentación (MAPA), weekly olive-oil price bulletins. Provides national and autonomous
+   community series and the main categories; MAPA's portal permits reuse with attribution unless
+   third-party rights apply. Prefer a structured official download when available; PDF extraction
+   is an ingestion fallback, not an app-side operation.
+3. **EU / international — official comparison source:** European Commission DG AGRI weekly
+   olive-oil price developments (currently published as XLSX). Useful for Spain/Italy/Greece and
+   longer-term/international comparison. Keep EU attribution and original units/periods.
+4. **POOLred — high-value market benchmark, NOT approved for automated ingestion yet:** near-real
+   time/weekly transaction-based prices for Extra Virgin, Virgin and Lampante, including Spain
+   and market detail. Additional access is subscription-based and described as personal/non-
+   transferable. Do not ingest or redistribute automatically without an explicit licence or
+   agreement from Fundación del Olivar.
+5. **Olimerca / COAG/AgroCLM and similar publications — cross-check only unless permission is
+   confirmed.** They are useful for manual validation and local context (e.g. Jaén), but are not
+   the production source of truth. Olimerca's current notice restricts content reuse except with
+   a link; COAG/AgroCLM often republishes values originating in POOLred/Junta/MAPA.
+
+Recommended product presentation:
+- Home: latest Andalucía official value, with source/week.
+- `Mercado del aceite`: 12-week and campaign views with three category lines (AOVE/Virgen/
+  Lampante), selectable geography/source.
+- Comparison: Andalucía vs España vs EU/selected country, never averaged together.
+- Optional future `Jaén/Picual` view only after a licensed/approved local source exists.
+- Always label stale/missing weeks; never interpolate a price as if observed.
+
 ### 20E — Preferred cooperative notices — **DEFERRED; directory source identified**
 - Spec §9: one latest notice / news item of the preferred cooperative; no cooperative →
   optional setup CTA; Home works normally.
