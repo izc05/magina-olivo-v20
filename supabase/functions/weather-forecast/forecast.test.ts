@@ -35,7 +35,7 @@ const fail = (reason: string) => async (): Promise<Response> => {
 const master: Route = { match: (u) => u.endsWith("/maestro/municipios"), reply: json(MASTER) };
 const metno = (reply = json(METNO)): Route => ({ match: (u) => u.startsWith("https://api.met.no/"), reply });
 const aemetOk: Route[] = [
-  { match: (u) => u.includes("/prediccion/especifica/municipio/horaria/23019"), reply: json(META) },
+  { match: (u) => u.includes("/prediccion/especifica/municipio/horaria/23000"), reply: json(META) },
   { match: (u) => u.endsWith("/datos-bedmar"), reply: json(HOURLY) },
 ];
 const deps = (fn: (u: string) => Promise<Response>, key: string | null = "test-key") => ({
@@ -46,7 +46,7 @@ const deps = (fn: (u: string) => Promise<Response>, key: string | null = "test-k
 
 test("any Spanish municipality resolves, not only the old four", () => {
   const find = (municipality: string, province?: string) => resolveMunicipality(MASTER, { municipality, province });
-  assert.deepEqual(find("Bedmar", "Jaén"), { kind: "found", place: { code: "23019", name: "Bedmar y Garcíez", province: "Jaén", latitude: 37.8216, longitude: -3.4101 } });
+  assert.deepEqual(find("Bedmar", "Jaén"), { kind: "found", place: { code: "23000", name: "Bedmar y Garcíez", province: "Jaén", latitude: 37.8216, longitude: -3.4101 } });
   assert.equal((find("jodar", "jaen") as { place: { code: string } }).place.code, "23050");
   assert.equal((find("La Carolina", "Jaén") as { place: { code: string } }).place.code, "23024");
   assert.equal((find("Albanchez", "Jaén") as { place: { code: string } }).place.code, "23002");
@@ -54,7 +54,7 @@ test("any Spanish municipality resolves, not only the old four", () => {
   assert.equal((find("Jimena", "Jaén") as { place: { code: string } }).place.code, "23049");
   assert.equal(find("Villanueva", "Jaén").kind, "ambiguous");
   assert.equal(find("Mancha Real", "Jaén").kind, "not_found");
-  assert.equal(resolveMunicipality(MASTER, { municipalityCode: "23019" }).kind, "found");
+  assert.equal(resolveMunicipality(MASTER, { municipalityCode: "23000" }).kind, "found");
 });
 
 test("AEMET hourly: the current hour, its rain range and wind; codes map without guessing", () => {
@@ -99,7 +99,7 @@ test("AEMET answers: MET Norway is never asked", async () => {
   assert.match(body.attribution, /AEMET/);
   assert.equal(body.updatedAt, "2026-09-25T05:40:00.000Z");
   assert.equal(body.fetchedAt, NOW.toISOString());
-  assert.equal(body.location.code, "23019");
+  assert.equal(body.location.code, "23000");
   assert.equal(calls.filter((u) => u.includes("api.met.no")).length, 0);
 });
 

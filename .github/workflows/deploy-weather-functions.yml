@@ -1,8 +1,8 @@
 name: Deploy weather functions
 
 # CR-006: deploys `weather-forecast` and `weather-radar` from this repository with JWT
-# verification ON (no --no-verify-jwt), then makes ONE real call for Bedmar y Garcíez (23019)
-# and the radar, and keeps both responses as the validation artifact. Manual only.
+# verification ON (no --no-verify-jwt), then makes ONE real call for Bedmar (asked by name and
+# province, as the app does — no remembered INE code) and the radar, and keeps both responses as the validation artifact. Manual only.
 on:
   workflow_dispatch:
 
@@ -53,7 +53,7 @@ jobs:
           supabase functions deploy weather-forecast --project-ref "$PROJECT_REF"
           supabase functions deploy weather-radar --project-ref "$PROJECT_REF"
 
-      - name: Real call — Bedmar y Garcíez (23019) and radar
+      - name: Real call — Bedmar (by name) and radar
         env:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
@@ -63,18 +63,22 @@ jobs:
               -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
               -H "Content-Type: application/json" -d "$2" -o "evidence/$3" -w "%{http_code}"
           }
-          forecast=$(call weather-forecast '{"municipalityCode":"23019"}' weather-forecast-bedmar-23019.json)
+          body='{"municipality":"Bedmar","province":"Jaén"}'
+          forecast=$(call weather-forecast "$body" weather-forecast-bedmar.json)
           radar=$(call weather-radar '{"operation":"frames"}' weather-radar-frames.json)
           # JWT verification proof: the same call without the key must be refused.
           unauth=$(curl -sS -m 30 -X POST "$FUNCTIONS_URL/weather-forecast" -H "Content-Type: application/json" \
-            -d '{"municipalityCode":"23019"}' -o /dev/null -w "%{http_code}")
+            -d "$body" -o /dev/null -w "%{http_code}")
+          echo "$unauth" > evidence/weather-forecast-without-key.status
           {
             echo "## Weather functions — real validation"
-            echo "- weather-forecast (23019): HTTP $forecast"
+            echo "- weather-forecast (Bedmar, Jaén): HTTP $forecast"
+            # Which provider answered: AEMET is primary; MET_NORWAY means AEMET failed (see function logs).
+            echo "- provider: $(grep -o '"provider":"[A-Z_]*"' evidence/weather-forecast-bedmar.json || echo unknown)"
             echo "- weather-radar (frames): HTTP $radar"
             echo "- weather-forecast without key: HTTP $unauth (must be 401)"
             echo '```json'
-            cat evidence/weather-forecast-bedmar-23019.json
+            cat evidence/weather-forecast-bedmar.json
             echo
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

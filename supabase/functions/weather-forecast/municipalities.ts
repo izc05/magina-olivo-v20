@@ -5,8 +5,8 @@
 import type { Place } from "./contract.ts";
 
 export interface MasterEntry {
-  id: string; // "id23019"
-  nombre: string; // "Bedmar y Garcíez"
+  id: string; // "id23019" (AEMET id: "id" + INE code)
+  nombre: string; // "Campillo de Arenas" (23019, verified live 2026-09-25)
   latitud_dec?: string;
   longitud_dec?: string;
 }
