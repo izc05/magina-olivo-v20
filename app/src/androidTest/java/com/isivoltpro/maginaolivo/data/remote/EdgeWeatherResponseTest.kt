@@ -20,7 +20,7 @@ class EdgeWeatherResponseTest {
         {"provider":"AEMET","providerName":"AEMET",
          "attribution":"© AEMET. Información elaborada por la Agencia Estatal de Meteorología.",
          "updatedAt":"2026-09-25T05:40:00.000Z","fetchedAt":"2026-09-25T06:30:00.000Z",
-         "location":{"code":"23019","name":"Bedmar y Garcíez","province":"Jaén"},
+         "location":{"code":"23000","name":"Bedmar y Garcíez","province":"Jaén"},
          "current":{"validAt":"2026-09-25T06:00:00.000Z","temperatureC":16,"condition":"PARTLY_CLOUDY",
                     "rainProbabilityPercent":15,"windKmh":11}}
     """.trimIndent()

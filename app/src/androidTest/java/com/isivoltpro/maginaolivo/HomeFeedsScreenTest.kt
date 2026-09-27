@@ -7,6 +7,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
@@ -17,6 +18,7 @@ import com.isivoltpro.maginaolivo.feature.home.HomeUiState
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.time.Instant
 import java.time.LocalTime
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
@@ -74,10 +76,23 @@ class HomeFeedsScreenTest {
         composeRule.onNodeWithTag("home-weather-no-location").performScrollTo().assertIsDisplayed()
     }
 
-    private fun show(state: HomeUiState) {
+    /** Phase 20B-radar: the radar is offered only when this build can reach it. */
+    @Test fun theRadarEntryAppearsOnlyWhenTheRadarIsReachable() {
+        var opened = 0
+        show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Unavailable), onRadar = { opened++ })
+        composeRule.onNodeWithTag("home-weather-radar").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(1, opened) }
+    }
+
+    @Test fun withoutARadarNoEntryIsShown() {
+        show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Unavailable))
+        composeRule.onNodeWithTag("home-weather-radar").assertDoesNotExist()
+    }
+
+    private fun show(state: HomeUiState, onRadar: (() -> Unit)? = null) {
         composeRule.setContent {
             MaginaOlivoTheme {
-                HomeScreen(state, LocalTime.of(10, 0), {}, {}, {}, {}, {}, {}, now)
+                HomeScreen(state, LocalTime.of(10, 0), {}, {}, {}, {}, {}, {}, now, onRadar = onRadar)
             }
         }
     }

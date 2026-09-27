@@ -30,6 +30,8 @@ class AppDestinationTest {
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.register("PHYTOSANITARY")))
         assertEquals(RootDestination.Notebook, RootDestination.entries.single { it.isPrimaryAction })
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))
+        // Phase 20B-radar: the radar belongs to Inicio.
+        assertEquals(RootDestination.Home, AppDestination.rootForRoute(AppDestination.Radar))
     }
 
     @Test

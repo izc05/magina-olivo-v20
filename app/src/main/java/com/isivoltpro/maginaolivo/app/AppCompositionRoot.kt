@@ -12,6 +12,7 @@ import com.isivoltpro.maginaolivo.core.regional.UnitPreferences
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.core.time.SystemAppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.remote.weather.EdgeRadarSource
 import com.isivoltpro.maginaolivo.data.remote.weather.EdgeWeatherSource
 import com.isivoltpro.maginaolivo.data.repository.CachedWeatherFeed
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
@@ -144,6 +145,10 @@ data class AppCompositionRoot(
             val weatherSource = BuildConfig.WEATHER_ANON_KEY.takeIf { it.isNotBlank() }?.let { key ->
                 EdgeWeatherSource(BuildConfig.WEATHER_FUNCTIONS_URL, key)
             }
+            // Phase 20B-radar: the same public key and functions; no key, no radar entry.
+            val radarSource = BuildConfig.WEATHER_ANON_KEY.takeIf { it.isNotBlank() }?.let { key ->
+                EdgeRadarSource(BuildConfig.WEATHER_FUNCTIONS_URL, key)
+            }
             val weatherFeed = CachedWeatherFeed(
                 database, source = weatherSource, workspaces = workspaceRepository, clock = defaults.clock, dispatchers = defaults.dispatchers,
             )
@@ -169,6 +174,7 @@ data class AppCompositionRoot(
                     workspaceRepository = workspaceRepository,
                     reminders = reminders,
                     weatherFeed = weatherFeed,
+                    radarSource = radarSource,
                 ),
             )
         }

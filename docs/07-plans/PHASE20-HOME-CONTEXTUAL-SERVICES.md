@@ -157,7 +157,7 @@ so MET Norway answered (fallback worked; reason to be read in the Supabase logs)
 Documentation only; no production code until the Issue #246 gate is closed and the owner says
 "continue with Phase 20". One slice at a time, each its own PR.
 
-### 20B-fix — validation and labels (small, first) — IN PROGRESS (branch claude/phase20b-fix)
+### 20B-fix — validation and labels (small, first) — MERGED (PR #257, owner OK)
 Started 2026-09-27 on the owner's "puedes seguir" (Issue #246 stays open until its device check).
 Done in the branch: validation call by name; provider written to the run summary; keyless status
 kept as evidence; synthetic fixtures use the sentinel code 23000 for Bedmar (23019 is Campillo de
@@ -171,7 +171,14 @@ reason still needs the owner's Supabase log line; no timeout change without it.
   `timeoutMs` for the AEMET call only (the MET Norway fallback keeps the card alive meanwhile).
 - DoD: fixture tests green; one manual deploy run with new evidence stored beside the old one.
 
-### 20B-radar — "Ver radar" screen
+### 20B-radar — "Ver radar" screen — IN PROGRESS (branch claude/phase20b-radar)
+Implemented: `domain/weather/Radar.kt` (RadarFrames, RadarSource), `EdgeRadarSource` +
+`EdgeRadarResponse` (strict: https template with {z}/{x}/{y}, attribution, ≥1 frame), shared
+`EdgeFunctionHttp` POST (the forecast client uses it too, same behaviour), `RadarScreen` nested
+under Inicio (`radar` route) with the active Farm's boundaries, the RainViewer layer at 70 %
+opacity (source maxzoom 7, enlarged beyond), frame slider, "Radar de las HH:mm", credit and
+"Actualizar"; offline → "El radar necesita conexión" + Reintentar. Inicio shows "Ver radar de
+lluvia" only when the build has the public key. No Room change; radar is never cached.
 - `data/remote/weather/EdgeRadarSource.kt`: HTTPS POST `{"operation":"frames"}` to
   `weather-radar` with the anon key (same boundary as `EdgeWeatherSource`, allowed by CR-006);
   strict parse of `provider`, `attribution`, `updatedAt`, `frames[time, tileUrlTemplate]`.

@@ -5,10 +5,6 @@ import com.isivoltpro.maginaolivo.domain.weather.WeatherCondition
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
 import com.isivoltpro.maginaolivo.domain.weather.WeatherReading
 import com.isivoltpro.maginaolivo.domain.weather.WeatherSource
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,39 +26,9 @@ class EdgeWeatherSource(
             put("municipality", location.municipality)
             location.province?.let { put("province", it) }
         }
-        val connection = URL("$functionsUrl/weather-forecast").openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = "POST"
-            connection.connectTimeout = timeoutMillis
-            connection.readTimeout = timeoutMillis
-            connection.doOutput = true
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("apikey", anonKey)
-            connection.setRequestProperty("Authorization", "Bearer $anonKey")
-            connection.outputStream.use { it.write(request.toString().toByteArray(Charsets.UTF_8)) }
-            val status = connection.responseCode
-            if (status !in 200..299) throw IOException("weather-forecast answered $status")
-            EdgeWeatherResponse.parse(connection.inputStream.use { readCapped(it) })
-        } finally {
-            connection.disconnect()
-        }
-    }
-
-    private fun readCapped(input: java.io.InputStream): String {
-        val output = ByteArrayOutputStream()
-        val buffer = ByteArray(8192)
-        while (true) {
-            val count = input.read(buffer)
-            if (count < 0) break
-            if (output.size() + count > MAX_BYTES) throw IOException("weather-forecast response too large")
-            output.write(buffer, 0, count)
-        }
-        return output.toString(Charsets.UTF_8.name())
-    }
-
-    private companion object {
-        const val MAX_BYTES = 64 * 1024
+        EdgeWeatherResponse.parse(
+            EdgeFunctionHttp.post(functionsUrl, "weather-forecast", anonKey, request.toString(), timeoutMillis),
+        )
     }
 }
 

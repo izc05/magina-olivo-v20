@@ -49,6 +49,8 @@ object AppDestination {
     const val Calendar = "calendar"
     const val MapCatastro = "map-catastro"
     const val Weather = "weather"
+    /** Phase 20B-radar: rain radar over the active Farm, nested under Inicio. */
+    const val Radar = "radar"
     const val Analytics = "analytics"
     const val OcrReview = "ocr-review"
     const val Harvest = "harvest"
@@ -116,7 +118,7 @@ object AppDestination {
     fun rootForRoute(route: String?): RootDestination? {
         val prefix = route?.substringBefore('?')?.substringBefore('/') ?: return null
         return when (prefix) {
-            RootDestination.Home.route, Weather -> RootDestination.Home
+            RootDestination.Home.route, Weather, Radar -> RootDestination.Home
             RootDestination.Olivar.route,
             "farm",
             "farm-parcels",
