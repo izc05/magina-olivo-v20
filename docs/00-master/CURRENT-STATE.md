@@ -72,7 +72,11 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   (not Bedmar), and AEMET hourly failed on that call so MET Norway answered. Next slices
   (20B-fix, 20B-radar, 20C) planned in the Phase 20 plan. 20B-fix MERGED (PR #257; deploy run #6
   green by name; its artifact could not be read from this session — owner to paste the summary).
-  20B-radar IN PROGRESS (branch claude/phase20b-radar; no Room change). Issue #246 device check
+  Codex work carried by Claude (owner OK 2026-09-27, Codex out of credit): branch
+  claude/codex-brand-weighings = codex/issue-254-codex-1-terminology (official brand/icon + Issue
+  #254 CODEX-1 "Pesada" as the single productive quick action; Jornada/Pesada vocabulary; no Room
+  change) merged with main.
+  20B-radar MERGED (PR #259, owner OK; CI green). Issue #246 device check
   (D1–D12) still pending.
   Plan: docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md (owner decisions D1–D4 recorded).
   20A — Feed foundation + Home external cards: MERGED (PR #243, 2026-09-25, owner OK; CI green;
