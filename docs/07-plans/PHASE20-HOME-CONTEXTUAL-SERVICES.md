@@ -192,7 +192,7 @@ lluvia" only when the build has the public key. No Room change; radar is never c
 - Tests: parse from the stored real response (`weather-radar-frames.json`) and from fixtures;
   offline state; frame time shown; `ArchitectureBoundaryTest` still passes.
 
-### 20C — weather-responsive visual layer — IN PROGRESS (branch claude/phase20c-weather-mood)
+### 20C — weather-responsive visual layer — MERGED (PR #260, owner OK)
 Implemented: `domain/weather/WeatherMood.kt` (`WeatherMoods.of`: current value only; stale,
 unknown or snow → none; wind ≥ 35 km/h turns clear/cloudy into WIND), `WeatherMoodLayer` drawn in
 Inicio's photo header under the text (low opacity Canvas: glow, clouds, rain, streaks, fog,
@@ -207,3 +207,4 @@ is 0 or the phone is low-RAM; the progress is read in the draw phase only (no re
 
 ### Still blocked
 - 20D oil market (no approved source, D3) and 20E cooperative notices (D4, admin surface).
+  Proposed: close Gate 20 with both deferred — docs/06-testing/PHASE20-GATE-CHECKLIST.md.

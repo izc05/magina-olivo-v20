@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-09-24
+**Last reviewed:** 2026-09-27
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -41,52 +41,28 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ UX REORGANIZATION — Issue #246 / CR-007 (2026-09-25): functional phases PAUSED.
-  UX-A — audit: APPROVED by the owner.
-  UX-B — navigation shell (Inicio · Mi Campo · Cuaderno · Avisos · Perfil): MERGED (PR #248,
-  2026-09-25, owner OK; CI green; no schema change).
-  UX-C — Mi Cuaderno shell (context, Registrar hoy, 9 quick actions, Diario · Fitosanitario ·
-  Gastos · Campaña): MERGED (PR #249, 2026-09-25, owner OK; CI green; active Farm is a device
-  preference, no Room change).
-  UX-D — Registrar hoy (¿Qué has hecho hoy? → existing form with the type preset, today's date,
-  Farm/Campaign context shown, saved confirmation): MERGED (PR #250, 2026-09-25, owner OK; CI green;
-  no Room change).
-  UX-E — Diario + specialised views: MERGED (PR #251, 2026-09-25, owner OK; CI green; no Room change).
-  Diario = one timeline of work, jornadas, pesadas and expenses (an Activity's own cost is not
-  listed twice); Fitosanitario = the treatment Activities with product, active substance, dose,
-  parcel/surface, reason, machinery and "Falta: …" for missing values (legal model still open);
-  Gastos = the one ledger grouped by jornales, maquinaria and facturas/documentos; Campaña = the
-  summary plus "Pendiente de entregar" (only when picked ≥ delivered) and pending yields.
-  UX-F — Registrar from Mi Campo: MERGED (PR #252, owner OK; CI green; no Room change).
-  "Registrar en esta finca/parcela" opens Cuaderno → Registrar hoy with that Farm active
-  (and the Parcel in the context line and preselected in the work form); Mi Campo keeps reading
-  the same records (Farm Cuaderno section, Parcel Actividad tab).
-  UX-G — QA: IN PROGRESS (branch claude/ux-g-qa). E2E success criterion (register → Diario →
-  cold reopen), accessibility labels, gate checklist docs/06-testing/UX-246-GATE-CHECKLIST.md.
-  The reorganisation closes only after the owner's device checks D1–D12.
+▶ WAITING ON OWNER DEVICE CHECKS (2026-09-27) — no production slice in progress.
+  App version on main: 0.3.0 (docs/CHANGELOG-APP.md; Perfil shows "Versión · compilación").
 
-⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS; paused)
-  20B deploy: functions deployed and validated live by the manual workflow (run #5: forecast 200,
-  radar 200, keyless 401); PR #247 (token secret) MERGED 2026-09-27 (owner OK). Real responses
-  stored in docs/06-testing/evidence/phase20b/ with two findings: code 23019 is Campillo de Arenas
-  (not Bedmar), and AEMET hourly failed on that call so MET Norway answered. Next slices
-  (20B-fix, 20B-radar, 20C) planned in the Phase 20 plan. 20B-fix MERGED (PR #257; deploy run #6
-  green by name; its artifact could not be read from this session — owner to paste the summary).
-  Codex work carried by Claude (owner OK 2026-09-27, Codex out of credit): branch
-  claude/codex-brand-weighings = codex/issue-254-codex-1-terminology (official brand/icon + Issue
-  #254 CODEX-1 "Pesada" as the single productive quick action; Jornada/Pesada vocabulary) + #253
-  (preset type not asked again); no Room change. Issue #254 CODEX-2…7 not started by Codex.
-  Issue #254 continued by Claude (plan docs/07-plans/ISSUE-254-RECOLLECTION.md): 254-A Pesada origin
-  Árbol/vuelo · Suelo IN PROGRESS (branch claude/254-pesada-origin; **Room v16**, nullable
-  `deliveries.harvest_origin`, older Pesadas "Sin indicar").
-  20B-radar MERGED (PR #259, owner OK; CI green). 20C (weather look on Inicio's header) MERGED
-  (PR #260, owner OK; CI green). Issue #246 device check (D1–D12) still pending.
-  Plan: docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md (owner decisions D1–D4 recorded).
-  20A — Feed foundation + Home external cards: MERGED (PR #243, 2026-09-25, owner OK; CI green;
-  no schema change — reuses the v1 weather_cache table).
-  20B — Weather via Supabase Edge Functions (AEMET → MET Norway) under CR-006: IN PROGRESS
-  (executor Claude; branch claude/phase20b-weather; no schema change).
-  Gate 20: failure of every external feed still leaves Mi Olivar fully operational.
+  Issue #246 / CR-007 UX reorganisation: UX-A…UX-F MERGED (#248–#252); UX-G QA done in CI.
+  Closes with the owner's device checks D1–D12 (docs/06-testing/UX-246-GATE-CHECKLIST.md).
+  Follow-ups merged 2026-09-27: Cuaderno day-by-day chronology + visual hierarchy (#265), short
+  work form (#266), visible version/build (#267).
+
+  Issue #254 (Recolección simplificada; Codex work carried by Claude, owner OK): COMPLETE in main.
+  #261 brand + "Pesada" + preset form · #262 254-A Pesada origin (Room v16) · #263 254-B 2×2 ·
+  #264 254-C Jornada yield · #268 254-D labour per person · #269 254-E no duplicates + E2E.
+  Plan: docs/07-plans/ISSUE-254-RECOLLECTION.md. Open until the owner checks it on the phone.
+
+⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS: slices done; Gate 20 PENDING.
+  20A (#243), 20B + deploy (#247), 20B-fix (#257), 20B-radar (#259), 20C (#260): MERGED.
+  20D oil market (D3) and 20E cooperative notices (D4): BLOCKED on source decisions —
+  proposed deferred. Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md (G1–G7).
+  Still owed by the owner: deploy run #6 summary and the AEMET error line.
+
+⏭ PHASE 21 — PROFILE: PREPARED, not started (docs/07-plans/PHASE21-PROFILE.md; 21A locality +
+  preferred cooperative, 21B preferences, 21C help/privacy). Production starts after Gate 20 PASS.
+```
 
 ✔ PHASE 19 — CUADERNO DE CAMPAÑA + HISTORICAL ANALYTICS: CLOSED (Gate 19 PASS 2026-09-25)
   19A — Cuaderno projection/navigation: MERGED (PR #233, 2026-09-24).
