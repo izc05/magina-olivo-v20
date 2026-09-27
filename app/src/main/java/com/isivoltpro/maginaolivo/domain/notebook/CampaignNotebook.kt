@@ -106,8 +106,8 @@ data class CampaignNotebook(
         if (own.isEmpty()) return null
         val summary = DeliverySummary.of(own)
         val fat = summary.fatYield ?: return "rend. pendiente"
-        val pending = own.any { PesadaSearch.statusOf(it) == YieldStatus.PENDING }
-        return "rend. ${Percent.format(fat.hundredths)}" + if (pending) " (parcial)" else ""
+        // Partial whenever the fat yield covers fewer kilos than were weighed (pending or only industrial).
+        return "rend. ${Percent.format(fat.hundredths)}" + if (fat.analysedGrams < summary.deliveredGrams) " (parcial)" else ""
     }
 
     companion object {

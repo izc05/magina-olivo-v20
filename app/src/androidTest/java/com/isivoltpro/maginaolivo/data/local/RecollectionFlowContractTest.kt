@@ -68,7 +68,8 @@ class RecollectionFlowContractTest {
     private val parcelId = UUID.fromString("30000000-0000-0000-0000-0000000254e1")
     private val now = Instant.parse("2026-11-24T19:00:00Z")
     private val day = LocalDate.parse("2026-11-24")
-    private val photos = File(context.cacheDir, "recollection-flow")
+    // Under the FileProvider's cache "camera/" root (res/xml/attachment_paths.xml).
+    private val photos = File(File(context.cacheDir, "camera"), "recollection-flow")
 
     private lateinit var db: MaginaOlivoDatabase
     private lateinit var deliveries: OfflineFirstDeliveryRepository
