@@ -20,6 +20,8 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
     respecto a la semana anterior («AOVE ↓ 5,7 % esta semana»), semana y fuente; «Dato antiguo»
     cuando ya debería haber una semana nueva. Se activa cuando esté desplegada la función del
     servidor (20D-2); hasta entonces dice «Sin fuente configurada».
+  - El recuadro del «Pulso diario» toma la altura del widget de AOVE.net (antes quedaba cortado en
+    Lampante y había que desplazarse dentro).
 - Revisión UX con el propietario (Codex, `docs/06-testing/UX-OWNER-FEEDBACK-2026-09-27.md`):
   - Mi Campo vacío: una sola acción «Crear mi primera finca», sin totales a cero; «Maquinaria» sale
     de Mi Campo y queda solo en Perfil.

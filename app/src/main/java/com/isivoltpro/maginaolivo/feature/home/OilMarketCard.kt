@@ -156,6 +156,9 @@ private fun Note(text: String, tag: String) {
 internal fun AoveNetPulse() {
     val context = LocalContext.current
     var failed by remember { mutableStateOf(!isOnline(context)) }
+    // The widget's own height, read from the page once it has drawn (no script bridge needed), so
+    // the three prices are never cut off; bounded so a broken page cannot take over Inicio.
+    var contentHeightDp by remember { mutableStateOf(PULSE_INITIAL_HEIGHT_DP) }
     // When a connection comes (back), the widget is tried again instead of staying "sin conexión".
     DisposableEffect(context) {
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
@@ -172,7 +175,7 @@ internal fun AoveNetPulse() {
             Note("Pulso diario no disponible sin conexión.", "home-market-pulse-offline")
         } else {
             AndroidView(
-                modifier = Modifier.fillMaxWidth().height(260.dp),
+                modifier = Modifier.fillMaxWidth().height(contentHeightDp.dp).testTag("home-market-pulse-web"),
                 factory = { viewContext ->
                     WebView(viewContext).apply {
                         settings.javaScriptEnabled = true
@@ -184,6 +187,18 @@ internal fun AoveNetPulse() {
                             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                                 openInBrowser(viewContext, request.url)
                                 return true
+                            }
+
+                            override fun onPageFinished(view: WebView, url: String?) {
+                                // The widget fills its prices in after load: measure again as it settles.
+                                PULSE_MEASURE_DELAYS_MS.forEach { delay ->
+                                    view.postDelayed({
+                                        val measured = view.contentHeight // CSS px, i.e. dp at the default zoom
+                                        if (measured > 0) {
+                                            contentHeightDp = measured.coerceIn(PULSE_MIN_HEIGHT_DP, PULSE_MAX_HEIGHT_DP)
+                                        }
+                                    }, delay)
+                                }
                             }
 
                             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -223,6 +238,10 @@ private fun openInBrowser(context: Context, uri: Uri) {
     }
 }
 
+private const val PULSE_INITIAL_HEIGHT_DP = 320
+private const val PULSE_MIN_HEIGHT_DP = 160
+private const val PULSE_MAX_HEIGHT_DP = 560
+private val PULSE_MEASURE_DELAYS_MS = listOf(150L, 800L, 2_000L)
 private const val AOVE_NET_WIDGET = "https://aove.net/widget/precio-aceite-oliva-hoy/"
 private const val AOVE_NET_DETAIL = "https://aove.net/"
 private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-ES"))
