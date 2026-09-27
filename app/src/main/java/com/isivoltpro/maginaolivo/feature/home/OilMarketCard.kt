@@ -190,15 +190,26 @@ internal fun AoveNetPulse() {
                             }
 
                             override fun onPageFinished(view: WebView, url: String?) {
-                                // The widget fills its prices in after load: measure again as it settles.
-                                PULSE_MEASURE_DELAYS_MS.forEach { delay ->
-                                    view.postDelayed({
+                                // The widget fills its prices in after load, sometimes slowly on a rural
+                                // connection: measure until the height holds still, within a time limit.
+                                var elapsed = 0L
+                                var last = -1
+                                var steady = 0
+                                val measure = object : Runnable {
+                                    override fun run() {
                                         val measured = view.contentHeight // CSS px, i.e. dp at the default zoom
                                         if (measured > 0) {
                                             contentHeightDp = measured.coerceIn(PULSE_MIN_HEIGHT_DP, PULSE_MAX_HEIGHT_DP)
                                         }
-                                    }, delay)
+                                        steady = if (measured > 0 && measured == last) steady + 1 else 0
+                                        last = measured
+                                        elapsed += PULSE_MEASURE_EVERY_MS
+                                        if (steady < PULSE_STEADY_READINGS && elapsed < PULSE_MEASURE_FOR_MS) {
+                                            view.postDelayed(this, PULSE_MEASURE_EVERY_MS)
+                                        }
+                                    }
                                 }
+                                view.postDelayed(measure, PULSE_MEASURE_EVERY_MS)
                             }
 
                             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -241,7 +252,9 @@ private fun openInBrowser(context: Context, uri: Uri) {
 private const val PULSE_INITIAL_HEIGHT_DP = 320
 private const val PULSE_MIN_HEIGHT_DP = 160
 private const val PULSE_MAX_HEIGHT_DP = 560
-private val PULSE_MEASURE_DELAYS_MS = listOf(150L, 800L, 2_000L)
+private const val PULSE_MEASURE_EVERY_MS = 500L
+private const val PULSE_STEADY_READINGS = 4 // two seconds without change
+private const val PULSE_MEASURE_FOR_MS = 20_000L
 private const val AOVE_NET_WIDGET = "https://aove.net/widget/precio-aceite-oliva-hoy/"
 private const val AOVE_NET_DETAIL = "https://aove.net/"
 private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es-ES"))
