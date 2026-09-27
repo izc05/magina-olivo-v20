@@ -12,11 +12,11 @@
 
 ### Tiempo y radar
 
-- En Home aparece: «Indica el municipio en la ficha de tu finca para ver su tiempo». Por tanto, el pronóstico no se pudo validar con una finca que tuviera municipio configurado en este recorrido; tampoco se debe interpretar este mensaje como “fuente sin configurar”.
+- En Home aparece: «Indica el municipio en la ficha de tu finca para ver su tiempo». Las tres fincas de prueba visibles («La Umbría», «La Umbría Norte» y «Los Llanos») muestran que falta completar su ubicación; por ello no alteré esos datos y no pude validar el pronóstico con un municipio. Tampoco se debe interpretar este mensaje como “fuente sin configurar”.
 - «Ver radar de lluvia» sí abre el radar y carga mapa, leyenda temporal y controles. No se observó bloqueo ni carga infinita.
 - La cartografía visible se percibe borrosa/pixelada en el nivel mostrado. Queda como observación visual, no como fallo confirmado del proveedor.
 
-Evidencia: [`12-radar-open.png`](../../artifacts/audit-20260928/12-radar-open.png).
+Evidencia: [`13-farm-list-lower.png`](../../artifacts/audit-20260928/13-farm-list-lower.png) y [`12-radar-open.png`](../../artifacts/audit-20260928/12-radar-open.png).
 
 ### Precio del aceite
 
@@ -46,4 +46,4 @@ Evidencia: [`09-campaign-detail.png`](../../artifacts/audit-20260928/09-campaign
 
 ## Protección de datos y seguimiento
 
-Esta auditoría no crea, edita, activa ni archiva fincas, parcelas, campañas o movimientos. No incluye cambios de aplicación. Las capturas muestran datos de prueba que ya estaban guardados localmente; se adjuntan solo las cuatro imágenes pertinentes para mantener evidencia acotada.
+Esta auditoría no crea, edita, activa ni archiva fincas, parcelas, campañas o movimientos. No incluye cambios de aplicación. Las capturas muestran datos de prueba que ya estaban guardados localmente; se adjuntan solo las imágenes pertinentes para mantener evidencia acotada.
