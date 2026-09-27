@@ -157,7 +157,12 @@ so MET Norway answered (fallback worked; reason to be read in the Supabase logs)
 Documentation only; no production code until the Issue #246 gate is closed and the owner says
 "continue with Phase 20". One slice at a time, each its own PR.
 
-### 20B-fix — validation and labels (small, first)
+### 20B-fix — validation and labels (small, first) — IN PROGRESS (branch claude/phase20b-fix)
+Started 2026-09-27 on the owner's "puedes seguir" (Issue #246 stays open until its device check).
+Done in the branch: validation call by name; provider written to the run summary; keyless status
+kept as evidence; synthetic fixtures use the sentinel code 23000 for Bedmar (23019 is Campillo de
+Arenas; 23902 is the unconfirmed candidate) and say so in `fixtures/README.md`. The AEMET failure
+reason still needs the owner's Supabase log line; no timeout change without it.
 - Deploy workflow: validation call by name `{"municipality":"Bedmar","province":"Jaén"}`; step and
   evidence names without a hard-coded code.
 - `forecast.test.ts` synthetic master list: stop pairing 23019 with Bedmar (use the verified code
