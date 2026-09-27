@@ -893,6 +893,52 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration15To16KeepsEveryPesadaWithoutAnOrigin() {
+        migrationHelper.createDatabase(TEST_DATABASE, 15).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            database.execSQL(
+                """
+                INSERT INTO deliveries (
+                    id, workspace_id, farm_id, campaign_id, delivery_date, destination_name,
+                    net_grams, ticket_number, source, created_at, updated_at, deleted_at,
+                    version, sync_status, remote_version, last_synced_at
+                ) VALUES (
+                    '88888888-8888-8888-8888-888888888888', '11111111-1111-1111-1111-111111111111',
+                    '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444',
+                    '2025-11-24', 'Bedmarense', 2390000, 'V-7', 'MANUAL', 5000, 5000, NULL,
+                    2, 'SYNCED', 2, 5000
+                )
+                """.trimIndent(),
+            )
+        }
+
+        migrationHelper
+            .runMigrationsAndValidate(TEST_DATABASE, 16, true, DatabaseMigrations.MIGRATION_15_16)
+            .use { database ->
+                database.query("SELECT harvest_origin, net_grams, ticket_number, version FROM deliveries").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    // Nothing is guessed for older Pesadas: they stay "sin indicar".
+                    assertTrue(cursor.isNull(0))
+                    assertEquals(2390000L, cursor.getLong(1))
+                    assertEquals("V-7", cursor.getString(2))
+                    assertEquals(2, cursor.getInt(3))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

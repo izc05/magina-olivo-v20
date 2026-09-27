@@ -76,6 +76,9 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   claude/codex-brand-weighings = codex/issue-254-codex-1-terminology (official brand/icon + Issue
   #254 CODEX-1 "Pesada" as the single productive quick action; Jornada/Pesada vocabulary) + #253
   (preset type not asked again); no Room change. Issue #254 CODEX-2…7 not started by Codex.
+  Issue #254 continued by Claude (plan docs/07-plans/ISSUE-254-RECOLLECTION.md): 254-A Pesada origin
+  Árbol/vuelo · Suelo IN PROGRESS (branch claude/254-pesada-origin; **Room v16**, nullable
+  `deliveries.harvest_origin`, older Pesadas "Sin indicar").
   20B-radar MERGED (PR #259, owner OK; CI green). 20C (weather look on Inicio's header) MERGED
   (PR #260, owner OK; CI green). Issue #246 device check (D1–D12) still pending.
   Plan: docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md (owner decisions D1–D4 recorded).

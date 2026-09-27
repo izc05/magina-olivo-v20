@@ -19,6 +19,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShare
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.delivery.YieldAnalysis
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
 import com.isivoltpro.maginaolivo.domain.delivery.YieldRules
@@ -209,6 +210,7 @@ class OfflineFirstDeliveryRepository(
         editable = campaign != null && campaign.status in setOf(CampaignStatus.ACTIVE, CampaignStatus.HARVEST),
         harvestId = delivery.harvestId,
         deliveryTime = delivery.deliveryTime?.let { runCatching { LocalTime.parse(it) }.getOrNull() },
+        origin = PesadaOrigin.entries.firstOrNull { it.name == delivery.origin },
     )
 
     private fun LocalMetadata.next(now: Instant) =

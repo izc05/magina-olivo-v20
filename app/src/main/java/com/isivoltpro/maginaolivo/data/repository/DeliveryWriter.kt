@@ -69,6 +69,7 @@ internal class DeliveryWriter(
             metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
             harvestId = harvestId,
             deliveryTime = draft.deliveryTime?.let { formatTime(it) },
+            origin = draft.origin?.name,
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)
@@ -104,6 +105,8 @@ internal class DeliveryWriter(
             metadata = current.metadata.next(now),
             harvestId = harvestId,
             deliveryTime = draft.deliveryTime?.let { formatTime(it) },
+            // An edit without an origin (older callers) keeps the one stored.
+            origin = draft.origin?.name ?: current.origin,
         )
         database.deliveryDao().upsert(row)
         replaceShares(row, draft, now)

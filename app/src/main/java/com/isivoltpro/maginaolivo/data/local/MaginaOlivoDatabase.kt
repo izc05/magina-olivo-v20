@@ -104,7 +104,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         HarvestLabourEntity::class,
         HarvestEquipmentEntity::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)

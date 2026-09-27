@@ -11,6 +11,12 @@ import java.util.UUID
 /** Where a Delivery's figures came from. A ticket read by OCR is still confirmed by a person. */
 enum class DeliverySource { MANUAL, TICKET_OCR }
 
+/**
+ * Issue #254 (CODEX-3): where the olives of a Pesada were picked. Mills pay and treat them
+ * differently, so the farmer says it on every new Pesada; older ones stay "sin indicar".
+ */
+enum class PesadaOrigin(val label: String) { TREE("Árbol / vuelo"), GROUND("Suelo") }
+
 data class DeliveryShare(
     val parcelId: UUID,
     val parcelName: String,
@@ -47,6 +53,8 @@ data class Delivery(
     val harvestId: UUID? = null,
     /** Phase 19B: the hour on the ticket, if given. */
     val deliveryTime: LocalTime? = null,
+    /** Issue #254: árbol/vuelo or suelo; null on Pesadas saved before it was asked. */
+    val origin: PesadaOrigin? = null,
 ) {
     val unallocatedGrams: Long
         get() = netGrams - shares.sumOf { if (it.allocation == HarvestAllocation.EXACT) it.weightGrams ?: 0 else 0 }
@@ -71,6 +79,8 @@ data class DeliveryDraft(
     val deliveryTime: LocalTime? = null,
     /** Phase 19B: open a new Jornada for this Pesada's date and link it. Never with [harvestId]. */
     val newJornada: Boolean = false,
+    /** Issue #254: required by the form for every Pesada it saves; null keeps what was stored. */
+    val origin: PesadaOrigin? = null,
 )
 
 data class DeliveryProblem(val field: String, val code: String)

@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.deliveries
 
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
 import com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketProposal
 import java.time.LocalDate
@@ -23,6 +24,7 @@ class DeliveryFormTest {
         destinationText = "Cooperativa San Isidro",
         net = "2.850",
         parcelIds = listOf(north, south),
+        origin = PesadaOrigin.TREE,
     )
 
     @Test
@@ -105,5 +107,15 @@ class DeliveryFormTest {
         assertEquals("", next.ticketNumber)
         assertEquals("", next.time)
         assertEquals("", next.gross)
+        // Issue #254: the next load of the day says its own origin (vuelo and suelo differ).
+        assertNull(next.origin)
+    }
+
+    @Test
+    fun everyPesadaSaysWhereItsOlivesWerePicked() {
+        val (missing, errors) = base.copy(origin = null).toDraft(today)
+        assertNull(missing)
+        assertNotNull(errors.origin)
+        assertEquals(PesadaOrigin.GROUND, base.copy(origin = PesadaOrigin.GROUND).toDraft(today).first!!.origin)
     }
 }

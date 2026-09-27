@@ -295,7 +295,7 @@ internal fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
     // The cooperative is never hidden on a Pesada row (CR-005 §5).
     MoCompactListItem(
         title = listOfNotNull("Pesada", (delivery.ticketNumber ?: delivery.deliveryNumber)?.let { "nº $it" }).joinToString(" "),
-        subtitle = "${delivery.destinationName} · ${Weight.format(delivery.netGrams)}",
+        subtitle = listOfNotNull(delivery.destinationName, delivery.origin?.label, Weight.format(delivery.netGrams)).joinToString(" · "),
         icon = MoIcons.Delivery,
         onClick = onClick,
         modifier = Modifier.testTag("notebook-delivery"),
