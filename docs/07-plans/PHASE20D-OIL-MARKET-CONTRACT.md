@@ -74,6 +74,54 @@ agreement from Fundación del Olivar. Manual cross-check only until that happens
 Olimerca / COAG / AgroCLM and similar sources may be used for manual validation and context.
 They are not a production source of truth unless reuse permission is confirmed.
 
+## Live / intraday market layer
+
+Owner requirement (2026-09-27): the user should be able to see a chart that **moves during the
+day** when the olive-oil origin market publishes new operations.
+
+### Preferred provider: POOLred, only with explicit data rights
+
+POOLred is the closest fit to a true live origin-market feed: it describes its information as
+instantaneously/permanently updated from producer/commercializer buy/sell operations and publishes
+AOVE, Virgen and Lampante indices/market views.
+
+However, the current POOLred legal notice states that information is for exclusive, non-transferable
+use and expressly prohibits retransmission/cession. A normal Premium/Profesional subscription is
+therefore **not** a production data licence for Mágina Olivo.
+
+Production rule:
+- build a disabled `PoolredLiveSource` adapter contract;
+- do not scrape logged-in/public pages for redistribution;
+- enable it only after Fundación del Olivar grants an API/data-feed/redistribution agreement and
+  supplies an approved technical access method;
+- store provider timestamps and each observation received so the intraday chart is reproducible.
+
+Suggested refresh: provider-driven/webhook if offered; otherwise 5–15 minute polling only if the
+licensed API terms allow it. Do not poll HTML pages.
+
+### Programmatic daily fallback: Olea Markets API
+
+Olea Markets currently documents JSON indices:
+- `OLEA-EVOO-ES`
+- `OLEA-VIRGIN-ES`
+- `OLEA-LAMP-ES`
+
+Publication is **daily**, not intraday. It exposes `/v1/latest` and paid `/v1/historical`,
+with stale/confidence metadata. This is suitable for a daily benchmark/fallback and rapid technical
+integration, subject to plan and redistribution rights. It must never be labelled "live".
+
+### UX semantics
+
+- `Hoy`: only available when a licensed intraday provider exists. X axis is time-of-day and points
+  are actual provider observations/updates.
+- `7 días`, `30 días`, `Campaña`: daily/weekly series may be used.
+- Home label says **Mercado ahora** only for a licensed live source and shows the provider update
+  time. Otherwise say **Referencia diaria** or **Referencia semanal**.
+- A line must not animate/move merely to appear live; movement must correspond to a new upstream
+  observation.
+- When no live source is licensed, hide/disable the `Hoy` view and keep the slower official
+  references available.
+
 ## Recommended architecture
 
 Follow the existing Phase 20 weather boundary:
