@@ -45,6 +45,7 @@ import com.isivoltpro.maginaolivo.feature.expenses.ExpensesRoute
 import com.isivoltpro.maginaolivo.feature.farms.FarmSection
 import com.isivoltpro.maginaolivo.feature.farms.FarmSectionRoute
 import com.isivoltpro.maginaolivo.feature.home.HomeRoute
+import com.isivoltpro.maginaolivo.feature.home.RadarRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
@@ -170,7 +171,17 @@ fun AppNavigation(
                         onDeliveries = { navController.navigate(AppDestination.Deliveries) },
                         onExpenses = { navController.navigate(AppDestination.Expenses) },
                         onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
+                        onRadar = { navController.navigate(AppDestination.Radar) },
                     )
+                }
+            }
+            // Phase 20B-radar: rain radar over the active Farm (live only, never cached).
+            composable(AppDestination.Radar) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    RadarRoute(persistence = persistence, farmId = compositionRoot.activeFarmStore.get())
                 }
             }
             composable(RootDestination.Olivar.route) {

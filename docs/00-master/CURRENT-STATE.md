@@ -57,15 +57,23 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   parcel/surface, reason, machinery and "Falta: …" for missing values (legal model still open);
   Gastos = the one ledger grouped by jornales, maquinaria and facturas/documentos; Campaña = the
   summary plus "Pendiente de entregar" (only when picked ≥ delivered) and pending yields.
-  UX-F — Registrar from Mi Campo: IN PROGRESS (branch claude/ux-f-register-from-fields; no Room
-  change). "Registrar en esta finca/parcela" opens Cuaderno → Registrar hoy with that Farm active
+  UX-F — Registrar from Mi Campo: MERGED (PR #252, owner OK; CI green; no Room change).
+  "Registrar en esta finca/parcela" opens Cuaderno → Registrar hoy with that Farm active
   (and the Parcel in the context line and preselected in the work form); Mi Campo keeps reading
   the same records (Farm Cuaderno section, Parcel Actividad tab).
-  UX-G pending (QA, airplane mode, cold start, accessibility, physical device).
+  UX-G — QA: IN PROGRESS (branch claude/ux-g-qa). E2E success criterion (register → Diario →
+  cold reopen), accessibility labels, gate checklist docs/06-testing/UX-246-GATE-CHECKLIST.md.
+  The reorganisation closes only after the owner's device checks D1–D12.
 
 ⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS; paused)
   20B deploy: functions deployed and validated live by the manual workflow (run #5: forecast 200,
-  radar 200, keyless 401); PR #247 (token secret) and saving the real responses wait on the owner.
+  radar 200, keyless 401); PR #247 (token secret) MERGED 2026-09-27 (owner OK). Real responses
+  stored in docs/06-testing/evidence/phase20b/ with two findings: code 23019 is Campillo de Arenas
+  (not Bedmar), and AEMET hourly failed on that call so MET Norway answered. Next slices
+  (20B-fix, 20B-radar, 20C) planned in the Phase 20 plan. 20B-fix MERGED (PR #257; deploy run #6
+  green by name; its artifact could not be read from this session — owner to paste the summary).
+  20B-radar IN PROGRESS (branch claude/phase20b-radar; no Room change). Issue #246 device check
+  (D1–D12) still pending.
   Plan: docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md (owner decisions D1–D4 recorded).
   20A — Feed foundation + Home external cards: MERGED (PR #243, 2026-09-25, owner OK; CI green;
   no schema change — reuses the v1 weather_cache table).

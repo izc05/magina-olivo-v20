@@ -511,6 +511,71 @@ class AppNavigationTest {
     }
 
     /**
+     * UX-G — Issue #246 success criterion: open the app, tap Cuaderno, Registrar hoy, write
+     * one thing down and see it at once in Diario; after the app is recreated the same Farm
+     * is still the active one and the record is still there (local Room, no network).
+     */
+    @Test
+    fun registerTodayShowsInTheDiaryAndSurvivesARestart() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("add-farm")
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Diario E2E")
+        waitForTag("save-farm")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca Diario E2E")
+        clickByText("Finca Diario E2E")
+        openFarmSection("parcels")
+        createParcel("Parcela Diario E2E")
+        backToFarmHub()
+        openFarmSection("campaigns")
+        waitForTag("add-campaign")
+        openSheet("add-campaign", "campaign-name")
+        composeRule.onNodeWithTag("campaign-name").performTextInput("Campaña Diario E2E")
+        waitForTag("campaign-start-date")
+        pickDate("campaign-start-date", "2026-01-01")
+        waitForTag("campaign-parcel-option")
+        clickInSheetByTag("campaign-parcel-option")
+        waitForTag("save-campaign")
+        clickInSheetByTag("save-campaign")
+        waitForText("Campaña Diario E2E")
+
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        chooseNotebookFarm("Finca Diario E2E")
+        clickByTag("notebook-register-today")
+        waitForTag("register-action-sheet")
+        composeRule.onNodeWithTag("register-today-context").assertTextContains("Finca Diario E2E", substring = true)
+        clickInSheetByTag("register-today-work")
+        waitForTag("register-activity-root")
+        // The Cuaderno's Farm is already the answer: the editor opens straight away.
+        waitForTag("activity-description")
+        composeRule.onNodeWithTag("activity-description").performTextInput("Poda anotada hoy E2E")
+        waitForTag("activity-date")
+        pickDate("activity-date", "2026-02-02")
+        waitForTag("activity-parcel-option")
+        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        clickInSheetByTag("save-activity")
+        waitForTag("activity-row")
+
+        // Back in Mi Cuaderno, the Diario already shows it: saved once, read everywhere.
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        waitForTag("notebook-diary")
+        waitForText("Poda anotada hoy E2E")
+
+        // Cold reopen: the active Farm is remembered on the phone and the record is in Room.
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+        if (composeRule.onAllNodesWithTag("notebook-root").fetchSemanticsNodes().isEmpty()) {
+            composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        }
+        waitForTag("notebook-context")
+        composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca Diario E2E", substring = true)
+        waitForTag("notebook-diary")
+        waitForText("Poda anotada hoy E2E")
+    }
+
+    /**
      * Phase 10: the editor shows the typed block of the chosen type and only that one.
      *
      * This is the no-giant-form guarantee expressed as behaviour: choosing a type swaps
@@ -866,6 +931,24 @@ class AppNavigationTest {
             composeRule.waitForIdle()
         }
         waitForTag("farm-detail-root")
+    }
+
+    /** Mi Cuaderno opens the remembered Farm; earlier tests may have left others behind. */
+    private fun chooseNotebookFarm(name: String) {
+        waitForTag("notebook-context")
+        val alreadyActive = composeRule.onAllNodes(hasTestTag("notebook-context") and hasText(name, substring = true))
+            .fetchSemanticsNodes().isNotEmpty()
+        if (!alreadyActive) {
+            clickByTag("notebook-change-farm")
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                composeRule.onAllNodes(hasTestTag("notebook-farm-option") and hasText(name)).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNode(hasTestTag("notebook-farm-option") and hasText(name)).performScrollTo().performClick()
+        }
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodes(hasTestTag("notebook-context") and hasText(name, substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     private fun createParcel(name: String) {

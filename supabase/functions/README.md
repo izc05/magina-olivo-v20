@@ -30,10 +30,12 @@ supabase functions deploy weather-radar --project-ref zzelvbcuxsboafibfxch
 Do not pass `--no-verify-jwt`.
 
 Or run the manual workflow **Deploy weather functions** (`.github/workflows/deploy-weather-functions.yml`).
-It needs two repository secrets: `SUPABASE_ACCESS_TOKEN` (a Supabase personal access token, for
-the deploy only) and `SUPABASE_ANON_KEY` (public anon key). After deploying it makes one real call
-for Bedmar y Garcíez (23019) and the radar, checks that a call without the key is refused (401), and
-keeps both real responses as the `weather-functions-validation` artifact.
+It needs two repository secrets: `SUPABASE_ACCESS_TOKEN_FULL` (a Supabase personal access token
+with Edge Functions write access, read by the CLI as `SUPABASE_ACCESS_TOKEN`, for the deploy only)
+and `SUPABASE_ANON_KEY` (public anon key). After deploying it makes one real call for Bedmar asked
+by name and province (`{"municipality":"Bedmar","province":"Jaén"}`, as the app asks) and the radar,
+checks that a call without the key is refused (401), writes which provider answered to the run
+summary, and keeps the real responses as the `weather-functions-validation` artifact.
 
 ## Tests
 

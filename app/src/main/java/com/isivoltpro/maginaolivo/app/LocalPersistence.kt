@@ -17,6 +17,7 @@ import com.isivoltpro.maginaolivo.domain.organization.OrganizationRepository
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderReconciler
+import com.isivoltpro.maginaolivo.domain.weather.RadarSource
 import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
 
 data class LocalPersistence(
@@ -42,4 +43,6 @@ data class LocalPersistence(
     val reminders: ReminderReconciler? = null,
     /** Phase 20A: Inicio's weather, cache first. Null where no feed exists (tests). */
     val weatherFeed: WeatherFeed? = null,
+    /** Phase 20B-radar: live radar pictures, never cached. Null where not configured. */
+    val radarSource: RadarSource? = null,
 )
