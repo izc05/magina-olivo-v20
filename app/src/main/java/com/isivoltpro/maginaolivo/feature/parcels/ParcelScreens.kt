@@ -178,7 +178,8 @@ fun FarmParcelsSection(
     if (addOptionsVisible) {
         ParcelAddMethodOptions(
             onManual = { addOptionsVisible = false; editorVisible = true },
-            onMap = onMap ?: onImportFromCatastro,
+            // The chooser closes first, so coming back from the map or Catastro shows the list.
+            onMap = (onMap ?: onImportFromCatastro)?.let { open -> { addOptionsVisible = false; open() } },
             onDismiss = { addOptionsVisible = false },
             mapTitle = if (onMap != null) "Desde el mapa y Catastro" else "Buscar en Catastro",
             mapSubtitle = if (onMap != null) "Marca una o varias parcelas" else "Con la referencia catastral",

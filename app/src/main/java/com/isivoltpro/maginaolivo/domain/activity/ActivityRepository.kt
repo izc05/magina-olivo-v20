@@ -94,7 +94,8 @@ data class NewActivity(
     val asDraft: Boolean = false,
     /**
      * Records made through Cuaderno's "Registrar hoy" are already performed: saved as Completed
-     * unless the date is still ahead or a reminder is asked for (then it is planned work).
+     * unless the date is still ahead, a reminder is asked for, or it is a [ActivityType.HARVEST_DAY]
+     * appointment (then it is planned work).
      */
     val completeImmediately: Boolean = false,
     /** The typed agronomic detail. It must match [type], and may be absent. */

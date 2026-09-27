@@ -179,6 +179,14 @@ class ActivityEngineContractTest {
         assertEquals(ActivityStatus.COMPLETED, db.activityDao().findById(todayId)?.status)
         assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(plannedId)?.status)
         assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(aheadId)?.status)
+        // A harvest day is an appointment the agenda shows while planned, even if dated today.
+        val harvestDayId = (repository.create(
+            NewActivity(
+                farmId, null, ActivityType.HARVEST_DAY, today, "Jornada de recogida", setOf(parcelA),
+                completeImmediately = true,
+            ),
+        ) as AppResult.Success).value
+        assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(harvestDayId)?.status)
     }
 
     @Test
