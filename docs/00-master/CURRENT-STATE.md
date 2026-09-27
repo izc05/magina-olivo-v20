@@ -51,13 +51,17 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   UX-D — Registrar hoy (¿Qué has hecho hoy? → existing form with the type preset, today's date,
   Farm/Campaign context shown, saved confirmation): MERGED (PR #250, 2026-09-25, owner OK; CI green;
   no Room change).
-  UX-E — Diario + specialised views: IN PROGRESS (branch claude/ux-e-diario; no Room change).
+  UX-E — Diario + specialised views: MERGED (PR #251, 2026-09-25, owner OK; CI green; no Room change).
   Diario = one timeline of work, jornadas, pesadas and expenses (an Activity's own cost is not
   listed twice); Fitosanitario = the treatment Activities with product, active substance, dose,
   parcel/surface, reason, machinery and "Falta: …" for missing values (legal model still open);
   Gastos = the one ledger grouped by jornales, maquinaria and facturas/documentos; Campaña = the
   summary plus "Pendiente de entregar" (only when picked ≥ delivered) and pending yields.
-  UX-F … UX-G pending, one small PR each (Issue #246 §8).
+  UX-F — Registrar from Mi Campo: IN PROGRESS (branch claude/ux-f-register-from-fields; no Room
+  change). "Registrar en esta finca/parcela" opens Cuaderno → Registrar hoy with that Farm active
+  (and the Parcel in the context line and preselected in the work form); Mi Campo keeps reading
+  the same records (Farm Cuaderno section, Parcel Actividad tab).
+  UX-G pending (QA, airplane mode, cold start, accessibility, physical device).
 
 ⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS; paused)
   20B deploy: functions deployed and validated live by the manual workflow (run #5: forecast 200,

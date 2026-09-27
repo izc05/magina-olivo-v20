@@ -287,6 +287,8 @@ fun FarmDetailRoute(
     onOpenSection: (FarmSection) -> Unit,
     onArchived: () -> Unit,
     modifier: Modifier = Modifier,
+    /** UX-F (Issue #246 §5): opens Mi Cuaderno → Registrar hoy with this Farm chosen. */
+    onRegister: (() -> Unit)? = null,
 ) {
     val viewModel: FarmDetailViewModel = viewModel(
         key = "farm-$farmId",
@@ -309,6 +311,7 @@ fun FarmDetailRoute(
         onArchived = onArchived,
         onOpenSection = onOpenSection,
         modifier = modifier,
+        onRegister = onRegister,
     )
 }
 
@@ -322,6 +325,7 @@ fun FarmDetailScreen(
     onArchived: () -> Unit,
     onOpenSection: (FarmSection) -> Unit = {},
     modifier: Modifier = Modifier,
+    onRegister: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -375,6 +379,7 @@ fun FarmDetailScreen(
                 onArchive = { archiveConfirmation = true },
                 onOpenSection = onOpenSection,
                 modifier = Modifier.padding(innerPadding),
+                onRegister = onRegister,
             )
         }
     }
@@ -441,6 +446,7 @@ private fun FarmDetailContent(
     onArchive: () -> Unit,
     onOpenSection: (FarmSection) -> Unit,
     modifier: Modifier = Modifier,
+    onRegister: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -473,6 +479,10 @@ private fun FarmDetailContent(
                 ),
                 Modifier.testTag("farm-stats"),
             )
+            // UX-F: Mi Campo is for looking; writing down goes through Mi Cuaderno, this Farm chosen.
+            onRegister?.let { register ->
+                MoPrimaryButton("Registrar en esta finca", register, Modifier.fillMaxWidth().testTag("farm-register"))
+            }
             SectionEntry(FarmSection.PARCELS, MoIcons.Parcels, if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas", onOpenSection)
             SectionEntry(FarmSection.NOTEBOOK, MoIcons.Checklist, "Trabajos del año, recolección y resumen", onOpenSection)
             SectionEntry(FarmSection.CAMPAIGNS, MoIcons.Campaign, farm.activeCampaignName ?: "Sin campaña activa", onOpenSection)

@@ -209,6 +209,8 @@ fun ParcelDetailRoute(
     persistence: LocalPersistence,
     onArchived: () -> Unit,
     onLocate: ((UUID) -> Unit)? = null,
+    /** UX-F (Issue #246 §5): opens Mi Cuaderno → Registrar hoy with this Parcel's Farm and the Parcel. */
+    onRegister: ((farmId: UUID, parcelName: String) -> Unit)? = null,
 ) {
     val viewModel: ParcelDetailViewModel = viewModel(
         key = "parcel-$parcelId",
@@ -225,6 +227,7 @@ fun ParcelDetailRoute(
         onArchive = viewModel::archive,
         onArchived = onArchived,
         onLocate = onLocate,
+        onRegister = onRegister,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.PARCEL, parcelId),
@@ -244,6 +247,7 @@ fun ParcelDetailScreen(
     onArchived: () -> Unit,
     attachmentContent: @Composable () -> Unit = {},
     onLocate: ((UUID) -> Unit)? = null,
+    onRegister: ((farmId: UUID, parcelName: String) -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -278,6 +282,10 @@ fun ParcelDetailScreen(
                 onLocate = state.parcel.farmId
                     ?.takeIf { state.parcel.geometryGeoJson == null && state.parcel.archivedAt == null }
                     ?.let { farmId -> onLocate?.let { locate -> { locate(farmId) } } },
+                // Only an active parcel that belongs to a farm can be written into.
+                onRegister = state.parcel.farmId
+                    ?.takeIf { state.parcel.archivedAt == null }
+                    ?.let { farmId -> onRegister?.let { register -> { register(farmId, state.parcel.displayName) } } },
             )
         }
     }
@@ -316,6 +324,7 @@ private fun ParcelDetailContent(
     attachmentContent: @Composable () -> Unit,
     modifier: Modifier,
     onLocate: (() -> Unit)? = null,
+    onRegister: (() -> Unit)? = null,
 ) {
     var tab by rememberSaveable { mutableStateOf(ParcelTab.ACTIVITY) }
     Column(
@@ -348,6 +357,10 @@ private fun ParcelDetailContent(
                 MoStatTile(MoStat("Olivos", agronomy.oliveTreeCount?.let(::grouped) ?: "—", MoIcons.Olive), Modifier.weight(1f).testTag("parcel-stat-trees"))
                 MoStatTile(MoStat("Variedad", agronomy.variety ?: "—", MoIcons.Leaf), Modifier.weight(1f).testTag("parcel-stat-variety"))
                 MoStatTile(MoStat("Riego", agronomy.irrigationSystem?.shortLabel() ?: "—", MoIcons.Drop), Modifier.weight(1f).testTag("parcel-stat-irrigation"))
+            }
+            // UX-F: writing down goes through Mi Cuaderno, with this Parcel already chosen.
+            onRegister?.let { register ->
+                MoPrimaryButton("Registrar en esta parcela", register, Modifier.fillMaxWidth().testTag("parcel-register"))
             }
             onLocate?.let {
                 MoCompactListItem(
