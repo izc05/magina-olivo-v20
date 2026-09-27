@@ -36,4 +36,4 @@ No se encontró autenticación en esta versión. Catastro en vivo es un flujo de
 
 ## Git
 
-Base `0cd1fa4e`; commits existentes en la rama: `54d518d9` (simplificación de alta vacía) y `d3411d75` (avance de auditoría). Los cambios de regreso visible y este informe se registrarán en un commit separado. Sin push, PR nuevo ni merge.
+Base `0cd1fa4e`; commits existentes en la rama: `54d518d9` (simplificación de alta vacía), `d3411d75` (avance de auditoría) y `384c7015` (regreso visible, prueba y evidencias). Sin push, PR nuevo ni merge.
