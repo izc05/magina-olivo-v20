@@ -41,9 +41,9 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ 20D-1 IN PROGRESS (PR #273, Claude) — Inicio "Mercado del aceite" card, app 0.4.0.
+▶ WAITING ON OWNER: run "Deploy oil-market function" (live Junta check + deploy), then 20D-3.
   Owner device checks (Gate 20, D1–D12, #254) still pending.
-  App version on main: 0.3.0 (docs/CHANGELOG-APP.md; Perfil shows "Versión · compilación").
+  App version on main: 0.4.0 (docs/CHANGELOG-APP.md; Perfil shows "Versión · compilación").
 
   Issue #246 / CR-007 UX reorganisation: UX-A…UX-F MERGED (#248–#252); UX-G QA done in CI.
   Closes with the owner's device checks D1–D12 (docs/06-testing/UX-246-GATE-CHECKLIST.md).
@@ -61,9 +61,14 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   almazara/bodega; MAPA and EU DG AGRI as comparison sources; POOLred not approved) — next slice,
   executor Claude, own PR after documenting access/reuse + fixtures. Free MVP (Issue #271):
   AOVE.net widget as "Pulso diario" (publisher-hosted, nothing copied) + Junta weekly trend.
-  20D-1 (PR #273): domain trend, normalized JSON parser, cached feed, Home card; the `oil-market`
-  Edge Function is not deployed yet, so the official trend shows "Sin fuente configurada".
-  20D-2: `oil-market` Edge Function (Junta adapter) + market screen. 20E cooperative notices:
+  20D-1 MERGED (PR #273, 0.4.0): domain trend, normalized JSON parser, cached feed, Home card;
+  the app switch OIL_MARKET_FUNCTION_DEPLOYED is off, so the official trend says "Sin fuente
+  configurada" until the function is live.
+  20D-2 MERGED (PR #274): `oil-market` Edge Function (Junta adapter, label-anchored parser;
+  fixture = owner's verified weeks 31–38 in synthetic markup) + manual workflow "Deploy
+  oil-market function" that parses the live page before deploying. NOT DEPLOYED yet.
+  20D-3 (after a successful deploy run): switch on in the app + "Mercado del aceite" screen with
+  the 12-week chart. 20E cooperative notices:
   DEFERRED (D4). Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md (G1–G7).
   Still owed by the owner: deploy run #6 summary and the AEMET error line.
 
