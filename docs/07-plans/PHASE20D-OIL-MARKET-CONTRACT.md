@@ -74,6 +74,83 @@ agreement from Fundación del Olivar. Manual cross-check only until that happens
 Olimerca / COAG / AgroCLM and similar sources may be used for manual validation and context.
 They are not a production source of truth unless reuse permission is confirmed.
 
+## Free market pulse strategy (owner decision 2026-09-27)
+
+The production MVP must work **without paid market APIs**.
+
+### Layer A — Daily pulse (free display source)
+
+Use the **AOVE.net free embeddable widget** as the online daily pulse:
+
+`https://aove.net/widget/precio-aceite-oliva-hoy/`
+
+Publisher documentation:
+`https://aove.net/insertar-widget-precio-aceite-oliva/`
+
+AOVE.net explicitly publishes this widget for embedding in third-party sites and it currently shows:
+- AOVE
+- Virgen
+- Lampante
+- market date
+- last update time
+
+Its methodology is an **orientative daily wholesale reference**, described by the publisher as an
+average/reference built from InfaOliva, Almazaras Federadas de Córdoba and MAPA. It is not an
+official quotation and must be labelled as such.
+
+Integration rule:
+- render the remote widget/content as publisher-hosted web content (Android WebView or equivalent)
+  with visible **Fuente: AOVE.net** attribution and a link to the detailed page;
+- do not scrape/extract/re-publish the widget values as our own native dataset unless the publisher
+  explicitly grants that additional permission;
+- online only: if it cannot load, show an honest unavailable/offline state rather than cached web
+  content pretending to be current;
+- this gives the Home screen a genuinely changing daily reference without paid API cost.
+
+### Layer B — Native trend + graphs (free official sources)
+
+Build our own native graph and trend indicators from sources with suitable public/official reuse:
+
+1. **Junta de Andalucía Observatorio** — primary Andalucía weekly series.
+2. **MAPA** — Spain/CCAA/representative-market weekly series.
+3. **European Commission DG AGRI** — EU comparison/history.
+
+From two consecutive observations of the **same source + geography + category**, calculate:
+- absolute change: `current - previous`;
+- percentage change: `(current - previous) / previous * 100`;
+- direction: UP / DOWN / FLAT.
+
+Do not label this as "today" when the source is weekly. UI copy examples:
+- `Tendencia semanal · AOVE ↓ 5,7 %`
+- `Virgen ↑ 0,3 %`
+- `Lampante ↓ 1,3 %`
+- `Último dato oficial: semana 38`
+
+Verified Junta example, week 37 -> week 38:
+- AOVE: 3.67 -> 3.46 EUR/kg = -0.21 EUR/kg (~ -5.7%)
+- Virgen: 3.30 -> 3.31 EUR/kg = +0.01 EUR/kg (~ +0.3%)
+- Lampante: 3.19 -> 3.15 EUR/kg = -0.04 EUR/kg (~ -1.3%)
+
+This is the "market feels alive" behaviour: arrows/labels update whenever a new official observation
+arrives, while the free daily widget provides a more frequent current pulse.
+
+### Home composition
+
+Recommended card:
+- header: `Mercado del aceite`;
+- daily subcard/row: `Pulso diario` — AOVE.net widget while online;
+- native row: `Tendencia oficial` — arrows + deltas from Junta;
+- source/date always visible;
+- CTA `Ver mercado`.
+
+### Detailed screen
+
+- `Pulso diario`: publisher-hosted AOVE.net block (online).
+- `12 semanas`: native Junta chart with AOVE / Virgen / Lampante.
+- `Campaña`: native official chart when enough observations exist.
+- optional source selector: Andalucía / España / Europa.
+- no fake intraday animation. New visual movement only follows a real new source observation.
+
 ## Live / intraday market layer
 
 Owner requirement (2026-09-27): the user should be able to see a chart that **moves during the
