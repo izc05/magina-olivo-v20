@@ -144,3 +144,49 @@ BuildConfig" note of the 20B slice above.
   - `ArchitectureBoundaryTest` updated per CR-006.
 - **Deploy (owner):** `supabase functions deploy weather-forecast` and `weather-radar` from this
   source (keep JWT verification). Until then the deployed functions keep their old contract.
+
+## Live deploy evidence (2026-09-25, stored 2026-09-27)
+
+`docs/06-testing/evidence/phase20b/`: forecast 200, radar 200, keyless 401 (`verify_jwt` live).
+Two findings carried into the next slices: the validation code 23019 is Campillo de Arenas (not
+Bedmar y Garcíez; real code pending verification), and AEMET's hourly endpoint failed on that call
+so MET Norway answered (fallback worked; reason to be read in the Supabase logs).
+
+## Prepared plan — resumes only after Issue #246 closes (UX-G device check)
+
+Documentation only; no production code until the Issue #246 gate is closed and the owner says
+"continue with Phase 20". One slice at a time, each its own PR.
+
+### 20B-fix — validation and labels (small, first)
+- Deploy workflow: validation call by name `{"municipality":"Bedmar","province":"Jaén"}`; step and
+  evidence names without a hard-coded code.
+- `forecast.test.ts` synthetic master list: stop pairing 23019 with Bedmar (use the verified code
+  or a neutral example code); fixtures stay offline.
+- Owner reads the AEMET failure reason in the Supabase logs; if it is a timeout, raise
+  `timeoutMs` for the AEMET call only (the MET Norway fallback keeps the card alive meanwhile).
+- DoD: fixture tests green; one manual deploy run with new evidence stored beside the old one.
+
+### 20B-radar — "Ver radar" screen
+- `data/remote/weather/EdgeRadarSource.kt`: HTTPS POST `{"operation":"frames"}` to
+  `weather-radar` with the anon key (same boundary as `EdgeWeatherSource`, allowed by CR-006);
+  strict parse of `provider`, `attribution`, `updatedAt`, `frames[time, tileUrlTemplate]`.
+- Domain `RadarFrames` + `RadarSource`; no Room table (radar is live-only; frames are not cached as
+  if they were fresh — spec §10 "requires connection and says so offline").
+- UI: Inicio weather card → "Ver radar" → `RadarRoute` on the existing MapLibre view: the Farm's
+  area, latest frame as a raster layer, frame time ("Radar de las 11:00"), attribution
+  "Radar: RainViewer"; optional play/scrub of the past frames. Offline or error → message
+  "El radar necesita conexión" and a retry; never a blank map pretending to be current.
+- Route nested under Inicio (no new root; frozen nav CR-007).
+- Tests: parse from the stored real response (`weather-radar-frames.json`) and from fixtures;
+  offline state; frame time shown; `ArchitectureBoundaryTest` still passes.
+
+### 20C — weather-responsive visual layer
+- Pure mapping `WeatherCondition → WeatherMood` (CLEAR / CLOUDY / RAIN / WIND / FOG / STORM);
+  unknown or stale → no mood (static header).
+- Lightweight Compose drawing behind the Inicio header only; off when system animations are
+  disabled (reduced motion) and simplified on low-performance devices; text contrast kept
+  (WCAG AA against the brand tokens).
+- Tests: mapping table (JVM); reduced motion ⇒ static; unknown ⇒ none.
+
+### Still blocked
+- 20D oil market (no approved source, D3) and 20E cooperative notices (D4, admin surface).

@@ -65,7 +65,10 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 
 ⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS (opened 2026-09-25 after Gate 19 PASS; paused)
   20B deploy: functions deployed and validated live by the manual workflow (run #5: forecast 200,
-  radar 200, keyless 401); PR #247 (token secret) and saving the real responses wait on the owner.
+  radar 200, keyless 401); PR #247 (token secret) MERGED 2026-09-27 (owner OK). Real responses
+  stored in docs/06-testing/evidence/phase20b/ with two findings: code 23019 is Campillo de Arenas
+  (not Bedmar), and AEMET hourly failed on that call so MET Norway answered. Next slices
+  (20B-fix, 20B-radar, 20C) planned in the Phase 20 plan; they start only after Issue #246 closes.
   Plan: docs/07-plans/PHASE20-HOME-CONTEXTUAL-SERVICES.md (owner decisions D1–D4 recorded).
   20A — Feed foundation + Home external cards: MERGED (PR #243, 2026-09-25, owner OK; CI green;
   no schema change — reuses the v1 weather_cache table).
