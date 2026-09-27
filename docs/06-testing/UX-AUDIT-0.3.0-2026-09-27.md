@@ -36,4 +36,4 @@ No se encontró autenticación en esta versión. Catastro en vivo es un flujo de
 
 ## Git
 
-Base `0cd1fa4e`; commits existentes en la rama: `54d518d9` (simplificación de alta vacía), `d3411d75` (avance de auditoría) y `384c7015` (regreso visible, prueba y evidencias). Sin push, PR nuevo ni merge.
+Base `0cd1fa4e`; commits existentes en la rama: `54d518d9` (simplificación de alta vacía), `d3411d75` (avance de auditoría) y `384c7015` (regreso visible, prueba y evidencias). Rama publicada en `origin/codex/ux-audit-0.3.0`; no se ha abierto PR ni hecho merge.
