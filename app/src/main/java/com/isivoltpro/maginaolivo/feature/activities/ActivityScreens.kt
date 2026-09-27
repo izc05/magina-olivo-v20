@@ -68,6 +68,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
+import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
@@ -100,6 +101,10 @@ fun FarmActivitiesRoute(
     editorTitle: String = "Nueva actuación",
     /** The Cuaderno already asked for the type, so the editor must not ask again. */
     lockInitialType: Boolean = false,
+    /** Register-from-notebook uses a real page; farm history keeps its contextual sheet. */
+    editorAsScreen: Boolean = false,
+    /** "Registrar hoy" is a diary entry for work already done, unlike farm planning. */
+    completeOnSave: Boolean = false,
 ) {
     val vm: FarmActivitiesViewModel = viewModel(key = "farm-activities-$farmId", factory = viewModelFactory {
         initializer { FarmActivitiesViewModel(farmId, persistence.activityRepository) }
@@ -108,11 +113,12 @@ fun FarmActivitiesRoute(
     FarmActivitiesSection(
         state = state,
         onActivitySelected = onActivitySelected,
-        onCreate = vm::create,
+        onCreate = { draft, asDraft -> vm.create(draft, asDraft, completeImmediately = completeOnSave && !asDraft) },
         startWithEditor = startWithEditor,
         initialDraft = initialDraft,
         editorTitle = editorTitle,
         lockInitialType = lockInitialType,
+        editorAsScreen = editorAsScreen,
     )
 }
 
@@ -126,52 +132,70 @@ fun FarmActivitiesSection(
     initialDraft: ActivityDraft = ActivityDraft(),
     editorTitle: String = "Nueva actuación",
     lockInitialType: Boolean = false,
+    editorAsScreen: Boolean = false,
 ) {
     var editor by rememberSaveable { mutableStateOf(startWithEditor) }
     LaunchedEffect(state.message) { if (state.message != null) editor = false }
-    // UX-D: saving is confirmed where the farmer is looking, not only by the closed sheet.
-    state.message?.let { message ->
-        MoStatusChip(message, tone = MoStatusTone.Success, modifier = Modifier.testTag("activities-saved"))
-    }
-    MoSectionHeader(
-        "Actuaciones",
-        action = {
-            TextButton(onClick = { editor = true }, modifier = Modifier.testTag("add-activity")) { Text("Añadir") }
-        },
-    )
-    when {
-        state.isLoading -> CircularProgressIndicator()
-        state.error != null -> MoErrorState("No pudimos abrir las actuaciones", state.error)
-        state.drafts.isEmpty() && state.planned.isEmpty() && state.history.isEmpty() ->
-            MoEmptyState("Aún no hay actuaciones", "Registra un trabajo y selecciona las parcelas donde se realiza.", icon = MoIcons.Activity)
-        else -> {
-            if (state.drafts.isNotEmpty()) {
-                MoSectionHeader("Borradores")
-                state.drafts.forEach { ActivityRow(it, onActivitySelected) }
-            }
-            state.planned.forEach { ActivityRow(it, onActivitySelected) }
-            if (state.history.isNotEmpty()) {
-                MoSectionHeader("Histórico")
-                state.history.forEach { ActivityRow(it, onActivitySelected) }
+    if (editorAsScreen && editor) {
+        ActivityEditor(
+            parcels = state.parcels,
+            machines = state.machines,
+            descriptionError = state.descriptionError,
+            dateError = state.dateError,
+            parcelsError = state.parcelsError,
+            isSaving = state.isSaving,
+            onSave = { draft -> onCreate(draft, false) },
+            onSaveDraft = { draft -> onCreate(draft, true) },
+            onCancel = { editor = false },
+            initial = initialDraft,
+            title = editorTitle,
+            lockInitialType = lockInitialType,
+        )
+    } else {
+        // UX-D: saving is confirmed where the farmer is looking, not only by the closed sheet.
+        state.message?.let { message ->
+            MoStatusChip(message, tone = MoStatusTone.Success, modifier = Modifier.testTag("activities-saved"))
+        }
+        MoSectionHeader(
+            "Actuaciones",
+            action = {
+                TextButton(onClick = { editor = true }, modifier = Modifier.testTag("add-activity")) { Text("Añadir") }
+            },
+        )
+        when {
+            state.isLoading -> CircularProgressIndicator()
+            state.error != null -> MoErrorState("No pudimos abrir las actuaciones", state.error)
+            state.drafts.isEmpty() && state.planned.isEmpty() && state.history.isEmpty() ->
+                MoEmptyState("Aún no hay actuaciones", "Registra un trabajo y selecciona las parcelas donde se realiza.", icon = MoIcons.Activity)
+            else -> {
+                if (state.drafts.isNotEmpty()) {
+                    MoSectionHeader("Borradores")
+                    state.drafts.forEach { ActivityRow(it, onActivitySelected) }
+                }
+                state.planned.forEach { ActivityRow(it, onActivitySelected) }
+                if (state.history.isNotEmpty()) {
+                    MoSectionHeader("Histórico")
+                    state.history.forEach { ActivityRow(it, onActivitySelected) }
+                }
             }
         }
-    }
-    if (editor) {
-        ModalBottomSheet(onDismissRequest = { editor = false }) {
-            ActivityEditor(
-                parcels = state.parcels,
-                machines = state.machines,
-                descriptionError = state.descriptionError,
-                dateError = state.dateError,
-                parcelsError = state.parcelsError,
-                isSaving = state.isSaving,
-                onSave = { draft -> onCreate(draft, false) },
-                onSaveDraft = { draft -> onCreate(draft, true) },
-                onCancel = { editor = false },
-                initial = initialDraft,
-                title = editorTitle,
-                lockInitialType = lockInitialType,
-            )
+        if (editor) {
+            ModalBottomSheet(onDismissRequest = { editor = false }) {
+                ActivityEditor(
+                    parcels = state.parcels,
+                    machines = state.machines,
+                    descriptionError = state.descriptionError,
+                    dateError = state.dateError,
+                    parcelsError = state.parcelsError,
+                    isSaving = state.isSaving,
+                    onSave = { draft -> onCreate(draft, false) },
+                    onSaveDraft = { draft -> onCreate(draft, true) },
+                    onCancel = { editor = false },
+                    initial = initialDraft,
+                    title = editorTitle,
+                    lockInitialType = lockInitialType,
+                )
+            }
         }
     }
 }
@@ -194,6 +218,8 @@ fun RegisterActivityRoute(
     /** UX-F: the Parcel "Registrar" was pressed on; it belongs to [preselectedFarmId]. */
     preselectedParcelId: UUID? = null,
 ) {
+    var selectedTypeName by rememberSaveable { mutableStateOf(presetType?.name) }
+    LaunchedEffect(presetType) { if (presetType != null) selectedTypeName = presetType.name }
     // The Farm the Parcel belongs to, kept after the Farm preselection is consumed.
     val parcelFarmId by rememberSaveable { mutableStateOf(preselectedFarmId?.toString()) }
     val vm: RegisterActivityViewModel = viewModel(factory = viewModelFactory {
@@ -219,15 +245,13 @@ fun RegisterActivityRoute(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .statusBarsPadding()
-                .verticalScroll(rememberScrollState())
+                .then(if (selectedTypeName == null || state.selectedFarmId == null) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                 .padding(horizontal = MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
         ) {
-            Text(
-                "Registrar actuación",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MoOliveDark,
-            )
+            if (selectedTypeName == null) {
+                Text("Registrar actuación", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            }
             when {
                 state.isLoading -> CircularProgressIndicator()
                 state.error != null -> MoErrorState(
@@ -249,6 +273,14 @@ fun RegisterActivityRoute(
                         }
                     } else {
                         val selectedFarm = state.farms.firstOrNull { it.id == selectedFarmId }
+                        val activityType = selectedTypeName?.let { runCatching { ActivityType.valueOf(it) }.getOrNull() }
+                        if (activityType == null) {
+                            ActivityTypeChooser(
+                                farmName = selectedFarm?.name.orEmpty(),
+                                onSelected = { selectedTypeName = it.name },
+                            )
+                            return@Column
+                        }
                         val changeFarm: (@Composable () -> Unit)? =
                             if (state.farms.size > 1) {
                                 {
@@ -268,22 +300,58 @@ fun RegisterActivityRoute(
                             startWithEditor = true,
                             // Today by default (editable); the type already chosen; the Farm in the title.
                             initialDraft = ActivityDraft(
-                                type = presetType ?: ActivityType.OBSERVATION,
+                                type = activityType,
                                 activityDate = LocalDate.now(),
+                                description = activityType.label(),
                                 // Only while the Parcel's own Farm is the one chosen.
                                 parcelIds = preselectedParcelId
                                     ?.takeIf { selectedFarmId.toString() == parcelFarmId }
                                     ?.let { setOf(it) }
                                     .orEmpty(),
                             ),
-                            editorTitle = listOfNotNull(presetType?.label() ?: "Nueva actuación", selectedFarm?.name).joinToString(" · "),
-                            lockInitialType = presetType != null,
+                            editorTitle = activityType.label(),
+                            lockInitialType = true,
+                            editorAsScreen = true,
+                            completeOnSave = true,
                         )
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+internal fun ActivityTypeChooser(farmName: String, onSelected: (ActivityType) -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().testTag("activity-type-chooser"),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+    ) {
+        Text("¿Qué trabajo vas a apuntar?", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text(farmName, style = MaterialTheme.typography.titleMedium, color = MoTextSecondary)
+        ActivityType.entries.forEach { type ->
+            MoCompactListItem(
+                title = type.label(),
+                subtitle = type.shortDescription(),
+                icon = type.icon(),
+                onClick = { onSelected(type) },
+                modifier = Modifier.testTag("register-activity-type-${type.name.lowercase()}"),
+            )
+        }
+    }
+}
+
+private fun ActivityType.shortDescription(): String = when (this) {
+    ActivityType.OBSERVATION -> "Revisar el estado del olivar"
+    ActivityType.PRUNING -> "Poda de los olivos"
+    ActivityType.SOIL_WORK -> "Desbroce, laboreo y suelo"
+    ActivityType.FERTILIZATION -> "Abono y nutrientes"
+    ActivityType.PHYTOSANITARY -> "Cura y tratamiento"
+    ActivityType.IRRIGATION -> "Agua, horas y sector"
+    ActivityType.MAINTENANCE -> "Reparaciones y mantenimiento"
+    ActivityType.INCIDENT -> "Daños o incidencias"
+    ActivityType.OTHER -> "Otro trabajo del campo"
+    ActivityType.HARVEST_DAY -> "Organizar una jornada de recogida"
 }
 
 @Composable
@@ -365,6 +433,9 @@ internal fun ActivityEditor(
     val detailFields = remember(initial.detail) {
         mutableStateMapOf<String, String>().apply { putAll(initial.detail.toFields()) }
     }
+    var agronomicDetailsOpen by rememberSaveable(initial.type) {
+        mutableStateOf(initial.detail.toFields().isNotEmpty())
+    }
     // Selected machine id → the hours typed for it ("" when not given).
     val machineHours = remember(initial.machines) {
         mutableStateMapOf<String, String>().apply {
@@ -433,10 +504,31 @@ internal fun ActivityEditor(
             isError = dateError != null, supportingText = dateError,
             modifier = Modifier.testTag("activity-date"),
         )
-        ActivityTypedDetailFields(
-            type = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
-            fields = detailFields,
-        )
+        val activityType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
+        if (activityType.hasTypedDetail()) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .clickable(role = Role.Button) { agronomicDetailsOpen = !agronomicDetailsOpen }
+                    .testTag("activity-detail-more"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+            ) {
+                Icon(
+                    if (agronomicDetailsOpen) MoIcons.ChevronDown else MoIcons.ChevronRight,
+                    contentDescription = null,
+                    tint = MoOliveMid,
+                )
+                Column(Modifier.weight(1f)) {
+                    Text("Detalles de ${activityType.label().lowercase()}", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
+                    if (!agronomicDetailsOpen) {
+                        Text("Datos opcionales", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+                    }
+                }
+            }
+            if (agronomicDetailsOpen) {
+                ActivityTypedDetailFields(type = activityType, fields = detailFields)
+            }
+        }
         FormLabel("Parcelas")
         // One canonical Activity may target many Parcels; selecting several never
         // creates several Activities.

@@ -43,6 +43,12 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ```text
 ▶ WAITING ON OWNER: run "Deploy oil-market function" (live Junta check + deploy), then 20D-3.
   Owner device checks (Gate 20, D1–D12, #254) still pending.
+  UX owner-feedback review (Codex, branch codex/android-ux-review-0.3.0 @71a5e7f, reviewed and
+  merged by Claude): Mi Campo empty state, farm/parcel forms folded, single "Añadir" for parcels,
+  "Registrar hoy" type-first + Completed. Report: docs/06-testing/UX-OWNER-FEEDBACK-2026-09-27.md.
+  GLOBAL UX AUDIT NOT COMPLETE: Inicio next (hierarchy/density with the owner; "campaña en
+  Preparación" wording), then Producción/Gastos, Perfil/Ajustes, Avisos, Maquinaria, Mapa/Catastro,
+  offline and every activity type — on the emulator's existing data set (no data wipe).
   App version on main: 0.4.0 (docs/CHANGELOG-APP.md; Perfil shows "Versión · compilación").
 
   Issue #246 / CR-007 UX reorganisation: UX-A…UX-F MERGED (#248–#252); UX-G QA done in CI.
