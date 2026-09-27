@@ -551,8 +551,9 @@ internal fun ParcelEditor(
         mutableStateOf(
             initial.oliveTreeCount.isNotBlank() || initial.variety.isNotBlank() || initial.irrigationSystem != null ||
                 initial.cadastralReference.isNotBlank() || initial.cadastralPolygon.isNotBlank() ||
+                // Province is not counted: a new parcel comes with "Jaén" filled in.
                 initial.cadastralParcel.isNotBlank() || initial.municipality.isNotBlank() ||
-                initial.province.isNotBlank() || initial.notes.isNotBlank(),
+                initial.notes.isNotBlank(),
         )
     }
     val focusManager = LocalFocusManager.current
