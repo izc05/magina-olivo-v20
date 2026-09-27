@@ -30,7 +30,7 @@ test("every captured week and category comes back exactly as the owner verified 
 
 test("the live Junta header format with a date range after each week is parsed", () => {
   const liveLike = PAGE.replace(
-    /<th>Semana (\\d+)<\\/th>/g,
+    /<th>Semana (\d+)<\/th>/g,
     (_match, week) => `<td class="cabInforme"> Semana ${week}:<BR /><span>(14/9/26 -<BR />20/9/26)</span></td>`,
   );
   const values = parseJuntaPage(liveLike, NOW);
