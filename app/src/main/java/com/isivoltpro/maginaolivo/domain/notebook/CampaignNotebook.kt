@@ -17,7 +17,9 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentSummary
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
+import com.isivoltpro.maginaolivo.domain.labour.LabourByWorker
 import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
+import com.isivoltpro.maginaolivo.domain.labour.WorkerLabour
 import java.time.LocalDate
 
 /**
@@ -45,6 +47,10 @@ data class CampaignNotebook(
     val equipmentSummary: EquipmentSummary = EquipmentSummary.of(equipment.filter { line -> harvests.any { it.id == line.harvestId } })
 
     val labourSummary: LabourSummary = LabourSummary.of(labour.filter { entry -> harvests.any { it.id == entry.harvestId } })
+
+    /** 254-D: the same lines per person (stable worker id), plus those recorded without names. */
+    val labourByWorker: List<WorkerLabour> = LabourByWorker.of(labour.filter { entry -> harvests.any { it.id == entry.harvestId } })
+    val unnamedLabour: LabourSummary = LabourByWorker.unnamed(labour.filter { entry -> harvests.any { it.id == entry.harvestId } })
 
     /** Phase 19D: the jornales of one Jornada. */
     fun labourFor(harvestId: java.util.UUID): LabourSummary = LabourSummary.of(labour.filter { it.harvestId == harvestId })

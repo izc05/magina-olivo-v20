@@ -11,7 +11,13 @@ Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.
 Para saber qué lleva un APK: mira la versión en el Perfil y busca abajo su bloque; la compilación
 concreta está en la ejecución de CI con ese número (Actions → Android CI → #número).
 
-## 0.2.0 — 27/09/2026 (en curso)
+## 0.3.0 — en curso
+
+- Jornales por persona en el resumen de la campaña: una fila por trabajador (por su identificador,
+  aunque cambie de nombre) y los jornales anotados solo como número, aparte («Sin nombre»); la
+  tarjeta dice «N jornales · M personas» en lugar de «N personas» (254-D).
+
+## 0.2.0 — 27/09/2026 (compilación 532)
 
 Recolección, Cuaderno y formularios, tras las pruebas del propietario en el móvil.
 

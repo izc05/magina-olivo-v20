@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
@@ -399,13 +400,32 @@ internal fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignCom
             )
         }
         if (!notebook.labourSummary.isEmpty) {
+            val named = notebook.labourByWorker.size
             MoSummaryMetric(
                 "Jornales",
-                if (notebook.labourSummary.people == 1) "1 persona" else "${notebook.labourSummary.people} personas",
+                // Whole days, half days and hours stay apart: never one number that mixes them.
+                notebook.labourSummary.label(),
                 Modifier.fillMaxWidth().testTag("notebook-summary-labour"),
                 icon = MoIcons.People,
-                supportingText = notebook.labourSummary.label(),
+                supportingText = named.takeIf { it > 0 }?.let { if (it == 1) "1 persona con nombre" else "$it personas con nombre" },
             )
+            // 254-D: who worked how much, by their stable id; unnamed counts stay apart.
+            notebook.labourByWorker.forEach { worker ->
+                Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("notebook-worker-labour"), verticalAlignment = Alignment.CenterVertically) {
+                    Text(worker.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    Text(
+                        worker.summary.label(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MoOliveDark,
+                    )
+                }
+            }
+            if (!notebook.unnamedLabour.isEmpty) {
+                Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("notebook-worker-labour-unnamed")) {
+                    Text("Sin nombre", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.weight(1f))
+                    Text(notebook.unnamedLabour.label(), style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+                }
+            }
         }
         if (!notebook.equipmentSummary.isEmpty) {
             MoSummaryMetric(
