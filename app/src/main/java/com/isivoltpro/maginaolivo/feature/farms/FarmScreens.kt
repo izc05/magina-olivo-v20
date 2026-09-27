@@ -31,6 +31,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -187,19 +188,21 @@ fun FarmListScreen(
                 )
             }
 
-            if (!state.isLoading && state.error == null) {
+            if (!state.isLoading && state.error == null && state.farms.isNotEmpty()) {
                 item {
                     FarmTotals(state.farms)
                 }
             }
 
-            item {
-                MoPrimaryButton(
-                    text = "Añadir finca",
-                    onClick = { editorVisible = true },
-                    enabled = !state.isLoading && !state.isSaving,
-                    modifier = Modifier.testTag("add-farm"),
-                )
+            if (state.farms.isNotEmpty()) {
+                item {
+                    MoPrimaryButton(
+                        text = "Añadir finca",
+                        onClick = { editorVisible = true },
+                        enabled = !state.isLoading && !state.isSaving,
+                        modifier = Modifier.testTag("add-farm"),
+                    )
+                }
             }
 
             when {
@@ -218,6 +221,7 @@ fun FarmListScreen(
                         actionText = "Crear mi primera finca",
                         onAction = { editorVisible = true },
                         icon = MoIcons.Tree,
+                        actionTag = "add-farm",
                     )
                 }
                 else -> items(
@@ -585,6 +589,12 @@ private fun FarmEditor(
     var province by rememberSaveable(initial.province) { mutableStateOf(initial.province) }
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
+    var detailsVisible by rememberSaveable(initial.name) {
+        mutableStateOf(
+            initial.municipality.isNotBlank() || initial.province.isNotBlank() ||
+                initial.description.isNotBlank() || initial.notes.isNotBlank(),
+        )
+    }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -612,36 +622,52 @@ private fun FarmEditor(
                 .fillMaxWidth()
                 .testTag("farm-name"),
         )
-        MoTextField(
-            value = municipality,
-            onValueChange = { municipality = it },
-            label = "Municipio (opcional)",
+        TextButton(
+            onClick = { detailsVisible = !detailsVisible },
             enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        MoTextField(
-            value = province,
-            onValueChange = { province = it },
-            label = "Provincia (opcional)",
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        MoTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = "Descripción (opcional)",
-            singleLine = false,
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        MoTextField(
-            value = notes,
-            onValueChange = { notes = it },
-            label = "Notas (opcional)",
-            singleLine = false,
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
+            modifier = Modifier.testTag("farm-more-details"),
+        ) {
+            Text(if (detailsVisible) "Ocultar detalles" else "Más detalles")
+            Spacer(Modifier.size(MoSpacing.xs))
+            Icon(
+                imageVector = MoIcons.ChevronDown,
+                contentDescription = null,
+                tint = MoOliveDark,
+                modifier = Modifier.rotate(if (detailsVisible) 180f else 0f),
+            )
+        }
+        if (detailsVisible) {
+            MoTextField(
+                value = municipality,
+                onValueChange = { municipality = it },
+                label = "Municipio (opcional)",
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MoTextField(
+                value = province,
+                onValueChange = { province = it },
+                label = "Provincia (opcional)",
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MoTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = "Descripción (opcional)",
+                singleLine = false,
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MoTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                label = "Notas (opcional)",
+                singleLine = false,
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         MoPrimaryButton(
             text = if (isSaving) "Guardando…" else "Guardar finca",
             onClick = {

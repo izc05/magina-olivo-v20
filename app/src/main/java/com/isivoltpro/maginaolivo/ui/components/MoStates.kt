@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
 import com.isivoltpro.maginaolivo.ui.theme.MoError
@@ -41,6 +42,7 @@ fun MoEmptyState(
     actionText: String? = null,
     onAction: (() -> Unit)? = null,
     icon: ImageVector? = null,
+    actionTag: String? = null,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -72,7 +74,9 @@ fun MoEmptyState(
                     MoSecondaryButton(
                         text = actionText,
                         onClick = onAction,
-                        modifier = Modifier.padding(top = MoSpacing.xxs),
+                        modifier = Modifier
+                            .padding(top = MoSpacing.xxs)
+                            .then(if (actionTag == null) Modifier else Modifier.testTag(actionTag)),
                     )
                 }
             }

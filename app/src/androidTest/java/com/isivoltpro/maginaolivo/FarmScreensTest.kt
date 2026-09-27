@@ -1,10 +1,13 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import com.isivoltpro.maginaolivo.domain.farm.Farm
@@ -36,7 +39,9 @@ class FarmScreensTest {
         }
 
         composeRule.onNodeWithText("Aún no tienes fincas").assertIsDisplayed()
-        composeRule.onNodeWithTag("add-farm").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("add-farm").assertCountEquals(1)
+        composeRule.onAllNodesWithTag("farm-totals").assertCountEquals(0)
+        composeRule.onNodeWithText("Crear mi primera finca").assertIsDisplayed()
     }
 
     @Test
@@ -72,11 +77,13 @@ class FarmScreensTest {
             }
         }
 
-        composeRule.onNodeWithTag("add-farm").performClick()
+        composeRule.onNodeWithText("Crear mi primera finca").performClick()
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
+        composeRule.onNodeWithText("Más detalles").performClick()
+        composeRule.onNodeWithText("Municipio (opcional)").assertIsDisplayed()
         composeRule.onNodeWithText("Municipio (opcional)").performTextInput("Huelma")
         composeRule.onNodeWithText("Provincia (opcional)").performTextInput("Jaén")
-        composeRule.onNodeWithTag("save-farm").performClick()
+        composeRule.onNodeWithTag("save-farm").performScrollTo().performClick()
 
         assertEquals("La Solana", captured?.name)
         assertEquals("Huelma", captured?.municipality)
