@@ -56,8 +56,10 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 
 ⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS: slices done; Gate 20 PENDING.
   20A (#243), 20B + deploy (#247), 20B-fix (#257), 20B-radar (#259), 20C (#260): MERGED.
-  20D oil market (D3) and 20E cooperative notices (D4): BLOCKED on source decisions —
-  proposed deferred. Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md (G1–G7).
+  20D oil market: SOURCE APPROVED 2026-09-27 (Junta de Andalucía Observatorio, weekly prices at
+  almazara/bodega; MAPA and EU DG AGRI as comparison sources; POOLred not approved) — next slice,
+  executor Claude, own PR after documenting access/reuse + fixtures. 20E cooperative notices:
+  DEFERRED (D4). Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md (G1–G7).
   Still owed by the owner: deploy run #6 summary and the AEMET error line.
 
 ⏭ PHASE 21 — PROFILE: PREPARED, not started (docs/07-plans/PHASE21-PROFILE.md; 21A locality +
