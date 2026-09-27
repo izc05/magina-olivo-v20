@@ -318,16 +318,13 @@ private fun fitParcels(map: MapLibreMap, parcels: List<MapParcel>) {
 
 internal fun parcelStyle(imagery: Boolean): String = parcelStyle(if (imagery) MapBase.AERIAL else MapBase.NONE, cadastreLines = false)
 
-/**
- * Raster sources are declared at 512 px: the phone downloads and decodes about a quarter of
- * the tiles of a 256 px declaration, which is what keeps the aerial photo fluid.
- */
+/** IGN and PNOA publish 256 px tiles; matching the declared size avoids upscaling blurry tiles. */
 internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: String? = null): String {
     val sources = buildList {
         add(""""saved-parcels":{"type":"geojson","data":{"type":"FeatureCollection","features":[]}}""")
         when (base) {
-            MapBase.AERIAL -> add(""""base":{"type":"raster","tileSize":512,"maxzoom":19,"tiles":["$PNOA"]}""")
-            MapBase.MAP -> add(""""base":{"type":"raster","tileSize":512,"maxzoom":17,"tiles":["$IGN_BASE"]}""")
+            MapBase.AERIAL -> add(""""base":{"type":"raster","tileSize":256,"maxzoom":19,"tiles":["$PNOA"]}""")
+            MapBase.MAP -> add(""""base":{"type":"raster","tileSize":256,"maxzoom":17,"tiles":["$IGN_BASE"]}""")
             MapBase.NONE -> Unit
         }
         if (cadastreLines && base != MapBase.NONE) {

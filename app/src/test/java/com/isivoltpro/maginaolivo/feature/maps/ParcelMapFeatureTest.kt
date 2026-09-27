@@ -34,8 +34,12 @@ class ParcelMapFeatureTest {
         val none = parcelStyle(MapBase.NONE, cadastreLines = true)
         assertEquals(listOf("background", "parcels-fill", "parcels-line"), layers(none))
         assertFalse(none.contains("https://"))
-        // Fewer, larger tiles keep the phone fluid.
-        assertTrue(parcelStyle(MapBase.AERIAL, cadastreLines = false).contains("\"tileSize\":512"))
+        val mapSources = JsonParser.parseString(parcelStyle(MapBase.MAP, cadastreLines = false)).asJsonObject.getAsJsonObject("sources")
+        val aerialSources = JsonParser.parseString(parcelStyle(MapBase.AERIAL, cadastreLines = false)).asJsonObject.getAsJsonObject("sources")
+        val cadastreSources = JsonParser.parseString(parcelStyle(MapBase.MAP, cadastreLines = true)).asJsonObject.getAsJsonObject("sources")
+        assertEquals(256, mapSources.getAsJsonObject("base")["tileSize"].asInt)
+        assertEquals(256, aerialSources.getAsJsonObject("base")["tileSize"].asInt)
+        assertEquals(512, cadastreSources.getAsJsonObject("cadastre")["tileSize"].asInt)
     }
 
     @Test fun theRadarIsDrawnOverTheBaseAndUnderTheParcels() {
