@@ -41,7 +41,8 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ WAITING ON OWNER DEVICE CHECKS (2026-09-27) — no production slice in progress.
+▶ 20D-1 IN PROGRESS (PR #273, Claude) — Inicio "Mercado del aceite" card, app 0.4.0.
+  Owner device checks (Gate 20, D1–D12, #254) still pending.
   App version on main: 0.3.0 (docs/CHANGELOG-APP.md; Perfil shows "Versión · compilación").
 
   Issue #246 / CR-007 UX reorganisation: UX-A…UX-F MERGED (#248–#252); UX-G QA done in CI.
@@ -58,7 +59,11 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   20A (#243), 20B + deploy (#247), 20B-fix (#257), 20B-radar (#259), 20C (#260): MERGED.
   20D oil market: SOURCE APPROVED 2026-09-27 (Junta de Andalucía Observatorio, weekly prices at
   almazara/bodega; MAPA and EU DG AGRI as comparison sources; POOLred not approved) — next slice,
-  executor Claude, own PR after documenting access/reuse + fixtures. 20E cooperative notices:
+  executor Claude, own PR after documenting access/reuse + fixtures. Free MVP (Issue #271):
+  AOVE.net widget as "Pulso diario" (publisher-hosted, nothing copied) + Junta weekly trend.
+  20D-1 (PR #273): domain trend, normalized JSON parser, cached feed, Home card; the `oil-market`
+  Edge Function is not deployed yet, so the official trend shows "Sin fuente configurada".
+  20D-2: `oil-market` Edge Function (Junta adapter) + market screen. 20E cooperative notices:
   DEFERRED (D4). Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md (G1–G7).
   Still owed by the owner: deploy run #6 summary and the AEMET error line.
 
