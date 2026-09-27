@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.isivoltpro.maginaolivo.R
+import com.isivoltpro.maginaolivo.ui.brand.MaginaOlivoWordmark
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
@@ -238,11 +239,18 @@ fun MoSectionCard(
     }
 }
 
-/** Brand line for photo headers: leaf mark and "Mágina Olivo" in the editorial serif, in white. */
+/** Official brand lock-up on a quiet surface so its original colors stay legible over photos. */
 @Composable
 fun MoPhotoBrand(modifier: Modifier = Modifier) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Icon(MoIcons.Leaf, contentDescription = null, tint = MoWarmWhite, modifier = Modifier.size(26.dp))
-        Text("Mágina Olivo", style = MaterialTheme.typography.headlineMedium, color = MoWarmWhite)
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MoWarmWhite.copy(alpha = 0.92f),
+        shadowElevation = 2.dp,
+    ) {
+        MaginaOlivoWordmark(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            compact = true,
+        )
     }
 }

@@ -8,9 +8,9 @@ Este documento fija la dirección visual aprobada para **Mágina Olivo**. La apl
 
 ## Fuente de verdad visual
 
-Las referencias aprobadas están guardadas directamente en `docs/design/reference/` como tableros SVG autocontenidos (las imágenes están embebidas dentro de cada archivo). Son la **fuente visual de verdad** del proyecto:
+Las referencias aprobadas están guardadas directamente en `docs/design/reference/`. Los tableros de interfaz son SVG autocontenidos y la identidad oficial se conserva en su PNG maestro. Son la **fuente visual de verdad** del proyecto:
 
-- `01-brand.svg` — identidad de marca y logo.
+- `01-brand.png` — identidad de marca y logo oficial (maestro recibido el 2026-09-27).
 - `10-core-a.svg` — Inicio, Mis fincas, Mapa y Catastro.
 - `11-core-b.svg` — Detalle de finca, Campaña, Registrar actuación.
 - `12-core-c.svg` — Cosecha, Gastos y documentos, Tiempo y mercado.
