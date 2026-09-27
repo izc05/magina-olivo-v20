@@ -1,6 +1,14 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveMid
 import com.isivoltpro.maginaolivo.domain.machinery.MachineOption
 import com.isivoltpro.maginaolivo.domain.machinery.MachineUseInput
 import androidx.compose.foundation.BorderStroke
@@ -327,6 +335,7 @@ private fun ActivityRow(activity: Activity, onSelected: (UUID) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 internal fun ActivityEditor(
     parcels: List<ActivityParcelOption>,
@@ -385,11 +394,35 @@ internal fun ActivityEditor(
         return uses.sortedBy { it.machineId.toString() }
     }
 
+    // Hour, people, machinery, reminders, notes and cost are optional: folded unless used.
+    val hasExtras = initial.machines.isNotEmpty() || initial.planning != null || initial.reminders.isNotEmpty() ||
+        initial.notes.isNotBlank() || initial.costMinor != null
+    var moreOpen by rememberSaveable(hasExtras) { mutableStateOf(hasExtras) }
+    val showMore = moreOpen || costError != null || machinesError != null || planningError != null
+
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
-        verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall)
+        if (!lockInitialType) {
+            // One kind of work per record: compact chips with their icon, one choice only.
+            FormLabel("¿Qué trabajo?")
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+            ) {
+                ActivityType.entries.forEach { option ->
+                    FilterChip(
+                        selected = option.name == type,
+                        onClick = { type = option.name },
+                        label = { Text(option.label()) },
+                        leadingIcon = { Icon(option.icon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.testTag("activity-type-option").semantics { role = Role.RadioButton },
+                    )
+                }
+            }
+        }
         MoTextField(
             description, { description = it }, "Descripción",
             isError = descriptionError != null, supportingText = descriptionError,
@@ -400,84 +433,95 @@ internal fun ActivityEditor(
             isError = dateError != null, supportingText = dateError,
             modifier = Modifier.testTag("activity-date"),
         )
-        if (!lockInitialType) {
-            MoSectionHeader("Tipo de trabajo")
-            ActivityType.entries.forEach { option ->
-                val checked = option.name == type
-                Row(
-                    Modifier.fillMaxWidth().testTag("activity-type-option").clickable { type = option.name }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(checked, { type = option.name })
-                    Text(option.label())
-                }
-            }
-        }
         ActivityTypedDetailFields(
             type = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
             fields = detailFields,
         )
-        MoSectionHeader("Parcelas")
+        FormLabel("Parcelas")
         // One canonical Activity may target many Parcels; selecting several never
         // creates several Activities.
         if (parcels.isEmpty()) Text("Primero añade una parcela a esta finca.", color = MoTextSecondary)
         parcelsError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        parcels.forEach { parcel ->
-            val checked = parcel.id.toString() in selected
-            Row(
-                Modifier.fillMaxWidth().testTag("activity-parcel-option").clickable {
-                    selected = if (checked) selected - parcel.id.toString() else selected + parcel.id.toString()
-                }.padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(checked, { value ->
-                    selected = if (value) selected + parcel.id.toString() else selected - parcel.id.toString()
-                })
-                Text(parcel.name)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+            verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+        ) {
+            parcels.forEach { parcel ->
+                val checked = parcel.id.toString() in selected
+                FilterChip(
+                    selected = checked,
+                    onClick = { selected = if (checked) selected - parcel.id.toString() else selected + parcel.id.toString() },
+                    label = { Text(parcel.name) },
+                    leadingIcon = if (checked) {
+                        { Icon(MoIcons.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    } else {
+                        null
+                    },
+                    modifier = Modifier.testTag("activity-parcel-option"),
+                )
             }
         }
-        // Phase 15: optional. An Activity never needs a machine, and hours are optional too.
-        if (machines.isNotEmpty()) {
-            MoSectionHeader("Maquinaria (opcional)")
-            machinesError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            machines.forEach { machine ->
-                val key = machine.id.toString()
-                val checked = key in machineHours
-                Row(
-                    Modifier.fillMaxWidth().testTag("activity-machine-option").clickable {
-                        if (checked) machineHours.remove(key) else machineHours[key] = ""
-                    }.padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(checked, { value -> if (value) machineHours[key] = "" else machineHours.remove(key) })
-                    Text(machine.name)
-                }
-                if (checked) {
-                    MoTextField(
-                        machineHours[key].orEmpty(),
-                        { machineHours[key] = it; machinesError = null },
-                        "Horas de ${machine.name} (opcional)",
-                        modifier = Modifier.fillMaxWidth().testTag("activity-machine-hours"),
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { moreOpen = !showMore }
+                .testTag("activity-more"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+        ) {
+            Icon(if (showMore) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoOliveMid)
+            Column(Modifier.weight(1f)) {
+                Text("Más opciones", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
+                if (!showMore) {
+                    Text(
+                        "Hora, personas, maquinaria, avisos, notas y coste",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoTextSecondary,
                     )
                 }
             }
         }
-        PlanningFields(
-            input = planning,
-            error = planningError,
-            onChange = { planning = it; planningError = null },
-        )
-        MoTextField(notes, { notes = it }, "Notas")
-        // D2: a convenience for the linked Expense, never a second number on the Activity.
-        MoTextField(
-            cost,
-            { cost = it; costError = null },
-            "Coste (opcional, €)",
-            isError = costError != null,
-            supportingText = costError ?: "Se anota en Gastos, una sola vez.",
-            modifier = Modifier.testTag("activity-cost"),
-        )
+        if (showMore) {
+            // Phase 15: optional. An Activity never needs a machine, and hours are optional too.
+            if (machines.isNotEmpty()) {
+                FormLabel("Maquinaria")
+                machinesError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                machines.forEach { machine ->
+                    val key = machine.id.toString()
+                    val checked = key in machineHours
+                    Row(
+                        Modifier.fillMaxWidth().testTag("activity-machine-option").clickable {
+                            if (checked) machineHours.remove(key) else machineHours[key] = ""
+                        }.padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked, { value -> if (value) machineHours[key] = "" else machineHours.remove(key) })
+                        Text(machine.name)
+                    }
+                    if (checked) {
+                        MoTextField(
+                            machineHours[key].orEmpty(),
+                            { machineHours[key] = it; machinesError = null },
+                            "Horas de ${machine.name} (opcional)",
+                            modifier = Modifier.fillMaxWidth().testTag("activity-machine-hours"),
+                        )
+                    }
+                }
+            }
+            PlanningFields(
+                input = planning,
+                error = planningError,
+                onChange = { planning = it; planningError = null },
+            )
+            MoTextField(notes, { notes = it }, "Notas")
+            // D2: a convenience for the linked Expense, never a second number on the Activity.
+            MoTextField(
+                cost,
+                { cost = it; costError = null },
+                "Coste (opcional, €)",
+                isError = costError != null,
+                supportingText = costError ?: "Se anota en Gastos, una sola vez.",
+                modifier = Modifier.testTag("activity-cost"),
+            )
+        }
         MoPrimaryButton(
             "Guardar actuación",
             {
@@ -1026,3 +1070,9 @@ private val HEADER_DATE: java.time.format.DateTimeFormatter = java.time.format.D
 
 private fun hectaresLabel(areaM2: Double): String =
     "${java.text.NumberFormat.getNumberInstance(SPANISH_LOCALE).apply { maximumFractionDigits = 2 }.format(areaM2 / 10_000)} ha"
+
+/** A small label over a group of chips, lighter than a section header. */
+@Composable
+private fun FormLabel(text: String) {
+    Text(text, style = MaterialTheme.typography.titleSmall, color = MoOliveDark, modifier = Modifier.padding(top = MoSpacing.xs))
+}
