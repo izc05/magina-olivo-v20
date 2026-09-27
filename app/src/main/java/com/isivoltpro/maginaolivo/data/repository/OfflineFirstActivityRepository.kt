@@ -197,7 +197,15 @@ class OfflineFirstActivityRepository(
                         farmId = farm.id,
                         activityDate = command.activityDate,
                         type = command.type.name,
-                        status = if (command.asDraft) ActivityStatus.DRAFT else ActivityStatus.PLANNED,
+                        status = when {
+                            command.asDraft -> ActivityStatus.DRAFT
+                            // "Registrar hoy" records work already done. A date still ahead, or a
+                            // reminder asked for, means it is planned work, whatever route saved it.
+                            command.completeImmediately &&
+                                !command.activityDate.isAfter(clock.today(zone())) &&
+                                command.reminders.isEmpty() -> ActivityStatus.COMPLETED
+                            else -> ActivityStatus.PLANNED
+                        },
                         description = description,
                         notes = command.notes.normalized(),
                         metadata = pending(now),

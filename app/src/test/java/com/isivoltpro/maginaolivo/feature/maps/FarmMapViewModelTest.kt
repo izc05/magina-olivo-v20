@@ -65,6 +65,7 @@ class FarmMapViewModelTest {
         assertEquals("004", parcels.created.first().cadastralPolygon)
         assertEquals(FarmMapMode.VIEW, viewModel.state.value.mode)
         assertEquals("2 parcelas incorporadas a la finca.", viewModel.state.value.message)
+        assertTrue(viewModel.state.value.importCompleted)
     }
 
     @Test

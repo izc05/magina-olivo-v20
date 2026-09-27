@@ -21,7 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,7 +73,6 @@ fun FarmListRoute(
     persistence: LocalPersistence,
     onFarmSelected: (UUID) -> Unit,
     modifier: Modifier = Modifier,
-    onMachinery: () -> Unit = {},
 ) {
     val viewModel: FarmListViewModel = viewModel(
         factory = viewModelFactory {
@@ -101,7 +99,6 @@ fun FarmListRoute(
         onRestore = viewModel::restore,
         onRetry = viewModel::retry,
         modifier = modifier,
-        onMachinery = onMachinery,
         cover = { farmId ->
             val uri by remember(farmId) { persistence.farmCoverRepository.observeCoverUri(farmId) }.collectAsStateWithLifecycle(null)
             uri
@@ -127,7 +124,6 @@ fun FarmListScreen(
     onRestore: (UUID) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
-    onMachinery: () -> Unit = {},
     /** The Farm's cover photo, when one was chosen (UI polish v2). */
     cover: @Composable (UUID) -> String? = { null },
     /** A short line for the next planned work of a Farm, when there is one. */
@@ -167,7 +163,6 @@ fun FarmListScreen(
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -175,10 +170,6 @@ fun FarmListScreen(
                         style = MaterialTheme.typography.headlineLarge,
                         color = MoOliveDark,
                     )
-                    // Machinery is a shared resource, not a Farm: reached from here, no new root.
-                    TextButton(onClick = onMachinery, modifier = Modifier.testTag("open-machinery")) {
-                        Text("Maquinaria")
-                    }
                 }
                 Text(
                     text = "Organiza tu explotación por fincas y parcelas.",
@@ -187,13 +178,13 @@ fun FarmListScreen(
                 )
             }
 
-            if (!state.isLoading && state.error == null) {
+            if (!state.isLoading && state.error == null && state.farms.isNotEmpty()) {
                 item {
                     FarmTotals(state.farms)
                 }
             }
 
-            item {
+            if (state.farms.isNotEmpty()) item {
                 MoPrimaryButton(
                     text = "Añadir finca",
                     onClick = { editorVisible = true },
@@ -217,6 +208,7 @@ fun FarmListScreen(
                         body = "Crea tu primera finca. Se guardará en este dispositivo aunque no tengas cobertura.",
                         actionText = "Crear mi primera finca",
                         onAction = { editorVisible = true },
+                        actionModifier = Modifier.testTag("add-farm"),
                         icon = MoIcons.Tree,
                     )
                 }
@@ -585,6 +577,17 @@ private fun FarmEditor(
     var province by rememberSaveable(initial.province) { mutableStateOf(initial.province) }
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
+    var detailsExpanded by rememberSaveable(
+        initial.municipality,
+        initial.province,
+        initial.description,
+        initial.notes,
+    ) {
+        mutableStateOf(
+            initial.municipality.isNotBlank() || initial.province.isNotBlank() ||
+                initial.description.isNotBlank() || initial.notes.isNotBlank(),
+        )
+    }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -612,36 +615,44 @@ private fun FarmEditor(
                 .fillMaxWidth()
                 .testTag("farm-name"),
         )
-        MoTextField(
-            value = municipality,
-            onValueChange = { municipality = it },
-            label = "Municipio (opcional)",
+        MoTertiaryButton(
+            text = if (detailsExpanded) "Ocultar detalles" else "Más detalles",
+            onClick = { detailsExpanded = !detailsExpanded },
             enabled = !isSaving,
             modifier = Modifier.fillMaxWidth(),
         )
-        MoTextField(
-            value = province,
-            onValueChange = { province = it },
-            label = "Provincia (opcional)",
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        MoTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = "Descripción (opcional)",
-            singleLine = false,
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        MoTextField(
-            value = notes,
-            onValueChange = { notes = it },
-            label = "Notas (opcional)",
-            singleLine = false,
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (detailsExpanded) {
+            MoTextField(
+                value = municipality,
+                onValueChange = { municipality = it },
+                label = "Municipio (opcional)",
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MoTextField(
+                value = province,
+                onValueChange = { province = it },
+                label = "Provincia (opcional)",
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MoTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = "Descripción (opcional)",
+                singleLine = false,
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MoTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                label = "Notas (opcional)",
+                singleLine = false,
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         MoPrimaryButton(
             text = if (isSaving) "Guardando…" else "Guardar finca",
             onClick = {

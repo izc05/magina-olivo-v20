@@ -89,7 +89,7 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
     }
 
     /** A planned activity requires at least one Parcel; a resumable draft does not. */
-    fun create(draft: ActivityDraft, asDraft: Boolean = false) {
+    fun create(draft: ActivityDraft, asDraft: Boolean = false, completeImmediately: Boolean = false) {
         if (!validate(draft, asDraft)) return
         mutate("Actuación guardada en este dispositivo") {
             when (
@@ -102,6 +102,7 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
                         parcelIds = draft.parcelIds,
                         notes = draft.notes.nullIfBlank(),
                         asDraft = asDraft,
+                        completeImmediately = completeImmediately && !asDraft,
                         detail = draft.detail,
                         costMinor = draft.costMinor,
                         machines = draft.machines,

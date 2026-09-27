@@ -92,6 +92,11 @@ data class NewActivity(
     val notes: String? = null,
     /** A draft is resumable and may be saved with no Parcel selected yet. */
     val asDraft: Boolean = false,
+    /**
+     * Records made through Cuaderno's "Registrar hoy" are already performed: saved as Completed
+     * unless the date is still ahead or a reminder is asked for (then it is planned work).
+     */
+    val completeImmediately: Boolean = false,
     /** The typed agronomic detail. It must match [type], and may be absent. */
     val detail: ActivityDetail? = null,
     /** Optional convenience cost. Saving it writes the linked Expense, never the Activity. */
