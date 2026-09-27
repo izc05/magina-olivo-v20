@@ -108,6 +108,8 @@ fun MoCompactListItem(
     iconTint: Color? = null,
     iconContainer: Color? = null,
     onClick: (() -> Unit)? = null,
+    /** A pending row (planned, draft) sits on the softer surface so it reads as "not done yet". */
+    container: Color = MoWarmWhite,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Surface(
@@ -116,7 +118,7 @@ fun MoCompactListItem(
             .heightIn(min = MoSize.minTouchTarget)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
         shape = MoShape.card,
-        color = MoWarmWhite,
+        color = container,
         border = BorderStroke(1.dp, MoOutline),
     ) {
         Row(

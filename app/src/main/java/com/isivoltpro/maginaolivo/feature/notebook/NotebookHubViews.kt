@@ -31,6 +31,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
@@ -38,7 +39,7 @@ import java.time.format.DateTimeFormatter
  * expenses, each row the canonical record and each tap its own screen.
  */
 @Composable
-internal fun DiaryView(notebook: CampaignNotebook, actions: NotebookActions) {
+internal fun DiaryView(notebook: CampaignNotebook, actions: NotebookActions, today: LocalDate = LocalDate.now()) {
     val days = notebook.diary
     if (days.isEmpty()) {
         MoEmptyState(
@@ -51,7 +52,7 @@ internal fun DiaryView(notebook: CampaignNotebook, actions: NotebookActions) {
     }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs), modifier = Modifier.testTag("notebook-diary")) {
         days.forEach { day ->
-            MoSectionHeader(day.date.format(LONG_DAY).replaceFirstChar { it.titlecase(SPANISH) })
+            NotebookDayMarker(day.date, today)
             day.entries.forEach { entry ->
                 when (entry) {
                     is DiaryEntry.Work -> WorkRow(entry.activity) { actions.onActivity(entry.activity.id) }
