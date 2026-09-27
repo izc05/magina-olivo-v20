@@ -1,0 +1,66 @@
+{
+  "capturedAt": "2026-09-27T17:00:00Z",
+  "notes": [
+    "Evidence fixture for implementation/tests only; production must fetch from approved upstream sources.",
+    "AOVE.net values come from its free publisher-hosted widget and must not be re-published natively unless additional permission is granted.",
+    "Junta values are official weekly observations and may be used for native trend/history with attribution."
+  ],
+  "dailyPulse": {
+    "sourceId": "aove-net-widget",
+    "sourceName": "AOVE.net",
+    "sourceUrl": "https://aove.net/widget/precio-aceite-oliva-hoy/",
+    "publisherGuide": "https://aove.net/insertar-widget-precio-aceite-oliva/",
+    "usage": "publisher-hosted embedded display",
+    "marketDate": "2026-09-27",
+    "updatedAt": "2026-09-26T05:15:00+02:00",
+    "methodologyLabel": "Referencia orientativa diaria de mercado en origen",
+    "valuesEurPerKg": {
+      "AOVE": 3.33,
+      "AOV": 3.25,
+      "AOL": 3.17
+    }
+  },
+  "officialTrend": {
+    "sourceId": "junta-andalucia-observatorio",
+    "sourceName": "Observatorio de Precios y Mercados - Junta de Andalucía",
+    "sourceUrl": "https://www.juntadeandalucia.es/agriculturaypesca/observatorio/servlet/FrontController?action=UltimosPrecios&posicion=2291332&producto=33000&subsector=33",
+    "geography": "ES-AN",
+    "marketStage": "ALMAZARA_OR_BODEGA",
+    "unit": "EUR_PER_KG",
+    "weeks": [
+      {
+        "week": 37,
+        "periodStart": "2026-09-07",
+        "periodEnd": "2026-09-13",
+        "AOVE": 3.67,
+        "AOV": 3.3,
+        "AOL": 3.19
+      },
+      {
+        "week": 38,
+        "periodStart": "2026-09-14",
+        "periodEnd": "2026-09-20",
+        "AOVE": 3.46,
+        "AOV": 3.31,
+        "AOL": 3.15
+      }
+    ],
+    "expectedChanges": {
+      "AOVE": {
+        "absolute": -0.21,
+        "percentApprox": -5.72,
+        "direction": "DOWN"
+      },
+      "AOV": {
+        "absolute": 0.01,
+        "percentApprox": 0.3,
+        "direction": "UP"
+      },
+      "AOL": {
+        "absolute": -0.04,
+        "percentApprox": -1.25,
+        "direction": "DOWN"
+      }
+    }
+  }
+}

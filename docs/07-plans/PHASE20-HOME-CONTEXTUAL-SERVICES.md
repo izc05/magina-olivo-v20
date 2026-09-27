@@ -61,19 +61,76 @@ make Home external feeds a dependency for field work").
   (reduced motion) and simplified on low-performance devices; text contrast preserved.
 - Tests: mapping condition → state; reduced motion yields a static layer.
 
-### 20D — Oil market reference card — **BLOCKED on source decision**
+### 20D — Oil market reference card — **SOURCE APPROVED; implementation can proceed**
 - Spec §8: AOVE / Virgen / Lampante, shared time axis, source, last update, reference wording
   ("no es el precio exacto que pagará tu cooperativa"); unavailable categories hidden.
-- No free, licensed, machine-readable source is confirmed yet. Until the owner approves one
-  (and its terms of use), the card shows **"Sin fuente configurada"** and nothing else.
-- Implementation starts only after the source is approved and recorded here.
+- Owner decision D3 (2026-09-27): primary source is the **Observatorio de Precios y Mercados de
+  la Consejería de Agricultura, Pesca, Agua y Desarrollo Rural — Junta de Andalucía**, using
+  the official weekly "Aceites de oliva" prices in **almazara o bodega**.
+- Expected categories when the source publishes them: **Virgen Extra, Virgen and Lampante**.
+  Keep the source period/week and unit explicitly; never infer a missing category.
+- The implementation must first document the most stable supported access path and reuse terms.
+  Prefer an official structured/download endpoint if available. Do **not** ship a brittle HTML
+  scraper merely to unblock the card.
+- Cache the last valid official observation with source period + fetched timestamp. A cached value
+  may be shown only as historical/stale, never as current after its freshness window.
+- The card must identify the public source and keep the existing honest unavailable state if the
+  source cannot be read.
+- Official reference page recorded by the owner decision:
+  `https://www.juntadeandalucia.es/agriculturaypesca/observatorio/servlet/FrontController?action=UltimosPrecios&posicion=2291332&producto=33000&subsector=33`
+- Implementation may proceed as its own PR once the access/reuse note and fixtures are included.
 
-### 20E — Preferred cooperative notices — **BLOCKED on source decision**
+#### 20D source hierarchy for charts (owner direction 2026-09-27)
+
+Do not collapse different methodologies into one synthetic price. Store each observation with
+`source`, `geography`, `category`, `periodStart`, `periodEnd`, `unit`, `fetchedAt` and
+`methodologyLabel` so charts can compare without implying equivalence.
+
+1. **Andalucía — primary official source:** Junta de Andalucía, Observatorio de Precios y
+   Mercados. Weekly validated prices at almazara/bodega for Virgen Extra, Virgen and Lampante.
+   Best default series for the Home card and Andalucía chart.
+2. **Spain / CCAA — official comparison source:** Ministerio de Agricultura, Pesca y
+   Alimentación (MAPA), weekly olive-oil price bulletins. Provides national and autonomous
+   community series and the main categories; MAPA's portal permits reuse with attribution unless
+   third-party rights apply. Prefer a structured official download when available; PDF extraction
+   is an ingestion fallback, not an app-side operation.
+3. **EU / international — official comparison source:** European Commission DG AGRI weekly
+   olive-oil price developments (currently published as XLSX). Useful for Spain/Italy/Greece and
+   longer-term/international comparison. Keep EU attribution and original units/periods.
+4. **POOLred — high-value market benchmark, NOT approved for automated ingestion yet:** near-real
+   time/weekly transaction-based prices for Extra Virgin, Virgin and Lampante, including Spain
+   and market detail. Additional access is subscription-based and described as personal/non-
+   transferable. Do not ingest or redistribute automatically without an explicit licence or
+   agreement from Fundación del Olivar.
+5. **Olimerca / COAG/AgroCLM and similar publications — cross-check only unless permission is
+   confirmed.** They are useful for manual validation and local context (e.g. Jaén), but are not
+   the production source of truth. Olimerca's current notice restricts content reuse except with
+   a link; COAG/AgroCLM often republishes values originating in POOLred/Junta/MAPA.
+
+Recommended product presentation:
+- Home: latest Andalucía official value, with source/week.
+- `Mercado del aceite`: 12-week and campaign views with three category lines (AOVE/Virgen/
+  Lampante), selectable geography/source.
+- Comparison: Andalucía vs España vs EU/selected country, never averaged together.
+- Optional future `Jaén/Picual` view only after a licensed/approved local source exists.
+- Always label stale/missing weeks; never interpolate a price as if observed.
+
+### 20E — Preferred cooperative notices — **DEFERRED; directory source identified**
 - Spec §9: one latest notice / news item of the preferred cooperative; no cooperative →
   optional setup CTA; Home works normally.
-- Needs either the private Admin web surface (later phase) or an approved per-cooperative
-  feed (e.g. RSS). Preferred cooperative itself belongs to Phase 21 Profile; 20E may read an
-  Organization marked as preferred only if that is approved as an interim step.
+- Owner decision D4 remains: actual cooperative notices wait for the private Admin surface or an
+  explicitly approved per-cooperative feed. Do not scrape social networks or invent notices.
+- For the future **cooperative/almazara directory and Phase 21 preferred Organization selector**,
+  the DOP Sierra Mágina website is an official territorial reference and exposes entity/brand
+  pages. Example: S.C.A. Bedmarense / Oro de Magnasur.
+- **Licensing guardrail:** the DOP site's current legal notice reserves reuse/publication and
+  commercial treatment of its contents unless permission is granted. Therefore use it for
+  verification/research only for now; do not bulk-copy or automate its directory into production
+  until permission/licensing is confirmed. Manual user-created Organizations remain valid.
+- Reference pages:
+  `https://aove.sierramagina.org/marcas/`
+  `https://sierramagina.org/project/s-c-a-bedmarense/`
+  `https://aove.sierramagina.org/aviso-legal/`
 
 ## Owner decisions (answered 2026-09-25)
 
@@ -81,8 +138,8 @@ make Home external feeds a dependency for field work").
 |---|---|---|
 | D1 | Weather provider | **AEMET OpenData** (owner, 2026-09-25); owner obtains the API key |
 | D2 | Radar tiles provider | **RainViewer** (owner, 2026-09-25) |
-| D3 | Oil-market source and its terms of use | **Blocked** — card shows "Sin fuente configurada" |
-| D4 | Cooperative notices source | **Wait for the private Admin surface**; until then the card offers choosing a cooperative and shows no notices |
+| D3 | Oil-market source and its terms of use | **Approved 2026-09-27:** Junta de Andalucía, Observatorio de Precios y Mercados, weekly oil prices at almazara/bodega. Implementation must document stable access + reuse terms before shipping. |
+| D4 | Cooperative notices source | **Wait for the private Admin surface**. DOP Sierra Mágina is an official directory/reference source, but its current legal notice means no automated production import without permission/licensing. |
 
 ## Non-goals
 - No push notifications from feeds; no background polling workers for feeds in this phase.
@@ -192,7 +249,7 @@ lluvia" only when the build has the public key. No Room change; radar is never c
 - Tests: parse from the stored real response (`weather-radar-frames.json`) and from fixtures;
   offline state; frame time shown; `ArchitectureBoundaryTest` still passes.
 
-### 20C — weather-responsive visual layer — IN PROGRESS (branch claude/phase20c-weather-mood)
+### 20C — weather-responsive visual layer — MERGED (PR #260, owner OK)
 Implemented: `domain/weather/WeatherMood.kt` (`WeatherMoods.of`: current value only; stale,
 unknown or snow → none; wind ≥ 35 km/h turns clear/cloudy into WIND), `WeatherMoodLayer` drawn in
 Inicio's photo header under the text (low opacity Canvas: glow, clouds, rain, streaks, fog,
@@ -205,5 +262,12 @@ is 0 or the phone is low-RAM; the progress is read in the draw phase only (no re
   (WCAG AA against the brand tokens).
 - Tests: mapping table (JVM); reduced motion ⇒ static; unknown ⇒ none.
 
-### Still blocked
-- 20D oil market (no approved source, D3) and 20E cooperative notices (D4, admin surface).
+### Current continuation point (owner decision 2026-09-27)
+- **20D is no longer blocked on source selection.** Claude may prepare/implement the oil-market
+  slice against the approved Junta de Andalucía Observatorio source, in a separate PR, keeping
+  the access/reuse and stale-data rules above.
+- **20E notices remain deferred** to the private Admin surface / approved cooperative feeds.
+- The DOP Sierra Mágina site may be used to verify names/brands during design, but not bulk imported
+  into production unless its reuse permission/licensing is resolved.
+- Codex should remain an auditor/reviewer of current `main`, not a competing feature executor.
+  New feature implementation belongs to Claude unless the owner explicitly changes that split.
