@@ -28,6 +28,6 @@ jobs:
         with:
           node-version: "22"
 
-      # Fixture tests only: no network call to AEMET, MET Norway or RainViewer.
-      - name: Weather function tests
+      # Fixture tests only: no network call to AEMET, MET Norway, RainViewer or the Junta.
+      - name: Edge function tests (weather, oil market)
         run: node --experimental-strip-types --test supabase/functions/*/*.test.ts

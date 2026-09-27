@@ -1,6 +1,6 @@
-# Magina Olivo — Supabase Edge Functions (weather only, CR-006)
+# Magina Olivo — Supabase Edge Functions (weather CR-006, oil market Phase 20D)
 
-Only the two weather functions live here. The Android app calls them over HTTPS with the
+The two weather functions and the oil-market function live here. The Android app calls them over HTTPS with the
 project's **public anon key** (`verify_jwt = true`). No Supabase SDK, Auth or sync in the app
 before Phase 22.
 
@@ -8,6 +8,14 @@ before Phase 22.
 |---|---|---|
 | `weather-forecast` | `{"municipality":"Bedmar","province":"Jaén"}` or `{"municipalityCode":"23019"}` (+ optional `latitude`/`longitude`) | AEMET → MET Norway |
 | `weather-radar` | `{"operation":"frames"}` | RainViewer |
+| `oil-market` | `{"operation":"series","geography":"andalucia","weeks":12}` or `{"operation":"latest","geography":"andalucia"}` | Junta de Andalucía, Observatorio de Precios y Mercados (weekly, almazara/bodega) |
+
+`oil-market` reads the Junta's public "Últimos precios" page server side (the app never parses
+HTML) and answers the normalized contract of `docs/07-plans/PHASE20D-OIL-MARKET-CONTRACT.md`:
+one series per category (AOVE / AOV / AOL), each week with its value as published in €/kg. The
+table is found by its labels (week headers, LAMPANTE / VIRGEN / VIRGEN-EXTRA), not by column
+positions; a "--" or empty cell stays missing; an unknown category, a value outside 0,5–30 €/kg
+or a page without the table is `502 {"error":"source_unreadable"}`, and the app keeps its cache.
 
 Every 200 response says which `provider` answered, its `attribution`, `updatedAt` (when the
 provider produced it) and `fetchedAt`. When every provider fails the function answers
@@ -29,7 +37,17 @@ supabase functions deploy weather-radar --project-ref zzelvbcuxsboafibfxch
 
 Do not pass `--no-verify-jwt`.
 
-Or run the manual workflow **Deploy weather functions** (`.github/workflows/deploy-weather-functions.yml`).
+```sh
+supabase functions deploy oil-market --project-ref zzelvbcuxsboafibfxch
+```
+
+Or run the manual workflow **Deploy oil-market function** (`.github/workflows/deploy-oil-market-function.yml`):
+it first downloads the live Junta page from the runner and runs the function's parser on it
+(it does not deploy if the page is not understood), then deploys, makes one real call, checks
+that a call without the key is refused (401) and keeps the live page and the response as the
+`oil-market-validation` artifact.
+
+For the weather, run the manual workflow **Deploy weather functions** (`.github/workflows/deploy-weather-functions.yml`).
 It needs two repository secrets: `SUPABASE_ACCESS_TOKEN_FULL` (a Supabase personal access token
 with Edge Functions write access, read by the CLI as `SUPABASE_ACCESS_TOKEN`, for the deploy only)
 and `SUPABASE_ANON_KEY` (public anon key). After deploying it makes one real call for Bedmar asked
@@ -39,11 +57,12 @@ summary, and keeps the real responses as the `weather-functions-validation` arti
 
 ## Tests
 
-CI runs the fixture tests; no live AEMET, MET Norway or RainViewer call is made:
+CI runs the fixture tests; no live AEMET, MET Norway, RainViewer or Junta call is made:
 
 ```sh
 node --experimental-strip-types --test supabase/functions/*/*.test.ts
 ```
 
 The fixtures follow each provider's documented response format; they are not recordings of
-live responses. Replace them with real recordings when a live call has been captured.
+live responses. The Junta fixture (`oil-market/fixtures/junta-ultimos-precios.synthetic.html`)
+carries the owner's verified values for weeks 31–38 of 2026 inside synthetic markup. Replace them with real recordings when a live call has been captured.
