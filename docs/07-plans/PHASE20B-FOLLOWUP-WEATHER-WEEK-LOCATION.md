@@ -4,6 +4,11 @@ Status: **PROPOSED — documentation only, nothing implemented** (2026-09-28).
 Origin: Codex review on #281 (APK 0.5.0 build 574/575) and the owner's approved criterion quoted there.
 Production code for any slice below starts only with the owner's explicit authorization.
 
+**Decision update (2026-09-28):** W-1 was settled as option **(a)**. W1 (7-day forecast) is being
+implemented inside Phase 20 by Codex under **CR-009 / PR #284** (with the simplified Inicio), and
+Gate 20 re-validates with B4/D5. W1 below is kept as design reference only; **W2** («Seguir mi
+ubicación») remains proposed for 21A in **CR-008**.
+
 ## 1. What exists today (verified in `main` bc3a1b7b)
 
 | Piece | Today |

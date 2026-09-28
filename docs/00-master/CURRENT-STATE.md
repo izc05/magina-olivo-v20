@@ -81,8 +81,13 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   DEFERRED (D4). Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md (G1–G7).
   Still owed by the owner: deploy run #6 summary and the AEMET error line.
 
+  Weather week (7 days) + simplified Home: inside Gate 20 via CR-009 / PR #284 (Codex, draft;
+  owner-confirmed scope). Gate 20 re-validates with B4/D5 on the APK that includes it and after
+  an authorized redeploy of `weather-forecast`.
+
 ⏭ PHASE 21 — PROFILE: PREPARED, not started (docs/07-plans/PHASE21-PROFILE.md; 21A locality +
   preferred cooperative, 21B preferences, 21C help/privacy). Production starts after Gate 20 PASS.
+  «Seguir mi ubicación» is proposed for 21A by CR-008 (PROPOSED, not approved).
 ```
 
 ✔ PHASE 19 — CUADERNO DE CAMPAÑA + HISTORICAL ANALYTICS: CLOSED (Gate 19 PASS 2026-09-25)
