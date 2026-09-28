@@ -172,12 +172,10 @@ class CampaignLifecycleContractTest {
         assertIllegal(id, CampaignStatus.PREPARATION) { repository.close(id, LocalDate.parse("2027-02-01")) }
         assertIllegal(id, CampaignStatus.PREPARATION) { repository.reopen(id) }
 
-        // ACTIVE rejects a second activation, a reopen and a direct close:
-        // the canonical lifecycle forces ACTIVE to pass through HARVEST.
+        // ACTIVE rejects a second activation and a reopen (CR-010: it may close directly).
         assertOk(repository.activate(id))
         assertIllegal(id, CampaignStatus.ACTIVE) { repository.activate(id) }
         assertIllegal(id, CampaignStatus.ACTIVE) { repository.reopen(id) }
-        assertIllegal(id, CampaignStatus.ACTIVE) { repository.close(id, LocalDate.parse("2027-02-01")) }
 
         // HARVEST rejects activation and a repeated harvest transition.
         assertOk(repository.markHarvest(id))
@@ -192,22 +190,22 @@ class CampaignLifecycleContractTest {
     }
 
     @Test
-    fun lifecycleIsStrictlyLinearActiveCannotCloseHarvestCanAndClosedCanReopen() = runBlocking {
+    fun lifecycleIsBorradorActivaCerradaAndLegacyHarvestStillCloses() = runBlocking {
+        // CR-010: Borrador -> Activa -> Cerrada, with no «Iniciar recolección» step.
         val id = created("2026/27", setOf(parcelId))
         assertOk(repository.activate(id))
-
-        // ACTIVE -> CLOSED is rejected.
-        assertIllegal(id, CampaignStatus.ACTIVE) { repository.close(id, LocalDate.parse("2027-02-01")) }
-
-        // ACTIVE -> HARVEST -> CLOSED is the only legal way to close.
-        assertOk(repository.markHarvest(id))
         assertOk(repository.close(id, LocalDate.parse("2027-02-01")))
         assertEquals(CampaignStatus.CLOSED, db.campaignDao().findById(id)?.status)
 
-        // CLOSED -> HARVEST is legal through the explicit reopen action.
+        // Reopen returns to Activa, never to the legacy HARVEST state.
         assertOk(repository.reopen(id))
-        assertEquals(CampaignStatus.HARVEST, db.campaignDao().findById(id)?.status)
+        assertEquals(CampaignStatus.ACTIVE, db.campaignDao().findById(id)?.status)
         assertNull(db.campaignDao().findById(id)?.endDate)
+
+        // A Campaign already in the legacy HARVEST state keeps working and closes too.
+        assertOk(repository.markHarvest(id))
+        assertOk(repository.close(id, LocalDate.parse("2027-03-01")))
+        assertEquals(CampaignStatus.CLOSED, db.campaignDao().findById(id)?.status)
     }
 
     @Test
@@ -241,7 +239,7 @@ class CampaignLifecycleContractTest {
         assertOk(repository.reopen(id))
 
         val reopened = db.campaignDao().findById(id)!!
-        assertEquals(CampaignStatus.HARVEST, reopened.status)
+        assertEquals(CampaignStatus.ACTIVE, reopened.status)
         assertNull(reopened.endDate)
         // Reopening is audited: the aggregate version advances and stays pending.
         assertTrue(reopened.metadata.version > closed.metadata.version)

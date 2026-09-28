@@ -61,6 +61,12 @@ enum class CampaignStatus {
     CLOSED,
 }
 
+/**
+ * CR-010: the farmer sees Borrador → Activa → Cerrada. HARVEST is a legacy state kept for existing
+ * rows; it reads and behaves exactly like ACTIVE ("running": Pesadas, jornales, cierre).
+ */
+val CampaignStatus.isRunning: Boolean get() = this == CampaignStatus.ACTIVE || this == CampaignStatus.HARVEST
+
 enum class ActivityStatus {
     DRAFT,
     PLANNED,

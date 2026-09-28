@@ -18,6 +18,13 @@ Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.
 Para saber qué lleva un APK: mira la versión en el Perfil y busca abajo su bloque; la compilación
 concreta está en la ejecución de CI con ese número (Actions → Android CI → #número).
 
+## 0.6.0 — en curso (CR-010, campaña simple)
+
+- Campaña en tres estados: **Borrador → Activa → Cerrada**. Al activarla ya se pueden registrar
+  pesadas; desaparece el paso «Iniciar recolección». Una campaña activa se cierra directamente y,
+  si se reabre, vuelve a «Activa». Las campañas que ya estaban «en recolección» siguen funcionando
+  y se muestran como «Activa».
+
 ## 0.5.0 — 28/09/2026
 
 - Mercado del aceite con datos oficiales (Fase 20D-3):

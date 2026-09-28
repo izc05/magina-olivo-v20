@@ -314,8 +314,8 @@ fun CampaignDetailScreen(
                                 MoDestructiveButton("Archivar borrador", { confirmation = "archive" }, modifier = Modifier.weight(1f))
                             }
                         }
-                        CampaignStatus.ACTIVE -> MoPrimaryButton("Iniciar recolección", { confirmation = "harvest" }, modifier = Modifier.fillMaxWidth(), enabled = !state.isSaving)
-                        CampaignStatus.HARVEST -> MoDestructiveButton("Cerrar campaña", { confirmation = "close" }, modifier = Modifier.fillMaxWidth().testTag("close-campaign"), enabled = !state.isSaving)
+                        // CR-010: once active the farmer records Pesadas straight away; no «Iniciar recolección».
+                        CampaignStatus.ACTIVE, CampaignStatus.HARVEST -> MoDestructiveButton("Cerrar campaña", { confirmation = "close" }, modifier = Modifier.fillMaxWidth().testTag("close-campaign"), enabled = !state.isSaving)
                         CampaignStatus.CLOSED -> {
                             Text("Histórico protegido", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
                             MoSecondaryButton("Reabrir campaña", { confirmation = "reopen" }, modifier = Modifier.fillMaxWidth().testTag("reopen-campaign"))
@@ -366,5 +366,5 @@ private fun CampaignStatus.tone() = when (this) {
 }
 
 private fun CampaignStatus.label() = when (this) {
-    CampaignStatus.PREPARATION -> "Preparación"; CampaignStatus.ACTIVE -> "Activa"; CampaignStatus.HARVEST -> "Recolección"; CampaignStatus.CLOSED -> "Cerrada"
+    CampaignStatus.PREPARATION -> "Borrador"; CampaignStatus.ACTIVE, CampaignStatus.HARVEST -> "Activa"; CampaignStatus.CLOSED -> "Cerrada"
 }

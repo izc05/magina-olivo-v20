@@ -41,7 +41,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.core.time.AppClock
-import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
@@ -363,7 +362,7 @@ internal fun HarvestEditor(
         errors.farm?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         context?.let {
             Text(
-                "Campaña ${it.campaignName} · ${if (it.campaignStatus == CampaignStatus.HARVEST) "en recolección" else "activa"}",
+                "Campaña ${it.campaignName} · activa",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MoTextSecondary,
             )

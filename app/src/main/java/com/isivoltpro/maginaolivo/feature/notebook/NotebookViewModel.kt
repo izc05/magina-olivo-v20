@@ -2,7 +2,7 @@ package com.isivoltpro.maginaolivo.feature.notebook
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
+import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
@@ -103,10 +103,9 @@ class NotebookViewModel(
     }
 
     internal companion object {
-        /** The Campaign in progress (harvest first, then active), else the most recent one. */
+        /** The running Campaign (Activa; legacy HARVEST counts), else the most recent one. */
         fun defaultCampaign(list: List<Campaign>): Campaign? =
-            list.filter { it.status == CampaignStatus.HARVEST }.maxByOrNull { it.startDate }
-                ?: list.filter { it.status == CampaignStatus.ACTIVE }.maxByOrNull { it.startDate }
+            list.filter { it.status.isRunning }.maxByOrNull { it.startDate }
                 ?: list.maxByOrNull { it.startDate }
     }
 }
