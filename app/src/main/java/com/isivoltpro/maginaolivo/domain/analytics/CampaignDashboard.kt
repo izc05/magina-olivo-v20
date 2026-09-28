@@ -13,8 +13,13 @@ import java.time.temporal.ChronoUnit
  * the posted Expense ledger (calculated day costs included, once). Unknown stays null.
  */
 data class CampaignDashboard(
-    /** Calendar days from activation to today, or to the close date once closed (both counted). */
+    /**
+     * Calendar days from the Campaign's start date ([countedFrom]) to today, or to the close date
+     * once closed (both counted). The activation moment itself is not stored, so the screen names
+     * the date it counts from instead of claiming «since activation».
+     */
     val calendarDays: Long?,
+    val countedFrom: LocalDate?,
     val pesadaDays: Int,
     val labourDays: Int,
     val firstPesada: LocalDate?,
@@ -46,6 +51,7 @@ data class CampaignDashboard(
             val grams = notebook.deliverySummary.deliveredGrams
             return CampaignDashboard(
                 calendarDays = days,
+                countedFrom = campaign.startDate.takeIf { days != null },
                 pesadaDays = pesadaDates.size,
                 labourDays = labourDays,
                 firstPesada = pesadaDates.firstOrNull(),

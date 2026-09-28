@@ -510,7 +510,9 @@ private fun CampaignAtAGlance(dashboard: CampaignDashboard, weighedGrams: Long) 
         MoSummaryMetric(
             "Días de campaña", dashboard.calendarDays?.toString() ?: "—", Modifier.weight(1f).testTag("dashboard-days"),
             icon = MoIcons.Calendar,
-            supportingText = dashboard.closedOn?.let { "Cerrada el ${date(it)}" } ?: "Desde que se activó",
+            supportingText = dashboard.countedFrom?.let { from ->
+                dashboard.closedOn?.let { "Del ${date(from)} al ${date(it)}" } ?: "Desde el ${date(from)}"
+            } ?: dashboard.closedOn?.let { "Cerrada el ${date(it)}" } ?: "Sin empezar",
         )
         MoSummaryMetric(
             "Días con pesadas", dashboard.pesadaDays.toString(), Modifier.weight(1f).testTag("dashboard-pesada-days"),
