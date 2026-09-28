@@ -46,6 +46,7 @@ import com.isivoltpro.maginaolivo.feature.expenses.ExpensesRoute
 import com.isivoltpro.maginaolivo.feature.farms.FarmSection
 import com.isivoltpro.maginaolivo.feature.farms.FarmSectionRoute
 import com.isivoltpro.maginaolivo.feature.home.HomeRoute
+import com.isivoltpro.maginaolivo.feature.home.OilMarketRoute
 import com.isivoltpro.maginaolivo.feature.home.RadarRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
@@ -173,7 +174,17 @@ fun AppNavigation(
                         onExpenses = { navController.navigate(AppDestination.Expenses) },
                         onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
                         onRadar = { navController.navigate(AppDestination.Radar) },
+                        onOilMarket = { navController.navigate(AppDestination.OilMarket) },
                     )
+                }
+            }
+            // Phase 20D-3: the oil market — official weeks from the phone's cache, daily pulse online.
+            composable(AppDestination.OilMarket) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    OilMarketRoute(persistence = persistence)
                 }
             }
             // Phase 20B-radar: rain radar over the active Farm (live only, never cached).

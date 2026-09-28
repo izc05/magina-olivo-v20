@@ -32,6 +32,7 @@ class AppDestinationTest {
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))
         // Phase 20B-radar: the radar belongs to Inicio.
         assertEquals(RootDestination.Home, AppDestination.rootForRoute(AppDestination.Radar))
+        assertEquals(RootDestination.Home, AppDestination.rootForRoute(AppDestination.OilMarket))
     }
 
     @Test

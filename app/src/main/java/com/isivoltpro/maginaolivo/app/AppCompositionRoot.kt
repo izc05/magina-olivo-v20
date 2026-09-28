@@ -154,8 +154,9 @@ data class AppCompositionRoot(
             val weatherFeed = CachedWeatherFeed(
                 database, source = weatherSource, workspaces = workspaceRepository, clock = defaults.clock, dispatchers = defaults.dispatchers,
             )
-            // Phase 20D: the official Junta series comes from the `oil-market` Edge Function. Until
-            // that function is deployed (20D-2) the source stays off and the card says so.
+            // Phase 20D: the official Junta series comes from the `oil-market` Edge Function
+            // (deployed and validated live, deploy run #3, 2026-09-28). Without the public key the
+            // source stays off and the card says so.
             val oilSource = BuildConfig.WEATHER_ANON_KEY.takeIf { it.isNotBlank() && OIL_MARKET_FUNCTION_DEPLOYED }?.let { key ->
                 EdgeOilMarketSource(BuildConfig.WEATHER_FUNCTIONS_URL, key)
             }
@@ -192,5 +193,5 @@ data class AppCompositionRoot(
     }
 }
 
-/** Phase 20D-2 turns this on once the `oil-market` Edge Function is deployed and validated live. */
-private const val OIL_MARKET_FUNCTION_DEPLOYED = false
+/** Phase 20D-3: the `oil-market` Edge Function is deployed and answered 200 from eu-west-3. */
+private const val OIL_MARKET_FUNCTION_DEPLOYED = true

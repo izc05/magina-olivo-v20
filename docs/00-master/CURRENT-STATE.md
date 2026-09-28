@@ -41,7 +41,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ WAITING ON OWNER: run "Deploy oil-market function" (live Junta check + deploy), then 20D-3.
+▶ 20D-3 IN PROGRESS (Claude) — oil market source on + "Mercado del aceite" screen, app 0.5.0.
   Owner device checks (Gate 20, D1–D12, #254) still pending.
   UX owner-feedback review (Codex, branch codex/android-ux-review-0.3.0 @71a5e7f, reviewed and
   merged by Claude): Mi Campo empty state, farm/parcel forms folded, single "Añadir" for parcels,
@@ -49,7 +49,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   GLOBAL UX AUDIT NOT COMPLETE: Inicio next (hierarchy/density with the owner; "campaña en
   Preparación" wording), then Producción/Gastos, Perfil/Ajustes, Avisos, Maquinaria, Mapa/Catastro,
   offline and every activity type — on the emulator's existing data set (no data wipe).
-  App version on main: 0.4.0 (docs/CHANGELOG-APP.md; Perfil shows "Versión · compilación").
+  App version on main: 0.4.0 (0.5.0 with 20D-3) (docs/CHANGELOG-APP.md; Perfil shows "Versión · compilación").
 
   Issue #246 / CR-007 UX reorganisation: UX-A…UX-F MERGED (#248–#252); UX-G QA done in CI.
   Closes with the owner's device checks D1–D12 (docs/06-testing/UX-246-GATE-CHECKLIST.md).
@@ -70,11 +70,11 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   20D-1 MERGED (PR #273, 0.4.0): domain trend, normalized JSON parser, cached feed, Home card;
   the app switch OIL_MARKET_FUNCTION_DEPLOYED is off, so the official trend says "Sin fuente
   configurada" until the function is live.
-  20D-2 MERGED (PR #274): `oil-market` Edge Function (Junta adapter, label-anchored parser;
-  fixture = owner's verified weeks 31–38 in synthetic markup) + manual workflow "Deploy
-  oil-market function" that parses the live page before deploying. NOT DEPLOYED yet.
-  20D-3 (after a successful deploy run): switch on in the app + "Mercado del aceite" screen with
-  the 12-week chart. 20E cooperative notices:
+  20D-2 MERGED (PR #274, #276, #278): `oil-market` Edge Function (Junta adapter; the live
+  header "Semana 38: (14/9/26 - 20/9/26)" fixed in #278). DEPLOYED 2026-09-28, deploy run #3:
+  HTTP 200 from eu-west-3, 401 without key.
+  20D-3 (in progress): app switch on + "Mercado del aceite" screen with the 12-week chart.
+  20E cooperative notices:
   DEFERRED (D4). Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md (G1–G7).
   Still owed by the owner: deploy run #6 summary and the AEMET error line.
 

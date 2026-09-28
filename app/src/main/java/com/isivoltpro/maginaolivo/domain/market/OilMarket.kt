@@ -100,7 +100,9 @@ object OilTrends {
     fun euros(value: BigDecimal): String = value.setScale(2, RoundingMode.HALF_UP).toPlainString().replace('.', ',') + " €/kg"
 
     /** ISO week of a period ("semana 38"), as the Junta and MAPA name their weeks. */
-    fun week(observation: OilObservation): Int = observation.periodStart.get(WeekFields.ISO.weekOfWeekBasedYear())
+    fun week(observation: OilObservation): Int = weekOf(observation.periodStart)
+
+    fun weekOf(date: LocalDate): Int = date.get(WeekFields.ISO.weekOfWeekBasedYear())
 
     /**
      * A weekly value stays current until the next week would normally be published, plus a
@@ -108,6 +110,23 @@ object OilTrends {
      */
     fun isOutdated(observation: OilObservation, today: LocalDate, marginDays: Long = 7): Boolean =
         ChronoUnit.DAYS.between(observation.periodEnd, today) > 7 + marginDays
+
+    /**
+     * The chart's weeks: the latest [maxWeeks] consecutive weeks up to the newest one published
+     * for any category. A week nobody published is still a column (drawn as a gap), so the time
+     * axis never shrinks around missing data.
+     */
+    fun chartWeeks(series: OilMarketSeries, maxWeeks: Int = 12): List<LocalDate> {
+        val newest = series.observations.maxOfOrNull { it.periodStart } ?: return emptyList()
+        val oldest = series.observations.minOf { it.periodStart }
+        return (maxWeeks - 1 downTo 0)
+            .map { newest.minusWeeks(it.toLong()) }
+            .filter { !it.isBefore(oldest) }
+    }
+
+    /** The value of [category] for the week starting [weekStart], or null when not published. */
+    fun valueAt(series: OilMarketSeries, category: OilCategory, weekStart: LocalDate): BigDecimal? =
+        series.observations.firstOrNull { it.category == category && it.periodStart == weekStart }?.valueEurPerKg
 }
 
 /** What the backend returned for one request, with the time it was fetched. */
