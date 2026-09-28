@@ -66,7 +66,7 @@ A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gat
 ```text
 ▶ CR-010 — CAMPAÑA SIMPLE (Issue #254), executor Claude, after Gate 20 PASS.
   All six slices MERGED (2026-09-28): 1a #288 · 1b #289 · 2 #290 (Room v17) · 3 #291 ·
-  4 #293 (Room v18) · 5 #294 · 6 #295. A3 follow-up (unlinked same-date costs) #296 in review.
+  4 #293 (Room v18) · 5 #294 · 6 #295. A3 follow-up (unlinked same-date costs) #296 MERGED.
   ▶ GATE CR-010 OPEN = §17 on a physical device + A1–A3 tests green in CI.
     Checklist: docs/06-testing/CR010-GATE-CHECKLIST.md. Phase 21 starts only after this Gate.
   Proposed for Phase 21A (Room v19, owner to confirm): store the Campaign activation date so

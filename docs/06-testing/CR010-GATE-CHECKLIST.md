@@ -1,6 +1,7 @@
 # Gate CR-010 Checklist — Campaña simple, automatizada y centrada en Pesadas
 
-Status: **OPEN.** Every production slice is merged; the physical-device run (§17) is pending.
+Status: **OPEN.** Every production slice and the A3 follow-up are merged, with their tests green in
+CI; the physical-device run (§17) is pending.
 
 **Gate CR-010** (Amendment 1, note 6): the CR-010 §17 acceptance scenario on a **physical device**,
 plus the A1–A3 tests green in CI.
@@ -16,7 +17,7 @@ plus the A1–A3 tests green in CI.
 | 4 — recollection prices + calculated costs through the ledger (A3) | #293 | v18 `recollection_rates` | merged |
 | 5 — campaign at a glance (§12) | #294 | — | merged |
 | 6 — KPI hierarchy on Campaign/Recolección/Cuaderno (§13) | #295 | — | merged |
-| A3 follow-up — unlinked same-date costs shown, linked only by the farmer | #296 | — | **open** |
+| A3 follow-up — unlinked same-date costs shown, linked only by the farmer | #296 | — | merged (CI green on 960a58c7) |
 
 ## Automated evidence (CI)
 
@@ -30,7 +31,7 @@ plus the A1–A3 tests green in CI.
 | A3 — oil adds to the machinery day, a rental replaces it | `oilForTheMachinesAddsToTheirCalculatedDayAndNeverReplacesIt`, `DayCostCalculatorTest.onlyAReplacingHandTypedCostStandsForTheCalculation` |
 | A3 — a missing price is unknown, never 0 | `machineryWithoutAPriceCountsNoMoneyAndSaysSo`, `DayCostCalculatorTest` |
 | A3 — closed Campaigns are never recalculated nor swapped | `aClosedCampaignKeepsItsCostsAndARemovedDayTakesItsCalculatedOnes`, `aClosedCampaignRefusesToSwapWhichCostCounts` |
-| A3 — unlinked same-date cost is ambiguous; only the farmer links it (#296) | `anUnlinkedHandTypedCostOfTheSameDateIsShownAndOnlyTheFarmerLinksIt`, `DayCostCalculatorTest.unlinkedSameDateCostsAreAmbiguousOnlyWhenTheyCouldStandForTheCalculation` |
+| A3 — unlinked same-date cost is ambiguous; only farmer-owned costs, never oil; only the farmer links it (#296) | `anUnlinkedHandTypedCostOfTheSameDateIsShownAndOnlyTheFarmerLinksIt`, `DayCostCalculatorTest.unlinkedSameDateCostsAreAmbiguousOnlyWhenTheyCouldStandForTheCalculation` |
 | Mixed Parcels never receive fabricated kg | `DeliveryContractTest.anExactSplitMustReconcileWithTheDeliveredKilos`, `aDaysOriginIsTheUnionOfItsPesadasParcelsWithoutASplit` |
 | Pesadas of one day may go to different cooperatives | `threePesadasOfOneDayToTwoCooperativesSurviveRestartAsOneTruthfulJornada` |
 | OCR never writes without confirmation; confirmed ticket goes to its automatic day | `readingATicketNeverRecordsADelivery`, `aConfirmedTicketGoesToItsAutomaticDayAndNeverToAHandRecordedJornada`, `anIncompleteReadingNeedsReviewAndAnInvalidReviewWritesNothing` |
