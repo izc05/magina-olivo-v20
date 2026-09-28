@@ -3,9 +3,11 @@ package com.isivoltpro.maginaolivo.data.remote.weather
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.weather.WeatherCondition
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
+import com.isivoltpro.maginaolivo.domain.weather.WeatherDayForecast
 import com.isivoltpro.maginaolivo.domain.weather.WeatherReading
 import com.isivoltpro.maginaolivo.domain.weather.WeatherSource
 import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -45,6 +47,22 @@ object EdgeWeatherResponse {
         val current = body.getJSONObject("current")
         val condition = WeatherCondition.entries.firstOrNull { it.name == current.getString("condition") }
             ?: throw IllegalArgumentException("unknown condition")
+        val dailyArray = body.optJSONArray("daily")
+        val daily = (0 until (dailyArray?.length() ?: 0)).mapNotNull { index ->
+            val day = dailyArray?.optJSONObject(index) ?: return@mapNotNull null
+            val date = runCatching { LocalDate.parse(day.optString("date")) }.getOrNull() ?: return@mapNotNull null
+            val dayCondition = day.optString("condition").takeIf(String::isNotBlank)
+                ?.let { name -> WeatherCondition.entries.firstOrNull { it.name == name } }
+            WeatherDayForecast(
+                date = date,
+                minTemperatureC = day.optIntOrNull("minTemperatureC"),
+                maxTemperatureC = day.optIntOrNull("maxTemperatureC"),
+                condition = dayCondition,
+                rainProbabilityPercent = day.optIntOrNull("rainProbabilityPercent"),
+                rainMm = day.optDoubleOrNull("rainMm"),
+                windKmh = day.optIntOrNull("windKmh"),
+            )
+        }.take(7)
         return WeatherReading(
             provider = provider,
             weather = WeatherNow(
@@ -55,10 +73,14 @@ object EdgeWeatherResponse {
                 validAt = Instant.parse(current.getString("validAt")),
                 updatedAt = Instant.parse(body.getString("updatedAt")),
                 attribution = body.optString("attribution").ifBlank { null },
+                daily = daily,
             ),
         )
     }
 
     private fun JSONObject.optIntOrNull(key: String): Int? =
         if (!has(key) || isNull(key)) null else getInt(key)
+
+    private fun JSONObject.optDoubleOrNull(key: String): Double? =
+        if (!has(key) || isNull(key)) null else getDouble(key)
 }
