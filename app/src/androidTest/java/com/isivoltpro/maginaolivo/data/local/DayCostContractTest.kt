@@ -167,6 +167,42 @@ class DayCostContractTest {
         assertNull(expenses.observe(calculatedId).first())
     }
 
+    @Test
+    fun oilForTheMachinesAddsToTheirCalculatedDayAndNeverReplacesIt() = runBlocking {
+        ok(costs.saveRates(farmId, RecollectionRates(equipmentDayMinor = mapOf(EquipmentType.SHAKER to 3_500))))
+        val dayId = ok(harvests.openJornada(farmId, day))
+        ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1))))
+        ok(expenses.create(cost(dayId, JornadaExpenseKind.LUBRICANT, 1_200)))
+        ok(expenses.create(cost(dayId, JornadaExpenseKind.LUBRICANT, 800).copy(concept = JornadaExpenseKind.LUBRICANT.concept("Aceite hidráulico"))))
+        ok(labour.recordCount(CountDraft(dayId, 1, LabourUnit.FULL_DAY)))
+
+        // 35 € of shaker plus 12 € and 8 € of oil: both count, nothing is sent to draft.
+        assertEquals(ExpenseStatus.POSTED, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.status)
+        assertEquals(5_500L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
+
+        // A hand-typed machinery rental of the day does stand for the calculation.
+        ok(expenses.create(cost(dayId, JornadaExpenseKind.RENTAL, 4_000)))
+        assertEquals(ExpenseStatus.DRAFT, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.status)
+        assertEquals(6_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
+    }
+
+    @Test
+    fun aClosedCampaignRefusesToSwapWhichCostCounts() = runBlocking {
+        ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
+        val dayId = ok(harvests.openJornada(farmId, day))
+        val manual = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000)))
+        ok(labour.recordCount(CountDraft(dayId, 5, LabourUnit.FULL_DAY)))
+        val campaign = db.campaignDao().findById(campaignId)!!
+        db.campaignDao().upsert(campaign.copy(status = CampaignStatus.CLOSED))
+
+        val refused = costs.preferCalculated(dayId, DayCostKind.LABOUR)
+        assertEquals(AppError.Conflict("campaign_closed"), (refused as AppResult.Failure).error)
+        // History unchanged: the hand-typed cost still counts, the calculation stays a draft.
+        assertEquals(ExpenseStatus.POSTED, expenses.observe(manual).first()!!.status)
+        assertEquals(ExpenseStatus.DRAFT, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
+        assertEquals(30_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
+    }
+
     private suspend fun calculated(dayId: UUID, origin: ExpenseOrigin): Expense? =
         expenses.observeForHarvest(dayId).first().firstOrNull { it.origin == origin }
 

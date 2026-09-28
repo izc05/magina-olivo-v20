@@ -9,6 +9,7 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.RecollectionRatesEntity
+import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
@@ -73,6 +74,11 @@ class OfflineFirstDayCostRepository(
         inTransaction("prefer_calculated") {
             val day = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("harvest"))
+            // A closed Campaign is history: neither its hand-typed nor its calculated costs change.
+            val campaign = day.campaignId?.let { database.campaignDao().findById(it) }
+            if (campaign == null || (campaign.status != CampaignStatus.ACTIVE && campaign.status != CampaignStatus.HARVEST)) {
+                return@inTransaction AppResult.Failure(AppError.Conflict("campaign_closed"))
+            }
             costs.preferCalculated(day.id, kind, clock.nowInstant())
             AppResult.Success(Unit)
         }

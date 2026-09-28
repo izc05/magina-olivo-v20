@@ -15,6 +15,7 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.CalculatedCost
 import com.isivoltpro.maginaolivo.domain.expense.DayCostCalculator
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
@@ -103,10 +104,12 @@ internal class DayCostLedger(
         )
     }
 
-    /** Live, posted, hand-typed (or document) costs of the same kind linked to the same day. */
+    /** Live, posted, hand-typed (or document) costs linked to the same day that stand for [kind]. */
     private suspend fun manual(harvestId: UUID, kind: DayCostKind): List<ExpenseEntity> =
-        database.expenseDao().listForHarvest(harvestId).filter {
-            it.origin !in CALCULATED && it.category == kind.category.name && it.status == ExpenseStatus.POSTED.name
+        database.expenseDao().listForHarvest(harvestId).filter { expense ->
+            val category = runCatching { ExpenseCategory.valueOf(expense.category) }.getOrNull()
+            expense.origin !in CALCULATED && expense.status == ExpenseStatus.POSTED.name &&
+                category != null && kind.isReplacedBy(category, expense.concept)
         }
 
     private suspend fun remove(expense: ExpenseEntity, now: Instant) {

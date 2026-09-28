@@ -89,6 +89,15 @@ object DayCostCalculator {
 enum class DayCostKind(val origin: ExpenseOrigin, val category: ExpenseCategory, val concept: String) {
     LABOUR(ExpenseOrigin.DAY_LABOUR, ExpenseCategory.LABOR, "Jornales (calculado)"),
     EQUIPMENT(ExpenseOrigin.DAY_EQUIPMENT, ExpenseCategory.MACHINERY, "Maquinaria (calculada)"),
+    ;
+
+    /**
+     * A3: whether a hand-typed Expense of the day stands for this calculated cost (and so
+     * replaces it) rather than adding to it, as oil for the machines does.
+     */
+    fun isReplacedBy(category: ExpenseCategory, concept: String): Boolean =
+        category == this.category &&
+            JornadaExpenseKind.entries.none { it.additive && it.category == category && concept.trim().startsWith(it.label, ignoreCase = true) }
 }
 
 interface DayCostRepository {
