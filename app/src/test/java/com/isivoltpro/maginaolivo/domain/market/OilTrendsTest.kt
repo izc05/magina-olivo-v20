@@ -58,4 +58,20 @@ class OilTrendsTest {
         assertFalse(OilTrends.isOutdated(latest, LocalDate.of(2026, 10, 4)))
         assertTrue(OilTrends.isOutdated(latest, LocalDate.of(2026, 10, 5)))
     }
+
+    @Test fun theChartKeepsEveryWeekOnTheAxisAndMissingValuesStayMissing() {
+        val week36 = LocalDate.of(2026, 8, 31)
+        // Week 37 of AOVE was not published; week 35 exists for Lampante only.
+        val series = junta(
+            obs(OilCategory.AOL, week36.minusWeeks(1), "3.13"),
+            obs(OilCategory.AOVE, week36, "3.47"),
+            obs(OilCategory.AOVE, week38, "3.46"),
+            obs(OilCategory.AOV, week37, "3.30"),
+        )
+        assertEquals(listOf(week36.minusWeeks(1), week36, week37, week38), OilTrends.chartWeeks(series))
+        assertEquals(listOf(week37, week38), OilTrends.chartWeeks(series, maxWeeks = 2))
+        assertNull(OilTrends.valueAt(series, OilCategory.AOVE, week37))
+        assertEquals(BigDecimal("3.46"), OilTrends.valueAt(series, OilCategory.AOVE, week38))
+        assertTrue(OilTrends.chartWeeks(junta()).isEmpty())
+    }
 }

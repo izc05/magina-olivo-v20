@@ -78,6 +78,8 @@ fun HomeRoute(
     onActivitySelected: (UUID) -> Unit,
     /** Phase 20B-radar: offered only when this build can reach the radar. */
     onRadar: () -> Unit = {},
+    /** Phase 20D-3: the oil market screen (12-week official chart). */
+    onOilMarket: () -> Unit = {},
 ) {
     val viewModel: HomeViewModel = viewModel(
         key = "home",
@@ -101,6 +103,7 @@ fun HomeRoute(
         state, LocalTime.now(), onOlivar, onCalendar, onHarvest, onDeliveries, onExpenses, onActivitySelected, clock.nowInstant(),
         onRadar = onRadar.takeIf { persistence.radarSource != null },
         oilPulse = { AoveNetPulse() },
+        onOilMarket = onOilMarket,
     )
 }
 
@@ -126,6 +129,8 @@ fun HomeScreen(
     weatherMotion: Boolean? = null,
     /** Phase 20D: AOVE.net's daily widget; null in tests and previews (no network there). */
     oilPulse: (@Composable () -> Unit)? = null,
+    /** Phase 20D-3: opens the oil market screen; the card offers it once there are official weeks. */
+    onOilMarket: (() -> Unit)? = null,
 ) {
     // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
     Scaffold(
@@ -238,7 +243,7 @@ fun HomeScreen(
                 Quick("Gastos", MoIcons.Euro, "home-quick-expenses", onExpenses, Modifier.weight(1f))
             }
             // Phase 20: external context after the farm, each with an honest state.
-            HomeContext(state, feedNow, onRadar, oilPulse)
+            HomeContext(state, feedNow, onRadar, oilPulse, onOilMarket)
             Spacer(Modifier.height(MoSpacing.lg))
             }
         }
@@ -276,6 +281,7 @@ private fun HomeContext(
     now: Instant,
     onRadar: (() -> Unit)? = null,
     oilPulse: (@Composable () -> Unit)? = null,
+    onOilMarket: (() -> Unit)? = null,
 ) {
     MoSectionHeader("Tiempo, mercado y cooperativa")
     when (val weather = state.weather) {
@@ -324,7 +330,7 @@ private fun HomeContext(
     // Phase 20B-radar: live picture over the farm; its own screen says when it needs signal.
     onRadar?.let { MoSecondaryButton("Ver radar de lluvia", it, Modifier.fillMaxWidth().testTag("home-weather-radar")) }
     // Phase 20D: AOVE.net's daily pulse (publisher-hosted) and the Junta's official weekly trend.
-    OilMarketCard(state.oilMarket, oilPulse)
+    OilMarketCard(state.oilMarket, oilPulse, onOilMarket)
     // Owner decision D4: notices arrive with the private administration panel.
     Quiet("Mi cooperativa", "Los avisos de tu cooperativa llegarán con el panel de administración.", MoIcons.Bell, "home-cooperative")
 }

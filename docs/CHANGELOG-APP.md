@@ -11,7 +11,18 @@ Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.
 Para saber qué lleva un APK: mira la versión en el Perfil y busca abajo su bloque; la compilación
 concreta está en la ejecución de CI con ese número (Actions → Android CI → #número).
 
-## 0.4.0 — en curso
+## 0.5.0 — en curso
+
+- Mercado del aceite con datos oficiales (Fase 20D-3):
+  - La «Tendencia oficial semanal» de Inicio se enciende: AOVE, Virgen y Lampante de la Junta de
+    Andalucía (precio en almazara o bodega, €/kg) con su cambio frente a la semana anterior, leídos
+    por la función `oil-market` del servidor y guardados en el teléfono para verlos sin cobertura.
+  - Nueva pantalla «Mercado del aceite» («Ver mercado» en la tarjeta de Inicio): pulso diario de
+    AOVE.net, tendencia oficial y gráfico de las últimas 12 semanas, una línea por categoría. Una
+    semana no publicada es un hueco en la línea y se dice («1 semana sin dato»); nunca se rellena.
+    Debajo, la fuente y cuándo se consultó.
+
+## 0.4.0 — 28/09/2026
 
 - Mercado del aceite en Inicio (Fase 20D-1, Issue #271):
   - «Pulso diario»: el widget gratuito de AOVE.net tal como lo publica su autor (solo con conexión,

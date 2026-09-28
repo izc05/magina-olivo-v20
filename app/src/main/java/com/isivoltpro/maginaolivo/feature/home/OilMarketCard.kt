@@ -43,6 +43,7 @@ import com.isivoltpro.maginaolivo.domain.market.OilTrend
 import com.isivoltpro.maginaolivo.domain.market.OilTrends
 import com.isivoltpro.maginaolivo.domain.market.TrendDirection
 import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
+import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
@@ -66,7 +67,12 @@ import java.util.Locale
  *   change from the previous week. A weekly figure is never called "hoy".
  */
 @Composable
-internal fun OilMarketCard(official: FeedState<OilMarketSeries>, pulse: (@Composable () -> Unit)?) {
+internal fun OilMarketCard(
+    official: FeedState<OilMarketSeries>,
+    pulse: (@Composable () -> Unit)?,
+    /** Phase 20D-3: the market screen with the 12-week chart, once there are official weeks. */
+    onOpen: (() -> Unit)? = null,
+) {
     Surface(
         modifier = Modifier.fillMaxWidth().testTag("home-market"),
         shape = MoShape.card,
@@ -89,12 +95,15 @@ internal fun OilMarketCard(official: FeedState<OilMarketSeries>, pulse: (@Compos
                 FeedState.NoLocation, FeedState.Unavailable ->
                     Note("Aún sin datos oficiales. Se actualizará cuando haya conexión.", "home-market-official-unavailable")
             }
+            if (onOpen != null && official is FeedState.Value) {
+                MoSecondaryButton("Ver mercado", onOpen, Modifier.fillMaxWidth().testTag("home-market-open"))
+            }
         }
     }
 }
 
 @Composable
-private fun OfficialTrend(official: FeedState.Value<OilMarketSeries>) {
+internal fun OfficialTrend(official: FeedState.Value<OilMarketSeries>) {
     val series = official.value
     val trends = OilTrends.all(series)
     val latest = trends.maxByOrNull { it.latest.periodEnd }?.latest ?: return
@@ -142,7 +151,7 @@ private fun TrendRow(trend: OilTrend, lagging: Boolean) {
 }
 
 @Composable
-private fun Note(text: String, tag: String) {
+internal fun Note(text: String, tag: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag(tag))
 }
 
