@@ -62,6 +62,13 @@ data class Harvest(
 
     val unallocatedGrams: Long get() = totalGrams - allocatedGrams
 
+    /**
+     * Gate 20: a Jornada opened before its first Pesada. Its stored 0 is "not weighed yet",
+     * never a measurement (a recorded harvest is always > 0), so it shows «Kg pendientes de
+     * pesada» and stays out of every kilogram total and chart until a Pesada links to it.
+     */
+    val awaitingPesadas: Boolean get() = totalGrams == 0L
+
     val allocationMode: HarvestAllocationMode
         get() = when {
             shares.isNotEmpty() && shares.all { it.allocation == HarvestAllocation.EXACT } -> HarvestAllocationMode.EXACT
@@ -129,11 +136,14 @@ data class HarvestSummary(
     val totalGrams: Long,
     val unallocatedGrams: Long,
     val parcels: List<ParcelHarvestTotal>,
+    /** Jornadas with kilos; the rest await their first Pesada and add no kilos. */
+    val weighedCount: Int = harvestCount,
 ) {
     companion object {
         fun of(harvests: List<Harvest>): HarvestSummary {
             val byParcel = linkedMapOf<UUID, ParcelHarvestTotal>()
-            harvests.forEach { harvest ->
+            val weighed = harvests.filterNot { it.awaitingPesadas }
+            weighed.forEach { harvest ->
                 harvest.shares.forEach { share ->
                     val current = byParcel[share.parcelId]
                         ?: ParcelHarvestTotal(share.parcelId, share.parcelName, 0, false)
@@ -145,9 +155,10 @@ data class HarvestSummary(
             }
             return HarvestSummary(
                 harvestCount = harvests.size,
-                totalGrams = harvests.sumOf { it.totalGrams },
-                unallocatedGrams = harvests.sumOf { it.unallocatedGrams },
+                totalGrams = weighed.sumOf { it.totalGrams },
+                unallocatedGrams = weighed.sumOf { it.unallocatedGrams },
                 parcels = byParcel.values.sortedBy { it.parcelName.lowercase() },
+                weighedCount = weighed.size,
             )
         }
     }

@@ -34,7 +34,7 @@ data class CampaignSeries(val days: List<DayPoint>, val cooperatives: List<Coope
 
     companion object {
         fun of(notebook: CampaignNotebook): CampaignSeries {
-            val harvestByDay = notebook.harvests.groupBy { it.harvestDate }
+            val harvestByDay = notebook.harvests.filterNot { it.awaitingPesadas }.groupBy { it.harvestDate }
             val deliveryByDay = notebook.deliveries.groupBy { it.deliveryDate }
             var cumulative = 0L
             val days = (harvestByDay.keys + deliveryByDay.keys).sorted().map { date ->
@@ -97,7 +97,7 @@ data class CampaignComparison(
                 previousDelivered = delivered
                 CampaignComparison(
                     campaign = notebook.campaign,
-                    harvestedGrams = notebook.harvestSummary.totalGrams.takeIf { notebook.harvests.isNotEmpty() },
+                    harvestedGrams = notebook.harvestSummary.totalGrams.takeIf { notebook.harvestSummary.weighedCount > 0 },
                     deliveredGrams = delivered,
                     fatYield = deliveries.fatYield,
                     yieldCoveragePercent = deliveries.coveragePercent(deliveries.fatYield),

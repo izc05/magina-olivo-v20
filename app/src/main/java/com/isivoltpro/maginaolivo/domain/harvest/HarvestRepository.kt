@@ -34,7 +34,8 @@ interface HarvestRepository {
 
     /**
      * Opens the Farm's Jornada for [date] before any Pesada (ROADMAP 19B: a Jornada links zero,
-     * one or many Pesadas). It starts at 0 kg over the Campaign's Parcels with an unknown split;
+     * one or many Pesadas). Over the Campaign's Parcels with an unknown split, it awaits its
+     * Pesadas ([Harvest.awaitingPesadas]: «Kg pendientes de pesada», out of every kilo total) and
      * its kilos become the sum of the Pesadas linked to it. Nothing is estimated.
      */
     suspend fun openJornada(farmId: UUID, date: LocalDate): AppResult<UUID>

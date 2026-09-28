@@ -75,6 +75,21 @@ class JornadaScreenTest {
         composeRule.onAllNodesWithTag("jornada-pesada").assertCountEquals(0)
     }
 
+    @Test fun aJornadaOpenedBeforeItsPesadasShowsPendingKilosNeverZero() {
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                HarvestDetailScreen(
+                    state = HarvestDetailUiState(isLoading = false, harvest = harvest.copy(totalGrams = 0)),
+                    onUpdate = {},
+                    onDelete = {},
+                )
+            }
+        }
+        composeRule.onNodeWithText("Kg pendientes de pesada").assertExists()
+        composeRule.onNodeWithText("Serán la suma de sus pesadas").assertExists()
+        composeRule.onNodeWithText("0 kg").assertDoesNotExist()
+    }
+
     @Test fun eachPesadaSaysItsOriginAndYieldAndTheJornadaWeighsThem() {
         val analysed = pesada(2_000_000, "Coop. Bedmarense", "V-1", LocalTime.of(10, 0)).let {
             it.copy(origin = PesadaOrigin.TREE, analysis = YieldAnalysis(UUID.randomUUID(), it.id, day.plusDays(4), 2_000, null, null, 1))

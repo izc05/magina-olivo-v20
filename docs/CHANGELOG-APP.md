@@ -22,10 +22,12 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
     semana no publicada es un hueco en la línea y se dice («1 semana sin dato»); nunca se rellena.
     Debajo, la fuente y cuándo se consultó.
 - Arreglos de la prueba de Gate 20 en emulador (compilación 575):
-  - Recolección → «Abrir jornada de hoy»: la jornada se puede abrir antes de tener pesadas. Empieza
-    en 0 kg y sus kilos pasan a ser la suma de las pesadas que se le añaden («Añadir pesada» dentro
+  - Recolección → «Abrir jornada de hoy»: la jornada se puede abrir antes de tener pesadas. Sus
+    kilos pasan a ser la suma de las pesadas que se le añaden («Añadir pesada» dentro
     de la jornada). Abrirla otra vez el mismo día devuelve la misma jornada; con varias fincas en
     campaña se pregunta en cuál.
+  - Mientras no tiene pesadas, la jornada muestra «Kg pendientes de pesada» (nunca «0 kg») y no
+    cuenta en los kilos de la campaña, de Inicio ni en la gráfica.
   - La ficha de la finca ya no dice «Sin campaña activa» cuando su campaña está en «Recolección».
 
 ## 0.4.0 — 28/09/2026

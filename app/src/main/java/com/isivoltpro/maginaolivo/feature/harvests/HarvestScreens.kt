@@ -247,7 +247,7 @@ private fun CampaignHarvestCard(campaign: CampaignHarvest) {
                 color = MoOliveDark,
             )
             Text(
-                Weight.format(campaign.summary.totalGrams),
+                if (campaign.summary.weighedCount == 0) PENDING_KILOS else Weight.format(campaign.summary.totalGrams),
                 style = MaterialTheme.typography.titleLarge,
                 color = MoInk,
                 modifier = Modifier.testTag("campaign-harvest-total"),
@@ -305,7 +305,11 @@ private fun HarvestRow(harvest: Harvest, onClick: () -> Unit) {
                 )
                 MoStatusChip(harvest.allocationMode.label(), tone = harvest.allocationMode.tone())
             }
-            Text(Weight.format(harvest.totalGrams), style = MaterialTheme.typography.titleMedium, color = MoInk)
+            Text(
+                if (harvest.awaitingPesadas) PENDING_KILOS else Weight.format(harvest.totalGrams),
+                style = MaterialTheme.typography.titleMedium,
+                color = if (harvest.awaitingPesadas) MoTextSecondary else MoInk,
+            )
         }
     }
 }
@@ -823,11 +827,11 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
         color = MoTextSecondary,
     )
     MoMetricCard(
-        if (pesadaCount == 0) "Kilos históricos" else "Kilos pesados",
-        Weight.format(harvest.totalGrams),
+        if (pesadaCount == 0 && !harvest.awaitingPesadas) "Kilos históricos" else "Kilos pesados",
+        if (harvest.awaitingPesadas) PENDING_KILOS else Weight.format(harvest.totalGrams),
         Modifier.fillMaxWidth().testTag("harvest-total-value"),
         supportingText = when (pesadaCount) {
-            0 -> harvest.allocationMode.label()
+            0 -> if (harvest.awaitingPesadas) "Serán la suma de sus pesadas" else harvest.allocationMode.label()
             1 -> "Los de su pesada"
             else -> "Suma de sus $pesadaCount pesadas"
         },
@@ -868,3 +872,6 @@ private fun DetailValue(label: String, value: String?) {
         Text(value ?: "Sin registrar", style = MaterialTheme.typography.bodyLarge)
     }
 }
+
+/** Spec §7: a Jornada without Pesadas has no kilos yet; never a fake zero. */
+internal const val PENDING_KILOS = "Kg pendientes de pesada"

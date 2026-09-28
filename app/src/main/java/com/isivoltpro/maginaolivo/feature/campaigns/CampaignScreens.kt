@@ -179,7 +179,7 @@ fun CampaignDetailRoute(
         val delivery = DeliverySummary.of(deliveries)
         val ledger = ExpenseSummary.of(expenses.filter { it.campaignId == campaignId })
         CampaignSummaryUi(
-            harvestedGrams = harvest.totalGrams.takeIf { harvest.harvestCount > 0 },
+            harvestedGrams = harvest.totalGrams.takeIf { harvest.weighedCount > 0 },
             harvestCount = harvest.harvestCount,
             deliveredGrams = delivery.deliveredGrams.takeIf { delivery.deliveryCount > 0 },
             deliveryCount = delivery.deliveryCount,

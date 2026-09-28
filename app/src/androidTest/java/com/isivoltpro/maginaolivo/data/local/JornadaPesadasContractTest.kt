@@ -28,6 +28,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestDraft
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestShareInput
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Jornada
 import java.time.Instant
 import java.time.LocalDate
@@ -163,7 +164,9 @@ class JornadaPesadasContractTest {
         // Gate 20 (emulator, build 575): the Jornada can exist before its first Pesada.
         val jornadaId = ok(harvests.openJornada(farmId, day))
         val opened = harvests.observe(jornadaId).first()!!
-        assertEquals(0L, opened.totalGrams)
+        // Stored 0 means "not weighed yet": shown as «Kg pendientes de pesada», out of every total.
+        assertTrue(opened.awaitingPesadas)
+        assertEquals(0, HarvestSummary.of(listOf(opened)).weighedCount)
         assertEquals(setOf(north, south), opened.shares.map { it.parcelId }.toSet())
         assertTrue(opened.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
         // Opening it again the same day returns the same Jornada: never a second one.
@@ -180,6 +183,7 @@ class JornadaPesadasContractTest {
 
         val harvest = harvests.observe(jornadaId).first()!!
         assertEquals(3_500_000L, harvest.totalGrams)
+        assertTrue(!harvest.awaitingPesadas)
         assertEquals(2, Jornada.of(harvest, deliveries.observeAll().first()).pesadas.size)
     }
 

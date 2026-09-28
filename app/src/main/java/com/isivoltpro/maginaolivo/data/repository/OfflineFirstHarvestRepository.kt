@@ -133,7 +133,7 @@ class OfflineFirstHarvestRepository(
             }
             // One Jornada per Farm and day: opening it again returns the one already there.
             database.harvestDao().findLiveOnDay(farm.id, campaign.id, date)?.let { return@inTransaction AppResult.Success(it.id) }
-            // 0 kg until its Pesadas arrive: JornadaLedger.reconcile sets the sum as they link.
+            // Stored 0 = not weighed yet (Harvest.awaitingPesadas); JornadaLedger.reconcile sets the sum as Pesadas link.
             val id = jornadas.open(farm.workspaceId, farm.id, campaign.id, date, emptyList(), 0L, clock.nowInstant())
             AppResult.Success(id)
         }
