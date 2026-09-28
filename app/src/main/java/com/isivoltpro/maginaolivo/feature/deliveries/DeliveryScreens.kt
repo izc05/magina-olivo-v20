@@ -154,7 +154,8 @@ fun DeliveriesScreen(
     state: DeliveriesUiState,
     today: LocalDate,
     onCreate: (DeliveryForm) -> Unit,
-    onTicketPicked: (String) -> Unit,
+    /** The picked ticket, with the Nueva pesada form it was read from (null from «Leer vale»). */
+    onTicketPicked: (String, DeliveryForm?) -> Unit,
     onProblem: (String) -> Unit,
     onDeliverySelected: (UUID) -> Unit,
     onTicketSelected: (UUID) -> Unit,
@@ -171,7 +172,12 @@ fun DeliveriesScreen(
     // Opened from a Jornada ("Añadir pesada"), the editor starts open on that Jornada.
     var editorVisible by rememberSaveable { mutableStateOf(jornadaId != null) }
     var ticketVisible by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
+    // CR-010 §6: what was typed in Nueva pesada before «Añadir vale y leer datos». Cancelling the
+    // camera reopens the editor with it; a picked ticket carries it to the review.
+    var ticketSeed by remember { mutableStateOf<DeliveryForm?>(null) }
+    LaunchedEffect(state.message) { if (state.message != null) { editorVisible = false; ticketSeed = null } }
+    // A saved Pesada («Guardar y añadir otra») starts the next one from itself, not from the seed.
+    LaunchedEffect(state.nextFormGeneration) { ticketSeed = null }
 
     Scaffold(Modifier.fillMaxSize().testTag("deliveries-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
@@ -196,7 +202,7 @@ fun DeliveriesScreen(
                 )
                 MoPrimaryButton(
                     "Leer vale",
-                    { ticketVisible = true },
+                    { ticketSeed = null; ticketVisible = true },
                     Modifier.weight(1f).testTag("read-ticket"),
                     enabled = canRecord,
                 )
@@ -320,7 +326,7 @@ fun DeliveriesScreen(
                 DeliveryForm(farmId = state.contexts.singleOrNull()?.farmId, date = today.toString())
             }
         }
-        ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
+        ModalBottomSheet(onDismissRequest = { editorVisible = false; ticketSeed = null; onEditorClosed() }) {
             val next = state.nextForm
             key(state.nextFormGeneration) {
                 if (next != null) {
@@ -333,14 +339,15 @@ fun DeliveriesScreen(
                 }
                 DeliveryEditor(
                     title = "Registrar pesada",
-                    initial = next ?: start,
+                    initial = ticketSeed ?: next ?: start,
                     contexts = state.contexts,
                     destinations = state.destinations,
                     errors = state.formErrors,
                     isSaving = state.isSaving,
                     saveText = "Guardar pesada",
                     onSave = onCreate,
-                    onCancel = { editorVisible = false; onEditorClosed() },
+                    onCancel = { editorVisible = false; ticketSeed = null; onEditorClosed() },
+                    onReadTicket = { typed -> ticketSeed = typed; editorVisible = false; onEditorClosed(); ticketVisible = true },
                     onSaveAndAddAnother = onCreateAndAddAnother,
                 )
             }
@@ -348,9 +355,20 @@ fun DeliveriesScreen(
     }
     if (ticketVisible) {
         TicketCaptureSheet(
-            onPicked = { uri -> ticketVisible = false; onTicketPicked(uri) },
-            onProblem = { message -> ticketVisible = false; onProblem(message) },
-            onDismiss = { ticketVisible = false },
+            onPicked = { uri ->
+                ticketVisible = false
+                onTicketPicked(uri, ticketSeed)
+                ticketSeed = null
+            },
+            onProblem = { message ->
+                ticketVisible = false
+                onProblem(message)
+                if (ticketSeed != null) editorVisible = true
+            },
+            onDismiss = {
+                ticketVisible = false
+                if (ticketSeed != null) editorVisible = true
+            },
         )
     }
 }
@@ -521,6 +539,8 @@ internal fun DeliveryEditor(
     subtitle: String = "Se guardará primero en este dispositivo.",
     scrollable: Boolean = true,
     extraActions: @Composable () -> Unit = {},
+    /** CR-010 §6: «Añadir vale y leer datos» from Nueva pesada; null where a ticket is already being read. */
+    onReadTicket: ((DeliveryForm) -> Unit)? = null,
     onSaveAndAddAnother: ((DeliveryForm) -> Unit)? = null,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
@@ -534,6 +554,14 @@ internal fun DeliveryEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+        onReadTicket?.let { read ->
+            MoSecondaryButton("Añadir vale y leer datos", { read(form) }, Modifier.fillMaxWidth().testTag("delivery-read-ticket"))
+            Text(
+                "Foto o PDF del vale: se leen los datos para que los revises. Nada se guarda sin tu confirmación.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MoTextSecondary,
+            )
+        }
         if (farmLocked) {
             Text(context?.farmName.orEmpty(), style = MaterialTheme.typography.titleMedium)
         } else {
@@ -1077,7 +1105,8 @@ fun TicketReviewScreen(
                     DeliveryEditor(
                         title = "Confirmar pesada",
                         subtitle = "Los datos vienen del vale. Corrige lo que no coincida: solo cuenta lo que confirmes.",
-                        initial = extraction.deliveryProposal.toForm(state.contexts.singleOrNull()?.farmId, today),
+                        initial = state.seed?.withTicket(extraction.deliveryProposal, state.destinations)
+                            ?: extraction.deliveryProposal.toForm(state.contexts.singleOrNull()?.farmId, today, state.destinations),
                         contexts = state.contexts,
                         destinations = state.destinations,
                         errors = state.formErrors,

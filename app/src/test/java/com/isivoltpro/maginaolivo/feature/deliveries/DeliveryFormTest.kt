@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.deliveries
 
+import com.isivoltpro.maginaolivo.domain.organization.Organization
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
@@ -62,6 +63,29 @@ class DeliveryFormTest {
     }
 
     @Test
+    fun aTicketsHourAndCooperativeFillTheFormOnlyWhenTheyAreClear() {
+        // CR-010 note 4: still a proposal the farmer confirms.
+        val sanIsidro = Organization(UUID.randomUUID(), "Coop. San Isidro", emptySet())
+        val molino = Organization(UUID.randomUUID(), "Almazara El Molino", emptySet())
+        val proposal = DeliveryTicketProposal(
+            organizationName = "S.C.A. Cooperativa San Isidro",
+            deliveryDate = LocalDate.of(2026, 11, 18),
+            netGrams = 2_850_000,
+            deliveryTime = LocalTime.of(17, 42),
+        )
+        val form = proposal.toForm(farmId = null, today = today, destinations = listOf(sanIsidro, molino))
+        assertEquals(sanIsidro.id, form.destinationOrganizationId)
+        assertEquals("", form.destinationText)
+        assertEquals("17:42", form.time)
+        // No saved match, or more than one: the ticket's text stays typed, to be checked.
+        val unknown = proposal.copy(organizationName = "Oleícola Jaén").toForm(null, today, listOf(sanIsidro, molino))
+        assertNull(unknown.destinationOrganizationId)
+        assertEquals("Oleícola Jaén", unknown.destinationText)
+        val twin = Organization(UUID.randomUUID(), "San Isidro Labrador", emptySet())
+        assertNull(proposal.toForm(null, today, listOf(sanIsidro, twin)).destinationOrganizationId)
+    }
+
+    @Test
     fun yieldIsOptionalPerFigureButNotBoth() {
         assertEquals(YieldDraft(null, 2_150, null), YieldForm(fat = "21,5").toDraft(today).first)
         assertNotNull(YieldForm().toDraft(today).second.fat)
@@ -105,5 +129,38 @@ class DeliveryFormTest {
         assertNull(missing)
         assertNotNull(errors.origin)
         assertEquals(PesadaOrigin.GROUND, base.copy(origin = PesadaOrigin.GROUND).toDraft(today).first!!.origin)
+    }
+    @Test
+    fun aTicketReadFromAnOpenPesadaKeepsWhatWasTypedAndFillsWhatItRead() {
+        val sanIsidro = Organization(UUID.randomUUID(), "Coop. San Isidro", emptySet())
+        val typed = base.copy(notes = "Primera del día", splitKnown = true, weights = mapOf(north to "1.000"))
+        val merged = typed.withTicket(
+            DeliveryTicketProposal(
+                organizationName = "S.C.A. San Isidro",
+                ticketNumber = "A-17",
+                deliveryDate = LocalDate.of(2026, 11, 19),
+                netGrams = 3_120_000,
+                deliveryTime = LocalTime.of(9, 30),
+            ),
+            listOf(sanIsidro),
+        )
+        assertEquals(farm, merged.farmId)
+        assertEquals(listOf(north, south), merged.parcelIds)
+        assertEquals(PesadaOrigin.TREE, merged.origin)
+        assertEquals("Primera del día", merged.notes)
+        assertEquals(mapOf(north to "1.000"), merged.weights)
+        assertEquals("2026-11-19", merged.date)
+        assertEquals(sanIsidro.id, merged.destinationOrganizationId)
+        assertEquals("", merged.destinationText)
+        assertEquals("A-17", merged.ticketNumber)
+        assertEquals("09:30", merged.time)
+        assertEquals(3_120_000L, merged.toDraft(today).first!!.netGrams)
+    }
+
+    @Test
+    fun whatTheTicketDidNotReadStaysAsTyped() {
+        val typed = base.copy(gross = "4.000", tare = "1.150", time = "8:15", ticketNumber = "B-2")
+        assertEquals(typed, typed.withTicket(DeliveryTicketProposal()))
+        assertEquals(typed, typed.withTicket(null))
     }
 }

@@ -4,6 +4,7 @@ import com.isivoltpro.maginaolivo.domain.expense.PurchaseLine
 import com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketProposal
 import com.isivoltpro.maginaolivo.domain.ocr.PurchaseProposal
 import java.time.LocalDate
+import java.time.LocalTime
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -85,6 +86,7 @@ class JsonProposalCodec : ProposalCodec {
             putOpt("net_grams", proposal.netGrams)
             putOpt("member_reference", proposal.memberReference)
             putOpt("vehicle_reference", proposal.vehicleReference)
+            putOpt("delivery_time", proposal.deliveryTime?.toString())
         }.toString()
 
     override fun decodeDelivery(json: String): DeliveryTicketProposal? = runCatching {
@@ -99,6 +101,8 @@ class JsonProposalCodec : ProposalCodec {
             netGrams = root.optLongOrNull("net_grams"),
             memberReference = root.optStringOrNull("member_reference"),
             vehicleReference = root.optStringOrNull("vehicle_reference"),
+            // Added by CR-010; older proposals simply have no hour.
+            deliveryTime = root.optStringOrNull("delivery_time")?.let(LocalTime::parse),
         )
     }.getOrNull()
 

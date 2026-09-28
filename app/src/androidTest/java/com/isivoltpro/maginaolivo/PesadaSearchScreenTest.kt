@@ -38,7 +38,7 @@ class PesadaSearchScreenTest {
                     state = DeliveriesUiState(isLoading = false, deliveries = listOf(withYield, pendingA, pendingB)),
                     today = today,
                     onCreate = {},
-                    onTicketPicked = {},
+                    onTicketPicked = { _, _ -> },
                     onProblem = {},
                     onDeliverySelected = {},
                     onTicketSelected = {},

@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.domain.ocr
 
 import java.time.LocalDate
+import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -29,6 +30,7 @@ class DeliveryTicketParserTest {
         assertEquals(9_490_000L, proposal.tareGrams)
         assertEquals(2_850_000L, proposal.netGrams)
         assertEquals("1187", proposal.memberReference)
+        assertEquals(LocalTime.of(17, 42), proposal.deliveryTime)
         assertTrue(proposal.hasEssentials)
         assertFalse(proposal.weightsDisagree)
     }
@@ -60,5 +62,14 @@ class DeliveryTicketParserTest {
     fun unreadableTextProposesNothing() {
         val proposal = DeliveryTicketParser.parse("~~ ## ..")
         assertEquals(DeliveryTicketProposal(), proposal)
+    }
+
+    @Test
+    fun anHourIsReadOnlyWhereTheTicketSaysSo() {
+        // CR-010 note 4: beside the date, or after «hora»; never guessed from a weight.
+        assertEquals(LocalTime.of(9, 5), DeliveryTicketParser.parse("Coop. San Isidro\n18/11/2026 09:05\nNeto 2.850").deliveryTime)
+        assertEquals(LocalTime.of(13, 30), DeliveryTicketParser.parse("Fecha 18/11/2026\nHora: 13.30\nNeto 2.850").deliveryTime)
+        assertNull(DeliveryTicketParser.parse("Fecha 18/11/2026\nNeto 2.850\nTara 9.490").deliveryTime)
+        assertNull(DeliveryTicketParser.parse("Neto 12:45 kg").deliveryTime)
     }
 }
