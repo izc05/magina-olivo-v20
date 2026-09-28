@@ -27,7 +27,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
+import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
+import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
@@ -158,18 +159,20 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
         )
     }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        MoSummaryMetric(
+        MoKpiMetric(
             "Jornales",
             money(costs.labourMoney),
             Modifier.fillMaxWidth().testTag("notebook-costs-labour"),
             icon = MoIcons.People,
+            kind = MoKpiKind.JORNALES,
             supportingText = notebook.labourSummary.takeUnless { it.isEmpty }?.label() ?: "Sin jornales anotados en las jornadas",
         )
-        MoSummaryMetric(
+        MoKpiMetric(
             "Maquinaria",
             money(costs.machineryMoney),
             Modifier.fillMaxWidth().testTag("notebook-costs-machinery"),
             icon = MoIcons.Tractor,
+            kind = MoKpiKind.MAQUINARIA,
             supportingText = listOfNotNull(
                 costs.machineUses.takeIf { it > 0 }?.let { uses ->
                     val hours = costs.machineHours.takeIf { it > 0 }?.let { " · ${formatHours(it)}" } ?: ""
@@ -178,11 +181,12 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
                 notebook.equipmentSummary.takeUnless { it.isEmpty }?.label(),
             ).joinToString(" · ").ifEmpty { "Sin uso de maquinaria anotado" },
         )
-        MoSummaryMetric(
+        MoKpiMetric(
             "Facturas y documentos",
             if (costs.documents.isEmpty()) "—" else if (costs.documents.size == 1) "1 papel" else "${costs.documents.size} papeles",
             Modifier.fillMaxWidth().testTag("notebook-costs-documents"),
             icon = MoIcons.Document,
+            kind = MoKpiKind.COSTES,
             supportingText = if (costs.documents.isEmpty()) "Sin facturas ni tickets en esta campaña" else "Con número de factura o escaneados",
         )
     }

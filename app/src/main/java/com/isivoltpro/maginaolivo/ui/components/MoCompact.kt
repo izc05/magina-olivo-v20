@@ -1,6 +1,12 @@
 package com.isivoltpro.maginaolivo.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +30,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
@@ -76,6 +84,64 @@ fun MoSummaryMetric(
             Text(value, style = MaterialTheme.typography.titleMedium, color = MoInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (supportingText != null) {
                 Text(supportingText, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary, maxLines = 2)
+            }
+        }
+    }
+}
+
+/**
+ * CR-010 §13 — what a KPI measures, which gives it its accent. The accent follows the figure,
+ * never its icon: Pesadas value-gold, jornales olive, machinery earth, costs blue; general
+ * campaign figures (days, works) keep the brand's deep olive.
+ */
+enum class MoKpiKind(val tint: Color, val container: Color) {
+    PESADAS(MoIconTone.VALUE.tint, MoIconTone.VALUE.container),
+    JORNALES(MoIconTone.GROVE.tint, MoIconTone.GROVE.container),
+    MAQUINARIA(MoIconTone.LAND.tint, MoIconTone.LAND.container),
+    COSTES(MoIconTone.WATER.tint, MoIconTone.WATER.container),
+    CAMPAIGN(MoOliveDark, MoOliveTint),
+}
+
+/**
+ * CR-010 §13 — the Campaign/Recolección/Cuaderno KPI: the same content as [MoSummaryMetric]
+ * with a stronger hierarchy — a larger value, a bigger icon on its kind's tint and a coloured
+ * edge per [MoKpiKind]. Colour is never the only cue: the icon and the label always say what
+ * the figure is. The value wraps instead of being cut, so large text stays readable.
+ */
+@Composable
+fun MoKpiMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    supportingText: String? = null,
+    kind: MoKpiKind,
+) {
+    val accent = kind
+    Surface(
+        modifier = modifier,
+        shape = MoShape.card,
+        color = MoWarmWhite,
+        border = BorderStroke(1.dp, accent.tint.copy(alpha = 0.45f)),
+    ) {
+        Row(Modifier.height(IntrinsicSize.Min)) {
+            Box(Modifier.width(4.dp).fillMaxHeight().background(accent.tint))
+            Column(
+                Modifier.padding(horizontal = MoSpacing.sm, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (icon != null) {
+                        Box(Modifier.size(28.dp).background(accent.container, CircleShape), contentAlignment = Alignment.Center) {
+                            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = accent.tint)
+                        }
+                    }
+                    Text(label, style = MaterialTheme.typography.labelLarge, color = MoTextSecondary, maxLines = 2)
+                }
+                Text(value, style = MaterialTheme.typography.headlineSmall, color = MoInk)
+                if (supportingText != null) {
+                    Text(supportingText, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary, maxLines = 3)
+                }
             }
         }
     }

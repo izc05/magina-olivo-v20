@@ -69,8 +69,9 @@ import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
+import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
 import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
-import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import java.time.LocalDate
@@ -243,38 +244,42 @@ fun CampaignDetailScreen(
                     MoMetricGrid(
                         content = listOf(
                             { m ->
-                                MoSummaryMetric(
+                                MoKpiMetric(
                                     "Kg pesados",
                                     summary.deliveredGrams?.let(Weight::format) ?: "—",
                                     m.testTag("campaign-metric-weighed"),
                                     icon = MoIcons.Delivery,
+                                    kind = MoKpiKind.PESADAS,
                                     supportingText = if (summary.deliveredGrams == null) "Aún no hay kilos pesados" else "Suma de todas las pesadas",
                                 )
                             },
                             { m ->
-                                MoSummaryMetric(
+                                MoKpiMetric(
                                     "Pesadas",
                                     summary.deliveryCount.toString(),
                                     m.testTag("campaign-metric-weighings"),
                                     icon = MoIcons.Checklist,
+                                    kind = MoKpiKind.PESADAS,
                                     supportingText = if (summary.deliveryCount == 0) "Aún no hay pesadas" else "En cooperativa o almazara",
                                 )
                             },
                             { m ->
-                                MoSummaryMetric(
+                                MoKpiMetric(
                                     "Rendimiento graso",
                                     summary.fatYieldHundredths?.let(Percent::format) ?: "—",
                                     m.testTag("campaign-metric-yield"),
                                     icon = MoIcons.Percent,
+                                    kind = MoKpiKind.PESADAS,
                                     supportingText = if (summary.fatYieldHundredths == null) "Llegará con los análisis de las pesadas" else "Ponderado por kilos",
                                 )
                             },
                             { m ->
-                                MoSummaryMetric(
+                                MoKpiMetric(
                                     "Gastos",
                                     summary.expensesMinor?.let { Money.format(it) } ?: "—",
                                     m.testTag("campaign-metric-expenses"),
                                     icon = MoIcons.Euro,
+                                    kind = MoKpiKind.COSTES,
                                     supportingText = if (summary.expensesMinor == null) "Aún no hay gastos de esta campaña" else "Gastos anotados",
                                 )
                             },

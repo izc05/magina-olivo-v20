@@ -81,8 +81,9 @@ import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
+import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
 import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
-import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
@@ -145,23 +146,25 @@ fun HarvestsScreen(
             if (!state.isLoading) {
                 MoMetricGrid(
                     content = listOf(
-                        { m -> MoSummaryMetric("Kg pesados", deliverySummary?.takeIf { it.deliveryCount > 0 }?.let { Weight.format(it.deliveredGrams) } ?: "—", m.testTag("harvest-metric-kg"), icon = MoIcons.Delivery) },
-                        { m -> MoSummaryMetric("Pesadas", (deliverySummary?.deliveryCount ?: 0).toString(), m, icon = MoIcons.Checklist) },
+                        { m -> MoKpiMetric("Kg pesados", deliverySummary?.takeIf { it.deliveryCount > 0 }?.let { Weight.format(it.deliveredGrams) } ?: "—", m.testTag("harvest-metric-kg"), icon = MoIcons.Delivery, kind = MoKpiKind.PESADAS) },
+                        { m -> MoKpiMetric("Pesadas", (deliverySummary?.deliveryCount ?: 0).toString(), m, icon = MoIcons.Checklist, kind = MoKpiKind.PESADAS) },
                         { m ->
-                            MoSummaryMetric(
+                            MoKpiMetric(
                                 "Jornadas",
                                 state.harvests.size.toString(),
                                 m,
                                 icon = MoIcons.Harvest,
+                                kind = MoKpiKind.CAMPAIGN,
                                 supportingText = if (state.harvests.isEmpty()) "Ábrela hoy o con su primera pesada" else "Días de recolección",
                             )
                         },
                         { m ->
-                            MoSummaryMetric(
+                            MoKpiMetric(
                                 "Rendimiento graso",
                                 deliverySummary?.fatYield?.let { Percent.format(it.hundredths) } ?: "—",
                                 m,
                                 icon = MoIcons.Percent,
+                                kind = MoKpiKind.PESADAS,
                                 supportingText = if (deliverySummary?.fatYield == null) "Con los análisis de las pesadas" else "Ponderado por kilos",
                             )
                         },
