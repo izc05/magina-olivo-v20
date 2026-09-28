@@ -326,7 +326,7 @@ internal fun HarvestRow(
     onClick: () -> Unit,
 ) {
     MoCompactListItem(
-        title = "Jornada · ${Weight.format(harvest.totalGrams)}",
+        title = "Jornada · ${if (harvest.awaitingPesadas) "kg pendientes de pesada" else Weight.format(harvest.totalGrams)}",
         subtitle = listOfNotNull(
             when {
                 harvest.shares.isEmpty() -> "Toda la finca"

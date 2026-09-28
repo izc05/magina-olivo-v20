@@ -121,7 +121,7 @@ class HomeViewModel(
                     today = today,
                     farms = farmList,
                     campaigns = running.map { context ->
-                        val harvested = harvestList.filter { it.campaignId == context.campaignId }
+                        val harvested = harvestList.filter { it.campaignId == context.campaignId && !it.awaitingPesadas }
                         val delivered = deliveryList.filter { it.campaignId == context.campaignId }
                         HomeCampaign(
                             name = context.campaignName,

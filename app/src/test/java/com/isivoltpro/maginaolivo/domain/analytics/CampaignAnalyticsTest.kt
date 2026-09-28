@@ -53,6 +53,23 @@ class CampaignAnalyticsTest {
     }
 
     @Test
+    fun aJornadaAwaitingItsFirstPesadaAddsNoKilosAndNoChartPoint() {
+        // Gate 20: opened before any Pesada, it stores 0 meaning "not weighed yet" — never a fake zero.
+        val open = harvest(current, 0, day(27))
+        assertTrue(open.awaitingPesadas)
+        val onlyOpen = CampaignNotebook.project(current, emptyList(), listOf(open), emptyList(), emptyList())
+        assertEquals(1, onlyOpen.harvestSummary.harvestCount)
+        assertEquals(0, onlyOpen.harvestSummary.weighedCount)
+        assertTrue(CampaignSeries.of(onlyOpen).isEmpty)
+        assertNull(CampaignComparison.of(listOf(onlyOpen)).single().harvestedGrams)
+
+        val mixed = CampaignNotebook.project(current, emptyList(), listOf(harvest(current, 3_000_000, day(24)), open), emptyList(), emptyList())
+        assertEquals(3_000_000L, mixed.harvestSummary.totalGrams)
+        assertEquals(1, mixed.harvestSummary.weighedCount)
+        assertEquals(listOf(day(24)), CampaignSeries.of(mixed).days.map { it.date })
+    }
+
+    @Test
     fun yearOverYearAndCostPerKgOnlyWhenBothSidesExist() {
         val deliveries = listOf(
             delivery(last, 10_000_000, LocalDate.of(2025, 11, 20), "Coop", 2_000),
