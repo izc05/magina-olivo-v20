@@ -9,6 +9,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.HarvestParcelEntity
 import com.isivoltpro.maginaolivo.data.local.model.CampaignParcelRow
 import com.isivoltpro.maginaolivo.data.local.model.HarvestWithParcels
 import com.isivoltpro.maginaolivo.data.local.model.RunningCampaignRow
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 
@@ -18,6 +19,16 @@ interface HarvestDao {
 
     @Query("SELECT * FROM harvests WHERE id = :id LIMIT 1")
     suspend fun findById(id: UUID): HarvestEntity?
+
+    /** The live Jornada already opened for this Farm and Campaign on [date], if any. */
+    @Query(
+        """
+        SELECT * FROM harvests
+        WHERE farm_id = :farmId AND campaign_id = :campaignId AND harvest_date = :date AND deleted_at IS NULL
+        ORDER BY created_at, id LIMIT 1
+        """,
+    )
+    suspend fun findLiveOnDay(farmId: UUID, campaignId: UUID, date: LocalDate): HarvestEntity?
 
     @Transaction
     @Query("SELECT * FROM harvests WHERE id = :id AND deleted_at IS NULL LIMIT 1")

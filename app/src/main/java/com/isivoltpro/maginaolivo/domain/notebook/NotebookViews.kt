@@ -171,7 +171,7 @@ val CampaignNotebook.costs: NotebookCosts
  */
 val CampaignNotebook.pendingDeliveryGrams: Long?
     get() {
-        if (harvests.isEmpty()) return null
+        if (harvestSummary.weighedCount == 0) return null
         val picked = harvestSummary.totalGrams
         val delivered = deliverySummary.deliveredGrams
         return (picked - delivered).takeIf { it >= 0 }

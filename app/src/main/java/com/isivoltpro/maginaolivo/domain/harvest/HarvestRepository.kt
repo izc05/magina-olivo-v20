@@ -32,6 +32,14 @@ interface HarvestRepository {
     /** Recorded against the Farm's running Campaign; its Parcels must be that Campaign's. */
     suspend fun create(draft: HarvestDraft): AppResult<UUID>
 
+    /**
+     * Opens the Farm's Jornada for [date] before any Pesada (ROADMAP 19B: a Jornada links zero,
+     * one or many Pesadas). Over the Campaign's Parcels with an unknown split, it awaits its
+     * Pesadas ([Harvest.awaitingPesadas]: «Kg pendientes de pesada», out of every kilo total) and
+     * its kilos become the sum of the Pesadas linked to it. Nothing is estimated.
+     */
+    suspend fun openJornada(farmId: UUID, date: LocalDate): AppResult<UUID>
+
     /** Only while the Campaign is still running: a closed Campaign's history is not rewritten. */
     suspend fun update(id: UUID, draft: HarvestDraft): AppResult<Unit>
 

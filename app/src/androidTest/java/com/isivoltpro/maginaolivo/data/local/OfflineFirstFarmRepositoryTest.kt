@@ -309,6 +309,16 @@ class OfflineFirstFarmRepositoryTest {
             assertEquals(1L, summary.parcelCount)
             assertEquals(15_000.0, summary.totalAreaM2 ?: 0.0, 0.0)
             assertEquals("2026/27", summary.activeCampaignName)
+
+            // Gate 20 (emulator, build 575): a campaign in «Recolección» is still the running one.
+            database.openHelper.writableDatabase.execSQL(
+                "UPDATE campaigns SET status = 'HARVEST' WHERE id = '60000000-0000-0000-0000-000000000030'",
+            )
+            val harvesting = repository(database, TEST_INSTANT, emptyList())
+                .observeActive(workspaceId)
+                .first()
+                .single()
+            assertEquals("2026/27", harvesting.activeCampaignName)
         } finally {
             database.close()
         }

@@ -28,6 +28,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestDraft
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestShareInput
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Jornada
 import java.time.Instant
 import java.time.LocalDate
@@ -156,6 +157,34 @@ class JornadaPesadasContractTest {
         assertNull(released.harvestId)
         assertEquals(2_200_000L, released.netGrams)
         assertEquals("V-9", released.ticketNumber)
+    }
+
+    @Test
+    fun aJornadaOpenedBeforeAnyPesadaStartsAtZeroAndThenCarriesItsPesadas() = runBlocking {
+        // Gate 20 (emulator, build 575): the Jornada can exist before its first Pesada.
+        val jornadaId = ok(harvests.openJornada(farmId, day))
+        val opened = harvests.observe(jornadaId).first()!!
+        // Stored 0 means "not weighed yet": shown as «Kg pendientes de pesada», out of every total.
+        assertTrue(opened.awaitingPesadas)
+        assertEquals(0, HarvestSummary.of(listOf(opened)).weighedCount)
+        assertEquals(setOf(north, south), opened.shares.map { it.parcelId }.toSet())
+        assertTrue(opened.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
+        // Opening it again the same day returns the same Jornada: never a second one.
+        assertEquals(jornadaId, ok(harvests.openJornada(farmId, day)))
+        assertEquals(1, db.harvestDao().observeForCampaign(campaignId).first().size)
+        // No future day, no day before the Campaign.
+        assertValidation("harvestDate", harvests.openJornada(farmId, day.plusDays(1)))
+        assertValidation("harvestDate", harvests.openJornada(farmId, LocalDate.parse("2026-09-30")))
+
+        ok(deliveries.create(pesada(2_100_000, "Coop. San Isidro", "V-201").copy(harvestId = jornadaId)))
+        ok(deliveries.create(pesada(1_400_000, "Almazara El Molino", "A-202").copy(harvestId = jornadaId)))
+        db.close()
+        open()
+
+        val harvest = harvests.observe(jornadaId).first()!!
+        assertEquals(3_500_000L, harvest.totalGrams)
+        assertTrue(!harvest.awaitingPesadas)
+        assertEquals(2, Jornada.of(harvest, deliveries.observeAll().first()).pesadas.size)
     }
 
     @Test

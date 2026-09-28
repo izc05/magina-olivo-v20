@@ -134,7 +134,7 @@ internal fun Harvest.toForm(): HarvestForm {
     return HarvestForm(
         farmId = farmId,
         date = harvestDate.toString(),
-        total = Weight.editable(totalGrams),
+        total = if (awaitingPesadas) "" else Weight.editable(totalGrams), // never a typed-looking 0
         parcelIds = shares.map { it.parcelId },
         splitKnown = shares.size > 1 && exact.isNotEmpty(),
         weights = if (shares.size > 1) exact.associate { it.parcelId to Weight.editable(it.weightGrams) } else emptyMap(),
