@@ -30,6 +30,7 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.JornadaCost
 import com.isivoltpro.maginaolivo.domain.expense.JornadaExpenseKind
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
+import com.isivoltpro.maginaolivo.domain.expense.UnlinkedDayCosts
 import com.isivoltpro.maginaolivo.domain.labour.CountDraft
 import com.isivoltpro.maginaolivo.domain.labour.LabourChange
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
@@ -201,6 +202,30 @@ class DayCostContractTest {
         assertEquals(ExpenseStatus.POSTED, expenses.observe(manual).first()!!.status)
         assertEquals(ExpenseStatus.DRAFT, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
         assertEquals(30_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
+    }
+
+    @Test
+    fun anUnlinkedHandTypedCostOfTheSameDateIsShownAndOnlyTheFarmerLinksIt() = runBlocking {
+        ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
+        val dayId = ok(harvests.openJornada(farmId, day))
+        ok(labour.recordCount(CountDraft(dayId, 5, LabourUnit.FULL_DAY)))
+        val unlinked = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000).copy(harvestId = null)))
+        val otherDate = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 9_000).copy(harvestId = null, expenseDate = day.plusDays(1))))
+
+        // Ambiguous: listed for the day, never merged or dropped; the calculation still counts.
+        val listed = UnlinkedDayCosts.of(dayId, farmId, day, expenses.observeAll().first())
+        assertEquals(listOf(unlinked), listed.map { it.id })
+        assertEquals(ExpenseStatus.POSTED, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
+
+        // Another date is not this day's.
+        assertEquals(AppError.Validation("expense", "other_day"), (costs.linkToDay(otherDate, dayId) as AppResult.Failure).error)
+
+        // Linked by the farmer: the collision rule applies, never both.
+        ok(costs.linkToDay(unlinked, dayId))
+        assertEquals(dayId, expenses.observe(unlinked).first()!!.harvestId)
+        assertEquals(ExpenseStatus.DRAFT, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
+        assertEquals(30_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
+        assertEquals(emptyList<Expense>(), UnlinkedDayCosts.of(dayId, farmId, day, expenses.observeAll().first()))
     }
 
     private suspend fun calculated(dayId: UUID, origin: ExpenseOrigin): Expense? =

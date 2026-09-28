@@ -6,18 +6,32 @@ package com.isivoltpro.maginaolivo.domain.expense
  *
  * CR-010 A3: an [additive] kind is spent on top of the day's calculated cost (oil for the
  * machines is not the machines' day), so it never replaces it. Its concept always starts with
- * its [label], which is how the ledger tells it apart from a hand-typed rental.
+ * its [label]; a concept typed in Gastos is recognised by its [keywords] («Aceite hidráulico»).
  */
-enum class JornadaExpenseKind(val label: String, val category: ExpenseCategory, val additive: Boolean = false) {
+enum class JornadaExpenseKind(
+    val label: String,
+    val category: ExpenseCategory,
+    val additive: Boolean = false,
+    val keywords: List<String> = emptyList(),
+) {
     LABOUR("Jornales/servicio", ExpenseCategory.LABOR),
     DIESEL("Gasoil", ExpenseCategory.FUEL),
     PETROL("Gasolina", ExpenseCategory.FUEL),
-    LUBRICANT("Aceite/lubricante", ExpenseCategory.MACHINERY, additive = true),
+    LUBRICANT("Aceite/lubricante", ExpenseCategory.MACHINERY, additive = true, keywords = listOf("aceite", "lubricante", "grasa")),
     RENTAL("Maquinaria/alquiler", ExpenseCategory.MACHINERY),
     TRANSPORT("Transporte", ExpenseCategory.TRANSPORT),
     REPAIR("Reparaciones", ExpenseCategory.REPAIR),
     OTHER("Otro", ExpenseCategory.HARVEST),
     ;
+
+    /** Whether [concept] names this kind: its label in front, or one of its [keywords] as a word. */
+    fun names(concept: String): Boolean {
+        if (concept.trim().startsWith(label, ignoreCase = true)) return true
+        val words = java.text.Normalizer.normalize(concept.lowercase(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "")
+            .split(Regex("[^a-z0-9ñ]+"))
+        return keywords.any { it in words }
+    }
 
     /** The concept saved for this kind: an additive kind keeps its label in front of any text. */
     fun concept(text: String?): String = when {

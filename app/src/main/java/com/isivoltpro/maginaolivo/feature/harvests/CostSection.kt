@@ -56,6 +56,9 @@ internal fun JornadaCosts(
     onExpenseSelected: (UUID) -> Unit,
     onPreferCalculated: (DayCostKind) -> Unit = {},
     onEditRates: (() -> Unit)? = null,
+    /** CR-010 A3: hand-typed costs of this Farm and date linked to no day. */
+    unlinked: List<Expense> = emptyList(),
+    onLink: (UUID) -> Unit = {},
 ) {
     MoSectionHeader("Gastos de la jornada")
     val cost = JornadaCost.of(expenses)
@@ -102,6 +105,26 @@ internal fun JornadaCosts(
                     )
                 }
             }
+        }
+    }
+    // A3: an unlinked hand-typed cost of the same date may be this day's jornales or machinery.
+    // The app never merges or drops it: the farmer links it here, or leaves it apart.
+    unlinked.forEach { expense ->
+        val what = if (expense.category == DayCostKind.LABOUR.category) "los jornales" else "la maquinaria"
+        Text(
+            "«${expense.concept}» (${Money.format(expense.amountMinor, expense.currency)}) es de este día y no está en " +
+                "ninguna jornada. ¿Es el mismo coste que $what calculados aquí? Si lo es, enlázalo y solo contará uno. " +
+                "Si es otro gasto (gasoil, aceite, una reparación…), déjalo aparte: sigue sumando.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("jornada-unlinked-cost"),
+        )
+        if (editable) {
+            MoTertiaryButton(
+                "Es el mismo coste: enlazar",
+                { onLink(expense.id) },
+                Modifier.fillMaxWidth().testTag("jornada-link-cost"),
+            )
         }
     }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

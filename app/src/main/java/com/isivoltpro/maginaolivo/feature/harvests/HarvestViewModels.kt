@@ -20,6 +20,7 @@ import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseRepository
 import com.isivoltpro.maginaolivo.domain.expense.JornadaExpenseKind
+import com.isivoltpro.maginaolivo.domain.expense.UnlinkedDayCosts
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentRepository
 import com.isivoltpro.maginaolivo.domain.harvest.Jornada
@@ -164,6 +165,8 @@ data class HarvestDetailUiState(
     val rates: RecollectionRates? = null,
     val ratesSaved: Int = 0,
     val ratesError: String? = null,
+    /** CR-010 A3: hand-typed costs of this Farm and date linked to no day (ambiguous). */
+    val unlinkedCosts: List<Expense> = emptyList(),
 )
 
 class HarvestDetailViewModel(
@@ -180,6 +183,7 @@ class HarvestDetailViewModel(
     private val mutableState = MutableStateFlow(HarvestDetailUiState())
     val state: StateFlow<HarvestDetailUiState> = mutableState.asStateFlow()
     private var contexts: List<HarvestContext> = emptyList()
+    private var allExpenses: List<Expense> = emptyList()
 
     init {
         viewModelScope.launch {
@@ -191,6 +195,7 @@ class HarvestDetailViewModel(
                         harvest = harvest,
                         context = contexts.firstOrNull { it.campaignId == harvest?.campaignId },
                     )
+                    refreshUnlinked()
                     harvest?.farmId?.let { observeRates(it) }
                 }
         }
@@ -235,6 +240,38 @@ class HarvestDetailViewModel(
         expenses?.let { repository ->
             viewModelScope.launch {
                 repository.observeForHarvest(harvestId).catch { }.collect { mutableState.value = mutableState.value.copy(costs = it) }
+            }
+            if (dayCosts != null) {
+                viewModelScope.launch {
+                    repository.observeAll().catch { }.collect { rows ->
+                        allExpenses = rows
+                        refreshUnlinked()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun refreshUnlinked() {
+        val harvest = mutableState.value.harvest
+        mutableState.value = mutableState.value.copy(
+            unlinkedCosts = harvest?.let { UnlinkedDayCosts.of(harvestId, it.farmId, it.harvestDate, allExpenses) }.orEmpty(),
+        )
+    }
+
+    /** CR-010 A3: the farmer says an unlinked cost of this date belongs to this day. */
+    fun linkCost(expenseId: UUID) {
+        val repository = dayCosts ?: return
+        viewModelScope.launch {
+            val result = repository.linkToDay(expenseId, harvestId)
+            if (result is AppResult.Failure) {
+                mutableState.value = mutableState.value.copy(
+                    costError = if (result.error == AppError.Conflict("campaign_closed")) {
+                        "La campaña está cerrada: sus gastos ya no cambian."
+                    } else {
+                        "No se pudo enlazar el gasto a la jornada."
+                    },
+                )
             }
         }
     }
