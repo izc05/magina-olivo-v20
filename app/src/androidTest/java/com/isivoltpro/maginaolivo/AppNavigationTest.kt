@@ -25,6 +25,7 @@ import androidx.compose.ui.test.printToString
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -311,11 +312,10 @@ class AppNavigationTest {
         clickByTag("activate-campaign")
         confirmCampaignAction()
 
-        // ACTIVE -> HARVEST
-        clickByText("Iniciar recolección")
-        confirmCampaignAction()
+        // CR-010: no «Iniciar recolección» step; Activa closes directly.
+        assertEquals(0, composeRule.onAllNodesWithText("Iniciar recolección").fetchSemanticsNodes().size)
 
-        // HARVEST -> CLOSED
+        // ACTIVE -> CLOSED
         clickByTag("close-campaign")
         confirmCampaignAction()
         waitForText("Histórico protegido")

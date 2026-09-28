@@ -40,7 +40,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.ActiveFarmStore
 import com.isivoltpro.maginaolivo.app.LocalPersistence
-import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
+import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityViewModel
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
@@ -145,7 +145,7 @@ fun NotebookRootRoute(
         val farm = activeFarm?.takeIf { it.id == requested } ?: return@LaunchedEffect
         if (!notebookReady) return@LaunchedEffect
         val campaign = notebook?.first?.notebook?.campaign
-        onRegisterToday(farm.id, campaign?.status == CampaignStatus.HARVEST, contextLine(farm, campaign?.name))
+        onRegisterToday(farm.id, campaign?.status?.isRunning == true, contextLine(farm, campaign?.name))
         onRegisterRequestHandled()
     }
     NotebookHomeScreen(
@@ -164,13 +164,13 @@ fun NotebookRootRoute(
             val campaign = notebook?.first?.notebook?.campaign
             onRegisterToday(
                 activeFarm?.id,
-                campaign?.status == CampaignStatus.HARVEST,
+                campaign?.status?.isRunning == true,
                 activeFarm?.let { contextLine(it, campaign?.name) },
             )
         },
         onQuickAction = { action ->
             val farm = activeFarm ?: return@NotebookHomeScreen
-            onQuickAction(action, farm.id, notebook?.first?.notebook?.campaign?.status == CampaignStatus.HARVEST)
+            onQuickAction(action, farm.id, notebook?.first?.notebook?.campaign?.status?.isRunning == true)
         },
         onRetry = farmsViewModel::retry,
         onGoToFields = onGoToFields,

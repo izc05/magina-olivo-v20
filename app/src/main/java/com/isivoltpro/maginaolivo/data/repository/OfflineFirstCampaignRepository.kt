@@ -12,6 +12,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
+import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.data.local.model.CampaignWithSnapshots
 import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
@@ -99,8 +100,8 @@ class OfflineFirstCampaignRepository(
     override suspend fun markHarvest(id: UUID) = transition(id, CampaignStatus.ACTIVE, CampaignStatus.HARVEST, "mark_harvest")
 
     override suspend fun close(id: UUID, endDate: LocalDate): AppResult<Unit> = mutate(id, "close_campaign") { current, now ->
-        // Canonical linear lifecycle: only HARVEST may be closed. ACTIVE must pass through HARVEST first.
-        if (current.status != CampaignStatus.HARVEST) return@mutate conflict("illegal_campaign_transition")
+        // CR-010: Borrador → Activa → Cerrada. A running Campaign (ACTIVE, or legacy HARVEST) closes directly.
+        if (!current.status.isRunning) return@mutate conflict("illegal_campaign_transition")
         if (endDate.isBefore(current.startDate)) return@mutate AppResult.Failure(AppError.Validation("endDate", "before_start"))
         database.campaignDao().upsert(current.copy(status = CampaignStatus.CLOSED, endDate = endDate, metadata = current.metadata.next(now)))
         enqueue(id, OutboxOperation.UPDATE, now)
@@ -110,7 +111,7 @@ class OfflineFirstCampaignRepository(
     override suspend fun reopen(id: UUID): AppResult<Unit> = mutate(id, "reopen_campaign") { current, now ->
         if (current.status != CampaignStatus.CLOSED) return@mutate conflict("illegal_campaign_transition")
         if (database.campaignDao().countOtherCurrent(current.farmId, id) > 0) return@mutate conflict("active_campaign_exists")
-        database.campaignDao().upsert(current.copy(status = CampaignStatus.HARVEST, endDate = null, metadata = current.metadata.next(now)))
+        database.campaignDao().upsert(current.copy(status = CampaignStatus.ACTIVE, endDate = null, metadata = current.metadata.next(now)))
         enqueue(id, OutboxOperation.UPDATE, now)
         AppResult.Success(Unit)
     }
