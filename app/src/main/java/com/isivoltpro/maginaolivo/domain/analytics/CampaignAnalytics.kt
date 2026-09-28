@@ -4,6 +4,7 @@ import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.WeightedYield
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
+import com.isivoltpro.maginaolivo.domain.notebook.legacyUnweighedGrams
 import java.time.LocalDate
 
 /**
@@ -72,6 +73,8 @@ data class CampaignComparison(
     val currency: String,
     /** Change in delivered kilos against the previous Campaign, in whole percent; null when unknown. */
     val deliveredChangePercent: Int?,
+    /** CR-010 (A2): hand-typed kilos with no Pesada, disclosed apart and never in [deliveredGrams]. */
+    val legacyUnweighedGrams: Long = 0,
 ) {
     /** Minor units (cents) per delivered kilo. */
     val costPerKgMinor: Long?
@@ -104,6 +107,7 @@ data class CampaignComparison(
                     postedExpensesMinor = notebook.expenseSummary.totalMinor,
                     currency = notebook.expenseSummary.currency,
                     deliveredChangePercent = change,
+                    legacyUnweighedGrams = notebook.legacyUnweighedGrams,
                 )
             }
         }

@@ -176,3 +176,16 @@ val CampaignNotebook.pendingDeliveryGrams: Long?
         val delivered = deliverySummary.deliveredGrams
         return (picked - delivered).takeIf { it >= 0 }
     }
+
+/**
+ * CR-010 (Amendment 1, A2): kilograms typed by hand on legacy Jornadas with no Pesada linked.
+ * The principal total is always the Pesadas'; these are shown apart as «kg registrados sin pesada
+ * (histórico)» — never added to that total, never dropped. A Jornada with Pesadas counts only
+ * through them, and one still awaiting its first Pesada has no kilos at all.
+ */
+fun legacyUnweighedGrams(harvests: List<Harvest>, deliveries: List<Delivery>): Long {
+    val linked = deliveries.mapNotNullTo(HashSet()) { it.harvestId }
+    return harvests.filter { it.id !in linked && !it.awaitingPesadas }.sumOf { it.totalGrams }
+}
+
+val CampaignNotebook.legacyUnweighedGrams: Long get() = legacyUnweighedGrams(harvests, deliveries)

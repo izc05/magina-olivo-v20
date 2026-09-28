@@ -41,6 +41,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import com.isivoltpro.maginaolivo.domain.notebook.RecollectionItem
+import com.isivoltpro.maginaolivo.domain.notebook.legacyUnweighedGrams
 import com.isivoltpro.maginaolivo.domain.notebook.pendingDeliveryGrams
 import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
@@ -274,6 +275,14 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
             },
         ),
     )
+    notebook.legacyUnweighedGrams.takeIf { it > 0 }?.let { legacy ->
+        Text(
+            "Además, ${Weight.format(legacy)} registrados sin pesada (histórico)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("notebook-legacy-kilos"),
+        )
+    }
     MoPrimaryButton("+ Nueva pesada", actions.onDeliveries, Modifier.fillMaxWidth().testTag("notebook-open-deliveries"))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         MoSecondaryButton("Jornadas", actions.onHarvests, Modifier.weight(1f).testTag("notebook-open-harvests"))
@@ -470,6 +479,15 @@ internal fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignCom
         ParcelYields(notebook)
         // Phase 19G: charts and year-over-year, all derived from the same records.
         CampaignCharts(CampaignSeries.of(notebook))
+        notebook.legacyUnweighedGrams.takeIf { it > 0 }?.let { legacy ->
+            // CR-010 (A2): the charts are drawn from Pesadas; the legacy kilos are named, not hidden.
+            Text(
+                "Las gráficas solo incluyen pesadas. ${Weight.format(legacy)} registrados sin pesada (histórico) no aparecen en ellas.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("notebook-chart-legacy-note"),
+            )
+        }
         CampaignComparisonList(comparison)
     }
 }

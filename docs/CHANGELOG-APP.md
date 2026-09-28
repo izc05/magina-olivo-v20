@@ -24,6 +24,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   pesadas; desaparece el paso «Iniciar recolección». Una campaña activa se cierra directamente y,
   si se reabre, vuelve a «Activa». Las campañas que ya estaban «en recolección» siguen funcionando
   y se muestran como «Activa».
+- El total de kilos de la campaña es siempre la suma de las pesadas. Los kilos antiguos escritos a
+  mano en jornadas sin pesada se muestran aparte («registrados sin pesada (histórico)») en la
+  campaña y en el Cuaderno: no se pierden y no se suman al total.
 
 ## 0.5.0 — 28/09/2026
 

@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.domain.notebook
 
+import com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
@@ -123,6 +124,28 @@ class NotebookViewsTest {
         assertEquals(1, costs.machineUses)
         assertEquals(3.5, costs.machineHours, 0.0)
         assertEquals(2, costs.documents.size)
+    }
+
+    @Test fun legacyHandTypedKilosAreShownApartNeverDroppedNorAddedToThePesadasTotal() {
+        // CR-010 A2. A legacy Jornada typed by hand with no Pesada, one reconciled with its Pesada,
+        // and one opened today still awaiting its first Pesada.
+        val legacy = harvest(4_000_000, day1)
+        val weighed = harvest(2_000_000, day1)
+        val awaiting = harvest(0, day1)
+        val pesada = delivery(2_000_000, day1).copy(harvestId = weighed.id)
+        val notebook = project(harvests = listOf(legacy, weighed, awaiting), deliveries = listOf(pesada))
+
+        assertEquals(4_000_000L, notebook.legacyUnweighedGrams)
+        // The principal total is the Pesadas' only.
+        assertEquals(2_000_000L, notebook.deliverySummary.deliveredGrams)
+        // Nothing legacy: nothing to show apart.
+        assertEquals(0L, project(harvests = listOf(weighed), deliveries = listOf(pesada)).legacyUnweighedGrams)
+        // A Jornada awaiting its first Pesada has no kilos: never legacy history.
+        assertEquals(0L, legacyUnweighedGrams(listOf(awaiting), emptyList()))
+        // The year-over-year comparison carries the same figure apart from the weighed kilos.
+        val row = CampaignComparison.of(listOf(notebook)).single()
+        assertEquals(4_000_000L, row.legacyUnweighedGrams)
+        assertEquals(2_000_000L, row.deliveredGrams)
     }
 
     @Test fun pendingDeliveryIsKnownOnlyWhenItAddsUp() {

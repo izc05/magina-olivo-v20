@@ -90,14 +90,17 @@ internal class JornadaLedger(
     }
 
     /**
-     * Sets the Jornada's kilos to the sum of its live Pesadas. When its last Pesada leaves,
-     * the Jornada keeps its kilos as its own figure, editable again; they are never zeroed.
+     * Sets the Jornada's kilos to the sum of its live Pesadas. When its last Pesada leaves, the
+     * Jornada is back to «Kg pendientes de pesada» (0), and the farmer may type kilos again.
      */
     suspend fun reconcile(harvestId: UUID?, now: Instant) {
         if (harvestId == null) return
         val harvest = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null } ?: return
         val linked = database.deliveryDao().listLiveForHarvest(harvestId)
-        if (linked.isEmpty()) return
+        // CR-010 (A1/A2): once a Pesada linked, the Jornada's kilos were replaced by the Pesadas'
+        // sum, so no typed figure is left. When the last one leaves, it goes back to 0 («Kg
+        // pendientes de pesada») rather than keeping kilos no Pesada supports any more, which A2
+        // would otherwise show as hand-typed history.
         val sum = linked.sumOf { it.netGrams }
         if (sum == harvest.weightGrams) return
         database.harvestDao().upsert(
@@ -112,7 +115,8 @@ internal class JornadaLedger(
         )
         val parcels = database.harvestDao().listParcels(harvestId)
         parcels.singleOrNull()?.takeIf { it.allocationMode == HarvestAllocation.EXACT.name }?.let { only ->
-            database.harvestDao().upsertParcels(listOf(only.copy(weightGrams = sum)))
+            val share = if (sum > 0) only.copy(weightGrams = sum) else only.copy(weightGrams = null, allocationMode = HarvestAllocation.UNALLOCATED.name)
+            database.harvestDao().upsertParcels(listOf(share))
         }
         database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, harvestId, OutboxOperation.UPDATE, now)
     }

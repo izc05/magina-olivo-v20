@@ -146,6 +146,15 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>) {
                     color = MoTextSecondary,
                     modifier = Modifier.testTag("comparison-line"),
                 )
+                if (row.legacyUnweighedGrams > 0) {
+                    // CR-010 (A2): disclosed apart, never added to the weighed kilos above.
+                    Text(
+                        "Además, ${Weight.format(row.legacyUnweighedGrams)} registrados sin pesada (histórico)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoTextSecondary,
+                        modifier = Modifier.testTag("comparison-legacy-kilos"),
+                    )
+                }
             }
         }
     }
