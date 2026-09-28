@@ -157,6 +157,39 @@ class ActivityEngineContractTest {
     }
 
     @Test
+    fun registerTodayCreatesCompletedWorkWhilePlanningRemainsPlanned() = runBlocking {
+        val today = LocalDate.parse("2026-09-22") // the FixedClock's day
+        val todayId = (repository.create(
+            NewActivity(
+                farmId, null, ActivityType.PRUNING, today, "Poda de hoy", setOf(parcelA),
+                completeImmediately = true,
+            ),
+        ) as AppResult.Success).value
+        val plannedId = (repository.create(
+            NewActivity(farmId, null, ActivityType.IRRIGATION, date, "Riego pendiente", setOf(parcelA)),
+        ) as AppResult.Success).value
+        // A date still ahead is planned work even when saved from "Registrar hoy".
+        val aheadId = (repository.create(
+            NewActivity(
+                farmId, null, ActivityType.IRRIGATION, today.plusDays(3), "Riego del viernes", setOf(parcelA),
+                completeImmediately = true,
+            ),
+        ) as AppResult.Success).value
+
+        assertEquals(ActivityStatus.COMPLETED, db.activityDao().findById(todayId)?.status)
+        assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(plannedId)?.status)
+        assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(aheadId)?.status)
+        // A harvest day is an appointment the agenda shows while planned, even if dated today.
+        val harvestDayId = (repository.create(
+            NewActivity(
+                farmId, null, ActivityType.HARVEST_DAY, today, "Jornada de recogida", setOf(parcelA),
+                completeImmediately = true,
+            ),
+        ) as AppResult.Success).value
+        assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(harvestDayId)?.status)
+    }
+
+    @Test
     fun aDraftMayBeSavedEmptyAndResumedIntoPlanned() = runBlocking {
         val id = (repository.create(
             NewActivity(farmId, null, ActivityType.PRUNING, date, "Borrador", emptySet(), asDraft = true),

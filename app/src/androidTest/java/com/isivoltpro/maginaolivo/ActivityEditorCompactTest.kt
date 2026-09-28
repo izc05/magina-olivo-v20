@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.feature.activities.ActivityDraft
+import com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFields
 import com.isivoltpro.maginaolivo.feature.activities.ActivityEditor
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.time.LocalDate
@@ -57,6 +59,15 @@ class ActivityEditorCompactTest {
     @Test fun anEditThatAlreadyHasACostShowsIt() {
         show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), costMinor = 5_000))
         composeRule.onNodeWithTag("activity-cost").performScrollTo()
+    }
+
+    @Test fun taskSpecificFieldsStartFoldedAndRemainAvailable() {
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING))
+        composeRule.onNodeWithTag("activity-detail-more").performScrollTo().assertIsDisplayed()
+        assertEquals(0, composeRule.onAllNodesWithTag("activity-detail-block").fetchSemanticsNodes().size)
+        composeRule.onNodeWithTag("activity-detail-more").performClick()
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.PRUNING_TYPE}")
+            .performScrollTo().assertIsDisplayed()
     }
 
     private fun typeChip(label: String) =

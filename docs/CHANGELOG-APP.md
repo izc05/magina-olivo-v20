@@ -20,6 +20,19 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
     respecto a la semana anterior («AOVE ↓ 5,7 % esta semana»), semana y fuente; «Dato antiguo»
     cuando ya debería haber una semana nueva. Se activa cuando esté desplegada la función del
     servidor (20D-2); hasta entonces dice «Sin fuente configurada».
+  - El recuadro del «Pulso diario» toma la altura del widget de AOVE.net (antes quedaba cortado en
+    Lampante y había que desplazarse dentro).
+- Revisión UX con el propietario (Codex, `docs/06-testing/UX-OWNER-FEEDBACK-2026-09-27.md`):
+  - Mi Campo vacío: una sola acción «Crear mi primera finca», sin totales a cero; «Maquinaria» sale
+    de Mi Campo y queda solo en Perfil.
+  - Nueva finca: solo el nombre a la vista; municipio, provincia, descripción y notas bajo «Más
+    detalles» (abiertos al editar si ya tienen datos).
+  - Parcelas: un único «Añadir» que ofrece «A mano» o «Desde el mapa y Catastro»; el formulario
+    manual pide alias y superficie y pliega olivos, riego y Catastro; al importar todo el lote
+    desde el mapa se vuelve a la lista de parcelas.
+  - «Registrar hoy»: primero el tipo de trabajo, luego su pantalla propia con los datos del tipo
+    plegados («Detalles de poda»…); lo registrado hoy o antes se guarda como **Completado** (una
+    fecha futura o un recordatorio lo dejan como Planificado).
 
 ## 0.3.0 — 27/09/2026
 

@@ -195,7 +195,6 @@ fun AppNavigation(
                         onFarmSelected = { farmId ->
                             navController.navigate(AppDestination.farm(farmId.toString()))
                         },
-                        onMachinery = { navController.navigate(AppDestination.Machinery) },
                     )
                 }
             }
@@ -332,6 +331,7 @@ fun AppNavigation(
                     persistence = persistence,
                     onOpenParcel = { navController.navigate(AppDestination.parcel(it.toString())) },
                     onSearchByReference = { navController.navigate(AppDestination.catastro(farmId.toString())) },
+                    onImported = { navController.popBackStack() },
                 )
             }
             composable(AppDestination.FarmMapLocatePattern) { entry ->

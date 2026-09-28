@@ -40,6 +40,7 @@ fun MoEmptyState(
     modifier: Modifier = Modifier,
     actionText: String? = null,
     onAction: (() -> Unit)? = null,
+    actionModifier: Modifier = Modifier,
     icon: ImageVector? = null,
 ) {
     Card(
@@ -72,7 +73,7 @@ fun MoEmptyState(
                     MoSecondaryButton(
                         text = actionText,
                         onClick = onAction,
-                        modifier = Modifier.padding(top = MoSpacing.xxs),
+                        modifier = actionModifier.padding(top = MoSpacing.xxs),
                     )
                 }
             }
