@@ -535,3 +535,98 @@ Every risk above is explicitly prohibited by this CR.
 This is the next priority product update. Production implementation should be executed as one
 coherent Campaign/Cuaderno UX correction, split into reviewable commits/PR slices if needed, before
 resuming unrelated feature expansion.
+
+---
+
+## Amendment 1 — implementation contract (APPROVED BY OWNER, 2026-09-28)
+
+Added after a code review of `main` (`cb98c700`) against this CR. It closes four ambiguities that
+would otherwise reintroduce exactly the risks this CR prohibits, and records six implementation
+notes. It narrows *how*, never *what*: every rule above still applies.
+
+### A1. An automatic day never keeps kilos it no longer has (fabricated kg)
+
+Today `JornadaLedger.reconcile` leaves a Jornada's kilos untouched when its last linked Pesada is
+deleted or moved to another date ("keeps its kilos as its own figure"). That was designed for
+hand-typed historical Jornadas; for an automatic day it would keep kilos no Pesada supports.
+
+Rule:
+
+- a day/Jornada **created automatically** by a Pesada (mark it, e.g. `origin = AUTO_DAY`) derives
+  its kilos only from its live Pesadas;
+- when it has no live Pesadas left it returns to **«Kg pendientes de pesada»** (never a kept or
+  typed figure) and, only if it has no jornales, machinery, expenses **or live attachments**
+  (`AttachmentOwnerType.HARVEST`) either, it is soft-deleted — a day that still owns any of those
+  stays visible so nothing becomes unreachable;
+- the current "keep own figure" behaviour stays **only** for legacy hand-typed Jornadas;
+- tests: delete the only Pesada, move a Pesada to another date, move it back.
+
+### A2. Kilogram totals with legacy data (no loss, no double count)
+
+Principal Campaign/Day total = `SUM(live Pesada.netGrams)`.
+
+Legacy Harvest/Jornada records with hand-typed kilos and **no** linked Pesada are neither dropped
+nor added into that total. They are shown separately as **«kg registrados sin pesada
+(histórico)»**, in the Campaign summary, comparisons and charts' notes. A Jornada with linked
+Pesadas contributes only through its Pesadas. «kg recogidos» vs «kg entregados» stop being
+competing principal totals (§2).
+
+### A3. One authoritative money path for calculated labour/machinery cost
+
+Today jornales and equipment write no money; costs live only in the Expense ledger
+(`ExpenseOrigin = MANUAL | ACTIVITY_COST | DOCUMENT_OCR`).
+
+Rule:
+
+- a calculated day cost is **posted to the Expense ledger** as one linked entry per Day and kind:
+  new origins `DAY_LABOUR` and `DAY_EQUIPMENT`, linked to the Day/Jornada id;
+- it is recalculated (updated in place, same id, new version) whenever attendance, quantities or
+  prices change; removed when the Day's attendance/usage is removed;
+- collisions are judged per **Day record**, not per Farm/date (a date may hold several legacy
+  Jornadas, note 3): a manual LABOR/MACHINERY expense **linked to the same Day** as the calculated
+  one → the app warns and the farmer chooses which stands, never both; a manual expense linked to
+  **another** Day stands alongside; an **unlinked** manual expense on the same Farm/date is
+  **ambiguous** → shown with a warning and the farmer links it to a Day or keeps it separate —
+  the app never discards or merges it by itself;
+- Day/Campaign cost and cost/kg read **only** the ledger, so nothing can be summed twice;
+- price changes never rewrite closed Campaigns: the price used is snapshotted on the posted entry.
+
+### A4. Room version order
+
+This CR's schema additions (day origin mark, day lookup index, pricing preferences/snapshots,
+Expense origins/links) take **Room v17**. Phase 21A `profile_settings` moves to **Room v18**.
+Migrations are additive and non-destructive; `RoomMigrationTest` covers 16→17.
+
+### Implementation notes (existing code to change)
+
+1. **Lifecycle.** `close()` accepts ACTIVE as well as HARVEST; `reopen()` returns to ACTIVE;
+   the «Iniciar recolección» button disappears; every UI check that means "recolección running"
+   (Notebook quick actions, Registrar hoy, labels) treats ACTIVE and HARVEST alike. Existing HARVEST
+   rows keep working unmigrated and read as «Activa».
+2. **Automatic day.** The Pesada form stops defaulting to «Sin jornada»; saving finds or creates the
+   day by Farm + Campaign + date. The day's origin is the **union** of its Pesadas' Parcels, **except**
+   that any Farm-level Pesada (no Parcel chosen) makes the day's origin **farm-wide / unallocated**;
+   exact attribution stays on each individual Pesada and is never inferred for the day. Editing a
+   Pesada's date moves it to the right day (A1 applies to the day it leaves).
+3. **Legacy Jornadas are never reused.** Automatic linking only ever finds or creates an `AUTO_DAY`
+   (oldest live `AUTO_DAY` of that Farm/Campaign/date, else a new one). A new Pesada is **never**
+   attached to a legacy hand-typed Jornada, because reconciling would overwrite its original
+   kilograms (they would be lost and A2 would then report a Pesada sum as history). Legacy Jornadas
+   keep their own kilos untouched; the date view groups the `AUTO_DAY` and any legacy Jornadas of
+   that date, hiding none. Pesadas that were already linked to a legacy Jornada before CR-010 keep
+   that link (no rewrite).
+4. **OCR inside Nueva Pesada.** `confirmDeliveryTicket` must save through the same writer as the
+   form (so it also gets the automatic day), and the ticket parser gains **time** and
+   **cooperative/mill text**. The no-auto-accept rule already holds and stays tested.
+5. **Late yield.** `recordYield` already accepts closed Campaigns; add a test that fixes it.
+6. **Gate.** Implementation starts after Gate 20 PASS. **Gate CR-010** = the §17 scenario on a
+   physical device plus A1–A3 tests green in CI.
+
+### Delivery slices (one PR each, in order)
+
+1. Lifecycle Borrador → Activa → Cerrada + kg totals/legacy rule (A2).
+2. Automatic day on save + A1 + notes 2–3.
+3. OCR inside the Pesada form + parser time/cooperative (note 4).
+4. Pricing preferences + calculated costs through the ledger (A3, Room v17).
+5. Campaign dashboard and charts (§12).
+6. Targeted visual refinement of Campaign/Recolección/Cuaderno (§13).
