@@ -55,6 +55,12 @@ Campaign/Recolección visual refinement.
 
 Do not mix the deferred EPI-signature workflow or planning/reminder form redesign into CR-010.
 
+**Amendment 1 (approved 2026-09-28)** fixes the implementation contract: automatic days never keep
+kilos without Pesadas (A1), legacy hand-typed kg shown apart, never dropped or double counted (A2),
+calculated labour/machinery cost posted once through the Expense ledger (A3), Room v17 for CR-010
+and v18 for Phase 21A (A4), six delivery slices and **Gate CR-010** (§17 on a physical device +
+A1–A3 tests). Production starts after Gate 20 PASS.
+
 ## Current allowed phase
 
 ```text
