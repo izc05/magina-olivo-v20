@@ -1,7 +1,7 @@
 // AEMET OpenData: hourly municipal forecast, two-step (metadata -> `datos` URL).
 // The API key is read by index.ts from the function's secrets; it never reaches the app.
 
-import { type Condition, type Current, ProviderError } from "./contract.ts";
+import { type Condition, type Current, type DailyForecast, ProviderError } from "./contract.ts";
 import { madridDateHour, madridLocalToIso } from "./time.ts";
 
 export const AEMET_BASE = "https://opendata.aemet.es/opendata/api";
@@ -24,12 +24,70 @@ interface Timed { value?: string; periodo?: string }
 interface Wind { direccion?: string[]; velocidad?: string[]; value?: string; periodo?: string }
 interface Day {
   fecha: string;
+  temperatura?: { maxima?: number | string; minima?: number | string };
+  estadoCielo?: Timed[];
+  probPrecipitacion?: Timed[];
+  precipitacion?: Timed[];
+  viento?: { velocidad?: number | string; periodo?: string }[];
+}
+interface DailyDocument { elaborado?: string; prediccion?: { dia?: Day[] } }
+
+function finite(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function periodIncludesNoon(period: string | undefined): boolean {
+  const match = period?.match(/^(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const from = Number(match[1]);
+  const to = Number(match[2]);
+  return from <= 12 && (to > 12 || to === 0);
+}
+
+/** AEMET's daily municipality document (not its 48-hour hourly endpoint). */
+export function parseAemetDaily(doc: unknown, now: Date): { daily: DailyForecast[]; updatedAt: string } {
+  const forecast = (Array.isArray(doc) ? doc[0] : doc) as DailyDocument | undefined;
+  const days = forecast?.prediccion?.dia;
+  if (!Array.isArray(days) || days.length === 0) throw new ProviderError("aemet_daily_invalid");
+  const today = madridDateHour(now).date;
+  const daily = days
+    .filter((day) => /^\d{4}-\d{2}-\d{2}$/.test(day.fecha) && day.fecha >= today)
+    .slice(0, 7)
+    .map((day): DailyForecast => {
+      const sky = day.estadoCielo?.find((entry) => periodIncludesNoon(entry.periodo)) ?? day.estadoCielo?.[0];
+      const probabilities = day.probPrecipitacion?.map((entry) => finite(entry.value)).filter((value): value is number => value !== null) ?? [];
+      const rain = day.precipitacion?.map((entry) => finite(entry.value)).filter((value): value is number => value !== null) ?? [];
+      const wind = day.viento?.map((entry) => finite(entry.velocidad)).filter((value): value is number => value !== null) ?? [];
+      return {
+        date: day.fecha,
+        minTemperatureC: finite(day.temperatura?.minima),
+        maxTemperatureC: finite(day.temperatura?.maxima),
+        condition: sky?.value ? aemetCondition(sky.value) : null,
+        rainProbabilityPercent: probabilities.length ? Math.max(...probabilities) : null,
+        rainMm: rain.length ? rain.reduce((sum, value) => sum + value, 0) : null,
+        windKmh: wind.length ? Math.max(...wind) : null,
+      };
+    })
+    .filter((day) => day.minTemperatureC !== null || day.maxTemperatureC !== null || day.condition !== null ||
+      day.rainProbabilityPercent !== null || day.rainMm !== null || day.windKmh !== null);
+  if (daily.length === 0) throw new ProviderError("aemet_daily_no_values");
+  return {
+    daily,
+    updatedAt: forecast?.elaborado ? madridLocalToIso(forecast.elaborado) : now.toISOString(),
+  };
+}
+
+/* Hourly endpoint types; kept separate from the daily municipality response. */
+interface HourlyDay {
+  fecha: string;
   estadoCielo?: Timed[];
   temperatura?: Timed[];
   probPrecipitacion?: Timed[];
   vientoAndRachaMax?: Wind[];
 }
-interface Forecast { elaborado?: string; prediccion?: { dia?: Day[] } }
+interface Forecast { elaborado?: string; prediccion?: { dia?: HourlyDay[] } }
 
 function hourOf(periodo: string | undefined): number | null {
   if (!periodo || periodo.length !== 2) return null;

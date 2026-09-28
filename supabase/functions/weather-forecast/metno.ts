@@ -1,7 +1,8 @@
 // MET Norway Locationforecast 2.0 (compact), keyless. Terms: identify the client in the
 // User-Agent and credit the source (CC BY 4.0). Used only when AEMET fails.
 
-import { type Condition, type Current, ProviderError } from "./contract.ts";
+import { type Condition, type Current, type DailyForecast, ProviderError } from "./contract.ts";
+import { madridDateHour } from "./time.ts";
 
 export const METNO_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact";
 export const METNO_USER_AGENT = "MaginaOlivo/1.0 (+https://github.com/izc05/magina-olivo-v20)";
@@ -22,13 +23,13 @@ interface Step {
   time: string;
   data?: {
     instant?: { details?: { air_temperature?: number; wind_speed?: number } };
-    next_1_hours?: { summary?: { symbol_code?: string } };
-    next_6_hours?: { summary?: { symbol_code?: string } };
+    next_1_hours?: { summary?: { symbol_code?: string }; details?: { precipitation_amount?: number } };
+    next_6_hours?: { summary?: { symbol_code?: string }; details?: { precipitation_amount?: number } };
   };
 }
 
-/** The step covering `now` (the latest one not after it), else the first future one. */
-export function parseMetNo(doc: unknown, now: Date): { current: Current; updatedAt: string } {
+/** The step covering `now` (the latest one not after it), plus date-bounded daily summaries. */
+export function parseMetNo(doc: unknown, now: Date): { current: Current; daily: DailyForecast[]; updatedAt: string } {
   const props = (doc as { properties?: { meta?: { updated_at?: string }; timeseries?: Step[] } })?.properties;
   const series = props?.timeseries;
   if (!Array.isArray(series) || series.length === 0) throw new ProviderError("metno_invalid");
@@ -40,6 +41,42 @@ export function parseMetNo(doc: unknown, now: Date): { current: Current; updated
   const symbol = step?.data?.next_1_hours?.summary?.symbol_code ?? step?.data?.next_6_hours?.summary?.symbol_code;
   const condition = symbol ? metnoCondition(symbol) : null;
   if (!step || typeof details?.air_temperature !== "number" || !condition) throw new ProviderError("metno_invalid");
+  const byDate = new Map<string, Step[]>();
+  for (const item of series) {
+    const timestamp = Date.parse(item.time);
+    if (!Number.isFinite(timestamp)) continue;
+    const date = madridDateHour(new Date(timestamp)).date;
+    if (date < madridDateHour(now).date) continue;
+    const group = byDate.get(date) ?? [];
+    group.push(item);
+    byDate.set(date, group);
+  }
+  const daily = [...byDate.entries()].slice(0, 7).map(([date, items]): DailyForecast => {
+    const temperatures = items
+      .map((item) => item.data?.instant?.details?.air_temperature)
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    const winds = items
+      .map((item) => item.data?.instant?.details?.wind_speed)
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    const precipitation = items
+      .map((item) => item.data?.next_1_hours?.details?.precipitation_amount ?? item.data?.next_6_hours?.details?.precipitation_amount)
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    const symbols = items
+      .map((item) => ({ item, hour: madridDateHour(new Date(Date.parse(item.time))).hour }))
+      .filter(({ item }) => Boolean(item.data?.next_1_hours?.summary?.symbol_code ?? item.data?.next_6_hours?.summary?.symbol_code))
+      .sort((a, b) => a.hour - b.hour);
+    const representative = symbols.find(({ hour }) => hour >= 12) ?? symbols[0];
+    const symbol = representative?.item.data?.next_1_hours?.summary?.symbol_code ?? representative?.item.data?.next_6_hours?.summary?.symbol_code;
+    return {
+      date,
+      minTemperatureC: temperatures.length ? Math.round(Math.min(...temperatures)) : null,
+      maxTemperatureC: temperatures.length ? Math.round(Math.max(...temperatures)) : null,
+      condition: symbol ? metnoCondition(symbol) : null,
+      rainProbabilityPercent: null,
+      rainMm: precipitation.length ? Number(precipitation.reduce((sum, value) => sum + value, 0).toFixed(1)) : null,
+      windKmh: winds.length ? Math.round(Math.max(...winds) * 3.6) : null,
+    };
+  }).filter((day) => day.minTemperatureC !== null || day.maxTemperatureC !== null || day.condition !== null || day.rainMm !== null || day.windKmh !== null);
   return {
     current: {
       validAt: new Date(Date.parse(step.time)).toISOString(),
@@ -49,6 +86,7 @@ export function parseMetNo(doc: unknown, now: Date): { current: Current; updated
       rainProbabilityPercent: null,
       windKmh: typeof details.wind_speed === "number" ? Math.round(details.wind_speed * 3.6) : null,
     },
+    daily,
     updatedAt: props?.meta?.updated_at ? new Date(Date.parse(props.meta.updated_at)).toISOString() : now.toISOString(),
   };
 }

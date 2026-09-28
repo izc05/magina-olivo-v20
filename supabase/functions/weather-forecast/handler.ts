@@ -4,6 +4,7 @@
 
 import {
   type Current,
+  type DailyForecast,
   type ForecastRequest,
   type Place,
   type ProviderId,
@@ -11,7 +12,7 @@ import {
   ProviderError,
   type WeatherResponse,
 } from "./contract.ts";
-import { aemetDocument, parseAemetHourly } from "./aemet.ts";
+import { aemetDocument, parseAemetDaily, parseAemetHourly } from "./aemet.ts";
 import { metnoDocument, parseMetNo } from "./metno.ts";
 import { type MasterEntry, resolveMunicipality } from "./municipalities.ts";
 
@@ -72,7 +73,7 @@ function validRequest(body: unknown): ForecastRequest | null {
   return request;
 }
 
-function respond(provider: ProviderId, place: Place, reading: { current: Current; updatedAt: string }, now: Date): Result {
+function respond(provider: ProviderId, place: Place, reading: { current: Current; daily: DailyForecast[]; updatedAt: string }, now: Date): Result {
   return {
     status: 200,
     body: {
@@ -83,6 +84,7 @@ function respond(provider: ProviderId, place: Place, reading: { current: Current
       fetchedAt: now.toISOString(),
       location: { code: place.code, name: place.name, province: place.province },
       current: reading.current,
+      daily: reading.daily,
     },
   };
 }
@@ -106,13 +108,23 @@ export async function handleForecast(rawBody: unknown, deps: Deps): Promise<Resu
   // 1. AEMET (needs the INE code, hence the resolved place).
   if (place && deps.aemetApiKey) {
     try {
-      const doc = await aemetDocument(
+      const hourlyDoc = await aemetDocument(
         `/prediccion/especifica/municipio/horaria/${place.code}`,
         deps.aemetApiKey,
         deps.fetch,
         timeoutMs,
       );
-      return respond("AEMET", place, parseAemetHourly(doc, deps.now()), deps.now());
+      const dailyDoc = await aemetDocument(
+        `/prediccion/especifica/municipio/diaria/${place.code}`,
+        deps.aemetApiKey,
+        deps.fetch,
+        timeoutMs,
+      );
+      const hourly = parseAemetHourly(hourlyDoc, deps.now());
+      const daily = parseAemetDaily(dailyDoc, deps.now());
+      // The combined response is no newer than either provider product.
+      const updatedAt = new Date(Math.min(Date.parse(hourly.updatedAt), Date.parse(daily.updatedAt))).toISOString();
+      return respond("AEMET", place, { current: hourly.current, daily: daily.daily, updatedAt }, deps.now());
     } catch (error) {
       deps.log?.(`AEMET failed, falling back: ${(error as Error).message}`);
     }
@@ -131,7 +143,9 @@ export async function handleForecast(rawBody: unknown, deps: Deps): Promise<Resu
         latitude,
         longitude,
       };
-      return respond("MET_NORWAY", fallbackPlace, parseMetNo(doc, deps.now()), deps.now());
+      const reading = parseMetNo(doc, deps.now());
+      if (reading.daily.length === 0) throw new ProviderError("metno_daily_unavailable");
+      return respond("MET_NORWAY", fallbackPlace, reading, deps.now());
     } catch (error) {
       deps.log?.(`MET Norway failed: ${(error as Error).message}`);
     }
