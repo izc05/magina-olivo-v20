@@ -28,7 +28,8 @@ enum class ExpenseCategory {
 
 enum class ExpenseStatus { DRAFT, POSTED }
 
-enum class ExpenseOrigin { MANUAL, ACTIVITY_COST, DOCUMENT_OCR }
+/** CR-010 A3: DAY_LABOUR and DAY_EQUIPMENT are the calculated costs of one day, one of each at most. */
+enum class ExpenseOrigin { MANUAL, ACTIVITY_COST, DOCUMENT_OCR, DAY_LABOUR, DAY_EQUIPMENT }
 
 data class PurchaseLine(
     val productName: String,

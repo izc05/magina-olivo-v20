@@ -37,6 +37,14 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   revisan antes de guardar (nada se guarda solo). El lector propone también la **hora** del vale y,
   si su cooperativa coincide sin dudas con una guardada, la deja elegida; si no, queda el texto
   del vale para revisarlo. La pesada confirmada va a su día de recolección como las demás.
+- Precios de recolección de cada finca (opcionales): jornada completa (la media es la mitad), hora
+  y día de cada tipo de máquina. Con ellos el coste de jornales y maquinaria de cada día se apunta
+  **una sola vez** en Gastos («Jornales (calculado)», «Maquinaria (calculada)»), con el precio
+  usado guardado en la anotación, y se actualiza al cambiar jornales, maquinaria o precios. Lo que
+  no tiene precio queda fuera y se dice («1 tractor sin precio»). Si ese día ya hay un gasto de
+  jornales o maquinaria anotado a mano, cuenta ese y el cálculo queda en borrador hasta que eliges
+  «Usar el cálculo»; nunca suman los dos. El aceite/lubricante se suma a la maquinaria calculada,
+  nunca la sustituye. Las campañas cerradas no se recalculan ni cambian de gasto. Base de datos v18.
 
 ## 0.5.0 — 28/09/2026
 

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -557,6 +559,7 @@ fun HarvestDetailRoute(
                 HarvestDetailViewModel(
                     harvestId, persistence.harvestRepository, clock, persistence.deliveryRepository, persistence.labourRepository,
                     persistence.equipmentRepository, persistence.machineRepository, persistence.expenseRepository,
+                    persistence.dayCostRepository,
                 )
             }
         },
@@ -587,6 +590,8 @@ fun HarvestDetailRoute(
         onSaveEquipment = viewModel::saveEquipment,
         onAddCost = viewModel::addCost,
         onExpenseSelected = onExpenseSelected,
+        onSaveRates = viewModel::saveRates,
+        onPreferCalculated = viewModel::preferCalculated,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.HARVEST, harvestId),
@@ -612,8 +617,12 @@ fun HarvestDetailScreen(
     onSaveEquipment: (List<EquipmentDraftLine>) -> Unit = {},
     onAddCost: (JornadaExpenseKind, Long, String?, Boolean) -> Unit = { _, _, _, _ -> },
     onExpenseSelected: (UUID) -> Unit = {},
+    onSaveRates: (RecollectionRates) -> Unit = {},
+    onPreferCalculated: (DayCostKind) -> Unit = {},
 ) {
     var costVisible by rememberSaveable { mutableStateOf(false) }
+    var ratesVisible by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.ratesSaved) { if (state.ratesSaved > 0) ratesVisible = false }
     LaunchedEffect(state.costSaved) { if (state.costSaved > 0) costVisible = false }
     var equipmentVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.equipmentSaved) { if (state.equipmentSaved > 0) equipmentVisible = false }
@@ -657,6 +666,8 @@ fun HarvestDetailScreen(
                         error = state.costError.takeUnless { costVisible },
                         onAdd = { costVisible = true },
                         onExpenseSelected = onExpenseSelected,
+                        onPreferCalculated = onPreferCalculated,
+                        onEditRates = state.rates?.let { { ratesVisible = true } },
                     )
                     if (harvest.editable) {
                         MoSecondaryButton(
@@ -700,6 +711,18 @@ fun HarvestDetailScreen(
                 onCancel = { editorVisible = false; onEditorClosed() },
                 farmLocked = true,
                 pesadaCount = state.pesadas.size,
+            )
+        }
+    }
+    val rates = state.rates
+    if (ratesVisible && harvest != null && rates != null) {
+        ModalBottomSheet(onDismissRequest = { ratesVisible = false }) {
+            RatesSheet(
+                rates = rates,
+                isSaving = state.isSaving,
+                error = state.ratesError,
+                onSave = onSaveRates,
+                onCancel = { ratesVisible = false },
             )
         }
     }

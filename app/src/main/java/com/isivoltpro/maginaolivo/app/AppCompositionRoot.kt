@@ -27,6 +27,7 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDocumentOcrReposit
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstExpenseRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstHarvestRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDeliveryRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDayCostRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstEquipmentRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstLabourRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstMachineRepository
@@ -142,6 +143,9 @@ data class AppCompositionRoot(
             val equipmentRepository = OfflineFirstEquipmentRepository(
                 database, defaults.clock, defaults.idGenerator, defaults.dispatchers,
             )
+            val dayCostRepository = OfflineFirstDayCostRepository(
+                database, defaults.clock, defaults.idGenerator, defaults.dispatchers,
+            )
             // Phase 20B (CR-006): AEMET -> MET Norway through the weather Edge Function. Without
             // the public anon key in this build the card says the weather is not configured.
             val weatherSource = BuildConfig.WEATHER_ANON_KEY.takeIf { it.isNotBlank() }?.let { key ->
@@ -182,6 +186,7 @@ data class AppCompositionRoot(
                     machineRepository = machineRepository,
                     labourRepository = labourRepository,
                     equipmentRepository = equipmentRepository,
+                    dayCostRepository = dayCostRepository,
                     workspaceRepository = workspaceRepository,
                     reminders = reminders,
                     weatherFeed = weatherFeed,

@@ -39,6 +39,8 @@ class OfflineFirstEquipmentRepository(
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
 ) : EquipmentRepository {
+    private val costs = DayCostLedger(database, idGenerator)
+
     override fun observeForHarvest(harvestId: UUID): Flow<List<EquipmentLine>> =
         database.equipmentDao().observeForHarvest(harvestId).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
 
@@ -105,6 +107,7 @@ class OfflineFirstEquipmentRepository(
         writes.forEach { (row, operation) ->
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_EQUIPMENT, row.id, operation, now)
         }
+        costs.sync(harvestId, now)
     }
 
     private fun keyOf(row: HarvestEquipmentEntity): String =

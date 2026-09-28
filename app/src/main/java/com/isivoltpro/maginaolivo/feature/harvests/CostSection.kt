@@ -15,16 +15,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
+import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.JornadaCost
 import com.isivoltpro.maginaolivo.domain.expense.JornadaExpenseKind
 import com.isivoltpro.maginaolivo.domain.expense.Money
+import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
@@ -50,6 +54,8 @@ internal fun JornadaCosts(
     error: String?,
     onAdd: () -> Unit,
     onExpenseSelected: (UUID) -> Unit,
+    onPreferCalculated: (DayCostKind) -> Unit = {},
+    onEditRates: (() -> Unit)? = null,
 ) {
     MoSectionHeader("Gastos de la jornada")
     val cost = JornadaCost.of(expenses)
@@ -72,17 +78,100 @@ internal fun JornadaCosts(
                 icon = MoIcons.Euro,
                 onClick = { onExpenseSelected(expense.id) },
                 modifier = Modifier.testTag("jornada-cost"),
-                trailing = if (expense.status == ExpenseStatus.DRAFT) {
-                    { MoStatusChip("Borrador", tone = MoStatusTone.Neutral) }
-                } else {
-                    null
+                trailing = when {
+                    expense.status == ExpenseStatus.DRAFT -> { { MoStatusChip("Borrador", tone = MoStatusTone.Neutral) } }
+                    expense.calculatedKind() != null -> { { MoStatusChip("Calculado", tone = MoStatusTone.Info) } }
+                    else -> null
                 },
             )
+            // CR-010 A3: a hand-typed cost of the same kind stands; the farmer decides which counts.
+            val kind = expense.calculatedKind()
+            if (kind != null && expense.status == ExpenseStatus.DRAFT) {
+                Text(
+                    "Hay ${if (kind == DayCostKind.LABOUR) "jornales" else "maquinaria"} anotados a mano este día: " +
+                        "el cálculo (${Money.format(expense.amountMinor, expense.currency)}) no suma. Solo cuenta uno de los dos.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoTextSecondary,
+                    modifier = Modifier.testTag("jornada-cost-collision"),
+                )
+                if (editable) {
+                    MoTertiaryButton(
+                        "Usar el cálculo",
+                        { onPreferCalculated(kind) },
+                        Modifier.fillMaxWidth().testTag("jornada-prefer-calculated"),
+                    )
+                }
+            }
         }
     }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     if (editable) {
         MoSecondaryButton("Añadir gasto", onAdd, Modifier.fillMaxWidth().testTag("jornada-add-cost"))
+        onEditRates?.let { MoTertiaryButton("Precios de recolección", it, Modifier.fillMaxWidth().testTag("jornada-edit-rates")) }
+    }
+}
+
+private fun Expense.calculatedKind(): DayCostKind? = DayCostKind.entries.firstOrNull { it.origin == origin }
+
+/**
+ * CR-010 §8–9 — the Farm's usual prices. Every field is optional: a blank price is unknown and
+ * what it would price stays out of the calculation, never counted as zero.
+ */
+@Composable
+internal fun RatesSheet(
+    rates: RecollectionRates,
+    isSaving: Boolean,
+    error: String?,
+    onSave: (RecollectionRates) -> Unit,
+    onCancel: () -> Unit,
+) {
+    var fullDay by rememberSaveable { mutableStateOf(Money.editable(rates.fullDayMinor)) }
+    var hourly by rememberSaveable { mutableStateOf(Money.editable(rates.hourlyMinor)) }
+    var equipment by remember { mutableStateOf(EquipmentType.entries.associateWith { Money.editable(rates.equipmentDayMinor[it]) }) }
+    val fields = listOf(fullDay, hourly) + equipment.values
+    val valid = fields.all { it.isBlank() || (Money.parseMinor(it) ?: 0) > 0 }
+
+    Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("rates-sheet"),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+    ) {
+        Text("Precios de recolección", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text(
+            "De esta finca. Con ellos se calcula el coste de cada día y se apunta una sola vez en Gastos. " +
+                "Deja en blanco lo que no quieras calcular. Las campañas cerradas no cambian.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+        )
+        MoTextField(fullDay, { fullDay = it }, "Jornada completa (€)", supportingText = "La media jornada es la mitad", modifier = Modifier.fillMaxWidth().testTag("rates-full-day"))
+        MoTextField(hourly, { hourly = it }, "Hora (€)", modifier = Modifier.fillMaxWidth().testTag("rates-hourly"))
+        MoSectionHeader("Maquinaria, por día")
+        EquipmentType.entries.forEach { type ->
+            MoTextField(
+                equipment[type].orEmpty(),
+                { value -> equipment = equipment + (type to value) },
+                "${type.singular.replaceFirstChar { it.uppercase() }} (€/día)",
+                modifier = Modifier.fillMaxWidth().testTag("rates-equipment-${type.name}"),
+            )
+        }
+        if (!valid) Text("Escribe los importes como 70 o 70,50", color = MaterialTheme.colorScheme.error)
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        MoPrimaryButton(
+            "Guardar precios",
+            {
+                onSave(
+                    RecollectionRates(
+                        fullDayMinor = Money.parseMinor(fullDay),
+                        hourlyMinor = Money.parseMinor(hourly),
+                        equipmentDayMinor = equipment.mapNotNull { (type, text) -> Money.parseMinor(text)?.let { type to it } }.toMap(),
+                        currency = rates.currency,
+                    ),
+                )
+            },
+            Modifier.fillMaxWidth().testTag("rates-save"),
+            enabled = valid && !isSaving,
+        )
+        MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(MoSpacing.lg))
     }
 }
 

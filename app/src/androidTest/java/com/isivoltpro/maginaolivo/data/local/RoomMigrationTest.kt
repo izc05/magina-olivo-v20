@@ -988,6 +988,20 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration17To18AddsAnEmptyPriceTableAndTouchesNoMoney() {
+        migrationHelper.createDatabase(TEST_DATABASE, 17).close()
+        migrationHelper
+            .runMigrationsAndValidate(TEST_DATABASE, 18, true, DatabaseMigrations.MIGRATION_17_18)
+            .use { database ->
+                // No prices are guessed for any Farm: every calculation starts unknown.
+                database.query("SELECT COUNT(*) FROM recollection_rates").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

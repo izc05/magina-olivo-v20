@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.app
 
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRepository
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.farm.FarmCoverRepository
@@ -40,6 +41,8 @@ data class LocalPersistence(
     /** Phase 19E: equipment used on each Jornada. */
     val equipmentRepository: EquipmentRepository,
     val workspaceRepository: WorkspaceRepository,
+    /** CR-010 A3: recollection prices and calculated day costs. Null where not wired (tests). */
+    val dayCostRepository: DayCostRepository? = null,
     /** Rebuilds planned-work alarms (Phase 16); run at start. Null where alarms do not exist. */
     val reminders: ReminderReconciler? = null,
     /** Phase 20A: Inicio's weather, cache first. Null where no feed exists (tests). */

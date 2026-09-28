@@ -594,6 +594,12 @@ Rule:
   the app never discards or merges it by itself;
 - Day/Campaign cost and cost/kg read **only** the ledger, so nothing can be summed twice;
 - price changes never rewrite closed Campaigns: the price used is snapshotted on the posted entry.
+- *Slice 4 implementation (2026-09-28):* prices live per Farm (`recollection_rates`, Room v18);
+  saving them recalculates the days of the Farm's **running** Campaign only. The calculated entry
+  is app-owned (read-only in Gastos). On a same-day collision the hand-typed cost stays posted and
+  the calculated one is kept as a draft until the farmer taps «Usar el cálculo», which turns the
+  hand-typed one into a draft (kept, never deleted). A per-person price override is not included
+  yet (§8 "only when necessary").
 
 ### A4. Room version order
 
