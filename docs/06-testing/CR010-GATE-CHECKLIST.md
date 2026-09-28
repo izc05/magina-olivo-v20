@@ -67,7 +67,7 @@ Device model / Android version: ________ · APK build: ________ · Date: _______
 | S10 | Add 1 tractor + 2 vibradoras; set prices in «Precios de recolección» | One «Maquinaria (calculada)» entry; unpriced items named, never 0 € | ☐ |
 | S11 | Add a fuel expense (Gasoil) and an Aceite/lubricante expense | Both count **on top** of the calculated costs | ☐ |
 | S12 | Add a hand-typed «Jornales/servicio» cost on the same day | Collision warning; only one counts; «Usar el cálculo» swaps it | ☐ |
-| S13 | Gastos → a hand-typed labour cost of the same date with no day | The day warns about it; «Enlazar a esta jornada» makes only one count | ☐ |
+| S13 | Gastos → a hand-typed labour cost of the same date with no day, and an «Aceite hidráulico» machinery one | The day asks «¿Es el mismo coste…?» for the labour cost only; «Es el mismo coste: enlazar» makes only one count; the oil keeps adding | ☐ |
 | S14 | Later: add yield to each Pesada | Weighted yield + analysed-kg coverage update | ☐ |
 | S15 | Cuaderno → Resumen | Days, Pesada/jornal days, first/last Pesada, cost, cost/kg; «—» for unknowns; colours by data kind | ☐ |
 | S16 | Close the Campaign | Status «Cerrada»; costs no longer recalculated | ☐ |
