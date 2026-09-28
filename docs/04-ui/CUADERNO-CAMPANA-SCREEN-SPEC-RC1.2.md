@@ -4,6 +4,65 @@
 **Date:** 2026-09-24  
 **Scope:** Farm/Campaign nested experience. No new bottom-navigation root.
 
+## 0. CR-010 override — simple automated Campaign flow
+
+For Campaign/Recolección implementation, CR-010 supersedes older screen wording that exposes
+Jornada as a required manual step.
+
+The normal path is:
+
+`Campaña activa → Nueva Pesada`
+
+On save, the app automatically finds/creates the internal day/Jornada for Farm + Campaign + date.
+
+### Cuaderno quick actions during an active Campaign
+
+Prioritize one-tap access to:
+
+- **Pesada**
+- **Jornales**
+- **Maquinaria**
+- **Gasto**
+
+The chronology groups these records by day.
+
+### Nueva Pesada
+
+Primary fields stay visible and compact:
+
+- date/time = now;
+- Farm/Campaign from context;
+- Parcel(s);
+- cooperative/mill;
+- net kg;
+- ticket/weighing/albarán number;
+- Árbol/Vuelo or Suelo.
+
+Advanced fields (gross, tare, exact Parcel split, notes) stay under **Más datos**.
+
+The same form includes **Añadir vale y leer datos**:
+
+`camera/gallery/PDF → OCR proposal → highlighted extracted values → human correction/confirmation → save`.
+
+OCR never posts or confirms automatically.
+
+### Day detail
+
+The day is presented as a date-based operational summary, not a technical entity-management task:
+
+- Pesadas and total kg;
+- named jornales;
+- machinery quantities/usage;
+- additional expenses;
+- yield state;
+- derived daily cost when configured.
+
+### Campaign visual hierarchy
+
+Campaign/Recolección surfaces may use a stronger subset of the approved brand palette: deep olive,
+richer earth/gold accents, larger KPIs, stronger section/card separation and more prominent charts.
+Cream remains the page background rather than making every component visually flat.
+
 ## 1. Goal
 
 Make Mágina Olivo feel simple in the field while keeping a professional engine underneath.

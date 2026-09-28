@@ -3,6 +3,26 @@
 **Status:** PLANNED by CR-005; production start remains after Gate 18  
 **Normative product decision:** `docs/00-master/RC1.2-CHANGE-REQUEST-005-CUADERNO-CAMPANA.md`
 
+## CR-010 corrective overlay — 2026-09-28
+
+Phase 19 historical implementation remains valid as data/persistence history, but the next product
+update is governed by `RC1.2-CHANGE-REQUEST-010-CAMPANA-SIMPLE-AUTOMATIZADA.md`.
+
+CR-010 changes the **normal user-facing flow**:
+
+- no manual “Iniciar recolección” step after Campaign activation;
+- no manual Jornada creation/selection for the ordinary Pesada path;
+- the internal Jornada/Harvest is found or created automatically by Farm + Campaign + date;
+- Pesada/Delivery remains the canonical source of productive kg;
+- ticket image/PDF + reviewed OCR is integrated directly into Nueva Pesada;
+- Jornales and Equipment remain Day/Jornada children, with optional pricing and a strict
+  anti-double-counting contract against the Expense ledger;
+- Campaign analytics add days since activation, days with Pesadas, days with Jornales, stronger
+  cost/usage summaries and the targeted visual refinement approved by CR-010.
+
+Historical notes below that describe explicit Jornada linking document what was implemented at the
+time; they are **not** the target UX after CR-010.
+
 ## Goal
 
 Turn the existing canonical agricultural records into one farmer-friendly Cuaderno without
