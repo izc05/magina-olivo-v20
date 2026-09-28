@@ -58,6 +58,9 @@ interface HarvestDao {
     )
     fun observeForCampaign(campaignId: UUID): Flow<List<HarvestWithParcels>>
 
+    @Query("SELECT * FROM harvests WHERE campaign_id = :campaignId AND deleted_at IS NULL")
+    suspend fun listLiveForCampaign(campaignId: UUID): List<HarvestEntity>
+
     @Query("SELECT * FROM harvest_parcels WHERE harvest_id = :harvestId ORDER BY parcel_name_at_harvest COLLATE NOCASE, parcel_id")
     suspend fun listParcels(harvestId: UUID): List<HarvestParcelEntity>
 

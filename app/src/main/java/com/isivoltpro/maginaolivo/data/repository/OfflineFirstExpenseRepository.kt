@@ -32,6 +32,8 @@ class OfflineFirstExpenseRepository(
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
 ) : ExpenseRepository {
+    private val costs = DayCostLedger(database, idGenerator)
+
     private val writer = ExpenseLedgerWriter(database, idGenerator)
 
     override fun observeAll(): Flow<List<Expense>> =
@@ -60,14 +62,22 @@ class OfflineFirstExpenseRepository(
             is AppResult.Success -> workspace.value
         }
         return inTransaction("create_expense") {
-            AppResult.Success(writer.insert(workspaceId, draft, ExpenseStatus.POSTED, ExpenseOrigin.MANUAL, clock.nowInstant()))
+            val now = clock.nowInstant()
+            val id = writer.insert(workspaceId, draft, ExpenseStatus.POSTED, ExpenseOrigin.MANUAL, now)
+            // CR-010 A3: a hand-typed cost on a day decides whether its calculated one counts.
+            costs.sync(draft.harvestId, now)
+            AppResult.Success(id)
         }
     }
 
     override suspend fun update(id: UUID, draft: ExpenseDraft): AppResult<Unit> =
         inTransaction("update_expense") {
             val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
-            writer.rewrite(current, draft, clock.nowInstant())
+            if (current.origin in DayCostLedger.CALCULATED) return@inTransaction AppResult.Failure(AppError.Conflict("calculated_cost"))
+            val now = clock.nowInstant()
+            writer.rewrite(current, draft, now)
+            costs.sync(current.harvestId, now)
+            if (draft.harvestId != current.harvestId) costs.sync(draft.harvestId, now)
             AppResult.Success(Unit)
         }
 
@@ -75,7 +85,10 @@ class OfflineFirstExpenseRepository(
         inTransaction("post_expense") {
             val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
             if (current.status == ExpenseStatus.POSTED.name) return@inTransaction AppResult.Success(Unit)
-            writer.post(current, clock.nowInstant())
+            if (current.origin in DayCostLedger.CALCULATED) return@inTransaction AppResult.Failure(AppError.Conflict("calculated_cost"))
+            val now = clock.nowInstant()
+            writer.post(current, now)
+            costs.sync(current.harvestId, now)
             AppResult.Success(Unit)
         }
 
@@ -84,7 +97,10 @@ class OfflineFirstExpenseRepository(
             val current = database.expenseDao().findById(id)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
             if (current.metadata.deletedAt != null) return@inTransaction AppResult.Success(Unit)
-            writer.delete(current, clock.nowInstant())
+            if (current.origin in DayCostLedger.CALCULATED) return@inTransaction AppResult.Failure(AppError.Conflict("calculated_cost"))
+            val now = clock.nowInstant()
+            writer.delete(current, now)
+            costs.sync(current.harvestId, now)
             AppResult.Success(Unit)
         }
 

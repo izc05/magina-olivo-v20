@@ -178,6 +178,8 @@ class OfflineFirstHarvestRepository(
             )
             replaceShares(id, current.workspaceId, campaign.id, shares, now)
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, id, OutboxOperation.UPDATE, now)
+            // CR-010 A3: its calculated costs follow the day's date.
+            DayCostLedger(database, idGenerator).sync(id, now)
             AppResult.Success(Unit)
         }
 
@@ -220,6 +222,8 @@ class OfflineFirstHarvestRepository(
                 )
                 database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, line.id, OutboxOperation.DELETE, now)
             }
+            // CR-010 A3: its calculated costs go with its jornales and equipment (nothing backs them now).
+            DayCostLedger(database, idGenerator).removeFor(id, now)
             // Phase 19F: its costs are real money: they stay in the ledger, only unlinked.
             database.expenseDao().listForHarvest(id).forEach { expense ->
                 database.expenseDao().upsert(

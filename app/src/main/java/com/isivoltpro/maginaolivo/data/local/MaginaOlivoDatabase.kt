@@ -38,6 +38,8 @@ import com.isivoltpro.maginaolivo.data.local.entity.DocumentEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
 import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
+import com.isivoltpro.maginaolivo.data.local.entity.RecollectionRatesEntity
+import com.isivoltpro.maginaolivo.data.local.dao.RecollectionRatesDao
 import com.isivoltpro.maginaolivo.data.local.entity.HarvestParcelEntity
 import com.isivoltpro.maginaolivo.data.local.dao.HarvestDao
 import com.isivoltpro.maginaolivo.data.local.dao.DeliveryDao
@@ -103,8 +105,9 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         WorkerEntity::class,
         HarvestLabourEntity::class,
         HarvestEquipmentEntity::class,
+        RecollectionRatesEntity::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -138,6 +141,8 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun agendaDao(): AgendaDao
 
     abstract fun labourDao(): LabourDao
+
+    abstract fun recollectionRatesDao(): RecollectionRatesDao
 
     abstract fun equipmentDao(): EquipmentDao
 

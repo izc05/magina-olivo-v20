@@ -47,6 +47,8 @@ class OfflineFirstLabourRepository(
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
 ) : LabourRepository {
+    private val costs = DayCostLedger(database, idGenerator)
+
     override fun observeWorkers(): Flow<List<Worker>> =
         database.labourDao().observeWorkers().map { rows -> rows.map { Worker(it.id, it.name) } }.flowOn(dispatchers.io)
 
@@ -99,6 +101,7 @@ class OfflineFirstLabourRepository(
             }
             database.labourDao().upsertLabour(rows)
             rows.forEach { database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, it.id, OutboxOperation.CREATE, now) }
+            costs.sync(harvest.id, now)
             AppResult.Success(rows.size)
         }
     }
@@ -119,6 +122,7 @@ class OfflineFirstLabourRepository(
             )
             database.labourDao().upsertLabour(listOf(row))
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, row.id, OutboxOperation.CREATE, now)
+            costs.sync(harvest.id, now)
             AppResult.Success(row.id)
         }
     }
@@ -143,6 +147,7 @@ class OfflineFirstLabourRepository(
                 ),
             )
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, entryId, OutboxOperation.UPDATE, now)
+            costs.sync(current.harvestId, now)
             AppResult.Success(Unit)
         }
     }
@@ -154,6 +159,7 @@ class OfflineFirstLabourRepository(
             val now = clock.nowInstant()
             database.labourDao().upsertLabour(listOf(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now))))
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, entryId, OutboxOperation.DELETE, now)
+            costs.sync(current.harvestId, now)
             AppResult.Success(Unit)
         }
 

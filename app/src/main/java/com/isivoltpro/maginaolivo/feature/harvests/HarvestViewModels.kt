@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRepository
+import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.isivoltpro.maginaolivo.core.common.AppError
@@ -157,6 +160,10 @@ data class HarvestDetailUiState(
     val costError: String? = null,
     /** Set when a cost was saved with "añadir foto": the Expense to open for its ticket. */
     val openExpenseId: UUID? = null,
+    /** CR-010 A3: the Farm's recollection prices, null until read or where not wired. */
+    val rates: RecollectionRates? = null,
+    val ratesSaved: Int = 0,
+    val ratesError: String? = null,
 )
 
 class HarvestDetailViewModel(
@@ -168,6 +175,7 @@ class HarvestDetailViewModel(
     private val equipment: EquipmentRepository? = null,
     machines: MachineRepository? = null,
     private val expenses: ExpenseRepository? = null,
+    private val dayCosts: DayCostRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HarvestDetailUiState())
     val state: StateFlow<HarvestDetailUiState> = mutableState.asStateFlow()
@@ -183,6 +191,7 @@ class HarvestDetailViewModel(
                         harvest = harvest,
                         context = contexts.firstOrNull { it.campaignId == harvest?.campaignId },
                     )
+                    harvest?.farmId?.let { observeRates(it) }
                 }
         }
         viewModelScope.launch {
@@ -226,6 +235,40 @@ class HarvestDetailViewModel(
         expenses?.let { repository ->
             viewModelScope.launch {
                 repository.observeForHarvest(harvestId).catch { }.collect { mutableState.value = mutableState.value.copy(costs = it) }
+            }
+        }
+    }
+
+    private var ratesFarm: UUID? = null
+
+    private fun observeRates(farmId: UUID) {
+        val repository = dayCosts ?: return
+        if (ratesFarm == farmId) return
+        ratesFarm = farmId
+        viewModelScope.launch {
+            repository.observeRates(farmId).catch { }.collect { mutableState.value = mutableState.value.copy(rates = it) }
+        }
+    }
+
+    /** CR-010 A3: the Farm's prices; the running Campaign's day costs follow them. */
+    fun saveRates(rates: RecollectionRates) {
+        val repository = dayCosts ?: return
+        val farmId = mutableState.value.harvest?.farmId ?: return
+        viewModelScope.launch {
+            mutableState.value = mutableState.value.copy(isSaving = true, ratesError = null)
+            mutableState.value = when (repository.saveRates(farmId, rates)) {
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, ratesSaved = mutableState.value.ratesSaved + 1)
+                is AppResult.Failure -> mutableState.value.copy(isSaving = false, ratesError = "No se pudieron guardar los precios.")
+            }
+        }
+    }
+
+    /** CR-010 A3 collision: the calculation counts; the hand-typed cost stays as a draft. */
+    fun preferCalculated(kind: DayCostKind) {
+        val repository = dayCosts ?: return
+        viewModelScope.launch {
+            if (repository.preferCalculated(harvestId, kind) is AppResult.Failure) {
+                mutableState.value = mutableState.value.copy(costError = "No se pudo cambiar el gasto que cuenta.")
             }
         }
     }

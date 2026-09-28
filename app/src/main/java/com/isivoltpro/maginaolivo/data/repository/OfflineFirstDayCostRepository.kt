@@ -1,0 +1,88 @@
+package com.isivoltpro.maginaolivo.data.repository
+
+import androidx.room.withTransaction
+import com.isivoltpro.maginaolivo.core.common.AppError
+import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
+import com.isivoltpro.maginaolivo.core.id.IdGenerator
+import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
+import com.isivoltpro.maginaolivo.data.local.entity.RecollectionRatesEntity
+import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
+import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
+import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import com.isivoltpro.maginaolivo.data.repository.DayCostLedger.Companion.toDomain
+import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRepository
+import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
+import java.util.UUID
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+
+/** CR-010 A3: the Farm's recollection prices and the farmer's choice on a cost collision. */
+class OfflineFirstDayCostRepository(
+    private val database: MaginaOlivoDatabase,
+    private val clock: AppClock,
+    private val idGenerator: IdGenerator,
+    private val dispatchers: AppDispatchers,
+) : DayCostRepository {
+    private val costs = DayCostLedger(database, idGenerator)
+
+    override fun observeRates(farmId: UUID): Flow<RecollectionRates> =
+        database.recollectionRatesDao().observeForFarm(farmId)
+            .map { it?.toDomain() ?: RecollectionRates() }
+            .flowOn(dispatchers.io)
+
+    override suspend fun saveRates(farmId: UUID, rates: RecollectionRates): AppResult<Unit> {
+        val prices = listOfNotNull(rates.fullDayMinor, rates.hourlyMinor) + rates.equipmentDayMinor.values
+        if (prices.any { it <= 0 }) return AppResult.Failure(AppError.Validation("rates", "not_positive"))
+        return inTransaction("save_rates") {
+            val farm = database.farmDao().findById(farmId)?.takeIf { it.metadata.deletedAt == null }
+                ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
+            val now = clock.nowInstant()
+            val current = database.recollectionRatesDao().findForFarm(farmId)
+            val row = RecollectionRatesEntity(
+                id = current?.id ?: idGenerator.newId(),
+                workspaceId = farm.workspaceId,
+                farmId = farmId,
+                currency = rates.currency,
+                fullDayMinor = rates.fullDayMinor,
+                hourlyMinor = rates.hourlyMinor,
+                equipmentDayJson = DayCostLedger.equipmentJson(rates),
+                metadata = current?.metadata?.copy(
+                    updatedAt = now,
+                    version = current.metadata.version + 1,
+                    syncStatus = SyncStatus.PENDING,
+                ) ?: LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
+            )
+            database.recollectionRatesDao().upsert(row)
+            database.enqueueCollapsed(
+                idGenerator, SyncEntityType.RECOLLECTION_RATES, row.id,
+                if (current == null) OutboxOperation.CREATE else OutboxOperation.UPDATE, now,
+            )
+            // A3: the running Campaign's days follow the new prices; a closed Campaign keeps its own.
+            costs.syncFarm(farmId, now)
+            AppResult.Success(Unit)
+        }
+    }
+
+    override suspend fun preferCalculated(harvestId: UUID, kind: DayCostKind): AppResult<Unit> =
+        inTransaction("prefer_calculated") {
+            val day = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null }
+                ?: return@inTransaction AppResult.Failure(AppError.NotFound("harvest"))
+            costs.preferCalculated(day.id, kind, clock.nowInstant())
+            AppResult.Success(Unit)
+        }
+
+    private suspend fun <T> inTransaction(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
+        withContext(dispatchers.io) {
+            try {
+                database.withTransaction { block() }
+            } catch (error: Throwable) {
+                AppResult.Failure(AppError.Storage(operation, error))
+            }
+        }
+}

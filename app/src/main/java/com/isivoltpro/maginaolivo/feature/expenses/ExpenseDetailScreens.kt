@@ -110,7 +110,19 @@ fun ExpenseDetailScreen(
                 expense == null -> MoErrorState("Gasto no disponible", state.error ?: "No está guardado en este dispositivo.")
                 else -> {
                     ExpenseSummaryBlock(expense)
-                    if (expense.status == ExpenseStatus.DRAFT) {
+                    val calculated = expense.origin == ExpenseOrigin.DAY_LABOUR || expense.origin == ExpenseOrigin.DAY_EQUIPMENT
+                    if (calculated) {
+                        // CR-010 A3: the day's attendance or equipment and its prices write this entry.
+                        Text(
+                            if (expense.status == ExpenseStatus.DRAFT) {
+                                "Calculado, pero no suma: ese día tiene un gasto del mismo tipo anotado a mano. Elige cuál vale desde la jornada."
+                            } else {
+                                "Se calcula solo. Para cambiarlo, cambia los jornales, la maquinaria o los precios del día."
+                            },
+                            color = MoTextSecondary,
+                            modifier = Modifier.testTag("expense-calculated-note"),
+                        )
+                    } else if (expense.status == ExpenseStatus.DRAFT) {
                         Text(
                             "Este gasto viene de un documento revisado y todavía no suma. Confírmalo cuando estés seguro del importe.",
                             color = MoTextSecondary,
@@ -122,8 +134,10 @@ fun ExpenseDetailScreen(
                             enabled = !state.isSaving,
                         )
                     }
-                    MoSecondaryButton("Editar gasto", { editorVisible = true }, Modifier.fillMaxWidth().testTag("edit-expense"))
-                    MoSecondaryButton("Eliminar gasto", { confirmation = "delete" }, Modifier.fillMaxWidth().testTag("delete-expense"))
+                    if (!calculated) {
+                        MoSecondaryButton("Editar gasto", { editorVisible = true }, Modifier.fillMaxWidth().testTag("edit-expense"))
+                        MoSecondaryButton("Eliminar gasto", { confirmation = "delete" }, Modifier.fillMaxWidth().testTag("delete-expense"))
+                    }
                     state.message?.let { Text(it, color = MoTextSecondary) }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     attachmentContent()
@@ -193,6 +207,8 @@ private fun ExpenseSummaryBlock(expense: Expense) {
             ExpenseOrigin.MANUAL -> "Anotado a mano"
             ExpenseOrigin.ACTIVITY_COST -> "Coste de una actuación"
             ExpenseOrigin.DOCUMENT_OCR -> "Leído de un documento y revisado"
+            ExpenseOrigin.DAY_LABOUR -> "Calculado de los jornales del día"
+            ExpenseOrigin.DAY_EQUIPMENT -> "Calculado de la maquinaria del día"
         },
     )
     expense.notes?.let { DetailValue("Notas", it) }
