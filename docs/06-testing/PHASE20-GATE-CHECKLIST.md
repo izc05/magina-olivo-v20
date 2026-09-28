@@ -1,7 +1,10 @@
 # Phase 20 Gate Checklist — Home contextual services + weather visuals
 
-Status: **OPEN — PR #284 changes need a new APK and owner device test** (updated 2026-09-28).
-Gate 20 closes only when every check below is ☑ on a physical phone. Phase 21 does not start before.
+Status: **PASS — owner decision, 2026-09-28.** The owner tested APK 0.5.0 build 606 (includes
+#284) on the **emulator**, reported no defects («ya está probada, puedes seguir») and explicitly chose
+to close Gate 20 on that emulator test. The checks below were not re-marked one by one.
+The original rule (every check ☑ on a physical phone) is waived by the owner for this Gate; the same
+flows are re-checked on a physical phone in the Phase 27 real-device beta.
 
 **Gate 20:** failure of every external feed still leaves Mi Campo, Cuaderno and the harvest flow
 fully operational; every external value says its source and age and is never presented as fresh
