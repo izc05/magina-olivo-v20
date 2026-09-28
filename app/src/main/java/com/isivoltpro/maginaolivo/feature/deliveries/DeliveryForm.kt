@@ -13,6 +13,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.YieldRules
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketProposal
+import com.isivoltpro.maginaolivo.domain.organization.Organization
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
@@ -201,16 +202,47 @@ internal fun Delivery.toForm(): DeliveryForm {
 /**
  * A ticket's proposal as a starting form. Only what the ticket said is filled in; the
  * farmer still chooses the Farm, the origin Parcels and confirms every figure.
+ *
+ * CR-010 (note 4): the ticket's hour fills «Hora», and its cooperative/mill text selects a saved
+ * destination only when exactly one matches it; otherwise the text stays typed, to be checked.
  */
-internal fun DeliveryTicketProposal?.toForm(farmId: UUID?, today: LocalDate): DeliveryForm = DeliveryForm(
-    farmId = farmId,
-    date = (this?.deliveryDate ?: today).toString(),
-    destinationText = this?.organizationName.orEmpty(),
-    net = Weight.editable(this?.netGrams),
-    gross = Weight.editable(this?.grossGrams),
-    tare = Weight.editable(this?.tareGrams),
-    ticketNumber = this?.ticketNumber.orEmpty(),
-)
+internal fun DeliveryTicketProposal?.toForm(
+    farmId: UUID?,
+    today: LocalDate,
+    destinations: List<Organization> = emptyList(),
+): DeliveryForm {
+    val matched = this?.organizationName?.let { text -> matchDestination(text, destinations) }
+    return DeliveryForm(
+        farmId = farmId,
+        date = (this?.deliveryDate ?: today).toString(),
+        destinationOrganizationId = matched?.id,
+        destinationText = if (matched != null) "" else this?.organizationName.orEmpty(),
+        net = Weight.editable(this?.netGrams),
+        gross = Weight.editable(this?.grossGrams),
+        tare = Weight.editable(this?.tareGrams),
+        ticketNumber = this?.ticketNumber.orEmpty(),
+        time = this?.deliveryTime?.toString().orEmpty(),
+    )
+}
+
+private val LEGAL_WORDS = setOf("s", "c", "a", "sca", "coop", "cooperativa", "almazara", "de", "del", "la", "el", "sl", "sa")
+
+/** «S.C.A. Cooperativa San Isidro» and «Coop. San Isidro» both read as «san isidro». */
+private fun organizationCore(name: String): String =
+    java.text.Normalizer.normalize(name.lowercase(), java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}+"), "")
+        .split(Regex("[^a-z0-9ñ]+"))
+        .filter { it.isNotEmpty() && it !in LEGAL_WORDS }
+        .joinToString(" ")
+
+internal fun matchDestination(ticketText: String, destinations: List<Organization>): Organization? {
+    val ticket = organizationCore(ticketText).takeIf { it.length >= 3 } ?: return null
+    val matches = destinations.filter { organization ->
+        val core = organizationCore(organization.name)
+        core.length >= 3 && (ticket.contains(core) || core.contains(ticket))
+    }
+    return matches.singleOrNull()
+}
 
 data class YieldForm(
     val date: String = "",

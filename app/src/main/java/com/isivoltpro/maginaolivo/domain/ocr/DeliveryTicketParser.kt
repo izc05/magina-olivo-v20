@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo.domain.ocr
 
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * What a weight ticket seems to say (`DATA-MODEL-RC1.2-ADDENDUM` §4, delivery ticket
@@ -17,6 +18,8 @@ data class DeliveryTicketProposal(
     val netGrams: Long? = null,
     val memberReference: String? = null,
     val vehicleReference: String? = null,
+    /** CR-010 note 4: the hour on the ticket, read only where it is labelled or beside the date. */
+    val deliveryTime: LocalTime? = null,
 ) {
     val hasEssentials: Boolean get() = netGrams != null && deliveryDate != null
 
@@ -38,6 +41,7 @@ object DeliveryTicketParser {
     )
     private val MEMBER = Regex("""(?i)(?:socio|n[ºo°]\s*socio|c[oó]d\.?\s*socio)\s*[:#]?\s*([A-Z0-9\-/]{1,})""")
     private val VEHICLE = Regex("""(?i)(?:matr[ií]cula|veh[ií]culo)\s*[:#]?\s*([A-Z0-9\- ]{4,12})""")
+    private val TIME = Regex("""\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b""")
     private val ORGANIZATION_WORDS = listOf("cooperativa", "coop", "almazara", "sca", "s.c.a", "aceites", "oleo", "olivarera")
 
     fun parse(rawText: String): DeliveryTicketProposal {
@@ -56,7 +60,23 @@ object DeliveryTicketParser {
             netGrams = weightOn(lines, "neto"),
             memberReference = lines.firstNotNullOfOrNull { MEMBER.find(it)?.groupValues?.get(1) },
             vehicleReference = lines.firstNotNullOfOrNull { VEHICLE.find(it)?.groupValues?.get(1)?.trim() },
+            deliveryTime = time(lines),
         )
+    }
+
+    /**
+     * An hour only where the ticket says so: after «hora», or on the line carrying the date
+     * (outside the date itself). Weights such as «2.850» never read as 2:50.
+     */
+    private fun time(lines: List<String>): LocalTime? {
+        val labelled = lines.firstNotNullOfOrNull { line ->
+            val index = line.lowercase().indexOf("hora")
+            if (index < 0) null else TIME.find(line.substring(index + 4))
+        }
+        val beside = labelled ?: lines.firstNotNullOfOrNull { line ->
+            DATE.find(line)?.let { date -> TIME.find(line.removeRange(date.range)) }
+        }
+        return beside?.let { match -> LocalTime.of(match.groupValues[1].toInt(), match.groupValues[2].toInt()) }
     }
 
     private fun date(lines: List<String>): LocalDate? {

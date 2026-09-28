@@ -33,6 +33,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   «Kg pendientes de pesada» y, si no tiene jornales, maquinaria, gastos ni adjuntos, desaparece.
   Las parcelas del día son las de sus pesadas, sin reparto de kilos. Las jornadas antiguas escritas
   a mano conservan sus kilos y nunca reciben pesadas nuevas. Base de datos del teléfono v17.
+- «Añadir vale y leer datos» dentro de Nueva pesada: foto o PDF del vale, se leen los datos y se
+  revisan antes de guardar (nada se guarda solo). El lector propone también la **hora** del vale y,
+  si su cooperativa coincide sin dudas con una guardada, la deja elegida; si no, queda el texto
+  del vale para revisarlo. La pesada confirmada va a su día de recolección como las demás.
 
 ## 0.5.0 — 28/09/2026
 

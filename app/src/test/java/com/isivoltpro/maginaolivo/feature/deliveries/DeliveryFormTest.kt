@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.deliveries
 
+import com.isivoltpro.maginaolivo.domain.organization.Organization
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
@@ -59,6 +60,29 @@ class DeliveryFormTest {
         val (draft, errors) = form.toDraft(today)
         assertNull(draft)
         assertNotNull(errors.farm)
+    }
+
+    @Test
+    fun aTicketsHourAndCooperativeFillTheFormOnlyWhenTheyAreClear() {
+        // CR-010 note 4: still a proposal the farmer confirms.
+        val sanIsidro = Organization(UUID.randomUUID(), "Coop. San Isidro", emptySet())
+        val molino = Organization(UUID.randomUUID(), "Almazara El Molino", emptySet())
+        val proposal = DeliveryTicketProposal(
+            organizationName = "S.C.A. Cooperativa San Isidro",
+            deliveryDate = LocalDate.of(2026, 11, 18),
+            netGrams = 2_850_000,
+            deliveryTime = LocalTime.of(17, 42),
+        )
+        val form = proposal.toForm(farmId = null, today = today, destinations = listOf(sanIsidro, molino))
+        assertEquals(sanIsidro.id, form.destinationOrganizationId)
+        assertEquals("", form.destinationText)
+        assertEquals("17:42", form.time)
+        // No saved match, or more than one: the ticket's text stays typed, to be checked.
+        val unknown = proposal.copy(organizationName = "Oleícola Jaén").toForm(null, today, listOf(sanIsidro, molino))
+        assertNull(unknown.destinationOrganizationId)
+        assertEquals("Oleícola Jaén", unknown.destinationText)
+        val twin = Organization(UUID.randomUUID(), "San Isidro Labrador", emptySet())
+        assertNull(proposal.toForm(null, today, listOf(sanIsidro, twin)).destinationOrganizationId)
     }
 
     @Test

@@ -341,6 +341,7 @@ fun DeliveriesScreen(
                     saveText = "Guardar pesada",
                     onSave = onCreate,
                     onCancel = { editorVisible = false; onEditorClosed() },
+                    onReadTicket = { editorVisible = false; onEditorClosed(); ticketVisible = true },
                     onSaveAndAddAnother = onCreateAndAddAnother,
                 )
             }
@@ -521,6 +522,8 @@ internal fun DeliveryEditor(
     subtitle: String = "Se guardará primero en este dispositivo.",
     scrollable: Boolean = true,
     extraActions: @Composable () -> Unit = {},
+    /** CR-010 §6: «Añadir vale y leer datos» from Nueva pesada; null where a ticket is already being read. */
+    onReadTicket: (() -> Unit)? = null,
     onSaveAndAddAnother: ((DeliveryForm) -> Unit)? = null,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
@@ -534,6 +537,14 @@ internal fun DeliveryEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+        onReadTicket?.let { read ->
+            MoSecondaryButton("Añadir vale y leer datos", read, Modifier.fillMaxWidth().testTag("delivery-read-ticket"))
+            Text(
+                "Foto o PDF del vale: se leen los datos para que los revises. Nada se guarda sin tu confirmación.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MoTextSecondary,
+            )
+        }
         if (farmLocked) {
             Text(context?.farmName.orEmpty(), style = MaterialTheme.typography.titleMedium)
         } else {
@@ -1077,7 +1088,7 @@ fun TicketReviewScreen(
                     DeliveryEditor(
                         title = "Confirmar pesada",
                         subtitle = "Los datos vienen del vale. Corrige lo que no coincida: solo cuenta lo que confirmes.",
-                        initial = extraction.deliveryProposal.toForm(state.contexts.singleOrNull()?.farmId, today),
+                        initial = extraction.deliveryProposal.toForm(state.contexts.singleOrNull()?.farmId, today, state.destinations),
                         contexts = state.contexts,
                         destinations = state.destinations,
                         errors = state.formErrors,
