@@ -216,8 +216,8 @@ fun HarvestsScreen(
                 state.isLoading -> CircularProgressIndicator()
                 state.harvests.isEmpty() -> MoEmptyState(
                     "Aún no hay jornadas",
-                    "Abre la jornada de hoy y añade después sus pesadas, o registra una pesada y elige «Nueva jornada de este día». " +
-                        "Sus kilos son siempre la suma de sus pesadas.",
+                    "Registra una pesada y su día de recolección se crea solo, o abre la jornada de hoy para anotar " +
+                        "antes jornales o gastos. Sus kilos son siempre la suma de sus pesadas.",
                     icon = MoIcons.Harvest,
                 )
                 else -> {
