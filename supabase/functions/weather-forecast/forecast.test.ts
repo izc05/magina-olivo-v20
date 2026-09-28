@@ -162,6 +162,53 @@ test("AEMET cannot provide a partial week then borrow MET Norway days", async ()
   assert.ok(body.daily.length > 0);
 });
 
+test("a missing week never costs the current weather: current-only from one provider, empty week", async () => {
+  resetMasterCache();
+  // AEMET hourly fine, AEMET daily down, MET Norway down: AEMET's current weather, no week.
+  const { fn } = fakeFetch([
+    master,
+    ...aemetOk.filter((route) => !route.match("https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/23000")),
+    { match: (u) => u.includes("/prediccion/especifica/municipio/diaria/"), reply: json({}, 503) },
+    metno(json({}, 500)),
+  ]);
+  const result = await handleForecast({ municipality: "Bedmar", province: "Jaén" }, deps(fn));
+  assert.equal(result.status, 200);
+  const body = result.body as { provider: string; daily: unknown[]; current: { temperatureC: number } };
+  assert.equal(body.provider, "AEMET");
+  assert.equal(body.current.temperatureC, 16);
+  assert.deepEqual(body.daily, []);
+});
+
+test("AEMET hourly and daily are asked in parallel, not one after the other", async () => {
+  resetMasterCache();
+  const started: string[] = [];
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const routes = [master, ...aemetOk, metno()];
+  const fn = async (input: string) => {
+    if (input.includes("/prediccion/especifica/municipio/")) {
+      started.push(input.includes("/horaria/") ? "horaria" : "diaria");
+      if (started.length === 2) release();
+      await gate; // the first metadata call waits until the second has started
+    }
+    return routes.find((r) => r.match(input))!.reply();
+  };
+  const result = await handleForecast({ municipality: "Bedmar", province: "Jaén" }, deps(fn));
+  assert.equal(result.status, 200);
+  assert.deepEqual([...started].sort(), ["diaria", "horaria"]);
+});
+
+test("MET Norway day extremes include the provider's own 6-hour min/max within the day", () => {
+  const doc = structuredClone(METNO);
+  doc.properties.timeseries[0].data.next_6_hours = {
+    summary: { symbol_code: "partlycloudy_day" },
+    details: { air_temperature_min: 11.2, air_temperature_max: 24.6 },
+  };
+  const today = parseMetNo(doc, NOW).daily[0];
+  assert.equal(today.minTemperatureC, 11);
+  assert.equal(today.maxTemperatureC, 25);
+});
+
 for (const [label, reply] of [
   ["an error", json({}, 500)],
   ["a rate limit", json({}, 429)],

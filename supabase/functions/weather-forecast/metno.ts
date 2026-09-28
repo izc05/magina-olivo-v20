@@ -24,7 +24,10 @@ interface Step {
   data?: {
     instant?: { details?: { air_temperature?: number; wind_speed?: number } };
     next_1_hours?: { summary?: { symbol_code?: string }; details?: { precipitation_amount?: number } };
-    next_6_hours?: { summary?: { symbol_code?: string }; details?: { precipitation_amount?: number } };
+    next_6_hours?: {
+      summary?: { symbol_code?: string };
+      details?: { precipitation_amount?: number; air_temperature_min?: number; air_temperature_max?: number };
+    };
   };
 }
 
@@ -52,8 +55,14 @@ export function parseMetNo(doc: unknown, now: Date): { current: Current; daily: 
     byDate.set(date, group);
   }
   const daily = [...byDate.entries()].slice(0, 7).map(([date, items]): DailyForecast => {
+    // The provider's own 6-hour extremes where published, plus the instant samples: a day with
+    // only 6-hourly steps would otherwise take its min/max from four instants.
+    // Only 6-hour windows that end inside the same local day (start at 18:00 or earlier).
     const temperatures = items
-      .map((item) => item.data?.instant?.details?.air_temperature)
+      .flatMap((item) => {
+        const sixHours = madridDateHour(new Date(Date.parse(item.time))).hour <= 18 ? item.data?.next_6_hours?.details : undefined;
+        return [item.data?.instant?.details?.air_temperature, sixHours?.air_temperature_min, sixHours?.air_temperature_max];
+      })
       .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
     const winds = items
       .map((item) => item.data?.instant?.details?.wind_speed)
