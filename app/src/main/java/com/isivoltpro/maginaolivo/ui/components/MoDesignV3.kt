@@ -162,8 +162,22 @@ fun MoStatStrip(stats: List<MoStat>, modifier: Modifier = Modifier) {
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         if (stats.size <= 3) MoIconBadge(stat.icon, size = 28)
-                        Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary, textAlign = TextAlign.Center)
-                        Text(stat.value, style = MaterialTheme.typography.titleMedium, color = MoInk, textAlign = TextAlign.Center)
+                        // Full cell width: centred text is laid out at the cell width, so the node
+                        // must be as wide as its paragraph (otherwise it reports a false overflow).
+                        Text(
+                            stat.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MoTextSecondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            stat.value,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MoInk,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 } else Row(
                     Modifier.weight(1f).padding(horizontal = 6.dp),
