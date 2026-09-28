@@ -31,9 +31,9 @@ class HomeFeedsScreenTest {
 
     @Test fun externalFeedsDoNotReplaceFarmSummaryAndQuickAccessIsRemoved() {
         show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Unavailable))
-        composeRule.onNodeWithTag("home-stats").assertIsDisplayed()
+        composeRule.onNodeWithTag("home-weather-summary").assertIsDisplayed().assertTextContains("Bedmar", substring = true)
+        composeRule.onNodeWithTag("home-stats").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("home-campaign").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("home-weather-hero").assertIsDisplayed().assertTextContains("Bedmar", substring = true)
         composeRule.onNodeWithTag("home-quick-jornadas").assertDoesNotExist()
         composeRule.onNodeWithTag("home-quick-pesadas").assertDoesNotExist()
         composeRule.onNodeWithTag("home-no-farms").assertDoesNotExist()
@@ -50,9 +50,9 @@ class HomeFeedsScreenTest {
                 weather = FeedState.Value(weather, "AEMET", now.minusSeconds(5 * 3600), stale = true),
             ),
         )
-        composeRule.onNodeWithTag("home-weather-hero").assertTextContains("22 °C · Parcialmente nublado")
+        composeRule.onNodeWithTag("home-weather-summary").assertTextContains("22°").assertTextContains("Parcialmente nublado")
             .assertTextContains("Bedmar", substring = true)
-        composeRule.onNodeWithTag("home-weather-hero").assertTextContains("Antiguo")
+        composeRule.onNodeWithTag("home-weather-summary").assertTextContains("Datos guardados · sin actualizar")
     }
 
     @Test fun tappingHeroWeatherOpensTheWeek() {
@@ -64,7 +64,7 @@ class HomeFeedsScreenTest {
 
     @Test fun noLocationExplainsWhereToAddTheMunicipality() {
         show(UiPolishFixtures.home.copy(weather = FeedState.NoLocation))
-        composeRule.onNodeWithTag("home-weather-hero").assertTextContains("Añade el municipio en Mi Campo")
+        composeRule.onNodeWithTag("home-weather-summary").assertTextContains("Añade el municipio en Mi Campo")
     }
 
     @Test fun theHeaderFollowsCurrentSkyAndStaysStillInTests() {

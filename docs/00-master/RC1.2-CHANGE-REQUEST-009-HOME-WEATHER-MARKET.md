@@ -79,3 +79,20 @@ En Inicio, la tarjeta de primera finca y la cuadrícula de accesos rápidos repi
 - Pruebas Edge: `node --experimental-strip-types --test supabase/functions/weather-forecast/forecast.test.ts` pasó (13 pruebas); CI de la PR valida los cambios Android.
 - Pendiente: CI Android completa, verificación visual en emulador/artefacto y dispositivo físico. Hasta verificar un despliegue autorizado de la Edge Function, la disponibilidad remota de siete días no se da por garantizada.
 - No fusionar #284 sin autorización expresa del propietario.
+
+### Afinado visual autorizado por el propietario (28/09/2026)
+
+La referencia aportada concreta el tiempo integrado en la fotografía: temperatura grande,
+municipio, icono del estado del cielo y una entrada diferenciada a la previsión. Se conserva la
+foto del olivar, el logotipo y la paleta crema/olivo. El saludo pasa a un segundo nivel; la
+cabecera tiene altura mínima adaptable y crece con la letra ampliada para evitar recortes.
+
+En el detalle, un resumen visual muestra temperatura/estado; las medidas de lluvia y viento
+solo aparecen si existen. La semana agrupa las fechas en una superficie única con iconos,
+mínimas/máximas y detalles publicados. Se mantiene el radar y el regreso a Inicio. No se añaden
+UV, humedad, sensación térmica, presión ni amanecer sin contrato/datos reales.
+
+La base `4d1de161` superó toda la CI de #284. El ajuste visual tiene nueva validación Android y
+capturas de fixtures, identificadas como ficticias y excluidas del APK de producción, a los
+tamaños y escala de letra del Gate 3. No se declara validada la respuesta semanal remota sin
+el despliegue y la comprobación conectada pendientes.

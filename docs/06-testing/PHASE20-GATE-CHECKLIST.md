@@ -65,7 +65,7 @@ Pesada, «Kg pendientes de pesada» instead of 0 kg, farm card during «Recolecc
 | B1 | Inicio with coverage and a farm with municipality | Tiempo with its source («AEMET» or «MET Norway») and «Actualizado hace …»; header look matches the sky | ☐ |
 | B2 | «Ver radar de lluvia» with coverage | Radar over the farm, with the frame time and «RainViewer» | ☐ |
 | B3 | Ajustes del teléfono → Accesibilidad → quitar animaciones, open Inicio | Header without movement; text readable | ☐ |
-| B4 | Inicio → tocar la tarjeta del tiempo sobre la foto | Municipio consultado, proveedor y antigüedad visibles; hasta siete días; valores ausentes como «—»/no disponibles; acceso al radar; volver a Inicio | ☐ |
+| B4 | Inicio → «Ver previsión» sobre la foto, también con letra ampliada | Temperatura grande, icono del estado y municipio consultado; proveedor y antigüedad visibles; detalle con lluvia/viento disponibles y hasta siete días; valores ausentes como «—»/no disponibles; radar y regreso a Inicio; sin textos/botones recortados | ☐ |
 
 ### C. Mercado del aceite
 

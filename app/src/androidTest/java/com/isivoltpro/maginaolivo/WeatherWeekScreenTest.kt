@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.weather.WeatherCondition
@@ -39,10 +40,11 @@ class WeatherWeekScreenTest {
         show(WeatherWeekUiState(location = location, weather = FeedState.Value(forecast, "AEMET", now, stale = false)))
         composeRule.onNodeWithTag("weather-week-root").assertIsDisplayed()
         composeRule.onNodeWithTag("weather-week-location").assertTextContains("Bedmar", substring = true)
+        composeRule.onNodeWithTag("weather-week-current").assertTextContains("22°").assertTextContains("Parcialmente nublado")
         composeRule.onNodeWithTag("weather-week-day-0").assertTextContains("13°", substring = true).assertTextContains("25°", substring = true)
             .assertTextContains("30 %", substring = true).assertTextContains("1,2 mm", substring = true)
         composeRule.onNodeWithTag("weather-week-day-1").assertTextContains("—", substring = true)
-        composeRule.onNodeWithTag("weather-week-source").assertTextContains("AEMET", substring = true)
+        composeRule.onNodeWithTag("weather-week-source").performScrollTo().assertIsDisplayed().assertTextContains("AEMET", substring = true)
             .assertTextContains("© AEMET", substring = true)
     }
 
@@ -54,7 +56,7 @@ class WeatherWeekScreenTest {
         var radarOpens = 0
         show(WeatherWeekUiState(location = location, weather = FeedState.Value(forecast, "MET Norway", now.minusSeconds(5 * 3600), stale = true)), onRadar = { radarOpens++ })
         composeRule.onNodeWithTag("weather-week-stale").assertIsDisplayed()
-        composeRule.onNodeWithTag("weather-week-radar").performClick()
+        composeRule.onNodeWithTag("weather-week-radar").performScrollTo().performClick()
         composeRule.runOnIdle { assertEquals(1, radarOpens) }
     }
 

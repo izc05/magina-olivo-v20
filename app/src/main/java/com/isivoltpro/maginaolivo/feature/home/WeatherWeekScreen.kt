@@ -9,9 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,8 +43,8 @@ import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
+import com.isivoltpro.maginaolivo.domain.weather.WeatherDayForecast
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
-import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
@@ -52,6 +56,9 @@ import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
+import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
+import com.isivoltpro.maginaolivo.ui.theme.MoInfoTint
+import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -167,7 +174,10 @@ fun WeatherWeekScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             if (onBack != null) {
-                TextButton(onClick = onBack, modifier = Modifier.testTag("weather-week-back")) { Text("Volver") }
+                TextButton(onClick = onBack, modifier = Modifier.testTag("weather-week-back")) {
+                    Icon(MoIcons.ChevronLeft, null, modifier = Modifier.size(18.dp))
+                    Text("Volver a Inicio")
+                }
             }
             Text("Tiempo de la semana", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             Text(
@@ -182,13 +192,24 @@ fun WeatherWeekScreen(
                 when (val weather = state.weather) {
                     is FeedState.Value -> {
                         if (weather.stale) MoStatusChip("Datos guardados · pueden estar antiguos", tone = MoStatusTone.Warning, modifier = Modifier.testTag("weather-week-stale"))
-                        Text("Próximos días", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+                        CurrentWeatherSummary(weather.value, weather.stale)
+                        onRadar?.let { MoSecondaryButton("Ver radar de lluvia", it, Modifier.fillMaxWidth().testTag("weather-week-radar")) }
+                        Spacer(Modifier.height(MoSpacing.xs))
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Próximos días", style = MaterialTheme.typography.titleMedium, color = MoOliveDark, modifier = Modifier.weight(1f))
+                            Text("Mín. / Máx.", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+                        }
                         if (weather.value.daily.isEmpty()) {
                             Text("La fuente disponible aún no ofrece previsión semanal.", color = MoTextSecondary, modifier = Modifier.testTag("weather-week-no-days"))
                         } else {
                             val today = now.atZone(zone).toLocalDate()
-                            weather.value.daily.take(7).forEachIndexed { index, day ->
-                                WeatherDayCard(day.date, today, day.minTemperatureC, day.maxTemperatureC, day.condition?.label, day.rainProbabilityPercent, day.rainMm, day.windKmh, index)
+                            Surface(shape = MoShape.card, color = MoWarmWhite, modifier = Modifier.fillMaxWidth()) {
+                                Column {
+                                    weather.value.daily.take(7).forEachIndexed { index, day ->
+                                        if (index > 0) HorizontalDivider(color = MoOutline, modifier = Modifier.padding(horizontal = MoSpacing.sm))
+                                        WeatherDayRow(day, today, index)
+                                    }
+                                }
                             }
                         }
                         Column(
@@ -213,50 +234,83 @@ fun WeatherWeekScreen(
                     FeedState.Unavailable -> Text("Conéctate para cargar la previsión", color = MoTextSecondary, modifier = Modifier.testTag("weather-week-unavailable"))
                 }
             }
-            onRadar?.let { MoSecondaryButton("Ver radar de lluvia", it, Modifier.fillMaxWidth().testTag("weather-week-radar")) }
+            if (state.weather !is FeedState.Value) {
+                onRadar?.let { MoSecondaryButton("Ver radar de lluvia", it, Modifier.fillMaxWidth().testTag("weather-week-radar")) }
+            }
             Spacer(Modifier.height(MoSpacing.lg))
         }
     }
 }
 
 @Composable
-private fun WeatherDayCard(
-    date: LocalDate,
-    today: LocalDate,
-    min: Int?,
-    max: Int?,
-    condition: String?,
-    rainProbability: Int?,
-    rainMm: Double?,
-    windKmh: Int?,
-    index: Int,
-) {
+private fun CurrentWeatherSummary(weather: WeatherNow, stale: Boolean) {
     Surface(
-        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("weather-week-day-$index"),
-        shape = MoShape.card,
-        color = MoWarmWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MoOutline),
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("weather-week-current"),
+        shape = MoShape.cardLarge,
+        color = MoInfoTint,
     ) {
-        Column(Modifier.padding(MoSpacing.sm), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                MoIconBadge(MoIcons.Weather)
-                Column(Modifier.weight(1f)) {
-                    Text(dateLabel(date, today), style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
-                    Text(condition ?: "Estado del cielo no disponible", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-                }
-                Text("${min?.let { "$it°" } ?: "—"} / ${max?.let { "$it°" } ?: "—"}", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+        Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            Text(if (stale) "Previsión guardada" else "Previsión actual", style = MaterialTheme.typography.labelLarge, color = MoInfoText)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                WeatherTemperature(weather.temperatureC, Modifier.weight(1f))
+                WeatherConditionIcon(weather.condition, Modifier.size(64.dp))
             }
-            val details = listOfNotNull(
-                rainProbability?.let { "Lluvia $it %" },
-                rainMm?.let { "${rainFormat(it)} mm" },
-                windKmh?.let { "Viento $it km/h" },
-            )
-            Text(
-                if (details.isEmpty()) "Sin valores publicados para este día" else details.joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
-            )
+            Text(weather.condition.label, style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
         }
+    }
+    if (weather.rainProbabilityPercent != null || weather.windKmh != null) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            weather.rainProbabilityPercent?.let {
+                WeatherMeasure("Prob. de lluvia", "$it %", MoIcons.Drop, Modifier.weight(1f))
+            }
+            weather.windKmh?.let {
+                WeatherMeasure("Viento", "$it km/h", MoIcons.Wind, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeatherMeasure(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
+    Surface(modifier.semantics(mergeDescendants = true) {}, shape = MoShape.card, color = MoSurfaceSoft) {
+        Column(Modifier.padding(MoSpacing.sm), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
+            Icon(icon, null, tint = MoInfoText, modifier = Modifier.size(22.dp))
+            Text(value, style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
+            Text(label, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+        }
+    }
+}
+
+@Composable
+private fun WeatherDayRow(day: WeatherDayForecast, today: LocalDate, index: Int) {
+    Column(
+        Modifier.fillMaxWidth().heightIn(min = 88.dp).semantics(mergeDescendants = true) {}.testTag("weather-week-day-$index").padding(MoSpacing.sm),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            WeatherConditionIcon(day.condition, Modifier.size(28.dp))
+            Column(Modifier.weight(1f)) {
+                Text(dateLabel(day.date, today), style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+                Text(day.condition?.label ?: "Estado del cielo no disponible", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    "${day.minTemperatureC?.let { "$it°" } ?: "—"} / ${day.maxTemperatureC?.let { "$it°" } ?: "—"}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MoOliveDark,
+                )
+            }
+        }
+        val details = listOfNotNull(
+            day.rainProbabilityPercent?.let { "Lluvia $it %" },
+            day.rainMm?.let { "${rainFormat(it)} mm" },
+            day.windKmh?.let { "Viento $it km/h" },
+        )
+        Text(
+            if (details.isEmpty()) "Sin valores publicados para este día" else details.joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            color = MoInfoText,
+        )
     }
 }
 

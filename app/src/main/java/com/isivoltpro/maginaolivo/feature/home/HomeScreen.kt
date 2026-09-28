@@ -14,7 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,27 +29,19 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.core.time.AppClock
-import com.isivoltpro.maginaolivo.domain.feed.FeedAge
-import com.isivoltpro.maginaolivo.domain.feed.FeedState
-import com.isivoltpro.maginaolivo.domain.weather.WeatherMoods
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
-import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoStat
 import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
-import com.isivoltpro.maginaolivo.ui.components.MoPhotoBrand
-import com.isivoltpro.maginaolivo.ui.components.MoPhotoHeader
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
-import com.isivoltpro.maginaolivo.ui.theme.MoOutline
-import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
@@ -127,20 +118,13 @@ fun HomeScreen(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-            // Design v3 (CR-004): brand, greeting and place over the olive-grove photograph.
-            MoPhotoHeader(
-                title = greeting(now),
-                location = state.location,
-                caption = state.today?.format(TODAY)?.replaceFirstChar { c -> c.titlecase(SPANISH) },
-                heightFraction = 0.46f,
-                top = {
-                    // Phase 20C: the current sky over the photo, under the text; none if unknown.
-                    val mood = WeatherMoods.of(state.weather)
-                    if (weatherMotion == null) WeatherMoodLayer(mood, Modifier.matchParentSize())
-                    else WeatherMoodLayer(mood, Modifier.matchParentSize(), animate = weatherMotion)
-                    MoPhotoBrand(Modifier.align(Alignment.TopStart).padding(MoSpacing.md))
-                },
-                overlay = { HomeWeatherCard(state, feedNow, onWeatherWeek) },
+            HomeWeatherHero(
+                state = state,
+                greeting = greeting(now),
+                date = state.today?.format(TODAY)?.replaceFirstChar { c -> c.titlecase(SPANISH) },
+                now = feedNow,
+                weatherMotion = weatherMotion,
+                onForecast = onWeatherWeek,
             )
             Column(
                 Modifier.padding(horizontal = MoSpacing.screen),
@@ -213,47 +197,6 @@ fun HomeScreen(
             // Phase 20: external context after the farm, each with an honest state.
             HomeContext(state, onOilMarket)
             Spacer(Modifier.height(MoSpacing.lg))
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeWeatherCard(state: HomeUiState, now: Instant, onClick: () -> Unit) {
-    val weather = state.weather
-    val title = when (weather) {
-        is FeedState.Value -> "${weather.value.temperatureC} °C · ${weather.value.condition.label}"
-        FeedState.NoLocation -> if (state.weatherLocationAmbiguous) "Tiempo de tus fincas" else "Tiempo de tu zona"
-        FeedState.NotConfigured -> "Tiempo"
-        FeedState.Unavailable -> "Tiempo${state.weatherLocation?.let { " · ${it.label}" } ?: ""}"
-    }
-    val detail = when (weather) {
-        is FeedState.Value -> "${state.weatherLocation?.label ?: "Tu zona"} · ${weather.source} · ${FeedAge.label(weather.value.updatedAt ?: weather.fetchedAt, now)}"
-        FeedState.NoLocation -> if (state.weatherLocationAmbiguous) "Varias ubicaciones · Revisa Mi Campo" else "Añade el municipio en Mi Campo"
-        FeedState.NotConfigured -> "Fuente del tiempo no configurada"
-        FeedState.Unavailable -> "Sin datos recientes${state.weatherLocation?.let { " · ${it.label}" } ?: ""}"
-    }
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().testTag("home-weather-hero"),
-        shape = MoShape.card,
-        color = MoCream.copy(alpha = 0.96f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MoOutline),
-        shadowElevation = 2.dp,
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = MoSpacing.sm, vertical = MoSpacing.xs),
-            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            MoIconBadge(MoIcons.Weather)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, color = MoOliveDark, maxLines = 1)
-                Text(detail, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, maxLines = 2)
-            }
-            Text("Ver semana", style = MaterialTheme.typography.labelLarge, color = MoOliveDark)
-            if (weather is FeedState.Value && weather.stale) {
-                MoStatusChip("Antiguo", tone = MoStatusTone.Warning, modifier = Modifier.testTag("home-weather-stale"))
             }
         }
     }
