@@ -1,7 +1,7 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -30,7 +30,8 @@ class MoStatStripAccessibilityTest {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, fontScale = 1.3f)) {
                 MaginaOlivoTheme {
-                    Box(Modifier.width(320.dp)) {
+                    // requiredWidth: the test root may impose its own minimum width on a plain width().
+                    Box(Modifier.requiredWidth(320.dp)) {
                         MoStatStrip(listOf(
                             MoStat("Fincas", "2", MoIcons.Location),
                             MoStat("Parcelas", "4", MoIcons.Location),

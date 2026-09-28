@@ -169,15 +169,10 @@ fun MoStatStrip(stats: List<MoStat>, modifier: Modifier = Modifier) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (stats.size <= 3) MoIconBadge(stat.icon, size = 36)
+                    // Wrap rather than clip: a label or unit is never cut with large text.
                     Column {
-                        Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary, maxLines = 1)
-                        Text(
-                            stat.value,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MoInk,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+                        Text(stat.value, style = MaterialTheme.typography.titleMedium, color = MoInk)
                     }
                 }
             }
