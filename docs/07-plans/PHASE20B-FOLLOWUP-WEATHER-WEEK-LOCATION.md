@@ -56,15 +56,27 @@ Nothing is wrong with the data; the wording is. Fix proposed in W1.
 ### W2 — Shared municipality + «Seguir mi ubicación» (depends on 21A)
 - The shared municipality **is** 21A's «Tu municipio» (`profile_settings`, Room v17 already
   approved as P1). Doing it inside Phase 20 would pull 21A forward, which the gate order forbids.
-  Proposal: implement W2 **as part of 21A** after Gate 20 PASS:
-  - resolution order for Inicio: manual profile municipality → (if the user turned it on)
-    «Seguir mi ubicación» → common Farm municipality → «Elige tu municipio»;
+  Proposal: implement W2 **with 21A** after Gate 20 PASS. The shared municipality is already in
+  21A's approved scope («Inicio uses it»); «Seguir mi ubicación» is **not**, so it needs the same
+  Change Request as W1 (§5, W-1) before it is built:
+  - **two mutually exclusive modes** for Inicio's place: «Municipio elegido» (manual, the default
+    once chosen) or «Seguir mi ubicación» (only while switched on). Turning one on turns the other
+    off, so an enabled location mode is never hidden behind an older manual choice. With neither
+    set: the common Farm municipality → «Elige tu municipio»;
   - «Seguir mi ubicación»: explicit opt-in switch; asks `ACCESS_COARSE_LOCATION` only then; reads
-    the position only while Inicio is in the foreground; the coordinates are sent to the function
-    only as `latitude/longitude` (already accepted by the contract) and never stored remotely;
+    the position only while Inicio is in the foreground; never stored remotely. If the position is
+    unavailable (permission revoked, no fix) Inicio says so and keeps the last shown value with its
+    age — it does not silently switch back to the manual municipality;
+  - **function change required:** today `validRequest()` (`weather-forecast/handler.ts`) rejects a
+    request without `municipalityCode`/`municipality` (HTTP 400). W2 must accept coordinate-only
+    requests: resolve the nearest municipality from the AEMET municipality list (it carries
+    `latitud_dec`/`longitud_dec`, see `aemet-municipios.json`) so AEMET can answer, and fall back to
+    MET Norway by coordinates when the list is unreachable. Adds a coordinate-only fixture test,
+    range validation (already present for lat/lon) and a **redeploy** of the function;
   - header shows the municipality; the header photo stays generic until a licensed per-municipality
     photo source exists (none approved — not invented).
-- **Estimate:** adds ~1–1.5 days on top of 21A (permission flow + resolution + tests).
+- **Estimate:** adds ~1.5–2 days on top of 21A (function change + redeploy, permission flow,
+  exclusive modes, tests).
 
 ## 4. Gate impact
 - **Gate 20 does not need W1/W2 to close:** its criterion is «failure of every external feed still
@@ -79,8 +91,10 @@ Nothing is wrong with the data; the wording is. Fix proposed in W1.
 
 | # | Decision | Options | Recommendation |
 |---|---|---|---|
-| W-1 | When to build W1 | (a) now, before closing Gate 20, adding B4/D5; (b) after Gate 20, as the first PR of Phase 21 | **(b)**: Gate 20 closes on the APK 580 test; W1 does not block field work |
-| W-2 | Where W2 lives | (a) inside 21A; (b) separate slice after 21A | **(a)**: same municipality, same Room v17 table, one migration |
+| W-1 | When to build W1 | (a) inside Phase 20, before Gate 20 closes: one more APK and device test with B4/D5 added; (b) after Gate 20 PASS, **only through a Change Request** (`CHANGE-CONTROL.md`, next number CR-008) that registers W1 as an approved 20B follow-up and updates `CURRENT-STATE.md` before any code — it is not Phase 21 (Profile) scope | **(b) with CR-008**: Gate 20 closes on the APK 580 test and W1 does not block field work; without an approved CR the only compliant option is (a) |
+| W-2 | Where W2 lives | (a) with 21A (shared municipality already in scope; follow-location added by the same CR-008); (b) separate slice after 21A, also by CR | **(a)**: same municipality, same Room v17 table, one migration |
 | W-3 | Freshness wording | «Previsión {fuente} de las HH:MM · consultada hace …» | as proposed |
 
-Nothing in this document changes code, Room, the Edge Functions or their secrets.
+Nothing in this document changes code, Room, the Edge Functions or their secrets, and nothing in
+it authorizes production work: W1/W2 start only after the owner's choice above and, for option (b),
+an approved CR-008.
