@@ -249,6 +249,24 @@ class JornadaPesadasContractTest {
     }
 
     @Test
+    fun aDayWithWhatTheFarmerTypedOnItStaysAndItsOriginGoesBackToTheWholeFarm() = runBlocking {
+        // Codex review on #290: people or machinery typed on the day are the farmer's record.
+        val p = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1").copy(shares = listOf(DeliveryShareInput(north, 2_000_000)))))
+        val dayId = deliveries.observe(p).first()!!.harvestId!!
+        ok(harvests.update(dayId, HarvestDraft(farmId, day, null, emptyList(), workerCount = 4, machineryText = "Vibrador")))
+        assertEquals(setOf(north), harvests.observe(dayId).first()!!.shares.map { it.parcelId }.toSet())
+
+        ok(deliveries.delete(p))
+        val left = harvests.observe(dayId).first()!!
+        assertTrue(left.awaitingPesadas)
+        assertEquals(4, left.workerCount)
+        assertEquals("Vibrador", left.machineryText)
+        // No Pesada supports «Norte only» any more: the whole Farm, without a split.
+        assertEquals(setOf(north, south), left.shares.map { it.parcelId }.toSet())
+        assertTrue(left.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
+    }
+
+    @Test
     fun anAutomaticDayKeepsItsDateKilosAndParcelsWhenItsFormIsSaved() = runBlocking {
         val p = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1")))
         val dayId = deliveries.observe(p).first()!!.harvestId!!

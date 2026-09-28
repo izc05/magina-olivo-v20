@@ -91,13 +91,14 @@ internal class JornadaLedger(
     }
 
     private suspend fun reconcileAutoDay(day: HarvestEntity, linked: List<DeliveryEntity>, now: Instant) {
-        if (linked.isEmpty() && !ownsAnything(day.id)) {
+        if (linked.isEmpty() && !ownsAnything(day)) {
             database.harvestDao().upsert(day.copy(weightGrams = 0L, metadata = day.metadata.next(now).copy(deletedAt = now)))
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, day.id, OutboxOperation.DELETE, now)
             return
         }
         val sum = linked.sumOf { it.netGrams }
-        val parcelsChanged = linked.isNotEmpty() && replaceDayParcels(day, linked, now)
+        // With no Pesada left, its origin is back to the whole Farm: nothing supports a subset any more.
+        val parcelsChanged = replaceDayParcels(day, linked, now)
         if (sum == day.weightGrams && !parcelsChanged) return
         database.harvestDao().upsert(day.copy(weightGrams = sum, metadata = day.metadata.next(now)))
         database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, day.id, OutboxOperation.UPDATE, now)
@@ -105,12 +106,13 @@ internal class JornadaLedger(
 
     /**
      * CR-010 (note 2): a day's origin is the union of its Pesadas' Parcels, except that one
-     * Pesada from the whole Farm (no Parcel chosen) makes the day farm-wide. Always without a
-     * split: exact kilos stay on each Pesada and are never inferred for the day.
+     * Pesada from the whole Farm (no Parcel chosen) makes the day farm-wide, and so does having no
+     * Pesada at all. Always without a split: exact kilos stay on each Pesada and are never inferred
+     * for the day.
      */
     private suspend fun replaceDayParcels(day: HarvestEntity, linked: List<DeliveryEntity>, now: Instant): Boolean {
         val origins = linked.map { pesada -> database.deliveryDao().listParcels(pesada.id).map { it.parcelId } }
-        val wanted = if (origins.any { it.isEmpty() }) null else origins.flatten().toSet()
+        val wanted = if (origins.isEmpty() || origins.any { it.isEmpty() }) null else origins.flatten().toSet()
         val campaignId = day.campaignId ?: return false
         val rows = dayParcels(day.id, day.workspaceId, campaignId, wanted, now)
         val current = database.harvestDao().listParcels(day.id)
@@ -147,12 +149,18 @@ internal class JornadaLedger(
                 )
             }
 
-    /** Whether removing the day would leave something unreachable. */
-    private suspend fun ownsAnything(harvestId: UUID): Boolean =
-        database.labourDao().listForHarvest(harvestId).isNotEmpty() ||
+    /**
+     * Whether removing the day would lose something the farmer recorded on it: what they typed in
+     * its own form (method, people, machinery, notes) or anything linked to it.
+     */
+    private suspend fun ownsAnything(day: HarvestEntity): Boolean {
+        val harvestId = day.id
+        if (day.collectionMethod != null || day.workerCount != null || day.machineryText != null || day.notes != null) return true
+        return database.labourDao().listForHarvest(harvestId).isNotEmpty() ||
             database.equipmentDao().listForHarvest(harvestId).isNotEmpty() ||
             database.expenseDao().listForHarvest(harvestId).isNotEmpty() ||
             database.documentDao().countLiveForOwner(AttachmentOwnerType.HARVEST.name, harvestId) > 0
+    }
 
     /** A removed Jornada releases its Pesadas: they stay, unlinked, with every figure intact. */
     suspend fun release(harvestId: UUID, now: Instant) {
