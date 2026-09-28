@@ -179,7 +179,7 @@ fun WeatherWeekScreen(
                     Text("Volver a Inicio")
                 }
             }
-            Text("Tiempo de la semana", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("El tiempo", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             Text(
                 state.location?.label ?: if (state.locationAmbiguous) "Varias ubicaciones" else "Tu zona",
                 style = MaterialTheme.typography.titleMedium,

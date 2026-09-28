@@ -74,8 +74,10 @@ internal fun HomeWeatherHero(
             Modifier.matchParentSize().background(
                 Brush.verticalGradient(
                     0f to MoOliveDark.copy(alpha = 0.18f),
-                    0.30f to MoOliveDark.copy(alpha = 0.60f),
-                    1f to MoOliveDark.copy(alpha = 0.96f),
+                    // All text below the brand starts after this stop: at least 4.87:1
+                    // for MoWarmWhite, even over a completely white photograph.
+                    0.20f to MoOliveDark.copy(alpha = 0.68f),
+                    1f to MoOliveDark.copy(alpha = 0.90f),
                 ),
             ),
         )
@@ -189,7 +191,7 @@ internal fun WeatherConditionIcon(condition: WeatherCondition?, modifier: Modifi
         WeatherCondition.STORM -> MoIcons.Storm
         WeatherCondition.SNOW -> MoIcons.Snow
         WeatherCondition.FOG, WeatherCondition.HAZE -> MoIcons.Fog
-        null -> MoIcons.Weather
+        null -> MoIcons.Calendar
     }
     val tint = when {
         condition == WeatherCondition.CLEAR -> if (onPhoto) MoSoftGold else MoSoftGoldText
