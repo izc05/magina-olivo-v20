@@ -110,7 +110,7 @@ interface WeekColumn {
 }
 
 // "Semana 38", "Sem. 38", "38", "38/2026", "Semana 38 (2026)", "2026-38".
-const WEEK_CELL = /^(?:sem(?:ana)?\.?\s*)?(\d{1,2})(?:\s*(?:\/|\(|-)\s*(\d{4})\)?)?$|^(\d{4})\s*-\s*(\d{1,2})$/i;
+const WEEK_CELL = /^(?:sem(?:ana)?\.?\s*)?(\d{1,2})(?:\s*(?:\/|\(|-)\s*(\d{4})\)?)?(?:\s*:\s*.*)?$|^(\d{4})\s*-\s*(\d{1,2})(?:\s*:\s*.*)?$/i;
 
 /** The week columns of a header row (its trailing week cells), or null if it is not one. */
 function weekColumns(cells: string[]): WeekColumn[] | null {

@@ -28,6 +28,18 @@ test("every captured week and category comes back exactly as the owner verified 
   }
 });
 
+test("the live Junta header format with a date range after each week is parsed", () => {
+  const liveLike = PAGE.replace(
+    /<th>Semana (\d+)<\/th>/g,
+    (_match, week) => `<td class="cabInforme"> Semana ${week}:<BR /><span>(14/9/26 -<BR />20/9/26)</span></td>`,
+  );
+  const values = parseJuntaPage(liveLike, NOW);
+  assert.equal(values.length, 8 * 3);
+  assert.equal(values.find((v) => v.category === "AOVE" && v.isoWeek === 38)?.value, "3.46");
+  assert.equal(values.find((v) => v.category === "AOV" && v.isoWeek === 38)?.value, "3.31");
+  assert.equal(values.find((v) => v.category === "AOL" && v.isoWeek === 38)?.value, "3.15");
+});
+
 test("series answers the contract: one series per category, source, geography, stage, €/kg", async () => {
   const result = await handleOilMarket({ operation: "series", geography: "andalucia", weeks: 2 }, page(PAGE));
   assert.equal(result.status, 200);
