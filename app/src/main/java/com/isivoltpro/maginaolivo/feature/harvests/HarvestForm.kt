@@ -28,6 +28,8 @@ data class HarvestForm(
     val workers: String = "",
     val machinery: String = "",
     val notes: String = "",
+    /** CR-010: an automatic day; its date, kilos and Parcels are its Pesadas', not the form's. */
+    val automatic: Boolean = false,
 )
 
 data class HarvestFormErrors(
@@ -61,6 +63,7 @@ internal fun HarvestForm.preview(): AllocationPreview {
  * several, nothing is attributed unless the person typed it.
  */
 internal fun HarvestForm.toDraft(today: LocalDate): Pair<HarvestDraft?, HarvestFormErrors> {
+    if (automatic) return toAutomaticDayDraft()
     val parsedDate = runCatching { LocalDate.parse(date.trim()) }.getOrNull()
     val totalGrams = Weight.parseGrams(total)
     val badWeight = splitKnown && parcelIds.size > 1 &&
@@ -97,6 +100,31 @@ internal fun HarvestForm.toDraft(today: LocalDate): Pair<HarvestDraft?, HarvestF
     return draft to errors
 }
 
+/** CR-010: only what describes the day itself; the repository keeps its date, kilos and Parcels. */
+private fun HarvestForm.toAutomaticDayDraft(): Pair<HarvestDraft?, HarvestFormErrors> {
+    val workerCount = workers.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
+    val errors = HarvestFormErrors(
+        farm = if (farmId == null) "Elige la finca" else null,
+        date = if (runCatching { LocalDate.parse(date.trim()) }.isFailure) "Elige una fecha" else null,
+        workers = when {
+            workers.isNotBlank() && workerCount == null -> "Escribe un número de personas"
+            (workerCount ?: 0) < 0 -> "El número de personas no puede ser negativo"
+            else -> null
+        },
+    )
+    if (!errors.isEmpty) return null to errors
+    return HarvestDraft(
+        farmId = farmId!!,
+        harvestDate = LocalDate.parse(date.trim()),
+        totalGrams = null,
+        shares = emptyList(),
+        collectionMethod = collectionMethod,
+        workerCount = workerCount,
+        machineryText = machinery.trim().ifEmpty { null },
+        notes = notes.trim().ifEmpty { null },
+    ) to errors
+}
+
 internal fun HarvestProblem.toFormErrors(): HarvestFormErrors = when (field) {
     "harvestDate" -> HarvestFormErrors(date = harvestProblemMessage(this))
     "totalGrams" -> HarvestFormErrors(total = harvestProblemMessage(this))
@@ -126,6 +154,7 @@ internal fun harvestProblemMessage(problem: HarvestProblem): String = when (prob
     "cannot_change" -> "Una jornada no puede cambiar de finca"
     "exact_with_pesadas" -> "Con pesadas enlazadas, los kilos se cuentan en total: no se reparten por parcela"
     "after_pesadas" -> "La jornada no puede ser posterior a sus pesadas"
+    "automatic_day" -> "La fecha del día la marcan sus pesadas: cambia la fecha de cada pesada"
     else -> "Revisa los datos de la jornada"
 }
 
@@ -142,6 +171,7 @@ internal fun Harvest.toForm(): HarvestForm {
         workers = workerCount?.toString().orEmpty(),
         machinery = machineryText.orEmpty(),
         notes = notes.orEmpty(),
+        automatic = automatic,
     )
 }
 

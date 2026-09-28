@@ -83,26 +83,14 @@ class DeliveryFormTest {
     }
 
     @Test
-    fun aJornadaIsOnlyLinkedWhenChosen() {
-        val jornada = UUID.fromString("00000000-0000-0000-0000-0000000000c1")
-        assertNull(base.toDraft(today).first!!.harvestId)
-        assertEquals(jornada, base.copy(harvestId = jornada).toDraft(today).first!!.harvestId)
-        val opened = base.copy(harvestId = jornada, newJornada = true).toDraft(today).first!!
-        assertEquals(true, opened.newJornada)
-        assertNull(opened.harvestId)
-    }
-
-    @Test
     fun theNextPesadaKeepsTheDayAndStartsItsOwnWeighingEmpty() {
-        val jornada = UUID.fromString("00000000-0000-0000-0000-0000000000c2")
-        val done = base.copy(ticketNumber = "V-101", time = "9:40", gross = "5.000", tare = "2.150", newJornada = true)
-        val next = done.nextPesada(jornada)
+        val done = base.copy(ticketNumber = "V-101", time = "9:40", gross = "5.000", tare = "2.150")
+        val next = done.nextPesada()
+        // CR-010: same Farm and date, so it lands in the same automatic day.
         assertEquals(farm, next.farmId)
         assertEquals("2026-11-18", next.date)
         assertEquals("Cooperativa San Isidro", next.destinationText)
         assertEquals(listOf(north, south), next.parcelIds)
-        assertEquals(jornada, next.harvestId)
-        assertEquals(false, next.newJornada)
         assertEquals("", next.net)
         assertEquals("", next.ticketNumber)
         assertEquals("", next.time)

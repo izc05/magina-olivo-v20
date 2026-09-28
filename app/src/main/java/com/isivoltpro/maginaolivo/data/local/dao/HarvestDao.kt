@@ -20,15 +20,19 @@ interface HarvestDao {
     @Query("SELECT * FROM harvests WHERE id = :id LIMIT 1")
     suspend fun findById(id: UUID): HarvestEntity?
 
-    /** The live Jornada already opened for this Farm and Campaign on [date], if any. */
+    /**
+     * CR-010 (note 3): the oldest live automatic day of this Farm and Campaign on [date]. A
+     * Jornada recorded by hand is never returned: linking a Pesada to it would overwrite its kilos.
+     */
     @Query(
         """
         SELECT * FROM harvests
-        WHERE farm_id = :farmId AND campaign_id = :campaignId AND harvest_date = :date AND deleted_at IS NULL
+        WHERE farm_id = :farmId AND campaign_id = :campaignId AND harvest_date = :date
+          AND day_origin = 'AUTO_DAY' AND deleted_at IS NULL
         ORDER BY created_at, id LIMIT 1
         """,
     )
-    suspend fun findLiveOnDay(farmId: UUID, campaignId: UUID, date: LocalDate): HarvestEntity?
+    suspend fun findAutoDay(farmId: UUID, campaignId: UUID, date: LocalDate): HarvestEntity?
 
     @Transaction
     @Query("SELECT * FROM harvests WHERE id = :id AND deleted_at IS NULL LIMIT 1")

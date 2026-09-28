@@ -38,18 +38,15 @@ data class DeliveryForm(
     val notes: String = "",
     /** Phase 19B: the hour on the ticket, "9:30". Optional. */
     val time: String = "",
-    /** Phase 19B: the Jornada this Pesada joins, chosen explicitly; never guessed. */
-    val harvestId: UUID? = null,
-    val newJornada: Boolean = false,
     /** Issue #254: árbol/vuelo or suelo, chosen on every Pesada. */
     val origin: PesadaOrigin? = null,
 )
 
 /**
- * "Guardar y añadir otra": the next Pesada of the same day keeps the Farm, date, Jornada,
- * cooperative and origin Parcels; its own weighing (kilos, ticket, hour) starts empty.
+ * "Guardar y añadir otra": the next Pesada of the same day keeps the Farm, date, cooperative
+ * and origin Parcels (so it lands in the same day); its own weighing (kilos, ticket, hour) starts empty.
  */
-internal fun DeliveryForm.nextPesada(harvestId: UUID?): DeliveryForm = copy(
+internal fun DeliveryForm.nextPesada(): DeliveryForm = copy(
     net = "",
     gross = "",
     tare = "",
@@ -59,8 +56,6 @@ internal fun DeliveryForm.nextPesada(harvestId: UUID?): DeliveryForm = copy(
     time = "",
     weights = emptyMap(),
     splitKnown = false,
-    harvestId = harvestId,
-    newJornada = false,
     // A day often has vuelo and suelo loads: the next Pesada says its own origin.
     origin = null,
 )
@@ -83,10 +78,9 @@ data class DeliveryFormErrors(
     val gross: String? = null,
     val parcels: String? = null,
     val time: String? = null,
-    val jornada: String? = null,
     val origin: String? = null,
 ) {
-    val isEmpty: Boolean get() = listOf(farm, date, destination, net, gross, parcels, time, jornada, origin).all { it == null }
+    val isEmpty: Boolean get() = listOf(farm, date, destination, net, gross, parcels, time, origin).all { it == null }
 }
 
 internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, DeliveryFormErrors> {
@@ -136,9 +130,7 @@ internal fun DeliveryForm.toDraft(today: LocalDate): Pair<DeliveryDraft?, Delive
         deliveryNumber = deliveryNumber.trim().ifEmpty { null },
         ticketNumber = ticketNumber.trim().ifEmpty { null },
         notes = notes.trim().ifEmpty { null },
-        harvestId = harvestId.takeUnless { newJornada },
         deliveryTime = parseHour(time),
-        newJornada = newJornada,
         origin = origin,
     )
     DeliveryRules.validate(draft, today)?.let { return null to it.toFormErrors() }
@@ -151,7 +143,6 @@ internal fun DeliveryProblem.toFormErrors(): DeliveryFormErrors = when (field) {
     "grossGrams" -> DeliveryFormErrors(gross = deliveryProblemMessage(this))
     "destination" -> DeliveryFormErrors(destination = deliveryProblemMessage(this))
     "farmId" -> DeliveryFormErrors(farm = deliveryProblemMessage(this))
-    "harvestId" -> DeliveryFormErrors(jornada = deliveryProblemMessage(this))
     else -> DeliveryFormErrors(parcels = deliveryProblemMessage(this))
 }
 
@@ -179,16 +170,10 @@ internal fun deliveryProblemMessage(problem: DeliveryProblem): String = when (pr
     "parcel_not_in_campaign" -> "Esa parcela no forma parte de la campaña"
     "not_found" -> when (problem.field) {
         "destination" -> "Esa cooperativa ya no está guardada"
-        "harvestId" -> "Esa jornada ya no está en este dispositivo"
         else -> "La finca no está en este dispositivo"
     }
     "cannot_change" -> "Una pesada no puede cambiar de finca"
     "out_of_range" -> "El rendimiento debe estar entre 0 y 100 %"
-    "other_campaign" -> "Esa jornada es de otra finca o campaña"
-    "before_jornada" -> "La pesada no puede ser anterior a su jornada"
-    "exact_split" -> "Esa jornada tiene kilos repartidos por parcela. Quita el reparto exacto para enlazarle pesadas."
-    "no_parcels" -> "Esta campaña no tiene parcelas para abrir la jornada"
-    "ambiguous" -> "Elige una jornada o crea una nueva, no las dos"
     else -> "Revisa los datos de la pesada"
 }
 
@@ -209,7 +194,6 @@ internal fun Delivery.toForm(): DeliveryForm {
         weights = if (shares.size > 1) exact.associate { it.parcelId to Weight.editable(it.weightGrams) } else emptyMap(),
         notes = notes.orEmpty(),
         time = deliveryTime?.toString().orEmpty(),
-        harvestId = harvestId,
         origin = origin,
     )
 }

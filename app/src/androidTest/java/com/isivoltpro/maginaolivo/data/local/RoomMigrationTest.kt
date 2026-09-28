@@ -939,6 +939,55 @@ class RoomMigrationTest {
             }
     }
 
+    @Test
+    fun migration16To17MarksOnlyUnweighedJornadasAsAutomaticDaysAndKeepsTypedKilos() {
+        migrationHelper.createDatabase(TEST_DATABASE, 16).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO workspaces (
+                    id, name, owner_user_id, country_code, timezone, locale, currency,
+                    created_at, updated_at, deleted_at, version, sync_status,
+                    remote_version, last_synced_at
+                ) VALUES (
+                    '11111111-1111-1111-1111-111111111111', 'Mi olivar',
+                    '22222222-2222-2222-2222-222222222222', 'ES', 'Europe/Madrid',
+                    'es-ES', 'EUR', 1000, 1000, NULL, 1, 'LOCAL_ONLY', NULL, NULL
+                )
+                """.trimIndent(),
+            )
+            // A hand-recorded Jornada (1.250 kg typed) and one opened before its first Pesada (0).
+            listOf("'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 1250000", "'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 0").forEach { values ->
+                database.execSQL(
+                    """
+                    INSERT INTO harvests (
+                        id, weight_grams, workspace_id, campaign_id, farm_id, harvest_date,
+                        created_at, updated_at, deleted_at, version, sync_status, remote_version, last_synced_at
+                    ) VALUES (
+                        $values, '11111111-1111-1111-1111-111111111111',
+                        '44444444-4444-4444-4444-444444444444', '33333333-3333-3333-3333-333333333333',
+                        '2025-11-24', 5000, 5000, NULL, 3, 'SYNCED', 3, 5000
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        migrationHelper
+            .runMigrationsAndValidate(TEST_DATABASE, 17, true, DatabaseMigrations.MIGRATION_16_17)
+            .use { database ->
+                database.query("SELECT id, day_origin, weight_grams, version FROM harvests ORDER BY id").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    // The typed kilos stay the farmer's own figure, untouched.
+                    assertTrue(cursor.isNull(1))
+                    assertEquals(1250000L, cursor.getLong(2))
+                    assertEquals(3, cursor.getInt(3))
+                    assertTrue(cursor.moveToNext())
+                    assertEquals("AUTO_DAY", cursor.getString(1))
+                    assertEquals(0L, cursor.getLong(2))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

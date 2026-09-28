@@ -121,8 +121,10 @@ class DeliveryContractTest {
         val delivery = deliveries.observe(id).first()!!
         assertEquals(2_850_000L, delivery.netGrams)
         assertEquals(DeliverySource.MANUAL, delivery.source)
-        assertEquals(1, harvests.observeAll().first().size)
-        assertEquals(5_000_000L, harvests.observeAll().first().single().totalGrams)
+        // The hand-recorded harvest keeps its kilos; the Pesada has its own automatic day (CR-010).
+        val (automatic, recorded) = harvests.observeAll().first().partition { it.automatic }
+        assertEquals(5_000_000L, recorded.single().totalGrams)
+        assertEquals(2_850_000L, automatic.single().totalGrams)
         // A mixed load keeps every kilo unallocated.
         assertEquals(2_850_000L, delivery.unallocatedGrams)
         assertTrue(delivery.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
@@ -274,17 +276,17 @@ class DeliveryContractTest {
     }
 
     @Test
-    fun aConfirmedTicketCanJoinAJornadaWhoseKilosFollowIt() = runBlocking {
-        // Phase 19B: the Pesada read from a ticket joins the day's Jornada in the same review.
-        val jornadaId = ok(harvests.create(HarvestDraft(farmId, day, 1_000_000, listOf(HarvestShareInput(north, null), HarvestShareInput(south, null)))))
+    fun aConfirmedTicketGoesToItsAutomaticDayAndNeverToAHandRecordedJornada() = runBlocking {
+        // CR-010 (notes 3–4): the ticket saves through the Pesada writer, so it gets the day too.
+        val legacy = ok(harvests.create(HarvestDraft(farmId, day, 1_000_000, listOf(HarvestShareInput(north, null), HarvestShareInput(south, null)))))
         engine.text = TICKET
         val extractionId = ok(documents.importDocument(DocumentType.DELIVERY_TICKET, source("ticket.jpg")))
         ok(documents.runExtraction(extractionId))
-        val deliveryId = ok(
-            documents.confirmDeliveryTicket(extractionId, draft(2_850_000, north to null, south to null).copy(harvestId = jornadaId)),
-        )
-        assertEquals(jornadaId, deliveries.observe(deliveryId).first()!!.harvestId)
-        assertEquals(2_850_000L, harvests.observe(jornadaId).first()!!.totalGrams)
+        val deliveryId = ok(documents.confirmDeliveryTicket(extractionId, draft(2_850_000, north to null, south to null)))
+        val dayId = deliveries.observe(deliveryId).first()!!.harvestId!!
+        assertTrue(dayId != legacy)
+        assertEquals(2_850_000L, harvests.observe(dayId).first()!!.totalGrams)
+        assertEquals(1_000_000L, harvests.observe(legacy).first()!!.totalGrams)
     }
 
     @Test

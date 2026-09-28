@@ -42,4 +42,8 @@ interface DocumentDao {
         """,
     )
     fun observeFarmCoverUri(farmId: UUID): Flow<String?>
+
+    /** CR-010 (A1): whether anything is still attached to this owner, e.g. a day with a photo. */
+    @Query("SELECT COUNT(*) FROM documents WHERE owner_type = :ownerType AND owner_id = :ownerId AND deleted_at IS NULL")
+    suspend fun countLiveForOwner(ownerType: String, ownerId: UUID): Int
 }

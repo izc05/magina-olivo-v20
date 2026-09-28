@@ -59,7 +59,6 @@ import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
-import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
@@ -316,7 +315,6 @@ fun DeliveriesScreen(
                     farmId = jornada.farmId,
                     date = jornada.harvestDate.toString(),
                     parcelIds = jornada.shares.map { it.parcelId },
-                    harvestId = jornada.id,
                 )
             } else {
                 DeliveryForm(farmId = state.contexts.singleOrNull()?.farmId, date = today.toString())
@@ -343,7 +341,6 @@ fun DeliveriesScreen(
                     saveText = "Guardar pesada",
                     onSave = onCreate,
                     onCancel = { editorVisible = false; onEditorClosed() },
-                    jornadas = state.jornadas,
                     onSaveAndAddAnother = onCreateAndAddAnother,
                 )
             }
@@ -524,7 +521,6 @@ internal fun DeliveryEditor(
     subtitle: String = "Se guardará primero en este dispositivo.",
     scrollable: Boolean = true,
     extraActions: @Composable () -> Unit = {},
-    jornadas: List<Harvest> = emptyList(),
     onSaveAndAddAnother: ((DeliveryForm) -> Unit)? = null,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
@@ -559,15 +555,14 @@ internal fun DeliveryEditor(
                 modifier = Modifier.weight(1f).testTag("delivery-time"),
             )
         }
-        val farmJornadas = jornadas.filter { it.farmId == form.farmId && it.campaignId == context?.campaignId }
+        // CR-010 §4: the day of recolección is found or created on saving; nobody picks it.
         if (context != null) {
-            MoSelectField(
-                "Jornada de recolección",
-                jornadaLabel(form, farmJornadas),
-                { picker = "jornada" },
-                Modifier.testTag("delivery-jornada"),
+            Text(
+                "Se guarda en el día de recolección de su fecha.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("delivery-day-note"),
             )
-            errors.jornada?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("delivery-jornada-error")) }
         }
         val destination = destinations.firstOrNull { it.id == form.destinationOrganizationId }
         MoSelectField(
@@ -694,35 +689,7 @@ internal fun DeliveryEditor(
             { picker = null },
             "delivery-destination-sheet",
         )
-        "jornada" -> ChoiceSheet(
-            "Jornada de recolección",
-            listOf(Choice(null, "Sin jornada"), Choice(NEW_JORNADA, "Nueva jornada de este día")) +
-                jornadas.filter { it.farmId == form.farmId && it.campaignId == context?.campaignId }
-                    .sortedByDescending { it.harvestDate }
-                    .map { Choice(it.id.toString(), it.choiceLabel()) },
-            if (form.newJornada) NEW_JORNADA else form.harvestId?.toString(),
-            { key ->
-                form = when (key) {
-                    null -> form.copy(harvestId = null, newJornada = false)
-                    NEW_JORNADA -> form.copy(harvestId = null, newJornada = true)
-                    else -> form.copy(harvestId = UUID.fromString(key), newJornada = false)
-                }
-            },
-            { picker = null },
-            "delivery-jornada-sheet",
-        )
     }
-}
-
-private const val NEW_JORNADA = "new"
-
-private fun Harvest.choiceLabel(): String = "Jornada del ${DATE_FORMAT.format(harvestDate)} · ${Weight.format(totalGrams)}"
-
-/** Never a silent link: with no choice the Pesada stays out of any Jornada. */
-private fun jornadaLabel(form: DeliveryForm, jornadas: List<Harvest>): String = when {
-    form.newJornada -> "Nueva jornada de este día"
-    form.harvestId != null -> jornadas.firstOrNull { it.id == form.harvestId }?.choiceLabel() ?: "Jornada enlazada"
-    else -> "Sin jornada"
 }
 
 private fun DeliveryForm.toggle(parcelId: UUID, selected: Boolean): DeliveryForm =
@@ -757,7 +724,6 @@ fun DeliveryDetailRoute(
             initializer {
                 DeliveryDetailViewModel(
                     deliveryId, persistence.deliveryRepository, persistence.organizationRepository, clock,
-                    persistence.harvestRepository,
                 )
             }
         },
@@ -879,7 +845,6 @@ fun DeliveryDetailScreen(
                     onSave = onUpdate,
                     onCancel = { sheet = null; onEditorClosed() },
                     farmLocked = true,
-                    jornadas = state.jornadas.filter { it.editable || it.id == delivery.harvestId },
                 )
             }
         }
@@ -975,7 +940,7 @@ private fun DeliverySummaryBlock(delivery: Delivery) {
     DetailValue("Origen de la aceituna", delivery.origin?.label ?: "Sin indicar")
     if (delivery.harvestId != null) {
         Text(
-            "Forma parte de una jornada de recolección: sus kilos cuentan en el total de ese día.",
+            "Forma parte del día de recolección de su fecha: sus kilos cuentan en el total de ese día.",
             style = MaterialTheme.typography.bodyMedium,
             color = MoTextSecondary,
             modifier = Modifier.testTag("delivery-in-jornada"),
@@ -1033,7 +998,6 @@ fun TicketReviewRoute(
                     persistence.documentOcrRepository,
                     persistence.deliveryRepository,
                     persistence.organizationRepository,
-                    persistence.harvestRepository,
                 )
             }
         },
@@ -1122,7 +1086,6 @@ fun TicketReviewScreen(
                         onSave = onConfirm,
                         onCancel = { confirmDiscard = true },
                         scrollable = false,
-                        jornadas = state.jornadas,
                         extraActions = {
                             MoSecondaryButton("Leer otra vez", onReadAgain, Modifier.fillMaxWidth(), enabled = !state.isSaving)
                         },

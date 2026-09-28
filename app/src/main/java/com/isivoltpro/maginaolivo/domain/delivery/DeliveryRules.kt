@@ -74,11 +74,7 @@ data class DeliveryDraft(
     val deliveryNumber: String? = null,
     val ticketNumber: String? = null,
     val notes: String? = null,
-    /** Phase 19B: link this Pesada to an existing Jornada (a Harvest of the same Farm and Campaign). */
-    val harvestId: UUID? = null,
     val deliveryTime: LocalTime? = null,
-    /** Phase 19B: open a new Jornada for this Pesada's date and link it. Never with [harvestId]. */
-    val newJornada: Boolean = false,
     /** Issue #254: required by the form for every Pesada it saves; null keeps what was stored. */
     val origin: PesadaOrigin? = null,
 )
@@ -104,7 +100,6 @@ object DeliveryRules {
         if (draft.shares.map { it.parcelId }.toSet().size != draft.shares.size) {
             return DeliveryProblem("parcels", "duplicate")
         }
-        if (draft.newJornada && draft.harvestId != null) return DeliveryProblem("harvestId", "ambiguous")
         return ParcelSplit.problem(net, draft.shares.map { it.weightGrams })?.let { DeliveryProblem("parcels", it) }
     }
 }

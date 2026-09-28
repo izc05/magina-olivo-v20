@@ -243,6 +243,8 @@ data class ActivityEntity(
         Index(value = ["workspace_id", "harvest_date"]),
         Index(value = ["campaign_id", "harvest_date"]),
         Index(value = ["farm_id", "harvest_date"]),
+        // CR-010 (A4): finding a Farm/Campaign's automatic day for a date.
+        Index(value = ["farm_id", "campaign_id", "harvest_date"]),
     ],
 )
 data class HarvestEntity(
@@ -259,6 +261,11 @@ data class HarvestEntity(
     @ColumnInfo(name = "collection_method") val collectionMethod: String? = null,
     @ColumnInfo(name = "worker_count") val workerCount: Int? = null,
     @ColumnInfo(name = "machinery_text") val machineryText: String? = null,
+    /**
+     * CR-010 (A1): `AUTO_DAY` for a day the app created for its Pesadas, whose kilos are only
+     * ever their sum; null for a Jornada the farmer recorded by hand (its kilos are its own).
+     */
+    @ColumnInfo(name = "day_origin") val dayOrigin: String? = null,
 )
 
 @Entity(
