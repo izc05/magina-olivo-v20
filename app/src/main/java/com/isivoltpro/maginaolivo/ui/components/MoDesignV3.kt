@@ -149,7 +149,9 @@ fun MoStatStrip(stats: List<MoStat>, modifier: Modifier = Modifier) {
     ) {
         BoxWithConstraints {
         // Give each figure its full cell when the icon would squeeze out its unit or label.
-        val stacked = maxWidth / stats.size.coerceAtLeast(1) < (128 * LocalDensity.current.fontScale).dp
+        // Enlarged text always stacks: the side-by-side icon would squeeze the label out of its cell.
+        val fontScale = LocalDensity.current.fontScale
+        val stacked = fontScale > 1.15f || maxWidth / stats.size.coerceAtLeast(1) < (128 * fontScale).dp
         Row(Modifier.padding(vertical = MoSpacing.sm, horizontal = MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
             stats.forEachIndexed { index, stat ->
                 if (index > 0) Box(Modifier.width(1.dp).height(36.dp).background(MoOutline))

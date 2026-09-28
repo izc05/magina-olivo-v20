@@ -55,7 +55,13 @@ class MoStatStripAccessibilityTest {
                 val last = layout.lineCount - 1
                 assertEquals("Hidden characters in $text", text.length, layout.getLineEnd(last, visibleEnd = true))
                 (0..last).forEach { line -> assertFalse("Ellipsized: $text", layout.isLineEllipsized(line)) }
-                assertFalse("Wider than its box: $text", layout.didOverflowWidth)
+                assertFalse(
+                    "Wider than its box: $text (box ${layout.size.width}px, text ${layout.multiParagraph.width}px, " +
+                        "constraints ${layout.layoutInput.constraints}, font ${layout.layoutInput.style.fontSize}, " +
+                        "density ${layout.layoutInput.density.density}/${layout.layoutInput.density.fontScale}, " +
+                        "strip ${strip.width}px)",
+                    layout.didOverflowWidth,
+                )
             }
             // And the text sits inside the strip, not pushed past its right edge.
             val bounds = node.fetchSemanticsNode().boundsInRoot
