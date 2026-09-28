@@ -111,7 +111,7 @@ fun HomeScreen(
     onWeatherWeek: () -> Unit,
     onDeliveries: () -> Unit,
     onActivitySelected: (UUID) -> Unit,
-    now: Instant = Instant.now(),
+    feedNow: Instant = Instant.now(),
     /** Phase 20C: null follows the phone (reduced motion, low memory); tests pass false. */
     weatherMotion: Boolean? = null,
     /** Phase 20D-3: opens the oil market screen; the card offers it once there are official weeks. */
@@ -140,7 +140,7 @@ fun HomeScreen(
                     else WeatherMoodLayer(mood, Modifier.matchParentSize(), animate = weatherMotion)
                     MoPhotoBrand(Modifier.align(Alignment.TopStart).padding(MoSpacing.md))
                 },
-                overlay = { HomeWeatherCard(state, now, onWeatherWeek) },
+                overlay = { HomeWeatherCard(state, feedNow, onWeatherWeek) },
             )
             Column(
                 Modifier.padding(horizontal = MoSpacing.screen),
