@@ -44,6 +44,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   no tiene precio queda fuera y se dice («1 tractor sin precio»). Si ese día ya hay un gasto de
   jornales o maquinaria anotado a mano, cuenta ese y el cálculo queda en borrador hasta que eliges
   «Usar el cálculo»; nunca suman los dos. Las campañas cerradas no se recalculan. Base de datos v18.
+- Resumen de la campaña de un vistazo (Cuaderno → Resumen): días de campaña desde que se activó (o
+  hasta su cierre), días con pesadas y con jornales, primera y última pesada, coste contabilizado
+  (con los jornales y la maquinaria calculados, contados una sola vez) y coste por kilo pesado. Lo
+  que no se sabe se muestra «—», nunca 0.
 
 ## 0.5.0 — 28/09/2026
 
