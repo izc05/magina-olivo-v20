@@ -58,9 +58,12 @@ class WeatherWeekScreenTest {
         composeRule.runOnIdle { assertEquals(1, radarOpens) }
     }
 
-    @Test fun unresolvedLocationAndMissingCacheAreExplained() {
+    @Test fun unresolvedLocationIsExplained() {
         show(WeatherWeekUiState(locationAmbiguous = true, weather = FeedState.NoLocation))
         composeRule.onNodeWithText("No se puede elegir un único municipio", substring = true).assertIsDisplayed()
+    }
+
+    @Test fun missingCacheExplainsThatConnectivityIsNeeded() {
         composeRule.setContent {
             MaginaOlivoTheme {
                 WeatherWeekScreen(WeatherWeekUiState(weather = FeedState.Unavailable), now = now, onRadar = null)

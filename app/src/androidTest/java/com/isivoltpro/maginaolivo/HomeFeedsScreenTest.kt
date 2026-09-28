@@ -52,7 +52,7 @@ class HomeFeedsScreenTest {
         )
         composeRule.onNodeWithTag("home-weather-hero").assertTextContains("22 °C · Parcialmente nublado")
             .assertTextContains("Bedmar", substring = true)
-        composeRule.onNodeWithTag("home-weather-stale").assertIsDisplayed()
+        composeRule.onNodeWithTag("home-weather-hero").assertTextContains("Antiguo")
     }
 
     @Test fun tappingHeroWeatherOpensTheWeek() {

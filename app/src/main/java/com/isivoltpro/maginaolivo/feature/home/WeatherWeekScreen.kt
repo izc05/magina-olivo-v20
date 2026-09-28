@@ -191,7 +191,10 @@ fun WeatherWeekScreen(
                                 WeatherDayCard(day.date, today, day.minTemperatureC, day.maxTemperatureC, day.condition?.label, day.rainProbabilityPercent, day.rainMm, day.windKmh, index)
                             }
                         }
-                        Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs), modifier = Modifier.testTag("weather-week-source")) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs),
+                            modifier = Modifier.semantics(mergeDescendants = true) {}.testTag("weather-week-source"),
+                        ) {
                             Text(
                                 "Fuente: ${weather.source} · Pronóstico ${FeedAge.label(weather.value.updatedAt ?: weather.fetchedAt, now)} · Consulta ${FeedAge.label(weather.fetchedAt, now)}",
                                 style = MaterialTheme.typography.bodySmall,
