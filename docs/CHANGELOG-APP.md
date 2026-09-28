@@ -45,6 +45,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   jornales o maquinaria anotado a mano, cuenta ese y el cálculo queda en borrador hasta que eliges
   «Usar el cálculo»; nunca suman los dos. El aceite/lubricante se suma a la maquinaria calculada,
   nunca la sustituye. Las campañas cerradas no se recalculan ni cambian de gasto. Base de datos v18.
+- Resumen de la campaña de un vistazo (Cuaderno → Resumen): días de campaña desde que se activó (o
+  hasta su cierre), días con pesadas y con jornales, primera y última pesada, coste contabilizado
+  (con los jornales y la maquinaria calculados, contados una sola vez) y coste por kilo pesado. Lo
+  que no se sabe se muestra «—», nunca 0.
 
 ## 0.5.0 — 28/09/2026
 

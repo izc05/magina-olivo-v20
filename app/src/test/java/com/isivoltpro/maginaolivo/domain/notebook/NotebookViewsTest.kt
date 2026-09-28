@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo.domain.notebook
 
+import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
+import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
+import com.isivoltpro.maginaolivo.domain.analytics.CampaignDashboard
 import com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
@@ -188,6 +191,40 @@ class NotebookViewsTest {
         }
         assertEquals("rend. 21 % (parcial)", project(harvests = listOf(jornada), deliveries = listOf(fat, industrialOnly)).jornadaYieldLabel(jornada.id))
         assertEquals("rend. 21 %", project(harvests = listOf(jornada), deliveries = listOf(fat)).jornadaYieldLabel(jornada.id))
+    }
+
+    @Test fun theCampaignAtAGlanceCountsDaysAndReadsMoneyOnlyFromTheLedger() {
+        // CR-010 §12: days, Pesada/jornal days, first/last Pesada, cost and cost per kilo.
+        val jornada = harvest(3_000_000, day1)
+        val pesadas = listOf(delivery(2_000_000, day1), delivery(1_000_000, day1), delivery(2_000_000, day2))
+        val labour = listOf(LabourEntry(UUID.randomUUID(), jornada.id, null, null, 5, LabourUnit.FULL_DAY, null, 1))
+        val calculated = expense(35_000, ExpenseCategory.LABOR, day1).copy(origin = ExpenseOrigin.DAY_LABOUR, harvestId = jornada.id)
+        val diesel = expense(5_000, ExpenseCategory.FUEL, day1)
+        val draft = expense(99_000, ExpenseCategory.LABOR, day1, ExpenseStatus.DRAFT)
+        val notebook = CampaignNotebook.project(campaign, emptyList(), listOf(jornada), pesadas, listOf(calculated, diesel, draft), labour)
+
+        val dashboard = CampaignDashboard.of(notebook, today = LocalDate.of(2026, 11, 21))
+        // 1 Sept to 21 Nov, both counted.
+        assertEquals(82L, dashboard.calendarDays)
+        // The screen names the date it counts from; it never claims an activation date it does not store.
+        assertEquals(campaign.startDate, dashboard.countedFrom)
+        assertEquals(2, dashboard.pesadaDays)
+        assertEquals(1, dashboard.labourDays)
+        assertEquals(day1, dashboard.firstPesada)
+        assertEquals(day2, dashboard.lastPesada)
+        // Posted money once (the calculated jornales are inside it); the draft never counts.
+        assertEquals(40_000L, dashboard.postedCostMinor)
+        assertEquals(35_000L, dashboard.calculatedLabourMinor)
+        // 400 € / 5.000 kg = 0,08 €/kg.
+        assertEquals(8L, dashboard.costPerKgMinor)
+
+        // Nothing weighed: no cost per kilo, never a division by zero or a made-up 0.
+        val empty = CampaignDashboard.of(CampaignNotebook.project(campaign, emptyList(), emptyList(), emptyList(), listOf(diesel)), LocalDate.of(2026, 11, 21))
+        assertEquals(null, empty.costPerKgMinor)
+        assertEquals(null, empty.firstPesada)
+        // A closed Campaign counts until its close date.
+        val closed = campaign.copy(status = CampaignStatus.CLOSED, endDate = LocalDate.of(2026, 9, 10))
+        assertEquals(10L, CampaignDashboard.of(CampaignNotebook.project(closed, emptyList(), emptyList(), emptyList(), emptyList()), LocalDate.of(2026, 11, 21)).calendarDays)
     }
 
     private fun project(

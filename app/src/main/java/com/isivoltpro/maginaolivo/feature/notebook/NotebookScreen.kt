@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
+import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
+import com.isivoltpro.maginaolivo.domain.analytics.CampaignDashboard
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -393,10 +395,15 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
 }
 
 @Composable
-internal fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignComparison> = emptyList()) {
+internal fun SummaryTab(
+    notebook: CampaignNotebook,
+    comparison: List<CampaignComparison> = emptyList(),
+    today: LocalDate = LocalDate.now(),
+) {
     val deliveries = notebook.deliverySummary
     val expenses = notebook.expenseSummary
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs), modifier = Modifier.testTag("notebook-summary")) {
+        CampaignAtAGlance(CampaignDashboard.of(notebook, today), deliveries.deliveredGrams)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             MoSummaryMetric(
                 "Trabajos", "${notebook.completedWorks} hechos", Modifier.weight(1f),
@@ -489,6 +496,54 @@ internal fun SummaryTab(notebook: CampaignNotebook, comparison: List<CampaignCom
             )
         }
         CampaignComparisonList(comparison)
+    }
+}
+
+/**
+ * CR-010 §12 — the Campaign in seconds: its days, Pesada and jornal days, first/last Pesada,
+ * close date and the ledger's cost with cost per kilo. Each unknown shows «—», never 0.
+ */
+@Composable
+private fun CampaignAtAGlance(dashboard: CampaignDashboard, weighedGrams: Long) {
+    val date = { value: LocalDate? -> value?.let { DATE_FORMAT.format(it) } ?: "—" }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+        MoSummaryMetric(
+            "Días de campaña", dashboard.calendarDays?.toString() ?: "—", Modifier.weight(1f).testTag("dashboard-days"),
+            icon = MoIcons.Calendar,
+            supportingText = dashboard.countedFrom?.let { from ->
+                dashboard.closedOn?.let { "Del ${date(from)} al ${date(it)}" } ?: "Desde el ${date(from)}"
+            } ?: dashboard.closedOn?.let { "Cerrada el ${date(it)}" } ?: "Sin empezar",
+        )
+        MoSummaryMetric(
+            "Días con pesadas", dashboard.pesadaDays.toString(), Modifier.weight(1f).testTag("dashboard-pesada-days"),
+            icon = MoIcons.Delivery,
+            supportingText = if (dashboard.labourDays == 1) "1 día con jornales" else "${dashboard.labourDays} días con jornales",
+        )
+    }
+    if (dashboard.firstPesada != null) {
+        Text(
+            "Primera pesada ${date(dashboard.firstPesada)} · última ${date(dashboard.lastPesada)}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("dashboard-pesada-dates"),
+        )
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+        MoSummaryMetric(
+            "Coste", if (dashboard.postedCostMinor > 0) Money.format(dashboard.postedCostMinor, dashboard.currency) else "—",
+            Modifier.weight(1f).testTag("dashboard-cost"),
+            icon = MoIcons.Euro,
+            supportingText = listOfNotNull(
+                dashboard.calculatedLabourMinor.takeIf { it > 0 }?.let { "jornales ${Money.format(it, dashboard.currency)}" },
+                dashboard.calculatedMachineryMinor.takeIf { it > 0 }?.let { "maquinaria ${Money.format(it, dashboard.currency)}" },
+            ).joinToString(" · ").ifEmpty { "Solo gastos contabilizados" },
+        )
+        MoSummaryMetric(
+            "Coste por kilo", dashboard.costPerKgMinor?.let { Money.format(it, dashboard.currency) } ?: "—",
+            Modifier.weight(1f).testTag("dashboard-cost-per-kg"),
+            icon = MoIcons.Percent,
+            supportingText = if (weighedGrams > 0) "Sobre ${Weight.format(weighedGrams)} pesados" else "Sin kilos pesados",
+        )
     }
 }
 
