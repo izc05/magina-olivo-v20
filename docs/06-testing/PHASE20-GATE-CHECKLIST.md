@@ -20,8 +20,10 @@ when it is not.
 | 20D-3 — official source on + «Mercado del aceite» screen, 12-week chart (0.5.0) | #280 | — | merged |
 | 20E — preferred-cooperative notices | — | — | **deferred** (D4): waits for the private Admin surface / an approved per-cooperative feed |
 
-Also in 0.5.0 (not Phase 20 slices, but covered by check F below): the owner's UX review (#277:
+Also in 0.5.0 (not Phase 20 slices, checked in E0–E3 below): the owner's UX review (#277:
 Mi Campo empty state, shorter farm/parcel forms, single «Añadir», «Registrar hoy» type-first).
+Gate 20 fixes from the emulator run on build 575 (#282): «Abrir jornada de hoy» before any
+Pesada, «Kg pendientes de pesada» instead of 0 kg, farm card during «Recolección» (E4–E6).
 
 ## Automated evidence (CI, fixtures only — no live AEMET/MET Norway/RainViewer/Junta calls)
 
@@ -38,10 +40,13 @@ Mi Campo empty state, shorter farm/parcel forms, single «Añadir», «Registrar
 
 ## Before starting
 
-- Install the **0.5.0** APK from the `main` build (Actions → Android CI → run for «Merge pull
-  request #280» → artifact `magina-olivo-dev-debug`).
-- ⚠️ If the phone has an APK built elsewhere (another machine/key), Android asks to uninstall first
-  and **local data is lost**. An APK from CI over a previous CI APK updates in place.
+- Install the **0.5.0** APK from the `main` build that includes #282 (Actions → Android CI →
+  the run for «Gate 20: abrir la jornada…» → artifact `magina-olivo-dev-debug`).
+- ⚠️ CI signs `devDebug` with the runner's default debug key, which is **not stable between runs**.
+  Installing this APK over any earlier one (CI or local) normally makes Android ask to uninstall
+  first, and **all local data on the phone is lost**. Do the device test on a fresh install and
+  create the test data during section E; do not install it over a phone whose data must be kept.
+  (A stable signing key for CI is a separate task, not part of Gate 20.)
 - Have coverage for the first opening (so the official oil weeks and the weather are fetched once),
   then use airplane mode where a check says so.
 
@@ -85,8 +90,9 @@ Re-run on the APK that includes #282 (emulator run on build 575 found no way to 
 
 | # | Check | Expected | Result |
 |---|---|---|---|
-| E1 | Mi Campo → Finca → Parcelas → «Añadir» → «A mano» → alias + superficie → Guardar | Back on the parcel list with the new parcel | ☐ |
-| E2 | Cuaderno → «Registrar hoy» → choose a type (e.g. Poda) → parcela → Guardar | Appears in Cuaderno → Diario as **Completada**, today | ☐ |
+| E0 | Fresh install → Mi Campo | «Aún no tienes fincas» with one action «Crear mi primera finca»; the farm form shows the essentials and folds the rest under «Más detalles» | ☐ |
+| E1 | Mi Campo → Finca → Parcelas → «Añadir» → «A mano» → alias + superficie → Guardar | Short form: alias + superficie; the rest under «Más datos del olivar». Back on the parcel list with the new parcel | ☐ |
+| E2 | Cuaderno → «Registrar hoy» → the type is chosen first (e.g. Poda) → parcela → Guardar | Appears in Cuaderno → Diario as **Completada**, today | ☐ |
 | E3 | Cuaderno → «Registrar hoy» with a future date or a reminder | Stays **Planificada** and appears in Avisos | ☐ |
 | E4 | Cuaderno → Recolección → «Abrir jornada de hoy» (choose the farm if asked) | Jornada of today opens; «Kg pendientes de pesada», never «0 kg»; Recolección counts 1 Jornada; the farm card shows the campaign, not «Sin campaña activa» | ☐ |
 | E5 | Inside that Jornada → «Añadir pesada» (kg, cooperativa) → Guardar; add a second one | Both Pesadas inside the Jornada; its kilos are their sum; campaign totals updated; nothing listed twice | ☐ |
