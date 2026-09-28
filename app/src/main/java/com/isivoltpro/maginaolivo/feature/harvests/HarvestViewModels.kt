@@ -267,8 +267,15 @@ class HarvestDetailViewModel(
     fun preferCalculated(kind: DayCostKind) {
         val repository = dayCosts ?: return
         viewModelScope.launch {
-            if (repository.preferCalculated(harvestId, kind) is AppResult.Failure) {
-                mutableState.value = mutableState.value.copy(costError = "No se pudo cambiar el gasto que cuenta.")
+            val result = repository.preferCalculated(harvestId, kind)
+            if (result is AppResult.Failure) {
+                mutableState.value = mutableState.value.copy(
+                    costError = if (result.error == AppError.Conflict("campaign_closed")) {
+                        "La campaña está cerrada: sus gastos ya no cambian."
+                    } else {
+                        "No se pudo cambiar el gasto que cuenta."
+                    },
+                )
             }
         }
     }
@@ -281,7 +288,7 @@ class HarvestDetailViewModel(
             mutableState.value = mutableState.value.copy(isSaving = true, costError = null)
             val draft = ExpenseDraft(
                 expenseDate = harvest.harvestDate,
-                concept = concept ?: kind.label,
+                concept = kind.concept(concept),
                 category = kind.category,
                 amountMinor = amountMinor,
                 farmId = harvest.farmId,

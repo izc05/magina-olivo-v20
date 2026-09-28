@@ -225,6 +225,47 @@ internal fun DeliveryTicketProposal?.toForm(
     )
 }
 
+/**
+ * CR-010 §6: a ticket read from an open Nueva pesada fills in only what it read; the Farm,
+ * origin Parcels, their split, árbol/suelo, notes and anything the ticket did not say stay as
+ * the farmer had them.
+ */
+internal fun DeliveryForm.withTicket(
+    proposal: DeliveryTicketProposal?,
+    destinations: List<Organization> = emptyList(),
+): DeliveryForm {
+    if (proposal == null) return this
+    val matched = proposal.organizationName?.let { text -> matchDestination(text, destinations) }
+    return copy(
+        date = proposal.deliveryDate?.toString() ?: date,
+        destinationOrganizationId = when {
+            matched != null -> matched.id
+            proposal.organizationName != null -> null
+            else -> destinationOrganizationId
+        },
+        destinationText = when {
+            matched != null -> ""
+            proposal.organizationName != null -> proposal.organizationName
+            else -> destinationText
+        },
+        net = proposal.netGrams?.let { Weight.editable(it) } ?: net,
+        gross = proposal.grossGrams?.let { Weight.editable(it) } ?: gross,
+        tare = proposal.tareGrams?.let { Weight.editable(it) } ?: tare,
+        ticketNumber = proposal.ticketNumber ?: ticketNumber,
+        time = proposal.deliveryTime?.toString() ?: time,
+    )
+}
+
+/**
+ * Hands the Nueva pesada form to the review of the ticket read from it. In memory only: if the
+ * app is killed meanwhile, the review starts from the ticket alone, as before.
+ */
+internal object TicketSeeds {
+    private val seeds = java.util.concurrent.ConcurrentHashMap<UUID, DeliveryForm>()
+    fun put(extractionId: UUID, form: DeliveryForm) { seeds[extractionId] = form }
+    fun take(extractionId: UUID): DeliveryForm? = seeds.remove(extractionId)
+}
+
 private val LEGAL_WORDS = setOf("s", "c", "a", "sca", "coop", "cooperativa", "almazara", "de", "del", "la", "el", "sl", "sa")
 
 /** «S.C.A. Cooperativa San Isidro» and «Coop. San Isidro» both read as «san isidro». */
