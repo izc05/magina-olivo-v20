@@ -69,7 +69,6 @@ import java.util.Locale
 @Composable
 internal fun OilMarketCard(
     official: FeedState<OilMarketSeries>,
-    pulse: (@Composable () -> Unit)?,
     /** Phase 20D-3: the market screen with the 12-week chart, once there are official weeks. */
     onOpen: (() -> Unit)? = null,
 ) {
@@ -84,18 +83,23 @@ internal fun OilMarketCard(
                 MoIconBadge(MoIcons.Euro)
                 Text("Mercado del aceite", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
             }
-            pulse?.let {
-                Text("Pulso diario", style = MaterialTheme.typography.labelLarge, color = MoOliveDark)
-                it()
-            }
-            Text("Tendencia oficial semanal", style = MaterialTheme.typography.labelLarge, color = MoOliveDark)
             when (official) {
-                is FeedState.Value -> OfficialTrend(official)
+                is FeedState.Value -> {
+                    OilMarketChart(official.value, compact = true)
+                    val latest = OilTrends.all(official.value).maxByOrNull { it.latest.periodEnd }?.latest
+                    Text(
+                        "${latest?.let { "Semana ${OilTrends.week(it)} · " }.orEmpty()}${official.value.sourceName} · €/kg · precio en almazara",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoTextSecondary,
+                        modifier = Modifier.testTag("home-market-official-source"),
+                    )
+                    if (official.stale) MoStatusChip("Dato antiguo", tone = MoStatusTone.Warning, modifier = Modifier.testTag("home-market-official-stale"))
+                }
                 FeedState.NotConfigured -> Note("Sin fuente configurada.", "home-market-official-not-configured")
                 FeedState.NoLocation, FeedState.Unavailable ->
                     Note("Aún sin datos oficiales. Se actualizará cuando haya conexión.", "home-market-official-unavailable")
             }
-            if (onOpen != null && official is FeedState.Value) {
+            if (onOpen != null) {
                 MoSecondaryButton("Ver mercado", onOpen, Modifier.fillMaxWidth().testTag("home-market-open"))
             }
         }

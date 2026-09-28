@@ -1,7 +1,7 @@
 # CR-009 — Inicio: tiempo en portada y mercado de un vistazo
 
-**Estado:** PROPUESTA PARA REVISIÓN DEL PROPIETARIO  
-**Base:** `main` en `bc3a1b7b87147c881b1a16b6994d553b2d1e1cf4` (compilación Android 0.5.0-dev, build 580).  
+**Estado:** IMPLEMENTACIÓN EN CURSO — PR #284 (sin fusionar)
+**Base:** `main` en `bc3a1b7b87147c881b1a16b6994d553b2d1e1cf4` (compilación Android 0.5.0-dev, build 580).
 **Ámbito:** ajuste de Inicio y detalle semanal del tiempo. No cambia la navegación principal ni añade áreas de producto.
 
 ## Problema observado
@@ -72,6 +72,10 @@ En Inicio, la tarjeta de primera finca y la cuadrícula de accesos rápidos repi
 - La tarjeta sobre fotografía necesita contraste accesible sobre imágenes claras y oscuras, área táctil amplia y estado legible en luz exterior.
 - El mercado necesita huecos reales cuando falten semanas; la línea no debe insinuar continuidad falsa.
 
-## Decisión solicitada
+## Seguimiento de implementación (PR #284)
 
-Revisar este alcance y confirmar si se aprueba. Tras la aprobación se redactará el plan de implementación verificable y se ejecutará en una sola PR, sin fusionarla sin autorización.
+- Alcance confirmado por el propietario: retirar de Inicio la tarjeta inicial de finca y la cuadrícula de accesos; colocar el tiempo en la foto con acceso a la semana; representar el mercado oficial con una gráfica compacta de tres líneas.
+- Implementado en código: contrato diario aditivo de `weather-forecast` (AEMET/MET Norway, fuente única por respuesta), compatibilidad de caché Android, pantalla de semana/radar reutilizado, Inicio simplificado y gráfica compacta. Sin migración Room, sin GPS, sin mezcla de proveedores/mercados y sin despliegue Supabase.
+- Pruebas Edge: `node --experimental-strip-types --test supabase/functions/weather-forecast/forecast.test.ts` pasó (13 pruebas); CI de la PR valida los cambios Android.
+- Pendiente: CI Android completa, verificación visual en emulador/artefacto y dispositivo físico. Hasta verificar un despliegue autorizado de la Edge Function, la disponibilidad remota de siete días no se da por garantizada.
+- No fusionar #284 sin autorización expresa del propietario.

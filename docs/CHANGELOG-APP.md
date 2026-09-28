@@ -2,6 +2,13 @@
 
 Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.0-dev · compilación 531».
 
+## En curso — PR #284 (sin versión publicada)
+
+- Inicio: retiradas la tarjeta «Empieza por tu primera finca» y la cuadrícula redundante «Accesos rápidos»; la creación de fincas sigue en Mi Campo y no se elimina ningún destino.
+- Tiempo: tarjeta sobre la foto con municipio, proveedor y antigüedad cuando hay datos; abre una semana de hasta siete días y reutiliza el radar existente. El contrato diario es aditivo y conserva cachés antiguas.
+- Mercado: la tarjeta de Inicio muestra una gráfica compacta de 12 semanas con colores/leyenda AOVE, Virgen y Lampante; el pulso de AOVE.net permanece en el detalle «Ver mercado».
+- Pendiente de validación Android/visual y de instalación en dispositivo. La semana real requiere el despliegue autorizado de la Edge Function; esta PR no despliega Supabase.
+
 - **Versión** (`0.2.0`): se sube a mano en `app/build.gradle.kts` (`appVersionName`) cuando se entrega un
   bloque de cambios al propietario, y se anota aquí.
 - **Compilación** (`531`): la pone la CI sola (número de ejecución de GitHub Actions, siempre creciente).

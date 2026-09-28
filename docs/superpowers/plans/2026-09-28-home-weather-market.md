@@ -109,11 +109,10 @@
 - Modify: `docs/00-master/RC1.2-CHANGE-REQUEST-009-HOME-WEATHER-MARKET.md` to record final status/results.
 
 - [ ] Add B4 weekly forecast and D5 cached-week offline checks without removing current Gate 20 checks.
-- [ ] Run `node --experimental-strip-types --test supabase/functions/weather-forecast/forecast.test.ts`, `./gradlew :app:testDebugUnitTest`, `./gradlew :app:lintDebug` and `./gradlew :app:assembleDebug`.
-- [ ] Run `./gradlew :app:connectedDebugAndroidTest` when an emulator is available; record clearly if this environment has none.
-- [ ] Install in a clean emulator, capture Home, open week/radar/market, verify Mi Campo and Cuaderno destinations, airplane mode, close/reopen and crash log.
+- [ ] Run the Edge fixture test and Android unit/lint/build/instrumentation checks using the repository's CI workflow (this checkout has no Gradle wrapper, installed Gradle/JDK, Android SDK, or adb).
+- [ ] Install in a clean emulator when a configured Android runner is available; otherwise preserve CI emulator evidence and explicitly report the local limitation.
 - [ ] Record exact results, unavailable external deployment/device limitations and APK artifact/commit in PR #284; do not claim physical Gate 20 passed.
-- [ ] Commit as `docs: add weekly weather to Gate 20 validation` and push updates to PR #284.
+- [ ] Commit implementation, tests and Gate 20 checklist updates; push them to PR #284.
 
 ## Deployment and release gate
 

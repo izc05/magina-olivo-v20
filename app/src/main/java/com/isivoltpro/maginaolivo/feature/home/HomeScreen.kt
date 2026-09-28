@@ -1,6 +1,5 @@
 package com.isivoltpro.maginaolivo.feature.home
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -46,7 +44,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoStat
 import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
 import com.isivoltpro.maginaolivo.ui.components.MoPhotoBrand
 import com.isivoltpro.maginaolivo.ui.components.MoPhotoHeader
-import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
@@ -57,11 +54,10 @@ import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
-import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.text.NumberFormat
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
@@ -70,14 +66,10 @@ import java.util.UUID
 fun HomeRoute(
     persistence: LocalPersistence,
     clock: AppClock,
-    onOlivar: () -> Unit,
     onCalendar: () -> Unit,
-    onHarvest: () -> Unit,
     onDeliveries: () -> Unit,
-    onExpenses: () -> Unit,
+    onWeatherWeek: () -> Unit,
     onActivitySelected: (UUID) -> Unit,
-    /** Phase 20B-radar: offered only when this build can reach the radar. */
-    onRadar: () -> Unit = {},
     /** Phase 20D-3: the oil market screen (12-week official chart). */
     onOilMarket: () -> Unit = {},
 ) {
@@ -100,35 +92,28 @@ fun HomeRoute(
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     HomeScreen(
-        state, LocalTime.now(), onOlivar, onCalendar, onHarvest, onDeliveries, onExpenses, onActivitySelected, clock.nowInstant(),
-        onRadar = onRadar.takeIf { persistence.radarSource != null },
-        oilPulse = { AoveNetPulse() },
+        state, LocalTime.now(), onCalendar, onWeatherWeek, onDeliveries, onActivitySelected, clock.nowInstant(),
         onOilMarket = onOilMarket,
     )
 }
 
 /**
  * Inicio — the farmer's situation in seconds, from this phone's data only (VISUAL_DESIGN_LOCK
- * "Pantalla Inicio"): greeting, territory hero, olive-grove summary, running campaign,
- * upcoming work and quick access. Weather, oil market and cooperative notices come last
+ * "Pantalla Inicio"): greeting and territory hero, farm summary, running campaign and upcoming
+ * work. Weather is integrated into the hero; market and cooperative notices come last
  * (Phase 20), each saying what it knows and from when — never sample figures.
  */
 @Composable
 fun HomeScreen(
     state: HomeUiState,
     now: LocalTime,
-    onOlivar: () -> Unit,
     onCalendar: () -> Unit,
-    onHarvest: () -> Unit,
+    onWeatherWeek: () -> Unit,
     onDeliveries: () -> Unit,
-    onExpenses: () -> Unit,
     onActivitySelected: (UUID) -> Unit,
-    feedNow: Instant = Instant.now(),
-    onRadar: (() -> Unit)? = null,
+    now: Instant = Instant.now(),
     /** Phase 20C: null follows the phone (reduced motion, low memory); tests pass false. */
     weatherMotion: Boolean? = null,
-    /** Phase 20D: AOVE.net's daily widget; null in tests and previews (no network there). */
-    oilPulse: (@Composable () -> Unit)? = null,
     /** Phase 20D-3: opens the oil market screen; the card offers it once there are official weeks. */
     onOilMarket: (() -> Unit)? = null,
 ) {
@@ -155,6 +140,7 @@ fun HomeScreen(
                     else WeatherMoodLayer(mood, Modifier.matchParentSize(), animate = weatherMotion)
                     MoPhotoBrand(Modifier.align(Alignment.TopStart).padding(MoSpacing.md))
                 },
+                overlay = { HomeWeatherCard(state, now, onWeatherWeek) },
             )
             Column(
                 Modifier.padding(horizontal = MoSpacing.screen),
@@ -162,16 +148,7 @@ fun HomeScreen(
             ) {
             if (state.isLoading) {
                 CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally).testTag("home-loading"))
-            } else if (state.farms.isEmpty()) {
-                MoEmptyState(
-                    "Empieza por tu primera finca",
-                    "Crea una finca con sus parcelas y aquí verás tu campaña, tus kilos y tus próximos trabajos.",
-                    actionText = "Crear finca",
-                    onAction = onOlivar,
-                    icon = MoIcons.Tree,
-                    modifier = Modifier.testTag("home-no-farms"),
-                )
-            } else {
+            } else if (state.farms.isNotEmpty()) {
                 MoStatStrip(
                     listOf(
                         MoStat("Superficie", state.knownAreaM2?.let(::hectares) ?: "—", MoIcons.Area),
@@ -233,104 +210,65 @@ fun HomeScreen(
                     )
                 }
             }
-            MoSectionHeader("Accesos rápidos")
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                Quick("Mis fincas", MoIcons.Tree, "home-quick-olivar", onOlivar, Modifier.weight(1f))
-                Quick("Jornadas", MoIcons.Harvest, "home-quick-jornadas", onHarvest, Modifier.weight(1f))
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                Quick("Pesadas", MoIcons.Delivery, "home-quick-pesadas", onDeliveries, Modifier.weight(1f))
-                Quick("Gastos", MoIcons.Euro, "home-quick-expenses", onExpenses, Modifier.weight(1f))
-            }
             // Phase 20: external context after the farm, each with an honest state.
-            HomeContext(state, feedNow, onRadar, oilPulse, onOilMarket)
+            HomeContext(state, onOilMarket)
             Spacer(Modifier.height(MoSpacing.lg))
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Quick(label: String, icon: ImageVector, tag: String, onClick: () -> Unit, modifier: Modifier) {
+private fun HomeWeatherCard(state: HomeUiState, now: Instant, onClick: () -> Unit) {
+    val weather = state.weather
+    val title = when (weather) {
+        is FeedState.Value -> "${weather.value.temperatureC} °C · ${weather.value.condition.label}"
+        FeedState.NoLocation -> if (state.weatherLocationAmbiguous) "Tiempo de tus fincas" else "Tiempo de tu zona"
+        FeedState.NotConfigured -> "Tiempo"
+        FeedState.Unavailable -> "Tiempo${state.weatherLocation?.let { " · ${it.label}" } ?: ""}"
+    }
+    val detail = when (weather) {
+        is FeedState.Value -> "${weather.source} · ${FeedAge.label(weather.value.updatedAt ?: weather.fetchedAt, now)}"
+        FeedState.NoLocation -> if (state.weatherLocationAmbiguous) "Varias ubicaciones · Revisa Mi Campo" else "Añade el municipio en Mi Campo"
+        FeedState.NotConfigured -> "Fuente del tiempo no configurada"
+        FeedState.Unavailable -> "Sin datos recientes${state.weatherLocation?.let { " · ${it.label}" } ?: ""}"
+    }
     Surface(
         onClick = onClick,
-        modifier = modifier.testTag(tag),
+        modifier = Modifier.fillMaxWidth().testTag("home-weather-hero"),
         shape = MoShape.card,
-        color = MoWarmWhite,
-        border = BorderStroke(1.dp, MoOutline),
+        color = MoCream.copy(alpha = 0.96f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MoOutline),
+        shadowElevation = 2.dp,
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(MoSpacing.sm),
+            Modifier.fillMaxWidth().padding(horizontal = MoSpacing.sm, vertical = MoSpacing.xs),
             horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MoIconBadge(icon)
-            Text(label, style = MaterialTheme.typography.labelLarge, color = MoOliveDark, maxLines = 2)
+            MoIconBadge(MoIcons.Weather)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = MoOliveDark, maxLines = 1)
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, maxLines = 2)
+            }
+            Text("Ver semana", style = MaterialTheme.typography.labelLarge, color = MoOliveDark)
+            if (weather is FeedState.Value && weather.stale) {
+                MoStatusChip("Antiguo", tone = MoStatusTone.Warning, modifier = Modifier.testTag("home-weather-stale"))
+            }
         }
     }
 }
 
 /**
- * Phase 20A — weather, oil market and cooperative, below the farm. Every state is said in
- * words: not configured, no place, nothing yet, or the value with its source and age.
+ * Market and cooperative stay below farm operations. Weather lives in the hero card.
  */
 @Composable
 private fun HomeContext(
     state: HomeUiState,
-    now: Instant,
-    onRadar: (() -> Unit)? = null,
-    oilPulse: (@Composable () -> Unit)? = null,
     onOilMarket: (() -> Unit)? = null,
 ) {
-    MoSectionHeader("Tiempo, mercado y cooperativa")
-    when (val weather = state.weather) {
-        is FeedState.Value -> {
-            val value = weather.value
-            MoCompactListItem(
-                title = "${value.temperatureC} °C · ${value.condition.label}",
-                subtitle = listOfNotNull(
-                    value.rainProbabilityPercent?.let { "Lluvia $it %" },
-                    value.windKmh?.let { "Viento $it km/h" },
-                    state.weatherLocation?.label,
-                ).joinToString(" · "),
-                icon = MoIcons.Weather,
-                modifier = Modifier.testTag("home-weather-value"),
-                trailing = if (weather.stale) {
-                    { MoStatusChip("Desactualizado", tone = MoStatusTone.Warning, modifier = Modifier.testTag("home-weather-stale")) }
-                } else {
-                    null
-                },
-            )
-            // The provider that actually answered, and when it produced the forecast (20B).
-            Text(
-                "Fuente: ${weather.source} · ${FeedAge.label(value.updatedAt ?: weather.fetchedAt, now)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
-                modifier = Modifier.testTag("home-weather-source"),
-            )
-            value.attribution?.let {
-                Text(it, style = MaterialTheme.typography.labelSmall, color = MoTextSecondary, modifier = Modifier.testTag("home-weather-attribution"))
-            }
-        }
-        FeedState.NotConfigured -> Quiet("Tiempo", "Sin fuente configurada en esta versión.", MoIcons.Weather, "home-weather-not-configured")
-        FeedState.NoLocation -> Quiet(
-            "Tiempo",
-            "Indica el municipio en la ficha de tu finca para ver su tiempo.",
-            MoIcons.Weather,
-            "home-weather-no-location",
-        )
-        FeedState.Unavailable -> Quiet(
-            "Tiempo${state.weatherLocation?.let { " · ${it.label}" } ?: ""}",
-            "Aún sin datos. Se actualizará cuando haya conexión.",
-            MoIcons.Weather,
-            "home-weather-unavailable",
-        )
-    }
-    // Phase 20B-radar: live picture over the farm; its own screen says when it needs signal.
-    onRadar?.let { MoSecondaryButton("Ver radar de lluvia", it, Modifier.fillMaxWidth().testTag("home-weather-radar")) }
-    // Phase 20D: AOVE.net's daily pulse (publisher-hosted) and the Junta's official weekly trend.
-    OilMarketCard(state.oilMarket, oilPulse, onOilMarket)
+    MoSectionHeader("Mercado y cooperativa")
+    OilMarketCard(state.oilMarket, onOpen = onOilMarket)
     // Owner decision D4: notices arrive with the private administration panel.
     Quiet("Mi cooperativa", "Los avisos de tu cooperativa llegarán con el panel de administración.", MoIcons.Bell, "home-cooperative")
 }
