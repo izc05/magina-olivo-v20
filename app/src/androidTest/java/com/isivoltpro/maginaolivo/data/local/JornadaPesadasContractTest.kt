@@ -125,9 +125,10 @@ class JornadaPesadasContractTest {
         ok(deliveries.delete(b))
         assertEquals(2_500_000L, harvests.observe(jornadaId).first()!!.totalGrams)
 
-        // Moving the last Pesada out keeps the Jornada's kilos as its own figure: never zero.
+        // CR-010 (A1/A2): moving the last Pesada out leaves no kilos behind: the Jornada goes back
+        // to «Kg pendientes de pesada», never to history the Pesadas no longer support.
         ok(deliveries.update(a, pesada(2_500_000, "Coop. San Isidro", "V-1")))
-        assertEquals(2_500_000L, harvests.observe(jornadaId).first()!!.totalGrams)
+        assertTrue(harvests.observe(jornadaId).first()!!.awaitingPesadas)
         assertNull(deliveries.observe(a).first()!!.harvestId)
     }
 
