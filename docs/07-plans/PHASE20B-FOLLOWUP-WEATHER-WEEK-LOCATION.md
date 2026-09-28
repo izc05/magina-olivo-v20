@@ -59,7 +59,7 @@ Nothing is wrong with the data; the wording is. Fix proposed in W1.
   **redeploy** is needed (same manual workflow as 20B; secrets untouched, `verify_jwt=true`).
 
 ### W2 — Shared municipality + «Seguir mi ubicación» (depends on 21A)
-- The shared municipality **is** 21A's «Tu municipio» (`profile_settings`, Room v17 already
+- The shared municipality **is** 21A's «Tu municipio» (`profile_settings`, Room v18 already
   approved as P1). Doing it inside Phase 20 would pull 21A forward, which the gate order forbids.
   Proposal: implement W2 **with 21A** after Gate 20 PASS. The shared municipality is already in
   21A's approved scope («Inicio uses it»); «Seguir mi ubicación» is **not**, so it needs the same
@@ -97,7 +97,7 @@ Nothing is wrong with the data; the wording is. Fix proposed in W1.
 | # | Decision | Options | Recommendation |
 |---|---|---|---|
 | W-1 | When to build W1 | (a) inside Phase 20, before Gate 20 closes: one more APK and device test with B4/D5 added; (b) after Gate 20 PASS, **only through a Change Request** (`CHANGE-CONTROL.md`; draft ready: `docs/00-master/RC1.2-CHANGE-REQUEST-008-WEATHER-WEEK-LOCATION.md`) that registers W1 as an approved 20B follow-up and updates `CURRENT-STATE.md` before any code — it is not Phase 21 (Profile) scope | **(b) with CR-008**: Gate 20 closes on the APK 580 test and W1 does not block field work; without an approved CR the only compliant option is (a) |
-| W-2 | Where W2 lives | (a) with 21A (shared municipality already in scope; follow-location added by the same CR-008); (b) separate slice after 21A, also by CR | **(a)**: same municipality, same Room v17 table, one migration |
+| W-2 | Where W2 lives | (a) with 21A (shared municipality already in scope; follow-location added by the same CR-008); (b) separate slice after 21A, also by CR | **(a)**: same municipality, same Room v18 table, one migration |
 | W-3 | Freshness wording | «Previsión {fuente} de las HH:MM · consultada hace …» | as proposed |
 
 Nothing in this document changes code, Room, the Edge Functions or their secrets, and nothing in
