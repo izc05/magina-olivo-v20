@@ -171,12 +171,29 @@ object DatabaseMigrations {
         }
     }
 
+    /**
+     * CR-010 (A1, A4): marks the days the app creates for its Pesadas. A Jornada stored with 0 kg
+     * can only be one opened before its first Pesada («Kg pendientes de pesada»; a hand-recorded
+     * harvest is always > 0), so it is such a day: it has no typed kilos to lose. Every other
+     * row keeps its kilos and stays a hand-recorded Jornada.
+     */
+    val MIGRATION_16_17 = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE harvests ADD COLUMN day_origin TEXT")
+            db.execSQL("UPDATE harvests SET day_origin = 'AUTO_DAY' WHERE weight_grams = 0")
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_harvests_farm_id_campaign_id_harvest_date` " +
+                    "ON `harvests` (`farm_id`, `campaign_id`, `harvest_date`)",
+            )
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
             MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
-            MIGRATION_15_16,
+            MIGRATION_15_16, MIGRATION_16_17,
         )
 
     private val schemaVersion11Statements =

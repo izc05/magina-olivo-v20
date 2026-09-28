@@ -216,8 +216,8 @@ fun HarvestsScreen(
                 state.isLoading -> CircularProgressIndicator()
                 state.harvests.isEmpty() -> MoEmptyState(
                     "Aún no hay jornadas",
-                    "Abre la jornada de hoy y añade después sus pesadas, o registra una pesada y elige «Nueva jornada de este día». " +
-                        "Sus kilos son siempre la suma de sus pesadas.",
+                    "Registra una pesada y su día de recolección se crea solo, o abre la jornada de hoy para anotar " +
+                        "antes jornales o gastos. Sus kilos son siempre la suma de sus pesadas.",
                     icon = MoIcons.Harvest,
                 )
                 else -> {
@@ -341,7 +341,8 @@ internal fun HarvestEditor(
     var picker by rememberSaveable { mutableStateOf<String?>(null) }
     val context = contexts.firstOrNull { it.farmId == form.farmId }
     // Phase 19B: with Pesadas, the kilos are theirs; the farmer never types them twice.
-    val kilosFromPesadas = pesadaCount > 0
+    // CR-010: an automatic day's kilos are always its Pesadas', even before the first one.
+    val kilosFromPesadas = pesadaCount > 0 || form.automatic
 
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen)
@@ -367,17 +368,28 @@ internal fun HarvestEditor(
                 color = MoTextSecondary,
             )
         }
-        MoDateInputField(
-            form.date, { form = form.copy(date = it) }, "Fecha",
-            isError = errors.date != null, supportingText = errors.date,
-            modifier = Modifier.fillMaxWidth().testTag("harvest-date"),
-        )
+        if (form.automatic) {
+            // CR-010: the day is its Pesadas' date; each Pesada changes its own date.
+            Text(
+                "Día ${runCatching { DATE_FORMAT.format(LocalDate.parse(form.date)) }.getOrDefault(form.date)}",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.testTag("harvest-day-date"),
+            )
+            errors.date?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        } else {
+            MoDateInputField(
+                form.date, { form = form.copy(date = it) }, "Fecha",
+                isError = errors.date != null, supportingText = errors.date,
+                modifier = Modifier.fillMaxWidth().testTag("harvest-date"),
+            )
+        }
         MoTextField(
-            form.total, { form = form.copy(total = it) }, "Kilos históricos",
+            form.total, { form = form.copy(total = it) }, if (form.automatic) "Kilos pesados" else "Kilos históricos",
             enabled = !kilosFromPesadas,
             isError = errors.total != null,
             supportingText = when {
                 errors.total != null -> errors.total
+                pesadaCount == 0 && form.automatic -> "$PENDING_KILOS: serán la suma de sus pesadas"
                 kilosFromPesadas -> if (pesadaCount == 1) "Son los kilos de su pesada" else "Suma de sus $pesadaCount pesadas"
                 else -> Weight.parseGrams(form.total)?.let { "= ${Weight.format(it)}" }
             },
@@ -385,12 +397,25 @@ internal fun HarvestEditor(
         )
 
         MoSectionHeader("Parcelas de origen")
-        if (context == null) {
+        if (form.automatic) {
+            // CR-010 (note 2): the union of its Pesadas' Parcels, or the whole Farm; never a split.
+            Text(
+                context?.parcels?.filter { it.parcelId in form.parcelIds }?.joinToString { it.name }
+                    ?.ifEmpty { null } ?: "Toda la finca",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.testTag("harvest-day-parcels"),
+            )
+            Text(
+                "Salen de sus pesadas. Los kilos de cada parcela están en cada pesada.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MoTextSecondary,
+            )
+        } else if (context == null) {
             Text("Elige primero la finca.", color = MoTextSecondary)
         } else if (context.parcels.isEmpty()) {
             Text("Esta campaña no tiene parcelas.", color = MoTextSecondary)
         }
-        context?.parcels?.forEach { parcel ->
+        if (!form.automatic) context?.parcels?.forEach { parcel ->
             val checked = parcel.parcelId in form.parcelIds
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("harvest-parcel-option").clickable {

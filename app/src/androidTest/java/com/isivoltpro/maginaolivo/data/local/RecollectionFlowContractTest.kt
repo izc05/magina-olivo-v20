@@ -94,7 +94,7 @@ class RecollectionFlowContractTest {
 
     @Test
     fun onePesadaWithItsTicketPhotoOpensTheJornadaAndEveryTotalComesFromItsLedger() = runBlocking {
-        // 1. The Pesada: 2.390 kg of tree olives to Bedmarense, ticket V-1, opening the day's Jornada.
+        // 1. The Pesada: 2.390 kg of tree olives to Bedmarense, ticket V-1; it creates its day (CR-010).
         val pesada = ok(
             deliveries.create(
                 DeliveryDraft(
@@ -106,7 +106,6 @@ class RecollectionFlowContractTest {
                     shares = listOf(DeliveryShareInput(parcelId, null)),
                     ticketNumber = "V-1",
                     deliveryTime = LocalTime.of(12, 30),
-                    newJornada = true,
                     origin = PesadaOrigin.TREE,
                 ),
             ),

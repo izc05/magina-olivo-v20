@@ -33,6 +33,9 @@ enum class CollectionMethod {
     OTHER,
 }
 
+/** CR-010: a day the app created for its Pesadas (stored in `harvests.day_origin`). */
+const val AUTO_DAY = "AUTO_DAY"
+
 data class HarvestShare(
     val parcelId: UUID,
     val parcelName: String,
@@ -57,6 +60,11 @@ data class Harvest(
     val campaignName: String? = null,
     /** False once its Campaign is closed: the Harvest is then history, read-only. */
     val editable: Boolean = true,
+    /**
+     * CR-010: a day created by its Pesadas. Its kilos, date and Parcels come only from them;
+     * false for a Jornada recorded by hand, whose kilos are the farmer's own figure.
+     */
+    val automatic: Boolean = false,
 ) {
     val allocatedGrams: Long get() = shares.sumOf { if (it.allocation == HarvestAllocation.EXACT) it.weightGrams ?: 0 else 0 }
 

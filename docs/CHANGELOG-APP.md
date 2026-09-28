@@ -27,6 +27,12 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 - El total de kilos de la campaña es siempre la suma de las pesadas. Los kilos antiguos escritos a
   mano en jornadas sin pesada se muestran aparte («registrados sin pesada (histórico)») en la
   campaña y en el Cuaderno: no se pierden y no se suman al total.
+- Día de recolección automático: al guardar una pesada (a mano o desde el vale) la app busca o crea
+  el día de esa finca y fecha; desaparece la elección «Sin jornada / Nueva jornada». Los kilos del
+  día son siempre la suma de sus pesadas: si se borra o se cambia de fecha su última pesada, vuelve a
+  «Kg pendientes de pesada» y, si no tiene jornales, maquinaria, gastos ni adjuntos, desaparece.
+  Las parcelas del día son las de sus pesadas, sin reparto de kilos. Las jornadas antiguas escritas
+  a mano conservan sus kilos y nunca reciben pesadas nuevas. Base de datos del teléfono v17.
 
 ## 0.5.0 — 28/09/2026
 

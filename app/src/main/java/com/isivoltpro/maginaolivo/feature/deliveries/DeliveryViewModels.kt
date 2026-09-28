@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 internal val DESTINATION_ROLES = setOf(OrganizationRole.COOPERATIVE, OrganizationRole.MILL)
@@ -112,12 +111,10 @@ class DeliveriesViewModel(
             mutableState.value = mutableState.value.copy(isSaving = true, error = null)
             mutableState.value = when (val result = deliveries.create(draft)) {
                 is AppResult.Success -> if (again) {
-                    // A new Jornada opened with this Pesada is the one the next Pesada joins.
-                    val jornada = deliveries.observe(result.value).first()?.harvestId
                     mutableState.value.copy(
                         isSaving = false,
                         formErrors = DeliveryFormErrors(),
-                        nextForm = form.nextPesada(jornada),
+                        nextForm = form.nextPesada(),
                         nextFormGeneration = mutableState.value.nextFormGeneration + 1,
                     )
                 } else {
@@ -187,7 +184,6 @@ data class DeliveryDetailUiState(
     val message: String? = null,
     val error: String? = null,
     val deleted: Boolean = false,
-    val jornadas: List<Harvest> = emptyList(),
 )
 
 class DeliveryDetailViewModel(
@@ -195,7 +191,6 @@ class DeliveryDetailViewModel(
     private val deliveries: DeliveryRepository,
     organizations: OrganizationRepository,
     private val clock: AppClock,
-    harvests: HarvestRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(DeliveryDetailUiState())
     val state: StateFlow<DeliveryDetailUiState> = mutableState.asStateFlow()
@@ -224,12 +219,6 @@ class DeliveryDetailViewModel(
         viewModelScope.launch {
             organizations.observeWithAnyRole(DESTINATION_ROLES).catch { }
                 .collect { mutableState.value = mutableState.value.copy(destinations = it) }
-        }
-        harvests?.let { repository ->
-            viewModelScope.launch {
-                repository.observeAll().catch { }
-                    .collect { rows -> mutableState.value = mutableState.value.copy(jornadas = rows) }
-            }
         }
     }
 
@@ -301,7 +290,6 @@ data class TicketReviewUiState(
     val error: String? = null,
     val createdDeliveryId: UUID? = null,
     val closed: Boolean = false,
-    val jornadas: List<Harvest> = emptyList(),
 )
 
 /**
@@ -313,7 +301,6 @@ class TicketReviewViewModel(
     private val documents: DocumentOcrRepository,
     deliveries: DeliveryRepository,
     organizations: OrganizationRepository,
-    harvests: HarvestRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(TicketReviewUiState())
     val state: StateFlow<TicketReviewUiState> = mutableState.asStateFlow()
@@ -330,12 +317,6 @@ class TicketReviewViewModel(
         viewModelScope.launch {
             organizations.observeWithAnyRole(DESTINATION_ROLES).catch { }
                 .collect { mutableState.value = mutableState.value.copy(destinations = it) }
-        }
-        harvests?.let { repository ->
-            viewModelScope.launch {
-                repository.observeAll().catch { }
-                    .collect { rows -> mutableState.value = mutableState.value.copy(jornadas = rows.filter { it.editable }) }
-            }
         }
     }
 

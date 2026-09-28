@@ -185,7 +185,7 @@ val CampaignNotebook.pendingDeliveryGrams: Long?
  */
 fun legacyUnweighedGrams(harvests: List<Harvest>, deliveries: List<Delivery>): Long {
     val linked = deliveries.mapNotNullTo(HashSet()) { it.harvestId }
-    return harvests.filter { it.id !in linked && !it.awaitingPesadas }.sumOf { it.totalGrams }
+    return harvests.filter { it.id !in linked && !it.automatic && !it.awaitingPesadas }.sumOf { it.totalGrams }
 }
 
 val CampaignNotebook.legacyUnweighedGrams: Long get() = legacyUnweighedGrams(harvests, deliveries)

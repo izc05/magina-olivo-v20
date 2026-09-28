@@ -10,6 +10,7 @@ import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
+import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
@@ -49,7 +50,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Phase 19B — Jornada + multiple Pesadas.
+ * Phase 19B — Jornada + multiple Pesadas; CR-010 — the automatic day (A1, notes 2–3).
  *
  * Gate 19B: three weighings on one date, including different cooperatives, survive restart
  * and produce one truthful Jornada summary. Everything here is local (no network): the same
@@ -85,19 +86,20 @@ class JornadaPesadasContractTest {
 
     @Test
     fun threePesadasOfOneDayToTwoCooperativesSurviveRestartAsOneTruthfulJornada() = runBlocking {
-        // The first Pesada opens the Jornada; the next two join it explicitly.
-        val first = ok(deliveries.create(pesada(2_100_000, "Coop. San Isidro", "V-101", "09:40").copy(newJornada = true)))
+        // CR-010 §4: nobody opens or picks the day; the three Pesadas of one date share it.
+        val first = ok(deliveries.create(pesada(2_100_000, "Coop. San Isidro", "V-101", "09:40")))
         val jornadaId = deliveries.observe(first).first()!!.harvestId!!
-        ok(deliveries.create(pesada(1_850_500, "Almazara El Molino", "A-77", "13:05").copy(harvestId = jornadaId)))
-        ok(deliveries.create(pesada(1_479_500, "Coop. San Isidro", "V-102", "17:20").copy(harvestId = jornadaId)))
+        ok(deliveries.create(pesada(1_850_500, "Almazara El Molino", "A-77", "13:05")))
+        ok(deliveries.create(pesada(1_479_500, "Coop. San Isidro", "V-102", "17:20")))
 
         db.close()
         open()
 
         val harvest = harvests.observe(jornadaId).first()!!
+        assertTrue(harvest.automatic)
         val jornada = Jornada.of(harvest, deliveries.observeAll().first())
         assertEquals(3, jornada.pesadas.size)
-        // One truthful total: the Jornada's kilos are exactly its Pesadas' kilos.
+        // One truthful total: the day's kilos are exactly its Pesadas' kilos.
         assertEquals(5_430_000L, jornada.pesadaGrams)
         assertEquals(5_430_000L, harvest.totalGrams)
         assertEquals(listOf("Coop. San Isidro", "Almazara El Molino"), jornada.destinations)
@@ -112,73 +114,102 @@ class JornadaPesadasContractTest {
     }
 
     @Test
-    fun correctingOrRemovingAPesadaKeepsTheJornadaTotalEqualToItsPesadas() = runBlocking {
-        val jornadaId = ok(harvests.create(HarvestDraft(farmId, day, 9_999_000, listOf(HarvestShareInput(north, null), HarvestShareInput(south, null)))))
-        val a = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1").copy(harvestId = jornadaId)))
-        val b = ok(deliveries.create(pesada(3_000_000, "Almazara El Molino", "A-1").copy(harvestId = jornadaId)))
-        // The hand-typed estimate is replaced by the weighed kilos.
-        assertEquals(5_000_000L, harvests.observe(jornadaId).first()!!.totalGrams)
+    fun aDaysOriginIsTheUnionOfItsPesadasParcelsWithoutASplit() = runBlocking {
+        // CR-010 (note 2): exact kilos stay on each Pesada; the day only knows where they came from.
+        val a = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1").copy(shares = listOf(DeliveryShareInput(north, 2_000_000)))))
+        val dayId = deliveries.observe(a).first()!!.harvestId!!
+        assertEquals(setOf(north), harvests.observe(dayId).first()!!.shares.map { it.parcelId }.toSet())
 
-        ok(deliveries.update(a, pesada(2_500_000, "Coop. San Isidro", "V-1").copy(harvestId = jornadaId)))
-        assertEquals(5_500_000L, harvests.observe(jornadaId).first()!!.totalGrams)
-
-        ok(deliveries.delete(b))
-        assertEquals(2_500_000L, harvests.observe(jornadaId).first()!!.totalGrams)
-
-        // CR-010 (A1/A2): moving the last Pesada out leaves no kilos behind: the Jornada goes back
-        // to «Kg pendientes de pesada», never to history the Pesadas no longer support.
-        ok(deliveries.update(a, pesada(2_500_000, "Coop. San Isidro", "V-1")))
-        assertTrue(harvests.observe(jornadaId).first()!!.awaitingPesadas)
-        assertNull(deliveries.observe(a).first()!!.harvestId)
+        ok(deliveries.create(pesada(1_000_000, "Coop. San Isidro", "V-2").copy(shares = listOf(DeliveryShareInput(south, 1_000_000)))))
+        val day = harvests.observe(dayId).first()!!
+        assertEquals(setOf(north, south), day.shares.map { it.parcelId }.toSet())
+        assertTrue(day.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
+        assertEquals(3_000_000L, day.totalGrams)
+        // The single-Parcel Pesadas keep their exact kilos; none is inferred for the day.
+        assertEquals(2_000_000L, deliveries.observe(a).first()!!.shares.single().weightGrams)
     }
 
     @Test
-    fun aJornadaWithPesadasNeverTakesKilosFromItsFormAndReleasesThemWhenRemoved() = runBlocking {
+    fun aHandRecordedJornadaIsNeverReusedAndKeepsItsOwnKilos() = runBlocking {
+        // CR-010 (note 3): linking a Pesada to it would overwrite the farmer's typed kilos.
+        val legacy = ok(harvests.create(HarvestDraft(farmId, day, 9_999_000, listOf(HarvestShareInput(north, null), HarvestShareInput(south, null)))))
+        val a = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1")))
+        val b = ok(deliveries.create(pesada(3_000_000, "Almazara El Molino", "A-1")))
+        val dayId = deliveries.observe(a).first()!!.harvestId!!
+        assertTrue(dayId != legacy)
+        assertEquals(dayId, deliveries.observe(b).first()!!.harvestId)
+        assertEquals(5_000_000L, harvests.observe(dayId).first()!!.totalGrams)
+
+        ok(deliveries.update(a, pesada(2_500_000, "Coop. San Isidro", "V-1")))
+        assertEquals(5_500_000L, harvests.observe(dayId).first()!!.totalGrams)
+        ok(deliveries.delete(b))
+        assertEquals(2_500_000L, harvests.observe(dayId).first()!!.totalGrams)
+
+        // The hand-recorded Jornada of the same date is untouched and still shown.
+        val kept = harvests.observe(legacy).first()!!
+        assertEquals(9_999_000L, kept.totalGrams)
+        assertTrue(!kept.automatic)
+        assertEquals(2, db.harvestDao().observeForCampaign(campaignId).first().size)
+    }
+
+    @Test
+    fun aPesadaLinkedBeforeCr010KeepsItsJornadaUntilItsDateChanges() = runBlocking {
         val yesterday = day.minusDays(1)
         // As the form sends it: a single Parcel carries the whole total.
-        val jornadaId = ok(harvests.create(HarvestDraft(farmId, yesterday, 1_000_000, listOf(HarvestShareInput(north, 1_000_000)))))
-        val a = ok(deliveries.create(pesada(2_200_000, "Coop. San Isidro", "V-9").copy(deliveryDate = yesterday, harvestId = jornadaId)))
-        // Single Parcel: it carries the whole total, and follows the Pesadas.
-        assertEquals(2_200_000L, harvests.observe(jornadaId).first()!!.shares.single().weightGrams)
+        val legacy = ok(harvests.create(HarvestDraft(farmId, yesterday, 1_000_000, listOf(HarvestShareInput(north, 1_000_000)))))
+        val a = ok(deliveries.create(pesada(2_200_000, "Coop. San Isidro", "V-9").copy(deliveryDate = yesterday)))
+        linkAsBeforeCr010(a, legacy)
 
-        ok(harvests.update(jornadaId, HarvestDraft(farmId, yesterday, 7_777_000, listOf(HarvestShareInput(north, 7_777_000)), workerCount = 5)))
-        val edited = harvests.observe(jornadaId).first()!!
-        assertEquals(2_200_000L, edited.totalGrams)
-        assertEquals(2_200_000L, edited.shares.single().weightGrams)
-        assertEquals(5, edited.workerCount)
+        // Edited on the same date, it stays in its Jornada, whose kilos follow it (Phase 19B).
+        ok(deliveries.update(a, pesada(2_300_000, "Coop. San Isidro", "V-9").copy(deliveryDate = yesterday)))
+        assertEquals(legacy, deliveries.observe(a).first()!!.harvestId)
+        assertEquals(2_300_000L, harvests.observe(legacy).first()!!.totalGrams)
+        assertEquals(2_300_000L, harvests.observe(legacy).first()!!.shares.single().weightGrams)
+        // Its kilos never come from the Jornada form while it has Pesadas.
+        ok(harvests.update(legacy, HarvestDraft(farmId, yesterday, 7_777_000, listOf(HarvestShareInput(north, 7_777_000)), workerCount = 5)))
+        assertEquals(2_300_000L, harvests.observe(legacy).first()!!.totalGrams)
+        assertEquals(5, harvests.observe(legacy).first()!!.workerCount)
 
-        // The Jornada cannot move to a day after its own Pesadas.
-        assertValidation(
-            "harvestDate",
-            harvests.update(jornadaId, HarvestDraft(farmId, day, 1, listOf(HarvestShareInput(north, null)))),
-        )
+        // A new date moves it to that date's automatic day; the Jornada it left keeps no kilos of it
+        // (they were the Pesada's): back to «Kg pendientes de pesada», never shown as history.
+        ok(deliveries.update(a, pesada(2_300_000, "Coop. San Isidro", "V-9")))
+        val moved = deliveries.observe(a).first()!!.harvestId!!
+        assertTrue(moved != legacy)
+        assertTrue(harvests.observe(moved).first()!!.automatic)
+        val left = harvests.observe(legacy).first()!!
+        assertTrue(left.awaitingPesadas)
+        assertEquals(HarvestAllocation.UNALLOCATED, left.shares.single().allocation)
 
-        ok(harvests.delete(jornadaId))
+        // Removing a day releases its Pesadas with every figure intact.
+        db.expenseDao().upsert(expenseOn(moved)) // so the day stays when its Pesada leaves
+        ok(harvests.delete(moved))
         val released = deliveries.observe(a).first()!!
         assertNull(released.harvestId)
-        assertEquals(2_200_000L, released.netGrams)
+        assertEquals(2_300_000L, released.netGrams)
         assertEquals("V-9", released.ticketNumber)
     }
 
     @Test
     fun aJornadaOpenedBeforeAnyPesadaStartsAtZeroAndThenCarriesItsPesadas() = runBlocking {
-        // Gate 20 (emulator, build 575): the Jornada can exist before its first Pesada.
+        // Gate 20 (emulator, build 575): the day can exist before its first Pesada.
         val jornadaId = ok(harvests.openJornada(farmId, day))
         val opened = harvests.observe(jornadaId).first()!!
+        assertTrue(opened.automatic)
         // Stored 0 means "not weighed yet": shown as «Kg pendientes de pesada», out of every total.
         assertTrue(opened.awaitingPesadas)
         assertEquals(0, HarvestSummary.of(listOf(opened)).weighedCount)
         assertEquals(setOf(north, south), opened.shares.map { it.parcelId }.toSet())
         assertTrue(opened.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
-        // Opening it again the same day returns the same Jornada: never a second one.
+        // Opening it again the same day returns the same day: never a second one.
         assertEquals(jornadaId, ok(harvests.openJornada(farmId, day)))
         assertEquals(1, db.harvestDao().observeForCampaign(campaignId).first().size)
         // No future day, no day before the Campaign.
         assertValidation("harvestDate", harvests.openJornada(farmId, day.plusDays(1)))
         assertValidation("harvestDate", harvests.openJornada(farmId, LocalDate.parse("2026-09-30")))
 
-        ok(deliveries.create(pesada(2_100_000, "Coop. San Isidro", "V-201").copy(harvestId = jornadaId)))
-        ok(deliveries.create(pesada(1_400_000, "Almazara El Molino", "A-202").copy(harvestId = jornadaId)))
+        // The Pesadas of that date join it by themselves.
+        ok(deliveries.create(pesada(2_100_000, "Coop. San Isidro", "V-201")))
+        ok(deliveries.create(pesada(1_400_000, "Almazara El Molino", "A-202")))
         db.close()
         open()
 
@@ -189,29 +220,73 @@ class JornadaPesadasContractTest {
     }
 
     @Test
-    fun aPesadaIsNeverLinkedToAJornadaThatCannotHoldIt() = runBlocking {
-        val exact = ok(
-            harvests.create(HarvestDraft(farmId, day, 3_000_000, listOf(HarvestShareInput(north, 1_000_000), HarvestShareInput(south, 2_000_000)))),
-        )
-        assertValidation("harvestId", deliveries.create(pesada(1_000_000, "Coop. San Isidro", "V-3").copy(harvestId = exact)))
+    fun anAutomaticDayNeverKeepsKilosItNoLongerHas() = runBlocking {
+        // CR-010 A1: delete the only Pesada → nothing is left, and no kilos survive it.
+        val only = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1")))
+        val first = deliveries.observe(only).first()!!.harvestId!!
+        ok(deliveries.delete(only))
+        assertNull(harvests.observe(first).first())
+        assertTrue(db.harvestDao().observeForCampaign(campaignId).first().isEmpty())
 
-        val later = ok(harvests.create(HarvestDraft(farmId, day, 1_000_000, listOf(HarvestShareInput(north, null)))))
-        assertValidation(
-            "harvestId",
-            deliveries.create(pesada(1_000_000, "Coop. San Isidro", "V-4").copy(deliveryDate = day.minusDays(1), harvestId = later)),
-        )
-        assertValidation("harvestId", deliveries.create(pesada(1_000_000, "Coop. San Isidro", "V-5").copy(harvestId = UUID.randomUUID())))
-        // Nothing was written by the refused Pesadas.
-        assertTrue(deliveries.observeAll().first().isEmpty())
-        assertEquals(3_000_000L, harvests.observe(exact).first()!!.totalGrams)
+        // A day that still owns something (here an expense) stays, back to «Kg pendientes de pesada».
+        val p = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-2")))
+        val kept = deliveries.observe(p).first()!!.harvestId!!
+        db.expenseDao().upsert(expenseOn(kept))
+        // Move it to another date: it goes to that date's day; the day it left keeps no kilos.
+        ok(deliveries.update(p, pesada(2_000_000, "Coop. San Isidro", "V-2").copy(deliveryDate = day.minusDays(1))))
+        val other = deliveries.observe(p).first()!!.harvestId!!
+        assertTrue(other != kept)
+        val left = harvests.observe(kept).first()!!
+        assertTrue(left.awaitingPesadas)
+        assertEquals(0, HarvestSummary.of(listOf(left)).weighedCount)
+        assertEquals(2_000_000L, harvests.observe(other).first()!!.totalGrams)
+
+        // Move it back: it rejoins the day it left, and the emptied one (nothing else in it) goes.
+        ok(deliveries.update(p, pesada(2_000_000, "Coop. San Isidro", "V-2")))
+        assertEquals(kept, deliveries.observe(p).first()!!.harvestId)
+        assertEquals(2_000_000L, harvests.observe(kept).first()!!.totalGrams)
+        assertNull(harvests.observe(other).first())
+    }
+
+    @Test
+    fun aDayWithWhatTheFarmerTypedOnItStaysAndItsOriginGoesBackToTheWholeFarm() = runBlocking {
+        // Codex review on #290: people or machinery typed on the day are the farmer's record.
+        val p = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1").copy(shares = listOf(DeliveryShareInput(north, 2_000_000)))))
+        val dayId = deliveries.observe(p).first()!!.harvestId!!
+        ok(harvests.update(dayId, HarvestDraft(farmId, day, null, emptyList(), workerCount = 4, machineryText = "Vibrador")))
+        assertEquals(setOf(north), harvests.observe(dayId).first()!!.shares.map { it.parcelId }.toSet())
+
+        ok(deliveries.delete(p))
+        val left = harvests.observe(dayId).first()!!
+        assertTrue(left.awaitingPesadas)
+        assertEquals(4, left.workerCount)
+        assertEquals("Vibrador", left.machineryText)
+        // No Pesada supports «Norte only» any more: the whole Farm, without a split.
+        assertEquals(setOf(north, south), left.shares.map { it.parcelId }.toSet())
+        assertTrue(left.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
+    }
+
+    @Test
+    fun anAutomaticDayKeepsItsDateKilosAndParcelsWhenItsFormIsSaved() = runBlocking {
+        val p = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1")))
+        val dayId = deliveries.observe(p).first()!!.harvestId!!
+        // Only what describes the day itself is the farmer's to change.
+        ok(harvests.update(dayId, HarvestDraft(farmId, day, null, emptyList(), workerCount = 6, notes = "Buen día")))
+        val saved = harvests.observe(dayId).first()!!
+        assertEquals(2_000_000L, saved.totalGrams)
+        assertEquals(6, saved.workerCount)
+        assertEquals("Buen día", saved.notes)
+        assertEquals(setOf(north, south), saved.shares.map { it.parcelId }.toSet())
+        // Its date is its Pesadas': each Pesada changes its own.
+        assertValidation("harvestDate", harvests.update(dayId, HarvestDraft(farmId, day.minusDays(1), null, emptyList())))
     }
 
     @Test
     fun aYieldAddedDaysLaterChangesOnlyTheYieldRecordAndTheDerivedMetrics() = runBlocking {
-        // Phase 19C (Gate 19C): the Pesada, its Jornada and their outbox stay as they were.
-        val first = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-45872").copy(newJornada = true)))
+        // Phase 19C (Gate 19C): the Pesada, its day and their outbox stay as they were.
+        val first = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-45872")))
         val jornadaId = deliveries.observe(first).first()!!.harvestId!!
-        val mixed = ok(deliveries.create(pesada(3_000_000, "Coop. San Isidro", "V-45873").copy(harvestId = jornadaId)))
+        val mixed = ok(deliveries.create(pesada(3_000_000, "Coop. San Isidro", "V-45873")))
         val deliveryBefore = db.deliveryDao().findById(first)
         val harvestBefore = db.harvestDao().findById(jornadaId)
         val outboxBefore = db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM sync_outbox").use { it.moveToFirst(); it.getInt(0) }
@@ -232,6 +307,28 @@ class JornadaPesadasContractTest {
         assertTrue(ParcelYield.of(all).isEmpty())
         assertEquals(2_150, DeliverySummary.of(all).fatYield!!.hundredths)
     }
+
+    /** What 0.5.0 wrote when a farmer linked a Pesada to a Jornada by hand: that link, and no automatic day. */
+    private suspend fun linkAsBeforeCr010(deliveryId: UUID, jornadaId: UUID) {
+        val row = db.deliveryDao().findById(deliveryId)!!
+        val automatic = db.harvestDao().findById(row.harvestId!!)!!
+        db.deliveryDao().upsert(row.copy(harvestId = jornadaId))
+        db.harvestDao().upsert(automatic.copy(metadata = automatic.metadata.copy(deletedAt = now)))
+    }
+
+    private fun expenseOn(harvestId: UUID) = ExpenseEntity(
+        id = UUID.randomUUID(),
+        workspaceId = workspaceId,
+        campaignId = campaignId,
+        farmId = farmId,
+        harvestId = harvestId,
+        expenseDate = day,
+        concept = "Transporte",
+        category = "TRANSPORT",
+        amountMinor = 4_000,
+        currency = "EUR",
+        metadata = LocalMetadata(now, now),
+    )
 
     private fun pesada(net: Long, cooperative: String, ticket: String, time: String? = null) = DeliveryDraft(
         farmId = farmId,

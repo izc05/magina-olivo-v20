@@ -16,6 +16,7 @@ import com.isivoltpro.maginaolivo.data.local.model.HarvestWithParcels
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import com.isivoltpro.maginaolivo.domain.harvest.AUTO_DAY
 import com.isivoltpro.maginaolivo.domain.harvest.CollectionMethod
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
@@ -131,17 +132,14 @@ class OfflineFirstHarvestRepository(
             if (database.harvestDao().listCampaignParcels(campaign.id).isEmpty()) {
                 return@inTransaction AppResult.Failure(AppError.Validation("parcels", "empty"))
             }
-            // One Jornada per Farm and day: opening it again returns the one already there.
-            database.harvestDao().findLiveOnDay(farm.id, campaign.id, date)?.let { return@inTransaction AppResult.Success(it.id) }
-            // Stored 0 = not weighed yet (Harvest.awaitingPesadas); JornadaLedger.reconcile sets the sum as Pesadas link.
-            val id = jornadas.open(farm.workspaceId, farm.id, campaign.id, date, emptyList(), 0L, clock.nowInstant())
-            AppResult.Success(id)
+            // CR-010: the same automatic day the Pesadas of that date go to; opening it again
+            // returns it. Stored 0 = not weighed yet (Harvest.awaitingPesadas).
+            AppResult.Success(jornadas.autoDay(farm.workspaceId, farm.id, campaign.id, date, clock.nowInstant()))
         }
     }
 
-    override suspend fun update(id: UUID, draft: HarvestDraft): AppResult<Unit> {
-        validate(draft)?.let { return it }
-        return inTransaction("update_harvest") {
+    override suspend fun update(id: UUID, draft: HarvestDraft): AppResult<Unit> =
+        inTransaction("update_harvest") {
             val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("harvest"))
             if (current.farmId != draft.farmId) {
                 return@inTransaction AppResult.Failure(AppError.Validation("farmId", "cannot_change"))
@@ -151,6 +149,8 @@ class OfflineFirstHarvestRepository(
             if (draft.harvestDate.isBefore(campaign.startDate)) {
                 return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "before_campaign"))
             }
+            if (current.dayOrigin == AUTO_DAY) return@inTransaction updateAutoDay(current, draft)
+            validate(draft)?.let { return@inTransaction it }
             // Phase 19B: a Jornada with Pesadas takes its kilos from them, never from the form.
             val pesadas = database.deliveryDao().listLiveForHarvest(id)
             val pesadaGrams = pesadas.sumOf { it.netGrams }
@@ -180,6 +180,26 @@ class OfflineFirstHarvestRepository(
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, id, OutboxOperation.UPDATE, now)
             AppResult.Success(Unit)
         }
+
+    /**
+     * CR-010 (A1, note 2): an automatic day's date, kilos and Parcels are its Pesadas'; only what
+     * describes the day itself (method, people, machinery, notes) is the farmer's to edit.
+     */
+    private suspend fun updateAutoDay(current: HarvestEntity, draft: HarvestDraft): AppResult<Unit> {
+        if (draft.harvestDate != current.harvestDate) return AppResult.Failure(AppError.Validation("harvestDate", "automatic_day"))
+        if ((draft.workerCount ?: 0) < 0) return AppResult.Failure(AppError.Validation("workerCount", "negative"))
+        val now = clock.nowInstant()
+        database.harvestDao().upsert(
+            current.copy(
+                notes = draft.notes.normalized(),
+                collectionMethod = draft.collectionMethod?.name,
+                workerCount = draft.workerCount,
+                machineryText = draft.machineryText.normalized(),
+                metadata = current.metadata.next(now),
+            ),
+        )
+        database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, current.id, OutboxOperation.UPDATE, now)
+        return AppResult.Success(Unit)
     }
 
     override suspend fun delete(id: UUID): AppResult<Unit> =
@@ -310,6 +330,7 @@ class OfflineFirstHarvestRepository(
                 farmName = harvest.farmId?.let(farms::get),
                 campaignName = campaign?.name,
                 editable = campaign != null && campaign.status in RUNNING,
+                automatic = harvest.dayOrigin == AUTO_DAY,
             )
         }
     }

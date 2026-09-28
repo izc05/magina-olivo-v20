@@ -42,15 +42,8 @@ internal class DeliveryWriter(
         if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) throw DeliveryConflict("archived_farm")
         val campaign = database.campaignDao().findCurrent(farm.id) ?: throw DeliveryConflict("no_running_campaign")
         checkDate(draft, campaign)
-        draft.harvestId?.let { jornadas.checkLink(it, farm.id, campaign.id, draft.deliveryDate) }
-        val harvestId = if (draft.newJornada) {
-            jornadas.open(
-                farm.workspaceId, farm.id, campaign.id, draft.deliveryDate,
-                draft.shares.map { it.parcelId }, draft.netGrams!!, now,
-            )
-        } else {
-            draft.harvestId
-        }
+        // CR-010 §4: the day is found or created by Farm + Campaign + date; nobody opens it by hand.
+        val harvestId = jornadas.autoDay(farm.workspaceId, farm.id, campaign.id, draft.deliveryDate, now)
         val row = DeliveryEntity(
             id = idGenerator.newId(),
             workspaceId = farm.workspaceId,
@@ -83,15 +76,11 @@ internal class DeliveryWriter(
         if (current.farmId != draft.farmId) throw InvalidDelivery("farmId", "cannot_change")
         val campaign = runningCampaign(current)
         checkDate(draft, campaign)
-        draft.harvestId?.let { jornadas.checkLink(it, current.farmId, campaign.id, draft.deliveryDate) }
-        val harvestId = if (draft.newJornada) {
-            jornadas.open(
-                current.workspaceId, current.farmId, campaign.id, draft.deliveryDate,
-                draft.shares.map { it.parcelId }, draft.netGrams!!, now,
-            )
-        } else {
-            draft.harvestId
-        }
+        // CR-010 (note 2): a Pesada whose date is kept stays in its day (a link to a hand-recorded
+        // Jornada made before CR-010 included); a new date moves it to that date's automatic day.
+        val keptDay = current.harvestId?.takeIf { draft.deliveryDate == current.deliveryDate && liveDay(it) }
+        val harvestId = keptDay
+            ?: jornadas.autoDay(current.workspaceId, current.farmId, campaign.id, draft.deliveryDate, now)
         val row = current.copy(
             deliveryDate = draft.deliveryDate,
             destinationOrganizationId = draft.destinationOrganizationId,
@@ -112,10 +101,14 @@ internal class DeliveryWriter(
         replaceShares(row, draft, now)
         database.enqueueCollapsed(idGenerator, SyncEntityType.DELIVERY, row.id, OutboxOperation.UPDATE, now)
         jornadas.reconcile(row.harvestId, now)
+        // A1: the day it left follows the Pesadas that remain there.
         if (current.harvestId != row.harvestId) jornadas.reconcile(current.harvestId, now)
     }
 
-    /** After a Pesada is removed, its Jornada's kilos follow the Pesadas that remain. */
+    private suspend fun liveDay(harvestId: UUID): Boolean =
+        database.harvestDao().findById(harvestId)?.let { it.metadata.deletedAt == null } == true
+
+    /** After a Pesada is removed, its day's kilos follow the Pesadas that remain (A1). */
     suspend fun afterDelete(current: DeliveryEntity, now: Instant) = jornadas.reconcile(current.harvestId, now)
 
     /** A Delivery of a closed Campaign is history: it is neither edited nor deleted. */
