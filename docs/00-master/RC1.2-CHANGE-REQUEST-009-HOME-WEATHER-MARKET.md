@@ -49,6 +49,7 @@ En Inicio, la tarjeta de primera finca y la cuadrícula de accesos rápidos repi
 6. La tarjeta de Home y el detalle no mezclan precio del aceite en almazara, precio de aceituna pagado al agricultor ni ingresos estimados.
 7. Las pestañas raíz, las acciones de crear finca y los bloques existentes de Inicio no afectados siguen funcionando; volver atrás desde semana/radar/mercado regresa al punto esperado.
 8. Gate 20 se revalida: añadir B4 (semana: filas, fuente, valores ausentes) y D5 (semana en caché y antigüedad en modo avión), conservando el checklist actual. Antes de dar Gate20 por cerrado debe instalarse y probarse un APK actualizado, además del Gate físico pendiente.
+   **Enmienda del propietario (28/09/2026, decisión explícita):** el APK actualizado (0.5.0, compilación 606) se instaló y probó en el **emulador** sin defectos, y el propietario decidió cerrar Gate 20 con esa prueba. La comprobación en **móvil físico** de este checklist (incluidos B4/D5) no se elimina: pasa a la beta en dispositivo real (Fase 27), donde se ejecuta antes de publicar. Registro: `docs/06-testing/PHASE20-GATE-CHECKLIST.md`.
 
 ## Pruebas requeridas
 

@@ -597,9 +597,15 @@ Rule:
 
 ### A4. Room version order
 
-This CR's schema additions (day origin mark, day lookup index, pricing preferences/snapshots,
-Expense origins/links) take **Room v17**. Phase 21A `profile_settings` moves to **Room v18**.
-Migrations are additive and non-destructive; `RoomMigrationTest` covers 16→17.
+This CR's schema additions take **two** versions, one per slice that needs one, so every
+intermediate test APK installs over the previous one without losing data (owner decision,
+2026-09-28, when slice 2 showed the day mark cannot wait for slice 4):
+
+- **Room v17** (slice 2): day origin mark `harvests.day_origin` + day lookup index;
+- **Room v18** (slice 4): pricing preferences/snapshots and whatever the Expense links need.
+
+Phase 21A `profile_settings` moves to **Room v19**. Migrations are additive and
+non-destructive; `RoomMigrationTest` covers 16→17 and 17→18.
 
 ### Implementation notes (existing code to change)
 
@@ -631,6 +637,6 @@ Migrations are additive and non-destructive; `RoomMigrationTest` covers 16→17.
 1. Lifecycle Borrador → Activa → Cerrada + kg totals/legacy rule (A2).
 2. Automatic day on save + A1 + notes 2–3.
 3. OCR inside the Pesada form + parser time/cooperative (note 4).
-4. Pricing preferences + calculated costs through the ledger (A3, Room v17).
+4. Pricing preferences + calculated costs through the ledger (A3, Room v18).
 5. Campaign dashboard and charts (§12).
 6. Targeted visual refinement of Campaign/Recolección/Cuaderno (§13).

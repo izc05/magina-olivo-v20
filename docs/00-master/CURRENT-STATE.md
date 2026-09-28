@@ -57,8 +57,8 @@ Do not mix the deferred EPI-signature workflow or planning/reminder form redesig
 
 **Amendment 1 (approved 2026-09-28)** fixes the implementation contract: automatic days never keep
 kilos without Pesadas (A1), legacy hand-typed kg shown apart, never dropped or double counted (A2),
-calculated labour/machinery cost posted once through the Expense ledger (A3), Room v17 for CR-010
-and v18 for Phase 21A (A4), six delivery slices and **Gate CR-010** (§17 on a physical device +
+calculated labour/machinery cost posted once through the Expense ledger (A3), Room v17 (slice 2)
+and v18 (slice 4) for CR-010 and v19 for Phase 21A (A4, revised by the owner 2026-09-28), six delivery slices and **Gate CR-010** (§17 on a physical device +
 A1–A3 tests). Gate 20 PASSED 2026-09-28; production in progress.
 
 ## Current allowed phase
