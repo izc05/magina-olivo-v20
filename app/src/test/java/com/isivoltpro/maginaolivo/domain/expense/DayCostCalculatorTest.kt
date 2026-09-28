@@ -61,6 +61,10 @@ class DayCostCalculatorTest {
         assertFalse(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.MACHINERY, JornadaExpenseKind.LUBRICANT.concept(null)))
         assertFalse(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.MACHINERY, JornadaExpenseKind.LUBRICANT.concept("Aceite hidráulico")))
         assertFalse(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.FUEL, "Gasoil"))
+        // Typed in Gastos without the label: oil is still oil.
+        assertFalse(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.MACHINERY, "Aceite hidráulico"))
+        assertFalse(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.MACHINERY, "Grasa para la vibradora"))
+        assertTrue(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.MACHINERY, "Alquiler vibradora"))
         assertTrue(DayCostKind.LABOUR.isReplacedBy(ExpenseCategory.LABOR, "Cuadrilla"))
         assertEquals("Aceite/lubricante · Aceite hidráulico", JornadaExpenseKind.LUBRICANT.concept("Aceite hidráulico"))
         assertEquals("Gasoil del tractor", JornadaExpenseKind.DIESEL.concept("Gasoil del tractor"))
@@ -76,9 +80,12 @@ class DayCostCalculatorTest {
         val diesel = expense(ExpenseOrigin.MANUAL, ExpenseCategory.FUEL, "Gasoil")
         val otherDay = expense(ExpenseOrigin.MANUAL, ExpenseCategory.LABOR, "Cuadrilla", on = date.plusDays(1))
         val linkedElsewhere = expense(ExpenseOrigin.MANUAL, ExpenseCategory.LABOR, "Cuadrilla", harvest = UUID.randomUUID())
-        val rows = listOf(calculated, crew, diesel, otherDay, linkedElsewhere)
+        // An Activity's cost stays its Activity's: its next edit would drop a day link.
+        val activityCost = expense(ExpenseOrigin.ACTIVITY_COST, ExpenseCategory.LABOR, "Poda")
+        val scanned = expense(ExpenseOrigin.DOCUMENT_OCR, ExpenseCategory.LABOR, "Factura cuadrilla")
+        val rows = listOf(calculated, crew, diesel, otherDay, linkedElsewhere, activityCost, scanned)
 
-        assertEquals(listOf(crew), UnlinkedDayCosts.of(day, farm, date, rows))
+        assertEquals(listOf(crew, scanned), UnlinkedDayCosts.of(day, farm, date, rows))
         // No calculated cost on the day: nothing is ambiguous.
         assertEquals(emptyList<Expense>(), UnlinkedDayCosts.of(day, farm, date, rows - calculated))
     }

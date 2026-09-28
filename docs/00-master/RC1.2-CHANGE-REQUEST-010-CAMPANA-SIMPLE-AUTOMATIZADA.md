@@ -602,9 +602,11 @@ Rule:
   yet (§8 "only when necessary").
 - *A3 follow-up (2026-09-28):* an **unlinked** posted LABOR/MACHINERY expense of the same Farm and
   date is listed on that day with a warning whenever the day has a calculated cost it could stand
-  for (additive kinds such as oil excluded). «Enlazar a esta jornada» links it (the collision rule
-  then applies); leaving it apart keeps both, as the farmer chose. The app never links, merges or
-  drops it by itself. Closed Campaigns refuse the link.
+  for (additive kinds such as oil excluded, also when typed in Gastos: «aceite», «lubricante»,
+  «grasa»). Only hand-typed or reviewed-document costs qualify; an Activity's cost stays with its
+  Activity. The farmer answers «¿Es el mismo coste?»: «Es el mismo coste: enlazar» links it (the
+  collision rule then applies); leaving it apart keeps both. The app never links, merges or drops
+  it by itself. Closed Campaigns refuse the link.
 
 ### A4. Room version order
 

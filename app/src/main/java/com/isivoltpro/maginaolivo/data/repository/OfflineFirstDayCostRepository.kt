@@ -16,6 +16,8 @@ import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.DayCostLedger.Companion.toDomain
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.DayCostRepository
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
+import com.isivoltpro.maginaolivo.domain.expense.UnlinkedDayCosts
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -89,7 +91,8 @@ class OfflineFirstDayCostRepository(
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("harvest"))
             val expense = database.expenseDao().findById(expenseId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
-            if (expense.origin in DayCostLedger.CALCULATED || expense.harvestId != null) {
+            val origin = runCatching { ExpenseOrigin.valueOf(expense.origin) }.getOrNull()
+            if (origin !in UnlinkedDayCosts.LINKABLE || expense.harvestId != null) {
                 return@inTransaction AppResult.Failure(AppError.Conflict("not_unlinked"))
             }
             if (expense.farmId != day.farmId || expense.expenseDate != day.harvestDate) {

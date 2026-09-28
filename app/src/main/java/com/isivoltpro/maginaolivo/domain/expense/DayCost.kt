@@ -98,7 +98,7 @@ enum class DayCostKind(val origin: ExpenseOrigin, val category: ExpenseCategory,
      */
     fun isReplacedBy(category: ExpenseCategory, concept: String): Boolean =
         category == this.category &&
-            JornadaExpenseKind.entries.none { it.additive && it.category == category && concept.trim().startsWith(it.label, ignoreCase = true) }
+            JornadaExpenseKind.entries.none { it.additive && it.category == category && it.names(concept) }
 }
 
 /**
@@ -115,11 +115,17 @@ object UnlinkedDayCosts {
         if (calculated.isEmpty()) return emptyList()
         return expenses.filter { expense ->
             expense.harvestId == null && expense.farmId == farmId && expense.expenseDate == date &&
-                expense.status == ExpenseStatus.POSTED &&
-                DayCostKind.entries.none { it.origin == expense.origin } &&
+                expense.status == ExpenseStatus.POSTED && expense.origin in LINKABLE &&
                 calculated.any { it.isReplacedBy(expense.category, expense.concept) }
         }
     }
+
+    /**
+     * Only costs the farmer owns can be linked to a day: hand-typed ones and reviewed documents.
+     * An Activity's cost belongs to its Activity (its next edit would drop the link) and a
+     * calculated one to its day.
+     */
+    val LINKABLE = setOf(ExpenseOrigin.MANUAL, ExpenseOrigin.DOCUMENT_OCR)
 }
 
 interface DayCostRepository {
