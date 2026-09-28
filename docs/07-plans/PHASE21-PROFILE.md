@@ -27,11 +27,11 @@ currency; reusable Organizations (cooperative/mill/supplier/irrigation) already 
 ### 21A — Mi perfil: locality + preferred cooperative
 - «Tu municipio» (Spain list, same source as the weather municipality lookup) and
   «Tu cooperativa» (pick an existing cooperative/mill Organization or create one).
-- Stored locally; proposed **Room v18** `profile_settings` (v17 is taken by CR-010, Amendment 1 A4) (one row per workspace: municipality
+- Stored locally; proposed **Room v19** `profile_settings` (v17 and v18 are taken by CR-010, Amendment 1 A4) (one row per workspace: municipality
   code/name, preferred organization id, updated_at, sync metadata) so it is sync-ready.
 - Inicio uses it: weather for the municipality when the active Farm has no location; the
   cooperative card names the chosen cooperative (still no notices until 20E).
-- Tests: migration 17→18, contract (persists across restart, organization reference kept after
+- Tests: migration 18→19, contract (persists across restart, organization reference kept after
   rename, cleared if the organization is archived), screen test.
 
 ### 21B — Preferencias
@@ -55,6 +55,6 @@ mode (post-RC1.2); loyalty/Mi Olivo.
 ## Owner decisions needed
 | # | Decision | Answer (owner «Ok», 2026-09-27) |
 |---|---|---|
-| P1 | Store the profile in Room (sync-ready) or device preferences | **Room** (v18 after CR-010 takes v17) |
+| P1 | Store the profile in Room (sync-ready) or device preferences | **Room** (v19 after CR-010 takes v17 and v18) |
 | P2 | Default reminder advance for planned work | **1 day before, 08:00** |
 | P3 | «Exportar copia» in 21C or wait for Phase 25 | **wait for Phase 25** |
