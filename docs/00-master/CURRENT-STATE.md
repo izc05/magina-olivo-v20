@@ -59,16 +59,19 @@ Do not mix the deferred EPI-signature workflow or planning/reminder form redesig
 kilos without Pesadas (A1), legacy hand-typed kg shown apart, never dropped or double counted (A2),
 calculated labour/machinery cost posted once through the Expense ledger (A3), Room v17 for CR-010
 and v18 for Phase 21A (A4), six delivery slices and **Gate CR-010** (§17 on a physical device +
-A1–A3 tests). Production starts after Gate 20 PASS.
+A1–A3 tests). Gate 20 PASSED 2026-09-28; production in progress.
 
 ## Current allowed phase
 
 ```text
-▶ GATE 20 — READY FOR THE OWNER'S FINAL DEVICE TEST on APK 0.5.0 (2026-09-28).
-  Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md (A Perfil/versión · B tiempo y radar ·
-  C mercado del aceite · D caché/offline · E Mi Campo → Cuaderno → Jornada/Pesada · F cooperativa).
-  Phase 21 does NOT start until every check is ☑ on a physical phone.
-  Owner device checks (Gate 20, D1–D12, #254) still pending.
+▶ CR-010 — CAMPAÑA SIMPLE (Issue #254), executor Claude, after Gate 20 PASS.
+  1a (#288) and 1b (#289) MERGED. 2 automatic day (#290, Room v17) and 3 ticket in Nueva pesada
+  (#291) green, merging in order. Next: 4 pricing + ledger costs (Room v18) · 5 dashboard/charts ·
+  6 visual refinement. Gate CR-010 = §17 on a physical device + A1–A3 tests.
+✔ GATE 20 PASS — owner decision 2026-09-28: APK 0.5.0 build 606 tested on the emulator, no
+  defects; the owner chose to close Gate 20 on it. Physical-phone re-check in the Phase 27 beta.
+  Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md.
+  UX-246 device checks D1–D12 remain open in docs/06-testing/UX-246-GATE-CHECKLIST.md.
   UX owner-feedback review (Codex, branch codex/android-ux-review-0.3.0 @71a5e7f, reviewed and
   merged by Claude): Mi Campo empty state, farm/parcel forms folded, single "Añadir" for parcels,
   "Registrar hoy" type-first + Completed. Report: docs/06-testing/UX-OWNER-FEEDBACK-2026-09-27.md.
@@ -89,7 +92,7 @@ A1–A3 tests). Production starts after Gate 20 PASS.
   stronger Campaign analytics and the targeted visual correction. Do not mark #254 complete until
   the CR-010 physical-device E2E passes.
 
-⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS: slices 20A–20D merged; Gate 20 PENDING device test.
+✔ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS: slices 20A–20D merged; Gate 20 PASS 2026-09-28 (owner, emulator).
   20A (#243), 20B + deploy (#247), 20B-fix (#257), 20B-radar (#259), 20C (#260): MERGED.
   20D oil market: SOURCE APPROVED 2026-09-27 (Junta de Andalucía Observatorio, weekly prices at
   almazara/bodega; MAPA and EU DG AGRI as comparison sources; POOLred not approved) — next slice,
