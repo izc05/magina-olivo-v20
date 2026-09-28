@@ -60,11 +60,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Phase 20D (Issue #271) — «Mercado del aceite» on Inicio, two layers kept apart:
- * - **Pulso diario**: AOVE.net's own embeddable widget, shown as the publisher hosts it (online
- *   only, with its credit); its figures are never copied into the app.
- * - **Tendencia oficial semanal**: the Junta de Andalucía weeks from the phone's cache, with the
- *   change from the previous week. A weekly figure is never called "hoy".
+ * «Mercado del aceite» preview on Inicio: only the official weekly trend from the Junta, compacted
+ * to a graph so it is readable at a glance. The daily AOVE.net widget lives on the detail screen;
+ * the two sources and cadences are never combined.
  */
 @Composable
 internal fun OilMarketCard(
