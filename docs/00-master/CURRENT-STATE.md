@@ -41,7 +41,10 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ## Current allowed phase
 
 ```text
-▶ 20D-3 IN PROGRESS (Claude) — oil market source on + "Mercado del aceite" screen, app 0.5.0.
+▶ GATE 20 — READY FOR THE OWNER'S FINAL DEVICE TEST on APK 0.5.0 (2026-09-28).
+  Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md (A Perfil/versión · B tiempo y radar ·
+  C mercado del aceite · D caché/offline · E Mi Campo → Cuaderno → Jornada/Pesada · F cooperativa).
+  Phase 21 does NOT start until every check is ☑ on a physical phone.
   Owner device checks (Gate 20, D1–D12, #254) still pending.
   UX owner-feedback review (Codex, branch codex/android-ux-review-0.3.0 @71a5e7f, reviewed and
   merged by Claude): Mi Campo empty state, farm/parcel forms folded, single "Añadir" for parcels,
@@ -49,7 +52,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   GLOBAL UX AUDIT NOT COMPLETE: Inicio next (hierarchy/density with the owner; "campaña en
   Preparación" wording), then Producción/Gastos, Perfil/Ajustes, Avisos, Maquinaria, Mapa/Catastro,
   offline and every activity type — on the emulator's existing data set (no data wipe).
-  App version on main: 0.4.0 (0.5.0 with 20D-3) (docs/CHANGELOG-APP.md; Perfil shows "Versión · compilación").
+  App version on main: 0.5.0 (docs/CHANGELOG-APP.md; Perfil shows "Versión · compilación").
 
   Issue #246 / CR-007 UX reorganisation: UX-A…UX-F MERGED (#248–#252); UX-G QA done in CI.
   Closes with the owner's device checks D1–D12 (docs/06-testing/UX-246-GATE-CHECKLIST.md).
@@ -61,7 +64,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   #264 254-C Jornada yield · #268 254-D labour per person · #269 254-E no duplicates + E2E.
   Plan: docs/07-plans/ISSUE-254-RECOLLECTION.md. Open until the owner checks it on the phone.
 
-⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS: slices done; Gate 20 PENDING.
+⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS: slices 20A–20D merged; Gate 20 PENDING device test.
   20A (#243), 20B + deploy (#247), 20B-fix (#257), 20B-radar (#259), 20C (#260): MERGED.
   20D oil market: SOURCE APPROVED 2026-09-27 (Junta de Andalucía Observatorio, weekly prices at
   almazara/bodega; MAPA and EU DG AGRI as comparison sources; POOLred not approved) — next slice,
@@ -73,7 +76,7 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
   20D-2 MERGED (PR #274, #276, #278): `oil-market` Edge Function (Junta adapter; the live
   header "Semana 38: (14/9/26 - 20/9/26)" fixed in #278). DEPLOYED 2026-09-28, deploy run #3:
   HTTP 200 from eu-west-3, 401 without key.
-  20D-3 (in progress): app switch on + "Mercado del aceite" screen with the 12-week chart.
+  20D-3 MERGED (PR #280, 0.5.0): official source on + "Mercado del aceite" screen, 12-week chart.
   20E cooperative notices:
   DEFERRED (D4). Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md (G1–G7).
   Still owed by the owner: deploy run #6 summary and the AEMET error line.

@@ -11,7 +11,7 @@ Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.
 Para saber qué lleva un APK: mira la versión en el Perfil y busca abajo su bloque; la compilación
 concreta está en la ejecución de CI con ese número (Actions → Android CI → #número).
 
-## 0.5.0 — en curso
+## 0.5.0 — 28/09/2026
 
 - Mercado del aceite con datos oficiales (Fase 20D-3):
   - La «Tendencia oficial semanal» de Inicio se enciende: AOVE, Virgen y Lampante de la Junta de
