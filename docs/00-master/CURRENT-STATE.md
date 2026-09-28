@@ -76,10 +76,12 @@ Do not mix the deferred EPI-signature workflow or planning/reminder form redesig
   Follow-ups merged 2026-09-27: Cuaderno day-by-day chronology + visual hierarchy (#265), short
   work form (#266), visible version/build (#267).
 
-  Issue #254 (Recolección simplificada; Codex work carried by Claude, owner OK): COMPLETE in main.
-  #261 brand + "Pesada" + preset form · #262 254-A Pesada origin (Room v16) · #263 254-B 2×2 ·
-  #264 254-C Jornada yield · #268 254-D labour per person · #269 254-E no duplicates + E2E.
-  Plan: docs/07-plans/ISSUE-254-RECOLLECTION.md. Open until the owner checks it on the phone.
+  Issue #254 historical implementation (#261/#262/#263/#264/#268/#269) remains merged and is the
+  compatibility base, but **#254 is RE-SCOPED and ACTIVE again under CR-010 (2026-09-28)**.
+  The previous manual Jornada-oriented UX is not the final target. CR-010 now requires automatic
+  day/Jornada grouping, OCR integrated in Nueva Pesada, optional labour/machinery pricing,
+  stronger Campaign analytics and the targeted visual correction. Do not mark #254 complete until
+  the CR-010 physical-device E2E passes.
 
 ⏸ PHASE 20 — HOME CONTEXTUAL SERVICES + WEATHER VISUALS: slices 20A–20D merged; Gate 20 PENDING device test.
   20A (#243), 20B + deploy (#247), 20B-fix (#257), 20B-radar (#259), 20C (#260): MERGED.
@@ -137,7 +139,11 @@ Gate 5 is recorded as PASS in `docs/06-testing/PHASE5-GATE-CHECKLIST.md`. Gate 6
 6. `docs/00-master/RC1.2-CHANGE-REQUEST-004-DESIGN-V3.md`
 7. `docs/00-master/RC1.2-CHANGE-REQUEST-005-CUADERNO-CAMPANA.md`
 8. `docs/00-master/RC1.2-CHANGE-REQUEST-006-WEATHER-EDGE-FUNCTIONS.md`
-9. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
+9. `docs/00-master/RC1.2-CHANGE-REQUEST-007-CUADERNO-NAVIGATION.md`
+10. `docs/00-master/RC1.2-CHANGE-REQUEST-008-WEATHER-WEEK-LOCATION.md`
+11. `docs/00-master/RC1.2-CHANGE-REQUEST-009-HOME-WEATHER-MARKET.md`
+12. `docs/00-master/RC1.2-CHANGE-REQUEST-010-CAMPANA-SIMPLE-AUTOMATIZADA.md`
+13. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
 10. `docs/design/VISUAL_DESIGN_LOCK.md`
 11. `docs/design/DESIGN_SYSTEM.md`
 12. `docs/00-master/RC1.1-PRODUCT-LOCK.md`
