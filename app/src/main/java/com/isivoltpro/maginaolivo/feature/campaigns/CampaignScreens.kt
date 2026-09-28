@@ -41,6 +41,7 @@ import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelOption
+import com.isivoltpro.maginaolivo.domain.notebook.legacyUnweighedGrams
 import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
@@ -156,6 +157,8 @@ data class CampaignSummaryUi(
     val harvestCount: Int = 0,
     val deliveredGrams: Long? = null,
     val deliveryCount: Int = 0,
+    /** CR-010 A2: hand-typed legacy kilos with no Pesada; shown apart, never in the total. */
+    val legacyGrams: Long? = null,
     val fatYieldHundredths: Int? = null,
     val expensesMinor: Long? = null,
 )
@@ -183,6 +186,7 @@ fun CampaignDetailRoute(
             harvestCount = harvest.harvestCount,
             deliveredGrams = delivery.deliveredGrams.takeIf { delivery.deliveryCount > 0 },
             deliveryCount = delivery.deliveryCount,
+            legacyGrams = legacyUnweighedGrams(harvests, deliveries).takeIf { it > 0 },
             fatYieldHundredths = delivery.fatYield?.hundredths,
             expensesMinor = ledger.totalMinor.takeIf { ledger.postedCount > 0 },
         )
@@ -276,6 +280,14 @@ fun CampaignDetailScreen(
                             },
                         ),
                     )
+                    summary.legacyGrams?.let { legacy ->
+                        Text(
+                            "Además, ${Weight.format(legacy)} registrados sin pesada (histórico): no entran en el total de kg pesados.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MoTextSecondary,
+                            modifier = Modifier.testTag("campaign-legacy-kilos"),
+                        )
+                    }
                     MoSectionHeader("Parcelas de la campaña")
                     if (campaign.snapshots.isEmpty()) {
                         MoEmptyState("Sin parcelas", "Edita la campaña para elegir qué parcelas participan.", icon = MoIcons.Parcels)

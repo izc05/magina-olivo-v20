@@ -125,6 +125,24 @@ class NotebookViewsTest {
         assertEquals(2, costs.documents.size)
     }
 
+    @Test fun legacyHandTypedKilosAreShownApartNeverDroppedNorAddedToThePesadasTotal() {
+        // CR-010 A2. A legacy Jornada typed by hand with no Pesada, one reconciled with its Pesada,
+        // and one opened today still awaiting its first Pesada.
+        val legacy = harvest(4_000_000, day1)
+        val weighed = harvest(2_000_000, day1)
+        val awaiting = harvest(0, day1)
+        val pesada = delivery(2_000_000, day1).copy(harvestId = weighed.id)
+        val notebook = project(harvests = listOf(legacy, weighed, awaiting), deliveries = listOf(pesada))
+
+        assertEquals(4_000_000L, notebook.legacyUnweighedGrams)
+        // The principal total is the Pesadas' only.
+        assertEquals(2_000_000L, notebook.deliverySummary.deliveredGrams)
+        // Nothing legacy: nothing to show apart.
+        assertEquals(0L, project(harvests = listOf(weighed), deliveries = listOf(pesada)).legacyUnweighedGrams)
+        // A Jornada awaiting its first Pesada has no kilos: never legacy history.
+        assertEquals(0L, legacyUnweighedGrams(listOf(awaiting), emptyList()))
+    }
+
     @Test fun pendingDeliveryIsKnownOnlyWhenItAddsUp() {
         val picked = listOf(harvest(3_000_000, day1))
         assertEquals(1_000_000L, project(harvests = picked, deliveries = listOf(delivery(2_000_000, day1))).pendingDeliveryGrams)

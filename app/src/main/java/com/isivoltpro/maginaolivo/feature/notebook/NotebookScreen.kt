@@ -41,6 +41,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import com.isivoltpro.maginaolivo.domain.notebook.RecollectionItem
+import com.isivoltpro.maginaolivo.domain.notebook.legacyUnweighedGrams
 import com.isivoltpro.maginaolivo.domain.notebook.pendingDeliveryGrams
 import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
@@ -274,6 +275,14 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
             },
         ),
     )
+    notebook.legacyUnweighedGrams.takeIf { it > 0 }?.let { legacy ->
+        Text(
+            "Además, ${Weight.format(legacy)} registrados sin pesada (histórico)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("notebook-legacy-kilos"),
+        )
+    }
     MoPrimaryButton("+ Nueva pesada", actions.onDeliveries, Modifier.fillMaxWidth().testTag("notebook-open-deliveries"))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         MoSecondaryButton("Jornadas", actions.onHarvests, Modifier.weight(1f).testTag("notebook-open-harvests"))
