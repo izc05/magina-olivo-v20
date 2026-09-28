@@ -13,7 +13,7 @@ out of scope («sin GPS ni selector nuevo»).
 
 The owner's criterion (Codex review on #281): header and weather share one municipality, the manual
 choice stays, and «Seguir mi ubicación» is offered only with explicit permission, foreground only,
-never hidden background tracking. Phase 21A already owns «Tu municipio» (Room v17
+never hidden background tracking. Phase 21A already owns «Tu municipio» (Room v18
 `profile_settings`, approved as P1); location following is in no approved scope.
 
 ## Proposed change
@@ -41,7 +41,7 @@ Phase 21: 21A grows by ~1.5–2 days; Gate 21 gains the location-mode check. Gat
 
 ## Data impact
 
-Rides 21A's approved Room v17 `profile_settings` (one extra mode field); no extra migration.
+Rides 21A's approved Room v18 `profile_settings` (one extra mode field); no extra migration.
 
 ## Offline/sync impact
 
