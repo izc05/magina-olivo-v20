@@ -1,0 +1,31 @@
+[
+  {
+    "origen": { "productor": "Agencia Estatal de Meteorología", "web": "https://www.aemet.es" },
+    "elaborado": "2026-09-25T07:40:00",
+    "nombre": "Bedmar y Garcíez",
+    "provincia": "Jaén",
+    "prediccion": {
+      "dia": [
+        {
+          "fecha": "2026-09-25",
+          "temperatura": { "maxima": 25, "minima": 13 },
+          "probPrecipitacion": [
+            { "value": 10, "periodo": "00-12" },
+            { "value": 30, "periodo": "12-24" }
+          ],
+          "precipitacion": [
+            { "value": 0.2, "periodo": "00-12" },
+            { "value": 1.2, "periodo": "12-24" }
+          ],
+          "estadoCielo": [
+            { "value": "12", "periodo": "00-12", "descripcion": "Intervalos nubosos" },
+            { "value": "13", "periodo": "12-24", "descripcion": "Poco nuboso" }
+          ],
+          "viento": [
+            { "direccion": "O", "velocidad": 18, "periodo": "00-24" }
+          ]
+        }
+      ]
+    }
+  }
+]

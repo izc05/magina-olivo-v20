@@ -1,6 +1,6 @@
 # Phase 20 Gate Checklist — Home contextual services + weather visuals
 
-Status: **READY FOR THE OWNER'S FINAL DEVICE TEST** on APK **0.5.0** (updated 2026-09-28).
+Status: **OPEN — PR #284 changes need a new APK and owner device test** (updated 2026-09-28).
 Gate 20 closes only when every check below is ☑ on a physical phone. Phase 21 does not start before.
 
 **Gate 20:** failure of every external feed still leaves Mi Campo, Cuaderno and the harvest flow
@@ -65,14 +65,14 @@ Pesada, «Kg pendientes de pesada» instead of 0 kg, farm card during «Recolecc
 | B1 | Inicio with coverage and a farm with municipality | Tiempo with its source («AEMET» or «MET Norway») and «Actualizado hace …»; header look matches the sky | ☐ |
 | B2 | «Ver radar de lluvia» with coverage | Radar over the farm, with the frame time and «RainViewer» | ☐ |
 | B3 | Ajustes del teléfono → Accesibilidad → quitar animaciones, open Inicio | Header without movement; text readable | ☐ |
+| B4 | Inicio → «Ver previsión» sobre la foto, también con letra ampliada | Temperatura grande, icono del estado y municipio consultado; proveedor y antigüedad visibles; detalle con lluvia/viento disponibles y hasta siete días; valores ausentes como «—»/no disponibles; radar y regreso a Inicio; sin textos/botones recortados | ☐ |
 
 ### C. Mercado del aceite
 
 | # | Check | Expected | Result |
 |---|---|---|---|
-| C1 | Inicio → «Mercado del aceite» with coverage | «Pulso diario» (AOVE.net) complete, not cut at Lampante, with «Fuente: AOVE.net» | ☐ |
-| C2 | Same card, «Tendencia oficial semanal» | AOVE, Virgen, Lampante with €/kg and «↑/↓ x % esta semana» (or «sin cambio»); «Semana N (fechas) · Observatorio … Junta de Andalucía · precio en almazara»; never «hoy» | ☐ |
-| C3 | «Ver mercado» | Screen with the pulse, the weekly trend and the «Últimas 12 semanas» chart (3 lines + legend); below it the same numbers in words, source and «consultado …» | ☐ |
+| C1 | Inicio → tarjeta compacta «Mercado del aceite» con cobertura | Gráfica oficial de 12 semanas con tres líneas/leyenda y últimos valores AOVE, Virgen y Lampante en €/kg; semana y fuente visibles; sin widget largo incrustado | ☐ |
+| C2 | Inicio → «Ver mercado» | Detalle mantiene el pulso AOVE.net, la tendencia oficial y el gráfico de 12 semanas; precio del aceite claramente separado del precio de aceituna | ☐ |
 | C4 | Compare with the Junta page (Observatorio → Aceites de oliva → Últimos precios) | Last week's AOVE / Virgen / Lampante match | ☐ |
 
 ### D. Caché / sin conexión
@@ -83,6 +83,7 @@ Pesada, «Kg pendientes de pesada» instead of 0 kg, farm card during «Recolecc
 | D2 | Airplane mode, «Ver radar» | «El radar necesita conexión» + Reintentar; no old picture | ☐ |
 | D3 | Airplane mode, Mercado del aceite | Official weeks still shown (from the phone) with their week and source; «Pulso diario no disponible sin conexión» | ☐ |
 | D4 | Back online, wait / reopen Inicio | Pulse loads again by itself; weather refreshes | ☐ |
+| D5 | Airplane mode → Inicio → abrir Tiempo | Semana en caché con fuente y antigüedad; si no hay semana guardada, mensaje claro de que se necesita conexión | ☐ |
 
 ### E. Mi Campo → Cuaderno → Jornada / Pesada (in airplane mode)
 

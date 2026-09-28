@@ -4,6 +4,7 @@
 
 import {
   type Current,
+  type DailyForecast,
   type ForecastRequest,
   type Place,
   type ProviderId,
@@ -11,7 +12,7 @@ import {
   ProviderError,
   type WeatherResponse,
 } from "./contract.ts";
-import { aemetDocument, parseAemetHourly } from "./aemet.ts";
+import { aemetDocument, parseAemetDaily, parseAemetHourly } from "./aemet.ts";
 import { metnoDocument, parseMetNo } from "./metno.ts";
 import { type MasterEntry, resolveMunicipality } from "./municipalities.ts";
 
@@ -72,7 +73,7 @@ function validRequest(body: unknown): ForecastRequest | null {
   return request;
 }
 
-function respond(provider: ProviderId, place: Place, reading: { current: Current; updatedAt: string }, now: Date): Result {
+function respond(provider: ProviderId, place: Place, reading: { current: Current; daily: DailyForecast[]; updatedAt: string }, now: Date): Result {
   return {
     status: 200,
     body: {
@@ -83,6 +84,7 @@ function respond(provider: ProviderId, place: Place, reading: { current: Current
       fetchedAt: now.toISOString(),
       location: { code: place.code, name: place.name, province: place.province },
       current: reading.current,
+      daily: reading.daily,
     },
   };
 }
@@ -103,19 +105,34 @@ export async function handleForecast(rawBody: unknown, deps: Deps): Promise<Resu
     place = resolution.place;
   }
 
-  // 1. AEMET (needs the INE code, hence the resolved place).
+  // A provider's current reading without its week: answered only when no provider has a week, so
+  // the week never goes missing silently and a missing week never costs the current weather.
+  let currentOnly: { provider: ProviderId; place: Place; current: Current; updatedAt: string } | null = null;
+
+  // 1. AEMET (needs the INE code, hence the resolved place). Hourly and daily are asked in parallel
+  //    so the chain stays inside the app's 10 s budget (as before the week existed).
   if (place && deps.aemetApiKey) {
-    try {
-      const doc = await aemetDocument(
-        `/prediccion/especifica/municipio/horaria/${place.code}`,
-        deps.aemetApiKey,
-        deps.fetch,
-        timeoutMs,
-      );
-      return respond("AEMET", place, parseAemetHourly(doc, deps.now()), deps.now());
-    } catch (error) {
-      deps.log?.(`AEMET failed, falling back: ${(error as Error).message}`);
+    const key = deps.aemetApiKey;
+    const [hourlyResult, dailyResult] = await Promise.allSettled([
+      aemetDocument(`/prediccion/especifica/municipio/horaria/${place.code}`, key, deps.fetch, timeoutMs)
+        .then((doc) => parseAemetHourly(doc, deps.now())),
+      aemetDocument(`/prediccion/especifica/municipio/diaria/${place.code}`, key, deps.fetch, timeoutMs)
+        .then((doc) => parseAemetDaily(doc, deps.now())),
+    ]);
+    if (hourlyResult.status === "fulfilled" && dailyResult.status === "fulfilled") {
+      const hourly = hourlyResult.value;
+      const daily = dailyResult.value;
+      // The combined response is no newer than either provider product.
+      const updatedAt = new Date(Math.min(Date.parse(hourly.updatedAt), Date.parse(daily.updatedAt))).toISOString();
+      return respond("AEMET", place, { current: hourly.current, daily: daily.daily, updatedAt }, deps.now());
     }
+    if (hourlyResult.status === "fulfilled") {
+      currentOnly = { provider: "AEMET", place, current: hourlyResult.value.current, updatedAt: hourlyResult.value.updatedAt };
+    }
+    const reasons = [hourlyResult, dailyResult]
+      .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+      .map((result) => (result.reason as Error).message);
+    deps.log?.(`AEMET incomplete, falling back: ${reasons.join(", ")}`);
   }
 
   // 2. MET Norway (needs coordinates: from the resolved place, else from the request).
@@ -131,12 +148,19 @@ export async function handleForecast(rawBody: unknown, deps: Deps): Promise<Resu
         latitude,
         longitude,
       };
-      return respond("MET_NORWAY", fallbackPlace, parseMetNo(doc, deps.now()), deps.now());
+      const reading = parseMetNo(doc, deps.now());
+      if (reading.daily.length > 0) return respond("MET_NORWAY", fallbackPlace, reading, deps.now());
+      currentOnly ??= { provider: "MET_NORWAY", place: fallbackPlace, current: reading.current, updatedAt: reading.updatedAt };
+      deps.log?.("MET Norway gave no usable week");
     } catch (error) {
       deps.log?.(`MET Norway failed: ${(error as Error).message}`);
     }
   }
 
+  // 3. No provider has a week: the current weather of one provider, with an empty week.
+  if (currentOnly) {
+    return respond(currentOnly.provider, currentOnly.place, { current: currentOnly.current, daily: [], updatedAt: currentOnly.updatedAt }, deps.now());
+  }
   return { status: 502, body: { error: "providers_unavailable" } };
 }
 

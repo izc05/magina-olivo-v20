@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { handleForecast, resetMasterCache } from "./handler.ts";
 import { resolveMunicipality } from "./municipalities.ts";
-import { aemetCondition, parseAemetHourly } from "./aemet.ts";
+import { aemetCondition, parseAemetDaily, parseAemetHourly } from "./aemet.ts";
 import { metnoCondition, parseMetNo } from "./metno.ts";
 import { madridLocalToIso } from "./time.ts";
 
@@ -12,6 +12,7 @@ const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${
 const MASTER = fixture("aemet-municipios.json");
 const META = fixture("aemet-meta.json");
 const HOURLY = fixture("aemet-horaria-bedmar.json");
+const DAILY = fixture("aemet-diaria-bedmar.json");
 const METNO = fixture("metno-compact.json");
 // 08:30 in Madrid (CEST, UTC+2).
 const NOW = new Date("2026-09-25T06:30:00Z");
@@ -37,6 +38,8 @@ const metno = (reply = json(METNO)): Route => ({ match: (u) => u.startsWith("htt
 const aemetOk: Route[] = [
   { match: (u) => u.includes("/prediccion/especifica/municipio/horaria/23000"), reply: json(META) },
   { match: (u) => u.endsWith("/datos-bedmar"), reply: json(HOURLY) },
+  { match: (u) => u.includes("/prediccion/especifica/municipio/diaria/23000"), reply: json({ ...META, datos: "https://opendata.aemet.es/datos-bedmar-daily" }) },
+  { match: (u) => u.endsWith("/datos-bedmar-daily"), reply: json(DAILY) },
 ];
 const deps = (fn: (u: string) => Promise<Response>, key: string | null = "test-key") => ({
   fetch: fn,
@@ -86,6 +89,36 @@ test("MET Norway compact: the step covering now; no rain probability is invented
   assert.equal(updatedAt, "2026-09-25T05:12:44.000Z");
   assert.equal(metnoCondition("lightrainshowers_day"), "RAIN");
   assert.equal(metnoCondition("heavysnowandthunder"), "STORM");
+  assert.deepEqual(parseMetNo(METNO, NOW).daily, [
+    {
+      date: "2026-09-25",
+      minTemperatureC: 16,
+      maxTemperatureC: 17,
+      condition: "PARTLY_CLOUDY",
+      rainProbabilityPercent: null,
+      rainMm: 0.2,
+      windKmh: 14,
+    },
+  ]);
+});
+
+test("AEMET daily keeps unknown fields null, skips past dates and caps the week at seven days", () => {
+  const day = (fecha: string) => ({ fecha, temperatura: { maxima: "—", minima: 12 } });
+  const result = parseAemetDaily({ prediccion: { dia: [
+    day("2026-09-24"),
+    ...["2026-09-25", "2026-09-26", "2026-09-27", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03"]
+      .map(day),
+  ] } }, NOW);
+  assert.equal(result.daily.length, 7);
+  assert.deepEqual(result.daily[0], {
+    date: "2026-09-25",
+    minTemperatureC: 12,
+    maxTemperatureC: null,
+    condition: null,
+    rainProbabilityPercent: null,
+    rainMm: null,
+    windKmh: null,
+  });
 });
 
 test("AEMET answers: MET Norway is never asked", async () => {
@@ -100,7 +133,80 @@ test("AEMET answers: MET Norway is never asked", async () => {
   assert.equal(body.updatedAt, "2026-09-25T05:40:00.000Z");
   assert.equal(body.fetchedAt, NOW.toISOString());
   assert.equal(body.location.code, "23000");
+  assert.deepEqual(body.daily, [
+    {
+      date: "2026-09-25",
+      minTemperatureC: 13,
+      maxTemperatureC: 25,
+      condition: "PARTLY_CLOUDY",
+      rainProbabilityPercent: 30,
+      rainMm: 1.4,
+      windKmh: 18,
+    },
+  ]);
   assert.equal(calls.filter((u) => u.includes("api.met.no")).length, 0);
+});
+
+test("AEMET cannot provide a partial week then borrow MET Norway days", async () => {
+  resetMasterCache();
+  const { fn } = fakeFetch([
+    master,
+    ...aemetOk.filter((route) => !route.match("https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/23000")),
+    { match: (u) => u.includes("/prediccion/especifica/municipio/diaria/"), reply: json({}, 503) },
+    metno(),
+  ]);
+  const result = await handleForecast({ municipality: "Bedmar", province: "Jaén" }, deps(fn));
+  assert.equal(result.status, 200);
+  const body = result.body as { provider: string; daily: unknown[] };
+  assert.equal(body.provider, "MET_NORWAY");
+  assert.ok(body.daily.length > 0);
+});
+
+test("a missing week never costs the current weather: current-only from one provider, empty week", async () => {
+  resetMasterCache();
+  // AEMET hourly fine, AEMET daily down, MET Norway down: AEMET's current weather, no week.
+  const { fn } = fakeFetch([
+    master,
+    ...aemetOk.filter((route) => !route.match("https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/23000")),
+    { match: (u) => u.includes("/prediccion/especifica/municipio/diaria/"), reply: json({}, 503) },
+    metno(json({}, 500)),
+  ]);
+  const result = await handleForecast({ municipality: "Bedmar", province: "Jaén" }, deps(fn));
+  assert.equal(result.status, 200);
+  const body = result.body as { provider: string; daily: unknown[]; current: { temperatureC: number } };
+  assert.equal(body.provider, "AEMET");
+  assert.equal(body.current.temperatureC, 16);
+  assert.deepEqual(body.daily, []);
+});
+
+test("AEMET hourly and daily are asked in parallel, not one after the other", async () => {
+  resetMasterCache();
+  const started: string[] = [];
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const routes = [master, ...aemetOk, metno()];
+  const fn = async (input: string) => {
+    if (input.includes("/prediccion/especifica/municipio/")) {
+      started.push(input.includes("/horaria/") ? "horaria" : "diaria");
+      if (started.length === 2) release();
+      await gate; // the first metadata call waits until the second has started
+    }
+    return routes.find((r) => r.match(input))!.reply();
+  };
+  const result = await handleForecast({ municipality: "Bedmar", province: "Jaén" }, deps(fn));
+  assert.equal(result.status, 200);
+  assert.deepEqual([...started].sort(), ["diaria", "horaria"]);
+});
+
+test("MET Norway day extremes include the provider's own 6-hour min/max within the day", () => {
+  const doc = structuredClone(METNO);
+  doc.properties.timeseries[0].data.next_6_hours = {
+    summary: { symbol_code: "partlycloudy_day" },
+    details: { air_temperature_min: 11.2, air_temperature_max: 24.6 },
+  };
+  const today = parseMetNo(doc, NOW).daily[0];
+  assert.equal(today.minTemperatureC, 11);
+  assert.equal(today.maxTemperatureC, 25);
 });
 
 for (const [label, reply] of [

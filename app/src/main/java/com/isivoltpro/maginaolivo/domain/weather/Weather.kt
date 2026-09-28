@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo.domain.weather
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 /** Sky as the source reports it; the visual layer (20C) derives only from this. */
@@ -17,6 +18,17 @@ enum class WeatherCondition(val label: String) {
     HAZE("Calima"),
 }
 
+/** Daily values supplied by one provider. Null means the source did not publish that measure. */
+data class WeatherDayForecast(
+    val date: LocalDate,
+    val minTemperatureC: Int?,
+    val maxTemperatureC: Int?,
+    val condition: WeatherCondition?,
+    val rainProbabilityPercent: Int?,
+    val rainMm: Double?,
+    val windKmh: Int?,
+)
+
 /** The weather for the coming hours; every optional figure is null when the source omits it. */
 data class WeatherNow(
     val temperatureC: Int,
@@ -29,6 +41,8 @@ data class WeatherNow(
     val updatedAt: Instant? = null,
     /** The provider's required credit, shown with the value (20B). */
     val attribution: String? = null,
+    /** Optional additive field: empty for pre-week responses and legacy cache rows. */
+    val daily: List<WeatherDayForecast> = emptyList(),
 )
 
 /** What a source answered: the provider that actually produced it, and the value. */
@@ -52,7 +66,7 @@ interface WeatherFeed {
 
 /** Stored form of [WeatherNow] in the local cache: plain `key=value` lines, no JSON library. */
 object WeatherCodec {
-    fun encode(weather: WeatherNow): String = listOfNotNull(
+    fun encode(weather: WeatherNow): String = (listOfNotNull(
         "t=${weather.temperatureC}",
         "c=${weather.condition.name}",
         weather.rainProbabilityPercent?.let { "p=$it" },
@@ -60,7 +74,17 @@ object WeatherCodec {
         "at=${weather.validAt.epochSecond}",
         weather.updatedAt?.let { "u=${it.epochSecond}" },
         weather.attribution?.let { "a=${it.replace('\n', ' ')}" },
-    ).joinToString("\n")
+    ) + weather.daily.map { day ->
+            "d=${listOf(
+                day.date.toString(),
+                day.minTemperatureC?.toString().orEmpty(),
+                day.maxTemperatureC?.toString().orEmpty(),
+                day.condition?.name.orEmpty(),
+                day.rainProbabilityPercent?.toString().orEmpty(),
+                day.rainMm?.toString().orEmpty(),
+                day.windKmh?.toString().orEmpty(),
+            ).joinToString("|")}"
+        }).joinToString("\n")
 
     /** Null when the stored text is not a complete weather value (never a partial guess). */
     fun decode(text: String): WeatherNow? {
@@ -70,6 +94,21 @@ object WeatherCodec {
         val temperature = fields["t"]?.toIntOrNull() ?: return null
         val condition = fields["c"]?.let { name -> WeatherCondition.entries.firstOrNull { it.name == name } } ?: return null
         val validAt = fields["at"]?.toLongOrNull()?.let(Instant::ofEpochSecond) ?: return null
+        val daily = text.lines().mapNotNull { line ->
+            if (!line.startsWith("d=")) return@mapNotNull null
+            val columns = line.removePrefix("d=").split('|')
+            if (columns.size != 7) return@mapNotNull null
+            val date = runCatching { LocalDate.parse(columns[0]) }.getOrNull() ?: return@mapNotNull null
+            WeatherDayForecast(
+                date = date,
+                minTemperatureC = columns[1].toIntOrNull(),
+                maxTemperatureC = columns[2].toIntOrNull(),
+                condition = WeatherCondition.entries.firstOrNull { it.name == columns[3] },
+                rainProbabilityPercent = columns[4].toIntOrNull(),
+                rainMm = columns[5].toDoubleOrNull(),
+                windKmh = columns[6].toIntOrNull(),
+            )
+        }
         return WeatherNow(
             temperature,
             condition,
@@ -78,6 +117,7 @@ object WeatherCodec {
             validAt,
             fields["u"]?.toLongOrNull()?.let(Instant::ofEpochSecond),
             fields["a"]?.takeIf { it.isNotBlank() },
+            daily,
         )
     }
 }

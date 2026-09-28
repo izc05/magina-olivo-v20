@@ -22,31 +22,27 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
-/**
- * Phase 20A — Gate 20 core: with every external feed failing, Inicio still shows the farm,
- * the campaign, the next work and the quick access; a feed value always shows its source,
- * its age and whether it is out of date.
- */
+/** Home stays usable while feeds load; weather lives in the hero and redundant shortcuts are gone. */
 class HomeFeedsScreenTest {
     @get:Rule val composeRule = createComposeRule()
 
     private val now = Instant.parse("2026-11-26T13:00:00Z")
     private val bedmar = FeedLocation("Bedmar", "Jaén")
 
-    @Test fun everyFeedFailingLeavesTheFarmFullyUsable() {
+    @Test fun externalFeedsDoNotReplaceFarmSummaryAndQuickAccessIsRemoved() {
         show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Unavailable))
-        composeRule.onNodeWithTag("home-stats").assertIsDisplayed()
+        composeRule.onNodeWithTag("home-weather-summary").assertIsDisplayed().assertTextContains("Bedmar", substring = true)
+        composeRule.onNodeWithTag("home-stats").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("home-campaign").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("home-quick-jornadas").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("home-quick-pesadas").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("home-weather-unavailable").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("home-quick-jornadas").assertDoesNotExist()
+        composeRule.onNodeWithTag("home-quick-pesadas").assertDoesNotExist()
+        composeRule.onNodeWithTag("home-no-farms").assertDoesNotExist()
         composeRule.onNodeWithTag("home-market").performScrollTo()
-        // The card is a container; its texts are its children.
         composeRule.onNode(hasTestTag("home-market") and hasAnyDescendant(hasText("Sin fuente configurada."))).assertExists()
         composeRule.onNodeWithTag("home-cooperative").performScrollTo().assertIsDisplayed()
     }
 
-    @Test fun aStaleValueShowsItsSourceAgeAndWarning() {
+    @Test fun heroWeatherShowsCurrentValueLocationAndCachedWarning() {
         val weather = WeatherNow(22, WeatherCondition.PARTLY_CLOUDY, 15, 11, now.minusSeconds(5 * 3600))
         show(
             UiPolishFixtures.home.copy(
@@ -54,44 +50,24 @@ class HomeFeedsScreenTest {
                 weather = FeedState.Value(weather, "AEMET", now.minusSeconds(5 * 3600), stale = true),
             ),
         )
-        composeRule.onNodeWithTag("home-weather-value").performScrollTo()
-        composeRule.onNode(hasTestTag("home-weather-value") and hasAnyDescendant(hasText("22 °C · Parcialmente nublado"))).assertExists()
-        composeRule.onNodeWithTag("home-weather-stale").assertIsDisplayed()
-        composeRule.onNodeWithTag("home-weather-source").assertTextContains("Fuente: AEMET · Actualizado hace 5 h")
+        composeRule.onNodeWithTag("home-weather-summary").assertTextContains("22°").assertTextContains("Parcialmente nublado")
+            .assertTextContains("Bedmar", substring = true)
+        composeRule.onNodeWithTag("home-weather-summary").assertTextContains("Datos guardados · sin actualizar")
     }
 
-    @Test fun theFallbackProviderIsNamedAndCredited() {
-        val weather = WeatherNow(
-            17, WeatherCondition.RAIN, null, 14, now.minusSeconds(1800),
-            updatedAt = now.minusSeconds(40 * 60),
-            attribution = "Datos de MET Norway (Instituto Meteorológico de Noruega), licencia CC BY 4.0.",
-        )
-        show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Value(weather, "MET Norway", now.minusSeconds(60), stale = false)))
-        composeRule.onNodeWithTag("home-weather-source").performScrollTo()
-            .assertTextContains("Fuente: MET Norway · Actualizado hace 40 min")
-        composeRule.onNodeWithTag("home-weather-attribution").assertTextContains("CC BY 4.0", substring = true)
-    }
-
-    @Test fun noPlaceAsksForTheFarmMunicipality() {
-        show(UiPolishFixtures.home.copy(weather = FeedState.NoLocation))
-        composeRule.onNodeWithTag("home-weather-no-location").performScrollTo().assertIsDisplayed()
-    }
-
-    /** Phase 20B-radar: the radar is offered only when this build can reach it. */
-    @Test fun theRadarEntryAppearsOnlyWhenTheRadarIsReachable() {
+    @Test fun tappingHeroWeatherOpensTheWeek() {
         var opened = 0
-        show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Unavailable), onRadar = { opened++ })
-        composeRule.onNodeWithTag("home-weather-radar").performScrollTo().performClick()
+        show(UiPolishFixtures.home.copy(weatherLocation = bedmar), onWeatherWeek = { opened++ })
+        composeRule.onNodeWithTag("home-weather-hero").performClick()
         composeRule.runOnIdle { assertEquals(1, opened) }
     }
 
-    @Test fun withoutARadarNoEntryIsShown() {
-        show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Unavailable))
-        composeRule.onNodeWithTag("home-weather-radar").assertDoesNotExist()
+    @Test fun noLocationExplainsWhereToAddTheMunicipality() {
+        show(UiPolishFixtures.home.copy(weather = FeedState.NoLocation))
+        composeRule.onNodeWithTag("home-weather-summary").assertTextContains("Añade el municipio en Mi Campo")
     }
 
-    /** Phase 20C: a current sky gives the header its look; unknown or stale gives none. */
-    @Test fun theHeaderFollowsTheCurrentSkyAndStaysStillInTests() {
+    @Test fun theHeaderFollowsCurrentSkyAndStaysStillInTests() {
         val rain = WeatherNow(14, WeatherCondition.RAIN, 80, 12, now.minusSeconds(600))
         show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Value(rain, "AEMET", now.minusSeconds(600), stale = false)))
         composeRule.onNodeWithTag("home-weather-mood-rain-static").assertExists()
@@ -104,10 +80,10 @@ class HomeFeedsScreenTest {
         composeRule.onNodeWithTag("home-weather-mood-rain-animated").assertDoesNotExist()
     }
 
-    private fun show(state: HomeUiState, onRadar: (() -> Unit)? = null) {
+    private fun show(state: HomeUiState, onWeatherWeek: () -> Unit = {}) {
         composeRule.setContent {
             MaginaOlivoTheme {
-                HomeScreen(state, LocalTime.of(10, 0), {}, {}, {}, {}, {}, {}, now, onRadar = onRadar, weatherMotion = false)
+                HomeScreen(state, LocalTime.of(10, 0), {}, onWeatherWeek, {}, {}, feedNow = now, weatherMotion = false)
             }
         }
     }

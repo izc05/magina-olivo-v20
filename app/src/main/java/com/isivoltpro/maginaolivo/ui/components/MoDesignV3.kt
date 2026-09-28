@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -29,10 +30,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
@@ -144,27 +147,52 @@ fun MoStatStrip(stats: List<MoStat>, modifier: Modifier = Modifier) {
         border = BorderStroke(1.dp, MoOutline),
         shadowElevation = 1.dp,
     ) {
+        BoxWithConstraints {
+        // Give each figure its full cell when the icon would squeeze out its unit or label.
+        // Enlarged text always stacks: the side-by-side icon would squeeze the label out of its cell.
+        val fontScale = LocalDensity.current.fontScale
+        val stacked = fontScale > 1.15f || maxWidth / stats.size.coerceAtLeast(1) < (128 * fontScale).dp
         Row(Modifier.padding(vertical = MoSpacing.sm, horizontal = MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
             stats.forEachIndexed { index, stat ->
                 if (index > 0) Box(Modifier.width(1.dp).height(36.dp).background(MoOutline))
-                Row(
+                if (stacked) {
+                    Column(
+                        Modifier.weight(1f).padding(horizontal = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        if (stats.size <= 3) MoIconBadge(stat.icon, size = 28)
+                        // Full cell width: centred text is laid out at the cell width, so the node
+                        // must be as wide as its paragraph (otherwise it reports a false overflow).
+                        Text(
+                            stat.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MoTextSecondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            stat.value,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MoInk,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                } else Row(
                     Modifier.weight(1f).padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (stats.size <= 3) MoIconBadge(stat.icon, size = 36)
+                    // Wrap rather than clip: a label or unit is never cut with large text.
                     Column {
-                        Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary, maxLines = 1)
-                        Text(
-                            stat.value,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MoInk,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
+                        Text(stat.value, style = MaterialTheme.typography.titleMedium, color = MoInk)
                     }
                 }
             }
+        }
         }
     }
 }

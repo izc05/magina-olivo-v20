@@ -27,6 +27,18 @@ export interface Current {
   windKmh: number | null;
 }
 
+/** One provider's daily forecast. Missing provider observations stay null. */
+export interface DailyForecast {
+  date: string;
+  minTemperatureC: number | null;
+  maxTemperatureC: number | null;
+  condition: Condition | null;
+  rainProbabilityPercent: number | null;
+  rainMm: number | null;
+  /** Forecast wind speed in km/h (daily maximum when available). */
+  windKmh: number | null;
+}
+
 export interface Place {
   code: string;
   name: string;
@@ -45,6 +57,8 @@ export interface WeatherResponse {
   fetchedAt: string;
   location: { code: string; name: string; province: string | null };
   current: Current;
+  /** Up to seven local dates, only when the selected provider supplied usable data. */
+  daily: DailyForecast[];
 }
 
 export interface ForecastRequest {

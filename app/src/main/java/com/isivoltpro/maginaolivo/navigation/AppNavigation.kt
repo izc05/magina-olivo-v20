@@ -48,6 +48,7 @@ import com.isivoltpro.maginaolivo.feature.farms.FarmSectionRoute
 import com.isivoltpro.maginaolivo.feature.home.HomeRoute
 import com.isivoltpro.maginaolivo.feature.home.OilMarketRoute
 import com.isivoltpro.maginaolivo.feature.home.RadarRoute
+import com.isivoltpro.maginaolivo.feature.home.WeatherWeekRoute
 import com.isivoltpro.maginaolivo.feature.expenses.OrganizationsRoute
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBar
 import com.isivoltpro.maginaolivo.ui.components.MoBottomBarItem
@@ -65,7 +66,6 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
 import com.isivoltpro.maginaolivo.ui.reference.onboarding.OnboardingReferenceScreen
-import com.isivoltpro.maginaolivo.ui.reference.weather.WeatherMarketReferenceScreen
 import java.util.UUID
 
 private val bottomBarItems = RootDestination.entries.map { destination ->
@@ -167,13 +167,10 @@ fun AppNavigation(
                     HomeRoute(
                         persistence = persistence,
                         clock = compositionRoot.clock,
-                        onOlivar = { navController.navigateToRoot(RootDestination.Olivar) },
                         onCalendar = { navController.navigate(AppDestination.Calendar) },
-                        onHarvest = { navController.navigate(AppDestination.Harvest) },
                         onDeliveries = { navController.navigate(AppDestination.Deliveries) },
-                        onExpenses = { navController.navigate(AppDestination.Expenses) },
+                        onWeatherWeek = { navController.navigate(AppDestination.Weather) },
                         onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
-                        onRadar = { navController.navigate(AppDestination.Radar) },
                         onOilMarket = { navController.navigate(AppDestination.OilMarket) },
                     )
                 }
@@ -424,7 +421,19 @@ fun AppNavigation(
                     },
                 )
             }
-            composable(AppDestination.Weather) { WeatherMarketReferenceScreen() }
+            composable(AppDestination.Weather) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    WeatherWeekRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onRadar = { navController.navigate(AppDestination.Radar) }.takeIf { persistence.radarSource != null },
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
             composable(AppDestination.Analytics) { CampaignReferenceScreen() }
             composable(AppDestination.OcrReview) { DeliveryOcrReviewReferenceScreen() }
             composable(AppDestination.Harvest) {

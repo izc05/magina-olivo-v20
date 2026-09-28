@@ -72,6 +72,13 @@ data class HomeUiState(
         .distinct()
         .singleOrNull()
         ?.ifEmpty { null }
+    /** True when active farms exist in different municipalities, so Inicio must not imply one place. */
+    val weatherLocationAmbiguous: Boolean get() = farms
+        .mapNotNull { farm ->
+            farm.municipality?.trim()?.takeIf(String::isNotEmpty)?.let { FeedLocation(it, farm.province).key }
+        }
+        .distinct()
+        .size > 1
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
