@@ -6,6 +6,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.isivoltpro.maginaolivo.ui.reference.ocr.DeliveryOcrReviewReferenceScreen
@@ -52,8 +53,40 @@ class Gate3EvidenceScreenshotTest {
     @Test
     fun captureUiPolishHome() = capture("home-reference-root", "ui-01-inicio") {
         com.isivoltpro.maginaolivo.feature.home.HomeScreen(
-            UiPolishFixtures.home, java.time.LocalTime.of(10, 0), {}, {}, {}, {}, {}, {},
+            UiPolishFixtures.home, java.time.LocalTime.of(10, 0), {}, {}, {}, {},
         )
+    }
+
+    @Test
+    fun captureWeatherOnPhoto() = capture("home-reference-root", "ui-11-weather-home-fixture") {
+        com.isivoltpro.maginaolivo.feature.home.HomeScreen(
+            UiPolishFixtures.home.copy(
+                today = WeatherVisualFixtures.today,
+                weatherLocation = WeatherVisualFixtures.location,
+                weather = WeatherVisualFixtures.fresh,
+            ),
+            java.time.LocalTime.of(12, 0), {}, {}, {}, {},
+            feedNow = WeatherVisualFixtures.now,
+            weatherMotion = false,
+        )
+    }
+
+    @Test
+    fun captureWeatherWeekAndItsLastDay() {
+        capture("weather-week-root", "ui-12-weather-week-fixture") {
+            com.isivoltpro.maginaolivo.feature.home.WeatherWeekScreen(
+                com.isivoltpro.maginaolivo.feature.home.WeatherWeekUiState(
+                    location = WeatherVisualFixtures.location,
+                    weather = WeatherVisualFixtures.fresh,
+                ),
+                now = WeatherVisualFixtures.now,
+                onBack = {},
+                onRadar = {},
+            )
+        }
+        composeRule.onNodeWithTag("weather-week-source").performScrollTo()
+        composeRule.waitForIdle()
+        saveNode("weather-week-root", "ui-13-weather-week-scrolled-fixture")
     }
 
     @Test

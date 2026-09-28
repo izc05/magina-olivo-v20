@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -120,7 +121,7 @@ private val LINES = listOf(
 )
 
 @Composable
-internal fun OilMarketChart(series: OilMarketSeries) {
+internal fun OilMarketChart(series: OilMarketSeries, compact: Boolean = false) {
     val weeks = OilTrends.chartWeeks(series)
     if (weeks.isEmpty()) {
         Note("Sin semanas publicadas todavía.", "oil-market-chart-empty")
@@ -137,7 +138,7 @@ internal fun OilMarketChart(series: OilMarketSeries) {
     val top = high + span * 0.15f
     val grid = MoOutline
     Canvas(
-        Modifier.fillMaxWidth().height(180.dp).testTag("oil-market-chart").semantics { contentDescription = summary },
+        Modifier.fillMaxWidth().height(if (compact) 118.dp else 180.dp).testTag("oil-market-chart").semantics { contentDescription = summary },
     ) {
         val slot = if (weeks.size > 1) size.width / (weeks.size - 1) else 0f
         fun x(index: Int) = if (weeks.size > 1) slot * index else size.width / 2
@@ -167,15 +168,25 @@ internal fun OilMarketChart(series: OilMarketSeries) {
         Text("Semana ${OilTrends.weekOf(weeks.first())}", style = MaterialTheme.typography.labelSmall, color = MoTextSecondary)
         Text("Semana ${OilTrends.weekOf(weeks.last())}", style = MaterialTheme.typography.labelSmall, color = MoTextSecondary)
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         LINES.forEach { (category, color) ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
+            val latest = OilTrends.of(series, category)?.latest?.valueEurPerKg
+            Row(
+                Modifier.weight(1f).semantics(mergeDescendants = true) {}.testTag("oil-market-legend-${category.name.lowercase()}"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.xxs),
+            ) {
                 Box(Modifier.size(10.dp).background(color, CircleShape))
-                Text(category.label, style = MaterialTheme.typography.bodySmall, color = MoOliveDark)
+                Text(
+                    "${category.label}\n${latest?.let { OilTrends.euros(it) } ?: "—"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoOliveDark,
+                    maxLines = 2,
+                )
             }
         }
     }
-    Text(summary, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("oil-market-chart-summary"))
+    if (!compact) Text(summary, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("oil-market-chart-summary"))
 }
 
 /** The chart in words: range per category and how many weeks had no published price. */

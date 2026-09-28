@@ -2,6 +2,13 @@
 
 Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.0-dev · compilación 531».
 
+## En curso — PR #284 (sin versión publicada)
+
+- Inicio: retiradas la tarjeta «Empieza por tu primera finca» y la cuadrícula redundante «Accesos rápidos»; la creación de fincas sigue en Mi Campo y no se elimina ningún destino.
+- Tiempo: temperatura grande directamente sobre la fotografía, municipio y un icono coherente con el estado real del cielo. «Ver previsión» abre el resumen de lluvia/viento, la semana de hasta siete días y el radar existente. La cabecera crece con el texto ampliado; fuente, antigüedad y avisos de caché siguen visibles. El contrato diario es aditivo y conserva cachés antiguas.
+- Mercado: la tarjeta de Inicio muestra una gráfica compacta de 12 semanas con colores/leyenda AOVE, Virgen y Lampante; el pulso de AOVE.net permanece en el detalle «Ver mercado».
+- Diseño `5cc3f2cc`: CI completa en verde (compilación 598, 300 tests instrumentados y 111 de Room offline). Capturas de Inicio/semana con datos explícitamente sintéticos en 360, 393 y 480 dp y letra al 130 %. La revisión visual detectó recortes de «Superficie» y «5,2 ha» en el resumen existente: ahora apila icono y cifras cuando falta anchura, con un test de texto ampliado; este último ajuste requiere nueva CI. La semana real requiere el despliegue autorizado de la Edge Function; esta PR no despliega Supabase. Pendiente validación en móvil físico.
+
 - **Versión** (`0.2.0`): se sube a mano en `app/build.gradle.kts` (`appVersionName`) cuando se entrega un
   bloque de cambios al propietario, y se anota aquí.
 - **Compilación** (`531`): la pone la CI sola (número de ejecución de GitHub Actions, siempre creciente).

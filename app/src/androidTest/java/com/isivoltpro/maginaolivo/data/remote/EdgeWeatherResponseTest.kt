@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo.data.remote
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.isivoltpro.maginaolivo.data.remote.weather.EdgeWeatherResponse
 import com.isivoltpro.maginaolivo.domain.weather.WeatherCondition
+import java.time.LocalDate
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -36,6 +37,23 @@ class EdgeWeatherResponseTest {
         assertEquals(Instant.parse("2026-09-25T06:00:00Z"), reading.weather.validAt)
         assertEquals(Instant.parse("2026-09-25T05:40:00Z"), reading.weather.updatedAt)
         assertEquals("© AEMET. Información elaborada por la Agencia Estatal de Meteorología.", reading.weather.attribution)
+    }
+
+    @Test
+    fun dailyForecastIsParsedAndOldCurrentOnlyResponsesStayValid() {
+        val withDaily = aemet.replace(
+            "\"current\":{",
+            "\"daily\":[{\"date\":\"2026-09-25\",\"minTemperatureC\":13,\"maxTemperatureC\":25,\"condition\":\"RAIN\",\"rainProbabilityPercent\":65,\"rainMm\":1.2,\"windKmh\":18}],\"current\":{",
+        )
+        val day = EdgeWeatherResponse.parse(withDaily).weather.daily.single()
+        assertEquals(LocalDate.parse("2026-09-25"), day.date)
+        assertEquals(13, day.minTemperatureC)
+        assertEquals(25, day.maxTemperatureC)
+        assertEquals(WeatherCondition.RAIN, day.condition)
+        assertEquals(65, day.rainProbabilityPercent)
+        assertEquals(1.2, day.rainMm!!, 0.001)
+        assertEquals(18, day.windKmh)
+        assertEquals(emptyList<Any>(), EdgeWeatherResponse.parse(aemet).weather.daily)
     }
 
     @Test
