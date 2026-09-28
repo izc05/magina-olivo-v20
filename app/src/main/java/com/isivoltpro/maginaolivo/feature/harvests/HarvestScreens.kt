@@ -595,6 +595,7 @@ fun HarvestDetailRoute(
         onExpenseSelected = onExpenseSelected,
         onSaveRates = viewModel::saveRates,
         onPreferCalculated = viewModel::preferCalculated,
+        onLinkCost = viewModel::linkCost,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.HARVEST, harvestId),
@@ -622,6 +623,7 @@ fun HarvestDetailScreen(
     onExpenseSelected: (UUID) -> Unit = {},
     onSaveRates: (RecollectionRates) -> Unit = {},
     onPreferCalculated: (DayCostKind) -> Unit = {},
+    onLinkCost: (UUID) -> Unit = {},
 ) {
     var costVisible by rememberSaveable { mutableStateOf(false) }
     var ratesVisible by rememberSaveable { mutableStateOf(false) }
@@ -671,6 +673,8 @@ fun HarvestDetailScreen(
                         onExpenseSelected = onExpenseSelected,
                         onPreferCalculated = onPreferCalculated,
                         onEditRates = state.rates?.let { { ratesVisible = true } },
+                        unlinked = state.unlinkedCosts,
+                        onLink = onLinkCost,
                     )
                     if (harvest.editable) {
                         MoSecondaryButton(
