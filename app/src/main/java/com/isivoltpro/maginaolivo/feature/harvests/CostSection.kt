@@ -174,3 +174,61 @@ internal fun RatesSheet(
         Spacer(Modifier.height(MoSpacing.lg))
     }
 }
+
+/**
+ * Phase 19F — a recollection cost in three taps: kind, amount, save. It becomes an ordinary
+ * posted Expense of the Jornada's Farm and Campaign; a ticket photo can be added right after.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun CostSheet(
+    isSaving: Boolean,
+    error: String?,
+    onSave: (JornadaExpenseKind, Long, String?, Boolean) -> Unit,
+    onCancel: () -> Unit,
+) {
+    var kind by rememberSaveable { mutableStateOf(JornadaExpenseKind.DIESEL) }
+    var amount by rememberSaveable { mutableStateOf("") }
+    var concept by rememberSaveable { mutableStateOf("") }
+    val minor = Money.parseMinor(amount)
+    val valid = minor != null && minor > 0
+
+    Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("cost-sheet"),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+    ) {
+        Text("Gasto de la jornada", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            JornadaExpenseKind.entries.forEach { option ->
+                FilterChip(kind == option, { kind = option }, { Text(option.label) }, Modifier.testTag("cost-kind-${option.name}"))
+            }
+        }
+        MoTextField(
+            amount, { amount = it }, "Importe (€)",
+            isError = amount.isNotBlank() && !valid,
+            supportingText = if (amount.isNotBlank() && !valid) "Escribe un importe como 65 o 65,50" else null,
+            modifier = Modifier.fillMaxWidth().testTag("cost-amount"),
+        )
+        MoTextField(concept, { concept = it }, "Concepto (opcional)", modifier = Modifier.fillMaxWidth().testTag("cost-concept"))
+        Text(
+            "Se guarda en Gastos, el único registro del dinero. No se cuenta dos veces.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+        )
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        MoPrimaryButton(
+            "Guardar gasto",
+            { onSave(kind, minor!!, concept.trim().ifEmpty { null }, false) },
+            Modifier.fillMaxWidth().testTag("cost-save"),
+            enabled = valid && !isSaving,
+        )
+        MoSecondaryButton(
+            "Guardar y añadir foto del tique",
+            { onSave(kind, minor!!, concept.trim().ifEmpty { null }, true) },
+            Modifier.fillMaxWidth().testTag("cost-save-photo"),
+            enabled = valid && !isSaving,
+        )
+        MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(MoSpacing.lg))
+    }
+}
