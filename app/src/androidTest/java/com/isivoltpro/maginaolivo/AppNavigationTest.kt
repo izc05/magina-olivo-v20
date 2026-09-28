@@ -111,9 +111,9 @@ class AppNavigationTest {
     @Test
     fun aTabAlwaysOpensItsOwnRootScreenFromWhereverTheFarmerIs() {
         enterMainShell()
-        // Deep inside Inicio (Jornadas), then Perfil deep inside (Maquinaria)...
-        composeRule.onNodeWithTag("home-quick-jornadas").performScrollTo().performClick()
-        waitForTag("harvests-root")
+        // Deep inside Inicio (weekly weather), then Perfil deep inside (Maquinaria)...
+        composeRule.onNodeWithTag("home-weather-hero").performClick()
+        waitForTag("weather-week-root")
         composeRule.onNodeWithTag("bottom-Perfil").performClick()
         clickByTag("profile-machinery")
         waitForTag("machinery-root")
@@ -121,7 +121,7 @@ class AppNavigationTest {
         // ...Inicio is Inicio, not the Jornadas screen left open under it.
         composeRule.onNodeWithTag("bottom-Inicio").performClick()
         waitForTag("home-reference-root")
-        composeRule.onNodeWithTag("harvests-root").assertDoesNotExist()
+        composeRule.onNodeWithTag("weather-week-root").assertDoesNotExist()
 
         // Perfil is the profile, not the Maquinaria screen left open under it.
         composeRule.onNodeWithTag("bottom-Perfil").performClick()

@@ -108,7 +108,7 @@ class OilMarketScreenTest {
             MaginaOlivoTheme {
                 androidx.compose.foundation.layout.Column {
                     OilMarketCard(FeedState.Value(series(), "Junta", fetched, stale = false), onOpen = { opened = true })
-                    OilMarketCard(FeedState.NotConfigured, onOpen = { opened = true })
+                    OilMarketCard(FeedState.NotConfigured)
                 }
             }
         }

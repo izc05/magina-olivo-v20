@@ -228,7 +228,7 @@ private fun HomeWeatherCard(state: HomeUiState, now: Instant, onClick: () -> Uni
         FeedState.Unavailable -> "Tiempo${state.weatherLocation?.let { " · ${it.label}" } ?: ""}"
     }
     val detail = when (weather) {
-        is FeedState.Value -> "${weather.source} · ${FeedAge.label(weather.value.updatedAt ?: weather.fetchedAt, now)}"
+        is FeedState.Value -> "${state.weatherLocation?.label ?: "Tu zona"} · ${weather.source} · ${FeedAge.label(weather.value.updatedAt ?: weather.fetchedAt, now)}"
         FeedState.NoLocation -> if (state.weatherLocationAmbiguous) "Varias ubicaciones · Revisa Mi Campo" else "Añade el municipio en Mi Campo"
         FeedState.NotConfigured -> "Fuente del tiempo no configurada"
         FeedState.Unavailable -> "Sin datos recientes${state.weatherLocation?.let { " · ${it.label}" } ?: ""}"

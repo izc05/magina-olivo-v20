@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -228,7 +229,7 @@ private fun WeatherDayCard(
     index: Int,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().testTag("weather-week-day-$index"),
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("weather-week-day-$index"),
         shape = MoShape.card,
         color = MoWarmWhite,
         border = androidx.compose.foundation.BorderStroke(1.dp, MoOutline),

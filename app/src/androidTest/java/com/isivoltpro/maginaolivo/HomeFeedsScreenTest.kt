@@ -83,7 +83,7 @@ class HomeFeedsScreenTest {
     private fun show(state: HomeUiState, onWeatherWeek: () -> Unit = {}) {
         composeRule.setContent {
             MaginaOlivoTheme {
-                HomeScreen(state, LocalTime.of(10, 0), {}, onWeatherWeek, {}, {}, weatherMotion = false)
+                HomeScreen(state, LocalTime.of(10, 0), {}, onWeatherWeek, {}, {}, feedNow = now, weatherMotion = false)
             }
         }
     }

@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -171,7 +172,7 @@ internal fun OilMarketChart(series: OilMarketSeries, compact: Boolean = false) {
         LINES.forEach { (category, color) ->
             val latest = OilTrends.of(series, category)?.latest?.valueEurPerKg
             Row(
-                Modifier.weight(1f).testTag("oil-market-legend-${category.name.lowercase()}"),
+                Modifier.weight(1f).semantics(mergeDescendants = true) {}.testTag("oil-market-legend-${category.name.lowercase()}"),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MoSpacing.xxs),
             ) {
