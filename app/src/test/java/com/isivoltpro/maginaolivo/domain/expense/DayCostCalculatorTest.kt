@@ -6,6 +6,7 @@ import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
 import java.util.UUID
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -53,4 +54,15 @@ class DayCostCalculatorTest {
 
     private fun line(type: EquipmentType, quantity: Int) =
         EquipmentLine(UUID.randomUUID(), day, type, null, quantity, null, 1)
+    @Test
+    fun onlyAReplacingHandTypedCostStandsForTheCalculation() {
+        assertTrue(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.MACHINERY, JornadaExpenseKind.RENTAL.concept(null)))
+        assertTrue(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.MACHINERY, "Vibradora de Paco"))
+        assertFalse(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.MACHINERY, JornadaExpenseKind.LUBRICANT.concept(null)))
+        assertFalse(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.MACHINERY, JornadaExpenseKind.LUBRICANT.concept("Aceite hidráulico")))
+        assertFalse(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.FUEL, "Gasoil"))
+        assertTrue(DayCostKind.LABOUR.isReplacedBy(ExpenseCategory.LABOR, "Cuadrilla"))
+        assertEquals("Aceite/lubricante · Aceite hidráulico", JornadaExpenseKind.LUBRICANT.concept("Aceite hidráulico"))
+        assertEquals("Gasoil del tractor", JornadaExpenseKind.DIESEL.concept("Gasoil del tractor"))
+    }
 }

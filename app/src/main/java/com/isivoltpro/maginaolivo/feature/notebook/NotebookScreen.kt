@@ -523,7 +523,9 @@ private fun CampaignAtAGlance(dashboard: CampaignDashboard, weighedGrams: Long) 
             "Días de campaña", dashboard.calendarDays?.toString() ?: "—", Modifier.weight(1f).testTag("dashboard-days"),
             icon = MoIcons.Calendar,
             kind = MoKpiKind.CAMPAIGN,
-            supportingText = dashboard.closedOn?.let { "Cerrada el ${date(it)}" } ?: "Desde que se activó",
+            supportingText = dashboard.countedFrom?.let { from ->
+                dashboard.closedOn?.let { "Del ${date(from)} al ${date(it)}" } ?: "Desde el ${date(from)}"
+            } ?: dashboard.closedOn?.let { "Cerrada el ${date(it)}" } ?: "Sin empezar",
         )
         MoKpiMetric(
             "Días con pesadas", dashboard.pesadaDays.toString(), Modifier.weight(1f).testTag("dashboard-pesada-days"),

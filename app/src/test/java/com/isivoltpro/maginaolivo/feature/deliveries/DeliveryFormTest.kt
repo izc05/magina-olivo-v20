@@ -130,4 +130,37 @@ class DeliveryFormTest {
         assertNotNull(errors.origin)
         assertEquals(PesadaOrigin.GROUND, base.copy(origin = PesadaOrigin.GROUND).toDraft(today).first!!.origin)
     }
+    @Test
+    fun aTicketReadFromAnOpenPesadaKeepsWhatWasTypedAndFillsWhatItRead() {
+        val sanIsidro = Organization(UUID.randomUUID(), "Coop. San Isidro", emptySet())
+        val typed = base.copy(notes = "Primera del día", splitKnown = true, weights = mapOf(north to "1.000"))
+        val merged = typed.withTicket(
+            DeliveryTicketProposal(
+                organizationName = "S.C.A. San Isidro",
+                ticketNumber = "A-17",
+                deliveryDate = LocalDate.of(2026, 11, 19),
+                netGrams = 3_120_000,
+                deliveryTime = LocalTime.of(9, 30),
+            ),
+            listOf(sanIsidro),
+        )
+        assertEquals(farm, merged.farmId)
+        assertEquals(listOf(north, south), merged.parcelIds)
+        assertEquals(PesadaOrigin.TREE, merged.origin)
+        assertEquals("Primera del día", merged.notes)
+        assertEquals(mapOf(north to "1.000"), merged.weights)
+        assertEquals("2026-11-19", merged.date)
+        assertEquals(sanIsidro.id, merged.destinationOrganizationId)
+        assertEquals("", merged.destinationText)
+        assertEquals("A-17", merged.ticketNumber)
+        assertEquals("09:30", merged.time)
+        assertEquals(3_120_000L, merged.toDraft(today).first!!.netGrams)
+    }
+
+    @Test
+    fun whatTheTicketDidNotReadStaysAsTyped() {
+        val typed = base.copy(gross = "4.000", tare = "1.150", time = "8:15", ticketNumber = "B-2")
+        assertEquals(typed, typed.withTicket(DeliveryTicketProposal()))
+        assertEquals(typed, typed.withTicket(null))
+    }
 }

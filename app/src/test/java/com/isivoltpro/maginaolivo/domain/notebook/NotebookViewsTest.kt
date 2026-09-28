@@ -206,6 +206,8 @@ class NotebookViewsTest {
         val dashboard = CampaignDashboard.of(notebook, today = LocalDate.of(2026, 11, 21))
         // 1 Sept to 21 Nov, both counted.
         assertEquals(82L, dashboard.calendarDays)
+        // The screen names the date it counts from; it never claims an activation date it does not store.
+        assertEquals(campaign.startDate, dashboard.countedFrom)
         assertEquals(2, dashboard.pesadaDays)
         assertEquals(1, dashboard.labourDays)
         assertEquals(day1, dashboard.firstPesada)
