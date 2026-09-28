@@ -21,6 +21,12 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
     AOVE.net, tendencia oficial y gráfico de las últimas 12 semanas, una línea por categoría. Una
     semana no publicada es un hueco en la línea y se dice («1 semana sin dato»); nunca se rellena.
     Debajo, la fuente y cuándo se consultó.
+- Arreglos de la prueba de Gate 20 en emulador (compilación 575):
+  - Recolección → «Abrir jornada de hoy»: la jornada se puede abrir antes de tener pesadas. Empieza
+    en 0 kg y sus kilos pasan a ser la suma de las pesadas que se le añaden («Añadir pesada» dentro
+    de la jornada). Abrirla otra vez el mismo día devuelve la misma jornada; con varias fincas en
+    campaña se pregunta en cuál.
+  - La ficha de la finca ya no dice «Sin campaña activa» cuando su campaña está en «Recolección».
 
 ## 0.4.0 — 28/09/2026
 

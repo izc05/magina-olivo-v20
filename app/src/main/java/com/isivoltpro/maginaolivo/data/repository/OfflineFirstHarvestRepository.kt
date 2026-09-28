@@ -27,6 +27,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestRules
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestShare
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestShareInput
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -110,6 +111,30 @@ class OfflineFirstHarvestRepository(
             )
             replaceShares(id, farm.workspaceId, campaign.id, draft.shares, now)
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, id, OutboxOperation.CREATE, now)
+            AppResult.Success(id)
+        }
+    }
+
+    override suspend fun openJornada(farmId: UUID, date: LocalDate): AppResult<UUID> {
+        if (date.isAfter(clock.today(zoneId()))) return AppResult.Failure(AppError.Validation("harvestDate", "future"))
+        return inTransaction("open_jornada") {
+            val farm = database.farmDao().findById(farmId)
+                ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
+            if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
+                return@inTransaction conflict("archived_farm")
+            }
+            val campaign = database.campaignDao().findCurrent(farm.id)
+                ?: return@inTransaction conflict("no_running_campaign")
+            if (date.isBefore(campaign.startDate)) {
+                return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "before_campaign"))
+            }
+            if (database.harvestDao().listCampaignParcels(campaign.id).isEmpty()) {
+                return@inTransaction AppResult.Failure(AppError.Validation("parcels", "empty"))
+            }
+            // One Jornada per Farm and day: opening it again returns the one already there.
+            database.harvestDao().findLiveOnDay(farm.id, campaign.id, date)?.let { return@inTransaction AppResult.Success(it.id) }
+            // 0 kg until its Pesadas arrive: JornadaLedger.reconcile sets the sum as they link.
+            val id = jornadas.open(farm.workspaceId, farm.id, campaign.id, date, emptyList(), 0L, clock.nowInstant())
             AppResult.Success(id)
         }
     }

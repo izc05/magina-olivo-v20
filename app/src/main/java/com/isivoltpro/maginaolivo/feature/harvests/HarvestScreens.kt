@@ -105,6 +105,7 @@ fun HarvestsRoute(
         today = clock.today(ZoneId.systemDefault()),
         onCreate = viewModel::create,
         onHarvestSelected = onHarvestSelected,
+        onOpenJornada = { farmId -> viewModel.openJornada(farmId, onHarvestSelected) },
         onEditorClosed = viewModel::clearFormErrors,
         onDeliveries = onDeliveries,
         deliverySummary = remember(deliveries) { DeliverySummary.of(deliveries) },
@@ -119,6 +120,8 @@ fun HarvestsScreen(
     today: LocalDate,
     onCreate: (HarvestForm) -> Unit,
     onHarvestSelected: (UUID) -> Unit,
+    /** Opens today's Jornada on a Farm before any Pesada (ROADMAP 19B). */
+    onOpenJornada: (UUID) -> Unit = {},
     onEditorClosed: () -> Unit = {},
     onDeliveries: () -> Unit = {},
     /** Delivered kilos and yield, read from the Delivery ledger (never recomputed here). */
@@ -149,7 +152,7 @@ fun HarvestsScreen(
                                 state.harvests.size.toString(),
                                 m,
                                 icon = MoIcons.Harvest,
-                                supportingText = if (state.harvests.isEmpty()) "La primera nace con una pesada" else "Días de recolección",
+                                supportingText = if (state.harvests.isEmpty()) "Ábrela hoy o con su primera pesada" else "Días de recolección",
                             )
                         },
                         { m ->
@@ -170,6 +173,34 @@ fun HarvestsScreen(
                 Modifier.fillMaxWidth().testTag("add-pesada"),
                 enabled = state.contexts.isNotEmpty() && !state.isSaving,
             )
+            // A Jornada may exist before its Pesadas: open today's, then weigh into it.
+            var farmChoice by rememberSaveable { mutableStateOf(false) }
+            MoSecondaryButton(
+                "Abrir jornada de hoy",
+                {
+                    if (state.contexts.size == 1) onOpenJornada(state.contexts.single().farmId) else farmChoice = true
+                },
+                Modifier.fillMaxWidth().testTag("open-jornada"),
+                enabled = state.contexts.isNotEmpty() && !state.isSaving,
+            )
+            if (farmChoice) {
+                ModalBottomSheet(onDismissRequest = { farmChoice = false }) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(horizontal = MoSpacing.screen).padding(bottom = MoSpacing.lg)
+                            .testTag("open-jornada-farms"),
+                        verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                    ) {
+                        Text("¿En qué finca?", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
+                        state.contexts.forEach { context ->
+                            MoSecondaryButton(
+                                "${context.farmName} · ${context.campaignName}",
+                                { farmChoice = false; onOpenJornada(context.farmId) },
+                                Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            }
             if (!state.isLoading && state.contexts.isEmpty()) {
                 Text(
                     "Para registrar una pesada, una finca necesita una campaña activa o en recolección.",
@@ -186,7 +217,8 @@ fun HarvestsScreen(
                 state.isLoading -> CircularProgressIndicator()
                 state.harvests.isEmpty() -> MoEmptyState(
                     "Aún no hay jornadas",
-                    "Registra la primera pesada del día y Mágina abrirá su jornada sin pedir los kilos otra vez.",
+                    "Abre la jornada de hoy y añade después sus pesadas, o registra una pesada y elige «Nueva jornada de este día». " +
+                        "Sus kilos son siempre la suma de sus pesadas.",
                     icon = MoIcons.Harvest,
                 )
                 else -> {

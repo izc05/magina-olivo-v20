@@ -159,6 +159,31 @@ class JornadaPesadasContractTest {
     }
 
     @Test
+    fun aJornadaOpenedBeforeAnyPesadaStartsAtZeroAndThenCarriesItsPesadas() = runBlocking {
+        // Gate 20 (emulator, build 575): the Jornada can exist before its first Pesada.
+        val jornadaId = ok(harvests.openJornada(farmId, day))
+        val opened = harvests.observe(jornadaId).first()!!
+        assertEquals(0L, opened.totalGrams)
+        assertEquals(setOf(north, south), opened.shares.map { it.parcelId }.toSet())
+        assertTrue(opened.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
+        // Opening it again the same day returns the same Jornada: never a second one.
+        assertEquals(jornadaId, ok(harvests.openJornada(farmId, day)))
+        assertEquals(1, db.harvestDao().observeForCampaign(campaignId).first().size)
+        // No future day, no day before the Campaign.
+        assertValidation("harvestDate", harvests.openJornada(farmId, day.plusDays(1)))
+        assertValidation("harvestDate", harvests.openJornada(farmId, LocalDate.parse("2026-09-30")))
+
+        ok(deliveries.create(pesada(2_100_000, "Coop. San Isidro", "V-201").copy(harvestId = jornadaId)))
+        ok(deliveries.create(pesada(1_400_000, "Almazara El Molino", "A-202").copy(harvestId = jornadaId)))
+        db.close()
+        open()
+
+        val harvest = harvests.observe(jornadaId).first()!!
+        assertEquals(3_500_000L, harvest.totalGrams)
+        assertEquals(2, Jornada.of(harvest, deliveries.observeAll().first()).pesadas.size)
+    }
+
+    @Test
     fun aPesadaIsNeverLinkedToAJornadaThatCannotHoldIt() = runBlocking {
         val exact = ok(
             harvests.create(HarvestDraft(farmId, day, 3_000_000, listOf(HarvestShareInput(north, 1_000_000), HarvestShareInput(south, 2_000_000)))),

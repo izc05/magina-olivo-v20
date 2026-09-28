@@ -38,7 +38,7 @@ interface FarmDao {
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
                AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS counted_parcels,
             (SELECT c.name FROM campaigns c
-             WHERE c.farm_id = f.id AND c.status = 'ACTIVE' AND c.deleted_at IS NULL
+             WHERE c.farm_id = f.id AND c.status IN ('ACTIVE', 'HARVEST') AND c.deleted_at IS NULL
              ORDER BY c.start_date DESC, c.id LIMIT 1) AS active_campaign_name
         FROM farms f
         WHERE f.workspace_id = :workspaceId AND f.deleted_at IS NULL AND f.status = 'ACTIVE'
@@ -66,7 +66,7 @@ interface FarmDao {
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
                AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS counted_parcels,
             (SELECT c.name FROM campaigns c
-             WHERE c.farm_id = f.id AND c.status = 'ACTIVE' AND c.deleted_at IS NULL
+             WHERE c.farm_id = f.id AND c.status IN ('ACTIVE', 'HARVEST') AND c.deleted_at IS NULL
              ORDER BY c.start_date DESC, c.id LIMIT 1) AS active_campaign_name
         FROM farms f
         WHERE f.workspace_id = :workspaceId AND f.status = 'ARCHIVED'
@@ -94,7 +94,7 @@ interface FarmDao {
              WHERE m.farm_id = f.id AND m.valid_until IS NULL AND m.deleted_at IS NULL
                AND p.deleted_at IS NULL AND p.status = 'ACTIVE') AS counted_parcels,
             (SELECT c.name FROM campaigns c
-             WHERE c.farm_id = f.id AND c.status = 'ACTIVE' AND c.deleted_at IS NULL
+             WHERE c.farm_id = f.id AND c.status IN ('ACTIVE', 'HARVEST') AND c.deleted_at IS NULL
              ORDER BY c.start_date DESC, c.id LIMIT 1) AS active_campaign_name
         FROM farms f WHERE f.id = :id LIMIT 1
         """,
