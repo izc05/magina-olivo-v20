@@ -30,6 +30,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveTint
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSize
@@ -88,11 +90,23 @@ fun MoSummaryMetric(
 }
 
 /**
+ * CR-010 §13 — what a KPI measures, which gives it its accent. The accent follows the figure,
+ * never its icon: Pesadas value-gold, jornales olive, machinery earth, costs blue; general
+ * campaign figures (days, works) keep the brand's deep olive.
+ */
+enum class MoKpiKind(val tint: Color, val container: Color) {
+    PESADAS(MoIconTone.VALUE.tint, MoIconTone.VALUE.container),
+    JORNALES(MoIconTone.GROVE.tint, MoIconTone.GROVE.container),
+    MAQUINARIA(MoIconTone.LAND.tint, MoIconTone.LAND.container),
+    COSTES(MoIconTone.WATER.tint, MoIconTone.WATER.container),
+    CAMPAIGN(MoOliveDark, MoOliveTint),
+}
+
+/**
  * CR-010 §13 — the Campaign/Recolección/Cuaderno KPI: the same content as [MoSummaryMetric]
- * with a stronger hierarchy — a larger value, a bigger icon on its tone's tint and a coloured
- * edge per kind of data (Pesadas value-gold, jornales olive, machinery earth, costs water).
- * Colour is never the only cue: the icon and the label always say what the figure is. The value
- * wraps instead of being cut, so large text stays readable.
+ * with a stronger hierarchy — a larger value, a bigger icon on its kind's tint and a coloured
+ * edge per [MoKpiKind]. Colour is never the only cue: the icon and the label always say what
+ * the figure is. The value wraps instead of being cut, so large text stays readable.
  */
 @Composable
 fun MoKpiMetric(
@@ -101,9 +115,9 @@ fun MoKpiMetric(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     supportingText: String? = null,
-    tone: MoIconTone? = null,
+    kind: MoKpiKind,
 ) {
-    val accent = tone ?: icon?.let { MoIconTone.of(it) } ?: MoIconTone.GROVE
+    val accent = kind
     Surface(
         modifier = modifier,
         shape = MoShape.card,

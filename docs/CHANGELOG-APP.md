@@ -48,8 +48,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   hasta su cierre), días con pesadas y con jornales, primera y última pesada, coste contabilizado
   (con los jornales y la maquinaria calculados, contados una sola vez) y coste por kilo pesado. Lo
   que no se sabe se muestra «—», nunca 0.
-- Cifras del Cuaderno y de la Recolección más legibles: valor grande, icono sobre su color y borde
-  de color por tipo de dato (pesadas, jornales, maquinaria, costes). El color nunca es la única
+- Cifras del Cuaderno, de la Recolección y de la Campaña más legibles: valor grande, icono sobre su
+  color y borde de color por tipo de dato (pesadas en oro, jornales en oliva, maquinaria en tierra,
+  costes en azul; días y trabajos de la campaña en oliva oscuro). El color nunca es la única
   pista: el icono y la etiqueta dicen siempre qué es la cifra, y el valor se parte en líneas en vez
   de cortarse con letra grande.
 
