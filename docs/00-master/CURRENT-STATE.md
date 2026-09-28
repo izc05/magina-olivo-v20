@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-09-27
+**Last reviewed:** 2026-09-28
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -37,6 +37,23 @@ This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity ses
 ✅ Gate 18 — Land registry geometries + offline map (owner device PASS 2026-09-24 on the main APK
    of 3516ad45; CI: live import → airplane mode → offline render, live polygon/parcel lookup)
 ```
+
+## Owner-priority product correction — CR-010
+
+**APPROVED 2026-09-28.** The next product update after the currently in-flight Gate 20 validation is
+**CR-010 — Campaña simple, automatizada y centrada en Pesadas**. It takes priority over starting
+Phase 21 or unrelated feature expansion.
+
+Canonical flow:
+
+`Activar Campaña → Nueva Pesada → día/Jornada automático → jornales + maquinaria + gastos → rendimiento posterior`.
+
+Issue #254 is the implementation tracker. CR-010 explicitly brings ticket OCR into the compact
+Pesada form, removes manual Jornada selection from the normal flow, adds optional labour/machinery
+pricing without duplicate money, strengthens Campaign analytics and authorizes the targeted
+Campaign/Recolección visual refinement.
+
+Do not mix the deferred EPI-signature workflow or planning/reminder form redesign into CR-010.
 
 ## Current allowed phase
 
