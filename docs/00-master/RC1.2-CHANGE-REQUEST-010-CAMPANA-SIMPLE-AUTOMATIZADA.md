@@ -558,7 +558,11 @@ Rule:
   typed figure) and, only if it has no jornales, machinery, expenses **or live attachments**
   (`AttachmentOwnerType.HARVEST`) either, it is soft-deleted — a day that still owns any of those
   stays visible so nothing becomes unreachable;
-- the current "keep own figure" behaviour stays **only** for legacy hand-typed Jornadas;
+- the current "keep own figure" behaviour stays **only** for legacy hand-typed Jornadas that never
+  had a Pesada: once a Pesada linked, reconciliation had already replaced the typed kilos with the
+  Pesadas' sum, so when the last Pesada leaves such a Jornada it also returns to «Kg pendientes de
+  pesada» — otherwise A2 would report kilos of deleted or moved Pesadas as hand-typed history
+  (Codex review on #289);
 - tests: delete the only Pesada, move a Pesada to another date, move it back.
 
 ### A2. Kilogram totals with legacy data (no loss, no double count)

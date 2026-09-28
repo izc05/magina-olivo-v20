@@ -67,8 +67,9 @@ internal class JornadaLedger(
      * none left it goes back to «Kg pendientes de pesada», and it is removed only when nothing
      * else — jornales, equipment, expenses or attachments — still belongs to it.
      *
-     * A Jornada recorded by hand keeps the Phase 19B rule: with Pesadas its kilos are their sum;
-     * when its last Pesada leaves, it keeps its kilos as its own figure, never zeroed.
+     * A Jornada recorded by hand keeps the Phase 19B rule: with Pesadas its kilos are their sum.
+     * Once a Pesada linked, no typed figure is left, so when the last one leaves it too goes back
+     * to 0 («Kg pendientes de pesada»); A2 would otherwise show those kilos as hand-typed history.
      */
     suspend fun reconcile(harvestId: UUID?, now: Instant) {
         if (harvestId == null) return
@@ -78,13 +79,13 @@ internal class JornadaLedger(
             reconcileAutoDay(harvest, linked, now)
             return
         }
-        if (linked.isEmpty()) return
         val sum = linked.sumOf { it.netGrams }
         if (sum == harvest.weightGrams) return
         database.harvestDao().upsert(harvest.copy(weightGrams = sum, metadata = harvest.metadata.next(now)))
         val parcels = database.harvestDao().listParcels(harvestId)
         parcels.singleOrNull()?.takeIf { it.allocationMode == HarvestAllocation.EXACT.name }?.let { only ->
-            database.harvestDao().upsertParcels(listOf(only.copy(weightGrams = sum)))
+            val share = if (sum > 0) only.copy(weightGrams = sum) else only.copy(weightGrams = null, allocationMode = HarvestAllocation.UNALLOCATED.name)
+            database.harvestDao().upsertParcels(listOf(share))
         }
         database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, harvestId, OutboxOperation.UPDATE, now)
     }

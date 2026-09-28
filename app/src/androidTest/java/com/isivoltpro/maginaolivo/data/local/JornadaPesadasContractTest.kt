@@ -170,12 +170,15 @@ class JornadaPesadasContractTest {
         assertEquals(2_300_000L, harvests.observe(legacy).first()!!.totalGrams)
         assertEquals(5, harvests.observe(legacy).first()!!.workerCount)
 
-        // A new date moves it to that date's automatic day; the Jornada keeps its figure, never zeroed.
+        // A new date moves it to that date's automatic day; the Jornada it left keeps no kilos of it
+        // (they were the Pesada's): back to «Kg pendientes de pesada», never shown as history.
         ok(deliveries.update(a, pesada(2_300_000, "Coop. San Isidro", "V-9")))
         val moved = deliveries.observe(a).first()!!.harvestId!!
         assertTrue(moved != legacy)
         assertTrue(harvests.observe(moved).first()!!.automatic)
-        assertEquals(2_300_000L, harvests.observe(legacy).first()!!.totalGrams)
+        val left = harvests.observe(legacy).first()!!
+        assertTrue(left.awaitingPesadas)
+        assertEquals(HarvestAllocation.UNALLOCATED, left.shares.single().allocation)
 
         // Removing a day releases its Pesadas with every figure intact.
         db.expenseDao().upsert(expenseOn(moved)) // so the day stays when its Pesada leaves

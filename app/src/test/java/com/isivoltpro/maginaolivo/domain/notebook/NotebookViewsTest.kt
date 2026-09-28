@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.domain.notebook
 
+import com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
@@ -141,6 +142,10 @@ class NotebookViewsTest {
         assertEquals(0L, project(harvests = listOf(weighed), deliveries = listOf(pesada)).legacyUnweighedGrams)
         // A Jornada awaiting its first Pesada has no kilos: never legacy history.
         assertEquals(0L, legacyUnweighedGrams(listOf(awaiting), emptyList()))
+        // The year-over-year comparison carries the same figure apart from the weighed kilos.
+        val row = CampaignComparison.of(listOf(notebook)).single()
+        assertEquals(4_000_000L, row.legacyUnweighedGrams)
+        assertEquals(2_000_000L, row.deliveredGrams)
     }
 
     @Test fun pendingDeliveryIsKnownOnlyWhenItAddsUp() {
