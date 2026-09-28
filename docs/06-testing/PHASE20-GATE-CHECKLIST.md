@@ -1,46 +1,99 @@
 # Phase 20 Gate Checklist — Home contextual services + weather visuals
 
-Status: **PENDING owner device check** (prepared 2026-09-27).
+Status: **READY FOR THE OWNER'S FINAL DEVICE TEST** on APK **0.5.0** (updated 2026-09-28).
+Gate 20 closes only when every check below is ☑ on a physical phone. Phase 21 does not start before.
 
-**Gate 20:** failure of every external feed still leaves Mi Olivar fully operational.
+**Gate 20:** failure of every external feed still leaves Mi Campo, Cuaderno and the harvest flow
+fully operational; every external value says its source and age and is never presented as fresh
+when it is not.
 
 ## Slices
 
 | Slice | PR | Room | Status |
 |---|---|---|---|
 | 20A — Feed foundation + Home external cards | #243 | — (reuses `weather_cache`) | merged |
-| 20B — Weather via Edge Functions (AEMET → MET Norway, CR-006) | see Phase 20 plan; #247 (deploy token) | — | merged; deployed and validated live (run #5) |
-| 20B-fix — validation body + provider in the run summary | #257 | — | merged |
+| 20B — Weather via Edge Functions (AEMET → MET Norway, CR-006) | #247, #257 | — | merged; deployed and validated live |
 | 20B-radar — «Ver radar» (RainViewer), live-only | #259 | — | merged |
 | 20C — weather look on Inicio's header (reduced-motion safe) | #260 | — | merged |
-| 20D — oil-market reference | — | — | **source approved 2026-09-27**: Junta de Andalucía Observatorio; implementation pending its own PR |
-| 20E — preferred-cooperative notices | — | — | **deferred**: waits for the private Admin surface / approved per-cooperative feed (D4) |
+| 20D-1 — «Mercado del aceite» card: AOVE.net daily pulse + official weekly trend | #273, #279 | — (reuses `weather_cache`) | merged |
+| 20D-2 — `oil-market` Edge Function (Junta de Andalucía Observatorio) | #274, #276, #278 | — | merged; **deployed 2026-09-28** (deploy run #3: HTTP 200 from eu-west-3, 401 without key) |
+| 20D-3 — official source on + «Mercado del aceite» screen, 12-week chart (0.5.0) | #280 | — | merged |
+| 20E — preferred-cooperative notices | — | — | **deferred** (D4): waits for the private Admin surface / an approved per-cooperative feed |
 
-Owner update 2026-09-27: D3 is now decided. 20D may be implemented from the official Junta de
-Andalucía Observatorio source in a separate PR, after documenting stable access/reuse and fixtures.
-20E remains deferred. Nothing in Mi Olivar depends on 20E, and no cooperative notice is invented.
+Also in 0.5.0 (not Phase 20 slices, but covered by check F below): the owner's UX review (#277:
+Mi Campo empty state, shorter farm/parcel forms, single «Añadir», «Registrar hoy» type-first).
 
-## Automated evidence (CI, fixtures only — no live AEMET/MET Norway/RainViewer calls)
+## Automated evidence (CI, fixtures only — no live AEMET/MET Norway/RainViewer/Junta calls)
 
 | Criterion | Test evidence |
 |---|---|
-| Every feed failing leaves Home and Mi Olivar usable | `HomeFeedsScreenTest` |
+| Every feed failing leaves Home and Mi Campo usable | `HomeFeedsScreenTest` |
 | Stale/unknown weather is never shown as fresh; provider named | `WeatherFeedContractTest`, `EdgeWeatherResponseTest` |
 | Radar is live-only: offline says so, never an old picture | `RadarScreenTest`, `EdgeRadarResponseTest` |
 | Weather look: mapping table; reduced motion ⇒ still frame; unknown ⇒ none | `WeatherMoodsTest` (JVM), `WeatherMoodLayerTest` |
-| Edge Functions: fixtures, keyless call refused (401) | `supabase/functions/*` node tests + `weather-fixtures` job |
+| Oil market: weekly change only between consecutive weeks; a missing week stays missing; «Dato antiguo» by the weekly rule; never «hoy» | `OilTrendsTest`, `EdgeOilMarketResponseTest`, `OilMarketFeedContractTest`, `HomeOilMarketScreenTest`, `OilMarketScreenTest` |
+| Oil market function: Junta table by labels (live header format), refusals with a reason, 8 s under the app's 10 s | `supabase/functions/oil-market/oil-market.test.ts` (`weather-fixtures` job) |
+| Harvest flow offline: Jornada + Pesadas + costs, no duplicates | `RecollectionFlowContractTest`, `JornadaPesadasContractTest`, `AppNavigationTest` |
 | Boundary: no Supabase/WorkManager outside `data/remote/weather/` | `ArchitectureBoundaryTest` |
 
-## Owner device checks (latest APK, Perfil → «Versión 0.3.0-dev · compilación …»)
+## Before starting
+
+- Install the **0.5.0** APK from the `main` build (Actions → Android CI → run for «Merge pull
+  request #280» → artifact `magina-olivo-dev-debug`).
+- ⚠️ If the phone has an APK built elsewhere (another machine/key), Android asks to uninstall first
+  and **local data is lost**. An APK from CI over a previous CI APK updates in place.
+- Have coverage for the first opening (so the official oil weeks and the weather are fetched once),
+  then use airplane mode where a check says so.
+
+## Owner device checks — APK 0.5.0
+
+### A. Perfil / versionado
 
 | # | Check | Expected | Result |
 |---|---|---|---|
-| G1 | Inicio with data and coverage | Tiempo with its source («AEMET» or «MET Norway») and time; header look matches the sky | ☐ |
-| G2 | Airplane mode, open Inicio | The last weather with its age («hace …») or «Sin conexión»; never presented as current | ☐ |
-| G3 | Airplane mode, «Ver radar» | «El radar necesita conexión» + Reintentar; no old picture | ☐ |
-| G4 | Airplane mode, Mi Campo → Finca → Registrar hoy → guardar | Saved on the phone; appears in Cuaderno → Diario | ☐ |
-| G5 | Airplane mode, Cuaderno → Nueva pesada → guardar | Saved; Jornada and totals updated | ☐ |
-| G6 | Ajustes → Accesibilidad → quitar animaciones, open Inicio | Header without movement; text readable | ☐ |
-| G7 | Aceite / Cooperativa cards | «Sin fuente configurada» / choose cooperative; no invented prices or news | ☐ |
+| A1 | Perfil → Acerca de | «Versión 0.5.0-dev · compilación N», N = the CI run number of the APK | ☐ |
 
-Please report the device model and Android version with the results.
+### B. Tiempo y radar
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| B1 | Inicio with coverage and a farm with municipality | Tiempo with its source («AEMET» or «MET Norway») and «Actualizado hace …»; header look matches the sky | ☐ |
+| B2 | «Ver radar de lluvia» with coverage | Radar over the farm, with the frame time and «RainViewer» | ☐ |
+| B3 | Ajustes del teléfono → Accesibilidad → quitar animaciones, open Inicio | Header without movement; text readable | ☐ |
+
+### C. Mercado del aceite
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| C1 | Inicio → «Mercado del aceite» with coverage | «Pulso diario» (AOVE.net) complete, not cut at Lampante, with «Fuente: AOVE.net» | ☐ |
+| C2 | Same card, «Tendencia oficial semanal» | AOVE, Virgen, Lampante with €/kg and «↑/↓ x % esta semana» (or «sin cambio»); «Semana N (fechas) · Observatorio … Junta de Andalucía · precio en almazara»; never «hoy» | ☐ |
+| C3 | «Ver mercado» | Screen with the pulse, the weekly trend and the «Últimas 12 semanas» chart (3 lines + legend); below it the same numbers in words, source and «consultado …» | ☐ |
+| C4 | Compare with the Junta page (Observatorio → Aceites de oliva → Últimos precios) | Last week's AOVE / Virgen / Lampante match | ☐ |
+
+### D. Caché / sin conexión
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| D1 | Airplane mode, open Inicio | Last weather with its age or «Sin conexión»; never presented as current | ☐ |
+| D2 | Airplane mode, «Ver radar» | «El radar necesita conexión» + Reintentar; no old picture | ☐ |
+| D3 | Airplane mode, Mercado del aceite | Official weeks still shown (from the phone) with their week and source; «Pulso diario no disponible sin conexión» | ☐ |
+| D4 | Back online, wait / reopen Inicio | Pulse loads again by itself; weather refreshes | ☐ |
+
+### E. Mi Campo → Cuaderno → Jornada / Pesada (in airplane mode)
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| E1 | Mi Campo → Finca → Parcelas → «Añadir» → «A mano» → alias + superficie → Guardar | Back on the parcel list with the new parcel | ☐ |
+| E2 | Cuaderno → «Registrar hoy» → choose a type (e.g. Poda) → parcela → Guardar | Appears in Cuaderno → Diario as **Completada**, today | ☐ |
+| E3 | Cuaderno → «Registrar hoy» with a future date or a reminder | Stays **Planificada** and appears in Avisos | ☐ |
+| E4 | Cuaderno → Recolección → new Jornada → Nueva pesada (kg, cooperativa) → Guardar | Pesada inside its Jornada; totals updated; not listed twice | ☐ |
+| E5 | Close the app (swipe away) and reopen, still offline | Everything from E1–E4 is still there | ☐ |
+
+### F. Cooperativa
+
+| # | Check | Expected | Result |
+|---|---|---|---|
+| F1 | «Mi cooperativa» card | Says notices will come with the admin panel; no invented news | ☐ |
+
+Please report the **phone model and Android version** with the results, and a screenshot of any ☒.
+If everything is ☑, Gate 20 is PASS and Phase 21 (Perfil) may start.
