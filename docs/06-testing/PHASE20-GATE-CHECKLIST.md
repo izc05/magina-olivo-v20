@@ -81,13 +81,17 @@ Mi Campo empty state, shorter farm/parcel forms, single «Añadir», «Registrar
 
 ### E. Mi Campo → Cuaderno → Jornada / Pesada (in airplane mode)
 
+Re-run on the APK that includes #282 (emulator run on build 575 found no way to open a Jornada before its Pesadas, and «Sin campaña activa» during «Recolección»).
+
 | # | Check | Expected | Result |
 |---|---|---|---|
 | E1 | Mi Campo → Finca → Parcelas → «Añadir» → «A mano» → alias + superficie → Guardar | Back on the parcel list with the new parcel | ☐ |
 | E2 | Cuaderno → «Registrar hoy» → choose a type (e.g. Poda) → parcela → Guardar | Appears in Cuaderno → Diario as **Completada**, today | ☐ |
 | E3 | Cuaderno → «Registrar hoy» with a future date or a reminder | Stays **Planificada** and appears in Avisos | ☐ |
-| E4 | Cuaderno → Recolección → new Jornada → Nueva pesada (kg, cooperativa) → Guardar | Pesada inside its Jornada; totals updated; not listed twice | ☐ |
-| E5 | Close the app (swipe away) and reopen, still offline | Everything from E1–E4 is still there | ☐ |
+| E4 | Cuaderno → Recolección → «Abrir jornada de hoy» (choose the farm if asked) | Jornada of today opens; «Kg pendientes de pesada», never «0 kg»; Recolección counts 1 Jornada; the farm card shows the campaign, not «Sin campaña activa» | ☐ |
+| E5 | Inside that Jornada → «Añadir pesada» (kg, cooperativa) → Guardar; add a second one | Both Pesadas inside the Jornada; its kilos are their sum; campaign totals updated; nothing listed twice | ☐ |
+| E6 | Cuaderno → Nueva pesada → «Nueva jornada de este día» on another farm/day | The Pesada opens its own Jornada with its kilos | ☐ |
+| E7 | Close the app (swipe away) and reopen, still offline | Everything from E1–E6 is still there | ☐ |
 
 ### F. Cooperativa
 
