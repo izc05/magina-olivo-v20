@@ -135,7 +135,7 @@ class DeliveriesViewModel(
     }
 
     /** Keeps the ticket, reads it on the device, then opens its review. Nothing is recorded yet. */
-    fun importTicket(sourceUri: String) {
+    fun importTicket(sourceUri: String, typed: DeliveryForm? = null) {
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
             when (val imported = documents.importDocument(DocumentType.DELIVERY_TICKET, sourceUri)) {
@@ -145,6 +145,7 @@ class DeliveriesViewModel(
                 )
                 is AppResult.Success -> {
                     // A failed reading is recorded on the ticket and can be repeated from its review.
+                    typed?.let { TicketSeeds.put(imported.value, it) }
                     documents.runExtraction(imported.value)
                     mutableState.value = mutableState.value.copy(isSaving = false, openedTicketId = imported.value)
                 }
@@ -290,6 +291,8 @@ data class TicketReviewUiState(
     val error: String? = null,
     val createdDeliveryId: UUID? = null,
     val closed: Boolean = false,
+    /** CR-010 §6: the Nueva pesada form the ticket was read from, if any. */
+    val seed: DeliveryForm? = null,
 )
 
 /**
@@ -302,7 +305,7 @@ class TicketReviewViewModel(
     deliveries: DeliveryRepository,
     organizations: OrganizationRepository,
 ) : ViewModel() {
-    private val mutableState = MutableStateFlow(TicketReviewUiState())
+    private val mutableState = MutableStateFlow(TicketReviewUiState(seed = TicketSeeds.take(extractionId)))
     val state: StateFlow<TicketReviewUiState> = mutableState.asStateFlow()
 
     init {
