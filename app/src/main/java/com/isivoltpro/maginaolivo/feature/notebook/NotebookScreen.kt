@@ -58,7 +58,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
-import com.isivoltpro.maginaolivo.ui.components.MoSummaryMetric
+import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
@@ -238,7 +238,7 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
         modifier = Modifier.testTag("notebook-recollection-summary"),
         content = listOf(
             { m ->
-                MoSummaryMetric(
+                MoKpiMetric(
                     "Kg pesados",
                     deliveries.deliveredGrams.takeIf { deliveries.deliveryCount > 0 }?.let(Weight::format) ?: "—",
                     m.testTag("notebook-recollection-kg"),
@@ -246,7 +246,7 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
                 )
             },
             { m ->
-                MoSummaryMetric(
+                MoKpiMetric(
                     "Pesadas",
                     deliveries.deliveryCount.toString(),
                     m.testTag("notebook-recollection-count"),
@@ -254,7 +254,7 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
                 )
             },
             { m ->
-                MoSummaryMetric(
+                MoKpiMetric(
                     "Rendimiento medio",
                     fat?.let { Percent.format(it.hundredths) } ?: "—",
                     m.testTag("notebook-recollection-yield"),
@@ -267,11 +267,12 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
                 )
             },
             { m ->
-                MoSummaryMetric(
+                MoKpiMetric(
                     "Gastos",
                     if (costs.postedCount == 0) "—" else Money.format(costs.totalMinor, costs.currency),
                     m.testTag("notebook-recollection-costs"),
                     icon = MoIcons.Euro,
+                    tone = MoIconTone.WATER,
                     supportingText = if (costs.draftCount > 0) "${costs.draftCount} en borrador sin contar" else null,
                 )
             },
@@ -405,12 +406,12 @@ internal fun SummaryTab(
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs), modifier = Modifier.testTag("notebook-summary")) {
         CampaignAtAGlance(CampaignDashboard.of(notebook, today), deliveries.deliveredGrams)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            MoSummaryMetric(
+            MoKpiMetric(
                 "Trabajos", "${notebook.completedWorks} hechos", Modifier.weight(1f),
                 icon = MoIcons.Checklist,
                 supportingText = if (notebook.plannedWorks == 0) "Nada planificado" else "${notebook.plannedWorks} planificados",
             )
-            MoSummaryMetric(
+            MoKpiMetric(
                 "Jornadas", notebook.harvests.size.toString(), Modifier.weight(1f),
                 icon = MoIcons.Harvest,
                 supportingText = listOfNotNull(
@@ -419,12 +420,12 @@ internal fun SummaryTab(
             )
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            MoSummaryMetric(
+            MoKpiMetric(
                 "Kg pesados", if (deliveries.deliveryCount == 0) "—" else Weight.format(deliveries.deliveredGrams), Modifier.weight(1f),
                 icon = MoIcons.Delivery,
                 supportingText = if (deliveries.deliveryCount == 1) "1 pesada" else "${deliveries.deliveryCount} pesadas",
             )
-            MoSummaryMetric(
+            MoKpiMetric(
                 "Rendimiento", deliveries.fatYield?.let { Percent.format(it.hundredths) } ?: "—", Modifier.weight(1f),
                 icon = MoIcons.Percent,
                 supportingText = deliveries.fatYield?.let { "Sobre el ${deliveries.coveragePercent(it)} % de los kilos" } ?: "Pendiente de análisis",
@@ -432,7 +433,7 @@ internal fun SummaryTab(
         }
         if (!notebook.labourSummary.isEmpty) {
             val named = notebook.labourByWorker.size
-            MoSummaryMetric(
+            MoKpiMetric(
                 "Jornales",
                 // Whole days, half days and hours stay apart: never one number that mixes them.
                 notebook.labourSummary.label(),
@@ -459,18 +460,19 @@ internal fun SummaryTab(
             }
         }
         if (!notebook.equipmentSummary.isEmpty) {
-            MoSummaryMetric(
+            MoKpiMetric(
                 "Maquinaria (días de uso)",
                 notebook.equipmentSummary.label(),
                 Modifier.fillMaxWidth().testTag("notebook-summary-equipment"),
                 icon = MoIcons.Tractor,
             )
         }
-        MoSummaryMetric(
+        MoKpiMetric(
             "Gastos de la campaña",
             if (expenses.postedCount == 0) "—" else Money.format(expenses.totalMinor, expenses.currency),
             Modifier.fillMaxWidth().testTag("notebook-summary-expenses"),
             icon = MoIcons.Euro,
+            tone = MoIconTone.WATER,
             supportingText = when {
                 expenses.draftCount > 0 -> "${expenses.draftCount} en borrador sin contar"
                 expenses.postedCount == 0 -> "Sin gastos anotados"
@@ -507,12 +509,12 @@ internal fun SummaryTab(
 private fun CampaignAtAGlance(dashboard: CampaignDashboard, weighedGrams: Long) {
     val date = { value: LocalDate? -> value?.let { DATE_FORMAT.format(it) } ?: "—" }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        MoSummaryMetric(
+        MoKpiMetric(
             "Días de campaña", dashboard.calendarDays?.toString() ?: "—", Modifier.weight(1f).testTag("dashboard-days"),
             icon = MoIcons.Calendar,
             supportingText = dashboard.closedOn?.let { "Cerrada el ${date(it)}" } ?: "Desde que se activó",
         )
-        MoSummaryMetric(
+        MoKpiMetric(
             "Días con pesadas", dashboard.pesadaDays.toString(), Modifier.weight(1f).testTag("dashboard-pesada-days"),
             icon = MoIcons.Delivery,
             supportingText = if (dashboard.labourDays == 1) "1 día con jornales" else "${dashboard.labourDays} días con jornales",
@@ -527,19 +529,21 @@ private fun CampaignAtAGlance(dashboard: CampaignDashboard, weighedGrams: Long) 
         )
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        MoSummaryMetric(
+        MoKpiMetric(
             "Coste", if (dashboard.postedCostMinor > 0) Money.format(dashboard.postedCostMinor, dashboard.currency) else "—",
             Modifier.weight(1f).testTag("dashboard-cost"),
             icon = MoIcons.Euro,
+            tone = MoIconTone.WATER,
             supportingText = listOfNotNull(
                 dashboard.calculatedLabourMinor.takeIf { it > 0 }?.let { "jornales ${Money.format(it, dashboard.currency)}" },
                 dashboard.calculatedMachineryMinor.takeIf { it > 0 }?.let { "maquinaria ${Money.format(it, dashboard.currency)}" },
             ).joinToString(" · ").ifEmpty { "Solo gastos contabilizados" },
         )
-        MoSummaryMetric(
+        MoKpiMetric(
             "Coste por kilo", dashboard.costPerKgMinor?.let { Money.format(it, dashboard.currency) } ?: "—",
             Modifier.weight(1f).testTag("dashboard-cost-per-kg"),
             icon = MoIcons.Percent,
+            tone = MoIconTone.WATER,
             supportingText = if (weighedGrams > 0) "Sobre ${Weight.format(weighedGrams)} pesados" else "Sin kilos pesados",
         )
     }
