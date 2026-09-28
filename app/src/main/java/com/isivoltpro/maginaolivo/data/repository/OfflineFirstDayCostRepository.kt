@@ -83,6 +83,39 @@ class OfflineFirstDayCostRepository(
             AppResult.Success(Unit)
         }
 
+    override suspend fun linkToDay(expenseId: UUID, harvestId: UUID): AppResult<Unit> =
+        inTransaction("link_to_day") {
+            val day = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null }
+                ?: return@inTransaction AppResult.Failure(AppError.NotFound("harvest"))
+            val expense = database.expenseDao().findById(expenseId)?.takeIf { it.metadata.deletedAt == null }
+                ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
+            if (expense.origin in DayCostLedger.CALCULATED || expense.harvestId != null) {
+                return@inTransaction AppResult.Failure(AppError.Conflict("not_unlinked"))
+            }
+            if (expense.farmId != day.farmId || expense.expenseDate != day.harvestDate) {
+                return@inTransaction AppResult.Failure(AppError.Validation("expense", "other_day"))
+            }
+            val campaign = day.campaignId?.let { database.campaignDao().findById(it) }
+            if (campaign == null || (campaign.status != CampaignStatus.ACTIVE && campaign.status != CampaignStatus.HARVEST)) {
+                return@inTransaction AppResult.Failure(AppError.Conflict("campaign_closed"))
+            }
+            val now = clock.nowInstant()
+            database.expenseDao().upsert(
+                expense.copy(
+                    harvestId = day.id,
+                    campaignId = day.campaignId,
+                    metadata = expense.metadata.copy(
+                        updatedAt = now,
+                        version = expense.metadata.version + 1,
+                        syncStatus = SyncStatus.PENDING,
+                    ),
+                ),
+            )
+            database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, expense.id, OutboxOperation.UPDATE, now)
+            costs.sync(day.id, now)
+            AppResult.Success(Unit)
+        }
+
     private suspend fun <T> inTransaction(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
         withContext(dispatchers.io) {
             try {

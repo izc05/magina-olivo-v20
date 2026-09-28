@@ -5,6 +5,7 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 
@@ -100,6 +101,27 @@ enum class DayCostKind(val origin: ExpenseOrigin, val category: ExpenseCategory,
             JornadaExpenseKind.entries.none { it.additive && it.category == category && concept.trim().startsWith(it.label, ignoreCase = true) }
 }
 
+/**
+ * A3: posted, hand-typed costs of the day's Farm and date that are linked to **no** day, while
+ * the day has a calculated cost they could stand for. They are ambiguous: the app shows them with
+ * a warning and the farmer links one to the day or keeps it apart; it never merges or drops them.
+ */
+object UnlinkedDayCosts {
+    fun of(dayId: UUID, farmId: UUID?, date: LocalDate, expenses: List<Expense>): List<Expense> {
+        if (farmId == null) return emptyList()
+        val calculated = expenses.filter { it.harvestId == dayId }
+            .mapNotNull { expense -> DayCostKind.entries.firstOrNull { it.origin == expense.origin } }
+            .toSet()
+        if (calculated.isEmpty()) return emptyList()
+        return expenses.filter { expense ->
+            expense.harvestId == null && expense.farmId == farmId && expense.expenseDate == date &&
+                expense.status == ExpenseStatus.POSTED &&
+                DayCostKind.entries.none { it.origin == expense.origin } &&
+                calculated.any { it.isReplacedBy(expense.category, expense.concept) }
+        }
+    }
+}
+
 interface DayCostRepository {
     fun observeRates(farmId: UUID): Flow<RecollectionRates>
 
@@ -111,4 +133,10 @@ interface DayCostRepository {
      * picks the calculation; then that hand-typed cost goes back to draft (kept, never summed).
      */
     suspend fun preferCalculated(harvestId: UUID, kind: DayCostKind): AppResult<Unit>
+
+    /**
+     * A3: the farmer says an unlinked hand-typed cost of the same Farm and date belongs to this
+     * day. It is linked (nothing else changes) and the collision rule then applies to the day.
+     */
+    suspend fun linkToDay(expenseId: UUID, harvestId: UUID): AppResult<Unit>
 }
