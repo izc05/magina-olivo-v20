@@ -91,7 +91,7 @@ Nothing is wrong with the data; the wording is. Fix proposed in W1.
 
 | # | Decision | Options | Recommendation |
 |---|---|---|---|
-| W-1 | When to build W1 | (a) inside Phase 20, before Gate 20 closes: one more APK and device test with B4/D5 added; (b) after Gate 20 PASS, **only through a Change Request** (`CHANGE-CONTROL.md`, next number CR-008) that registers W1 as an approved 20B follow-up and updates `CURRENT-STATE.md` before any code — it is not Phase 21 (Profile) scope | **(b) with CR-008**: Gate 20 closes on the APK 580 test and W1 does not block field work; without an approved CR the only compliant option is (a) |
+| W-1 | When to build W1 | (a) inside Phase 20, before Gate 20 closes: one more APK and device test with B4/D5 added; (b) after Gate 20 PASS, **only through a Change Request** (`CHANGE-CONTROL.md`; draft ready: `docs/00-master/RC1.2-CHANGE-REQUEST-008-WEATHER-WEEK-LOCATION.md`) that registers W1 as an approved 20B follow-up and updates `CURRENT-STATE.md` before any code — it is not Phase 21 (Profile) scope | **(b) with CR-008**: Gate 20 closes on the APK 580 test and W1 does not block field work; without an approved CR the only compliant option is (a) |
 | W-2 | Where W2 lives | (a) with 21A (shared municipality already in scope; follow-location added by the same CR-008); (b) separate slice after 21A, also by CR | **(a)**: same municipality, same Room v17 table, one migration |
 | W-3 | Freshness wording | «Previsión {fuente} de las HH:MM · consultada hace …» | as proposed |
 
