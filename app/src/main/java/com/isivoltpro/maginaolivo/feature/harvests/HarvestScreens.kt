@@ -47,7 +47,9 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.harvest.CollectionMethod
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
+import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocationMode
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
@@ -80,6 +82,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
+import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
 import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
@@ -87,6 +90,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 
 @Composable
@@ -102,6 +107,26 @@ fun HarvestsRoute(
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     val deliveries by remember { persistence.deliveryRepository.observeAll() }.collectAsStateWithLifecycle(emptyList())
+    // CR-011 §9/§23: jornales and machinery of the days listed, read from their own ledgers.
+    val campaignIds = remember(state.harvests) { state.harvests.mapNotNull { it.campaignId }.distinct() }
+    val labour by remember(campaignIds) {
+        if (campaignIds.isEmpty()) flowOf(emptyList<LabourEntry>())
+        else combine(campaignIds.map { persistence.labourRepository.observeForCampaign(it) }) { lists -> lists.flatMap { it } }
+    }.collectAsStateWithLifecycle(emptyList())
+    val equipment by remember(campaignIds) {
+        if (campaignIds.isEmpty()) flowOf(emptyList<EquipmentLine>())
+        else combine(campaignIds.map { persistence.equipmentRepository.observeForCampaign(it) }) { lists -> lists.flatMap { it } }
+    }.collectAsStateWithLifecycle(emptyList())
+    val dayLines = remember(state.harvests, deliveries, labour, equipment) {
+        state.harvests.associate { harvest ->
+            harvest.id to dayRowLine(
+                harvest = harvest,
+                pesadas = deliveries.count { it.harvestId == harvest.id },
+                labour = labour.filter { it.harvestId == harvest.id },
+                equipment = equipment.filter { it.harvestId == harvest.id },
+            )
+        }
+    }
     HarvestsScreen(
         state = state,
         today = clock.today(ZoneId.systemDefault()),
@@ -110,6 +135,7 @@ fun HarvestsRoute(
         onEditorClosed = viewModel::clearFormErrors,
         onDeliveries = onDeliveries,
         deliverySummary = remember(deliveries) { DeliverySummary.of(deliveries) },
+        dayLines = dayLines,
     )
 }
 
@@ -125,6 +151,8 @@ fun HarvestsScreen(
     onDeliveries: () -> Unit = {},
     /** Delivered kilos and yield, read from the Delivery ledger (never recomputed here). */
     deliverySummary: DeliverySummary? = null,
+    /** CR-011 §9: each day's «kg · pesadas · jornales · maquinaria» line, by day id. */
+    dayLines: Map<UUID, String> = emptyMap(),
 ) {
     Scaffold(Modifier.fillMaxSize().testTag("harvests-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
@@ -197,7 +225,11 @@ fun HarvestsScreen(
                 else -> {
                     state.campaigns.forEach { campaign -> CampaignHarvestCard(campaign) }
                     MoSectionHeader("Días de recolección")
-                    state.harvests.forEach { harvest -> HarvestRow(harvest) { onHarvestSelected(harvest.id) } }
+                    state.harvests.forEach { harvest ->
+                        HarvestRow(harvest, dayLines[harvest.id] ?: dayRowLine(harvest, 0, emptyList(), emptyList())) {
+                            onHarvestSelected(harvest.id)
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(MoSpacing.xl))
@@ -258,7 +290,8 @@ private fun CampaignHarvestCard(campaign: CampaignHarvest) {
 }
 
 @Composable
-private fun HarvestRow(harvest: Harvest, onClick: () -> Unit) {
+private fun HarvestRow(harvest: Harvest, line: String, onClick: () -> Unit) {
+    // CR-011 §9/§23: icon + «12 dic 2026 · Día de recolección», then what it holds, then status.
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("harvest-row"),
         shape = MoShape.card,
@@ -266,23 +299,24 @@ private fun HarvestRow(harvest: Harvest, onClick: () -> Unit) {
     ) {
         Row(
             Modifier.fillMaxWidth().padding(MoSpacing.md),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+            verticalAlignment = Alignment.Top,
         ) {
+            MoIconBadge(MoIcons.Harvest)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-                Text(DATE_FORMAT.format(harvest.harvestDate), style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text(
-                    harvest.shares.joinToString(", ") { it.parcelName },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
+                    "${DATE_FORMAT.format(harvest.harvestDate)} · Día de recolección",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MoOliveDark,
+                )
+                Text(
+                    line,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (harvest.awaitingPesadas) MoTextSecondary else MoInk,
+                    modifier = Modifier.testTag("harvest-row-line"),
                 )
                 MoStatusChip(harvest.allocationMode.label(), tone = harvest.allocationMode.tone())
             }
-            Text(
-                if (harvest.awaitingPesadas) PENDING_KILOS else Weight.format(harvest.totalGrams),
-                style = MaterialTheme.typography.titleMedium,
-                color = if (harvest.awaitingPesadas) MoTextSecondary else MoInk,
-            )
         }
     }
 }
