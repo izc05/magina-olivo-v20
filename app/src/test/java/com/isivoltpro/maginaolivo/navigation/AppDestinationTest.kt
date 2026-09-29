@@ -29,8 +29,9 @@ class AppDestinationTest {
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.RegisterPattern))
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.register("PHYTOSANITARY")))
         // CR-011 §12: Avisos → «Planificar trabajo» reuses the flow in plan mode.
-        assertEquals("register?plan=true", AppDestination.planWork())
-        assertEquals("register?type={type}&plan={plan}", AppDestination.RegisterPattern)
+        assertEquals(AppDestination.PlanWork, AppDestination.planWork())
+        assertEquals(RootDestination.Alerts, AppDestination.rootForRoute(AppDestination.PlanWork))
+        assertEquals("register?type={type}", AppDestination.RegisterPattern)
         assertEquals(RootDestination.Notebook, RootDestination.entries.single { it.isPrimaryAction })
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))
         // Phase 20B-radar: the radar belongs to Inicio.

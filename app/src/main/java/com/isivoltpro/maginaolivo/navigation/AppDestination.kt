@@ -43,11 +43,13 @@ object AppDestination {
     const val Onboarding = "onboarding"
     /** Activity register flow (was the `+` root; now opened from Cuaderno → Registrar hoy). */
     const val Register = "register"
+    /** «Registrar trabajo»: the register flow with the type chosen in the Cuaderno (optional). */
+    const val RegisterPattern = "register?type={type}"
     /**
-     * The register flow with the type chosen in the Cuaderno (optional). CR-011 §12: `plan=true`
-     * is Avisos → «Planificar trabajo» (saved as planned); otherwise it is «Registrar trabajo».
+     * CR-011 §12: Avisos → «Planificar trabajo». The same flow in plan mode (saved as planned),
+     * on its own route so the bottom bar stays on Avisos.
      */
-    const val RegisterPattern = "register?type={type}&plan={plan}"
+    const val PlanWork = "plan-work"
     /** The agenda (was the Calendario root; now under Avisos). */
     const val Calendar = "calendar"
     const val MapCatastro = "map-catastro"
@@ -129,7 +131,7 @@ object AppDestination {
     fun register(type: String?): String = if (type.isNullOrBlank()) Register else "$Register?type=$type"
 
     /** CR-011 §12: Avisos → «Planificar trabajo». */
-    fun planWork(): String = "$Register?plan=true"
+    fun planWork(): String = PlanWork
 
     fun rootForRoute(route: String?): RootDestination? {
         val prefix = route?.substringBefore('?')?.substringBefore('/') ?: return null
@@ -163,7 +165,7 @@ object AppDestination {
             "expense",
             "document",
             -> RootDestination.Notebook
-            RootDestination.Alerts.route, Calendar -> RootDestination.Alerts
+            RootDestination.Alerts.route, Calendar, PlanWork -> RootDestination.Alerts
             RootDestination.Profile.route, DeveloperGallery -> RootDestination.Profile
             else -> null
         }
