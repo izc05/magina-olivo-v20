@@ -26,7 +26,7 @@ It must not drift into generic ERP, banking-dashboard, rustic cliché or overly 
 | MoOlivePrimary | #3E5A32 | primary actions, active states, brand |
 | MoOliveDark | #173122 | headings, strong text, brand contrast |
 | MoCream | #F8F6EE | app background |
-| MoWarmWhite | #FCFBF7 | raised surfaces |
+| MoWarmWhite | #FFFEFA | cards and raised surfaces (CR-011: near-white over the cream background) |
 | MoSage | #A7B08F | supporting surfaces, muted accents |
 | MoEarth | #B88B6B | warm territorial accents |
 | MoSoftGold | #D4B76A | value/market/highlight accents |
@@ -37,6 +37,13 @@ It must not drift into generic ERP, banking-dashboard, rustic cliché or overly 
 | MoInfo | #5E7D8C | information |
 | MoWarning | #C49842 | warnings |
 | MoError | #B5534F | errors |
+| MoTreatmentText / Tint | #2E6A5C / #E1EEE9 | CR-011: Tratamiento accent |
+| MoLabourText / Tint | #9A4524 / #F8E5DA | CR-011: Jornal / people accent |
+| MoMoneyText / Tint | #6A5326 / #EEE6D2 | CR-011: Gasto / money accent |
+
+CR-011 action accents: Trabajo olive · Riego blue · Tratamiento technical green · Pesada ochre ·
+Jornal terracotta · Gasto gold-brown · Campaña deep green · Avisos amber. Colour is never the
+only cue: each action keeps its icon and label. One primary button per block (§22).
 
 Rules:
 

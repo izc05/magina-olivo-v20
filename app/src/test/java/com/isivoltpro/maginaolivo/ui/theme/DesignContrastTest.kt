@@ -8,6 +8,21 @@ import kotlin.math.min
 
 class DesignContrastTest {
 
+    /** CR-011 §20/§21: every action accent reads on its own tint and on the card white. */
+    @Test
+    fun actionAccentsMeetWcagAaOnTintAndCard() {
+        listOf(
+            Triple("treatment", MoTreatmentText, MoTreatmentTint),
+            Triple("labour", MoLabourText, MoLabourTint),
+            Triple("money", MoMoneyText, MoMoneyTint),
+            Triple("value", MoSoftGoldText, MoSoftGoldTint),
+            Triple("water", MoInfoText, MoInfoTint),
+        ).forEach { (name, line, tint) ->
+            assertContrastAtLeast("$name on its tint", line, tint, WCAG_AA_NORMAL_TEXT)
+            assertContrastAtLeast("$name on card white", line, MoWarmWhite, WCAG_AA_NORMAL_TEXT)
+        }
+    }
+
     @Test
     fun semanticStatusForegroundsMeetWcagAaOnTintedBackgrounds() {
         val tones = listOf(

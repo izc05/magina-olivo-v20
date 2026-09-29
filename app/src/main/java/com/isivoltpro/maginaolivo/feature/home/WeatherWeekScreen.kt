@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -58,7 +59,6 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoTint
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -272,7 +272,7 @@ private fun CurrentWeatherSummary(weather: WeatherNow, stale: Boolean) {
 
 @Composable
 private fun WeatherMeasure(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
-    Surface(modifier.semantics(mergeDescendants = true) {}, shape = MoShape.card, color = MoSurfaceSoft) {
+    Surface(modifier.semantics(mergeDescendants = true) {}, shape = MoShape.card, color = MoWarmWhite, border = BorderStroke(1.dp, MoOutline)) {
         Column(Modifier.padding(MoSpacing.sm), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
             Icon(icon, null, tint = MoInfoText, modifier = Modifier.size(22.dp))
             Text(value, style = MaterialTheme.typography.titleLarge, color = MoOliveDark)

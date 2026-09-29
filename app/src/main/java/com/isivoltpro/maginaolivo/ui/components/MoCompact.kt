@@ -96,9 +96,9 @@ fun MoSummaryMetric(
  */
 enum class MoKpiKind(val tint: Color, val container: Color) {
     PESADAS(MoIconTone.VALUE.tint, MoIconTone.VALUE.container),
-    JORNALES(MoIconTone.GROVE.tint, MoIconTone.GROVE.container),
+    JORNALES(MoIconTone.LABOUR.tint, MoIconTone.LABOUR.container),
     MAQUINARIA(MoIconTone.LAND.tint, MoIconTone.LAND.container),
-    COSTES(MoIconTone.WATER.tint, MoIconTone.WATER.container),
+    COSTES(MoIconTone.MONEY.tint, MoIconTone.MONEY.container),
     CAMPAIGN(MoOliveDark, MoOliveTint),
 }
 

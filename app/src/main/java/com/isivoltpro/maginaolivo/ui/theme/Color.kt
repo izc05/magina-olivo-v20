@@ -19,7 +19,8 @@ val MoOliveTint = Color(0xFFE9EEE0)
 val MoInk = Color(0xFF2A2823)
 val MoOliveDark = Color(0xFF173122)
 val MoCream = Color(0xFFF8F6EE)
-val MoWarmWhite = Color(0xFFFCFBF7)
+// CR-011 §19: cards are near-white over the cream background so content separates clearly.
+val MoWarmWhite = Color(0xFFFFFEFA)
 val MoSage = Color(0xFFA7B08F)
 val MoEarth = Color(0xFFB88B6B)
 val MoSoftGold = Color(0xFFD4B76A)
@@ -49,6 +50,16 @@ val MoSoftGoldTint = Color(0xFFF6EFD9)
 val MoEarthText = Color(0xFF7D5438)
 val MoEarthTint = Color(0xFFF4EAE1)
 val MoWarningTint = Color(0xFFF7EDD6)
+
+// CR-011 §20: semantic accents for the Cuaderno actions that shared a family before —
+// Tratamiento (technical green), Jornal (terracotta) and Gasto (gold-brown). Same agro family,
+// nothing loud; each line colour keeps ≥ 4.5:1 on its tint and on the card white.
+val MoTreatmentText = Color(0xFF2E6A5C)
+val MoTreatmentTint = Color(0xFFE1EEE9)
+val MoLabourText = Color(0xFF9A4524)
+val MoLabourTint = Color(0xFFF8E5DA)
+val MoMoneyText = Color(0xFF6A5326)
+val MoMoneyTint = Color(0xFFEEE6D2)
 
 val MoLightColorScheme = lightColorScheme(
     // Material's own "primary" drives text buttons, checkboxes and progress: those are

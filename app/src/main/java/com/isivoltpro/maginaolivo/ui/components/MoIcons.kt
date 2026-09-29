@@ -17,6 +17,12 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldText
 import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldTint
 import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
 import com.isivoltpro.maginaolivo.ui.theme.MoWarningTint
+import com.isivoltpro.maginaolivo.ui.theme.MoLabourText
+import com.isivoltpro.maginaolivo.ui.theme.MoLabourTint
+import com.isivoltpro.maginaolivo.ui.theme.MoMoneyText
+import com.isivoltpro.maginaolivo.ui.theme.MoMoneyTint
+import com.isivoltpro.maginaolivo.ui.theme.MoTreatmentText
+import com.isivoltpro.maginaolivo.ui.theme.MoTreatmentTint
 
 /**
  * UI polish v2 — one coherent family of outlined agricultural icons (DESIGN_SYSTEM §7),
@@ -102,20 +108,29 @@ enum class MoIconTone(val tint: Color, val container: Color) {
     VALUE(MoSoftGoldText, MoSoftGoldTint),
     /** Incidents and notices. */
     ALERT(MoWarningText, MoWarningTint),
+    /** CR-011: plant-protection treatments. */
+    TREATMENT(MoTreatmentText, MoTreatmentTint),
+    /** CR-011: people and jornales. */
+    LABOUR(MoLabourText, MoLabourTint),
+    /** CR-011: money, expenses, tickets and invoices. */
+    MONEY(MoMoneyText, MoMoneyTint),
     ;
 
     companion object {
         private val byName: Map<String, MoIconTone> by lazy {
             buildMap {
-                listOf(MoIcons.Tree, MoIcons.Leaf, MoIcons.Olive, MoIcons.Activity, MoIcons.Checklist, MoIcons.Campaign, MoIcons.Home, MoIcons.Shears, MoIcons.Spray, MoIcons.Sack)
+                listOf(MoIcons.Tree, MoIcons.Leaf, MoIcons.Olive, MoIcons.Activity, MoIcons.Checklist, MoIcons.Campaign, MoIcons.Home, MoIcons.Shears, MoIcons.Sack)
                     .forEach { put(it.name, GROVE) }
-                listOf(MoIcons.Parcels, MoIcons.Area, MoIcons.Map, MoIcons.Location, MoIcons.People, MoIcons.Person, MoIcons.Tractor, MoIcons.Wrench)
+                listOf(MoIcons.Parcels, MoIcons.Area, MoIcons.Map, MoIcons.Location, MoIcons.Tractor, MoIcons.Wrench)
                     .forEach { put(it.name, LAND) }
                 listOf(MoIcons.Drop, MoIcons.Calendar, MoIcons.Clock, MoIcons.Bell, MoIcons.History, MoIcons.Document)
                     .forEach { put(it.name, WATER) }
-                listOf(MoIcons.Harvest, MoIcons.Delivery, MoIcons.Weight, MoIcons.Percent, MoIcons.Euro)
+                listOf(MoIcons.Harvest, MoIcons.Delivery, MoIcons.Weight, MoIcons.Percent)
                     .forEach { put(it.name, VALUE) }
                 put(MoIcons.Warning.name, ALERT)
+                put(MoIcons.Spray.name, TREATMENT)
+                listOf(MoIcons.People, MoIcons.Person).forEach { put(it.name, LABOUR) }
+                put(MoIcons.Euro.name, MONEY)
             }
         }
 

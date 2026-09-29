@@ -21,7 +21,10 @@ class ActivityTypeIconTest {
         assertEquals(MoIconTone.ALERT, MoIconTone.of(ActivityType.INCIDENT.icon()))
         assertEquals(MoIconTone.GROVE, MoIconTone.of(ActivityType.PRUNING.icon()))
         assertEquals(MoIconTone.LAND, MoIconTone.of(MoIcons.Tractor))
-        assertEquals(MoIconTone.VALUE, MoIconTone.of(MoIcons.Euro))
+        assertEquals(MoIconTone.MONEY, MoIconTone.of(MoIcons.Euro))
+        // CR-011 §20/§21: the six Cuaderno actions no longer share a colour family.
+        assertEquals(MoIconTone.TREATMENT, MoIconTone.of(MoIcons.Spray))
+        assertEquals(MoIconTone.LABOUR, MoIconTone.of(MoIcons.People))
         assertEquals(MoIconTone.GROVE, MoIconTone.of(MoIcons.ChevronRight))
     }
 }

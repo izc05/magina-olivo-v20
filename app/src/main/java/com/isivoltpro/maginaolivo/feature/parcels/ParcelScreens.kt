@@ -345,7 +345,7 @@ fun ParcelDetailScreen(
         Column(Modifier.fillMaxWidth().padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.md)) {
             Text("Archivar parcela", style = MaterialTheme.typography.headlineSmall)
             Text("Se conservarán sus datos y el histórico de pertenencia a la finca.", color = MoTextSecondary)
-            MoPrimaryButton("Archivar", { archiveConfirmation = false; onArchive() }, Modifier.fillMaxWidth())
+            MoDestructiveButton("Archivar", { archiveConfirmation = false; onArchive() }, Modifier.fillMaxWidth())
             MoTertiaryButton("Cancelar", { archiveConfirmation = false }, Modifier.fillMaxWidth())
             Spacer(Modifier.height(MoSpacing.md))
         }
