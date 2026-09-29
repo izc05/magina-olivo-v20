@@ -630,24 +630,10 @@ internal fun DeliveryEditor(
             }
         }
         errors.origin?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("delivery-origin-error")) }
-        Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            MoTextField(
-                form.gross, { form = form.copy(gross = it) }, "Bruto (opcional)",
-                isError = errors.gross != null, modifier = Modifier.weight(1f),
-            )
-            MoTextField(form.tare, { form = form.copy(tare = it) }, "Tara (opcional)", modifier = Modifier.weight(1f))
-        }
-        errors.gross?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            MoTextField(
-                form.ticketNumber, { form = form.copy(ticketNumber = it) }, "Nº de vale",
-                modifier = Modifier.weight(1f).testTag("delivery-ticket-number"),
-            )
-            MoTextField(
-                form.deliveryNumber, { form = form.copy(deliveryNumber = it) }, "Nº de albarán",
-                modifier = Modifier.weight(1f),
-            )
-        }
+        MoTextField(
+            form.ticketNumber, { form = form.copy(ticketNumber = it) }, "Nº de vale",
+            modifier = Modifier.fillMaxWidth().testTag("delivery-ticket-number"),
+        )
 
         MoSectionHeader("Parcelas de origen")
         if (context == null) Text("Elige primero la finca.", color = MoTextSecondary)
@@ -689,7 +675,29 @@ internal fun DeliveryEditor(
                 }
             }
         }
-        MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
+        // CR-011 §24: the rarely used fields wait under «Más detalles»; they open by themselves
+        // when they already hold something (OCR, editing) or have an error, so nothing is hidden.
+        val hasDetails = form.gross.isNotBlank() || form.tare.isNotBlank() || form.deliveryNumber.isNotBlank() ||
+            form.notes.isNotBlank() || errors.gross != null
+        var showDetails by rememberSaveable { mutableStateOf(false) }
+        LaunchedEffect(hasDetails) { if (hasDetails) showDetails = true }
+        if (showDetails || hasDetails) {
+            Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                MoTextField(
+                    form.gross, { form = form.copy(gross = it) }, "Bruto (opcional)",
+                    isError = errors.gross != null, modifier = Modifier.weight(1f),
+                )
+                MoTextField(form.tare, { form = form.copy(tare = it) }, "Tara (opcional)", modifier = Modifier.weight(1f))
+            }
+            errors.gross?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            MoTextField(
+                form.deliveryNumber, { form = form.copy(deliveryNumber = it) }, "Nº de albarán",
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
+        } else {
+            MoTertiaryButton("Más detalles", { showDetails = true }, Modifier.testTag("delivery-more-details"))
+        }
         MoPrimaryButton(saveText, { onSave(form) }, Modifier.fillMaxWidth().testTag("save-delivery"), enabled = !isSaving)
         onSaveAndAddAnother?.let { again ->
             MoSecondaryButton(

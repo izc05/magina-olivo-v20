@@ -49,6 +49,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   familia con Trabajo y Pesada; KPI de jornales y costes con esos mismos colores; una sola acción
   principal en Pesadas («Leer vale» secundaria); «Archivar» parcela como acción destructiva;
   fila de pesada con icono y «kg · cooperativa» primero; tarjeta de día del tiempo en blanco.
+- Formularios (§24): en Pesada, bruto/tara, nº de albarán y notas; en Gasto, nº de factura, líneas de
+  compra y notas quedan bajo «Más detalles». Se abren solos si ya tienen algo (OCR, edición) o un
+  error, así que nada queda oculto sin avisar.
 
 ## 0.6.0 — en curso (CR-010, campaña simple)
 
