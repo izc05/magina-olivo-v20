@@ -43,8 +43,11 @@ object AppDestination {
     const val Onboarding = "onboarding"
     /** Activity register flow (was the `+` root; now opened from Cuaderno → Registrar hoy). */
     const val Register = "register"
-    /** UX-D: the register flow with the type chosen in "Registrar hoy" (optional). */
-    const val RegisterPattern = "register?type={type}"
+    /**
+     * The register flow with the type chosen in the Cuaderno (optional). CR-011 §12: `plan=true`
+     * is Avisos → «Planificar trabajo» (saved as planned); otherwise it is «Registrar trabajo».
+     */
+    const val RegisterPattern = "register?type={type}&plan={plan}"
     /** The agenda (was the Calendario root; now under Avisos). */
     const val Calendar = "calendar"
     const val MapCatastro = "map-catastro"
@@ -124,6 +127,9 @@ object AppDestination {
 
     /** `register` or `register?type=IRRIGATION`. */
     fun register(type: String?): String = if (type.isNullOrBlank()) Register else "$Register?type=$type"
+
+    /** CR-011 §12: Avisos → «Planificar trabajo». */
+    fun planWork(): String = "$Register?plan=true"
 
     fun rootForRoute(route: String?): RootDestination? {
         val prefix = route?.substringBefore('?')?.substringBefore('/') ?: return null

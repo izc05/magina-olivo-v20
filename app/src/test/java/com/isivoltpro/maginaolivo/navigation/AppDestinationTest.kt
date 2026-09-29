@@ -28,6 +28,9 @@ class AppDestinationTest {
         // UX-D: the register flow with a preset type stays under Cuaderno.
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.RegisterPattern))
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.register("PHYTOSANITARY")))
+        // CR-011 §12: Avisos → «Planificar trabajo» reuses the flow in plan mode.
+        assertEquals("register?plan=true", AppDestination.planWork())
+        assertEquals("register?type={type}&plan={plan}", AppDestination.RegisterPattern)
         assertEquals(RootDestination.Notebook, RootDestination.entries.single { it.isPrimaryAction })
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))
         // Phase 20B-radar: the radar belongs to Inicio.

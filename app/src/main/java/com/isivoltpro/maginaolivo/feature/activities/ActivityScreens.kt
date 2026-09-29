@@ -201,7 +201,8 @@ fun FarmActivitiesSection(
 }
 
 /**
- * The real "Registrar actuación" flow behind the Registrar (+) sheet.
+ * The real «Registrar trabajo» flow behind the Cuaderno actions, and Avisos → «Planificar trabajo»
+ * when [planning] (CR-011 §12: the Cuaderno records what happened, Avisos plans the future).
  *
  * It is the same aggregate and the same editor the Farm detail uses: the only extra
  * step is resolving which Farm the work belongs to, because a global entry point has
@@ -217,6 +218,8 @@ fun RegisterActivityRoute(
     presetType: ActivityType? = null,
     /** UX-F: the Parcel "Registrar" was pressed on; it belongs to [preselectedFarmId]. */
     preselectedParcelId: UUID? = null,
+    /** CR-011 §12: opened from Avisos; the work is saved as planned, never as done. */
+    planning: Boolean = false,
 ) {
     var selectedTypeName by rememberSaveable { mutableStateOf(presetType?.name) }
     LaunchedEffect(presetType) { if (presetType != null) selectedTypeName = presetType.name }
@@ -250,7 +253,7 @@ fun RegisterActivityRoute(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
         ) {
             if (selectedTypeName == null) {
-                Text("Registrar o planificar", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+                Text(if (planning) "Planificar trabajo" else "Registrar trabajo", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             }
             when {
                 state.isLoading -> CircularProgressIndicator()
@@ -277,6 +280,7 @@ fun RegisterActivityRoute(
                         if (activityType == null) {
                             ActivityTypeChooser(
                                 farmName = selectedFarm?.name.orEmpty(),
+                                planning = planning,
                                 onSelected = { selectedTypeName = it.name },
                             )
                             return@Column
@@ -309,10 +313,10 @@ fun RegisterActivityRoute(
                                     ?.let { setOf(it) }
                                     .orEmpty(),
                             ),
-                            editorTitle = activityType.label(),
+                            editorTitle = if (planning) "Planificar · ${activityType.label()}" else activityType.label(),
                             lockInitialType = true,
                             editorAsScreen = true,
-                            completeOnSave = true,
+                            completeOnSave = !planning,
                         )
                     }
                 }
@@ -322,12 +326,12 @@ fun RegisterActivityRoute(
 }
 
 @Composable
-internal fun ActivityTypeChooser(farmName: String, onSelected: (ActivityType) -> Unit) {
+internal fun ActivityTypeChooser(farmName: String, onSelected: (ActivityType) -> Unit, planning: Boolean = false) {
     Column(
         Modifier.fillMaxWidth().testTag("activity-type-chooser"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
     ) {
-        Text("¿Qué trabajo vas a apuntar?", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text(if (planning) "¿Qué trabajo quieres planificar?" else "¿Qué trabajo vas a apuntar?", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(farmName, style = MaterialTheme.typography.titleMedium, color = MoTextSecondary)
         ActivityType.entries.forEach { type ->
             MoCompactListItem(

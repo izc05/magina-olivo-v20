@@ -180,8 +180,9 @@ fun ExpensesScreen(
                     Modifier.weight(1f).testTag("add-expense"),
                     enabled = !state.isSaving,
                 )
-                MoPrimaryButton(
-                    "Subir documento",
+                // CR-011 §13/§22: one primary per block; the ticket/invoice is the second way in.
+                MoSecondaryButton(
+                    "Ticket o factura",
                     { uploadVisible = true },
                     Modifier.weight(1f).testTag("upload-document"),
                     enabled = !state.isSaving,

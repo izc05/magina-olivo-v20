@@ -257,7 +257,10 @@ fun AppNavigation(
             }
             composable(
                 AppDestination.RegisterPattern,
-                arguments = listOf(navArgument("type") { type = NavType.StringType; nullable = true; defaultValue = null }),
+                arguments = listOf(
+                    navArgument("type") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("plan") { type = NavType.BoolType; defaultValue = false },
+                ),
             ) { entry ->
                 val persistence = compositionRoot.localPersistence
                 val presetType = entry.arguments?.getString("type")
@@ -267,6 +270,7 @@ fun AppNavigation(
                 } else {
                     RegisterActivityRoute(
                         presetType = presetType,
+                        planning = entry.arguments?.getBoolean("plan") == true,
                         persistence = persistence,
                         preselectedFarmId = registerFarmId?.let { runCatching { UUID.fromString(it) }.getOrNull() },
                         onFarmPreselected = { registerFarmId = null },
@@ -289,7 +293,7 @@ fun AppNavigation(
                             persistence = persistence,
                             clock = compositionRoot.clock,
                             onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
-                            onPlanWork = { navController.navigate(AppDestination.Register) },
+                            onPlanWork = { navController.navigate(AppDestination.planWork()) },
                             title = title,
                         )
                     }
