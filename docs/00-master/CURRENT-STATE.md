@@ -59,15 +59,18 @@ Do not mix the deferred EPI-signature workflow or planning/reminder form redesig
 kilos without Pesadas (A1), legacy hand-typed kg shown apart, never dropped or double counted (A2),
 calculated labour/machinery cost posted once through the Expense ledger (A3), Room v17 (slice 2)
 and v18 (slice 4) for CR-010 and v19 for Phase 21A (A4, revised by the owner 2026-09-28), six delivery slices and **Gate CR-010** (§17 on a physical device +
-A1–A3 tests). Gate 20 PASSED 2026-09-28; production in progress.
+A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gate CR-010 open.
 
 ## Current allowed phase
 
 ```text
 ▶ CR-010 — CAMPAÑA SIMPLE (Issue #254), executor Claude, after Gate 20 PASS.
-  1a (#288) and 1b (#289) MERGED. 2 automatic day (#290, Room v17) and 3 ticket in Nueva pesada
-  (#291) green, merging in order. Next: 4 pricing + ledger costs (Room v18) · 5 dashboard/charts ·
-  6 visual refinement. Gate CR-010 = §17 on a physical device + A1–A3 tests.
+  All six slices MERGED (2026-09-28): 1a #288 · 1b #289 · 2 #290 (Room v17) · 3 #291 ·
+  4 #293 (Room v18) · 5 #294 · 6 #295. A3 follow-up (unlinked same-date costs) #296 MERGED.
+  ▶ GATE CR-010 OPEN = §17 on a physical device + A1–A3 tests green in CI.
+    Checklist: docs/06-testing/CR010-GATE-CHECKLIST.md. Phase 21 starts only after this Gate.
+  Proposed for Phase 21A (Room v19, owner to confirm): store the Campaign activation date so
+  «Días de campaña» can count from activation (today it counts from the start date and says so).
 ✔ GATE 20 PASS — owner decision 2026-09-28: APK 0.5.0 build 606 tested on the emulator, no
   defects; the owner chose to close Gate 20 on it. Physical-phone re-check in the Phase 27 beta.
   Checklist: docs/06-testing/PHASE20-GATE-CHECKLIST.md.
