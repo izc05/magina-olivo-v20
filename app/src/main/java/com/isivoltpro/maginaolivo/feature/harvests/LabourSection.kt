@@ -18,7 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -80,10 +80,29 @@ internal fun JornadaLabour(
     error: String?,
     onRegister: () -> Unit,
     onRemove: (UUID) -> Unit,
+    /** False while this day's jornales are still being read: nothing is claimed yet. */
+    loaded: Boolean = true,
+    /** True when the jornales could not be read: an error, never «Sin jornales». */
+    readFailed: Boolean = false,
 ) {
-    MoSectionHeader("Jornales")
+    // Device check (build 680): these are this day's jornales; the Cuaderno sums the whole campaign.
+    MoSectionHeader("Jornales de este día")
     val summary = LabourSummary.of(labour)
-    if (summary.isEmpty) {
+    if (readFailed) {
+        Text(
+            "No pudimos leer los jornales de este día.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.testTag("jornada-labour-read-error"),
+        )
+    } else if (!loaded) {
+        Text(
+            "Cargando jornales…",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("jornada-labour-loading"),
+        )
+    } else if (summary.isEmpty) {
         Text(
             "Sin jornales anotados.",
             style = MaterialTheme.typography.bodyMedium,
@@ -136,7 +155,8 @@ internal fun LabourSheet(
     onCancel: () -> Unit,
 ) {
     var byPeople by rememberSaveable { mutableStateOf(true) }
-    var selected by remember { mutableStateOf(setOf<UUID>()) }
+    // Device check (build 680): the people ticked but not yet saved survive a rotation.
+    var selected by rememberSaveable(stateSaver = UuidSetSaver) { mutableStateOf(setOf<UUID>()) }
     var unit by rememberSaveable { mutableStateOf(LabourUnit.FULL_DAY) }
     var hours by rememberSaveable { mutableStateOf("") }
     var count by rememberSaveable { mutableStateOf("") }
@@ -252,3 +272,9 @@ internal fun LabourSheet(
         Spacer(Modifier.height(MoSpacing.lg))
     }
 }
+
+/** Saves a set of ids across configuration changes (a rotation keeps what was ticked). */
+private val UuidSetSaver = listSaver<Set<UUID>, String>(
+    save = { ids -> ids.map(UUID::toString) },
+    restore = { saved -> saved.map(UUID::fromString).toSet() },
+)

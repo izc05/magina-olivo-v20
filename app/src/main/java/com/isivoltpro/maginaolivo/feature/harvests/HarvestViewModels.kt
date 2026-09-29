@@ -123,6 +123,10 @@ data class HarvestDetailUiState(
     val pesadas: List<Delivery> = emptyList(),
     /** Phase 19D: the jornales of this Jornada and the people to choose from. */
     val labour: List<LabourEntry> = emptyList(),
+    /** False until this day's jornales have been read: «none» is only said once it is true. */
+    val labourLoaded: Boolean = true,
+    /** True when this day's jornales could not be read: never shown as «no jornales». */
+    val labourReadFailed: Boolean = false,
     val workers: List<Worker> = emptyList(),
     val previousCrew: List<UUID> = emptyList(),
     val labourMessage: String? = null,
@@ -157,7 +161,7 @@ class HarvestDetailViewModel(
     private val expenses: ExpenseRepository? = null,
     private val dayCosts: DayCostRepository? = null,
 ) : ViewModel() {
-    private val mutableState = MutableStateFlow(HarvestDetailUiState())
+    private val mutableState = MutableStateFlow(HarvestDetailUiState(labourLoaded = labour == null))
     val state: StateFlow<HarvestDetailUiState> = mutableState.asStateFlow()
     private var contexts: List<HarvestContext> = emptyList()
     private var allExpenses: List<Expense> = emptyList()
@@ -193,8 +197,9 @@ class HarvestDetailViewModel(
         }
         labour?.let { repository ->
             viewModelScope.launch {
-                repository.observeForHarvest(harvestId).catch { }
-                    .collect { mutableState.value = mutableState.value.copy(labour = it) }
+                repository.observeForHarvest(harvestId)
+                    .catch { mutableState.value = mutableState.value.copy(labourLoaded = true, labourReadFailed = true) }
+                    .collect { mutableState.value = mutableState.value.copy(labour = it, labourLoaded = true, labourReadFailed = false) }
             }
             viewModelScope.launch {
                 repository.observeWorkers().catch { }.collect { mutableState.value = mutableState.value.copy(workers = it) }
