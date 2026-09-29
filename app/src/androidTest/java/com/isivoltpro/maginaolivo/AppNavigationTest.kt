@@ -171,6 +171,7 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("register-action-sheet").assertDoesNotExist()
         composeRule.onNodeWithTag("register-activity-root").assertIsDisplayed()
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+        waitForText("Registrar trabajo")
     }
 
     /** CR-011 §4/§14: Cuaderno → Pesada opens the form at once; Cuaderno → Gasto opens Gastos. */
@@ -699,6 +700,32 @@ class AppNavigationTest {
         composeRule.waitForIdle()
         waitForTag("activity-detail-summary")
         assertTextVisible("Volumen (m³): 240")
+    }
+
+    @Test
+    fun avisosPlansWorkAndCuadernoRegistersIt() {
+        // CR-011 §12: the Cuaderno records what happened; Avisos plans the future.
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Avisos").performClick()
+        clickByTag("agenda-plan-work")
+        waitForTag("register-activity-root")
+        waitForText("Planificar trabajo")
+        // Planning stays under the tab where it started.
+        composeRule.onNodeWithTag("bottom-Avisos").assertIsSelected()
+        assertEquals(0, composeRule.onAllNodesWithText("Registrar trabajo").fetchSemanticsNodes().size)
+        assertEquals(0, composeRule.onAllNodesWithText("Registrar o planificar").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun profileShowsMisMaquinasAndNoProntoRows() {
+        // CR-011 §7/§25: «Mis máquinas», and no provisional «Pronto» rows.
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        waitForTag("profile-root")
+        composeRule.onNodeWithTag("profile-machinery").assertExists()
+        waitForText("Mis máquinas")
+        assertEquals(0, composeRule.onAllNodesWithText("Pronto").fetchSemanticsNodes().size)
+        composeRule.onNodeWithTag("profile-account-later").assertDoesNotExist()
     }
 
     @Test

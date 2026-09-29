@@ -277,6 +277,21 @@ fun AppNavigation(
                     )
                 }
             }
+            // CR-011 §12: Avisos → «Planificar trabajo», the register flow in plan mode under Avisos.
+            composable(AppDestination.PlanWork) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    RegisterActivityRoute(
+                        persistence = persistence,
+                        planning = true,
+                        onActivitySelected = { activityId ->
+                            navController.navigate(AppDestination.activity(activityId.toString()))
+                        },
+                    )
+                }
+            }
             // UX-B: Avisos shows the agenda (overdue, today, next days, reminders); the old
             // `calendar` route opens the same screen, now under Avisos.
             listOf(RootDestination.Alerts.route to "Avisos", AppDestination.Calendar to "Calendario").forEach { (route, title) ->
@@ -289,7 +304,7 @@ fun AppNavigation(
                             persistence = persistence,
                             clock = compositionRoot.clock,
                             onActivitySelected = { id -> navController.navigate(AppDestination.activity(id.toString())) },
-                            onPlanWork = { navController.navigate(AppDestination.Register) },
+                            onPlanWork = { navController.navigate(AppDestination.planWork()) },
                             title = title,
                         )
                     }

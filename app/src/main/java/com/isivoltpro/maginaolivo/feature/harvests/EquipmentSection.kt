@@ -64,7 +64,7 @@ internal fun EquipmentType.icon() = when (this) {
 /** Phase 19E — what equipment the Jornada used, by kind and quantity. */
 @Composable
 internal fun JornadaEquipment(lines: List<EquipmentLine>, editable: Boolean, error: String?, onEdit: () -> Unit) {
-    MoSectionHeader("Maquinaria")
+    MoSectionHeader("Uso de maquinaria")
     val summary = EquipmentSummary.of(lines)
     if (summary.isEmpty) {
         Text("Sin maquinaria anotada.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-no-equipment"))
@@ -111,7 +111,7 @@ internal fun EquipmentSheet(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("equipment-sheet"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Maquinaria de la jornada", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text("Uso de maquinaria del día", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(
             "Indica cuántas se usaron. No hace falta registrar cada máquina.",
             style = MaterialTheme.typography.bodyMedium,

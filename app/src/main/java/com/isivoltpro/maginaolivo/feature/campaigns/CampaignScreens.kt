@@ -307,8 +307,8 @@ fun CampaignDetailScreen(
                     }
                     MoSectionHeader("Producción")
                     MoCompactListItem(
-                        title = "Jornadas",
-                        subtitle = if (summary.harvestCount == 0) "Se crean al registrar la primera pesada del día" else "${summary.harvestCount} jornadas",
+                        title = "Días de recolección",
+                        subtitle = if (summary.harvestCount == 0) "Se crean al registrar la primera pesada del día" else "${summary.harvestCount} ${if (summary.harvestCount == 1) "día" else "días"}",
                         icon = MoIcons.Harvest,
                         onClick = onHarvests,
                         modifier = Modifier.testTag("campaign-open-harvests"),

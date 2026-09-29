@@ -52,7 +52,7 @@ private val pages = listOf(
     ),
     OnboardingPage(
         title = "Mapa y Catastro",
-        body = "Importa parcelas desde Catastro, dibuja límites y consulta tu terreno de forma visual.",
+        body = "Importa parcelas desde Catastro, localízalas y consulta sus límites en el mapa.",
         kind = OnboardingArtworkKind.Map,
     ),
     OnboardingPage(

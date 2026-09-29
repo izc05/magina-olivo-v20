@@ -148,7 +148,7 @@ internal fun HarvestRow(
     onClick: () -> Unit,
 ) {
     MoCompactListItem(
-        title = "Jornada · ${if (harvest.awaitingPesadas) "kg pendientes de pesada" else Weight.format(harvest.totalGrams)}",
+        title = "Día de recolección · ${if (harvest.awaitingPesadas) "kg pendientes de pesada" else Weight.format(harvest.totalGrams)}",
         subtitle = listOfNotNull(
             when {
                 harvest.shares.isEmpty() -> "Toda la finca"
@@ -223,7 +223,7 @@ internal fun SummaryTab(
                 supportingText = if (notebook.plannedWorks == 0) "Nada planificado" else "${notebook.plannedWorks} planificados",
             )
             MoKpiMetric(
-                "Jornadas", notebook.harvests.size.toString(), Modifier.weight(1f),
+                "Días de recolección", notebook.harvests.size.toString(), Modifier.weight(1f),
                 icon = MoIcons.Harvest,
                 kind = MoKpiKind.CAMPAIGN,
                 supportingText = listOfNotNull(

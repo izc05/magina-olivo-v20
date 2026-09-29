@@ -60,7 +60,7 @@ internal fun JornadaCosts(
     unlinked: List<Expense> = emptyList(),
     onLink: (UUID) -> Unit = {},
 ) {
-    MoSectionHeader("Gastos de la jornada")
+    MoSectionHeader("Gastos del día")
     val cost = JornadaCost.of(expenses)
     if (expenses.isEmpty()) {
         Text("Sin gastos anotados.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-no-costs"))
@@ -113,7 +113,7 @@ internal fun JornadaCosts(
         val what = if (expense.category == DayCostKind.LABOUR.category) "los jornales" else "la maquinaria"
         Text(
             "«${expense.concept}» (${Money.format(expense.amountMinor, expense.currency)}) es de este día y no está en " +
-                "ninguna jornada. ¿Es el mismo coste que $what calculados aquí? Si lo es, enlázalo y solo contará uno. " +
+                "ningún día de recolección. ¿Es el mismo coste que $what calculados aquí? Si lo es, enlázalo y solo contará uno. " +
                 "Si es otro gasto (gasoil, aceite, una reparación…), déjalo aparte: sigue sumando.",
             style = MaterialTheme.typography.bodySmall,
             color = MoTextSecondary,
@@ -220,7 +220,7 @@ internal fun CostSheet(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("cost-sheet"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Gasto de la jornada", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text("Gasto del día", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             JornadaExpenseKind.entries.forEach { option ->
                 FilterChip(kind == option, { kind = option }, { Text(option.label) }, Modifier.testTag("cost-kind-${option.name}"))

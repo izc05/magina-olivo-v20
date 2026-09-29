@@ -107,7 +107,6 @@ fun HarvestsRoute(
         today = clock.today(ZoneId.systemDefault()),
         onCreate = viewModel::create,
         onHarvestSelected = onHarvestSelected,
-        onOpenJornada = { farmId -> viewModel.openJornada(farmId, onHarvestSelected) },
         onEditorClosed = viewModel::clearFormErrors,
         onDeliveries = onDeliveries,
         deliverySummary = remember(deliveries) { DeliverySummary.of(deliveries) },
@@ -122,8 +121,6 @@ fun HarvestsScreen(
     today: LocalDate,
     onCreate: (HarvestForm) -> Unit,
     onHarvestSelected: (UUID) -> Unit,
-    /** Opens today's Jornada on a Farm before any Pesada (ROADMAP 19B). */
-    onOpenJornada: (UUID) -> Unit = {},
     onEditorClosed: () -> Unit = {},
     onDeliveries: () -> Unit = {},
     /** Delivered kilos and yield, read from the Delivery ledger (never recomputed here). */
@@ -138,7 +135,7 @@ fun HarvestsScreen(
             Spacer(Modifier.height(MoSpacing.sm))
             Text("Recolección", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             Text(
-                "Cada jornada reúne sus pesadas, jornales y gastos. Los kilos se obtienen de las pesadas.",
+                "Cada día de recolección reúne sus pesadas, jornales y gastos. Los kilos se obtienen de las pesadas.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MoTextSecondary,
             )
@@ -150,12 +147,12 @@ fun HarvestsScreen(
                         { m -> MoKpiMetric("Pesadas", (deliverySummary?.deliveryCount ?: 0).toString(), m, icon = MoIcons.Checklist, kind = MoKpiKind.PESADAS) },
                         { m ->
                             MoKpiMetric(
-                                "Jornadas",
+                                "Días de recolección",
                                 state.harvests.size.toString(),
                                 m,
                                 icon = MoIcons.Harvest,
                                 kind = MoKpiKind.CAMPAIGN,
-                                supportingText = if (state.harvests.isEmpty()) "Ábrela hoy o con su primera pesada" else "Días de recolección",
+                                supportingText = if (state.harvests.isEmpty()) "Se crea con su primera pesada o jornal" else "Días de recolección",
                             )
                         },
                         { m ->
@@ -177,34 +174,6 @@ fun HarvestsScreen(
                 Modifier.fillMaxWidth().testTag("add-pesada"),
                 enabled = state.contexts.isNotEmpty() && !state.isSaving,
             )
-            // A Jornada may exist before its Pesadas: open today's, then weigh into it.
-            var farmChoice by rememberSaveable { mutableStateOf(false) }
-            MoSecondaryButton(
-                "Abrir jornada de hoy",
-                {
-                    if (state.contexts.size == 1) onOpenJornada(state.contexts.single().farmId) else farmChoice = true
-                },
-                Modifier.fillMaxWidth().testTag("open-jornada"),
-                enabled = state.contexts.isNotEmpty() && !state.isSaving,
-            )
-            if (farmChoice) {
-                ModalBottomSheet(onDismissRequest = { farmChoice = false }) {
-                    Column(
-                        Modifier.fillMaxWidth().padding(horizontal = MoSpacing.screen).padding(bottom = MoSpacing.lg)
-                            .testTag("open-jornada-farms"),
-                        verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
-                    ) {
-                        Text("¿En qué finca?", style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
-                        state.contexts.forEach { context ->
-                            MoSecondaryButton(
-                                "${context.farmName} · ${context.campaignName}",
-                                { farmChoice = false; onOpenJornada(context.farmId) },
-                                Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                }
-            }
             if (!state.isLoading && state.contexts.isEmpty()) {
                 Text(
                     "Para registrar una pesada, una finca necesita una campaña activa o en recolección.",
@@ -220,14 +189,14 @@ fun HarvestsScreen(
             when {
                 state.isLoading -> CircularProgressIndicator()
                 state.harvests.isEmpty() -> MoEmptyState(
-                    "Aún no hay jornadas",
-                    "Registra una pesada y su día de recolección se crea solo, o abre la jornada de hoy para anotar " +
-                        "antes jornales o gastos. Sus kilos son siempre la suma de sus pesadas.",
+                    "Aún no hay días de recolección",
+                    "Registra una pesada o un jornal desde el Cuaderno y su día de recolección se crea solo. " +
+                        "Sus kilos son siempre la suma de sus pesadas.",
                     icon = MoIcons.Harvest,
                 )
                 else -> {
                     state.campaigns.forEach { campaign -> CampaignHarvestCard(campaign) }
-                    MoSectionHeader("Jornadas")
+                    MoSectionHeader("Días de recolección")
                     state.harvests.forEach { harvest -> HarvestRow(harvest) { onHarvestSelected(harvest.id) } }
                 }
             }
@@ -647,7 +616,7 @@ fun HarvestDetailScreen(
             val harvest = state.harvest
             when {
                 state.isLoading -> CircularProgressIndicator()
-                harvest == null -> MoErrorState("Jornada no disponible", state.error ?: "No está guardada en este dispositivo.")
+                harvest == null -> MoErrorState("Día de recolección no disponible", state.error ?: "No está guardada en este dispositivo.")
                 else -> {
                     HarvestSummaryBlock(harvest, state.pesadas.size)
                     JornadaPesadas(state.pesadas, harvest.editable, onAddPesada, onPesadaSelected)
@@ -678,18 +647,18 @@ fun HarvestDetailScreen(
                     )
                     if (harvest.editable) {
                         MoSecondaryButton(
-                            "Editar jornada", { editorVisible = true },
+                            "Editar día de recolección", { editorVisible = true },
                             Modifier.fillMaxWidth().testTag("edit-harvest"),
                             enabled = state.context != null && !state.isSaving,
                         )
                         MoSecondaryButton(
-                            "Eliminar jornada", { confirmDelete = true },
+                            "Eliminar día de recolección", { confirmDelete = true },
                             Modifier.fillMaxWidth().testTag("delete-harvest"),
                             enabled = !state.isSaving,
                         )
                     } else {
                         Text(
-                            "La campaña está cerrada: esta jornada forma parte del histórico y no se modifica.",
+                            "La campaña está cerrada: este día de recolección forma parte del histórico y no se modifica.",
                             color = MoTextSecondary,
                             modifier = Modifier.testTag("harvest-read-only"),
                         )
@@ -708,7 +677,7 @@ fun HarvestDetailScreen(
     if (editorVisible && harvest != null && context != null) {
         ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             HarvestEditor(
-                title = "Editar jornada",
+                title = "Editar día de recolección",
                 initial = harvest.toForm(),
                 contexts = listOf(context),
                 errors = state.formErrors,
@@ -773,17 +742,17 @@ fun HarvestDetailScreen(
     if (confirmDelete) {
         ModalBottomSheet(onDismissRequest = { confirmDelete = false }) {
             MoConfirmationSheet(
-                title = "Eliminar jornada",
+                title = "Eliminar día de recolección",
                 body = listOfNotNull(
                     if (state.pesadas.isEmpty()) {
                         "Estos kilos dejarán de contar en la campaña."
                     } else {
-                        "Sus pesadas se conservan, sin jornada, y siguen contando en la campaña."
+                        "Sus pesadas se conservan, sin día de recolección, y siguen contando en la campaña."
                     },
                     // Phase 19D: its jornales only describe this Jornada and go with it.
                     if (state.labour.isNotEmpty()) "Sus jornales se quitan con ella." else null,
                     if (state.equipment.isNotEmpty()) "Su maquinaria anotada también." else null,
-                    if (state.costs.isNotEmpty()) "Sus gastos siguen en Gastos, sin jornada." else null,
+                    if (state.costs.isNotEmpty()) "Sus gastos siguen en Gastos, sin día de recolección." else null,
                     "Esta acción no se puede deshacer.",
                 ).joinToString(" "),
                 confirmText = "Eliminar",
@@ -816,7 +785,7 @@ private fun JornadaPesadas(
     onAddPesada: () -> Unit,
     onPesadaSelected: (UUID) -> Unit,
 ) {
-    MoSectionHeader("Pesadas de la jornada")
+    MoSectionHeader("Pesadas del día")
     if (pesadas.isEmpty()) {
         Text(
             "Aún no hay pesadas enlazadas. Añádelas según lleguen: cada una con su cooperativa y su vale.",
@@ -871,7 +840,7 @@ private fun JornadaPesadas(
 @Composable
 private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
     Text(
-        "Jornada del ${DATE_FORMAT.format(harvest.harvestDate)}",
+        "Recolección del ${DATE_FORMAT.format(harvest.harvestDate)}",
         style = MaterialTheme.typography.headlineMedium,
         color = MoOliveDark,
     )

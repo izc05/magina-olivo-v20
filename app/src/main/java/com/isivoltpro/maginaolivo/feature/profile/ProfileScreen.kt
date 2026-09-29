@@ -45,7 +45,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
-import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 
 /** Perfil (UI polish v2): real settings only; what belongs to a later phase says so. */
@@ -111,7 +110,7 @@ fun ProfileScreen(
         Spacer(Modifier.height(MoSpacing.xs))
         MoSectionHeader("Tu olivar")
         MoCompactListItem(
-            title = "Maquinaria",
+            title = "Mis máquinas",
             subtitle = "Tus máquinas, para anotarlas en las actuaciones",
             icon = MoIcons.Tractor,
             onClick = onMachinery,
@@ -139,15 +138,7 @@ fun ProfileScreen(
             modifier = Modifier.testTag("profile-offline"),
             trailing = { MoStatusChip("Siempre", tone = MoStatusTone.Success) },
         )
-        MoCompactListItem(
-            title = "Cuenta y sincronización",
-            subtitle = "Llegará en su fase; por ahora todo vive en este teléfono",
-            icon = MoIcons.Person,
-            iconTint = MoTextSecondary,
-            iconContainer = MoSurfaceSoft,
-            modifier = Modifier.testTag("profile-account-later"),
-            trailing = { MoStatusChip("Pronto", tone = MoStatusTone.Neutral) },
-        )
+        // CR-011 §25: no «Pronto» rows in the public app; account/sync returns when it exists.
         MoSectionHeader("Acerca de")
         MoCompactListItem(
             title = "Mágina Olivo",

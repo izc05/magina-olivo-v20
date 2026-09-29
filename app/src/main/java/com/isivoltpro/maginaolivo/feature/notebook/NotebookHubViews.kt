@@ -165,7 +165,7 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
             Modifier.fillMaxWidth().testTag("notebook-costs-labour"),
             icon = MoIcons.People,
             kind = MoKpiKind.JORNALES,
-            supportingText = notebook.labourSummary.takeUnless { it.isEmpty }?.label() ?: "Sin jornales anotados en las jornadas",
+            supportingText = notebook.labourSummary.takeUnless { it.isEmpty }?.label() ?: "Sin jornales anotados en los días de recolección",
         )
         MoKpiMetric(
             "Maquinaria",
