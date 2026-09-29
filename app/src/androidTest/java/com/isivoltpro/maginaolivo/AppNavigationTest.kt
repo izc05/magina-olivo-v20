@@ -739,11 +739,13 @@ class AppNavigationTest {
         waitForTag("campaign-detail-root")
         clickByTag("activate-campaign")
         confirmCampaignAction()
+        // Only an active campaign offers «Cerrar»: activation has been saved before leaving.
+        waitForTag("close-campaign")
 
         // Cuaderno → Jornal: today's day opens by itself; nobody opens a «jornada».
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         chooseNotebookFarm("Finca Jornal E2E")
-        // The running campaign has loaded before Jornal is pressed.
+        // The Cuaderno has loaded that campaign (already active) before Jornal is pressed.
         composeRule.waitUntil(UI_TIMEOUT_MS) {
             composeRule.onAllNodesWithText("Campaña Jornal E2E", substring = true).fetchSemanticsNodes().isNotEmpty()
         }

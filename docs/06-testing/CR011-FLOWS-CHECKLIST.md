@@ -13,13 +13,13 @@ propietario sobre el APK que incluye CR-011, junto con el Gate CR-010.
 | 3 | Cuaderno → Riego | `NotebookHomeScreenTest` (seis acciones); `ActivityEditorPresetTest` (riego preseleccionado); `AppNavigationTest.theActivityEditorShowsOnlyTheTypedBlockOfTheChosenType` (bloque de riego) | Sí |
 | 4 | Cuaderno → Tratamiento | `NotebookHomeScreenTest` (seis acciones); `TypedActivityDetailContractTest` y `ActivityDetailFormTest` (datos fitosanitarios) | Sí |
 | 5 | Cuaderno → Pesada | `AppNavigationTest.cuadernoPesadaAndGastoOpenTheirScreensOnThatFarm` (formulario abierto en la finca) | Sí (visual) |
-| 6 | Pesada → OCR → revisar → guardar | `RecollectionFlowContractTest` (pesada con foto del vale); el OCR nunca guarda sin confirmar | **Sí, obligatorio** (cámara/archivo real) |
+| 6 | Pesada → OCR → revisar → guardar | **Parcial.** `DeliveryTicketParserTest` (lo que el OCR propone; nunca inventa el neto); `RecollectionFlowContractTest` (pesada con foto del vale adjunta). Ningún test automático recorre la revisión y confirmación del OCR | **Sí, obligatorio** (cámara/archivo real, revisar y confirmar) |
 | 7 | Pesada crea el día de recolección | `JornadaPesadasContractTest`, `RecollectionFlowContractTest` | Sí (visual) |
 | 8 | Segunda pesada del mismo día | `JornadaPesadasContractTest.threePesadasOfOneDayToTwoCooperativesSurviveRestartAsOneTruthfulJornada` | Sí (visual) |
 | 9 | Cuaderno → Jornal | `AppNavigationTest.cuadernoJornalOpensTodaysDayOnceAndItSurvivesARestart` (abre el día de hoy, lo reutiliza, sobrevive al reinicio) | Sí (visual) |
 | 10 | Uso de maquinaria en trabajo/día | `EquipmentScreenTest`, `EquipmentContractTest`, `MachineryContractTest` | Sí |
 | 11 | Cuaderno → Gasto → manual | `AppNavigationTest.cuadernoPesadaAndGastoOpenTheirScreensOnThatFarm`; `ExpenseLedgerContractTest` | Sí (visual) |
-| 12 | Cuaderno → Gasto → ticket/factura | `AttachmentContractTest`; revisión OCR con confirmación humana | **Sí, obligatorio** (cámara/archivo real) |
+| 12 | Cuaderno → Gasto → ticket/factura | **Parcial.** `PurchaseDocumentParserTest` (lo que el OCR propone); `AttachmentContractTest` (el archivo se guarda). Ningún test automático recorre la revisión y confirmación del OCR | **Sí, obligatorio** (cámara/archivo real, revisar y confirmar) |
 | 13 | Cerrar y volver a abrir | `recreate()` en `AppNavigationTest` (varios); `JornadaPesadasContractTest` (reinicio de Room) | **Sí, obligatorio** (cierre real del proceso) |
 | 14 | Modo avión | Diseño offline-first: escritura local en Room, sin red en el camino de guardado | **Sí, obligatorio** (no se desactiva la red del emulador compartido de CI) |
 | 15 | Campaña → cerrar | `AppNavigationTest.farmParcelCampaignLifecyclePersistsAcrossRecreation`; `CampaignLifecycleContractTest` | Sí (visual) |
