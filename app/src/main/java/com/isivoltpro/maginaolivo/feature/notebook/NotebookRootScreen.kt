@@ -303,7 +303,9 @@ private fun QuickActionGrid(onQuickAction: (NotebookQuickAction) -> Unit) {
     // Three tiles per row only when a tile still fits the longest label at this font scale.
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val fontScale = LocalDensity.current.fontScale
-        val columns = if (maxWidth / 3 >= QUICK_TILE_MIN_WIDTH * fontScale) 3 else 2
+        // Each tile gets the width left after the two gaps between three tiles (Codex #305).
+        val tileWidth = (maxWidth - MoSpacing.xs * 2) / 3
+        val columns = if (tileWidth >= QUICK_TILE_MIN_WIDTH * fontScale) 3 else 2
         QuickActionRows(columns, onQuickAction)
     }
 }
