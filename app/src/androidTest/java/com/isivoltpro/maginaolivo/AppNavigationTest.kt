@@ -710,6 +710,8 @@ class AppNavigationTest {
         clickByTag("agenda-plan-work")
         waitForTag("register-activity-root")
         waitForText("Planificar trabajo")
+        // Planning stays under the tab where it started.
+        composeRule.onNodeWithTag("bottom-Avisos").assertIsSelected()
         assertEquals(0, composeRule.onAllNodesWithText("Registrar trabajo").fetchSemanticsNodes().size)
         assertEquals(0, composeRule.onAllNodesWithText("Registrar o planificar").fetchSemanticsNodes().size)
     }

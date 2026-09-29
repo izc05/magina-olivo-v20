@@ -257,10 +257,7 @@ fun AppNavigation(
             }
             composable(
                 AppDestination.RegisterPattern,
-                arguments = listOf(
-                    navArgument("type") { type = NavType.StringType; nullable = true; defaultValue = null },
-                    navArgument("plan") { type = NavType.BoolType; defaultValue = false },
-                ),
+                arguments = listOf(navArgument("type") { type = NavType.StringType; nullable = true; defaultValue = null }),
             ) { entry ->
                 val persistence = compositionRoot.localPersistence
                 val presetType = entry.arguments?.getString("type")
@@ -270,11 +267,25 @@ fun AppNavigation(
                 } else {
                     RegisterActivityRoute(
                         presetType = presetType,
-                        planning = entry.arguments?.getBoolean("plan") == true,
                         persistence = persistence,
                         preselectedFarmId = registerFarmId?.let { runCatching { UUID.fromString(it) }.getOrNull() },
                         onFarmPreselected = { registerFarmId = null },
                         preselectedParcelId = registerParcelId?.let { runCatching { UUID.fromString(it) }.getOrNull() },
+                        onActivitySelected = { activityId ->
+                            navController.navigate(AppDestination.activity(activityId.toString()))
+                        },
+                    )
+                }
+            }
+            // CR-011 §12: Avisos → «Planificar trabajo», the register flow in plan mode under Avisos.
+            composable(AppDestination.PlanWork) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    RegisterActivityRoute(
+                        persistence = persistence,
+                        planning = true,
                         onActivitySelected = { activityId ->
                             navController.navigate(AppDestination.activity(activityId.toString()))
                         },
