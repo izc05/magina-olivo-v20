@@ -18,6 +18,18 @@ Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.
 Para saber qué lleva un APK: mira la versión en el Perfil y busca abajo su bloque; la compilación
 concreta está en la ejecución de CI con ese número (Actions → Android CI → #número).
 
+## 0.7.0 — en curso (fase 21, Perfil)
+
+- **Mi perfil (21A).** En Perfil, «Tu municipio» y «Tu cooperativa». Se guardan en el teléfono
+  (Room v19, tabla `profile_settings`, una fila por espacio de trabajo) y quedan listos para la
+  sincronización futura. La cooperativa se elige de tus cooperativas y almazaras, las mismas que
+  usas en pesadas y gastos: no se copia el nombre. Si la renombras, se ve el nombre nuevo; si la
+  archivas, deja de ser tu cooperativa. También puedes añadir una nueva desde ahí.
+- Inicio y la previsión semanal usan tu municipio cuando tus fincas no tienen municipio o están en
+  varios. La tarjeta «Mi cooperativa» muestra la que elegiste; sus avisos siguen pendientes del
+  panel de administración.
+- Sin cambios en los datos agrícolas ni en los cálculos.
+
 ## 0.6.0 — en curso (CR-011, simplificación)
 
 - **Prueba en dispositivo (build 683).** Corregido Cuaderno → Jornal atascado en «cargando»:

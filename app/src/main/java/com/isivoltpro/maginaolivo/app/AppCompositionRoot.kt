@@ -32,6 +32,7 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstEquipmentRepositor
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstLabourRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstMachineRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstOrganizationRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstProfileRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstActivityRepository
@@ -167,6 +168,9 @@ data class AppCompositionRoot(
             val oilMarketFeed = CachedOilMarketFeed(
                 database, source = oilSource, workspaces = workspaceRepository, clock = defaults.clock, dispatchers = defaults.dispatchers,
             )
+            val profileRepository = OfflineFirstProfileRepository(
+                database, workspaceRepository, organizationRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,
+            )
             return defaults.copy(
                 onboardingStateStore = AndroidOnboardingStateStore(applicationContext),
                 activeFarmStore = AndroidActiveFarmStore(applicationContext),
@@ -192,6 +196,7 @@ data class AppCompositionRoot(
                     weatherFeed = weatherFeed,
                     radarSource = radarSource,
                     oilMarketFeed = oilMarketFeed,
+                    profileRepository = profileRepository,
                 ),
             )
         }

@@ -14,6 +14,8 @@ import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
 import com.isivoltpro.maginaolivo.domain.market.OilMarketFeed
 import com.isivoltpro.maginaolivo.domain.market.OilMarketSeries
+import com.isivoltpro.maginaolivo.domain.profile.ProfileRepository
+import com.isivoltpro.maginaolivo.domain.profile.ProfileSettings
 import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
@@ -23,6 +25,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -61,6 +64,8 @@ data class HomeUiState(
     val weather: FeedState<WeatherNow> = FeedState.NotConfigured,
     /** Phase 20D: the official weekly oil series (Junta de Andalucía), from the phone's cache. */
     val oilMarket: FeedState<OilMarketSeries> = FeedState.NotConfigured,
+    /** Phase 21A: the preferred cooperative chosen in Perfil; null when none. */
+    val cooperativeName: String? = null,
 ) {
     val parcelCount: Long get() = farms.sumOf { it.parcelCount }
     val knownAreaM2: Double? get() = farms.mapNotNull { it.totalAreaM2 }.takeIf { it.isNotEmpty() }?.sum()
@@ -96,6 +101,8 @@ class HomeViewModel(
     private val weatherFeed: WeatherFeed? = null,
     /** Phase 20D: null where no oil-market feed exists (tests, previews). */
     private val oilMarketFeed: OilMarketFeed? = null,
+    /** Phase 21A: «Mi perfil»; null where no profile exists (tests, previews). */
+    profile: ProfileRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = mutableState.asStateFlow()
@@ -108,8 +115,14 @@ class HomeViewModel(
             }
         }
         val sharedFarms = activeFarms.shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-        val location = sharedFarms
-            .map { list -> FeedLocation.common(list.map { it.municipality to it.province }) }
+        val profileSettings = (profile?.observe() ?: flowOf(ProfileSettings()))
+            .catch { emit(ProfileSettings()) }
+            .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+        // The farms' one place first; the farmer's own municipality (Perfil) when they give none.
+        val location = combine(
+            sharedFarms.map { list -> FeedLocation.common(list.map { it.municipality to it.province }) },
+            profileSettings.map { it.location },
+        ) { farmPlace, profilePlace -> farmPlace ?: profilePlace }
             .distinctUntilChanged()
             // A stale or missing value is refreshed in the background; Inicio never waits for it.
             .onEach { place -> if (place != null && weatherFeed != null) viewModelScope.launch { weatherFeed.refreshIfStale(place) } }
@@ -150,6 +163,7 @@ class HomeViewModel(
                     weatherLocation = mutableState.value.weatherLocation,
                     weather = mutableState.value.weather,
                     oilMarket = mutableState.value.oilMarket,
+                    cooperativeName = mutableState.value.cooperativeName,
                 )
             }
         }
@@ -157,6 +171,11 @@ class HomeViewModel(
             // Cache first; a refresh runs in the background and never holds Inicio up.
             viewModelScope.launch { feed.refreshIfStale() }
             viewModelScope.launch { feed.observe().collect { value -> mutableState.value = mutableState.value.copy(oilMarket = value) } }
+        }
+        viewModelScope.launch {
+            profileSettings.collect { settings ->
+                mutableState.value = mutableState.value.copy(cooperativeName = settings.preferredCooperative?.name)
+            }
         }
         viewModelScope.launch {
             weather.collect { (place, value) ->

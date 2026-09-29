@@ -62,7 +62,7 @@ class WeatherWeekScreenTest {
 
     @Test fun unresolvedLocationIsExplained() {
         show(WeatherWeekUiState(locationAmbiguous = true, weather = FeedState.NoLocation))
-        composeRule.onNodeWithText("No se puede elegir un único municipio", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Tus fincas están en varios municipios", substring = true).assertIsDisplayed()
     }
 
     @Test fun missingCacheExplainsThatConnectivityIsNeeded() {

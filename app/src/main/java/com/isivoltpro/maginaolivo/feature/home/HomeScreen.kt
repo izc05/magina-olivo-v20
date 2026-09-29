@@ -78,6 +78,7 @@ fun HomeRoute(
                     clock,
                     weatherFeed = persistence.weatherFeed,
                     oilMarketFeed = persistence.oilMarketFeed,
+                    profile = persistence.profileRepository,
                 )
             }
         },
@@ -214,7 +215,17 @@ private fun HomeContext(
     MoSectionHeader("Mercado y cooperativa")
     OilMarketCard(state.oilMarket, onOpen = onOilMarket)
     // Owner decision D4: notices arrive with the private administration panel.
-    Quiet("Mi cooperativa", "Los avisos de tu cooperativa llegarán con el panel de administración.", MoIcons.Bell, "home-cooperative")
+    // Phase 21A: the cooperative chosen in Perfil is named; still no notices until then.
+    Quiet(
+        state.cooperativeName?.let { "Mi cooperativa · $it" } ?: "Mi cooperativa",
+        if (state.cooperativeName != null) {
+            "Sus avisos llegarán con el panel de administración."
+        } else {
+            "Elígela en Perfil. Sus avisos llegarán con el panel de administración."
+        },
+        MoIcons.Bell,
+        "home-cooperative",
+    )
 }
 
 @Composable

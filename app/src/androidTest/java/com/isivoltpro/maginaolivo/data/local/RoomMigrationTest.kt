@@ -1002,6 +1002,20 @@ class RoomMigrationTest {
             }
     }
 
+    /** Phase 21A: v19 adds an empty profile table; no municipality or cooperative is guessed. */
+    @Test
+    fun migration18To19AddsAnEmptyProfileTable() {
+        migrationHelper.createDatabase(TEST_DATABASE, 18).close()
+        migrationHelper
+            .runMigrationsAndValidate(TEST_DATABASE, 19, true, DatabaseMigrations.MIGRATION_18_19)
+            .use { database ->
+                database.query("SELECT COUNT(*) FROM profile_settings").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }
