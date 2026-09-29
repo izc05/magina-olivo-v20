@@ -71,6 +71,10 @@ object AppDestination {
     const val HarvestPattern = "harvest/{harvestId}"
     const val DeliveryPattern = "delivery/{deliveryId}"
     const val JornadaPesadaPattern = "deliveries/jornada/{harvestId}"
+    /** CR-011: «Cuaderno → Pesada», the form open on the Cuaderno's Farm. */
+    const val NewPesadaPattern = "deliveries/new/{farmId}"
+    /** CR-011: «Cuaderno → Gasto», a new expense starting on the Cuaderno's Farm. */
+    const val FarmExpensesPattern = "expenses/farm/{farmId}"
     const val PendingYieldsRoute = "deliveries/pending"
     const val DeliveryYieldPattern = "delivery/{deliveryId}/yield"
     const val TicketPattern = "delivery-ticket/{extractionId}"
@@ -107,6 +111,10 @@ object AppDestination {
 
     /** Phase 19B: the Pesada form opened on one Jornada. */
     fun jornadaPesada(harvestId: String): String = "$Deliveries/jornada/${android.net.Uri.encode(harvestId)}"
+
+    fun newPesada(farmId: String): String = "$Deliveries/new/${android.net.Uri.encode(farmId)}"
+
+    fun farmExpenses(farmId: String): String = "$Expenses/farm/${android.net.Uri.encode(farmId)}"
 
     fun ticket(extractionId: String): String = nestedRoute("delivery-ticket", extractionId)
 

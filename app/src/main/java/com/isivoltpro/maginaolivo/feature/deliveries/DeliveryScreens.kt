@@ -106,9 +106,11 @@ fun DeliveriesRoute(
     jornadaId: UUID? = null,
     initialStatus: YieldStatus? = null,
     onAddYield: (UUID) -> Unit = onDeliverySelected,
+    /** CR-011 §4/§14: «Cuaderno → Pesada» — the form opens at once, on the Cuaderno's Farm. */
+    presetFarmId: UUID? = null,
 ) {
     val viewModel: DeliveriesViewModel = viewModel(
-        key = "deliveries-${jornadaId ?: initialStatus ?: "all"}",
+        key = "deliveries-${jornadaId ?: initialStatus ?: presetFarmId ?: "all"}",
         factory = viewModelFactory {
             initializer {
                 DeliveriesViewModel(
@@ -141,6 +143,7 @@ fun DeliveriesRoute(
         jornadaId = jornadaId,
         initialStatus = initialStatus,
         onAddYield = onAddYield,
+        presetFarmId = presetFarmId,
     )
 }
 
@@ -164,13 +167,14 @@ fun DeliveriesScreen(
     jornadaId: UUID? = null,
     initialStatus: YieldStatus? = null,
     onAddYield: (UUID) -> Unit = onDeliverySelected,
+    presetFarmId: UUID? = null,
 ) {
     // Phase 19C: find a Pesada by its ticket days later, and the ones still without yield.
     var searchText by rememberSaveable { mutableStateOf("") }
     var statusName by rememberSaveable { mutableStateOf(initialStatus?.name) }
     var cooperative by rememberSaveable { mutableStateOf<String?>(null) }
-    // Opened from a Jornada ("Añadir pesada"), the editor starts open on that Jornada.
-    var editorVisible by rememberSaveable { mutableStateOf(jornadaId != null) }
+    // Opened from a Jornada ("Añadir pesada") or from the Cuaderno's «Pesada», the editor starts open.
+    var editorVisible by rememberSaveable { mutableStateOf(jornadaId != null || presetFarmId != null) }
     var ticketVisible by rememberSaveable { mutableStateOf(false) }
     // CR-010 §6: what was typed in Nueva pesada before «Añadir vale y leer datos». Cancelling the
     // camera reopens the editor with it; a picked ticket carries it to the review.
@@ -323,7 +327,7 @@ fun DeliveriesScreen(
                     parcelIds = jornada.shares.map { it.parcelId },
                 )
             } else {
-                DeliveryForm(farmId = state.contexts.singleOrNull()?.farmId, date = today.toString())
+                DeliveryForm(farmId = presetFarmId ?: state.contexts.singleOrNull()?.farmId, date = today.toString())
             }
         }
         ModalBottomSheet(onDismissRequest = { editorVisible = false; ticketSeed = null; onEditorClosed() }) {

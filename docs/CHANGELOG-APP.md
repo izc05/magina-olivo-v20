@@ -30,6 +30,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   pesada, y el uso de máquinas con su trabajo o día de recolección.
 - «Registrar en esta finca» (finca o parcela) abre el Cuaderno con esa finca y, desde una
   parcela, la parcela visible y quitable («Toda la finca»); el formulario de trabajo la recibe.
+- Cada acción conserva la finca del Cuaderno: **Pesada** abre el formulario al momento en esa
+  finca; **Gasto** abre Gastos con un nuevo gasto en esa finca; **Jornal**, con la campaña en
+  marcha, abre solo el día de recolección de hoy de esa finca (lo busca o lo crea), sin «abrir
+  jornada» a mano; sin campaña en marcha, abre un gasto de jornales de la finca.
 - Inicio: tocar una campaña en marcha abre el Cuaderno de esa finca en Campaña, no la lista de
   pesadas.
 - Retirado el selector antiguo `QuickAddSheet`, que ya no se usaba.

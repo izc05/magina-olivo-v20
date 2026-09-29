@@ -12,6 +12,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import com.isivoltpro.maginaolivo.core.common.AppResult
+import java.time.ZoneId
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -102,6 +106,7 @@ fun AppNavigation(
         }
     }
     val backStackEntry by navController.currentBackStackEntryAsState()
+    val scope = rememberCoroutineScope()
     val currentRoot = AppDestination.rootForRoute(backStackEntry?.destination?.route)
     // The Farm a quick action was tapped on, handed to the activity flow once.
     var registerFarmId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -222,7 +227,19 @@ fun AppNavigation(
                         activeFarmStore = compositionRoot.activeFarmStore,
                         onQuickAction = { action, farmId, running ->
                             registerFarmId = farmId.toString()
-                            navController.openQuickAction(action, running)
+                            // CR-011 §8/§14: Jornal opens today's recolección day of this Farm by
+                            // itself (found or created); nobody opens a «jornada» by hand.
+                            if (action == NotebookQuickAction.LABOUR && running) {
+                                scope.launch {
+                                    val today = compositionRoot.clock.today(ZoneId.systemDefault())
+                                    when (val day = persistence.harvestRepository.openJornada(farmId, today)) {
+                                        is AppResult.Success -> navController.navigate(AppDestination.harvest(day.value.toString()))
+                                        is AppResult.Failure -> navController.navigate(AppDestination.Harvest)
+                                    }
+                                }
+                            } else {
+                                navController.openQuickAction(action, farmId)
+                            }
                         },
                         actionsFor = { farmId -> navController.notebookActions(farmId) },
                         onGoToFields = { navController.navigateToRoot(RootDestination.Olivar) },
@@ -508,6 +525,40 @@ fun AppNavigation(
                     )
                 }
             }
+            composable(AppDestination.NewPesadaPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = backStackEntry.arguments?.getString("farmId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || farmId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    DeliveriesRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onDeliverySelected = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
+                        onTicketSelected = { id -> navController.navigate(AppDestination.ticket(id.toString())) },
+                        onAddYield = { id -> navController.navigate(AppDestination.deliveryYield(id.toString())) },
+                        presetFarmId = farmId,
+                    )
+                }
+            }
+            composable(AppDestination.FarmExpensesPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = backStackEntry.arguments?.getString("farmId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || farmId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    ExpensesRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onExpenseSelected = { id -> navController.navigate(AppDestination.expense(id.toString())) },
+                        onDocumentSelected = { id -> navController.navigate(AppDestination.document(id.toString())) },
+                        onOrganizations = { navController.navigate(AppDestination.Organizations) },
+                        presetFarmId = farmId,
+                    )
+                }
+            }
             composable(AppDestination.JornadaPesadaPattern) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
                 val harvestId = backStackEntry.arguments?.getString("harvestId")
@@ -682,10 +733,11 @@ private fun NavHostController.notebookActions(farmId: UUID) = NotebookActions(
 )
 
 /**
- * UX-D, CR-011: where each Cuaderno action goes — the existing forms, nothing new. Activity
- * kinds open the register flow with their type already chosen and today's date.
+ * UX-D, CR-011: where each Cuaderno action goes — the existing forms, nothing new, always on
+ * the Cuaderno's Farm. Activity kinds open the register flow with their type already chosen
+ * and today's date; a running campaign's Jornal is handled by the caller (today's day).
  */
-private fun NavHostController.openQuickAction(action: NotebookQuickAction, inRecollection: Boolean) {
+private fun NavHostController.openQuickAction(action: NotebookQuickAction, farmId: UUID) {
     when (action) {
         NotebookQuickAction.WORK ->
             navigate(AppDestination.register(null)) { launchSingleTop = true }
@@ -693,9 +745,8 @@ private fun NavHostController.openQuickAction(action: NotebookQuickAction, inRec
             navigate(AppDestination.register(ActivityType.IRRIGATION.name)) { launchSingleTop = true }
         NotebookQuickAction.TREATMENT ->
             navigate(AppDestination.register(ActivityType.PHYTOSANITARY.name)) { launchSingleTop = true }
-        // CR-007: the jornales of a Jornada in recolección; otherwise a LABOR Expense.
-        NotebookQuickAction.LABOUR -> navigate(if (inRecollection) AppDestination.Harvest else AppDestination.Expenses)
-        NotebookQuickAction.WEIGHING -> navigate(AppDestination.Deliveries)
-        NotebookQuickAction.EXPENSE -> navigate(AppDestination.Expenses)
+        NotebookQuickAction.WEIGHING -> navigate(AppDestination.newPesada(farmId.toString()))
+        // CR-007: outside a running campaign, jornales are a LABOR Expense of this Farm.
+        NotebookQuickAction.LABOUR, NotebookQuickAction.EXPENSE -> navigate(AppDestination.farmExpenses(farmId.toString()))
     }
 }

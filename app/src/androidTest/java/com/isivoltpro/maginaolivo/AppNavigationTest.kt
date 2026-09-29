@@ -173,6 +173,32 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 
+    /** CR-011 §4/§14: Cuaderno → Pesada opens the form at once; Cuaderno → Gasto opens Gastos. */
+    @Test
+    fun cuadernoPesadaAndGastoOpenTheirScreensOnThatFarm() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("add-farm")
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Pesada E2E")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca Pesada E2E")
+
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        chooseNotebookFarm("Finca Pesada E2E")
+        clickByTag("notebook-quick-weighing")
+        waitForTag("delivery-editor")
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+
+        pressBack()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        chooseNotebookFarm("Finca Pesada E2E")
+        clickByTag("notebook-quick-expense")
+        waitForTag("expenses-root")
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+    }
+
     /** CR-011 §3: a Farm's «Cuaderno» is the one Cuaderno on that Farm, and Back returns to the Farm. */
     @Test
     fun aFarmsCuadernoIsTheOneCuadernoOnThatFarm() {
