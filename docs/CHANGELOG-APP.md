@@ -39,6 +39,7 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 - Retirado el selector antiguo `QuickAddSheet`, que ya no se usaba.
 - Recolección ya no tiene «Abrir jornada de hoy»: el día de recolección se crea solo con su primera pesada o con Cuaderno → Jornal. Sin cambios de datos ni de cálculos.
 - Textos: el contenedor de recolección se llama «Día de recolección» (antes «Jornada»); «Jornada» queda solo como unidad de jornal (jornada completa, media jornada). «Uso de maquinaria» dentro del trabajo y del día; «Mis máquinas» en Perfil.
+- Onboarding: «Importa parcelas desde Catastro, localízalas y consulta sus límites en el mapa.» (la app no dibuja límites). El flujo de Trabajo/Riego/Tratamiento se titula «Registrar o planificar».
 
 ## 0.6.0 — en curso (CR-010, campaña simple)
 

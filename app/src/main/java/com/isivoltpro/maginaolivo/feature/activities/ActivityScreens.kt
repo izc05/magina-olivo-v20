@@ -250,7 +250,7 @@ fun RegisterActivityRoute(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.md),
         ) {
             if (selectedTypeName == null) {
-                Text("Registrar actuación", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+                Text("Registrar o planificar", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             }
             when {
                 state.isLoading -> CircularProgressIndicator()
