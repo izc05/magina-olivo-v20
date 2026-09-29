@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import android.util.Log
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import androidx.compose.foundation.layout.WindowInsets
@@ -90,6 +91,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
@@ -548,6 +550,8 @@ private fun SplitOption(title: String, body: String, selected: Boolean, tag: Str
     }
 }
 
+private const val DAY_LOAD_TIMEOUT_MS = 10_000L
+
 @Composable
 fun HarvestDetailRoute(
     harvestId: UUID,
@@ -570,7 +574,22 @@ fun HarvestDetailRoute(
             }
         },
     )
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val loaded by viewModel.state.collectAsStateWithLifecycle()
+    // Device check (build 683): a day that never finishes loading is explained, never an endless
+    // spinner. If it arrives later it is shown as usual.
+    var slow by remember(harvestId) { mutableStateOf(false) }
+    LaunchedEffect(harvestId, loaded.isLoading) {
+        if (loaded.isLoading) {
+            delay(DAY_LOAD_TIMEOUT_MS)
+            slow = true
+            Log.w(LOG_TAG, "Harvest day $harvestId still loading after $DAY_LOAD_TIMEOUT_MS ms")
+        }
+    }
+    val state = if (loaded.isLoading && slow) {
+        loaded.copy(isLoading = false, error = "Está tardando más de lo normal. Vuelve atrás y ábrelo de nuevo.")
+    } else {
+        loaded
+    }
     LaunchedEffect(state.deleted) { if (state.deleted) onDeleted() }
     // Phase 19F: "Guardar y añadir foto" opens the new Expense, where its ticket is attached.
     LaunchedEffect(state.openExpenseId) {

@@ -1,5 +1,12 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -17,7 +24,11 @@ import com.isivoltpro.maginaolivo.feature.notebook.NotebookHubTab
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookQuickAction
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookUiState
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 
@@ -150,6 +161,45 @@ class NotebookHomeScreenTest {
         show(state = NotebookUiState(isLoading = false))
         composeRule.onNodeWithTag("notebook-context").assertTextContains("Sin campaña en marcha", substring = true)
         composeRule.onNodeWithTag("notebook-no-campaign").performScrollTo().assertIsDisplayed()
+    }
+
+    /** Device check (build 683): at 360 dp with large text no action label wraps and every view is whole. */
+    @Test fun at360dpWithLargeTextLabelsStayWholeAndEveryViewIsVisible() {
+        composeRule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 1.3f)) {
+                MaginaOlivoTheme {
+                    Box(Modifier.width(360.dp)) {
+                        NotebookHomeScreen(
+                            isLoading = false,
+                            error = null,
+                            farms = UiPolishFixtures.farms,
+                            activeFarm = farm,
+                            notebook = NotebookUiState(isLoading = false, campaigns = listOf(campaign), selectedCampaignId = campaign.id, notebook = notebook),
+                            actions = NotebookActions(),
+                            onSelectFarm = {},
+                            onSelectCampaign = {},
+                            onQuickAction = {},
+                        )
+                    }
+                }
+            }
+        }
+        listOf("Tratamiento", "Trabajo", "Pesada").forEach { label ->
+            val layout = textLayout(composeRule.onNodeWithText(label, useUnmergedTree = true))
+            assertEquals("«$label» in one line", 1, layout.lineCount)
+        }
+        NotebookHubTab.entries.forEach { view ->
+            composeRule.onNodeWithTag(view.tag).performScrollTo().assertIsDisplayed()
+            val layout = textLayout(composeRule.onNodeWithText(view.label, useUnmergedTree = true))
+            assertFalse("«${view.label}» is whole", layout.hasVisualOverflow)
+        }
+    }
+
+    private fun textLayout(node: SemanticsNodeInteraction): TextLayoutResult {
+        val results = mutableListOf<TextLayoutResult>()
+        node.fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+        return results.single()
     }
 
     private fun show(

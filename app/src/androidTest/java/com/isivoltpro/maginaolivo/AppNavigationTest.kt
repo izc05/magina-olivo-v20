@@ -750,18 +750,19 @@ class AppNavigationTest {
             composeRule.onAllNodesWithText("Campaña Jornal E2E", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         clickByTag("notebook-quick-labour")
-        waitForTag("harvest-detail-root")
+        // Build 683: the container alone renders while still loading; wait for the day itself.
+        waitForTag("jornada-register-labour")
 
         // Cold restart: the same day is still there.
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
-        waitForTag("harvest-detail-root")
+        waitForTag("jornada-register-labour")
 
         // Jornal again the same day reuses it.
         pressBack()
         waitForTag("notebook-root")
         clickByTag("notebook-quick-labour")
-        waitForTag("harvest-detail-root")
+        waitForTag("jornada-register-labour")
 
         // The campaign holds exactly one día de recolección.
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
