@@ -55,7 +55,7 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 - Contexto (§14): si el Cuaderno se abrió desde una parcela, Pesada la trae como origen (solo si
   está en la campaña en marcha) y Gasto empieza en ella.
 - Listas (§9/§23): el día de recolección se lee «12 dic 2026 · Día de recolección» y
-  «8.750 kg · 3 pesadas · 5 jornales · 1 tractor»; la fila de gasto lleva icono en su color.
+  «8.750 kg · 3 pesadas · 5 jornadas · 1 tractor» (jornadas, medias y horas por separado); la fila de gasto lleva icono en su color.
 - Color de sección (§20): Avisos en ámbar y la cabecera de Campaña en verde profundo.
 
 ## 0.6.0 — en curso (CR-010, campaña simple)
