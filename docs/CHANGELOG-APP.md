@@ -20,6 +20,17 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.6.0 — en curso (CR-011, simplificación)
 
+- **Prueba en dispositivo (build 683).** Corregido Cuaderno → Jornal atascado en «cargando»:
+  al abrir un día, la lectura de la cuadrilla anterior copiaba el estado de la pantalla antes de
+  leer y lo volvía a escribir al terminar; si el día había llegado entretanto, la pantalla volvía
+  a «cargando» para siempre. Ahora lee primero y actualiza solo ese dato. Además, si abrir o
+  cargar el día de hoy tarda más de 10 s, se
+  explica en pantalla («Está tardando más de lo normal»), con «Reintentar» al abrirlo, y queda
+  registrado en logcat (etiqueta `MaginaOlivo`). La prueba E2E espera ahora al contenido real del
+  día («Registrar jornales»), no solo a su contenedor. A 360 dp y letra grande, las cuatro vistas
+  del Cuaderno (Diario · Fitosanitario · Gastos · Campaña) son chips que saltan de línea y se ven
+  enteras, y las seis acciones pasan a dos por fila cuando «Tratamiento» no cabe en una línea.
+  Sin cambios de datos ni de cálculos.
 - **Un solo Cuaderno.** Desde una finca, «Cuaderno» abre el Cuaderno principal con esa finca
   elegida (Atrás vuelve a la finca). Desaparece el segundo Cuaderno con Trabajos · Recolección ·
   Resumen: sus trabajos están en Diario (más «Ver todos los trabajos de la finca») y su

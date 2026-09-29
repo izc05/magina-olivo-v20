@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo
 
+import android.content.Context
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionCollection
@@ -21,10 +22,16 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.printToString
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -750,18 +757,25 @@ class AppNavigationTest {
             composeRule.onAllNodesWithText("Campaña Jornal E2E", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         clickByTag("notebook-quick-labour")
-        waitForTag("harvest-detail-root")
+        // Build 683: the container alone renders while still loading; wait for the day itself.
+        waitForTagOrDumpScreen("jornada-register-labour")
+
+        // Back and Jornal again, before any restart: the same day opens again.
+        pressBack()
+        waitForTag("notebook-root")
+        clickByTag("notebook-quick-labour")
+        waitForTagOrDumpScreen("jornada-register-labour")
 
         // Cold restart: the same day is still there.
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
-        waitForTag("harvest-detail-root")
+        waitForTagOrDumpScreen("jornada-register-labour")
 
         // Jornal again the same day reuses it.
         pressBack()
         waitForTag("notebook-root")
         clickByTag("notebook-quick-labour")
-        waitForTag("harvest-detail-root")
+        waitForTagOrDumpScreen("jornada-register-labour")
 
         // The campaign holds exactly one día de recolección.
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
@@ -825,6 +839,42 @@ class AppNavigationTest {
      * exceed a 5s budget, which is why this E2E failed at a different point on every
      * run. Every asynchronous transition now waits for the state it depends on.
      */
+    /** Like [waitForTag], but a timeout reports what is on screen, so CI shows where it stopped. */
+    private fun waitForTagOrDumpScreen(tag: String) {
+        try {
+            waitForTag(tag)
+        } catch (timeout: ComposeTimeoutException) {
+            val screen = runCatching { composeRule.onAllNodes(isRoot(), useUnmergedTree = true).printToString(maxDepth = Int.MAX_VALUE) }
+                .getOrElse { "(screen not readable: $it)" }
+            throw AssertionError(
+                "«$tag» not shown after $UI_TIMEOUT_MS ms.\nDatabase: ${probeDatabase()}\nThreads:\n${busyThreads()}\nOn screen:\n$screen",
+                timeout,
+            )
+        }
+    }
+
+    /** Whether a fresh one-shot read and fresh observations of the app's database answer now. */
+    private fun probeDatabase(): String = runCatching {
+        val database = MaginaOlivoDatabase.getInstance(ApplicationProvider.getApplicationContext<Context>())
+        runBlocking {
+            val flowAll = withTimeoutOrNull(5_000) { database.harvestDao().observeAll().first().size }
+            val flowRunning = withTimeoutOrNull(5_000) { database.harvestDao().observeRunningCampaigns().first().size }
+            val oneShot = withTimeoutOrNull(5_000) {
+                database.harvestDao().findById(java.util.UUID.randomUUID())
+                "ok"
+            }
+            "observeAll=${flowAll ?: "NO EMISSION in 5 s"}, observeRunningCampaigns=${flowRunning ?: "NO EMISSION in 5 s"}, " +
+                "oneShot=${oneShot ?: "NO ANSWER in 5 s"}"
+        }
+    }.getOrElse { "probe failed: $it" }
+
+    /** Threads that are blocked or waiting outside the usual idle loopers, with their top frames. */
+    private fun busyThreads(): String = Thread.getAllStackTraces().entries
+        .filter { (thread, _) -> thread.state == Thread.State.BLOCKED || thread.name.contains("arch_disk_io") || thread.name.startsWith("DefaultDispatcher") }
+        .joinToString("\n") { (thread, frames) ->
+            "${thread.name} ${thread.state}: " + frames.take(8).joinToString(" <- ") { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" }
+        }
+
     private fun waitForTag(tag: String, timeoutMillis: Long = UI_TIMEOUT_MS) {
         composeRule.waitUntil(timeoutMillis) {
             composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()

@@ -6,7 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,8 +29,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -297,8 +299,24 @@ fun NotebookHomeScreen(
 /** CR-011 §4–5: the six actions as large, labelled tiles, three per row; one tap opens the form. */
 @Composable
 private fun QuickActionGrid(onQuickAction: (NotebookQuickAction) -> Unit) {
+    // Device check (build 683): at 360 dp with large text «Tratamiento» broke onto two lines.
+    // Three tiles per row only when a tile still fits the longest label at this font scale.
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val fontScale = LocalDensity.current.fontScale
+        // Each tile gets the width left after the two gaps between three tiles (Codex #305).
+        val tileWidth = (maxWidth - MoSpacing.xs * 2) / 3
+        val columns = if (tileWidth >= QUICK_TILE_MIN_WIDTH * fontScale) 3 else 2
+        QuickActionRows(columns, onQuickAction)
+    }
+}
+
+/** The narrowest tile that keeps «Tratamiento» on one line at 100 % text. */
+private val QUICK_TILE_MIN_WIDTH = 104.dp
+
+@Composable
+private fun QuickActionRows(columns: Int, onQuickAction: (NotebookQuickAction) -> Unit) {
     Column(Modifier.fillMaxWidth().testTag("notebook-quick-actions"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        NotebookQuickAction.entries.chunked(3).forEach { row ->
+        NotebookQuickAction.entries.chunked(columns).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 row.forEach { action -> QuickActionTile(action, { onQuickAction(action) }, Modifier.weight(1f)) }
             }
@@ -333,6 +351,7 @@ private fun QuickActionTile(action: NotebookQuickAction, onClick: () -> Unit, mo
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun NotebookHub(
     state: NotebookUiState?,
@@ -370,20 +389,18 @@ private fun NotebookHub(
                     }
                 }
             }
-            // Device check (build 680): four fixed tabs cut «Fitosanitario» at 360–480 dp and with
-            // large text. A scrollable row keeps every label whole at any width or font scale.
-            ScrollableTabRow(
-                selectedTabIndex = tab.ordinal,
-                containerColor = MoWarmWhite,
-                contentColor = MoOliveDark,
-                edgePadding = 0.dp,
-                modifier = Modifier.clip(MoShape.card),
+            // Device checks (builds 680, 683): fixed tabs cut «Fitosanitario», and scrollable tabs
+            // hid «Campaña» at 360 dp. Four chips that wrap keep every view visible and whole at
+            // any width or font scale.
+            FlowRow(
+                Modifier.fillMaxWidth().testTag("notebook-views"),
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
             ) {
                 NotebookHubTab.entries.forEach { option ->
-                    Tab(
+                    FilterChip(
                         selected = option == tab,
                         onClick = { onTab(option) },
-                        text = { Text(option.label, maxLines = 1) },
+                        label = { Text(option.label, maxLines = 1) },
                         modifier = Modifier.testTag(option.tag),
                     )
                 }
