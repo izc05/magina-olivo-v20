@@ -110,7 +110,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         RecollectionRatesEntity::class,
         ProfileSettingsEntity::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)

@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import com.isivoltpro.maginaolivo.core.time.SystemAppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
+import com.isivoltpro.maginaolivo.data.repository.RoomReminderPreferences
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,10 +46,14 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
         val pending = goAsync()
         scope.launch {
             try {
+                val database = MaginaOlivoDatabase.getInstance(context)
+                // Phase 21B: the same Perfil → Avisos preferences as the app, or a reboot would
+                // move day-before reminders back to the rules' default hour.
                 ReminderCoordinator(
-                    MaginaOlivoDatabase.getInstance(context),
+                    database,
                     AndroidReminderScheduler(context),
                     SystemAppClock(),
+                    RoomReminderPreferences(database),
                 ).reconcile()
             } finally {
                 pending.finish()

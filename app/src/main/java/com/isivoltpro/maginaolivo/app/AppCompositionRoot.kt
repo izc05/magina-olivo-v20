@@ -33,6 +33,7 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstLabourRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstMachineRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstOrganizationRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstProfileRepository
+import com.isivoltpro.maginaolivo.data.repository.RoomReminderPreferences
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstActivityRepository
@@ -102,9 +103,13 @@ data class AppCompositionRoot(
                 dispatchers = defaults.dispatchers,
             )
             val campaignRepository = OfflineFirstCampaignRepository(database, defaults.clock, defaults.idGenerator, defaults.dispatchers)
-            val reminders = ReminderCoordinator(database, AndroidReminderScheduler(applicationContext), defaults.clock)
+            // Phase 21B: Perfil → Avisos (on/off, day-before hour) drives the alarms.
+            val reminderPreferences = RoomReminderPreferences(database)
+            val reminders = ReminderCoordinator(
+                database, AndroidReminderScheduler(applicationContext), defaults.clock, reminderPreferences,
+            )
             val activityRepository = OfflineFirstActivityRepository(
-                database, defaults.clock, defaults.idGenerator, defaults.dispatchers, reminders,
+                database, defaults.clock, defaults.idGenerator, defaults.dispatchers, reminders, reminderPreferences,
             )
             val attachmentRepository = OfflineFirstAttachmentRepository(
                 database = database,

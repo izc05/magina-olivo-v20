@@ -1,19 +1,28 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderPreferences
 import com.isivoltpro.maginaolivo.domain.organization.Organization
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationRole
 import com.isivoltpro.maginaolivo.domain.profile.ProfileSettings
 import com.isivoltpro.maginaolivo.feature.profile.MyProfileSection
 import com.isivoltpro.maginaolivo.feature.profile.MyProfileUiState
+import com.isivoltpro.maginaolivo.feature.profile.ReminderSettings
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
+import java.time.LocalTime
 import java.util.UUID
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -69,6 +78,31 @@ class MyProfileScreenTest {
             assertEquals(listOf<UUID?>(molino.id, null), chosen)
             assertEquals(listOf("S.C.A. San Isidro"), created)
         }
+    }
+
+    /** Phase 21B: one switch for every reminder and the day-before hour, 08:00 by default. */
+    @Test fun remindersCanBeSwitchedOffAndTheDayBeforeHourChosen() {
+        val changes = mutableListOf<ReminderPreferences>()
+        var preferences by mutableStateOf(ReminderPreferences())
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ReminderSettings(preferences, isSaving = false) { changes += it; preferences = it }
+            }
+        }
+        composeRule.onNodeWithText("08:00").assertIsSelected()
+        composeRule.onNodeWithText("19:00").performClick()
+        composeRule.onNodeWithTag("profile-reminders-switch").performClick()
+        composeRule.runOnIdle {
+            assertEquals(
+                listOf(
+                    ReminderPreferences(enabled = true, previousDayTime = LocalTime.of(19, 0)),
+                    ReminderPreferences(enabled = false, previousDayTime = LocalTime.of(19, 0)),
+                ),
+                changes,
+            )
+        }
+        // Switched off, no hour is offered.
+        composeRule.onAllNodesWithTag("profile-reminder-hour").assertCountEquals(0)
     }
 
     private fun show(

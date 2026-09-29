@@ -63,6 +63,15 @@ fun ProfileRoute(
 ) {
     val context = LocalContext.current
     val profileRepository = persistence?.profileRepository
+    val profileViewModel: MyProfileViewModel? = if (persistence != null && profileRepository != null) {
+        viewModel(
+            factory = viewModelFactory {
+                initializer { MyProfileViewModel(profileRepository, persistence.organizationRepository, persistence.reminders) }
+            },
+        )
+    } else {
+        null
+    }
     var notificationsOn by remember { mutableStateOf(notificationsAllowed(context)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { notificationsOn = notificationsAllowed(context) }
     ProfileScreen(
@@ -78,19 +87,24 @@ fun ProfileRoute(
         onMachinery = onMachinery,
         developerGalleryEnabled = developerGalleryEnabled,
         onDeveloperGallery = onDeveloperGallery,
-        myProfile = if (persistence != null && profileRepository != null) {
+        myProfile = if (profileViewModel != null) {
             {
-                val viewModel: MyProfileViewModel = viewModel(
-                    factory = viewModelFactory { initializer { MyProfileViewModel(profileRepository, persistence.organizationRepository) } },
-                )
-                val state by viewModel.state.collectAsStateWithLifecycle()
+                val state by profileViewModel.state.collectAsStateWithLifecycle()
                 MyProfileSection(
                     state = state,
-                    onSaveLocation = viewModel::saveLocation,
-                    onChooseCooperative = viewModel::chooseCooperative,
-                    onCreateCooperative = viewModel::createCooperative,
-                    onClearError = viewModel::clearError,
+                    onSaveLocation = profileViewModel::saveLocation,
+                    onChooseCooperative = profileViewModel::chooseCooperative,
+                    onCreateCooperative = profileViewModel::createCooperative,
+                    onClearError = profileViewModel::clearError,
                 )
+            }
+        } else {
+            null
+        },
+        reminderSettings = if (profileViewModel != null) {
+            {
+                val state by profileViewModel.state.collectAsStateWithLifecycle()
+                ReminderSettings(state.settings.reminders, state.isSaving, profileViewModel::saveReminders)
             }
         } else {
             null
@@ -114,6 +128,8 @@ fun ProfileScreen(
     onDeveloperGallery: () -> Unit = {},
     /** Phase 21A: «Mi perfil» (municipality + cooperative); absent where no storage exists. */
     myProfile: (@Composable () -> Unit)? = null,
+    /** Phase 21B: Perfil → Avisos (switch + day-before hour); absent where no storage exists. */
+    reminderSettings: (@Composable () -> Unit)? = null,
 ) {
     Column(
         Modifier
@@ -158,6 +174,7 @@ fun ProfileScreen(
                 )
             },
         )
+        reminderSettings?.invoke()
         MoCompactListItem(
             title = "Modo sin conexión",
             subtitle = "Registra en el campo sin cobertura; nada depende de internet",

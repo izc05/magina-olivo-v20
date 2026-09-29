@@ -25,6 +25,12 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   sincronización futura. La cooperativa se elige de tus cooperativas y almazaras, las mismas que
   usas en pesadas y gastos: no se copia el nombre. Si la renombras, se ve el nombre nuevo; si la
   archivas, deja de ser tu cooperativa. También puedes añadir una nueva desde ahí.
+- **Avisos (21B).** En Perfil → Ajustes, un interruptor para todos los avisos de trabajos
+  planificados y la hora del aviso «el día anterior»: **08:00 por defecto** (decisión P2; antes
+  sonaba a las 19:00). Se puede elegir 07:00, 08:00, 09:00, 19:00 o 20:00. Al cambiar la hora se
+  mueven todos los avisos «el día anterior» ya guardados; al desactivarlos no suena ninguno, pero
+  no se borra ninguno. Se guarda en el teléfono (Room v20) y se respeta también tras reiniciar el
+  móvil. El permiso de notificaciones de Android sigue en «Notificaciones».
 - Inicio y la previsión semanal usan tu municipio cuando tus fincas no tienen municipio o están en
   varios. La tarjeta «Mi cooperativa» muestra la que elegiste; sus avisos siguen pendientes del
   panel de administración.

@@ -14,6 +14,10 @@ interface ProfileSettingsDao {
     @Query("SELECT * FROM profile_settings WHERE workspace_id = :workspaceId LIMIT 1")
     suspend fun findForWorkspace(workspaceId: UUID): ProfileSettingsEntity?
 
+    /** The phone's one profile (one local workspace), for the reminder engine. */
+    @Query("SELECT * FROM profile_settings WHERE deleted_at IS NULL ORDER BY created_at, id LIMIT 1")
+    suspend fun findFirst(): ProfileSettingsEntity?
+
     @Query("SELECT * FROM profile_settings WHERE workspace_id = :workspaceId AND deleted_at IS NULL LIMIT 1")
     fun observeForWorkspace(workspaceId: UUID): Flow<ProfileSettingsEntity?>
 }
