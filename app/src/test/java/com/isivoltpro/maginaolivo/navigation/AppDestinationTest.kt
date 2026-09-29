@@ -32,6 +32,9 @@ class AppDestinationTest {
         assertEquals(AppDestination.PlanWork, AppDestination.planWork())
         assertEquals(RootDestination.Alerts, AppDestination.rootForRoute(AppDestination.PlanWork))
         assertEquals("register?type={type}", AppDestination.RegisterPattern)
+        // CR-011: Cuaderno → Jornal opens today's day under Cuaderno, on its own route.
+        assertEquals("harvest/today/{farmId}", AppDestination.TodayHarvestPattern)
+        assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.TodayHarvestPattern))
         assertEquals(RootDestination.Notebook, RootDestination.entries.single { it.isPrimaryAction })
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))
         // Phase 20B-radar: the radar belongs to Inicio.
