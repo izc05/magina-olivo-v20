@@ -130,17 +130,28 @@ class Gate3EvidenceScreenshotTest {
         saveNode(tag = "calendar-root", prefix = "ui-06-calendario-mes")
     }
 
+    /** CR-011: the one Cuaderno with its six actions (was the old Quick Add sheet). */
     @Test
-    fun captureUiPolishQuickAdd() = capture("register-action-sheet", "ui-07-quick-add") {
-        androidx.compose.material3.Surface(color = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite) {
-            com.isivoltpro.maginaolivo.navigation.QuickAddSheet(
-                context = com.isivoltpro.maginaolivo.navigation.QuickAddContext(
-                    UiPolishFixtures.farms.first().id, "Finca de ejemplo", "Campaña de ejemplo", "Parcela Norte",
+    fun captureUiPolishNotebook() = capture("notebook-root", "ui-07-cuaderno") {
+        com.isivoltpro.maginaolivo.feature.notebook.NotebookHomeScreen(
+            isLoading = false,
+            error = null,
+            farms = UiPolishFixtures.farms,
+            activeFarm = UiPolishFixtures.farms.first(),
+            notebook = com.isivoltpro.maginaolivo.feature.notebook.NotebookUiState(
+                isLoading = false,
+                campaigns = listOf(UiPolishFixtures.campaign),
+                selectedCampaignId = UiPolishFixtures.campaign.id,
+                notebook = com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook.project(
+                    UiPolishFixtures.campaign, emptyList(), emptyList(), emptyList(), emptyList(),
                 ),
-                onAction = {},
-                onCancel = {},
-            )
-        }
+            ),
+            actions = com.isivoltpro.maginaolivo.feature.notebook.NotebookActions(),
+            onSelectFarm = {},
+            onSelectCampaign = {},
+            onQuickAction = {},
+            parcelContext = "Parcela Norte",
+        )
     }
 
     @Test

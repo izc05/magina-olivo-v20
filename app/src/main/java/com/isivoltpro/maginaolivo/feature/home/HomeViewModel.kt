@@ -40,6 +40,8 @@ data class HomeCampaign(
     val farmName: String,
     val harvestedGrams: Long?,
     val deliveredGrams: Long?,
+    /** CR-011 §17: the Farm whose Cuaderno the card opens. */
+    val farmId: java.util.UUID? = null,
 )
 
 /**
@@ -135,6 +137,7 @@ class HomeViewModel(
                             farmName = context.farmName,
                             harvestedGrams = harvested.takeIf { it.isNotEmpty() }?.sumOf { it.totalGrams },
                             deliveredGrams = delivered.takeIf { it.isNotEmpty() }?.sumOf { it.netGrams },
+                            farmId = context.farmId,
                         )
                     },
                     upcoming = agenda.filter { !it.activityDate.isBefore(today) }

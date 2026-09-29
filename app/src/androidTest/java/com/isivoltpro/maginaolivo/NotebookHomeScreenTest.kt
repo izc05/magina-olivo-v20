@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
@@ -34,20 +35,56 @@ class NotebookHomeScreenTest {
     )
     private val notebook = CampaignNotebook.project(campaign, listOf(treatment), emptyList(), emptyList(), emptyList())
 
-    @Test fun contextRegisterAndCanonicalQuickActionsAreAlwaysAtHand() {
+    @Test fun contextAndTheSixActionsAreAlwaysAtHandWithNoSecondMenu() {
         val tapped = mutableListOf<NotebookQuickAction>()
-        var registered = 0
-        show(onQuickAction = { tapped += it }, onRegisterToday = { registered++ })
+        show(onQuickAction = { tapped += it })
         composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca de ejemplo · Campaña de ejemplo")
-        composeRule.onNodeWithTag("notebook-register-today").performClick()
+        // CR-011 §4: the actions are shown directly; no «Registrar hoy» repeats them.
+        composeRule.onAllNodesWithTag("notebook-register-today").fetchSemanticsNodes().let { assertEquals(0, it.size) }
         NotebookQuickAction.entries.forEach { action ->
             composeRule.onNodeWithTag(action.tag).performScrollTo().performClick()
         }
         composeRule.runOnIdle {
-            assertEquals(1, registered)
             assertEquals(NotebookQuickAction.entries.toList(), tapped)
-            assertEquals(listOf("Pesada"), NotebookQuickAction.entries.map { it.label }.filter { it in setOf("Cosecha", "Entrega", "Pesada") })
+            // CR-011 §5: Trabajo · Riego · Tratamiento · Pesada · Jornal · Gasto, nothing else.
+            assertEquals(
+                listOf("Trabajo", "Riego", "Tratamiento", "Pesada", "Jornal", "Gasto"),
+                NotebookQuickAction.entries.map { it.label },
+            )
         }
+    }
+
+    @Test fun aParcelFromMiCampoIsShownAndCanBeDropped() {
+        var cleared = 0
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                NotebookHomeScreen(
+                    isLoading = false, error = null, farms = UiPolishFixtures.farms, activeFarm = farm,
+                    notebook = NotebookUiState(isLoading = false, campaigns = listOf(campaign), selectedCampaignId = campaign.id, notebook = notebook),
+                    actions = NotebookActions(), onSelectFarm = {}, onSelectCampaign = {}, onQuickAction = {},
+                    parcelContext = "Parcela Norte", onClearParcel = { cleared++ },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("notebook-parcel-context").assertTextContains("Parcela Norte", substring = true)
+        composeRule.onNodeWithTag("notebook-parcel-clear").performClick()
+        composeRule.runOnIdle { assertEquals(1, cleared) }
+    }
+
+    @Test fun inicioCanOpenTheCampaignView() {
+        var handled = 0
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                NotebookHomeScreen(
+                    isLoading = false, error = null, farms = UiPolishFixtures.farms, activeFarm = farm,
+                    notebook = NotebookUiState(isLoading = false, campaigns = listOf(campaign), selectedCampaignId = campaign.id, notebook = notebook),
+                    actions = NotebookActions(), onSelectFarm = {}, onSelectCampaign = {}, onQuickAction = {},
+                    tabRequest = NotebookHubTab.CAMPAIGN, onTabRequestHandled = { handled++ },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("notebook-summary").performScrollTo().assertIsDisplayed()
+        composeRule.runOnIdle { assertEquals(1, handled) }
     }
 
     @Test fun theFourTabsShowTheSameRecords() {
@@ -84,7 +121,6 @@ class NotebookHomeScreenTest {
     /** UX-G accessibility: icon + text, never an icon alone; every control is a real button. */
     @Test fun quickActionsAndTabsAreLabelledControls() {
         show()
-        composeRule.onNodeWithTag("notebook-register-today").assertHasClickAction().assertTextContains("Registrar hoy")
         NotebookQuickAction.entries.forEach { action ->
             composeRule.onNodeWithTag(action.tag).performScrollTo().assertHasClickAction().assertTextContains(action.label)
         }
@@ -93,20 +129,21 @@ class NotebookHomeScreenTest {
         }
     }
 
-    @Test fun withoutFarmsRegisterStaysAndMiCampoIsOffered() {
+    @Test fun withoutFarmsMiCampoIsOffered() {
         var toFields = 0
         composeRule.setContent {
             MaginaOlivoTheme {
                 NotebookHomeScreen(
                     isLoading = false, error = null, farms = emptyList(), activeFarm = null, notebook = null, actions = null,
-                    onSelectFarm = {}, onSelectCampaign = {}, onRegisterToday = {}, onQuickAction = {},
+                    onSelectFarm = {}, onSelectCampaign = {}, onQuickAction = {},
                     onGoToFields = { toFields++ },
                 )
             }
         }
-        composeRule.onNodeWithTag("notebook-register-today").assertIsDisplayed()
         composeRule.onNodeWithTag("notebook-root-no-farms").assertIsDisplayed()
         composeRule.onAllNodesWithTag(NotebookQuickAction.WORK.tag).fetchSemanticsNodes().let { assertEquals(0, it.size) }
+        composeRule.onNodeWithText("Ir a Mi Campo").performClick()
+        composeRule.runOnIdle { assertEquals(1, toFields) }
     }
 
     @Test fun withoutACampaignTheNotebookSaysSo() {
@@ -118,7 +155,6 @@ class NotebookHomeScreenTest {
     private fun show(
         state: NotebookUiState = NotebookUiState(isLoading = false, campaigns = listOf(campaign), selectedCampaignId = campaign.id, notebook = notebook),
         onQuickAction: (NotebookQuickAction) -> Unit = {},
-        onRegisterToday: () -> Unit = {},
     ) {
         composeRule.setContent {
             MaginaOlivoTheme {
@@ -131,7 +167,6 @@ class NotebookHomeScreenTest {
                     actions = NotebookActions(),
                     onSelectFarm = {},
                     onSelectCampaign = {},
-                    onRegisterToday = onRegisterToday,
                     onQuickAction = onQuickAction,
                 )
             }

@@ -64,6 +64,12 @@ A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gat
 ## Current allowed phase
 
 ```text
+▶ CR-011 — SIMPLIFICACIÓN Y PULIDO UX (owner-approved 2026-09-29), executor Claude.
+  docs/00-master/RC1.2-CHANGE-REQUEST-011-SIMPLIFICACION-UX.md. No new functions, no schema
+  change. Blocks A (navigation/duplicates) → B (actions) → C (visual) → D (texts) → E (flows).
+  A1 in review: one Cuaderno, six direct actions, no «Registrar hoy», QuickAddSheet removed,
+  Farm/Parcel context, Inicio campaign → Cuaderno · Campaña.
+  The Gate CR-010 device run happens on the APK that includes CR-011.
 ▶ CR-010 — CAMPAÑA SIMPLE (Issue #254), executor Claude, after Gate 20 PASS.
   All six slices MERGED (2026-09-28): 1a #288 · 1b #289 · 2 #290 (Room v17) · 3 #291 ·
   4 #293 (Room v18) · 5 #294 · 6 #295. A3 follow-up (unlinked same-date costs) #296 MERGED.

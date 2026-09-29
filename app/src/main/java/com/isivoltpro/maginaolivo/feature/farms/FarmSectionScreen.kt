@@ -47,8 +47,6 @@ fun FarmSectionRoute(
     onActivitySelected: (UUID) -> Unit,
     onImportFromCatastro: (() -> Unit)? = null,
     onMap: (() -> Unit)? = null,
-    notebookActions: com.isivoltpro.maginaolivo.feature.notebook.NotebookActions =
-        com.isivoltpro.maginaolivo.feature.notebook.NotebookActions(onActivity = onActivitySelected),
 ) {
     val farmFlow = remember(farmId) { persistence.farmRepository.observeById(farmId) }
     val farm by farmFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -79,7 +77,8 @@ fun FarmSectionRoute(
                     onMap = onMap,
                 )
                 FarmSection.CAMPAIGNS -> FarmCampaignsRoute(farmId, persistence, onCampaignSelected)
-                FarmSection.NOTEBOOK -> com.isivoltpro.maginaolivo.feature.notebook.NotebookRoute(farmId, persistence, notebookActions)
+                // CR-011 §3: never shown here; the hub entry opens the one Cuaderno on this Farm.
+                FarmSection.NOTEBOOK -> Unit
                 FarmSection.ACTIVITIES -> FarmActivitiesRoute(
                     farmId = farmId,
                     persistence = persistence,

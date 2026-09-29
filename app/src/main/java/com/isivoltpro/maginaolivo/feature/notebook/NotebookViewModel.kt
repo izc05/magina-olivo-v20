@@ -26,8 +26,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 
-enum class NotebookTab(val label: String) { WORKS("Trabajos"), RECOLLECTION("Recolección"), SUMMARY("Resumen") }
-
 data class NotebookUiState(
     val isLoading: Boolean = true,
     val campaigns: List<Campaign> = emptyList(),

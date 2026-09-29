@@ -18,6 +18,22 @@ Cada APK muestra su versión en **Perfil → Acerca de**, p. ej. «Versión 0.2.
 Para saber qué lleva un APK: mira la versión en el Perfil y busca abajo su bloque; la compilación
 concreta está en la ejecución de CI con ese número (Actions → Android CI → #número).
 
+## 0.6.0 — en curso (CR-011, simplificación)
+
+- **Un solo Cuaderno.** Desde una finca, «Cuaderno» abre el Cuaderno principal con esa finca
+  elegida (Atrás vuelve a la finca). Desaparece el segundo Cuaderno con Trabajos · Recolección ·
+  Resumen: sus trabajos están en Diario (más «Ver todos los trabajos de la finca») y su
+  recolección, con «+ Nueva pesada», en Campaña, sin repetir cifras.
+- **Seis acciones directas** en el Cuaderno: Trabajo · Riego · Tratamiento · Pesada · Jornal ·
+  Gasto, como botones grandes. Desaparece «Registrar hoy», que repetía las mismas opciones en un
+  segundo menú. «Documento» y «Maquinaria» dejan el primer nivel: los papeles van con su gasto o
+  pesada, y el uso de máquinas con su trabajo o día de recolección.
+- «Registrar en esta finca» (finca o parcela) abre el Cuaderno con esa finca y, desde una
+  parcela, la parcela visible y quitable («Toda la finca»); el formulario de trabajo la recibe.
+- Inicio: tocar una campaña en marcha abre el Cuaderno de esa finca en Campaña, no la lista de
+  pesadas.
+- Retirado el selector antiguo `QuickAddSheet`, que ya no se usaba.
+
 ## 0.6.0 — en curso (CR-010, campaña simple)
 
 - Campaña en tres estados: **Borrador → Activa → Cerrada**. Al activarla ya se pueden registrar
