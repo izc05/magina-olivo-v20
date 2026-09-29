@@ -200,7 +200,8 @@ private fun LocationSheet(
     var municipality by rememberSaveable { mutableStateOf(settings.municipality.orEmpty()) }
     var province by rememberSaveable { mutableStateOf(settings.province.orEmpty()) }
     Column(
-        Modifier.fillMaxWidth().navigationBarsPadding().padding(MoSpacing.screen).testTag("profile-location-sheet"),
+        Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(MoSpacing.screen)
+            .testTag("profile-location-sheet"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
         Text("Tu municipio", style = MaterialTheme.typography.titleLarge, color = MoOliveDark)
