@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** The truthful totals of one Campaign, for the S70 header. */
@@ -205,7 +206,11 @@ class HarvestDetailViewModel(
                 repository.observeWorkers().catch { }.collect { mutableState.value = mutableState.value.copy(workers = it) }
             }
             viewModelScope.launch {
-                mutableState.value = mutableState.value.copy(previousCrew = repository.previousCrew(harvestId))
+                // Read first, then update the state as it is now. Copying before the read and
+                // writing that copy back after it reverted a day that loaded meanwhile to
+                // «loading» for good (device check, build 683: Jornal stuck on a spinner).
+                val crew = repository.previousCrew(harvestId)
+                mutableState.update { it.copy(previousCrew = crew) }
             }
         }
         equipment?.let { repository ->
