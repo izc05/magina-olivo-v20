@@ -71,7 +71,7 @@ A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gat
   Farm/Parcel context, Inicio campaign → Cuaderno · Campaña); A2/A3/D #299 (no «Abrir jornada
   de hoy», «Día de recolección», «Mis máquinas»/«Uso de maquinaria», Cuaderno «Registrar
   trabajo» vs Avisos «Planificar trabajo», Perfil without «Pronto», onboarding map text).
-  In review: C #300 (near-white cards, semantic action colours, one primary per block).
+  MERGED: C #300 (near-white cards, semantic action colours set per action, one primary per block).
   E: docs/06-testing/CR011-FLOWS-CHECKLIST.md (16 flows → automated evidence + device run).
   Duplicates removed: second Cuaderno per Farm, «Registrar hoy» sheet, QuickAddSheet,
   «Documento» as a first-level action, «Abrir jornada de hoy», «Registrar o planificar».
