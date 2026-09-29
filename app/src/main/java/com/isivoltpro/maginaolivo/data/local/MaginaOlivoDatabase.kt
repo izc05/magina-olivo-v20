@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.isivoltpro.maginaolivo.data.local.dao.FarmDao
+import com.isivoltpro.maginaolivo.data.local.dao.ProfileSettingsDao
 import com.isivoltpro.maginaolivo.data.local.dao.ActivityDao
 import com.isivoltpro.maginaolivo.data.local.dao.CampaignDao
 import com.isivoltpro.maginaolivo.data.local.dao.DocumentDao
@@ -59,6 +60,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.DeliveryEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryYieldAnalysisEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
+import com.isivoltpro.maginaolivo.data.local.entity.ProfileSettingsEntity
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.entity.UserProfileEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WeatherCacheEntity
@@ -106,8 +108,9 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         HarvestLabourEntity::class,
         HarvestEquipmentEntity::class,
         RecollectionRatesEntity::class,
+        ProfileSettingsEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -143,6 +146,8 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun labourDao(): LabourDao
 
     abstract fun recollectionRatesDao(): RecollectionRatesDao
+
+    abstract fun profileSettingsDao(): ProfileSettingsDao
 
     abstract fun equipmentDao(): EquipmentDao
 

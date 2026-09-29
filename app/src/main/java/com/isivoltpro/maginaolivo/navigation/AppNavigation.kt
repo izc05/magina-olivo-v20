@@ -314,6 +314,7 @@ fun AppNavigation(
                     onMachinery = { navController.navigate(AppDestination.Machinery) },
                     developerGalleryEnabled = compositionRoot.environment == AppEnvironment.DEV,
                     onDeveloperGallery = { navController.navigate(AppDestination.DeveloperGallery) },
+                    persistence = compositionRoot.localPersistence,
                 )
             }
             composable(AppDestination.FarmPattern) { backStackEntry ->

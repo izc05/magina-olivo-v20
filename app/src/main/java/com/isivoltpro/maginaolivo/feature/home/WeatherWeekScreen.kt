@@ -42,6 +42,8 @@ import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
+import com.isivoltpro.maginaolivo.domain.profile.ProfileRepository
+import com.isivoltpro.maginaolivo.domain.profile.ProfileSettings
 import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
 import com.isivoltpro.maginaolivo.domain.weather.WeatherDayForecast
@@ -71,6 +73,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -91,6 +94,8 @@ class WeatherWeekViewModel(
     workspaces: WorkspaceRepository,
     farms: FarmRepository,
     private val weatherFeed: WeatherFeed?,
+    /** Phase 21A: the farmer's municipality (Perfil) when the farms give no single place. */
+    profile: ProfileRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(WeatherWeekUiState(isLoading = true))
     val state: StateFlow<WeatherWeekUiState> = mutableState.asStateFlow()
@@ -104,6 +109,9 @@ class WeatherWeekViewModel(
                 }
             }
             .map(::resolveLocation)
+            .combine((profile?.observe() ?: flowOf(ProfileSettings())).catch { emit(ProfileSettings()) }) { resolved, settings ->
+                if (resolved.location == null) resolved.copy(location = settings.location) else resolved
+            }
             .distinctUntilChanged()
             .onEach { resolved ->
                 val place = resolved.location
@@ -147,6 +155,7 @@ fun WeatherWeekRoute(
                     persistence.workspaceRepository,
                     persistence.farmRepository,
                     persistence.weatherFeed,
+                    persistence.profileRepository,
                 )
             }
         },
@@ -225,8 +234,8 @@ fun WeatherWeekScreen(
                         }
                     }
                     FeedState.NoLocation -> Text(
-                        if (state.locationAmbiguous) "No se puede elegir un único municipio. Revisa la ubicación de tus fincas en Mi Campo."
-                        else "Añade el municipio en la ficha de tu finca para consultar el tiempo.",
+                        if (state.locationAmbiguous) "Tus fincas están en varios municipios. Elige tu municipio en Perfil para consultar el tiempo."
+                        else "Añade el municipio en la ficha de tu finca o en Perfil para consultar el tiempo.",
                         color = MoTextSecondary,
                         modifier = Modifier.testTag("weather-week-no-location"),
                     )

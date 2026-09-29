@@ -819,7 +819,7 @@ class AppNavigationTest {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Perfil").performClick()
 
-        composeRule.onNodeWithText("Catálogo de diseño (DEV)").performClick()
+        composeRule.onNodeWithText("Catálogo de diseño (DEV)").performScrollTo().performClick()
 
         composeRule.onNodeWithTag("component-catalogue-root").assertIsDisplayed()
     }

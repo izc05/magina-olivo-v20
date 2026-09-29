@@ -131,7 +131,7 @@ internal fun HomeWeatherHero(
                             )
                             Text(
                                 when (weather) {
-                                    FeedState.NoLocation -> if (state.weatherLocationAmbiguous) "Varias ubicaciones · Revisa Mi Campo" else "Añade el municipio en Mi Campo"
+                                    FeedState.NoLocation -> if (state.weatherLocationAmbiguous) "Varias ubicaciones · Elige tu municipio en Perfil" else "Añade el municipio en Mi Campo o en Perfil"
                                     FeedState.NotConfigured -> "Fuente del tiempo no configurada"
                                     else -> "Conéctate para consultar el tiempo de tu zona"
                                 },

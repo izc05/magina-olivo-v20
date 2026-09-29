@@ -64,7 +64,7 @@ class HomeFeedsScreenTest {
 
     @Test fun noLocationExplainsWhereToAddTheMunicipality() {
         show(UiPolishFixtures.home.copy(weather = FeedState.NoLocation))
-        composeRule.onNodeWithTag("home-weather-summary").assertTextContains("Añade el municipio en Mi Campo")
+        composeRule.onNodeWithTag("home-weather-summary").assertTextContains("Añade el municipio en Mi Campo o en Perfil")
     }
 
     @Test fun theHeaderFollowsCurrentSkyAndStaysStillInTests() {
