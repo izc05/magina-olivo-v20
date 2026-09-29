@@ -44,6 +44,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   Avisos → «Planificar trabajo» (misma pantalla en modo plan, se guarda como planificado).
 - Perfil: «Mis máquinas»; retirada la fila provisional «Cuenta y sincronización · Pronto».
 - Gastos: una sola acción principal («Añadir gasto»); «Ticket o factura» queda como secundaria.
+- Bloque C (visual): tarjetas casi blancas (#FFFEFA) sobre el fondo crema; colores propios para
+  Tratamiento (verde técnico), Jornal (terracota) y Gasto (dorado-marrón), que antes compartían
+  familia con Trabajo y Pesada; KPI de jornales y costes con esos mismos colores; una sola acción
+  principal en Pesadas («Leer vale» secundaria); «Archivar» parcela como acción destructiva;
+  fila de pesada con icono y «kg · cooperativa» primero; tarjeta de día del tiempo en blanco.
 
 ## 0.6.0 — en curso (CR-010, campaña simple)
 

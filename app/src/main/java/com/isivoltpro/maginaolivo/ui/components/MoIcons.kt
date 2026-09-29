@@ -17,6 +17,12 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldText
 import com.isivoltpro.maginaolivo.ui.theme.MoSoftGoldTint
 import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
 import com.isivoltpro.maginaolivo.ui.theme.MoWarningTint
+import com.isivoltpro.maginaolivo.ui.theme.MoLabourText
+import com.isivoltpro.maginaolivo.ui.theme.MoLabourTint
+import com.isivoltpro.maginaolivo.ui.theme.MoMoneyText
+import com.isivoltpro.maginaolivo.ui.theme.MoMoneyTint
+import com.isivoltpro.maginaolivo.ui.theme.MoTreatmentText
+import com.isivoltpro.maginaolivo.ui.theme.MoTreatmentTint
 
 /**
  * UI polish v2 — one coherent family of outlined agricultural icons (DESIGN_SYSTEM §7),
@@ -102,6 +108,14 @@ enum class MoIconTone(val tint: Color, val container: Color) {
     VALUE(MoSoftGoldText, MoSoftGoldTint),
     /** Incidents and notices. */
     ALERT(MoWarningText, MoWarningTint),
+    /**
+     * CR-011 §20: section accents for the Tratamiento, Jornal and Gasto actions. They are chosen
+     * by the call site (Cuaderno tiles, KPIs), never by glyph: a blower also uses the spray icon
+     * and an organization the people icon, and those stay in their own family.
+     */
+    TREATMENT(MoTreatmentText, MoTreatmentTint),
+    LABOUR(MoLabourText, MoLabourTint),
+    MONEY(MoMoneyText, MoMoneyTint),
     ;
 
     companion object {

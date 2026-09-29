@@ -71,6 +71,7 @@ import com.isivoltpro.maginaolivo.feature.expenses.ChoiceSheet
 import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
 import com.isivoltpro.maginaolivo.feature.expenses.tone
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
@@ -204,7 +205,8 @@ fun DeliveriesScreen(
                     Modifier.weight(1f).testTag("add-delivery"),
                     enabled = canRecord,
                 )
-                MoPrimaryButton(
+                // CR-011 §22: one primary per block; reading the ticket is the second way in.
+                MoSecondaryButton(
                     "Leer vale",
                     { ticketSeed = null; ticketVisible = true },
                     Modifier.weight(1f).testTag("read-ticket"),
@@ -487,23 +489,25 @@ private fun DeliveryRow(delivery: Delivery, onAddYield: (() -> Unit)? = null, on
         shape = MoShape.card,
         colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
     ) {
+        // CR-011 §23: icon + what the farmer recognises first (kg · destination), then when.
         Row(
             Modifier.fillMaxWidth().padding(MoSpacing.md),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+            verticalAlignment = Alignment.Top,
         ) {
+            MoIconBadge(MoIcons.Delivery)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
                 Text(
-                    listOfNotNull(DATE_FORMAT.format(delivery.deliveryDate), delivery.deliveryTime?.toString()).joinToString(" · "),
+                    listOfNotNull(Weight.format(delivery.netGrams), delivery.destinationName).joinToString(" · "),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MoOliveDark,
+                    color = MoInk,
                 )
                 Text(
                     listOfNotNull(
-                        delivery.destinationName,
+                        DATE_FORMAT.format(delivery.deliveryDate),
+                        delivery.deliveryTime?.toString(),
                         delivery.origin?.label,
                         delivery.ticketNumber?.let { "vale $it" },
-                        if (delivery.harvestId != null) "en día de recolección" else null,
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoTextSecondary,
@@ -518,7 +522,6 @@ private fun DeliveryRow(delivery: Delivery, onAddYield: (() -> Unit)? = null, on
                     }
                 }
             }
-            Text(Weight.format(delivery.netGrams), style = MaterialTheme.typography.titleMedium, color = MoInk)
         }
     }
 }

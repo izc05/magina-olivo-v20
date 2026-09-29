@@ -22,6 +22,9 @@ class ActivityTypeIconTest {
         assertEquals(MoIconTone.GROVE, MoIconTone.of(ActivityType.PRUNING.icon()))
         assertEquals(MoIconTone.LAND, MoIconTone.of(MoIcons.Tractor))
         assertEquals(MoIconTone.VALUE, MoIconTone.of(MoIcons.Euro))
+        // CR-011: section tones are contextual; shared glyphs keep their own family.
+        assertEquals(MoIconTone.GROVE, MoIconTone.of(MoIcons.Spray))
+        assertEquals(MoIconTone.LAND, MoIconTone.of(MoIcons.People))
         assertEquals(MoIconTone.GROVE, MoIconTone.of(MoIcons.ChevronRight))
     }
 }
