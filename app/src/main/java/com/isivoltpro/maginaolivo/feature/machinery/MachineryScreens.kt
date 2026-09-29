@@ -97,7 +97,7 @@ fun MachineryScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.md))
-            Text("Maquinaria", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text("Mis máquinas", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             Text(
                 "Tus máquinas, para anotarlas en las actuaciones si quieres. Solo hace falta el nombre.",
                 style = MaterialTheme.typography.bodyLarge,

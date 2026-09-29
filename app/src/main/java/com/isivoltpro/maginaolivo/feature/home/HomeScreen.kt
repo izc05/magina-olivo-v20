@@ -147,7 +147,7 @@ fun HomeScreen(
                 if (state.campaigns.isEmpty()) {
                     MoEmptyState(
                         "Sin campaña en marcha",
-                        "Activa una campaña en tu finca para registrar jornadas y pesadas.",
+                        "Activa una campaña en tu finca para registrar pesadas y días de recolección.",
                         icon = MoIcons.Campaign,
                         modifier = Modifier.testTag("home-no-campaign"),
                     )

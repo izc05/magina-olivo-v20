@@ -111,7 +111,7 @@ fun ProfileScreen(
         Spacer(Modifier.height(MoSpacing.xs))
         MoSectionHeader("Tu olivar")
         MoCompactListItem(
-            title = "Maquinaria",
+            title = "Mis máquinas",
             subtitle = "Tus máquinas, para anotarlas en las actuaciones",
             icon = MoIcons.Tractor,
             onClick = onMachinery,

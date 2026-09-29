@@ -503,7 +503,7 @@ private fun DeliveryRow(delivery: Delivery, onAddYield: (() -> Unit)? = null, on
                         delivery.destinationName,
                         delivery.origin?.label,
                         delivery.ticketNumber?.let { "vale $it" },
-                        if (delivery.harvestId != null) "en jornada" else null,
+                        if (delivery.harvestId != null) "en día de recolección" else null,
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoTextSecondary,

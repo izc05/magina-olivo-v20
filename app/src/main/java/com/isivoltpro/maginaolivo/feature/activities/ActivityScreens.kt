@@ -574,7 +574,7 @@ internal fun ActivityEditor(
         if (showMore) {
             // Phase 15: optional. An Activity never needs a machine, and hours are optional too.
             if (machines.isNotEmpty()) {
-                FormLabel("Maquinaria")
+                FormLabel("Uso de maquinaria")
                 machinesError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 machines.forEach { machine ->
                     val key = machine.id.toString()
@@ -754,7 +754,7 @@ fun ActivityDetailScreen(
 
                     activity.detail?.let { ActivityDetailSummary(it) }
                     if (activity.machines.isNotEmpty()) {
-                        MoSectionHeader("Maquinaria")
+                        MoSectionHeader("Uso de maquinaria")
                         activity.machines.forEach { machine ->
                             Text(
                                 listOfNotNull(

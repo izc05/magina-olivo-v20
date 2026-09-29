@@ -115,7 +115,7 @@ fun ExpenseDetailScreen(
                         // CR-010 A3: the day's attendance or equipment and its prices write this entry.
                         Text(
                             if (expense.status == ExpenseStatus.DRAFT) {
-                                "Calculado, pero no suma: ese día tiene un gasto del mismo tipo anotado a mano. Elige cuál vale desde la jornada."
+                                "Calculado, pero no suma: ese día tiene un gasto del mismo tipo anotado a mano. Elige cuál vale desde el día de recolección."
                             } else {
                                 "Se calcula solo. Para cambiarlo, cambia los jornales, la maquinaria o los precios del día."
                             },

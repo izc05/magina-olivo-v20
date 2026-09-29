@@ -73,7 +73,7 @@ internal fun HarvestForm.toDraft(today: LocalDate): Pair<HarvestDraft?, HarvestF
         farm = if (farmId == null) "Elige la finca" else null,
         date = if (parsedDate == null) "Elige una fecha" else null,
         total = when {
-            total.isBlank() -> "Escribe los kilos históricos de la jornada"
+            total.isBlank() -> "Escribe los kilos históricos del día"
             totalGrams == null -> "Escribe los kilos como 2850 o 2.850,5"
             else -> null
         },
@@ -134,7 +134,7 @@ internal fun HarvestProblem.toFormErrors(): HarvestFormErrors = when (field) {
 }
 
 internal fun harvestProblemMessage(problem: HarvestProblem): String = when (problem.code) {
-    "required" -> "Escribe los kilos históricos de la jornada"
+    "required" -> "Escribe los kilos históricos del día"
     "not_positive" -> if (problem.field == "totalGrams") {
         "Los kilos deben ser más que cero"
     } else {
@@ -151,11 +151,11 @@ internal fun harvestProblemMessage(problem: HarvestProblem): String = when (prob
         "Ya has repartido todo el total: escribe también los kilos de las demás parcelas o quítalas"
     "parcel_not_in_campaign" -> "Esa parcela no forma parte de la campaña"
     "negative" -> "El número de personas no puede ser negativo"
-    "cannot_change" -> "Una jornada no puede cambiar de finca"
+    "cannot_change" -> "Un día de recolección no puede cambiar de finca"
     "exact_with_pesadas" -> "Con pesadas enlazadas, los kilos se cuentan en total: no se reparten por parcela"
-    "after_pesadas" -> "La jornada no puede ser posterior a sus pesadas"
+    "after_pesadas" -> "El día de recolección no puede ser posterior a sus pesadas"
     "automatic_day" -> "La fecha del día la marcan sus pesadas: cambia la fecha de cada pesada"
-    else -> "Revisa los datos de la jornada"
+    else -> "Revisa los datos del día de recolección"
 }
 
 internal fun Harvest.toForm(): HarvestForm {

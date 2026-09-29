@@ -37,7 +37,7 @@ class HarvestsNoOpenDayTest {
         composeRule.onNodeWithTag("open-jornada").assertDoesNotExist()
         composeRule.onNodeWithText("Abrir jornada de hoy").assertDoesNotExist()
         composeRule.onNodeWithTag("add-pesada").performScrollTo().assertIsEnabled()
-        composeRule.onNodeWithText("Aún no hay jornadas").assertExists()
+        composeRule.onNodeWithText("Aún no hay días de recolección").assertExists()
     }
 
     private fun context() = HarvestContext(

@@ -70,7 +70,7 @@ class HarvestsViewModel(
     init {
         viewModelScope.launch {
             harvests.observeAll()
-                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer las jornadas") }
+                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer los días de recolección") }
                 .collect { rows ->
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
@@ -93,7 +93,7 @@ class HarvestsViewModel(
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null)
             mutableState.value = when (val result = harvests.create(draft)) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Jornada guardada", formErrors = HarvestFormErrors())
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Día de recolección guardado", formErrors = HarvestFormErrors())
                 is AppResult.Failure -> mutableState.value.failed(result.error)
             }
         }
@@ -165,7 +165,7 @@ class HarvestDetailViewModel(
     init {
         viewModelScope.launch {
             harvests.observe(harvestId)
-                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer la jornada") }
+                .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer el día de recolección") }
                 .collect { harvest ->
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
@@ -246,7 +246,7 @@ class HarvestDetailViewModel(
                     costError = if (result.error == AppError.Conflict("campaign_closed")) {
                         "La campaña está cerrada: sus gastos ya no cambian."
                     } else {
-                        "No se pudo enlazar el gasto a la jornada."
+                        "No se pudo enlazar el gasto al día de recolección."
                     },
                 )
             }
@@ -334,7 +334,7 @@ class HarvestDetailViewModel(
                 is AppResult.Failure -> mutableState.value.copy(
                     isSaving = false,
                     equipmentError = when (result.error) {
-                        is AppError.Conflict -> "La campaña está cerrada: esta jornada ya es histórico"
+                        is AppError.Conflict -> "La campaña está cerrada: este día de recolección ya es histórico"
                         is AppError.Validation -> "Revisa la maquinaria: cantidades de 1 a 50 y un nombre para «Otra»"
                         else -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."
                     },
@@ -415,7 +415,7 @@ private fun AppError.asProblem(): HarvestProblem? =
 internal fun labourErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> when (error.code) {
         "empty" -> "Elige al menos una persona"
-        "already_recorded" -> "Alguna de esas personas ya tiene su jornal en esta jornada"
+        "already_recorded" -> "Alguna de esas personas ya tiene su jornal en este día de recolección"
         "required" -> if (error.field == "name") "Escribe el nombre o apodo" else "Escribe las horas por persona"
         "too_long" -> if (error.field == "name") "El nombre es demasiado largo" else "No puede pasar de 24 horas por persona"
         "not_positive" -> "El número de personas debe ser mayor que cero"
@@ -423,17 +423,17 @@ internal fun labourErrorMessage(error: AppError): String = when (error) {
         "one_person" -> "Una persona con nombre cuenta un solo jornal"
         else -> "Revisa los jornales"
     }
-    is AppError.Conflict -> "La campaña está cerrada: esta jornada ya es histórico"
+    is AppError.Conflict -> "La campaña está cerrada: este día de recolección ya es histórico"
     is AppError.NotFound -> "Ese jornal ya no está en este dispositivo"
     else -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."
 }
 
 internal fun harvestErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> harvestProblemMessage(HarvestProblem(error.field ?: "parcels", error.code))
-    is AppError.NotFound -> "La jornada o la finca ya no está en este dispositivo"
+    is AppError.NotFound -> "El día de recolección o la finca ya no está en este dispositivo"
     is AppError.Conflict -> when (error.resource) {
         "no_running_campaign" -> "Esta finca no tiene una campaña activa o en recolección"
-        "closed_campaign" -> "La campaña está cerrada: esta jornada ya es histórico y no se modifica"
+        "closed_campaign" -> "La campaña está cerrada: este día de recolección ya es histórico y no se modifica"
         "archived_farm" -> "La finca está archivada"
         else -> "No se pudo guardar por un conflicto con otros datos"
     }
