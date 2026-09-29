@@ -48,6 +48,8 @@ import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentExtraction
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentType
 import com.isivoltpro.maginaolivo.feature.attachments.createCaptureUri
+import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
+import com.isivoltpro.maginaolivo.ui.components.MoIconTone
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
@@ -334,11 +336,13 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
         shape = MoShape.card,
         colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
     ) {
+        // CR-011 §23: icon in the Gasto colour, the concept, then when / what / who, then status.
         Row(
             Modifier.fillMaxWidth().padding(MoSpacing.md),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            MoIconBadge(MoIcons.Euro, tint = MoIconTone.MONEY.tint, container = MoIconTone.MONEY.container)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
                 Text(expense.concept, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text(
