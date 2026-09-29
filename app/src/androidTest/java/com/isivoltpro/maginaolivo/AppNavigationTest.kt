@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.printToString
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
@@ -751,18 +752,18 @@ class AppNavigationTest {
         }
         clickByTag("notebook-quick-labour")
         // Build 683: the container alone renders while still loading; wait for the day itself.
-        waitForTag("jornada-register-labour")
+        waitForTagOrDumpScreen("jornada-register-labour")
 
         // Cold restart: the same day is still there.
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
-        waitForTag("jornada-register-labour")
+        waitForTagOrDumpScreen("jornada-register-labour")
 
         // Jornal again the same day reuses it.
         pressBack()
         waitForTag("notebook-root")
         clickByTag("notebook-quick-labour")
-        waitForTag("jornada-register-labour")
+        waitForTagOrDumpScreen("jornada-register-labour")
 
         // The campaign holds exactly one día de recolección.
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
@@ -826,6 +827,17 @@ class AppNavigationTest {
      * exceed a 5s budget, which is why this E2E failed at a different point on every
      * run. Every asynchronous transition now waits for the state it depends on.
      */
+    /** Like [waitForTag], but a timeout reports what is on screen, so CI shows where it stopped. */
+    private fun waitForTagOrDumpScreen(tag: String) {
+        try {
+            waitForTag(tag)
+        } catch (timeout: ComposeTimeoutException) {
+            val screen = runCatching { composeRule.onAllNodes(isRoot(), useUnmergedTree = true).printToString() }
+                .getOrElse { "(screen not readable: $it)" }
+            throw AssertionError("«$tag» not shown after $UI_TIMEOUT_MS ms. On screen:\n$screen", timeout)
+        }
+    }
+
     private fun waitForTag(tag: String, timeoutMillis: Long = UI_TIMEOUT_MS) {
         composeRule.waitUntil(timeoutMillis) {
             composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()

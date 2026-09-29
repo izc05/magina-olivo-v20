@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -28,7 +29,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -191,8 +192,10 @@ class NotebookHomeScreenTest {
         }
         NotebookHubTab.entries.forEach { view ->
             composeRule.onNodeWithTag(view.tag).performScrollTo().assertIsDisplayed()
-            val layout = textLayout(composeRule.onNodeWithText(view.label, useUnmergedTree = true))
-            assertFalse("«${view.label}» is whole", layout.hasVisualOverflow)
+            val layout = textLayout(composeRule.onAllNodesWithText(view.label, useUnmergedTree = true)[0])
+            // Whole = one line, laid out at least as wide as the label needs (nothing clipped).
+            assertEquals("«${view.label}» in one line", 1, layout.lineCount)
+            assertTrue("«${view.label}» is whole", layout.size.width >= layout.multiParagraph.intrinsics.maxIntrinsicWidth - 1f)
         }
     }
 
