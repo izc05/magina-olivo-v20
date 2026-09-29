@@ -18,6 +18,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -137,10 +138,6 @@ internal fun ExpenseEditor(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        MoTextField(
-            form.invoiceNumber, { form = form.copy(invoiceNumber = it) }, "Nº de factura o ticket (opcional)",
-            modifier = Modifier.fillMaxWidth(),
-        )
 
         MoSectionHeader("Relación")
         val farm = options.farms.firstOrNull { it.id == form.farmId }
@@ -152,47 +149,61 @@ internal fun ExpenseEditor(
             MoSelectField("Actuación", activity?.description ?: "Ninguna", { picker = "activity" })
         }
 
-        MoSectionHeader(
-            "Qué se compró (opcional)",
-            action = {
-                TextButton(
-                    onClick = { form = form.copy(lines = form.lines + LineForm()) },
-                    modifier = Modifier.testTag("add-purchase-line"),
-                ) { Text("Añadir línea") }
-            },
-        )
-        Text(
-            "Las líneas describen la compra; el importe que cuenta es el total del gasto.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
-        )
-        errors.lines?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        form.lines.forEachIndexed { index, line ->
-            Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                MoTextField(
-                    line.product, { value -> form = form.withLine(index, line.copy(product = value)) }, "Producto",
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+        // CR-011 §24: invoice number, purchase lines and notes wait under «Más detalles»; they open
+        // by themselves when they already hold something (OCR, editing) or have an error.
+        val hasDetails = form.invoiceNumber.isNotBlank() || form.lines.isNotEmpty() || form.notes.isNotBlank() ||
+            errors.lines != null
+        var showDetails by rememberSaveable { mutableStateOf(false) }
+        LaunchedEffect(hasDetails) { if (hasDetails) showDetails = true }
+        if (showDetails || hasDetails) {
+            MoTextField(
+                form.invoiceNumber, { form = form.copy(invoiceNumber = it) }, "Nº de factura o ticket (opcional)",
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MoSectionHeader(
+                "Qué se compró (opcional)",
+                action = {
+                    TextButton(
+                        onClick = { form = form.copy(lines = form.lines + LineForm()) },
+                        modifier = Modifier.testTag("add-purchase-line"),
+                    ) { Text("Añadir línea") }
+                },
+            )
+            Text(
+                "Las líneas describen la compra; el importe que cuenta es el total del gasto.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MoTextSecondary,
+            )
+            errors.lines?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            form.lines.forEachIndexed { index, line ->
+                Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                     MoTextField(
-                        line.quantity, { value -> form = form.withLine(index, line.copy(quantity = value)) }, "Cantidad",
-                        modifier = Modifier.weight(1f),
+                        line.product, { value -> form = form.withLine(index, line.copy(product = value)) }, "Producto",
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    MoTextField(
-                        line.unit, { value -> form = form.withLine(index, line.copy(unit = value)) }, "Unidad",
-                        modifier = Modifier.weight(1f),
-                    )
-                    MoTextField(
-                        line.total, { value -> form = form.withLine(index, line.copy(total = value)) }, "Importe",
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                TextButton(onClick = { form = form.copy(lines = form.lines.filterIndexed { position, _ -> position != index }) }) {
-                    Text("Quitar línea")
+                    Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                        MoTextField(
+                            line.quantity, { value -> form = form.withLine(index, line.copy(quantity = value)) }, "Cantidad",
+                            modifier = Modifier.weight(1f),
+                        )
+                        MoTextField(
+                            line.unit, { value -> form = form.withLine(index, line.copy(unit = value)) }, "Unidad",
+                            modifier = Modifier.weight(1f),
+                        )
+                        MoTextField(
+                            line.total, { value -> form = form.withLine(index, line.copy(total = value)) }, "Importe",
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    TextButton(onClick = { form = form.copy(lines = form.lines.filterIndexed { position, _ -> position != index }) }) {
+                        Text("Quitar línea")
+                    }
                 }
             }
+            MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
+        } else {
+            MoTertiaryButton("Más detalles", { showDetails = true }, Modifier.testTag("expense-more-details"))
         }
-        MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
 
         MoPrimaryButton(
             saveText,
