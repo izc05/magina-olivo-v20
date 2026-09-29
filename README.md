@@ -72,10 +72,12 @@ La aplicación será Android nativa, privada y offline-first, especializada en l
 ✅ FASE 1 — Android Project Foundation
 ✅ FASE 2 — Base application architecture
 ✅ FASE 3 implementación — sistema visual + pantallas de referencia
-▶ GATE 3 — validación visual / accesibilidad
+✅ FASES 4–20 — núcleo agrícola offline-first, Cuaderno de campaña, recolección y servicios de Inicio (Gate 20 PASS 2026-09-28)
+✅ CR-010 — Campaña simple (fusionado; Gate CR-010 pendiente de prueba en móvil físico)
+▶ CR-011 — Simplificación y pulido UX (sin funciones nuevas ni cambios de esquema)
 ```
 
-**Trabajo activo:** únicamente Gate 3. No se permite empezar Fase 4 ni persistencia/funcionalidad agrícola real hasta superar Gate 3.
+**Trabajo activo:** el que indique [`docs/00-master/CURRENT-STATE.md`](docs/00-master/CURRENT-STATE.md), que es la fuente viva del estado; este bloque solo resume.
 
 ## Regla para agentes
 

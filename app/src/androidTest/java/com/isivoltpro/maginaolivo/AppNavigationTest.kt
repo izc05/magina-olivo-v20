@@ -702,6 +702,76 @@ class AppNavigationTest {
         assertTextVisible("Volumen (m³): 240")
     }
 
+    /**
+     * CR-011 flows 7–9 and 13: Cuaderno → Jornal opens today's día de recolección by itself,
+     * the same day again after a cold restart, and never a second one.
+     */
+    @Test
+    fun cuadernoJornalOpensTodaysDayOnceAndItSurvivesARestart() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("add-farm")
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Jornal E2E")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca Jornal E2E")
+
+        clickByText("Finca Jornal E2E")
+        openFarmSection("parcels")
+        waitForTag("add-parcel")
+        openParcelManual()
+        composeRule.onNodeWithTag("parcel-name").performTextInput("Parcela Jornal E2E")
+        saveEditor("save-parcel", "parcel-name")
+        waitForSaved("parcel-name", "Parcela Jornal E2E")
+
+        backToFarmHub()
+        openFarmSection("campaigns")
+        waitForTag("add-campaign")
+        openSheet("add-campaign", "campaign-name")
+        composeRule.onNodeWithTag("campaign-name").performTextInput("Campaña Jornal E2E")
+        waitForTag("campaign-start-date")
+        pickDate("campaign-start-date", "2026-01-01")
+        waitForTag("campaign-parcel-option")
+        clickInSheetByTag("campaign-parcel-option")
+        clickInSheetByTag("save-campaign")
+        waitForTag("campaign-row")
+        clickByTag("campaign-row")
+        waitForTag("campaign-detail-root")
+        clickByTag("activate-campaign")
+        confirmCampaignAction()
+
+        // Cuaderno → Jornal: today's day opens by itself; nobody opens a «jornada».
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        chooseNotebookFarm("Finca Jornal E2E")
+        // The running campaign has loaded before Jornal is pressed.
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodesWithText("Campaña Jornal E2E", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        clickByTag("notebook-quick-labour")
+        waitForTag("harvest-detail-root")
+
+        // Cold restart: the same day is still there.
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+        waitForTag("harvest-detail-root")
+
+        // Jornal again the same day reuses it.
+        pressBack()
+        waitForTag("notebook-root")
+        clickByTag("notebook-quick-labour")
+        waitForTag("harvest-detail-root")
+
+        // The campaign holds exactly one día de recolección.
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("farms-root")
+        clickByText("Finca Jornal E2E")
+        openFarmSection("campaigns")
+        waitForTag("campaign-row")
+        clickByTag("campaign-row")
+        waitForTag("campaign-detail-root")
+        waitForText("1 día")
+    }
+
     @Test
     fun avisosPlansWorkAndCuadernoRegistersIt() {
         // CR-011 §12: the Cuaderno records what happened; Avisos plans the future.
