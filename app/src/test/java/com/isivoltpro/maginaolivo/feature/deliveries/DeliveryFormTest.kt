@@ -4,6 +4,9 @@ import com.isivoltpro.maginaolivo.domain.organization.Organization
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestParcelOption
+import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketProposal
 import java.time.LocalDate
 import java.time.LocalTime
@@ -162,5 +165,23 @@ class DeliveryFormTest {
         val typed = base.copy(gross = "4.000", tare = "1.150", time = "8:15", ticketNumber = "B-2")
         assertEquals(typed, typed.withTicket(DeliveryTicketProposal()))
         assertEquals(typed, typed.withTicket(null))
+    }
+
+    /** CR-011 §14: the Cuaderno's Parcel is the Pesada's origin only if it is in that campaign. */
+    @Test
+    fun theCuadernosParcelIsPreselectedOnlyWhenItIsInThatFarmsCampaign() {
+        val contexts = listOf(
+            HarvestContext(
+                farmId = farm, farmName = "El Cortijo", campaignId = UUID.randomUUID(), campaignName = "2026/27",
+                campaignStatus = CampaignStatus.ACTIVE, campaignStart = LocalDate.of(2026, 10, 1),
+                parcels = listOf(HarvestParcelOption(north, "Norte")),
+            ),
+        )
+        assertEquals(listOf(north), presetOriginParcels(contexts, farm, north))
+        // A Parcel outside the running campaign is never guessed in.
+        assertEquals(emptyList<UUID>(), presetOriginParcels(contexts, farm, south))
+        // Another Farm, or no Parcel at all: nothing preselected.
+        assertEquals(emptyList<UUID>(), presetOriginParcels(contexts, UUID.randomUUID(), north))
+        assertEquals(emptyList<UUID>(), presetOriginParcels(contexts, farm, null))
     }
 }

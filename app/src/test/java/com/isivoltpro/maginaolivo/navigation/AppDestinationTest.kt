@@ -34,6 +34,9 @@ class AppDestinationTest {
         assertEquals("register?type={type}", AppDestination.RegisterPattern)
         // CR-011: Cuaderno → Jornal opens today's day under Cuaderno, on its own route.
         assertEquals("harvest/today/{farmId}", AppDestination.TodayHarvestPattern)
+        // CR-011 §14: Pesada and Gasto carry the Cuaderno's Parcel as an optional argument.
+        assertEquals("deliveries/new/{farmId}?parcelId={parcelId}", AppDestination.NewPesadaPattern)
+        assertEquals("expenses/farm/{farmId}?parcelId={parcelId}", AppDestination.FarmExpensesPattern)
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.TodayHarvestPattern))
         assertEquals(RootDestination.Notebook, RootDestination.entries.single { it.isPrimaryAction })
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))

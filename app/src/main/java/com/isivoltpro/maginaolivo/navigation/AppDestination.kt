@@ -79,9 +79,9 @@ object AppDestination {
     const val DeliveryPattern = "delivery/{deliveryId}"
     const val JornadaPesadaPattern = "deliveries/jornada/{harvestId}"
     /** CR-011: «Cuaderno → Pesada», the form open on the Cuaderno's Farm. */
-    const val NewPesadaPattern = "deliveries/new/{farmId}"
+    const val NewPesadaPattern = "deliveries/new/{farmId}?parcelId={parcelId}"
     /** CR-011: «Cuaderno → Gasto», a new expense starting on the Cuaderno's Farm. */
-    const val FarmExpensesPattern = "expenses/farm/{farmId}"
+    const val FarmExpensesPattern = "expenses/farm/{farmId}?parcelId={parcelId}"
     const val PendingYieldsRoute = "deliveries/pending"
     const val DeliveryYieldPattern = "delivery/{deliveryId}/yield"
     const val TicketPattern = "delivery-ticket/{extractionId}"
@@ -121,9 +121,15 @@ object AppDestination {
     /** Phase 19B: the Pesada form opened on one Jornada. */
     fun jornadaPesada(harvestId: String): String = "$Deliveries/jornada/${android.net.Uri.encode(harvestId)}"
 
-    fun newPesada(farmId: String): String = "$Deliveries/new/${android.net.Uri.encode(farmId)}"
+    fun newPesada(farmId: String, parcelId: String? = null): String =
+        "$Deliveries/new/${android.net.Uri.encode(farmId)}" + parcelQuery(parcelId)
 
-    fun farmExpenses(farmId: String): String = "$Expenses/farm/${android.net.Uri.encode(farmId)}"
+    fun farmExpenses(farmId: String, parcelId: String? = null): String =
+        "$Expenses/farm/${android.net.Uri.encode(farmId)}" + parcelQuery(parcelId)
+
+    /** CR-011 §14: the Cuaderno's Parcel travels with Pesada and Gasto when there is one. */
+    private fun parcelQuery(parcelId: String?): String =
+        if (parcelId.isNullOrBlank()) "" else "?parcelId=${android.net.Uri.encode(parcelId)}"
 
     fun ticket(extractionId: String): String = nestedRoute("delivery-ticket", extractionId)
 

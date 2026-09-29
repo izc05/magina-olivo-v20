@@ -88,6 +88,8 @@ fun ExpensesRoute(
     onOrganizations: () -> Unit,
     /** CR-011 §14: the Farm the Cuaderno already knows; a new expense starts on it. */
     presetFarmId: UUID? = null,
+    /** CR-011 §14: the Cuaderno's Parcel (always of [presetFarmId]); a new expense starts on it. */
+    presetParcelId: UUID? = null,
 ) {
     val viewModel: ExpensesViewModel = viewModel(
         key = "expenses-${presetFarmId ?: "all"}",
@@ -121,6 +123,7 @@ fun ExpensesRoute(
         onOrganizations = onOrganizations,
         onEditorClosed = viewModel::clearFormErrors,
         presetFarmId = presetFarmId,
+        presetParcelId = presetParcelId,
     )
 }
 
@@ -139,6 +142,7 @@ fun ExpensesScreen(
     onOrganizations: () -> Unit,
     onEditorClosed: () -> Unit = {},
     presetFarmId: UUID? = null,
+    presetParcelId: UUID? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var uploadVisible by rememberSaveable { mutableStateOf(false) }
@@ -231,7 +235,7 @@ fun ExpensesScreen(
         ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             ExpenseEditor(
                 title = "Nuevo gasto",
-                initial = ExpenseForm(date = today.toString(), farmId = presetFarmId),
+                initial = ExpenseForm(date = today.toString(), farmId = presetFarmId, parcelId = presetParcelId),
                 options = state.options,
                 errors = state.formErrors,
                 isSaving = state.isSaving,
