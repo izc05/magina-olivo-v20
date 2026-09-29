@@ -59,6 +59,7 @@ import com.isivoltpro.maginaolivo.feature.activities.icon
 import com.isivoltpro.maginaolivo.feature.activities.label
 import com.isivoltpro.maginaolivo.feature.activities.planningLine
 import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
+import com.isivoltpro.maginaolivo.ui.components.MoIconTone
 import com.isivoltpro.maginaolivo.ui.components.MoConfirmationSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoOfflineBanner
@@ -190,7 +191,9 @@ fun AgendaScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
             Spacer(Modifier.height(MoSpacing.sm))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                // CR-011 §20: Avisos' section colour is amber.
+                MoIconBadge(MoIcons.Bell, tint = MoIconTone.ALERT.tint, container = MoIconTone.ALERT.container)
                 Text(title, style = MaterialTheme.typography.headlineLarge, color = MoOliveDark, modifier = Modifier.weight(1f))
                 MoPrimaryButton("Planificar trabajo", onPlanWork, Modifier.testTag("agenda-plan-work"))
             }

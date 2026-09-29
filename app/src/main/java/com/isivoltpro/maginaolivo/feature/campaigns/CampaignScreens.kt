@@ -68,6 +68,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
+import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
 import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
@@ -228,6 +229,8 @@ fun CampaignDetailScreen(
                 else -> {
                     val campaign = state.campaign
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                        // CR-011 §20: Campaña's section colour is the deep green.
+                        MoIconBadge(MoIcons.Campaign, tint = MoKpiKind.CAMPAIGN.tint, container = MoKpiKind.CAMPAIGN.container)
                         Text(campaign.name, style = MaterialTheme.typography.headlineMedium, color = MoOliveDark, modifier = Modifier.weight(1f))
                         MoStatusChip(campaign.status.label(), tone = campaign.status.tone())
                     }

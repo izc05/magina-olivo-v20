@@ -112,9 +112,12 @@ fun AppNavigation(
     var notebookTabRequest by rememberSaveable { mutableStateOf<String?>(null) }
     var registerParcelId by rememberSaveable { mutableStateOf<String?>(null) }
     var registerParcelName by rememberSaveable { mutableStateOf<String?>(null) }
+    // The Farm that Parcel belongs to: the Parcel only travels with an action on that same Farm.
+    var registerParcelFarmId by rememberSaveable { mutableStateOf<String?>(null) }
     val openNotebookOn: (UUID, UUID?, String?) -> Unit = { farmId, parcelId, parcelName ->
         compositionRoot.activeFarmStore.set(farmId)
         registerParcelId = parcelId?.toString()
+        registerParcelFarmId = parcelId?.let { farmId.toString() }
         registerParcelName = parcelName
         notebookFarmRequest = farmId.toString()
         navController.navigateToRoot(RootDestination.Notebook)
@@ -229,7 +232,8 @@ fun AppNavigation(
                             if (action == NotebookQuickAction.LABOUR && running) {
                                 navController.navigate(AppDestination.todayHarvest(farmId.toString())) { launchSingleTop = true }
                             } else {
-                                navController.openQuickAction(action, farmId)
+                                val parcelId = registerParcelId?.takeIf { registerParcelFarmId == farmId.toString() }
+                                navController.openQuickAction(action, farmId, parcelId)
                             }
                         },
                         actionsFor = { farmId -> navController.notebookActions(farmId) },
@@ -549,9 +553,17 @@ fun AppNavigation(
                     )
                 }
             }
-            composable(AppDestination.NewPesadaPattern) { backStackEntry ->
+            composable(
+                AppDestination.NewPesadaPattern,
+                arguments = listOf(
+                    navArgument("farmId") { type = NavType.StringType },
+                    navArgument("parcelId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                ),
+            ) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
                 val farmId = backStackEntry.arguments?.getString("farmId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val parcelId = backStackEntry.arguments?.getString("parcelId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 if (persistence == null || farmId == null) {
                     PersistenceUnavailableScreen()
@@ -563,12 +575,21 @@ fun AppNavigation(
                         onTicketSelected = { id -> navController.navigate(AppDestination.ticket(id.toString())) },
                         onAddYield = { id -> navController.navigate(AppDestination.deliveryYield(id.toString())) },
                         presetFarmId = farmId,
+                        presetParcelId = parcelId,
                     )
                 }
             }
-            composable(AppDestination.FarmExpensesPattern) { backStackEntry ->
+            composable(
+                AppDestination.FarmExpensesPattern,
+                arguments = listOf(
+                    navArgument("farmId") { type = NavType.StringType },
+                    navArgument("parcelId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                ),
+            ) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
                 val farmId = backStackEntry.arguments?.getString("farmId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val parcelId = backStackEntry.arguments?.getString("parcelId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 if (persistence == null || farmId == null) {
                     PersistenceUnavailableScreen()
@@ -580,6 +601,7 @@ fun AppNavigation(
                         onDocumentSelected = { id -> navController.navigate(AppDestination.document(id.toString())) },
                         onOrganizations = { navController.navigate(AppDestination.Organizations) },
                         presetFarmId = farmId,
+                        presetParcelId = parcelId,
                     )
                 }
             }
@@ -761,7 +783,7 @@ private fun NavHostController.notebookActions(farmId: UUID) = NotebookActions(
  * the Cuaderno's Farm. Activity kinds open the register flow with their type already chosen
  * and today's date; a running campaign's Jornal is handled by the caller (today's day).
  */
-private fun NavHostController.openQuickAction(action: NotebookQuickAction, farmId: UUID) {
+private fun NavHostController.openQuickAction(action: NotebookQuickAction, farmId: UUID, parcelId: String? = null) {
     when (action) {
         NotebookQuickAction.WORK ->
             navigate(AppDestination.register(null)) { launchSingleTop = true }
@@ -769,8 +791,9 @@ private fun NavHostController.openQuickAction(action: NotebookQuickAction, farmI
             navigate(AppDestination.register(ActivityType.IRRIGATION.name)) { launchSingleTop = true }
         NotebookQuickAction.TREATMENT ->
             navigate(AppDestination.register(ActivityType.PHYTOSANITARY.name)) { launchSingleTop = true }
-        NotebookQuickAction.WEIGHING -> navigate(AppDestination.newPesada(farmId.toString()))
+        NotebookQuickAction.WEIGHING -> navigate(AppDestination.newPesada(farmId.toString(), parcelId))
         // CR-007: outside a running campaign, jornales are a LABOR Expense of this Farm.
-        NotebookQuickAction.LABOUR, NotebookQuickAction.EXPENSE -> navigate(AppDestination.farmExpenses(farmId.toString()))
+        NotebookQuickAction.LABOUR, NotebookQuickAction.EXPENSE ->
+            navigate(AppDestination.farmExpenses(farmId.toString(), parcelId))
     }
 }

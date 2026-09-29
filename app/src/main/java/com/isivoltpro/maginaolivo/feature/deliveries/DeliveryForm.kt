@@ -11,6 +11,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.YieldAnalysis
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
 import com.isivoltpro.maginaolivo.domain.delivery.YieldRules
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketProposal
 import com.isivoltpro.maginaolivo.domain.organization.Organization
@@ -320,3 +321,13 @@ internal fun YieldAnalysis?.toForm(): YieldForm = YieldForm(
     industrial = Percent.editable(this?.industrialYieldHundredths),
     notes = this?.notes.orEmpty(),
 )
+
+/**
+ * CR-011 §14: the Parcel the Cuaderno was opened on becomes the Pesada's origin, but only when
+ * it belongs to that Farm's running campaign; otherwise nothing is preselected (never a guess).
+ */
+internal fun presetOriginParcels(contexts: List<HarvestContext>, farmId: UUID?, parcelId: UUID?): List<UUID> {
+    if (farmId == null || parcelId == null) return emptyList()
+    val campaignParcels = contexts.firstOrNull { it.farmId == farmId }?.parcels.orEmpty()
+    return if (campaignParcels.any { it.parcelId == parcelId }) listOf(parcelId) else emptyList()
+}

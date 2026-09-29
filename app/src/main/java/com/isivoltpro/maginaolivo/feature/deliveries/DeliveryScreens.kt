@@ -109,6 +109,8 @@ fun DeliveriesRoute(
     onAddYield: (UUID) -> Unit = onDeliverySelected,
     /** CR-011 §4/§14: «Cuaderno → Pesada» — the form opens at once, on the Cuaderno's Farm. */
     presetFarmId: UUID? = null,
+    /** CR-011 §14: the Cuaderno's Parcel, preselected when it is in that Farm's campaign. */
+    presetParcelId: UUID? = null,
 ) {
     val viewModel: DeliveriesViewModel = viewModel(
         key = "deliveries-${jornadaId ?: initialStatus ?: presetFarmId ?: "all"}",
@@ -145,6 +147,7 @@ fun DeliveriesRoute(
         initialStatus = initialStatus,
         onAddYield = onAddYield,
         presetFarmId = presetFarmId,
+        presetParcelId = presetParcelId,
     )
 }
 
@@ -169,6 +172,7 @@ fun DeliveriesScreen(
     initialStatus: YieldStatus? = null,
     onAddYield: (UUID) -> Unit = onDeliverySelected,
     presetFarmId: UUID? = null,
+    presetParcelId: UUID? = null,
 ) {
     // Phase 19C: find a Pesada by its ticket days later, and the ones still without yield.
     var searchText by rememberSaveable { mutableStateOf("") }
@@ -329,7 +333,12 @@ fun DeliveriesScreen(
                     parcelIds = jornada.shares.map { it.parcelId },
                 )
             } else {
-                DeliveryForm(farmId = presetFarmId ?: state.contexts.singleOrNull()?.farmId, date = today.toString())
+                val farmId = presetFarmId ?: state.contexts.singleOrNull()?.farmId
+                DeliveryForm(
+                    farmId = farmId,
+                    date = today.toString(),
+                    parcelIds = presetOriginParcels(state.contexts, farmId, presetParcelId),
+                )
             }
         }
         ModalBottomSheet(onDismissRequest = { editorVisible = false; ticketSeed = null; onEditorClosed() }) {

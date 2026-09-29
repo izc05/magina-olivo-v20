@@ -48,6 +48,8 @@ import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentExtraction
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentType
 import com.isivoltpro.maginaolivo.feature.attachments.createCaptureUri
+import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
+import com.isivoltpro.maginaolivo.ui.components.MoIconTone
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoBottomActionSheet
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
@@ -88,6 +90,8 @@ fun ExpensesRoute(
     onOrganizations: () -> Unit,
     /** CR-011 §14: the Farm the Cuaderno already knows; a new expense starts on it. */
     presetFarmId: UUID? = null,
+    /** CR-011 §14: the Cuaderno's Parcel (always of [presetFarmId]); a new expense starts on it. */
+    presetParcelId: UUID? = null,
 ) {
     val viewModel: ExpensesViewModel = viewModel(
         key = "expenses-${presetFarmId ?: "all"}",
@@ -121,6 +125,7 @@ fun ExpensesRoute(
         onOrganizations = onOrganizations,
         onEditorClosed = viewModel::clearFormErrors,
         presetFarmId = presetFarmId,
+        presetParcelId = presetParcelId,
     )
 }
 
@@ -139,6 +144,7 @@ fun ExpensesScreen(
     onOrganizations: () -> Unit,
     onEditorClosed: () -> Unit = {},
     presetFarmId: UUID? = null,
+    presetParcelId: UUID? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var uploadVisible by rememberSaveable { mutableStateOf(false) }
@@ -231,7 +237,7 @@ fun ExpensesScreen(
         ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             ExpenseEditor(
                 title = "Nuevo gasto",
-                initial = ExpenseForm(date = today.toString(), farmId = presetFarmId),
+                initial = ExpenseForm(date = today.toString(), farmId = presetFarmId, parcelId = presetParcelId),
                 options = state.options,
                 errors = state.formErrors,
                 isSaving = state.isSaving,
@@ -330,11 +336,13 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
         shape = MoShape.card,
         colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
     ) {
+        // CR-011 §23: icon in the Gasto colour, the concept, then when / what / who, then status.
         Row(
             Modifier.fillMaxWidth().padding(MoSpacing.md),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            MoIconBadge(MoIcons.Euro, tint = MoIconTone.MONEY.tint, container = MoIconTone.MONEY.container)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
                 Text(expense.concept, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text(
