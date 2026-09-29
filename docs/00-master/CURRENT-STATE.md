@@ -69,6 +69,11 @@ A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gat
   invoice is carried to the Phase 27 beta. Plan: docs/07-plans/PHASE21-PROFILE.md (P1 Room v19,
   P2 reminders 1 day before at 08:00, P3 export waits for Phase 25). Slices 21A → 21B → 21C.
   Room v19 holds only 21A `profile_settings`; the Campaign activation date stays a proposal.
+  21A MERGED (#307, Room v19): Perfil «Tu municipio» + «Tu cooperativa» (live Organization
+  reference), Inicio/weather week fall back to the profile municipality.
+  21B IN PR (#308, Room v20): Perfil → Avisos — master switch + day-before hour (08:00 default,
+  P2); existing day-before reminders follow the chosen hour; switched off = no alarm, no reminder
+  deleted. Next: 21C (help, privacy, «Qué hay de nuevo»).
 ✔ CR-011 — SIMPLIFICACIÓN Y PULIDO UX: CLOSED 2026-09-29 (owner device «Todo ok»; build-683
   fixes PR #305: Jornal stuck on «cargando» root cause, Cuaderno at 360 dp / large text).
 ✔ GATE CR-010: PASS 2026-09-29 (same device run).
