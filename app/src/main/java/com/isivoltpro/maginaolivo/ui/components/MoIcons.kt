@@ -108,29 +108,28 @@ enum class MoIconTone(val tint: Color, val container: Color) {
     VALUE(MoSoftGoldText, MoSoftGoldTint),
     /** Incidents and notices. */
     ALERT(MoWarningText, MoWarningTint),
-    /** CR-011: plant-protection treatments. */
+    /**
+     * CR-011 §20: section accents for the Tratamiento, Jornal and Gasto actions. They are chosen
+     * by the call site (Cuaderno tiles, KPIs), never by glyph: a blower also uses the spray icon
+     * and an organization the people icon, and those stay in their own family.
+     */
     TREATMENT(MoTreatmentText, MoTreatmentTint),
-    /** CR-011: people and jornales. */
     LABOUR(MoLabourText, MoLabourTint),
-    /** CR-011: money, expenses, tickets and invoices. */
     MONEY(MoMoneyText, MoMoneyTint),
     ;
 
     companion object {
         private val byName: Map<String, MoIconTone> by lazy {
             buildMap {
-                listOf(MoIcons.Tree, MoIcons.Leaf, MoIcons.Olive, MoIcons.Activity, MoIcons.Checklist, MoIcons.Campaign, MoIcons.Home, MoIcons.Shears, MoIcons.Sack)
+                listOf(MoIcons.Tree, MoIcons.Leaf, MoIcons.Olive, MoIcons.Activity, MoIcons.Checklist, MoIcons.Campaign, MoIcons.Home, MoIcons.Shears, MoIcons.Spray, MoIcons.Sack)
                     .forEach { put(it.name, GROVE) }
-                listOf(MoIcons.Parcels, MoIcons.Area, MoIcons.Map, MoIcons.Location, MoIcons.Tractor, MoIcons.Wrench)
+                listOf(MoIcons.Parcels, MoIcons.Area, MoIcons.Map, MoIcons.Location, MoIcons.People, MoIcons.Person, MoIcons.Tractor, MoIcons.Wrench)
                     .forEach { put(it.name, LAND) }
                 listOf(MoIcons.Drop, MoIcons.Calendar, MoIcons.Clock, MoIcons.Bell, MoIcons.History, MoIcons.Document)
                     .forEach { put(it.name, WATER) }
-                listOf(MoIcons.Harvest, MoIcons.Delivery, MoIcons.Weight, MoIcons.Percent)
+                listOf(MoIcons.Harvest, MoIcons.Delivery, MoIcons.Weight, MoIcons.Percent, MoIcons.Euro)
                     .forEach { put(it.name, VALUE) }
                 put(MoIcons.Warning.name, ALERT)
-                put(MoIcons.Spray.name, TREATMENT)
-                listOf(MoIcons.People, MoIcons.Person).forEach { put(it.name, LABOUR) }
-                put(MoIcons.Euro.name, MONEY)
             }
         }
 

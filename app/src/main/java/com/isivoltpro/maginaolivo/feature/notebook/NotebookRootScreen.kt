@@ -100,6 +100,16 @@ internal fun NotebookQuickAction.icon(): ImageVector = when (this) {
     NotebookQuickAction.EXPENSE -> MoIcons.Euro
 }
 
+/** CR-011 §20/§21: each Cuaderno action has its own section colour, set here rather than by glyph. */
+internal fun NotebookQuickAction.tone(): MoIconTone = when (this) {
+    NotebookQuickAction.WORK -> MoIconTone.GROVE
+    NotebookQuickAction.IRRIGATION -> MoIconTone.WATER
+    NotebookQuickAction.TREATMENT -> MoIconTone.TREATMENT
+    NotebookQuickAction.WEIGHING -> MoIconTone.VALUE
+    NotebookQuickAction.LABOUR -> MoIconTone.LABOUR
+    NotebookQuickAction.EXPENSE -> MoIconTone.MONEY
+}
+
 @Composable
 fun NotebookRootRoute(
     persistence: LocalPersistence,
@@ -299,7 +309,7 @@ private fun QuickActionGrid(onQuickAction: (NotebookQuickAction) -> Unit) {
 @Composable
 private fun QuickActionTile(action: NotebookQuickAction, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val icon = action.icon()
-    val tone = MoIconTone.of(icon)
+    val tone = action.tone()
     Surface(
         modifier = modifier
             .heightIn(min = 88.dp)

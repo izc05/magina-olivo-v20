@@ -43,7 +43,9 @@ It must not drift into generic ERP, banking-dashboard, rustic cliché or overly 
 
 CR-011 action accents: Trabajo olive · Riego blue · Tratamiento technical green · Pesada ochre ·
 Jornal terracotta · Gasto gold-brown · Campaña deep green · Avisos amber. Colour is never the
-only cue: each action keeps its icon and label. One primary button per block (§22).
+only cue: each action keeps its icon and label. Action tones are set by the call site (Cuaderno
+tiles, KPIs), never by glyph: shared icons (spray, people, euro) keep their own family elsewhere.
+One primary button per block (§22).
 
 Rules:
 
