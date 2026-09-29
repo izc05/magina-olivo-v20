@@ -832,7 +832,7 @@ class AppNavigationTest {
         try {
             waitForTag(tag)
         } catch (timeout: ComposeTimeoutException) {
-            val screen = runCatching { composeRule.onAllNodes(isRoot(), useUnmergedTree = true).printToString() }
+            val screen = runCatching { composeRule.onAllNodes(isRoot(), useUnmergedTree = true).printToString(maxDepth = Int.MAX_VALUE) }
                 .getOrElse { "(screen not readable: $it)" }
             throw AssertionError("«$tag» not shown after $UI_TIMEOUT_MS ms. On screen:\n$screen", timeout)
         }
