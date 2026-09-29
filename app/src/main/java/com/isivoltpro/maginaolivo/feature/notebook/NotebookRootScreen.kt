@@ -27,7 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -370,10 +370,13 @@ private fun NotebookHub(
                     }
                 }
             }
-            TabRow(
+            // Device check (build 680): four fixed tabs cut «Fitosanitario» at 360–480 dp and with
+            // large text. A scrollable row keeps every label whole at any width or font scale.
+            ScrollableTabRow(
                 selectedTabIndex = tab.ordinal,
                 containerColor = MoWarmWhite,
                 contentColor = MoOliveDark,
+                edgePadding = 0.dp,
                 modifier = Modifier.clip(MoShape.card),
             ) {
                 NotebookHubTab.entries.forEach { option ->

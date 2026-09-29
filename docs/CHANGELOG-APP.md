@@ -57,6 +57,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 - Listas (§9/§23): el día de recolección se lee «12 dic 2026 · Día de recolección» y
   «8.750 kg · 3 pesadas · 5 jornadas · 1 tractor» (jornadas, medias y horas por separado); la fila de gasto lleva icono en su color.
 - Color de sección (§20): Avisos en ámbar y la cabecera de Campaña en verde profundo.
+- Revisión en emulador (build 680): las pestañas del Cuaderno se desplazan en vez de recortar
+  «Fitosanitario»/«Campaña» a 360–480 dp o con letra grande; las personas marcadas en «Registrar
+  jornales» se conservan al girar el móvil; el día de recolección dice «Cargando jornales…» hasta
+  leerlos (nunca «Sin jornales» antes de tiempo) y su bloque se llama «Jornales de este día», porque
+  el resumen del Cuaderno suma toda la campaña.
 
 ## 0.6.0 — en curso (CR-010, campaña simple)
 
