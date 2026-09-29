@@ -74,6 +74,8 @@ object AppDestination {
     const val ExpensePattern = "expense/{expenseId}"
     const val DocumentPattern = "document/{extractionId}"
     const val HarvestPattern = "harvest/{harvestId}"
+    /** CR-011: Cuaderno → Jornal, today's día de recolección of a Farm (found or created). */
+    const val TodayHarvestPattern = "harvest/today/{farmId}"
     const val DeliveryPattern = "delivery/{deliveryId}"
     const val JornadaPesadaPattern = "deliveries/jornada/{harvestId}"
     /** CR-011: «Cuaderno → Pesada», the form open on the Cuaderno's Farm. */
@@ -108,6 +110,8 @@ object AppDestination {
     fun document(extractionId: String): String = nestedRoute("document", extractionId)
 
     fun harvest(harvestId: String): String = nestedRoute(Harvest, harvestId)
+
+    fun todayHarvest(farmId: String): String = "$Harvest/today/${android.net.Uri.encode(farmId)}"
 
     fun delivery(deliveryId: String): String = nestedRoute("delivery", deliveryId)
 

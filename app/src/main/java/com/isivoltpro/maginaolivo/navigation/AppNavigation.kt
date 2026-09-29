@@ -12,10 +12,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import com.isivoltpro.maginaolivo.core.common.AppResult
-import java.time.ZoneId
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -37,6 +33,7 @@ import com.isivoltpro.maginaolivo.feature.activities.ActivityDetailRoute
 import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailRoute
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestDetailRoute
+import com.isivoltpro.maginaolivo.feature.harvests.TodayHarvestRoute
 import com.isivoltpro.maginaolivo.feature.deliveries.DeliveriesRoute
 import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
 import com.isivoltpro.maginaolivo.feature.machinery.MachineDetailRoute
@@ -106,7 +103,6 @@ fun AppNavigation(
         }
     }
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val scope = rememberCoroutineScope()
     val currentRoot = AppDestination.rootForRoute(backStackEntry?.destination?.route)
     // The Farm a quick action was tapped on, handed to the activity flow once.
     var registerFarmId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -229,14 +225,9 @@ fun AppNavigation(
                             registerFarmId = farmId.toString()
                             // CR-011 §8/§14: Jornal opens today's recolección day of this Farm by
                             // itself (found or created); nobody opens a «jornada» by hand.
+                            // The tap navigates at once; the day screen resolves the day itself.
                             if (action == NotebookQuickAction.LABOUR && running) {
-                                scope.launch {
-                                    val today = compositionRoot.clock.today(ZoneId.systemDefault())
-                                    when (val day = persistence.harvestRepository.openJornada(farmId, today)) {
-                                        is AppResult.Success -> navController.navigate(AppDestination.harvest(day.value.toString()))
-                                        is AppResult.Failure -> navController.navigate(AppDestination.Harvest)
-                                    }
-                                }
+                                navController.navigate(AppDestination.todayHarvest(farmId.toString())) { launchSingleTop = true }
                             } else {
                                 navController.openQuickAction(action, farmId)
                             }
@@ -499,6 +490,24 @@ fun AppNavigation(
                 } else {
                     HarvestDetailRoute(
                         harvestId = harvestId,
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onDeleted = { navController.popBackStack() },
+                        onAddPesada = { id -> navController.navigate(AppDestination.jornadaPesada(id.toString())) },
+                        onPesadaSelected = { id -> navController.navigate(AppDestination.delivery(id.toString())) },
+                        onExpenseSelected = { id -> navController.navigate(AppDestination.expense(id.toString())) },
+                    )
+                }
+            }
+            composable(AppDestination.TodayHarvestPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = backStackEntry.arguments?.getString("farmId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || farmId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    TodayHarvestRoute(
+                        farmId = farmId,
                         persistence = persistence,
                         clock = compositionRoot.clock,
                         onDeleted = { navController.popBackStack() },
