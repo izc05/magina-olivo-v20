@@ -82,11 +82,20 @@ internal fun JornadaLabour(
     onRemove: (UUID) -> Unit,
     /** False while this day's jornales are still being read: nothing is claimed yet. */
     loaded: Boolean = true,
+    /** True when the jornales could not be read: an error, never «Sin jornales». */
+    readFailed: Boolean = false,
 ) {
     // Device check (build 680): these are this day's jornales; the Cuaderno sums the whole campaign.
     MoSectionHeader("Jornales de este día")
     val summary = LabourSummary.of(labour)
-    if (!loaded) {
+    if (readFailed) {
+        Text(
+            "No pudimos leer los jornales de este día.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.testTag("jornada-labour-read-error"),
+        )
+    } else if (!loaded) {
         Text(
             "Cargando jornales…",
             style = MaterialTheme.typography.bodyMedium,

@@ -66,4 +66,24 @@ class LabourDeviceCheckTest {
         composeRule.onNodeWithTag("jornada-labour-loading").assertExists()
         composeRule.onNodeWithTag("jornada-no-labour").assertDoesNotExist()
     }
+
+    /** Codex #304: a failed read is an error, never «Sin jornales anotados». */
+    @Test fun aFailedReadIsShownAsAnErrorNotAsNoJornales() {
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                JornadaLabour(
+                    labour = emptyList(),
+                    editable = true,
+                    message = null,
+                    error = null,
+                    onRegister = {},
+                    onRemove = {},
+                    loaded = true,
+                    readFailed = true,
+                )
+            }
+        }
+        composeRule.onNodeWithTag("jornada-labour-read-error").assertExists()
+        composeRule.onNodeWithTag("jornada-no-labour").assertDoesNotExist()
+    }
 }

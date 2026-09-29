@@ -662,6 +662,7 @@ fun HarvestDetailScreen(
                         onRegister = { labourActions.onClear(); labourVisible = true },
                         onRemove = labourActions.onRemove,
                         loaded = state.labourLoaded,
+                        readFailed = state.labourReadFailed,
                     )
                     JornadaEquipment(
                         lines = state.equipment,
