@@ -1,5 +1,9 @@
 # CR-011 — Verificación de los 16 flujos (bloque E)
 
+**Estado: CERRADO — «Todo ok» del propietario, 2026-09-29**, sobre el build con main 841e9804
+(PR #305: Jornal sin bloqueo, Cuaderno a 360 dp con letra grande). Queda para la beta en
+dispositivo real (fase 27) el OCR con un vale o factura auténticos (flujos 6 y 12).
+
 Fuente: plan del propietario «Mágina Olivo — Plan de simplificación y pulido UX», §28-E y §30.
 
 Cada flujo indica su evidencia automática (CI: `foundation`, `gate3-emulator`, `gate3-evidence`)

@@ -1,7 +1,9 @@
 # Gate CR-010 Checklist — Campaña simple, automatizada y centrada en Pesadas
 
-Status: **OPEN.** Every production slice and the A3 follow-up are merged, with their tests green in
-CI; the physical-device run (§17) is pending.
+Status: **PASS — owner «Todo ok», 2026-09-29**, on the build that includes CR-011 and the build-683
+fixes (main 841e9804, PR #305). Every production slice and the A3 follow-up are merged with their
+tests green in CI. Exception carried forward: OCR on an authentic delivery ticket / invoice (the
+owner had none to hand) moves to the Phase 27 real-device beta.
 
 **Gate CR-010** (Amendment 1, note 6): the CR-010 §17 acceptance scenario on a **physical device**,
 plus the A1–A3 tests green in CI.
