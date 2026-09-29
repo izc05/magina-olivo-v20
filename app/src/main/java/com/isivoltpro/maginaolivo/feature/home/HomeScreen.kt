@@ -58,7 +58,8 @@ fun HomeRoute(
     persistence: LocalPersistence,
     clock: AppClock,
     onCalendar: () -> Unit,
-    onDeliveries: () -> Unit,
+    /** CR-011 §17: a running campaign opens its Farm's Cuaderno (Campaña). */
+    onCampaign: (UUID?) -> Unit,
     onWeatherWeek: () -> Unit,
     onActivitySelected: (UUID) -> Unit,
     /** Phase 20D-3: the oil market screen (12-week official chart). */
@@ -83,7 +84,7 @@ fun HomeRoute(
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     HomeScreen(
-        state, LocalTime.now(), onCalendar, onWeatherWeek, onDeliveries, onActivitySelected, clock.nowInstant(),
+        state, LocalTime.now(), onCalendar, onWeatherWeek, onCampaign, onActivitySelected, clock.nowInstant(),
         onOilMarket = onOilMarket,
     )
 }
@@ -100,7 +101,7 @@ fun HomeScreen(
     now: LocalTime,
     onCalendar: () -> Unit,
     onWeatherWeek: () -> Unit,
-    onDeliveries: () -> Unit,
+    onCampaign: (UUID?) -> Unit,
     onActivitySelected: (UUID) -> Unit,
     feedNow: Instant = Instant.now(),
     /** Phase 20C: null follows the phone (reduced motion, low memory); tests pass false. */
@@ -157,7 +158,7 @@ fun HomeScreen(
                         subtitle = campaign.deliveredGrams?.let { "Pesado ${Weight.format(it)}" }
                             ?: "Aún no hay pesadas",
                         icon = MoIcons.Delivery,
-                        onClick = onDeliveries,
+                        onClick = { onCampaign(campaign.farmId) },
                         modifier = Modifier.testTag("home-campaign"),
                     )
                 }

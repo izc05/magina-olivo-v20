@@ -279,7 +279,7 @@ fun FarmDetailRoute(
     onOpenSection: (FarmSection) -> Unit,
     onArchived: () -> Unit,
     modifier: Modifier = Modifier,
-    /** UX-F (Issue #246 §5): opens Mi Cuaderno → Registrar hoy with this Farm chosen. */
+    /** UX-F (Issue #246 §5), CR-011 §18: opens the Cuaderno with this Farm chosen. */
     onRegister: (() -> Unit)? = null,
 ) {
     val viewModel: FarmDetailViewModel = viewModel(
@@ -476,7 +476,7 @@ private fun FarmDetailContent(
                 MoPrimaryButton("Registrar en esta finca", register, Modifier.fillMaxWidth().testTag("farm-register"))
             }
             SectionEntry(FarmSection.PARCELS, MoIcons.Parcels, if (farm.parcelCount == 1L) "1 parcela" else "${farm.parcelCount} parcelas", onOpenSection)
-            SectionEntry(FarmSection.NOTEBOOK, MoIcons.Checklist, "Trabajos del año, recolección y resumen", onOpenSection)
+            SectionEntry(FarmSection.NOTEBOOK, MoIcons.Checklist, "Diario, fitosanitario, gastos y campaña", onOpenSection)
             SectionEntry(FarmSection.CAMPAIGNS, MoIcons.Campaign, farm.activeCampaignName ?: "Sin campaña activa", onOpenSection)
             SectionEntry(FarmSection.DOCUMENTS, MoIcons.Document, "Escrituras, facturas y fotos", onOpenSection)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {

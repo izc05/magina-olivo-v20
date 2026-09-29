@@ -151,35 +151,82 @@ class AppNavigationTest {
         waitForTag("home-reference-root")
     }
 
+    /** CR-011 §4: Cuaderno → Trabajo opens the form in one tap; no second menu repeats the choice. */
     @Test
-    fun cuadernoRegisterTodayOpensTheChoicesBeforeTheFlow() {
+    fun cuadernoWorkActionOpensTheFlowDirectly() {
         enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("add-farm")
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Acciones E2E")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca Acciones E2E")
 
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
-        clickByTag("notebook-register-today")
-        composeRule.onNodeWithTag("register-action-sheet").assertIsDisplayed()
-        clickInSheetByTag("register-today-work")
+        chooseNotebookFarm("Finca Acciones E2E")
+        composeRule.onNodeWithTag("notebook-register-today").assertDoesNotExist()
+        clickByTag("notebook-quick-work")
 
         waitForTag("register-activity-root")
+        composeRule.onNodeWithTag("register-action-sheet").assertDoesNotExist()
         composeRule.onNodeWithTag("register-activity-root").assertIsDisplayed()
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 
+    /** CR-011 §4/§14: Cuaderno → Pesada opens the form at once; Cuaderno → Gasto opens Gastos. */
     @Test
-    fun registerSheetCanBeCancelledWithoutLeavingCuaderno() {
+    fun cuadernoPesadaAndGastoOpenTheirScreensOnThatFarm() {
         enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("add-farm")
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Pesada E2E")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca Pesada E2E")
 
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
-        clickByTag("notebook-register-today")
-        composeRule.onNodeWithText("Cancelar").performClick()
+        chooseNotebookFarm("Finca Pesada E2E")
+        clickByTag("notebook-quick-weighing")
+        waitForTag("delivery-editor")
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
 
-        composeRule.onNodeWithTag("register-action-sheet").assertDoesNotExist()
-        composeRule.onNodeWithTag("notebook-root").assertIsDisplayed()
+        pressBack()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        chooseNotebookFarm("Finca Pesada E2E")
+        clickByTag("notebook-quick-expense")
+        waitForTag("expenses-root")
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 
+    /** CR-011 §3: a Farm's «Cuaderno» is the one Cuaderno on that Farm, and Back returns to the Farm. */
     @Test
-    fun registerFromAFarmOpensCuadernoRegisterTodayWithThatFarm() {
+    fun aFarmsCuadernoIsTheOneCuadernoOnThatFarm() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("add-farm")
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Única E2E")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca Única E2E")
+        clickByText("Finca Única E2E")
+        waitForTag("farm-detail-root")
+
+        clickByTag("farm-section-notebook")
+        waitForTag("notebook-root")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodes(hasTestTag("notebook-context") and hasText("Finca Única E2E", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("farm-section-root").assertDoesNotExist()
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+
+        pressBack()
+        waitForTag("farm-detail-root")
+    }
+
+    @Test
+    fun registerFromAFarmOpensCuadernoWithThatFarm() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         composeRule.waitUntil(UI_TIMEOUT_MS) {
@@ -192,10 +239,15 @@ class AppNavigationTest {
         clickByText("El Cerro")
         waitForTag("farm-detail-root")
 
-        // UX-F (Issue #246 §5): Mi Campo does not write; it opens Cuaderno with the Farm chosen.
+        // UX-F (Issue #246 §5), CR-011 §14: Mi Campo does not write; it opens Cuaderno with the Farm chosen.
         clickByTag("farm-register")
-        waitForTag("register-action-sheet")
-        composeRule.onNodeWithTag("register-today-context").assertTextContains("El Cerro", substring = true)
+        waitForTag("notebook-root")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodes(hasTestTag("notebook-context") and hasText("El Cerro", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("register-action-sheet").assertDoesNotExist()
+        composeRule.onNodeWithTag("notebook-quick-work").assertIsDisplayed()
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 
@@ -457,9 +509,8 @@ class AppNavigationTest {
         createParcel("Parcela Registrar E2E")
 
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
-        clickByTag("notebook-register-today")
-        waitForTag("register-action-sheet")
-        clickInSheetByTag("register-today-work")
+        chooseNotebookFarm("Finca Registrar E2E")
+        clickByTag("notebook-quick-work")
         waitForTag("register-activity-root")
 
         // The farm is known from Cuaderno, then choose the specific task before its form.
@@ -544,10 +595,8 @@ class AppNavigationTest {
 
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         chooseNotebookFarm("Finca Diario E2E")
-        clickByTag("notebook-register-today")
-        waitForTag("register-action-sheet")
-        composeRule.onNodeWithTag("register-today-context").assertTextContains("Finca Diario E2E", substring = true)
-        clickInSheetByTag("register-today-work")
+        composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca Diario E2E", substring = true)
+        clickByTag("notebook-quick-work")
         waitForTag("register-activity-root")
         // Choose the work type first; the following page contains only pruning fields.
         waitForTag("register-activity-type-pruning")
@@ -920,11 +969,12 @@ class AppNavigationTest {
 
     /** Design v3: parcels, campaigns, work and documents open from the Farm hub. */
     private fun openFarmSection(section: String) {
-        // Phase 19A: the Farm's work list is reached through its Cuaderno (Trabajos).
+        // CR-011: the Farm's work list is reached through the one Cuaderno, opened on this Farm.
         if (section == "activities") {
-            openFarmSection("notebook")
-            waitForTag("notebook-open-works")
-            clickByTag("notebook-open-works")
+            waitForTag("farm-section-notebook")
+            clickByTag("farm-section-notebook")
+            waitForTag("notebook-farm-works")
+            clickByTag("notebook-farm-works")
             waitForTag("add-activity")
             return
         }
@@ -935,7 +985,7 @@ class AppNavigationTest {
 
     private fun backToFarmHub() {
         // From the work list Back first returns to the Cuaderno, then to the hub.
-        repeat(3) {
+        repeat(4) {
             if (composeRule.onAllNodesWithTag("farm-detail-root").fetchSemanticsNodes().isNotEmpty()) return
             pressBack()
             composeRule.waitForIdle()

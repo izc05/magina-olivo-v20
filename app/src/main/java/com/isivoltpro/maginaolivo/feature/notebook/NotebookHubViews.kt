@@ -214,16 +214,14 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
     }
 }
 
-/** UX-E Campaña — the Campaign summary plus the Pesadas still waiting for their yield. */
+/**
+ * UX-E Campaña — CR-011: the one place for the Campaign as a whole. «+ Nueva pesada», the
+ * Pesadas still waiting for their yield, then the summary; the per-Farm Cuaderno that repeated
+ * these is gone.
+ */
 @Composable
 internal fun CampaignView(notebook: CampaignNotebook, state: NotebookUiState, actions: NotebookActions) {
-    if (notebook.pendingYieldCount > 0) {
-        MoSecondaryButton(
-            if (notebook.pendingYieldCount == 1) "1 pesada sin rendimiento" else "${notebook.pendingYieldCount} pesadas sin rendimiento",
-            actions.onPendingYields,
-            Modifier.fillMaxWidth().testTag("notebook-pending-yields"),
-        )
-    }
+    RecollectionActions(notebook, actions)
     SummaryTab(notebook, state.comparison)
 }
 

@@ -67,6 +67,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
+import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.ui.components.MoIconTone
 import com.isivoltpro.maginaolivo.ui.theme.MoSurfaceSoft
 import java.time.LocalDate
@@ -80,7 +81,7 @@ data class NotebookActions(
     val onHarvest: (UUID) -> Unit = {},
     val onDelivery: (UUID) -> Unit = {},
     val onExpense: (UUID) -> Unit = {},
-    /** The Farm's work list, where work is registered and planned. */
+    /** The Farm's work list (every work of the Farm, done and planned). */
     val onWorks: () -> Unit = {},
     val onHarvests: () -> Unit = {},
     val onDeliveries: () -> Unit = {},
@@ -89,127 +90,6 @@ data class NotebookActions(
     val onExpenses: () -> Unit = {},
     val onCampaigns: () -> Unit = {},
 )
-
-@Composable
-fun NotebookRoute(farmId: UUID, persistence: LocalPersistence, actions: NotebookActions) {
-    val viewModel: NotebookViewModel = viewModel(
-        key = "notebook-$farmId",
-        factory = viewModelFactory {
-            initializer {
-                NotebookViewModel(
-                    farmId, persistence.campaignRepository, persistence.activityRepository,
-                    persistence.harvestRepository, persistence.deliveryRepository, persistence.expenseRepository,
-                    persistence.labourRepository, persistence.equipmentRepository,
-                )
-            }
-        },
-    )
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    NotebookSection(state, viewModel::selectCampaign, actions)
-}
-
-/** Phase 19A: Trabajos · Recolección · Resumen of one Campaign, inside the Farm section screen. */
-@Composable
-fun NotebookSection(state: NotebookUiState, onSelectCampaign: (UUID) -> Unit, actions: NotebookActions) {
-    var tab by rememberSaveable { mutableStateOf(NotebookTab.WORKS) }
-    when {
-        state.isLoading -> CircularProgressIndicator(Modifier.testTag("notebook-loading"))
-        state.error != null -> Text(state.error, color = MaterialTheme.colorScheme.error)
-        state.notebook == null -> {
-            MoEmptyState(
-                "Aún no hay campañas",
-                "El cuaderno se ordena por campañas. Crea la de este año y aquí verás sus trabajos y su recolección.",
-                actionText = "Ir a Campañas",
-                onAction = actions.onCampaigns,
-                icon = MoIcons.Campaign,
-                modifier = Modifier.testTag("notebook-no-campaign"),
-            )
-            // Work can be written down before any Campaign exists.
-            MoSecondaryButton("Registrar o planificar trabajo", actions.onWorks, Modifier.fillMaxWidth().testTag("notebook-open-works"))
-        }
-        else -> {
-            val notebook = state.notebook
-            if (state.campaigns.size > 1) {
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                    state.campaigns.sortedByDescending { it.startDate }.forEach { campaign ->
-                        FilterChip(
-                            selected = campaign.id == state.selectedCampaignId,
-                            onClick = { onSelectCampaign(campaign.id) },
-                            label = { Text(campaign.name) },
-                            modifier = Modifier.testTag("notebook-campaign"),
-                        )
-                    }
-                }
-            } else {
-                Text(
-                    "Campaña ${notebook.campaign.name}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MoOliveDark,
-                    modifier = Modifier.testTag("notebook-campaign-name"),
-                )
-            }
-            NotebookTabs(tab) { tab = it }
-            when (tab) {
-                NotebookTab.WORKS -> WorksTab(notebook, actions)
-                NotebookTab.RECOLLECTION -> RecollectionTab(notebook, actions)
-                NotebookTab.SUMMARY -> SummaryTab(notebook, state.comparison)
-            }
-        }
-    }
-}
-
-@Composable
-private fun NotebookTabs(selected: NotebookTab, onSelect: (NotebookTab) -> Unit) {
-    TabRow(
-        selectedTabIndex = selected.ordinal,
-        containerColor = MoWarmWhite,
-        contentColor = MoOliveDark,
-        modifier = Modifier.clip(MoShape.card),
-    ) {
-        NotebookTab.entries.forEach { tab ->
-            Tab(
-                selected = tab == selected,
-                onClick = { onSelect(tab) },
-                modifier = Modifier.testTag("notebook-tab-${tab.name.lowercase()}"),
-                text = {
-                    Text(
-                        tab.label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (tab == selected) MoOliveDark else MoTextSecondary,
-                    )
-                },
-            )
-        }
-    }
-}
-
-@Composable
-internal fun WorksTab(
-    notebook: CampaignNotebook,
-    actions: NotebookActions,
-    showRegister: Boolean = true,
-    today: LocalDate = LocalDate.now(),
-) {
-    if (showRegister) {
-        MoPrimaryButton("Registrar o planificar trabajo", actions.onWorks, Modifier.fillMaxWidth().testTag("notebook-open-works"))
-    }
-    if (notebook.works.isEmpty()) {
-        MoEmptyState(
-            "Sin trabajos en esta campaña",
-            "Poda, abonado, tratamientos o riegos aparecerán aquí, día a día.",
-            icon = MoIcons.Checklist,
-        )
-        return
-    }
-    // Month, then a small line per day: yesterday's work never runs into today's.
-    notebook.works.groupBy { it.activityDate.withDayOfMonth(1) }.forEach { (month, works) ->
-        MoSectionHeader(month.format(MONTH).replaceFirstChar { it.titlecase(SPANISH) })
-        works.groupBy { it.activityDate }.forEach { (day, dayWorks) ->
-            NotebookDayMarker(day, today)
-            dayWorks.forEach { work -> WorkRow(work) { actions.onActivity(work.id) } }
-        }
-    }
-}
 
 @Composable
 internal fun WorkRow(work: Activity, onClick: () -> Unit) {
@@ -229,71 +109,16 @@ internal fun WorkRow(work: Activity, onClick: () -> Unit) {
     )
 }
 
+/**
+ * CR-011 §10–11 — the recolección entry of the Campaña view. «+ Nueva pesada» comes first while
+ * the Campaign runs (the Pesada is the record; its day is grouped automatically), then the
+ * Pesadas still waiting for their yield and the hand-typed history named apart (A2). The days
+ * themselves are listed once, in the Diario; the figures once, in the summary below.
+ */
 @Composable
-internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookActions, today: LocalDate = LocalDate.now()) {
-    val deliveries = notebook.deliverySummary
-    val fat = deliveries.fatYield
-    val costs = notebook.recollectionExpenseSummary
-    // #254 (254-B): the four figures of the recolección, 2×2, straight from their ledgers.
-    MoMetricGrid(
-        modifier = Modifier.testTag("notebook-recollection-summary"),
-        content = listOf(
-            { m ->
-                MoKpiMetric(
-                    "Kg pesados",
-                    deliveries.deliveredGrams.takeIf { deliveries.deliveryCount > 0 }?.let(Weight::format) ?: "—",
-                    m.testTag("notebook-recollection-kg"),
-                    icon = MoIcons.Delivery,
-                    kind = MoKpiKind.PESADAS,
-                )
-            },
-            { m ->
-                MoKpiMetric(
-                    "Pesadas",
-                    deliveries.deliveryCount.toString(),
-                    m.testTag("notebook-recollection-count"),
-                    icon = MoIcons.Checklist,
-                    kind = MoKpiKind.PESADAS,
-                )
-            },
-            { m ->
-                MoKpiMetric(
-                    "Rendimiento medio",
-                    fat?.let { Percent.format(it.hundredths) } ?: "—",
-                    m.testTag("notebook-recollection-yield"),
-                    icon = MoIcons.Percent,
-                    kind = MoKpiKind.PESADAS,
-                    supportingText = when {
-                        fat != null -> "Ponderado por kilos · ${deliveries.coveragePercent(fat)} % de los kilos"
-                        deliveries.deliveryCount > 0 -> "Pendiente de análisis"
-                        else -> null
-                    },
-                )
-            },
-            { m ->
-                MoKpiMetric(
-                    "Gastos",
-                    if (costs.postedCount == 0) "—" else Money.format(costs.totalMinor, costs.currency),
-                    m.testTag("notebook-recollection-costs"),
-                    icon = MoIcons.Euro,
-                    kind = MoKpiKind.COSTES,
-                    supportingText = if (costs.draftCount > 0) "${costs.draftCount} en borrador sin contar" else null,
-                )
-            },
-        ),
-    )
-    notebook.legacyUnweighedGrams.takeIf { it > 0 }?.let { legacy ->
-        Text(
-            "Además, ${Weight.format(legacy)} registrados sin pesada (histórico)",
-            style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
-            modifier = Modifier.testTag("notebook-legacy-kilos"),
-        )
-    }
-    MoPrimaryButton("+ Nueva pesada", actions.onDeliveries, Modifier.fillMaxWidth().testTag("notebook-open-deliveries"))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        MoSecondaryButton("Jornadas", actions.onHarvests, Modifier.weight(1f).testTag("notebook-open-harvests"))
-        MoSecondaryButton("Gasto", actions.onExpenses, Modifier.weight(1f).testTag("notebook-open-expenses"))
+internal fun RecollectionActions(notebook: CampaignNotebook, actions: NotebookActions) {
+    if (notebook.campaign.status.isRunning) {
+        MoPrimaryButton("+ Nueva pesada", actions.onDeliveries, Modifier.fillMaxWidth().testTag("notebook-open-deliveries"))
     }
     if (notebook.pendingYieldCount > 0) {
         MoSecondaryButton(
@@ -302,32 +127,13 @@ internal fun RecollectionTab(notebook: CampaignNotebook, actions: NotebookAction
             Modifier.fillMaxWidth().testTag("notebook-pending-yields"),
         )
     }
-    if (notebook.recollectionDays.isEmpty()) {
-        MoEmptyState(
-            "Aún no hay recolección",
-            "Las jornadas, pesadas y gastos de la recolección aparecerán aquí por días.",
-            icon = MoIcons.Harvest,
+    notebook.legacyUnweighedGrams.takeIf { it > 0 }?.let { legacy ->
+        Text(
+            "Además, ${Weight.format(legacy)} registrados sin pesada (histórico)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("notebook-legacy-kilos"),
         )
-        return
-    }
-    notebook.recollectionDays.forEach { day ->
-        NotebookDayMarker(day.date, today)
-        day.items.forEach { item ->
-            when (item) {
-                is RecollectionItem.HarvestItem -> HarvestRow(
-                    item.harvest,
-                    notebook.pesadaCount(item.harvest.id),
-                    notebook.labourFor(item.harvest.id),
-                    notebook.jornadaCost(item.harvest.id),
-                    notebook.jornadaYieldLabel(item.harvest.id),
-                ) {
-                    actions.onHarvest(item.harvest.id)
-                }
-                is RecollectionItem.DeliveryItem -> DeliveryRow(item.delivery) { actions.onDelivery(item.delivery.id) }
-                is RecollectionItem.HarvestDayItem -> WorkRow(item.activity) { actions.onActivity(item.activity.id) }
-                is RecollectionItem.ExpenseItem -> ExpenseRow(item.expense) { actions.onExpense(item.expense.id) }
-            }
-        }
     }
 }
 
@@ -604,8 +410,6 @@ private fun ParcelYields(notebook: CampaignNotebook) {
 }
 
 internal val SPANISH: Locale = Locale.forLanguageTag("es-ES")
-private val MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", SPANISH)
-private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", SPANISH)
 internal val LONG_DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", SPANISH)
 
 /** Done and planned differ by mark as well as colour (✓ / clock). */

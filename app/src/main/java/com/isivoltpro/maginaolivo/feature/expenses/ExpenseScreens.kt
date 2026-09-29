@@ -86,9 +86,11 @@ fun ExpensesRoute(
     onExpenseSelected: (UUID) -> Unit,
     onDocumentSelected: (UUID) -> Unit,
     onOrganizations: () -> Unit,
+    /** CR-011 §14: the Farm the Cuaderno already knows; a new expense starts on it. */
+    presetFarmId: UUID? = null,
 ) {
     val viewModel: ExpensesViewModel = viewModel(
-        key = "expenses",
+        key = "expenses-${presetFarmId ?: "all"}",
         factory = viewModelFactory {
             initializer {
                 ExpensesViewModel(
@@ -118,6 +120,7 @@ fun ExpensesRoute(
         onDocumentSelected = onDocumentSelected,
         onOrganizations = onOrganizations,
         onEditorClosed = viewModel::clearFormErrors,
+        presetFarmId = presetFarmId,
     )
 }
 
@@ -135,10 +138,13 @@ fun ExpensesScreen(
     onDocumentSelected: (UUID) -> Unit,
     onOrganizations: () -> Unit,
     onEditorClosed: () -> Unit = {},
+    presetFarmId: UUID? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var uploadVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
+    // The Farm's parcels and works are offered in the form from the start.
+    LaunchedEffect(presetFarmId) { presetFarmId?.let(onFarmSelected) }
 
     Scaffold(Modifier.fillMaxSize().testTag("expenses-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
@@ -224,7 +230,7 @@ fun ExpensesScreen(
         ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             ExpenseEditor(
                 title = "Nuevo gasto",
-                initial = ExpenseForm(date = today.toString()),
+                initial = ExpenseForm(date = today.toString(), farmId = presetFarmId),
                 options = state.options,
                 errors = state.formErrors,
                 isSaving = state.isSaving,

@@ -1,25 +1,31 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -30,10 +36,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -45,27 +55,32 @@ import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityViewModel
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
+import com.isivoltpro.maginaolivo.ui.components.MoIconTone
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
-import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
+import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
+import com.isivoltpro.maginaolivo.ui.theme.MoOutline
 import com.isivoltpro.maginaolivo.ui.theme.MoShape
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.util.UUID
 
-/** Issue #246 §4B: daily actions, with one canonical Pesada instead of Cosecha + Entrega. */
+/**
+ * Issue #246 §4B, CR-011 §5: the six daily actions, shown directly — no second menu repeats
+ * them. Documents live inside their record (a ticket in its Gasto or Pesada) and machinery use
+ * inside its work or recolección day; «Mis máquinas» is in Perfil.
+ */
 enum class NotebookQuickAction(val label: String, val tag: String, val description: String) {
     WORK("Trabajo", "notebook-quick-work", "Poda, abonado, labores del suelo…"),
     IRRIGATION("Riego", "notebook-quick-irrigation", "Horas, m³ y sector"),
     TREATMENT("Tratamiento", "notebook-quick-treatment", "Producto, dosis y motivo"),
-    LABOUR("Jornal", "notebook-quick-labour", "Quién trabajó y cuánto"),
     WEIGHING("Pesada", "notebook-quick-weighing", "Kilos pesados en la cooperativa o almazara"),
-    EXPENSE("Gasto", "notebook-quick-expense", "Facturas, tickets y pagos"),
-    MACHINERY("Maquinaria", "notebook-quick-machinery", "Uso del tractor u otra máquina"),
-    DOCUMENT("Documento", "notebook-quick-document", "Foto o PDF de un papel"),
+    LABOUR("Jornal", "notebook-quick-labour", "Quién trabajó y cuánto"),
+    EXPENSE("Gasto", "notebook-quick-expense", "Gasto, ticket o factura"),
 }
 
 /** Issue #246 §4: Diario · Fitosanitario · Gastos · Campaña — views of the same records. */
@@ -80,29 +95,31 @@ internal fun NotebookQuickAction.icon(): ImageVector = when (this) {
     NotebookQuickAction.WORK -> MoIcons.Activity
     NotebookQuickAction.IRRIGATION -> MoIcons.Drop
     NotebookQuickAction.TREATMENT -> MoIcons.Spray
-    NotebookQuickAction.LABOUR -> MoIcons.People
     NotebookQuickAction.WEIGHING -> MoIcons.Delivery
+    NotebookQuickAction.LABOUR -> MoIcons.People
     NotebookQuickAction.EXPENSE -> MoIcons.Euro
-    NotebookQuickAction.MACHINERY -> MoIcons.Tractor
-    NotebookQuickAction.DOCUMENT -> MoIcons.Document
 }
 
 @Composable
 fun NotebookRootRoute(
     persistence: LocalPersistence,
     activeFarmStore: ActiveFarmStore,
-    /** The active Farm, whether its Campaign is in recolección, and the "Finca · Campaña" line. */
-    onRegisterToday: (farmId: UUID?, inRecollection: Boolean, context: String?) -> Unit,
-    /** The quick action, the active Farm, and whether its Campaign is in recolección. */
+    /** The quick action, the active Farm, and whether its Campaign is running. */
     onQuickAction: (NotebookQuickAction, UUID, Boolean) -> Unit,
     actionsFor: (UUID) -> NotebookActions,
     onGoToFields: () -> Unit,
     /**
-     * UX-F (Issue #246 §5): "Registrar" pressed on a Farm or Parcel in Mi Campo. The notebook
-     * switches to that Farm and opens "Registrar hoy" with its context, once.
+     * CR-011 §14/§18: the Farm to open on, when the Cuaderno is reached from a Farm, a Parcel
+     * or Inicio. Applied once; the Farm then stays the active one.
      */
-    registerRequestFarmId: UUID? = null,
-    onRegisterRequestHandled: () -> Unit = {},
+    farmRequest: UUID? = null,
+    onFarmRequestHandled: () -> Unit = {},
+    /** A Parcel coming from Mi Campo, carried to the work form until the farmer drops it. */
+    parcelContext: String? = null,
+    onClearParcel: () -> Unit = {},
+    /** CR-011 §17: the view to open on (Inicio's campaign card opens Campaña). */
+    tabRequest: NotebookHubTab? = null,
+    onTabRequestHandled: () -> Unit = {},
 ) {
     // The same Farm list the register flow already uses; no second source.
     val farmsViewModel: RegisterActivityViewModel = viewModel(
@@ -113,6 +130,12 @@ fun NotebookRootRoute(
     )
     val farms by farmsViewModel.state.collectAsStateWithLifecycle()
     var chosen by rememberSaveable { mutableStateOf(activeFarmStore.get()?.toString()) }
+    LaunchedEffect(farmRequest) {
+        val requested = farmRequest ?: return@LaunchedEffect
+        chosen = requested.toString()
+        activeFarmStore.set(requested)
+        onFarmRequestHandled()
+    }
     val activeFarm = farms.farms.firstOrNull { it.id.toString() == chosen } ?: farms.farms.firstOrNull()
     val notebook = activeFarm?.let { farm ->
         val viewModel: NotebookViewModel = viewModel(
@@ -130,24 +153,6 @@ fun NotebookRootRoute(
         val state by viewModel.state.collectAsStateWithLifecycle()
         state to viewModel
     }
-    LaunchedEffect(registerRequestFarmId) {
-        registerRequestFarmId?.let { chosen = it.toString() }
-    }
-    val notebookReady = notebook?.first?.isLoading == false
-    LaunchedEffect(registerRequestFarmId, activeFarm?.id, notebookReady, farms.isLoading) {
-        val requested = registerRequestFarmId ?: return@LaunchedEffect
-        if (farms.isLoading) return@LaunchedEffect
-        // The Farm is gone (archived meanwhile): nothing to open.
-        if (farms.farms.none { it.id == requested }) {
-            onRegisterRequestHandled()
-            return@LaunchedEffect
-        }
-        val farm = activeFarm?.takeIf { it.id == requested } ?: return@LaunchedEffect
-        if (!notebookReady) return@LaunchedEffect
-        val campaign = notebook?.first?.notebook?.campaign
-        onRegisterToday(farm.id, campaign?.status?.isRunning == true, contextLine(farm, campaign?.name))
-        onRegisterRequestHandled()
-    }
     NotebookHomeScreen(
         isLoading = farms.isLoading,
         error = farms.error,
@@ -158,32 +163,29 @@ fun NotebookRootRoute(
         onSelectFarm = { id ->
             chosen = id.toString()
             activeFarmStore.set(id)
+            // A Parcel belongs to its Farm: another Farm drops it.
+            onClearParcel()
         },
         onSelectCampaign = { id -> notebook?.second?.selectCampaign(id) },
-        onRegisterToday = {
-            val campaign = notebook?.first?.notebook?.campaign
-            onRegisterToday(
-                activeFarm?.id,
-                campaign?.status?.isRunning == true,
-                activeFarm?.let { contextLine(it, campaign?.name) },
-            )
-        },
         onQuickAction = { action ->
             val farm = activeFarm ?: return@NotebookHomeScreen
             onQuickAction(action, farm.id, notebook?.first?.notebook?.campaign?.status?.isRunning == true)
         },
         onRetry = farmsViewModel::retry,
         onGoToFields = onGoToFields,
+        parcelContext = parcelContext,
+        onClearParcel = onClearParcel,
+        tabRequest = tabRequest,
+        onTabRequestHandled = onTabRequestHandled,
     )
 }
 
 /**
- * UX-C (Issue #246) — Mi Cuaderno: ¿Qué has hecho hoy? Context first (Farm and Campaign), one
- * big "Registrar hoy", the nine quick actions, then the notebook as Diario · Fitosanitario ·
+ * UX-C (Issue #246), CR-011 — the one Cuaderno: context first (Farm, Campaign and, from Mi
+ * Campo, the Parcel), the six actions directly, then the notebook as Diario · Fitosanitario ·
  * Gastos · Campaña. Every view reads the same local records; nothing is copied or totalled
  * twice, and all of it works without signal.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NotebookHomeScreen(
     isLoading: Boolean,
@@ -194,12 +196,21 @@ fun NotebookHomeScreen(
     actions: NotebookActions?,
     onSelectFarm: (UUID) -> Unit,
     onSelectCampaign: (UUID) -> Unit,
-    onRegisterToday: () -> Unit,
     onQuickAction: (NotebookQuickAction) -> Unit,
     onRetry: () -> Unit = {},
     onGoToFields: () -> Unit = {},
+    parcelContext: String? = null,
+    onClearParcel: () -> Unit = {},
+    tabRequest: NotebookHubTab? = null,
+    onTabRequestHandled: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableStateOf(NotebookHubTab.DIARY) }
+    LaunchedEffect(tabRequest) {
+        tabRequest?.let {
+            tab = it
+            onTabRequestHandled()
+        }
+    }
     var choosingFarm by remember { mutableStateOf(false) }
     Scaffold(
         Modifier.fillMaxSize().testTag("notebook-root"),
@@ -216,18 +227,14 @@ fun NotebookHomeScreen(
             when {
                 isLoading -> CircularProgressIndicator(Modifier.testTag("notebook-root-loading"))
                 error != null -> MoErrorState("No pudimos abrir tus fincas", error, onRetry = onRetry)
-                activeFarm == null -> {
-                    // "Registrar hoy" stays reachable; its flow explains that a Farm comes first.
-                    MoPrimaryButton("Registrar hoy", onRegisterToday, Modifier.fillMaxWidth().testTag("notebook-register-today"))
-                    MoEmptyState(
-                        "Aún no tienes fincas",
-                        "Crea una finca en Mi Campo y aquí llevarás su cuaderno del día a día.",
-                        actionText = "Ir a Mi Campo",
-                        onAction = onGoToFields,
-                        icon = MoIcons.Tree,
-                        modifier = Modifier.testTag("notebook-root-no-farms"),
-                    )
-                }
+                activeFarm == null -> MoEmptyState(
+                    "Aún no tienes fincas",
+                    "Crea una finca en Mi Campo y aquí llevarás su cuaderno del día a día.",
+                    actionText = "Ir a Mi Campo",
+                    onAction = onGoToFields,
+                    icon = MoIcons.Tree,
+                    modifier = Modifier.testTag("notebook-root-no-farms"),
+                )
                 else -> {
                     // Context always visible: which Farm and which Campaign this writes into.
                     val campaign = notebook?.notebook?.campaign
@@ -237,6 +244,17 @@ fun NotebookHomeScreen(
                         color = MoOliveDark,
                         modifier = Modifier.testTag("notebook-context"),
                     )
+                    parcelContext?.let { parcel ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Parcela: $parcel",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MoTextSecondary,
+                                modifier = Modifier.weight(1f).testTag("notebook-parcel-context"),
+                            )
+                            MoTertiaryButton("Toda la finca", onClearParcel, modifier = Modifier.testTag("notebook-parcel-clear"))
+                        }
+                    }
                     if (farms.size > 1) {
                         if (choosingFarm) {
                             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
@@ -257,26 +275,50 @@ fun NotebookHomeScreen(
                         }
                     }
                     Text("¿Qué has hecho hoy?", style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary)
-                    MoPrimaryButton("Registrar hoy", onRegisterToday, Modifier.fillMaxWidth().testTag("notebook-register-today"))
-                    FlowRow(
-                        Modifier.fillMaxWidth().testTag("notebook-quick-actions"),
-                        horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
-                        verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
-                    ) {
-                        NotebookQuickAction.entries.forEach { action ->
-                            FilterChip(
-                                selected = false,
-                                onClick = { onQuickAction(action) },
-                                label = { Text(action.label) },
-                                leadingIcon = { Icon(action.icon(), contentDescription = null) },
-                                modifier = Modifier.testTag(action.tag),
-                            )
-                        }
-                    }
+                    QuickActionGrid(onQuickAction)
                     NotebookHub(notebook, actions, tab, { tab = it }, onSelectCampaign)
                 }
             }
             Spacer(Modifier.height(MoSpacing.lg))
+        }
+    }
+}
+
+/** CR-011 §4–5: the six actions as large, labelled tiles, three per row; one tap opens the form. */
+@Composable
+private fun QuickActionGrid(onQuickAction: (NotebookQuickAction) -> Unit) {
+    Column(Modifier.fillMaxWidth().testTag("notebook-quick-actions"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+        NotebookQuickAction.entries.chunked(3).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                row.forEach { action -> QuickActionTile(action, { onQuickAction(action) }, Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickActionTile(action: NotebookQuickAction, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val icon = action.icon()
+    val tone = MoIconTone.of(icon)
+    Surface(
+        modifier = modifier
+            .heightIn(min = 88.dp)
+            .clip(MoShape.card)
+            .clickable(role = Role.Button, onClick = onClick)
+            .testTag(action.tag),
+        shape = MoShape.card,
+        color = MoWarmWhite,
+        border = BorderStroke(1.dp, MoOutline),
+    ) {
+        Column(
+            Modifier.padding(vertical = MoSpacing.sm, horizontal = MoSpacing.xs),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Box(Modifier.size(40.dp).background(tone.container, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = tone.tint)
+            }
+            Text(action.label, style = MaterialTheme.typography.labelLarge, color = MoInk, textAlign = TextAlign.Center, maxLines = 2)
         }
     }
 }
@@ -292,14 +334,18 @@ private fun NotebookHub(
     when {
         state == null || state.isLoading -> CircularProgressIndicator(Modifier.testTag("notebook-loading"))
         state.error != null -> Text(state.error, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("notebook-error"))
-        state.notebook == null || actions == null -> MoEmptyState(
-            "Aún no hay campañas",
-            "El cuaderno se ordena por campañas. Crea la de este año y aquí verás lo que registres.",
-            actionText = actions?.let { "Ir a Campañas" },
-            onAction = actions?.onCampaigns,
-            icon = MoIcons.Campaign,
-            modifier = Modifier.testTag("notebook-no-campaign"),
-        )
+        state.notebook == null || actions == null -> {
+            MoEmptyState(
+                "Aún no hay campañas",
+                "El cuaderno se ordena por campañas. Crea la de este año y aquí verás lo que registres.",
+                actionText = actions?.let { "Ir a Campañas" },
+                onAction = actions?.onCampaigns,
+                icon = MoIcons.Campaign,
+                modifier = Modifier.testTag("notebook-no-campaign"),
+            )
+            // Work can be written down before any Campaign exists; the Farm's list keeps it.
+            actions?.let { FarmWorksLink(it) }
+        }
         else -> {
             val notebook = state.notebook
             if (state.campaigns.size > 1) {
@@ -331,13 +377,22 @@ private fun NotebookHub(
             }
             // UX-E: four views of the same records; nothing is copied or totalled twice.
             when (tab) {
-                NotebookHubTab.DIARY -> DiaryView(notebook, actions)
+                NotebookHubTab.DIARY -> {
+                    DiaryView(notebook, actions)
+                    FarmWorksLink(actions)
+                }
                 NotebookHubTab.PHYTO -> PhytoView(notebook, actions)
                 NotebookHubTab.EXPENSES -> CostsView(notebook, actions)
                 NotebookHubTab.CAMPAIGN -> CampaignView(notebook, state, actions)
             }
         }
     }
+}
+
+/** Every work of the Farm, done and planned, in its own list (all Campaigns). */
+@Composable
+private fun FarmWorksLink(actions: NotebookActions) {
+    MoTertiaryButton("Ver todos los trabajos de la finca", actions.onWorks, modifier = Modifier.fillMaxWidth().testTag("notebook-farm-works"))
 }
 
 /** "Finca · Campaña 2026/27" — the context shown before anything is written. */

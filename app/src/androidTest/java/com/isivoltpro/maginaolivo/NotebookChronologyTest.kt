@@ -12,7 +12,6 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import com.isivoltpro.maginaolivo.feature.notebook.DiaryView
 import com.isivoltpro.maginaolivo.feature.notebook.NotebookActions
-import com.isivoltpro.maginaolivo.feature.notebook.WorksTab
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.util.UUID
 import org.junit.Rule
@@ -47,11 +46,5 @@ class NotebookChronologyTest {
         // Done and planned differ in words and mark, not only colour.
         composeRule.onNodeWithText("Planificada").assertExists()
         composeRule.onAllNodesWithTag("notebook-work")[0].assertTextContains("Completada", substring = true)
-    }
-
-    @Test fun theFarmWorkListAlsoSplitsTheMonthByDays() {
-        composeRule.setContent { MaginaOlivoTheme { Column { WorksTab(notebook, NotebookActions(), showRegister = false, today = today) } } }
-        composeRule.onAllNodesWithTag("notebook-day-today").assertCountEquals(1)
-        composeRule.onAllNodesWithTag("notebook-day").assertCountEquals(1)
     }
 }

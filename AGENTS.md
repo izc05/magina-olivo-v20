@@ -17,14 +17,15 @@ Before changing code or architecture, read:
 9. `docs/00-master/RC1.2-CHANGE-REQUEST-008-WEATHER-WEEK-LOCATION.md`
 10. `docs/00-master/RC1.2-CHANGE-REQUEST-009-HOME-WEATHER-MARKET.md`
 11. `docs/00-master/RC1.2-CHANGE-REQUEST-010-CAMPANA-SIMPLE-AUTOMATIZADA.md`
-12. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
-13. `docs/design/VISUAL_DESIGN_LOCK.md`
-14. `docs/design/DESIGN_SYSTEM.md`
-15. `docs/00-master/CURRENT-STATE.md`
-16. `docs/07-plans/ROADMAP-RC1.2.md`
-17. the current phase execution plan, when one exists
-18. `docs/07-plans/AGENT-HANDOFF-PHASE18-19.md` while Phase 18/19 is active
-19. only then the domain/architecture/UI contracts needed for that phase
+12. `docs/00-master/RC1.2-CHANGE-REQUEST-011-SIMPLIFICACION-UX.md`
+13. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
+14. `docs/design/VISUAL_DESIGN_LOCK.md`
+15. `docs/design/DESIGN_SYSTEM.md`
+16. `docs/00-master/CURRENT-STATE.md`
+17. `docs/07-plans/ROADMAP-RC1.2.md`
+18. the current phase execution plan, when one exists
+19. `docs/07-plans/AGENT-HANDOFF-PHASE18-19.md` while Phase 18/19 is active
+20. only then the domain/architecture/UI contracts needed for that phase
 
 If an older RC1/RC1.1 document conflicts with the RC1.2 Product Lock, RC1.2 wins.
 
@@ -42,8 +43,10 @@ Do not turn the new Android app back into the old territorial V20 portal. **Mág
 
 `Inicio · Mi Campo · Cuaderno · Avisos · Perfil` (CR-007, Issue #246)
 
-Cuaderno is the centre and holds "Registrar hoy"; `Registrar (+)` is no longer a root and the
-agenda lives under Avisos. Do not redesign or add root tabs without an approved Change Request.
+Cuaderno is the centre and holds the daily actions directly (CR-011: Trabajo · Riego ·
+Tratamiento · Pesada · Jornal · Gasto; one Cuaderno, opened on a Farm from Mi Campo);
+`Registrar (+)` is no longer a root and the agenda lives under Avisos. Do not redesign or add
+root tabs without an approved Change Request.
 
 ## Current phase rule
 
