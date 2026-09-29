@@ -1,6 +1,7 @@
 # Phase 21 — Profile (plan)
 
-Status: **PREPARED — production starts only after Gate 20 PASS** (prepared 2026-09-27).
+Status: **ALLOWED 2026-09-29** (Gate 20 PASS 2026-09-28; Gate CR-010 PASS and CR-011 closed
+2026-09-29). Prepared 2026-09-27.
 
 **Gate 21:** preferences persist offline and account-sensitive operations are protected.
 

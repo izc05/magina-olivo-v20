@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-09-28
+**Last reviewed:** 2026-09-29
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -64,7 +64,15 @@ A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gat
 ## Current allowed phase
 
 ```text
-▶ CR-011 — SIMPLIFICACIÓN Y PULIDO UX (owner-approved 2026-09-29), executor Claude.
+▶ PHASE 21 — PROFILE: ALLOWED (2026-09-29), executor Claude. Owner «Todo ok» on the build with
+  main 841e9804 closes CR-011 and Gate CR-010 (checklists updated); OCR on an authentic ticket /
+  invoice is carried to the Phase 27 beta. Plan: docs/07-plans/PHASE21-PROFILE.md (P1 Room v19,
+  P2 reminders 1 day before at 08:00, P3 export waits for Phase 25). Slices 21A → 21B → 21C.
+  Room v19 holds only 21A `profile_settings`; the Campaign activation date stays a proposal.
+✔ CR-011 — SIMPLIFICACIÓN Y PULIDO UX: CLOSED 2026-09-29 (owner device «Todo ok»; build-683
+  fixes PR #305: Jornal stuck on «cargando» root cause, Cuaderno at 360 dp / large text).
+✔ GATE CR-010: PASS 2026-09-29 (same device run).
+▷ History — CR-011 (owner-approved 2026-09-29), executor Claude.
   docs/00-master/RC1.2-CHANGE-REQUEST-011-SIMPLIFICACION-UX.md. No new functions, no schema
   change. Blocks A (navigation/duplicates) → B (actions) → C (visual) → D (texts) → E (flows).
   MERGED: A1 #298 (one Cuaderno, six direct actions, no «Registrar hoy», QuickAddSheet removed,
