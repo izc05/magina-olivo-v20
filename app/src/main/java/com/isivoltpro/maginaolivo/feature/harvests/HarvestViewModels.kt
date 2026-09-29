@@ -99,29 +99,6 @@ class HarvestsViewModel(
         }
     }
 
-    /**
-     * Opens today's Jornada on [farmId] before any Pesada (0 kg until its Pesadas link to it),
-     * or returns the one already open today, and hands its id to [onOpened].
-     */
-    fun openJornada(farmId: UUID, onOpened: (UUID) -> Unit) {
-        viewModelScope.launch {
-            mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
-            when (val result = harvests.openJornada(farmId, clock.today(ZoneId.systemDefault()))) {
-                is AppResult.Success -> {
-                    mutableState.value = mutableState.value.copy(isSaving = false, message = "Jornada de hoy abierta")
-                    onOpened(result.value)
-                }
-                is AppResult.Failure -> mutableState.value = mutableState.value.copy(
-                    isSaving = false,
-                    error = when ((result.error as? AppError.Validation)?.field) {
-                        "parcels" -> "La campaña no tiene parcelas: añádelas a la campaña para abrir una jornada."
-                        else -> harvestErrorMessage(result.error)
-                    },
-                )
-            }
-        }
-    }
-
     fun clearFormErrors() {
         mutableState.value = mutableState.value.copy(formErrors = HarvestFormErrors())
     }
