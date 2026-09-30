@@ -156,11 +156,14 @@ private val PRIVACY = listOf(
         "El texto de una foto de vale o factura se lee en el propio teléfono. La foto no se envía a ningún " +
         "servicio, y ningún dato leído se guarda sin que tú lo revises y confirmes.",
     "Servicios externos que se consultan" to
-        "Tiempo y radar: se envía el municipio a nuestro servidor, que pregunta a AEMET y, si falla, a MET " +
-        "Norway. Catastro: se envía la referencia o el punto del mapa al servicio INSPIRE de la Dirección General " +
-        "del Catastro. Mercado del aceite: se descargan los precios semanales publicados por la Junta de " +
-        "Andalucía, y el pulso diario se muestra con el widget de AOVE.net. Ninguno recibe tus fincas, tus " +
-        "pesadas ni tus gastos.",
+        "Tiempo: se envía el municipio a nuestro servidor, que pregunta a AEMET y, si falla, a MET Norway. " +
+        "Radar: nuestro servidor da la lista de imágenes y el teléfono descarga de RainViewer las de la zona " +
+        "que ves en el mapa. Mapas: el teléfono descarga la foto aérea y el mapa base del Instituto Geográfico " +
+        "Nacional (IGN) y la capa de parcelas del Catastro para la zona que ves. Catastro: se envía la " +
+        "referencia o el punto del mapa al servicio INSPIRE de la Dirección General del Catastro. Mercado del " +
+        "aceite: se descargan los precios semanales publicados por la Junta de Andalucía, y el pulso diario se " +
+        "muestra con el widget de AOVE.net. Estos servicios reciben solo el municipio o la zona del mapa que " +
+        "consultas; nunca tus pesadas, tus gastos ni tus trabajos.",
     "Permisos" to
         "Cámara y archivos, solo cuando adjuntas una foto o un documento. Notificaciones, solo para los avisos " +
         "de trabajos que planificas. Internet, solo para los servicios de arriba.",

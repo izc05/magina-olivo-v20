@@ -179,12 +179,13 @@ abstract class CopyChangelogAsset : DefaultTask() {
     }
 }
 
-val copyChangelogAsset = tasks.register<CopyChangelogAsset>("copyChangelogAsset") {
-    changelog.set(rootProject.layout.projectDirectory.file("docs/CHANGELOG-APP.md"))
-}
-
+// One task per variant, each with its own output directory, so variants never share a location.
 androidComponents {
     onVariants { variant ->
-        variant.sources.assets?.addGeneratedSourceDirectory(copyChangelogAsset, CopyChangelogAsset::outputDir)
+        val copyChangelog = tasks.register<CopyChangelogAsset>("copy${variant.name.replaceFirstChar(Char::uppercase)}ChangelogAsset") {
+            changelog.set(rootProject.layout.projectDirectory.file("docs/CHANGELOG-APP.md"))
+            outputDir.set(layout.buildDirectory.dir("generated/changelog-assets/${variant.name}"))
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(copyChangelog, CopyChangelogAsset::outputDir)
     }
 }
