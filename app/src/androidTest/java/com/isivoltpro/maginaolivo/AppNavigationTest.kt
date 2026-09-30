@@ -814,6 +814,21 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("profile-account-later").assertDoesNotExist()
     }
 
+    /** Phase 21C: the release notes of this APK and the privacy text are one tap from Perfil. */
+    @Test
+    fun helpAndPrivacyAreReachableFromPerfil() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Perfil").performClick()
+        clickByTag("profile-help-news")
+        waitForTag("help-news")
+        // The CHANGELOG bundled at build time is read and shown as notes.
+        waitForTag("help-news-item")
+        pressBack()
+        clickByTag("profile-help-privacy")
+        waitForTag("help-privacy")
+        assertTextVisible("Lo que queda en tu teléfono")
+    }
+
     @Test
     fun developerGalleryIsReachableFromDevProfile() {
         enterMainShell()

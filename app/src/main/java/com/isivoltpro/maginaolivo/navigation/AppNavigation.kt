@@ -34,6 +34,8 @@ import com.isivoltpro.maginaolivo.feature.activities.RegisterActivityRoute
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailRoute
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestDetailRoute
 import com.isivoltpro.maginaolivo.feature.harvests.TodayHarvestRoute
+import com.isivoltpro.maginaolivo.feature.profile.HelpRoute
+import com.isivoltpro.maginaolivo.feature.profile.HelpTopic
 import com.isivoltpro.maginaolivo.feature.deliveries.DeliveriesRoute
 import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
 import com.isivoltpro.maginaolivo.feature.machinery.MachineDetailRoute
@@ -315,6 +317,7 @@ fun AppNavigation(
                     developerGalleryEnabled = compositionRoot.environment == AppEnvironment.DEV,
                     onDeveloperGallery = { navController.navigate(AppDestination.DeveloperGallery) },
                     persistence = compositionRoot.localPersistence,
+                    onHelp = { topic -> navController.navigate(AppDestination.help(topic.route)) },
                 )
             }
             composable(AppDestination.FarmPattern) { backStackEntry ->
@@ -737,6 +740,9 @@ fun AppNavigation(
             }
             if (compositionRoot.environment == AppEnvironment.DEV) {
                 composable(AppDestination.DeveloperGallery) { ComponentCatalogueReferenceScreen() }
+            }
+            composable(AppDestination.HelpPattern) { backStackEntry ->
+                HelpTopic.of(backStackEntry.arguments?.getString("topic"))?.let { HelpRoute(it) }
             }
         }
     }
