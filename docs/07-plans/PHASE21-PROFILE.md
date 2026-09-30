@@ -43,7 +43,7 @@ currency; reusable Organizations (cooperative/mill/supplier/irrigation) already 
 - Tests: preferences survive restart; reminders scheduled/unscheduled accordingly.
 
 ### 21C — Ayuda, privacidad y datos
-Status: implemented (PR, feat/phase21c-help). 21A merged #307 · 21B merged #308.
+Status: merged #311. 21A merged #307 · 21B merged #308. Gate 21: owner device check pending.
 - «Qué hay de nuevo» (reads docs/CHANGELOG-APP.md content bundled at build time),
   privacy text (what stays on the phone, which external services are called: weather, radar,
   Catastro), help for offline use.
