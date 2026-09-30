@@ -1,7 +1,8 @@
 # CR-012 — Slice 1: evidencia de contrato y tests
 
 Fecha: 30/09/2026. Rama: `feat/cr012-slice1-contract`.
-Base: `main` / `f7747731b9eb8448080fad5da2d0ce6fdc454bfb`.
+Base inicial: `main` / `f7747731b9eb8448080fad5da2d0ce6fdc454bfb`.
+Base actualizada tras la fusión de #308: `main` / `c0449ad2d3490f298ab7fe0148d0aab9fe873899`.
 Issue: [#309](https://github.com/izc05/magina-olivo-v20/issues/309) (solo Slice 1;
 no cerrar el issue completo). Sin merge automático.
 
@@ -44,6 +45,15 @@ Primera ejecución completa antes del arreglo de basis: BUILD SUCCESSFUL;
 archivos nuevos. La ejecución final incluye las dos regresiones adicionales.
 
 ## Límites de evidencia
+
+### Actualización de base y revisión final
+
+El 30/09/2026 se incorporó el main posterior a #308 sin conflictos mediante
+`6a933044`. El diff contra esa base conserva los diez archivos de Slice 1.
+La revisión independiente no encontró defectos importantes ni incompatibilidades.
+Se repite el comando local completo y la CI sobre la base actualizada; los
+resultados anteriores no sustituyen esta validación. No fusionar hasta completar
+la CI y la revisión del propietario.
 
 - No se cambiaron pantallas, navegación, DI, repositorios, DAOs, entidades Room,
   versión de base de datos, migraciones ni workflows.

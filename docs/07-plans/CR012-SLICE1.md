@@ -6,6 +6,11 @@
 mientras #308 seguía abierta. Su integración queda bloqueada hasta actualizar
 la base tras la fusión de #308, repetir la CI y realizar la revisión final.
 
+**Actualización de base:** #308 fusionado el 30/09/2026; `origin/main c0449ad2`
+incorporado sin conflictos mediante `6a933044`. Revisión de código contra esa
+base sin hallazgos importantes. CI y revisión del propietario pendientes antes
+de integrar #310; no avanzar a Slice 2.
+
 ## Objetivo y límites
 
 Fijar mediante modelos y reglas Kotlin puras las tarifas históricas, la identidad

@@ -134,6 +134,11 @@ actual de saldo y reintentos/idempotencia; histórico de pagos; writer de Expens
 reconciliado; UI de jornales y pago inicial/posterior. No usar un paidAmount mutable
 en Worker ni un booleano como fuente de verdad. No backfill ficticio de legado.
 
+Guard de integración futura: reconstruir el único Expense DAY_LABOUR sumando
+los importes de cada snapshot con el redondeo individual de LabourPricing.
+DayCostCalculator agrega minutos antes de redondear y no debe reutilizarse sin
+adaptación: Slice 2 deberá cubrir con test las fracciones horarias que divergen.
+
 La persistencia Room y la reapertura de app deberán tener tests propios en esa
 slice. No se afirman como implementadas ni probadas aquí. Maquinaria y pantallas
 de resumen/pulido permanecen en slices 3 y 4. CURRENT-STATE no declara un nuevo
