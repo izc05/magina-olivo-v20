@@ -1016,6 +1016,31 @@ class RoomMigrationTest {
             }
     }
 
+    /** Phase 21B: v20 keeps the saved profile; reminders stay on and the day-before hour is 08:00. */
+    @Test
+    fun migration19To20KeepsTheProfileAndTurnsRemindersOnAt0800() {
+        migrationHelper.createDatabase(TEST_DATABASE, 19).use { database ->
+            database.execSQL(
+                "INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) " +
+                    "VALUES ('w-21b', 'Olivar', 'u-21b', 'ES', 'Europe/Madrid', 'es-ES', 'EUR', 0, 0, 1, 'LOCAL_ONLY')",
+            )
+            database.execSQL(
+                "INSERT INTO profile_settings (id, workspace_id, municipality, province, preferred_organization_id, created_at, updated_at, version, sync_status) " +
+                    "VALUES ('p-21b', 'w-21b', 'Bedmar', 'Jaén', NULL, 0, 0, 1, 'PENDING')",
+            )
+        }
+        migrationHelper
+            .runMigrationsAndValidate(TEST_DATABASE, 20, true, DatabaseMigrations.MIGRATION_19_20)
+            .use { database ->
+                database.query("SELECT municipality, reminders_enabled, previous_day_reminder_minute FROM profile_settings").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals("Bedmar", cursor.getString(0))
+                    assertEquals(1, cursor.getInt(1))
+                    assertEquals(480, cursor.getInt(2))
+                }
+            }
+    }
+
     private companion object {
         const val TEST_DATABASE = "room-migration-test"
     }

@@ -28,7 +28,7 @@ data class ActivityPlanning(
 }
 
 enum class ReminderKind {
-    /** The evening before, at [ReminderRules.PREVIOUS_DAY_TIME]. */
+    /** The day before, at the hour chosen in Perfil → Avisos ([ReminderPreferences.previousDayTime]). */
     PREVIOUS_DAY,
 
     /** The same day: an hour before the planned time, or early morning when there is none. */
@@ -59,7 +59,30 @@ data class Reminder(
 
 data class PlanningViolation(val field: String, val code: String)
 
+/**
+ * Phase 21B — Perfil → Avisos, on this phone: whether planned-work reminders ring at all, and
+ * the hour of the «day before» reminder (owner decision P2: 08:00 unless the farmer changes it).
+ * Switching reminders off keeps every stored reminder; only the device alarms are withdrawn.
+ */
+data class ReminderPreferences(
+    val enabled: Boolean = true,
+    val previousDayTime: LocalTime = DEFAULT_PREVIOUS_DAY_TIME,
+) {
+    companion object {
+        val DEFAULT_PREVIOUS_DAY_TIME: LocalTime = LocalTime.of(8, 0)
+
+        /** The hours offered for the day-before reminder. */
+        val PREVIOUS_DAY_CHOICES: List<LocalTime> = listOf(7, 8, 9, 19, 20).map { LocalTime.of(it, 0) }
+    }
+}
+
+/** Where the reminder engine reads [ReminderPreferences] from. */
+fun interface ReminderPreferencesSource {
+    suspend fun current(): ReminderPreferences
+}
+
 object ReminderRules {
+    /** The day-before hour before Phase 21B; kept as the rules' default where no preference is read. */
     val PREVIOUS_DAY_TIME: LocalTime = LocalTime.of(19, 0)
     val SAME_DAY_EARLY_TIME: LocalTime = LocalTime.of(7, 0)
     const val SAME_DAY_LEAD_MINUTES = 60L
@@ -68,9 +91,15 @@ object ReminderRules {
      * The moment a reminder fires for work planned on [date] (at [startTime], if known),
      * read in the farmer's [zone] so a change to or from summer time keeps the wall clock.
      */
-    fun triggerAt(date: LocalDate, startTime: LocalTime?, request: ReminderRequest, zone: ZoneId): Instant {
+    fun triggerAt(
+        date: LocalDate,
+        startTime: LocalTime?,
+        request: ReminderRequest,
+        zone: ZoneId,
+        previousDayTime: LocalTime = PREVIOUS_DAY_TIME,
+    ): Instant {
         val local = when (request.kind) {
-            ReminderKind.PREVIOUS_DAY -> date.minusDays(1).atTime(PREVIOUS_DAY_TIME)
+            ReminderKind.PREVIOUS_DAY -> date.minusDays(1).atTime(previousDayTime)
             ReminderKind.SAME_DAY -> when (startTime) {
                 null -> date.atTime(SAME_DAY_EARLY_TIME)
                 // Work planned just after midnight still warns on its own day, never the night before.

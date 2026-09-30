@@ -52,7 +52,7 @@ internal fun PlanningFields(
         modifier = Modifier.fillMaxWidth().testTag("planning-crew"),
     )
     Text("Avisos en este teléfono", color = MoTextSecondary)
-    ReminderChoice("La tarde anterior (19:00)", input.previousDay, "planning-reminder-previous-day") {
+    ReminderChoice("El día anterior (a la hora elegida en Perfil · Avisos)", input.previousDay, "planning-reminder-previous-day") {
         onChange(input.copy(previousDay = it))
     }
     ReminderChoice("El mismo día (1 h antes, o a las 7:00)", input.sameDay, "planning-reminder-same-day") {
@@ -104,7 +104,7 @@ internal fun planningLine(planning: ActivityPlanning?): String? {
 internal fun reminderLabel(reminder: Reminder): String {
     val at = reminder.triggerAt.atZone(ZoneId.systemDefault()).toLocalDateTime().format(MOMENT)
     val kind = when (reminder.kind) {
-        ReminderKind.PREVIOUS_DAY -> "Aviso la tarde anterior"
+        ReminderKind.PREVIOUS_DAY -> "Aviso el día anterior"
         ReminderKind.SAME_DAY -> "Aviso el mismo día"
         ReminderKind.CUSTOM -> "Aviso"
     }
