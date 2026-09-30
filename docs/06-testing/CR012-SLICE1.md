@@ -55,5 +55,6 @@ archivos nuevos. La ejecución final incluye las dos regresiones adicionales.
   queda preparado para la revisión antes de modificar el flujo de usuario.
 - Los KPIs usan Expense POSTED. Un pago no suma gasto ni altera coste/kg.
 - No se declara Gate CR-012 PASS ni se inicia Slice 2.
-- #308 seguía OPEN durante el trabajo; el propietario autorizó continuar en
-  aislamiento después de conocerlo. No se fusiona ni se absorbe su rama.
+- Slice 1 se preparó en rama aislada mientras #308 seguía abierta. Su integración
+  queda bloqueada hasta actualizar la base tras la fusión de #308, repetir la CI
+  y realizar la revisión final.

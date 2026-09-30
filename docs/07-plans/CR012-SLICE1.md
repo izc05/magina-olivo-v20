@@ -2,8 +2,9 @@
 
 **Spec:** [Issue #309](https://github.com/izc05/magina-olivo-v20/issues/309), leído completo.
 **Executor:** Codex. Solo Slice 1; detenerse en el PR para revisión.
-**Base inicial:** `origin/main` `f7747731`. El propietario autorizó continuar el
-30/09/2026 aun con #308 abierto; comprobar de nuevo la base antes de publicar.
+**Base inicial:** `origin/main` `f7747731`. Slice 1 se preparó en rama aislada
+mientras #308 seguía abierta. Su integración queda bloqueada hasta actualizar
+la base tras la fusión de #308, repetir la CI y realizar la revisión final.
 
 ## Objetivo y límites
 

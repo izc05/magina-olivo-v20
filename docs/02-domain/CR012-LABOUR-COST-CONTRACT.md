@@ -4,9 +4,10 @@
 y RC1.2, incluido el addendum D2. **Entrega:** Slice 1 exclusivamente.
 
 Esta slice añade contratos Kotlin puros y tests JVM. No cambia lo que el usuario
-puede guardar ni introduce nuevas tablas, repositorios o pantallas. El propietario
-autorizó continuar en rama aislada el 30/09/2026 con #308 aún abierto; no se integra
-ni modifica esa PR. Detenerse para revisión antes de Slice 2.
+puede guardar ni introduce nuevas tablas, repositorios o pantallas. Slice 1 se
+preparó en rama aislada mientras #308 seguía abierta. Su integración queda
+bloqueada hasta actualizar la base tras la fusión de #308, repetir la CI y realizar
+la revisión final. No avanzar a Slice 2.
 
 ## 1. Asistencia e identidad
 
