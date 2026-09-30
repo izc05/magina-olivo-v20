@@ -161,3 +161,31 @@ dependencies {
     androidTestImplementation(libs.androidx.navigation.testing)
     androidTestImplementation(libs.androidx.room.testing)
 }
+
+// Phase 21C: «Qué hay de nuevo» reads docs/CHANGELOG-APP.md, bundled as an asset at build time so
+// the notes on the phone are always the ones of the APK installed.
+abstract class CopyChangelogAsset : DefaultTask() {
+    @get:InputFile
+    abstract val changelog: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val out = outputDir.get().asFile
+        out.mkdirs()
+        changelog.get().asFile.copyTo(File(out, "CHANGELOG-APP.md"), overwrite = true)
+    }
+}
+
+// One task per variant, each with its own output directory, so variants never share a location.
+androidComponents {
+    onVariants { variant ->
+        val copyChangelog = tasks.register<CopyChangelogAsset>("copy${variant.name.replaceFirstChar(Char::uppercase)}ChangelogAsset") {
+            changelog.set(rootProject.layout.projectDirectory.file("docs/CHANGELOG-APP.md"))
+            outputDir.set(layout.buildDirectory.dir("generated/changelog-assets/${variant.name}"))
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(copyChangelog, CopyChangelogAsset::outputDir)
+    }
+}

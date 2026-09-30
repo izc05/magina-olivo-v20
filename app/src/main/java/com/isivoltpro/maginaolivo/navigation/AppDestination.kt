@@ -63,6 +63,8 @@ object AppDestination {
     const val Harvest = "harvest"
     const val Expenses = "expenses"
     const val DeveloperGallery = "developer-gallery"
+    /** Phase 21C: Perfil → Ayuda y privacidad («news», «privacy», «offline»). */
+    const val HelpPattern = "help/{topic}"
     const val Organizations = "organizations"
     const val Deliveries = "deliveries"
     const val Machinery = "machinery"
@@ -124,6 +126,8 @@ object AppDestination {
     fun newPesada(farmId: String, parcelId: String? = null): String =
         "$Deliveries/new/${android.net.Uri.encode(farmId)}" + parcelQuery(parcelId)
 
+    fun help(topic: String): String = nestedRoute("help", topic)
+
     fun farmExpenses(farmId: String, parcelId: String? = null): String =
         "$Expenses/farm/${android.net.Uri.encode(farmId)}" + parcelQuery(parcelId)
 
@@ -176,7 +180,7 @@ object AppDestination {
             "document",
             -> RootDestination.Notebook
             RootDestination.Alerts.route, Calendar, PlanWork -> RootDestination.Alerts
-            RootDestination.Profile.route, DeveloperGallery -> RootDestination.Profile
+            RootDestination.Profile.route, DeveloperGallery, "help" -> RootDestination.Profile
             else -> null
         }
     }
