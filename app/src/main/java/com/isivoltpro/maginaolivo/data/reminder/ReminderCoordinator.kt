@@ -5,6 +5,8 @@ import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderReconciler
 import java.time.Duration
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderKind
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderPreferences
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderPreferencesSource
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderRequest
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderRules
 import java.time.Instant
@@ -39,13 +41,23 @@ class ReminderCoordinator(
     private val database: MaginaOlivoDatabase,
     private val scheduler: ReminderScheduler,
     private val clock: AppClock,
+    /** Phase 21B: Perfil → Avisos. Without one, reminders ring at the rules' default hour. */
+    private val preferences: ReminderPreferencesSource = ReminderPreferencesSource {
+        ReminderPreferences(previousDayTime = ReminderRules.PREVIOUS_DAY_TIME)
+    },
     /** The wall clock reminders are read in: the phone's, as when they were saved. */
     private val zone: () -> ZoneId = ZoneId::systemDefault,
 ) : ReminderReconciler {
     private val lock = Mutex()
 
     override suspend fun reconcile() = lock.withLock {
-        followWallClock()
+        val current = preferences.current()
+        followWallClock(current)
+        if (!current.enabled) {
+            // Reminders switched off in Perfil: every alarm is withdrawn, every reminder kept.
+            database.agendaDao().listUnfired().forEach { scheduler.cancel(it.localNotificationId) }
+            return@withLock
+        }
         val due = database.agendaDao().listDue(clock.nowInstant().minus(MISSED_GRACE))
         val dueIds = due.map { it.id }.toSet()
         database.agendaDao().listUnfired()
@@ -55,16 +67,16 @@ class ReminderCoordinator(
     }
 
     /**
-     * "The evening before at 19:00" means 19:00 where the phone is. After a time-zone change
-     * each derived reminder is re-read from its Activity's date and planned hour, so it keeps
-     * its local meaning instead of an instant computed for the old zone. Idempotent.
+     * "The day before at 08:00" means 08:00 where the phone is. After a time-zone change — or a
+     * new day-before hour chosen in Perfil — each derived reminder is re-read from its Activity's
+     * date and planned hour, so it keeps its local meaning. Idempotent.
      */
-    private suspend fun followWallClock() {
+    private suspend fun followWallClock(current: ReminderPreferences) {
         val zoneId = zone()
         database.agendaDao().listDerived().forEach { row ->
             val kind = ReminderKind.entries.firstOrNull { it.name == row.kind } ?: return@forEach
             val start = row.plannedStartTime?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
-            val trigger = ReminderRules.triggerAt(row.activityDate, start, ReminderRequest(kind), zoneId)
+            val trigger = ReminderRules.triggerAt(row.activityDate, start, ReminderRequest(kind), zoneId, current.previousDayTime)
             if (trigger != row.triggerAt) database.agendaDao().moveTrigger(row.id, trigger)
         }
     }

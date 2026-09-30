@@ -39,6 +39,8 @@ class ReminderNotifier(
     suspend fun fire(reminderId: UUID): ReminderOutcome {
         val reminder = database.agendaDao().findReminder(reminderId) ?: return ReminderOutcome.NOT_DUE
         if (!reminder.enabled || reminder.firedAt != null) return ReminderOutcome.NOT_DUE
+        // Phase 21B: reminders switched off in Perfil never ring, even from an alarm already set.
+        if (database.profileSettingsDao().findFirst()?.remindersEnabled == false) return ReminderOutcome.NOT_DUE
         val row = database.activityDao().findWithTargets(reminder.ownerId) ?: return ReminderOutcome.NOT_DUE
         val activity = row.activity
         if (activity.status != ActivityStatus.PLANNED || activity.metadata.deletedAt != null) return ReminderOutcome.NOT_DUE

@@ -10,7 +10,7 @@ import java.util.UUID
 
 /**
  * Phase 21A (Room v19): one profile row per workspace — municipality and the preferred
- * cooperative. The cooperative is a plain reference: archiving an Organization never deletes or
+ * cooperative; Phase 21B (Room v20) adds the reminder preferences. The cooperative is a plain reference: archiving an Organization never deletes or
  * rewrites this row; reads simply stop treating it as the preferred one.
  */
 @Entity(
@@ -30,5 +30,9 @@ data class ProfileSettingsEntity(
     val municipality: String? = null,
     val province: String? = null,
     @ColumnInfo(name = "preferred_organization_id") val preferredOrganizationId: UUID? = null,
+    /** Phase 21B (Room v20): planned-work reminders ring on this phone. */
+    @ColumnInfo(name = "reminders_enabled", defaultValue = "1") val remindersEnabled: Boolean = true,
+    /** Phase 21B (Room v20): the day-before reminder's hour, in minutes after midnight (480 = 08:00). */
+    @ColumnInfo(name = "previous_day_reminder_minute", defaultValue = "480") val previousDayReminderMinute: Int = 480,
     @Embedded val metadata: LocalMetadata,
 )

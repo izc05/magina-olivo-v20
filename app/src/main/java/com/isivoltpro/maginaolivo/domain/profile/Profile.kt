@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.domain.profile
 
 import com.isivoltpro.maginaolivo.core.common.AppResult
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderPreferences
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.organization.Organization
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationRole
@@ -17,6 +18,8 @@ data class ProfileSettings(
     val municipality: String? = null,
     val province: String? = null,
     val preferredCooperative: Organization? = null,
+    /** Phase 21B: Perfil → Avisos. */
+    val reminders: ReminderPreferences = ReminderPreferences(),
 ) {
     /** The place Inicio may ask the weather about when the farms give none; null when unset. */
     val location: FeedLocation? get() = FeedLocation.common(listOf(municipality to province))
@@ -35,4 +38,7 @@ interface ProfileRepository {
     fun observe(): Flow<ProfileSettings>
 
     suspend fun save(draft: ProfileDraft): AppResult<Unit>
+
+    /** Phase 21B: stores the reminder preferences; the caller then rebuilds the alarms. */
+    suspend fun saveReminders(preferences: ReminderPreferences): AppResult<Unit>
 }

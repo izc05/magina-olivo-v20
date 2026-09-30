@@ -2,17 +2,22 @@ package com.isivoltpro.maginaolivo.feature.profile
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +35,8 @@ import androidx.lifecycle.viewModelScope
 import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.domain.organization.Organization
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderPreferences
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderReconciler
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationDraft
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationRepository
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationRole
@@ -69,6 +76,8 @@ data class MyProfileUiState(
 class MyProfileViewModel(
     private val profile: ProfileRepository,
     private val organizations: OrganizationRepository,
+    /** Phase 21B: rebuilds the alarms after Perfil → Avisos changes. Null where none exist. */
+    private val reminders: ReminderReconciler? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(MyProfileUiState())
     val state: StateFlow<MyProfileUiState> = mutableState.asStateFlow()
@@ -106,6 +115,16 @@ class MyProfileViewModel(
                 }
                 is AppResult.Failure -> finish(created)
             }
+        }
+    }
+
+    /** Phase 21B: stored first, then every alarm is rebuilt with the new preferences. */
+    fun saveReminders(preferences: ReminderPreferences) {
+        viewModelScope.launch {
+            mutableState.update { it.copy(isSaving = true, error = null) }
+            val result = profile.saveReminders(preferences)
+            if (result is AppResult.Success) runCatching { reminders?.reconcile() }
+            finish(result)
         }
     }
 
@@ -278,3 +297,60 @@ private fun CooperativeOption(label: String, selected: Boolean, enabled: Boolean
 
 private const val SHEET_LOCATION = "location"
 private const val SHEET_COOPERATIVE = "cooperative"
+
+/**
+ * Phase 21B — Perfil → Avisos: one switch for every planned-work reminder on this phone and the
+ * hour of the «day before» reminder. Android's own notification permission stays in the
+ * «Notificaciones» row: this never overrides it.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ReminderSettings(
+    preferences: ReminderPreferences,
+    isSaving: Boolean,
+    onChange: (ReminderPreferences) -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth().testTag("profile-reminders"),
+        verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+    ) {
+        Row(
+            Modifier.fillMaxWidth()
+                .toggleable(
+                    value = preferences.enabled,
+                    enabled = !isSaving,
+                    role = Role.Switch,
+                    onValueChange = { onChange(preferences.copy(enabled = it)) },
+                )
+                .testTag("profile-reminders-switch"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Avisos de trabajos planificados", style = MaterialTheme.typography.bodyLarge, color = MoOliveDark)
+                Text(
+                    if (preferences.enabled) "Suenan en este teléfono." else "Desactivados: no suena ninguno; se guardan para cuando los actives.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoTextSecondary,
+                )
+            }
+            Switch(checked = preferences.enabled, onCheckedChange = null, enabled = !isSaving)
+        }
+        if (preferences.enabled) {
+            Text("Aviso del día anterior, a las", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                ReminderPreferences.PREVIOUS_DAY_CHOICES.forEach { hour ->
+                    FilterChip(
+                        selected = hour == preferences.previousDayTime,
+                        onClick = { onChange(preferences.copy(previousDayTime = hour)) },
+                        enabled = !isSaving,
+                        label = { Text(hour.format(HOUR)) },
+                        modifier = Modifier.testTag("profile-reminder-hour"),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val HOUR = java.time.format.DateTimeFormatter.ofPattern("HH:mm")

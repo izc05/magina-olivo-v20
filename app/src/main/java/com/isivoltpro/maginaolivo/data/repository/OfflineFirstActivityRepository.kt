@@ -38,6 +38,8 @@ import com.isivoltpro.maginaolivo.domain.activity.NewActivity
 import com.isivoltpro.maginaolivo.domain.activity.AgendaEntry
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityPlanningEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ReminderEntity
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderPreferences
+import com.isivoltpro.maginaolivo.domain.agenda.ReminderPreferencesSource
 import com.isivoltpro.maginaolivo.domain.agenda.ActivityPlanning
 import com.isivoltpro.maginaolivo.domain.agenda.Reminder
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderKind
@@ -79,6 +81,10 @@ class OfflineFirstActivityRepository(
     private val dispatchers: AppDispatchers,
     /** Rebuilds device alarms after planned work changes. Null where no alarms exist (tests). */
     private val reminderReconciler: ReminderReconciler? = null,
+    /** Phase 21B: Perfil → Avisos (the day-before hour). Without one, the rules' default hour. */
+    private val reminderPreferences: ReminderPreferencesSource = ReminderPreferencesSource {
+        ReminderPreferences(previousDayTime = ReminderRules.PREVIOUS_DAY_TIME)
+    },
     /** The wall clock reminders are read in: the phone's, because the phone rings them. */
     private val zone: () -> ZoneId = ZoneId::systemDefault,
 ) : ActivityRepository {
@@ -332,8 +338,9 @@ class OfflineFirstActivityRepository(
         val zoneId = zone()
         val startTime = dao.findPlannedStartTime(activityId)?.let(LocalTime::parse)
         val remaining = dao.listForOwner(OWNER_ACTIVITY, activityId).toMutableList()
+        val previousDayTime = reminderPreferences.current().previousDayTime
         val rows = requests.map { request ->
-            val trigger = ReminderRules.triggerAt(activity.activityDate, startTime, request, zoneId)
+            val trigger = ReminderRules.triggerAt(activity.activityDate, startTime, request, zoneId, previousDayTime)
             val match = remaining.firstOrNull {
                 it.enabled && it.kind == request.kind.name && (request.kind != ReminderKind.CUSTOM || it.triggerAt == trigger)
             } ?: remaining.firstOrNull { it.enabled && it.kind == request.kind.name }
