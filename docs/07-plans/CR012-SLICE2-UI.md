@@ -49,3 +49,9 @@ No editar data/domain/writers de2A salvo defecto comunicado primero al root.
 La ampliación compatible del helper Money es la excepción explícita prevista aquí.
 No push/merge. Compilar suite completa una vez y reportar tests reales; commit
 solo feature/theme/Compose tests. Reporte full al archivo indicado por root.
+
+Mensajes de errores financieros deben explicar la acción: campaign_closed indica
+coste histórico bloqueado, below_paid exige corregir pagos antes de reducir coste.
+Adaptar el mapper UI de Gastos compartido si recibe esas validaciones de2A; no
+cambiar writer. Añadir pruebas unitarias de esos mensajes. Conflictos UUID no se
+deben presentar como campaña cerrada si el recurso del error es diferente.
