@@ -112,6 +112,7 @@ internal fun NotebookQuickAction.tone(): MoIconTone = when (this) {
     NotebookQuickAction.EXPENSE -> MoIconTone.MONEY
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun NotebookRootRoute(
     persistence: LocalPersistence,
@@ -165,13 +166,14 @@ fun NotebookRootRoute(
         val state by viewModel.state.collectAsStateWithLifecycle()
         state to viewModel
     }
+    var labourCampaign by rememberSaveable { mutableStateOf<String?>(null) }
     NotebookHomeScreen(
         isLoading = farms.isLoading,
         error = farms.error,
         farms = farms.farms,
         activeFarm = activeFarm,
         notebook = notebook?.first,
-        actions = activeFarm?.let { actionsFor(it.id) },
+        actions = activeFarm?.let { actionsFor(it.id).copy(onLabour = { campaignId -> labourCampaign = campaignId.toString() }) },
         onSelectFarm = { id ->
             chosen = id.toString()
             activeFarmStore.set(id)
@@ -190,6 +192,11 @@ fun NotebookRootRoute(
         tabRequest = tabRequest,
         onTabRequestHandled = onTabRequestHandled,
     )
+    labourCampaign?.let { id ->
+        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { labourCampaign = null }) {
+            com.isivoltpro.maginaolivo.feature.harvests.LabourPaymentsRoute(UUID.fromString(id), persistence) { labourCampaign = null }
+        }
+    }
 }
 
 /**

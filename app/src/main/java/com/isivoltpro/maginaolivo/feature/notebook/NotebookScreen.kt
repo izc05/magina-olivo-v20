@@ -89,6 +89,7 @@ data class NotebookActions(
     val onPendingYields: () -> Unit = {},
     val onExpenses: () -> Unit = {},
     val onCampaigns: () -> Unit = {},
+    val onLabour: (UUID) -> Unit = {},
 )
 
 @Composable
@@ -210,6 +211,8 @@ internal fun SummaryTab(
     notebook: CampaignNotebook,
     comparison: List<CampaignComparison> = emptyList(),
     today: LocalDate = LocalDate.now(),
+    payments: List<com.isivoltpro.maginaolivo.domain.labour.LabourPayment> = emptyList(),
+    onLabour: () -> Unit = {},
 ) {
     val deliveries = notebook.deliverySummary
     val expenses = notebook.expenseSummary
@@ -256,23 +259,7 @@ internal fun SummaryTab(
                 kind = MoKpiKind.JORNALES,
                 supportingText = named.takeIf { it > 0 }?.let { if (it == 1) "1 persona con nombre" else "$it personas con nombre" },
             )
-            // 254-D: who worked how much, by their stable id; unnamed counts stay apart.
-            notebook.labourByWorker.forEach { worker ->
-                Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("notebook-worker-labour"), verticalAlignment = Alignment.CenterVertically) {
-                    Text(worker.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    Text(
-                        worker.summary.label(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MoOliveDark,
-                    )
-                }
-            }
-            if (!notebook.unnamedLabour.isEmpty) {
-                Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("notebook-worker-labour-unnamed")) {
-                    Text("Sin nombre", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.weight(1f))
-                    Text(notebook.unnamedLabour.label(), style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-                }
-            }
+            LabourCampaignSummary(notebook, payments, onLabour)
         }
         if (!notebook.equipmentSummary.isEmpty) {
             MoKpiMetric(

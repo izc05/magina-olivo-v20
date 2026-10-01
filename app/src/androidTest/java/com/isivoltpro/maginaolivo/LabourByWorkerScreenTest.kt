@@ -15,7 +15,9 @@ import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
-import com.isivoltpro.maginaolivo.feature.notebook.SummaryTab
+import com.isivoltpro.maginaolivo.feature.harvests.LabourPaymentsScreen
+import com.isivoltpro.maginaolivo.feature.harvests.LabourPaymentsUiState
+import com.isivoltpro.maginaolivo.feature.harvests.labourAccounts
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.util.UUID
 import org.junit.Rule
@@ -42,13 +44,13 @@ class LabourByWorkerScreenTest {
         )
         val notebook = CampaignNotebook.project(campaign, emptyList(), listOf(harvest), emptyList(), emptyList(), labour = labour)
         composeRule.setContent {
-            MaginaOlivoTheme { Column(Modifier.verticalScroll(rememberScrollState())) { SummaryTab(notebook) } }
+            MaginaOlivoTheme { LabourPaymentsScreen(LabourPaymentsUiState(isLoading = false, campaign = campaign, entries = notebook.labour, days = notebook.harvests, accounts = labourAccounts(campaign.id, notebook.labour, emptyList(), emptyList()))) }
         }
         // 1 + 3 whole days and 1 half day: never "5 jornales" mixing both.
         composeRule.onNodeWithText("4 jornadas · 1 media").performScrollTo()
         composeRule.onNodeWithText("2 personas con nombre").assertExists()
         composeRule.onAllNodesWithTag("notebook-worker-labour").assertCountEquals(2)
-        composeRule.onAllNodesWithTag("notebook-worker-labour")[0].assertTextContains("Juan Pérez", substring = true)
+        composeRule.onNodeWithText("Juan Pérez").assertExists()
         composeRule.onNodeWithTag("notebook-worker-labour-unnamed").performScrollTo().assertTextContains("3 jornadas", substring = true)
     }
 
@@ -58,7 +60,7 @@ class LabourByWorkerScreenTest {
             labour = listOf(line(null, null, LabourUnit.FULL_DAY, quantity = 5)),
         )
         composeRule.setContent {
-            MaginaOlivoTheme { Column(Modifier.verticalScroll(rememberScrollState())) { SummaryTab(notebook) } }
+            MaginaOlivoTheme { LabourPaymentsScreen(LabourPaymentsUiState(isLoading = false, campaign = campaign, entries = notebook.labour, days = notebook.harvests, accounts = labourAccounts(campaign.id, notebook.labour, emptyList(), emptyList()))) }
         }
         composeRule.onAllNodesWithTag("notebook-worker-labour").assertCountEquals(0)
         composeRule.onNodeWithTag("notebook-worker-labour-unnamed").performScrollTo().assertTextContains("5 jornadas", substring = true)

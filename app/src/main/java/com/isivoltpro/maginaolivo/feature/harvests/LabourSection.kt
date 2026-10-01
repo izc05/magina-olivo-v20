@@ -2,39 +2,21 @@ package com.isivoltpro.maginaolivo.feature.harvests
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.listSaver
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
-import com.isivoltpro.maginaolivo.domain.labour.Worker
+import com.isivoltpro.maginaolivo.domain.labour.LabourRules
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
-import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
-import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
@@ -57,15 +39,15 @@ internal fun parseHours(text: String): Int? {
     if (cleaned.isEmpty()) return null
     val parts = cleaned.split(':')
     val minutes = when (parts.size) {
-        1 -> cleaned.toDoubleOrNull()?.let { Math.round(it * 60).toInt() }
+        1 -> runCatching { cleaned.toBigDecimal().multiply(java.math.BigDecimal(60)).setScale(0, java.math.RoundingMode.HALF_UP).intValueExact() }.getOrNull()
         2 -> {
             val h = parts[0].toIntOrNull()
             val m = parts[1].toIntOrNull()
-            if (h == null || m == null || m !in 0..59) null else h * 60 + m
+            if (h == null || m == null || h < 0 || m !in 0..59) null else runCatching { Math.addExact(Math.multiplyExact(h, 60), m) }.getOrNull()
         }
         else -> null
     }
-    return minutes?.takeIf { it > 0 }
+    return minutes?.takeIf { it in 1..LabourRules.MAX_MINUTES }
 }
 
 /**
@@ -84,6 +66,8 @@ internal fun JornadaLabour(
     loaded: Boolean = true,
     /** True when the jornales could not be read: an error, never «Sin jornales». */
     readFailed: Boolean = false,
+    onPerson: (UUID) -> Unit = {},
+    onEdit: (UUID) -> Unit = {},
 ) {
     // Device check (build 680): these are this day's jornales; the Cuaderno sums the whole campaign.
     MoSectionHeader("Jornales de este día")
@@ -118,12 +102,15 @@ internal fun JornadaLabour(
         )
         labour.forEach { entry ->
             MoCompactListItem(
-                title = entry.workerName ?: if (entry.quantity == 1) "1 persona" else "${entry.quantity} personas",
-                subtitle = entry.label(),
+                title = entry.workerName ?: "Sin identificar · ${entry.quantity} personas",
+                subtitle = entry.label() + if (entry.appliedRate == null) " · Precio sin confirmar" else "",
+                onClick = entry.workerId?.let { { onPerson(it) } },
+                iconTint = com.isivoltpro.maginaolivo.ui.theme.MoLabourText,
+                iconContainer = com.isivoltpro.maginaolivo.ui.theme.MoLabourTint,
                 icon = if (entry.workerId != null) MoIcons.Person else MoIcons.People,
                 modifier = Modifier.testTag("jornada-labour"),
                 trailing = if (editable) {
-                    { MoTertiaryButton("Quitar", { onRemove(entry.id) }, Modifier.testTag("jornada-labour-remove")) }
+                    { Column { MoTertiaryButton("Editar", { onEdit(entry.id) }, Modifier.testTag("jornada-labour-edit")); MoTertiaryButton("Quitar", { onRemove(entry.id) }, Modifier.testTag("jornada-labour-remove")) } }
                 } else {
                     null
                 },
@@ -136,145 +123,3 @@ internal fun JornadaLabour(
         MoSecondaryButton("Registrar jornales", onRegister, Modifier.fillMaxWidth().testTag("jornada-register-labour"))
     }
 }
-
-/**
- * Phase 19D — register jornales in one save: select people (or repeat yesterday's crew), or
- * just say how many. Whole day / half day / hours apply to everyone saved together.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-internal fun LabourSheet(
-    workers: List<Worker>,
-    alreadyRecorded: Set<UUID>,
-    previousCrew: List<UUID>,
-    isSaving: Boolean,
-    error: String?,
-    onSaveCrew: (List<UUID>, LabourUnit, Int?) -> Unit,
-    onSaveCount: (Int, LabourUnit, Int?) -> Unit,
-    onAddWorker: (String) -> Unit,
-    onCancel: () -> Unit,
-) {
-    var byPeople by rememberSaveable { mutableStateOf(true) }
-    // Device check (build 680): the people ticked but not yet saved survive a rotation.
-    var selected by rememberSaveable(stateSaver = UuidSetSaver) { mutableStateOf(setOf<UUID>()) }
-    var unit by rememberSaveable { mutableStateOf(LabourUnit.FULL_DAY) }
-    var hours by rememberSaveable { mutableStateOf("") }
-    var count by rememberSaveable { mutableStateOf("") }
-    var newName by rememberSaveable { mutableStateOf("") }
-    var pendingName by rememberSaveable { mutableStateOf<String?>(null) }
-
-    // A person just added is selected as soon as it is saved.
-    LaunchedEffect(workers, pendingName) {
-        val name = pendingName ?: return@LaunchedEffect
-        workers.firstOrNull { it.name.equals(name, ignoreCase = true) }?.let { worker ->
-            if (worker.id !in alreadyRecorded) selected = selected + worker.id
-            pendingName = null
-        }
-    }
-    val minutes = if (unit == LabourUnit.HOURS) parseHours(hours) else null
-    val hoursMissing = unit == LabourUnit.HOURS && minutes == null
-    val repeatable = previousCrew.filter { it !in alreadyRecorded && workers.any { worker -> worker.id == it } }
-
-    Column(
-        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen)
-            .testTag("labour-sheet"),
-        verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
-    ) {
-        Text("Registrar jornales", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
-        Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            FilterChip(byPeople, { byPeople = true }, { Text("Por personas") }, Modifier.testTag("labour-mode-people"))
-            FilterChip(!byPeople, { byPeople = false }, { Text("Solo número") }, Modifier.testTag("labour-mode-count"))
-        }
-        Text("¿Cuánto trabajó cada uno?", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            LabourUnit.entries.forEach { option ->
-                FilterChip(unit == option, { unit = option }, { Text(option.label()) }, Modifier.testTag("labour-unit-${option.name}"))
-            }
-        }
-        if (unit == LabourUnit.HOURS) {
-            MoTextField(
-                hours, { hours = it }, "Horas por persona",
-                isError = hours.isNotBlank() && minutes == null,
-                supportingText = if (hours.isNotBlank() && minutes == null) "Escribe las horas como 6 o 6,5" else null,
-                modifier = Modifier.fillMaxWidth().testTag("labour-hours"),
-            )
-        }
-
-        if (byPeople) {
-            if (repeatable.isNotEmpty()) {
-                MoSecondaryButton(
-                    "Repetir cuadrilla anterior (${repeatable.size})",
-                    { selected = selected + repeatable },
-                    Modifier.fillMaxWidth().testTag("labour-repeat-crew"),
-                )
-            }
-            if (workers.isEmpty()) {
-                Text("Aún no hay personas. Añade la primera con su nombre o apodo.", color = MoTextSecondary)
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                workers.forEach { worker ->
-                    val done = worker.id in alreadyRecorded
-                    FilterChip(
-                        selected = worker.id in selected,
-                        onClick = { selected = if (worker.id in selected) selected - worker.id else selected + worker.id },
-                        label = { Text(if (done) "${worker.name} ✓" else worker.name) },
-                        enabled = !done,
-                        modifier = Modifier.testTag("labour-worker"),
-                    )
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                MoTextField(newName, { newName = it }, "+ Persona", modifier = Modifier.weight(1f).testTag("labour-new-name"))
-                MoTertiaryButton(
-                    "Añadir",
-                    {
-                        pendingName = newName.trim()
-                        onAddWorker(newName)
-                        newName = ""
-                    },
-                    Modifier.testTag("labour-add-worker"),
-                    enabled = newName.isNotBlank() && !isSaving,
-                )
-            }
-            Text(
-                if (selected.size == 1) "1 seleccionada" else "${selected.size} seleccionadas",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MoTextSecondary,
-                modifier = Modifier.testTag("labour-selected-count"),
-            )
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            MoPrimaryButton(
-                if (selected.size == 1) "Guardar 1 jornal" else "Guardar ${selected.size} jornales",
-                { onSaveCrew(selected.toList(), unit, minutes) },
-                Modifier.fillMaxWidth().testTag("labour-save"),
-                enabled = selected.isNotEmpty() && !hoursMissing && !isSaving,
-            )
-        } else {
-            val n = count.trim().toIntOrNull()
-            MoTextField(
-                count, { count = it.filter(Char::isDigit).take(3) }, "Número de personas",
-                modifier = Modifier.fillMaxWidth().testTag("labour-count"),
-            )
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            MoPrimaryButton(
-                if (n == 1) "Guardar 1 jornal" else "Guardar ${n ?: 0} jornales",
-                { onSaveCount(n!!, unit, minutes) },
-                Modifier.fillMaxWidth().testTag("labour-save"),
-                enabled = (n ?: 0) > 0 && !hoursMissing && !isSaving,
-            )
-        }
-        Text(
-            "Aquí se anota quién trabajó. Si pagas jornales, anótalo como gasto de recolección: el dinero se cuenta solo allí.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MoTextSecondary,
-        )
-        MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(MoSpacing.lg))
-    }
-}
-
-/** Saves a set of ids across configuration changes (a rotation keeps what was ticked). */
-private val UuidSetSaver = listSaver<Set<UUID>, String>(
-    save = { ids -> ids.map(UUID::toString) },
-    restore = { saved -> saved.map(UUID::fromString).toSet() },
-)

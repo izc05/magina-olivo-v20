@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo.domain.expense
 
 import java.text.NumberFormat
+import java.math.BigDecimal
 import java.util.Currency
 import java.util.Locale
 
@@ -11,40 +12,46 @@ import java.util.Locale
  */
 object Money {
     private val SPANISH = Locale.forLanguageTag("es-ES")
-    private val GROUPED_COMMA_DECIMAL = Regex("""^\d{1,3}(\.\d{3})+(,\d{1,2})?$""")
-    private val GROUPED_DOT_DECIMAL = Regex("""^\d{1,3}(,\d{3})+\.\d{1,2}$""")
-    private val PLAIN = Regex("""^\d+([.,]\d{1,2})?$""")
-
-    fun parseMinor(text: String?): Long? {
+    fun parseMinor(text: String?, currency: String = "EUR"): Long? {
+        val iso = runCatching { Currency.getInstance(currency) }.getOrNull() ?: return null
+        val digits = iso.defaultFractionDigits.takeIf { it >= 0 } ?: return null
+        val decimal = if (digits == 0) "" else "([.,]\\d{1,$digits})?"
+        val groupedComma = Regex("^\\d{1,3}(\\.\\d{3})+" + if (digits == 0) "$" else "(,\\d{1,$digits})?$")
+        val groupedDot = Regex("^\\d{1,3}(,\\d{3})+\\.\\d{1,${digits.coerceAtLeast(1)}}$")
+        val plain = Regex("^\\d+$decimal$")
         val cleaned = text
-            ?.replace("€", "")
-            ?.replace("EUR", "", ignoreCase = true)
+            ?.replace(iso.getSymbol(SPANISH), "")
+            ?.replace(currency, "", ignoreCase = true)
             ?.replace(' ', ' ')
             ?.replace(" ", "")
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?: return null
         val normalized = when {
-            GROUPED_COMMA_DECIMAL.matches(cleaned) -> cleaned.replace(".", "").replace(',', '.')
-            GROUPED_DOT_DECIMAL.matches(cleaned) -> cleaned.replace(",", "")
-            PLAIN.matches(cleaned) -> cleaned.replace(',', '.')
+            plain.matches(cleaned) -> cleaned.replace(',', '.')
+            groupedComma.matches(cleaned) -> cleaned.replace(".", "").replace(',', '.')
+            digits > 0 && groupedDot.matches(cleaned) -> cleaned.replace(",", "")
             else -> return null
         }
         val value = normalized.toBigDecimalOrNull() ?: return null
-        return value.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact()
+        return runCatching { value.movePointRight(digits).longValueExact() }.getOrNull()
     }
 
     fun format(minor: Long, currency: String = "EUR"): String {
         val format = NumberFormat.getCurrencyInstance(SPANISH)
-        runCatching { format.currency = Currency.getInstance(currency) }
-        return format.format(minor / 100.0)
+        val iso = Currency.getInstance(currency)
+        val digits = iso.defaultFractionDigits.coerceAtLeast(0)
+        format.currency = iso
+        format.minimumFractionDigits = digits
+        format.maximumFractionDigits = digits
+        return format.format(BigDecimal.valueOf(minor, digits))
     }
 
     /** "65,50" for an editable field: no symbol, no grouping. */
-    fun editable(minor: Long?): String {
+    fun editable(minor: Long?, currency: String = "EUR"): String {
         if (minor == null) return ""
-        val units = minor / 100
-        val cents = kotlin.math.abs(minor % 100)
-        return if (cents == 0L) units.toString() else "%d,%02d".format(units, cents)
+        val digits = Currency.getInstance(currency).defaultFractionDigits.coerceAtLeast(0)
+        val value = BigDecimal.valueOf(minor, digits)
+        return (if (value.stripTrailingZeros().scale() <= 0) value.setScale(0) else value).toPlainString().replace('.', ',')
     }
 }
