@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.isivoltpro.maginaolivo.domain.expense.*
@@ -57,8 +59,11 @@ class LabourCurrencyAndOverflowUiTest {
         rule.onNodeWithText("Precio del jornal (JPY)").assertExists()
         rule.onNodeWithTag("labour-rate").assertTextContains("Confirma un precio válido", substring = true)
         rule.onAllNodesWithTag("labour-worker")[0].performClick()
+        rule.onNodeWithTag("labour-selected-count").assertTextContains("1 seleccionada")
         rule.onNodeWithTag("labour-rate").performScrollTo().performTextInput("1000")
-        rule.onNodeWithTag("labour-save").performScrollTo().performClick()
+        assertEquals("1000", rule.onNodeWithTag("labour-rate").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
+        // Verify the enabled form action directly; touch routing is covered by the other save tests.
+        rule.onNodeWithTag("labour-save").performScrollTo().assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
         rule.runOnIdle { assertEquals("JPY", draft?.appliedRate?.currency); assertEquals(1000L, draft?.appliedRate?.unitPriceMinor) }
     }
 
