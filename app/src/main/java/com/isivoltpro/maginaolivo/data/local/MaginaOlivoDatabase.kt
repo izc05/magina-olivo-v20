@@ -104,13 +104,14 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         PurchaseEntity::class,
         PurchaseItemEntity::class,
         DocumentOcrExtractionEntity::class,
+        com.isivoltpro.maginaolivo.data.local.entity.LabourPaymentEntity::class,
         WorkerEntity::class,
         HarvestLabourEntity::class,
         HarvestEquipmentEntity::class,
         RecollectionRatesEntity::class,
         ProfileSettingsEntity::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -142,6 +143,8 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun machineDao(): MachineDao
 
     abstract fun agendaDao(): AgendaDao
+
+    abstract fun labourPaymentDao(): com.isivoltpro.maginaolivo.data.local.dao.LabourPaymentDao
 
     abstract fun labourDao(): LabourDao
 

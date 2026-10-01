@@ -290,6 +290,8 @@ class OfflineFirstHarvestRepository(
                 database.withTransaction { block() }
             } catch (error: InvalidShare) {
                 AppResult.Failure(AppError.Validation("parcels", error.message ?: "invalid"))
+            } catch (error: LabourFinanceInvalid) {
+                AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: Throwable) {
                 AppResult.Failure(AppError.Storage(operation, error))
             }

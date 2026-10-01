@@ -123,6 +123,8 @@ class OfflineFirstDayCostRepository(
         withContext(dispatchers.io) {
             try {
                 database.withTransaction { block() }
+            } catch (error: LabourFinanceInvalid) {
+                AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: Throwable) {
                 AppResult.Failure(AppError.Storage(operation, error))
             }

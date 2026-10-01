@@ -57,6 +57,8 @@ class OfflineFirstEquipmentRepository(
                 AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: EquipmentConflict) {
                 AppResult.Failure(AppError.Conflict(error.code))
+            } catch (error: LabourFinanceInvalid) {
+                AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: Throwable) {
                 AppResult.Failure(AppError.Storage("replace_equipment", error))
             }

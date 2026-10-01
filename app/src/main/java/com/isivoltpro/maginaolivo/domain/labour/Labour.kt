@@ -1,8 +1,10 @@
 package com.isivoltpro.maginaolivo.domain.labour
 
+import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 /** Phase 19D: how one person's day is counted. */
 enum class LabourUnit { FULL_DAY, HALF_DAY, HOURS }
@@ -23,17 +25,21 @@ data class LabourEntry(
     val unit: LabourUnit,
     val minutes: Int?,
     val version: Long,
-    /** CR-012 contract: historical applied rate; legacy rows have none. Persistence is Slice 2. */
+    /** CR-012 contract: historical applied rate; legacy rows have none. */
     val appliedRate: LabourRateSnapshot? = null,
 )
 
 /** Several people, one unit, one save. */
-data class CrewDraft(val harvestId: UUID, val workerIds: List<UUID>, val unit: LabourUnit, val minutes: Int? = null)
+data class CrewDraft(
+    val harvestId: UUID, val workerIds: List<UUID>, val unit: LabourUnit, val minutes: Int? = null,
+    val appliedRate: LabourRateSnapshot? = null,
+    val initialPayments: List<LabourPayment> = emptyList(),
+)
 
-/** "N jornales" when names do not matter. */
+/** Historical anonymous attendance; new recollection must use named people. */
 data class CountDraft(val harvestId: UUID, val count: Int, val unit: LabourUnit, val minutes: Int? = null)
 
-data class LabourChange(val quantity: Int, val unit: LabourUnit, val minutes: Int?)
+data class LabourChange(val quantity: Int, val unit: LabourUnit, val minutes: Int?, val appliedRate: LabourRateSnapshot? = null)
 
 data class LabourProblem(val field: String, val code: String)
 
@@ -120,6 +126,12 @@ object LabourByWorker {
 }
 
 interface LabourRepository {
+    fun observePayments(campaignId: UUID): Flow<List<LabourPayment>> = flowOf(emptyList())
+    suspend fun recordPayment(payment: LabourPayment): AppResult<UUID> =
+        AppResult.Failure(AppError.Conflict("payments_unavailable"))
+    suspend fun removePayment(paymentId: UUID): AppResult<Unit> =
+        AppResult.Failure(AppError.Conflict("payments_unavailable"))
+
     fun observeWorkers(): Flow<List<Worker>>
 
     /** Returns the existing person when the name is already saved (case-insensitive). */

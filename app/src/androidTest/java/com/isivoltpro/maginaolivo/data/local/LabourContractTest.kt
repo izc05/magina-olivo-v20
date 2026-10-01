@@ -79,7 +79,9 @@ class LabourContractTest {
         val jornada = jornada(day)
         val crew = listOf("Antonio", "Paco", "Mari", "Juan", "El Rubio").map { ok(labour.addWorker(it)) }
         assertEquals(5, ok(labour.recordCrew(CrewDraft(jornada, crew, LabourUnit.FULL_DAY))))
-        ok(labour.recordCount(CountDraft(jornada, 2, LabourUnit.HALF_DAY)))
+        db.labourDao().upsertLabour(listOf(com.isivoltpro.maginaolivo.data.local.entity.HarvestLabourEntity(
+            UUID.randomUUID(), workspaceId, jornada, quantity = 2, unit = LabourUnit.HALF_DAY.name,
+            metadata = LocalMetadata(now, now))))
 
         db.close()
         open()
@@ -113,7 +115,7 @@ class LabourContractTest {
         val today = jornada(day)
         assertEquals(crew.toSet(), labour.previousCrew(today).toSet())
         ok(labour.recordCrew(CrewDraft(today, labour.previousCrew(today), LabourUnit.FULL_DAY)))
-        assertValidation("workers", labour.recordCrew(CrewDraft(today, listOf(crew[0]), LabourUnit.HALF_DAY)))
+        assertValidation("workers", labour.recordCrew(CrewDraft(today, listOf(crew[0]), LabourUnit.FULL_DAY)))
         assertValidation("quantity", labour.update(labour.observeForHarvest(today).first().first().id, LabourChange(2, LabourUnit.FULL_DAY, null)))
         assertEquals(4, LabourSummary.of(labour.observeForCampaign(campaignId).first()).people)
     }
@@ -121,7 +123,7 @@ class LabourContractTest {
     @Test
     fun aClosedCampaignTakesNoLabourAndARemovedJornadaTakesItsLabourWithIt() = runBlocking {
         val jornada = jornada(day)
-        ok(labour.recordCount(CountDraft(jornada, 5, LabourUnit.FULL_DAY)))
+        ok(labour.recordCrew(CrewDraft(jornada, listOf(ok(labour.addWorker("Juan"))), LabourUnit.FULL_DAY)))
         ok(harvests.delete(jornada))
         assertTrue(labour.observeForHarvest(jornada).first().isEmpty())
         assertTrue(labour.observeForCampaign(campaignId).first().isEmpty())
