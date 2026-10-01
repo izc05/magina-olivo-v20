@@ -19,8 +19,8 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
-import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
-import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
+import com.isivoltpro.maginaolivo.domain.labour.LabourPricing
+import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
 import java.time.Instant
 import java.util.UUID
 import org.json.JSONObject
@@ -47,10 +47,25 @@ internal class DayCostLedger(
         if (campaign.status != CampaignStatus.ACTIVE && campaign.status != CampaignStatus.HARVEST) return
         val farmId = day.farmId ?: return
         val rates = database.recollectionRatesDao().findForFarm(farmId)?.toDomain() ?: RecollectionRates()
-        val labour = database.labourDao().listForHarvest(harvestId).map { it.toEntry() }
+        val labour = database.labourDao().listForHarvest(harvestId).map { it.toLabourEntry() }
         val equipment = database.equipmentDao().listForHarvest(harvestId).map { it.toLine() }
-        post(day, DayCostKind.LABOUR, DayCostCalculator.labour(labour, rates), rates.currency, now)
+        // An incomplete historical day keeps its old ledger until all prices are confirmed.
+        if (labour.all { it.appliedRate != null }) {
+            val currencies = labour.map { it.appliedRate!!.currency }.distinct()
+            if (currencies.size > 1) throw LabourFinanceInvalid("currency", "mixed_day_currency")
+            val amount = labour.fold(0L) { total, line -> Math.addExact(total, LabourPricing.amountMinor(line)!!) }
+            val cost = if (labour.isEmpty()) null else CalculatedCost(amount, LabourSummary.of(labour).label(), null)
+            post(day, DayCostKind.LABOUR, cost, currencies.firstOrNull() ?: rates.currency, now)
+        } else {
+            val postedLegacy = database.expenseDao().listForHarvest(day.id).any {
+                it.origin == ExpenseOrigin.DAY_LABOUR.name && it.status == ExpenseStatus.POSTED.name
+            }
+            if (postedLegacy && manual(day.id, DayCostKind.LABOUR).isNotEmpty()) {
+                throw LabourFinanceInvalid("appliedRate", "confirm_missing_prices")
+            }
+        }
         post(day, DayCostKind.EQUIPMENT, DayCostCalculator.equipment(equipment, rates), rates.currency, now)
+        LabourFinance(database).verifyCampaign(campaign.id)
     }
 
     /** Every live day of the Farm's running Campaign, after its prices changed. */
@@ -61,6 +76,9 @@ internal class DayCostLedger(
 
     /** The hand-typed costs of [kind] on that day go back to draft; the calculation then stands. */
     suspend fun preferCalculated(harvestId: UUID, kind: DayCostKind, now: Instant) {
+        if (kind == DayCostKind.LABOUR && database.labourDao().listForHarvest(harvestId).any { it.toLabourEntry().appliedRate == null }) {
+            throw LabourFinanceInvalid("appliedRate", "confirm_missing_prices")
+        }
         manual(harvestId, kind).forEach { expense ->
             database.expenseDao().upsert(expense.copy(status = ExpenseStatus.DRAFT.name, metadata = expense.metadata.next(now)))
             database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, expense.id, OutboxOperation.UPDATE, now)
@@ -71,11 +89,12 @@ internal class DayCostLedger(
     /** A removed day's calculated costs go with it: no attendance backs them any more. */
     suspend fun removeFor(harvestId: UUID, now: Instant) {
         database.expenseDao().listForHarvest(harvestId).filter { it.origin in CALCULATED }.forEach { remove(it, now) }
+        LabourFinance(database).verifyCampaign(database.harvestDao().findById(harvestId)?.campaignId)
     }
 
     private suspend fun post(day: HarvestEntity, kind: DayCostKind, cost: CalculatedCost?, currency: String, now: Instant) {
         val current = database.expenseDao().listForHarvest(day.id).firstOrNull { it.origin == kind.origin.name }
-        if (cost == null || cost.amountMinor <= 0) {
+        if (cost == null || (kind != DayCostKind.LABOUR && cost.amountMinor <= 0)) {
             current?.let { remove(it, now) }
             return
         }
@@ -135,17 +154,6 @@ internal class DayCostLedger(
             JSONObject().apply { rates.equipmentDayMinor.forEach { (type, minor) -> put(type.name, minor) } }.toString()
     }
 }
-
-private fun com.isivoltpro.maginaolivo.data.local.entity.HarvestLabourEntity.toEntry() = LabourEntry(
-    id = id,
-    harvestId = harvestId,
-    workerId = workerId,
-    workerName = workerName,
-    quantity = quantity,
-    unit = runCatching { LabourUnit.valueOf(unit) }.getOrDefault(LabourUnit.FULL_DAY),
-    minutes = minutes,
-    version = metadata.version,
-)
 
 private fun com.isivoltpro.maginaolivo.data.local.entity.HarvestEquipmentEntity.toLine() = EquipmentLine(
     id = id,

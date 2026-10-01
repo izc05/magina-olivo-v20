@@ -223,12 +223,26 @@ object DatabaseMigrations {
         }
     }
 
+    /** CR-012: no assumed prices or debts are backfilled into historical labour. */
+    val MIGRATION_20_21 = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `harvest_labour` ADD COLUMN `applied_price_minor` INTEGER")
+            db.execSQL("ALTER TABLE `harvest_labour` ADD COLUMN `applied_currency` TEXT")
+            db.execSQL("ALTER TABLE `harvest_labour` ADD COLUMN `applied_price_date` TEXT")
+            db.execSQL("ALTER TABLE `harvest_labour` ADD COLUMN `applied_basis` TEXT")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `labour_payments` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `worker_id` TEXT NOT NULL, `campaign_id` TEXT NOT NULL, `payment_date` TEXT NOT NULL, `amount_minor` INTEGER NOT NULL, `currency` TEXT NOT NULL, `note` TEXT, $METADATA_COLUMNS, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY(`worker_id`) REFERENCES `workers`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY(`campaign_id`) REFERENCES `campaigns`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_labour_payments_workspace_id` ON `labour_payments` (`workspace_id`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_labour_payments_worker_id` ON `labour_payments` (`worker_id`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_labour_payments_campaign_id_payment_date` ON `labour_payments` (`campaign_id`, `payment_date`)")
+        }
+    }
+
     val all: Array<Migration> =
         arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
             MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
-            MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
+            MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
         )
 
     private val schemaVersion11Statements =

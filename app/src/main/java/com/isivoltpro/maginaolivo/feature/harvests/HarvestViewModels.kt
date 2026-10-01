@@ -26,7 +26,6 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentRepository
 import com.isivoltpro.maginaolivo.domain.harvest.Jornada
 import com.isivoltpro.maginaolivo.domain.machinery.Machine
 import com.isivoltpro.maginaolivo.domain.machinery.MachineRepository
-import com.isivoltpro.maginaolivo.domain.labour.CountDraft
 import com.isivoltpro.maginaolivo.domain.labour.CrewDraft
 import com.isivoltpro.maginaolivo.domain.labour.LabourChange
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
@@ -353,16 +352,10 @@ class HarvestDetailViewModel(
         }
     }
 
-    /** Phase 19D: several people in one save. */
-    fun recordCrew(workerIds: List<UUID>, unit: LabourUnit, minutes: Int?) =
+    /** CR-012: identified attendance, historical price and optional initial payment atomically. */
+    fun recordCrew(draft: CrewDraft) =
         labourCall({ if (it == 1) "1 jornal guardado" else "$it jornales guardados" }) {
-            labour!!.recordCrew(CrewDraft(harvestId, workerIds, unit, minutes))
-        }
-
-    /** Phase 19D: "N jornales" without names. */
-    fun recordCount(count: Int, unit: LabourUnit, minutes: Int?) =
-        labourCall({ if (count == 1) "1 jornal guardado" else "$count jornales guardados" }) {
-            labour!!.recordCount(CountDraft(harvestId, count, unit, minutes))
+            labour!!.recordCrew(draft)
         }
 
     fun updateLabour(entryId: UUID, change: LabourChange) = labourCall({ "Jornal corregido" }) { labour!!.update(entryId, change) }
@@ -376,9 +369,9 @@ class HarvestDetailViewModel(
     }
 
     private fun <T> labourCall(message: (T) -> String, operation: suspend () -> AppResult<T>) {
-        if (labour == null) return
+        if (labour == null || mutableState.value.isSaving) return
+        mutableState.value = mutableState.value.copy(isSaving = true, labourError = null, labourMessage = null)
         viewModelScope.launch {
-            mutableState.value = mutableState.value.copy(isSaving = true, labourError = null, labourMessage = null)
             mutableState.value = when (val result = operation()) {
                 is AppResult.Success -> mutableState.value.copy(isSaving = false, labourMessage = message(result.value))
                 is AppResult.Failure -> mutableState.value.copy(isSaving = false, labourError = labourErrorMessage(result.error))
@@ -424,16 +417,27 @@ private fun AppError.asProblem(): HarvestProblem? =
 
 internal fun labourErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> when (error.code) {
-        "empty" -> "Elige al menos una persona"
+        "empty" -> "Elige una persona"
+        "campaign_closed" -> "La campaña está cerrada: el coste histórico no se modifica. Puedes registrar pagos pendientes."
+        "below_paid" -> "Debes corregir los pagos antes de reducir el coste por debajo de lo pagado."
+        "price_required" -> "Confirma el precio del jornal antes de guardar."
+        "confirm_missing_prices" -> "Confirma primero los precios de los jornales históricos de este día."
+        "overflow" -> "El importe es demasiado grande. Revisa el precio y la duración."
+        "exceeds_pending" -> "El importe supera el pendiente actual. Revisa el saldo de esta persona."
+        "anonymous_not_allowed" -> "Elige una persona para registrar el jornal."
+        "currency_mismatch" -> "La moneda debe coincidir con el coste confirmado."
         "already_recorded" -> "Alguna de esas personas ya tiene su jornal en este día de recolección"
-        "required" -> if (error.field == "name") "Escribe el nombre o apodo" else "Escribe las horas por persona"
+        "required" -> when (error.field) { "name" -> "Escribe el nombre y apellidos"; "worker", "workers" -> "Elige una persona"; "appliedRate" -> "Confirma el precio del jornal"; else -> "Escribe las horas por persona" }
         "too_long" -> if (error.field == "name") "El nombre es demasiado largo" else "No puede pasar de 24 horas por persona"
-        "not_positive" -> "El número de personas debe ser mayor que cero"
+        "not_positive" -> if (error.field == "amount" || error.field == "amountMinor") "El importe debe ser mayor que cero" else "El número de personas debe ser mayor que cero"
         "too_many" -> "Son demasiadas personas para un día"
         "one_person" -> "Una persona con nombre cuenta un solo jornal"
         else -> "Revisa los jornales"
     }
-    is AppError.Conflict -> "La campaña está cerrada: este día de recolección ya es histórico"
+    is AppError.Conflict -> when (error.resource) {
+        "campaign_closed", "closed_campaign" -> "La campaña está cerrada: el coste histórico no se modifica."
+        else -> "No se pudo guardar por un conflicto con otros datos. Revisa el movimiento."
+    }
     is AppError.NotFound -> "Ese jornal ya no está en este dispositivo"
     else -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."
 }

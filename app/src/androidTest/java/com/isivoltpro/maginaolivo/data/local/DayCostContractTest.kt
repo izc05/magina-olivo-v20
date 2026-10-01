@@ -31,6 +31,8 @@ import com.isivoltpro.maginaolivo.domain.expense.JornadaCost
 import com.isivoltpro.maginaolivo.domain.expense.JornadaExpenseKind
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import com.isivoltpro.maginaolivo.domain.expense.UnlinkedDayCosts
+import com.isivoltpro.maginaolivo.domain.labour.*
+import com.isivoltpro.maginaolivo.data.local.entity.HarvestLabourEntity
 import com.isivoltpro.maginaolivo.domain.labour.CountDraft
 import com.isivoltpro.maginaolivo.domain.labour.LabourChange
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
@@ -91,8 +93,13 @@ class DayCostContractTest {
     fun attendanceAndPricesPostOneCalculatedEntryUpdatedInPlace() = runBlocking {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000, hourlyMinor = 900)))
         val dayId = ok(harvests.openJornada(farmId, day))
-        ok(labour.recordCount(CountDraft(dayId, 5, LabourUnit.FULL_DAY)))
-        val halves = ok(labour.recordCount(CountDraft(dayId, 2, LabourUnit.HALF_DAY)))
+        named(dayId, 5)
+        // Existing historical counts remain editable, including half days; no new anonymous writer.
+        val halves = UUID.randomUUID()
+        db.labourDao().upsertLabour(listOf(HarvestLabourEntity(halves, workspaceId, dayId,
+            quantity = 2, unit = LabourUnit.HALF_DAY.name, metadata = LocalMetadata(now, now))))
+        ok(labour.update(halves, LabourChange(2, LabourUnit.HALF_DAY, null,
+            LabourRateSnapshot(7_000, "EUR", day, LabourRateBasis.DAY))))
 
         val first = calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!
         // 5 × 70 € + 2 × 35 € = 420 €, posted once, with the prices used kept on the entry.
@@ -120,7 +127,7 @@ class DayCostContractTest {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
         val dayId = ok(harvests.openJornada(farmId, day))
         val manual = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000)))
-        ok(labour.recordCount(CountDraft(dayId, 5, LabourUnit.FULL_DAY)))
+        named(dayId, 5)
 
         // Never both: the hand-typed 300 € counts; the calculated 350 € is kept as a draft.
         assertEquals(ExpenseStatus.DRAFT, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
@@ -154,7 +161,7 @@ class DayCostContractTest {
     fun aClosedCampaignKeepsItsCostsAndARemovedDayTakesItsCalculatedOnes() = runBlocking {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
         val dayId = ok(harvests.openJornada(farmId, day))
-        ok(labour.recordCount(CountDraft(dayId, 4, LabourUnit.FULL_DAY)))
+        named(dayId, 4)
         val calculatedId = calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.id
 
         val campaign = db.campaignDao().findById(campaignId)!!
@@ -175,7 +182,7 @@ class DayCostContractTest {
         ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1))))
         ok(expenses.create(cost(dayId, JornadaExpenseKind.LUBRICANT, 1_200)))
         ok(expenses.create(cost(dayId, JornadaExpenseKind.LUBRICANT, 800).copy(concept = JornadaExpenseKind.LUBRICANT.concept("Aceite hidráulico"))))
-        ok(labour.recordCount(CountDraft(dayId, 1, LabourUnit.FULL_DAY)))
+        named(dayId, 1)
 
         // 35 € of shaker plus 12 € and 8 € of oil: both count, nothing is sent to draft.
         assertEquals(ExpenseStatus.POSTED, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.status)
@@ -192,7 +199,7 @@ class DayCostContractTest {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
         val dayId = ok(harvests.openJornada(farmId, day))
         val manual = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000)))
-        ok(labour.recordCount(CountDraft(dayId, 5, LabourUnit.FULL_DAY)))
+        named(dayId, 5)
         val campaign = db.campaignDao().findById(campaignId)!!
         db.campaignDao().upsert(campaign.copy(status = CampaignStatus.CLOSED))
 
@@ -208,7 +215,7 @@ class DayCostContractTest {
     fun anUnlinkedHandTypedCostOfTheSameDateIsShownAndOnlyTheFarmerLinksIt() = runBlocking {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
         val dayId = ok(harvests.openJornada(farmId, day))
-        ok(labour.recordCount(CountDraft(dayId, 5, LabourUnit.FULL_DAY)))
+        named(dayId, 5)
         val unlinked = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000).copy(harvestId = null)))
         val otherDate = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 9_000).copy(harvestId = null, expenseDate = day.plusDays(1))))
 
@@ -226,6 +233,28 @@ class DayCostContractTest {
         assertEquals(ExpenseStatus.DRAFT, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
         assertEquals(30_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
         assertEquals(emptyList<Expense>(), UnlinkedDayCosts.of(dayId, farmId, day, expenses.observeAll().first()))
+    }
+
+    @Test
+    fun cr012FreezesRateAndRoundsEachPerson() = runBlocking {
+        ok(costs.saveRates(farmId, RecollectionRates(hourlyMinor = 100)))
+        val dayId = ok(harvests.openJornada(farmId, day))
+        val crew = listOf("Juan", "Ana").map { ok(labour.addWorker(it)) }
+        ok(labour.recordCrew(com.isivoltpro.maginaolivo.domain.labour.CrewDraft(dayId, crew, LabourUnit.HOURS, 1)))
+        assertEquals(4L, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        ok(costs.saveRates(farmId, RecollectionRates(hourlyMinor = 200)))
+        assertEquals(4L, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+    }
+
+    @Test
+    fun cr012RejectsNewAnonymousCounts() = runBlocking {
+        val dayId = ok(harvests.openJornada(farmId, day))
+        assertTrue(labour.recordCount(CountDraft(dayId, 3, LabourUnit.FULL_DAY)) is AppResult.Failure)
+    }
+
+    private suspend fun named(dayId: UUID, count: Int) {
+        val crew = (1..count).map { ok(labour.addWorker("Persona $it")) }
+        ok(labour.recordCrew(CrewDraft(dayId, crew, LabourUnit.FULL_DAY)))
     }
 
     private suspend fun calculated(dayId: UUID, origin: ExpenseOrigin): Expense? =

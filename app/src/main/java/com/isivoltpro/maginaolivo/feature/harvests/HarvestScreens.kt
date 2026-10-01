@@ -552,6 +552,7 @@ private fun SplitOption(title: String, body: String, selected: Boolean, tag: Str
 
 private const val DAY_LOAD_TIMEOUT_MS = 10_000L
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HarvestDetailRoute(
     harvestId: UUID,
@@ -598,6 +599,7 @@ fun HarvestDetailRoute(
             onExpenseSelected(id)
         }
     }
+    var labourPerson by rememberSaveable { mutableStateOf<String?>(null) }
     HarvestDetailScreen(
         state = state,
         onUpdate = viewModel::update,
@@ -607,9 +609,10 @@ fun HarvestDetailRoute(
         onPesadaSelected = onPesadaSelected,
         labourActions = LabourActions(
             onSaveCrew = viewModel::recordCrew,
-            onSaveCount = viewModel::recordCount,
             onAddWorker = viewModel::addWorker,
             onRemove = viewModel::removeLabour,
+            onUpdate = viewModel::updateLabour,
+            onPerson = { labourPerson = it.toString() },
             onClear = viewModel::clearLabourMessages,
         ),
         onSaveEquipment = viewModel::saveEquipment,
@@ -626,8 +629,13 @@ fun HarvestDetailRoute(
             )
         },
     )
+    val campaign = state.harvest?.campaignId
+    if (labourPerson != null && campaign != null) {
+        ModalBottomSheet(onDismissRequest = { labourPerson = null }) {
+            LabourPaymentsRoute(campaign, persistence, UUID.fromString(labourPerson)) { labourPerson = null }
+        }
+    }
 }
-
 /** S72 — Detalle de Jornada; legacy kilos remain readable when no Pesadas exist. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -656,8 +664,9 @@ fun HarvestDetailScreen(
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var labourVisible by rememberSaveable { mutableStateOf(false) }
+    var editLabour by rememberSaveable { mutableStateOf<String?>(null) }
     // A saved set of jornales closes the sheet; its confirmation stays on the Jornada.
-    LaunchedEffect(state.labourMessage) { if (state.labourMessage != null && state.labourMessage != "Persona añadida") labourVisible = false }
+    LaunchedEffect(state.labourMessage) { if (state.labourMessage != null && state.labourMessage != "Persona añadida") { labourVisible = false; editLabour = null } }
     LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
 
     Scaffold(Modifier.fillMaxSize().testTag("harvest-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
@@ -680,6 +689,8 @@ fun HarvestDetailScreen(
                         error = state.labourError.takeUnless { labourVisible },
                         onRegister = { labourActions.onClear(); labourVisible = true },
                         onRemove = labourActions.onRemove,
+                        onPerson = labourActions.onPerson,
+                        onEdit = { labourActions.onClear(); editLabour = it.toString() },
                         loaded = state.labourLoaded,
                         readFailed = state.labourReadFailed,
                     )
@@ -779,16 +790,31 @@ fun HarvestDetailScreen(
             state.equipmentError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = MoSpacing.screen)) }
         }
     }
-    if (labourVisible && harvest != null) {
-        ModalBottomSheet(onDismissRequest = { labourVisible = false; labourActions.onClear() }) {
-            LabourSheet(
+    val editingLabour = state.labour.firstOrNull { it.id.toString() == editLabour }
+    val labourCurrency = harvest?.let { labourCurrencyContext(it.id, it.campaignId, state.labour, state.costs, state.rates?.currency) }
+    if (editingLabour != null && harvest != null && harvest.editable) {
+        ModalBottomSheet(onDismissRequest = { if (!state.isSaving) { editLabour = null; labourActions.onClear() } }) {
+            LabourPriceSheet(editingLabour, harvest.harvestDate, labourCurrency?.currency, state.isSaving, state.labourError, { labourActions.onUpdate(editingLabour.id, it) }, { editLabour = null; labourActions.onClear() }, labourCurrency?.error)
+        }
+    }
+    if (labourVisible && harvest?.campaignId != null) {
+        ModalBottomSheet(onDismissRequest = { if (!state.isSaving) { labourVisible = false; labourActions.onClear() } }) {
+            if (labourCurrency?.currency == null) {
+                Column(Modifier.padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                    Text(labourCurrency?.error ?: "La moneda de los jornales no está disponible.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-currency-error"))
+                    MoTertiaryButton("Cancelar", { labourVisible = false; labourActions.onClear() }, enabled = !state.isSaving)
+                }
+            } else LabourSheet(
                 workers = state.workers,
                 alreadyRecorded = state.labour.mapNotNull { it.workerId }.toSet(),
-                previousCrew = state.previousCrew,
+                harvestId = harvest.id,
+                campaignId = harvest.campaignId,
+                date = harvest.harvestDate,
+                rates = state.rates,
+                currency = labourCurrency.currency,
                 isSaving = state.isSaving,
                 error = state.labourError,
                 onSaveCrew = labourActions.onSaveCrew,
-                onSaveCount = labourActions.onSaveCount,
                 onAddWorker = labourActions.onAddWorker,
                 onCancel = { labourVisible = false; labourActions.onClear() },
             )
@@ -822,11 +848,13 @@ fun HarvestDetailScreen(
 
 /** Phase 19D: what the Jornada screen can do with its jornales. */
 data class LabourActions(
-    val onSaveCrew: (List<UUID>, LabourUnit, Int?) -> Unit = { _, _, _ -> },
-    val onSaveCount: (Int, LabourUnit, Int?) -> Unit = { _, _, _ -> },
+    val onSaveCrew: (com.isivoltpro.maginaolivo.domain.labour.CrewDraft) -> Unit = {},
+
     val onAddWorker: (String) -> Unit = {},
     val onRemove: (UUID) -> Unit = {},
     val onClear: () -> Unit = {},
+    val onUpdate: (UUID, com.isivoltpro.maginaolivo.domain.labour.LabourChange) -> Unit = { _, _ -> },
+    val onPerson: (UUID) -> Unit = {},
 )
 
 /**

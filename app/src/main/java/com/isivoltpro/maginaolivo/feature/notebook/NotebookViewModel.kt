@@ -34,6 +34,7 @@ data class NotebookUiState(
     val error: String? = null,
     /** Phase 19G: every Campaign of the Farm, oldest first, for the year-over-year view. */
     val comparison: List<CampaignComparison> = emptyList(),
+    val labourPayments: List<com.isivoltpro.maginaolivo.domain.labour.LabourPayment> = emptyList(),
 )
 
 /**
@@ -67,12 +68,14 @@ class NotebookViewModel(
                     combine(
                         labour?.observeForCampaign(campaign.id) ?: flowOf(emptyList<LabourEntry>()),
                         equipment?.observeForCampaign(campaign.id) ?: flowOf(emptyList<EquipmentLine>()),
-                    ) { jornales, maquinaria -> jornales to maquinaria },
-                ) { acts, crops, weighings, costs, (jornales, maquinaria) ->
+                        labour?.observePayments(campaign.id) ?: flowOf(emptyList<com.isivoltpro.maginaolivo.domain.labour.LabourPayment>()),
+                    ) { jornales, maquinaria, payments -> Triple(jornales, maquinaria, payments) },
+                ) { acts, crops, weighings, costs, (jornales, maquinaria, payments) ->
                     NotebookUiState(
                         isLoading = false,
                         campaigns = list,
                         selectedCampaignId = campaign.id,
+                        labourPayments = payments,
                         notebook = CampaignNotebook.project(campaign, acts, crops, weighings, costs, jornales, maquinaria),
                     )
                 }

@@ -22,18 +22,21 @@ class LabourDeviceCheckTest {
     private val workers = listOf("Antonio", "Paco", "Mari").map { Worker(UUID.randomUUID(), it) }
 
     /** The people ticked but not yet saved are still ticked after a rotation. */
-    @Test fun tickedPeopleSurviveARotation() {
+    @Test fun selectedPersonSurvivesARotation() {
         val restoration = StateRestorationTester(composeRule)
         restoration.setContent {
             MaginaOlivoTheme {
                 LabourSheet(
                     workers = workers,
                     alreadyRecorded = emptySet(),
-                    previousCrew = emptyList(),
+                    harvestId = UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                    campaignId = UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                    date = java.time.LocalDate.of(2026, 10, 1),
+                    rates = null,
                     isSaving = false,
                     error = null,
-                    onSaveCrew = { _, _, _ -> },
-                    onSaveCount = { _, _, _ -> },
+                    onSaveCrew = {},
+
                     onAddWorker = {},
                     onCancel = {},
                 )
@@ -41,11 +44,11 @@ class LabourDeviceCheckTest {
         }
         composeRule.onAllNodesWithTag("labour-worker")[0].performScrollTo().performClick()
         composeRule.onAllNodesWithTag("labour-worker")[2].performScrollTo().performClick()
-        composeRule.onNodeWithTag("labour-selected-count").assertTextContains("2 seleccionadas")
+        composeRule.onNodeWithTag("labour-selected-count").assertTextContains("1 seleccionada")
 
         restoration.emulateSavedInstanceStateRestore()
 
-        composeRule.onNodeWithTag("labour-selected-count").assertTextContains("2 seleccionadas")
+        composeRule.onNodeWithTag("labour-selected-count").assertTextContains("1 seleccionada")
     }
 
     /** While the day's jornales are still being read, the screen never claims there are none. */

@@ -6,6 +6,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.PurchaseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PurchaseItemEntity
+import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
@@ -39,41 +40,56 @@ internal class ExpenseLedgerWriter(
         now: Instant,
     ): UUID {
         val id = idGenerator.newId()
-        database.expenseDao().upsert(
-            resolve(id, workspaceId, draft, status, origin, LocalMetadata(now, now, syncStatus = SyncStatus.PENDING)),
-        )
+        val expense = resolve(id, workspaceId, draft, status, origin, LocalMetadata(now, now, syncStatus = SyncStatus.PENDING))
+        requireEditableCampaign(expense)
+        database.expenseDao().upsert(expense)
         writePurchase(id, workspaceId, draft, now)
         database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, id, OutboxOperation.CREATE, now)
         return id
     }
 
     suspend fun rewrite(current: ExpenseEntity, draft: ExpenseDraft, now: Instant) {
-        database.expenseDao().upsert(
-            resolve(
-                current.id,
-                current.workspaceId,
-                draft,
-                ExpenseStatus.valueOf(current.status),
-                ExpenseOrigin.valueOf(current.origin),
-                current.metadata.next(now),
-            ),
+        requireEditableCampaign(current)
+        val expense = resolve(
+            current.id,
+            current.workspaceId,
+            draft,
+            ExpenseStatus.valueOf(current.status),
+            ExpenseOrigin.valueOf(current.origin),
+            current.metadata.next(now),
         )
+        requireEditableCampaign(expense)
+        database.expenseDao().upsert(expense)
         writePurchase(current.id, current.workspaceId, draft, now)
         database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, current.id, OutboxOperation.UPDATE, now)
     }
 
     suspend fun post(current: ExpenseEntity, now: Instant) {
+        if (current.status == ExpenseStatus.POSTED.name) return
+        requireEditableCampaign(current)
         if (current.amountMinor <= 0) throw InvalidExpense("amountMinor", "not_positive")
         database.expenseDao().upsert(current.copy(status = ExpenseStatus.POSTED.name, metadata = current.metadata.next(now)))
         database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, current.id, OutboxOperation.UPDATE, now)
     }
 
     suspend fun delete(current: ExpenseEntity, now: Instant) {
+        if (current.metadata.deletedAt != null) return
+        requireEditableCampaign(current)
         database.expenseDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
         database.expenseDao().findPurchaseForExpense(current.id)?.let { purchase ->
             database.expenseDao().upsertPurchase(purchase.copy(metadata = purchase.metadata.next(now).copy(deletedAt = now)))
         }
         database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, current.id, OutboxOperation.DELETE, now)
+    }
+
+    /** Also used by day linking, which changes context without rewriting purchase detail. */
+    suspend fun requireEditableCampaign(expense: ExpenseEntity) {
+        val dayCampaign = expense.harvestId?.let { database.harvestDao().findById(it)?.campaignId }
+        listOfNotNull(expense.campaignId, dayCampaign).distinct().forEach { campaignId ->
+            if (database.campaignDao().findById(campaignId)?.status == CampaignStatus.CLOSED) {
+                throw InvalidExpense("campaignId", "campaign_closed")
+            }
+        }
     }
 
     /**

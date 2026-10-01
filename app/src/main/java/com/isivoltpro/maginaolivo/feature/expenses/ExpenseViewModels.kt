@@ -145,13 +145,17 @@ internal fun Expense.toForm() = ExpenseForm(
 )
 
 internal fun expenseErrorMessage(error: AppError): String = when (error) {
-    is AppError.Validation -> when (error.field) {
+    is AppError.Validation -> when {
+        error.code == "campaign_closed" -> "La campaña está cerrada: el coste histórico no se modifica."
+        error.code == "below_paid" -> "Debes corregir los pagos antes de reducir el coste por debajo de lo pagado."
+        else -> when (error.field) {
         "parcelId" -> "La parcela elegida no pertenece a esa finca"
         "activityId" -> "La actuación elegida no pertenece a esa finca"
         "amountMinor" -> "El importe debe ser mayor que cero"
         "concept" -> "Describe el gasto"
         "farmId" -> "La finca ya no está disponible"
         else -> "Revisa los datos del gasto"
+        }
     }
     is AppError.Conflict -> when (error.resource) {
         "duplicate_organization" -> "Ya existe una organización con ese nombre"

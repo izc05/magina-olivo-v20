@@ -143,6 +143,7 @@ private fun PhytoRow(record: PhytoRecord, onClick: () -> Unit) {
  */
 @Composable
 internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
+    MoSecondaryButton("Jornales y pagos", { actions.onLabour(notebook.campaign.id) }, Modifier.fillMaxWidth().testTag("notebook-open-labour"))
     val costs = notebook.costs
     val ledger = costs.ledger
     Text(
@@ -202,7 +203,7 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
     if (notebook.expenses.isEmpty()) {
         MoEmptyState(
             "Sin gastos en esta campaña",
-            "Gastos, jornales pagados y facturas aparecerán aquí.",
+            "Gastos confirmados y facturas aparecerán aquí. Los pagos se consultan en Jornales.",
             icon = MoIcons.Euro,
             modifier = Modifier.testTag("notebook-expenses-empty"),
         )
@@ -222,7 +223,7 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
 @Composable
 internal fun CampaignView(notebook: CampaignNotebook, state: NotebookUiState, actions: NotebookActions) {
     RecollectionActions(notebook, actions)
-    SummaryTab(notebook, state.comparison)
+    SummaryTab(notebook, state.comparison, payments = state.labourPayments, onLabour = { actions.onLabour(notebook.campaign.id) })
 }
 
 private fun money(summary: ExpenseSummary): String =

@@ -22,6 +22,13 @@ import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourRepository
 import com.isivoltpro.maginaolivo.domain.labour.LabourRules
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
+import com.isivoltpro.maginaolivo.domain.labour.LabourPayment
+import com.isivoltpro.maginaolivo.domain.labour.LabourPaymentRules
+import com.isivoltpro.maginaolivo.domain.labour.LabourPricing
+import com.isivoltpro.maginaolivo.domain.labour.LabourSettlement
+import com.isivoltpro.maginaolivo.data.local.entity.LabourPaymentEntity
+import com.isivoltpro.maginaolivo.data.repository.DayCostLedger.Companion.toDomain
+import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import com.isivoltpro.maginaolivo.domain.labour.Worker
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
@@ -38,7 +45,7 @@ private class LabourConflict(val code: String) : RuntimeException(code)
 /**
  * Phase 19D — offline-first jornales. Each labour line and each person is its own record with
  * its own outbox intent; a Jornada of a closed Campaign is history and takes no new labour.
- * No money is written here: a labour cost goes to the Expense ledger.
+ * Snapshots and the single day Expense are saved atomically; payments only settle that debt.
  */
 class OfflineFirstLabourRepository(
     private val database: MaginaOlivoDatabase,
@@ -71,15 +78,17 @@ class OfflineFirstLabourRepository(
     }
 
     override fun observeForHarvest(harvestId: UUID): Flow<List<LabourEntry>> =
-        database.labourDao().observeForHarvest(harvestId).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        database.labourDao().observeForHarvest(harvestId).map { rows -> rows.map { it.toLabourEntry() } }.flowOn(dispatchers.io)
 
     override fun observeForCampaign(campaignId: UUID): Flow<List<LabourEntry>> =
-        database.labourDao().observeForCampaign(campaignId).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        database.labourDao().observeForCampaign(campaignId).map { rows -> rows.map { it.toLabourEntry() } }.flowOn(dispatchers.io)
 
     override suspend fun recordCrew(draft: CrewDraft): AppResult<Int> {
         LabourRules.validate(draft)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         return inTransaction("record_crew") {
             val harvest = runningJornada(draft.harvestId)
+            if (draft.unit == LabourUnit.HALF_DAY) throw LabourInvalid("unit", "historical_only")
+            val rates = harvest.farmId?.let { database.recollectionRatesDao().findForFarm(it)?.toDomain() } ?: RecollectionRates()
             val already = database.labourDao().listForHarvest(harvest.id).mapNotNull { it.workerId }.toSet()
             if (draft.workerIds.any { it in already }) throw LabourInvalid("workers", "already_recorded")
             val now = clock.nowInstant()
@@ -97,35 +106,34 @@ class OfflineFirstLabourRepository(
                     unit = draft.unit.name,
                     minutes = draft.minutes,
                     metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
-                )
+                ).let { row ->
+                    val entry = LabourPricing.capture(row.toLabourEntry().copy(appliedRate = draft.appliedRate), rates, harvest.harvestDate)
+                    LabourPricing.amountMinor(entry)
+                    row.withRate(entry.appliedRate)
+                }
+            }
+            val combined = database.labourDao().listForHarvest(harvest.id) + rows
+            if (combined.any { it.appliedPriceMinor != null } && combined.any { it.appliedPriceMinor == null }) {
+                throw LabourFinanceInvalid("appliedRate", "confirm_missing_prices")
             }
             database.labourDao().upsertLabour(rows)
             rows.forEach { database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, it.id, OutboxOperation.CREATE, now) }
             costs.sync(harvest.id, now)
+            draft.initialPayments.forEach { payment ->
+                if (payment.workerId !in draft.workerIds || payment.campaignId != harvest.campaignId) {
+                    throw LabourInvalid("payment", "context_mismatch")
+                }
+                savePayment(payment)
+            }
             AppResult.Success(rows.size)
         }
     }
 
-    override suspend fun recordCount(draft: CountDraft): AppResult<UUID> {
-        LabourRules.validate(draft)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
-        return inTransaction("record_count") {
-            val harvest = runningJornada(draft.harvestId)
-            val now = clock.nowInstant()
-            val row = HarvestLabourEntity(
-                id = idGenerator.newId(),
-                workspaceId = harvest.workspaceId,
-                harvestId = harvest.id,
-                quantity = draft.count,
-                unit = draft.unit.name,
-                minutes = draft.minutes,
-                metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
-            )
-            database.labourDao().upsertLabour(listOf(row))
-            database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, row.id, OutboxOperation.CREATE, now)
-            costs.sync(harvest.id, now)
-            AppResult.Success(row.id)
+    override suspend fun recordCount(draft: CountDraft): AppResult<UUID> =
+        inTransaction("record_count") {
+            runningJornada(draft.harvestId)
+            throw LabourInvalid("worker", "required")
         }
-    }
 
     override suspend fun update(entryId: UUID, change: LabourChange): AppResult<Unit> {
         LabourRules.validate(change.quantity, change.unit, change.minutes)
@@ -135,15 +143,16 @@ class OfflineFirstLabourRepository(
             runningJornada(current.harvestId)
             // A named line is one person: only its unit and hours change.
             if (current.workerId != null && change.quantity != 1) throw LabourInvalid("quantity", "one_person")
+            if (change.unit == LabourUnit.HALF_DAY && current.unit != LabourUnit.HALF_DAY.name) {
+                throw LabourInvalid("unit", "historical_only")
+            }
+            val rate = change.appliedRate ?: current.toLabourEntry().appliedRate
+            val candidate = current.copy(quantity = change.quantity, unit = change.unit.name, minutes = change.minutes).withRate(rate)
+            LabourPricing.amountMinor(candidate.toLabourEntry())
             val now = clock.nowInstant()
             database.labourDao().upsertLabour(
                 listOf(
-                    current.copy(
-                        quantity = change.quantity,
-                        unit = change.unit.name,
-                        minutes = change.minutes,
-                        metadata = current.metadata.next(now),
-                    ),
+                    candidate.copy(metadata = current.metadata.next(now)),
                 ),
             )
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, entryId, OutboxOperation.UPDATE, now)
@@ -163,6 +172,54 @@ class OfflineFirstLabourRepository(
             AppResult.Success(Unit)
         }
 
+    override fun observePayments(campaignId: UUID): Flow<List<LabourPayment>> =
+        database.labourPaymentDao().observeForCampaign(campaignId).map { rows -> rows.map { it.toPayment() } }.flowOn(dispatchers.io)
+
+    override suspend fun recordPayment(payment: LabourPayment): AppResult<UUID> =
+        inTransaction("record_payment") { savePayment(payment); AppResult.Success(payment.id) }
+
+    private suspend fun workspaceId(): UUID = when (val result = workspaceRepository.ensureLocalWorkspace()) {
+        is AppResult.Success -> result.value
+        is AppResult.Failure -> throw LabourInvalid("workspace", "unavailable")
+    }
+
+    private suspend fun savePayment(payment: LabourPayment) {
+        val workspaceId = workspaceId()
+        val campaign = database.campaignDao().findById(payment.campaignId)
+            ?.takeIf { it.metadata.deletedAt == null && it.workspaceId == workspaceId }
+            ?: throw LabourInvalid("campaign", "not_found")
+        database.labourDao().findWorker(payment.workerId)
+            ?.takeIf { it.metadata.deletedAt == null && it.workspaceId == workspaceId }
+            ?: throw LabourInvalid("worker", "not_found")
+        val existing = database.labourPaymentDao().find(payment.id)
+        if (existing != null) {
+            if (existing.workspaceId == workspaceId && existing.metadata.deletedAt == null && existing.toPayment() == payment) return
+            throw LabourConflict("payment_id_conflict")
+        }
+        if (runCatching { java.util.Currency.getInstance(payment.currency).defaultFractionDigits >= 0 }.getOrDefault(false).not()) {
+            throw LabourInvalid("currency", "invalid")
+        }
+        val balance = LabourSettlement.of(payment.workerId, payment.campaignId, payment.currency,
+            LabourFinance(database).costs(payment.campaignId),
+            database.labourPaymentDao().listForCampaign(payment.campaignId).map { it.toPayment() })
+        LabourPaymentRules.validate(payment, balance, campaign.status)?.let { throw LabourInvalid(it.field, it.code) }
+        val now = clock.nowInstant()
+        database.labourPaymentDao().upsert(LabourPaymentEntity(payment.id, workspaceId, payment.workerId, payment.campaignId,
+            payment.paymentDate, payment.amountMinor, payment.currency, payment.note, LocalMetadata(now, now, syncStatus = SyncStatus.PENDING)))
+        database.enqueueCollapsed(idGenerator, SyncEntityType.LABOUR_PAYMENT, payment.id, OutboxOperation.CREATE, now)
+    }
+
+    override suspend fun removePayment(paymentId: UUID): AppResult<Unit> = inTransaction("remove_payment") {
+        val current = database.labourPaymentDao().find(paymentId) ?: return@inTransaction AppResult.Success(Unit)
+        if (current.workspaceId != workspaceId()) throw LabourInvalid("payment", "context_mismatch")
+        if (current.metadata.deletedAt == null) {
+            val now = clock.nowInstant()
+            database.labourPaymentDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
+            database.enqueueCollapsed(idGenerator, SyncEntityType.LABOUR_PAYMENT, paymentId, OutboxOperation.DELETE, now)
+        }
+        AppResult.Success(Unit)
+    }
+
     override suspend fun previousCrew(harvestId: UUID): List<UUID> = withContext(dispatchers.io) {
         val harvest = database.harvestDao().findById(harvestId) ?: return@withContext emptyList()
         val farmId = harvest.farmId ?: return@withContext emptyList()
@@ -176,7 +233,11 @@ class OfflineFirstLabourRepository(
         val harvest = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null }
             ?: throw LabourInvalid("harvestId", "not_found")
         val campaign = harvest.campaignId?.let { database.campaignDao().findById(it) }
-        if (campaign == null || campaign.status !in RUNNING) throw LabourConflict("closed_campaign")
+        if (campaign == null || campaign.metadata.deletedAt != null || campaign.status !in RUNNING) throw LabourConflict("closed_campaign")
+        val workspaceId = workspaceId()
+        if (harvest.workspaceId != workspaceId || campaign.workspaceId != workspaceId || campaign.farmId != harvest.farmId) {
+            throw LabourInvalid("harvestId", "context_mismatch")
+        }
         return harvest
     }
 
@@ -187,6 +248,12 @@ class OfflineFirstLabourRepository(
         withContext(dispatchers.io) {
             try {
                 database.withTransaction { block() }
+            } catch (error: LabourFinanceInvalid) {
+                AppResult.Failure(AppError.Validation(error.field, error.code))
+            } catch (error: IllegalArgumentException) {
+                AppResult.Failure(AppError.Validation("appliedRate", error.message ?: "invalid"))
+            } catch (error: ArithmeticException) {
+                AppResult.Failure(AppError.Validation("amount", "overflow"))
             } catch (error: LabourInvalid) {
                 AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: LabourConflict) {
@@ -195,17 +262,6 @@ class OfflineFirstLabourRepository(
                 AppResult.Failure(AppError.Storage(operation, error))
             }
         }
-
-    private fun HarvestLabourEntity.toDomain() = LabourEntry(
-        id = id,
-        harvestId = harvestId,
-        workerId = workerId,
-        workerName = workerName,
-        quantity = quantity,
-        unit = LabourUnit.entries.firstOrNull { it.name == unit } ?: LabourUnit.FULL_DAY,
-        minutes = minutes,
-        version = metadata.version,
-    )
 
     private fun LocalMetadata.next(now: Instant) =
         copy(updatedAt = now, version = version + 1, syncStatus = SyncStatus.PENDING)

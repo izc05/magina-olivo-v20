@@ -113,6 +113,8 @@ class OfflineFirstExpenseRepository(
                 database.withTransaction { block() }
             } catch (error: InvalidExpense) {
                 AppResult.Failure(AppError.Validation(error.field, error.code))
+            } catch (error: LabourFinanceInvalid) {
+                AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: Throwable) {
                 AppResult.Failure(AppError.Storage(operation, error))
             }

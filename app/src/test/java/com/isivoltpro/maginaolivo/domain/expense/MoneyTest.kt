@@ -5,6 +5,35 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class MoneyTest {
+    @Test fun isoPrecisionRoundTripsAndRejectsExcessDigits() {
+        assertEquals(1234L, Money.parseMinor("1234", "JPY"))
+        assertEquals(1234L, Money.parseMinor("1,234", "KWD"))
+        assertEquals("1234", Money.editable(1234, "JPY"))
+        assertEquals("1,234", Money.editable(1234, "KWD"))
+        assertNull(Money.parseMinor("1,2", "JPY"))
+        assertNull(Money.parseMinor("1,2345", "KWD"))
+        assertEquals(Long.MAX_VALUE, Money.parseMinor(Money.editable(Long.MAX_VALUE)))
+        assertEquals(Long.MAX_VALUE, Money.parseMinor(Money.editable(Long.MAX_VALUE, "KWD"), "KWD"))
+        assertNull(Money.parseMinor("9223372036854775,808", "KWD"))
+        assertNull(Money.parseMinor("5", "XXX"))
+    }
+    @Test fun formatsHistoricalCurrenciesWithoutLosingMinorUnits() {
+        assertEquals("1.234", Money.format(1234, "JPY").substringBefore(' '))
+        assertEquals("1,234", Money.format(1234, "KWD").substringBefore(' '))
+        assertEquals("92.233.720.368.547.758,07", Money.format(Long.MAX_VALUE).substringBefore(' '))
+    }
+
+    @Test fun unsupportedHistoricalCurrenciesExposeOriginalCodeWithoutGuessingAnAmount() {
+        listOf("EURO", "XXX").forEach { code ->
+            assertEquals("Importe no disponible ($code)", Money.format(6_500, code))
+            assertEquals("", Money.editable(6_500, code))
+            assertNull(Money.parseMinor("65", code))
+        }
+    }
+
+    @Test fun overflowingInputIsRejectedInsteadOfThrowing() {
+        assertNull(Money.parseMinor("92233720368547758,08"))
+    }
     @Test
     fun readsWhatAFarmerTypes() {
         assertEquals(6_500L, Money.parseMinor("65"))

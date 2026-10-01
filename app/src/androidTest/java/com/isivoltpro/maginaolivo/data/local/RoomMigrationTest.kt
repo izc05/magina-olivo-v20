@@ -32,6 +32,26 @@ class RoomMigrationTest {
     }
 
     @Test
+    fun migration20To21PreservesAnonymousHalfDayWithoutInventingPriceOrPayments() {
+        migrationHelper.createDatabase(TEST_DATABASE, 20).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Farm','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO harvests (id, workspace_id, harvest_date, weight_grams, day_origin, created_at, updated_at, version, sync_status) VALUES ('h','w','2026-10-01',5000,'LEGACY',1000,1000,3,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO harvest_labour (id, workspace_id, harvest_id, quantity, unit, created_at, updated_at, version, sync_status) VALUES ('l','w','h',5,'HALF_DAY',1000,1000,7,'PENDING')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 21, true, DatabaseMigrations.MIGRATION_20_21).use { database ->
+            database.query("SELECT quantity, unit, worker_id, applied_price_minor, applied_currency, applied_price_date, applied_basis, version FROM harvest_labour WHERE id='l'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(5, cursor.getInt(0))
+                assertEquals("HALF_DAY", cursor.getString(1))
+                for (column in 2..6) assertTrue(cursor.isNull(column))
+                assertEquals(7, cursor.getInt(7))
+            }
+            database.query("SELECT COUNT(*) FROM labour_payments").use { cursor -> cursor.moveToFirst(); assertEquals(0, cursor.getInt(0)) }
+            database.query("SELECT weight_grams FROM harvests WHERE id='h'").use { cursor -> cursor.moveToFirst(); assertEquals(5000, cursor.getInt(0)) }
+        }
+    }
+
+    @Test
     fun migration1To2PreservesDataAndCreatesCoreTables() {
         migrationHelper.createDatabase(TEST_DATABASE, 1).use { database ->
             database.execSQL(

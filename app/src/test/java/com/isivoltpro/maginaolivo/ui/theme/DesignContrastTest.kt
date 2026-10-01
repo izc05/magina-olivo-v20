@@ -71,6 +71,7 @@ class DesignContrastTest {
             Triple("info icon on info tint", MoInfoText, MoInfoTint),
             Triple("gold icon on gold tint", MoSoftGoldText, MoSoftGoldTint),
             Triple("warning icon on warning tint", MoWarningText, MoWarningTint),
+            Triple("paid icon on success tint", MoSuccessText, MoSuccessTint),
         )
 
         pairs.forEach { (label, foreground, background) ->

@@ -33,7 +33,7 @@ class LabourScreenTest {
     )
     private val workers = listOf("Antonio", "Paco", "Mari", "Juan", "El Rubio").map { Worker(UUID.randomUUID(), it) }
 
-    @Test fun repeatingYesterdaysCrewPlusOneSavesFiveJornalesAtOnce() {
+    @Test fun newFormRequiresOnePersonAndPriceWithoutAnonymousOrHalfDay() {
         var saved: Pair<List<UUID>, LabourUnit>? = null
         composeRule.setContent {
             MaginaOlivoTheme {
@@ -46,23 +46,17 @@ class LabourScreenTest {
                     ),
                     onUpdate = {},
                     onDelete = {},
-                    labourActions = LabourActions(onSaveCrew = { ids, unit, _ -> saved = ids to unit }),
+                    labourActions = LabourActions(onSaveCrew = { draft -> saved = draft.workerIds to draft.unit }),
                 )
             }
         }
         composeRule.onNodeWithTag("jornada-no-labour").assertExists()
         composeRule.onNodeWithTag("jornada-register-labour").performScrollTo().performClick()
         composeRule.onNodeWithTag("labour-save").assertIsNotEnabled()
-        composeRule.onNodeWithTag("labour-repeat-crew").performClick()
-        composeRule.onAllNodesWithTag("labour-worker")[4].performClick()
-        composeRule.onNodeWithTag("labour-selected-count").assertTextContains("5 seleccionadas")
-        composeRule.onNodeWithTag("labour-save").performScrollTo().assertIsEnabled().assertTextContains("Guardar 5 jornales").performClick()
-        composeRule.runOnIdle {
-            assertEquals(workers.map { it.id }.toSet(), saved!!.first.toSet())
-            assertEquals(LabourUnit.FULL_DAY, saved!!.second)
-        }
+        composeRule.onNodeWithTag("labour-mode-count").assertDoesNotExist()
+        composeRule.onNodeWithTag("labour-unit-HALF_DAY").assertDoesNotExist()
+        composeRule.onNodeWithTag("labour-rate").assertExists()
     }
-
     @Test fun recordedJornalesShowTheirDeterministicSummary() {
         val lines = listOf(
             LabourEntry(UUID.randomUUID(), harvest.id, workers[0].id, "Antonio", 1, LabourUnit.FULL_DAY, null, 1),

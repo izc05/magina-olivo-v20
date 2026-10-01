@@ -32,8 +32,8 @@ data class WorkerEntity(
 
 /**
  * Phase 19D: labour of one Jornada (Harvest). Either one named person (`worker_id`, quantity 1)
- * or a quick count ("5 jornales", no person). Money is never stored here: a labour cost is
- * an Expense, the only financial ledger.
+ * or a historical quick count ("5 jornales", no person). Applied prices are snapshots;
+ * Expense remains the only cost ledger.
  */
 @Entity(
     tableName = "harvest_labour",
@@ -74,4 +74,8 @@ data class HarvestLabourEntity(
     val minutes: Int? = null,
     val notes: String? = null,
     @Embedded val metadata: LocalMetadata,
+    @ColumnInfo(name = "applied_price_minor") val appliedPriceMinor: Long? = null,
+    @ColumnInfo(name = "applied_currency") val appliedCurrency: String? = null,
+    @ColumnInfo(name = "applied_price_date") val appliedPriceDate: java.time.LocalDate? = null,
+    @ColumnInfo(name = "applied_basis") val appliedBasis: String? = null,
 )
