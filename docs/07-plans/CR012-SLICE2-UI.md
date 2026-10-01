@@ -28,6 +28,13 @@ rotación conserva draft y UUID; repetir action saving no duplica movimientos.
 UI nunca calcula deuda sumando snapshots aparte del ledger: usa allocation de
 Expense POSTED y settlement del dominio; no inventar cero para no atribuible.
 
+Money actualmente presupone dos decimales y divide por100 con Double. Para que
+la UI respete la moneda histórica, ampliar parseMinor/ editable con parámetro
+currency defaultEUR y mantener llamadas existentes compatibles; format usa
+BigDecimal y fractionDigits ISO. Añadir tests EUR compatibles, JPY sin decimales,
+KWD tresdecimales y valoresLong altos/overflow rechazado. No añadir conversión ni
+selector nuevo de moneda; usar la moneda contextual del snapshot/saldo.
+
 Semántica visual RC012: jornales terracota, pendiente MoWarning, parcial MoInfo,
 pagado MoSuccess; texto+icono+color, superficies claras. Reutilizar componentes
 Mo y tokens existentes; si SuccessTint falta añadir al sistema, no hex locales.
@@ -39,5 +46,6 @@ trascierre. Adaptar pruebas antiguas de alta anónima a legado directo preservad
 no quitar assertions. Capturas emulador del formulario/persona/pago.
 
 No editar data/domain/writers de2A salvo defecto comunicado primero al root.
+La ampliación compatible del helper Money es la excepción explícita prevista aquí.
 No push/merge. Compilar suite completa una vez y reportar tests reales; commit
 solo feature/theme/Compose tests. Reporte full al archivo indicado por root.
