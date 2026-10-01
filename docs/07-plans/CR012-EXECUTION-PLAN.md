@@ -77,3 +77,26 @@ PR a este chat, fusionar solo después de validar el head actual, actualizar mai
 - Pago duplicado/concurrente, rollback y outbox sin duplicación de Expense.
 - Cerrado: liquidar deuda sí, reescribir coste histórico no.
 - Máquina: coste por unidad vs coste total del uso explícito, sin multiplicar dos veces.
+
+### Task 2A: persistencia financiera de Slice 2
+
+Requisitos completos e interfaces: `docs/07-plans/CR012-SLICE2-DATA.md`.
+Implementar modelo/Room/writers y tests; no modificar UI. Revisar spec y calidad
+contra ese brief, incluyendo transacciones, reintentos y rutas alternativas del ledger.
+
+### Task 2B: UI de jornales y pagos
+
+Requisitos completos: `docs/07-plans/CR012-SLICE2-UI.md`. Consumir las interfaces
+de Task 2A; no introducir cálculo paralelo ni modificar sus writers sin revisión.
+Pruebas Compose y evidencia de formulario, persona y pago; después CI del Slice 2.
+
+### Task 3: maquinaria y coste del uso
+
+Ejecutar Slice 3 descrito en este plan y #309 después de integrar Slice 2. Congelar
+precio aplicado, preservar legado y reconstruir únicamente DAY_EQUIPMENT.
+
+### Task 4: pantallas y contexto económico
+
+Ejecutar Slice 4 descrito en este plan y #309 después de integrar Slice 3. Eliminar
+la asignación económica implícita por finca/fecha; comprobar tarjetas, semántica,
+coste/kg, navegación a detalles y accesibilidad con evidencia de emulador.
