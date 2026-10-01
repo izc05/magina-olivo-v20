@@ -102,6 +102,7 @@ class OfflineFirstDayCostRepository(
             if (campaign == null || (campaign.status != CampaignStatus.ACTIVE && campaign.status != CampaignStatus.HARVEST)) {
                 return@inTransaction AppResult.Failure(AppError.Conflict("campaign_closed"))
             }
+            ExpenseLedgerWriter(database, idGenerator).requireEditableCampaign(expense)
             val now = clock.nowInstant()
             database.expenseDao().upsert(
                 expense.copy(
@@ -123,6 +124,8 @@ class OfflineFirstDayCostRepository(
         withContext(dispatchers.io) {
             try {
                 database.withTransaction { block() }
+            } catch (error: InvalidExpense) {
+                AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: LabourFinanceInvalid) {
                 AppResult.Failure(AppError.Validation(error.field, error.code))
             } catch (error: Throwable) {

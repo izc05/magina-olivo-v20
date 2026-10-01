@@ -13,6 +13,7 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
+import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
@@ -24,6 +25,7 @@ import com.isivoltpro.maginaolivo.data.repository.JsonProposalCodec
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstActivityRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstAttachmentRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDocumentOcrRepository
+import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDayCostRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstExpenseRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstOrganizationRepository
 import com.isivoltpro.maginaolivo.domain.activity.ActivityChanges
@@ -219,6 +221,180 @@ class ExpenseLedgerContractTest {
         assertEquals(5_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
     }
 
+    // CR-012: closing a campaign freezes its authoritative costs even with no payments.
+
+    @Test
+    fun closedLinkedManualCostCannotBeRewritten() = runBlocking {
+        val dayId = runningDay()
+        val original = draft(6_000, farmId = farmId).copy(harvestId = dayId)
+        val id = ok(expenses.create(original))
+        closeCampaign()
+        val before = ledgerState()
+
+        assertClosedMutation(expenses.update(id, original.copy(amountMinor = 4_000)))
+
+        assertEquals(before, ledgerState())
+        assertEquals(6_000L, expenses.observe(id).first()!!.amountMinor)
+    }
+
+    @Test
+    fun closedLinkedManualCostCannotBeDeletedWithItsPurchase() = runBlocking {
+        val dayId = runningDay()
+        val id = ok(expenses.create(draft(6_000, farmId = farmId).copy(harvestId = dayId,
+            invoiceNumber = "H-1", lines = listOf(PurchaseLine("Transporte", lineTotalMinor = 6_000)))))
+        closeCampaign()
+        val before = ledgerState()
+
+        assertClosedMutation(expenses.delete(id))
+
+        assertEquals(before, ledgerState())
+        assertEquals(6_000L, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals("H-1", expenses.observe(id).first()!!.invoiceNumber)
+    }
+
+    @Test
+    fun closedLinkedDocumentDraftCannotBePosted() = runBlocking {
+        val dayId = runningDay()
+        val document = ok(documents.importDocument(DocumentType.PURCHASE_INVOICE, source("closed-post.jpg")))
+        val id = ok(documents.createExpenseDraft(document, draft(6_000, farmId = farmId).copy(harvestId = dayId)))
+        closeCampaign()
+        val before = ledgerState()
+
+        assertClosedMutation(expenses.post(id))
+
+        assertEquals(before, ledgerState())
+        assertEquals(ExpenseStatus.DRAFT, expenses.observe(id).first()!!.status)
+        assertEquals(0L, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+    }
+
+    @Test
+    fun closedCostCannotBeReparentedToAnActiveCampaign() = runBlocking {
+        val closedDay = runningDay()
+        val id = ok(expenses.create(draft(6_000, farmId = farmId).copy(harvestId = closedDay)))
+        closeCampaign()
+        val activeDay = runningDay(UUID.randomUUID(), otherFarmId)
+        val before = ledgerState()
+
+        assertClosedMutation(expenses.update(id, draft(6_000, farmId = otherFarmId).copy(harvestId = activeDay)))
+
+        assertEquals(before, ledgerState())
+        assertEquals(campaignId, expenses.observe(id).first()!!.campaignId)
+    }
+
+    @Test
+    fun activeCostCannotBeReparentedIntoAClosedCampaign() = runBlocking {
+        val closedDay = runningDay()
+        closeCampaign()
+        val activeCampaign = UUID.randomUUID()
+        val activeDay = runningDay(activeCampaign, otherFarmId)
+        val id = ok(expenses.create(draft(6_000, farmId = otherFarmId).copy(harvestId = activeDay)))
+        val before = ledgerState()
+
+        assertClosedMutation(expenses.update(id, draft(6_000, farmId = farmId).copy(harvestId = closedDay)))
+
+        assertEquals(before, ledgerState())
+        assertEquals(activeCampaign, expenses.observe(id).first()!!.campaignId)
+    }
+
+    @Test
+    fun closedDayCannotReceiveANewManualCost() = runBlocking {
+        val dayId = runningDay()
+        closeCampaign()
+        val before = ledgerState()
+
+        assertClosedMutation(expenses.create(draft(6_000, farmId = farmId).copy(harvestId = dayId)))
+
+        assertEquals(before, ledgerState())
+    }
+
+    @Test
+    fun explicitClosedCampaignCannotReceiveACostWithoutADay() = runBlocking {
+        runningDay()
+        closeCampaign()
+        val before = ledgerState()
+
+        assertClosedMutation(expenses.create(draft(6_000, farmId = farmId).copy(campaignId = campaignId)))
+
+        assertEquals(before, ledgerState())
+    }
+
+    @Test
+    fun closedUnlinkedCostCannotBeMovedToAnActiveDayByLinking() = runBlocking {
+        runningDay()
+        val id = ok(expenses.create(draft(6_000, farmId = farmId).copy(campaignId = campaignId)))
+        closeCampaign()
+        val activeDay = runningDay(UUID.randomUUID())
+        val costs = OfflineFirstDayCostRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        val before = ledgerState()
+
+        assertClosedMutation(costs.linkToDay(id, activeDay))
+
+        assertEquals(before, ledgerState())
+        assertNull(expenses.observe(id).first()!!.harvestId)
+        assertEquals(campaignId, expenses.observe(id).first()!!.campaignId)
+    }
+
+    @Test
+    fun closedActivityCostRewriteAndRemovalRollBackTheActivityAndIntents() = runBlocking {
+        runningDay()
+        val id = ok(activities.create(NewActivity(farmId, campaignId, ActivityType.FERTILIZATION,
+            date, "Abonado", setOf(parcelA), costMinor = 6_000)))
+        closeCampaign()
+        val before = ledgerState()
+
+        assertClosedMutation(activities.update(id, changes(4_000)))
+        assertEquals(before, ledgerState())
+        assertClosedMutation(activities.update(id, changes(null)))
+        assertEquals(before, ledgerState())
+        assertEquals(6_000L, activities.observe(id).first()!!.costMinor)
+        assertEquals("Abonado", activities.observe(id).first()!!.description)
+    }
+
+    @Test
+    fun closedActivityCannotGainANewCostAndNewCostBearingActivityRollsBack() = runBlocking {
+        runningDay()
+        val id = ok(activities.create(NewActivity(farmId, campaignId, ActivityType.FERTILIZATION,
+            date, "Abonado", setOf(parcelA))))
+        closeCampaign()
+        val before = ledgerState()
+
+        assertClosedMutation(activities.update(id, changes(6_000)))
+        assertEquals(before, ledgerState())
+        assertClosedMutation(activities.create(NewActivity(farmId, campaignId, ActivityType.FERTILIZATION,
+            date, "Nueva actuación", setOf(parcelA), costMinor = 6_000)))
+        assertEquals(before, ledgerState())
+    }
+
+    @Test
+    fun documentReviewCannotCreateACostInAClosedCampaignOrReownItsAttachment() = runBlocking {
+        val dayId = runningDay()
+        val document = ok(documents.importDocument(DocumentType.PURCHASE_INVOICE, source("closed-create.jpg")))
+        val attachment = documents.observe(document).first()!!.attachmentId
+        closeCampaign()
+        val before = ledgerState()
+
+        assertClosedMutation(documents.createExpenseDraft(document, draft(6_000, farmId = farmId).copy(harvestId = dayId)))
+
+        assertEquals(before, ledgerState())
+        assertEquals(attachment, documents.observe(document).first()!!.attachmentId)
+        assertTrue(expenses.observeAll().first().isEmpty())
+    }
+
+    @Test
+    fun closedCampaignAllowsNonmutatingPostAndDeleteRetries() = runBlocking {
+        val dayId = runningDay()
+        val posted = ok(expenses.create(draft(6_000, farmId = farmId).copy(harvestId = dayId)))
+        val removed = ok(expenses.create(draft(1_000, farmId = farmId).copy(harvestId = dayId)))
+        ok(expenses.delete(removed))
+        closeCampaign()
+        val before = ledgerState()
+
+        ok(expenses.post(posted))
+        ok(expenses.delete(removed))
+
+        assertEquals(before, ledgerState())
+    }
+
     // ------------------------------------------------------------ organization reuse
 
     @Test
@@ -393,6 +569,43 @@ class ExpenseLedgerContractTest {
     private fun assertValidation(field: String, result: AppResult<*>) {
         val error = (result as? AppResult.Failure)?.error
         assertTrue("Expected validation on $field but was $result", error is AppError.Validation && error.field == field)
+    }
+
+    private fun assertClosedMutation(result: AppResult<*>) {
+        val error = (result as? AppResult.Failure)?.error
+        assertTrue("Expected controlled campaign_closed validation but was $result",
+            error is AppError.Validation && error.field == "campaignId" && error.code == "campaign_closed")
+    }
+
+    private suspend fun runningDay(id: UUID = campaignId, farm: UUID = farmId): UUID {
+        val meta = LocalMetadata(now, now)
+        db.campaignDao().upsert(CampaignEntity(id, workspaceId, farm, "Recogida", date.minusMonths(6),
+            status = CampaignStatus.ACTIVE, metadata = meta))
+        val dayId = UUID.randomUUID()
+        db.harvestDao().upsert(HarvestEntity(dayId, workspaceId, id, farm, date, 0, metadata = meta))
+        return dayId
+    }
+
+    private suspend fun closeCampaign() {
+        val campaign = db.campaignDao().findById(campaignId)!!
+        db.campaignDao().upsert(campaign.copy(status = CampaignStatus.CLOSED, endDate = date))
+    }
+
+    /** Include dependent records and all intents to detect partially committed indirect writes. */
+    private fun ledgerState(): List<String> {
+        db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM labour_payments").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("These closure regressions must not rely on a paid-balance guard", 0, cursor.getInt(0))
+        }
+        return listOf("campaigns", "harvests", "expenses", "purchases", "purchase_items", "activities",
+            "activity_parcels", "documents", "document_ocr_extractions", "sync_outbox").flatMap { table ->
+            db.openHelper.readableDatabase.query("SELECT * FROM $table ORDER BY id").use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) add(table + ":" + (0 until cursor.columnCount)
+                        .joinToString("|") { cursor.getString(it) ?: "NULL" })
+                }
+            }
+        }
     }
 
     private suspend fun seed() {
