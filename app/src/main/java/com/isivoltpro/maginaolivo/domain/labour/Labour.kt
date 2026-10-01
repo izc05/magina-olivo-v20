@@ -23,6 +23,8 @@ data class LabourEntry(
     val unit: LabourUnit,
     val minutes: Int?,
     val version: Long,
+    /** CR-012 contract: historical applied rate; legacy rows have none. Persistence is Slice 2. */
+    val appliedRate: LabourRateSnapshot? = null,
 )
 
 /** Several people, one unit, one save. */
