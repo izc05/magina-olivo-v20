@@ -791,21 +791,27 @@ fun HarvestDetailScreen(
         }
     }
     val editingLabour = state.labour.firstOrNull { it.id.toString() == editLabour }
+    val labourCurrency = harvest?.let { labourCurrencyContext(it.id, it.campaignId, state.labour, state.costs, state.rates?.currency) }
     if (editingLabour != null && harvest != null && harvest.editable) {
         ModalBottomSheet(onDismissRequest = { if (!state.isSaving) { editLabour = null; labourActions.onClear() } }) {
-            LabourPriceSheet(editingLabour, harvest.harvestDate, editingLabour.appliedRate?.currency ?: state.rates?.currency ?: "EUR", state.isSaving, state.labourError, { labourActions.onUpdate(editingLabour.id, it) }, { editLabour = null; labourActions.onClear() })
+            LabourPriceSheet(editingLabour, harvest.harvestDate, labourCurrency?.currency, state.isSaving, state.labourError, { labourActions.onUpdate(editingLabour.id, it) }, { editLabour = null; labourActions.onClear() }, labourCurrency?.error)
         }
     }
     if (labourVisible && harvest?.campaignId != null) {
         ModalBottomSheet(onDismissRequest = { if (!state.isSaving) { labourVisible = false; labourActions.onClear() } }) {
-            LabourSheet(
+            if (labourCurrency?.currency == null) {
+                Column(Modifier.padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                    Text(labourCurrency?.error ?: "La moneda de los jornales no está disponible.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-currency-error"))
+                    MoTertiaryButton("Cancelar", { labourVisible = false; labourActions.onClear() }, enabled = !state.isSaving)
+                }
+            } else LabourSheet(
                 workers = state.workers,
                 alreadyRecorded = state.labour.mapNotNull { it.workerId }.toSet(),
                 harvestId = harvest.id,
                 campaignId = harvest.campaignId,
                 date = harvest.harvestDate,
                 rates = state.rates,
-                currency = state.labour.mapNotNull { it.appliedRate?.currency }.distinct().singleOrNull() ?: state.rates?.currency ?: "EUR",
+                currency = labourCurrency.currency,
                 isSaving = state.isSaving,
                 error = state.labourError,
                 onSaveCrew = labourActions.onSaveCrew,

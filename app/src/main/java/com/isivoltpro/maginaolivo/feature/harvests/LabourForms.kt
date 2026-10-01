@@ -33,11 +33,11 @@ internal fun LabourSheet(
     var unit by rememberSaveable { mutableStateOf(LabourUnit.FULL_DAY) }
     var hours by rememberSaveable { mutableStateOf("") }
     val usualRates = rates?.takeIf { it.currency == currency }
-    var price by rememberSaveable { mutableStateOf(Money.editable(usualRates?.fullDayMinor, currency)) }
-    var touchedPrice by rememberSaveable { mutableStateOf(false) }
-    var initialPayment by rememberSaveable { mutableStateOf("NONE") }
-    var paymentAmount by rememberSaveable { mutableStateOf("") }
-    var paymentId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
+    var price by rememberSaveable(currency) { mutableStateOf(Money.editable(usualRates?.fullDayMinor, currency)) }
+    var touchedPrice by rememberSaveable(currency) { mutableStateOf(false) }
+    var initialPayment by rememberSaveable(currency) { mutableStateOf("NONE") }
+    var paymentAmount by rememberSaveable(currency) { mutableStateOf("") }
+    var paymentId by rememberSaveable(currency) { mutableStateOf(UUID.randomUUID().toString()) }
     LaunchedEffect(workers, pendingName) {
         val name = pendingName ?: return@LaunchedEffect
         workers.firstOrNull { it.name.equals(name, true) }?.let {
@@ -45,16 +45,18 @@ internal fun LabourSheet(
             pendingName = null; newPerson = false; newName = ""
         }
     }
-    LaunchedEffect(rates, unit) {
+    LaunchedEffect(rates, unit, currency) {
         if (!touchedPrice) price = Money.editable(if (unit == LabourUnit.HOURS) usualRates?.hourlyMinor else usualRates?.fullDayMinor, currency)
     }
     val minutes = if (unit == LabourUnit.HOURS) parseHours(hours)?.takeIf { it <= LabourRules.MAX_MINUTES } else null
     val minor = Money.parseMinor(price, currency)
     val rate = minor?.let { LabourRateSnapshot(it, currency, date, if (unit == LabourUnit.HOURS) LabourRateBasis.HOUR else LabourRateBasis.DAY) }
     val workerId = selected?.let(UUID::fromString)?.takeIf { it !in alreadyRecorded && workers.any { worker -> worker.id == it } }
-    val total = if (rate != null && (unit != LabourUnit.HOURS || minutes != null)) runCatching {
+    val calculation = if (rate != null && (unit != LabourUnit.HOURS || minutes != null)) runCatching {
         LabourPricing.amountMinor(LabourEntry(UUID.randomUUID(), harvestId, workerId, null, 1, unit, minutes, 1, rate))
-    }.getOrNull() else null
+    } else null
+    val total = calculation?.getOrNull()
+    val calculationError = calculation?.exceptionOrNull()?.let { "El coste del jornal es demasiado grande. Reduce el precio o la duración para guardar." }
     val partial = Money.parseMinor(paymentAmount, currency)
     val paymentError = when {
         initialPayment == "PARTIAL" && (partial == null || partial <= 0) -> "Escribe un importe válido mayor que cero"
@@ -86,6 +88,7 @@ internal fun LabourSheet(
         if (unit == LabourUnit.HOURS) MoTextField(hours, { hours = it }, "Horas", enabled = !isSaving, supportingText = if (minutes == null) "Entre 0 y 24 horas; por ejemplo 3 o 3,5" else null, modifier = Modifier.fillMaxWidth().testTag("labour-hours"))
         MoTextField(price, { price = it; touchedPrice = true }, if (unit == LabourUnit.HOURS) "Tarifa por hora ($currency)" else "Precio del jornal ($currency)", enabled = !isSaving, isError = minor == null, supportingText = if (minor == null) "Confirma un precio válido para guardar" else null, modifier = Modifier.fillMaxWidth().testTag("labour-rate"))
         total?.let { Text("Coste del jornal: ${Money.format(it, currency)}", color = MoLabourText, modifier = Modifier.testTag("labour-generated")) }
+        calculationError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-calculation-error")) }
         Text("Pago inicial (opcional)", style = MaterialTheme.typography.titleMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             listOf("NONE" to "Sin pagar", "PARTIAL" to "Pago parcial", "FULL" to "Pagado completo").forEach { (value, label) ->
@@ -107,24 +110,25 @@ internal fun LabourSheet(
 /** Legacy snapshots remain missing until the farmer explicitly confirms duration and price. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun LabourPriceSheet(entry: LabourEntry, date: LocalDate, currency: String, isSaving: Boolean, error: String?, onSave: (LabourChange) -> Unit, onCancel: () -> Unit) {
+internal fun LabourPriceSheet(entry: LabourEntry, date: LocalDate, currency: String?, isSaving: Boolean, error: String?, onSave: (LabourChange) -> Unit, onCancel: () -> Unit, currencyError: String? = null) {
     var unit by rememberSaveable(entry.id.toString()) { mutableStateOf(entry.unit) }
     var hours by rememberSaveable(entry.id.toString()) { mutableStateOf(entry.minutes?.let { java.math.BigDecimal(it).divide(java.math.BigDecimal(60), 2, java.math.RoundingMode.HALF_UP).toPlainString() }.orEmpty()) }
-    var price by rememberSaveable(entry.id.toString()) { mutableStateOf(Money.editable(entry.appliedRate?.unitPriceMinor, currency)) }
+    var price by rememberSaveable(entry.id.toString(), currency) { mutableStateOf(currency?.let { Money.editable(entry.appliedRate?.unitPriceMinor, it) }.orEmpty()) }
     val minutes = if (unit == LabourUnit.HOURS) parseHours(hours)?.takeIf { it <= LabourRules.MAX_MINUTES } else null
-    val minor = Money.parseMinor(price, currency)
+    val minor = currency?.let { Money.parseMinor(price, it) }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
         Text("Confirmar jornal · ${entry.workerName ?: "Sin identificar"}", style = MaterialTheme.typography.titleLarge)
         if (entry.appliedRate == null) Text("Precio sin confirmar. Introduce el precio acordado para este día.", color = MoWarningText)
+        if (currency == null) Text(currencyError ?: "Confirma la moneda histórica antes de guardar.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-currency-error"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             (listOf(LabourUnit.FULL_DAY, LabourUnit.HOURS) + listOfNotNull(entry.unit.takeIf { it == LabourUnit.HALF_DAY })).forEach { option ->
                 FilterChip(unit == option, { unit = option }, { Text(option.label()) }, enabled = !isSaving)
             }
         }
         if (unit == LabourUnit.HOURS) MoTextField(hours, { hours = it }, "Horas", enabled = !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-edit-hours"))
-        MoTextField(price, { price = it }, "Tarifa aplicada ($currency)", enabled = !isSaving, isError = minor == null, supportingText = if (minor == null) "Confirma un precio válido" else null, modifier = Modifier.fillMaxWidth().testTag("labour-edit-rate"))
+        MoTextField(price, { price = it }, currency?.let { "Tarifa aplicada ($it)" } ?: "Moneda sin confirmar", enabled = !isSaving && currency != null, isError = minor == null, supportingText = if (minor == null && currency != null) "Confirma un precio válido" else null, modifier = Modifier.fillMaxWidth().testTag("labour-edit-rate"))
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        MoPrimaryButton("Guardar cambios", { onSave(LabourChange(entry.quantity, unit, minutes, LabourRateSnapshot(minor!!, currency, entry.appliedRate?.priceDate ?: date, if (unit == LabourUnit.HOURS) LabourRateBasis.HOUR else LabourRateBasis.DAY))) }, enabled = minor != null && (unit != LabourUnit.HOURS || minutes != null) && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-edit-save"))
+        MoPrimaryButton("Guardar cambios", { onSave(LabourChange(entry.quantity, unit, minutes, LabourRateSnapshot(minor!!, currency!!, entry.appliedRate?.priceDate ?: date, if (unit == LabourUnit.HOURS) LabourRateBasis.HOUR else LabourRateBasis.DAY))) }, enabled = currency != null && minor != null && (unit != LabourUnit.HOURS || minutes != null) && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-edit-save"))
         MoTertiaryButton("Cancelar", onCancel, enabled = !isSaving)
     }
 }
