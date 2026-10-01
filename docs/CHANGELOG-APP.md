@@ -31,6 +31,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   mueven todos los avisos «el día anterior» ya guardados; al desactivarlos no suena ninguno, pero
   no se borra ninguno. Se guarda en el teléfono (Room v20) y se respeta también tras reiniciar el
   móvil. El permiso de notificaciones de Android sigue en «Notificaciones».
+- **Ayuda y privacidad (21C).** En Perfil: «Qué hay de nuevo» (estas notas, incluidas en cada
+  APK al compilarla, así que siempre corresponden a la versión instalada), «Privacidad y datos»
+  (qué queda en el teléfono, que la lectura de vales se hace en el propio teléfono y qué servicios
+  externos se consultan y qué reciben: tiempo, radar, mapas, Catastro, mercado del aceite) y «Usar la app sin
+  cobertura». «Exportar copia» espera a la fase 25 (decisión P3).
 - Inicio y la previsión semanal usan tu municipio cuando tus fincas no tienen municipio o están en
   varios. La tarjeta «Mi cooperativa» muestra la que elegiste; sus avisos siguen pendientes del
   panel de administración.

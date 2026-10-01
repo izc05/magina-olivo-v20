@@ -60,6 +60,8 @@ fun ProfileRoute(
     developerGalleryEnabled: Boolean,
     onDeveloperGallery: () -> Unit,
     persistence: LocalPersistence? = null,
+    /** Phase 21C: Perfil → Ayuda y privacidad. */
+    onHelp: (HelpTopic) -> Unit = {},
 ) {
     val context = LocalContext.current
     val profileRepository = persistence?.profileRepository
@@ -87,6 +89,7 @@ fun ProfileRoute(
         onMachinery = onMachinery,
         developerGalleryEnabled = developerGalleryEnabled,
         onDeveloperGallery = onDeveloperGallery,
+        onHelp = onHelp,
         myProfile = if (profileViewModel != null) {
             {
                 val state by profileViewModel.state.collectAsStateWithLifecycle()
@@ -126,6 +129,8 @@ fun ProfileScreen(
     onMachinery: () -> Unit,
     developerGalleryEnabled: Boolean = false,
     onDeveloperGallery: () -> Unit = {},
+    /** Phase 21C: Perfil → Ayuda y privacidad; rows are hidden where no navigation exists. */
+    onHelp: ((HelpTopic) -> Unit)? = null,
     /** Phase 21A: «Mi perfil» (municipality + cooperative); absent where no storage exists. */
     myProfile: (@Composable () -> Unit)? = null,
     /** Phase 21B: Perfil → Avisos (switch + day-before hour); absent where no storage exists. */
@@ -183,6 +188,27 @@ fun ProfileScreen(
             trailing = { MoStatusChip("Siempre", tone = MoStatusTone.Success) },
         )
         // CR-011 §25: no «Pronto» rows in the public app; account/sync returns when it exists.
+        if (onHelp != null) {
+            MoSectionHeader("Ayuda y privacidad")
+            HelpTopic.entries.forEach { topic ->
+                MoCompactListItem(
+                    title = topic.title,
+                    subtitle = when (topic) {
+                        HelpTopic.NEWS -> "Lo que ha cambiado en cada versión"
+                        HelpTopic.PRIVACY -> "Qué se guarda en el teléfono y qué servicios se consultan"
+                        HelpTopic.OFFLINE -> "Qué funciona en modo avión"
+                    },
+                    icon = when (topic) {
+                        HelpTopic.NEWS -> MoIcons.Bell
+                        HelpTopic.PRIVACY -> MoIcons.Checklist
+                        HelpTopic.OFFLINE -> MoIcons.Map
+                    },
+                    onClick = { onHelp(topic) },
+                    modifier = Modifier.testTag("profile-help-${topic.route}"),
+                    trailing = { Chevron() },
+                )
+            }
+        }
         MoSectionHeader("Acerca de")
         MoCompactListItem(
             title = "Mágina Olivo",
