@@ -70,6 +70,10 @@ day/campaign cards and cost/kg. Owner authorized continuous execution and PR
 integration after review and validation. Expense POSTED remains the sole campaign
 cost source; payments settle debt and never create costs. Plan:
 `docs/07-plans/CR012-EXECUTION-PLAN.md`. No unrelated backend/product expansion.
+CR-012 Slice 1 (#310) and Slice 2 (#313) are merged. Slice 2 exact head
+`0a692899` passed all six CI checks; merge `07a25014`. Current production
+delivery: Slice 3 machinery/use price snapshots, then Slice 4 surfaces/context.
+Evidence: `docs/06-testing/CR012-SLICE2.md`.
 The pending physical-device Gate 21 remains pending; this priority does not claim
 it passed. Record per-slice PRs and evidence before declaring CR-012 complete.
 

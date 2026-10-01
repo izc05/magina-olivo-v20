@@ -43,6 +43,12 @@ un PNG; una captura inicial en blanco se sustituyó y no cuenta como evidencia.
 ## Estado de revisión
 
 Datos: revisión independiente aceptada, incluida la corrección de cierre.
-UI y revisión de integración: en curso. CI del head final pendiente.
+UI e integración: revisiones independientes aceptadas. PR #313 fusionado el
+01/10/2026 (main `07a25014`), seis checks SUCCESS en el head `0a692899`.
+La CI completa incluye 380 tests nativos por ejecución. Las correcciones
+de etiquetas y de interacción conservaron las aserciones financieras; el
+último ajuste añadió precondiciones y OnClick Compose tras un fallo aislado
+no reproducido en doce intentos. Su causa exacta no se demostró. Los nueve
+tests específicos y el build AndroidTest también pasaron.
 No se declara aceptación en dispositivo físico ni se cierra el Gate 21.
 Maquinaria y superficies finales de campaña corresponden a Slices 3 y 4.

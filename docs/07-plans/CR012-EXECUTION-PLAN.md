@@ -92,7 +92,8 @@ Pruebas Compose y evidencia de formulario, persona y pago; después CI del Slice
 
 ### Task 3: maquinaria y coste del uso
 
-Ejecutar Slice 3 descrito en este plan y #309 después de integrar Slice 2. Congelar
+Requisitos completos: `docs/07-plans/CR012-SLICE3-MACHINERY.md`.
+Slice 2 integrado en #313 (main 07a25014), seis checks verdes. Congelar
 precio aplicado, preservar legado y reconstruir únicamente DAY_EQUIPMENT.
 
 ### Task 4: pantallas y contexto económico
