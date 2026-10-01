@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-09-29
+**Last reviewed:** 2026-10-01
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -62,6 +62,16 @@ and v18 (slice 4) for CR-010 and v19 for Phase 21A (A4, revised by the owner 202
 A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gate CR-010 open.
 
 ## Current allowed phase
+
+**Owner priority 2026-10-01 — CR-012 (Issue #309), executor Codex:** complete the
+recollection economic flow in sequence: Slice 1 contracts → Slice 2 identified
+labour/historical rates/payment movements → Slice 3 machinery/use costs → Slice 4
+day/campaign cards and cost/kg. Owner authorized continuous execution and PR
+integration after review and validation. Expense POSTED remains the sole campaign
+cost source; payments settle debt and never create costs. Plan:
+`docs/07-plans/CR012-EXECUTION-PLAN.md`. No unrelated backend/product expansion.
+The pending physical-device Gate 21 remains pending; this priority does not claim
+it passed. Record per-slice PRs and evidence before declaring CR-012 complete.
 
 ```text
 ▶ PHASE 21 — PROFILE: ALLOWED (2026-09-29), executor Claude. Owner «Todo ok» on the build with
