@@ -3,11 +3,11 @@
 **Autoridad:** [Issue #309 / CR-012](https://github.com/izc05/magina-olivo-v20/issues/309)
 y RC1.2, incluido el addendum D2. **Entrega:** Slice 1 exclusivamente.
 
-Esta slice añade contratos Kotlin puros y tests JVM. No cambia lo que el usuario
-puede guardar ni introduce nuevas tablas, repositorios o pantallas. Slice 1 se
-preparó en rama aislada mientras #308 seguía abierta. Su integración queda
-bloqueada hasta actualizar la base tras la fusión de #308, repetir la CI y realizar
-la revisión final. No avanzar a Slice 2.
+Slice 1 añadió contratos Kotlin puros y tests JVM, sin nuevas tablas ni pantallas.
+Se integró mediante PR #310 después de fusionar #308, actualizar la base y superar
+la revisión y CI. La autorización del propietario del 01/10/2026 permite continuar
+Slices 2–4 según docs/07-plans/CR012-EXECUTION-PLAN.md; este documento conserva
+el contrato financiero que esas entregas deben respetar.
 
 ## 1. Asistencia e identidad
 
