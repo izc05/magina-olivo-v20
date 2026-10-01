@@ -23,6 +23,14 @@ class MoneyTest {
         assertEquals("92.233.720.368.547.758,07", Money.format(Long.MAX_VALUE).substringBefore(' '))
     }
 
+    @Test fun unsupportedHistoricalCurrenciesExposeOriginalCodeWithoutGuessingAnAmount() {
+        listOf("EURO", "XXX").forEach { code ->
+            assertEquals("Importe no disponible ($code)", Money.format(6_500, code))
+            assertEquals("", Money.editable(6_500, code))
+            assertNull(Money.parseMinor("65", code))
+        }
+    }
+
     @Test fun overflowingInputIsRejectedInsteadOfThrowing() {
         assertNull(Money.parseMinor("92233720368547758,08"))
     }

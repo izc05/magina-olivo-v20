@@ -38,9 +38,10 @@ object Money {
     }
 
     fun format(minor: Long, currency: String = "EUR"): String {
+        val iso = runCatching { Currency.getInstance(currency) }.getOrNull()
+        val digits = iso?.defaultFractionDigits?.takeIf { it >= 0 }
+            ?: return "Importe no disponible ($currency)"
         val format = NumberFormat.getCurrencyInstance(SPANISH)
-        val iso = Currency.getInstance(currency)
-        val digits = iso.defaultFractionDigits.coerceAtLeast(0)
         format.currency = iso
         format.minimumFractionDigits = digits
         format.maximumFractionDigits = digits
@@ -50,7 +51,8 @@ object Money {
     /** "65,50" for an editable field: no symbol, no grouping. */
     fun editable(minor: Long?, currency: String = "EUR"): String {
         if (minor == null) return ""
-        val digits = Currency.getInstance(currency).defaultFractionDigits.coerceAtLeast(0)
+        val digits = runCatching { Currency.getInstance(currency) }.getOrNull()
+            ?.defaultFractionDigits?.takeIf { it >= 0 } ?: return ""
         val value = BigDecimal.valueOf(minor, digits)
         return (if (value.stripTrailingZeros().scale() <= 0) value.setScale(0) else value).toPlainString().replace('.', ',')
     }

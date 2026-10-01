@@ -122,13 +122,16 @@ internal fun LabourPriceSheet(entry: LabourEntry, date: LocalDate, currency: Str
         if (currency == null) Text(currencyError ?: "Confirma la moneda histórica antes de guardar.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-currency-error"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             (listOf(LabourUnit.FULL_DAY, LabourUnit.HOURS) + listOfNotNull(entry.unit.takeIf { it == LabourUnit.HALF_DAY })).forEach { option ->
-                FilterChip(unit == option, { unit = option }, { Text(option.label()) }, enabled = !isSaving)
+                FilterChip(unit == option, {
+                    if ((unit == LabourUnit.HOURS) != (option == LabourUnit.HOURS)) price = ""
+                    unit = option
+                }, { Text(option.label()) }, enabled = !isSaving)
             }
         }
         if (unit == LabourUnit.HOURS) MoTextField(hours, { hours = it }, "Horas", enabled = !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-edit-hours"))
-        MoTextField(price, { price = it }, currency?.let { "Tarifa aplicada ($it)" } ?: "Moneda sin confirmar", enabled = !isSaving && currency != null, isError = minor == null, supportingText = if (minor == null && currency != null) "Confirma un precio válido" else null, modifier = Modifier.fillMaxWidth().testTag("labour-edit-rate"))
+        MoTextField(price, { price = it }, currency?.let { if (unit == LabourUnit.HOURS) "Tarifa por hora ($it)" else "Precio por jornada ($it)" } ?: "Moneda sin confirmar", enabled = !isSaving && currency != null, isError = minor == null, supportingText = if (minor == null && currency != null) "Confirma un precio válido" else null, modifier = Modifier.fillMaxWidth().testTag("labour-edit-rate"))
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        MoPrimaryButton("Guardar cambios", { onSave(LabourChange(entry.quantity, unit, minutes, LabourRateSnapshot(minor!!, currency!!, entry.appliedRate?.priceDate ?: date, if (unit == LabourUnit.HOURS) LabourRateBasis.HOUR else LabourRateBasis.DAY))) }, enabled = currency != null && minor != null && (unit != LabourUnit.HOURS || minutes != null) && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-edit-save"))
+        MoPrimaryButton("Guardar cambios", { onSave(LabourChange(entry.quantity, unit, minutes, LabourRateSnapshot(minor!!, currency, entry.appliedRate?.priceDate ?: date, if (unit == LabourUnit.HOURS) LabourRateBasis.HOUR else LabourRateBasis.DAY))) }, enabled = currency != null && minor != null && (unit != LabourUnit.HOURS || minutes != null) && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-edit-save"))
         MoTertiaryButton("Cancelar", onCancel, enabled = !isSaving)
     }
 }

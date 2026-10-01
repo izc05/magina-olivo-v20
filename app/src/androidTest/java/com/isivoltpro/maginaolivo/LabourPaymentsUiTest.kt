@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Surface
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -132,6 +133,58 @@ class LabourPaymentsUiTest {
         rule.setContent { MaginaOlivoTheme { Surface(androidx.compose.ui.Modifier.fillMaxSize().statusBarsPadding(), color = com.isivoltpro.maginaolivo.ui.theme.MoCream) { LabourPriceSheet(entry.copy(appliedRate = null), date, "EUR", false, null, {}, {}) } } }
         rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
         rule.onNodeWithTag("labour-edit-rate").performTextInput("60")
+        rule.onNodeWithTag("labour-edit-save").assertIsEnabled()
+    }
+
+    @Test fun pricedDayChangedToHoursRequiresNewHourlyPriceBeforeSaving() {
+        val restored = StateRestorationTester(rule)
+        var saved: LabourChange? = null
+        val pricedDay = entry.copy(appliedRate = entry.appliedRate!!.copy(unitPriceMinor = 6000))
+        restored.setContent { MaginaOlivoTheme { LabourPriceSheet(pricedDay, date, "EUR", false, null, { saved = it }, {}) } }
+        rule.onNodeWithTag("labour-edit-save").assertIsEnabled()
+        rule.onNodeWithText("Horas").performClick()
+        assertEquals("", rule.onNodeWithTag("labour-edit-rate").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
+        rule.onNodeWithTag("labour-edit-hours").performTextInput("3")
+        rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
+        restored.emulateSavedInstanceStateRestore()
+        rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
+        assertEquals("", rule.onNodeWithTag("labour-edit-rate").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
+        rule.onNodeWithText("Tarifa por hora (EUR)", useUnmergedTree = true).assertExists()
+        rule.onNodeWithTag("labour-edit-rate").performTextInput("10")
+        rule.onNodeWithTag("labour-edit-save").assertIsEnabled().performClick()
+        rule.runOnIdle {
+            assertEquals(LabourUnit.HOURS, saved!!.unit)
+            assertEquals(180, saved!!.minutes)
+            assertEquals(LabourRateBasis.HOUR, saved!!.appliedRate!!.basis)
+            assertEquals(1000L, saved!!.appliedRate!!.unitPriceMinor)
+            assertEquals(3000L, LabourPricing.amountMinor(pricedDay.copy(unit = saved!!.unit, minutes = saved!!.minutes, appliedRate = saved!!.appliedRate)))
+        }
+    }
+
+    @Test fun pricedHoursChangedToDayAlsoRequiresNewDayPrice() {
+        var saved: LabourChange? = null
+        val pricedHours = entry.copy(unit = LabourUnit.HOURS, minutes = 180, appliedRate = entry.appliedRate!!.copy(unitPriceMinor = 1000, basis = LabourRateBasis.HOUR))
+        rule.setContent { MaginaOlivoTheme { LabourPriceSheet(pricedHours, date, "EUR", false, null, { saved = it }, {}) } }
+        rule.onNodeWithText("Jornada completa").performClick()
+        rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
+        rule.onNodeWithTag("labour-edit-rate").performTextInput("60")
+        rule.onNodeWithTag("labour-edit-save").assertIsEnabled().performClick()
+        rule.runOnIdle {
+            assertEquals(LabourRateBasis.DAY, saved!!.appliedRate!!.basis)
+            assertEquals(6000L, saved!!.appliedRate!!.unitPriceMinor)
+        }
+    }
+
+    @Test fun legacyHalfDayAndFullDayRetainAgreedDayPriceAcrossRestore() {
+        val restored = StateRestorationTester(rule)
+        val halfDay = entry.copy(unit = LabourUnit.HALF_DAY)
+        restored.setContent { MaginaOlivoTheme { LabourPriceSheet(halfDay, date, "EUR", false, null, {}, {}) } }
+        rule.onNodeWithText("Jornada completa").performClick()
+        rule.onNodeWithTag("labour-edit-rate").assertTextContains("240")
+        rule.onNodeWithText("Precio por jornada (EUR)", useUnmergedTree = true).assertExists()
+        rule.onNodeWithTag("labour-edit-save").assertIsEnabled()
+        restored.emulateSavedInstanceStateRestore()
+        rule.onNodeWithTag("labour-edit-rate").assertTextContains("240")
         rule.onNodeWithTag("labour-edit-save").assertIsEnabled()
     }
 
