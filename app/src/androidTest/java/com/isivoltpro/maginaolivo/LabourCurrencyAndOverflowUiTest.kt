@@ -29,7 +29,7 @@ class LabourCurrencyAndOverflowUiTest {
         var change: LabourChange? = null
         showDay(listOf(legacy), listOf(ledger("JPY")), LabourActions(onUpdate = { _, value -> change = value }))
         rule.onNodeWithTag("jornada-labour-edit").performScrollTo().performClick()
-        rule.onNodeWithText("Tarifa aplicada (JPY)").assertExists()
+        rule.onNodeWithText("Precio por jornada (JPY)").assertExists()
         rule.onNodeWithTag("labour-edit-rate").performTextInput("1000")
         rule.onNodeWithTag("labour-edit-save").performScrollTo().performClick()
         rule.runOnIdle { assertEquals("JPY", change?.appliedRate?.currency); assertEquals(1000L, change?.appliedRate?.unitPriceMinor) }
@@ -39,7 +39,7 @@ class LabourCurrencyAndOverflowUiTest {
         val confirmed = legacy.copy(id = UUID.randomUUID(), workerId = UUID.randomUUID(), workerName = "Ana López", appliedRate = LabourRateSnapshot(1000, "JPY", date, LabourRateBasis.DAY))
         showDay(listOf(legacy, confirmed), emptyList())
         rule.onAllNodesWithTag("jornada-labour-edit")[0].performScrollTo().performClick()
-        rule.onNodeWithText("Tarifa aplicada (JPY)").assertExists()
+        rule.onNodeWithText("Precio por jornada (JPY)").assertExists()
         rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
     }
 
