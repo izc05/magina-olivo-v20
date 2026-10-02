@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="9" failures="1" errors="0" skipped="0" time="20.572" timestamp="2026-10-02T09:54:05" hostname="localhost">
+  <testsuite name="com.isivoltpro.maginaolivo.EquipmentScreenTest" tests="9" failures="1" errors="0" skipped="0" time="19.328" timestamp="2026-10-02T09:54:05" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="4.73" />
+    <testcase name="recordedEquipmentReadsAsOneLine" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.193" />
+    <testcase name="usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.235">
+      <failure>java.lang.AssertionError: Assert failed: The component with TestTag = 'equipment-save' is not displayed!
+at androidx.compose.ui.test.AssertionsKt.assertIsDisplayed(Assertions.kt:34)
+at com.isivoltpro.maginaolivo.EquipmentScreenTest.usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce(EquipmentScreenTest.kt:141)
+</failure>
+    </testcase>
+    <testcase name="clearingAnAlreadyConfirmedPriceCannotSilentlyKeepIt" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.332" />
+    <testcase name="capturesUsualPriceSheet" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.74" />
+    <testcase name="multiplicationOverflowShowsErrorAndDisablesSave" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.673" />
+    <testcase name="overflowShowsErrorAndDisablesSave" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.812" />
+    <testcase name="steppersBuildTheDaysEquipment" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.095" />
+    <testcase name="unchangedUsualPrefillAndExplicitZeroStayConfirmed" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.518" />
+  </testsuite>
+</testsuites>

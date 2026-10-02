@@ -1,0 +1,7 @@
+--------- beginning of main
+10-02 09:51:40.635 15728 15742 I CR012Touch: after price input saveBounds=Rect.fromLTRB(0.0, 0.0, 0.0, 0.0)
+10-02 09:51:40.657 15728 15728 I CR012Touch: after price input nativeHeight=2340 imeVisible=true imeBottom=833
+10-02 09:51:41.401 15728 15742 I CR012Touch: after save scroll saveBounds=Rect.fromLTRB(55.0, 1375.0, 1025.0, 1507.0)
+10-02 09:51:41.406 15728 15728 I CR012Touch: after save scroll nativeHeight=2340 imeVisible=true imeBottom=833
+10-02 09:51:41.518 15728 15742 I CR012Touch: after save click, callback=true saveBounds=Rect.fromLTRB(55.0, 1375.0, 1025.0, 1507.0)
+10-02 09:51:41.525 15728 15728 I CR012Touch: after save click, callback=true nativeHeight=2340 imeVisible=true imeBottom=833

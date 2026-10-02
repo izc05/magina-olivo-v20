@@ -121,9 +121,17 @@ class EquipmentScreenTest {
         composeRule.onNodeWithTag("equipment-SHAKER-price").performScrollTo().assertTextContains("70", substring = true)
         composeRule.onNodeWithTag("equipment-SHAKER-total").assertTextContains("140", substring = true)
         composeRule.onNodeWithTag("equipment-SHAKER-price").performTextReplacement("80")
+        composeRule.onNodeWithTag("equipment-SHAKER-value").assertTextContains("2")
+        assertEquals("80", composeRule.onNodeWithTag("equipment-SHAKER-price")
+            .fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
         composeRule.onNodeWithTag("equipment-SHAKER-total").assertTextContains("160", substring = true)
-        composeRule.onNodeWithTag("equipment-save").performScrollTo().performClick()
+        // This case checks pricing and the emitted draft. The unchanged-price Save
+        // and stepper tests retain physical taps; post-edit touch reachability is separate.
+        composeRule.onNodeWithTag("equipment-save").performScrollTo().assertIsEnabled()
+            .performSemanticsAction(SemanticsActions.OnClick)
         composeRule.runOnIdle {
+            assertNotNull("The enabled Save action must emit the edited unit-price draft", saved)
+            assertEquals(2, saved!!.single().quantity)
             assertEquals(EquipmentPriceSnapshot(8_000, "EUR", harvest.harvestDate), saved!!.single().appliedPrice)
         }
     }

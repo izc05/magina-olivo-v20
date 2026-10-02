@@ -143,3 +143,36 @@ Exit **0**, **9/9**, zero failures/errors/skips; `BUILD SUCCESSFUL in 1m 4s`, `7
 A second bounded check used the two affected methods with Android window/transition/animator scales explicitly set to zero, matching CI's disabled animations; same device width 1080 / density 440 (approximately 393dp), font scale 1.0. After APK install, the above two-method `adb am instrument` command passed **OK (2 tests)** in 7.141s; `task-3-ci-noanimations.log`. The first attempt after the connected Gradle task could not find instrumentation because that task had uninstalled the APKs; the failed setup output is retained as `task-3-ci-noanimations-notinstalled.log`. Reinstalling the built app/test APKs resolved setup; no failing test was retried or hidden.
 
 Self-review confirmed only test/evidence/report files changed; F1/F2/F3 production remains exactly as d81. New logs have trailing whitespace normalized without changing messages/results. No Room/JVM/full-suite repetition was needed for a test-only fixture correction. No screenshots were changed, no push/merge/subagents/later-phase work was performed. Independent scoped review and the root's **new exact-head CI** remain mandatory; this local 9/9 plus 2/2 is not a claim that full CI now passes. Physical-device acceptance remains pending.
+
+## Remaining edited-price CI interaction — 2026-10-02
+
+Baseline `1c62d272f25a0648024339163c28bf34dfacbb7b`. The root observed five of six checks successful (including three full 394-test suites), but [push emulator run 36990263550](https://github.com/izc05/magina-olivo-v20/actions/runs/36990263550) failed its fourth full suite: **394 tests, one failure**, `usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce`, null captured draft at line 127 after physical Save. The full log remains `.superpowers/sdd/CR012-EXECUTION-PLAN/ci-1c62-emulator-failed.log`; published exact excerpts: `task-3-ci-override-ci-red-excerpts.log`. Passing sibling checks were not used to dismiss this failure.
+
+### Measured diagnosis and failed experiments
+
+Read the exact failure and inspected the native keyboard and modal geometry with temporary diagnostic logging. Pricing assertions were already satisfied before the missing callback. The actual original fixture values are usual price 70, quantity two, preview 140, edited price **80**, preview **160**, and exact **8,000 EUR** unit snapshot/date; these are preserved verbatim in the final change.
+
+- A one-method diagnostic run with native IME/Save-bound logs passed (**1/1**, exit 0, BUILD SUCCESSFUL in 38s): `task-3-ci-override-diagnostic.log` / `task-3-ci-override-touch.log`. After text input, native IME was visible (833px bottom inset) and Save had zero clipped bounds. After internal scroll, Save bounds were y=1375..1507 in a 2340px window, ending exactly at the keyboard's upper edge (2340−833=1507). The physical callback fired in that settled local sample. This does not reproduce the exact CI race or prove that post-edit access is reliable.
+- Experiment: `Espresso.closeSoftKeyboard`, Compose idle, an explicit IME-hidden assertion, then internal scroll + displayed/enabled assertions + one physical tap. **8/9** class run, exit 1, BUILD FAILED in 53s; the edited-price method failed `assertIsDisplayed` before the tap. Retained log/XML: `task-3-ci-override-hidden-red.log/.xml`. Closing the keyboard alone did not prove reachability.
+- A focused geometry diagnostic reproduced that displayed precondition failure (**1/1 failed**, exit 1, BUILD FAILED in 38s): `task-3-ci-override-viewport-diagnostic.log` / `task-3-ci-override-viewport.log`. IME was hidden, native window height 2340, but the modal content remained partially expanded at y=1303..3283; Save was y=2887..3019 below the window. Internal scroll was value=0/max=0. `performScrollTo` left those values unchanged; it cannot expand the modal's separate anchor.
+- A proposed single physical upward drag first failed before injection because an unqualified Compose root selector matched the Activity and modal roots (two roots): `task-3-ci-override-drag-root-red.log` / `task-3-ci-override-drag-root.log`. After qualifying the modal root by its equipment-sheet descendant, a single drag triggered a Compose idling timeout with pending recompositions, before post-drag geometry could be read: exit 1, BUILD FAILED in 1m 5s; `task-3-ci-override-drag-idle-red.log` / `task-3-ci-override-drag.log`. That result neither proves a working user drag nor establishes a production defect. No gesture/click was retried.
+
+All temporary logger, keyboard/drag changes and imports were removed from the final source. The root explicitly stopped further gesture experiments and ruled that this test's purpose is pricing preview plus emitted draft; edited-price Save should use its accessible action while retaining the existing physical Save controls. The observed modal/IME ambiguity must remain a physical-device follow-up and a minor final-review coverage limitation.
+
+### Final bounded change
+
+Only `app/src/androidTest/java/com/isivoltpro/maginaolivo/EquipmentScreenTest.kt` changes executable test source. The edited-price case checks selected quantity two and exact editable text 80, preserves the 140/160 previews, verifies Save enabled, invokes its semantic OnClick once, asserts a draft was emitted, and checks quantity two plus the unchanged exact 8,000 EUR snapshot/date. Existing initial habitual-price Save and stepper Save still use physical taps. No production code, retry, fixed sleep, weakening of numerical assertions, or change to F1/F2/F3 was introduced.
+
+This amendment verifies the pricing/action seam; **it does not claim post-edit physical touch reachability was fixed**. The local out-of-window/partial-modal measurement is established. The cause of the original CI timing and the physical drag idling failure is not fully established, and no generic app or library bug is asserted.
+
+### Fresh final verification and handoff
+
+Same dedicated emulator-5580, JAVA_HOME/SDK/Gradle paths; Android animation scales remained zero as in CI. The final command was:
+
+```text
+gradle.bat --no-daemon :app:assembleDevDebugAndroidTest :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.isivoltpro.maginaolivo.EquipmentScreenTest --console=plain
+```
+
+Exit **0**, **9/9**, zero failures/errors/skips; `BUILD SUCCESSFUL in 53s`, `77 actionable tasks: 6 executed, 71 up-to-date`. Log/XML: `task-3-ci-override-final-green.log/.xml`. AndroidTest rebuilt, DEV unchanged/up-to-date. Only trailing log whitespace and a stray blank source line were normalized after execution. Source diff and copied XML were reviewed; staged/committed whitespace checks passed. Unchanged JVM/Room/full-suite checks were not repeated.
+
+Reports are appended here and copied to the tracked evidence report; all diagnostics, including RED attempts, are published with accurate names/results. Existing PNGs unchanged. No push, merge, subagents, Slice 4, payroll, backend or unrelated work occurred. Root must obtain scoped review and new exact-head CI. Physical-device acceptance remains pending and must specifically check edited-price Save with keyboard open, keyboard dismissed, and the partially expanded/expanded modal; this is recorded coverage follow-up, not a hidden PASS or a claimed production fix.

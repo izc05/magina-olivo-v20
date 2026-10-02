@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="9" failures="0" errors="0" skipped="0" time="20.822" timestamp="2026-10-02T10:02:51" hostname="localhost">
+  <testsuite name="com.isivoltpro.maginaolivo.EquipmentScreenTest" tests="9" failures="0" errors="0" skipped="0" time="19.806" timestamp="2026-10-02T10:02:51" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="4.504" />
+    <testcase name="recordedEquipmentReadsAsOneLine" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.311" />
+    <testcase name="usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.652" />
+    <testcase name="clearingAnAlreadyConfirmedPriceCannotSilentlyKeepIt" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.668" />
+    <testcase name="capturesUsualPriceSheet" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.486" />
+    <testcase name="multiplicationOverflowShowsErrorAndDisablesSave" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.941" />
+    <testcase name="overflowShowsErrorAndDisablesSave" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.631" />
+    <testcase name="steppersBuildTheDaysEquipment" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.876" />
+    <testcase name="unchangedUsualPrefillAndExplicitZeroStayConfirmed" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.737" />
+  </testsuite>
+</testsuites>
