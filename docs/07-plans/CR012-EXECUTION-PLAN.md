@@ -98,6 +98,7 @@ precio aplicado, preservar legado y reconstruir únicamente DAY_EQUIPMENT.
 
 ### Task 4: pantallas y contexto económico
 
-Ejecutar Slice 4 descrito en este plan y #309 después de integrar Slice 3. Eliminar
+Requisitos completos: `docs/07-plans/CR012-SLICE4-UI.md`.
+Slice 3 integrado en #314 (main 5fd86744), seis checks verdes. Eliminar
 la asignación económica implícita por finca/fecha; comprobar tarjetas, semántica,
 coste/kg, navegación a detalles y accesibilidad con evidencia de emulador.
