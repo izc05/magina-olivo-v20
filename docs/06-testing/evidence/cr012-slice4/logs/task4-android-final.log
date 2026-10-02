@@ -1,0 +1,207 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.4.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDevDebugBuild UP-TO-DATE
+> Task :app:generateDevDebugBuildConfig UP-TO-DATE
+> Task :app:generateDevDebugResValues UP-TO-DATE
+> Task :app:generateDevDebugResources UP-TO-DATE
+> Task :app:packageDevDebugResources UP-TO-DATE
+> Task :app:processDevDebugNavigationResources UP-TO-DATE
+> Task :app:parseDevDebugLocalResources UP-TO-DATE
+> Task :app:generateDevDebugRFile UP-TO-DATE
+> Task :app:kspDevDebugKotlin UP-TO-DATE
+> Task :app:compileDevDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDevDebug UP-TO-DATE
+> Task :app:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :app:checkDevDebugAarMetadata UP-TO-DATE
+> Task :app:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :app:compileDevDebugNavigationResources UP-TO-DATE
+> Task :app:mergeDevDebugResources UP-TO-DATE
+> Task :app:createDevDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDevDebug UP-TO-DATE
+> Task :app:processDevDebugMainManifest UP-TO-DATE
+> Task :app:processDevDebugManifest UP-TO-DATE
+> Task :app:processDevDebugManifestForPackage UP-TO-DATE
+> Task :app:processDevDebugResources UP-TO-DATE
+> Task :app:bundleDevDebugClassesToCompileJar UP-TO-DATE
+> Task :app:preDevDebugAndroidTestBuild SKIPPED
+> Task :app:processDevDebugAndroidTestManifest UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestBuildConfig UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestResValues UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestResources UP-TO-DATE
+> Task :app:packageDevDebugAndroidTestResources UP-TO-DATE
+> Task :app:processDevDebugAndroidTestNavigationResources UP-TO-DATE
+> Task :app:parseDevDebugAndroidTestLocalResources UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestRFile UP-TO-DATE
+> Task :app:kspDevDebugAndroidTestKotlin UP-TO-DATE
+> Task :app:compileDevDebugAndroidTestKotlin UP-TO-DATE
+> Task :app:javaPreCompileDevDebugAndroidTest UP-TO-DATE
+> Task :app:compileDevDebugAndroidTestJavaWithJavac UP-TO-DATE
+> Task :app:copyRoomSchemas NO-SOURCE
+> Task :app:copyDevDebugChangelogAsset UP-TO-DATE
+> Task :app:generateDevDebugAssets UP-TO-DATE
+> Task :app:mergeDevDebugAssets UP-TO-DATE
+> Task :app:compressDevDebugAssets UP-TO-DATE
+> Task :app:generateDevDebugGlobalSynthetics UP-TO-DATE
+> Task :app:processDevDebugJavaRes UP-TO-DATE
+> Task :app:mergeDevDebugJavaResource UP-TO-DATE
+> Task :app:checkDevDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarDevDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDevDebug UP-TO-DATE
+> Task :app:mergeLibDexDevDebug UP-TO-DATE
+> Task :app:dexBuilderDevDebug UP-TO-DATE
+> Task :app:mergeProjectDexDevDebug UP-TO-DATE
+> Task :app:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDevDebugNativeLibs UP-TO-DATE
+> Task :app:stripDevDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDevDebug UP-TO-DATE
+> Task :app:writeDevDebugAppMetadata UP-TO-DATE
+> Task :app:writeDevDebugSigningConfigVersions UP-TO-DATE
+> Task :app:packageDevDebug UP-TO-DATE
+> Task :app:createDevDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:copyRoomSchemasToAndroidTestAssetsDevDebugAndroidTest UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestAssets UP-TO-DATE
+> Task :app:mergeDevDebugAndroidTestAssets UP-TO-DATE
+> Task :app:compressDevDebugAndroidTestAssets UP-TO-DATE
+> Task :app:generateDevDebugAndroidTestGlobalSynthetics UP-TO-DATE
+> Task :app:processDevDebugAndroidTestJavaRes UP-TO-DATE
+> Task :app:mergeDevDebugAndroidTestJavaResource UP-TO-DATE
+> Task :app:checkDevDebugAndroidTestDuplicateClasses UP-TO-DATE
+> Task :app:desugarDevDebugAndroidTestFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDevDebugAndroidTest UP-TO-DATE
+> Task :app:mergeLibDexDevDebugAndroidTest UP-TO-DATE
+> Task :app:checkDevDebugAndroidTestAarMetadata UP-TO-DATE
+> Task :app:mapDevDebugAndroidTestSourceSetPaths UP-TO-DATE
+> Task :app:compileDevDebugAndroidTestNavigationResources UP-TO-DATE
+> Task :app:mergeDevDebugAndroidTestResources UP-TO-DATE
+> Task :app:processDevDebugAndroidTestResources UP-TO-DATE
+> Task :app:dexBuilderDevDebugAndroidTest UP-TO-DATE
+> Task :app:mergeProjectDexDevDebugAndroidTest UP-TO-DATE
+> Task :app:mergeDevDebugAndroidTestJniLibFolders UP-TO-DATE
+> Task :app:mergeDevDebugAndroidTestNativeLibs NO-SOURCE
+> Task :app:stripDevDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :app:validateSigningDevDebugAndroidTest UP-TO-DATE
+> Task :app:writeDevDebugAndroidTestSigningConfigVersions UP-TO-DATE
+> Task :app:packageDevDebugAndroidTest UP-TO-DATE
+> Task :app:createDevDebugAndroidTestApkListingFileRedirect UP-TO-DATE
+Starting 408 tests on MaginaOlivo_CR012_API35(AVD) - 15
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 2/408 completed. (0 skipped) (0 failed)
+> Task :app:connectedDevDebugAndroidTest
+
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 8/408 completed. (0 skipped) (0 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 9/408 completed. (0 skipped) (0 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 10/408 completed. (0 skipped) (0 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 11/408 completed. (0 skipped) (0 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 12/408 completed. (0 skipped) (0 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 14/408 completed. (0 skipped) (0 failed)
+
+com.isivoltpro.maginaolivo.AppNavigationTest > farmParcelCampaignLifecyclePersistsAcrossRecreation[MaginaOlivo_CR012_API35(AVD) - 15] [31mFAILED [0m
+	java.lang.AssertionError: Failed: assertExists.
+	Reason: Expected exactly '1' node but could not find any node that satisfies: (((TestTag = 'campaign-metric-weighed') && (hasAnyDescendantThat(Text + InputText + EditableText contains 'Kg pesados' (ignoreCase: false)))) && (hasAnyDescendantThat(Text + InputText + EditableText contains '—' (ignoreCase: false))))
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 17/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 21/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 22/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 25/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 29/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 41/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 48/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 52/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 58/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 62/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 71/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 79/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 89/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 100/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 108/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 115/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 121/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 126/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 135/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 144/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 155/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 165/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 174/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 215/408 completed. (0 skipped) (1 failed)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 299/408 completed. (0 skipped) (1 failed)
+
+com.isivoltpro.maginaolivo.data.local.JornadaCostContractTest > theJornadaCostIsExactlyItsPostedLedgerRows[MaginaOlivo_CR012_API35(AVD) - 15] [31mFAILED [0m
+	java.lang.AssertionError: expected:<19550> but was:<16550>
+	at org.junit.Assert.fail(Assert.java:89)
+MaginaOlivo_CR012_API35(AVD) - 15 Tests 370/408 completed. (0 skipped) (2 failed)
+Tests on MaginaOlivo_CR012_API35(AVD) - 15 failed: There was 2 failure(s).
+Finished 408 tests on MaginaOlivo_CR012_API35(AVD) - 15
+Execute com.isivoltpro.maginaolivo.AppNavigationTest.farmParcelCampaignLifecyclePersistsAcrossRecreation: FAILED
+java.lang.AssertionError: java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (((TestTag = 'campaign-metric-weighed') && (hasAnyDescendantThat(Text + InputText + EditableText contains 'Kg pesados' (ignoreCase: false)))) && (hasAnyDescendantThat(Text + InputText + EditableText contains '—' (ignoreCase: false))))
+However, the unmerged tree contains '1' node that matches. Are you missing `useUnmergedNode = true` in your finder?
+
+at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+at com.isivoltpro.maginaolivo.AppNavigationTest.farmParcelCampaignLifecyclePersistsAcrossRecreation(AppNavigationTest.kt:402)
+
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (((TestTag = 'campaign-metric-weighed') && (hasAnyDescendantThat(Text + InputText + EditableText contains 'Kg pesados' (ignoreCase: false)))) && (hasAnyDescendantThat(Text + InputText + EditableText contains '—' (ignoreCase: false))))
+However, the unmerged tree contains '1' node that matches. Are you missing `useUnmergedNode = true` in your finder?
+
+at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+at com.isivoltpro.maginaolivo.AppNavigationTest.farmParcelCampaignLifecyclePersistsAcrossRecreation(AppNavigationTest.kt:402)
+Execute com.isivoltpro.maginaolivo.data.local.JornadaCostContractTest.theJornadaCostIsExactlyItsPostedLedgerRows: FAILED
+java.lang.AssertionError: java.lang.AssertionError: expected:<19550> but was:<16550>
+at org.junit.Assert.fail(Assert.java:89)
+at org.junit.Assert.failNotEquals(Assert.java:835)
+at org.junit.Assert.assertEquals(Assert.java:647)
+at org.junit.Assert.assertEquals(Assert.java:633)
+at com.isivoltpro.maginaolivo.data.local.JornadaCostContractTest$theJornadaCostIsExactlyItsPostedLedgerRows$1.invokeSuspend(JornadaCostContractTest.kt:99)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.internal.ScopeCoroutine.afterResume(Scopes.kt:35)
+at kotlinx.coroutines.AbstractCoroutine.resumeWith(AbstractCoroutine.kt:101)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:47)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+at com.isivoltpro.maginaolivo.data.local.JornadaCostContractTest.theJornadaCostIsExactlyItsPostedLedgerRows(JornadaCostContractTest.kt:80)
+
+java.lang.AssertionError: expected:<19550> but was:<16550>
+at org.junit.Assert.fail(Assert.java:89)
+at org.junit.Assert.failNotEquals(Assert.java:835)
+at org.junit.Assert.assertEquals(Assert.java:647)
+at org.junit.Assert.assertEquals(Assert.java:633)
+at com.isivoltpro.maginaolivo.data.local.JornadaCostContractTest$theJornadaCostIsExactlyItsPostedLedgerRows$1.invokeSuspend(JornadaCostContractTest.kt:99)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.internal.ScopeCoroutine.afterResume(Scopes.kt:35)
+at kotlinx.coroutines.AbstractCoroutine.resumeWith(AbstractCoroutine.kt:101)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:47)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+at com.isivoltpro.maginaolivo.data.local.JornadaCostContractTest.theJornadaCostIsExactlyItsPostedLedgerRows(JornadaCostContractTest.kt:80)
+
+> Task :app:connectedDevDebugAndroidTest FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:connectedDevDebugAndroidTest'.
+> There were failing tests. See the report at: file:///C:/Users/ISICIO/.codex/worktrees/cr012-slice1/MAGINA%20V20/app/build/reports/androidTests/connected/debug/flavors/dev/index.html
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 6m 14s
+77 actionable tasks: 1 executed, 76 up-to-date

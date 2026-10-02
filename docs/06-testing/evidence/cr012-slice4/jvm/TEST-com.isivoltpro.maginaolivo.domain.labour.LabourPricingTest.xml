@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.143Z" hostname="ISICIO" time="0.011">
+  <properties/>
+  <testcase name="oldAnonymousCountsStayReadableWithoutInventingWorkers" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.001"/>
+  <testcase name="arithmeticDoesNotOverflowBeforeRounding" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.001"/>
+  <testcase name="threeIdentifiedFullDaysCost180Euros" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.0"/>
+  <testcase name="negativePricesAndInvalidCurrencyAreRefused" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.001"/>
+  <testcase name="threeHoursAtTenEurosCost30Euros" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.0"/>
+  <testcase name="explicitPerPersonRateTakesPrecedenceOverUsualRate" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.0"/>
+  <testcase name="changingDayToHoursRequiresAnExplicitHourlyAgreement" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.001"/>
+  <testcase name="changingHoursToDayCannotReuseAnHourlyPrice" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.001"/>
+  <testcase name="currencyIsHistoricalAndNotForcedToEuros" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.0"/>
+  <testcase name="newRecollectionRequiresIdentityAndOnePersonPerLine" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.001"/>
+  <testcase name="missingPriceRemainsUnknownButExplicitZeroIsKnown" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.001"/>
+  <testcase name="historicalHalfDaysAndHourlyFractionsRoundHalfUpPerLine" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.001"/>
+  <testcase name="changingUsualRateDoesNotRewriteTheAppliedPriceOrDate" classname="com.isivoltpro.maginaolivo.domain.labour.LabourPricingTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

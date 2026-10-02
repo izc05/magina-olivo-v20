@@ -1,0 +1,64 @@
+Starting a Gradle Daemon, 2 busy Daemons could not be reused, use --status for details
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDevDebugBuild UP-TO-DATE
+> Task :app:generateDevDebugBuildConfig UP-TO-DATE
+> Task :app:generateDevDebugResValues UP-TO-DATE
+> Task :app:generateDevDebugResources UP-TO-DATE
+> Task :app:packageDevDebugResources UP-TO-DATE
+> Task :app:processDevDebugNavigationResources UP-TO-DATE
+> Task :app:parseDevDebugLocalResources UP-TO-DATE
+> Task :app:generateDevDebugRFile UP-TO-DATE
+> Task :app:kspDevDebugKotlin UP-TO-DATE
+> Task :app:compileDevDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDevDebug UP-TO-DATE
+> Task :app:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :app:checkDevDebugAarMetadata UP-TO-DATE
+> Task :app:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :app:compileDevDebugNavigationResources UP-TO-DATE
+> Task :app:mergeDevDebugResources UP-TO-DATE
+> Task :app:createDevDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDevDebug UP-TO-DATE
+> Task :app:processDevDebugMainManifest UP-TO-DATE
+> Task :app:processDevDebugManifest UP-TO-DATE
+> Task :app:processDevDebugManifestForPackage UP-TO-DATE
+> Task :app:processDevDebugResources UP-TO-DATE
+> Task :app:bundleDevDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:bundleDevDebugClassesToCompileJar UP-TO-DATE
+> Task :app:kspDevDebugUnitTestKotlin
+> Task :app:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :app:processDevDebugJavaRes UP-TO-DATE
+> Task :app:compileDevDebugUnitTestKotlin
+> Task :app:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:copyRoomSchemas NO-SOURCE
+> Task :app:processDevDebugUnitTestJavaRes UP-TO-DATE
+
+> Task :app:testDevDebugUnitTest
+
+CampaignNotebookTest > totalsAreTheSameSummariesTheirOwnScreensShow FAILED
+    java.lang.AssertionError at CampaignNotebookTest.kt:78
+
+CampaignNotebookTest > farmAndDateNeverAssignEconomicCampaignContext FAILED
+    java.lang.AssertionError at CampaignNotebookTest.kt:30
+
+ExpenseFormTest > historicalCurrencyAndCampaignSurviveAmountAndLineEditing FAILED
+    org.junit.ComparisonFailure at ExpenseFormTest.kt:30
+
+ExpenseFormTest > unsupportedHistoricalCurrencyBlocksEditing FAILED
+    java.lang.AssertionError at ExpenseFormTest.kt:44
+
+12 tests completed, 4 failed
+
+> Task :app:testDevDebugUnitTest FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDevDebugUnitTest'.
+> There were failing tests. See the report at: file:///C:/Users/ISICIO/.codex/worktrees/cr012-slice1/MAGINA%20V20/app/build/reports/tests/testDevDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 27s
+29 actionable tasks: 3 executed, 26 up-to-date

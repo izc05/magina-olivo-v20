@@ -1,0 +1,39 @@
+
+com.isivoltpro.maginaolivo.Cr012SurfacesTest:
+Error in comparisonKeepsMixedCurrenciesVisibleWithoutConversion(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'KWD' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #8 at (l=0.0, t=141.0, r=1031.0, b=202.0)px, Tag: 'comparison-line'
+Text = '[3.200 kg · rend. sin datos · coste/kg sin datos]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 1 sibling
+Selector used: ((TestTag = 'comparison-line')[0])
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.comparisonKeepsMixedCurrenciesVisibleWithoutConversion(Cr012SurfacesTest.kt:87)
+.
+
+Time: 4.55
+There was 1 failure:
+1) comparisonKeepsMixedCurrenciesVisibleWithoutConversion(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'KWD' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #8 at (l=0.0, t=141.0, r=1031.0, b=202.0)px, Tag: 'comparison-line'
+Text = '[3.200 kg · rend. sin datos · coste/kg sin datos]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 1 sibling
+Selector used: ((TestTag = 'comparison-line')[0])
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.comparisonKeepsMixedCurrenciesVisibleWithoutConversion(Cr012SurfacesTest.kt:87)
+
+FAILURES!!!
+Tests run: 2,  Failures: 1
+
+

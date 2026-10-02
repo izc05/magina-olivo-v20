@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.harvests.LabourCurrencyContextTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.974Z" hostname="ISICIO" time="0.002">
+  <properties/>
+  <testcase name="historicalLedgerDenominationOverridesCurrentFarmRatesForLegacyAndNewRows" classname="com.isivoltpro.maginaolivo.feature.harvests.LabourCurrencyContextTest" time="0.0"/>
+  <testcase name="onlyDaysWithoutHistoricalContextUseCurrentCurrencyOrEurDefault" classname="com.isivoltpro.maginaolivo.feature.harvests.LabourCurrencyContextTest" time="0.001"/>
+  <testcase name="compatiblePartlyConfirmedDayKeepsJpyWithOrWithoutItsLedger" classname="com.isivoltpro.maginaolivo.feature.harvests.LabourCurrencyContextTest" time="0.0"/>
+  <testcase name="multiplePostedLedgersStayAmbiguousEvenWhenDenominationsMatch" classname="com.isivoltpro.maginaolivo.feature.harvests.LabourCurrencyContextTest" time="0.0"/>
+  <testcase name="conflictingSnapshotsAndLedgerCannotGuessACurrency" classname="com.isivoltpro.maginaolivo.feature.harvests.LabourCurrencyContextTest" time="0.0"/>
+  <testcase name="draftManualAndOtherDayOrCampaignCostsDoNotReplaceHistoricalContext" classname="com.isivoltpro.maginaolivo.feature.harvests.LabourCurrencyContextTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

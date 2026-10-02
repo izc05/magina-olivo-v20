@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.322Z" hostname="ISICIO" time="0.01">
+  <properties/>
+  <testcase name="an unreadable value is dropped rather than guessed" classname="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" time="0.002"/>
+  <testcase name="a partially filled block is still kept" classname="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" time="0.0"/>
+  <testcase name="an untouched block writes no detail row" classname="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" time="0.002"/>
+  <testcase name="editing starts from what was already saved" classname="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" time="0.0"/>
+  <testcase name="observation and other carry no typed detail" classname="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" time="0.001"/>
+  <testcase name="an irrigation round trips through the form with its tariff" classname="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" time="0.001"/>
+  <testcase name="a comma is a decimal separator, as the Spanish keyboard offers it" classname="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" time="0.0"/>
+  <testcase name="an incident always records its state" classname="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" time="0.003"/>
+  <testcase name="the detail always belongs to the type that was showing" classname="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" time="0.001"/>
+  <testcase name="the tariff snapshot only exists once a basis is chosen" classname="com.isivoltpro.maginaolivo.feature.activities.ActivityDetailFormTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketParserTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.274Z" hostname="ISICIO" time="0.027">
+  <properties/>
+  <testcase name="disagreeingWeightsAreFlaggedNotFixed" classname="com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketParserTest" time="0.02"/>
+  <testcase name="weightsOnOneLineAreReadByTheirLabels" classname="com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketParserTest" time="0.001"/>
+  <testcase name="aMissingNetIsNeverComputedFromGrossAndTare" classname="com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketParserTest" time="0.002"/>
+  <testcase name="readsAPlainWeightTicket" classname="com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketParserTest" time="0.002"/>
+  <testcase name="unreadableTextProposesNothing" classname="com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketParserTest" time="0.0"/>
+  <testcase name="anHourIsReadOnlyWhereTheTicketSaysSo" classname="com.isivoltpro.maginaolivo.domain.ocr.DeliveryTicketParserTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

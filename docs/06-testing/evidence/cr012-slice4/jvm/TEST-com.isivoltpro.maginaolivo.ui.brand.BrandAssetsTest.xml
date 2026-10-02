@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.ui.brand.BrandAssetsTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:12.201Z" hostname="ISICIO" time="0.123">
+  <properties/>
+  <testcase name="compactMarkHasTransparentBreathingRoom" classname="com.isivoltpro.maginaolivo.ui.brand.BrandAssetsTest" time="0.059"/>
+  <testcase name="officialAssetsFitTheirUiRoles" classname="com.isivoltpro.maginaolivo.ui.brand.BrandAssetsTest" time="0.029"/>
+  <testcase name="monochromeAssetIsAValidSystemSilhouette" classname="com.isivoltpro.maginaolivo.ui.brand.BrandAssetsTest" time="0.035"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

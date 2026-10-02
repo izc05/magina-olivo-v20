@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.attachment.AttachmentKindTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:10.943Z" hostname="ISICIO" time="0.005">
+  <properties/>
+  <testcase name="thePickerOffersExactlyWhatIsAccepted" classname="com.isivoltpro.maginaolivo.domain.attachment.AttachmentKindTest" time="0.001"/>
+  <testcase name="imagesArePhotosWhateverTheirEncoding" classname="com.isivoltpro.maginaolivo.domain.attachment.AttachmentKindTest" time="0.001"/>
+  <testcase name="anUnknownStoredUploadStateReadsAsPendingNeverAsSynced" classname="com.isivoltpro.maginaolivo.domain.attachment.AttachmentKindTest" time="0.001"/>
+  <testcase name="pdfIsTheOnlyDocumentTypeAccepted" classname="com.isivoltpro.maginaolivo.domain.attachment.AttachmentKindTest" time="0.0"/>
+  <testcase name="anythingElseIsRejectedRatherThanGuessed" classname="com.isivoltpro.maginaolivo.domain.attachment.AttachmentKindTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

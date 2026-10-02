@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.parcels.ParcelViewModelTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:12.166Z" hostname="ISICIO" time="0.013">
+  <properties/>
+  <testcase name="farmParcelsObservesAndCreatesManualParcel" classname="com.isivoltpro.maginaolivo.feature.parcels.ParcelViewModelTest" time="0.006"/>
+  <testcase name="detailEditsArchivesAndRestoresLocally" classname="com.isivoltpro.maginaolivo.feature.parcels.ParcelViewModelTest" time="0.005"/>
+  <testcase name="invalidDraftDoesNotReachRepository" classname="com.isivoltpro.maginaolivo.feature.parcels.ParcelViewModelTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

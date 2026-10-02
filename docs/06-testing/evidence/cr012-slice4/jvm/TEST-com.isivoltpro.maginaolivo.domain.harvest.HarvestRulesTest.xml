@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.harvest.HarvestRulesTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.117Z" hostname="ISICIO" time="0.007">
+  <properties/>
+  <testcase name="exactWeightsMustAddUpToTheTotalToTheGram" classname="com.isivoltpro.maginaolivo.domain.harvest.HarvestRulesTest" time="0.002"/>
+  <testcase name="aHarvestNeedsAPositiveTotalOriginParcelsAndAPastDate" classname="com.isivoltpro.maginaolivo.domain.harvest.HarvestRulesTest" time="0.001"/>
+  <testcase name="anUnknownSplitIsValidAndNeedsOnlyTheTotal" classname="com.isivoltpro.maginaolivo.domain.harvest.HarvestRulesTest" time="0.0"/>
+  <testcase name="theAllocationModeIsReadFromTheRows" classname="com.isivoltpro.maginaolivo.domain.harvest.HarvestRulesTest" time="0.001"/>
+  <testcase name="theSummaryNeverAttributesUnallocatedKilosToAParcel" classname="com.isivoltpro.maginaolivo.domain.harvest.HarvestRulesTest" time="0.001"/>
+  <testcase name="aPartialSplitLeavesSomethingForTheUnknownParcels" classname="com.isivoltpro.maginaolivo.domain.harvest.HarvestRulesTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

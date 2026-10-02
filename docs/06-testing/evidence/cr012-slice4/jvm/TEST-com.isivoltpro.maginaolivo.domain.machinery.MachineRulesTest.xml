@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.machinery.MachineRulesTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.190Z" hostname="ISICIO" time="0.006">
+  <properties/>
+  <testcase name="hourMeterReadingsMustMakeSense" classname="com.isivoltpro.maginaolivo.domain.machinery.MachineRulesTest" time="0.002"/>
+  <testcase name="aNameIsAllAMachineNeeds" classname="com.isivoltpro.maginaolivo.domain.machinery.MachineRulesTest" time="0.002"/>
+  <testcase name="machinesOnAnActivityAreOptionalAndHoursAreOptionalToo" classname="com.isivoltpro.maginaolivo.domain.machinery.MachineRulesTest" time="0.0"/>
+  <testcase name="hoursUsedPrefersWhatWasTypedThenTheMeterDifference" classname="com.isivoltpro.maginaolivo.domain.machinery.MachineRulesTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

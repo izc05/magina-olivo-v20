@@ -1,0 +1,39 @@
+
+com.isivoltpro.maginaolivo.Cr012SurfacesTest:
+Error in campaignExpenseTotalsKeepOriginalCurrenciesSeparate(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'KWD' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #19 at (l=60.0, t=638.0, r=522.0, b=1077.0)px, Tag: 'expenses-total'
+IsContainer = 'true'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Has 3 children, 9 siblings
+Selector used: (TestTag = 'expenses-total')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.campaignExpenseTotalsKeepOriginalCurrenciesSeparate(Cr012SurfacesTest.kt:185)
+
+
+Time: 1.751
+There was 1 failure:
+1) campaignExpenseTotalsKeepOriginalCurrenciesSeparate(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'KWD' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #19 at (l=60.0, t=638.0, r=522.0, b=1077.0)px, Tag: 'expenses-total'
+IsContainer = 'true'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Has 3 children, 9 siblings
+Selector used: (TestTag = 'expenses-total')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.campaignExpenseTotalsKeepOriginalCurrenciesSeparate(Cr012SurfacesTest.kt:185)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+

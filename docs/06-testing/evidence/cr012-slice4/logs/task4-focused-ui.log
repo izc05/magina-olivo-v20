@@ -1,0 +1,451 @@
+
+com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest:
+Error in economicCardsOpenCanonicalDetailsWithoutDuplicateMoneyOrAnnualWork(com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest):
+java.lang.NoSuchMethodError: No direct method <init>(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V in class Lcom/isivoltpro/maginaolivo/feature/notebook/NotebookActions; or its super classes (declaration of 'com.isivoltpro.maginaolivo.feature.notebook.NotebookActions' appears in /data/app/~~tflVuaPBsFuImNfupKof3w==/com.isivoltpro.maginaolivo.dev-52Xgpu7IqF0FbAeM8TB_IA==/base.apk!classes13.dex)
+	at com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest.economicCardsOpenCanonicalDetailsWithoutDuplicateMoneyOrAnnualWork(RecollectionSummaryScreenTest.kt:41)
+
+Error in aRunningCampaignOffersNewPesadaFirstAndOneSummary(com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest):
+java.lang.NoSuchMethodError: No direct method <init>(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V in class Lcom/isivoltpro/maginaolivo/feature/notebook/NotebookActions; or its super classes (declaration of 'com.isivoltpro.maginaolivo.feature.notebook.NotebookActions' appears in /data/app/~~tflVuaPBsFuImNfupKof3w==/com.isivoltpro.maginaolivo.dev-52Xgpu7IqF0FbAeM8TB_IA==/base.apk!classes13.dex)
+	at com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest.aRunningCampaignOffersNewPesadaFirstAndOneSummary(RecollectionSummaryScreenTest.kt:67)
+
+Error in aClosedCampaignTakesNoNewPesada(com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest):
+java.lang.NoSuchMethodError: No direct method <init>(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V in class Lcom/isivoltpro/maginaolivo/feature/notebook/NotebookActions; or its super classes (declaration of 'com.isivoltpro.maginaolivo.feature.notebook.NotebookActions' appears in /data/app/~~tflVuaPBsFuImNfupKof3w==/com.isivoltpro.maginaolivo.dev-52Xgpu7IqF0FbAeM8TB_IA==/base.apk!classes13.dex)
+	at com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest.aClosedCampaignTakesNoNewPesada(RecollectionSummaryScreenTest.kt:81)
+
+com.isivoltpro.maginaolivo.EquipmentScreenTest:
+Error in clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice(EquipmentScreenTest.kt:209)
+
+Error in recordedEquipmentReadsAsOneLine(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-equipment-summary')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.recordedEquipmentReadsAsOneLine(EquipmentScreenTest.kt:101)
+
+Error in usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce(EquipmentScreenTest.kt:118)
+
+Error in clearingAnAlreadyConfirmedPriceCannotSilentlyKeepIt(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.clearingAnAlreadyConfirmedPriceCannotSilentlyKeepIt(EquipmentScreenTest.kt:194)
+
+Error in capturesUsualPriceSheet(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.capturesUsualPriceSheet(EquipmentScreenTest.kt:149)
+
+Error in multiplicationOverflowShowsErrorAndDisablesSave(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.multiplicationOverflowShowsErrorAndDisablesSave(EquipmentScreenTest.kt:177)
+
+Error in overflowShowsErrorAndDisablesSave(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.overflowShowsErrorAndDisablesSave(EquipmentScreenTest.kt:163)
+
+Error in steppersBuildTheDaysEquipment(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-no-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.steppersBuildTheDaysEquipment(EquipmentScreenTest.kt:63)
+
+Error in unchangedUsualPrefillAndExplicitZeroStayConfirmed(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.unchangedUsualPrefillAndExplicitZeroStayConfirmed(EquipmentScreenTest.kt:248)
+
+com.isivoltpro.maginaolivo.LabourScreenTest:
+Error in newFormRequiresOnePersonAndPriceWithoutAnonymousOrHalfDay(com.isivoltpro.maginaolivo.LabourScreenTest):
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-no-labour')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.LabourScreenTest.newFormRequiresOnePersonAndPriceWithoutAnonymousOrHalfDay(LabourScreenTest.kt:53)
+
+Error in recordedJornalesShowTheirDeterministicSummary(com.isivoltpro.maginaolivo.LabourScreenTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '4 personas · 1 jornada · 3 medias' (ignoreCase: false))
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-labour-summary')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.LabourScreenTest.recordedJornalesShowTheirDeterministicSummary(LabourScreenTest.kt:74)
+
+com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest:
+Error in partlyConfirmedDayKeepsTheOtherPersonsJpySnapshotWithoutLedger(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Can't retrieve node at index '0' of 'TestTag = 'jornada-labour-edit''
+There are no existing nodes for that selector.
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:175)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.partlyConfirmedDayKeepsTheOtherPersonsJpySnapshotWithoutLedger(LabourCurrencyAndOverflowUiTest.kt:55)
+
+Error in legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-labour-edit')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates(LabourCurrencyAndOverflowUiTest.kt:34)
+
+Error in ambiguousHistoricalCurrenciesExplainWhyConfirmationCannotSave(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-labour-edit')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.ambiguousHistoricalCurrenciesExplainWhyConfirmationCannotSave(LabourCurrencyAndOverflowUiTest.kt:62)
+
+Error in newAttendanceOnJpyDayDoesNotPrefillOrSaveCurrentEurRate(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-register-labour')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.newAttendanceOnJpyDayDoesNotPrefillOrSaveCurrentEurRate(LabourCurrencyAndOverflowUiTest.kt:70)
+.
+com.isivoltpro.maginaolivo.JornadaCostScreenTest:
+Error in kindAmountSave(com.isivoltpro.maginaolivo.JornadaCostScreenTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-add-cost')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.JornadaCostScreenTest.kindAmountSave(JornadaCostScreenTest.kt:47)
+
+Error in theTotalIsThePostedLedgerRowsOnly(com.isivoltpro.maginaolivo.JornadaCostScreenTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '165,50' (ignoreCase: false) as substring)
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-cost-total')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.JornadaCostScreenTest.theTotalIsThePostedLedgerRowsOnly(JornadaCostScreenTest.kt:66)
+
+com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest:..
+Error in closedCostCannotBeReparentedToAnActiveCampaign(com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest):
+java.lang.AssertionError: expected null, but was:<40000000-0000-0000-0000-0000000000f1>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotNull(Assert.java:756)
+	at org.junit.Assert.assertNull(Assert.java:738)
+	at org.junit.Assert.assertNull(Assert.java:748)
+	at com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest$closedCostCannotBeReparentedToAnActiveCampaign$1.invokeSuspend(ExpenseLedgerContractTest.kt:281)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.internal.ScopeCoroutine.afterResume(Scopes.kt:35)
+	at kotlinx.coroutines.AbstractCoroutine.resumeWith(AbstractCoroutine.kt:101)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:47)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest.closedCostCannotBeReparentedToAnActiveCampaign(ExpenseLedgerContractTest.kt:271)
+............
+Error in farmExpenseRemainsOutsideCampaignUnlessExplicitlySelected(com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest):
+java.lang.AssertionError: expected:<40000000-0000-0000-0000-0000000000f1> but was:<null>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest$farmExpenseRemainsOutsideCampaignUnlessExplicitlySelected$1.invokeSuspend(ExpenseLedgerContractTest.kt:205)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.internal.ScopeCoroutine.afterResume(Scopes.kt:35)
+	at kotlinx.coroutines.AbstractCoroutine.resumeWith(AbstractCoroutine.kt:101)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:47)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest.farmExpenseRemainsOutsideCampaignUnlessExplicitlySelected(ExpenseLedgerContractTest.kt:199)
+..........
+
+Time: 20.823
+There were 22 failures:
+1) economicCardsOpenCanonicalDetailsWithoutDuplicateMoneyOrAnnualWork(com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest)
+java.lang.NoSuchMethodError: No direct method <init>(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V in class Lcom/isivoltpro/maginaolivo/feature/notebook/NotebookActions; or its super classes (declaration of 'com.isivoltpro.maginaolivo.feature.notebook.NotebookActions' appears in /data/app/~~tflVuaPBsFuImNfupKof3w==/com.isivoltpro.maginaolivo.dev-52Xgpu7IqF0FbAeM8TB_IA==/base.apk!classes13.dex)
+	at com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest.economicCardsOpenCanonicalDetailsWithoutDuplicateMoneyOrAnnualWork(RecollectionSummaryScreenTest.kt:41)
+2) aRunningCampaignOffersNewPesadaFirstAndOneSummary(com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest)
+java.lang.NoSuchMethodError: No direct method <init>(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V in class Lcom/isivoltpro/maginaolivo/feature/notebook/NotebookActions; or its super classes (declaration of 'com.isivoltpro.maginaolivo.feature.notebook.NotebookActions' appears in /data/app/~~tflVuaPBsFuImNfupKof3w==/com.isivoltpro.maginaolivo.dev-52Xgpu7IqF0FbAeM8TB_IA==/base.apk!classes13.dex)
+	at com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest.aRunningCampaignOffersNewPesadaFirstAndOneSummary(RecollectionSummaryScreenTest.kt:67)
+3) aClosedCampaignTakesNoNewPesada(com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest)
+java.lang.NoSuchMethodError: No direct method <init>(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V in class Lcom/isivoltpro/maginaolivo/feature/notebook/NotebookActions; or its super classes (declaration of 'com.isivoltpro.maginaolivo.feature.notebook.NotebookActions' appears in /data/app/~~tflVuaPBsFuImNfupKof3w==/com.isivoltpro.maginaolivo.dev-52Xgpu7IqF0FbAeM8TB_IA==/base.apk!classes13.dex)
+	at com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest.aClosedCampaignTakesNoNewPesada(RecollectionSummaryScreenTest.kt:81)
+4) clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice(com.isivoltpro.maginaolivo.EquipmentScreenTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice(EquipmentScreenTest.kt:209)
+5) recordedEquipmentReadsAsOneLine(com.isivoltpro.maginaolivo.EquipmentScreenTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-equipment-summary')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.recordedEquipmentReadsAsOneLine(EquipmentScreenTest.kt:101)
+6) usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce(com.isivoltpro.maginaolivo.EquipmentScreenTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce(EquipmentScreenTest.kt:118)
+7) clearingAnAlreadyConfirmedPriceCannotSilentlyKeepIt(com.isivoltpro.maginaolivo.EquipmentScreenTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.clearingAnAlreadyConfirmedPriceCannotSilentlyKeepIt(EquipmentScreenTest.kt:194)
+8) capturesUsualPriceSheet(com.isivoltpro.maginaolivo.EquipmentScreenTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.capturesUsualPriceSheet(EquipmentScreenTest.kt:149)
+9) multiplicationOverflowShowsErrorAndDisablesSave(com.isivoltpro.maginaolivo.EquipmentScreenTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.multiplicationOverflowShowsErrorAndDisablesSave(EquipmentScreenTest.kt:177)
+10) overflowShowsErrorAndDisablesSave(com.isivoltpro.maginaolivo.EquipmentScreenTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.overflowShowsErrorAndDisablesSave(EquipmentScreenTest.kt:163)
+11) steppersBuildTheDaysEquipment(com.isivoltpro.maginaolivo.EquipmentScreenTest)
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-no-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.steppersBuildTheDaysEquipment(EquipmentScreenTest.kt:63)
+12) unchangedUsualPrefillAndExplicitZeroStayConfirmed(com.isivoltpro.maginaolivo.EquipmentScreenTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-edit-equipment')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.EquipmentScreenTest.unchangedUsualPrefillAndExplicitZeroStayConfirmed(EquipmentScreenTest.kt:248)
+13) newFormRequiresOnePersonAndPriceWithoutAnonymousOrHalfDay(com.isivoltpro.maginaolivo.LabourScreenTest)
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-no-labour')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.LabourScreenTest.newFormRequiresOnePersonAndPriceWithoutAnonymousOrHalfDay(LabourScreenTest.kt:53)
+14) recordedJornalesShowTheirDeterministicSummary(com.isivoltpro.maginaolivo.LabourScreenTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '4 personas · 1 jornada · 3 medias' (ignoreCase: false))
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-labour-summary')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.LabourScreenTest.recordedJornalesShowTheirDeterministicSummary(LabourScreenTest.kt:74)
+15) partlyConfirmedDayKeepsTheOtherPersonsJpySnapshotWithoutLedger(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Can't retrieve node at index '0' of 'TestTag = 'jornada-labour-edit''
+There are no existing nodes for that selector.
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:175)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.partlyConfirmedDayKeepsTheOtherPersonsJpySnapshotWithoutLedger(LabourCurrencyAndOverflowUiTest.kt:55)
+16) legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-labour-edit')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates(LabourCurrencyAndOverflowUiTest.kt:34)
+17) ambiguousHistoricalCurrenciesExplainWhyConfirmationCannotSave(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-labour-edit')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.ambiguousHistoricalCurrenciesExplainWhyConfirmationCannotSave(LabourCurrencyAndOverflowUiTest.kt:62)
+18) newAttendanceOnJpyDayDoesNotPrefillOrSaveCurrentEurRate(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-register-labour')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.newAttendanceOnJpyDayDoesNotPrefillOrSaveCurrentEurRate(LabourCurrencyAndOverflowUiTest.kt:70)
+19) kindAmountSave(com.isivoltpro.maginaolivo.JornadaCostScreenTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-add-cost')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.JornadaCostScreenTest.kindAmountSave(JornadaCostScreenTest.kt:47)
+20) theTotalIsThePostedLedgerRowsOnly(com.isivoltpro.maginaolivo.JornadaCostScreenTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '165,50' (ignoreCase: false) as substring)
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-cost-total')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.JornadaCostScreenTest.theTotalIsThePostedLedgerRowsOnly(JornadaCostScreenTest.kt:66)
+21) closedCostCannotBeReparentedToAnActiveCampaign(com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest)
+java.lang.AssertionError: expected null, but was:<40000000-0000-0000-0000-0000000000f1>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotNull(Assert.java:756)
+	at org.junit.Assert.assertNull(Assert.java:738)
+	at org.junit.Assert.assertNull(Assert.java:748)
+	at com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest$closedCostCannotBeReparentedToAnActiveCampaign$1.invokeSuspend(ExpenseLedgerContractTest.kt:281)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.internal.ScopeCoroutine.afterResume(Scopes.kt:35)
+	at kotlinx.coroutines.AbstractCoroutine.resumeWith(AbstractCoroutine.kt:101)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:47)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest.closedCostCannotBeReparentedToAnActiveCampaign(ExpenseLedgerContractTest.kt:271)
+22) farmExpenseRemainsOutsideCampaignUnlessExplicitlySelected(com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest)
+java.lang.AssertionError: expected:<40000000-0000-0000-0000-0000000000f1> but was:<null>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest$farmExpenseRemainsOutsideCampaignUnlessExplicitlySelected$1.invokeSuspend(ExpenseLedgerContractTest.kt:205)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.internal.ScopeCoroutine.afterResume(Scopes.kt:35)
+	at kotlinx.coroutines.AbstractCoroutine.resumeWith(AbstractCoroutine.kt:101)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:47)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest.farmExpenseRemainsOutsideCampaignUnlessExplicitlySelected(ExpenseLedgerContractTest.kt:199)
+
+FAILURES!!!
+Tests run: 47,  Failures: 22
+
+

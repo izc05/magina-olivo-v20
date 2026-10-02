@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.profile.ReleaseNotesTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:12.185Z" hostname="ISICIO" time="0.009">
+  <properties/>
+  <testcase name="theRealChangelogHasFarmerFacingNotes" classname="com.isivoltpro.maginaolivo.feature.profile.ReleaseNotesTest" time="0.009"/>
+  <testcase name="aChangelogWithoutVersionsShowsNothing" classname="com.isivoltpro.maginaolivo.feature.profile.ReleaseNotesTest" time="0.0"/>
+  <testcase name="theTeamNotesAboveTheFirstVersionAreLeftOutAndMarksRemoved" classname="com.isivoltpro.maginaolivo.feature.profile.ReleaseNotesTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

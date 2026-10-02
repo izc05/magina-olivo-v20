@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.app.OnboardingStateStoreTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:10.834Z" hostname="ISICIO" time="0.0">
+  <properties/>
+  <testcase name="completionSurvivesReadsFromSameStore" classname="com.isivoltpro.maginaolivo.app.OnboardingStateStoreTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

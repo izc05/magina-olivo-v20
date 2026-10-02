@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.market.OilTrendsTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.199Z" hostname="ISICIO" time="0.011">
+  <properties/>
+  <testcase name="theChartKeepsEveryWeekOnTheAxisAndMissingValuesStayMissing" classname="com.isivoltpro.maginaolivo.domain.market.OilTrendsTest" time="0.003"/>
+  <testcase name="anUnchangedPriceIsFlatAndAWeeklyValueAgesHonestly" classname="com.isivoltpro.maginaolivo.domain.market.OilTrendsTest" time="0.002"/>
+  <testcase name="aMissingWeekIsNeverBridgedAndAMissingCategoryStaysMissing" classname="com.isivoltpro.maginaolivo.domain.market.OilTrendsTest" time="0.0"/>
+  <testcase name="theVerifiedWeek37To38ChangesAndTheirWords" classname="com.isivoltpro.maginaolivo.domain.market.OilTrendsTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

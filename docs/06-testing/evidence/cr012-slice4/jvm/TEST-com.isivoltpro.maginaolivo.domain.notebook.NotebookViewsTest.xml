@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.230Z" hostname="ISICIO" time="0.041">
+  <properties/>
+  <testcase name="legacyHandTypedKilosAreShownApartNeverDroppedNorAddedToThePesadasTotal" classname="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" time="0.002"/>
+  <testcase name="anActivitysOwnCostIsNotListedTwiceInTheDiaryButStaysInTheLedger" classname="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" time="0.006"/>
+  <testcase name="aJornadaYieldIsPartialWhenItCoversOnlySomeOfItsKilos" classname="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" time="0.003"/>
+  <testcase name="theCampaignAtAGlanceCountsDaysAndReadsMoneyOnlyFromTheLedger" classname="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" time="0.002"/>
+  <testcase name="phytoRecordShowsOnlyWhatWasWrittenAndNamesWhatIsMissing" classname="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" time="0.014"/>
+  <testcase name="costsGroupTheOneLedgerWithoutASecondAmount" classname="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" time="0.002"/>
+  <testcase name="pendingDeliveryIsKnownOnlyWhenItAddsUp" classname="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" time="0.001"/>
+  <testcase name="aJornadasOwnPesadaAndCostAreReadInsideItNotRepeated" classname="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" time="0.002"/>
+  <testcase name="surfaceIsUnknownWhenAnyTreatedParcelHasNoArea" classname="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" time="0.004"/>
+  <testcase name="diaryIsOneTimelineOfEveryRecordNewestDayFirst" classname="com.isivoltpro.maginaolivo.domain.notebook.NotebookViewsTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,30 @@
+
+com.isivoltpro.maginaolivo.Cr012SurfacesTest:...
+Error in dayExpenseUsesHistoricalJpyBeforeTodaysEurAndEmitsJpyMinorUnits(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (Text + InputText + EditableText contains 'Importe (JPY)' (ignoreCase: false))
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.dayExpenseUsesHistoricalJpyBeforeTodaysEurAndEmitsJpyMinorUnits(Cr012SurfacesTest.kt:58)
+....
+com.isivoltpro.maginaolivo.JornadaScreenTest:....
+
+Time: 22.69
+There was 1 failure:
+1) dayExpenseUsesHistoricalJpyBeforeTodaysEurAndEmitsJpyMinorUnits(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (Text + InputText + EditableText contains 'Importe (JPY)' (ignoreCase: false))
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.dayExpenseUsesHistoricalJpyBeforeTodaysEurAndEmitsJpyMinorUnits(Cr012SurfacesTest.kt:58)
+
+FAILURES!!!
+Tests run: 12,  Failures: 1
+
+

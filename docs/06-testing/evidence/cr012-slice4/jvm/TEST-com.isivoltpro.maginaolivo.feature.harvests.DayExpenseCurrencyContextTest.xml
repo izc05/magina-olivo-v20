@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.harvests.DayExpenseCurrencyContextTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.929Z" hostname="ISICIO" time="0.005">
+  <properties/>
+  <testcase name="ambiguousAndUnsupportedCodesBlockWithoutReplacingTheOriginalCodes" classname="com.isivoltpro.maginaolivo.feature.harvests.DayExpenseCurrencyContextTest" time="0.002"/>
+  <testcase name="draftsAndAnotherDaysCostsNeverAssignHistoricalCurrency" classname="com.isivoltpro.maginaolivo.feature.harvests.DayExpenseCurrencyContextTest" time="0.001"/>
+  <testcase name="postedHistoricalJpyWinsOverTodaysEur" classname="com.isivoltpro.maginaolivo.feature.harvests.DayExpenseCurrencyContextTest" time="0.0"/>
+  <testcase name="farmUsualCurrencyOnlySuppliesContextWhenHistoryHasNone" classname="com.isivoltpro.maginaolivo.feature.harvests.DayExpenseCurrencyContextTest" time="0.0"/>
+  <testcase name="missingResourceReadCannotEstablishANewExpensesCurrency" classname="com.isivoltpro.maginaolivo.feature.harvests.DayExpenseCurrencyContextTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

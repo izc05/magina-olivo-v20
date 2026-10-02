@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.ocr.PurchaseDocumentParserTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.303Z" hostname="ISICIO" time="0.008">
+  <properties/>
+  <testcase name="nothingIsGuessedFromTextThatDoesNotSayIt" classname="com.isivoltpro.maginaolivo.domain.ocr.PurchaseDocumentParserTest" time="0.004"/>
+  <testcase name="readsAPlainSpanishInvoice" classname="com.isivoltpro.maginaolivo.domain.ocr.PurchaseDocumentParserTest" time="0.001"/>
+  <testcase name="anImpossibleDateIsIgnored" classname="com.isivoltpro.maginaolivo.domain.ocr.PurchaseDocumentParserTest" time="0.001"/>
+  <testcase name="aReceiptWithAShortDateAndAPlainTotal" classname="com.isivoltpro.maginaolivo.domain.ocr.PurchaseDocumentParserTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

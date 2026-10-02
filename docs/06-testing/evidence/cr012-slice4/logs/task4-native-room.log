@@ -1,0 +1,69 @@
+
+com.isivoltpro.maginaolivo.Cr012SurfacesTest:...
+Error in actualDayCardsShowCanonical530Over3200AndOpenEachResource(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '0,17' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #628 at (l=55.0, t=2055.0, r=1025.0, b=2340.0)px, Tag: 'day-cost-per-kg'
+IsContainer = 'true'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Has 5 children, 18 siblings
+Selector used: (TestTag = 'day-cost-per-kg')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.actualDayCardsShowCanonical530Over3200AndOpenEachResource(Cr012SurfacesTest.kt:59)
+.
+Error in actualCampaignHasSeparateProductionAndCompactCostsWithoutWorkerLists(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '0,17' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #894 at (l=55.0, t=2055.0, r=1025.0, b=2340.0)px, Tag: 'dashboard-cost-per-kg'
+IsContainer = 'true'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Has 5 children, 22 siblings
+Selector used: (TestTag = 'dashboard-cost-per-kg')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.actualCampaignHasSeparateProductionAndCompactCostsWithoutWorkerLists(Cr012SurfacesTest.kt:77)
+
+com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest:..........................
+
+Time: 17.193
+There were 2 failures:
+1) actualDayCardsShowCanonical530Over3200AndOpenEachResource(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '0,17' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #628 at (l=55.0, t=2055.0, r=1025.0, b=2340.0)px, Tag: 'day-cost-per-kg'
+IsContainer = 'true'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Has 5 children, 18 siblings
+Selector used: (TestTag = 'day-cost-per-kg')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.actualDayCardsShowCanonical530Over3200AndOpenEachResource(Cr012SurfacesTest.kt:59)
+2) actualCampaignHasSeparateProductionAndCompactCostsWithoutWorkerLists(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '0,17' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #894 at (l=55.0, t=2055.0, r=1025.0, b=2340.0)px, Tag: 'dashboard-cost-per-kg'
+IsContainer = 'true'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Has 5 children, 22 siblings
+Selector used: (TestTag = 'dashboard-cost-per-kg')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.actualCampaignHasSeparateProductionAndCompactCostsWithoutWorkerLists(Cr012SurfacesTest.kt:77)
+
+FAILURES!!!
+Tests run: 32,  Failures: 2
+
+

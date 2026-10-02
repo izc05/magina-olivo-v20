@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.attachments.AttachmentsViewModelTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.439Z" hostname="ISICIO" time="0.17">
+  <properties/>
+  <testcase name="listsAttachesAndRemovesThroughTheRepository" classname="com.isivoltpro.maginaolivo.feature.attachments.AttachmentsViewModelTest" time="0.155"/>
+  <testcase name="aRejectedFileExplainsWhyInsteadOfFailingSilently" classname="com.isivoltpro.maginaolivo.feature.attachments.AttachmentsViewModelTest" time="0.005"/>
+  <testcase name="everyFailureHasAFarmerReadableMessage" classname="com.isivoltpro.maginaolivo.feature.attachments.AttachmentsViewModelTest" time="0.002"/>
+  <testcase name="theStatusNeverClaimsAnUploadThatDidNotHappen" classname="com.isivoltpro.maginaolivo.feature.attachments.AttachmentsViewModelTest" time="0.005"/>
+  <testcase name="sizesReadNaturally" classname="com.isivoltpro.maginaolivo.feature.attachments.AttachmentsViewModelTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
