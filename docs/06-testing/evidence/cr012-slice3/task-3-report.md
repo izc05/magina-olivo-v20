@@ -103,3 +103,43 @@ Reviewed the complete current source/test diff against the full Slice 3 brief, o
 No further source changes were made during the resumed verification. The existing emulator PNGs were already inspected by the root; they are unchanged and not regenerated for this wave. They remain synthetic Compose evidence, not persisted end-to-end or physical-device acceptance.
 
 Independent scoped re-review and **new exact-head six-check CI are mandatory with the root before integration**. Physical-device acceptance remains pending. The earlier unfiltered 391/392 native run and its ordered Phase18 fixture limitation remain accurately reported; this fresh 24/24 scoped run does not claim a full native suite PASS. No push, merge, subagents, or later-phase scope occurred in this wave.
+
+## CI diagnosis and Compose fixture correction — 2026-10-02
+
+Baseline `d81f6b777cff4d946e707a97bc8906978413a960`. The root supplied two new exact-head CI failures: [Gate3 evidence run 36987569607](https://github.com/izc05/magina-olivo-v20/actions/runs/36987569607), `unchangedUsualPrefillAndExplicitZeroStayConfirmed` line 227, and [Gate3 emulator run 36987565423](https://github.com/izc05/magina-olivo-v20/actions/runs/36987565423), `clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice` line 203. Each had 394 tests and one failure, a null captured draft after the physical Save action. The alternate emulator/evidence jobs passed 394 tests; those passes do not cancel the failures. Full failed logs remain in `.superpowers/sdd/CR012-EXECUTION-PLAN/ci-d81-{evidence,emulator}-failed.log`; exact failure excerpts are published as `task-3-ci-failure-excerpts.log`.
+
+### Investigation and bounded proof
+
+Read the systematic-debugging skill and traced the exact path: the price field updates `prices`; selected lines and checked validation derive from that state; `MoPrimaryButton` invokes `onSave(lines)` synchronously. In the real ViewModel, repository success increments `equipmentSaved`; `HarvestDetailScreen` closes its modal in `LaunchedEffect(state.equipmentSaved)`.
+
+Both original failing methods passed once locally after installing the d81 application/test APKs: `adb -s emulator-5580 shell am instrument -w -e class com.isivoltpro.maginaolivo.EquipmentScreenTest#unchangedUsualPrefillAndExplicitZeroStayConfirmed,com.isivoltpro.maginaolivo.EquipmentScreenTest#clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice com.isivoltpro.maginaolivo.dev.test/androidx.test.runner.AndroidJUnitRunner`, **OK (2 tests)**, 10.428s; `task-3-ci-original-focused.log`. This did not reproduce CI's lost callback and was not treated as a fix or a reason to retry CI.
+
+A definite separate fixture defect was proven: the original unchanged-default/zero method fed a constant `equipmentSaved=0` state and never acknowledged its first save. A diagnostic `assertDoesNotExist` after that first successful 7,000-minor-unit assertion failed because `equipment-sheet` still existed. The next attempted reopen was therefore a physical tap aimed at the underlying day screen while the modal remained, and the second plus could alter the existing draft rather than start the intended new form. Diagnostic command:
+
+```text
+gradle.bat --no-daemon :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.isivoltpro.maginaolivo.EquipmentScreenTest#unchangedUsualPrefillAndExplicitZeroStayConfirmed --console=plain
+```
+
+Exit **1**, **1 test failed**, `BUILD FAILED in 40s`; `task-3-ci-fixture-red.log` and `task-3-ci-fixture-red.xml`. The final test retains this closure assertion and passes after correcting the fixture.
+
+### Change and assertions
+
+Only `app/src/androidTest/java/com/isivoltpro/maginaolivo/EquipmentScreenTest.kt` changed. The default/zero fixture now exposes its saved equipment lines through Compose state and increments `equipmentSaved`, matching real success feedback. It physically taps Save for the visible usual price, verifies the exact 7,000 EUR snapshot/date and true default flag, requires modal closure, then reopens and checks retained quantity one and price 70. Editing that confirmed line to zero verifies exact editable text, zero preview, enabled Save, exact zero EUR snapshot/date, type/quantity/flag, and a second closure.
+
+The cleared-price method verifies selected quantity one, exact empty editable text, pending preview, enabled Save, and the emitted type/quantity/null snapshot/false capture-default flag. The empty and zero draft-seam checks invoke the enabled accessible OnClick action instead of mixing their domain assertions with coordinate-based pointer routing after text input. They still fail if Save is disabled or emits no/wrong draft. Existing physical-tap controls remain, including usual-price save, edited unit-price save, and stepper save. No retries, arbitrary sleeps, relaxed snapshot assertions, or production changes were introduced.
+
+The precise cause of the two CI pointer failures was **not reproduced or proven locally**; keyboard/window/layout timing is a possible explanation, not an established result. The semantic-action choice verifies the intended callback/draft seam and does not claim to fix a product touch bug. The missing saved-state acknowledgement is separately proven and corrected, not asserted as the sole explanation for both failures.
+
+### Fresh validation and evidence
+
+Same JAVA_HOME/SDK/Gradle paths and emulator-5580 as above. Full focused class command:
+
+```text
+gradle.bat --no-daemon :app:assembleDevDebugAndroidTest :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.isivoltpro.maginaolivo.EquipmentScreenTest --console=plain
+```
+
+Exit **0**, **9/9**, zero failures/errors/skips; `BUILD SUCCESSFUL in 1m 4s`, `77 actionable tasks: 6 executed, 71 up-to-date`. Log `task-3-ci-focused-green.log`; copied XML `task-3-ci-focused-green.xml`. AndroidTest APK rebuilt; DEV application unchanged/up-to-date.
+
+A second bounded check used the two affected methods with Android window/transition/animator scales explicitly set to zero, matching CI's disabled animations; same device width 1080 / density 440 (approximately 393dp), font scale 1.0. After APK install, the above two-method `adb am instrument` command passed **OK (2 tests)** in 7.141s; `task-3-ci-noanimations.log`. The first attempt after the connected Gradle task could not find instrumentation because that task had uninstalled the APKs; the failed setup output is retained as `task-3-ci-noanimations-notinstalled.log`. Reinstalling the built app/test APKs resolved setup; no failing test was retried or hidden.
+
+Self-review confirmed only test/evidence/report files changed; F1/F2/F3 production remains exactly as d81. New logs have trailing whitespace normalized without changing messages/results. No Room/JVM/full-suite repetition was needed for a test-only fixture correction. No screenshots were changed, no push/merge/subagents/later-phase work was performed. Independent scoped review and the root's **new exact-head CI** remain mandatory; this local 9/9 plus 2/2 is not a claim that full CI now passes. Physical-device acceptance remains pending.

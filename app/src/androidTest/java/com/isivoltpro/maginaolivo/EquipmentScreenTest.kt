@@ -2,6 +2,9 @@ package com.isivoltpro.maginaolivo
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
@@ -13,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
@@ -29,6 +33,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -197,9 +202,17 @@ class EquipmentScreenTest {
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-price").performScrollTo().assertTextContains("70", substring = true)
         composeRule.onNodeWithTag("equipment-SHAKER-price").performTextReplacement("")
+        composeRule.onNodeWithTag("equipment-SHAKER-value").assertTextContains("1")
+        assertEquals("", composeRule.onNodeWithTag("equipment-SHAKER-price")
+            .fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
         composeRule.onNodeWithTag("equipment-SHAKER-total").assertTextContains("pendiente", substring = true)
-        composeRule.onNodeWithTag("equipment-save").assertIsEnabled().performScrollTo().performClick()
+        // This case verifies the enabled Save action's draft; physical taps are covered separately.
+        composeRule.onNodeWithTag("equipment-save").performScrollTo().assertIsEnabled()
+            .performSemanticsAction(SemanticsActions.OnClick)
         composeRule.runOnIdle {
+            assertNotNull("Save must emit the explicitly unknown price draft", saved)
+            assertEquals(EquipmentType.SHAKER, saved!!.single().type)
+            assertEquals(1, saved!!.single().quantity)
             assertEquals(null, saved!!.single().appliedPrice)
             assertEquals(false, saved!!.single().captureUsualPriceWhenMissing)
         }
@@ -207,24 +220,53 @@ class EquipmentScreenTest {
 
     @Test fun unchangedUsualPrefillAndExplicitZeroStayConfirmed() {
         var saved: List<EquipmentDraftLine>? = null
+        val screenState = mutableStateOf(HarvestDetailUiState(isLoading = false, harvest = harvest,
+            rates = RecollectionRates(equipmentDayMinor = mapOf(EquipmentType.SHAKER to 7_000))))
         composeRule.setContent {
             MaginaOlivoTheme {
-                HarvestDetailScreen(state = HarvestDetailUiState(isLoading = false, harvest = harvest,
-                    rates = RecollectionRates(equipmentDayMinor = mapOf(EquipmentType.SHAKER to 7_000))),
-                    onUpdate = {}, onDelete = {}, onSaveEquipment = { saved = it })
+                HarvestDetailScreen(state = screenState.value,
+                    onUpdate = {}, onDelete = {}, onSaveEquipment = { lines ->
+                        saved = lines
+                        // Mirror the repository success observed by the real ViewModel: acknowledge
+                        // the save and expose its saved lines before reopening the sheet.
+                        screenState.value = screenState.value.copy(
+                            equipment = lines.map { line -> EquipmentLine(UUID.randomUUID(), harvest.id,
+                                line.type, line.label, line.quantity, line.machineId, 1, line.appliedPrice) },
+                            equipmentSaved = screenState.value.equipmentSaved + 1,
+                        )
+                    })
             }
         }
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
-        composeRule.onNodeWithTag("equipment-save").performScrollTo().performClick()
-        composeRule.runOnIdle { assertEquals(7_000L, saved!!.single().appliedPrice!!.unitPriceMinor) }
+        composeRule.onNodeWithTag("equipment-SHAKER-value").assertTextContains("1")
+        composeRule.onNodeWithTag("equipment-SHAKER-price").assertTextContains("70", substring = true)
+        composeRule.onNodeWithTag("equipment-save").performScrollTo().assertIsEnabled().performClick()
+        composeRule.runOnIdle {
+            assertNotNull("A physical Save tap must capture the visible usual price", saved)
+            assertEquals(EquipmentPriceSnapshot(7_000, "EUR", harvest.harvestDate), saved!!.single().appliedPrice)
+            assertEquals(true, saved!!.single().captureUsualPriceWhenMissing)
+        }
+        composeRule.onNodeWithTag("equipment-sheet").assertDoesNotExist()
 
-        saved = null
+        composeRule.runOnIdle { saved = null }
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
-        composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
+        composeRule.onNodeWithTag("equipment-SHAKER-value").assertTextContains("1")
+        composeRule.onNodeWithTag("equipment-SHAKER-price").assertTextContains("70", substring = true)
         composeRule.onNodeWithTag("equipment-SHAKER-price").performScrollTo().performTextReplacement("0")
-        composeRule.onNodeWithTag("equipment-save").performScrollTo().performClick()
-        composeRule.runOnIdle { assertEquals(0L, saved!!.single().appliedPrice!!.unitPriceMinor) }
+        assertEquals("0", composeRule.onNodeWithTag("equipment-SHAKER-price")
+            .fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
+        composeRule.onNodeWithTag("equipment-SHAKER-total").assertTextContains("0,00", substring = true)
+        composeRule.onNodeWithTag("equipment-save").performScrollTo().assertIsEnabled()
+            .performSemanticsAction(SemanticsActions.OnClick)
+        composeRule.runOnIdle {
+            assertNotNull("Save must emit the explicitly confirmed zero price draft", saved)
+            assertEquals(EquipmentType.SHAKER, saved!!.single().type)
+            assertEquals(1, saved!!.single().quantity)
+            assertEquals(EquipmentPriceSnapshot(0, "EUR", harvest.harvestDate), saved!!.single().appliedPrice)
+            assertEquals(true, saved!!.single().captureUsualPriceWhenMissing)
+        }
+        composeRule.onNodeWithTag("equipment-sheet").assertDoesNotExist()
     }
 
     private fun capture(name: String) {

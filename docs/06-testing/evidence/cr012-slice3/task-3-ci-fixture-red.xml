@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="1" failures="1" errors="0" skipped="0" time="5.944" timestamp="2026-10-02T09:24:40" hostname="localhost">
+  <testsuite name="com.isivoltpro.maginaolivo.EquipmentScreenTest" tests="1" failures="1" errors="0" skipped="0" time="4.87" timestamp="2026-10-02T09:24:40" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="unchangedUsualPrefillAndExplicitZeroStayConfirmed" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="4.87">
+      <failure>java.lang.AssertionError: Failed: assertDoesNotExist.
+Reason: Did not expect any node but found '1' node that satisfies: (TestTag = 'equipment-sheet')
+Node found:
+Node #89 at (l=0.0, t=1303.0, r=1080.0, b=3283.0)px, Tag: 'equipment-sheet'
+IsTraversalGroup = 'true'
+Shape = 'androidx.compose.foundation.VerticalScrollableClipShape&#64;17e3c9d'
+VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=0.0, reverseScrolling=false)'
+Actions = [ScrollBy, ScrollByOffset]
+Has 13 children, 1 sibling
+
+at androidx.compose.ui.test.SemanticsNodeInteraction.assertDoesNotExist(SemanticsNodeInteraction.kt:101)
+at com.isivoltpro.maginaolivo.EquipmentScreenTest.unchangedUsualPrefillAndExplicitZeroStayConfirmed(EquipmentScreenTest.kt:221)
+</failure>
+    </testcase>
+  </testsuite>
+</testsuites>
