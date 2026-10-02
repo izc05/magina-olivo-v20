@@ -113,3 +113,5 @@ No quota reset/purchase, other worker, reviewer or user-approval stall was used.
 
 
 Root handoff recovery: implementer quota expired after source commit and complete GREEN evidence/report, before staging the evidence commit. Root verified final 309 JVM and 408 native result, closed documentation only and committed preserved evidence. No implementation or tests were repeated during this recovery. Independent review and exact-head CI remain required.
+
+Raw tool logs retain original trailing spaces/end blank lines; a whole-evidence git whitespace check reports those generated-log lines. The source/test diff a1573ca4..d0d24e2d passes git diff --check. Raw evidence was not rewritten to hide tool output.
