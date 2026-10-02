@@ -1,0 +1,19 @@
+e: file:///C:/Users/ISICIO/.codex/worktrees/cr012-slice1/MAGINA%20V20/app/src/test/java/com/isivoltpro/maginaolivo/feature/harvests/MachineryFinancialErrorTest.kt:13:20 Unresolved reference 'machineryPriceErrorMessage'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDevDebugUnitTestKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+   > Kotlin compiler: UNRESOLVED_REFERENCE
+       Kotlin compiler error
+         Unresolved reference 'machineryPriceErrorMessage'.
+         Location: C:/Users/ISICIO/.codex/worktrees/cr012-slice1/MAGINA V20/app/src/test/java/com/isivoltpro/maginaolivo/feature/harvests/MachineryFinancialErrorTest.kt line 13
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3s

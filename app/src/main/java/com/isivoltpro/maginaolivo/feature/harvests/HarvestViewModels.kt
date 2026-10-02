@@ -254,6 +254,8 @@ class HarvestDetailViewModel(
                 mutableState.value = mutableState.value.copy(
                     costError = if (result.error == AppError.Conflict("campaign_closed")) {
                         "La campaña está cerrada: sus gastos ya no cambian."
+                    } else if (machineryPriceErrorMessage(result.error) != null) {
+                        machineryPriceErrorMessage(result.error)!!
                     } else {
                         "No se pudo enlazar el gasto al día de recolección."
                     },
@@ -295,6 +297,8 @@ class HarvestDetailViewModel(
                 mutableState.value = mutableState.value.copy(
                     costError = if (result.error == AppError.Conflict("campaign_closed")) {
                         "La campaña está cerrada: sus gastos ya no cambian."
+                    } else if (machineryPriceErrorMessage(result.error) != null) {
+                        machineryPriceErrorMessage(result.error)!!
                     } else {
                         "No se pudo cambiar el gasto que cuenta."
                     },
@@ -324,7 +328,8 @@ class HarvestDetailViewModel(
                     costSaved = mutableState.value.costSaved + 1,
                     openExpenseId = if (openAfter) result.value else null,
                 )
-                is AppResult.Failure -> mutableState.value.copy(isSaving = false, costError = "No se pudo guardar el gasto. Revisa el importe.")
+                is AppResult.Failure -> mutableState.value.copy(isSaving = false,
+                    costError = machineryPriceErrorMessage(result.error) ?: "No se pudo guardar el gasto. Revisa el importe.")
             }
         }
     }
@@ -419,6 +424,11 @@ class HarvestDetailViewModel(
 /** A validation the repository refused, shown next to the field it concerns. */
 private fun AppError.asProblem(): HarvestProblem? =
     (this as? AppError.Validation)?.let { HarvestProblem(it.field ?: "parcels", it.code) }
+
+internal fun machineryPriceErrorMessage(error: AppError): String? =
+    if (error is AppError.Validation && error.field == "appliedPrice" && error.code == "confirm_missing_prices")
+        "Confirma primero los precios que faltan en la maquinaria histórica de este día."
+    else null
 
 internal fun labourErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> when (error.code) {

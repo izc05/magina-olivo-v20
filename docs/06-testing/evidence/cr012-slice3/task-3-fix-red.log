@@ -1,0 +1,62 @@
+Execute com.isivoltpro.maginaolivo.data.local.DayCostContractTest.partialLegacyConfirmationRejectsKnownSubtotalOverflowBeforeWriting: FAILED
+java.lang.ClassCastException: java.lang.ClassCastException: com.isivoltpro.maginaolivo.core.common.AppResult$Success cannot be cast to com.isivoltpro.maginaolivo.core.common.AppResult$Failure
+at com.isivoltpro.maginaolivo.data.local.DayCostContractTest$partialLegacyConfirmationRejectsKnownSubtotalOverflowBeforeWriting$1.invokeSuspend(DayCostContractTest.kt:294)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+at com.isivoltpro.maginaolivo.data.local.DayCostContractTest.partialLegacyConfirmationRejectsKnownSubtotalOverflowBeforeWriting(DayCostContractTest.kt:278)
+
+java.lang.ClassCastException: com.isivoltpro.maginaolivo.core.common.AppResult$Success cannot be cast to com.isivoltpro.maginaolivo.core.common.AppResult$Failure
+at com.isivoltpro.maginaolivo.data.local.DayCostContractTest$partialLegacyConfirmationRejectsKnownSubtotalOverflowBeforeWriting$1.invokeSuspend(DayCostContractTest.kt:294)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+at com.isivoltpro.maginaolivo.data.local.DayCostContractTest.partialLegacyConfirmationRejectsKnownSubtotalOverflowBeforeWriting(DayCostContractTest.kt:278)
+Execute com.isivoltpro.maginaolivo.data.local.DayCostContractTest.unknownHistoricalMachineryRejectsRentalCreatePostUpdateAndLinkWithoutWrites: FAILED
+java.lang.ClassCastException: java.lang.ClassCastException: com.isivoltpro.maginaolivo.core.common.AppResult$Success cannot be cast to com.isivoltpro.maginaolivo.core.common.AppResult$Failure
+at com.isivoltpro.maginaolivo.data.local.DayCostContractTest$unknownHistoricalMachineryRejectsRentalCreatePostUpdateAndLinkWithoutWrites$1.invokeSuspend(DayCostContractTest.kt:241)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+at com.isivoltpro.maginaolivo.data.local.DayCostContractTest.unknownHistoricalMachineryRejectsRentalCreatePostUpdateAndLinkWithoutWrites(DayCostContractTest.kt:229)
+
+java.lang.ClassCastException: com.isivoltpro.maginaolivo.core.common.AppResult$Success cannot be cast to com.isivoltpro.maginaolivo.core.common.AppResult$Failure
+at com.isivoltpro.maginaolivo.data.local.DayCostContractTest$unknownHistoricalMachineryRejectsRentalCreatePostUpdateAndLinkWithoutWrites$1.invokeSuspend(DayCostContractTest.kt:241)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+at com.isivoltpro.maginaolivo.data.local.DayCostContractTest.unknownHistoricalMachineryRejectsRentalCreatePostUpdateAndLinkWithoutWrites(DayCostContractTest.kt:229)
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:connectedDevDebugAndroidTest'.
+> There were failing tests. See the report at: file:///C:/Users/ISICIO/.codex/worktrees/cr012-slice1/MAGINA%20V20/app/build/reports/androidTests/connected/debug/flavors/dev/index.html
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 12s

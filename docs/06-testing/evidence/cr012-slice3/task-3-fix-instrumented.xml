@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="24" failures="0" errors="0" skipped="0" time="33.035" timestamp="2026-10-02T08:58:26" hostname="localhost">
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" tests="15" failures="0" errors="0" skipped="0" time="2.128" timestamp="2026-10-02T08:58:26" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="aClosedCampaignRefusesToSwapWhichCostCounts" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.354" />
+    <testcase name="oilForTheMachinesAddsToTheirCalculatedDayAndNeverReplacesIt" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.235" />
+    <testcase name="aHandTypedCostOfTheSameKindStandsUntilTheFarmerPicksTheCalculation" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.158" />
+    <testcase name="partialLegacyConfirmationRejectsKnownSubtotalOverflowBeforeWriting" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.078" />
+    <testcase name="unknownHistoricalMachineryRejectsRentalCreatePostUpdateAndLinkWithoutWrites" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.133" />
+    <testcase name="attendanceAndPricesPostOneCalculatedEntryUpdatedInPlace" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.159" />
+    <testcase name="aClosedCampaignKeepsItsCostsAndARemovedDayTakesItsCalculatedOnes" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.107" />
+    <testcase name="historicalYenLedgerSurvivesPartialConfirmationAndEuroUsualRate" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.083" />
+    <testcase name="cr012FreezesRateAndRoundsEachPerson" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.107" />
+    <testcase name="machinerySnapshotsPostOnceAndUsualChangesDoNotRepriceThem" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.208" />
+    <testcase name="unknownLegacyPriceBlocksPricedAppendAndPreservesExistingLedger" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.054" />
+    <testcase name="explicitUnknownNewLineDoesNotCaptureUsualPriceButDefaultsAndZeroStillDo" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.106" />
+    <testcase name="anUnlinkedHandTypedCostOfTheSameDateIsShownAndOnlyTheFarmerLinksIt" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.159" />
+    <testcase name="cr012RejectsNewAnonymousCounts" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.081" />
+    <testcase name="explicitZeroIsPostedAndOverflowRollsBackRowsAndOutbox" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.106" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.EquipmentScreenTest" tests="9" failures="0" errors="0" skipped="0" time="29.415" timestamp="2026-10-02T08:58:26" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="6.086" />
+    <testcase name="recordedEquipmentReadsAsOneLine" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.79" />
+    <testcase name="usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="3.583" />
+    <testcase name="clearingAnAlreadyConfirmedPriceCannotSilentlyKeepIt" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.709" />
+    <testcase name="capturesUsualPriceSheet" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.583" />
+    <testcase name="multiplicationOverflowShowsErrorAndDisablesSave" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.971" />
+    <testcase name="overflowShowsErrorAndDisablesSave" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.879" />
+    <testcase name="steppersBuildTheDaysEquipment" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="3.176" />
+    <testcase name="unchangedUsualPrefillAndExplicitZeroStayConfirmed" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="3.638" />
+  </testsuite>
+</testsuites>

@@ -91,7 +91,7 @@ class OfflineFirstEquipmentRepository(
         }
         val historicalCurrency = posted.singleOrNull()?.currency ?: existingCurrencies.singleOrNull()
         val resolved = wanted.mapValues { (key, line) ->
-            line.appliedPrice ?: current[key]?.priceSnapshot() ?: rates?.let { usual ->
+            line.appliedPrice ?: current[key]?.priceSnapshot() ?: rates?.takeIf { line.captureUsualPriceWhenMissing }?.let { usual ->
                 usual.equipmentDayMinor[line.type]
                     ?.takeIf { key !in current && (historicalCurrency == null || historicalCurrency == usual.currency) }
                     ?.let { EquipmentPriceSnapshot(it, usual.currency, harvest.harvestDate) }
@@ -105,8 +105,11 @@ class OfflineFirstEquipmentRepository(
         if (currencies.size > 1 || (historicalCurrency != null && currencies.any { it != historicalCurrency })) {
             throw EquipmentInvalid("currency", "currency_mismatch")
         }
-        resolved.forEach { (key, snapshot) ->
-            if (snapshot != null) Math.multiplyExact(wanted.getValue(key).quantity.toLong(), snapshot.unitPriceMinor)
+        // Validate the known subtotal even while another legacy line has no confirmed price.
+        // No partial amount is posted; this only prevents unrepresentable snapshots being saved.
+        resolved.entries.fold(0L) { total, (key, snapshot) ->
+            if (snapshot == null) total else Math.addExact(total,
+                Math.multiplyExact(wanted.getValue(key).quantity.toLong(), snapshot.unitPriceMinor))
         }
 
         current.forEach { (key, row) ->

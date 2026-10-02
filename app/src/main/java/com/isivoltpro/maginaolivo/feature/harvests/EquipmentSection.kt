@@ -140,7 +140,8 @@ internal fun EquipmentSheet(
         val price = Money.parseMinor(priceText(line), currency)
         val existing = current.firstOrNull { EquipmentRules.key(EquipmentDraftLine(it.type, it.quantity, it.label, it.machineId)) == EquipmentRules.key(line) }
         line.copy(appliedPrice = price?.takeIf { existing?.appliedPrice?.unitPriceMinor != it || existing.appliedPrice.currency != currency }
-            ?.let { EquipmentPriceSnapshot(it, currency, priceDate) })
+            ?.let { EquipmentPriceSnapshot(it, currency, priceDate) },
+            captureUsualPriceWhenMissing = priceText(line).isNotBlank())
     }
     val invalid = EquipmentRules.validate(lines)
     val legacyMissing = selected.any { line ->

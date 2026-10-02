@@ -148,6 +148,8 @@ internal fun expenseErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> when {
         error.code == "campaign_closed" -> "La campaña está cerrada: el coste histórico no se modifica."
         error.code == "below_paid" -> "Debes corregir los pagos antes de reducir el coste por debajo de lo pagado."
+        error.field == "appliedPrice" && error.code == "confirm_missing_prices" ->
+            "Confirma primero los precios de la maquinaria histórica de este día antes de guardar el alquiler."
         else -> when (error.field) {
         "parcelId" -> "La parcela elegida no pertenece a esa finca"
         "activityId" -> "La actuación elegida no pertenece a esa finca"

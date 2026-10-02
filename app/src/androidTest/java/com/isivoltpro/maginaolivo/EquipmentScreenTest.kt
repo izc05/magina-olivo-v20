@@ -7,6 +7,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -65,9 +66,9 @@ class EquipmentScreenTest {
         composeRule.runOnIdle {
             assertEquals(
                 setOf(
-                    EquipmentDraftLine(EquipmentType.SHAKER, 2),
-                    EquipmentDraftLine(EquipmentType.COMB, 1),
-                    EquipmentDraftLine(EquipmentType.TRACTOR, 1),
+                    EquipmentDraftLine(EquipmentType.SHAKER, 2, captureUsualPriceWhenMissing = false),
+                    EquipmentDraftLine(EquipmentType.COMB, 1, captureUsualPriceWhenMissing = false),
+                    EquipmentDraftLine(EquipmentType.TRACTOR, 1, captureUsualPriceWhenMissing = false),
                 ),
                 saved!!.toSet(),
             )
@@ -181,6 +182,49 @@ class EquipmentScreenTest {
         composeRule.onNodeWithTag("equipment-SHAKER-price").performScrollTo().performTextReplacement("")
         composeRule.onNodeWithTag("equipment-price-error").assertExists()
         composeRule.onNodeWithTag("equipment-save").assertIsNotEnabled()
+    }
+
+    @Test fun clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice() {
+        var saved: List<EquipmentDraftLine>? = null
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                HarvestDetailScreen(state = HarvestDetailUiState(isLoading = false, harvest = harvest,
+                    rates = RecollectionRates(equipmentDayMinor = mapOf(EquipmentType.SHAKER to 7_000))),
+                    onUpdate = {}, onDelete = {}, onSaveEquipment = { saved = it })
+            }
+        }
+        composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
+        composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
+        composeRule.onNodeWithTag("equipment-SHAKER-price").performScrollTo().assertTextContains("70", substring = true)
+        composeRule.onNodeWithTag("equipment-SHAKER-price").performTextReplacement("")
+        composeRule.onNodeWithTag("equipment-SHAKER-total").assertTextContains("pendiente", substring = true)
+        composeRule.onNodeWithTag("equipment-save").assertIsEnabled().performScrollTo().performClick()
+        composeRule.runOnIdle {
+            assertEquals(null, saved!!.single().appliedPrice)
+            assertEquals(false, saved!!.single().captureUsualPriceWhenMissing)
+        }
+    }
+
+    @Test fun unchangedUsualPrefillAndExplicitZeroStayConfirmed() {
+        var saved: List<EquipmentDraftLine>? = null
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                HarvestDetailScreen(state = HarvestDetailUiState(isLoading = false, harvest = harvest,
+                    rates = RecollectionRates(equipmentDayMinor = mapOf(EquipmentType.SHAKER to 7_000))),
+                    onUpdate = {}, onDelete = {}, onSaveEquipment = { saved = it })
+            }
+        }
+        composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
+        composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
+        composeRule.onNodeWithTag("equipment-save").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(7_000L, saved!!.single().appliedPrice!!.unitPriceMinor) }
+
+        saved = null
+        composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
+        composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
+        composeRule.onNodeWithTag("equipment-SHAKER-price").performScrollTo().performTextReplacement("0")
+        composeRule.onNodeWithTag("equipment-save").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(0L, saved!!.single().appliedPrice!!.unitPriceMinor) }
     }
 
     private fun capture(name: String) {

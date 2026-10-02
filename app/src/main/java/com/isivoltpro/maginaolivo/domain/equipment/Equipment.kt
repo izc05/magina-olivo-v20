@@ -44,8 +44,10 @@ data class EquipmentDraftLine(
     val quantity: Int,
     val label: String? = null,
     val machineId: UUID? = null,
-    /** Null keeps an existing snapshot, or asks the repository for the usual price on a new line. */
+    /** Null keeps an existing snapshot; on new lines [captureUsualPriceWhenMissing] decides whether to use the usual price. */
     val appliedPrice: EquipmentPriceSnapshot? = null,
+    /** False explicitly leaves a new line's price unknown, even when a usual price exists. */
+    val captureUsualPriceWhenMissing: Boolean = true,
 )
 
 data class EquipmentPriceSnapshot(

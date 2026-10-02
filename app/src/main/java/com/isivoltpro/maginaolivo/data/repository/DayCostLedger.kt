@@ -77,6 +77,13 @@ internal class DayCostLedger(
             }
             post(day, DayCostKind.EQUIPMENT, DayCostCalculator.equipment(equipment),
                 currencies.firstOrNull() ?: historical.singleOrNull()?.currency ?: rates.currency, now)
+        } else {
+            val postedLegacy = database.expenseDao().listForHarvest(day.id).any {
+                it.origin == ExpenseOrigin.DAY_EQUIPMENT.name && it.status == ExpenseStatus.POSTED.name
+            }
+            if (postedLegacy && manual(day.id, DayCostKind.EQUIPMENT).isNotEmpty()) {
+                throw LabourFinanceInvalid("appliedPrice", "confirm_missing_prices")
+            }
         }
         LabourFinance(database).verifyCampaign(campaign.id)
     }

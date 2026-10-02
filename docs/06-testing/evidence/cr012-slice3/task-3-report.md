@@ -47,3 +47,59 @@ All Gradle commands used `JAVA_HOME=C:\Program Files\Android\Android Studio\jbr`
 
 - Root should run exact-head CI with its ordinary Android test exclusion list, obtain independent review, and handle PR/integration. The unfiltered local Android task remains red only for the ordered Phase 18 fixture described above; it must not be described as a full native PASS.
 - Physical-device acceptance remains pending. The semantic-color/card cleanup and broader day/campaign context belong to Slice 4; this slice keeps existing navigation and dashboard layout.
+
+## Review fix round 1 — resumed and verified 2026-10-02
+
+The independent review of `17f8d76b234db166aa462c0c45f9bd64d73ce912` raised F1 (P1), F2 (P2), and F3 (P2). This bounded wave preserves the interrupted worker's existing changes; no new implementation or unrelated scope was started. The implementation baseline for this wave is `17f8d76b`.
+
+### Findings addressed
+
+- **F1:** `DayCostLedger.sync` now rejects a replacing POSTED manual machinery expense while unknown equipment snapshots and a POSTED historical DAY_EQUIPMENT ledger coexist. It throws `appliedPrice:confirm_missing_prices` within the existing caller transaction, preserving the historical expense and rolling back create/post/update/link and outbox mutations. Additive lubricant remains accepted. Expense form/detail and day-cost entry points map the validation to actionable Spanish machinery-price instructions.
+- **F2:** `EquipmentDraftLine` appends `captureUsualPriceWhenMissing = true` for backward compatibility. Existing saved snapshots still prevail. The sheet sends false for an empty displayed price; a new line explicitly left blank remains unknown even when the farm has a compatible usual price. The owner/root ruling permits saving that unknown price. A visible unchanged prefill captures its displayed amount; explicit zero remains known zero. No selector or navigation was added.
+- **F3:** The canonical equipment repository checked-adds every known quantity × unit-price amount before any row/outbox write, including incomplete legacy sets. Overflow returns `appliedPrice:overflow` and rolls back; the known partial subtotal is never posted as the day total.
+
+### Changed source and test files in this wave
+
+1. `app/src/main/java/com/isivoltpro/maginaolivo/data/repository/DayCostLedger.kt`
+2. `app/src/main/java/com/isivoltpro/maginaolivo/data/repository/OfflineFirstEquipmentRepository.kt`
+3. `app/src/main/java/com/isivoltpro/maginaolivo/domain/equipment/Equipment.kt`
+4. `app/src/main/java/com/isivoltpro/maginaolivo/feature/expenses/ExpenseViewModels.kt`
+5. `app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/EquipmentSection.kt`
+6. `app/src/main/java/com/isivoltpro/maginaolivo/feature/harvests/HarvestViewModels.kt`
+7. `app/src/androidTest/java/com/isivoltpro/maginaolivo/data/local/DayCostContractTest.kt`
+8. `app/src/androidTest/java/com/isivoltpro/maginaolivo/EquipmentScreenTest.kt`
+9. `app/src/test/java/com/isivoltpro/maginaolivo/feature/harvests/MachineryFinancialErrorTest.kt`
+
+The F1 Room case covers create, draft→post, update, and unlinked→link; it checks unchanged historical expense, rejected manual row/status/link, unchanged outbox counts, 9,000 JPY posted total, and the accepted additive lubricant control. The fixture explicitly marks historical machinery as POSTED. The F3 case confirms two 6e18 unit prices while a third legacy line stays unknown, then checks Validation overflow and unchanged rows/ledger/outbox count. F2 Room + Compose cover the empty form→draft→repository contract, unchanged usual prefill and explicit zero. Existing focused collision/preferCalculated, missing-price, historical currency, frozen-price, closed-campaign, and overflow controls were retained.
+
+### Fresh final GREEN evidence
+
+Environment: same JAVA_HOME/ANDROID_HOME/Gradle path documented above; `ANDROID_SERIAL=emulator-5580`. The exact final command was:
+
+```text
+gradle.bat --no-daemon :app:testDevDebugUnitTest --tests '*MachineryFinancialErrorTest' --tests '*DayCostCalculatorTest' --tests '*EquipmentCurrencyContextTest' :app:assembleDevDebug :app:assembleDevDebugAndroidTest :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.isivoltpro.maginaolivo.data.local.DayCostContractTest,com.isivoltpro.maginaolivo.EquipmentScreenTest --console=plain
+```
+
+- Exit **0**; `BUILD SUCCESSFUL in 1m 2s`; `83 actionable tasks: 2 executed, 81 up-to-date`.
+- **JVM 10/10:** calculator 7, currency context 2, machinery error message 1. XML: `task-3-fix-jvm-calculator.xml`, `task-3-fix-jvm-currency.xml`, `task-3-fix-jvm-errors.xml`; all zero failures/errors/skips.
+- **Instrumented 24/24:** DayCostContractTest 15 and EquipmentScreenTest 9. XML root has tests=24, failures=0, errors=0, skipped=0; native report timestamp `2026-10-02T08:58:26`. XML: `task-3-fix-instrumented.xml`.
+- DEV and AndroidTest APK assembly succeeded/up-to-date against the current source. Final output: `task-3-fix-final-green.log`.
+- `git diff --check` passed before report/commit. No unchanged full suite was rerun; the earlier baseline full JVM/lint/three-build and unfiltered native evidence remains historical, not new-head proof.
+
+### Retained failed attempts — filenames do not imply success
+
+All five interrupted-worker logs were read and retained unchanged:
+
+- `task-3-fix-red.log`: FAILED in 12s; missing F1 collision guard and F3 subtotal validation returned Success instead of Failure.
+- `task-3-fix-f2-red.log`: FAILED in 3s at compile; the new explicit-unknown API was absent. This is compile RED evidence, not an executed UI symptom assertion.
+- `task-3-fix-f1-message-red.log`: FAILED in 3s at compile; machinery error helper absent.
+- **`task-3-fix-f1f3-green.log` is FAILED in 13s**, despite its name: a test expected JPY 9,000 through an EUR-default summary and obtained zero. The final assertion instead sums POSTED JPY expenses directly; the historical fixture status is explicit.
+- **`task-3-fix-focused.log` is FAILED in 53s**, despite the prior verbal GREEN handoff: the existing no-price stepper test expected the old default draft flag (true) while the sheet correctly emitted explicit unknown (false). Its expected drafts now match that contract. The fresh final log/XML above is the confirmed GREEN result.
+
+### Self-review and remaining concerns
+
+Reviewed the complete current source/test diff against the full Slice 3 brief, original findings, Issue #309, and Slice 2 financial guard. All guarded Expense and day-link mutations call sync inside Room transactions and translate the thrown validation outside the transaction. Unknown historical machinery is preserved; only complete equipment pricing reaches the ordinary manual-collision demotion path. The overflow check precedes equipment persistence/outbox writes. The appended flag defaults true for old callers and never clears an existing snapshot. Totals remain Expense POSTED only, with no changes to payroll/payments, migration/schema, root navigation, Slice 4, or backend.
+
+No further source changes were made during the resumed verification. The existing emulator PNGs were already inspected by the root; they are unchanged and not regenerated for this wave. They remain synthetic Compose evidence, not persisted end-to-end or physical-device acceptance.
+
+Independent scoped re-review and **new exact-head six-check CI are mandatory with the root before integration**. Physical-device acceptance remains pending. The earlier unfiltered 391/392 native run and its ordered Phase18 fixture limitation remain accurately reported; this fresh 24/24 scoped run does not claim a full native suite PASS. No push, merge, subagents, or later-phase scope occurred in this wave.

@@ -196,6 +196,26 @@ class DayCostContractTest {
     }
 
     @Test
+    fun explicitUnknownNewLineDoesNotCaptureUsualPriceButDefaultsAndZeroStillDo() = runBlocking {
+        val dayId = ok(harvests.openJornada(farmId, day))
+        ok(costs.saveRates(farmId, RecollectionRates(equipmentDayMinor = mapOf(EquipmentType.SHAKER to 7_000))))
+        ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1,
+            captureUsualPriceWhenMissing = false))))
+        assertNull(equipment.observeForHarvest(dayId).first().single().appliedPrice)
+        assertNull(calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT))
+
+        ok(equipment.replaceForHarvest(dayId, emptyList()))
+        ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1))))
+        assertEquals(7_000L, equipment.observeForHarvest(dayId).first().single().appliedPrice!!.unitPriceMinor)
+        assertEquals(7_000L, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
+
+        ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1,
+            appliedPrice = EquipmentPriceSnapshot(0, "EUR", day), captureUsualPriceWhenMissing = false))))
+        assertEquals(0L, equipment.observeForHarvest(dayId).first().single().appliedPrice!!.unitPriceMinor)
+        assertEquals(0L, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
+    }
+
+    @Test
     fun historicalYenLedgerSurvivesPartialConfirmationAndEuroUsualRate() = runBlocking {
         val dayId = ok(harvests.openJornada(farmId, day))
         ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1),
@@ -203,7 +223,8 @@ class DayCostContractTest {
         val historicalId = UUID.randomUUID()
         db.expenseDao().upsert(ExpenseEntity(historicalId, workspaceId, campaignId = campaignId, farmId = farmId,
             harvestId = dayId, expenseDate = day, concept = "Maquinaria histórica", category = "MACHINERY",
-            amountMinor = 9_000, currency = "JPY", origin = ExpenseOrigin.DAY_EQUIPMENT.name,
+            amountMinor = 9_000, currency = "JPY", status = ExpenseStatus.POSTED.name,
+            origin = ExpenseOrigin.DAY_EQUIPMENT.name,
             metadata = LocalMetadata(now, now)))
         ok(costs.saveRates(farmId, RecollectionRates(equipmentDayMinor = mapOf(EquipmentType.TRAILER to 3_000), currency = "EUR")))
         ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1,
@@ -223,6 +244,82 @@ class DayCostContractTest {
             EquipmentDraftLine(EquipmentType.COMB, 1), EquipmentDraftLine(EquipmentType.TRAILER, 1,
                 appliedPrice = EquipmentPriceSnapshot(3_000, "EUR", day))))
         assertEquals(AppError.Validation("currency", "currency_mismatch"), (wrongCurrency as AppResult.Failure).error)
+    }
+
+    @Test
+    fun unknownHistoricalMachineryRejectsRentalCreatePostUpdateAndLinkWithoutWrites() = runBlocking {
+        val dayId = ok(harvests.openJornada(farmId, day))
+        ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.TRACTOR, 1))))
+        val historicalId = UUID.randomUUID()
+        db.expenseDao().upsert(ExpenseEntity(historicalId, workspaceId, campaignId = campaignId, farmId = farmId,
+            harvestId = dayId, expenseDate = day, concept = "Maquinaria histórica", category = "MACHINERY",
+            amountMinor = 9_000, currency = "JPY", status = ExpenseStatus.POSTED.name,
+            origin = ExpenseOrigin.DAY_EQUIPMENT.name,
+            metadata = LocalMetadata(now, now)))
+        val originalLedger = db.expenseDao().findById(historicalId)!!
+        val rental = cost(dayId, JornadaExpenseKind.RENTAL, 4_000).copy(currency = "JPY")
+        val beforeCreateOutbox = outboxCount()
+        assertEquals(AppError.Validation("appliedPrice", "confirm_missing_prices"),
+            (expenses.create(rental) as AppResult.Failure).error)
+        assertEquals(beforeCreateOutbox, outboxCount())
+        assertEquals(listOf(historicalId), expenses.observeForHarvest(dayId).first().map { it.id })
+
+        val draftId = UUID.randomUUID()
+        db.expenseDao().upsert(ExpenseEntity(draftId, workspaceId, campaignId = campaignId, farmId = farmId,
+            harvestId = dayId, expenseDate = day, concept = rental.concept, category = rental.category.name,
+            amountMinor = 4_000, currency = "JPY", status = ExpenseStatus.DRAFT.name,
+            origin = ExpenseOrigin.MANUAL.name, metadata = LocalMetadata(now, now)))
+        val draftBefore = db.expenseDao().findById(draftId)!!
+        val beforePostOutbox = outboxCount()
+        assertEquals(AppError.Validation("appliedPrice", "confirm_missing_prices"),
+            (expenses.post(draftId) as AppResult.Failure).error)
+        assertEquals(draftBefore, db.expenseDao().findById(draftId))
+        assertEquals(beforePostOutbox, outboxCount())
+
+        val unlinked = ok(expenses.create(rental.copy(harvestId = null)))
+        val unlinkedBefore = db.expenseDao().findById(unlinked)!!
+        val beforeUpdateOutbox = outboxCount()
+        assertEquals(AppError.Validation("appliedPrice", "confirm_missing_prices"),
+            (expenses.update(unlinked, rental) as AppResult.Failure).error)
+        assertEquals(unlinkedBefore, db.expenseDao().findById(unlinked))
+        assertEquals(beforeUpdateOutbox, outboxCount())
+        assertEquals(AppError.Validation("appliedPrice", "confirm_missing_prices"),
+            (costs.linkToDay(unlinked, dayId) as AppResult.Failure).error)
+        assertEquals(unlinkedBefore, db.expenseDao().findById(unlinked))
+        assertEquals(beforeUpdateOutbox, outboxCount())
+        assertEquals(originalLedger, db.expenseDao().findById(historicalId))
+        assertEquals(9_000L, expenses.observeForHarvest(dayId).first()
+            .filter { it.status == ExpenseStatus.POSTED && it.currency == "JPY" }.sumOf { it.amountMinor })
+
+        // Oil is additive, not a replacing rental, even while the historical unit price is unknown.
+        ok(expenses.create(cost(dayId, JornadaExpenseKind.LUBRICANT, 1_200).copy(currency = "JPY")))
+        assertEquals(10_200L, expenses.observeForHarvest(dayId).first()
+            .filter { it.status == ExpenseStatus.POSTED && it.currency == "JPY" }.sumOf { it.amountMinor })
+        assertEquals(originalLedger, db.expenseDao().findById(historicalId))
+    }
+
+    @Test
+    fun partialLegacyConfirmationRejectsKnownSubtotalOverflowBeforeWriting() = runBlocking {
+        val dayId = ok(harvests.openJornada(farmId, day))
+        val unknown = listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1),
+            EquipmentDraftLine(EquipmentType.COMB, 1), EquipmentDraftLine(EquipmentType.TRAILER, 1))
+        ok(equipment.replaceForHarvest(dayId, unknown))
+        val historicalId = UUID.randomUUID()
+        db.expenseDao().upsert(ExpenseEntity(historicalId, workspaceId, campaignId = campaignId, farmId = farmId,
+            harvestId = dayId, expenseDate = day, concept = "Maquinaria histórica", category = "MACHINERY",
+            amountMinor = 9_000, currency = "EUR", status = ExpenseStatus.POSTED.name,
+            origin = ExpenseOrigin.DAY_EQUIPMENT.name,
+            metadata = LocalMetadata(now, now)))
+        val beforeRows = equipment.observeForHarvest(dayId).first()
+        val beforeLedger = db.expenseDao().findById(historicalId)
+        val beforeOutbox = outboxCount()
+        val huge = EquipmentPriceSnapshot(6_000_000_000_000_000_000L, "EUR", day)
+        val result = equipment.replaceForHarvest(dayId, listOf(unknown[0].copy(appliedPrice = huge),
+            unknown[1].copy(appliedPrice = huge), unknown[2]))
+        assertEquals(AppError.Validation("appliedPrice", "overflow"), (result as AppResult.Failure).error)
+        assertEquals(beforeRows, equipment.observeForHarvest(dayId).first())
+        assertEquals(beforeLedger, db.expenseDao().findById(historicalId))
+        assertEquals(beforeOutbox, outboxCount())
     }
 
     @Test
@@ -352,6 +449,10 @@ class DayCostContractTest {
 
     private suspend fun calculated(dayId: UUID, origin: ExpenseOrigin): Expense? =
         expenses.observeForHarvest(dayId).first().firstOrNull { it.origin == origin }
+
+    private fun outboxCount(): Int = db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM sync_outbox").use {
+        it.moveToFirst(); it.getInt(0)
+    }
 
     private fun cost(harvestId: UUID, kind: JornadaExpenseKind, amountMinor: Long) = ExpenseDraft(
         expenseDate = day,

@@ -1,0 +1,21 @@
+e: file:///C:/Users/ISICIO/.codex/worktrees/cr012-slice1/MAGINA%20V20/app/src/androidTest/java/com/isivoltpro/maginaolivo/EquipmentScreenTest.kt:204:50 Unresolved reference 'captureUsualPriceWhenMissing' on receiver of type 'EquipmentDraftLine'.
+e: file:///C:/Users/ISICIO/.codex/worktrees/cr012-slice1/MAGINA%20V20/app/src/androidTest/java/com/isivoltpro/maginaolivo/data/local/DayCostContractTest.kt:203:13 No parameter with name 'captureUsualPriceWhenMissing' found.
+e: file:///C:/Users/ISICIO/.codex/worktrees/cr012-slice1/MAGINA%20V20/app/src/androidTest/java/com/isivoltpro/maginaolivo/data/local/DayCostContractTest.kt:213:67 No parameter with name 'captureUsualPriceWhenMissing' found.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDevDebugAndroidTestKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+   > Kotlin compiler: UNRESOLVED_REFERENCE
+       Kotlin compiler error
+         Unresolved reference 'captureUsualPriceWhenMissing' on receiver of type 'EquipmentDraftLine'.
+         Location: C:/Users/ISICIO/.codex/worktrees/cr012-slice1/MAGINA V20/app/src/androidTest/java/com/isivoltpro/maginaolivo/EquipmentScreenTest.kt line 204
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3s
