@@ -32,6 +32,24 @@ class RoomMigrationTest {
     }
 
     @Test
+    fun migration21To22PreservesLegacyEquipmentWithoutInventingPrice() {
+        migrationHelper.createDatabase(TEST_DATABASE, 21).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Farm','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO harvests (id, workspace_id, harvest_date, weight_grams, day_origin, created_at, updated_at, version, sync_status) VALUES ('h','w','2026-10-01',5000,'LEGACY',1000,1000,3,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO harvest_equipment (id, workspace_id, harvest_id, type, quantity, created_at, updated_at, version, sync_status) VALUES ('e','w','h','SHAKER',2,1000,1000,7,'PENDING')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 22, true, DatabaseMigrations.MIGRATION_21_22).use { database ->
+            database.query("SELECT type, quantity, applied_price_minor, applied_currency, applied_price_date, version FROM harvest_equipment WHERE id='e'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("SHAKER", cursor.getString(0))
+                assertEquals(2, cursor.getInt(1))
+                for (column in 2..4) assertTrue(cursor.isNull(column))
+                assertEquals(7, cursor.getInt(5))
+            }
+        }
+    }
+
+    @Test
     fun migration20To21PreservesAnonymousHalfDayWithoutInventingPriceOrPayments() {
         migrationHelper.createDatabase(TEST_DATABASE, 20).use { database ->
             database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Farm','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")

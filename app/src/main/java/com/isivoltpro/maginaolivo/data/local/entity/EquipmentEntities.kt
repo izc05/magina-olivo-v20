@@ -48,6 +48,9 @@ data class HarvestEquipmentEntity(
     val label: String? = null,
     val quantity: Int,
     @ColumnInfo(name = "machine_id") val machineId: UUID? = null,
+    @ColumnInfo(name = "applied_price_minor") val appliedPriceMinor: Long? = null,
+    @ColumnInfo(name = "applied_currency") val appliedCurrency: String? = null,
+    @ColumnInfo(name = "applied_price_date") val appliedPriceDate: java.time.LocalDate? = null,
     val notes: String? = null,
     @Embedded val metadata: LocalMetadata,
 )

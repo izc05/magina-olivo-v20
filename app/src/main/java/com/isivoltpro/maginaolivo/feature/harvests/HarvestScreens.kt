@@ -779,10 +779,15 @@ fun HarvestDetailScreen(
         }
     }
     if (equipmentVisible && harvest != null) {
+        val equipmentCurrency = equipmentCurrencyContext(harvest.id, harvest.campaignId, state.equipment, state.costs, state.rates?.currency)
         ModalBottomSheet(onDismissRequest = { equipmentVisible = false }) {
             EquipmentSheet(
                 current = state.equipment,
                 machines = state.machines,
+                rates = state.rates,
+                currency = equipmentCurrency.currency ?: state.rates?.currency ?: "EUR",
+                currencyError = equipmentCurrency.error,
+                priceDate = harvest.harvestDate,
                 isSaving = state.isSaving,
                 onSave = onSaveEquipment,
                 onCancel = { equipmentVisible = false },

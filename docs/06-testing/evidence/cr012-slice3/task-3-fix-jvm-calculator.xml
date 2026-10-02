@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.expense.DayCostCalculatorTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-02T08:57:43.638Z" hostname="ISICIO" time="0.085">
+  <properties/>
+  <testcase name="missingEquipmentPriceStaysUnknownAndZeroIsConfirmed" classname="com.isivoltpro.maginaolivo.domain.expense.DayCostCalculatorTest" time="0.047"/>
+  <testcase name="equipmentMultiplicationOverflowIsRejected" classname="com.isivoltpro.maginaolivo.domain.expense.DayCostCalculatorTest" time="0.001"/>
+  <testcase name="fullHalfAndHoursArePricedApartAndRoundedToTheCent" classname="com.isivoltpro.maginaolivo.domain.expense.DayCostCalculatorTest" time="0.01"/>
+  <testcase name="unlinkedSameDateCostsAreAmbiguousOnlyWhenTheyCouldStandForTheCalculation" classname="com.isivoltpro.maginaolivo.domain.expense.DayCostCalculatorTest" time="0.012"/>
+  <testcase name="onlyAReplacingHandTypedCostStandsForTheCalculation" classname="com.isivoltpro.maginaolivo.domain.expense.DayCostCalculatorTest" time="0.007"/>
+  <testcase name="aMissingPriceIsUnknownNeverZero" classname="com.isivoltpro.maginaolivo.domain.expense.DayCostCalculatorTest" time="0.001"/>
+  <testcase name="machineryUsesConfirmedUnitSnapshotsOnlyOnce" classname="com.isivoltpro.maginaolivo.domain.expense.DayCostCalculatorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -12,6 +12,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.time.LocalDate
 import java.util.UUID
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -32,9 +33,20 @@ class LabourCurrencyAndOverflowUiTest {
         showDay(listOf(legacy), listOf(ledger("JPY")), LabourActions(onUpdate = { _, value -> change = value }))
         rule.onNodeWithTag("jornada-labour-edit").performScrollTo().performClick()
         rule.onNodeWithText("Precio por jornada (JPY)").assertExists()
+        assertEquals("", rule.onNodeWithTag("labour-edit-rate").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
+        rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
         rule.onNodeWithTag("labour-edit-rate").performTextInput("1000")
-        rule.onNodeWithTag("labour-edit-save").performScrollTo().performClick()
-        rule.runOnIdle { assertEquals("JPY", change?.appliedRate?.currency); assertEquals(1000L, change?.appliedRate?.unitPriceMinor) }
+        assertEquals("1000", rule.onNodeWithTag("labour-edit-rate").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
+        // Verify historical-currency confirmation through the enabled form action;
+        // physical post-input modal reachability remains a separate device check.
+        rule.onNodeWithTag("labour-edit-save").performScrollTo().assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
+        rule.runOnIdle {
+            assertNotNull("The enabled legacy confirmation must emit its draft", change)
+            assertEquals("JPY", change?.appliedRate?.currency)
+            assertEquals(1000L, change?.appliedRate?.unitPriceMinor)
+            assertEquals(date, change?.appliedRate?.priceDate)
+            assertEquals(LabourRateBasis.DAY, change?.appliedRate?.basis)
+        }
     }
 
     @Test fun partlyConfirmedDayKeepsTheOtherPersonsJpySnapshotWithoutLedger() {

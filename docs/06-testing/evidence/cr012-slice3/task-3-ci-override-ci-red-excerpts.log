@@ -1,0 +1,7 @@
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:47:30.2619050Z Error in usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:47:30.2620138Z java.lang.NullPointerException
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:47:30.2621478Z 	at com.isivoltpro.maginaolivo.EquipmentScreenTest.usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce$lambda$1(EquipmentScreenTest.kt:127)
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:47:30.2854131Z java.lang.NullPointerException
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:47:30.2855448Z 	at com.isivoltpro.maginaolivo.EquipmentScreenTest.usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce$lambda$1(EquipmentScreenTest.kt:127)
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:47:30.3047010Z FAILURES!!!
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:47:30.3047393Z Tests run: 394,  Failures: 1

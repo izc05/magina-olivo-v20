@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="5" failures="0" errors="0" skipped="0" time="11.906" timestamp="2026-10-02T10:27:06" hostname="localhost">
+  <testsuite name="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" tests="5" failures="0" errors="0" skipped="0" time="10.785" timestamp="2026-10-02T10:27:06" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="partlyConfirmedDayKeepsTheOtherPersonsJpySnapshotWithoutLedger" classname="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" time="2.77" />
+    <testcase name="legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates" classname="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" time="2.553" />
+    <testcase name="ambiguousHistoricalCurrenciesExplainWhyConfirmationCannotSave" classname="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" time="1.266" />
+    <testcase name="newAttendanceOnJpyDayDoesNotPrefillOrSaveCurrentEurRate" classname="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" time="2.407" />
+    <testcase name="overflowingHourlyCostExplainsReducingPriceOrDurationAndDisablesSave" classname="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" time="1.789" />
+  </testsuite>
+</testsuites>

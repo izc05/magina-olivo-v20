@@ -66,7 +66,7 @@ class OfflineFirstDayCostRepository(
                 idGenerator, SyncEntityType.RECOLLECTION_RATES, row.id,
                 if (current == null) OutboxOperation.CREATE else OutboxOperation.UPDATE, now,
             )
-            // A3: the running Campaign's days follow the new prices; a closed Campaign keeps its own.
+            // Re-evaluate only confirmed snapshots; new usual rates never rewrite historical costs.
             costs.syncFarm(farmId, now)
             AppResult.Success(Unit)
         }

@@ -9,15 +9,19 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.local.entity.HarvestEquipmentEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
+import com.isivoltpro.maginaolivo.data.repository.DayCostLedger.Companion.toDomain
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentPriceSnapshot
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentRepository
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentRules
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -59,6 +63,8 @@ class OfflineFirstEquipmentRepository(
                 AppResult.Failure(AppError.Conflict(error.code))
             } catch (error: LabourFinanceInvalid) {
                 AppResult.Failure(AppError.Validation(error.field, error.code))
+            } catch (error: ArithmeticException) {
+                AppResult.Failure(AppError.Validation("appliedPrice", "overflow"))
             } catch (error: Throwable) {
                 AppResult.Failure(AppError.Storage("replace_equipment", error))
             }
@@ -74,6 +80,37 @@ class OfflineFirstEquipmentRepository(
         val current = database.equipmentDao().listForHarvest(harvestId).associateBy { keyOf(it) }
         val wanted = lines.associateBy { EquipmentRules.key(it) }
         val writes = mutableListOf<Pair<HarvestEquipmentEntity, OutboxOperation>>()
+        val rates = harvest.farmId?.let { database.recollectionRatesDao().findForFarm(it) }?.toDomain()
+        val posted = database.expenseDao().listForHarvest(harvestId).filter {
+            it.origin == ExpenseOrigin.DAY_EQUIPMENT.name && it.status == ExpenseStatus.POSTED.name
+        }
+        val existingCurrencies = current.values.mapNotNull { it.appliedCurrency }.distinct()
+        if (posted.size > 1 || existingCurrencies.size > 1 ||
+            (posted.isNotEmpty() && existingCurrencies.any { it != posted.single().currency })) {
+            throw EquipmentInvalid("currency", "ambiguous_historical_currency")
+        }
+        val historicalCurrency = posted.singleOrNull()?.currency ?: existingCurrencies.singleOrNull()
+        val resolved = wanted.mapValues { (key, line) ->
+            line.appliedPrice ?: current[key]?.priceSnapshot() ?: rates?.takeIf { line.captureUsualPriceWhenMissing }?.let { usual ->
+                usual.equipmentDayMinor[line.type]
+                    ?.takeIf { key !in current && (historicalCurrency == null || historicalCurrency == usual.currency) }
+                    ?.let { EquipmentPriceSnapshot(it, usual.currency, harvest.harvestDate) }
+            }
+        }
+        if (current.any { (key, row) -> key in wanted && row.priceSnapshot() == null && resolved[key] == null } &&
+            wanted.any { (key, _) -> key !in current && resolved[key] != null }) {
+            throw EquipmentInvalid("appliedPrice", "confirm_missing_prices")
+        }
+        val currencies = resolved.values.mapNotNull { it?.currency }.distinct()
+        if (currencies.size > 1 || (historicalCurrency != null && currencies.any { it != historicalCurrency })) {
+            throw EquipmentInvalid("currency", "currency_mismatch")
+        }
+        // Validate the known subtotal even while another legacy line has no confirmed price.
+        // No partial amount is posted; this only prevents unrepresentable snapshots being saved.
+        resolved.entries.fold(0L) { total, (key, snapshot) ->
+            if (snapshot == null) total else Math.addExact(total,
+                Math.multiplyExact(wanted.getValue(key).quantity.toLong(), snapshot.unitPriceMinor))
+        }
 
         current.forEach { (key, row) ->
             if (key !in wanted) writes += row.copy(metadata = row.metadata.next(now).copy(deletedAt = now)) to OutboxOperation.DELETE
@@ -88,6 +125,7 @@ class OfflineFirstEquipmentRepository(
             }
             val label = machineName ?: line.label?.trim()?.takeIf { line.type == EquipmentType.OTHER }
             val existing = current[key]
+            val price = resolved[key]
             when {
                 existing == null -> writes += HarvestEquipmentEntity(
                     id = idGenerator.newId(),
@@ -97,10 +135,15 @@ class OfflineFirstEquipmentRepository(
                     label = label,
                     quantity = line.quantity,
                     machineId = line.machineId,
+                    appliedPriceMinor = price?.unitPriceMinor,
+                    appliedCurrency = price?.currency,
+                    appliedPriceDate = price?.priceDate,
                     metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
                 ) to OutboxOperation.CREATE
-                existing.quantity != line.quantity || existing.type != line.type.name ->
-                    writes += existing.copy(quantity = line.quantity, type = line.type.name, metadata = existing.metadata.next(now)) to
+                existing.quantity != line.quantity || existing.type != line.type.name || existing.priceSnapshot() != price ->
+                    writes += existing.copy(quantity = line.quantity, type = line.type.name,
+                        appliedPriceMinor = price?.unitPriceMinor, appliedCurrency = price?.currency,
+                        appliedPriceDate = price?.priceDate, metadata = existing.metadata.next(now)) to
                         OutboxOperation.UPDATE
             }
         }
@@ -124,7 +167,12 @@ class OfflineFirstEquipmentRepository(
         quantity = quantity,
         machineId = machineId,
         version = metadata.version,
+        appliedPrice = priceSnapshot(),
     )
+
+    private fun HarvestEquipmentEntity.priceSnapshot(): EquipmentPriceSnapshot? =
+        if (appliedPriceMinor == null || appliedCurrency == null || appliedPriceDate == null) null
+        else EquipmentPriceSnapshot(appliedPriceMinor, appliedCurrency, appliedPriceDate)
 
     private fun LocalMetadata.next(now: Instant) =
         copy(updatedAt = now, version = version + 1, syncStatus = SyncStatus.PENDING)

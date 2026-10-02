@@ -1,0 +1,18 @@
+Gate3 evidence run 36987569607, head d81f6b77
+gate3-evidence	Capture Gate 3 Android evidence	2026-10-02T09:19:11.3227674Z Error in unchangedUsualPrefillAndExplicitZeroStayConfirmed(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+gate3-evidence	Capture Gate 3 Android evidence	2026-10-02T09:19:11.3255369Z java.lang.NullPointerException
+gate3-evidence	Capture Gate 3 Android evidence	2026-10-02T09:19:11.3286343Z 	at com.isivoltpro.maginaolivo.EquipmentScreenTest.unchangedUsualPrefillAndExplicitZeroStayConfirmed$lambda$2(EquipmentScreenTest.kt:227)
+gate3-evidence	Capture Gate 3 Android evidence	2026-10-02T09:19:11.3346161Z 		at com.isivoltpro.maginaolivo.EquipmentScreenTest.unchangedUsualPrefillAndExplicitZeroStayConfirmed(EquipmentScreenTest.kt:227)
+gate3-evidence	Capture Gate 3 Android evidence	2026-10-02T09:19:11.3489550Z java.lang.NullPointerException
+gate3-evidence	Capture Gate 3 Android evidence	2026-10-02T09:19:11.3490742Z 	at com.isivoltpro.maginaolivo.EquipmentScreenTest.unchangedUsualPrefillAndExplicitZeroStayConfirmed$lambda$2(EquipmentScreenTest.kt:227)
+gate3-evidence	Capture Gate 3 Android evidence	2026-10-02T09:19:11.3538729Z 		at com.isivoltpro.maginaolivo.EquipmentScreenTest.unchangedUsualPrefillAndExplicitZeroStayConfirmed(EquipmentScreenTest.kt:227)
+gate3-evidence	Capture Gate 3 Android evidence	2026-10-02T09:19:11.3673535Z FAILURES!!!
+gate3-evidence	Capture Gate 3 Android evidence	2026-10-02T09:19:11.3673918Z Tests run: 394,  Failures: 1
+Gate3 emulator run 36987565423, head d81f6b77
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:20:06.9075279Z Error in clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice(com.isivoltpro.maginaolivo.EquipmentScreenTest):
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:20:06.9077014Z java.lang.NullPointerException
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:20:06.9078589Z 	at com.isivoltpro.maginaolivo.EquipmentScreenTest.clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice$lambda$1(EquipmentScreenTest.kt:203)
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:20:06.9275880Z java.lang.NullPointerException
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:20:06.9277266Z 	at com.isivoltpro.maginaolivo.EquipmentScreenTest.clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice$lambda$1(EquipmentScreenTest.kt:203)
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:20:06.9373263Z FAILURES!!!
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T09:20:06.9373593Z Tests run: 394,  Failures: 1

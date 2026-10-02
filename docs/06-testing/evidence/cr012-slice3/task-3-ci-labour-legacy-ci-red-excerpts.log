@@ -1,0 +1,9 @@
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T10:21:54.5953758Z Error in legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest):
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T10:21:54.5955074Z java.lang.AssertionError: expected:<JPY> but was:<null>
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T10:21:54.5959636Z 	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates$lambda$1(LabourCurrencyAndOverflowUiTest.kt:37)
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T10:21:54.5985798Z 		at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates(LabourCurrencyAndOverflowUiTest.kt:37)
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T10:21:54.6095258Z java.lang.AssertionError: expected:<JPY> but was:<null>
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T10:21:54.6099185Z 	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates$lambda$1(LabourCurrencyAndOverflowUiTest.kt:37)
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T10:21:54.6123037Z 		at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates(LabourCurrencyAndOverflowUiTest.kt:37)
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T10:21:54.6191469Z FAILURES!!!
+gate3-emulator	Run Gate 3 instrumented QA on emulator	2026-10-02T10:21:54.6191799Z Tests run: 394,  Failures: 1

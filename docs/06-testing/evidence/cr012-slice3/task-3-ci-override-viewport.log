@@ -1,0 +1,5 @@
+--------- beginning of main
+10-02 09:56:30.417 16482 16496 I CR012Touch: after keyboard close saveBounds=Rect.fromLTRB(55.0, 2887.0, 1025.0, 3019.0) sheetBounds=Rect.fromLTRB(0.0, 1303.0, 1080.0, 3283.0) scroll=0.0 maxScroll=0.0
+10-02 09:56:30.421 16482 16482 I CR012Touch: after keyboard close nativeHeight=2340 imeVisible=false imeBottom=0
+10-02 09:56:30.470 16482 16496 I CR012Touch: after save scroll saveBounds=Rect.fromLTRB(55.0, 2887.0, 1025.0, 3019.0) sheetBounds=Rect.fromLTRB(0.0, 1303.0, 1080.0, 3283.0) scroll=0.0 maxScroll=0.0
+10-02 09:56:30.474 16482 16482 I CR012Touch: after save scroll nativeHeight=2340 imeVisible=false imeBottom=0
