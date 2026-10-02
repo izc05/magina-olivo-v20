@@ -2,6 +2,8 @@ package com.isivoltpro.maginaolivo.domain.equipment
 
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import java.util.UUID
+import java.time.LocalDate
+import java.util.Currency
 import kotlinx.coroutines.flow.Flow
 
 /** Phase 19E: the presets of recollection equipment (CR-005 §9), plus any other kind. */
@@ -26,6 +28,8 @@ data class EquipmentLine(
     val quantity: Int,
     val machineId: UUID?,
     val version: Long,
+    /** Confirmed unit price for this use; null means historical price unknown. */
+    val appliedPrice: EquipmentPriceSnapshot? = null,
 ) {
     fun text(): String = when {
         machineId != null -> label ?: type.singular
@@ -40,7 +44,20 @@ data class EquipmentDraftLine(
     val quantity: Int,
     val label: String? = null,
     val machineId: UUID? = null,
+    /** Null keeps an existing snapshot, or asks the repository for the usual price on a new line. */
+    val appliedPrice: EquipmentPriceSnapshot? = null,
 )
+
+data class EquipmentPriceSnapshot(
+    val unitPriceMinor: Long,
+    val currency: String,
+    val priceDate: LocalDate,
+) {
+    init {
+        require(unitPriceMinor >= 0) { "negative_equipment_price" }
+        require(Currency.getInstance(currency).defaultFractionDigits >= 0) { "invalid_currency" }
+    }
+}
 
 data class EquipmentProblem(val field: String, val code: String)
 
@@ -50,6 +67,9 @@ object EquipmentRules {
     fun validate(lines: List<EquipmentDraftLine>): EquipmentProblem? {
         lines.forEach { line ->
             if (line.quantity !in 1..MAX_QUANTITY) return EquipmentProblem("quantity", "out_of_range")
+            if (line.appliedPrice != null && runCatching { Math.multiplyExact(line.quantity.toLong(), line.appliedPrice.unitPriceMinor) }.isFailure) {
+                return EquipmentProblem("appliedPrice", "overflow")
+            }
             if (line.machineId != null && line.quantity != 1) return EquipmentProblem("quantity", "one_machine")
             if (line.machineId == null && line.type == EquipmentType.OTHER && line.label.isNullOrBlank()) {
                 return EquipmentProblem("label", "required")
@@ -63,7 +83,7 @@ object EquipmentRules {
     /** One line per registered machine, per preset type, or per named "other". */
     fun key(line: EquipmentDraftLine): String =
         line.machineId?.let { "machine:$it" }
-            ?: if (line.type == EquipmentType.OTHER) "other:${line.label!!.trim().lowercase()}" else "type:${line.type.name}"
+            ?: if (line.type == EquipmentType.OTHER) "other:${line.label.orEmpty().trim().lowercase()}" else "type:${line.type.name}"
 }
 
 /** Totals by type: "2 vibradoras · 1 peine eléctrico · 1 tractor". Order-independent. */

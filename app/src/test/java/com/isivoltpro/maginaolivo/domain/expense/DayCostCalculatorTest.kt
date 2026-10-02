@@ -1,10 +1,12 @@
 package com.isivoltpro.maginaolivo.domain.expense
 
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentPriceSnapshot
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
 import java.util.UUID
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -39,21 +41,32 @@ class DayCostCalculatorTest {
         assertNull(DayCostCalculator.labour(emptyList(), RecollectionRates(fullDayMinor = 7_000)))
     }
 
-    @Test fun machineryIsPricedPerTypeAndDay() {
+    @Test fun machineryUsesConfirmedUnitSnapshotsOnlyOnce() {
         val cost = DayCostCalculator.equipment(
-            listOf(line(EquipmentType.SHAKER, 2), line(EquipmentType.TRACTOR, 1), line(EquipmentType.TRAILER, 1)),
-            RecollectionRates(equipmentDayMinor = mapOf(EquipmentType.TRACTOR to 6_000, EquipmentType.SHAKER to 3_500)),
+            listOf(line(EquipmentType.SHAKER, 2, 7_000), line(EquipmentType.COMB, 1, 2_000), line(EquipmentType.TRAILER, 1, 3_000)),
         )!!
-        assertEquals(13_000L, cost.amountMinor)
-        assertEquals("1 remolque sin precio", cost.unpriced)
-        assertTrue(cost.note.startsWith("1 tractor"))
+        assertEquals(19_000L, cost.amountMinor)
+        assertNull(cost.unpriced)
+        assertTrue(cost.note.contains("2 vibradoras"))
+    }
+
+    @Test fun missingEquipmentPriceStaysUnknownAndZeroIsConfirmed() {
+        val cost = DayCostCalculator.equipment(listOf(line(EquipmentType.SHAKER, 1, 0), line(EquipmentType.TRACTOR, 1)))!!
+        assertEquals(0L, cost.amountMinor)
+        assertEquals("1 tractor sin precio", cost.unpriced)
+    }
+
+    @Test(expected = ArithmeticException::class)
+    fun equipmentMultiplicationOverflowIsRejected() {
+        DayCostCalculator.equipment(listOf(line(EquipmentType.SHAKER, 2, Long.MAX_VALUE)))
     }
 
     private fun labour(quantity: Int, unit: LabourUnit, minutes: Int? = null) =
         LabourEntry(UUID.randomUUID(), day, null, null, quantity, unit, minutes, 1)
 
-    private fun line(type: EquipmentType, quantity: Int) =
-        EquipmentLine(UUID.randomUUID(), day, type, null, quantity, null, 1)
+    private fun line(type: EquipmentType, quantity: Int, unitMinor: Long? = null) =
+        EquipmentLine(UUID.randomUUID(), day, type, null, quantity, null, 1,
+            unitMinor?.let { EquipmentPriceSnapshot(it, "EUR", LocalDate.of(2026, 10, 1)) })
     @Test
     fun onlyAReplacingHandTypedCostStandsForTheCalculation() {
         assertTrue(DayCostKind.EQUIPMENT.isReplacedBy(ExpenseCategory.MACHINERY, JornadaExpenseKind.RENTAL.concept(null)))

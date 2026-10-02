@@ -11,6 +11,7 @@ import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentPriceSnapshot
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.CalculatedCost
 import com.isivoltpro.maginaolivo.domain.expense.DayCostCalculator
@@ -28,8 +29,8 @@ import org.json.JSONObject
 /**
  * CR-010 A3: the one money path for a day's calculated labour and machinery cost. Each day has
  * at most one `DAY_LABOUR` and one `DAY_EQUIPMENT` Expense, updated in place (same id, new
- * version) whenever its attendance, equipment or prices change, and removed when nothing is left
- * to price. Day and Campaign costs read only the ledger, so nothing is ever summed twice.
+ * version) whenever confirmed attendance or equipment prices change, and removed when no lines
+ * remain. Day and Campaign costs read only the ledger, so nothing is ever summed twice.
  *
  * A hand-typed cost of the same kind linked to the same day stands: the calculated one is then
  * kept as a draft, never summed, until the farmer picks it ([preferCalculated]). A closed
@@ -64,7 +65,19 @@ internal class DayCostLedger(
                 throw LabourFinanceInvalid("appliedRate", "confirm_missing_prices")
             }
         }
-        post(day, DayCostKind.EQUIPMENT, DayCostCalculator.equipment(equipment, rates), rates.currency, now)
+        // Legacy rows with no confirmed price keep the historical Expense intact.
+        if (equipment.all { it.appliedPrice != null }) {
+            val currencies = equipment.map { it.appliedPrice!!.currency }.distinct()
+            val historical = database.expenseDao().listForHarvest(day.id).filter {
+                it.origin == ExpenseOrigin.DAY_EQUIPMENT.name && it.status == ExpenseStatus.POSTED.name
+            }
+            if (currencies.size > 1 || historical.size > 1 ||
+                (historical.isNotEmpty() && currencies.any { it != historical.single().currency })) {
+                throw LabourFinanceInvalid("currency", "currency_mismatch")
+            }
+            post(day, DayCostKind.EQUIPMENT, DayCostCalculator.equipment(equipment),
+                currencies.firstOrNull() ?: historical.singleOrNull()?.currency ?: rates.currency, now)
+        }
         LabourFinance(database).verifyCampaign(campaign.id)
     }
 
@@ -78,6 +91,9 @@ internal class DayCostLedger(
     suspend fun preferCalculated(harvestId: UUID, kind: DayCostKind, now: Instant) {
         if (kind == DayCostKind.LABOUR && database.labourDao().listForHarvest(harvestId).any { it.toLabourEntry().appliedRate == null }) {
             throw LabourFinanceInvalid("appliedRate", "confirm_missing_prices")
+        }
+        if (kind == DayCostKind.EQUIPMENT && database.equipmentDao().listForHarvest(harvestId).any { it.toLine().appliedPrice == null }) {
+            throw LabourFinanceInvalid("appliedPrice", "confirm_missing_prices")
         }
         manual(harvestId, kind).forEach { expense ->
             database.expenseDao().upsert(expense.copy(status = ExpenseStatus.DRAFT.name, metadata = expense.metadata.next(now)))
@@ -94,7 +110,7 @@ internal class DayCostLedger(
 
     private suspend fun post(day: HarvestEntity, kind: DayCostKind, cost: CalculatedCost?, currency: String, now: Instant) {
         val current = database.expenseDao().listForHarvest(day.id).firstOrNull { it.origin == kind.origin.name }
-        if (cost == null || (kind != DayCostKind.LABOUR && cost.amountMinor <= 0)) {
+        if (cost == null) {
             current?.let { remove(it, now) }
             return
         }
@@ -163,4 +179,6 @@ private fun com.isivoltpro.maginaolivo.data.local.entity.HarvestEquipmentEntity.
     quantity = quantity,
     machineId = machineId,
     version = metadata.version,
+    appliedPrice = if (appliedPriceMinor != null && appliedCurrency != null && appliedPriceDate != null)
+        EquipmentPriceSnapshot(appliedPriceMinor, appliedCurrency, appliedPriceDate) else null,
 )

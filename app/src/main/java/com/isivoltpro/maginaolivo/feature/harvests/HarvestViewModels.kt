@@ -344,7 +344,12 @@ class HarvestDetailViewModel(
                     isSaving = false,
                     equipmentError = when (result.error) {
                         is AppError.Conflict -> "La campaña está cerrada: este día de recolección ya es histórico"
-                        is AppError.Validation -> "Revisa la maquinaria: cantidades de 1 a 50 y un nombre para «Otra»"
+                        is AppError.Validation -> when (result.error.code) {
+                            "confirm_missing_prices" -> "Confirma primero los precios que faltan en la maquinaria histórica de este día."
+                            "overflow" -> "El total es demasiado grande. Reduce el precio o la cantidad."
+                            "currency_mismatch", "ambiguous_historical_currency" -> "La moneda no coincide con el coste histórico de este día. Revisa los precios."
+                            else -> "Revisa la maquinaria: cantidades de 1 a 50 y un nombre para «Otra»"
+                        }
                         else -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."
                     },
                 )

@@ -30,9 +30,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentPriceSnapshot
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentRules
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentSummary
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
+import com.isivoltpro.maginaolivo.domain.expense.Money
+import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import com.isivoltpro.maginaolivo.domain.machinery.Machine
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
@@ -44,6 +47,7 @@ import com.isivoltpro.maginaolivo.ui.components.MoTextField
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
+import java.time.LocalDate
 
 internal fun EquipmentType.title(): String = when (this) {
     EquipmentType.TRACTOR -> "Tractor"
@@ -70,8 +74,11 @@ internal fun JornadaEquipment(lines: List<EquipmentLine>, editable: Boolean, err
         Text("Sin maquinaria anotada.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-no-equipment"))
     } else {
         Text(summary.label(), style = MaterialTheme.typography.bodyLarge, color = MoOliveDark, modifier = Modifier.testTag("jornada-equipment-summary"))
-        lines.filter { it.machineId != null }.forEach { line ->
-            MoCompactListItem(title = line.text(), subtitle = "Máquina registrada", icon = line.type.icon(), modifier = Modifier.testTag("jornada-equipment-machine"))
+        lines.forEach { line ->
+            val total = line.appliedPrice?.let { runCatching { Math.multiplyExact(line.quantity.toLong(), it.unitPriceMinor) }.getOrNull() }
+            val subtitle = if (total == null) "Coste sin confirmar" else
+                "${Money.format(line.appliedPrice.unitPriceMinor, line.appliedPrice.currency)} por uso · ${Money.format(total, line.appliedPrice.currency)} total"
+            MoCompactListItem(title = line.text(), subtitle = subtitle, icon = line.type.icon(), modifier = Modifier.testTag("jornada-equipment-line"))
         }
     }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -93,6 +100,10 @@ internal fun JornadaEquipment(lines: List<EquipmentLine>, editable: Boolean, err
 internal fun EquipmentSheet(
     current: List<EquipmentLine>,
     machines: List<Machine>,
+    rates: RecollectionRates?,
+    currency: String,
+    currencyError: String?,
+    priceDate: LocalDate,
     isSaving: Boolean,
     onSave: (List<EquipmentDraftLine>) -> Unit,
     onCancel: () -> Unit,
@@ -106,6 +117,52 @@ internal fun EquipmentSheet(
     }
     var chosenMachines by remember(current) { mutableStateOf(current.mapNotNull { it.machineId }.toSet()) }
     var otherName by rememberSaveable { mutableStateOf("") }
+    var prices by remember(current) { mutableStateOf(current.associate { row ->
+        EquipmentRules.key(EquipmentDraftLine(row.type, row.quantity, row.label, row.machineId)) to
+            Money.editable(row.appliedPrice?.unitPriceMinor, row.appliedPrice?.currency ?: currency)
+    }) }
+    fun priceText(line: EquipmentDraftLine): String {
+        val key = EquipmentRules.key(line)
+        return prices[key] ?: if (current.none { EquipmentRules.key(EquipmentDraftLine(it.type, it.quantity, it.label, it.machineId)) == key } && rates?.currency == currency)
+            Money.editable(rates.equipmentDayMinor[line.type], currency) else ""
+    }
+    val selected = counts.map { (type, n) -> EquipmentDraftLine(type, n) } +
+        others.map { (name, n) -> EquipmentDraftLine(EquipmentType.OTHER, n, label = name) } +
+        chosenMachines.mapNotNull { id -> machines.firstOrNull { it.id == id } }.map { EquipmentDraftLine(it.category.toEquipment(), 1, machineId = it.id) }
+    val malformed = selected.any { line -> priceText(line).isNotBlank() && Money.parseMinor(priceText(line), currency) == null }
+    val totalOverflow = runCatching {
+        selected.fold(0L) { total, line ->
+            val unit = Money.parseMinor(priceText(line), currency) ?: 0L
+            Math.addExact(total, Math.multiplyExact(line.quantity.toLong(), unit))
+        }
+    }.isFailure
+    val lines = selected.map { line ->
+        val price = Money.parseMinor(priceText(line), currency)
+        val existing = current.firstOrNull { EquipmentRules.key(EquipmentDraftLine(it.type, it.quantity, it.label, it.machineId)) == EquipmentRules.key(line) }
+        line.copy(appliedPrice = price?.takeIf { existing?.appliedPrice?.unitPriceMinor != it || existing.appliedPrice.currency != currency }
+            ?.let { EquipmentPriceSnapshot(it, currency, priceDate) })
+    }
+    val invalid = EquipmentRules.validate(lines)
+    val legacyMissing = selected.any { line ->
+        current.any { EquipmentRules.key(EquipmentDraftLine(it.type, it.quantity, it.label, it.machineId)) == EquipmentRules.key(line) && it.appliedPrice == null } &&
+            priceText(line).isBlank()
+    }
+    val pricedAppend = lines.any { line ->
+        current.none { EquipmentRules.key(EquipmentDraftLine(it.type, it.quantity, it.label, it.machineId)) == EquipmentRules.key(line) } && line.appliedPrice != null
+    }
+    val clearedConfirmedPrice = selected.any { line ->
+        current.any { EquipmentRules.key(EquipmentDraftLine(it.type, it.quantity, it.label, it.machineId)) == EquipmentRules.key(line) && it.appliedPrice != null } &&
+            priceText(line).isBlank()
+    }
+    val pricingError = when {
+        currencyError != null -> currencyError
+        malformed -> "El precio no es válido o es demasiado grande. Revisa el importe."
+        totalOverflow -> "El total es demasiado grande. Reduce el precio o la cantidad."
+        invalid?.code == "overflow" -> "El total es demasiado grande. Reduce el precio o la cantidad."
+        clearedConfirmedPrice -> "El coste ya confirmado necesita un precio. Introduce el importe o cancela el cambio."
+        legacyMissing && pricedAppend -> "Confirma primero los precios que faltan en la maquinaria histórica de este día."
+        else -> null
+    }
 
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("equipment-sheet"),
@@ -121,10 +178,18 @@ internal fun EquipmentSheet(
             Stepper(type.title(), counts[type] ?: 0, "equipment-${type.name}") { value ->
                 counts = if (value == 0) counts - type else counts + (type to value)
             }
+            counts[type]?.let { quantity ->
+                EquipmentPriceField(type.title(), quantity, currency, priceText(EquipmentDraftLine(type, quantity)), "equipment-${type.name}") {
+                    prices = prices + ("type:${type.name}" to it)
+                }
+            }
         }
         others.forEachIndexed { index, (name, quantity) ->
             Stepper(name, quantity, "equipment-other") { value ->
                 others = if (value == 0) others.filterIndexed { i, _ -> i != index } else others.mapIndexed { i, item -> if (i == index) item.first to value else item }
+            }
+            EquipmentPriceField(name, quantity, currency, priceText(EquipmentDraftLine(EquipmentType.OTHER, quantity, name)), "equipment-other-$index") {
+                prices = prices + ("other:${name.trim().lowercase()}" to it)
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
@@ -152,19 +217,35 @@ internal fun EquipmentSheet(
                     )
                 }
             }
+            chosenMachines.mapNotNull { id -> machines.firstOrNull { it.id == id } }.forEach { machine ->
+                EquipmentPriceField(machine.name, 1, currency, priceText(EquipmentDraftLine(machine.category.toEquipment(), 1, machineId = machine.id)), "equipment-machine-${machine.id}") {
+                    prices = prices + ("machine:${machine.id}" to it)
+                }
+            }
         }
-        val lines = counts.map { (type, n) -> EquipmentDraftLine(type, n) } +
-            others.map { (name, n) -> EquipmentDraftLine(EquipmentType.OTHER, n, label = name) } +
-            chosenMachines.mapNotNull { id -> machines.firstOrNull { it.id == id } }.map { EquipmentDraftLine(it.category.toEquipment(), 1, machineId = it.id) }
+        pricingError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("equipment-price-error")) }
+        if (selected.any { priceText(it).isBlank() }) Text("Sin precio confirmado: el coste de esas máquinas queda pendiente.",
+            style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
         MoPrimaryButton(
             "Guardar maquinaria",
             { onSave(lines) },
             Modifier.fillMaxWidth().testTag("equipment-save"),
-            enabled = !isSaving && EquipmentRules.validate(lines) == null,
+            enabled = !isSaving && invalid == null && pricingError == null,
         )
         MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(MoSpacing.lg))
     }
+}
+
+@Composable
+private fun EquipmentPriceField(name: String, quantity: Int, currency: String, text: String, tag: String, onChange: (String) -> Unit) {
+    MoTextField(text, onChange, "$name · coste unitario del día/uso ($currency)",
+        modifier = Modifier.fillMaxWidth().testTag("$tag-price"))
+    val minor = Money.parseMinor(text, currency)
+    val total = minor?.let { runCatching { Math.multiplyExact(quantity.toLong(), it) }.getOrNull() }
+    Text(if (total == null) "Total de esta línea: pendiente" else "Total de esta línea: ${Money.format(total, currency)}",
+        style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+        modifier = Modifier.testTag("$tag-total"))
 }
 
 @Composable

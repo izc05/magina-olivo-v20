@@ -68,18 +68,17 @@ object DayCostCalculator {
         return CalculatedCost(amount, parts.joinToString(" + "), missing.takeIf { it.isNotEmpty() }?.let { "${it.joinToString(", ")} sin precio" })
     }
 
-    fun equipment(lines: List<EquipmentLine>, rates: RecollectionRates): CalculatedCost? {
+    fun equipment(lines: List<EquipmentLine>): CalculatedCost? {
         if (lines.isEmpty()) return null
-        val money = { minor: Long -> Money.format(minor, rates.currency) }
         val parts = mutableListOf<String>()
         val missing = mutableListOf<String>()
         var amount = 0L
-        lines.groupBy { it.type }.toSortedMap().forEach { (type, rows) ->
-            val quantity = rows.sumOf { it.quantity }
-            val name = "$quantity ${if (quantity == 1) type.singular else type.plural}"
-            rates.equipmentDayMinor[type]?.let { price ->
-                amount += quantity * price
-                parts += "$name × ${money(price)}"
+        lines.sortedBy { it.type }.forEach { line ->
+            val quantity = line.quantity
+            val name = "$quantity ${if (quantity == 1) line.type.singular else line.type.plural}"
+            line.appliedPrice?.let { snapshot ->
+                amount = Math.addExact(amount, Math.multiplyExact(quantity.toLong(), snapshot.unitPriceMinor))
+                parts += "$name × ${Money.format(snapshot.unitPriceMinor, snapshot.currency)}"
             } ?: missing.add(name)
         }
         return CalculatedCost(amount, parts.joinToString(" + "), missing.takeIf { it.isNotEmpty() }?.let { "${it.joinToString(", ")} sin precio" })
@@ -131,7 +130,7 @@ object UnlinkedDayCosts {
 interface DayCostRepository {
     fun observeRates(farmId: UUID): Flow<RecollectionRates>
 
-    /** Saving prices recalculates the days of the Farm's running Campaign; closed ones keep theirs. */
+    /** Saving usual prices does not change confirmed historical equipment or labour snapshots. */
     suspend fun saveRates(farmId: UUID, rates: RecollectionRates): AppResult<Unit>
 
     /**
