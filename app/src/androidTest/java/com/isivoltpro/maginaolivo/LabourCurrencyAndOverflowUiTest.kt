@@ -31,6 +31,7 @@ class LabourCurrencyAndOverflowUiTest {
     @Test fun legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates() {
         var change: LabourChange? = null
         showDay(listOf(legacy), listOf(ledger("JPY")), LabourActions(onUpdate = { _, value -> change = value }))
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onNodeWithTag("jornada-labour-edit").performScrollTo().performClick()
         rule.onNodeWithText("Precio por jornada (JPY)").assertExists()
         assertEquals("", rule.onNodeWithTag("labour-edit-rate").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
@@ -52,6 +53,7 @@ class LabourCurrencyAndOverflowUiTest {
     @Test fun partlyConfirmedDayKeepsTheOtherPersonsJpySnapshotWithoutLedger() {
         val confirmed = legacy.copy(id = UUID.randomUUID(), workerId = UUID.randomUUID(), workerName = "Ana López", appliedRate = LabourRateSnapshot(1000, "JPY", date, LabourRateBasis.DAY))
         showDay(listOf(legacy, confirmed), emptyList())
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onAllNodesWithTag("jornada-labour-edit")[0].performScrollTo().performClick()
         rule.onNodeWithText("Precio por jornada (JPY)").assertExists()
         rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
@@ -59,6 +61,7 @@ class LabourCurrencyAndOverflowUiTest {
 
     @Test fun ambiguousHistoricalCurrenciesExplainWhyConfirmationCannotSave() {
         showDay(listOf(legacy), listOf(ledger("JPY"), ledger("EUR")))
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onNodeWithTag("jornada-labour-edit").performScrollTo().performClick()
         rule.onNodeWithTag("labour-currency-error").assertIsDisplayed()
         rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
@@ -67,6 +70,7 @@ class LabourCurrencyAndOverflowUiTest {
     @Test fun newAttendanceOnJpyDayDoesNotPrefillOrSaveCurrentEurRate() {
         var draft: CrewDraft? = null
         showDay(emptyList(), listOf(ledger("JPY")), LabourActions(onSaveCrew = { draft = it }))
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onNodeWithTag("jornada-register-labour").performScrollTo().performClick()
         rule.onNodeWithText("Precio del jornal (JPY)").assertExists()
         rule.onNodeWithTag("labour-rate").assertTextContains("Confirma un precio válido", substring = true)

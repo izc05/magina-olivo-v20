@@ -75,15 +75,12 @@ data class CampaignComparison(
     val deliveredChangePercent: Int?,
     /** CR-010 (A2): hand-typed kilos with no Pesada, disclosed apart and never in [deliveredGrams]. */
     val legacyUnweighedGrams: Long = 0,
+    val canonicalCost: com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency? = null,
+    val costsByCurrency: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency> = listOfNotNull(canonicalCost),
 ) {
     /** Minor units (cents) per delivered kilo. */
     val costPerKgMinor: Long?
-        get() = if (deliveredGrams != null && deliveredGrams > 0 && postedExpensesMinor > 0) {
-            // cents / (grams / 1000) = cents × 1000 / grams, rounded half up.
-            (postedExpensesMinor * 1000 * 2 + deliveredGrams) / (deliveredGrams * 2)
-        } else {
-            null
-        }
+        get() = canonicalCost?.costPerKgMinor
 
     companion object {
         /** Oldest first; each Campaign compared with the one before it. */
@@ -98,16 +95,20 @@ data class CampaignComparison(
                     null
                 }
                 previousDelivered = delivered
+                val costs = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(notebook.campaign.id, notebook.expenses, notebook.deliveries)
+                val cost = costs.singleOrNull()
                 CampaignComparison(
                     campaign = notebook.campaign,
                     harvestedGrams = notebook.harvestSummary.totalGrams.takeIf { notebook.harvestSummary.weighedCount > 0 },
                     deliveredGrams = delivered,
                     fatYield = deliveries.fatYield,
                     yieldCoveragePercent = deliveries.coveragePercent(deliveries.fatYield),
-                    postedExpensesMinor = notebook.expenseSummary.totalMinor,
-                    currency = notebook.expenseSummary.currency,
+                    postedExpensesMinor = cost?.amount() ?: 0,
+                    currency = cost?.currency ?: notebook.expenseSummary.currency,
                     deliveredChangePercent = change,
                     legacyUnweighedGrams = notebook.legacyUnweighedGrams,
+                    canonicalCost = cost,
+                    costsByCurrency = costs,
                 )
             }
         }

@@ -588,6 +588,7 @@ fun AppNavigation(
                 arguments = listOf(
                     navArgument("farmId") { type = NavType.StringType },
                     navArgument("parcelId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("campaignId") { type = NavType.StringType; nullable = true; defaultValue = null },
                 ),
             ) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
@@ -606,6 +607,7 @@ fun AppNavigation(
                         onOrganizations = { navController.navigate(AppDestination.Organizations) },
                         presetFarmId = farmId,
                         presetParcelId = parcelId,
+                        presetCampaignId = backStackEntry.arguments?.getString("campaignId")?.let { runCatching { UUID.fromString(it) }.getOrNull() },
                     )
                 }
             }
@@ -782,6 +784,7 @@ private fun NavHostController.notebookActions(farmId: UUID) = NotebookActions(
     onDeliveries = { navigate(AppDestination.Deliveries) },
     onPendingYields = { navigate(AppDestination.PendingYieldsRoute) },
     onExpenses = { navigate(AppDestination.Expenses) },
+    onCampaignExpenses = { campaignId -> navigate(AppDestination.farmExpenses(farmId.toString(), campaignId = campaignId.toString())) },
     onCampaigns = { navigate(AppDestination.farmSection(FarmSection.CAMPAIGNS.route, farmId.toString())) },
 )
 

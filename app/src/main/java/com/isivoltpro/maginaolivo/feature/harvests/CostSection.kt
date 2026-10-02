@@ -209,11 +209,13 @@ internal fun CostSheet(
     error: String?,
     onSave: (JornadaExpenseKind, Long, String?, Boolean) -> Unit,
     onCancel: () -> Unit,
+    currency: String? = "EUR",
+    currencyError: String? = null,
 ) {
     var kind by rememberSaveable { mutableStateOf(JornadaExpenseKind.DIESEL) }
     var amount by rememberSaveable { mutableStateOf("") }
     var concept by rememberSaveable { mutableStateOf("") }
-    val minor = Money.parseMinor(amount)
+    val minor = currency?.let { Money.parseMinor(amount, it) }
     val valid = minor != null && minor > 0
 
     Column(
@@ -227,7 +229,8 @@ internal fun CostSheet(
             }
         }
         MoTextField(
-            amount, { amount = it }, "Importe (€)",
+            amount, { amount = it }, currency?.let { "Importe ($it)" } ?: "Moneda sin confirmar",
+            enabled = currency != null,
             isError = amount.isNotBlank() && !valid,
             supportingText = if (amount.isNotBlank() && !valid) "Escribe un importe como 65 o 65,50" else null,
             modifier = Modifier.fillMaxWidth().testTag("cost-amount"),
@@ -238,6 +241,7 @@ internal fun CostSheet(
             style = MaterialTheme.typography.bodySmall,
             color = MoTextSecondary,
         )
+        currencyError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("day-expense-currency-error")) }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         MoPrimaryButton(
             "Guardar gasto",

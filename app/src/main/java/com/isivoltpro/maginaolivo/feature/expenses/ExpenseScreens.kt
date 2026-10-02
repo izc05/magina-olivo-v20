@@ -1,4 +1,5 @@
 package com.isivoltpro.maginaolivo.feature.expenses
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 
 import androidx.compose.foundation.layout.WindowInsets
 import android.content.ActivityNotFoundException
@@ -48,6 +49,9 @@ import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentExtraction
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentType
 import com.isivoltpro.maginaolivo.feature.attachments.createCaptureUri
+import com.isivoltpro.maginaolivo.feature.harvests.moneyLabel
+import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
+import com.isivoltpro.maginaolivo.ui.components.MoKpiKind
 import com.isivoltpro.maginaolivo.ui.components.MoIconBadge
 import com.isivoltpro.maginaolivo.ui.components.MoIconTone
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
@@ -92,9 +96,10 @@ fun ExpensesRoute(
     presetFarmId: UUID? = null,
     /** CR-011 §14: the Cuaderno's Parcel (always of [presetFarmId]); a new expense starts on it. */
     presetParcelId: UUID? = null,
+    presetCampaignId: UUID? = null,
 ) {
     val viewModel: ExpensesViewModel = viewModel(
-        key = "expenses-${presetFarmId ?: "all"}",
+        key = "expenses-${presetFarmId ?: "all"}-${presetCampaignId ?: "outside"}",
         factory = viewModelFactory {
             initializer {
                 ExpensesViewModel(
@@ -106,7 +111,12 @@ fun ExpensesRoute(
             }
         },
     )
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val allState by viewModel.state.collectAsStateWithLifecycle()
+    val state = if (presetCampaignId == null) allState else {
+        val rows = allState.expenses.filter { it.campaignId == presetCampaignId }
+        allState.copy(expenses = rows, summary = ExpenseSummary.of(rows),
+            monthTotalMinor = ExpenseSummary.of(rows.filter { java.time.YearMonth.from(it.expenseDate) == java.time.YearMonth.from(clock.today(ZoneId.systemDefault())) }).totalMinor)
+    }
     LaunchedEffect(state.openedDocumentId) {
         state.openedDocumentId?.let { id ->
             viewModel.documentOpened()
@@ -126,6 +136,7 @@ fun ExpensesRoute(
         onEditorClosed = viewModel::clearFormErrors,
         presetFarmId = presetFarmId,
         presetParcelId = presetParcelId,
+        presetCampaignId = presetCampaignId,
     )
 }
 
@@ -145,6 +156,7 @@ fun ExpensesScreen(
     onEditorClosed: () -> Unit = {},
     presetFarmId: UUID? = null,
     presetParcelId: UUID? = null,
+    presetCampaignId: UUID? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var uploadVisible by rememberSaveable { mutableStateOf(false) }
@@ -159,13 +171,21 @@ fun ExpensesScreen(
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
             Spacer(Modifier.height(MoSpacing.md))
-            Text("Gastos y documentos", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            Text(if (presetCampaignId == null) "Gastos y documentos" else "Gastos de recogida", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             Text(
                 "Solo suman los gastos confirmados. Los borradores esperan tu revisión.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MoTextSecondary,
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+            if (presetCampaignId != null) {
+                val ledger = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(presetCampaignId, state.expenses, emptyList())
+                MoKpiMetric("Gastos confirmados", ledger.moneyLabel(), Modifier.fillMaxWidth().testTag("expenses-total"),
+                    icon = MoIcons.Euro, kind = MoKpiKind.TOTAL, supportingText = "${ledger.sumOf { it.posted.size }} apuntes · Monedas originales")
+                val month = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(presetCampaignId,
+                    state.expenses.filter { java.time.YearMonth.from(it.expenseDate) == java.time.YearMonth.from(today) }, emptyList())
+                MoKpiMetric("Este mes", month.moneyLabel(), Modifier.fillMaxWidth(), icon = MoIcons.Euro,
+                    kind = MoKpiKind.TOTAL, supportingText = MONTH_FORMAT.format(today))
+            } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                 MoMetricCard(
                     "Gastos confirmados",
                     Money.format(state.summary.totalMinor),
@@ -211,7 +231,7 @@ fun ExpensesScreen(
                 drafts.forEach { expense -> ExpenseRow(expense) { onExpenseSelected(expense.id) } }
             }
 
-            if (state.summary.byCategory.isNotEmpty()) {
+            if (presetCampaignId == null && state.summary.byCategory.isNotEmpty()) {
                 MoSectionHeader("Categorías")
                 state.summary.byCategory.entries.sortedByDescending { it.value }.forEach { (category, amount) ->
                     CategoryRow(category.label(), amount, state.summary.totalMinor)
@@ -234,10 +254,10 @@ fun ExpensesScreen(
     }
 
     if (editorVisible) {
-        ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             ExpenseEditor(
                 title = "Nuevo gasto",
-                initial = ExpenseForm(date = today.toString(), farmId = presetFarmId, parcelId = presetParcelId),
+                initial = ExpenseForm(date = today.toString(), farmId = presetFarmId, parcelId = presetParcelId, campaignId = presetCampaignId),
                 options = state.options,
                 errors = state.formErrors,
                 isSaving = state.isSaving,
@@ -280,7 +300,7 @@ internal fun DocumentUploadSheet(
         pendingCapture = null
         if (saved && target != null) onPicked(selectedType, target)
     }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = onDismiss) {
         MoBottomActionSheet(
             title = "Subir documento",
             body = "Leeremos el documento en este dispositivo. Nada se apunta como gasto hasta que lo revises.",

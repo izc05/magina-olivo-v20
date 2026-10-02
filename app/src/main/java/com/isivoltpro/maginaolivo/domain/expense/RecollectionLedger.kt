@@ -1,0 +1,52 @@
+package com.isivoltpro.maginaolivo.domain.expense
+
+import com.isivoltpro.maginaolivo.domain.delivery.Delivery
+import java.math.RoundingMode
+import java.util.Currency
+import java.util.UUID
+
+/** Mutually exclusive recollection buckets. Operational prices and payments never add money. */
+enum class RecollectionBucket {
+    LABOUR, EQUIPMENT, OTHER;
+
+    companion object {
+        fun of(expense: Expense): RecollectionBucket = when {
+            expense.origin == ExpenseOrigin.DAY_LABOUR -> LABOUR
+            expense.origin == ExpenseOrigin.DAY_EQUIPMENT -> EQUIPMENT
+            DayCostKind.LABOUR.isReplacedBy(expense.category, expense.concept) -> LABOUR
+            DayCostKind.EQUIPMENT.isReplacedBy(expense.category, expense.concept) -> EQUIPMENT
+            expense.category == ExpenseCategory.HARVEST && JornadaExpenseKind.LABOUR.names(expense.concept) -> LABOUR
+            expense.category == ExpenseCategory.HARVEST && JornadaExpenseKind.RENTAL.names(expense.concept) -> EQUIPMENT
+            else -> OTHER
+        }
+    }
+}
+
+/** Separate currencies, including unsupported historical codes. Nothing is converted. */
+data class RecollectionCurrency(
+    val currency: String,
+    val posted: List<Expense>,
+    val summary: RecollectionCostSummary?,
+) {
+    fun amount(bucket: RecollectionBucket? = null): Long? = runCatching {
+        posted.filter { bucket == null || RecollectionBucket.of(it) == bucket }
+            .fold(0L) { total, expense -> Math.addExact(total, expense.amountMinor) }
+    }.getOrNull()
+
+    val costPerKgMinor: Long? get() = summary?.costPerKg?.let { cost ->
+        runCatching {
+            cost.movePointRight(Currency.getInstance(currency).defaultFractionDigits)
+                .setScale(0, RoundingMode.HALF_UP).longValueExact()
+        }.getOrNull()
+    }
+}
+
+object RecollectionLedger {
+    fun of(campaignId: UUID, expenses: List<Expense>, deliveries: List<Delivery>): List<RecollectionCurrency> =
+        expenses.filter { it.campaignId == campaignId && it.status == ExpenseStatus.POSTED }
+            .groupBy { it.currency }.toSortedMap().map { (currency, posted) ->
+                RecollectionCurrency(currency, posted, runCatching {
+                    RecollectionCostSummary.of(campaignId, posted, deliveries, currency)
+                }.getOrNull())
+            }
+}

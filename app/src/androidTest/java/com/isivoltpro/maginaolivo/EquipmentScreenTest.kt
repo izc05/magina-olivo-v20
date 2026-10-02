@@ -60,6 +60,7 @@ class EquipmentScreenTest {
                 )
             }
         }
+        composeRule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-no-equipment").assertExists()
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
@@ -98,6 +99,7 @@ class EquipmentScreenTest {
                 )
             }
         }
+        composeRule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-equipment-summary").performScrollTo()
             .assertTextContains("1 vibradora · 1 peine eléctrico · 1 remolque")
         composeRule.onAllNodesWithTag("jornada-equipment-line")[2].performScrollTo()
@@ -115,6 +117,7 @@ class EquipmentScreenTest {
                 )
             }
         }
+        composeRule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
@@ -146,6 +149,7 @@ class EquipmentScreenTest {
                 )
             }
         }
+        composeRule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
@@ -160,6 +164,7 @@ class EquipmentScreenTest {
                     onUpdate = {}, onDelete = {})
             }
         }
+        composeRule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-price").performScrollTo().performTextReplacement("999999999999999999999999")
@@ -174,6 +179,7 @@ class EquipmentScreenTest {
                     onUpdate = {}, onDelete = {})
             }
         }
+        composeRule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
@@ -191,6 +197,7 @@ class EquipmentScreenTest {
                     equipment = listOf(row)), onUpdate = {}, onDelete = {})
             }
         }
+        composeRule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-price").performScrollTo().performTextReplacement("")
         composeRule.onNodeWithTag("equipment-price-error").assertExists()
@@ -206,6 +213,7 @@ class EquipmentScreenTest {
                     onUpdate = {}, onDelete = {}, onSaveEquipment = { saved = it })
             }
         }
+        composeRule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-price").performScrollTo().assertTextContains("70", substring = true)
@@ -245,6 +253,7 @@ class EquipmentScreenTest {
                     })
             }
         }
+        composeRule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-plus").performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-value").assertTextContains("1")
@@ -258,6 +267,7 @@ class EquipmentScreenTest {
         composeRule.onNodeWithTag("equipment-sheet").assertDoesNotExist()
 
         composeRule.runOnIdle { saved = null }
+        composeRule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-edit-equipment").performScrollTo().performClick()
         composeRule.onNodeWithTag("equipment-SHAKER-value").assertTextContains("1")
         composeRule.onNodeWithTag("equipment-SHAKER-price").assertTextContains("70", substring = true)

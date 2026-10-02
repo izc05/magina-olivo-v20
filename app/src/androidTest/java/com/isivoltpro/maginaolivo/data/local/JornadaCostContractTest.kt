@@ -81,8 +81,10 @@ class JornadaCostContractTest {
         val jornada = jornada()
         val diesel = ok(expenses.create(cost(jornada, JornadaExpenseKind.DIESEL, 4_550)))
         ok(expenses.create(cost(jornada, JornadaExpenseKind.RENTAL, 12_000)))
-        // A cost of another day on the same Farm: not this Jornada's.
-        ok(expenses.create(cost(null, JornadaExpenseKind.TRANSPORT, 3_000)))
+        // Explicit Campaign cost without a Jornada: counts in the Campaign, not this day.
+        ok(expenses.create(cost(null, JornadaExpenseKind.TRANSPORT, 3_000).copy(campaignId = campaignId)))
+        // Same Farm/date alone remains outside that economic Campaign.
+        val outside = ok(expenses.create(cost(null, JornadaExpenseKind.TRANSPORT, 700)))
         db.close()
         open()
 
@@ -97,6 +99,8 @@ class JornadaCostContractTest {
         // Counted once in the Campaign: 165,50 € + 30 € of the other cost, never twice.
         val all = expenses.observeAll().first().filter { it.campaignId == campaignId }
         assertEquals(19_550L, all.sumOf { if (it.status == ExpenseStatus.POSTED) it.amountMinor else 0L })
+        assertNull(expenses.observe(outside).first()!!.campaignId)
+        assertEquals(20_250L, expenses.observeAll().first().filter { it.status == ExpenseStatus.POSTED }.sumOf { it.amountMinor })
 
         // Editing the cost through the ordinary Expense form keeps it on its Jornada.
         ok(expenses.update(diesel, cost(jornada, JornadaExpenseKind.DIESEL, 5_000)))

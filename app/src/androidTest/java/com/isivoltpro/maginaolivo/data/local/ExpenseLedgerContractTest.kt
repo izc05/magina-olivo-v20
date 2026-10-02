@@ -196,13 +196,26 @@ class ExpenseLedgerContractTest {
     }
 
     @Test
-    fun anExpenseOnAFarmWithARunningCampaignCountsInThatCampaign() = runBlocking {
+    fun farmExpenseRemainsOutsideCampaignUnlessExplicitlySelected() = runBlocking {
         val meta = LocalMetadata(now, now)
         db.campaignDao().upsert(
             CampaignEntity(campaignId, workspaceId, farmId, "Campaña 2025/26", date.minusMonths(6), status = CampaignStatus.ACTIVE, metadata = meta),
         )
         val id = ok(expenses.create(draft(3_000, farmId = farmId)))
-        assertEquals(campaignId, expenses.observe(id).first()!!.campaignId)
+        assertNull(expenses.observe(id).first()!!.campaignId)
+        val explicit = ok(expenses.create(draft(3_000, farmId = farmId).copy(campaignId = campaignId)))
+        assertEquals(campaignId, expenses.observe(explicit).first()!!.campaignId)
+        listOf("JPY" to 1000L, "EUR" to 12345L, "KWD" to 123456L).forEach { (currency, amount) ->
+            val contextual = draft(amount, farmId = farmId).copy(campaignId = campaignId, currency = currency,
+                lines = listOf(PurchaseLine("Producto", lineTotalMinor = amount)))
+            val expense = ok(expenses.create(contextual))
+            ok(expenses.update(expense, contextual.copy(concept = "Corregido")))
+            val saved = expenses.observe(expense).first()!!
+            assertEquals(currency, saved.currency)
+            assertEquals(amount, saved.amountMinor)
+            assertEquals(amount, saved.lines.single().lineTotalMinor)
+            assertEquals(campaignId, saved.campaignId)
+        }
     }
 
     @Test

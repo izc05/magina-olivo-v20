@@ -42,13 +42,14 @@ internal fun DocumentExtraction.toReviewForm(): ExpenseForm {
     val proposal = proposal
     return ExpenseForm(
         date = proposal?.invoiceDate?.toString().orEmpty(),
-        amount = Money.editable(proposal?.totalMinor),
+        amount = Money.editable(proposal?.totalMinor, proposal?.currency ?: "EUR"),
+        currency = proposal?.currency ?: "EUR",
         concept = listOfNotNull(documentType.label(), proposal?.supplierName).joinToString(" · "),
         category = documentType.suggestedCategory(),
         supplierText = proposal?.supplierName.orEmpty(),
         invoiceNumber = proposal?.invoiceNumber.orEmpty(),
         lines = proposal?.lines.orEmpty().map {
-            LineForm(product = it.productName, unit = it.unit.orEmpty(), total = Money.editable(it.lineTotalMinor))
+            LineForm(product = it.productName, unit = it.unit.orEmpty(), total = Money.editable(it.lineTotalMinor, proposal?.currency ?: "EUR"), unitPriceMinor = it.unitPriceMinor)
         },
     )
 }

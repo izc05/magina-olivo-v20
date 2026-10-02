@@ -53,9 +53,8 @@ class JornadaScreenTest {
             }
         }
         composeRule.onNodeWithText("Suma de sus 3 pesadas").assertExists()
-        composeRule.onNodeWithTag("jornada-pesadas-summary")
-            .assertTextContains("3 pesadas", substring = true)
-            .assertTextContains("Coop. San Isidro, Almazara El Molino", substring = true)
+        // CR-012: the count/total are in production; cooperative and kg stay on their own Pesada rows.
+        composeRule.onNodeWithTag("jornada-pesadas-summary").assertDoesNotExist()
         composeRule.onAllNodesWithTag("jornada-pesada").assertCountEquals(3)
         composeRule.onNodeWithTag("jornada-add-pesada").performScrollTo().performClick()
         composeRule.runOnIdle { assertEquals(1, added) }
@@ -108,7 +107,7 @@ class JornadaScreenTest {
             }
         }
         // (2.000 kg × 20 % + 1.000 kg × 23 %) / 3.000 kg analysed = 21 %; the pending one never counts as 0 %.
-        composeRule.onNodeWithTag("jornada-pesadas-summary").assertTextContains("rend. ${Percent.format(2_100)}", substring = true)
+        composeRule.onNodeWithTag("jornada-pesadas-summary").assertTextContains("Rendimiento del día ${Percent.format(2_100)}", substring = true)
         val rows = composeRule.onAllNodesWithTag("jornada-pesada")
         rows[0].assertTextContains("Árbol / vuelo · Vale V-1 · Rend. ${Percent.format(2_000)}", substring = true)
         rows[1].assertTextContains("Suelo · Vale V-2 · Rend. ${Percent.format(2_300)}", substring = true)

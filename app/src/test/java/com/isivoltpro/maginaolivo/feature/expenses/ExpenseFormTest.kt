@@ -15,6 +15,35 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ExpenseFormTest {
+    @Test fun historicalCurrencyAndCampaignSurviveAmountAndLineEditing() {
+        listOf("JPY" to 1000L, "EUR" to 12345L, "KWD" to 123456L).forEach { (currency, amount) ->
+            val campaign = UUID.randomUUID()
+            val expense = com.isivoltpro.maginaolivo.domain.expense.Expense(
+                UUID.randomUUID(), UUID.randomUUID(), LocalDate.of(2026, 10, 2), "Compra",
+                ExpenseCategory.OTHER, amount, currency,
+                com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus.POSTED,
+                com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin.MANUAL,
+                campaignId = campaign,
+                lines = listOf(com.isivoltpro.maginaolivo.domain.expense.PurchaseLine("Producto", unitPriceMinor = amount / 2, lineTotalMinor = amount)),
+            )
+            val draft = expense.toForm().copy(concept = "Compra corregida").toDraft().first!!
+            assertEquals(currency, draft.currency)
+            assertEquals(amount, draft.amountMinor)
+            assertEquals(amount, draft.lines.single().lineTotalMinor)
+            assertEquals(amount / 2, draft.lines.single().unitPriceMinor)
+            assertEquals(campaign, draft.campaignId)
+        }
+    }
+
+    @Test fun unsupportedHistoricalCurrencyBlocksEditing() {
+        val expense = com.isivoltpro.maginaolivo.domain.expense.Expense(
+            UUID.randomUUID(), UUID.randomUUID(), LocalDate.of(2026, 10, 2), "Compra",
+            ExpenseCategory.OTHER, 1000, "ZZZ",
+            com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus.POSTED,
+            com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin.MANUAL,
+        )
+        assertNull(expense.toForm().toDraft(false).first)
+    }
     @Test
     fun aCompleteFormBecomesADraft() {
         val (draft, errors) = ExpenseForm(

@@ -93,7 +93,7 @@ internal fun ExpenseEditor(
     onSave: (ExpenseForm) -> Unit,
     onCancel: () -> Unit,
     subtitle: String = "Se guardará primero en este dispositivo.",
-    amountLabel: String = "Importe (€)",
+    amountLabel: String = "Importe (${initial.currency})",
     extraActions: @Composable () -> Unit = {},
     /** False when the form is placed inside a screen that already scrolls. */
     scrollable: Boolean = true,
@@ -108,6 +108,9 @@ internal fun ExpenseEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+        if (form.campaignId != null) Text("Gasto vinculado explícitamente a la campaña", color = MoTextSecondary)
+        if (!runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false))
+            Text("La moneda histórica ${form.currency} no admite edición. Se conserva el importe original.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("expense-currency-error"))
         MoTextField(
             form.concept, { form = form.copy(concept = it) }, "Concepto",
             isError = errors.concept != null, supportingText = errors.concept,
@@ -209,7 +212,7 @@ internal fun ExpenseEditor(
             saveText,
             { onSave(form) },
             modifier = Modifier.fillMaxWidth().testTag("save-expense"),
-            enabled = !isSaving,
+            enabled = !isSaving && runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false),
         )
         extraActions()
         MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
@@ -240,7 +243,7 @@ internal fun ExpenseEditor(
             { key ->
                 val farmId = key?.let(UUID::fromString)
                 if (farmId != form.farmId) {
-                    form = form.copy(farmId = farmId, parcelId = null, activityId = null, harvestId = null)
+                    form = form.copy(farmId = farmId, parcelId = null, activityId = null, harvestId = null, campaignId = null)
                     onFarmSelected(farmId)
                 }
             },

@@ -54,6 +54,8 @@ data class ExpenseForm(
     val notes: String = "",
     /** Phase 19F: kept from the Expense so editing it never unlinks it from its Jornada. */
     val harvestId: UUID? = null,
+    val campaignId: UUID? = null,
+    val currency: String = "EUR",
 )
 
 data class LineForm(
@@ -61,6 +63,8 @@ data class LineForm(
     val quantity: String = "",
     val unit: String = "",
     val total: String = "",
+    /** The current form edits the line total, so retain the recorded unit price unchanged. */
+    val unitPriceMinor: Long? = null,
 )
 
 data class ExpenseFormErrors(
@@ -78,23 +82,26 @@ data class ExpenseFormErrors(
  */
 internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDraft?, ExpenseFormErrors> {
     val parsedDate = runCatching { LocalDate.parse(date.trim()) }.getOrNull()
-    val amountMinor = Money.parseMinor(amount)
+    val supportedCurrency = runCatching { java.util.Currency.getInstance(currency).defaultFractionDigits >= 0 }.getOrDefault(false)
+    val amountMinor = Money.parseMinor(amount, currency)
     val parsedLines = lines.filter { it.product.isNotBlank() }.map { line ->
         PurchaseLine(
             productName = line.product.trim(),
             quantity = line.quantity.replace(',', '.').trim().toDoubleOrNull(),
             unit = line.unit.trim().ifEmpty { null },
-            lineTotalMinor = Money.parseMinor(line.total),
+            unitPriceMinor = line.unitPriceMinor,
+            lineTotalMinor = Money.parseMinor(line.total, currency),
         )
     }
     val badLine = lines.any { line ->
         line.product.isNotBlank() &&
             ((line.quantity.isNotBlank() && line.quantity.replace(',', '.').trim().toDoubleOrNull() == null) ||
-                (line.total.isNotBlank() && Money.parseMinor(line.total) == null))
+                (line.total.isNotBlank() && Money.parseMinor(line.total, currency) == null))
     }
     val errors = ExpenseFormErrors(
         date = if (parsedDate == null) "Elige una fecha" else null,
         amount = when {
+            !supportedCurrency -> "La moneda histórica $currency no admite edición. Se conserva el importe original."
             amount.isBlank() && requireAmount -> "Escribe el importe"
             amount.isNotBlank() && amountMinor == null -> "Escribe un importe como 65 o 65,50"
             requireAmount && amountMinor == 0L -> "El importe debe ser mayor que cero"
@@ -109,6 +116,8 @@ internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDra
         concept = concept.trim(),
         category = category,
         amountMinor = amountMinor ?: 0L,
+        currency = currency,
+        campaignId = campaignId,
         supplierOrganizationId = supplierOrganizationId,
         supplierText = supplierText.trim().ifEmpty { null },
         farmId = farmId,
@@ -123,7 +132,9 @@ internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDra
 
 internal fun Expense.toForm() = ExpenseForm(
     date = expenseDate.toString(),
-    amount = Money.editable(amountMinor),
+    amount = Money.editable(amountMinor, currency),
+    currency = currency,
+    campaignId = campaignId,
     concept = concept,
     category = category,
     supplierOrganizationId = supplierOrganizationId,
@@ -138,7 +149,8 @@ internal fun Expense.toForm() = ExpenseForm(
             product = it.productName,
             quantity = it.quantity?.let { quantity -> quantity.toString().removeSuffix(".0").replace('.', ',') }.orEmpty(),
             unit = it.unit.orEmpty(),
-            total = Money.editable(it.lineTotalMinor),
+            total = Money.editable(it.lineTotalMinor, currency),
+            unitPriceMinor = it.unitPriceMinor,
         )
     },
     notes = notes.orEmpty(),

@@ -95,7 +95,7 @@ internal class ExpenseLedgerWriter(
     /**
      * Checks every relation against local truth and fills the ones that follow from it:
      * the supplier's name is copied from the organization so history keeps what was written,
-     * and an expense on a Farm with a running Campaign is counted in that Campaign.
+     * and economic campaign context comes only from an explicit Campaign or linked day.
      */
     private suspend fun resolve(
         id: UUID,
@@ -140,7 +140,16 @@ internal class ExpenseLedgerWriter(
             }
             if (farm != null && activity.farmId != farm.id) throw InvalidExpense("activityId", "not_in_farm")
         }
-        val campaignId = harvest?.campaignId ?: draft.campaignId ?: farm?.let { database.campaignDao().findCurrent(it.id)?.id }
+        if (harvest?.campaignId != null && draft.campaignId != null && harvest.campaignId != draft.campaignId) {
+            throw InvalidExpense("campaignId", "not_in_day")
+        }
+        val campaignId = harvest?.campaignId ?: draft.campaignId
+        campaignId?.let { campaignId ->
+            val campaign = database.campaignDao().findById(campaignId)
+                ?.takeIf { it.workspaceId == workspaceId && it.metadata.deletedAt == null }
+                ?: throw InvalidExpense("campaignId", "not_found")
+            if (farm != null && campaign.farmId != farm.id) throw InvalidExpense("campaignId", "not_in_farm")
+        }
         val organization = draft.supplierOrganizationId?.let { organizationId ->
             database.organizationDao().findById(organizationId)?.takeIf { it.workspaceId == workspaceId }
                 ?: throw InvalidExpense("supplierOrganizationId", "not_found")

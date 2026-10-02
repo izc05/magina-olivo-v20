@@ -30,7 +30,7 @@ data class CampaignDashboard(
     val calculatedLabourMinor: Long,
     val calculatedMachineryMinor: Long,
     val currency: String,
-    /** Cents per weighed kilo; null without posted costs or without weighed kilos. */
+    /** Currency minor units per weighed kilo; null without a unique currency or weighed kilos. */
     val costPerKgMinor: Long?,
 ) {
     companion object {
@@ -46,9 +46,10 @@ data class CampaignDashboard(
             val pesadaDates = notebook.deliveries.map { it.deliveryDate }.distinct().sorted()
             val labourHarvests = notebook.labour.map { it.harvestId }.toSet()
             val labourDays = notebook.harvests.filter { it.id in labourHarvests }.map { it.harvestDate }.distinct().size
-            val summary = notebook.expenseSummary
+            val currencies = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(campaign.id, notebook.expenses, notebook.deliveries)
+            val canonical = currencies.singleOrNull()
+            val summary = com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary.of(notebook.expenses, canonical?.currency ?: "EUR")
             val posted = notebook.expenses.filter { it.status == ExpenseStatus.POSTED && it.currency == summary.currency }
-            val grams = notebook.deliverySummary.deliveredGrams
             return CampaignDashboard(
                 calendarDays = days,
                 countedFrom = campaign.startDate.takeIf { days != null },
@@ -61,8 +62,8 @@ data class CampaignDashboard(
                 calculatedLabourMinor = posted.filter { it.origin == ExpenseOrigin.DAY_LABOUR }.sumOf { it.amountMinor },
                 calculatedMachineryMinor = posted.filter { it.origin == ExpenseOrigin.DAY_EQUIPMENT }.sumOf { it.amountMinor },
                 currency = summary.currency,
-                // cents / (grams / 1000), rounded half up — the same rule as the year-over-year row.
-                costPerKgMinor = if (grams > 0 && summary.totalMinor > 0) (summary.totalMinor * 1000 * 2 + grams) / (grams * 2) else null,
+                // Slice 1 decimal ratio, rounded only for display in the currency's minor units.
+                costPerKgMinor = canonical?.costPerKgMinor,
             )
         }
     }

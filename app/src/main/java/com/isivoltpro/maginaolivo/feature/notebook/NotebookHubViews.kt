@@ -9,6 +9,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import com.isivoltpro.maginaolivo.feature.harvests.moneyLabel
+import com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger
+import com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
@@ -145,16 +148,17 @@ private fun PhytoRow(record: PhytoRecord, onClick: () -> Unit) {
 internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
     MoSecondaryButton("Jornales y pagos", { actions.onLabour(notebook.campaign.id) }, Modifier.fillMaxWidth().testTag("notebook-open-labour"))
     val costs = notebook.costs
-    val ledger = costs.ledger
+    val draftCount = notebook.expenses.count { it.status == com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus.DRAFT }
+    val currencies = RecollectionLedger.of(notebook.campaign.id, notebook.expenses, notebook.deliveries)
     Text(
-        if (ledger.postedCount > 0) "Total contabilizado: ${Money.format(ledger.totalMinor, ledger.currency)}" else "Sin gastos contabilizados",
+        if (currencies.isNotEmpty()) "Total contabilizado: ${currencies.moneyLabel()}" else "Sin gastos contabilizados",
         style = MaterialTheme.typography.titleMedium,
         color = MoOliveDark,
         modifier = Modifier.testTag("notebook-expenses-total"),
     )
-    if (ledger.draftCount > 0) {
+    if (draftCount > 0) {
         Text(
-            if (ledger.draftCount == 1) "1 borrador sin contar" else "${ledger.draftCount} borradores sin contar",
+            if (draftCount == 1) "1 borrador sin contar" else "$draftCount borradores sin contar",
             style = MaterialTheme.typography.bodySmall,
             color = MoTextSecondary,
         )
@@ -162,7 +166,7 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         MoKpiMetric(
             "Jornales",
-            money(costs.labourMoney),
+            currencies.moneyLabel(RecollectionBucket.LABOUR),
             Modifier.fillMaxWidth().testTag("notebook-costs-labour"),
             icon = MoIcons.People,
             kind = MoKpiKind.JORNALES,
@@ -170,7 +174,7 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
         )
         MoKpiMetric(
             "Maquinaria",
-            money(costs.machineryMoney),
+            currencies.moneyLabel(RecollectionBucket.EQUIPMENT),
             Modifier.fillMaxWidth().testTag("notebook-costs-machinery"),
             icon = MoIcons.Tractor,
             kind = MoKpiKind.MAQUINARIA,
@@ -182,6 +186,8 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
                 notebook.equipmentSummary.takeUnless { it.isEmpty }?.label(),
             ).joinToString(" · ").ifEmpty { "Sin uso de maquinaria anotado" },
         )
+        MoKpiMetric("Otros gastos", currencies.moneyLabel(RecollectionBucket.OTHER), Modifier.fillMaxWidth().testTag("notebook-costs-other"),
+            icon = MoIcons.Euro, kind = MoKpiKind.COSTES, supportingText = "Combustible, transporte, reparaciones y otros")
         MoKpiMetric(
             "Facturas y documentos",
             if (costs.documents.isEmpty()) "—" else if (costs.documents.size == 1) "1 papel" else "${costs.documents.size} papeles",
@@ -191,12 +197,13 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
             supportingText = if (costs.documents.isEmpty()) "Sin facturas ni tickets en esta campaña" else "Con número de factura o escaneados",
         )
     }
-    if (ledger.byCategory.isNotEmpty()) {
-        MoSectionHeader("Por categoría")
-        ledger.byCategory.entries.sortedByDescending { it.value }.forEach { (category, amount) ->
+    currencies.forEach { currency ->
+        MoSectionHeader("Por categoría · ${currency.currency}")
+        currency.posted.groupBy { it.category }.forEach { (category, rows) ->
             Row(Modifier.fillMaxWidth().testTag("notebook-costs-category")) {
                 Text(category.label(), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                Text(Money.format(amount, ledger.currency), style = MaterialTheme.typography.bodyMedium, color = MoOliveDark)
+                val amount = runCatching { rows.fold(0L) { total, row -> Math.addExact(total, row.amountMinor) } }.getOrNull()
+                Text(amount?.let { Money.format(it, currency.currency) } ?: "No disponible", style = MaterialTheme.typography.bodyMedium, color = MoOliveDark)
             }
         }
     }
@@ -223,7 +230,7 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
 @Composable
 internal fun CampaignView(notebook: CampaignNotebook, state: NotebookUiState, actions: NotebookActions) {
     RecollectionActions(notebook, actions)
-    SummaryTab(notebook, state.comparison, payments = state.labourPayments, onLabour = { actions.onLabour(notebook.campaign.id) })
+    SummaryTab(notebook, state.comparison, payments = state.labourPayments, onLabour = { actions.onLabour(notebook.campaign.id) }, onExpenses = { actions.onCampaignExpenses?.invoke(notebook.campaign.id) ?: actions.onExpenses() }, onHarvest = actions.onHarvest)
 }
 
 private fun money(summary: ExpenseSummary): String =

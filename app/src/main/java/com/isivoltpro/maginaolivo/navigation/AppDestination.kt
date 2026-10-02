@@ -83,7 +83,7 @@ object AppDestination {
     /** CR-011: «Cuaderno → Pesada», the form open on the Cuaderno's Farm. */
     const val NewPesadaPattern = "deliveries/new/{farmId}?parcelId={parcelId}"
     /** CR-011: «Cuaderno → Gasto», a new expense starting on the Cuaderno's Farm. */
-    const val FarmExpensesPattern = "expenses/farm/{farmId}?parcelId={parcelId}"
+    const val FarmExpensesPattern = "expenses/farm/{farmId}?parcelId={parcelId}&campaignId={campaignId}"
     const val PendingYieldsRoute = "deliveries/pending"
     const val DeliveryYieldPattern = "delivery/{deliveryId}/yield"
     const val TicketPattern = "delivery-ticket/{extractionId}"
@@ -128,8 +128,9 @@ object AppDestination {
 
     fun help(topic: String): String = nestedRoute("help", topic)
 
-    fun farmExpenses(farmId: String, parcelId: String? = null): String =
-        "$Expenses/farm/${android.net.Uri.encode(farmId)}" + parcelQuery(parcelId)
+    fun farmExpenses(farmId: String, parcelId: String? = null, campaignId: String? = null): String =
+        "$Expenses/farm/${android.net.Uri.encode(farmId)}" + parcelQuery(parcelId) +
+            (campaignId?.let { "${if (parcelId.isNullOrBlank()) "?" else "&"}campaignId=${android.net.Uri.encode(it)}" } ?: "")
 
     /** CR-011 §14: the Cuaderno's Parcel travels with Pesada and Gasto when there is one. */
     private fun parcelQuery(parcelId: String?): String =

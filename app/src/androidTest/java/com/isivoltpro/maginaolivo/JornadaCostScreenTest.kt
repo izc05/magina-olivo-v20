@@ -44,6 +44,7 @@ class JornadaCostScreenTest {
                 )
             }
         }
+        composeRule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-add-cost").performScrollTo().performClick()
         composeRule.onNodeWithTag("cost-save").assertIsNotEnabled()
         composeRule.onNodeWithTag("cost-kind-RENTAL").performClick()
@@ -63,6 +64,7 @@ class JornadaCostScreenTest {
                 HarvestDetailScreen(state = HarvestDetailUiState(isLoading = false, harvest = harvest, costs = costs), onUpdate = {}, onDelete = {})
             }
         }
+        composeRule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-cost-total").assertTextContains("165,50", substring = true)
         composeRule.onNodeWithTag("jornada-cost-total").assertTextContains("1 borrador sin contar", substring = true)
     }

@@ -34,6 +34,19 @@ import org.junit.Test
  * runs, then one summary read from the ledgers (no second recolección grid repeating it).
  */
 class RecollectionSummaryScreenTest {
+    @Test fun economicCardsOpenCanonicalDetailsWithoutDuplicateMoneyOrAnnualWork() {
+        var labour = 0
+        var expenses = 0
+        show(CampaignNotebook.project(campaign, emptyList(), emptyList(), emptyList(), emptyList()),
+            NotebookActions(onLabour = { labour++ }, onExpenses = { expenses++ }))
+        composeRule.onNodeWithTag("notebook-summary-labour").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(1, labour) }
+        composeRule.onNodeWithTag("notebook-summary-other").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(1, expenses) }
+        assertEquals(0, composeRule.onAllNodesWithText("Trabajos").fetchSemanticsNodes().size)
+        assertEquals(0, composeRule.onAllNodesWithText("Gastos de la campaña").fetchSemanticsNodes().size)
+        assertEquals(1, composeRule.onAllNodesWithTag("dashboard-cost").fetchSemanticsNodes().size)
+    }
     @get:Rule val composeRule = createComposeRule()
 
     private val workspace = UUID.randomUUID()
