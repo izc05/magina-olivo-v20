@@ -176,3 +176,29 @@ gradle.bat --no-daemon :app:assembleDevDebugAndroidTest :app:connectedDevDebugAn
 Exit **0**, **9/9**, zero failures/errors/skips; `BUILD SUCCESSFUL in 53s`, `77 actionable tasks: 6 executed, 71 up-to-date`. Log/XML: `task-3-ci-override-final-green.log/.xml`. AndroidTest rebuilt, DEV unchanged/up-to-date. Only trailing log whitespace and a stray blank source line were normalized after execution. Source diff and copied XML were reviewed; staged/committed whitespace checks passed. Unchanged JVM/Room/full-suite checks were not repeated.
 
 Reports are appended here and copied to the tracked evidence report; all diagnostics, including RED attempts, are published with accurate names/results. Existing PNGs unchanged. No push, merge, subagents, Slice 4, payroll, backend or unrelated work occurred. Root must obtain scoped review and new exact-head CI. Physical-device acceptance remains pending and must specifically check edited-price Save with keyboard open, keyboard dismissed, and the partially expanded/expanded modal; this is recorded coverage follow-up, not a hidden PASS or a claimed production fix.
+
+## Legacy labour JPY CI test seam — 2026-10-02
+
+Baseline `d1d7587e1d9e37fda8f3ba92e07d80380925200d`. The root supplied [push emulator run 36993510799](https://github.com/izc05/magina-olivo-v20/actions/runs/36993510799), **394 tests / one failure**, the unchanged Slice 2 test `legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates` in `LabourCurrencyAndOverflowUiTest`, expected JPY but captured change was null at line 37. The two exact-head evidence suites passed 394 tests and foundations passed; the remaining PR emulator was pending at dispatch. No successful sibling result or new blind CI retry was used to dismiss the failure. Full failed log: `.superpowers/sdd/CR012-EXECUTION-PLAN/ci-d1-emulator-failed.log`; published exact failure excerpts: `task-3-ci-labour-legacy-ci-red-excerpts.log`.
+
+Read the exact named test and traced `LabourPriceSheet` → `HarvestDetailScreen` → the fake `LabourActions.onUpdate`. The sheet always constructs a non-null `LabourRateSnapshot(minor, currency, date, basis)` inside its enabled Save callback, and the screen forwards that change synchronously to `onUpdate(editingLabour.id, change)`. Therefore null in this fixture means no draft reached the capture callback; it is not evidence of a saved snapshot silently changed to EUR. The historical JPY label was already asserted before input. The real legacy entry still has null price, while its POSTED DAY_LABOUR ledger has JPY and current farm rates EUR.
+
+A bounded original-method reproduction was run once, with no source changes:
+
+```text
+gradle.bat --no-daemon :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest#legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates --console=plain
+```
+
+Exit **0**, **1/1**, `BUILD SUCCESSFUL in 40s`, 77 tasks; `task-3-ci-labour-legacy-original.log`. The exact CI touch failure was not reproduced and is not claimed resolved as a production interaction defect. The preceding equipment diagnostics established modal/IME pointer sensitivity locally; that geometry was not assumed to prove this labour form's exact failure.
+
+Only `app/src/androidTest/java/com/isivoltpro/maginaolivo/LabourCurrencyAndOverflowUiTest.kt` changes executable source. The named legacy method now checks the actual editable price starts empty and Save disabled, enters 1000, checks exact editable text 1000, verifies Save enabled, and invokes its semantic OnClick once. It explicitly requires a draft, preserves the original exact **JPY / 1000** assertions, and adds agreement-date and DAY-basis checks. The existing new-attendance semantic case and the other four test bodies are unchanged. Real physical Save controls in LabourPaymentsUiTest and the machinery stepper/usual-price cases remain unchanged. No production, ledger, schema, payment writer, currency resolver or unrelated test changes were made; no sleep, retry or weakened financial assertion was added.
+
+Same JAVA_HOME/SDK/Gradle paths and dedicated emulator-5580 with Android animation scales zero. Final focused class command:
+
+```text
+gradle.bat --no-daemon :app:assembleDevDebugAndroidTest :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest --console=plain
+```
+
+Exit **0**, **5/5**, zero failures/errors/skips; `BUILD SUCCESSFUL in 44s`, `77 actionable tasks: 6 executed, 71 up-to-date`. Log/XML: `task-3-ci-labour-legacy-green.log/.xml`. The five cases cover legacy JPY confirmation, partly confirmed JPY without a ledger, ambiguous denomination, new attendance on historical JPY versus EUR usual rates, and hourly overflow. AndroidTest rebuilt; DEV unchanged/up-to-date. Copied XML and current one-test source diff were reviewed; whitespace checks passed. Unchanged JVM/Room/equipment/full suites were not rerun.
+
+Reports appended/copied to tracked evidence. Physical-device follow-up now explicitly includes **legacy labour confirmation Save after input with keyboard open/closed and the edit modal's collapsed/expanded states**, alongside the machinery post-edit check. This test amendment proves the enabled currency/draft seam, not post-input physical reachability or a product fix. The exact CI pointer cause remains unproven locally. No screenshots changed, subagents, push, merge, Slice 4 or backend work occurred. Root scoped review and new exact-head CI remain required; no full CI PASS or physical Gate PASS is claimed here.
