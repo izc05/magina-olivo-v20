@@ -25,6 +25,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   el mismo día. El detalle de la campaña añade «Jornales» bajo Pesadas («1 persona · 1 jornada ·
   65,00 €», solo coste confirmado; los recuentos históricos sin nombre aparte), que abre el detalle
   de personas y pagos de esa campaña.
+- **El Cuaderno de una finca no pide otra finca (#369).** Desde Mi Campo → finca o parcela →
+  Cuaderno, la finca ya está elegida: se muestra con su campaña (y la parcela, con «Toda la finca»)
+  sin «Cambiar finca», y Atrás vuelve a la finca o la parcela. La pestaña Cuaderno sigue siendo el
+  centro general, con «Cambiar finca». Es el mismo Cuaderno; solo cambia el origen.
 - **Previsión semanal más visual (#362).** Cada día tiene el color suave de su estado (lluvia azul
   agua, nublado gris, parcialmente nublado azul claro, despejado dorado), además de su icono y su
   nombre. «Hoy» se destaca con borde e icono mayor; la máxima manda y la mínima queda secundaria;
