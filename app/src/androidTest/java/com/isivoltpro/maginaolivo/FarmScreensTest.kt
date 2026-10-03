@@ -1,5 +1,8 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -42,6 +45,25 @@ class FarmScreensTest {
         assertEquals(1, composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().size)
         composeRule.onNodeWithText("Crear mi primera finca").assertIsDisplayed()
         assertEquals(0, composeRule.onAllNodesWithText("Maquinaria").fetchSemanticsNodes().size)
+    }
+
+    /** A second Farm in a row brings the same message as the first; the editor still closes. */
+    @Test
+    fun theEditorClosesOnEverySaveEvenWithTheSameMessage() {
+        val saved = "Finca guardada en este dispositivo"
+        var state by mutableStateOf(FarmListUiState(isLoading = false, farms = listOf(farm(1)), message = saved, saveCount = 1))
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                FarmListScreen(state = state, onFarmSelected = {}, onCreate = {}, onRestore = {}, onRetry = {})
+            }
+        }
+        composeRule.onNodeWithTag("add-farm").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isNotEmpty() }
+
+        state = state.copy(farms = state.farms + farm(2), saveCount = 2)
+
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isEmpty() }
+        assertEquals(saved, state.message)
     }
 
     @Test
