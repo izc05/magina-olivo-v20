@@ -83,6 +83,8 @@ Curated directories are optional enhancements, not prerequisites.
 
 ## 5. Generic document OCR
 
+> **CR-013 (2026-10-03):** §5–§7 are deferred beyond Mágina Olivo 1.0. A Pesada is what the farmer types and confirms; a receipt photo is only an attachment. See `RC1.2-CHANGE-REQUEST-013-PESADA-MANUAL-OCR-APLAZADO.md`.
+
 OCR is a shared service for attachments/documents, not a delivery-only feature.
 
 Initial typed profiles:

@@ -18,6 +18,7 @@ Before changing code or architecture, read:
 10. `docs/00-master/RC1.2-CHANGE-REQUEST-009-HOME-WEATHER-MARKET.md`
 11. `docs/00-master/RC1.2-CHANGE-REQUEST-010-CAMPANA-SIMPLE-AUTOMATIZADA.md`
 12. `docs/00-master/RC1.2-CHANGE-REQUEST-011-SIMPLIFICACION-UX.md`
+12a. `docs/00-master/RC1.2-CHANGE-REQUEST-013-PESADA-MANUAL-OCR-APLAZADO.md` (OCR deferred beyond 1.0; Pesada manual + optional photo)
 13. `docs/04-ui/CUADERNO-CAMPANA-SCREEN-SPEC-RC1.2.md`
 14. `docs/design/VISUAL_DESIGN_LOCK.md`
 15. `docs/design/DESIGN_SYSTEM.md`
@@ -102,10 +103,10 @@ Never:
 - Cuaderno as a Farm/Campaign orchestration surface: annual work and recolección are visually separated without duplicating canonical data;
 - user-facing `Pesada` maps to canonical Delivery; each Pesada selects its own cooperative/mill and later yield remains separate;
 - Harvest distinct from Delivery;
-- delivery ticket/photo/PDF + OCR review;
+- delivery ticket/photo/PDF as an optional attachment (OCR review deferred beyond 1.0 by CR-013);
 - later yield analysis as separate linked data;
 - Home contextual weather/radar, oil-market reference and preferred cooperative notices/news;
-- OCR for delivery tickets, invoices/receipts and agricultural documents;
+- OCR for delivery tickets, invoices/receipts and agricultural documents — deferred beyond 1.0 by CR-013 (code kept dormant);
 - irrigation historical pricing snapshots;
 - scheduled work with expected people/provider and reminders;
 - subtle weather-driven Home effects with reduced-motion/performance safeguards;

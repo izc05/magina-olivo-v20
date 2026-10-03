@@ -323,6 +323,44 @@ class DeliveryContractTest {
         assertEquals(2_150, delivery.analysis!!.fatYieldHundredths)
     }
 
+    /**
+     * #342 — Pesada 1.0: the typed kilos are canonical. Two Pesadas of the same day from two
+     * cooperatives, one without photo or ticket number and one with a receipt photo: the photo
+     * is only attached, never changes either Pesada, and the totals are the typed kilos, also
+     * after a restart.
+     */
+    @Test
+    fun manualPesadasAreCanonicalAndAReceiptPhotoIsOnlyEvidence() = runBlocking {
+        val plain = ok(deliveries.create(draft(1_200_000, north to null).copy(destinationName = "Almazara El Molino", origin = PesadaOrigin.GROUND)))
+        val withPhoto = ok(deliveries.create(draft(2_850_000, north to null, south to null).copy(origin = PesadaOrigin.TREE)))
+        val before = deliveries.observe(withPhoto).first()!!
+        val outboxBefore = db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, withPhoto).size
+
+        val photo = ok(attachments.attach(AttachmentOwner(AttachmentOwnerType.DELIVERY, withPhoto), source("recibo.jpg")))
+
+        assertEquals(before, deliveries.observe(withPhoto).first())
+        assertEquals(outboxBefore, db.syncOutboxDao().listForEntity(SyncEntityType.DELIVERY, withPhoto).size)
+        assertEquals(2, count("deliveries"))
+        assertEquals(listOf(photo), attachments.observeForOwner(AttachmentOwner(AttachmentOwnerType.DELIVERY, withPhoto)).first().map { it.id })
+        assertTrue(attachments.observeForOwner(AttachmentOwner(AttachmentOwnerType.DELIVERY, plain)).first().isEmpty())
+        with(deliveries.observe(plain).first()!!) {
+            assertNull(ticketNumber)
+            assertEquals("Almazara El Molino", destinationName)
+            assertEquals(day, deliveryDate)
+        }
+        assertEquals(4_050_000L, DeliverySummary.of(deliveries.observeForCampaign(campaignId).first()).deliveredGrams)
+
+        db.close()
+        open()
+        assertEquals(2_850_000L, deliveries.observe(withPhoto).first()!!.netGrams)
+        assertEquals(campaignId, deliveries.observe(withPhoto).first()!!.campaignId)
+        assertEquals(farmId, deliveries.observe(withPhoto).first()!!.farmId)
+        assertEquals(1, attachments.observeForOwner(AttachmentOwner(AttachmentOwnerType.DELIVERY, withPhoto)).first().size)
+        assertEquals(4_050_000L, DeliverySummary.of(deliveries.observeForCampaign(campaignId).first()).deliveredGrams)
+        // The automatic recolección day of that date counts the same typed kilos.
+        assertEquals(4_050_000L, harvests.observeAll().first().single { it.automatic && it.harvestDate == day }.totalGrams)
+    }
+
     /** Issue #254: árbol/vuelo or suelo is stored with the Pesada, kept on edit, survives a restart. */
     @Test
     fun theOriginOfTheOlivesIsKeptWithThePesada() = runBlocking {
