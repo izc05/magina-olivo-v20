@@ -20,6 +20,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Fichas de finca con más datos (#363, #364, #359).** Cada finca muestra Superficie, Parcelas,
+  Olivos y Kg de la campaña en marcha (solo de sus pesadas; «Sin pesadas» o «—» si no hay, nunca 0).
+  La cabecera de Mis fincas añade Olivos («≥ N» si falta algún recuento) en una cuadrícula 2×2.
 - **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
   de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
   finca» queda como acción secundaria.
