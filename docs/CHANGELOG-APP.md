@@ -25,6 +25,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   punto azul en el mapa y, si falla, dice por qué (sin permiso, ubicación apagada o sin señal) con su
   salida: permitir, activar o escribir coordenadas. La parcela elegida dice «Seleccionada · Guardada»
   y su municipio. El mapa y la foto aérea se dibujan a su resolución real (antes se ampliaban al doble).
+- **Jornal dentro y fuera de campaña (#350, #378).** Con campaña de recogida en marcha, «Jornal»
+  abre el día de recolección con el jornal por persona. Sin campaña, abre «Jornal fuera de
+  campaña»: la mano de obra de la finca (poda, desbroce, tratamientos…) como gasto de mano de obra
+  ya elegido, sin pasar por un «Nuevo gasto» genérico. «Trabajo» ya no ofrece «Jornada de
+  recolección», que se planifica desde Avisos.
 - **Pestañas sin saltos (#357, #358).** Volver a pulsar la pestaña en la que ya estás no recarga
   la pantalla: se queda como estaba, con la misma vista elegida, sin parpadeo del título.
 - **Crear dos fincas seguidas cierra el formulario las dos veces.** Al guardar la segunda finca el
