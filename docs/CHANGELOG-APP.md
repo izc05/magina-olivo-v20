@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Municipio y provincia desde Catastro.** Al añadir una parcela con su referencia, desde el mapa
+  o al ubicar una parcela hecha a mano, Catastro rellena el municipio y la provincia; siempre se
+  pueden cambiar y nunca se pisa lo que escribiste. Si Catastro no lo indica, se escribe a mano.
+  Al editar una parcela con referencia, «Completar municipio y provincia desde Catastro».
 - **Detalle de parcela por bloques.** En «Datos», la superficie es el dato principal junto a su
   mapa, y el resto se agrupa en Datos catastrales, Geometría e Información adicional.
 - **Lluvia y radar (#345, #315).** Inicio muestra «Prob. lluvia X %» con su gota cuando AEMET la

@@ -81,6 +81,11 @@ A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gat
   fresh for 1 h with refresh on entering/resuming Inicio, «Actualizar», water-blue rain radar.
 - **Gate 21 checkpoint prepared:** `docs/06-testing/PHASE21-GATE-CHECKLIST.md`; candidate DEV APK =
   Android CI run #761 on `main` `908b5023`. Waiting for the owner's device run.
+- **Owner-approved polish before Cuenta/Sync (2026-10-03, #351):** after testing APK 761 the owner
+  authorized three small changes, outside Phase 22 and with no schema/Auth/Sync change: (3) municipality
+  and province from Catastro when a parcel is added or edited with its reference (functional),
+  (1) Cuaderno header hierarchy, (2) parcel detail in blocks. One PR each (#352, #353, #354); Gate 21
+  stays open until the owner's device run.
 - **Web:** WEB-0 (#346) may advance only in design, storyboard, public structure, staging and visual
   preparation. It must not touch Auth, schema, RLS or Sync before Phases 22/23.
 - **Perfil** is the single source of municipality, cooperative and territorial preferences. Weather,

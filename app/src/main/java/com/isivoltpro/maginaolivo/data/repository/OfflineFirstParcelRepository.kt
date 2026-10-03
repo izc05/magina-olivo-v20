@@ -170,6 +170,9 @@ class OfflineFirstParcelRepository(
                     sourceImportedAt = link.sourceImportedAt,
                     geometryGeoJson = link.geometryGeoJson.trim(),
                     cadastralAreaM2 = link.cadastralAreaM2,
+                    // The farmer's own place is never overwritten; the registry only fills a gap.
+                    municipality = current.municipality?.takeIf { it.isNotBlank() } ?: link.municipality.normalized(),
+                    province = current.province?.takeIf { it.isNotBlank() } ?: link.province.normalized(),
                     metadata = current.metadata.next(now),
                 ),
             )
