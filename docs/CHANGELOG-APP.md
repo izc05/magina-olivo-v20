@@ -23,6 +23,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 - **Fichas de finca con más datos (#363, #364, #359).** Cada finca muestra Superficie, Parcelas,
   Olivos y Kg de la campaña en marcha (solo de sus pesadas; «Sin pesadas» o «—» si no hay, nunca 0).
   La cabecera de Mis fincas añade Olivos («≥ N» si falta algún recuento) en una cuadrícula 2×2.
+- **Inicio más natural y radar más nítido (#360).** La foto de Inicio ya no se tiñe de verde: una
+  sombra neutra mantiene sus colores y el texto blanco sigue legible (≥ 4,5:1). El radar de lluvia
+  pide a RainViewer su imagen de 512 px, con el doble de detalle que la de 256 px que se ampliaba.
 - **La Pesada recuerda de dónde vienes (#373, #375).** Desde una finca, una campaña, una parcela o un
   día de recolección, «Nueva pesada» ya no vuelve a pedir la finca: muestra «Salinillas · Campaña
   2026-2027» como contexto fijo. En una campaña en marcha, «Pesadas» abre la nueva pesada de esa
