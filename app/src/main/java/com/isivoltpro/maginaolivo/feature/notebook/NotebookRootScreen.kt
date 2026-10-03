@@ -445,7 +445,7 @@ private fun NotebookHub(
                 }
                 NotebookHubTab.PHYTO -> PhytoView(notebook, actions)
                 NotebookHubTab.EXPENSES -> CostsView(notebook, actions)
-                NotebookHubTab.CAMPAIGN -> CampaignView(notebook, state, actions)
+                NotebookHubTab.CAMPAIGN -> CampaignView(notebook, state, actions, onSelectCampaign)
             }
         }
     }

@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Histórico de campañas en gráficas (#355).** En Cuaderno → Campaña, con dos o más campañas de
+  la finca, «Histórico de campañas» muestra kilos pesados, rendimiento graso medio (con su cobertura)
+  y coste de recogida por kilo de cada campaña, con el mismo dato en texto debajo. Sin datos es un
+  hueco, nunca un cero; el coste no mezcla monedas; los kilos sin pesada (histórico) no entran en
+  las barras. Tocar una campaña la abre. Sale de la misma comparación que ya había, sin totales nuevos.
 - **Fichas de finca con más datos (#363, #364, #359).** Cada finca muestra Superficie, Parcelas,
   Olivos y Kg de la campaña en marcha (solo de sus pesadas; «Sin pesadas» o «—» si no hay, nunca 0).
   La cabecera de Mis fincas añade Olivos («≥ N» si falta algún recuento) en una cuadrícula 2×2.
