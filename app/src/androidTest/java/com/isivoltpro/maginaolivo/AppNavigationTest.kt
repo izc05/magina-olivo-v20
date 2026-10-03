@@ -801,12 +801,15 @@ class AppNavigationTest {
         clickByTag("notebook-quick-labour")
         // Build 683: the container alone renders while still loading; wait for the day itself.
         waitForTagOrDumpScreen("day-resource-labour")
+        // #365: Jornal lands on the day's Jornales, with «Registrar jornales» at hand.
+        closeJornalFocus()
 
         // Back and Jornal again, before any restart: the same day opens again.
         pressBack()
         waitForTag("notebook-root")
         clickByTag("notebook-quick-labour")
         waitForTagOrDumpScreen("day-resource-labour")
+        closeJornalFocus()
 
         // Cold restart: the same day is still there.
         composeRule.activityRule.scenario.recreate()
@@ -818,6 +821,7 @@ class AppNavigationTest {
         waitForTag("notebook-root")
         clickByTag("notebook-quick-labour")
         waitForTagOrDumpScreen("day-resource-labour")
+        closeJornalFocus()
 
         // The campaign holds exactly one día de recolección.
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
@@ -1235,6 +1239,13 @@ class AppNavigationTest {
             composeRule.onAllNodes(hasTestTag("notebook-context") and hasText(name, substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
+    }
+
+    /** #365: the day opened from Jornal shows its Jornales first; close them to see the day. */
+    private fun closeJornalFocus() {
+        waitForTag("jornada-register-labour")
+        clickInSheetByTag("resource-detail-close")
+        composeRule.waitUntil(UI_TIMEOUT_MS) { composeRule.onAllNodesWithTag("jornada-register-labour").fetchSemanticsNodes().isEmpty() }
     }
 
     private fun createParcel(name: String) {
