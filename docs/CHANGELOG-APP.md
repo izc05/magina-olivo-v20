@@ -25,6 +25,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   analizados, coste de recogida y coste/kg calculado con los totales (nunca la media de cada finca).
   Dice cuántas fincas tienen campaña y cuáles no; con varias monedas no hay coste/kg conjunto; lo
   desconocido es «—». «Ver por finca» muestra lo que aporta cada una y abre su detalle.
+- **Previsión semanal más visual (#362).** Cada día tiene el color suave de su estado (lluvia azul
+  agua, nublado gris, parcialmente nublado azul claro, despejado dorado), además de su icono y su
+  nombre. «Hoy» se destaca con borde e icono mayor; la máxima manda y la mínima queda secundaria;
+  «Sin lluvia» en lugar de «0 mm»; arriba, un resumen de la semana. La fuente queda como nota discreta.
 - **Fichas de finca con más datos (#363, #364, #359).** Cada finca muestra Superficie, Parcelas,
   Olivos y Kg de la campaña en marcha (solo de sus pesadas; «Sin pesadas» o «—» si no hay, nunca 0).
   La cabecera de Mis fincas añade Olivos («≥ N» si falta algún recuento) en una cuadrícula 2×2.
