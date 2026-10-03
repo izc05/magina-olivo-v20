@@ -22,7 +22,7 @@ La referencia visual de cualquier implementación es #394: Home crema y verde co
 | Issue #386 | Master WEB-0 | Baseline nueva desde `main`; fases #387–#393; fixtures demo hasta WEB-1; Pages, Docker, Playwright, CI y reduced motion forman parte del stack a recuperar. |
 | Issue #394 | Visual Lock aprobado | Especifica Home pública, sidebar y panel privado. Es la única referencia visual que se debe implementar. |
 | Issue #387 | WEB-0A | Pide KEEP/ADAPT/DROP, inventario de assets/componentes/rutas y recomendación para la baseline. |
-| PR #1 | `199fcd6ed3eb3a6491467210fe8c45737b0c94794`, `feat/v20-visual-prototype` | PWA/App Router y prototipo de portal territorial; incluye lógica y pantallas de producto que no se copian a V3. |
+| PR #1 | `99fcd6ed3eb3a6491467210fe8c45737b0c94794`, `feat/v20-visual-prototype` | PWA/App Router y prototipo de portal territorial; incluye lógica y pantallas de producto que no se copian a V3. |
 | PR #202 | `ba672818bd18f1cf868d1380eceed9400d0e6d69`, `feat/web-magína-olivo` | Next 16, TypeScript, Tailwind, rutas públicas, Docker, Playwright, CI y Pages; Home y assets con dirección V1. |
 | PR #204 | `7ec86636fe146f7a9b3184000ad6f2b9e9abeb01`, `feat/web-v2-cinematic` | Motor scroll→frame/canvas, manifiesto de keyframes, review board y specs cinematográficas; dirección visual V2 sustituida por #394. |
 
