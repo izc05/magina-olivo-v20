@@ -41,11 +41,11 @@ class CampaignScreensTest {
         } }
         compose.onNodeWithText("Parcela histórica").assertIsDisplayed()
         compose.onNodeWithText("Finca histórica").assertIsDisplayed()
-        compose.onNodeWithText("Histórico protegido").assertIsDisplayed()
+        compose.onNodeWithText("Histórico protegido").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Aún no hay kilos pesados").assertIsDisplayed()
         compose.onNodeWithText("Aún no hay pesadas").assertIsDisplayed()
         compose.onAllNodesWithText("Sin datos").assertCountEquals(0)
-        compose.onNodeWithTag("reopen-campaign").performClick()
+        compose.onNodeWithTag("reopen-campaign").performScrollTo().performClick()
         compose.onNodeWithText("Confirmar cambio").assertIsDisplayed()
     }
 

@@ -452,7 +452,7 @@ class AppNavigationTest {
         // A closed campaign stays protected after the restart, and reopening it is an
         // explicit, confirmed action that returns the aggregate to an editable state.
         waitForText("Histórico protegido")
-        composeRule.onNodeWithText("Histórico protegido").assertIsDisplayed()
+        composeRule.onNodeWithText("Histórico protegido").performScrollTo().assertIsDisplayed()
 
         // CLOSED -> HARVEST
         clickByTag("reopen-campaign")
@@ -462,7 +462,8 @@ class AppNavigationTest {
         clickByTag("close-campaign")
         confirmCampaignAction()
         waitForText("Histórico protegido")
-        composeRule.onNodeWithText("Parcela Campaña E2E").assertIsDisplayed()
+        // #365: the detail is longer now (Jornales under Pesadas); bring the snapshot into view.
+        composeRule.onNodeWithText("Parcela Campaña E2E").performScrollTo().assertIsDisplayed()
     }
 
     @Test
