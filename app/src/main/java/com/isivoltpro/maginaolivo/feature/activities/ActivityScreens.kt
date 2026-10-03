@@ -333,7 +333,7 @@ internal fun ActivityTypeChooser(farmName: String, onSelected: (ActivityType) ->
     ) {
         Text(if (planning) "¿Qué trabajo quieres planificar?" else "¿Qué trabajo vas a apuntar?", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(farmName, style = MaterialTheme.typography.titleMedium, color = MoTextSecondary)
-        ActivityType.entries.forEach { type ->
+        workTypes(planning).forEach { type ->
             MoCompactListItem(
                 title = type.label(),
                 subtitle = type.shortDescription(),
@@ -344,6 +344,14 @@ internal fun ActivityTypeChooser(farmName: String, onSelected: (ActivityType) ->
         }
     }
 }
+
+/**
+ * #378: the kinds of work offered. «Jornada de recolección» is an agenda appointment for the
+ * recogida (Avisos → Planificar), never an ordinary Trabajo: recolección lives in Campaña,
+ * Pesada and Jornal.
+ */
+internal fun workTypes(planning: Boolean): List<ActivityType> =
+    ActivityType.entries.filter { planning || it != ActivityType.HARVEST_DAY }
 
 private fun ActivityType.shortDescription(): String = when (this) {
     ActivityType.OBSERVATION -> "Revisar el estado del olivar"
@@ -487,7 +495,9 @@ internal fun ActivityEditor(
                 horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                 verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
             ) {
-                ActivityType.entries.forEach { option ->
+                // #378: a recogida day is planned in Avisos, not written down as a Trabajo; an
+                // existing one keeps its own type.
+                workTypes(planning = initial.planning != null || initial.type == ActivityType.HARVEST_DAY).forEach { option ->
                     FilterChip(
                         selected = option.name == type,
                         onClick = { type = option.name },
