@@ -176,13 +176,15 @@ fun HarvestsScreen(
                         { m -> MoKpiMetric("Kg pesados", deliverySummary?.takeIf { it.deliveryCount > 0 }?.let { Weight.format(it.deliveredGrams) } ?: "—", m.testTag("harvest-metric-kg"), icon = MoIcons.Delivery, kind = MoKpiKind.PESADAS) },
                         { m -> MoKpiMetric("Pesadas", (deliverySummary?.deliveryCount ?: 0).toString(), m, icon = MoIcons.Checklist, kind = MoKpiKind.PESADAS) },
                         { m ->
+                            // #366: calendar days, not records — two Farms on 3 oct are one day.
                             MoKpiMetric(
                                 "Días de recolección",
-                                state.harvests.size.toString(),
-                                m,
+                                harvestDayCount(state.harvests).toString(),
+                                m.testTag("harvest-metric-days"),
                                 icon = MoIcons.Harvest,
                                 kind = MoKpiKind.CAMPAIGN,
-                                supportingText = if (state.harvests.isEmpty()) "Se crea con su primera pesada o jornal" else "Días de recolección",
+                                supportingText = if (state.harvests.isEmpty()) "Se crea con su primera pesada o jornal"
+                                else harvestDaysSpread(state.harvests) ?: "Con pesadas o jornales",
                             )
                         },
                         { m ->
@@ -225,7 +227,9 @@ fun HarvestsScreen(
                     icon = MoIcons.Harvest,
                 )
                 else -> {
-                    state.campaigns.forEach { campaign -> CampaignHarvestCard(campaign) }
+                    state.campaigns.forEach { campaign ->
+                        CampaignHarvestCard(campaign, harvestDayCount(state.harvests.filter { it.campaignId == campaign.campaignId }))
+                    }
                     MoSectionHeader("Días de recolección")
                     state.harvests.forEach { harvest ->
                         HarvestRow(harvest, dayLines[harvest.id] ?: dayRowLine(harvest, 0, emptyList(), emptyList())) {
@@ -241,7 +245,7 @@ fun HarvestsScreen(
 }
 
 @Composable
-private fun CampaignHarvestCard(campaign: CampaignHarvest) {
+private fun CampaignHarvestCard(campaign: CampaignHarvest, days: Int) {
     Card(
         modifier = Modifier.fillMaxWidth().testTag("campaign-harvest"),
         shape = MoShape.card,
@@ -254,34 +258,30 @@ private fun CampaignHarvestCard(campaign: CampaignHarvest) {
                 color = MoOliveDark,
             )
             Text(
-                if (campaign.summary.weighedCount == 0) PENDING_KILOS else Weight.format(campaign.summary.totalGrams),
+                campaignHarvestHeadline(campaign.summary),
                 style = MaterialTheme.typography.titleLarge,
                 color = MoInk,
                 modifier = Modifier.testTag("campaign-harvest-total"),
             )
             Text(
-                "${campaign.summary.harvestCount} ${if (campaign.summary.harvestCount == 1) "registro" else "registros"}",
+                "${harvestDays(days)} de recolección",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MoTextSecondary,
+                modifier = Modifier.testTag("campaign-harvest-days"),
             )
             campaign.summary.parcels.forEach { parcel ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(parcel.parcelName, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     Text(
-                        when {
-                            parcel.exactGrams > 0 && parcel.sharesUnallocated ->
-                                "${Weight.format(parcel.exactGrams)} + parte sin repartir"
-                            parcel.exactGrams > 0 -> Weight.format(parcel.exactGrams)
-                            else -> "Solo en kilos sin repartir"
-                        },
+                        parcelHarvestText(parcel),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MoTextSecondary,
                     )
                 }
             }
-            if (campaign.summary.unallocatedGrams > 0) {
+            unallocatedLine(campaign.summary)?.let { line ->
                 Text(
-                    "Sin repartir entre parcelas: ${Weight.format(campaign.summary.unallocatedGrams)}",
+                    line,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoTextSecondary,
                     modifier = Modifier.testTag("campaign-harvest-unallocated"),
@@ -307,9 +307,10 @@ private fun HarvestRow(harvest: Harvest, line: String, onClick: () -> Unit) {
             MoIconBadge(MoIcons.Harvest)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
                 Text(
-                    "${DATE_FORMAT.format(harvest.harvestDate)} · Día de recolección",
+                    harvestRowTitle(harvest),
                     style = MaterialTheme.typography.titleMedium,
                     color = MoOliveDark,
+                    modifier = Modifier.testTag("harvest-row-title"),
                 )
                 Text(
                     line,
