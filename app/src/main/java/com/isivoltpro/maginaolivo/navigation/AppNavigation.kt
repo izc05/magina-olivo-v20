@@ -110,27 +110,26 @@ fun AppNavigation(
     val currentRoot = AppDestination.rootForRoute(backStackEntry?.destination?.route)
     // The Farm a quick action was tapped on, handed to the activity flow once.
     var registerFarmId by rememberSaveable { mutableStateOf<String?>(null) }
-    // CR-011 §14: the Farm the Cuaderno opens on (from a Farm, a Parcel or Inicio) and, from a
-    // Parcel, that Parcel — kept for the work form until the farmer chooses «Toda la finca».
+    // CR-011 §14: the Farm the Cuaderno opens on (from a Farm, a Parcel or Inicio).
     var notebookFarmRequest by rememberSaveable { mutableStateOf<String?>(null) }
     var notebookTabRequest by rememberSaveable { mutableStateOf<String?>(null) }
+    // The Parcel of the Cuaderno a work action was tapped on, handed to the work form.
     var registerParcelId by rememberSaveable { mutableStateOf<String?>(null) }
-    var registerParcelName by rememberSaveable { mutableStateOf<String?>(null) }
-    // The Farm that Parcel belongs to: the Parcel only travels with an action on that same Farm.
-    var registerParcelFarmId by rememberSaveable { mutableStateOf<String?>(null) }
     // #369: from Inicio the Cuaderno is the general hub (ROOT); from a Farm or a Parcel it opens
-    // over that screen with the Farm fixed, and Back returns there.
+    // over that screen with the Farm fixed, and Back returns there. A Parcel's Cuaderno keeps
+    // that Parcel on its own back-stack entry, so no other Cuaderno picks it up.
     val openNotebookOn: (UUID, UUID?, String?, NotebookOrigin) -> Unit = { farmId, parcelId, parcelName, origin ->
         compositionRoot.activeFarmStore.set(farmId)
-        registerParcelId = parcelId?.toString()
-        registerParcelFarmId = parcelId?.let { farmId.toString() }
-        registerParcelName = parcelName
         notebookFarmRequest = farmId.toString()
         if (origin == NotebookOrigin.ROOT) {
             navController.navigateToRoot(RootDestination.Notebook)
         } else {
             navController.navigate(RootDestination.Notebook.route) { launchSingleTop = true }
-            navController.currentBackStackEntry?.savedStateHandle?.set(NOTEBOOK_ORIGIN_KEY, origin.name)
+            navController.currentBackStackEntry?.savedStateHandle?.let { handle ->
+                handle[NOTEBOOK_ORIGIN_KEY] = origin.name
+                handle[NOTEBOOK_PARCEL_ID_KEY] = parcelId?.toString()
+                handle[NOTEBOOK_PARCEL_NAME_KEY] = parcelName
+            }
         }
     }
     // A reminder opens its Activity over the Calendar, so Back returns to the agenda.
@@ -235,6 +234,8 @@ fun AppNavigation(
                     .getStateFlow(NOTEBOOK_ORIGIN_KEY, NotebookOrigin.ROOT.name)
                     .collectAsStateWithLifecycle()
                 val origin = NotebookOrigin.entries.firstOrNull { it.name == originName } ?: NotebookOrigin.ROOT
+                val parcelId by entry.savedStateHandle.getStateFlow<String?>(NOTEBOOK_PARCEL_ID_KEY, null).collectAsStateWithLifecycle()
+                val parcelName by entry.savedStateHandle.getStateFlow<String?>(NOTEBOOK_PARCEL_NAME_KEY, null).collectAsStateWithLifecycle()
                 if (persistence == null) {
                     PersistenceUnavailableScreen()
                 } else {
@@ -249,9 +250,9 @@ fun AppNavigation(
                             if (action == NotebookQuickAction.LABOUR && running) {
                                 navController.navigate(AppDestination.todayHarvest(farmId.toString())) { launchSingleTop = true }
                             } else {
-                                val parcelId = registerParcelId?.takeIf {
-                                    origin == NotebookOrigin.PARCEL_CONTEXT && registerParcelFarmId == farmId.toString()
-                                }
+                                // Only this Cuaderno's Parcel travels with the action; the work form
+                                // reads it from here.
+                                registerParcelId = parcelId
                                 navController.openQuickAction(action, farmId, parcelId)
                             }
                         },
@@ -259,10 +260,10 @@ fun AppNavigation(
                         onGoToFields = { navController.navigateToRoot(RootDestination.Olivar) },
                         farmRequest = notebookFarmRequest?.let { runCatching { UUID.fromString(it) }.getOrNull() },
                         onFarmRequestHandled = { notebookFarmRequest = null },
-                        parcelContext = registerParcelName.takeIf { origin == NotebookOrigin.PARCEL_CONTEXT },
+                        parcelContext = parcelName,
                         onClearParcel = {
-                            registerParcelId = null
-                            registerParcelName = null
+                            entry.savedStateHandle.remove<String>(NOTEBOOK_PARCEL_ID_KEY)
+                            entry.savedStateHandle.remove<String>(NOTEBOOK_PARCEL_NAME_KEY)
                         },
                         tabRequest = notebookTabRequest?.let { name -> NotebookHubTab.entries.firstOrNull { it.name == name } },
                         onTabRequestHandled = { notebookTabRequest = null },
@@ -846,8 +847,10 @@ private fun NavHostController.navigateToRoot(destination: RootDestination) {
     }
 }
 
-/** #369: where a Cuaderno opened from a Farm or a Parcel records that origin. */
+/** #369: where a Cuaderno opened from a Farm or a Parcel records that origin (and the Parcel). */
 private const val NOTEBOOK_ORIGIN_KEY = "notebook-origin"
+private const val NOTEBOOK_PARCEL_ID_KEY = "notebook-parcel-id"
+private const val NOTEBOOK_PARCEL_NAME_KEY = "notebook-parcel-name"
 
 /** The Cuaderno's links, the same from Mi Cuaderno and from a Farm in Mi Campo. */
 private fun NavHostController.notebookActions(farmId: UUID) = NotebookActions(
