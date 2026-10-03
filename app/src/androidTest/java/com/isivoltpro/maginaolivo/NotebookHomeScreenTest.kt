@@ -186,6 +186,14 @@ class NotebookHomeScreenTest {
         composeRule.runOnIdle { assertEquals(listOf(NotebookQuickAction.LABOUR), tapped) }
     }
 
+    /** Codex #368: a notebook that failed to load does not count as «no campaign». */
+    @Test fun aFailedLoadDoesNotSendJornalOutsideTheCampaign() {
+        val tapped = mutableListOf<NotebookQuickAction>()
+        show(state = NotebookUiState(isLoading = false, error = "No se pudo abrir"), onQuickAction = { tapped += it })
+        composeRule.onNodeWithTag(NotebookQuickAction.LABOUR.tag).performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(emptyList<NotebookQuickAction>(), tapped) }
+    }
+
     /** #350/#378: while the Farm's campaign is still loading, Jornal waits: which flow it is is never guessed. */
     @Test fun whileTheCampaignLoadsJornalWaits() {
         val tapped = mutableListOf<NotebookQuickAction>()
