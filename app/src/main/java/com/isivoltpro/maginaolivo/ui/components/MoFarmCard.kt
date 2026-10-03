@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoOutline
@@ -53,6 +54,10 @@ fun MoFarmCard(
     nextWork: String? = null,
     campaignActive: Boolean = true,
     artworkSeed: Int = 0,
+    /** #363/#364: olive trees («—» / «≥ N» when unknown or partial); shown with [campaignKilos]. */
+    olives: String? = null,
+    /** #364: Pesada kilos of the running campaign, or «Sin pesadas» / «—». */
+    campaignKilos: String? = null,
 ) {
     Card(
         modifier = modifier.then(
@@ -110,11 +115,25 @@ fun MoFarmCard(
                         color = MoTextSecondary,
                     )
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(MoSpacing.lg),
-                ) {
-                    FarmMetric(value = area, label = "Superficie")
-                    FarmMetric(value = parcels, label = "Parcelas")
+                if (olives != null && campaignKilos != null) {
+                    // #364: a compact 2×2, so two Farms compare at a glance without opening them.
+                    Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs), modifier = Modifier.testTag("farm-card-metrics")) {
+                        Row(Modifier.fillMaxWidth()) {
+                            FarmMetric(value = area, label = "Superficie", modifier = Modifier.weight(1f))
+                            FarmMetric(value = parcels, label = "Parcelas", modifier = Modifier.weight(1f))
+                        }
+                        Row(Modifier.fillMaxWidth()) {
+                            FarmMetric(value = olives, label = "Olivos", modifier = Modifier.weight(1f))
+                            FarmMetric(value = campaignKilos, label = "Kg campaña", modifier = Modifier.weight(1f))
+                        }
+                    }
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(MoSpacing.lg),
+                    ) {
+                        FarmMetric(value = area, label = "Superficie")
+                        FarmMetric(value = parcels, label = "Parcelas")
+                    }
                 }
                 if (nextWork != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -131,8 +150,9 @@ fun MoFarmCard(
 private fun FarmMetric(
     value: String,
     label: String,
+    modifier: Modifier = Modifier,
 ) {
-    Column {
+    Column(modifier) {
         Text(
             text = value,
             style = MaterialTheme.typography.titleSmall,

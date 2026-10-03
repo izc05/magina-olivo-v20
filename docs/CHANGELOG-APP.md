@@ -25,6 +25,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   punto azul en el mapa y, si falla, dice por qué (sin permiso, ubicación apagada o sin señal) con su
   salida: permitir, activar o escribir coordenadas. La parcela elegida dice «Seleccionada · Guardada»
   y su municipio. El mapa y la foto aérea se dibujan a su resolución real (antes se ampliaban al doble).
+- **Fichas de finca con más datos (#363, #364, #359).** Cada finca muestra Superficie, Parcelas,
+  Olivos y Kg de la campaña en marcha (solo de sus pesadas; «Sin pesadas» o «—» si no hay, nunca 0).
+  La cabecera de Mis fincas añade Olivos («≥ N» si falta algún recuento) en una cuadrícula 2×2.
 - **Jornal dentro y fuera de campaña (#350, #378).** Con campaña de recogida en marcha, «Jornal»
   abre el día de recolección con el jornal por persona. Sin campaña, abre «Jornal fuera de
   campaña»: la mano de obra de la finca (poda, desbroce, tratamientos…) como gasto de mano de obra
