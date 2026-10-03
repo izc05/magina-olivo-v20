@@ -104,6 +104,22 @@ fun FarmListRoute(
         val loadedDeliveries = deliveries
         if (loadedContexts == null || loadedDeliveries == null) null else runningCampaignKilos(loadedContexts, loadedDeliveries)
     }
+    // #359: every Farm's campaigns, read from the same repositories as each Farm; nothing stored.
+    val farmIds = state.farms.map { it.id }
+    val campaigns by remember(farmIds) {
+        if (farmIds.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
+        else kotlinx.coroutines.flow.combine(farmIds.map { persistence.campaignRepository.observeForFarm(it) }) { lists -> lists.flatMap { it } }
+    }.collectAsStateWithLifecycle(null)
+    val expenses by remember { persistence.expenseRepository.observeAll() }.collectAsStateWithLifecycle(null)
+    val overviews = remember(state.farms, campaigns, deliveries, expenses) {
+        val loadedCampaigns = campaigns
+        val loadedDeliveries = deliveries
+        val loadedExpenses = expenses
+        if (loadedCampaigns == null || loadedDeliveries == null || loadedExpenses == null) emptyList()
+        else com.isivoltpro.maginaolivo.domain.analytics.OliveSeason.available(loadedCampaigns).map { season ->
+            com.isivoltpro.maginaolivo.domain.analytics.FarmOverview.of(season, state.farms, loadedCampaigns, loadedDeliveries, loadedExpenses)
+        }
+    }
     FarmListScreen(
         state = state,
         onFarmSelected = onFarmSelected,
@@ -117,6 +133,7 @@ fun FarmListRoute(
         },
         nextWork = { farmId -> nextWork[farmId]?.let { "Próximo: ${it.description} · ${relativeDay(it.activityDate, today)}" } },
         campaignKilos = campaignKilos?.let { kilos -> { farmId: UUID -> kilos[farmId] } },
+        overviews = overviews,
     )
 }
 
@@ -146,6 +163,8 @@ fun FarmListScreen(
      * is null while the Pesadas are still loading.
      */
     campaignKilos: ((UUID) -> Long?)? = { null },
+    /** #359: the holding's figures per olive season, newest first; empty while loading or with no campaign. */
+    overviews: List<com.isivoltpro.maginaolivo.domain.analytics.FarmOverview> = emptyList(),
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     // Saves already seen here, so coming back to the list does not close an editor the user opened.
@@ -214,6 +233,11 @@ fun FarmListScreen(
                     enabled = !state.isLoading && !state.isSaving,
                     modifier = Modifier.testTag("add-farm"),
                 )
+            }
+
+            // #359: above the Farms, under «Añadir finca», so the button stays near the top.
+            if (!state.isLoading && state.error == null && state.farms.isNotEmpty() && overviews.isNotEmpty()) item {
+                FarmOverviewSection(overviews, onFarmSelected)
             }
 
             when {
