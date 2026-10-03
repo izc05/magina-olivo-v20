@@ -216,13 +216,15 @@ class AppNavigationTest {
             openSheet("add-farm", "farm-name")
             composeRule.onNodeWithTag("farm-name").performTextInput(name)
             saveEditor("save-farm", "farm-name")
-            waitForSaved("farm-name", name)
+            // The second card can sit below the visible part of the list; the closed editor is
+            // what says it was saved. The Cuaderno below then lists both farms.
+            composeRule.waitUntil(UI_TIMEOUT_MS) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isEmpty() }
         }
 
         // «Cambiar finca» opens the Farm choice; that open state lives only in the screen.
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         clickByTag("notebook-change-farm")
-        waitForNodeOrDump("notebook-farm-option") { composeRule.onAllNodesWithTag("notebook-farm-option") }
+        composeRule.waitUntil(UI_TIMEOUT_MS) { composeRule.onAllNodesWithTag("notebook-farm-option").fetchSemanticsNodes().size == 2 }
 
         // Recreating the root would close it again.
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
