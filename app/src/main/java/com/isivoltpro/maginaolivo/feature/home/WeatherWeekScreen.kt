@@ -61,6 +61,9 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoText
 import com.isivoltpro.maginaolivo.ui.theme.MoInfoTint
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
+import com.isivoltpro.maginaolivo.ui.theme.MoRainText
+import com.isivoltpro.maginaolivo.ui.theme.MoRainTint
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -87,6 +90,10 @@ data class WeatherWeekUiState(
     val location: FeedLocation? = null,
     val locationAmbiguous: Boolean = false,
     val weather: FeedState<WeatherNow> = FeedState.Unavailable,
+    /** #315: the farmer's «Actualizar» is running. */
+    val refreshing: Boolean = false,
+    /** #315: the last «Actualizar» failed; the saved value stays on screen with its age. */
+    val refreshFailed: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -123,7 +130,21 @@ class WeatherWeekViewModel(
             locations.flatMapLatest { resolved ->
                 (weatherFeed?.observe(resolved.location) ?: flowOf(FeedState.NotConfigured))
                     .map { WeatherWeekUiState(isLoading = false, location = resolved.location, locationAmbiguous = resolved.ambiguous, weather = it) }
-            }.collect(mutableState::emit)
+            }.collect { next ->
+                mutableState.value = next.copy(refreshing = mutableState.value.refreshing, refreshFailed = mutableState.value.refreshFailed)
+            }
+        }
+    }
+
+    /** #315: «Actualizar» asks the source now; a failure keeps the saved value and says so. */
+    fun refresh() {
+        val feed = weatherFeed ?: return
+        val place = mutableState.value.location ?: return
+        if (mutableState.value.refreshing) return
+        mutableState.value = mutableState.value.copy(refreshing = true, refreshFailed = false)
+        viewModelScope.launch {
+            val ok = feed.refresh(place)
+            mutableState.value = mutableState.value.copy(refreshing = false, refreshFailed = !ok)
         }
     }
 
@@ -161,7 +182,7 @@ fun WeatherWeekRoute(
         },
     )
     val state by viewModel.state.collectAsState()
-    WeatherWeekScreen(state, clock.nowInstant(), onRadar, onBack)
+    WeatherWeekScreen(state, clock.nowInstant(), onRadar, onBack, onRefresh = viewModel::refresh)
 }
 
 @Composable
@@ -171,6 +192,7 @@ fun WeatherWeekScreen(
     onRadar: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
     zone: ZoneId = ZoneId.systemDefault(),
+    onRefresh: (() -> Unit)? = null,
 ) {
     Scaffold(
         Modifier.fillMaxSize().testTag("weather-week-root"),
@@ -202,7 +224,7 @@ fun WeatherWeekScreen(
                     is FeedState.Value -> {
                         if (weather.stale) MoStatusChip("Datos guardados · pueden estar antiguos", tone = MoStatusTone.Warning, modifier = Modifier.testTag("weather-week-stale"))
                         CurrentWeatherSummary(weather.value, weather.stale)
-                        onRadar?.let { MoSecondaryButton("Ver radar de lluvia", it, Modifier.fillMaxWidth().testTag("weather-week-radar")) }
+                        onRadar?.let { RadarAccess(it) }
                         Spacer(Modifier.height(MoSpacing.xs))
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text("Próximos días", style = MaterialTheme.typography.titleMedium, color = MoOliveDark, modifier = Modifier.weight(1f))
@@ -232,6 +254,7 @@ fun WeatherWeekScreen(
                             )
                             weather.value.attribution?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MoTextSecondary) }
                         }
+                        WeatherRefresh(state, onRefresh)
                     }
                     FeedState.NoLocation -> Text(
                         if (state.locationAmbiguous) "Tus fincas están en varios municipios. Elige tu municipio en Perfil para consultar el tiempo."
@@ -240,13 +263,58 @@ fun WeatherWeekScreen(
                         modifier = Modifier.testTag("weather-week-no-location"),
                     )
                     FeedState.NotConfigured -> Text("La fuente del tiempo no está configurada.", color = MoTextSecondary, modifier = Modifier.testTag("weather-week-not-configured"))
-                    FeedState.Unavailable -> Text("Conéctate para cargar la previsión", color = MoTextSecondary, modifier = Modifier.testTag("weather-week-unavailable"))
+                    FeedState.Unavailable -> {
+                        Text("Conéctate para cargar la previsión", color = MoTextSecondary, modifier = Modifier.testTag("weather-week-unavailable"))
+                        WeatherRefresh(state, onRefresh)
+                    }
                 }
             }
             if (state.weather !is FeedState.Value) {
-                onRadar?.let { MoSecondaryButton("Ver radar de lluvia", it, Modifier.fillMaxWidth().testTag("weather-week-radar")) }
+                onRadar?.let { RadarAccess(it) }
             }
             Spacer(Modifier.height(MoSpacing.lg))
+        }
+    }
+}
+
+/** #315: manual retry; never hides the saved value nor claims it is fresh. */
+@Composable
+private fun WeatherRefresh(state: WeatherWeekUiState, onRefresh: (() -> Unit)?) {
+    if (onRefresh == null || state.location == null) return
+    TextButton(onClick = onRefresh, enabled = !state.refreshing, modifier = Modifier.heightIn(min = 48.dp).testTag("weather-week-refresh")) {
+        Text(if (state.refreshing) "Actualizando…" else "Actualizar")
+    }
+    if (state.refreshFailed) {
+        Text(
+            "No se pudo actualizar. Se muestran los datos guardados con su antigüedad.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("weather-week-refresh-failed"),
+        )
+    }
+}
+
+/** #345: the rain radar has its own water-blue identity (icon + text + tint), not just colour. */
+@Composable
+private fun RadarAccess(onRadar: () -> Unit) {
+    Surface(
+        onClick = onRadar,
+        modifier = Modifier.fillMaxWidth().testTag("weather-week-radar"),
+        shape = MoShape.card,
+        color = MoRainTint,
+        border = BorderStroke(1.dp, MoRainText.copy(alpha = 0.35f)),
+    ) {
+        Row(
+            Modifier.heightIn(min = 64.dp).padding(MoSpacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm),
+        ) {
+            Icon(MoIcons.Rain, null, tint = MoRainText, modifier = Modifier.size(28.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Radar de lluvia", style = MaterialTheme.typography.titleMedium, color = MoRainText)
+                Text("Dónde llueve ahora y en las últimas horas", style = MaterialTheme.typography.bodySmall, color = MoInk)
+            }
+            Icon(MoIcons.ChevronRight, null, tint = MoRainText, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -310,16 +378,20 @@ private fun WeatherDayRow(day: WeatherDayForecast, today: LocalDate, index: Int)
                 )
             }
         }
-        val details = listOfNotNull(
+        // #345: rain leads the day's details, with its drop, when the source publishes it.
+        val rain = listOfNotNull(
             day.rainProbabilityPercent?.let { "Lluvia $it %" },
             day.rainMm?.let { "${rainFormat(it)} mm" },
-            day.windKmh?.let { "Viento $it km/h" },
         )
-        Text(
-            if (details.isEmpty()) "Sin valores publicados para este día" else details.joinToString(" · "),
-            style = MaterialTheme.typography.bodySmall,
-            color = MoInfoText,
-        )
+        val wind = day.windKmh?.let { "Viento $it km/h" }
+        if (rain.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
+                Icon(MoIcons.Drop, null, tint = MoRainText, modifier = Modifier.size(16.dp))
+                Text((rain + listOfNotNull(wind)).joinToString(" · "), style = MaterialTheme.typography.labelLarge, color = MoRainText)
+            }
+        } else {
+            Text(wind ?: "Sin valores publicados para este día", style = MaterialTheme.typography.bodySmall, color = MoInfoText)
+        }
     }
 }
 
@@ -329,7 +401,7 @@ private fun dateLabel(date: LocalDate, today: LocalDate): String = when (date) {
     else -> date.format(DATE)
 }.replaceFirstChar { it.titlecase(SPANISH) }
 
-private fun rainFormat(value: Double): String = String.format(SPANISH, "%.1f", value).removeSuffix(",0")
+internal fun rainFormat(value: Double): String = String.format(SPANISH, "%.1f", value).removeSuffix(",0")
 
 private val SPANISH = Locale.forLanguageTag("es-ES")
 private val DAY = DateTimeFormatter.ofPattern("d MMMM", SPANISH)

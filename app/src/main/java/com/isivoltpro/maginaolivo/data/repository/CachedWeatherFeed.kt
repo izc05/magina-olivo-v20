@@ -41,37 +41,48 @@ class CachedWeatherFeed(
     }
 
     override suspend fun refreshIfStale(location: FeedLocation) {
-        val provider = source ?: return
+        if (source == null) return
         withContext(dispatchers.io) {
-            val key = keyOf(location)
-            val cached = database.weatherCacheDao().find(key)
+            val cached = database.weatherCacheDao().find(keyOf(location))
             if (cached != null && WeatherCodec.decode(cached.payloadJson) != null &&
                 !FeedAge.isStale(FeedKind.WEATHER, cached.fetchedAt, clock.nowInstant())
             ) {
                 return@withContext
             }
-            val workspaceId = (workspaces.ensureLocalWorkspace() as? AppResult.Success)?.value ?: return@withContext
-            val reading = try {
-                withTimeout(timeoutMillis) { provider.fetch(location) }
-            } catch (cancelled: CancellationException) {
-                // A timeout is a failed fetch; a cancelled caller is not.
-                if (cancelled is kotlinx.coroutines.TimeoutCancellationException) return@withContext else throw cancelled
-            } catch (failure: Exception) {
-                return@withContext
-            }
-            val now = clock.nowInstant()
-            database.weatherCacheDao().upsert(
-                WeatherCacheEntity(
-                    cacheKey = key,
-                    workspaceId = workspaceId,
-                    // The provider that actually answered (AEMET or MET Norway), never assumed.
-                    source = reading.provider,
-                    payloadJson = WeatherCodec.encode(reading.weather),
-                    fetchedAt = now,
-                    expiresAt = now.plus(FeedKind.WEATHER.freshFor),
-                ),
-            )
+            fetchAndStore(location)
         }
+    }
+
+    override suspend fun refresh(location: FeedLocation): Boolean {
+        if (source == null) return false
+        return withContext(dispatchers.io) { fetchAndStore(location) }
+    }
+
+    /** One fetch; the cache changes only when the source answered. */
+    private suspend fun fetchAndStore(location: FeedLocation): Boolean {
+        val provider = source ?: return false
+        val workspaceId = (workspaces.ensureLocalWorkspace() as? AppResult.Success)?.value ?: return false
+        val reading = try {
+            withTimeout(timeoutMillis) { provider.fetch(location) }
+        } catch (cancelled: CancellationException) {
+            // A timeout is a failed fetch; a cancelled caller is not.
+            if (cancelled is kotlinx.coroutines.TimeoutCancellationException) return false else throw cancelled
+        } catch (failure: Exception) {
+            return false
+        }
+        val now = clock.nowInstant()
+        database.weatherCacheDao().upsert(
+            WeatherCacheEntity(
+                cacheKey = keyOf(location),
+                workspaceId = workspaceId,
+                // The provider that actually answered (AEMET or MET Norway), never assumed.
+                source = reading.provider,
+                payloadJson = WeatherCodec.encode(reading.weather),
+                fetchedAt = now,
+                expiresAt = now.plus(FeedKind.WEATHER.freshFor),
+            ),
+        )
+        return true
     }
 
     private fun stateOf(row: WeatherCacheEntity?): FeedState<WeatherNow> {

@@ -48,6 +48,16 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.Instant
+import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
+
+/**
+ * #345: what Inicio says about rain. The source's probability when it publishes one (AEMET);
+ * otherwise today's estimated millimetres if any (MET Norway); otherwise nothing. A missing
+ * probability is never shown as 0 %.
+ */
+internal fun WeatherNow.rainLine(today: java.time.LocalDate?): String? =
+    rainProbabilityPercent?.let { "Prob. lluvia ${it.coerceIn(0, 100)} %" }
+        ?: today?.let { day -> daily.firstOrNull { it.date == day }?.rainMm }?.let { "Lluvia prevista ${rainFormat(it)} mm" }
 
 /** The photograph remains visible; content grows naturally at enlarged font sizes. */
 @Composable
@@ -114,6 +124,17 @@ internal fun HomeWeatherHero(
                                 WeatherConditionIcon(weather.value.condition, Modifier.size(56.dp), onPhoto = true)
                             }
                             Text(weather.value.condition.label, style = MaterialTheme.typography.titleMedium, color = MoWarmWhite)
+                            // #345: rain as the source gives it — never a 0 % made up from a missing value.
+                            weather.value.rainLine(state.today)?.let { line ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                                    modifier = Modifier.testTag("home-weather-rain"),
+                                ) {
+                                    Icon(MoIcons.Drop, null, tint = MoWarmWhite, modifier = Modifier.size(20.dp))
+                                    Text(line, style = MaterialTheme.typography.titleMedium, color = MoWarmWhite)
+                                }
+                            }
                             if (weather.stale) {
                                 Text("Datos guardados · sin actualizar", style = MaterialTheme.typography.labelLarge, color = MoSoftGold)
                             }

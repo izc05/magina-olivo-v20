@@ -17,6 +17,7 @@ class DesignContrastTest {
             Triple("money", MoMoneyText, MoMoneyTint),
             Triple("value", MoSoftGoldText, MoSoftGoldTint),
             Triple("water", MoInfoText, MoInfoTint),
+            Triple("rain radar", MoRainText, MoRainTint),
         ).forEach { (name, line, tint) ->
             assertContrastAtLeast("$name on its tint", line, tint, WCAG_AA_NORMAL_TEXT)
             assertContrastAtLeast("$name on card white", line, MoWarmWhite, WCAG_AA_NORMAL_TEXT)

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -72,6 +74,44 @@ class WeatherWeekScreenTest {
             }
         }
         composeRule.onNodeWithText("Conéctate para cargar la previsión").assertIsDisplayed()
+    }
+
+    /** #345: the radar access is its own block (icon + title + description), not a plain button. */
+    @Test fun radarAccessHasItsOwnIdentityAtLargeText() {
+        val forecast = WeatherNow(18, WeatherCondition.RAIN, 70, 20, now)
+        composeRule.setContent {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, fontScale = 1.3f),
+            ) {
+                MaginaOlivoTheme {
+                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.width(360.dp)) {
+                        WeatherWeekScreen(WeatherWeekUiState(location = location, weather = FeedState.Value(forecast, "AEMET", now, stale = false)), now = now, onRadar = {})
+                    }
+                }
+            }
+        }
+        composeRule.onNodeWithTag("weather-week-radar").performScrollTo().assertIsDisplayed()
+            .assertTextContains("Radar de lluvia", substring = true)
+            .assertTextContains("Dónde llueve ahora", substring = true)
+    }
+
+    /** #315: «Actualizar» is offered with a place; a failed refresh keeps the saved value and says so. */
+    @Test fun manualRefreshIsOfferedAndAFailureKeepsTheSavedValue() {
+        val forecast = WeatherNow(18, WeatherCondition.CLOUDY, null, 20, now.minusSeconds(2 * 3600))
+        var refreshes = 0
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                WeatherWeekScreen(
+                    WeatherWeekUiState(location = location, weather = FeedState.Value(forecast, "MET Norway", now.minusSeconds(2 * 3600), stale = true), refreshFailed = true),
+                    now = now, onRefresh = { refreshes++ },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("weather-week-current").assertTextContains("18°")
+        composeRule.onNodeWithTag("weather-week-refresh-failed").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("weather-week-refresh").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(1, refreshes) }
     }
 
     private fun show(state: WeatherWeekUiState, onRadar: (() -> Unit)? = null) {

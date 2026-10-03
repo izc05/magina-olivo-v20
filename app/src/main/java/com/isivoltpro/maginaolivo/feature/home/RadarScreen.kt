@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +39,8 @@ import com.isivoltpro.maginaolivo.feature.maps.ParcelMap
 import com.isivoltpro.maginaolivo.feature.maps.labelPoint
 import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.theme.MoRainText
+import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
@@ -134,7 +137,15 @@ fun RadarScreen(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().padding(horizontal = MoSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
         ) {
-            Text("Radar de lluvia", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
+            // #345: the radar keeps its water-blue identity (icon + title), distinct from «El tiempo».
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                modifier = Modifier.testTag("radar-title"),
+            ) {
+                androidx.compose.material3.Icon(MoIcons.Rain, null, tint = MoRainText, modifier = Modifier.size(32.dp))
+                Text("Radar de lluvia", style = MaterialTheme.typography.headlineLarge, color = MoRainText)
+            }
             when (state) {
                 RadarUiState.Loading -> CircularProgressIndicator(Modifier.testTag("radar-loading"))
                 RadarUiState.NotConfigured -> MoEmptyState(

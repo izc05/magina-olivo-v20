@@ -10,7 +10,8 @@ import java.text.Normalizer
  * them, and a feed value is only ever shown with its source and when it was fetched.
  */
 enum class FeedKind(val freshFor: Duration) {
-    WEATHER(Duration.ofHours(3)),
+    // #315: about one hour, refreshed on entering/resuming Inicio when older; no polling.
+    WEATHER(Duration.ofHours(1)),
     OIL_MARKET(Duration.ofHours(24)),
     COOPERATIVE(Duration.ofHours(24)),
 }
