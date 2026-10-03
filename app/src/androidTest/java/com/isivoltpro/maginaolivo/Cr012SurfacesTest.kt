@@ -156,7 +156,7 @@ class Cr012SurfacesTest {
         val older = mixed.copy(campaign = campaign.copy(id = UUID.randomUUID(), startDate = date.minusYears(1)), expenses = emptyList(), deliveries = emptyList())
         val rows = com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison.of(listOf(older, mixed))
         rule.setContent { MaginaOlivoTheme { Column { CampaignComparisonList(rows) } } }
-        rule.onAllNodesWithTag("comparison-line")[0].assertTextContains("KWD", substring = true).assertTextContains("€", substring = true)
+        rule.onAllNodesWithTag("comparison-line", useUnmergedTree = true)[0].assertTextContains("KWD", substring = true).assertTextContains("€", substring = true)
     }
 
     @Test fun actualDayCardsShowCanonical530Over3200AndOpenEachResource() {

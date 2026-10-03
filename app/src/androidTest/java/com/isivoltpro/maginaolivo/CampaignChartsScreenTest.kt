@@ -115,9 +115,9 @@ class CampaignChartsScreenTest {
         )
         show(CampaignSeries(emptyList(), emptyList()), rows)
         composeRule.onAllNodesWithTag("comparison-row").assertCountEquals(2)
-        composeRule.onAllNodesWithTag("comparison-line")[0].assertTextContains("(+20 %)", substring = true)
-        composeRule.onAllNodesWithTag("comparison-line")[0].assertTextContains("coste/kg sin datos", substring = true)
-        composeRule.onAllNodesWithTag("comparison-line")[0].assertTextContains("rend. sin datos", substring = true)
+        composeRule.onAllNodesWithTag("comparison-line", useUnmergedTree = true)[0].assertTextContains("(+20 %)", substring = true)
+        composeRule.onAllNodesWithTag("comparison-line", useUnmergedTree = true)[0].assertTextContains("coste/kg sin datos", substring = true)
+        composeRule.onAllNodesWithTag("comparison-line", useUnmergedTree = true)[0].assertTextContains("rend. sin datos", substring = true)
     }
 
     private fun show(series: CampaignSeries, rows: List<CampaignComparison>) {
