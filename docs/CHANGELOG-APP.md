@@ -23,6 +23,8 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 - **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
   de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
   finca» queda como acción secundaria.
+- **Detalle de parcela por bloques.** En «Datos», la superficie es el dato principal junto a su
+  mapa, y el resto se agrupa en Datos catastrales, Geometría e Información adicional.
 - **Lluvia y radar (#345, #315).** Inicio muestra «Prob. lluvia X %» con su gota cuando AEMET la
   publica; si la fuente no da probabilidad (MET Norway) se muestra la lluvia prevista en mm del día
   y nunca un 0 % inventado. El tiempo se considera actual durante 1 hora y se vuelve a pedir al
