@@ -25,6 +25,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   analizados, coste de recogida y coste/kg calculado con los totales (nunca la media de cada finca).
   Dice cuántas fincas tienen campaña y cuáles no; con varias monedas no hay coste/kg conjunto; lo
   desconocido es «—». «Ver por finca» muestra lo que aporta cada una y abre su detalle.
+- **Jornal abre los jornales y la campaña los muestra (#365).** Cuaderno → Jornal abre el día de
+  recolección de hoy ya en «Jornales de este día», con «Registrar jornales» a mano; Pesadas sigue en
+  el mismo día. El detalle de la campaña añade «Jornales» bajo Pesadas («1 persona · 1 jornada ·
+  65,00 €», solo coste confirmado; los recuentos históricos sin nombre aparte), que abre el detalle
+  de personas y pagos de esa campaña.
 - **Añadir parcelas en el mapa, más claro (#361).** Una guía de cuatro pasos mientras la finca no
   tiene parcelas en el mapa; «Añadir de Catastro» es la acción principal. «Mi ubicación» deja un
   punto azul en el mapa y, si falla, dice por qué (sin permiso, ubicación apagada o sin señal) con su
