@@ -1,6 +1,10 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -139,6 +143,33 @@ class ParcelScreensTest {
 
         composeRule.onNodeWithTag("parcel-register").performClick()
         composeRule.runOnIdle { assertEquals(parcel.farmId!! to "Parcela Norte", registered) }
+    }
+
+    /** #351 (2): the data tab is grouped in blocks and the surface is the main datum. */
+    @Test fun dataTabShowsSurfaceFirstAndGroupsCatastroGeometryAndExtras() {
+        val catastro = parcel().copy(
+            source = ParcelSource.CATASTRO, cadastralReference = "23014A00400021", cadastralPolygon = "004",
+            cadastralParcel = "00021", municipality = "Bedmar y Garciez", cadastralAreaM2 = 1_300.0, managedAreaM2 = null,
+            notes = null,
+        )
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ParcelDetailScreen(
+                    state = ParcelDetailUiState(isLoading = false, parcel = catastro),
+                    onUpdate = {}, onArchive = {}, onArchived = {},
+                )
+            }
+        }
+        composeRule.onNodeWithTag("parcel-tab-data").performScrollTo().performClick()
+        composeRule.onNodeWithTag("parcel-area-hero").performScrollTo().assertIsDisplayed()
+            .assertTextContains("0,13 ha", substring = true).assertTextContains("Según Catastro", substring = true)
+        fun block(tag: String, vararg texts: String) {
+            composeRule.onNodeWithTag(tag).performScrollTo()
+            texts.forEach { text -> composeRule.onNode(hasTestTag(tag) and hasAnyDescendant(hasText(text, substring = true))).assertExists() }
+        }
+        block("parcel-cadastral", "23014A00400021", "Bedmar y Garciez", "Jaén")
+        block("parcel-geometry", "Sin contorno", "Catastro")
+        block("parcel-extra", "Sin notas")
     }
 
     private fun parcel() = Parcel(
