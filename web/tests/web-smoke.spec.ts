@@ -11,6 +11,7 @@ const routes = [
   "/aviso-legal",
   "/descargar",
   "/anunciate",
+  "/v3-review",
   "/mi",
   "/mi/fincas",
   "/mi/fincas/demo",
@@ -90,6 +91,35 @@ test("preview metadata stays noindex by default", async ({ page }) => {
     "content",
     /noindex,\s*nofollow/,
   );
+});
+
+test("V3 review exposes all keyframes as pending and stays noindex", async ({
+  page,
+}) => {
+  await page.goto("/v3-review");
+
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex/,
+  );
+  await expect(page.locator(".v3-frame")).toHaveCount(12);
+  const conceptImage = page.getByAltText(
+    "Lámina conceptual generada para revisar continuidad entre olivar, agricultor, móvil, producto y escritorio",
+  );
+  await expect(conceptImage).toBeVisible();
+  await expect
+    .poll(() =>
+      conceptImage.evaluate(
+        (image) => (image as HTMLImageElement).naturalWidth,
+      ),
+    )
+    .toBeGreaterThan(0);
+  await expect(
+    page.getByText("aprobación pendiente", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Fuente: producción original V3 pendiente").first(),
+  ).toBeVisible();
 });
 
 test("health route returns a minimal healthy status", async ({ request }) => {
