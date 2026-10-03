@@ -116,12 +116,17 @@ fun FarmMapRoute(
         onLocationProblemAction = { problem ->
             viewModel.dismissLocationProblem()
             when (problem) {
-                // Asked again; once Android stops asking, its app settings are the way.
-                LocationProblem.PERMISSION -> if (hasLocationPermission(context)) locate() else runCatching {
-                    context.startActivity(
-                        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                            .setData(android.net.Uri.fromParts("package", context.packageName, null)),
-                    )
+                // Codex #379: asked again while Android can still ask; only once it no longer
+                // shows the prompt (permanently denied) do its app settings become the way.
+                LocationProblem.PERMISSION -> when {
+                    hasLocationPermission(context) -> locate()
+                    canAskLocationAgain(context) -> permission.launch(LOCATION_PERMISSIONS)
+                    else -> runCatching {
+                        context.startActivity(
+                            android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                .setData(android.net.Uri.fromParts("package", context.packageName, null)),
+                        )
+                    }
                 }
                 LocationProblem.LOCATION_OFF -> runCatching {
                     context.startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))

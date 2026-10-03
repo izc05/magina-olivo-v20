@@ -48,3 +48,14 @@ fun isLocationEnabled(context: Context): Boolean {
     return listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
         .any { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
 }
+
+/**
+ * #361: after a denial, whether Android will still show the permission prompt. It stops showing
+ * it once the farmer denied it for good; then only the app settings can grant it.
+ */
+fun canAskLocationAgain(context: Context): Boolean {
+    var current: Context? = context
+    while (current is android.content.ContextWrapper && current !is android.app.Activity) current = current.baseContext
+    val activity = current as? android.app.Activity ?: return false
+    return LOCATION_PERMISSIONS.any { androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, it) }
+}

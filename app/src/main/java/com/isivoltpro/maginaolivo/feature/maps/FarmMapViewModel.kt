@@ -252,7 +252,8 @@ class FarmMapViewModel(
     fun dismissMessage() = mutableState.update { it.copy(message = null, error = null) }
 
     fun locationUnavailable(problem: LocationProblem = LocationProblem.NO_FIX) = mutableState.update {
-        it.copy(locationProblem = problem, error = null)
+        // Codex #379: an older dot is not where the farmer is now; it goes with the failure.
+        it.copy(locationProblem = problem, error = null, myLocation = null)
     }
 
     private fun findNear(latitude: Double, longitude: Double) = load(replace = false) { client.findNear(latitude, longitude) }
