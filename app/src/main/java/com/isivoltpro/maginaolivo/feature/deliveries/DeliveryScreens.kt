@@ -315,7 +315,9 @@ fun DeliveriesScreen(
 
     val jornada = jornadaId?.let { id -> state.jornadas.firstOrNull { it.id == id } }
     // Wait for the Jornada before opening its editor, so its Farm and day are preset.
-    if (editorVisible && (jornadaId == null || jornada != null || !state.isLoading)) {
+    // Codex #377: a Jornada's editor waits until that Jornada is read (or known to be missing),
+    // so it never opens on today or another Farm first.
+    if (editorVisible && (jornadaId == null || jornada != null || state.jornadasLoaded)) {
         val start = remember(jornada?.id, state.contexts.size) {
             if (jornada != null) {
                 DeliveryForm(
@@ -367,6 +369,7 @@ fun DeliveriesScreen(
                     // #373/#375: a Farm chosen on the way here (Finca, Campaña, Parcela, Jornada) is
                     // context, not a question again. Only a global entry offers the Farm picker.
                     farmLocked = presetFarmId != null || jornada != null,
+                    contextLoading = !state.contextsLoaded,
                 )
             }
         }
@@ -561,6 +564,8 @@ internal fun DeliveryEditor(
     /** #342: «Añadir foto del recibo» from Nueva pesada — an optional attachment, never read. */
     onAddReceipt: ((DeliveryForm) -> Unit)? = null,
     onSaveAndAddAnother: ((DeliveryForm) -> Unit)? = null,
+    /** Codex #377: the running campaigns are still being read; the context is not known yet. */
+    contextLoading: Boolean = false,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
     var picker by rememberSaveable { mutableStateOf<String?>(null) }
@@ -576,9 +581,17 @@ internal fun DeliveryEditor(
         if (farmLocked) {
             // #373/#375: «Salinillas · Campaña 2026-2027» as fixed context, never a selector.
             Text(
-                context?.let { pesadaContextLine(it.farmName, it.campaignName) } ?: PESADA_NO_RUNNING_CAMPAIGN,
+                when {
+                    context != null -> pesadaContextLine(context.farmName, context.campaignName)
+                    contextLoading -> "Cargando la campaña…"
+                    else -> PESADA_NO_RUNNING_CAMPAIGN
+                },
                 style = MaterialTheme.typography.titleMedium,
-                color = if (context != null) MoOliveDark else MaterialTheme.colorScheme.error,
+                color = when {
+                    context != null -> MoOliveDark
+                    contextLoading -> MoTextSecondary
+                    else -> MaterialTheme.colorScheme.error
+                },
                 modifier = Modifier.testTag("delivery-context"),
             )
         } else {

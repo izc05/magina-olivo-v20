@@ -45,6 +45,12 @@ class PesadaContextTest {
         composeRule.onNodeWithTag("delivery-farm").assertDoesNotExist()
     }
 
+    /** Codex #377: while the campaigns are being read, nothing is claimed about them. */
+    @Test fun whileCampaignsLoadTheContextSaysSoNotAnError() {
+        show(presetFarmId = salinillas.farmId, contextsLoaded = false)
+        composeRule.onNodeWithTag("delivery-context").assertTextEquals("Cargando la campaña…")
+    }
+
     @Test fun aGlobalEntryStillLetsTheFarmerChooseTheFarm() {
         composeRule.setContent {
             MaginaOlivoTheme {
@@ -59,11 +65,15 @@ class PesadaContextTest {
         composeRule.onNodeWithTag("delivery-context").assertDoesNotExist()
     }
 
-    private fun show(presetFarmId: UUID) {
+    private fun show(presetFarmId: UUID, contextsLoaded: Boolean = true) {
         composeRule.setContent {
             MaginaOlivoTheme {
                 DeliveriesScreen(
-                    state = DeliveriesUiState(isLoading = false, contexts = listOf(salinillas, estacas)),
+                    state = DeliveriesUiState(
+                        isLoading = false,
+                        contexts = if (contextsLoaded) listOf(salinillas, estacas) else emptyList(),
+                        contextsLoaded = contextsLoaded,
+                    ),
                     today = today, onCreate = {}, onProblem = {}, onDeliverySelected = {}, onTicketSelected = {},
                     presetFarmId = presetFarmId,
                 )
