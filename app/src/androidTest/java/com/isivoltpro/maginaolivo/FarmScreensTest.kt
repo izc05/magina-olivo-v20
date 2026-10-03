@@ -1,9 +1,17 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.dp
+import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -170,6 +178,65 @@ class FarmScreensTest {
 
         composeRule.onNodeWithTag("farm-list").performScrollToIndex(22)
         composeRule.onNodeWithText("Finca 20").assertIsDisplayed()
+    }
+
+    /** #359/#363/#364: Olivos in the header and a 2×2 on each card, at 360 dp with large text. */
+    @Test
+    fun headerAndCardsShowOlivesAndCampaignKilosWithoutInventingZeros() {
+        val estacas = farm(1).copy(name = "Estacas", oliveTreeCount = 82, oliveTreeCountComplete = true)
+        val salinillas = farm(2).copy(name = "Salinillas", oliveTreeCount = null, oliveTreeCountComplete = false)
+        val sinCampana = farm(3).copy(name = "La Loma", oliveTreeCount = 40, oliveTreeCountComplete = true)
+        val kilos = mapOf(estacas.id to 0L, salinillas.id to 3_150_000L)
+        composeRule.setContent {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, fontScale = 1.3f),
+            ) {
+                MaginaOlivoTheme {
+                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.width(360.dp)) {
+                        FarmListScreen(
+                            state = FarmListUiState(isLoading = false, farms = listOf(estacas, salinillas, sinCampana)),
+                            onFarmSelected = {},
+                            onCreate = {},
+                            onRestore = {},
+                            onRetry = {},
+                            campaignKilos = { id -> kilos[id] },
+                        )
+                    }
+                }
+            }
+        }
+        // Header: Salinillas has no count, so the sum is partial.
+        composeRule.onNode(
+            hasTestTag("farm-totals") and hasAnyDescendant(hasText("Olivos")) and hasAnyDescendant(hasText("≥ 122")),
+            useUnmergedTree = true,
+        ).assertExists()
+        // Cards: running campaign without Pesadas, with Pesadas, and no running campaign («—», not 0).
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-${estacas.id}"))
+        composeRule.onNodeWithTag("farm-${estacas.id}").assertTextContains("82").assertTextContains("Sin pesadas")
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-${salinillas.id}"))
+        composeRule.onNodeWithTag("farm-${salinillas.id}").assertTextContains(Weight.format(3_150_000)).assertTextContains("Kg campaña")
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-${sinCampana.id}"))
+        composeRule.onNodeWithTag("farm-${sinCampana.id}").assertTextContains("40").assertTextContains("—")
+        assertEquals(0, composeRule.onAllNodesWithText("0 kg").fetchSemanticsNodes().size)
+    }
+
+    /** Codex #371: while the Pesadas load, «Kg campaña» is unknown — never «Sin pesadas» or «—». */
+    @Test
+    fun campaignKilosAreUnknownWhileLoading() {
+        val estacas = farm(1).copy(name = "Estacas", oliveTreeCount = 82, oliveTreeCountComplete = true)
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                FarmListScreen(
+                    state = FarmListUiState(isLoading = false, farms = listOf(estacas)),
+                    onFarmSelected = {}, onCreate = {}, onRestore = {}, onRetry = {},
+                    campaignKilos = null,
+                )
+            }
+        }
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-${estacas.id}"))
+        composeRule.onNodeWithTag("farm-${estacas.id}").assertTextContains("…")
+        assertEquals(0, composeRule.onAllNodesWithText("Sin pesadas").fetchSemanticsNodes().size)
     }
 
     private fun farm(index: Int) = Farm(

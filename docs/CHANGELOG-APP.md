@@ -24,6 +24,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   Cuaderno, la finca ya está elegida: se muestra con su campaña (y la parcela, con «Toda la finca»)
   sin «Cambiar finca», y Atrás vuelve a la finca o la parcela. La pestaña Cuaderno sigue siendo el
   centro general, con «Cambiar finca». Es el mismo Cuaderno; solo cambia el origen.
+- **Fichas de finca con más datos (#363, #364, #359).** Cada finca muestra Superficie, Parcelas,
+  Olivos y Kg de la campaña en marcha (solo de sus pesadas; «Sin pesadas» o «—» si no hay, nunca 0).
+  La cabecera de Mis fincas añade Olivos («≥ N» si falta algún recuento) en una cuadrícula 2×2.
 - **Jornal dentro y fuera de campaña (#350, #378).** Con campaña de recogida en marcha, «Jornal»
   abre el día de recolección con el jornal por persona. Sin campaña, abre «Jornal fuera de
   campaña»: la mano de obra de la finca (poda, desbroce, tratamientos…) como gasto de mano de obra
