@@ -20,6 +20,8 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Detalle de parcela por bloques.** En «Datos», la superficie es el dato principal junto a su
+  mapa, y el resto se agrupa en Datos catastrales, Geometría e Información adicional.
 - **Lluvia y radar (#345, #315).** Inicio muestra «Prob. lluvia X %» con su gota cuando AEMET la
   publica; si la fuente no da probabilidad (MET Norway) se muestra la lluvia prevista en mm del día
   y nunca un 0 % inventado. El tiempo se considera actual durante 1 hora y se vuelve a pedir al
