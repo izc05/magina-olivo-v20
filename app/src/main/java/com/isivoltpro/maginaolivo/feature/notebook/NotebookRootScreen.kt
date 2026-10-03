@@ -60,7 +60,6 @@ import com.isivoltpro.maginaolivo.ui.components.MoEmptyState
 import com.isivoltpro.maginaolivo.ui.components.MoErrorState
 import com.isivoltpro.maginaolivo.ui.components.MoIconTone
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
-import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
@@ -235,17 +234,11 @@ fun NotebookHomeScreen(
         }
     }
     var choosingFarm by remember { mutableStateOf(false) }
-    // #350: jornales with named workers live inside a recogida campaign. Without a running one,
-    // Jornal says so instead of silently opening a generic labour expense.
-    var labourNeedsCampaign by rememberSaveable { mutableStateOf(false) }
+    // #350/#378: Jornal opens the recogida day with a running campaign and the Farm's own labour
+    // («Jornal fuera de campaña») without one. Until the campaign is known, it waits: which of
+    // the two it is must never be guessed.
     val onAction: (NotebookQuickAction) -> Unit = { action ->
-        when {
-            action != NotebookQuickAction.LABOUR -> onQuickAction(action)
-            // Until the Farm's campaign is known, a tap must not claim there is none.
-            notebook == null || notebook.isLoading -> Unit
-            notebook.notebook?.campaign?.status?.isRunning == true -> onQuickAction(action)
-            else -> labourNeedsCampaign = true
-        }
+        if (action != NotebookQuickAction.LABOUR || (notebook != null && !notebook.isLoading)) onQuickAction(action)
     }
     Scaffold(
         Modifier.fillMaxSize().testTag("notebook-root"),
@@ -330,40 +323,7 @@ fun NotebookHomeScreen(
             Spacer(Modifier.height(MoSpacing.lg))
         }
     }
-    if (labourNeedsCampaign) {
-        LabourNeedsCampaignSheet(
-            onGoToCampaigns = {
-                labourNeedsCampaign = false
-                // The same «Ir a Campañas» the empty Cuaderno offers: that Farm's Campañas.
-                actions?.onCampaigns?.invoke()
-            },
-            onDismiss = { labourNeedsCampaign = false },
-        )
-    }
 }
-
-/** #350: why Jornal needs a running campaign, and the way to start one. */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-@Composable
-private fun LabourNeedsCampaignSheet(onGoToCampaigns: () -> Unit, onDismiss: () -> Unit) {
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MoWarmWhite) {
-        Column(
-            Modifier.fillMaxWidth().padding(horizontal = MoSpacing.screen).padding(bottom = MoSpacing.md)
-                .testTag("labour-needs-campaign"),
-            verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
-        ) {
-            Text("Jornales de campaña", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
-            Text(LABOUR_NEEDS_CAMPAIGN, style = MaterialTheme.typography.bodyLarge, color = MoInk)
-            Text(LABOUR_NEEDS_CAMPAIGN_WHY, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-            MoPrimaryButton("Ir a Campañas", onGoToCampaigns, Modifier.fillMaxWidth().testTag("labour-go-to-campaigns"))
-            MoTertiaryButton("Cancelar", onDismiss, Modifier.fillMaxWidth().testTag("labour-needs-campaign-cancel"))
-        }
-    }
-}
-
-internal const val LABOUR_NEEDS_CAMPAIGN = "Para registrar jornales con trabajadores, activa primero una campaña de recogida."
-internal const val LABOUR_NEEDS_CAMPAIGN_WHY =
-    "Los jornales se guardan dentro de la campaña para poder calcular personas, coste generado, pagado, pendiente y coste/kg."
 
 /** CR-011 §4–5: the six actions as large, labelled tiles, three per row; one tap opens the form. */
 @Composable

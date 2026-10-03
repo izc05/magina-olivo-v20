@@ -178,50 +178,19 @@ class NotebookHomeScreenTest {
         composeRule.onNodeWithTag("notebook-no-campaign").performScrollTo().assertIsDisplayed()
     }
 
-    /** #350: without a running campaign Jornal explains why and offers Campañas, never a generic expense. */
-    @Test fun withoutACampaignJornalExplainsAndOffersCampaigns() {
+    /** #378: without a running campaign Jornal is passed on (it opens the Farm's own labour), no notice. */
+    @Test fun withoutACampaignJornalOpensTheFarmsLabour() {
         val tapped = mutableListOf<NotebookQuickAction>()
-        var toCampaigns = 0
-        composeRule.setContent {
-            MaginaOlivoTheme {
-                NotebookHomeScreen(
-                    isLoading = false, error = null, farms = UiPolishFixtures.farms, activeFarm = farm,
-                    notebook = NotebookUiState(isLoading = false), actions = NotebookActions(onCampaigns = { toCampaigns++ }),
-                    onSelectFarm = {}, onSelectCampaign = {}, onQuickAction = { tapped += it },
-                )
-            }
-        }
+        show(state = NotebookUiState(isLoading = false), onQuickAction = { tapped += it })
         composeRule.onNodeWithTag(NotebookQuickAction.LABOUR.tag).performScrollTo().performClick()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("labour-needs-campaign").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText(com.isivoltpro.maginaolivo.feature.notebook.LABOUR_NEEDS_CAMPAIGN).assertIsDisplayed()
-        composeRule.onNodeWithText(com.isivoltpro.maginaolivo.feature.notebook.LABOUR_NEEDS_CAMPAIGN_WHY).assertIsDisplayed()
-        composeRule.runOnIdle { assertEquals(emptyList<NotebookQuickAction>(), tapped) }
-
-        // Cancelar closes it and opens nothing.
-        composeRule.onNodeWithTag("labour-needs-campaign-cancel").performClick()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("labour-needs-campaign").fetchSemanticsNodes().isEmpty() }
-        composeRule.runOnIdle { assertEquals(0, toCampaigns) }
-
-        // «Ir a Campañas» is the main way out.
-        composeRule.onNodeWithTag(NotebookQuickAction.LABOUR.tag).performScrollTo().performClick()
-        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("labour-go-to-campaigns").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithTag("labour-go-to-campaigns").performClick()
-        composeRule.runOnIdle {
-            assertEquals(1, toCampaigns)
-            assertEquals(emptyList<NotebookQuickAction>(), tapped)
-        }
-        // Gasto is still a plain expense, without the campaign notice.
-        composeRule.onNodeWithTag(NotebookQuickAction.EXPENSE.tag).performScrollTo().performClick()
-        composeRule.runOnIdle { assertEquals(listOf(NotebookQuickAction.EXPENSE), tapped) }
+        composeRule.runOnIdle { assertEquals(listOf(NotebookQuickAction.LABOUR), tapped) }
     }
 
-    /** #350: while the Farm's campaign is still loading, Jornal neither opens nor claims there is none. */
+    /** #350/#378: while the Farm's campaign is still loading, Jornal waits: which flow it is is never guessed. */
     @Test fun whileTheCampaignLoadsJornalWaits() {
         val tapped = mutableListOf<NotebookQuickAction>()
         show(state = NotebookUiState(isLoading = true), onQuickAction = { tapped += it })
         composeRule.onNodeWithTag(NotebookQuickAction.LABOUR.tag).performScrollTo().performClick()
-        composeRule.waitForIdle()
-        composeRule.onAllNodesWithTag("labour-needs-campaign").fetchSemanticsNodes().let { assertEquals(0, it.size) }
         composeRule.runOnIdle { assertEquals(emptyList<NotebookQuickAction>(), tapped) }
     }
 

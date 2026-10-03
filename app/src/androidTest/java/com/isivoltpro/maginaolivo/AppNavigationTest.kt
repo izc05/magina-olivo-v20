@@ -788,9 +788,9 @@ class AppNavigationTest {
         waitForText("1 día")
     }
 
-    /** #350: without a running campaign, Cuaderno → Jornal explains it and leads to that Farm's Campañas. */
+    /** #378: without a running campaign, Cuaderno → Jornal opens the Farm's labour, labelled as such. */
     @Test
-    fun cuadernoJornalWithoutCampaignLeadsToCampaigns() {
+    fun cuadernoJornalWithoutCampaignOpensTheFarmsLabour() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
         waitForTag("add-farm")
@@ -803,10 +803,9 @@ class AppNavigationTest {
         chooseNotebookFarm("Finca Sin Campaña E2E")
         waitForTag("notebook-no-campaign")
         clickByTag("notebook-quick-labour")
-        waitForNodeOrDump("labour-needs-campaign") { composeRule.onAllNodesWithTag("labour-needs-campaign") }
-        composeRule.onNodeWithTag("expenses-root").assertDoesNotExist()
-        composeRule.onNodeWithTag("labour-go-to-campaigns").performClick()
-        waitForTag("add-campaign")
+        waitForTag("expenses-root")
+        waitForNodeOrDump("Jornal fuera de campaña") { composeRule.onAllNodesWithText("Jornal fuera de campaña") }
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 
     @Test
