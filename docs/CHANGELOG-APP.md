@@ -25,6 +25,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   y coste de recogida por kilo de cada campaña, con el mismo dato en texto debajo. Sin datos es un
   hueco, nunca un cero; el coste no mezcla monedas; los kilos sin pesada (histórico) no entran en
   las barras. Tocar una campaña la abre. Sale de la misma comparación que ya había, sin totales nuevos.
+- **Añadir parcelas en el mapa, más claro (#361).** Una guía de cuatro pasos mientras la finca no
+  tiene parcelas en el mapa; «Añadir de Catastro» es la acción principal. «Mi ubicación» deja un
+  punto azul en el mapa y, si falla, dice por qué (sin permiso, ubicación apagada o sin señal) con su
+  salida: permitir, activar o escribir coordenadas. La parcela elegida dice «Seleccionada · Guardada»
+  y su municipio. El mapa y la foto aérea se dibujan a su resolución real (antes se ampliaban al doble).
 - **El Cuaderno de una finca no pide otra finca (#369).** Desde Mi Campo → finca o parcela →
   Cuaderno, la finca ya está elegida: se muestra con su campaña (y la parcela, con «Toda la finca»)
   sin «Cambiar finca», y Atrás vuelve a la finca o la parcela. La pestaña Cuaderno sigue siendo el

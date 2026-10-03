@@ -34,8 +34,9 @@ class ParcelMapFeatureTest {
         val none = parcelStyle(MapBase.NONE, cadastreLines = true)
         assertEquals(listOf("background", "parcels-fill", "parcels-line"), layers(none))
         assertFalse(none.contains("https://"))
-        // Fewer, larger tiles keep the phone fluid.
-        assertTrue(parcelStyle(MapBase.AERIAL, cadastreLines = false).contains("\"tileSize\":512"))
+        // #361: IGN/PNOA tiles are 256 px and are drawn at their own size, never stretched.
+        assertTrue(parcelStyle(MapBase.AERIAL, cadastreLines = false).contains("\"base\":{\"type\":\"raster\",\"tileSize\":256"))
+        assertTrue(parcelStyle(MapBase.MAP, cadastreLines = false).contains("\"base\":{\"type\":\"raster\",\"tileSize\":256"))
     }
 
     @Test fun theRadarIsDrawnOverTheBaseAndUnderTheParcels() {
@@ -50,6 +51,21 @@ class ParcelMapFeatureTest {
         assertEquals(256, overlay.get("tileSize").asInt)
         // Without a radar the style is exactly the one the farm map always used.
         assertEquals(parcelStyle(MapBase.MAP, cadastreLines = false), parcelStyle(MapBase.MAP, cadastreLines = false, overlayTiles = null))
+    }
+
+    /** #361: «Mi ubicación» is a blue dot above the parcels, only when there is a position. */
+    @Test fun myLocationIsDrawnAboveEverythingOnlyWhenKnown() {
+        val ids = { style: String -> JsonParser.parseString(style).asJsonObject.getAsJsonArray("layers").map { it.asJsonObject.get("id").asString } }
+        assertEquals(
+            listOf("background", "base", "parcels-fill", "parcels-line", "my-location-halo", "my-location"),
+            ids(parcelStyle(MapBase.MAP, cadastreLines = false, myLocation = true)),
+        )
+        assertFalse(parcelStyle(MapBase.MAP, cadastreLines = false).contains("my-location"))
+        val feature = JsonParser.parseString(myLocationFeature(GeoPoint(37.73, -3.45))).asJsonObject
+        val coordinates = feature.getAsJsonObject("geometry").getAsJsonArray("coordinates")
+        // GeoJSON is longitude first.
+        assertEquals(-3.45, coordinates[0].asDouble, 1e-9)
+        assertEquals(37.73, coordinates[1].asDouble, 1e-9)
     }
 
     @Test fun theNumberOnTheMapIsTheCatastroParcelNumber() {
