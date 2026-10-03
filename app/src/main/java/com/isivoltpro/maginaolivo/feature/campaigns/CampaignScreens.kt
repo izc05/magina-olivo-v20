@@ -185,7 +185,8 @@ fun CampaignDetailRoute(
         val ledger = ExpenseSummary.of(expenses.filter { it.campaignId == campaignId })
         CampaignSummaryUi(
             harvestedGrams = harvest.totalGrams.takeIf { harvest.weighedCount > 0 },
-            harvestCount = harvest.harvestCount,
+            // #366 (Codex): calendar days, the same count as Recolección and the Cuaderno.
+            harvestCount = com.isivoltpro.maginaolivo.feature.harvests.harvestDayCount(harvests),
             deliveredGrams = delivery.deliveredGrams.takeIf { delivery.deliveryCount > 0 },
             deliveryCount = delivery.deliveryCount,
             legacyGrams = legacyUnweighedGrams(harvests, deliveries).takeIf { it > 0 },
