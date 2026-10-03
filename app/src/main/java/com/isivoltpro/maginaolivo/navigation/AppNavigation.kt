@@ -423,6 +423,7 @@ fun AppNavigation(
                     persistence,
                     onHarvests = { navController.navigate(AppDestination.Harvest) },
                     onDeliveries = { navController.navigate(AppDestination.Deliveries) },
+                    onNewPesada = { farmId -> navController.navigate(AppDestination.newPesada(farmId.toString())) },
                 )
             }
             composable(AppDestination.ActivityPattern) { backStackEntry ->

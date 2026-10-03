@@ -23,6 +23,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 - **Inicio más natural y radar más nítido (#360).** La foto de Inicio ya no se tiñe de verde: una
   sombra neutra mantiene sus colores y el texto blanco sigue legible (≥ 4,5:1). El radar de lluvia
   pide a RainViewer su imagen de 512 px, con el doble de detalle que la de 256 px que se ampliaba.
+- **La Pesada recuerda de dónde vienes (#373, #375).** Desde una finca, una campaña, una parcela o un
+  día de recolección, «Nueva pesada» ya no vuelve a pedir la finca: muestra «Salinillas · Campaña
+  2026-2027» como contexto fijo. En una campaña en marcha, «Pesadas» abre la nueva pesada de esa
+  finca. Desde el listado general se sigue eligiendo la finca.
 - **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
   de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
   finca» queda como acción secundaria.

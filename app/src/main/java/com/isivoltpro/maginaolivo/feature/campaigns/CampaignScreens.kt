@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
+import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelOption
 import com.isivoltpro.maginaolivo.domain.notebook.legacyUnweighedGrams
@@ -171,6 +172,8 @@ fun CampaignDetailRoute(
     persistence: LocalPersistence,
     onHarvests: () -> Unit = {},
     onDeliveries: () -> Unit = {},
+    /** #373/#375: a running campaign's «Pesadas» opens Nueva pesada on its Farm, not the global list. */
+    onNewPesada: (farmId: UUID) -> Unit = {},
 ) {
     val vm: CampaignDetailViewModel = viewModel(key = "campaign-$campaignId", factory = viewModelFactory {
         initializer { CampaignDetailViewModel(campaignId, persistence.campaignRepository) }
@@ -197,7 +200,10 @@ fun CampaignDetailRoute(
         state, vm::update, vm::activate, vm::markHarvest, vm::close, vm::reopen, vm::archivePreparation,
         summary = summary,
         onHarvests = onHarvests,
-        onDeliveries = onDeliveries,
+        onDeliveries = {
+            val campaign = state.campaign
+            if (campaign != null && campaign.status.isRunning) onNewPesada(campaign.farmId) else onDeliveries()
+        },
     )
 }
 
