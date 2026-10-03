@@ -18,6 +18,7 @@ import com.isivoltpro.maginaolivo.feature.catastro.CadastreException
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -142,8 +143,15 @@ class FarmMapViewModel(
         viewModelScope.launch {
             var added = 0
             val failed = mutableListOf<String>()
+            // Catastro's municipality/province when it answers: asked for all parcels at once and
+            // bounded, so the local saves never wait on a slow network; no answer leaves it empty.
+            val places = kotlinx.coroutines.coroutineScope {
+                current.selectedCandidates.associate { it.reference to async { locate(it.reference) } }
+                    .mapValues { (_, lookup) -> lookup.await() }
+            }
             current.selectedCandidates.forEach { candidate ->
                 val name = names[candidate.reference]?.trim().orEmpty().ifEmpty { defaultParcelName(candidate.reference) }
+                val place = places[candidate.reference]
                 val result = parcels.create(
                     NewParcel(
                         farmId = farmId,
@@ -156,6 +164,8 @@ class FarmMapViewModel(
                         sourceImportedAt = candidate.importedAt,
                         geometryGeoJson = candidate.geometryGeoJson,
                         cadastralAreaM2 = candidate.areaM2,
+                        municipality = place?.municipality,
+                        province = place?.province,
                     ),
                 )
                 if (result is AppResult.Success) added++ else failed += candidate.reference
@@ -179,6 +189,15 @@ class FarmMapViewModel(
         }
     }
 
+    /** Catastro's place for a reference, or null: a failed lookup never blocks saving. */
+    private suspend fun locate(reference: String) = try {
+        kotlinx.coroutines.withTimeoutOrNull(com.isivoltpro.maginaolivo.feature.catastro.PLACE_TIMEOUT_MS) { client.locate(reference) }
+    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null
+    }
+
     /** LOCATE: the chosen Catastro parcel becomes this parcel's identity and boundary. */
     fun linkSelected() {
         val current = mutableState.value
@@ -187,6 +206,7 @@ class FarmMapViewModel(
         if (current.saving || current.mode != FarmMapMode.LOCATE) return
         mutableState.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
+            val place = locate(candidate.reference)
             val result = parcels.linkToRegistry(
                 parcel.id,
                 RegistryLink(
@@ -197,6 +217,8 @@ class FarmMapViewModel(
                     cadastralAreaM2 = candidate.areaM2,
                     sourceProvider = candidate.provider,
                     sourceImportedAt = candidate.importedAt,
+                    municipality = place?.municipality,
+                    province = place?.province,
                 ),
             )
             mutableState.update {

@@ -473,7 +473,7 @@ class OfflineFirstFarmRepositoryTest {
             val geometry = """{"type":"Polygon","coordinates":[[[-3.48,37.63],[-3.47,37.63],[-3.47,37.64],[-3.48,37.63]]]}"""
             assertEquals(
                 AppResult.Success(manualId),
-                parcels.create(NewParcel(farmId, "La del camino", managedAreaM2 = 9_000.0, agronomy = ParcelAgronomy(oliveTreeCount = 120))),
+                parcels.create(NewParcel(farmId, "La del camino", managedAreaM2 = 9_000.0, province = "Provincia escrita", agronomy = ParcelAgronomy(oliveTreeCount = 120))),
             )
             assertEquals(
                 AppResult.Success(importedId),
@@ -487,7 +487,7 @@ class OfflineFirstFarmRepositoryTest {
             val link = RegistryLink(
                 cadastralReference = "23044a00400021", cadastralPolygon = "004", cadastralParcel = "00021",
                 geometryGeoJson = geometry, cadastralAreaM2 = 12_000.0, sourceProvider = "ES_CATASTRO",
-                sourceImportedAt = TEST_INSTANT,
+                sourceImportedAt = TEST_INSTANT, municipality = "Huelma", province = "Jaén",
             )
 
             assertEquals(AppResult.Success(Unit), parcels.linkToRegistry(manualId, link))
@@ -498,6 +498,9 @@ class OfflineFirstFarmRepositoryTest {
             assertEquals(ParcelSource.CATASTRO, linked.source)
             assertEquals("23044A00400021", linked.cadastralReference)
             assertEquals("ES_CATASTRO", linked.sourceProvider)
+            // Owner 2026-10-03: Catastro fills the empty municipality; the farmer's province stays.
+            assertEquals("Huelma", linked.municipality)
+            assertEquals("Provincia escrita", linked.province)
             assertEquals(2L, linked.version)
 
             // Another parcel already owns this reference: refused, nothing changes.

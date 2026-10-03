@@ -1,6 +1,8 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -42,6 +44,57 @@ class CadastreImportScreenTest {
             assertEquals(selected.id, importedFarm)
             assertEquals("Pol. 4 · Parc. 21", importedName)
         }
+    }
+
+    /** Owner 2026-10-03: Catastro's municipality/province arrive filled and stay editable. */
+    @Test fun catastroFillsMunicipalityAndProvinceAndTheFarmerCanChangeThem() {
+        var typed: Pair<String, String>? = null
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                CadastreImportScreen(
+                    state = CadastreImportState(
+                        farms = listOf(farm("Finca")), candidate = candidate(),
+                        municipality = "Bedmar y Garciez", province = "Jaén", placeFromCatastro = true,
+                    ),
+                    preselectedFarmId = null,
+                    onSearch = {},
+                    onImport = { _, _ -> },
+                    onPlaceChanged = { municipality, province -> typed = municipality to province },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("catastro-municipality").performScrollTo().assertTextContains("Bedmar y Garciez")
+        composeRule.onNodeWithText("Según Catastro", substring = true).assertExists()
+        composeRule.onNodeWithTag("catastro-province").performScrollTo().assertTextContains("Jaén")
+        composeRule.onNodeWithTag("catastro-municipality").performTextReplacement("Bedmar")
+        composeRule.runOnIdle { assertEquals("Bedmar" to "Jaén", typed) }
+    }
+
+    /** Confirming waits for Catastro's (bounded) answer, so the place is saved with the parcel. */
+    @Test fun confirmationWaitsWhileCatastroIsAskedForThePlace() {
+        val only = farm("Finca")
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                CadastreImportScreen(
+                    state = CadastreImportState(farms = listOf(only), candidate = candidate(), locating = true),
+                    preselectedFarmId = only.id, onSearch = {}, onImport = { _, _ -> throw AssertionError("Imported while locating") },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("catastro-import").performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test fun withoutCatastrosPlaceTheFarmerIsInvitedToTypeIt() {
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                CadastreImportScreen(
+                    state = CadastreImportState(farms = listOf(farm("Finca")), candidate = candidate()),
+                    preselectedFarmId = null, onSearch = {}, onImport = { _, _ -> },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("catastro-municipality").performScrollTo()
+        composeRule.onNodeWithText("Catastro no lo ha indicado", substring = true).assertExists()
     }
 
     @Test fun cannotImportWithoutAFarm() {

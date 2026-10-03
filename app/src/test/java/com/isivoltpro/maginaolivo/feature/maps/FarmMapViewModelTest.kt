@@ -12,6 +12,7 @@ import com.isivoltpro.maginaolivo.domain.parcel.ParcelMembership
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelSource
 import com.isivoltpro.maginaolivo.domain.parcel.RegistryLink
+import com.isivoltpro.maginaolivo.domain.registry.RegistryLocation
 import com.isivoltpro.maginaolivo.feature.catastro.CadastralCandidate
 import com.isivoltpro.maginaolivo.feature.catastro.CadastreClient
 import java.util.UUID
@@ -43,7 +44,10 @@ class FarmMapViewModelTest {
     @Test
     fun severalTappedParcelsAreIncorporatedInOneGoAndTakenOnesAreNeverOffered() = runTest(dispatcher) {
         val parcels = FakeParcels(takenReference = "23044A00400023")
-        val client = FakeClient(listOf(candidate("23044A00400021"), candidate("23044A00400022"), candidate("23044A00400023")))
+        val client = FakeClient(
+            listOf(candidate("23044A00400021"), candidate("23044A00400022"), candidate("23044A00400023")),
+            places = mapOf("23044A00400021" to RegistryLocation("Huelma", "Jaén")),
+        )
         val viewModel = FarmMapViewModel(farmId, FakeFarms(), parcels, client)
         advanceUntilIdle()
 
@@ -63,6 +67,11 @@ class FarmMapViewModelTest {
         assertEquals(listOf("Olivar de arriba", "Pol. 4 · Parc. 22"), parcels.created.map { it.displayName })
         assertTrue(parcels.created.all { it.source == ParcelSource.CATASTRO && it.farmId == farmId && it.geometryGeoJson != null })
         assertEquals("004", parcels.created.first().cadastralPolygon)
+        // Owner 2026-10-03: Catastro's place fills the parcel; without an answer it stays for the farmer.
+        assertEquals("Huelma", parcels.created.first().municipality)
+        assertEquals("Jaén", parcels.created.first().province)
+        assertNull(parcels.created[1].municipality)
+        assertNull(parcels.created[1].province)
         assertEquals(FarmMapMode.VIEW, viewModel.state.value.mode)
         assertEquals("2 parcelas incorporadas a la finca.", viewModel.state.value.message)
         assertTrue(viewModel.state.value.importCompleted)
@@ -72,7 +81,10 @@ class FarmMapViewModelTest {
     fun aHandMadeParcelIsLinkedToTheOneCatastroParcelTapped() = runTest(dispatcher) {
         val manual = parcel(UUID.randomUUID())
         val parcels = FakeParcels(existing = manual)
-        val client = FakeClient(listOf(candidate("23044A00400021"), candidate("23044A00400022")))
+        val client = FakeClient(
+            listOf(candidate("23044A00400021"), candidate("23044A00400022")),
+            places = mapOf("23044A00400022" to RegistryLocation("Cabra del Santo Cristo", "Jaén")),
+        )
         val viewModel = FarmMapViewModel(farmId, FakeFarms(), parcels, client, locateParcelId = manual.id)
         advanceUntilIdle()
 
@@ -88,8 +100,50 @@ class FarmMapViewModelTest {
 
         assertEquals(manual.id, parcels.linked?.first)
         assertEquals("23044A00400022", parcels.linked?.second?.cadastralReference)
+        assertEquals("Cabra del Santo Cristo", parcels.linked?.second?.municipality)
+        assertEquals("Jaén", parcels.linked?.second?.province)
         assertEquals(manual.id, viewModel.state.value.linkedParcelId)
         assertTrue(parcels.created.isEmpty())
+    }
+
+    @Test
+    fun aCatastroThatCannotSayWhereNeverBlocksTheImport() = runTest(dispatcher) {
+        val parcels = FakeParcels()
+        val viewModel = FarmMapViewModel(farmId, FakeFarms(), parcels, FakeClient(listOf(candidate("23044A00400021")), placeFails = true))
+        advanceUntilIdle()
+        viewModel.setMode(FarmMapMode.ADD)
+        viewModel.tapMap(37.636, -3.48)
+        advanceUntilIdle()
+        viewModel.tapParcel("23044A00400021")
+        viewModel.importSelected(emptyMap())
+        advanceUntilIdle()
+        assertEquals(1, parcels.created.size)
+        assertNull(parcels.created.single().municipality)
+        assertTrue(viewModel.state.value.importCompleted)
+    }
+
+    @Test
+    fun aStalledCatastroDoesNotHoldTheLocalSaves() = runTest(dispatcher) {
+        val parcels = FakeParcels()
+        val slow = FakeClient(
+            listOf(candidate("23044A00400021"), candidate("23044A00400022")),
+            places = mapOf("23044A00400021" to RegistryLocation("Huelma", "Jaén")),
+            placeDelayMillis = 60_000,
+        )
+        val viewModel = FarmMapViewModel(farmId, FakeFarms(), parcels, slow)
+        advanceUntilIdle()
+        viewModel.setMode(FarmMapMode.ADD)
+        viewModel.tapMap(37.636, -3.48)
+        advanceUntilIdle()
+        viewModel.tapParcel("23044A00400021")
+        viewModel.tapParcel("23044A00400022")
+        val start = testScheduler.currentTime
+        viewModel.importSelected(emptyMap())
+        advanceUntilIdle()
+        assertEquals(2, parcels.created.size)
+        assertTrue(parcels.created.all { it.municipality == null })
+        // Both lookups ran together and were cut at the bound, not 2 × 60 s.
+        assertTrue(testScheduler.currentTime - start <= com.isivoltpro.maginaolivo.feature.catastro.PLACE_TIMEOUT_MS)
     }
 
     @Test
@@ -127,9 +181,18 @@ class FarmMapViewModelTest {
         override suspend fun restore(farmId: UUID): AppResult<Unit> = AppResult.Success(Unit)
     }
 
-    private class FakeClient(private val near: List<CadastralCandidate>) : CadastreClient {
+    private class FakeClient(
+        private val near: List<CadastralCandidate>,
+        private val places: Map<String, RegistryLocation> = emptyMap(),
+        private val placeFails: Boolean = false,
+        private val placeDelayMillis: Long = 0,
+    ) : CadastreClient {
         override suspend fun findByReference(reference: String): CadastralCandidate = near.first { it.reference == reference }
         override suspend fun findNear(latitude: Double, longitude: Double): List<CadastralCandidate> = near
+        override suspend fun locate(reference: String): RegistryLocation? {
+            if (placeDelayMillis > 0) kotlinx.coroutines.delay(placeDelayMillis)
+            return if (placeFails) throw java.io.IOException("offline") else places[reference]
+        }
     }
 
     private class FakeParcels(private val existing: Parcel? = null, private val takenReference: String? = null) : ParcelRepository {
