@@ -305,6 +305,37 @@ class AppNavigationTest {
         waitForTag("home-reference-root")
     }
 
+    /** #369: a Parcel's Cuaderno shows that Parcel and its Farm; Back returns to the Parcel and the tab does not keep it. */
+    @Test
+    fun aParcelsCuadernoKeepsItsParcelOnlyThere() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("add-farm")
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Parcela Contexto")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca Parcela Contexto")
+        clickByText("Finca Parcela Contexto")
+        openFarmSection("parcels")
+        createParcel("Haza Contexto")
+        clickByTag("parcel-row")
+        waitForTag("parcel-detail-root")
+
+        clickByTag("parcel-register")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodes(hasTestTag("notebook-parcel-context") and hasText("Haza Contexto", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("notebook-change-farm").assertDoesNotExist()
+        pressBack()
+        waitForTag("parcel-detail-root")
+
+        // The Cuaderno tab is the general Cuaderno: the Parcel stays with the Parcel.
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        waitForTag("notebook-context")
+        composeRule.onNodeWithTag("notebook-parcel-context").assertDoesNotExist()
+    }
+
     @Test
     fun registerFromAFarmOpensCuadernoWithThatFarm() {
         enterMainShell()
