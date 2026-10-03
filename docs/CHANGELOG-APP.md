@@ -25,6 +25,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   punto azul en el mapa y, si falla, dice por qué (sin permiso, ubicación apagada o sin señal) con su
   salida: permitir, activar o escribir coordenadas. La parcela elegida dice «Seleccionada · Guardada»
   y su municipio. El mapa y la foto aérea se dibujan a su resolución real (antes se ampliaban al doble).
+- **Previsión semanal más visual (#362).** Cada día tiene el color suave de su estado (lluvia azul
+  agua, nublado gris, parcialmente nublado azul claro, despejado dorado), además de su icono y su
+  nombre. «Hoy» se destaca con borde e icono mayor; la máxima manda y la mínima queda secundaria;
+  «Sin lluvia» en lugar de «0 mm»; arriba, un resumen de la semana. La fuente queda como nota discreta.
 - **Fichas de finca con más datos (#363, #364, #359).** Cada finca muestra Superficie, Parcelas,
   Olivos y Kg de la campaña en marcha (solo de sus pesadas; «Sin pesadas» o «—» si no hay, nunca 0).
   La cabecera de Mis fincas añade Olivos («≥ N» si falta algún recuento) en una cuadrícula 2×2.

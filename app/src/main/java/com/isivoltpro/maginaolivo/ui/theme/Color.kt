@@ -67,6 +67,12 @@ val MoMoneyTint = Color(0xFFEEE6D2)
 val MoRainText = Color(0xFF1D5E8C)
 val MoRainTint = Color(0xFFE2EFF8)
 
+// #362: weekly forecast families. Soft, low-saturation tints; each day also says its state in
+// words and with its icon, so colour is never the only signal.
+val MoSkyTint = Color(0xFFEDF3F6)
+val MoCloudTint = Color(0xFFE9ECEF)
+val MoCloudText = Color(0xFF4F5B66)
+
 val MoLightColorScheme = lightColorScheme(
     // Material's own "primary" drives text buttons, checkboxes and progress: those are
     // selection/secondary accents, so they take the mid olive. The dark olive CTA is
