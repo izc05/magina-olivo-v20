@@ -14,6 +14,8 @@ import com.isivoltpro.maginaolivo.feature.catastro.CadastralCandidate
 import com.isivoltpro.maginaolivo.feature.maps.FarmMapMode
 import com.isivoltpro.maginaolivo.feature.maps.FarmMapScreen
 import com.isivoltpro.maginaolivo.feature.maps.FarmMapState
+import com.isivoltpro.maginaolivo.feature.maps.GeoPoint
+import com.isivoltpro.maginaolivo.feature.maps.LocationProblem
 import com.isivoltpro.maginaolivo.feature.maps.ImportReview
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.util.UUID
@@ -68,11 +70,54 @@ class FarmMapScreenTest {
         composeRule.runOnIdle { assertTrue(linked) }
     }
 
+    /** #361: with nothing on the map yet, the steps show and «Añadir de Catastro» is the main action. */
+    @Test fun anEmptyFarmMapSaysWhatToDoFirst() {
+        val modes = mutableListOf<FarmMapMode>()
+        composeRule.setContent { MaginaOlivoTheme { screen(FarmMapState(mode = FarmMapMode.VIEW), onMode = { modes += it }) } }
+        hasTextUnder("farm-map-guide", "Cómo añadir tus parcelas")
+        composeRule.onNodeWithTag("farm-map-mode-add").performClick()
+        composeRule.runOnIdle { assertEquals(listOf(FarmMapMode.ADD), modes) }
+    }
+
+    /** #361: each way «Mi ubicación» can fail says why and offers its own way out. */
+    @Test fun aLocationProblemSaysWhyAndOffersTheWayOut() {
+        val actions = mutableListOf<LocationProblem>()
+        val state = androidx.compose.runtime.mutableStateOf(FarmMapState(locationProblem = LocationProblem.LOCATION_OFF))
+        composeRule.setContent { MaginaOlivoTheme { screen(state.value, onLocationAction = { actions += it }) } }
+        hasTextUnder("farm-map-location-problem", LocationProblem.LOCATION_OFF.message)
+        composeRule.onNodeWithTag("farm-map-location-action").assertTextContains("Activar ubicación").performClick()
+        composeRule.runOnIdle { assertEquals(listOf(LocationProblem.LOCATION_OFF), actions) }
+
+        // No fix: the coordinates search opens so the farmer is never left wondering.
+        state.value = FarmMapState(locationProblem = LocationProblem.NO_FIX)
+        composeRule.onNodeWithTag("farm-map-location-action").assertTextContains("Escribir coordenadas").performClick()
+        composeRule.onNodeWithTag("farm-map-coordinates").assertExists()
+    }
+
+    /** #361: once found, the screen says the blue dot is the farmer's position. */
+    @Test fun aFoundLocationIsSaidNotOnlyAToast() {
+        composeRule.setContent { MaginaOlivoTheme { screen(FarmMapState(myLocation = GeoPoint(37.73, -3.45))) } }
+        hasTextUnder("farm-map-my-location-shown", "El punto azul es tu ubicación.")
+    }
+
+    /** The notices are plain containers: their text lives in child nodes. */
+    private fun hasTextUnder(tag: String, text: String) {
+        composeRule.onNode(
+            androidx.compose.ui.test.hasTestTag(tag) and androidx.compose.ui.test.hasAnyDescendant(androidx.compose.ui.test.hasText(text)),
+            useUnmergedTree = true,
+        ).assertExists()
+    }
+
     @androidx.compose.runtime.Composable
-    private fun screen(state: FarmMapState, onLink: () -> Unit = {}) = FarmMapScreen(
-        state = state, onMode = {}, onSearchCoordinates = {}, onMyLocation = {}, onSearchPolygonParcel = { _, _, _, _ -> },
+    private fun screen(
+        state: FarmMapState,
+        onLink: () -> Unit = {},
+        onMode: (FarmMapMode) -> Unit = {},
+        onLocationAction: (LocationProblem) -> Unit = {},
+    ) = FarmMapScreen(
+        state = state, onMode = onMode, onSearchCoordinates = {}, onMyLocation = {}, onSearchPolygonParcel = { _, _, _, _ -> },
         onSearchByReference = {}, onTapMap = { _, _ -> }, onTapParcel = {}, onImport = {}, onLink = onLink,
-        onOpenParcel = {}, showMap = false,
+        onOpenParcel = {}, showMap = false, onLocationProblemAction = onLocationAction,
     )
 
     private fun mutableStateOfLocate(parcel: Parcel) =
