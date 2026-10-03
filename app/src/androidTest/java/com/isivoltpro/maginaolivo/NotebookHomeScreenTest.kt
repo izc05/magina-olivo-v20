@@ -3,6 +3,8 @@ package com.isivoltpro.maginaolivo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
@@ -91,6 +93,30 @@ class NotebookHomeScreenTest {
         composeRule.onNodeWithTag("notebook-parcel-context").assertTextContains("Parcela Norte", substring = true)
         composeRule.onNodeWithTag("notebook-parcel-clear").performClick()
         composeRule.runOnIdle { assertEquals(1, cleared) }
+    }
+
+    /** #369: from a Farm or a Parcel the Farm stays fixed; only the Cuaderno tab offers «Cambiar finca». */
+    @Test fun onlyTheCuadernoTabOffersToChangeTheFarm() {
+        var canChange by androidx.compose.runtime.mutableStateOf(false)
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                NotebookHomeScreen(
+                    isLoading = false, error = null, farms = UiPolishFixtures.farms, activeFarm = farm,
+                    notebook = NotebookUiState(isLoading = false, campaigns = listOf(campaign), selectedCampaignId = campaign.id, notebook = notebook),
+                    actions = NotebookActions(), onSelectFarm = {}, onSelectCampaign = {}, onQuickAction = {},
+                    parcelContext = "Parcela Norte", canChangeFarm = canChange,
+                )
+            }
+        }
+        // The Farm and the Parcel are shown as the fixed context, with «Toda la finca» kept.
+        composeRule.onNodeWithTag("notebook-context").assertTextContains(farm.name, substring = true)
+        composeRule.onNodeWithTag("notebook-parcel-context").assertTextContains("Parcela Norte", substring = true)
+        composeRule.onNodeWithTag("notebook-parcel-clear").assertExists()
+        assertEquals(0, composeRule.onAllNodesWithTag("notebook-change-farm").fetchSemanticsNodes().size)
+
+        canChange = true
+        composeRule.waitForIdle()
+        assertEquals(1, composeRule.onAllNodesWithTag("notebook-change-farm").fetchSemanticsNodes().size)
     }
 
     @Test fun inicioCanOpenTheCampaignView() {

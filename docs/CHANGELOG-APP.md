@@ -25,6 +25,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   analizados, coste de recogida y coste/kg calculado con los totales (nunca la media de cada finca).
   Dice cuántas fincas tienen campaña y cuáles no; con varias monedas no hay coste/kg conjunto; lo
   desconocido es «—». «Ver por finca» muestra lo que aporta cada una y abre su detalle.
+- **El Cuaderno de una finca no pide otra finca (#369).** Desde Mi Campo → finca o parcela →
+  Cuaderno, la finca ya está elegida: se muestra con su campaña (y la parcela, con «Toda la finca»)
+  sin «Cambiar finca», y Atrás vuelve a la finca o la parcela. La pestaña Cuaderno sigue siendo el
+  centro general, con «Cambiar finca». Es el mismo Cuaderno; solo cambia el origen.
 - **Previsión semanal más visual (#362).** Cada día tiene el color suave de su estado (lluvia azul
   agua, nublado gris, parcialmente nublado azul claro, despejado dorado), además de su icono y su
   nombre. «Hoy» se destaca con borde e icono mayor; la máxima manda y la mínima queda secundaria;

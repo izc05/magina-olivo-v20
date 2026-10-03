@@ -115,6 +115,13 @@ internal fun NotebookQuickAction.tone(): MoIconTone = when (this) {
     NotebookQuickAction.EXPENSE -> MoIconTone.MONEY
 }
 
+/**
+ * #369: how the one Cuaderno was reached. From the Cuaderno tab it is the general hub and the
+ * Farm can be changed there; from a Farm or a Parcel in Mi Campo that Farm is already chosen,
+ * so the Cuaderno keeps it and Back returns to it.
+ */
+enum class NotebookOrigin { ROOT, FARM_CONTEXT, PARCEL_CONTEXT }
+
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun NotebookRootRoute(
@@ -136,6 +143,8 @@ fun NotebookRootRoute(
     /** CR-011 §17: the view to open on (Inicio's campaign card opens Campaña). */
     tabRequest: NotebookHubTab? = null,
     onTabRequestHandled: () -> Unit = {},
+    /** #369: only the Cuaderno tab offers «Cambiar finca». */
+    origin: NotebookOrigin = NotebookOrigin.ROOT,
 ) {
     // The same Farm list the register flow already uses; no second source.
     val farmsViewModel: RegisterActivityViewModel = viewModel(
@@ -196,6 +205,7 @@ fun NotebookRootRoute(
         onClearParcel = onClearParcel,
         tabRequest = tabRequest,
         onTabRequestHandled = onTabRequestHandled,
+        canChangeFarm = origin == NotebookOrigin.ROOT,
     )
     labourCampaign?.let { id ->
         androidx.compose.material3.ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { labourCampaign = null }) {
@@ -227,6 +237,8 @@ fun NotebookHomeScreen(
     onClearParcel: () -> Unit = {},
     tabRequest: NotebookHubTab? = null,
     onTabRequestHandled: () -> Unit = {},
+    /** #369: false when the Cuaderno was opened from a Farm or a Parcel, whose Farm stays fixed. */
+    canChangeFarm: Boolean = true,
 ) {
     var tab by rememberSaveable { mutableStateOf(NotebookHubTab.DIARY) }
     LaunchedEffect(tabRequest) {
@@ -296,7 +308,7 @@ fun NotebookHomeScreen(
                                     MoTertiaryButton("Toda la finca", onClearParcel, modifier = Modifier.testTag("notebook-parcel-clear"))
                                 }
                             }
-                            if (farms.size > 1) {
+                            if (canChangeFarm && farms.size > 1) {
                                 if (choosingFarm) {
                                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                                         farms.forEach { farm ->
