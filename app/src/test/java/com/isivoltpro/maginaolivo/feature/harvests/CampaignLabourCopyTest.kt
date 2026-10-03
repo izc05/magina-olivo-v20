@@ -33,6 +33,12 @@ class CampaignLabourCopyTest {
         assertEquals(CAMPAIGN_NO_LABOUR, campaignLabourLine(emptyList(), emptyList()))
     }
 
+    @Test fun aConfirmedCostWithoutAttendanceIsStillShown() {
+        val line = campaignLabourLine(emptyList(), RecollectionLedger.of(campaign, listOf(labourCost(6_500)), emptyList()))
+        assertTrue(line, line.startsWith("$CAMPAIGN_NO_ATTENDANCE · "))
+        assertTrue(line, line.contains("65,00"))
+    }
+
     @Test fun onePersonOneDayAndItsConfirmedCost() {
         val line = campaignLabourLine(listOf(named(ana, "Ana")), RecollectionLedger.of(campaign, listOf(labourCost(6_500)), emptyList()))
         assertTrue(line, line.startsWith("1 persona · 1 jornada · "))
