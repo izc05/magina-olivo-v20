@@ -20,6 +20,8 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Pestañas sin saltos (#357, #358).** Volver a pulsar la pestaña en la que ya estás no recarga
+  la pantalla: se queda como estaba, con la misma vista elegida, sin parpadeo del título.
 - **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
   de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
   finca» queda como acción secundaria.

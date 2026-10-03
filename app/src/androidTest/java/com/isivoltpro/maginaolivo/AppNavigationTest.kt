@@ -206,6 +206,38 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 
+    /** #357/#358: tapping the tab already on its root keeps that screen; it is not recreated. */
+    @Test
+    fun reselectingTheActiveRootKeepsItsScreenAsItIs() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("add-farm")
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Reselección E2E")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca Reselección E2E")
+
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        chooseNotebookFarm("Finca Reselección E2E")
+        clickByTag("notebook-tab-expenses")
+        composeRule.onNodeWithTag("notebook-tab-expenses").assertIsSelected()
+
+        // Recreating the root would reset the chosen view to Diario.
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("notebook-tab-expenses").assertIsSelected()
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+
+        // The same for another root, and Back still returns to Inicio once.
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("farms-root")
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("farms-root").assertIsDisplayed()
+        pressBack()
+        waitForTag("home-reference-root")
+    }
+
     /** CR-011 §3: a Farm's «Cuaderno» is the one Cuaderno on that Farm, and Back returns to the Farm. */
     @Test
     fun aFarmsCuadernoIsTheOneCuadernoOnThatFarm() {
