@@ -60,7 +60,7 @@ class RecoleccionTwoFarmsTest {
         composeRule.onNodeWithTag("harvest-metric-days").assertTextContains("1").assertTextContains("En 2 fincas")
         // Each day names its Farm.
         val date = DATE_FORMAT.format(oct3)
-        val titles = composeRule.onAllNodesWithTag("harvest-row-title").fetchSemanticsNodes().size
+        val titles = composeRule.onAllNodesWithTag("harvest-row-title", useUnmergedTree = true).fetchSemanticsNodes().size
         assertEquals(2, titles)
         composeRule.onNode(hasText("Estacas · $date")).performScrollTo()
         composeRule.onNode(hasText("Salinillas · $date")).performScrollTo()
