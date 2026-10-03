@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
+import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import android.util.Log
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
@@ -669,7 +670,7 @@ fun HarvestDetailScreen(
     var editLabour by rememberSaveable { mutableStateOf<String?>(null) }
     // A saved set of jornales closes the sheet; its confirmation stays on the Jornada.
     LaunchedEffect(state.labourMessage) { if (state.labourMessage != null && state.labourMessage != "Persona añadida") { labourVisible = false; editLabour = null } }
-    LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
+    OnEachSave(state.saveCount) { editorVisible = false }
 
     Scaffold(Modifier.fillMaxSize().testTag("harvest-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(

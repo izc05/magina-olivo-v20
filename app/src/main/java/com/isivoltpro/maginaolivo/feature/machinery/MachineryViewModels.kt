@@ -87,6 +87,8 @@ data class MachineryUiState(
     val isSaving: Boolean = false,
     val message: String? = null,
     val error: String? = null,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 class MachineryViewModel(private val machines: MachineRepository) : ViewModel() {
@@ -111,7 +113,7 @@ class MachineryViewModel(private val machines: MachineRepository) : ViewModel() 
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null)
             mutableState.value = when (val result = machines.create(draft)) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Máquina guardada", formErrors = MachineFormErrors())
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Máquina guardada", saveCount = mutableState.value.saveCount + 1, formErrors = MachineFormErrors())
                 is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = machineErrorMessage(result.error))
             }
         }
@@ -130,6 +132,8 @@ data class MachineDetailUiState(
     val isSaving: Boolean = false,
     val message: String? = null,
     val error: String? = null,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 ) {
     /** Only hours someone recorded; activities without hours are counted, not guessed. */
     val recordedHours: Double get() = uses.mapNotNull { it.hoursUsed }.sum()
@@ -170,7 +174,7 @@ class MachineDetailViewModel(private val machineId: UUID, private val machines: 
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
             mutableState.value = when (val result = operation()) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, formErrors = MachineFormErrors())
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1, formErrors = MachineFormErrors())
                 is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = machineErrorMessage(result.error))
             }
         }

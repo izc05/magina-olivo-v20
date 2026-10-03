@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 
+import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -270,7 +271,7 @@ fun OrganizationsScreen(
     onEditorClosed: () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
-    LaunchedEffect(state.message) { if (state.message != null) editing = null }
+    OnEachSave(state.saveCount) { editing = null }
 
     Scaffold(Modifier.fillMaxSize().testTag("organizations-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(

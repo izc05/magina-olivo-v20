@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.parcels
 
+import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.ui.unit.dp
 import java.time.ZoneId
 import com.isivoltpro.maginaolivo.feature.maps.ParcelMap
@@ -299,10 +300,8 @@ fun ParcelDetailScreen(
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(state.message) {
-        if (state.message == "Parcela archivada") onArchived()
-        if (state.message != null) editorVisible = false
-    }
+    LaunchedEffect(state.message) { if (state.message == "Parcela archivada") onArchived() }
+    OnEachSave(state.saveCount) { editorVisible = false }
     Scaffold(
         modifier = Modifier.fillMaxSize().testTag("parcel-detail-root"),
         containerColor = MoCream,

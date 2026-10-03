@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.campaigns
 
+import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +23,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,7 +92,7 @@ fun FarmCampaignsRoute(farmId: UUID, persistence: LocalPersistence, onCampaignSe
 @Composable
 fun FarmCampaignsSection(state: FarmCampaignsUiState, onCampaignSelected: (UUID) -> Unit, onCreate: (CampaignDraft) -> Unit) {
     var editor by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(state.message) { if (state.message != null) editor = false }
+    OnEachSave(state.saveCount) { editor = false }
     MoSectionHeader("Campañas", action = { TextButton(onClick = { editor = true }, modifier = Modifier.testTag("add-campaign")) { Text("Añadir") } })
     when {
         state.isLoading -> CircularProgressIndicator()
@@ -243,6 +243,7 @@ fun CampaignDetailScreen(
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     var editor by rememberSaveable { mutableStateOf(false) }
+    OnEachSave(state.saveCount) { editor = false }
     Scaffold(Modifier.fillMaxSize().testTag("campaign-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding().verticalScroll(rememberScrollState())

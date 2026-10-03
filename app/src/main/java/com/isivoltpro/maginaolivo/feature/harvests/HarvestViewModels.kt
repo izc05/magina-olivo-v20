@@ -154,6 +154,8 @@ data class HarvestDetailUiState(
     val ratesError: String? = null,
     /** CR-010 A3: hand-typed costs of this Farm and date linked to no day (ambiguous). */
     val unlinkedCosts: List<Expense> = emptyList(),
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 class HarvestDetailViewModel(
@@ -411,7 +413,7 @@ class HarvestDetailViewModel(
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null)
             mutableState.value = when (val result = harvests.update(harvestId, draft)) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Cambios guardados", formErrors = HarvestFormErrors())
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Cambios guardados", saveCount = mutableState.value.saveCount + 1, formErrors = HarvestFormErrors())
                 is AppResult.Failure -> {
                     val problem = result.error.asProblem()
                     if (problem != null) mutableState.value.copy(isSaving = false, formErrors = problem.toFormErrors())

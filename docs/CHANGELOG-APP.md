@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Los formularios se cierran en cada guardado (#380).** Máquinas, Pesadas, Gastos, Organizaciones,
+  Jornadas, Trabajos, Campañas, Parcelas y Fincas cerraban el formulario solo la primera vez: al
+  guardar otra vez con el mismo mensaje se quedaba abierto. Ahora cada guardado correcto cuenta y
+  cierra el formulario; un error no lo cierra y, tras cerrar Android la app, el borrador restaurado
+  sigue abierto. «Guardar y añadir otra» en Pesadas sigue dejando el formulario listo para la siguiente.
 - **Resumen de la explotación en Mi Campo (#359).** Bajo los totales de fincas, la campaña elegida
   (2026/27, 2025/26…) de todas las fincas a la vez: kg pesados, rendimiento medio ponderado por kilos
   analizados, coste de recogida y coste/kg calculado con los totales (nunca la media de cada finca).

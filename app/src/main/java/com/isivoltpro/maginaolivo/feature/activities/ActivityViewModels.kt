@@ -57,6 +57,8 @@ data class FarmActivitiesUiState(
     val parcelsError: String? = null,
     val error: String? = null,
     val message: String? = null,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 class FarmActivitiesViewModel(private val farmId: UUID, private val repository: ActivityRepository) : ViewModel() {
@@ -135,7 +137,7 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
     private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
         mutableState.value = when (operation()) {
-            is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message)
+            is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
             is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = "No se pudo guardar en este dispositivo")
         }
     }
@@ -207,6 +209,8 @@ data class ActivityDetailUiState(
     val machines: List<MachineOption> = emptyList(),
     val error: String? = null,
     val message: String? = null,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 class ActivityDetailViewModel(private val activityId: UUID, private val repository: ActivityRepository) : ViewModel() {
@@ -279,7 +283,7 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
     private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
         mutableState.value = when (operation()) {
-            is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message)
+            is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
             is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = "La operación no se pudo completar")
         }
     }

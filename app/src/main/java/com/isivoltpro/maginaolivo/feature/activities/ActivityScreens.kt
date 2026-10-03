@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
+import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -135,7 +136,7 @@ fun FarmActivitiesSection(
     editorAsScreen: Boolean = false,
 ) {
     var editor by rememberSaveable { mutableStateOf(startWithEditor) }
-    LaunchedEffect(state.message) { if (state.message != null) editor = false }
+    OnEachSave(state.saveCount) { editor = false }
     if (editorAsScreen && editor) {
         ActivityEditor(
             parcels = state.parcels,
@@ -732,6 +733,7 @@ fun ActivityDetailScreen(
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     var editor by rememberSaveable { mutableStateOf(false) }
+    OnEachSave(state.saveCount) { editor = false }
     Scaffold(Modifier.fillMaxSize().testTag("activity-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).statusBarsPadding()
@@ -833,7 +835,7 @@ fun ActivityDetailScreen(
                 dateError = null,
                 parcelsError = null,
                 isSaving = state.isSaving,
-                onSave = { draft -> onUpdate(draft); editor = false },
+                onSave = onUpdate,
                 onCancel = { editor = false },
                 initial = ActivityDraft(
                     type = activity.type,

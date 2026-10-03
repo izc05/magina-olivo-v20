@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.farms
 
+import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -167,19 +167,12 @@ fun FarmListScreen(
     overviews: List<com.isivoltpro.maginaolivo.domain.analytics.FarmOverview> = emptyList(),
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
-    // Saves already seen here, so coming back to the list does not close an editor the user opened.
-    var seenSaves by rememberSaveable { mutableIntStateOf(state.saveCount) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    LaunchedEffect(state.saveCount) {
-        // A lower count is a new ViewModel after process death, not a save: keep the restored draft.
-        if (state.saveCount < seenSaves) seenSaves = state.saveCount
-        if (state.saveCount > seenSaves) {
-            seenSaves = state.saveCount
-            editorVisible = false
-            focusManager.clearFocus(force = true)
-            keyboardController?.hide()
-        }
+    OnEachSave(state.saveCount) {
+        editorVisible = false
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
     }
 
     Scaffold(
@@ -375,13 +368,11 @@ fun FarmDetailScreen(
     val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { onCoverSelected(it.toString()) }
     }
-    LaunchedEffect(state.message) {
-        if (state.message == "Finca archivada") onArchived()
-        if (state.message != null) {
-            editorVisible = false
-            focusManager.clearFocus(force = true)
-            keyboardController?.hide()
-        }
+    LaunchedEffect(state.message) { if (state.message == "Finca archivada") onArchived() }
+    OnEachSave(state.saveCount) {
+        editorVisible = false
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
     }
 
     Scaffold(
