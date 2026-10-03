@@ -44,6 +44,7 @@ import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentKind
 import com.isivoltpro.maginaolivo.domain.expense.Expense
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.ocr.DocumentExtraction
@@ -98,6 +99,8 @@ fun ExpensesRoute(
     /** CR-011 §14: the Cuaderno's Parcel (always of [presetFarmId]); a new expense starts on it. */
     presetParcelId: UUID? = null,
     presetCampaignId: UUID? = null,
+    /** #378: «Jornal fuera de campaña» — the labour form of [presetFarmId], opened at once. */
+    presetLabour: Boolean = false,
     /**
      * A document just taken on this screen; it is reviewed with this screen's Farm/Campaign
      * context. Documents listed «por revisar» open with [onDocumentSelected], without context.
@@ -143,6 +146,7 @@ fun ExpensesRoute(
         presetFarmId = presetFarmId,
         presetParcelId = presetParcelId,
         presetCampaignId = presetCampaignId,
+        presetLabour = presetLabour,
     )
 }
 
@@ -163,8 +167,9 @@ fun ExpensesScreen(
     presetFarmId: UUID? = null,
     presetParcelId: UUID? = null,
     presetCampaignId: UUID? = null,
+    presetLabour: Boolean = false,
 ) {
-    var editorVisible by rememberSaveable { mutableStateOf(false) }
+    var editorVisible by rememberSaveable { mutableStateOf(presetLabour) }
     var uploadVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
     // The Farm's parcels and works are offered in the form from the start.
@@ -254,8 +259,14 @@ fun ExpensesScreen(
     if (editorVisible) {
         ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             ExpenseEditor(
-                title = "Nuevo gasto",
-                initial = ExpenseForm(date = today.toString(), farmId = presetFarmId, parcelId = presetParcelId, campaignId = presetCampaignId),
+                // #378: outside a campaign, Jornal is the Farm's labour — said so, with Mano de obra chosen.
+                title = if (presetLabour) LABOUR_OUTSIDE_CAMPAIGN_TITLE else "Nuevo gasto",
+                subtitle = if (presetLabour) LABOUR_OUTSIDE_CAMPAIGN_NOTE else "Se guardará primero en este dispositivo.",
+                initial = ExpenseForm(
+                    date = today.toString(), farmId = presetFarmId, parcelId = presetParcelId, campaignId = presetCampaignId,
+                    category = if (presetLabour) ExpenseCategory.LABOR else ExpenseCategory.OTHER,
+                    concept = if (presetLabour) "Jornal" else "",
+                ),
                 options = state.options,
                 errors = state.formErrors,
                 isSaving = state.isSaving,
@@ -264,7 +275,8 @@ fun ExpensesScreen(
                 onSave = onCreate,
                 onCancel = { editorVisible = false; onEditorClosed() },
                 // Owner 2026-10-03: Cuaderno → Gasto starts on «Gasto de recogida» if one runs.
-                preselectRecollection = presetFarmId != null && presetCampaignId == null,
+                // A labour form outside a campaign stays outside: it is the Farm's own labour.
+                preselectRecollection = presetFarmId != null && presetCampaignId == null && !presetLabour,
             )
         }
     }
@@ -436,3 +448,9 @@ internal fun com.isivoltpro.maginaolivo.domain.ocr.OcrStatus.tone(): MoStatusTon
 private val SPANISH = Locale.forLanguageTag("es-ES")
 internal val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy", SPANISH)
 private val MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", SPANISH)
+
+/** #378: the labour form Cuaderno → Jornal opens when the Farm has no running campaign. */
+internal const val LABOUR_OUTSIDE_CAMPAIGN_TITLE = "Jornal fuera de campaña"
+internal const val LABOUR_OUTSIDE_CAMPAIGN_NOTE =
+    "Mano de obra de la finca: poda, desbroce, tratamientos… Se guarda como gasto de mano de obra. " +
+        "Los jornales de recogida, por persona, se registran dentro de una campaña."

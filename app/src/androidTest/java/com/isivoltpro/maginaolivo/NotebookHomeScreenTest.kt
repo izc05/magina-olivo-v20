@@ -178,6 +178,30 @@ class NotebookHomeScreenTest {
         composeRule.onNodeWithTag("notebook-no-campaign").performScrollTo().assertIsDisplayed()
     }
 
+    /** #378: without a running campaign Jornal is passed on (it opens the Farm's own labour), no notice. */
+    @Test fun withoutACampaignJornalOpensTheFarmsLabour() {
+        val tapped = mutableListOf<NotebookQuickAction>()
+        show(state = NotebookUiState(isLoading = false), onQuickAction = { tapped += it })
+        composeRule.onNodeWithTag(NotebookQuickAction.LABOUR.tag).performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(listOf(NotebookQuickAction.LABOUR), tapped) }
+    }
+
+    /** Codex #368: a notebook that failed to load does not count as «no campaign». */
+    @Test fun aFailedLoadDoesNotSendJornalOutsideTheCampaign() {
+        val tapped = mutableListOf<NotebookQuickAction>()
+        show(state = NotebookUiState(isLoading = false, error = "No se pudo abrir"), onQuickAction = { tapped += it })
+        composeRule.onNodeWithTag(NotebookQuickAction.LABOUR.tag).performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(emptyList<NotebookQuickAction>(), tapped) }
+    }
+
+    /** #350/#378: while the Farm's campaign is still loading, Jornal waits: which flow it is is never guessed. */
+    @Test fun whileTheCampaignLoadsJornalWaits() {
+        val tapped = mutableListOf<NotebookQuickAction>()
+        show(state = NotebookUiState(isLoading = true), onQuickAction = { tapped += it })
+        composeRule.onNodeWithTag(NotebookQuickAction.LABOUR.tag).performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(emptyList<NotebookQuickAction>(), tapped) }
+    }
+
     /** Device check (build 683): at 360 dp with large text no action label wraps and every view is whole. */
     @Test fun at360dpWithLargeTextLabelsStayWholeAndEveryViewIsVisible() {
         composeRule.setContent {

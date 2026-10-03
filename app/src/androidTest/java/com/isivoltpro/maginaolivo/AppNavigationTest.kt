@@ -830,6 +830,26 @@ class AppNavigationTest {
         waitForText("1 día")
     }
 
+    /** #378: without a running campaign, Cuaderno → Jornal opens the Farm's labour, labelled as such. */
+    @Test
+    fun cuadernoJornalWithoutCampaignOpensTheFarmsLabour() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("add-farm")
+        openSheet("add-farm", "farm-name")
+        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Sin Campaña E2E")
+        saveEditor("save-farm", "farm-name")
+        waitForSaved("farm-name", "Finca Sin Campaña E2E")
+
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        chooseNotebookFarm("Finca Sin Campaña E2E")
+        waitForTag("notebook-no-campaign")
+        clickByTag("notebook-quick-labour")
+        waitForTag("expenses-root")
+        waitForNodeOrDump("Jornal fuera de campaña") { composeRule.onAllNodesWithText("Jornal fuera de campaña") }
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+    }
+
     @Test
     fun avisosPlansWorkAndCuadernoRegistersIt() {
         // CR-011 §12: the Cuaderno records what happened; Avisos plans the future.

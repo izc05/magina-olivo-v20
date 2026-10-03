@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Jornal dentro y fuera de campaña (#350, #378).** Con campaña de recogida en marcha, «Jornal»
+  abre el día de recolección con el jornal por persona. Sin campaña, abre «Jornal fuera de
+  campaña»: la mano de obra de la finca (poda, desbroce, tratamientos…) como gasto de mano de obra
+  ya elegido, sin pasar por un «Nuevo gasto» genérico. «Trabajo» ya no ofrece «Jornada de
+  recolección», que se planifica desde Avisos.
 - **Pestañas sin saltos (#357, #358).** Volver a pulsar la pestaña en la que ya estás no recarga
   la pantalla: se queda como estaba, con la misma vista elegida, sin parpadeo del título.
 - **Crear dos fincas seguidas cierra el formulario las dos veces.** Al guardar la segunda finca el
