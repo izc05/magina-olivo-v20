@@ -112,6 +112,41 @@ class CampaignAnalyticsTest {
         assertTrue(rows.all { it.yieldCoveragePercent == 100 })
     }
 
+    /** #355: the history reads the comparison as it is; unknowns stay gaps, never zeros. */
+    @Test fun theHistoryKeepsGapsAndReadsTheComparisonAsIs() {
+        val older = campaign("2024/25", LocalDate.of(2024, 10, 1), CampaignStatus.CLOSED)
+        val notebooks = listOf(
+            // 2024/25: nothing weighed.
+            CampaignNotebook.project(older, emptyList(), emptyList(), emptyList(), emptyList()),
+            // 2025/26: weighed, no analysis, no cost.
+            CampaignNotebook.project(last, emptyList(), emptyList(), listOf(delivery(last, 4_000_000, LocalDate.of(2025, 11, 20), "Coop", null)), emptyList()),
+            // 2026/27: weighed, analysed and with a posted cost.
+            CampaignNotebook.project(current, emptyList(), emptyList(), listOf(delivery(current, 2_000_000, day(24), "Coop", 2_100)),
+                listOf(expense(current, 50_000, ExpenseStatus.POSTED))),
+        )
+        val comparison = CampaignComparison.of(notebooks)
+        val history = CampaignHistory.of(comparison)
+        assertEquals(listOf("2024/25", "2025/26", "2026/27"), history.points.map { it.name })
+        assertEquals(listOf(null, 4_000_000L, 2_000_000L), history.points.map { it.deliveredGrams })
+        assertEquals(listOf(null, null, 2_100), history.points.map { it.yieldHundredths })
+        assertEquals(comparison.map { it.costPerKgMinor }, history.points.map { it.costPerKgMinor })
+        assertEquals("EUR", history.costCurrency)
+        assertTrue(history.otherCurrencyCampaigns.isEmpty())
+    }
+
+    @Test fun theCostSeriesNeverMixesCurrencies() {
+        val notebooks = listOf(
+            CampaignNotebook.project(last, emptyList(), emptyList(), listOf(delivery(last, 1_000_000, LocalDate.of(2025, 11, 20), "Coop", null)),
+                listOf(expense(last, 10_000, ExpenseStatus.POSTED).copy(currency = "USD"))),
+            CampaignNotebook.project(current, emptyList(), emptyList(), listOf(delivery(current, 1_000_000, day(24), "Coop", null)),
+                listOf(expense(current, 20_000, ExpenseStatus.POSTED))),
+        )
+        val history = CampaignHistory.of(CampaignComparison.of(notebooks))
+        assertEquals("EUR", history.costCurrency)
+        assertNull(history.points.first().costPerKgMinor)
+        assertEquals(listOf("2025/26"), history.otherCurrencyCampaigns)
+    }
+
     private fun campaign(name: String, start: LocalDate, status: CampaignStatus) = Campaign(
         id = UUID.randomUUID(), workspaceId = workspace, farmId = farm, name = name, startDate = start,
         endDate = if (status == CampaignStatus.CLOSED) start.plusMonths(9) else null, status = status,

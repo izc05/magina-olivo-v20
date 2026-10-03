@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Histórico de campañas en gráficas (#355).** En Cuaderno → Campaña, con dos o más campañas de
+  la finca, «Histórico de campañas» muestra kilos pesados, rendimiento graso medio (con su cobertura)
+  y coste de recogida por kilo de cada campaña, con el mismo dato en texto debajo. Sin datos es un
+  hueco, nunca un cero; el coste no mezcla monedas; los kilos sin pesada (histórico) no entran en
+  las barras. Tocar una campaña la abre. Sale de la misma comparación que ya había, sin totales nuevos.
 - **Jornal abre los jornales y la campaña los muestra (#365).** Cuaderno → Jornal abre el día de
   recolección de hoy ya en «Jornales de este día», con «Registrar jornales» a mano; Pesadas sigue en
   el mismo día. El detalle de la campaña añade «Jornales» bajo Pesadas («1 persona · 1 jornada ·
