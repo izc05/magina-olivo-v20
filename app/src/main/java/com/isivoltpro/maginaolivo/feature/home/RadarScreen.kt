@@ -191,7 +191,7 @@ private fun RadarReady(
         modifier = mapModifier.fillMaxWidth().testTag("radar-map"),
         base = MapBase.MAP,
         focus = focus,
-        overlayTiles = state.frame.tileUrlTemplate,
+        overlayTiles = sharpRadarTiles(state.frame.tileUrlTemplate),
         overlayAttribution = state.radar.attribution,
     )
     if (frames.size > 1) {
@@ -228,6 +228,14 @@ internal fun radarCenter(parcels: List<MapParcel>): GeoPoint {
     if (points.isEmpty()) return GeoPoint(37.73, -3.45)
     return GeoPoint(points.map { it.latitude }.average(), points.map { it.longitude }.average())
 }
+
+/**
+ * #360: RainViewer publishes every radar picture at 256 and at 512 px. On a phone screen the
+ * 256 px picture is enlarged about three times and looks pixelated; the 512 px one is the same
+ * picture with twice the detail, so the radar asks for it. Other providers are left untouched.
+ */
+internal fun sharpRadarTiles(template: String): String =
+    if ("rainviewer.com" in template) template.replace("/256/", "/512/") else template
 
 private const val RADAR_ZOOM = 7.5
 private val HOUR: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")

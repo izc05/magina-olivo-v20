@@ -333,8 +333,9 @@ internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: St
         if (cadastreLines && base != MapBase.NONE) {
             add(""""cadastre":{"type":"raster","tileSize":512,"tiles":["$CADASTRE_WMS"]}""")
         }
-        // Radar pictures are published up to a low zoom; MapLibre enlarges them beyond it.
-        overlayTiles?.let { add(""""overlay":{"type":"raster","tileSize":256,"maxzoom":$OVERLAY_MAX_ZOOM,"tiles":["$it"]}""") }
+        // Radar pictures are published up to a low zoom; MapLibre enlarges them beyond it. #360: a
+        // 512 px picture is declared at 512, so it is drawn at its own resolution, not stretched.
+        overlayTiles?.let { add(""""overlay":{"type":"raster","tileSize":${overlayTileSize(it)},"maxzoom":$OVERLAY_MAX_ZOOM,"tiles":["$it"]}""") }
     }.joinToString(",")
     val layers = buildList {
         add("""{"id":"background","type":"background","paint":{"background-color":"#F3F1E6"}}""")
@@ -346,6 +347,9 @@ internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: St
     }.joinToString(",")
     return """{"version":8,"sources":{$sources},"layers":[$layers]}"""
 }
+
+/** The pixel size an overlay template asks for: 512 when its path says so, else the usual 256. */
+internal fun overlayTileSize(template: String): Int = if ("/512/" in template) 512 else 256
 
 private const val LABEL_MIN_ZOOM = 15.5
 private const val OVERLAY_MAX_ZOOM = 7

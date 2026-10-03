@@ -83,11 +83,12 @@ internal fun HomeWeatherHero(
         Box(
             Modifier.matchParentSize().background(
                 Brush.verticalGradient(
-                    0f to MoOliveDark.copy(alpha = 0.18f),
-                    // All text below the brand starts after this stop: at least 4.87:1
-                    // for MoWarmWhite, even over a completely white photograph.
-                    0.20f to MoOliveDark.copy(alpha = 0.68f),
-                    1f to MoOliveDark.copy(alpha = 0.90f),
+                    // #360: a neutral shade instead of the olive one, so the photograph keeps its
+                    // own colours. All text below the brand starts after the 0.20 stop, where white
+                    // stays at least 4.5:1 even over a completely white photograph (HeroShadeTest).
+                    0f to HERO_SHADE.copy(alpha = HERO_SHADE_TOP),
+                    0.20f to HERO_SHADE.copy(alpha = HERO_SHADE_TEXT),
+                    1f to HERO_SHADE.copy(alpha = HERO_SHADE_BOTTOM),
                 ),
             ),
         )
@@ -221,3 +222,9 @@ internal fun WeatherConditionIcon(condition: WeatherCondition?, modifier: Modifi
     }
     Icon(icon, contentDescription = null, tint = tint, modifier = modifier)
 }
+
+/** #360: near-neutral, slightly warm shade over the hero photo (no olive cast). */
+internal val HERO_SHADE = Color(0xFF1A1A16)
+internal const val HERO_SHADE_TOP = 0.10f
+internal const val HERO_SHADE_TEXT = 0.62f
+internal const val HERO_SHADE_BOTTOM = 0.80f
