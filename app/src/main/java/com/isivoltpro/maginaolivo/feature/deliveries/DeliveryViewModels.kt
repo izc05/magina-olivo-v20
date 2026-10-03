@@ -54,6 +54,10 @@ data class DeliveriesUiState(
     val openedTicketId: UUID? = null,
     /** Phase 19B: Jornadas of the running Campaigns, for the Pesada's explicit choice. */
     val jornadas: List<Harvest> = emptyList(),
+    /** Codex #377: true once the running campaigns have been read; until then nothing is claimed. */
+    val contextsLoaded: Boolean = false,
+    /** Codex #377: true once the Jornadas have been read (or could not be). */
+    val jornadasLoaded: Boolean = false,
     /** Set after "Guardar y añadir otra": the editor stays open on this form. */
     val nextForm: DeliveryForm? = null,
     val nextFormGeneration: Int = 0,
@@ -89,16 +93,18 @@ class DeliveriesViewModel(
                 }
         }
         viewModelScope.launch {
-            deliveries.observeContexts().catch { }.collect { mutableState.value = mutableState.value.copy(contexts = it) }
+            deliveries.observeContexts().catch { }.collect { mutableState.value = mutableState.value.copy(contexts = it, contextsLoaded = true) }
         }
         viewModelScope.launch {
             organizations.observeWithAnyRole(DESTINATION_ROLES).catch { }
                 .collect { mutableState.value = mutableState.value.copy(destinations = it) }
         }
+        // Without a Jornada source there is nothing to wait for.
+        if (harvests == null) mutableState.value = mutableState.value.copy(jornadasLoaded = true)
         harvests?.let { repository ->
             viewModelScope.launch {
-                repository.observeAll().catch { }
-                    .collect { rows -> mutableState.value = mutableState.value.copy(jornadas = rows.filter { it.editable }) }
+                repository.observeAll().catch { mutableState.value = mutableState.value.copy(jornadasLoaded = true) }
+                    .collect { rows -> mutableState.value = mutableState.value.copy(jornadas = rows.filter { it.editable }, jornadasLoaded = true) }
             }
         }
         viewModelScope.launch {
