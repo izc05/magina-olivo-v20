@@ -211,21 +211,23 @@ class AppNavigationTest {
     fun reselectingTheActiveRootKeepsItsScreenAsItIs() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        waitForTag("add-farm")
-        openSheet("add-farm", "farm-name")
-        composeRule.onNodeWithTag("farm-name").performTextInput("Finca Reselección E2E")
-        saveEditor("save-farm", "farm-name")
-        waitForSaved("farm-name", "Finca Reselección E2E")
+        listOf("Finca Reselección A", "Finca Reselección B").forEach { name ->
+            waitForTag("add-farm")
+            openSheet("add-farm", "farm-name")
+            composeRule.onNodeWithTag("farm-name").performTextInput(name)
+            saveEditor("save-farm", "farm-name")
+            waitForSaved("farm-name", name)
+        }
 
+        // «Cambiar finca» opens the Farm choice; that open state lives only in the screen.
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
-        chooseNotebookFarm("Finca Reselección E2E")
-        clickByTag("notebook-tab-expenses")
-        composeRule.onNodeWithTag("notebook-tab-expenses").assertIsSelected()
+        clickByTag("notebook-change-farm")
+        waitForNodeOrDump("notebook-farm-option") { composeRule.onAllNodesWithTag("notebook-farm-option") }
 
-        // Recreating the root would reset the chosen view to Diario.
+        // Recreating the root would close it again.
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag("notebook-tab-expenses").assertIsSelected()
+        assertEquals(2, composeRule.onAllNodesWithTag("notebook-farm-option").fetchSemanticsNodes().size)
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
 
         // The same for another root, and Back still returns to Inicio once.
