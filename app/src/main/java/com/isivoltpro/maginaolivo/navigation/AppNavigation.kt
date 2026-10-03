@@ -262,8 +262,10 @@ fun AppNavigation(
                         onFarmRequestHandled = { notebookFarmRequest = null },
                         parcelContext = parcelName,
                         onClearParcel = {
-                            entry.savedStateHandle.remove<String>(NOTEBOOK_PARCEL_ID_KEY)
-                            entry.savedStateHandle.remove<String>(NOTEBOOK_PARCEL_NAME_KEY)
+                            // Set, not removed: removing detaches the observed flows, which would
+                            // keep showing and using the Parcel the farmer just dropped.
+                            entry.savedStateHandle[NOTEBOOK_PARCEL_ID_KEY] = null
+                            entry.savedStateHandle[NOTEBOOK_PARCEL_NAME_KEY] = null
                         },
                         tabRequest = notebookTabRequest?.let { name -> NotebookHubTab.entries.firstOrNull { it.name == name } },
                         onTabRequestHandled = { notebookTabRequest = null },
@@ -839,7 +841,9 @@ private fun NavHostController.navigateToRoot(destination: RootDestination) {
     // #357/#358: the root already on screen is kept as it is. Popping it to Inicio and opening
     // it again recreated the screen (title flicker, view and scroll reset). #369: a Farm's
     // Cuaderno is not the Cuaderno tab, so its tab still opens the general Cuaderno.
-    val contextual = currentBackStackEntry?.savedStateHandle?.contains(NOTEBOOK_ORIGIN_KEY) == true
+    // The general Cuaderno also records ROOT once read, so the stored value decides, not its presence.
+    val contextual = currentBackStackEntry?.savedStateHandle?.get<String>(NOTEBOOK_ORIGIN_KEY)
+        ?.let { it != NotebookOrigin.ROOT.name } == true
     if (currentDestination?.route == destination.route && !contextual) return
     navigate(destination.route) {
         popUpTo(RootDestination.Home.route)

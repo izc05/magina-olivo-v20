@@ -327,6 +327,9 @@ class AppNavigationTest {
                 .fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("notebook-change-farm").assertDoesNotExist()
+        // «Toda la finca» drops the Parcel at once (Codex #381).
+        clickByTag("notebook-parcel-clear")
+        composeRule.waitUntil(UI_TIMEOUT_MS) { composeRule.onAllNodesWithTag("notebook-parcel-context").fetchSemanticsNodes().isEmpty() }
         pressBack()
         waitForTag("parcel-detail-root")
 
