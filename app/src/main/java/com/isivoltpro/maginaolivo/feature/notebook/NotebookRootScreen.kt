@@ -186,7 +186,9 @@ fun NotebookRootRoute(
         onSelectCampaign = { id -> notebook?.second?.selectCampaign(id) },
         onQuickAction = { action ->
             val farm = activeFarm ?: return@NotebookHomeScreen
-            onQuickAction(action, farm.id, notebook?.first?.notebook?.campaign?.status?.isRunning == true)
+            // Codex #368: the Farm runs a campaign if any of its campaigns runs, whichever one the
+            // farmer is looking at in the Cuaderno.
+            onQuickAction(action, farm.id, notebook?.first?.campaigns.orEmpty().any { it.status.isRunning })
         },
         onRetry = farmsViewModel::retry,
         onGoToFields = onGoToFields,
@@ -234,6 +236,13 @@ fun NotebookHomeScreen(
         }
     }
     var choosingFarm by remember { mutableStateOf(false) }
+    // #350/#378: Jornal opens the recogida day with a running campaign and the Farm's own labour
+    // («Jornal fuera de campaña») without one. Until the campaign is known, it waits: which of
+    // the two it is must never be guessed.
+    val onAction: (NotebookQuickAction) -> Unit = { action ->
+        // Codex #368: a failed load is not «no campaign»; Jornal waits for a known state.
+        if (action != NotebookQuickAction.LABOUR || (notebook != null && !notebook.isLoading && notebook.error == null)) onQuickAction(action)
+    }
     Scaffold(
         Modifier.fillMaxSize().testTag("notebook-root"),
         containerColor = MoCream,
@@ -310,7 +319,7 @@ fun NotebookHomeScreen(
                         }
                     }
                     Text("¿Qué has hecho hoy?", style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary)
-                    QuickActionGrid(onQuickAction)
+                    QuickActionGrid(onAction)
                     NotebookHub(notebook, actions, tab, { tab = it }, onSelectCampaign)
                 }
             }

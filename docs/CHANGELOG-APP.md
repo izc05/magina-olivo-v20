@@ -24,6 +24,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   agua, nublado gris, parcialmente nublado azul claro, despejado dorado), además de su icono y su
   nombre. «Hoy» se destaca con borde e icono mayor; la máxima manda y la mínima queda secundaria;
   «Sin lluvia» en lugar de «0 mm»; arriba, un resumen de la semana. La fuente queda como nota discreta.
+- **Jornal dentro y fuera de campaña (#350, #378).** Con campaña de recogida en marcha, «Jornal»
+  abre el día de recolección con el jornal por persona. Sin campaña, abre «Jornal fuera de
+  campaña»: la mano de obra de la finca (poda, desbroce, tratamientos…) como gasto de mano de obra
+  ya elegido, sin pasar por un «Nuevo gasto» genérico. «Trabajo» ya no ofrece «Jornada de
+  recolección», que se planifica desde Avisos.
 - **Pestañas sin saltos (#357, #358).** Volver a pulsar la pestaña en la que ya estás no recarga
   la pantalla: se queda como estaba, con la misma vista elegida, sin parpadeo del título.
 - **Crear dos fincas seguidas cierra el formulario las dos veces.** Al guardar la segunda finca el

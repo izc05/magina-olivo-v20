@@ -584,6 +584,34 @@ fun AppNavigation(
                     )
                 }
             }
+            // #378: Cuaderno → Jornal outside a running campaign opens the Farm's labour form at once.
+            composable(
+                AppDestination.FarmLabourPattern,
+                arguments = listOf(
+                    navArgument("farmId") { type = NavType.StringType },
+                    navArgument("parcelId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                ),
+            ) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val farmId = backStackEntry.arguments?.getString("farmId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val parcelId = backStackEntry.arguments?.getString("parcelId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || farmId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    ExpensesRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        onExpenseSelected = { id -> navController.navigate(AppDestination.expense(id.toString())) },
+                        onDocumentSelected = { id -> navController.navigate(AppDestination.document(id.toString())) },
+                        onOrganizations = { navController.navigate(AppDestination.Organizations) },
+                        presetFarmId = farmId,
+                        presetParcelId = parcelId,
+                        presetLabour = true,
+                    )
+                }
+            }
             composable(
                 AppDestination.FarmExpensesPattern,
                 arguments = listOf(
@@ -831,8 +859,9 @@ private fun NavHostController.openQuickAction(action: NotebookQuickAction, farmI
         NotebookQuickAction.TREATMENT ->
             navigate(AppDestination.register(ActivityType.PHYTOSANITARY.name)) { launchSingleTop = true }
         NotebookQuickAction.WEIGHING -> navigate(AppDestination.newPesada(farmId.toString(), parcelId))
-        // CR-007: outside a running campaign, jornales are a LABOR Expense of this Farm.
-        NotebookQuickAction.LABOUR, NotebookQuickAction.EXPENSE ->
-            navigate(AppDestination.farmExpenses(farmId.toString(), parcelId))
+        NotebookQuickAction.EXPENSE -> navigate(AppDestination.farmExpenses(farmId.toString(), parcelId))
+        // #378: outside a running campaign, Jornal is the Farm's own labour — a labour expense,
+        // opened and labelled as such, never a plain «Nuevo gasto».
+        NotebookQuickAction.LABOUR -> navigate(AppDestination.farmLabour(farmId.toString(), parcelId))
     }
 }
