@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El Cuaderno de una finca no pide otra finca (#369).** Desde Mi Campo → finca o parcela →
+  Cuaderno, la finca ya está elegida: se muestra con su campaña (y la parcela, con «Toda la finca»)
+  sin «Cambiar finca», y Atrás vuelve a la finca o la parcela. La pestaña Cuaderno sigue siendo el
+  centro general, con «Cambiar finca». Es el mismo Cuaderno; solo cambia el origen.
 - **Previsión semanal más visual (#362).** Cada día tiene el color suave de su estado (lluvia azul
   agua, nublado gris, parcialmente nublado azul claro, despejado dorado), además de su icono y su
   nombre. «Hoy» se destaca con borde e icono mayor; la máxima manda y la mínima queda secundaria;
