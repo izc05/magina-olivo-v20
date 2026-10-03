@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo.feature.farms
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -56,6 +57,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
@@ -93,6 +95,15 @@ fun FarmListRoute(
             .groupBy { it.farmId!! }
             .mapValues { (_, entries) -> entries.minBy { it.activityDate } }
     }
+    // #364: «Kg campaña» is read from the Pesadas of each Farm's running Campaign; nothing stored.
+    // Codex #371: until both have loaded the kilos are unknown («…»), never «Sin pesadas» or «—».
+    val contexts by remember { persistence.harvestRepository.observeContexts() }.collectAsStateWithLifecycle(null)
+    val deliveries by remember { persistence.deliveryRepository.observeAll() }.collectAsStateWithLifecycle(null)
+    val campaignKilos = remember(contexts, deliveries) {
+        val loadedContexts = contexts
+        val loadedDeliveries = deliveries
+        if (loadedContexts == null || loadedDeliveries == null) null else runningCampaignKilos(loadedContexts, loadedDeliveries)
+    }
     FarmListScreen(
         state = state,
         onFarmSelected = onFarmSelected,
@@ -105,6 +116,7 @@ fun FarmListRoute(
             uri
         },
         nextWork = { farmId -> nextWork[farmId]?.let { "Próximo: ${it.description} · ${relativeDay(it.activityDate, today)}" } },
+        campaignKilos = campaignKilos?.let { kilos -> { farmId: UUID -> kilos[farmId] } },
     )
 }
 
@@ -129,6 +141,11 @@ fun FarmListScreen(
     cover: @Composable (UUID) -> String? = { null },
     /** A short line for the next planned work of a Farm, when there is one. */
     nextWork: (UUID) -> String? = { null },
+    /**
+     * #364: grams weighed in the Farm's running Campaign (null without one). The function itself
+     * is null while the Pesadas are still loading.
+     */
+    campaignKilos: ((UUID) -> Long?)? = { null },
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     // Saves already seen here, so coming back to the list does not close an editor the user opened.
@@ -226,6 +243,8 @@ fun FarmListScreen(
                         farm = farm,
                         coverUri = cover(farm.id),
                         nextWork = nextWork(farm.id),
+                        campaignKilos = campaignKilos?.let { it(farm.id) },
+                        kilosLoaded = campaignKilos != null,
                         onClick = { onFarmSelected(farm.id) },
                     )
                 }
@@ -526,15 +545,25 @@ private fun SectionEntry(section: FarmSection, icon: ImageVector, subtitle: Stri
 @Composable
 private fun FarmTotals(farms: List<Farm>) {
     val knownArea = farms.mapNotNull { it.totalAreaM2 }.sum().takeIf { farms.any { farm -> farm.totalAreaM2 != null } }
+    val stats = listOf(
+        MoStat("Fincas", farms.size.toString(), MoIcons.Tree),
+        MoStat("Parcelas", farms.sumOf { it.parcelCount }.toString(), MoIcons.Parcels),
+        MoStat("Superficie", knownArea?.let(::formatArea) ?: "—", MoIcons.Area),
+        // #359: the same olive semantics as Inicio — known sum, «≥ N» if partial, «—» if none.
+        MoStat("Olivos", oliveTreesLabel(farms), MoIcons.Olive),
+    )
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xxs)) {
-        MoStatStrip(
-            listOf(
-                MoStat("Fincas", farms.size.toString(), MoIcons.Tree),
-                MoStat("Parcelas", farms.sumOf { it.parcelCount }.toString(), MoIcons.Parcels),
-                MoStat("Superficie", knownArea?.let(::formatArea) ?: "—", MoIcons.Area),
-            ),
-            Modifier.testTag("farm-totals"),
-        )
+        // Four figures do not fit one row at 360 dp with large text: a 2×2 instead of squeezing.
+        BoxWithConstraints(Modifier.testTag("farm-totals")) {
+            if (maxWidth >= 480.dp) {
+                MoStatStrip(stats)
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                    MoStatStrip(stats.take(2))
+                    MoStatStrip(stats.drop(2))
+                }
+            }
+        }
         if (knownArea == null && farms.isNotEmpty()) {
             Text(
                 "Añade superficie a tus parcelas para calcular rendimientos.",
@@ -550,6 +579,8 @@ private fun FarmCard(
     farm: Farm,
     coverUri: String?,
     nextWork: String?,
+    campaignKilos: Long?,
+    kilosLoaded: Boolean,
     onClick: () -> Unit,
 ) {
     MoFarmCard(
@@ -566,6 +597,8 @@ private fun FarmCard(
         nextWork = nextWork,
         campaignActive = farm.activeCampaignName != null,
         artworkSeed = farm.id.hashCode(),
+        olives = farm.oliveTreeLabel(),
+        campaignKilos = if (kilosLoaded) campaignKilosLabel(campaignKilos) else "…",
     )
 }
 
