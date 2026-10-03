@@ -242,7 +242,8 @@ fun CadastreImportScreen(
                     text = if (state.saving) "Guardando…" else "Confirmar e incorporar",
                     onClick = { onImport(selectedFarm?.let(UUID::fromString), alias) },
                     modifier = Modifier.fillMaxWidth().testTag("catastro-import"),
-                    enabled = !state.saving && !state.searching && state.farms.any { it.id.toString() == selectedFarm } && alias.isNotBlank(),
+                    // Wait for Catastro's place (bounded) so it is saved with the parcel.
+                    enabled = !state.saving && !state.searching && !state.locating && state.farms.any { it.id.toString() == selectedFarm } && alias.isNotBlank(),
                 )
             }
             Spacer(Modifier.height(MoSpacing.lg))

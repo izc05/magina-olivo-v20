@@ -123,6 +123,30 @@ class FarmMapViewModelTest {
     }
 
     @Test
+    fun aStalledCatastroDoesNotHoldTheLocalSaves() = runTest(dispatcher) {
+        val parcels = FakeParcels()
+        val slow = FakeClient(
+            listOf(candidate("23044A00400021"), candidate("23044A00400022")),
+            places = mapOf("23044A00400021" to RegistryLocation("Huelma", "Jaén")),
+            placeDelayMillis = 60_000,
+        )
+        val viewModel = FarmMapViewModel(farmId, FakeFarms(), parcels, slow)
+        advanceUntilIdle()
+        viewModel.setMode(FarmMapMode.ADD)
+        viewModel.tapMap(37.636, -3.48)
+        advanceUntilIdle()
+        viewModel.tapParcel("23044A00400021")
+        viewModel.tapParcel("23044A00400022")
+        val start = testScheduler.currentTime
+        viewModel.importSelected(emptyMap())
+        advanceUntilIdle()
+        assertEquals(2, parcels.created.size)
+        assertTrue(parcels.created.all { it.municipality == null })
+        // Both lookups ran together and were cut at the bound, not 2 × 60 s.
+        assertTrue(testScheduler.currentTime - start <= com.isivoltpro.maginaolivo.feature.catastro.PLACE_TIMEOUT_MS)
+    }
+
+    @Test
     fun badCoordinatesExplainTheFormatAndMoveNothing() = runTest(dispatcher) {
         val viewModel = FarmMapViewModel(farmId, FakeFarms(), FakeParcels(), FakeClient(emptyList()))
         advanceUntilIdle()
@@ -161,11 +185,14 @@ class FarmMapViewModelTest {
         private val near: List<CadastralCandidate>,
         private val places: Map<String, RegistryLocation> = emptyMap(),
         private val placeFails: Boolean = false,
+        private val placeDelayMillis: Long = 0,
     ) : CadastreClient {
         override suspend fun findByReference(reference: String): CadastralCandidate = near.first { it.reference == reference }
         override suspend fun findNear(latitude: Double, longitude: Double): List<CadastralCandidate> = near
-        override suspend fun locate(reference: String): RegistryLocation? =
-            if (placeFails) throw java.io.IOException("offline") else places[reference]
+        override suspend fun locate(reference: String): RegistryLocation? {
+            if (placeDelayMillis > 0) kotlinx.coroutines.delay(placeDelayMillis)
+            return if (placeFails) throw java.io.IOException("offline") else places[reference]
+        }
     }
 
     private class FakeParcels(private val existing: Parcel? = null, private val takenReference: String? = null) : ParcelRepository {

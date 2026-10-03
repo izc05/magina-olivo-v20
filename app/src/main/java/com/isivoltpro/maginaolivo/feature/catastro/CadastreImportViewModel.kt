@@ -143,7 +143,7 @@ class CadastreImportViewModel(
         mutableState.value = mutableState.value.copy(municipality = "", province = "", placeFromCatastro = false, locating = true)
         locateJob = viewModelScope.launch {
             val location = try {
-                client.locate(candidate.reference)
+                kotlinx.coroutines.withTimeoutOrNull(PLACE_TIMEOUT_MS) { client.locate(candidate.reference) }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -160,7 +160,7 @@ class CadastreImportViewModel(
     }
 
     fun import(farmId: UUID?, alias: String) {
-        if (mutableState.value.searching) return
+        if (mutableState.value.searching || mutableState.value.locating) return
         val candidate = mutableState.value.candidate ?: return
         if (farmId == null || mutableState.value.farms.none { it.id == farmId }) {
             mutableState.value = mutableState.value.copy(error = "Elige la finca que recibirá la parcela.")
@@ -216,6 +216,9 @@ class CadastreImportViewModel(
         }
     }
 }
+
+/** Catastro's place is a convenience: never wait longer than this for it. */
+internal const val PLACE_TIMEOUT_MS = 5_000L
 
 private fun CadastreException.userMessage(): String = when (kind) {
     CadastreError.INVALID_REFERENCE -> "La referencia catastral debe tener 14 letras o números."

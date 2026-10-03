@@ -70,6 +70,20 @@ class CadastreImportScreenTest {
         composeRule.runOnIdle { assertEquals("Bedmar" to "Jaén", typed) }
     }
 
+    /** Confirming waits for Catastro's (bounded) answer, so the place is saved with the parcel. */
+    @Test fun confirmationWaitsWhileCatastroIsAskedForThePlace() {
+        val only = farm("Finca")
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                CadastreImportScreen(
+                    state = CadastreImportState(farms = listOf(only), candidate = candidate(), locating = true),
+                    preselectedFarmId = only.id, onSearch = {}, onImport = { _, _ -> throw AssertionError("Imported while locating") },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("catastro-import").performScrollTo().assertIsNotEnabled()
+    }
+
     @Test fun withoutCatastrosPlaceTheFarmerIsInvitedToTypeIt() {
         composeRule.setContent {
             MaginaOlivoTheme {

@@ -609,11 +609,19 @@ internal fun ParcelEditor(
                         placeStatus = "Consultando en Catastro…"
                         scope.launch {
                             val place = runCatching { locatePlace(reference) }.getOrNull()
-                            if (place != null) {
-                                draft = draft.copy(municipality = place.municipality, province = place.province ?: draft.province)
-                                placeStatus = "Según Catastro · puedes cambiarlo"
-                            } else {
-                                placeStatus = "Catastro no lo ha indicado: escríbelo a mano."
+                            // The answer is for this reference only, and it only fills what is still empty:
+                            // whatever the farmer wrote (before or while asking) stays.
+                            val current = draft
+                            when {
+                                current.cadastralReference.trim().uppercase() != reference -> placeStatus = null
+                                place == null -> placeStatus = "Catastro no lo ha indicado: escríbelo a mano."
+                                else -> {
+                                    draft = current.copy(
+                                        municipality = current.municipality.ifBlank { place.municipality },
+                                        province = current.province.ifBlank { place.province.orEmpty() },
+                                    )
+                                    placeStatus = if (current.municipality.isBlank()) "Según Catastro · puedes cambiarlo" else "Se mantiene el municipio que escribiste"
+                                }
                             }
                         }
                     },
