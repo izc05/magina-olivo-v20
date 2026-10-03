@@ -23,6 +23,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 - **Fichas de finca con más datos (#363, #364, #359).** Cada finca muestra Superficie, Parcelas,
   Olivos y Kg de la campaña en marcha (solo de sus pesadas; «Sin pesadas» o «—» si no hay, nunca 0).
   La cabecera de Mis fincas añade Olivos («≥ N» si falta algún recuento) en una cuadrícula 2×2.
+- **La Pesada recuerda de dónde vienes (#373, #375).** Desde una finca, una campaña, una parcela o un
+  día de recolección, «Nueva pesada» ya no vuelve a pedir la finca: muestra «Salinillas · Campaña
+  2026-2027» como contexto fijo. En una campaña en marcha, «Pesadas» abre la nueva pesada de esa
+  finca. Desde el listado general se sigue eligiendo la finca.
 - **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
   de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
   finca» queda como acción secundaria.
