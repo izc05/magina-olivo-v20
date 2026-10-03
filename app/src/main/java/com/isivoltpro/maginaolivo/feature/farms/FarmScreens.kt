@@ -136,7 +136,9 @@ fun FarmListScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(state.saveCount) {
-        if (state.saveCount != seenSaves) {
+        // A lower count is a new ViewModel after process death, not a save: keep the restored draft.
+        if (state.saveCount < seenSaves) seenSaves = state.saveCount
+        if (state.saveCount > seenSaves) {
             seenSaves = state.saveCount
             editorVisible = false
             focusManager.clearFocus(force = true)

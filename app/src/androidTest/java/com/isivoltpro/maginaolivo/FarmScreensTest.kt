@@ -66,6 +66,27 @@ class FarmScreensTest {
         assertEquals(saved, state.message)
     }
 
+    /** After process death the new ViewModel counts from zero; that is not a save. */
+    @Test
+    fun aCountStartingAgainDoesNotCloseTheEditor() {
+        var state by mutableStateOf(FarmListUiState(isLoading = false, farms = listOf(farm(1)), saveCount = 3))
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                FarmListScreen(state = state, onFarmSelected = {}, onCreate = {}, onRestore = {}, onRetry = {})
+            }
+        }
+        composeRule.onNodeWithTag("add-farm").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isNotEmpty() }
+
+        state = state.copy(saveCount = 0)
+        composeRule.waitForIdle()
+        assertEquals(1, composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().size)
+
+        // The next real save still closes it.
+        state = state.copy(saveCount = 1)
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isEmpty() }
+    }
+
     @Test
     fun errorStateExplainsLocalFailure() {
         composeRule.setContent {
