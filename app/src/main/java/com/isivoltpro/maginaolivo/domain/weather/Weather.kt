@@ -62,6 +62,12 @@ interface WeatherFeed {
 
     /** Fetches when stale or missing; a failure leaves the cache as it was. */
     suspend fun refreshIfStale(location: FeedLocation)
+
+    /**
+     * #315: the farmer's «Actualizar» — fetches now whatever the age. False when the source
+     * failed; the cached value and its time stay as they were.
+     */
+    suspend fun refresh(location: FeedLocation): Boolean
 }
 
 /** Stored form of [WeatherNow] in the local cache: plain `key=value` lines, no JSON library. */

@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyDescendant
@@ -53,6 +55,32 @@ class HomeFeedsScreenTest {
         composeRule.onNodeWithTag("home-weather-summary").assertTextContains("22°").assertTextContains("Parcialmente nublado")
             .assertTextContains("Bedmar", substring = true)
         composeRule.onNodeWithTag("home-weather-summary").assertTextContains("Datos guardados · sin actualizar")
+    }
+
+    /** #345: AEMET's probability is shown with its drop; 0 % and 100 % are real values. */
+    @Test fun heroShowsThePublishedRainProbability() {
+        var percent by androidx.compose.runtime.mutableStateOf(0)
+        composeRule.setContent {
+            val weather = WeatherNow(18, WeatherCondition.RAIN, percent, 11, now)
+            MaginaOlivoTheme {
+                HomeScreen(
+                    UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Value(weather, "AEMET", now, stale = false)),
+                    LocalTime.of(10, 0), {}, {}, {}, {}, feedNow = now, weatherMotion = false,
+                )
+            }
+        }
+        listOf(0, 35, 100).forEach { value ->
+            composeRule.runOnIdle { percent = value }
+            composeRule.onNodeWithTag("home-weather-summary").assertTextContains("Prob. lluvia $value %", substring = true)
+        }
+    }
+
+    /** #345: no probability from the source is never «0 %»; MET Norway's millimetres are shown instead. */
+    @Test fun aMissingProbabilityIsNeverZeroAndFallbackMillimetresAreShown() {
+        val noProbability = WeatherNow(18, WeatherCondition.CLOUDY, null, 11, now)
+        show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Value(noProbability, "MET Norway", now, stale = false)))
+        composeRule.onNodeWithTag("home-weather-rain", useUnmergedTree = true).assertDoesNotExist()
+        composeRule.onNode(hasTestTag("home-weather-summary") and hasText("%", substring = true)).assertDoesNotExist()
     }
 
     @Test fun tappingHeroWeatherOpensTheWeek() {

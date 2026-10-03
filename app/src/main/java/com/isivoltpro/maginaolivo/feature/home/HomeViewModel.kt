@@ -22,6 +22,7 @@ import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -106,6 +107,24 @@ class HomeViewModel(
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = mutableState.asStateFlow()
+    private var weatherRefresh: Job? = null
+    private var weatherRefreshPlace: FeedLocation? = null
+
+    /**
+     * #315: entering or coming back to Inicio (also after the app was in the background) asks for
+     * the weather again only when the cached value is past its one-hour window. No polling.
+     */
+    fun onResumed() {
+        mutableState.value.weatherLocation?.let(::refreshWeatherIfStale)
+    }
+
+    /** One background attempt per place at a time; Inicio never waits for it. */
+    private fun refreshWeatherIfStale(place: FeedLocation) {
+        val feed = weatherFeed ?: return
+        if (weatherRefresh?.isActive == true && weatherRefreshPlace == place) return
+        weatherRefreshPlace = place
+        weatherRefresh = viewModelScope.launch { feed.refreshIfStale(place) }
+    }
 
     init {
         val activeFarms = flow { emit(workspaces.ensureLocalWorkspace()) }.flatMapLatest { result ->
@@ -125,7 +144,7 @@ class HomeViewModel(
         ) { farmPlace, profilePlace -> farmPlace ?: profilePlace }
             .distinctUntilChanged()
             // A stale or missing value is refreshed in the background; Inicio never waits for it.
-            .onEach { place -> if (place != null && weatherFeed != null) viewModelScope.launch { weatherFeed.refreshIfStale(place) } }
+            .onEach { place -> place?.let(::refreshWeatherIfStale) }
         val weather = location.flatMapLatest { place ->
             (weatherFeed?.observe(place) ?: flowOf(FeedState.NotConfigured)).map { place to it }
         }

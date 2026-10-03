@@ -40,6 +40,7 @@ It must not drift into generic ERP, banking-dashboard, rustic cliché or overly 
 | MoTreatmentText / Tint | #2E6A5C / #E1EEE9 | CR-011: Tratamiento accent |
 | MoLabourText / Tint | #9A4524 / #F8E5DA | CR-011: Jornal / people accent |
 | MoMoneyText / Tint | #6A5326 / #EEE6D2 | CR-011: Gasto / money accent |
+| MoRainText / Tint | #1D5E8C / #E2EFF8 | #345: rain probability and «Radar de lluvia» (icon + text, never colour alone) |
 
 CR-011 action accents: Trabajo olive · Riego blue · Tratamiento technical green · Pesada ochre ·
 Jornal terracotta · Gasto gold-brown · Campaña deep green · Avisos amber. Colour is never the

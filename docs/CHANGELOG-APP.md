@@ -20,6 +20,12 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Lluvia y radar (#345, #315).** Inicio muestra «Prob. lluvia X %» con su gota cuando AEMET la
+  publica; si la fuente no da probabilidad (MET Norway) se muestra la lluvia prevista en mm del día
+  y nunca un 0 % inventado. El tiempo se considera actual durante 1 hora y se vuelve a pedir al
+  entrar o volver a Inicio si es más antiguo; «Actualizar» en El tiempo reintenta a mano y, si falla,
+  conserva el dato guardado con su antigüedad. El radar de lluvia tiene su propio color agua,
+  icono y título.
 - **Pesada manual + foto (#342).** Una pesada se registra con los kilos netos que escribes,
   la cooperativa o almazara, el vale si lo hay, las parcelas y árbol/vuelo o suelo. La foto o
   archivo del recibo es opcional y se guarda como adjunto de esa pesada: nunca cambia los kilos ni

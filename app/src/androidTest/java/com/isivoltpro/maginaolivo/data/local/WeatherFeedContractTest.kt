@@ -94,6 +94,40 @@ class WeatherFeedContractTest {
         assertTrue(stale.stale)
     }
 
+    /** #315: one-hour window — no call at 59 min, one call past the hour. */
+    @Test
+    fun weatherIsAskedAgainOnlyAfterAnHour() = runBlocking {
+        val weather = feed()
+        weather.refreshIfStale(bedmar)
+        clock.value = start.plusSeconds(59 * 60)
+        weather.refreshIfStale(bedmar)
+        assertEquals(1, source.calls)
+        assertEquals(false, (weather.observe(bedmar).first() as FeedState.Value).stale)
+        clock.value = start.plusSeconds(61 * 60)
+        assertTrue((weather.observe(bedmar).first() as FeedState.Value).stale)
+        weather.refreshIfStale(bedmar)
+        assertEquals(2, source.calls)
+        assertEquals(start.plusSeconds(61 * 60), (weather.observe(bedmar).first() as FeedState.Value).fetchedAt)
+    }
+
+    /** #315: «Actualizar» fetches even a fresh value; a failure keeps the saved value and its time. */
+    @Test
+    fun manualRefreshFetchesNowAndAFailureKeepsTheCache() = runBlocking {
+        val weather = feed()
+        weather.refreshIfStale(bedmar)
+        clock.value = start.plusSeconds(10 * 60)
+        assertTrue(weather.refresh(bedmar))
+        assertEquals(2, source.calls)
+        assertEquals(start.plusSeconds(10 * 60), (weather.observe(bedmar).first() as FeedState.Value).fetchedAt)
+        clock.value = start.plusSeconds(20 * 60)
+        source.failNext = true
+        assertEquals(false, weather.refresh(bedmar))
+        val kept = weather.observe(bedmar).first() as FeedState.Value
+        assertEquals(sunny, kept.value)
+        assertEquals(start.plusSeconds(10 * 60), kept.fetchedAt)
+        assertEquals(false, feed(source = null).refresh(bedmar))
+    }
+
     @Test
     fun theCacheRecordsTheProviderThatActuallyAnswered() = runBlocking {
         // AEMET failed inside the Edge Function; MET Norway answered and the function said so.

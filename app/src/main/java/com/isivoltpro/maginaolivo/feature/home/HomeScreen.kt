@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -84,6 +85,11 @@ fun HomeRoute(
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // #315: entering Inicio or bringing the app back refreshes the weather if it is over an hour old.
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onResumed()
+        onPauseOrDispose { }
+    }
     HomeScreen(
         state, LocalTime.now(), onCalendar, onWeatherWeek, onCampaign, onActivitySelected, clock.nowInstant(),
         onOilMarket = onOilMarket,

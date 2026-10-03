@@ -62,6 +62,11 @@ val MoLabourTint = Color(0xFFF8E5DA)
 val MoMoneyText = Color(0xFF6A5326)
 val MoMoneyTint = Color(0xFFEEE6D2)
 
+// #345: rain/radar accent — a clearer water blue than the slate «Tiempo»/Riego info family, so
+// the rain radar reads as its own block. Line ≥ 4.5:1 on its tint and on the card white.
+val MoRainText = Color(0xFF1D5E8C)
+val MoRainTint = Color(0xFFE2EFF8)
+
 val MoLightColorScheme = lightColorScheme(
     // Material's own "primary" drives text buttons, checkboxes and progress: those are
     // selection/secondary accents, so they take the mid olive. The dark olive CTA is

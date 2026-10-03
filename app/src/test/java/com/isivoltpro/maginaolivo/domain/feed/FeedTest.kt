@@ -17,8 +17,9 @@ class FeedTest {
 
     @Test
     fun weatherIsStaleOnlyPastItsWindow() {
-        assertFalse(FeedAge.isStale(FeedKind.WEATHER, fetched, fetched.plusSeconds(3 * 3600)))
-        assertTrue(FeedAge.isStale(FeedKind.WEATHER, fetched, fetched.plusSeconds(3 * 3600 + 1)))
+        // #315: weather is fresh for one hour.
+        assertFalse(FeedAge.isStale(FeedKind.WEATHER, fetched, fetched.plusSeconds(3600)))
+        assertTrue(FeedAge.isStale(FeedKind.WEATHER, fetched, fetched.plusSeconds(3600 + 1)))
     }
 
     @Test
