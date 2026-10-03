@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
@@ -73,7 +75,13 @@ class MyProfileScreenTest {
 
         composeRule.onNodeWithTag("profile-cooperative-none").performScrollTo().performClick()
         composeRule.onNodeWithTag("profile-new-cooperative").performScrollTo().performTextInput("S.C.A. San Isidro")
-        composeRule.onNodeWithTag("profile-create-cooperative").performScrollTo().performClick()
+        // «Añadir y elegir» is enabled once the name lands; tapping it earlier is lost on a slow emulator.
+        composeRule.onNodeWithTag("profile-create-cooperative").performScrollTo()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodes(hasTestTag("profile-create-cooperative") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("profile-create-cooperative").performClick()
+        composeRule.waitUntil(5_000) { created.isNotEmpty() }
         composeRule.runOnIdle {
             assertEquals(listOf<UUID?>(molino.id, null), chosen)
             assertEquals(listOf("S.C.A. San Isidro"), created)
