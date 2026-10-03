@@ -28,9 +28,12 @@ data class RecollectionCurrency(
     val posted: List<Expense>,
     val summary: RecollectionCostSummary?,
 ) {
+    fun hasPosted(bucket: RecollectionBucket): Boolean = posted.any { RecollectionBucket.of(it) == bucket }
+
     fun amount(bucket: RecollectionBucket? = null): Long? = runCatching {
         posted.filter { bucket == null || RecollectionBucket.of(it) == bucket }
-            .fold(0L) { total, expense -> Math.addExact(total, expense.amountMinor) }
+            .takeIf { it.isNotEmpty() }
+            ?.fold(0L) { total, expense -> Math.addExact(total, expense.amountMinor) }
     }.getOrNull()
 
     val costPerKgMinor: Long? get() = summary?.costPerKg?.let { cost ->
@@ -43,10 +46,16 @@ data class RecollectionCurrency(
 
 object RecollectionLedger {
     fun of(campaignId: UUID, expenses: List<Expense>, deliveries: List<Delivery>): List<RecollectionCurrency> =
-        expenses.filter { it.campaignId == campaignId && it.status == ExpenseStatus.POSTED }
-            .groupBy { it.currency }.toSortedMap().map { (currency, posted) ->
-                RecollectionCurrency(currency, posted, runCatching {
-                    RecollectionCostSummary.of(campaignId, posted, deliveries, currency)
-                }.getOrNull())
+        posted(expenses.filter { it.campaignId == campaignId }).map { ledger ->
+            ledger.copy(summary = runCatching {
+                RecollectionCostSummary.of(campaignId, ledger.posted, deliveries, ledger.currency)
+            }.getOrNull())
+        }
+
+    /** Input is already scoped by the caller (e.g. the day's repository). Never assigns a campaign. */
+    fun posted(expenses: List<Expense>): List<RecollectionCurrency> =
+        expenses.filter { it.status == ExpenseStatus.POSTED }.groupBy { it.currency }.toSortedMap()
+            .map { (currency, rows) ->
+                RecollectionCurrency(currency, rows, summary = null)
             }
 }

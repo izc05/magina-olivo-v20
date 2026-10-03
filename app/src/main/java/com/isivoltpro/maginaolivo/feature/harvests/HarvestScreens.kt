@@ -681,12 +681,14 @@ fun HarvestDetailScreen(
                     MoKpiMetric("Jornales", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.LABOUR),
                         Modifier.fillMaxWidth().testTag("day-resource-labour"), icon = MoIcons.People, kind = MoKpiKind.JORNALES,
                         supportingText = when { state.labourReadFailed -> "No pudimos leer los jornales"; !state.labourLoaded -> "Cargando jornales…";
-                            else -> "${labourSummary.people} personas · ${labourSummary.label()} · Ver detalle" },
+                            else -> listOfNotNull("${labourSummary.people} personas · ${labourSummary.label()} · Ver detalle",
+                                labourCostNote(state.labour, state.costs)).joinToString("\n") },
                         onClick = { resourceDetail = "labour" })
                     MoKpiMetric("Maquinaria", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.EQUIPMENT),
                         Modifier.fillMaxWidth().testTag("day-resource-equipment"), icon = MoIcons.Tractor, kind = MoKpiKind.MAQUINARIA,
                         supportingText = when { !state.equipmentLoaded -> "Cargando maquinaria…"; state.equipmentReadFailed -> "No pudimos leer la maquinaria";
-                            else -> "${state.equipment.sumOf { it.quantity }} equipos/usos · Ver detalle" }, onClick = { resourceDetail = "equipment" })
+                            else -> listOfNotNull("${state.equipment.sumOf { it.quantity }} equipos/usos · Ver detalle",
+                                equipmentCostNote(state.equipment, state.costs)).joinToString("\n") }, onClick = { resourceDetail = "equipment" })
                     MoKpiMetric("Otros gastos", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.OTHER),
                         Modifier.fillMaxWidth().testTag("day-resource-other"), icon = MoIcons.Euro, kind = MoKpiKind.COSTES,
                         supportingText = when { !state.costsLoaded -> "Cargando gastos…"; state.costsReadFailed -> "No pudimos leer los gastos";
@@ -748,6 +750,8 @@ fun HarvestDetailScreen(
                         editable = harvest.editable,
                         error = state.equipmentError.takeUnless { equipmentVisible },
                         onEdit = { resourceDetail = null; equipmentVisible = true },
+                        loaded = state.equipmentLoaded,
+                        readFailed = state.equipmentReadFailed,
                     )
                     }
                     "costs" -> {
@@ -761,6 +765,8 @@ fun HarvestDetailScreen(
                         onEditRates = state.rates?.let { { resourceDetail = null; ratesVisible = true } },
                         unlinked = state.unlinkedCosts,
                         onLink = onLinkCost,
+                        loaded = state.costsLoaded,
+                        readFailed = state.costsReadFailed,
                     )
                     }
                 }

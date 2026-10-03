@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -67,6 +69,35 @@ class JornadaCostScreenTest {
         composeRule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-cost-total").assertTextContains("165,50", substring = true)
         composeRule.onNodeWithTag("jornada-cost-total").assertTextContains("1 borrador sin contar", substring = true)
+    }
+
+    @Test fun historicalDetailKeepsUnsupportedCodeAndOverflowUnavailable() {
+        val costs = listOf(expense(Long.MAX_VALUE, ExpenseStatus.POSTED, "Gasoil"),
+            expense(1, ExpenseStatus.POSTED, "Transporte"),
+            expense(123, ExpenseStatus.POSTED, "Histórico").copy(currency = "INVALID"))
+        composeRule.setContent { MaginaOlivoTheme {
+            HarvestDetailScreen(HarvestDetailUiState(isLoading = false, harvest = harvest, costs = costs), {}, {})
+        } }
+        composeRule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
+        composeRule.onNodeWithTag("jornada-cost-total").assertTextContains("Importe no disponible (EUR)", substring = true)
+            .assertTextContains("Importe no disponible (INVALID)", substring = true)
+        composeRule.onAllNodesWithTag("jornada-cost").assertCountEquals(3)
+    }
+
+    @Test fun failedCostReadHidesStaleRowsAndCollisionMutations() {
+        val manual = expense(1000, ExpenseStatus.POSTED, "Jornales")
+        val calculated = expense(2000, ExpenseStatus.DRAFT, "Calculado").copy(origin = ExpenseOrigin.DAY_LABOUR)
+        composeRule.setContent { MaginaOlivoTheme {
+            HarvestDetailScreen(HarvestDetailUiState(isLoading = false, harvest = harvest,
+                costs = listOf(manual, calculated), unlinkedCosts = listOf(manual.copy(harvestId = null)),
+                costsLoaded = true, costsReadFailed = true), {}, {})
+        } }
+        composeRule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
+        composeRule.onNodeWithTag("jornada-costs-read-error").assertExists()
+        composeRule.onNodeWithTag("jornada-cost-total").assertDoesNotExist()
+        composeRule.onAllNodesWithTag("jornada-cost").assertCountEquals(0)
+        composeRule.onNodeWithTag("jornada-prefer-calculated").assertDoesNotExist()
+        composeRule.onNodeWithTag("jornada-link-cost").assertDoesNotExist()
     }
 
     private fun expense(minor: Long, status: ExpenseStatus, concept: String) = Expense(

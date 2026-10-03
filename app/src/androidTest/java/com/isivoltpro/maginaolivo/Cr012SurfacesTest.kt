@@ -49,6 +49,68 @@ class Cr012SurfacesTest {
     private val payments = listOf(LabourPayment(UUID.randomUUID(), workers[0].id, campaign.id, date, 6000, "EUR"))
     private val notebook get() = CampaignNotebook.project(campaign, emptyList(), listOf(day), listOf(delivery), costs, entries, equipment)
 
+    @Test fun dayOtherDetailKeepsJpyOnlyPostedTotal() {
+        showDayCosts(listOf(costs[2].copy(currency = "JPY", amountMinor = 1000)))
+        rule.onNodeWithTag("jornada-cost-total").assertTextContains("1.000", substring = true).assertTextContains("JPY", substring = true)
+    }
+
+    @Test fun dayOtherDetailKeepsMixedCurrenciesAndIgnoresDraftMoney() {
+        showDayCosts(listOf(costs[2], costs[2].copy(id = UUID.randomUUID(), currency = "JPY", amountMinor = 1000),
+            costs[2].copy(id = UUID.randomUUID(), status = ExpenseStatus.DRAFT, amountMinor = 99999)))
+        rule.onNodeWithTag("jornada-cost-total").assertTextContains("50,00", substring = true)
+            .assertTextContains("1.000", substring = true).assertTextContains("JPY", substring = true)
+            .assertTextContains("1 borrador sin contar", substring = true)
+    }
+
+    private fun showDayCosts(rows: List<Expense>) {
+        rule.setContent { MaginaOlivoTheme { HarvestDetailScreen(HarvestDetailUiState(isLoading = false, harvest = day, costs = rows), {}, {}) } }
+        rule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
+    }
+
+    @Test fun dayUnpricedResourcesAndDraftCostsStayUnknownBesidePostedFuel() {
+        val rows = listOf(costs[2], costs[0].copy(status = ExpenseStatus.DRAFT), costs[1].copy(status = ExpenseStatus.DRAFT))
+        rule.setContent { MaginaOlivoTheme { HarvestDetailScreen(HarvestDetailUiState(isLoading = false, harvest = day,
+            labour = entries.map { it.copy(appliedRate = null) }, equipment = equipment.map { it.copy(appliedPrice = null) }, costs = rows), {}, {}) } }
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().assertTextContains("—").assertTextContains("sin confirmar", substring = true)
+        rule.onNodeWithTag("day-resource-equipment").performScrollTo().assertTextContains("—").assertTextContains("sin confirmar", substring = true)
+        rule.onNodeWithTag("day-cost").performScrollTo().assertTextContains("50,00", substring = true)
+    }
+
+    @Test fun campaignConfirmedPortionDisclosesUnpricedResources() {
+        val partial = notebook.copy(labour = entries + entries[0].copy(id = UUID.randomUUID(), appliedRate = null),
+            equipment = equipment + equipment[0].copy(id = UUID.randomUUID(), appliedPrice = null))
+        rule.setContent { MaginaOlivoTheme { Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            CampaignView(partial, NotebookUiState(isLoading = false, notebook = partial), NotebookActions())
+        } } }
+        rule.onNodeWithTag("notebook-summary-labour").performScrollTo().assertTextContains("300,00", substring = true).assertTextContains("sin confirmar", substring = true)
+        rule.onNodeWithTag("notebook-summary-equipment").performScrollTo().assertTextContains("180,00", substring = true).assertTextContains("sin confirmar", substring = true)
+    }
+
+    @Test fun dayPostedZeroIsShownWithoutFabricatedJpyResourceZero() {
+        rule.setContent { MaginaOlivoTheme { HarvestDetailScreen(HarvestDetailUiState(isLoading = false, harvest = day,
+            costs = listOf(costs[0].copy(amountMinor = 0), costs[1].copy(amountMinor = 0), costs[2].copy(currency = "JPY", amountMinor = 1000))), {}, {}) } }
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().assertTextContains("0,00", substring = true).assert(!hasText("JPY", substring = true))
+        rule.onNodeWithTag("day-resource-equipment").performScrollTo().assertTextContains("0,00", substring = true).assert(!hasText("JPY", substring = true))
+    }
+
+    @Test fun pendingResourceDetailsNeverClaimEmptyOrAllowEdits() = unavailableResourceDetails(false)
+    @Test fun failedResourceDetailsNeverClaimEmptyOrAllowEdits() = unavailableResourceDetails(true)
+
+    private fun unavailableResourceDetails(failed: Boolean) {
+        rule.setContent { MaginaOlivoTheme { HarvestDetailScreen(HarvestDetailUiState(isLoading = false, harvest = day,
+            equipmentLoaded = failed, equipmentReadFailed = failed, costsLoaded = failed, costsReadFailed = failed), {}, {}) } }
+        rule.onNodeWithTag("day-resource-equipment").performScrollTo().performClick()
+        rule.onNodeWithTag(if (failed) "jornada-equipment-read-error" else "jornada-equipment-loading").assertExists()
+        rule.onNodeWithText("Sin maquinaria anotada.").assertDoesNotExist()
+        rule.onNodeWithTag("jornada-edit-equipment").assertDoesNotExist()
+        rule.onNodeWithTag("resource-detail-close").performScrollTo().performClick()
+        rule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
+        rule.onNodeWithTag(if (failed) "jornada-costs-read-error" else "jornada-costs-loading").assertExists()
+        rule.onNodeWithTag("jornada-no-costs").assertDoesNotExist()
+        rule.onNodeWithTag("jornada-add-cost").assertDoesNotExist()
+        rule.onNodeWithTag("jornada-edit-rates").assertDoesNotExist()
+    }
+
     @Test fun dayExpenseUsesHistoricalJpyBeforeTodaysEurAndEmitsJpyMinorUnits() {
         var saved: Long? = null
         val jpy = costs[2].copy(currency = "JPY", amountMinor = 1000)
@@ -84,9 +146,9 @@ class Cr012SurfacesTest {
             labourLoaded = false, equipmentLoaded = false, costsLoaded = false), {}, {}) } }
         rule.onNodeWithTag("day-resource-equipment").performScrollTo().assertTextContains("Cargando maquinaria", substring = true)
         rule.onNodeWithTag("day-resource-other").performScrollTo().assertTextContains("Cargando gastos", substring = true).performClick()
-        rule.onNodeWithTag("jornada-add-cost").performScrollTo().performClick()
-        rule.onNodeWithTag("day-expense-currency-error").assertTextContains("Cargando", substring = true)
-        rule.onNodeWithTag("cost-save").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("jornada-costs-loading").assertExists()
+        rule.onNodeWithTag("jornada-add-cost").assertDoesNotExist()
+        rule.onNodeWithTag("cost-save").assertDoesNotExist()
     }
 
     @Test fun comparisonKeepsMixedCurrenciesVisibleWithoutConversion() {

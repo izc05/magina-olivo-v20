@@ -249,10 +249,12 @@ internal fun SummaryTab(
             Modifier.fillMaxWidth().testTag("notebook-summary-labour"), icon = MoIcons.People, kind = MoKpiKind.JORNALES,
             supportingText = (listOf("${notebook.labourByWorker.size} personas · ${notebook.labourSummary.label()}") + settlements +
                 listOfNotNull(if (!notebook.unnamedLabour.isEmpty) "Sin identificar (histórico)" else null,
+                    com.isivoltpro.maginaolivo.feature.harvests.labourCostNote(notebook.labour, notebook.expenses),
                     if (accounts == null || accounts.any { it.unconfirmed } || (balances.isEmpty() && ledger.any { (it.amount(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.LABOUR) ?: 0) > 0 })) "Hay precios o costes sin atribuir" else null)).joinToString("\n"), onClick = onLabour)
         MoKpiMetric("Maquinaria", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.EQUIPMENT),
             Modifier.fillMaxWidth().testTag("notebook-summary-equipment"), icon = MoIcons.Tractor, kind = MoKpiKind.MAQUINARIA,
-            supportingText = "${notebook.equipment.sumOf { it.quantity }} equipos/usos · Ver detalle", onClick = { machineryDetail = true })
+            supportingText = listOfNotNull("${notebook.equipment.sumOf { it.quantity }} equipos/usos · Ver detalle",
+                com.isivoltpro.maginaolivo.feature.harvests.equipmentCostNote(notebook.equipment, notebook.expenses)).joinToString("\n"), onClick = { machineryDetail = true })
         MoKpiMetric("Otros gastos", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.OTHER),
             Modifier.fillMaxWidth().testTag("notebook-summary-other"), icon = MoIcons.Euro, kind = MoKpiKind.COSTES,
             supportingText = "Combustible, transporte, reparaciones y otros · Ver gastos", onClick = onExpenses)

@@ -1,0 +1,276 @@
+
+com.isivoltpro.maginaolivo.Cr012SurfacesTest:
+Error in failedResourceDetailsNeverClaimEmptyOrAllowEdits(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-equipment-read-error')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.unavailableResourceDetails(Cr012SurfacesTest.kt:103)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.failedResourceDetailsNeverClaimEmptyOrAllowEdits(Cr012SurfacesTest.kt:97)
+
+Error in dayPostedZeroIsShownWithoutFabricatedJpyResourceZero(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed to assert the following: (NOT (Text + InputText + EditableText contains 'JPY' (ignoreCase: false) as substring))
+Semantics of the node:
+Node #162 at (l=55.0, t=1630.0, r=1025.0, b=2003.0)px, Tag: 'day-resource-labour'
+Focused = 'false'
+IsContainer = 'true'
+Role = 'Button'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Text = '[Jornales, 0,00 €
+0 JPY, 0 personas ·  · Ver detalle]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 17 siblings
+Selector used: (TestTag = 'day-resource-labour')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.dayPostedZeroIsShownWithoutFabricatedJpyResourceZero(Cr012SurfacesTest.kt:92)
+
+Error in campaignConfirmedPortionDisclosesUnpricedResources(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'sin confirmar' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #289 at (l=0.0, t=1661.0, r=1080.0, b=1996.0)px, Tag: 'notebook-summary-labour'
+Focused = 'false'
+IsContainer = 'true'
+Role = 'Button'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Text = '[Jornales, 300,00 €, 3 personas · 4 jornadas
+Hay precios o costes sin atribuir]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 22 siblings
+Selector used: (TestTag = 'notebook-summary-labour')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.campaignConfirmedPortionDisclosesUnpricedResources(Cr012SurfacesTest.kt:85)
+
+Error in dayOtherDetailKeepsMixedCurrenciesAndIgnoresDraftMoney(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '1.000' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #471 at (l=55.0, t=1240.0, r=769.0, b=1292.0)px, Tag: 'jornada-cost-total'
+Text = '[Coste 50,00 € · 1 borrador sin contar]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 6 siblings
+Selector used: (TestTag = 'jornada-cost-total')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.dayOtherDetailKeepsMixedCurrenciesAndIgnoresDraftMoney(Cr012SurfacesTest.kt:61)
+
+Error in dayUnpricedResourcesAndDraftCostsStayUnknownBesidePostedFuel(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '—' (ignoreCase: false))
+Semantics of the node:
+Node #544 at (l=55.0, t=1630.0, r=1025.0, b=1915.0)px, Tag: 'day-resource-labour'
+Focused = 'false'
+IsContainer = 'true'
+Role = 'Button'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Text = '[Jornales, 0,00 €, 3 personas · 3 jornadas · Ver detalle]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 17 siblings
+Selector used: (TestTag = 'day-resource-labour')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.dayUnpricedResourcesAndDraftCostsStayUnknownBesidePostedFuel(Cr012SurfacesTest.kt:74)
+
+Error in pendingResourceDetailsNeverClaimEmptyOrAllowEdits(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-equipment-loading')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.unavailableResourceDetails(Cr012SurfacesTest.kt:103)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.pendingResourceDetailsNeverClaimEmptyOrAllowEdits(Cr012SurfacesTest.kt:96)
+
+Error in dayOtherDetailKeepsJpyOnlyPostedTotal(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '1.000' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #843 at (l=55.0, t=1638.0, r=300.0, b=1690.0)px, Tag: 'jornada-cost-total'
+Text = '[Coste 0,00 €]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 4 siblings
+Selector used: (TestTag = 'jornada-cost-total')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.dayOtherDetailKeepsJpyOnlyPostedTotal(Cr012SurfacesTest.kt:54)
+
+com.isivoltpro.maginaolivo.JornadaCostScreenTest:
+Error in historicalDetailKeepsUnsupportedCodeAndOverflowUnavailable(com.isivoltpro.maginaolivo.JornadaCostScreenTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Importe no disponible (EUR)' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #974 at (l=55.0, t=1240.0, r=772.0, b=1292.0)px, Tag: 'jornada-cost-total'
+Text = '[Coste -92.233.720.368.547.758,08 €]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 6 siblings
+Selector used: (TestTag = 'jornada-cost-total')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.JornadaCostScreenTest.historicalDetailKeepsUnsupportedCodeAndOverflowUnavailable(JornadaCostScreenTest.kt:82)
+
+Error in failedCostReadHidesStaleRowsAndCollisionMutations(com.isivoltpro.maginaolivo.JornadaCostScreenTest):
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-costs-read-error')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.JornadaCostScreenTest.failedCostReadHidesStaleRowsAndCollisionMutations(JornadaCostScreenTest.kt:96)
+
+
+Time: 12.777
+There were 9 failures:
+1) failedResourceDetailsNeverClaimEmptyOrAllowEdits(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-equipment-read-error')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.unavailableResourceDetails(Cr012SurfacesTest.kt:103)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.failedResourceDetailsNeverClaimEmptyOrAllowEdits(Cr012SurfacesTest.kt:97)
+2) dayPostedZeroIsShownWithoutFabricatedJpyResourceZero(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed to assert the following: (NOT (Text + InputText + EditableText contains 'JPY' (ignoreCase: false) as substring))
+Semantics of the node:
+Node #162 at (l=55.0, t=1630.0, r=1025.0, b=2003.0)px, Tag: 'day-resource-labour'
+Focused = 'false'
+IsContainer = 'true'
+Role = 'Button'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Text = '[Jornales, 0,00 €
+0 JPY, 0 personas ·  · Ver detalle]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 17 siblings
+Selector used: (TestTag = 'day-resource-labour')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.dayPostedZeroIsShownWithoutFabricatedJpyResourceZero(Cr012SurfacesTest.kt:92)
+3) campaignConfirmedPortionDisclosesUnpricedResources(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'sin confirmar' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #289 at (l=0.0, t=1661.0, r=1080.0, b=1996.0)px, Tag: 'notebook-summary-labour'
+Focused = 'false'
+IsContainer = 'true'
+Role = 'Button'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Text = '[Jornales, 300,00 €, 3 personas · 4 jornadas
+Hay precios o costes sin atribuir]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 22 siblings
+Selector used: (TestTag = 'notebook-summary-labour')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.campaignConfirmedPortionDisclosesUnpricedResources(Cr012SurfacesTest.kt:85)
+4) dayOtherDetailKeepsMixedCurrenciesAndIgnoresDraftMoney(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '1.000' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #471 at (l=55.0, t=1240.0, r=769.0, b=1292.0)px, Tag: 'jornada-cost-total'
+Text = '[Coste 50,00 € · 1 borrador sin contar]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 6 siblings
+Selector used: (TestTag = 'jornada-cost-total')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.dayOtherDetailKeepsMixedCurrenciesAndIgnoresDraftMoney(Cr012SurfacesTest.kt:61)
+5) dayUnpricedResourcesAndDraftCostsStayUnknownBesidePostedFuel(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '—' (ignoreCase: false))
+Semantics of the node:
+Node #544 at (l=55.0, t=1630.0, r=1025.0, b=1915.0)px, Tag: 'day-resource-labour'
+Focused = 'false'
+IsContainer = 'true'
+Role = 'Button'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 20.0.dp), topEnd = CornerSize(size = 20.0.dp), bottomEnd = CornerSize(size = 20.0.dp), bottomStart = CornerSize(size = 20.0.dp))'
+Text = '[Jornales, 0,00 €, 3 personas · 3 jornadas · Ver detalle]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 17 siblings
+Selector used: (TestTag = 'day-resource-labour')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.dayUnpricedResourcesAndDraftCostsStayUnknownBesidePostedFuel(Cr012SurfacesTest.kt:74)
+6) pendingResourceDetailsNeverClaimEmptyOrAllowEdits(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-equipment-loading')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.unavailableResourceDetails(Cr012SurfacesTest.kt:103)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.pendingResourceDetailsNeverClaimEmptyOrAllowEdits(Cr012SurfacesTest.kt:96)
+7) dayOtherDetailKeepsJpyOnlyPostedTotal(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '1.000' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #843 at (l=55.0, t=1638.0, r=300.0, b=1690.0)px, Tag: 'jornada-cost-total'
+Text = '[Coste 0,00 €]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 4 siblings
+Selector used: (TestTag = 'jornada-cost-total')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.dayOtherDetailKeepsJpyOnlyPostedTotal(Cr012SurfacesTest.kt:54)
+8) historicalDetailKeepsUnsupportedCodeAndOverflowUnavailable(com.isivoltpro.maginaolivo.JornadaCostScreenTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Importe no disponible (EUR)' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #974 at (l=55.0, t=1240.0, r=772.0, b=1292.0)px, Tag: 'jornada-cost-total'
+Text = '[Coste -92.233.720.368.547.758,08 €]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 6 siblings
+Selector used: (TestTag = 'jornada-cost-total')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.JornadaCostScreenTest.historicalDetailKeepsUnsupportedCodeAndOverflowUnavailable(JornadaCostScreenTest.kt:82)
+9) failedCostReadHidesStaleRowsAndCollisionMutations(com.isivoltpro.maginaolivo.JornadaCostScreenTest)
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'jornada-costs-read-error')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at com.isivoltpro.maginaolivo.JornadaCostScreenTest.failedCostReadHidesStaleRowsAndCollisionMutations(JornadaCostScreenTest.kt:96)
+
+FAILURES!!!
+Tests run: 9,  Failures: 9
+
+

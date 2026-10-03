@@ -67,8 +67,20 @@ internal fun EquipmentType.icon() = when (this) {
 
 /** Phase 19E — what equipment the Jornada used, by kind and quantity. */
 @Composable
-internal fun JornadaEquipment(lines: List<EquipmentLine>, editable: Boolean, error: String?, onEdit: () -> Unit) {
+internal fun JornadaEquipment(
+    lines: List<EquipmentLine>, editable: Boolean, error: String?, onEdit: () -> Unit,
+    loaded: Boolean = true, readFailed: Boolean = false,
+) {
     MoSectionHeader("Uso de maquinaria")
+    if (readFailed || !loaded) {
+        Text(
+            if (readFailed) "No pudimos leer la maquinaria de este día." else "Cargando maquinaria…",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (readFailed) MaterialTheme.colorScheme.error else MoTextSecondary,
+            modifier = Modifier.testTag(if (readFailed) "jornada-equipment-read-error" else "jornada-equipment-loading"),
+        )
+        return
+    }
     val summary = EquipmentSummary.of(lines)
     if (summary.isEmpty) {
         Text("Sin maquinaria anotada.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-no-equipment"))

@@ -25,7 +25,7 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
-import com.isivoltpro.maginaolivo.domain.expense.JornadaCost
+import com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger
 import com.isivoltpro.maginaolivo.domain.expense.JornadaExpenseKind
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
@@ -59,16 +59,28 @@ internal fun JornadaCosts(
     /** CR-010 A3: hand-typed costs of this Farm and date linked to no day. */
     unlinked: List<Expense> = emptyList(),
     onLink: (UUID) -> Unit = {},
+    loaded: Boolean = true,
+    readFailed: Boolean = false,
 ) {
     MoSectionHeader("Gastos del día")
-    val cost = JornadaCost.of(expenses)
+    if (readFailed || !loaded) {
+        Text(
+            if (readFailed) "No pudimos leer los gastos de este día." else "Cargando gastos…",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (readFailed) MaterialTheme.colorScheme.error else MoTextSecondary,
+            modifier = Modifier.testTag(if (readFailed) "jornada-costs-read-error" else "jornada-costs-loading"),
+        )
+        return
+    }
+    val ledger = RecollectionLedger.posted(expenses)
+    val draftCount = expenses.count { it.status == ExpenseStatus.DRAFT }
     if (expenses.isEmpty()) {
         Text("Sin gastos anotados.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-no-costs"))
     } else {
         Text(
             listOfNotNull(
-                "Coste ${Money.format(cost.postedMinor, cost.summary.currency)}",
-                cost.draftCount.takeIf { it > 0 }?.let { if (it == 1) "1 borrador sin contar" else "$it borradores sin contar" },
+                "Coste ${ledger.moneyLabel()}",
+                draftCount.takeIf { it > 0 }?.let { if (it == 1) "1 borrador sin contar" else "$it borradores sin contar" },
             ).joinToString(" · "),
             style = MaterialTheme.typography.bodyLarge,
             color = MoOliveDark,
