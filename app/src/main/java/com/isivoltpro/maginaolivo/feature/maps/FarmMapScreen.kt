@@ -21,7 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -91,10 +90,16 @@ fun FarmMapRoute(
     LaunchedEffect(state.importCompleted) { if (state.importCompleted) onImported() }
     val context = LocalContext.current
     val locate = {
-        requestCurrentLocation(context) { point -> if (point != null) viewModel.goTo(point) else viewModel.locationUnavailable() }
+        if (!isLocationEnabled(context)) {
+            viewModel.locationUnavailable(LocationProblem.LOCATION_OFF)
+        } else {
+            requestCurrentLocation(context) { point ->
+                if (point != null) viewModel.myLocationFound(point) else viewModel.locationUnavailable(LocationProblem.NO_FIX)
+            }
+        }
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        if (granted.values.any { it }) locate() else viewModel.locationUnavailable()
+        if (granted.values.any { it }) locate() else viewModel.locationUnavailable(LocationProblem.PERMISSION)
     }
     FarmMapScreen(
         state = state,
@@ -108,6 +113,23 @@ fun FarmMapRoute(
         onImport = viewModel::importSelected,
         onLink = viewModel::linkSelected,
         onOpenParcel = onOpenParcel,
+        onLocationProblemAction = { problem ->
+            viewModel.dismissLocationProblem()
+            when (problem) {
+                // Asked again; once Android stops asking, its app settings are the way.
+                LocationProblem.PERMISSION -> if (hasLocationPermission(context)) locate() else runCatching {
+                    context.startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            .setData(android.net.Uri.fromParts("package", context.packageName, null)),
+                    )
+                }
+                LocationProblem.LOCATION_OFF -> runCatching {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                }
+                LocationProblem.NO_FIX -> Unit // the screen opens the coordinate search itself
+            }
+        },
+        onDismissLocationProblem = viewModel::dismissLocationProblem,
     )
 }
 
@@ -126,6 +148,8 @@ fun FarmMapScreen(
     onLink: () -> Unit,
     onOpenParcel: (UUID) -> Unit,
     showMap: Boolean = true,
+    onLocationProblemAction: (LocationProblem) -> Unit = {},
+    onDismissLocationProblem: () -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     // The light IGN map by default: the aerial photo is heavier on the phone and is one tap away.
@@ -154,6 +178,7 @@ fun FarmMapScreen(
                 onSelected = onTapParcel,
                 onTap = { latitude, longitude -> onTapMap(latitude, longitude) },
                 focus = state.focus,
+                myLocation = state.myLocation,
             )
         }
         // Everything floats over the map, so the map takes the whole screen.
@@ -184,21 +209,18 @@ fun FarmMapScreen(
                     maxLines = 2,
                     modifier = Modifier.testTag("farm-map-hint"),
                 )
-                if (state.mode != FarmMapMode.LOCATE) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                        FilterChip(
-                            selected = state.mode == FarmMapMode.VIEW,
-                            onClick = { onMode(FarmMapMode.VIEW) },
-                            label = { Text("Mis parcelas") },
-                            modifier = Modifier.testTag("farm-map-mode-view"),
-                        )
-                        FilterChip(
-                            selected = state.mode == FarmMapMode.ADD,
-                            onClick = { onMode(FarmMapMode.ADD) },
-                            label = { Text("Añadir de Catastro") },
-                            modifier = Modifier.testTag("farm-map-mode-add"),
-                        )
+                // #361: one clear main action. Viewing, «Añadir de Catastro» leads; adding, the way
+                // back to «Mis parcelas» is a quiet secondary link, not a competing button.
+                when (state.mode) {
+                    FarmMapMode.VIEW -> MoPrimaryButton(
+                        "Añadir de Catastro",
+                        { onMode(FarmMapMode.ADD) },
+                        Modifier.fillMaxWidth().testTag("farm-map-mode-add"),
+                    )
+                    FarmMapMode.ADD -> TextButton(onClick = { onMode(FarmMapMode.VIEW) }, modifier = Modifier.testTag("farm-map-mode-view")) {
+                        Text("← Volver a mis parcelas")
                     }
+                    FarmMapMode.LOCATE -> Unit
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { searchOpen = !searchOpen }, modifier = Modifier.testTag("farm-map-search-toggle")) {
@@ -243,6 +265,22 @@ fun FarmMapScreen(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (state.searching) Notice("Consultando Catastro…", MoTextSecondary, progress = true)
+            state.locationProblem?.let { problem ->
+                LocationProblemNotice(
+                    problem,
+                    onAction = {
+                        if (problem == LocationProblem.NO_FIX) searchOpen = true
+                        onLocationProblemAction(problem)
+                    },
+                    onDismiss = onDismissLocationProblem,
+                )
+            }
+            if (state.myLocation != null && state.locationProblem == null && state.mode == FarmMapMode.VIEW && state.selectedSavedId == null) {
+                Notice("El punto azul es tu ubicación.", MoTextSecondary, Modifier.testTag("farm-map-my-location-shown"))
+            }
+            if (state.mode != FarmMapMode.LOCATE && state.parcels.none { it.geometryGeoJson != null } && state.selected.isEmpty()) {
+                FarmMapGuide(Modifier.testTag("farm-map-guide"))
+            }
             state.error?.let { Notice(it, MoErrorText, Modifier.testTag("farm-map-error")) }
             state.message?.let { Notice(it, MoSuccessText, Modifier.testTag("farm-map-message")) }
             BottomPanel(state, onOpenParcel, onSearchByReference, onReview = { reviewSheet = true }, onLink = onLink)
@@ -274,6 +312,40 @@ fun FarmMapScreen(
     }
 }
 
+/** #361: «Mi ubicación» could not answer — say why and offer the one useful way out. */
+@Composable
+private fun LocationProblemNotice(problem: LocationProblem, onAction: () -> Unit, onDismiss: () -> Unit) {
+    Surface(Modifier.fillMaxWidth().testTag("farm-map-location-problem"), shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 2.dp) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(problem.message, color = MoErrorText, style = MaterialTheme.typography.bodyMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                TextButton(onClick = onAction, modifier = Modifier.testTag("farm-map-location-action")) { Text(problem.action) }
+                TextButton(onClick = onDismiss, modifier = Modifier.testTag("farm-map-location-dismiss")) { Text("Cancelar") }
+            }
+        }
+    }
+}
+
+/** #361: what to do first, in four short steps, until the farm has a parcel on the map. */
+@Composable
+private fun FarmMapGuide(modifier: Modifier = Modifier) {
+    Surface(modifier.fillMaxWidth(), shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 2.dp) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Cómo añadir tus parcelas", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+            FARM_MAP_STEPS.forEachIndexed { index, step ->
+                Text("${index + 1}. $step", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
+            }
+        }
+    }
+}
+
+internal val FARM_MAP_STEPS = listOf(
+    "Pulsa «Añadir de Catastro» o busca por coordenadas o polígono.",
+    "Usa «Mi ubicación» si estás en la finca.",
+    "Toca los números de tus parcelas en el mapa.",
+    "Revisa y pulsa «Añadir»: se guardan con su municipio.",
+)
+
 @Composable
 private fun Notice(text: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier, progress: Boolean = false) {
     Surface(modifier, shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 2.dp) {
@@ -297,14 +369,19 @@ private fun BottomPanel(
             val parcel = state.parcels.firstOrNull { it.id == state.selectedSavedId }
             if (parcel != null) {
                 MoSectionCard(title = parcel.displayName, icon = MoIcons.Parcels, modifier = Modifier.testTag("farm-map-parcel-card")) {
+                    // #361: say it is the selected, saved parcel, and where it is.
+                    Text(
+                        listOfNotNull("Seleccionada · Guardada", parcel.municipality?.takeIf { it.isNotBlank() }).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MoSuccessText,
+                        modifier = Modifier.testTag("farm-map-parcel-status"),
+                    )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                         MoLabeledValue("Superficie catastral", parcel.cadastralAreaM2?.let(::hectares), Modifier.weight(1f))
                         MoLabeledValue("Superficie gestionada", parcel.managedAreaM2?.let(::hectares), Modifier.weight(1f))
                     }
                     MoPrimaryButton("Abrir parcela", { onOpenParcel(parcel.id) }, Modifier.fillMaxWidth())
                 }
-            } else if (state.parcels.none { it.geometryGeoJson != null }) {
-                Notice("Pulsa «Añadir de Catastro» para marcar tus parcelas en el mapa.", MoTextSecondary)
             }
         }
         FarmMapMode.ADD -> Surface(shape = MoShape.card, color = MoWarmWhite.copy(alpha = 0.97f), shadowElevation = 3.dp) {

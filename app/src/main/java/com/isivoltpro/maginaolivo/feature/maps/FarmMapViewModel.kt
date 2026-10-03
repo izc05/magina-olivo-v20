@@ -50,6 +50,10 @@ data class FarmMapState(
     val linkedParcelId: UUID? = null,
     /** True only after the entire selected batch has been saved successfully. */
     val importCompleted: Boolean = false,
+    /** #361: where «Mi ubicación» found the phone this session, for the blue dot. */
+    val myLocation: GeoPoint? = null,
+    /** #361: why «Mi ubicación» could not answer, so the screen offers the right way out. */
+    val locationProblem: LocationProblem? = null,
 ) {
     val selectedCandidates: List<CadastralCandidate> get() = candidates.filter { it.reference in selected }
 }
@@ -98,9 +102,17 @@ class FarmMapViewModel(
 
     /** "Mi ubicación" and coordinate searches end here. */
     fun goTo(point: GeoPoint) {
-        mutableState.update { it.copy(focus = MapFocus(point), error = null, message = null) }
+        mutableState.update { it.copy(focus = MapFocus(point), error = null, message = null, locationProblem = null) }
         if (mutableState.value.mode != FarmMapMode.VIEW) findNear(point.latitude, point.longitude)
     }
+
+    /** #361: «Mi ubicación» answered: centre there and keep the blue dot on that point. */
+    fun myLocationFound(point: GeoPoint) {
+        mutableState.update { it.copy(myLocation = point) }
+        goTo(point)
+    }
+
+    fun dismissLocationProblem() = mutableState.update { it.copy(locationProblem = null) }
 
     fun tapMap(latitude: Double, longitude: Double) {
         if (mutableState.value.mode == FarmMapMode.VIEW) {
@@ -239,8 +251,8 @@ class FarmMapViewModel(
 
     fun dismissMessage() = mutableState.update { it.copy(message = null, error = null) }
 
-    fun locationUnavailable() = mutableState.update {
-        it.copy(error = "No hemos podido saber dónde estás. Activa la ubicación o escribe las coordenadas.")
+    fun locationUnavailable(problem: LocationProblem = LocationProblem.NO_FIX) = mutableState.update {
+        it.copy(locationProblem = problem, error = null)
     }
 
     private fun findNear(latitude: Double, longitude: Double) = load(replace = false) { client.findNear(latitude, longitude) }
@@ -307,4 +319,11 @@ private fun CadastreException.farmerMessage(): String = when (kind) {
     CadastreError.NOT_FOUND -> "Catastro no encontró esa parcela. Revisa los datos."
     CadastreError.NETWORK, CadastreError.SERVICE -> "No hemos podido consultar Catastro ahora. Tus parcelas guardadas siguen disponibles."
     CadastreError.INVALID_GEOMETRY, CadastreError.RESPONSE -> "Catastro respondió, pero no pudimos verificar esa parcela."
+}
+
+/** #361: the three ways «Mi ubicación» can fail, each with its own way out. */
+enum class LocationProblem(val message: String, val action: String) {
+    PERMISSION("Para centrar el mapa donde estás, permite el acceso a la ubicación.", "Permitir ubicación"),
+    LOCATION_OFF("La ubicación del teléfono está desactivada.", "Activar ubicación"),
+    NO_FIX("No hemos podido obtener tu ubicación.", "Escribir coordenadas"),
 }

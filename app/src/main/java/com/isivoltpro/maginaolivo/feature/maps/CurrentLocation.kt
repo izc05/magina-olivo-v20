@@ -41,3 +41,10 @@ fun requestCurrentLocation(context: Context, onResult: (GeoPoint?) -> Unit) {
         onResult(lastKnown())
     }
 }
+
+/** #361: whether any location provider is switched on, to tell «apagada» from «sin señal». */
+fun isLocationEnabled(context: Context): Boolean {
+    val manager = context.getSystemService(LocationManager::class.java) ?: return false
+    return listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+        .any { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
+}

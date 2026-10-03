@@ -100,6 +100,8 @@ fun ParcelMap(
     overlayTiles: String? = null,
     /** Credit for [overlayTiles], added to the map's attribution line. */
     overlayAttribution: String? = null,
+    /** #361: where «Mi ubicación» found the phone, drawn as a blue dot; never tracked or stored. */
+    myLocation: GeoPoint? = null,
 ) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
@@ -150,9 +152,15 @@ fun ParcelMap(
             view.onDestroy()
         }
     }
-    LaunchedEffect(map, effectiveBase, cadastreLines, overlayTiles) {
+    val showsMyLocation = myLocation != null
+    LaunchedEffect(map, effectiveBase, cadastreLines, overlayTiles, showsMyLocation) {
         styleReady = false
-        map?.setStyle(Style.Builder().fromJson(parcelStyle(effectiveBase, cadastreLines, overlayTiles))) { styleReady = true }
+        map?.setStyle(Style.Builder().fromJson(parcelStyle(effectiveBase, cadastreLines, overlayTiles, showsMyLocation))) { styleReady = true }
+    }
+    LaunchedEffect(map, styleReady, myLocation) {
+        val point = myLocation ?: return@LaunchedEffect
+        if (!styleReady) return@LaunchedEffect
+        map?.style?.getSourceAs<GeoJsonSource>("my-location")?.setGeoJson(myLocationFeature(point))
     }
     val selection = remember(selectedId, selectedIds) { selectedIds + listOfNotNull(selectedId) }
     val data = remember(parcels, selection) { mapFeatureCollection(parcels, selection) }
@@ -319,15 +327,18 @@ private fun fitParcels(map: MapLibreMap, parcels: List<MapParcel>) {
 internal fun parcelStyle(imagery: Boolean): String = parcelStyle(if (imagery) MapBase.AERIAL else MapBase.NONE, cadastreLines = false)
 
 /**
- * Raster sources are declared at 512 px: the phone downloads and decodes about a quarter of
- * the tiles of a 256 px declaration, which is what keeps the aerial photo fluid.
+ * #361: IGN and PNOA serve 256 px tiles, so they are declared at 256 and drawn at their own
+ * resolution. Declaring them at 512 (Phase 18, to fetch fewer tiles) stretched every picture
+ * to twice its size: roads, olive rows and boundaries looked blurred on the phone. Catastro's
+ * WMS is asked for real 512 px images and stays at 512.
  */
-internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: String? = null): String {
+internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: String? = null, myLocation: Boolean = false): String {
     val sources = buildList {
         add(""""saved-parcels":{"type":"geojson","data":{"type":"FeatureCollection","features":[]}}""")
+        if (myLocation) add(""""my-location":{"type":"geojson","data":{"type":"FeatureCollection","features":[]}}""")
         when (base) {
-            MapBase.AERIAL -> add(""""base":{"type":"raster","tileSize":512,"maxzoom":19,"tiles":["$PNOA"]}""")
-            MapBase.MAP -> add(""""base":{"type":"raster","tileSize":512,"maxzoom":17,"tiles":["$IGN_BASE"]}""")
+            MapBase.AERIAL -> add(""""base":{"type":"raster","tileSize":256,"maxzoom":19,"tiles":["$PNOA"]}""")
+            MapBase.MAP -> add(""""base":{"type":"raster","tileSize":256,"maxzoom":17,"tiles":["$IGN_BASE"]}""")
             MapBase.NONE -> Unit
         }
         if (cadastreLines && base != MapBase.NONE) {
@@ -343,9 +354,18 @@ internal fun parcelStyle(base: MapBase, cadastreLines: Boolean, overlayTiles: St
         if (overlayTiles != null) add("""{"id":"overlay","type":"raster","source":"overlay","paint":{"raster-opacity":0.7}}""")
         add("""{"id":"parcels-fill","type":"fill","source":"saved-parcels","paint":{"fill-color":["case",["get","selected"],"#CDA449",["==",["get","kind"],"CANDIDATE"],"#F4EAD0","#567342"],"fill-opacity":["case",["get","selected"],0.55,["==",["get","kind"],"CANDIDATE"],0.30,0.38]}}""")
         add("""{"id":"parcels-line","type":"line","source":"saved-parcels","paint":{"line-color":["case",["==",["get","kind"],"CANDIDATE"],"#8A6A1F","#25371C"],"line-width":["case",["get","selected"],4,["==",["get","kind"],"CANDIDATE"],2,3]}}""")
+        // #361: «Mi ubicación» — a blue dot with a soft halo, above everything else.
+        if (myLocation) {
+            add("""{"id":"my-location-halo","type":"circle","source":"my-location","paint":{"circle-radius":18,"circle-color":"#1D6FD8","circle-opacity":0.18}}""")
+            add("""{"id":"my-location","type":"circle","source":"my-location","paint":{"circle-radius":7,"circle-color":"#1D6FD8","circle-stroke-color":"#FFFFFF","circle-stroke-width":3}}""")
+        }
     }.joinToString(",")
     return """{"version":8,"sources":{$sources},"layers":[$layers]}"""
 }
+
+/** The single point «Mi ubicación» draws. */
+internal fun myLocationFeature(point: GeoPoint): String =
+    """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.longitude},${point.latitude}]},"properties":{}}"""
 
 private const val LABEL_MIN_ZOOM = 15.5
 private const val OVERLAY_MAX_ZOOM = 7
