@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Pesada manual + foto (#342).** Una pesada se registra con los kilos netos que escribes,
+  la cooperativa o almazara, el vale si lo hay, las parcelas y árbol/vuelo o suelo. La foto o
+  archivo del recibo es opcional y se guarda como adjunto de esa pesada: nunca cambia los kilos ni
+  crea otra pesada. Se retiran «Leer vale», «Añadir vale y leer datos» y «Ticket o factura»: la
+  lectura automática queda aplazada. Los documentos que ya tenías se conservan.
 - **Mi perfil (21A).** En Perfil, «Tu municipio» y «Tu cooperativa». Se guardan en el teléfono
   (Room v19, tabla `profile_settings`, una fila por espacio de trabajo) y quedan listos para la
   sincronización futura. La cooperativa se elige de tus cooperativas y almazaras, las mismas que

@@ -205,21 +205,13 @@ fun ExpensesScreen(
                     supportingText = MONTH_FORMAT.format(today),
                 )
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-                MoPrimaryButton(
-                    "Añadir gasto",
-                    { editorVisible = true },
-                    Modifier.weight(1f).testTag("add-expense"),
-                    enabled = !state.isSaving,
-                )
-                // CR-011 §13/§22: one primary per block; the ticket/invoice is the second way in.
-                MoSecondaryButton(
-                    "Ticket o factura",
-                    { uploadVisible = true },
-                    Modifier.weight(1f).testTag("upload-document"),
-                    enabled = !state.isSaving,
-                )
-            }
+            // #342: expenses are typed by the farmer; an invoice photo is attached from the expense.
+            MoPrimaryButton(
+                "Añadir gasto",
+                { editorVisible = true },
+                Modifier.fillMaxWidth().testTag("add-expense"),
+                enabled = !state.isSaving,
+            )
             TextButton(onClick = onOrganizations, modifier = Modifier.testTag("open-organizations")) {
                 Text("Proveedores y organizaciones")
             }
@@ -250,7 +242,7 @@ fun ExpensesScreen(
                 state.isLoading -> CircularProgressIndicator()
                 posted.isEmpty() -> MoEmptyState(
                     "Aún no hay gastos",
-                    "Añade un gasto a mano o sube una factura: la leeremos para que solo tengas que revisarla.",
+                    "Añade cada gasto a mano. Puedes adjuntar la foto de la factura desde el propio gasto.",
                     icon = MoIcons.Document,
                 )
                 else -> posted.forEach { expense -> ExpenseRow(expense) { onExpenseSelected(expense.id) } }

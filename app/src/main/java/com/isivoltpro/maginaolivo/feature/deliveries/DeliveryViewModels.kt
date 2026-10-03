@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
+import com.isivoltpro.maginaolivo.domain.attachment.AttachmentRepository
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryProblem
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
@@ -56,12 +59,17 @@ data class DeliveriesUiState(
     val nextFormGeneration: Int = 0,
 )
 
+/** #342: the Pesada stays saved; only its optional receipt needs adding again. */
+internal const val RECEIPT_NOT_SAVED = "La pesada está guardada, pero no se pudo adjuntar la foto del recibo. Añádela desde la pesada."
+
 class DeliveriesViewModel(
     private val deliveries: DeliveryRepository,
     private val documents: DocumentOcrRepository,
     organizations: OrganizationRepository,
     private val clock: AppClock,
     harvests: HarvestRepository? = null,
+    /** #342: stores the optional receipt photo/file of a saved Pesada. */
+    private val attachments: AttachmentRepository? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(DeliveriesUiState())
     val state: StateFlow<DeliveriesUiState> = mutableState.asStateFlow()
@@ -109,10 +117,16 @@ class DeliveriesViewModel(
         if (draft == null) return
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null)
-            mutableState.value = when (val result = deliveries.create(draft)) {
+            val result = deliveries.create(draft)
+            // #342: the Pesada is already saved with the typed kilos; the receipt is only attached
+            // to it afterwards and can never change it. A failed attach keeps the Pesada.
+            val receiptLost = result is AppResult.Success && form.receiptUri != null &&
+                attachments?.attach(AttachmentOwner(AttachmentOwnerType.DELIVERY, result.value), form.receiptUri) !is AppResult.Success
+            mutableState.value = when (result) {
                 is AppResult.Success -> if (again) {
                     mutableState.value.copy(
                         isSaving = false,
+                        error = RECEIPT_NOT_SAVED.takeIf { receiptLost },
                         formErrors = DeliveryFormErrors(),
                         nextForm = form.nextPesada(),
                         nextFormGeneration = mutableState.value.nextFormGeneration + 1,
@@ -121,6 +135,7 @@ class DeliveriesViewModel(
                     mutableState.value.copy(
                         isSaving = false,
                         message = "Pesada guardada",
+                        error = RECEIPT_NOT_SAVED.takeIf { receiptLost },
                         formErrors = DeliveryFormErrors(),
                         nextForm = null,
                     )

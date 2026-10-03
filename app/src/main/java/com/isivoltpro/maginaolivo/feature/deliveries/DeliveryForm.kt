@@ -42,6 +42,11 @@ data class DeliveryForm(
     val time: String = "",
     /** Issue #254: árbol/vuelo or suelo, chosen on every Pesada. */
     val origin: PesadaOrigin? = null,
+    /**
+     * #342: the optional photo/file of the receipt, attached to the Pesada once it is saved.
+     * Evidence only: it never feeds kilos, ticket, date, cooperative or any other field.
+     */
+    val receiptUri: String? = null,
 )
 
 /**
@@ -60,6 +65,8 @@ internal fun DeliveryForm.nextPesada(): DeliveryForm = copy(
     splitKnown = false,
     // A day often has vuelo and suelo loads: the next Pesada says its own origin.
     origin = null,
+    // A receipt belongs to the Pesada it was taken for, never to the next one.
+    receiptUri = null,
 )
 
 private val TIME = Regex("""^(\d{1,2})[:.h](\d{2})$""")

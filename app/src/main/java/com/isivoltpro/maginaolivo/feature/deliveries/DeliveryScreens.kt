@@ -33,6 +33,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -122,6 +123,7 @@ fun DeliveriesRoute(
                     persistence.organizationRepository,
                     clock,
                     persistence.harvestRepository,
+                    persistence.attachmentRepository,
                 )
             }
         },
@@ -137,7 +139,6 @@ fun DeliveriesRoute(
         state = state,
         today = clock.today(ZoneId.systemDefault()),
         onCreate = { form -> viewModel.create(form) },
-        onTicketPicked = viewModel::importTicket,
         onProblem = viewModel::reportProblem,
         onDeliverySelected = onDeliverySelected,
         onTicketSelected = onTicketSelected,
@@ -161,8 +162,6 @@ fun DeliveriesScreen(
     state: DeliveriesUiState,
     today: LocalDate,
     onCreate: (DeliveryForm) -> Unit,
-    /** The picked ticket, with the Nueva pesada form it was read from (null from «Leer vale»). */
-    onTicketPicked: (String, DeliveryForm?) -> Unit,
     onProblem: (String) -> Unit,
     onDeliverySelected: (UUID) -> Unit,
     onTicketSelected: (UUID) -> Unit,
@@ -180,9 +179,9 @@ fun DeliveriesScreen(
     var cooperative by rememberSaveable { mutableStateOf<String?>(null) }
     // Opened from a Jornada ("Añadir pesada") or from the Cuaderno's «Pesada», the editor starts open.
     var editorVisible by rememberSaveable { mutableStateOf(jornadaId != null || presetFarmId != null) }
-    var ticketVisible by rememberSaveable { mutableStateOf(false) }
-    // CR-010 §6: what was typed in Nueva pesada before «Añadir vale y leer datos». Cancelling the
-    // camera reopens the editor with it; a picked ticket carries it to the review.
+    var receiptVisible by rememberSaveable { mutableStateOf(false) }
+    // #342: what was typed in Nueva pesada before «Añadir foto del recibo». The editor reopens with
+    // it, plus the picked receipt; cancelling the camera reopens it unchanged.
     var ticketSeed by remember { mutableStateOf<DeliveryForm?>(null) }
     LaunchedEffect(state.message) { if (state.message != null) { editorVisible = false; ticketSeed = null } }
     // A saved Pesada («Guardar y añadir otra») starts the next one from itself, not from the seed.
@@ -202,21 +201,13 @@ fun DeliveriesScreen(
                 color = MoTextSecondary,
             )
             val canRecord = state.contexts.isNotEmpty() && !state.isSaving
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-                MoPrimaryButton(
-                    "+ Nueva pesada",
-                    { editorVisible = true },
-                    Modifier.weight(1f).testTag("add-delivery"),
-                    enabled = canRecord,
-                )
-                // CR-011 §22: one primary per block; reading the ticket is the second way in.
-                MoSecondaryButton(
-                    "Leer vale",
-                    { ticketSeed = null; ticketVisible = true },
-                    Modifier.weight(1f).testTag("read-ticket"),
-                    enabled = canRecord,
-                )
-            }
+            // #342: kilos are typed and confirmed by the farmer; there is no ticket-reading entry.
+            MoPrimaryButton(
+                "+ Nueva pesada",
+                { editorVisible = true },
+                Modifier.fillMaxWidth().testTag("add-delivery"),
+                enabled = canRecord,
+            )
             if (!state.isLoading && state.contexts.isEmpty()) {
                 Text(
                     "Para registrar una pesada, una finca necesita una campaña activa o en recolección.",
@@ -254,7 +245,7 @@ fun DeliveriesScreen(
                 state.isLoading -> CircularProgressIndicator()
                 state.deliveries.isEmpty() -> MoEmptyState(
                     "Aún no hay pesadas",
-                    "Registra cada pesada con sus kilos netos o lee el vale: revisarás los datos antes de guardarlos.",
+                    "Registra cada pesada con sus kilos netos. Si te dan vale, puedes adjuntar su foto.",
                     icon = MoIcons.Delivery,
                 )
                 else -> {
@@ -362,27 +353,27 @@ fun DeliveriesScreen(
                     saveText = "Guardar pesada",
                     onSave = onCreate,
                     onCancel = { editorVisible = false; ticketSeed = null; onEditorClosed() },
-                    onReadTicket = { typed -> ticketSeed = typed; editorVisible = false; onEditorClosed(); ticketVisible = true },
+                    onAddReceipt = { typed -> ticketSeed = typed; editorVisible = false; receiptVisible = true },
                     onSaveAndAddAnother = onCreateAndAddAnother,
                 )
             }
         }
     }
-    if (ticketVisible) {
-        TicketCaptureSheet(
+    if (receiptVisible) {
+        ReceiptCaptureSheet(
             onPicked = { uri ->
-                ticketVisible = false
-                onTicketPicked(uri, ticketSeed)
-                ticketSeed = null
+                receiptVisible = false
+                ticketSeed = ticketSeed?.copy(receiptUri = uri)
+                editorVisible = true
             },
             onProblem = { message ->
-                ticketVisible = false
+                receiptVisible = false
                 onProblem(message)
-                if (ticketSeed != null) editorVisible = true
+                editorVisible = true
             },
             onDismiss = {
-                ticketVisible = false
-                if (ticketSeed != null) editorVisible = true
+                receiptVisible = false
+                editorVisible = true
             },
         )
     }
@@ -390,7 +381,7 @@ fun DeliveriesScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TicketCaptureSheet(onPicked: (String) -> Unit, onProblem: (String) -> Unit, onDismiss: () -> Unit) {
+private fun ReceiptCaptureSheet(onPicked: (String) -> Unit, onProblem: (String) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     var pendingCapture by rememberSaveable { mutableStateOf<String?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -403,9 +394,9 @@ private fun TicketCaptureSheet(onPicked: (String) -> Unit, onProblem: (String) -
     }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         MoBottomActionSheet(
-            title = "Leer vale de entrega",
-            body = "Leeremos el vale en este dispositivo. La pesada no se guarda hasta que confirmes los datos.",
-            modifier = Modifier.padding(horizontal = MoSpacing.md).testTag("ticket-capture-sheet"),
+            title = "Foto del recibo",
+            body = "Se guarda como adjunto de esta pesada. Los kilos y demás datos son los que escribes tú.",
+            modifier = Modifier.padding(horizontal = MoSpacing.md).testTag("receipt-capture-sheet"),
         ) {
             MoPrimaryButton(
                 "Hacer foto",
@@ -423,7 +414,7 @@ private fun TicketCaptureSheet(onPicked: (String) -> Unit, onProblem: (String) -
                         }
                     }
                 },
-                Modifier.fillMaxWidth().testTag("ticket-camera"),
+                Modifier.fillMaxWidth().testTag("receipt-camera"),
             )
             MoSecondaryButton(
                 "Elegir PDF o imagen",
@@ -434,7 +425,7 @@ private fun TicketCaptureSheet(onPicked: (String) -> Unit, onProblem: (String) -
                         onProblem("No hay ningún selector de archivos disponible")
                     }
                 },
-                Modifier.fillMaxWidth().testTag("ticket-picker"),
+                Modifier.fillMaxWidth().testTag("receipt-picker"),
             )
         }
         Spacer(Modifier.height(MoSpacing.md))
@@ -555,8 +546,8 @@ internal fun DeliveryEditor(
     subtitle: String = "Se guardará primero en este dispositivo.",
     scrollable: Boolean = true,
     extraActions: @Composable () -> Unit = {},
-    /** CR-010 §6: «Añadir vale y leer datos» from Nueva pesada; null where a ticket is already being read. */
-    onReadTicket: ((DeliveryForm) -> Unit)? = null,
+    /** #342: «Añadir foto del recibo» from Nueva pesada — an optional attachment, never read. */
+    onAddReceipt: ((DeliveryForm) -> Unit)? = null,
     onSaveAndAddAnother: ((DeliveryForm) -> Unit)? = null,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
@@ -570,14 +561,6 @@ internal fun DeliveryEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-        onReadTicket?.let { read ->
-            MoSecondaryButton("Añadir vale y leer datos", { read(form) }, Modifier.fillMaxWidth().testTag("delivery-read-ticket"))
-            Text(
-                "Foto o PDF del vale: se leen los datos para que los revises. Nada se guarda sin tu confirmación.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MoTextSecondary,
-            )
-        }
         if (farmLocked) {
             Text(context?.farmName.orEmpty(), style = MaterialTheme.typography.titleMedium)
         } else {
@@ -706,6 +689,24 @@ internal fun DeliveryEditor(
             MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
         } else {
             MoTertiaryButton("Más detalles", { showDetails = true }, Modifier.testTag("delivery-more-details"))
+        }
+        onAddReceipt?.let { add ->
+            // #342: the receipt is evidence attached after saving; it never changes what is typed.
+            if (form.receiptUri == null) {
+                MoSecondaryButton("Añadir foto del recibo (opcional)", { add(form) }, Modifier.fillMaxWidth().testTag("delivery-add-receipt"))
+            } else {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Foto del recibo añadida",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MoOliveDark,
+                        modifier = Modifier.weight(1f).testTag("delivery-receipt-added"),
+                    )
+                    TextButton(onClick = { form = form.copy(receiptUri = null) }, modifier = Modifier.testTag("delivery-remove-receipt")) {
+                        Text("Quitar")
+                    }
+                }
+            }
         }
         MoPrimaryButton(saveText, { onSave(form) }, Modifier.fillMaxWidth().testTag("save-delivery"), enabled = !isSaving)
         onSaveAndAddAnother?.let { again ->
