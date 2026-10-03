@@ -67,7 +67,8 @@ fun CadastreImportRoute(
     ) { uri -> uri?.let { model.importFile(resolver, it) } }
     CadastreImportScreen(state, preselectedFarmId, model::search, model::import,
         onNear = model::searchNear, onSelect = model::selectCandidate,
-        onFile = { file.launch(arrayOf("*/*")) }, onOpenExisting = onParcelImported)
+        onFile = { file.launch(arrayOf("*/*")) }, onOpenExisting = onParcelImported,
+        onPlaceChanged = model::editPlace)
 
 }
 
@@ -81,6 +82,8 @@ fun CadastreImportScreen(
     onSelect: (String) -> Unit = {},
     onFile: (() -> Unit)? = null,
     onOpenExisting: (UUID) -> Unit = {},
+    /** Municipality/province typed by the farmer (Catastro's answer fills them when it can). */
+    onPlaceChanged: (String, String) -> Unit = { _, _ -> },
 ) {
     var showMap by rememberSaveable { mutableStateOf(false) }
     var base by rememberSaveable { mutableStateOf(com.isivoltpro.maginaolivo.feature.maps.MapBase.MAP) }
@@ -220,6 +223,21 @@ fun CadastreImportScreen(
                     }
                 }
                 MoTextField(alias, { alias = it }, "Nombre para esta parcela", Modifier.fillMaxWidth())
+                // Owner 2026-10-03: Catastro fills municipality and province; the farmer can change them.
+                MoTextField(
+                    state.municipality, { onPlaceChanged(it, state.province) }, "Municipio",
+                    Modifier.fillMaxWidth().testTag("catastro-municipality"),
+                    supportingText = when {
+                        state.locating -> "Consultando en Catastro…"
+                        state.placeFromCatastro -> "Según Catastro · puedes cambiarlo"
+                        state.municipality.isBlank() -> "Catastro no lo ha indicado: escríbelo si lo sabes"
+                        else -> null
+                    },
+                )
+                MoTextField(
+                    state.province, { onPlaceChanged(state.municipality, it) }, "Provincia",
+                    Modifier.fillMaxWidth().testTag("catastro-province"),
+                )
                 MoPrimaryButton(
                     text = if (state.saving) "Guardando…" else "Confirmar e incorporar",
                     onClick = { onImport(selectedFarm?.let(UUID::fromString), alias) },

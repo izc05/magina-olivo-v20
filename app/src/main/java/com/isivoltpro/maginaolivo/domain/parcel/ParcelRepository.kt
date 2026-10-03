@@ -92,6 +92,9 @@ data class RegistryLink(
     val cadastralAreaM2: Double?,
     val sourceProvider: String,
     val sourceImportedAt: Instant,
+    /** The registry's place for this reference; only fills a municipality/province left empty. */
+    val municipality: String? = null,
+    val province: String? = null,
 )
 
 data class ParcelMembership(

@@ -47,6 +47,35 @@ class CadastreLocatorTest {
         assertTrue(parseDnpppReferences(xml).isEmpty())
     }
 
+    // Owner 2026-10-03: a Catastro parcel brings its municipality and province.
+    @Test fun readsMunicipalityAndProvinceOfAReference() {
+        val xml = """<consulta_dnp xmlns="http://www.catastro.meh.es/"><control><cudnp>1</cudnp></control>
+            <bico><bi><idbi><cn>RU</cn><rc><pc1>23014A0</pc1><pc2>0400021</pc2></rc></idbi>
+            <dt><loine><cp>23</cp><cm>14</cm></loine><cmc>14</cmc><np>JAEN</np><nm>BEDMAR Y GARCIEZ</nm></dt></bi></bico>
+            </consulta_dnp>""".toByteArray()
+        assertEquals(com.isivoltpro.maginaolivo.domain.registry.RegistryLocation("Bedmar y Garciez", "Jaén"), parseDnprcLocation(xml))
+    }
+
+    @Test fun anUnknownProvinceCodeUsesCatastrosName() {
+        val xml = """<consulta_dnp><bico><bi><dt><loine><cp>99</cp></loine><np>CIUDAD REAL</np><nm>VILLANUEVA DE LOS INFANTES</nm></dt></bi></bico></consulta_dnp>""".toByteArray()
+        assertEquals(com.isivoltpro.maginaolivo.domain.registry.RegistryLocation("Villanueva de los Infantes", "Ciudad Real"), parseDnprcLocation(xml))
+    }
+
+    @Test fun noMunicipalityOrAnErrorLeavesThePlaceToTheFarmer() {
+        assertNull(parseDnprcLocation("""<consulta_dnp><bico><bi><dt><np>JAEN</np></dt></bi></bico></consulta_dnp>""".toByteArray()))
+        assertNull(parseDnprcLocation("""<consulta_dnp><control><cuerr>1</cuerr></control><lerr><err><cod>13</cod></err></lerr></consulta_dnp>""".toByteArray()))
+    }
+
+    @Test fun placeNamesReadNaturally() {
+        assertEquals("Torredonjimeno", spanishPlaceCase("TORREDONJIMENO"))
+        assertEquals("Villanueva del Arzobispo", spanishPlaceCase("VILLANUEVA DEL ARZOBISPO"))
+        assertEquals("Baños de la Encina", spanishPlaceCase("BAÑOS DE LA ENCINA"))
+        assertEquals("Fuente-Tójar", spanishPlaceCase("FUENTE-TÓJAR"))
+        assertNull(spanishPlaceCase("   "))
+        assertEquals("Jaén", SPANISH_PROVINCES[23])
+        assertEquals(52, SPANISH_PROVINCES.size)
+    }
+
     @Test(expected = CadastreException::class)
     fun aDoctypeIsRefusedBeforeParsing() {
         parseDnpppReferences("""<?xml version="1.0"?><!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]><consulta_dnp>&e;</consulta_dnp>""".toByteArray())

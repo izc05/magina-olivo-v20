@@ -25,6 +25,13 @@ data class CadastreImportState(
     val duplicateId: UUID? = null,
     val error: String? = null,
     val savedParcelId: UUID? = null,
+    /** Municipality/province for the parcel: filled from Catastro when it answers, always editable. */
+    val municipality: String = "",
+    val province: String = "",
+    /** Catastro is being asked where the chosen reference is. */
+    val locating: Boolean = false,
+    /** The place shown came from Catastro (and the farmer has not changed it). */
+    val placeFromCatastro: Boolean = false,
 )
 
 class CadastreImportViewModel(
@@ -34,6 +41,8 @@ class CadastreImportViewModel(
     private val mutableState = MutableStateFlow(CadastreImportState())
     val state: StateFlow<CadastreImportState> = mutableState.asStateFlow()
     private var searchJob: Job? = null
+    private var locateJob: Job? = null
+    private var placeEdited = false
 
     init {
         viewModelScope.launch {
@@ -59,6 +68,7 @@ class CadastreImportViewModel(
                 mutableState.value = mutableState.value.copy(
                     searching = false, candidate = candidate, candidates = listOf(candidate),
                 )
+                locate(candidate)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: CadastreException) {
@@ -75,6 +85,7 @@ class CadastreImportViewModel(
     fun selectCandidate(reference: String) {
         mutableState.value.candidates.firstOrNull { it.reference == reference }?.let {
             mutableState.value = mutableState.value.copy(candidate = it, error = null, duplicateId = null)
+            locate(it)
         }
     }
 
@@ -110,10 +121,40 @@ class CadastreImportViewModel(
                 mutableState.value = mutableState.value.copy(searching = false, candidates = results,
                     candidate = results.singleOrNull(),
                     error = if (results.isEmpty()) "No encontramos parcelas en esa consulta." else null)
+                results.singleOrNull()?.let(::locate)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) {
                 mutableState.value = mutableState.value.copy(searching = false,
                     error = (error as? CadastreException)?.userMessage() ?: "No se pudo leer la parcela. Revisa el archivo o la conexión.")
+            }
+        }
+    }
+
+    /** The farmer's own municipality/province; from now on Catastro's answer no longer replaces it. */
+    fun editPlace(municipality: String, province: String) {
+        placeEdited = true
+        mutableState.value = mutableState.value.copy(municipality = municipality, province = province, placeFromCatastro = false)
+    }
+
+    /** Asks Catastro where this reference is and fills an untouched place; silence leaves it to the farmer. */
+    private fun locate(candidate: CadastralCandidate) {
+        locateJob?.cancel()
+        placeEdited = false
+        mutableState.value = mutableState.value.copy(municipality = "", province = "", placeFromCatastro = false, locating = true)
+        locateJob = viewModelScope.launch {
+            val location = try {
+                client.locate(candidate.reference)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                null
+            }
+            val current = mutableState.value
+            if (current.candidate?.reference != candidate.reference) return@launch
+            mutableState.value = if (location != null && !placeEdited) {
+                current.copy(locating = false, municipality = location.municipality, province = location.province.orEmpty(), placeFromCatastro = true)
+            } else {
+                current.copy(locating = false)
             }
         }
     }
@@ -154,6 +195,8 @@ class CadastreImportViewModel(
                     sourceImportedAt = candidate.importedAt,
                     geometryGeoJson = candidate.geometryGeoJson,
                     cadastralAreaM2 = candidate.areaM2,
+                    municipality = mutableState.value.municipality.trim().ifEmpty { null },
+                    province = mutableState.value.province.trim().ifEmpty { null },
                 ),
             )) {
                 is AppResult.Success -> mutableState.value = mutableState.value.copy(

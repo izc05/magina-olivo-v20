@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Municipio y provincia desde Catastro.** Al añadir una parcela con su referencia, desde el mapa
+  o al ubicar una parcela hecha a mano, Catastro rellena el municipio y la provincia; siempre se
+  pueden cambiar y nunca se pisa lo que escribiste. Si Catastro no lo indica, se escribe a mano.
+  Al editar una parcela con referencia, «Completar municipio y provincia desde Catastro».
 - **Lluvia y radar (#345, #315).** Inicio muestra «Prob. lluvia X %» con su gota cuando AEMET la
   publica; si la fuente no da probabilidad (MET Norway) se muestra la lluvia prevista en mm del día
   y nunca un 0 % inventado. El tiempo se considera actual durante 1 hora y se vuelve a pedir al

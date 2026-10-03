@@ -24,6 +24,12 @@ interface CadastreClient {
         polygon: String,
         parcel: String,
     ): List<CadastralCandidate> = emptyList()
+
+    /**
+     * Municipality and province Catastro gives for a reference; null when it cannot say (offline,
+     * error, unknown). Never fails an import: the farmer types the place instead.
+     */
+    suspend fun locate(reference: String): com.isivoltpro.maginaolivo.domain.registry.RegistryLocation? = null
 }
 
 /** WFS GetParcel is kept behind this boundary; the rest of the app never sees GML. */
@@ -55,6 +61,18 @@ class OfficialCadastreClient : CadastreClient {
         if (references.isEmpty()) throw CadastreException(CadastreError.NOT_FOUND)
         // One polygon/parcel pair is normally one reference; a handful at most (subparcels).
         return references.take(MAX_LOCATED).map { findByReference(it) }
+    }
+
+    override suspend fun locate(reference: String): com.isivoltpro.maginaolivo.domain.registry.RegistryLocation? {
+        val normalized = reference.trim().uppercase()
+        if (!REFERENCE.matches(normalized)) return null
+        return try {
+            parseDnprcLocation(download(URL("$DNPRC?Provincia=&Municipio=&RC=$normalized")))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private suspend fun fetch(query: String): ByteArray =
@@ -97,6 +115,7 @@ class OfficialCadastreClient : CadastreClient {
     companion object {
         private const val ENDPOINT = "https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx"
         private const val LOCATOR = "https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPPP"
+        private const val DNPRC = "https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC"
         private const val MAX_LOCATED = 5
         private const val MAX_XML_BYTES = 2_000_000
         private val REFERENCE = Regex("[A-Z0-9]{14}")

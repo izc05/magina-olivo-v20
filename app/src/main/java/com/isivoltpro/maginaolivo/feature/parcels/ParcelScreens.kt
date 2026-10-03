@@ -49,6 +49,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -112,6 +114,7 @@ fun FarmParcelsRoute(
         onRestore = viewModel::restore,
         onImportFromCatastro = onImportFromCatastro,
         onMap = onMap,
+        locatePlace = CATASTRO_PLACE,
     )
 }
 
@@ -157,6 +160,7 @@ fun FarmParcelsSection(
     onRestore: (UUID) -> Unit,
     onImportFromCatastro: (() -> Unit)? = null,
     onMap: (() -> Unit)? = null,
+    locatePlace: PlaceLookup? = null,
 ) {
     var addOptionsVisible by rememberSaveable { mutableStateOf(false) }
     var editorVisible by rememberSaveable { mutableStateOf(false) }
@@ -236,6 +240,7 @@ fun FarmParcelsSection(
                 onSave = onCreate,
                 onCancel = { editorVisible = false },
                 oliveError = state.oliveError,
+                locatePlace = locatePlace,
             )
         }
     }
@@ -266,6 +271,7 @@ fun ParcelDetailRoute(
         onArchived = onArchived,
         onLocate = onLocate,
         onRegister = onRegister,
+        locatePlace = CATASTRO_PLACE,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.PARCEL, parcelId),
@@ -286,6 +292,7 @@ fun ParcelDetailScreen(
     attachmentContent: @Composable () -> Unit = {},
     onLocate: ((UUID) -> Unit)? = null,
     onRegister: ((farmId: UUID, parcelName: String) -> Unit)? = null,
+    locatePlace: PlaceLookup? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     var archiveConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -338,6 +345,7 @@ fun ParcelDetailScreen(
                 onSave = onUpdate,
                 onCancel = { editorVisible = false },
                 oliveError = state.oliveError,
+                locatePlace = locatePlace,
             )
         }
     }
@@ -535,6 +543,12 @@ private fun ParcelValue(label: String, value: String?) {
     }
 }
 
+/** Catastro's place for a 14-character reference (null when it cannot say). */
+typealias PlaceLookup = suspend (String) -> com.isivoltpro.maginaolivo.domain.registry.RegistryLocation?
+
+private val CATASTRO_PLACE: PlaceLookup = { reference -> com.isivoltpro.maginaolivo.feature.catastro.OfficialCadastreClient().locate(reference) }
+private val CADASTRAL_REFERENCE = Regex("[A-Z0-9]{14}")
+
 @Composable
 internal fun ParcelEditor(
     title: String,
@@ -545,8 +559,12 @@ internal fun ParcelEditor(
     onSave: (ParcelDraft) -> Unit,
     onCancel: () -> Unit,
     oliveError: String? = null,
+    /** Catastro's municipality/province for a reference; null where no lookup is offered. */
+    locatePlace: PlaceLookup? = null,
 ) {
     var draft by remember(initial) { mutableStateOf(initial) }
+    var placeStatus by remember(initial) { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     var moreOpen by remember(initial) {
         mutableStateOf(
             initial.oliveTreeCount.isNotBlank() || initial.variety.isNotBlank() || initial.irrigationSystem != null ||
@@ -583,8 +601,30 @@ internal fun ParcelEditor(
             MoTextField(draft.cadastralReference, { draft = draft.copy(cadastralReference = it) }, "Referencia catastral", Modifier.fillMaxWidth())
             MoTextField(draft.cadastralPolygon, { draft = draft.copy(cadastralPolygon = it) }, "Polígono", Modifier.fillMaxWidth())
             MoTextField(draft.cadastralParcel, { draft = draft.copy(cadastralParcel = it) }, "Parcela catastral", Modifier.fillMaxWidth())
-            MoTextField(draft.municipality, { draft = draft.copy(municipality = it) }, "Municipio", Modifier.fillMaxWidth())
-            MoTextField(draft.province, { draft = draft.copy(province = it) }, "Provincia", Modifier.fillMaxWidth())
+            // Owner 2026-10-03: with a reference, Catastro can fill municipality and province.
+            val reference = draft.cadastralReference.trim().uppercase()
+            if (locatePlace != null && CADASTRAL_REFERENCE.matches(reference)) {
+                TextButton(
+                    onClick = {
+                        placeStatus = "Consultando en Catastro…"
+                        scope.launch {
+                            val place = runCatching { locatePlace(reference) }.getOrNull()
+                            if (place != null) {
+                                draft = draft.copy(municipality = place.municipality, province = place.province ?: draft.province)
+                                placeStatus = "Según Catastro · puedes cambiarlo"
+                            } else {
+                                placeStatus = "Catastro no lo ha indicado: escríbelo a mano."
+                            }
+                        }
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("parcel-locate-place"),
+                ) { Text("Completar municipio y provincia desde Catastro") }
+            }
+            MoTextField(
+                draft.municipality, { draft = draft.copy(municipality = it); placeStatus = null }, "Municipio",
+                Modifier.fillMaxWidth().testTag("parcel-municipality"), supportingText = placeStatus,
+            )
+            MoTextField(draft.province, { draft = draft.copy(province = it) }, "Provincia", Modifier.fillMaxWidth().testTag("parcel-province"))
             MoTextField(draft.notes, { draft = draft.copy(notes = it) }, "Notas", Modifier.fillMaxWidth(), singleLine = false)
             Text("Los datos escritos aquí se guardan como entrada manual; la app no los presenta como verificados por Catastro.", color = MoTextSecondary)
         }
