@@ -206,6 +206,48 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
     }
 
+    /** #357/#358: tapping the tab already on its root keeps that screen; it is not recreated. */
+    @Test
+    fun reselectingTheActiveRootKeepsItsScreenAsItIs() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        listOf("Finca Reselección A", "Finca Reselección B").forEach { name ->
+            waitForTag("add-farm")
+            openSheet("add-farm", "farm-name")
+            composeRule.onNodeWithTag("farm-name").performTextInput(name)
+            saveEditor("save-farm", "farm-name")
+            // The second card can sit below the visible part of the list; the closed editor is
+            // what says it was saved. The Cuaderno below then lists both farms.
+            composeRule.waitUntil(UI_TIMEOUT_MS) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isEmpty() }
+        }
+
+        // «Cambiar finca» opens the Farm choice; that open state lives only in the screen.
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        clickByTag("notebook-change-farm")
+        // Other tests share the database, so the choice can list more Farms than these two.
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            listOf("Finca Reselección A", "Finca Reselección B").all { name ->
+                composeRule.onAllNodes(hasTestTag("notebook-farm-option") and hasText(name)).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        val options = composeRule.onAllNodesWithTag("notebook-farm-option").fetchSemanticsNodes().size
+
+        // Recreating the root would close it again.
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        composeRule.waitForIdle()
+        assertEquals(options, composeRule.onAllNodesWithTag("notebook-farm-option").fetchSemanticsNodes().size)
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+
+        // The same for another root, and Back still returns to Inicio once.
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        waitForTag("farms-root")
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("farms-root").assertIsDisplayed()
+        pressBack()
+        waitForTag("home-reference-root")
+    }
+
     /** CR-011 §3: a Farm's «Cuaderno» is the one Cuaderno on that Farm, and Back returns to the Farm. */
     @Test
     fun aFarmsCuadernoIsTheOneCuadernoOnThatFarm() {

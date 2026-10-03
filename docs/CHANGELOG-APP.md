@@ -20,6 +20,12 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Pestañas sin saltos (#357, #358).** Volver a pulsar la pestaña en la que ya estás no recarga
+  la pantalla: se queda como estaba, con la misma vista elegida, sin parpadeo del título.
+- **Crear dos fincas seguidas cierra el formulario las dos veces.** Al guardar la segunda finca el
+  mensaje era el mismo que el de la primera y, si la escritura terminaba en menos de un fotograma, la
+  hoja «Nueva finca» se quedaba abierta aunque la finca sí se había guardado. Ahora cuenta cada
+  guardado.
 - **Recolección más clara (#366).** «Días de recolección» cuenta fechas: dos fincas el mismo día son
   un día («En 2 fincas»), no dos. Cada día dice su finca («Estacas · 3 oct 2026»); las tarjetas de
   campaña dicen «1 día de recolección» y «Sin pesadas todavía», y los kilos sin repartir se leen
