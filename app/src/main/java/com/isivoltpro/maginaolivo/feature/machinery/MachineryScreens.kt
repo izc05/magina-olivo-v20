@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.machinery
 
+import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +23,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,7 +88,7 @@ fun MachineryScreen(
     onEditorClosed: () -> Unit = {},
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
+    OnEachSave(state.saveCount) { editorVisible = false }
 
     Scaffold(Modifier.fillMaxSize().testTag("machinery-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(
@@ -245,7 +245,7 @@ fun MachineDetailScreen(
     onEditorClosed: () -> Unit = {},
 ) {
     var sheet by rememberSaveable { mutableStateOf<String?>(null) }
-    LaunchedEffect(state.message) { if (state.message != null) sheet = null }
+    OnEachSave(state.saveCount) { sheet = null }
 
     Scaffold(Modifier.fillMaxSize().testTag("machine-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(

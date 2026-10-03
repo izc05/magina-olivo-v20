@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Los formularios se cierran en cada guardado (#380).** Máquinas, Pesadas, Gastos, Organizaciones,
+  Jornadas, Trabajos, Campañas, Parcelas y Fincas cerraban el formulario solo la primera vez: al
+  guardar otra vez con el mismo mensaje se quedaba abierto. Ahora cada guardado correcto cuenta y
+  cierra el formulario; un error no lo cierra y, tras cerrar Android la app, el borrador restaurado
+  sigue abierto. «Guardar y añadir otra» en Pesadas sigue dejando el formulario listo para la siguiente.
 - **El Cuaderno de una finca no pide otra finca (#369).** Desde Mi Campo → finca o parcela →
   Cuaderno, la finca ya está elegida: se muestra con su campaña (y la parcela, con «Toda la finca»)
   sin «Cambiar finca», y Atrás vuelve a la finca o la parcela. La pestaña Cuaderno sigue siendo el

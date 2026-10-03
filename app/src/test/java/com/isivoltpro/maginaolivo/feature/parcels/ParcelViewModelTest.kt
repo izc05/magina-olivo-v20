@@ -63,6 +63,24 @@ class ParcelViewModelTest {
         assertEquals("Escribe un alias para la parcela", viewModel.state.value.nameError)
     }
 
+    /** #380: a second edit with the same message still closes the editor (the count rises). */
+    @Test
+    fun everyDetailEditIsCounted() = runTest(dispatcher) {
+        val repository = FakeParcelRepository(parcel())
+        val viewModel = ParcelDetailViewModel(parcelId, repository)
+        advanceUntilIdle()
+        assertEquals(0, viewModel.state.value.saveCount)
+
+        viewModel.update(ParcelDraft(displayName = "Parcela Alta", managedAreaHectares = "2"))
+        advanceUntilIdle()
+        val first = viewModel.state.value.message
+        viewModel.update(ParcelDraft(displayName = "Parcela Baja", managedAreaHectares = "2"))
+        advanceUntilIdle()
+
+        assertEquals(first, viewModel.state.value.message)
+        assertEquals(2, viewModel.state.value.saveCount)
+    }
+
     @Test
     fun detailEditsArchivesAndRestoresLocally() = runTest(dispatcher) {
         val repository = FakeParcelRepository(parcel())

@@ -21,6 +21,8 @@ data class FarmDetailUiState(
     val nameError: String? = null,
     val error: String? = null,
     val message: String? = null,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 class FarmDetailViewModel(
@@ -95,6 +97,7 @@ class FarmDetailViewModel(
                 is AppResult.Success -> mutableState.value = mutableState.value.copy(
                     isSaving = false,
                     message = successMessage,
+                    saveCount = mutableState.value.saveCount + 1,
                 )
                 is AppResult.Failure -> mutableState.value = mutableState.value.copy(
                     isSaving = false,

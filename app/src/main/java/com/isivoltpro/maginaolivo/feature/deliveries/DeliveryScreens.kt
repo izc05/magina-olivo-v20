@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.deliveries
 
+import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaSearch
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaQuery
@@ -183,7 +184,7 @@ fun DeliveriesScreen(
     // #342: what was typed in Nueva pesada before «Añadir foto del recibo». The editor reopens with
     // it, plus the picked receipt; cancelling the camera reopens it unchanged.
     var ticketSeed by remember { mutableStateOf<DeliveryForm?>(null) }
-    LaunchedEffect(state.message) { if (state.message != null) { editorVisible = false; ticketSeed = null } }
+    OnEachSave(state.saveCount) { editorVisible = false; ticketSeed = null }
     // A saved Pesada («Guardar y añadir otra») starts the next one from itself, not from the seed.
     LaunchedEffect(state.nextFormGeneration) { ticketSeed = null }
 
@@ -852,7 +853,7 @@ fun DeliveryDetailScreen(
 ) {
     // Phase 19C: "Añadir rendimiento" from the list opens the yield form in one tap.
     var sheet by rememberSaveable { mutableStateOf(if (openYield) "yield" else null) }
-    LaunchedEffect(state.message) { if (state.message != null) sheet = null }
+    OnEachSave(state.saveCount) { sheet = null }
 
     Scaffold(Modifier.fillMaxSize().testTag("delivery-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
         Column(

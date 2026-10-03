@@ -234,6 +234,8 @@ data class ExpensesUiState(
     val error: String? = null,
     /** Set once after a document is kept, so the screen can open its review. */
     val openedDocumentId: UUID? = null,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -314,7 +316,7 @@ class ExpensesViewModel(
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
             mutableState.value = when (val result = operation()) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, formErrors = ExpenseFormErrors())
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1, formErrors = ExpenseFormErrors())
                 is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = expenseErrorMessage(result.error))
             }
         }
@@ -394,6 +396,8 @@ data class ExpenseDetailUiState(
     val message: String? = null,
     val error: String? = null,
     val deleted: Boolean = false,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 class ExpenseDetailViewModel(
@@ -449,7 +453,7 @@ class ExpenseDetailViewModel(
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
             mutableState.value = when (val result = operation()) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, formErrors = ExpenseFormErrors())
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1, formErrors = ExpenseFormErrors())
                 is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = expenseErrorMessage(result.error))
             }
         }

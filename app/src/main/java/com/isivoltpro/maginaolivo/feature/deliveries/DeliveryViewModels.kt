@@ -61,6 +61,8 @@ data class DeliveriesUiState(
     /** Set after "Guardar y añadir otra": the editor stays open on this form. */
     val nextForm: DeliveryForm? = null,
     val nextFormGeneration: Int = 0,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 /** #342: the Pesada stays saved; only its optional receipt needs adding again. */
@@ -141,6 +143,7 @@ class DeliveriesViewModel(
                     mutableState.value.copy(
                         isSaving = false,
                         message = "Pesada guardada",
+                        saveCount = mutableState.value.saveCount + 1,
                         error = RECEIPT_NOT_SAVED.takeIf { receiptLost },
                         formErrors = DeliveryFormErrors(),
                         nextForm = null,
@@ -206,6 +209,8 @@ data class DeliveryDetailUiState(
     val message: String? = null,
     val error: String? = null,
     val deleted: Boolean = false,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 class DeliveryDetailViewModel(
@@ -283,6 +288,7 @@ class DeliveryDetailViewModel(
                 is AppResult.Success -> mutableState.value.copy(
                     isSaving = false,
                     message = message,
+                    saveCount = mutableState.value.saveCount + 1,
                     formErrors = DeliveryFormErrors(),
                     yieldErrors = YieldFormErrors(),
                 )

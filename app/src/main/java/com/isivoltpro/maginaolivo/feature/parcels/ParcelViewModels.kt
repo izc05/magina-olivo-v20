@@ -137,6 +137,8 @@ data class ParcelDetailUiState(
     val oliveError: String? = null,
     val error: String? = null,
     val message: String? = null,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -214,7 +216,7 @@ class ParcelDetailViewModel(
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
             mutableState.value = when (operation()) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message)
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
                 is AppResult.Failure -> mutableState.value.copy(
                     isSaving = false,
                     error = "No se pudo guardar en este dispositivo",

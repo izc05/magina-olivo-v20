@@ -34,6 +34,8 @@ data class FarmCampaignsUiState(
     val dateError: String? = null,
     val error: String? = null,
     val message: String? = null,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 class FarmCampaignsViewModel(private val farmId: UUID, private val repository: CampaignRepository) : ViewModel() {
@@ -72,7 +74,7 @@ class FarmCampaignsViewModel(private val farmId: UUID, private val repository: C
     private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
         mutableState.value = when (operation()) {
-            is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message)
+            is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
             is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = "No se pudo guardar en este dispositivo")
         }
     }
@@ -85,6 +87,8 @@ data class CampaignDetailUiState(
     val parcels: List<CampaignParcelOption> = emptyList(),
     val error: String? = null,
     val message: String? = null,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 class CampaignDetailViewModel(private val campaignId: UUID, private val repository: CampaignRepository) : ViewModel() {
@@ -120,7 +124,7 @@ class CampaignDetailViewModel(private val campaignId: UUID, private val reposito
     private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
         mutableState.value = when (operation()) {
-            is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message)
+            is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
             is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = "La operación no se pudo completar")
         }
     }

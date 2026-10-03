@@ -1,4 +1,5 @@
 package com.isivoltpro.maginaolivo.feature.expenses
+import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 
 import androidx.compose.foundation.layout.WindowInsets
@@ -171,7 +172,7 @@ fun ExpensesScreen(
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(presetLabour) }
     var uploadVisible by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(state.message) { if (state.message != null) editorVisible = false }
+    OnEachSave(state.saveCount) { editorVisible = false }
     // The Farm's parcels and works are offered in the form from the start.
     LaunchedEffect(presetFarmId) { presetFarmId?.let(onFarmSelected) }
 

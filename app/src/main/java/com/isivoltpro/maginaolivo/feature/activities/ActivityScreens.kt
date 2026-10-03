@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.activities
 
+import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -135,7 +136,7 @@ fun FarmActivitiesSection(
     editorAsScreen: Boolean = false,
 ) {
     var editor by rememberSaveable { mutableStateOf(startWithEditor) }
-    LaunchedEffect(state.message) { if (state.message != null) editor = false }
+    OnEachSave(state.saveCount) { editor = false }
     if (editorAsScreen && editor) {
         ActivityEditor(
             parcels = state.parcels,

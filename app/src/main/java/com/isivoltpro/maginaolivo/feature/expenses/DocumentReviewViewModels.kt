@@ -158,6 +158,8 @@ data class OrganizationsUiState(
     val rolesError: String? = null,
     val message: String? = null,
     val error: String? = null,
+    /** #380: finished saves; the editor closes when this rises. */
+    val saveCount: Int = 0,
 )
 
 class OrganizationsViewModel(
@@ -183,7 +185,7 @@ class OrganizationsViewModel(
             mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
             val result = if (id == null) repository.create(draft).map { } else repository.update(id, draft)
             mutableState.value = when (result) {
-                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Organización guardada")
+                is AppResult.Success -> mutableState.value.copy(isSaving = false, message = "Organización guardada", saveCount = mutableState.value.saveCount + 1)
                 is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = expenseErrorMessage(result.error))
             }
         }
@@ -192,7 +194,7 @@ class OrganizationsViewModel(
     fun archive(id: UUID) {
         viewModelScope.launch {
             mutableState.value = when (val result = repository.archive(id)) {
-                is AppResult.Success -> mutableState.value.copy(message = "Organización archivada")
+                is AppResult.Success -> mutableState.value.copy(message = "Organización archivada", saveCount = mutableState.value.saveCount + 1)
                 is AppResult.Failure -> mutableState.value.copy(error = expenseErrorMessage(result.error))
             }
         }

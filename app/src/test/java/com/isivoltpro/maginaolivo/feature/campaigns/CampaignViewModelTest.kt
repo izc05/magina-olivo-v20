@@ -62,6 +62,22 @@ class CampaignViewModelTest {
         assertEquals("La operación no se pudo completar", viewModel.state.value.error)
     }
 
+    /** #380: two edits bring the same message; only the count tells the editor to close again. */
+    @Test fun everyEditIsCountedAndAFailureIsNot() = runTest(dispatcher) {
+        val fake = FakeRepository(campaign(CampaignStatus.PREPARATION))
+        val viewModel = CampaignDetailViewModel(fake.detail.value!!.id, fake)
+        advanceUntilIdle()
+        assertEquals(0, viewModel.state.value.saveCount)
+        viewModel.update(CampaignDraft("2026/27", LocalDate.parse("2026-10-01"))); advanceUntilIdle()
+        val first = viewModel.state.value.message
+        viewModel.update(CampaignDraft("2026/27 bis", LocalDate.parse("2026-10-01"))); advanceUntilIdle()
+        assertEquals(first, viewModel.state.value.message)
+        assertEquals(2, viewModel.state.value.saveCount)
+        fake.fail = true
+        viewModel.update(CampaignDraft("2026/27 ter", LocalDate.parse("2026-10-01"))); advanceUntilIdle()
+        assertEquals(2, viewModel.state.value.saveCount)
+    }
+
     private fun campaign(status: CampaignStatus) = Campaign(UUID.randomUUID(), UUID.randomUUID(), farmId,
         "Campaña", LocalDate.parse("2026-10-01"), null, status, null, emptyList(), 1)
 
