@@ -25,6 +25,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   el mismo día. El detalle de la campaña añade «Jornales» bajo Pesadas («1 persona · 1 jornada ·
   65,00 €», solo coste confirmado; los recuentos históricos sin nombre aparte), que abre el detalle
   de personas y pagos de esa campaña.
+- **Añadir parcelas en el mapa, más claro (#361).** Una guía de cuatro pasos mientras la finca no
+  tiene parcelas en el mapa; «Añadir de Catastro» es la acción principal. «Mi ubicación» deja un
+  punto azul en el mapa y, si falla, dice por qué (sin permiso, ubicación apagada o sin señal) con su
+  salida: permitir, activar o escribir coordenadas. La parcela elegida dice «Seleccionada · Guardada»
+  y su municipio. El mapa y la foto aérea se dibujan a su resolución real (antes se ampliaban al doble).
 - **El Cuaderno de una finca no pide otra finca (#369).** Desde Mi Campo → finca o parcela →
   Cuaderno, la finca ya está elegida: se muestra con su campaña (y la parcela, con «Toda la finca»)
   sin «Cambiar finca», y Atrás vuelve a la finca o la parcela. La pestaña Cuaderno sigue siendo el
