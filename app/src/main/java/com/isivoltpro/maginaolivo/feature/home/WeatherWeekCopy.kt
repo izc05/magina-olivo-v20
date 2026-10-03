@@ -33,10 +33,12 @@ internal fun dayHasRain(day: WeatherDayForecast): Boolean =
 internal fun weekSummary(days: List<WeatherDayForecast>, today: LocalDate): String? {
     if (days.isEmpty()) return null
     val knowsRain = days.any { it.rainMm != null || it.rainProbabilityPercent != null }
+    // Codex #374: a dry week is only claimed when every day published its rain.
+    val knowsEveryDay = days.all { it.rainMm != null || it.rainProbabilityPercent != null }
     val rainyDays = days.count(::dayHasRain)
     val rain = when {
         !knowsRain -> null
-        rainyDays == 0 -> "Sin lluvia prevista"
+        rainyDays == 0 -> "Sin lluvia prevista".takeIf { knowsEveryDay }
         rainyDays == 1 -> "1 día con lluvia"
         else -> "$rainyDays días con lluvia"
     }

@@ -257,7 +257,7 @@ fun WeatherWeekScreen(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MoTextSecondary,
                             )
-                            weather.value.attribution?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MoTextSecondary.copy(alpha = 0.85f)) }
+                            weather.value.attribution?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MoTextSecondary) }
                         }
                         WeatherRefresh(state, onRefresh)
                     }

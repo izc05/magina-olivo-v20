@@ -35,6 +35,8 @@ class WeatherWeekCopyTest {
 
     @Test fun summarySaysOnlyWhatIsKnown() {
         assertEquals("Sin lluvia prevista · Máx. 24°", weekSummary(listOf(day(0, max = 24, mm = 0.0)), today))
+        // Codex #374: one dry day and one silent day is not a dry week.
+        assertEquals("Máx. 24°", weekSummary(listOf(day(0, max = 24, mm = 0.0), day(1, max = 20)), today))
         // No rain data at all: no rain claim either way.
         assertEquals("Máx. 24°", weekSummary(listOf(day(0, max = 24)), today))
         assertNull(weekSummary(listOf(day(0)), today))
