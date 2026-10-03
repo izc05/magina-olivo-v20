@@ -224,9 +224,6 @@ fun FarmListScreen(
                 item {
                     FarmTotals(state.farms)
                 }
-                if (overviews.isNotEmpty()) item {
-                    FarmOverviewSection(overviews, onFarmSelected)
-                }
             }
 
             if (state.farms.isNotEmpty()) item {
@@ -236,6 +233,11 @@ fun FarmListScreen(
                     enabled = !state.isLoading && !state.isSaving,
                     modifier = Modifier.testTag("add-farm"),
                 )
+            }
+
+            // #359: above the Farms, under «Añadir finca», so the button stays near the top.
+            if (!state.isLoading && state.error == null && state.farms.isNotEmpty() && overviews.isNotEmpty()) item {
+                FarmOverviewSection(overviews, onFarmSelected)
             }
 
             when {
