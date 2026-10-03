@@ -1,7 +1,7 @@
 # Olive Farm App — Current Work State
 
 **Baseline:** `RC1.2-BASELINE-2026-09-18`  
-**Last reviewed:** 2026-10-02
+**Last reviewed:** 2026-10-03
 
 This file is the quick continuity marker for a new ChatGPT/Codex/Antigravity session. It does not replace the baseline/spec; it tells the worker where to resume.
 
@@ -62,6 +62,27 @@ and v18 (slice 4) for CR-010 and v19 for Phase 21A (A4, revised by the owner 202
 A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gate CR-010 open.
 
 ## Current allowed phase
+
+**Update 2026-10-03 (owner):**
+
+- **CR-012 Slice 4 MERGED** (#341, merge `43a2d28d`): explicit economic context, recolección
+  cost cards, cost/kg from POSTED Expense ÷ canonical Pesadas. Codex handed execution to Claude
+  (no tokens); Claude fixed the review P1 (OCR review keeps Farm/Campaign) and the owner decision
+  «Cuaderno → Gasto preselects "Gasto de recogida · Campaña …", changeable to "Gasto general de
+  finca/parcela"». CR-012 is technically complete; its owner-device acceptance travels with the
+  candidate APK.
+- **CR-013 APPROVED and IMPLEMENTED** (#342/#339 → PR #343, merge `f92a626f`):
+  `RC1.2-CHANGE-REQUEST-013-PESADA-MANUAL-OCR-APLAZADO.md`. A Pesada is the kilos the farmer
+  types; the receipt photo/file is an optional attachment added after saving and never changes
+  kilos, campaign, farm or costs. «Leer vale», «Añadir vale y leer datos» and «Ticket o factura»
+  left the normal path. OCR code and stored documents stay dormant. OCR is not a requirement for
+  1.0, Gate 21, the APK, Backend/Auth, Sync, PDF, Web or release.
+- **Next:** #345 (rain probability on Inicio, honest null, #315 refresh policy, radar identity).
+  Then the Gate 21 checkpoint and a candidate DEV APK for the owner's device.
+- **Web:** WEB-0 (#346) may advance only in design, storyboard, public structure, staging and visual
+  preparation. It must not touch Auth, schema, RLS or Sync before Phases 22/23.
+- **Perfil** is the single source of municipality, cooperative and territorial preferences. Weather,
+  town council/news, cooperative and local businesses consume it and never duplicate the choice.
 
 **Owner priority 2026-10-01 — CR-012 (Issue #309), executor Codex:** complete the
 recollection economic flow in sequence: Slice 1 contracts → Slice 2 identified
