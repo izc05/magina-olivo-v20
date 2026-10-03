@@ -20,6 +20,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
+  de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
+  finca» queda como acción secundaria.
 - **Lluvia y radar (#345, #315).** Inicio muestra «Prob. lluvia X %» con su gota cuando AEMET la
   publica; si la fuente no da probabilidad (MET Norway) se muestra la lluvia prevista en mm del día
   y nunca un 0 % inventado. El tiempo se considera actual durante 1 hora y se vuelve a pedir al

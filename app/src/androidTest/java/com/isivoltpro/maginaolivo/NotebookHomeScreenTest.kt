@@ -50,7 +50,9 @@ class NotebookHomeScreenTest {
     @Test fun contextAndTheSixActionsAreAlwaysAtHandWithNoSecondMenu() {
         val tapped = mutableListOf<NotebookQuickAction>()
         show(onQuickAction = { tapped += it })
-        composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca de ejemplo · Campaña de ejemplo")
+        // #351 (1): the Farm is the main datum and the campaign is its own chip, not running text.
+        composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca de ejemplo").assertTextContains("Campaña de ejemplo")
+        composeRule.onNodeWithTag("notebook-campaign-chip", useUnmergedTree = true).assertTextContains("Campaña de ejemplo", substring = true)
         // CR-011 §4: the actions are shown directly; no «Registrar hoy» repeats them.
         composeRule.onAllNodesWithTag("notebook-register-today").fetchSemanticsNodes().let { assertEquals(0, it.size) }
         NotebookQuickAction.entries.forEach { action ->
@@ -160,7 +162,8 @@ class NotebookHomeScreenTest {
 
     @Test fun withoutACampaignTheNotebookSaysSo() {
         show(state = NotebookUiState(isLoading = false))
-        composeRule.onNodeWithTag("notebook-context").assertTextContains("Sin campaña en marcha", substring = true)
+        composeRule.onNodeWithTag("notebook-campaign-chip", useUnmergedTree = true).assertTextContains("Sin campaña en marcha", substring = true)
+        composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca de ejemplo", substring = true)
         composeRule.onNodeWithTag("notebook-no-campaign").performScrollTo().assertIsDisplayed()
     }
 

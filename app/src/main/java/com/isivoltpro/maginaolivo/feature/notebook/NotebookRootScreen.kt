@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,6 +62,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoIconTone
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
 import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
+import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
+import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
@@ -256,41 +259,53 @@ fun NotebookHomeScreen(
                 )
                 else -> {
                     // Context always visible: which Farm and which Campaign this writes into.
+                    // #351 (1): the Farm is the main datum; the campaign state is its own chip.
                     val campaign = notebook?.notebook?.campaign
-                    Text(
-                        contextLine(activeFarm, campaign?.name),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MoOliveDark,
-                        modifier = Modifier.testTag("notebook-context"),
-                    )
-                    parcelContext?.let { parcel ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "Parcela: $parcel",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MoTextSecondary,
-                                modifier = Modifier.weight(1f).testTag("notebook-parcel-context"),
-                            )
-                            MoTertiaryButton("Toda la finca", onClearParcel, modifier = Modifier.testTag("notebook-parcel-clear"))
-                        }
-                    }
-                    if (farms.size > 1) {
-                        if (choosingFarm) {
-                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                                farms.forEach { farm ->
-                                    FilterChip(
-                                        selected = farm.id == activeFarm.id,
-                                        onClick = {
-                                            onSelectFarm(farm.id)
-                                            choosingFarm = false
-                                        },
-                                        label = { Text(farm.name) },
-                                        modifier = Modifier.testTag("notebook-farm-option"),
+                    Surface(shape = MoShape.card, color = MoWarmWhite, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                            Column(
+                                Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag("notebook-context"),
+                                verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                            ) {
+                                Text("Finca", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+                                Text(activeFarm.name, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+                                MoStatusChip(
+                                    campaignLabel(campaign?.name),
+                                    tone = if (campaign?.status?.isRunning == true) MoStatusTone.Success else MoStatusTone.Neutral,
+                                    modifier = Modifier.testTag("notebook-campaign-chip"),
+                                )
+                            }
+                            parcelContext?.let { parcel ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        "Parcela: $parcel",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MoTextSecondary,
+                                        modifier = Modifier.weight(1f).testTag("notebook-parcel-context"),
                                     )
+                                    MoTertiaryButton("Toda la finca", onClearParcel, modifier = Modifier.testTag("notebook-parcel-clear"))
                                 }
                             }
-                        } else {
-                            MoSecondaryButton("Cambiar finca", { choosingFarm = true }, Modifier.testTag("notebook-change-farm"))
+                            if (farms.size > 1) {
+                                if (choosingFarm) {
+                                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                                        farms.forEach { farm ->
+                                            FilterChip(
+                                                selected = farm.id == activeFarm.id,
+                                                onClick = {
+                                                    onSelectFarm(farm.id)
+                                                    choosingFarm = false
+                                                },
+                                                label = { Text(farm.name) },
+                                                modifier = Modifier.testTag("notebook-farm-option"),
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    // A secondary action: it changes the context, it is not the context.
+                                    MoTertiaryButton("Cambiar finca", { choosingFarm = true }, Modifier.testTag("notebook-change-farm"))
+                                }
+                            }
                         }
                     }
                     Text("¿Qué has hecho hoy?", style = MaterialTheme.typography.bodyLarge, color = MoTextSecondary)
@@ -432,8 +447,6 @@ private fun FarmWorksLink(actions: NotebookActions) {
     MoTertiaryButton("Ver todos los trabajos de la finca", actions.onWorks, modifier = Modifier.fillMaxWidth().testTag("notebook-farm-works"))
 }
 
-/** "Finca · Campaña 2026/27" — the context shown before anything is written. */
-internal fun contextLine(farm: Farm, campaignName: String?): String = listOf(
-    farm.name,
-    campaignName?.let { if (it.startsWith("Campaña", ignoreCase = true)) it else "Campaña $it" } ?: "Sin campaña en marcha",
-).joinToString(" · ")
+/** «Campaña 2026/27» whether the farmer typed the word or not; «Sin campaña en marcha» without one. */
+internal fun campaignLabel(campaignName: String?): String =
+    campaignName?.let { if (it.startsWith("Campaña", ignoreCase = true)) it else "Campaña $it" } ?: "Sin campaña en marcha"
