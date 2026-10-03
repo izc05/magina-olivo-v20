@@ -22,6 +22,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 - **Pestañas sin saltos (#357, #358).** Volver a pulsar la pestaña en la que ya estás no recarga
   la pantalla: se queda como estaba, con la misma vista elegida, sin parpadeo del título.
+- **Crear dos fincas seguidas cierra el formulario las dos veces.** Al guardar la segunda finca el
+  mensaje era el mismo que el de la primera y, si la escritura terminaba en menos de un fotograma, la
+  hoja «Nueva finca» se quedaba abierta aunque la finca sí se había guardado. Ahora cuenta cada
+  guardado.
 - **Inicio más natural y radar más nítido (#360).** La foto de Inicio ya no se tiñe de verde: una
   sombra neutra mantiene sus colores y el texto blanco sigue legible (≥ 4,5:1). El radar de lluvia
   pide a RainViewer su imagen de 512 px, con el doble de detalle que la de 256 px que se ampliaba.
