@@ -20,6 +20,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Jornal pide campaña (#350).** Sin una campaña de recogida en marcha, «Jornal» ya no abre un
+  gasto genérico: explica que los jornales con trabajadores se guardan dentro de la campaña y lleva
+  a «Campañas» de esa finca para activarla.
 - **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
   de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
   finca» queda como acción secundaria.

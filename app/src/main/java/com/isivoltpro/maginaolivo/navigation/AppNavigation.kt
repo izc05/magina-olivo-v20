@@ -231,8 +231,11 @@ fun AppNavigation(
                             // CR-011 §8/§14: Jornal opens today's recolección day of this Farm by
                             // itself (found or created); nobody opens a «jornada» by hand.
                             // The tap navigates at once; the day screen resolves the day itself.
-                            if (action == NotebookQuickAction.LABOUR && running) {
-                                navController.navigate(AppDestination.todayHarvest(farmId.toString())) { launchSingleTop = true }
+                            // #350: the Cuaderno only passes Jornal on with a running campaign.
+                            if (action == NotebookQuickAction.LABOUR) {
+                                if (running) {
+                                    navController.navigate(AppDestination.todayHarvest(farmId.toString())) { launchSingleTop = true }
+                                }
                             } else {
                                 val parcelId = registerParcelId?.takeIf { registerParcelFarmId == farmId.toString() }
                                 navController.openQuickAction(action, farmId, parcelId)
@@ -827,8 +830,8 @@ private fun NavHostController.openQuickAction(action: NotebookQuickAction, farmI
         NotebookQuickAction.TREATMENT ->
             navigate(AppDestination.register(ActivityType.PHYTOSANITARY.name)) { launchSingleTop = true }
         NotebookQuickAction.WEIGHING -> navigate(AppDestination.newPesada(farmId.toString(), parcelId))
-        // CR-007: outside a running campaign, jornales are a LABOR Expense of this Farm.
-        NotebookQuickAction.LABOUR, NotebookQuickAction.EXPENSE ->
-            navigate(AppDestination.farmExpenses(farmId.toString(), parcelId))
+        NotebookQuickAction.EXPENSE -> navigate(AppDestination.farmExpenses(farmId.toString(), parcelId))
+        // #350: Jornal opens today's recolección day of a running campaign, never a generic expense.
+        NotebookQuickAction.LABOUR -> Unit
     }
 }
