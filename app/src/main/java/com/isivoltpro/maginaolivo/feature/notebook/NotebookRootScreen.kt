@@ -269,8 +269,9 @@ fun NotebookHomeScreen(
                             ) {
                                 Text("Finca", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
                                 Text(activeFarm.name, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+                                // Status in words as well as colour (accessibility contract).
                                 MoStatusChip(
-                                    campaignLabel(campaign?.name),
+                                    campaignChipText(campaign?.name, campaign?.status),
                                     tone = if (campaign?.status?.isRunning == true) MoStatusTone.Success else MoStatusTone.Neutral,
                                     modifier = Modifier.testTag("notebook-campaign-chip"),
                                 )
@@ -445,6 +446,19 @@ private fun NotebookHub(
 @Composable
 private fun FarmWorksLink(actions: NotebookActions) {
     MoTertiaryButton("Ver todos los trabajos de la finca", actions.onWorks, modifier = Modifier.fillMaxWidth().testTag("notebook-farm-works"))
+}
+
+/** «Campaña 2026/27 · En marcha»: the campaign and its state in words, never by colour alone. */
+internal fun campaignChipText(campaignName: String?, status: com.isivoltpro.maginaolivo.data.local.model.CampaignStatus?): String {
+    if (campaignName == null) return campaignLabel(null)
+    val state = when (status) {
+        com.isivoltpro.maginaolivo.data.local.model.CampaignStatus.ACTIVE -> "En marcha"
+        com.isivoltpro.maginaolivo.data.local.model.CampaignStatus.HARVEST -> "En recolección"
+        com.isivoltpro.maginaolivo.data.local.model.CampaignStatus.PREPARATION -> "En preparación"
+        com.isivoltpro.maginaolivo.data.local.model.CampaignStatus.CLOSED -> "Cerrada"
+        null -> null
+    }
+    return listOfNotNull(campaignLabel(campaignName), state).joinToString(" · ")
 }
 
 /** «Campaña 2026/27» whether the farmer typed the word or not; «Sin campaña en marcha» without one. */

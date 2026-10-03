@@ -51,8 +51,10 @@ class NotebookHomeScreenTest {
         val tapped = mutableListOf<NotebookQuickAction>()
         show(onQuickAction = { tapped += it })
         // #351 (1): the Farm is the main datum and the campaign is its own chip, not running text.
-        composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca de ejemplo").assertTextContains("Campaña de ejemplo")
-        composeRule.onNodeWithTag("notebook-campaign-chip", useUnmergedTree = true).assertTextContains("Campaña de ejemplo", substring = true)
+        composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca de ejemplo").assertTextContains("Campaña de ejemplo", substring = true)
+        // The chip says the campaign's state in words, not only by colour.
+        composeRule.onNodeWithTag("notebook-campaign-chip", useUnmergedTree = true)
+            .assertTextContains(com.isivoltpro.maginaolivo.feature.notebook.campaignChipText(campaign.name, campaign.status))
         // CR-011 §4: the actions are shown directly; no «Registrar hoy» repeats them.
         composeRule.onAllNodesWithTag("notebook-register-today").fetchSemanticsNodes().let { assertEquals(0, it.size) }
         NotebookQuickAction.entries.forEach { action ->
