@@ -229,7 +229,7 @@ internal fun SummaryTab(
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs), modifier = Modifier.testTag("notebook-summary")) {
         MoSectionHeader("Producción")
         CampaignAtAGlance(CampaignDashboard.of(notebook, today), deliveries.deliveredGrams)
-        MoKpiMetric("Días de recolección", notebook.harvests.size.toString(), Modifier.fillMaxWidth(), icon = MoIcons.Harvest, kind = MoKpiKind.CAMPAIGN)
+        MoKpiMetric("Días de recolección", com.isivoltpro.maginaolivo.feature.harvests.harvestDayCount(notebook.harvests).toString(), Modifier.fillMaxWidth(), icon = MoIcons.Harvest, kind = MoKpiKind.CAMPAIGN)
         MoKpiMetric("Kg pesados", if (deliveries.deliveryCount == 0) "—" else Weight.format(deliveries.deliveredGrams), Modifier.fillMaxWidth(),
             icon = MoIcons.Delivery, kind = MoKpiKind.PESADAS, supportingText = if (deliveries.deliveryCount == 1) "1 pesada" else "${deliveries.deliveryCount} pesadas")
         MoKpiMetric("Rendimiento", deliveries.fatYield?.let { Percent.format(it.hundredths) } ?: "—", Modifier.fillMaxWidth(),

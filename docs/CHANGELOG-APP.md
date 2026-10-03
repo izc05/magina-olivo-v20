@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Recolección más clara (#366).** «Días de recolección» cuenta fechas: dos fincas el mismo día son
+  un día («En 2 fincas»), no dos. Cada día dice su finca («Estacas · 3 oct 2026»); las tarjetas de
+  campaña dicen «1 día de recolección» y «Sin pesadas todavía», y los kilos sin repartir se leen
+  «3.150 kg pendientes de repartir entre 2 parcelas» («Sin kg asignados» en cada parcela).
 - **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
   de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
   finca» queda como acción secundaria.
