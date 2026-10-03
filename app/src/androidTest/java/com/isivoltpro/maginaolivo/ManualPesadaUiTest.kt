@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -14,6 +15,7 @@ import com.isivoltpro.maginaolivo.feature.deliveries.DeliveriesUiState
 import com.isivoltpro.maginaolivo.feature.deliveries.DeliveryEditor
 import com.isivoltpro.maginaolivo.feature.deliveries.DeliveryForm
 import com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormErrors
+import com.isivoltpro.maginaolivo.feature.deliveries.RECEIPT_NOT_SAVED
 import com.isivoltpro.maginaolivo.feature.expenses.ExpensesScreen
 import com.isivoltpro.maginaolivo.feature.expenses.ExpensesUiState
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
@@ -84,6 +86,23 @@ class ManualPesadaUiTest {
         rule.onNodeWithTag("delivery-add-receipt").performScrollTo().assertExists()
         rule.onNodeWithTag("save-delivery").performScrollTo().performClick()
         rule.runOnIdle { assertNull(saved?.receiptUri); assertEquals("2.850", saved?.net) }
+    }
+
+    @Test fun aReceiptThatCouldNotBeKeptIsSaidInsideTheRepeatedEntrySheet() {
+        rule.setContent {
+            MaginaOlivoTheme {
+                DeliveriesScreen(
+                    state = DeliveriesUiState(
+                        isLoading = false, contexts = listOf(context), nextForm = typed.copy(net = ""), nextFormGeneration = 1,
+                        error = RECEIPT_NOT_SAVED,
+                    ),
+                    today = today, onCreate = {}, onProblem = {}, onDeliverySelected = {}, onTicketSelected = {},
+                    onCreateAndAddAnother = {}, presetFarmId = context.farmId,
+                )
+            }
+        }
+        rule.onNodeWithTag("delivery-saved-next").assertExists()
+        rule.onNodeWithTag("delivery-sheet-warning").assertTextEquals(RECEIPT_NOT_SAVED)
     }
 
     @Test fun gastosOfferNoInvoiceReading() {

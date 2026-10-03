@@ -154,7 +154,9 @@ private val PRIVACY = listOf(
         "teléfono. Hoy no hay cuenta ni copia en la nube: si borras la app o sus datos, se pierden.",
     "Fotos de vales y facturas" to
         "Una foto de vale o factura se guarda como adjunto en el propio teléfono y no se envía a ningún " +
-        "servicio. La app no lee su contenido: los kilos y los importes son los que escribes tú.",
+        "servicio. Las fotos que adjuntas no se leen: los kilos y los importes son los que escribes tú. Los " +
+        "vales y facturas que ya tenías «por revisar» de versiones anteriores se pueden seguir leyendo, " +
+        "solo en el propio teléfono, y nada leído se guarda sin tu confirmación.",
     "Servicios externos que se consultan" to
         "Tiempo: se envía el municipio a nuestro servidor, que pregunta a AEMET y, si falla, a MET Norway. " +
         "Radar: nuestro servidor da la lista de imágenes y el teléfono descarga de RainViewer las de la zona " +

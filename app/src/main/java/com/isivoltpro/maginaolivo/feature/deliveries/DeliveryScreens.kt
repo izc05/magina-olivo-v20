@@ -343,6 +343,15 @@ fun DeliveriesScreen(
                         modifier = Modifier.padding(horizontal = MoSpacing.screen).testTag("delivery-saved-next"),
                     )
                 }
+                // #342: a receipt that could not be kept is said inside the sheet the farmer is using.
+                state.error?.takeIf { next != null }?.let { warning ->
+                    Text(
+                        warning,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = MoSpacing.screen).testTag("delivery-sheet-warning"),
+                    )
+                }
                 DeliveryEditor(
                     title = "Registrar pesada",
                     initial = ticketSeed ?: next ?: start,
