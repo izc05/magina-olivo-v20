@@ -24,6 +24,8 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   o al ubicar una parcela hecha a mano, Catastro rellena el municipio y la provincia; siempre se
   pueden cambiar y nunca se pisa lo que escribiste. Si Catastro no lo indica, se escribe a mano.
   Al editar una parcela con referencia, «Completar municipio y provincia desde Catastro».
+- **Detalle de parcela por bloques.** En «Datos», la superficie es el dato principal junto a su
+  mapa, y el resto se agrupa en Datos catastrales, Geometría e Información adicional.
 - **Lluvia y radar (#345, #315).** Inicio muestra «Prob. lluvia X %» con su gota cuando AEMET la
   publica; si la fuente no da probabilidad (MET Norway) se muestra la lluvia prevista en mm del día
   y nunca un 0 % inventado. El tiempo se considera actual durante 1 hora y se vuelve a pedir al

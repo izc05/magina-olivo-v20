@@ -64,6 +64,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.material3.Surface
+import com.isivoltpro.maginaolivo.ui.theme.MoInk
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -422,26 +425,7 @@ private fun ParcelDetailContent(
             ParcelTabs(tab) { tab = it }
             when (tab) {
                 ParcelTab.ACTIVITY -> ParcelActivities(activities)
-                ParcelTab.DATA -> Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
-                    // Phase 18: the saved boundary, drawn from this phone's copy (works offline).
-                    parcel.geometryGeoJson?.let { geometry ->
-                        ParcelMap(
-                            listOf(MapParcel(parcel.id.toString(), parcel.displayName, geometry)),
-                            Modifier.fillMaxWidth().height(300.dp).testTag("parcel-map"),
-                            base = com.isivoltpro.maginaolivo.feature.maps.MapBase.MAP,
-                        )
-                    }
-                    ParcelValue("Superficie catastral", parcel.cadastralAreaM2?.let {
-                        "${NumberFormat.getNumberInstance(SPANISH).apply { maximumFractionDigits = 2 }.format(it / 10_000)} ha"
-                    })
-                    ParcelValue("Referencia catastral", parcel.cadastralReference)
-                    ParcelValue("Municipio", parcel.municipality)
-                    ParcelValue("Polígono", parcel.cadastralPolygon)
-                    ParcelValue("Parcela", parcel.cadastralParcel)
-                    ParcelValue("Geometría", if (parcel.geometryGeoJson == null) null else "Polígono guardado en el teléfono")
-                    ParcelValue("Importada el", parcel.sourceImportedAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.format(IMPORT_DATE))
-                    ParcelValue("Notas", parcel.notes)
-                }
+                ParcelTab.DATA -> ParcelDataBlocks(parcel)
                 ParcelTab.DOCUMENTS -> attachmentContent()
             }
             MoPrimaryButton("Editar parcela", onEdit, Modifier.fillMaxWidth().testTag("parcel-edit"))
@@ -450,6 +434,76 @@ private fun ParcelDetailContent(
         }
     }
 }
+
+/**
+ * #351 (2): the Parcel's data in blocks instead of a flat list — surface (main datum) with its
+ * map, Catastro identity, geometry and additional information. Only stored values; nothing new.
+ */
+@Composable
+private fun ParcelDataBlocks(parcel: Parcel) {
+    Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+        Surface(shape = MoShape.card, color = MoWarmWhite, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                Column(Modifier.semantics(mergeDescendants = true) {}.testTag("parcel-area-hero")) {
+                    Text("Superficie", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+                    Text(parcel.areaLabel(), style = MaterialTheme.typography.headlineMedium, color = MoOliveDark)
+                    parcel.areaNote()?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary) }
+                }
+                // Phase 18: the saved boundary, drawn from this phone's copy (works offline).
+                parcel.geometryGeoJson?.let { geometry ->
+                    ParcelMap(
+                        listOf(MapParcel(parcel.id.toString(), parcel.displayName, geometry)),
+                        Modifier.fillMaxWidth().height(240.dp).clip(MoShape.card).testTag("parcel-map"),
+                        base = com.isivoltpro.maginaolivo.feature.maps.MapBase.MAP,
+                    )
+                }
+            }
+        }
+        MoSectionCard(title = "Datos catastrales", icon = MoIcons.Document, modifier = Modifier.testTag("parcel-cadastral")) {
+            MoLabeledValue("Referencia catastral", parcel.cadastralReference ?: "Sin registrar")
+            ValuePair("Polígono", parcel.cadastralPolygon, "Parcela", parcel.cadastralParcel)
+            ValuePair("Municipio", parcel.municipality, "Provincia", parcel.province)
+        }
+        MoSectionCard(title = "Geometría", icon = MoIcons.Map, modifier = Modifier.testTag("parcel-geometry")) {
+            ValuePair(
+                "Contorno", if (parcel.geometryGeoJson == null) "Sin contorno" else "Guardado en el teléfono",
+                "Origen", if (parcel.source == ParcelSource.CATASTRO) "Catastro" else "Entrada manual",
+            )
+            ValuePair(
+                "Superficie catastral", parcel.cadastralAreaM2?.let(::hectares),
+                "Importada el", parcel.sourceImportedAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.format(IMPORT_DATE),
+            )
+        }
+        MoSectionCard(title = "Información adicional", icon = MoIcons.Notebook, modifier = Modifier.testTag("parcel-extra")) {
+            Text(
+                parcel.notes?.takeIf { it.isNotBlank() } ?: "Sin notas. Puedes añadirlas al editar la parcela.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (parcel.notes.isNullOrBlank()) MoTextSecondary else MoInk,
+            )
+        }
+    }
+}
+
+/** Two labelled values side by side; a missing value reads «Sin registrar», never a guess. */
+@Composable
+private fun ValuePair(firstLabel: String, first: String?, secondLabel: String, second: String?) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+        MoLabeledValue(firstLabel, first ?: "Sin registrar", Modifier.weight(1f))
+        MoLabeledValue(secondLabel, second ?: "Sin registrar", Modifier.weight(1f))
+    }
+}
+
+/** Which surface the main figure is, and Catastro's when it differs. */
+private fun Parcel.areaNote(): String? = when {
+    managedAreaM2 != null && cadastralAreaM2 != null && managedAreaM2 != cadastralAreaM2 ->
+        "Superficie gestionada · Catastro: ${hectares(cadastralAreaM2)}"
+    managedAreaM2 != null -> "Superficie gestionada"
+    cadastralAreaM2 != null -> "Según Catastro"
+    else -> "Sin superficie registrada"
+}
+
+private fun hectares(m2: Double): String =
+    "${NumberFormat.getNumberInstance(SPANISH).apply { maximumFractionDigits = 2 }.format(m2 / 10_000)} ha"
 
 private enum class ParcelTab(val label: String) { ACTIVITY("Actividad"), DATA("Datos"), DOCUMENTS("Documentos") }
 
@@ -532,14 +586,6 @@ private fun ParcelActivities(activities: List<Activity>) {
                 modifier = Modifier.testTag("parcel-activity"),
             )
         }
-    }
-}
-
-@Composable
-private fun ParcelValue(label: String, value: String?) {
-    Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
-        Text(value ?: "Sin registrar", style = MaterialTheme.typography.bodyLarge)
     }
 }
 
