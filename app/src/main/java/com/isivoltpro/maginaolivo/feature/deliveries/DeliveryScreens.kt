@@ -364,6 +364,9 @@ fun DeliveriesScreen(
                     onCancel = { editorVisible = false; ticketSeed = null; onEditorClosed() },
                     onAddReceipt = { typed -> ticketSeed = typed; editorVisible = false; receiptVisible = true },
                     onSaveAndAddAnother = onCreateAndAddAnother,
+                    // #373/#375: a Farm chosen on the way here (Finca, Campaña, Parcela, Jornada) is
+                    // context, not a question again. Only a global entry offers the Farm picker.
+                    farmLocked = presetFarmId != null || jornada != null,
                 )
             }
         }
@@ -571,12 +574,20 @@ internal fun DeliveryEditor(
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
         if (farmLocked) {
-            Text(context?.farmName.orEmpty(), style = MaterialTheme.typography.titleMedium)
+            // #373/#375: «Salinillas · Campaña 2026-2027» as fixed context, never a selector.
+            Text(
+                context?.let { pesadaContextLine(it.farmName, it.campaignName) } ?: PESADA_NO_RUNNING_CAMPAIGN,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (context != null) MoOliveDark else MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag("delivery-context"),
+            )
         } else {
             MoSelectField("Finca", context?.farmName ?: "Elige la finca", { picker = "farm" }, Modifier.testTag("delivery-farm"))
         }
         errors.farm?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        context?.let { Text("Campaña ${it.campaignName}", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary) }
+        if (!farmLocked) {
+            context?.let { Text("Campaña ${it.campaignName}", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary) }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             Box(Modifier.weight(2f)) {
                 MoDateInputField(
@@ -1179,3 +1190,12 @@ fun TicketReviewScreen(
         }
     }
 }
+
+/** #373/#375: the fixed context of a Pesada opened from a Farm, Campaign, Parcel or Jornada. */
+internal fun pesadaContextLine(farmName: String, campaignName: String): String =
+    // A campaign the farmer already named «Campaña 2026-2027» is not called «Campaña Campaña …».
+    "$farmName · " + if (campaignName.trim().startsWith("campaña", ignoreCase = true)) campaignName.trim() else "Campaña $campaignName"
+
+/** A Farm reached from Mi Campo whose campaign is no longer running: said, never swapped silently. */
+internal const val PESADA_NO_RUNNING_CAMPAIGN =
+    "Esta finca no tiene una campaña en marcha. Actívala en Campañas para registrar pesadas."
