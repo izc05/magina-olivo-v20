@@ -5,6 +5,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -112,6 +113,37 @@ class WeatherWeekScreenTest {
         composeRule.onNodeWithTag("weather-week-refresh-failed").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("weather-week-refresh").performScrollTo().performClick()
         composeRule.runOnIdle { assertEquals(1, refreshes) }
+    }
+
+    /** #362: the week in one line, states in words, rain only as published, at 360 dp and 1.3. */
+    @Test fun theWeekReadsAtAGlanceWithoutInventedRain() {
+        val today = LocalDate.of(2026, 9, 28)
+        val forecast = WeatherNow(
+            19, WeatherCondition.RAIN, null, 12, now,
+            daily = listOf(
+                WeatherDayForecast(today, 12, 19, WeatherCondition.RAIN, null, 3.4, 12),
+                WeatherDayForecast(today.plusDays(1), 11, 17, WeatherCondition.RAIN, null, 7.9, 20),
+                WeatherDayForecast(today.plusDays(2), 10, 25, WeatherCondition.CLEAR, null, 0.0, 8),
+            ),
+        )
+        composeRule.setContent {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, fontScale = 1.3f),
+            ) {
+                MaginaOlivoTheme {
+                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.width(360.dp)) {
+                        WeatherWeekScreen(WeatherWeekUiState(location = location, weather = FeedState.Value(forecast, "MET Norway", now, stale = false)), now = now)
+                    }
+                }
+            }
+        }
+        composeRule.onNodeWithTag("weather-week-summary").performScrollTo()
+            .assertTextContains("2 días con lluvia · Máx. 25° · Mayor lluvia: mañana, 7,9 mm")
+        // MET Norway gives no probability: millimetres only, never «0 %».
+        composeRule.onNodeWithTag("weather-week-day-1").performScrollTo().assertTextContains("7,9 mm", substring = true).assertTextContains("Lluvia")
+        composeRule.onNodeWithTag("weather-week-day-2").performScrollTo().assertTextContains("Sin lluvia").assertTextContains("Despejado")
+        assertEquals(0, composeRule.onAllNodesWithText("0 %", substring = true).fetchSemanticsNodes().size)
     }
 
     private fun show(state: WeatherWeekUiState, onRadar: (() -> Unit)? = null) {

@@ -25,6 +25,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   y coste de recogida por kilo de cada campaña, con el mismo dato en texto debajo. Sin datos es un
   hueco, nunca un cero; el coste no mezcla monedas; los kilos sin pesada (histórico) no entran en
   las barras. Tocar una campaña la abre. Sale de la misma comparación que ya había, sin totales nuevos.
+- **Previsión semanal más visual (#362).** Cada día tiene el color suave de su estado (lluvia azul
+  agua, nublado gris, parcialmente nublado azul claro, despejado dorado), además de su icono y su
+  nombre. «Hoy» se destaca con borde e icono mayor; la máxima manda y la mínima queda secundaria;
+  «Sin lluvia» en lugar de «0 mm»; arriba, un resumen de la semana. La fuente queda como nota discreta.
 - **Fichas de finca con más datos (#363, #364, #359).** Cada finca muestra Superficie, Parcelas,
   Olivos y Kg de la campaña en marcha (solo de sus pesadas; «Sin pesadas» o «—» si no hay, nunca 0).
   La cabecera de Mis fincas añade Olivos («≥ N» si falta algún recuento) en una cuadrícula 2×2.
