@@ -222,6 +222,8 @@ internal fun SummaryTab(
     onLabour: () -> Unit = {},
     onExpenses: () -> Unit = {},
     onHarvest: (UUID) -> Unit = {},
+    /** #355: a campaign tapped in the history opens that campaign here. */
+    onSelectCampaign: (UUID) -> Unit = {},
 ) {
     val deliveries = notebook.deliverySummary
     val ledger = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(notebook.campaign.id, notebook.expenses, notebook.deliveries)
@@ -272,7 +274,9 @@ internal fun SummaryTab(
                 modifier = Modifier.testTag("notebook-chart-legacy-note"),
             )
         }
-        CampaignComparisonList(comparison)
+        // #355: the Farm's campaigns side by side, then the same numbers as text.
+        CampaignHistoryCharts(com.isivoltpro.maginaolivo.domain.analytics.CampaignHistory.of(comparison), notebook.campaign.id, onSelectCampaign)
+        CampaignComparisonList(comparison, onSelectCampaign)
     }
     if (machineryDetail) {
         androidx.compose.material3.ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { machineryDetail = false },

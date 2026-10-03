@@ -228,9 +228,9 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
  * these is gone.
  */
 @Composable
-internal fun CampaignView(notebook: CampaignNotebook, state: NotebookUiState, actions: NotebookActions) {
+internal fun CampaignView(notebook: CampaignNotebook, state: NotebookUiState, actions: NotebookActions, onSelectCampaign: (java.util.UUID) -> Unit = {}) {
     RecollectionActions(notebook, actions)
-    SummaryTab(notebook, state.comparison, payments = state.labourPayments, onLabour = { actions.onLabour(notebook.campaign.id) }, onExpenses = { actions.onCampaignExpenses?.invoke(notebook.campaign.id) ?: actions.onExpenses() }, onHarvest = actions.onHarvest)
+    SummaryTab(notebook, state.comparison, payments = state.labourPayments, onLabour = { actions.onLabour(notebook.campaign.id) }, onExpenses = { actions.onCampaignExpenses?.invoke(notebook.campaign.id) ?: actions.onExpenses() }, onHarvest = actions.onHarvest, onSelectCampaign = onSelectCampaign)
 }
 
 private fun money(summary: ExpenseSummary): String =

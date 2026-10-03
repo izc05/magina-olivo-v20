@@ -1,6 +1,10 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +24,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison
+import com.isivoltpro.maginaolivo.domain.analytics.CampaignHistory
 import com.isivoltpro.maginaolivo.domain.analytics.CampaignSeries
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.domain.expense.Money
@@ -127,12 +132,13 @@ internal fun CampaignCharts(series: CampaignSeries) {
  * posted costs and delivered kilos; anything unknown reads "sin datos".
  */
 @Composable
-internal fun CampaignComparisonList(rows: List<CampaignComparison>) {
+internal fun CampaignComparisonList(rows: List<CampaignComparison>, onSelectCampaign: (java.util.UUID) -> Unit = {}) {
     if (rows.size < 2) return
     MoSectionHeader("Comparar campañas")
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         rows.reversed().forEach { row ->
-            Column(Modifier.fillMaxWidth().testTag("comparison-row")) {
+            // #355: a campaign opens here, as from the history above.
+            Column(Modifier.fillMaxWidth().clickable { onSelectCampaign(row.campaign.id) }.testTag("comparison-row")) {
                 Text(row.campaign.name, style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
                 Text(
                     listOf(
@@ -159,5 +165,122 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>) {
                 }
             }
         }
+    }
+}
+
+/** #355: «2024/25: sin datos · 2025/26: 4.000 kg». The text twin of the kilos chart. */
+internal fun historyKilosLine(history: CampaignHistory): String =
+    history.points.joinToString(" · ") { point -> "${point.name}: ${point.deliveredGrams?.let(Weight::format) ?: "sin datos"}" }
+
+/** «2025/26: sin análisis · 2026/27: 21,00 % sobre el 100 %». */
+internal fun historyYieldLine(history: CampaignHistory): String =
+    history.points.joinToString(" · ") { point ->
+        "${point.name}: " + (point.yieldHundredths?.let { "${Percent.format(it)} sobre el ${point.yieldCoveragePercent} %" } ?: "sin análisis")
+    }
+
+/** «2025/26: sin datos · 2026/27: 0,25 €/kg», in the one currency of the series. */
+internal fun historyCostLine(history: CampaignHistory): String {
+    val currency = history.costCurrency
+    val line = history.points.joinToString(" · ") { point ->
+        "${point.name}: " + (point.costPerKgMinor?.let { if (currency != null) "${Money.format(it, currency)}/kg" else null } ?: "sin datos")
+    }
+    return if (history.otherCurrencyCampaigns.isEmpty()) line
+    else "$line. En otra moneda, no dibujadas: ${history.otherCurrencyCampaigns.joinToString(", ")}"
+}
+
+/**
+ * #355 — the Farm's campaigns side by side: weighed kilos, weighted yield and cost per kilo.
+ * Drawn from [CampaignHistory] (the comparison as it is); each chart has its text twin, an
+ * unknown value is a gap (never a zero) and each campaign under the charts opens it.
+ */
+@Composable
+internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util.UUID? = null, onSelectCampaign: (java.util.UUID) -> Unit = {}) {
+    if (history.points.size < 2) return
+    MoSectionHeader("Histórico de campañas")
+    val points = history.points
+    val accent = MaterialTheme.colorScheme.primary
+    val ink = MoOliveDark
+
+    Text("Kilos pesados por campaña", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+    val kilosLine = historyKilosLine(history)
+    if (history.hasKilos) {
+        Canvas(Modifier.fillMaxWidth().height(110.dp).testTag("history-kg").semantics { contentDescription = kilosLine }) {
+            val max = points.maxOf { it.deliveredGrams ?: 0L }.coerceAtLeast(1)
+            val slot = size.width / points.size
+            val barWidth = (slot * 0.55f).coerceAtLeast(2f)
+            points.forEachIndexed { index, point ->
+                val grams = point.deliveredGrams ?: return@forEachIndexed
+                val height = size.height * grams / max
+                drawRect(accent.copy(alpha = if (point.campaignId == selected) 0.9f else 0.5f),
+                    topLeft = Offset(slot * index + (slot - barWidth) / 2, size.height - height), size = Size(barWidth, height))
+            }
+        }
+    }
+    Text(kilosLine, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-kg-summary"))
+    if (points.any { it.legacyUnweighedGrams > 0 }) {
+        Text("Solo pesadas: los kilos registrados sin pesada (histórico) no están en las barras.",
+            style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-legacy-note"))
+    }
+
+    Text("Rendimiento graso medio", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+    val yieldLine = historyYieldLine(history)
+    if (history.hasYield) {
+        val analysed = points.mapNotNull { it.yieldHundredths }
+        val low = analysed.min()
+        val high = analysed.max()
+        Canvas(Modifier.fillMaxWidth().height(80.dp).testTag("history-yield").semantics { contentDescription = yieldLine }) {
+            drawSeries(points.map { it.yieldHundredths?.toLong() }, low.toLong(), high.toLong(), ink)
+        }
+    }
+    Text(yieldLine, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-yield-summary"))
+
+    Text("Coste de recogida por kilo", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+    val costLine = historyCostLine(history)
+    if (history.hasCost) {
+        val costs = points.mapNotNull { it.costPerKgMinor }
+        Canvas(Modifier.fillMaxWidth().height(80.dp).testTag("history-cost").semantics { contentDescription = costLine }) {
+            drawSeries(points.map { it.costPerKgMinor }, costs.min(), costs.max(), ink)
+        }
+    }
+    Text(costLine, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-cost-summary"))
+
+    // The campaigns under the charts, in the same order; each opens that campaign. Codex #383:
+    // each is a 48 dp target; when they no longer fit under their columns the row scrolls.
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val fits = maxWidth / points.size >= 48.dp
+        val row = if (fits) Modifier.fillMaxWidth() else Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState())
+        Row(row) {
+            points.forEach { point ->
+                val slot = if (fits) Modifier.weight(1f) else Modifier.width(72.dp)
+                androidx.compose.foundation.layout.Box(
+                    slot.heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { onSelectCampaign(point.campaignId) }
+                        .testTag("history-campaign"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        point.name,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (point.campaignId == selected) MoOliveDark else MoTextSecondary,
+                        maxLines = 2,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Dots joined only between known neighbours: a gap stays a gap. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSeries(values: List<Long?>, low: Long, high: Long, color: androidx.compose.ui.graphics.Color) {
+    val slot = size.width / values.size
+    val span = (high - low).coerceAtLeast(1)
+    val pad = 8.dp.toPx()
+    fun y(value: Long) = size.height - pad - (size.height - 2 * pad) * (value - low) / span
+    values.forEachIndexed { index, value ->
+        value ?: return@forEachIndexed
+        val center = Offset(slot * index + slot / 2, y(value))
+        drawCircle(color, radius = 5.dp.toPx(), center = center)
+        val next = values.getOrNull(index + 1) ?: return@forEachIndexed
+        drawLine(color, center, Offset(slot * (index + 1) + slot / 2, y(next)), strokeWidth = 2.dp.toPx())
     }
 }
