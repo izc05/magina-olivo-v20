@@ -164,8 +164,11 @@ data class CampaignSummaryUi(
     val legacyGrams: Long? = null,
     val fatYieldHundredths: Int? = null,
     val expensesMinor: Long? = null,
+    /** #365: «1 persona · 1 jornada · 65,00 €»; null while the jornales are still loading. */
+    val labourLine: String? = null,
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CampaignDetailRoute(
     campaignId: UUID,
@@ -182,7 +185,10 @@ fun CampaignDetailRoute(
     val harvests by remember(campaignId) { persistence.harvestRepository.observeForCampaign(campaignId) }.collectAsStateWithLifecycle(emptyList())
     val deliveries by remember(campaignId) { persistence.deliveryRepository.observeForCampaign(campaignId) }.collectAsStateWithLifecycle(emptyList())
     val expenses by remember { persistence.expenseRepository.observeAll() }.collectAsStateWithLifecycle(emptyList())
-    val summary = remember(harvests, deliveries, expenses) {
+    val labour by remember(campaignId) { persistence.labourRepository.observeForCampaign(campaignId) }
+        .collectAsStateWithLifecycle(null)
+    var labourOpen by rememberSaveable { mutableStateOf(false) }
+    val summary = remember(harvests, deliveries, expenses, labour) {
         val harvest = HarvestSummary.of(harvests)
         val delivery = DeliverySummary.of(deliveries)
         val ledger = ExpenseSummary.of(expenses.filter { it.campaignId == campaignId })
@@ -195,6 +201,11 @@ fun CampaignDetailRoute(
             legacyGrams = legacyUnweighedGrams(harvests, deliveries).takeIf { it > 0 },
             fatYieldHundredths = delivery.fatYield?.hundredths,
             expensesMinor = ledger.totalMinor.takeIf { ledger.postedCount > 0 },
+            labourLine = labour?.let { entries ->
+                com.isivoltpro.maginaolivo.feature.harvests.campaignLabourLine(
+                    entries, com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(campaignId, expenses, deliveries),
+                )
+            },
         )
     }
     CampaignDetailScreen(
@@ -205,7 +216,14 @@ fun CampaignDetailRoute(
             val campaign = state.campaign
             if (campaign != null && campaign.status.isRunning) onNewPesada(campaign.farmId) else onDeliveries()
         },
+        onLabour = { labourOpen = true },
     )
+    // #365: the one Jornales detail (people and payments) of this campaign, as from the Cuaderno.
+    if (labourOpen) {
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { labourOpen = false }) {
+            com.isivoltpro.maginaolivo.feature.harvests.LabourPaymentsRoute(campaignId, persistence) { labourOpen = false }
+        }
+    }
 }
 
 /**
@@ -221,6 +239,7 @@ fun CampaignDetailScreen(
     summary: CampaignSummaryUi = CampaignSummaryUi(),
     onHarvests: () -> Unit = {},
     onDeliveries: () -> Unit = {},
+    onLabour: () -> Unit = {},
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     var editor by rememberSaveable { mutableStateOf(false) }
@@ -331,6 +350,14 @@ fun CampaignDetailScreen(
                         icon = MoIcons.Delivery,
                         onClick = onDeliveries,
                         modifier = Modifier.testTag("campaign-open-deliveries"),
+                        trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(18.dp)) },
+                    )
+                    MoCompactListItem(
+                        title = "Jornales",
+                        subtitle = summary.labourLine ?: "Cargando jornales…",
+                        icon = MoIcons.People,
+                        onClick = onLabour,
+                        modifier = Modifier.testTag("campaign-open-labour"),
                         trailing = { Icon(MoIcons.ChevronRight, contentDescription = null, tint = MoTextSecondary, modifier = Modifier.size(18.dp)) },
                     )
                     Spacer(Modifier.height(MoSpacing.xs))

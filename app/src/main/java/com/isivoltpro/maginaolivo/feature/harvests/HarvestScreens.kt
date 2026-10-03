@@ -556,6 +556,8 @@ fun HarvestDetailRoute(
     onAddPesada: (UUID) -> Unit = {},
     onPesadaSelected: (UUID) -> Unit = {},
     onExpenseSelected: (UUID) -> Unit = {},
+    /** #365: the day's resource to open on («labour» from Cuaderno → Jornal). */
+    initialResource: String? = null,
 ) {
     val viewModel: HarvestDetailViewModel = viewModel(
         key = "harvest-$harvestId",
@@ -615,6 +617,7 @@ fun HarvestDetailRoute(
         onSaveRates = viewModel::saveRates,
         onPreferCalculated = viewModel::preferCalculated,
         onLinkCost = viewModel::linkCost,
+        initialResource = initialResource,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.HARVEST, harvestId),
@@ -648,8 +651,13 @@ fun HarvestDetailScreen(
     onSaveRates: (RecollectionRates) -> Unit = {},
     onPreferCalculated: (DayCostKind) -> Unit = {},
     onLinkCost: (UUID) -> Unit = {},
+    /**
+     * #365: the resource detail open on arrival. Cuaderno → Jornal lands on the day's Jornales,
+     * with «Registrar jornal» at hand, instead of on its Pesadas; the day stays one screen.
+     */
+    initialResource: String? = null,
 ) {
-    var resourceDetail by rememberSaveable { mutableStateOf<String?>(null) }
+    var resourceDetail by rememberSaveable { mutableStateOf(initialResource) }
     var costVisible by rememberSaveable { mutableStateOf(false) }
     var ratesVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.ratesSaved) { if (state.ratesSaved > 0) ratesVisible = false }
