@@ -29,6 +29,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 internal const val LOG_TAG = "MaginaOlivo"
 private const val OPEN_DAY_TIMEOUT_MS = 10_000L
+internal const val JORNADA_RESOURCE_LABOUR = "labour"
 
 /**
  * CR-011 §8/§14 — Cuaderno → Jornal: finds or creates today's día de recolección of [farmId]
@@ -73,6 +74,8 @@ fun TodayHarvestRoute(
             onAddPesada = onAddPesada,
             onPesadaSelected = onPesadaSelected,
             onExpenseSelected = onExpenseSelected,
+            // #365: reached from Cuaderno → Jornal, so the day opens on its Jornales.
+            initialResource = JORNADA_RESOURCE_LABOUR,
         )
         is AppResult.Failure -> Box(
             Modifier.fillMaxSize().background(MoCream).statusBarsPadding().padding(MoSpacing.screen)
