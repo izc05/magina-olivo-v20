@@ -25,6 +25,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   punto azul en el mapa y, si falla, dice por qué (sin permiso, ubicación apagada o sin señal) con su
   salida: permitir, activar o escribir coordenadas. La parcela elegida dice «Seleccionada · Guardada»
   y su municipio. El mapa y la foto aérea se dibujan a su resolución real (antes se ampliaban al doble).
+- **Inicio más natural y radar más nítido (#360).** La foto de Inicio ya no se tiñe de verde: una
+  sombra neutra mantiene sus colores y el texto blanco sigue legible (≥ 4,5:1). El radar de lluvia
+  pide a RainViewer su imagen de 512 px, con el doble de detalle que la de 256 px que se ampliaba.
 - **La Pesada recuerda de dónde vienes (#373, #375).** Desde una finca, una campaña, una parcela o un
   día de recolección, «Nueva pesada» ya no vuelve a pedir la finca: muestra «Salinillas · Campaña
   2026-2027» como contexto fijo. En una campaña en marcha, «Pesadas» abre la nueva pesada de esa
