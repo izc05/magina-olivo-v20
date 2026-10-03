@@ -178,6 +178,24 @@ class FarmScreensTest {
         assertEquals(0, composeRule.onAllNodesWithText("0 kg").fetchSemanticsNodes().size)
     }
 
+    /** Codex #371: while the Pesadas load, «Kg campaña» is unknown — never «Sin pesadas» or «—». */
+    @Test
+    fun campaignKilosAreUnknownWhileLoading() {
+        val estacas = farm(1).copy(name = "Estacas", oliveTreeCount = 82, oliveTreeCountComplete = true)
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                FarmListScreen(
+                    state = FarmListUiState(isLoading = false, farms = listOf(estacas)),
+                    onFarmSelected = {}, onCreate = {}, onRestore = {}, onRetry = {},
+                    campaignKilos = null,
+                )
+            }
+        }
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-${estacas.id}"))
+        composeRule.onNodeWithTag("farm-${estacas.id}").assertTextContains("…")
+        assertEquals(0, composeRule.onAllNodesWithText("Sin pesadas").fetchSemanticsNodes().size)
+    }
+
     private fun farm(index: Int) = Farm(
         id = UUID.nameUUIDFromBytes("farm-$index".toByteArray()),
         workspaceId = UUID.fromString("10000000-0000-0000-0000-000000000060"),

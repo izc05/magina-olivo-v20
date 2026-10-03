@@ -95,9 +95,14 @@ fun FarmListRoute(
             .mapValues { (_, entries) -> entries.minBy { it.activityDate } }
     }
     // #364: «Kg campaña» is read from the Pesadas of each Farm's running Campaign; nothing stored.
-    val contexts by remember { persistence.harvestRepository.observeContexts() }.collectAsStateWithLifecycle(emptyList())
-    val deliveries by remember { persistence.deliveryRepository.observeAll() }.collectAsStateWithLifecycle(emptyList())
-    val campaignKilos = remember(contexts, deliveries) { runningCampaignKilos(contexts, deliveries) }
+    // Codex #371: until both have loaded the kilos are unknown («…»), never «Sin pesadas» or «—».
+    val contexts by remember { persistence.harvestRepository.observeContexts() }.collectAsStateWithLifecycle(null)
+    val deliveries by remember { persistence.deliveryRepository.observeAll() }.collectAsStateWithLifecycle(null)
+    val campaignKilos = remember(contexts, deliveries) {
+        val loadedContexts = contexts
+        val loadedDeliveries = deliveries
+        if (loadedContexts == null || loadedDeliveries == null) null else runningCampaignKilos(loadedContexts, loadedDeliveries)
+    }
     FarmListScreen(
         state = state,
         onFarmSelected = onFarmSelected,
@@ -110,7 +115,7 @@ fun FarmListRoute(
             uri
         },
         nextWork = { farmId -> nextWork[farmId]?.let { "Próximo: ${it.description} · ${relativeDay(it.activityDate, today)}" } },
-        campaignKilos = { farmId -> campaignKilos[farmId] },
+        campaignKilos = campaignKilos?.let { kilos -> { farmId: UUID -> kilos[farmId] } },
     )
 }
 
@@ -135,8 +140,11 @@ fun FarmListScreen(
     cover: @Composable (UUID) -> String? = { null },
     /** A short line for the next planned work of a Farm, when there is one. */
     nextWork: (UUID) -> String? = { null },
-    /** #364: grams weighed in the Farm's running Campaign; null without one. */
-    campaignKilos: (UUID) -> Long? = { null },
+    /**
+     * #364: grams weighed in the Farm's running Campaign (null without one). The function itself
+     * is null while the Pesadas are still loading.
+     */
+    campaignKilos: ((UUID) -> Long?)? = { null },
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -229,7 +237,8 @@ fun FarmListScreen(
                         farm = farm,
                         coverUri = cover(farm.id),
                         nextWork = nextWork(farm.id),
-                        campaignKilos = campaignKilos(farm.id),
+                        campaignKilos = campaignKilos?.let { it(farm.id) },
+                        kilosLoaded = campaignKilos != null,
                         onClick = { onFarmSelected(farm.id) },
                     )
                 }
@@ -565,6 +574,7 @@ private fun FarmCard(
     coverUri: String?,
     nextWork: String?,
     campaignKilos: Long?,
+    kilosLoaded: Boolean,
     onClick: () -> Unit,
 ) {
     MoFarmCard(
@@ -582,7 +592,7 @@ private fun FarmCard(
         campaignActive = farm.activeCampaignName != null,
         artworkSeed = farm.id.hashCode(),
         olives = farm.oliveTreeLabel(),
-        campaignKilos = campaignKilosLabel(campaignKilos),
+        campaignKilos = if (kilosLoaded) campaignKilosLabel(campaignKilos) else "…",
     )
 }
 
