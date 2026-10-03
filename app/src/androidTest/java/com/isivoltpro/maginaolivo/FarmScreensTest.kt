@@ -1,6 +1,9 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyDescendant
@@ -50,6 +53,46 @@ class FarmScreensTest {
         assertEquals(1, composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().size)
         composeRule.onNodeWithText("Crear mi primera finca").assertIsDisplayed()
         assertEquals(0, composeRule.onAllNodesWithText("Maquinaria").fetchSemanticsNodes().size)
+    }
+
+    /** A second Farm in a row brings the same message as the first; the editor still closes. */
+    @Test
+    fun theEditorClosesOnEverySaveEvenWithTheSameMessage() {
+        val saved = "Finca guardada en este dispositivo"
+        var state by mutableStateOf(FarmListUiState(isLoading = false, farms = listOf(farm(1)), message = saved, saveCount = 1))
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                FarmListScreen(state = state, onFarmSelected = {}, onCreate = {}, onRestore = {}, onRetry = {})
+            }
+        }
+        composeRule.onNodeWithTag("add-farm").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isNotEmpty() }
+
+        state = state.copy(farms = state.farms + farm(2), saveCount = 2)
+
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isEmpty() }
+        assertEquals(saved, state.message)
+    }
+
+    /** After process death the new ViewModel counts from zero; that is not a save. */
+    @Test
+    fun aCountStartingAgainDoesNotCloseTheEditor() {
+        var state by mutableStateOf(FarmListUiState(isLoading = false, farms = listOf(farm(1)), saveCount = 3))
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                FarmListScreen(state = state, onFarmSelected = {}, onCreate = {}, onRestore = {}, onRetry = {})
+            }
+        }
+        composeRule.onNodeWithTag("add-farm").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isNotEmpty() }
+
+        state = state.copy(saveCount = 0)
+        composeRule.waitForIdle()
+        assertEquals(1, composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().size)
+
+        // The next real save still closes it.
+        state = state.copy(saveCount = 1)
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isEmpty() }
     }
 
     @Test

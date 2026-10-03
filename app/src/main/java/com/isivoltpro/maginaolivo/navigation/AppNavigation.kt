@@ -790,9 +790,12 @@ private fun PersistenceUnavailableScreen() {
  * A bottom-bar tab always opens its own root screen, from wherever the farmer is: Inicio is
  * always Inicio, Mi Campo is always the farm list. Nothing is kept or restored per tab (that
  * made a tab reopen a screen left deep inside it), so Back simply walks the screens visited,
- * and from any root it returns to Inicio.
+ * and from any root it returns to Inicio. Tapping the tab of the root already shown does nothing.
  */
 private fun NavHostController.navigateToRoot(destination: RootDestination) {
+    // #357/#358: the root already on screen is kept as it is. Popping it to Inicio and opening
+    // it again recreated the screen (title flicker, view and scroll reset).
+    if (currentDestination?.route == destination.route) return
     navigate(destination.route) {
         popUpTo(RootDestination.Home.route)
         launchSingleTop = true

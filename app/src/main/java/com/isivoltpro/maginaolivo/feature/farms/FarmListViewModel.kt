@@ -35,6 +35,11 @@ data class FarmListUiState(
     val nameError: String? = null,
     val error: String? = null,
     val message: String? = null,
+    /**
+     * Counts finished saves. The editor closes when it changes: the same message twice in a
+     * row would not, because the brief `null` between them can fall inside one frame.
+     */
+    val saveCount: Int = 0,
 )
 
 class FarmListViewModel(
@@ -160,6 +165,7 @@ class FarmListViewModel(
                 is AppResult.Success -> mutableState.value = mutableState.value.copy(
                     isSaving = false,
                     message = successMessage,
+                    saveCount = mutableState.value.saveCount + 1,
                 )
                 is AppResult.Failure -> mutableState.value = mutableState.value.copy(
                     isSaving = false,
