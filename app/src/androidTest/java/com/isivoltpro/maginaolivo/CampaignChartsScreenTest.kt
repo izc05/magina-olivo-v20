@@ -5,11 +5,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison
 import com.isivoltpro.maginaolivo.domain.analytics.CampaignSeries
@@ -35,6 +39,48 @@ class CampaignChartsScreenTest {
     private val farm = UUID.randomUUID()
     private val last = campaign("2025/26", LocalDate.of(2025, 10, 1), CampaignStatus.CLOSED)
     private val current = campaign("2026/27", LocalDate.of(2026, 10, 1), CampaignStatus.HARVEST)
+
+    /** #355: the history shows every campaign; tapping one opens it; a missing value is no bar. */
+    @Test fun theHistoryNamesEachCampaignAndOpensIt() {
+        val opened = mutableListOf<UUID>()
+        val history = com.isivoltpro.maginaolivo.domain.analytics.CampaignHistory(
+            listOf(
+                com.isivoltpro.maginaolivo.domain.analytics.CampaignHistoryPoint(last.id, last.name, null, 0, null, 0, null),
+                com.isivoltpro.maginaolivo.domain.analytics.CampaignHistoryPoint(current.id, current.name, 2_000_000, 0, 2_100, 100, null),
+            ),
+            costCurrency = null,
+        )
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    com.isivoltpro.maginaolivo.feature.notebook.CampaignHistoryCharts(history, current.id) { opened += it }
+                }
+            }
+        }
+        composeRule.onNodeWithTag("history-kg-summary").assertTextContains("2025/26: sin datos", substring = true)
+        composeRule.onNodeWithTag("history-yield-summary").assertTextContains("2025/26: sin análisis", substring = true)
+        // No campaign has a cost per kilo: no line is drawn, the text says so.
+        composeRule.onAllNodesWithTag("history-cost").assertCountEquals(0)
+        composeRule.onNodeWithTag("history-cost-summary").assertTextContains("2026/27: sin datos", substring = true)
+        composeRule.onAllNodesWithTag("history-campaign").assertCountEquals(2)
+        // Codex #383: each campaign is a 48 dp target.
+        composeRule.onAllNodesWithTag("history-campaign")[0].assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        composeRule.onAllNodesWithTag("history-campaign")[0].performClick()
+        composeRule.runOnIdle { org.junit.Assert.assertEquals(listOf(last.id), opened) }
+    }
+
+    @Test fun oneCampaignHasNoHistory() {
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                com.isivoltpro.maginaolivo.feature.notebook.CampaignHistoryCharts(
+                    com.isivoltpro.maginaolivo.domain.analytics.CampaignHistory(
+                        listOf(com.isivoltpro.maginaolivo.domain.analytics.CampaignHistoryPoint(current.id, current.name, 1, 0, null, 0, null)), null,
+                    ),
+                )
+            }
+        }
+        composeRule.onAllNodesWithTag("history-kg-summary").assertCountEquals(0)
+    }
 
     @Test fun theSummaryLinesAreTheRawTotals() {
         val notebook = CampaignNotebook.project(
@@ -69,9 +115,9 @@ class CampaignChartsScreenTest {
         )
         show(CampaignSeries(emptyList(), emptyList()), rows)
         composeRule.onAllNodesWithTag("comparison-row").assertCountEquals(2)
-        composeRule.onAllNodesWithTag("comparison-line")[0].assertTextContains("(+20 %)", substring = true)
-        composeRule.onAllNodesWithTag("comparison-line")[0].assertTextContains("coste/kg sin datos", substring = true)
-        composeRule.onAllNodesWithTag("comparison-line")[0].assertTextContains("rend. sin datos", substring = true)
+        composeRule.onAllNodesWithTag("comparison-line", useUnmergedTree = true)[0].assertTextContains("(+20 %)", substring = true)
+        composeRule.onAllNodesWithTag("comparison-line", useUnmergedTree = true)[0].assertTextContains("coste/kg sin datos", substring = true)
+        composeRule.onAllNodesWithTag("comparison-line", useUnmergedTree = true)[0].assertTextContains("rend. sin datos", substring = true)
     }
 
     private fun show(series: CampaignSeries, rows: List<CampaignComparison>) {
