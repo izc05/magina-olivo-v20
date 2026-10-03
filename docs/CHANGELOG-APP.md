@@ -25,6 +25,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   guardar otra vez con el mismo mensaje se quedaba abierto. Ahora cada guardado correcto cuenta y
   cierra el formulario; un error no lo cierra y, tras cerrar Android la app, el borrador restaurado
   sigue abierto. «Guardar y añadir otra» en Pesadas sigue dejando el formulario listo para la siguiente.
+- **Resumen de la explotación en Mi Campo (#359).** Bajo los totales de fincas, la campaña elegida
+  (2026/27, 2025/26…) de todas las fincas a la vez: kg pesados, rendimiento medio ponderado por kilos
+  analizados, coste de recogida y coste/kg calculado con los totales (nunca la media de cada finca).
+  Dice cuántas fincas tienen campaña y cuáles no; con varias monedas no hay coste/kg conjunto; lo
+  desconocido es «—». «Ver por finca» muestra lo que aporta cada una y abre su detalle.
 - **Histórico de campañas en gráficas (#355).** En Cuaderno → Campaña, con dos o más campañas de
   la finca, «Histórico de campañas» muestra kilos pesados, rendimiento graso medio (con su cobertura)
   y coste de recogida por kilo de cada campaña, con el mismo dato en texto debajo. Sin datos es un
