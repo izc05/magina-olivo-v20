@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Resumen de la explotación en Mi Campo (#359).** Bajo los totales de fincas, la campaña elegida
+  (2026/27, 2025/26…) de todas las fincas a la vez: kg pesados, rendimiento medio ponderado por kilos
+  analizados, coste de recogida y coste/kg calculado con los totales (nunca la media de cada finca).
+  Dice cuántas fincas tienen campaña y cuáles no; con varias monedas no hay coste/kg conjunto; lo
+  desconocido es «—». «Ver por finca» muestra lo que aporta cada una y abre su detalle.
 - **Fichas de finca con más datos (#363, #364, #359).** Cada finca muestra Superficie, Parcelas,
   Olivos y Kg de la campaña en marcha (solo de sus pesadas; «Sin pesadas» o «—» si no hay, nunca 0).
   La cabecera de Mis fincas añade Olivos («≥ N» si falta algún recuento) en una cuadrícula 2×2.
