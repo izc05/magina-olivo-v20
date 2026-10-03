@@ -49,17 +49,25 @@ class CadastreImportScreenTest {
     /** Owner 2026-10-03: Catastro's municipality/province arrive filled and stay editable. */
     @Test fun catastroFillsMunicipalityAndProvinceAndTheFarmerCanChangeThem() {
         var typed: Pair<String, String>? = null
+        // The place is hoisted as the ViewModel does: a text field whose value is never updated
+        // re-sends its old text, which made this test pass or fail by timing.
+        val state = androidx.compose.runtime.mutableStateOf(
+            CadastreImportState(
+                farms = listOf(farm("Finca")), candidate = candidate(),
+                municipality = "Bedmar y Garciez", province = "Jaén", placeFromCatastro = true,
+            ),
+        )
         composeRule.setContent {
             MaginaOlivoTheme {
                 CadastreImportScreen(
-                    state = CadastreImportState(
-                        farms = listOf(farm("Finca")), candidate = candidate(),
-                        municipality = "Bedmar y Garciez", province = "Jaén", placeFromCatastro = true,
-                    ),
+                    state = state.value,
                     preselectedFarmId = null,
                     onSearch = {},
                     onImport = { _, _ -> },
-                    onPlaceChanged = { municipality, province -> typed = municipality to province },
+                    onPlaceChanged = { municipality, province ->
+                        typed = municipality to province
+                        state.value = state.value.copy(municipality = municipality, province = province, placeFromCatastro = false)
+                    },
                 )
             }
         }
@@ -68,6 +76,7 @@ class CadastreImportScreenTest {
         composeRule.onNodeWithTag("catastro-province").performScrollTo().assertTextContains("Jaén")
         composeRule.onNodeWithTag("catastro-municipality").performTextReplacement("Bedmar")
         composeRule.runOnIdle { assertEquals("Bedmar" to "Jaén", typed) }
+        composeRule.onNodeWithTag("catastro-municipality").assertTextContains("Bedmar")
     }
 
     /** Confirming waits for Catastro's (bounded) answer, so the place is saved with the parcel. */
