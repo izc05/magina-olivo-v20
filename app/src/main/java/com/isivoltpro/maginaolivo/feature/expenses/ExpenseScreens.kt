@@ -83,6 +83,7 @@ internal fun relationSource(persistence: LocalPersistence) = RelationSource(
     parcels = persistence.parcelRepository,
     activities = persistence.activityRepository,
     organizations = persistence.organizationRepository,
+    campaigns = persistence.campaignRepository,
 )
 
 @Composable
@@ -97,6 +98,11 @@ fun ExpensesRoute(
     /** CR-011 §14: the Cuaderno's Parcel (always of [presetFarmId]); a new expense starts on it. */
     presetParcelId: UUID? = null,
     presetCampaignId: UUID? = null,
+    /**
+     * A document just taken on this screen; it is reviewed with this screen's Farm/Campaign
+     * context. Documents listed «por revisar» open with [onDocumentSelected], without context.
+     */
+    onDocumentImported: (UUID) -> Unit = onDocumentSelected,
 ) {
     val viewModel: ExpensesViewModel = viewModel(
         key = "expenses-${presetFarmId ?: "all"}-${presetCampaignId ?: "outside"}",
@@ -120,7 +126,7 @@ fun ExpensesRoute(
     LaunchedEffect(state.openedDocumentId) {
         state.openedDocumentId?.let { id ->
             viewModel.documentOpened()
-            onDocumentSelected(id)
+            onDocumentImported(id)
         }
     }
     ExpensesScreen(
@@ -265,6 +271,8 @@ fun ExpensesScreen(
                 onFarmSelected = onFarmSelected,
                 onSave = onCreate,
                 onCancel = { editorVisible = false; onEditorClosed() },
+                // Owner 2026-10-03: Cuaderno → Gasto starts on «Gasto de recogida» if one runs.
+                preselectRecollection = presetFarmId != null && presetCampaignId == null,
             )
         }
     }

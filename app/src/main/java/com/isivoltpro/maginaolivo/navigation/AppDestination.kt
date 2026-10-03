@@ -74,7 +74,8 @@ object AppDestination {
     const val CampaignPattern = "campaign/{campaignId}"
     const val ActivityPattern = "activity/{activityId}"
     const val ExpensePattern = "expense/{expenseId}"
-    const val DocumentPattern = "document/{extractionId}"
+    /** CR-012 P1: a document taken on a Farm/Campaign screen is reviewed with that context. */
+    const val DocumentPattern = "document/{extractionId}?farmId={farmId}&campaignId={campaignId}&recollection={recollection}"
     const val HarvestPattern = "harvest/{harvestId}"
     /** CR-011: Cuaderno → Jornal, today's día de recolección of a Farm (found or created). */
     const val TodayHarvestPattern = "harvest/today/{farmId}"
@@ -110,6 +111,19 @@ object AppDestination {
     fun expense(expenseId: String): String = nestedRoute("expense", expenseId)
 
     fun document(extractionId: String): String = nestedRoute("document", extractionId)
+
+    /**
+     * The review of a document just taken on an expense screen: its Farm, its Campaign
+     * («Gastos de recogida») or, from Cuaderno → Gasto, the «Gasto de recogida» preselection.
+     */
+    fun documentInContext(extractionId: String, farmId: String?, campaignId: String?, preselectRecollection: Boolean): String {
+        val query = listOfNotNull(
+            farmId?.let { "farmId=${android.net.Uri.encode(it)}" },
+            campaignId?.let { "campaignId=${android.net.Uri.encode(it)}" },
+            "recollection=true".takeIf { preselectRecollection },
+        )
+        return document(extractionId) + if (query.isEmpty()) "" else query.joinToString("&", prefix = "?")
+    }
 
     fun harvest(harvestId: String): String = nestedRoute(Harvest, harvestId)
 

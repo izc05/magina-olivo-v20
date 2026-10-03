@@ -7,6 +7,9 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
+import com.isivoltpro.maginaolivo.data.local.model.isRunning
+import com.isivoltpro.maginaolivo.domain.campaign.Campaign
+import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
@@ -187,7 +190,36 @@ data class RelationOptions(
     val parcels: List<Parcel> = emptyList(),
     val activities: List<Activity> = emptyList(),
     val suppliers: List<Organization> = emptyList(),
+    /** Campaigns of the selected Farm, to name the explicit «Gasto de recogida» choice. */
+    val campaigns: List<Campaign> = emptyList(),
 )
+
+/**
+ * Owner decision 2026-10-03 (CR-012 Slice 4 amendment): the campaign an expense may be put on
+ * by the farmer's explicit choice in the form — the campaign it already carries (editing), or
+ * else the running recolección of its Farm. Null when there is nothing to choose: no Farm, no
+ * running campaign, or a Jornada-linked expense whose campaign comes from its day.
+ */
+internal fun RelationOptions.recollectionCampaignFor(form: ExpenseForm, linkedCampaignId: UUID? = null): Campaign? {
+    if (form.harvestId != null || form.farmId == null) return null
+    val onFarm = campaigns.filter { it.farmId == form.farmId }
+    return (form.campaignId ?: linkedCampaignId)?.let { id -> onFarm.firstOrNull { it.id == id } }
+        ?: onFarm.firstOrNull { it.status.isRunning }
+}
+
+/**
+ * Cuaderno → Gasto with a running recolección: the form starts on «Gasto de recogida», shown
+ * and changeable. Never applied to an expense that already has a choice or a Jornada.
+ */
+internal fun ExpenseForm.withRecollectionPreselected(options: RelationOptions): ExpenseForm {
+    if (campaignId != null || harvestId != null || farmId == null) return this
+    val running = options.campaigns.firstOrNull { it.farmId == farmId && it.status.isRunning } ?: return this
+    return copy(campaignId = running.id)
+}
+
+/** «Campaña 2026/27» whether the farmer typed the word or only the years. */
+internal fun Campaign.choiceLabel(): String =
+    if (name.startsWith("Campaña", ignoreCase = true)) name else "Campaña $name"
 
 data class ExpensesUiState(
     val isLoading: Boolean = true,
@@ -300,6 +332,7 @@ class RelationSource(
     private val parcels: ParcelRepository,
     private val activities: ActivityRepository,
     private val organizations: OrganizationRepository,
+    private val campaigns: CampaignRepository? = null,
 ) {
     private val selectedFarm = MutableStateFlow<UUID?>(null)
     private var options = RelationOptions()
@@ -337,6 +370,16 @@ class RelationSource(
                 }.catch { }.collect {
                     options = options.copy(activities = it)
                     onChange(options)
+                }
+            }
+            campaigns?.let { source ->
+                launch {
+                    selectedFarm.flatMapLatest { farmId ->
+                        farmId?.let(source::observeForFarm) ?: flowOf(emptyList())
+                    }.catch { }.collect {
+                        options = options.copy(campaigns = it)
+                        onChange(options)
+                    }
                 }
             }
         }

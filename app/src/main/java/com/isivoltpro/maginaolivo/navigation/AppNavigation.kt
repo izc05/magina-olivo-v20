@@ -596,6 +596,8 @@ fun AppNavigation(
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 val parcelId = backStackEntry.arguments?.getString("parcelId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val campaignId = backStackEntry.arguments?.getString("campaignId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 if (persistence == null || farmId == null) {
                     PersistenceUnavailableScreen()
                 } else {
@@ -607,7 +609,15 @@ fun AppNavigation(
                         onOrganizations = { navController.navigate(AppDestination.Organizations) },
                         presetFarmId = farmId,
                         presetParcelId = parcelId,
-                        presetCampaignId = backStackEntry.arguments?.getString("campaignId")?.let { runCatching { UUID.fromString(it) }.getOrNull() },
+                        presetCampaignId = campaignId,
+                        onDocumentImported = { id ->
+                            navController.navigate(
+                                AppDestination.documentInContext(
+                                    id.toString(), farmId.toString(), campaignId?.toString(),
+                                    preselectRecollection = campaignId == null,
+                                ),
+                            )
+                        },
                     )
                 }
             }
@@ -717,9 +727,21 @@ fun AppNavigation(
                     ExpenseDetailRoute(expenseId, persistence, onDeleted = { navController.popBackStack() })
                 }
             }
-            composable(AppDestination.DocumentPattern) { backStackEntry ->
+            composable(
+                AppDestination.DocumentPattern,
+                arguments = listOf(
+                    navArgument("extractionId") { type = NavType.StringType },
+                    navArgument("farmId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("campaignId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("recollection") { type = NavType.BoolType; defaultValue = false },
+                ),
+            ) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
                 val extractionId = backStackEntry.arguments?.getString("extractionId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val contextFarmId = backStackEntry.arguments?.getString("farmId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val contextCampaignId = backStackEntry.arguments?.getString("campaignId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 if (persistence == null || extractionId == null) {
                     PersistenceUnavailableScreen()
@@ -733,6 +755,9 @@ fun AppNavigation(
                             }
                         },
                         onClosed = { navController.popBackStack() },
+                        contextFarmId = contextFarmId,
+                        contextCampaignId = contextCampaignId,
+                        preselectRecollection = backStackEntry.arguments?.getBoolean("recollection") == true,
                     )
                 }
             }

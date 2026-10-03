@@ -115,3 +115,23 @@ proof separately from semantic draft tests and leave owner-device acceptance
 pending. Final review must triage this carried observation explicitly.
 
 Include the existing labour edit modal in this post-text-entry keyboard/anchor reachability check: legacy JPY draft test also lost its physical Save callback in one full CI suite while other suites passed. Preserve JPY1000 semantics; do not infer conversion or ledger bug from a missing UI callback. Native accessible save interaction is a shared surface concern.
+
+## Amendment 2026-10-03 — owner decision and P1 (executor Claude from `e43e3dbb`)
+
+Owner: «Si hay una campaña de recogida activa, al pulsar Cuaderno → Gasto, el formulario debe
+venir preseleccionado como "Gasto de recogida · Campaña 2026/27". El usuario puede cambiarlo
+expresamente a "Gasto general de finca/parcela".» This replaces "outside Farm/Parcel forms remain
+unassigned" for the Cuaderno entry only. Codex handed execution to Claude (no tokens).
+
+- The expense form shows an explicit «Tipo de gasto» choice whenever its Farm has a running
+  (ACTIVE/HARVEST) campaign or the expense already carries one: «Gasto de recogida · Campaña …»
+  or «Gasto general de finca/parcela». Jornada-linked expenses keep their day's campaign.
+- Cuaderno → Gasto (`expenses/farm/{farmId}` without `campaignId`) preselects the running
+  campaign, visibly. The general Gastos screen and any edit never preselect or re-assign.
+- Changing Farm clears the campaign; no running campaign → no choice, general expense.
+- P1: a document taken on «Gastos de recogida» or Cuaderno → Gasto opens its review with the
+  screen's Farm and Campaign (`document/{id}?farmId&campaignId&recollection`); documents listed
+  «por revisar» reopen without context (general unless the farmer chooses).
+- The writer is unchanged: campaign only from the explicit draft or the linked day; no schema
+  change. Tests: `RecollectionChoiceTest` (JVM), `RecollectionChoiceUiTest` (Compose) and
+  `ExpenseLedgerContractTest.onlyTheFormsExplicitChoiceCountsInCampaignCostsAndCostPerKg` (Room).
