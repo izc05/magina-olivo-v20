@@ -20,6 +20,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
+  de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
+  finca» queda como acción secundaria.
 - **Municipio y provincia desde Catastro.** Al añadir una parcela con su referencia, desde el mapa
   o al ubicar una parcela hecha a mano, Catastro rellena el municipio y la provincia; siempre se
   pueden cambiar y nunca se pisa lo que escribiste. Si Catastro no lo indica, se escribe a mano.
