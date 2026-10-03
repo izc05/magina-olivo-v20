@@ -14,6 +14,8 @@ class HeroShadeTest {
         // Worst case: the shade at the first text stop over a completely white photograph.
         val ratio = contrast(1.0, luminanceOverWhite(HERO_SHADE_TEXT))
         assertTrue("contrast $ratio", ratio >= 4.5)
+        // Codex #376: reached before the greeting can start, even with large text (~18 %).
+        assertTrue(HERO_TEXT_STOP <= 0.15f)
         // And darker further down, where the rest of the text sits.
         assertTrue(contrast(1.0, luminanceOverWhite(HERO_SHADE_BOTTOM)) > ratio)
     }

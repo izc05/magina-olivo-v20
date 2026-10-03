@@ -84,10 +84,12 @@ internal fun HomeWeatherHero(
             Modifier.matchParentSize().background(
                 Brush.verticalGradient(
                     // #360: a neutral shade instead of the olive one, so the photograph keeps its
-                    // own colours. All text below the brand starts after the 0.20 stop, where white
-                    // stays at least 4.5:1 even over a completely white photograph (HeroShadeTest).
+                    // own colours. White stays at least 4.5:1 from HERO_TEXT_STOP down, even over a
+                    // completely white photograph (HeroShadeTest). Codex #376: with large text on a
+                    // small screen the greeting starts at about 18 % of the hero, so the readable
+                    // shade begins earlier, right under the brand.
                     0f to HERO_SHADE.copy(alpha = HERO_SHADE_TOP),
-                    0.20f to HERO_SHADE.copy(alpha = HERO_SHADE_TEXT),
+                    HERO_TEXT_STOP to HERO_SHADE.copy(alpha = HERO_SHADE_TEXT),
                     1f to HERO_SHADE.copy(alpha = HERO_SHADE_BOTTOM),
                 ),
             ),
@@ -226,5 +228,7 @@ internal fun WeatherConditionIcon(condition: WeatherCondition?, modifier: Modifi
 /** #360: near-neutral, slightly warm shade over the hero photo (no olive cast). */
 internal val HERO_SHADE = Color(0xFF1A1A16)
 internal const val HERO_SHADE_TOP = 0.10f
+/** Where the readable shade is reached: above the highest point any text below the brand can start. */
+internal const val HERO_TEXT_STOP = 0.14f
 internal const val HERO_SHADE_TEXT = 0.62f
 internal const val HERO_SHADE_BOTTOM = 0.80f
