@@ -73,6 +73,26 @@ class FarmListViewModelTest {
         assertFalse(viewModel.state.value.isSaving)
     }
 
+    /** Two Farms in a row bring the same message; the count is what tells the editor to close. */
+    @Test
+    fun everySaveIsCountedEvenWithTheSameMessage() = runTest(dispatcher) {
+        val viewModel = FarmListViewModel(
+            farmRepository = FakeFarmRepository(),
+            workspaceRepository = FakeWorkspaceRepository(workspaceId),
+        )
+        advanceUntilIdle()
+        assertEquals(0, viewModel.state.value.saveCount)
+
+        viewModel.create(FarmDraft(name = "La Solana"))
+        advanceUntilIdle()
+        val firstMessage = viewModel.state.value.message
+        viewModel.create(FarmDraft(name = "El Portillo"))
+        advanceUntilIdle()
+
+        assertEquals(firstMessage, viewModel.state.value.message)
+        assertEquals(2, viewModel.state.value.saveCount)
+    }
+
     @Test
     fun missingNameSurfacesFieldErrorWithoutCallingRepository() = runTest(dispatcher) {
         val repository = FakeFarmRepository()

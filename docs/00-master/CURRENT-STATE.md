@@ -86,6 +86,10 @@ A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gat
   and province from Catastro when a parcel is added or edited with its reference (functional),
   (1) Cuaderno header hierarchy, (2) parcel detail in blocks. One PR each (#352, #353, #354); Gate 21
   stays open until the owner's device run.
+- **APK 761 correction tracker (2026-10-03, #356):** the owner listed the remaining device findings
+  in #350 and #357–#366 (plus #355/#359 as 1.0 improvements) and asked for no new candidate APK until
+  they are all done. They run as small PRs from `main`, one block each, before Phase 22 and with no
+  schema/Auth/Sync change; Gate 21 stays open until the owner's device run of the resulting APK.
 - **Web:** WEB-0 (#346) may advance only in design, storyboard, public structure, staging and visual
   preparation. It must not touch Auth, schema, RLS or Sync before Phases 22/23.
 - **Perfil** is the single source of municipality, cooperative and territorial preferences. Weather,
