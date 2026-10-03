@@ -11,6 +11,21 @@ internal data class LabourCurrencyContext(val currency: String?, val error: Stri
 
 internal data class DayExpenseCurrencyContext(val currency: String?, val error: String? = null)
 
+internal fun HarvestDetailUiState.resolvedLabourCurrency(): LabourCurrencyContext {
+    val day = harvest ?: return LabourCurrencyContext(null, "El día de recolección no está disponible.")
+    if (!labourLoaded) return LabourCurrencyContext(null, "Cargando los jornales del día…")
+    if (labourReadFailed) return LabourCurrencyContext(null, "No pudimos leer los jornales. Vuelve a abrir el día antes de guardar.")
+    if (!costsLoaded) return LabourCurrencyContext(null, "Cargando la moneda de los gastos del día…")
+    if (costsReadFailed) return LabourCurrencyContext(null, "No pudimos leer los gastos. Vuelve a abrir el día antes de guardar un jornal.")
+    val context = labourCurrencyContext(day.id, day.campaignId, labour, costs, rates?.currency)
+    val hasHistory = costs.any { it.harvestId == day.id && it.campaignId == day.campaignId &&
+        it.origin == ExpenseOrigin.DAY_LABOUR && it.status == ExpenseStatus.POSTED } ||
+        labour.any { it.harvestId == day.id && it.appliedRate != null }
+    if (!hasHistory && !ratesLoaded) return LabourCurrencyContext(null, "Cargando los precios de la finca antes de confirmar la moneda…")
+    if (!hasHistory && ratesReadFailed) return LabourCurrencyContext(null, "No pudimos leer los precios de la finca. Vuelve a abrir el día antes de guardar un jornal.")
+    return context
+}
+
 internal fun HarvestDetailUiState.newCostCurrencyContext(): DayExpenseCurrencyContext {
     val day = harvest ?: return DayExpenseCurrencyContext(null, "El día de recolección no está disponible.")
     if (!costsLoaded) return DayExpenseCurrencyContext(null, "Cargando la moneda de los gastos del día…")

@@ -1,0 +1,90 @@
+
+com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest:
+Error in failedCostReadBlocksLegacyConfirmationAndNewAttendance(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'No pudimos leer los gastos' (ignoreCase: false) as substring)
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'labour-currency-error')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.unavailableCostReadBlocksLabourForms(LabourCurrencyAndOverflowUiTest.kt:70)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.failedCostReadBlocksLegacyConfirmationAndNewAttendance(LabourCurrencyAndOverflowUiTest.kt:58)
+
+Error in pendingCostReadBlocksLegacyConfirmationAndNewAttendance(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Cargando' (ignoreCase: false) as substring)
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'labour-currency-error')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.unavailableCostReadBlocksLabourForms(LabourCurrencyAndOverflowUiTest.kt:70)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.pendingCostReadBlocksLegacyConfirmationAndNewAttendance(LabourCurrencyAndOverflowUiTest.kt:54)
+
+com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest:
+Error in legacyJpyLedgerRejectsEurConfirmationWithoutChangingLabourExpenseOrOutbox(com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest):
+java.lang.ClassCastException: com.isivoltpro.maginaolivo.core.common.AppResult$Success cannot be cast to com.isivoltpro.maginaolivo.core.common.AppResult$Failure
+	at com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest$legacyJpyLedgerRejectsEurConfirmationWithoutChangingLabourExpenseOrOutbox$1.invokeSuspend(LabourPaymentContractTest.kt:319)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest.legacyJpyLedgerRejectsEurConfirmationWithoutChangingLabourExpenseOrOutbox(LabourPaymentContractTest.kt:304)
+
+
+Time: 8.801
+There were 3 failures:
+1) failedCostReadBlocksLegacyConfirmationAndNewAttendance(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'No pudimos leer los gastos' (ignoreCase: false) as substring)
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'labour-currency-error')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.unavailableCostReadBlocksLabourForms(LabourCurrencyAndOverflowUiTest.kt:70)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.failedCostReadBlocksLegacyConfirmationAndNewAttendance(LabourCurrencyAndOverflowUiTest.kt:58)
+2) pendingCostReadBlocksLegacyConfirmationAndNewAttendance(com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Cargando' (ignoreCase: false) as substring)
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'labour-currency-error')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.unavailableCostReadBlocksLabourForms(LabourCurrencyAndOverflowUiTest.kt:70)
+	at com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest.pendingCostReadBlocksLegacyConfirmationAndNewAttendance(LabourCurrencyAndOverflowUiTest.kt:54)
+3) legacyJpyLedgerRejectsEurConfirmationWithoutChangingLabourExpenseOrOutbox(com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest)
+java.lang.ClassCastException: com.isivoltpro.maginaolivo.core.common.AppResult$Success cannot be cast to com.isivoltpro.maginaolivo.core.common.AppResult$Failure
+	at com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest$legacyJpyLedgerRejectsEurConfirmationWithoutChangingLabourExpenseOrOutbox$1.invokeSuspend(LabourPaymentContractTest.kt:319)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest.legacyJpyLedgerRejectsEurConfirmationWithoutChangingLabourExpenseOrOutbox(LabourPaymentContractTest.kt:304)
+
+FAILURES!!!
+Tests run: 3,  Failures: 3
+
+

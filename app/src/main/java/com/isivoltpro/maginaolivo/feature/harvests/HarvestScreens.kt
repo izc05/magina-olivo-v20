@@ -833,7 +833,7 @@ fun HarvestDetailScreen(
         }
     }
     val editingLabour = state.labour.firstOrNull { it.id.toString() == editLabour }
-    val labourCurrency = harvest?.let { labourCurrencyContext(it.id, it.campaignId, state.labour, state.costs, state.rates?.currency) }
+    val labourCurrency = state.resolvedLabourCurrency()
     if (editingLabour != null && harvest != null && harvest.editable) {
         ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { if (!state.isSaving) { editLabour = null; labourActions.onClear() } }) {
             LabourPriceSheet(editingLabour, harvest.harvestDate, labourCurrency?.currency, state.isSaving, state.labourError, { labourActions.onUpdate(editingLabour.id, it) }, { editLabour = null; labourActions.onClear() }, labourCurrency?.error)

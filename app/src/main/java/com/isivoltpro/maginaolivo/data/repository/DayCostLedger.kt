@@ -53,10 +53,16 @@ internal class DayCostLedger(
         // An incomplete historical day keeps its old ledger until all prices are confirmed.
         if (labour.all { it.appliedRate != null }) {
             val currencies = labour.map { it.appliedRate!!.currency }.distinct()
-            if (currencies.size > 1) throw LabourFinanceInvalid("currency", "mixed_day_currency")
+            val historical = database.expenseDao().listForHarvest(day.id).filter {
+                it.origin == ExpenseOrigin.DAY_LABOUR.name && it.status == ExpenseStatus.POSTED.name
+            }
+            if (currencies.size > 1 || historical.size > 1 ||
+                (historical.isNotEmpty() && currencies.any { it != historical.single().currency })) {
+                throw LabourFinanceInvalid("currency", "currency_mismatch")
+            }
             val amount = labour.fold(0L) { total, line -> Math.addExact(total, LabourPricing.amountMinor(line)!!) }
             val cost = if (labour.isEmpty()) null else CalculatedCost(amount, LabourSummary.of(labour).label(), null)
-            post(day, DayCostKind.LABOUR, cost, currencies.firstOrNull() ?: rates.currency, now)
+            post(day, DayCostKind.LABOUR, cost, currencies.firstOrNull() ?: historical.singleOrNull()?.currency ?: rates.currency, now)
         } else {
             val postedLegacy = database.expenseDao().listForHarvest(day.id).any {
                 it.origin == ExpenseOrigin.DAY_LABOUR.name && it.status == ExpenseStatus.POSTED.name
