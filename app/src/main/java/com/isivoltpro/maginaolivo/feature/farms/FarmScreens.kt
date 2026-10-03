@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -130,10 +131,15 @@ fun FarmListScreen(
     nextWork: (UUID) -> String? = { null },
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
+    // Saves already seen here, so coming back to the list does not close an editor the user opened.
+    var seenSaves by rememberSaveable { mutableIntStateOf(state.saveCount) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    LaunchedEffect(state.message) {
-        if (state.message != null) {
+    LaunchedEffect(state.saveCount) {
+        // A lower count is a new ViewModel after process death, not a save: keep the restored draft.
+        if (state.saveCount < seenSaves) seenSaves = state.saveCount
+        if (state.saveCount > seenSaves) {
+            seenSaves = state.saveCount
             editorVisible = false
             focusManager.clearFocus(force = true)
             keyboardController?.hide()
