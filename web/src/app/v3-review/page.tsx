@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -130,6 +131,11 @@ const keyframes = [
   },
 ];
 
+const storyboardImage =
+  process.env.GITHUB_PAGES === "true"
+    ? "/magina-olivo-v20/v3-review/storyboard-concept.webp"
+    : "/v3-review/storyboard-concept.webp";
+
 export default function V3ReviewPage() {
   return (
     <>
@@ -157,6 +163,21 @@ export default function V3ReviewPage() {
             </a>
           ))}
         </nav>
+        <figure className="v3-review-contact-sheet">
+          <Image
+            src={storyboardImage}
+            alt="Lámina conceptual generada para revisar continuidad entre olivar, agricultor, móvil, producto y escritorio"
+            width={1222}
+            height={1287}
+            sizes="(max-width: 800px) 100vw, 88rem"
+            loading="eager"
+          />
+          <figcaption>
+            Concepto visual asistido por IA para revisar tono y continuidad; no
+            está aprobado como fotografía ni asigna un asset final a cada
+            keyframe.
+          </figcaption>
+        </figure>
         <div className="v3-review-grid">
           {keyframes.map((frame) => (
             <article className="v3-frame" id={frame.id} key={frame.id}>

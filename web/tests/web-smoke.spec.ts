@@ -103,6 +103,17 @@ test("V3 review exposes all keyframes as pending and stays noindex", async ({
     /noindex/,
   );
   await expect(page.locator(".v3-frame")).toHaveCount(12);
+  const conceptImage = page.getByAltText(
+    "Lámina conceptual generada para revisar continuidad entre olivar, agricultor, móvil, producto y escritorio",
+  );
+  await expect(conceptImage).toBeVisible();
+  await expect
+    .poll(() =>
+      conceptImage.evaluate(
+        (image) => (image as HTMLImageElement).naturalWidth,
+      ),
+    )
+    .toBeGreaterThan(0);
   await expect(
     page.getByText("aprobación pendiente", { exact: false }),
   ).toBeVisible();

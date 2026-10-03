@@ -2,6 +2,8 @@
 
 Estado: **12 keyframes definidos; assets y aprobación pendientes**. La página de revisión está en `/v3-review`. Este storyboard describe encuadre y continuidad; no afirma que las imágenes estén producidas.
 
+La página muestra una lámina conceptual global de continuidad asistida por IA. Sirve para discutir tono y secuencia; no está aprobada como fotografía final ni como asignación exacta a cada ID K01–K12.
+
 | ID | Acto | Encuadre desktop | Composición móvil | Copy / UI | Continuidad y decisión pendiente |
 |---|---|---|---|---|---|
 | K01 | El olivar | Hero ancho, líneas de olivos y loma al amanecer; espacio editorial para el titular | Vertical desde el camino entre olivos, profundidad al fondo; titular en zona de contraste | «Tu olivar cambia cada día.» | Aprobar luz, paisaje y lectura del hero; persona/móvil aún fuera de foco |

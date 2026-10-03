@@ -220,6 +220,27 @@ a {
   font-weight: 400;
 }
 
+.v3-review-contact-sheet {
+  margin: 0 0 2rem;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 1.1rem;
+  background: var(--color-paper);
+}
+
+.v3-review-contact-sheet img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.v3-review-contact-sheet figcaption {
+  border-top: 1px solid var(--color-border);
+  padding: 0.75rem 1rem;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
 .v3-review-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

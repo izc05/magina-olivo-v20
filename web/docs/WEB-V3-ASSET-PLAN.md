@@ -2,6 +2,8 @@
 
 Estado: **sin assets visuales aprobados**. No se reutilizarán por defecto imágenes, vídeo, teléfono ni composición de V1/V2. Las referencias visuales de esta fase son briefs textuales y estados de review, no imágenes finales.
 
+La review incluye `public/v3-review/storyboard-concept.webp`, una lámina conceptual generada con IA para discutir tono y continuidad global. Está etiquetada como concepto y no se aprueba como fotografía, UI final ni correspondencia frame por frame.
+
 ## Paquetes de entrega
 
 | Paquete | Keyframes | Formatos previstos | Brief |
