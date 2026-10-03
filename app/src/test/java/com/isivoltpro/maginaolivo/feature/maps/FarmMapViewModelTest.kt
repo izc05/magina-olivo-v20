@@ -106,6 +106,19 @@ class FarmMapViewModelTest {
         assertTrue(parcels.created.isEmpty())
     }
 
+    /** #361: «Mi ubicación» keeps its dot; a later failure removes it instead of showing an old one. */
+    @Test
+    fun aFailedLocationLookupRemovesTheOldDot() = runTest(dispatcher) {
+        val viewModel = FarmMapViewModel(farmId, FakeFarms(), FakeParcels(), FakeClient(emptyList()))
+        advanceUntilIdle()
+        viewModel.myLocationFound(GeoPoint(37.73, -3.45))
+        assertEquals(GeoPoint(37.73, -3.45), viewModel.state.value.myLocation)
+        assertNull(viewModel.state.value.locationProblem)
+        viewModel.locationUnavailable(LocationProblem.LOCATION_OFF)
+        assertNull(viewModel.state.value.myLocation)
+        assertEquals(LocationProblem.LOCATION_OFF, viewModel.state.value.locationProblem)
+    }
+
     @Test
     fun aCatastroThatCannotSayWhereNeverBlocksTheImport() = runTest(dispatcher) {
         val parcels = FakeParcels()
