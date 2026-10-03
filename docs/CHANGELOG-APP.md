@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El Cuaderno de una finca no pide otra finca (#369).** Desde Mi Campo → finca o parcela →
+  Cuaderno, la finca ya está elegida: se muestra con su campaña (y la parcela, con «Toda la finca»)
+  sin «Cambiar finca», y Atrás vuelve a la finca o la parcela. La pestaña Cuaderno sigue siendo el
+  centro general, con «Cambiar finca». Es el mismo Cuaderno; solo cambia el origen.
 - **Jornal dentro y fuera de campaña (#350, #378).** Con campaña de recogida en marcha, «Jornal»
   abre el día de recolección con el jornal por persona. Sin campaña, abre «Jornal fuera de
   campaña»: la mano de obra de la finca (poda, desbroce, tratamientos…) como gasto de mano de obra

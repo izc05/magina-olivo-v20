@@ -269,9 +269,40 @@ class AppNavigationTest {
         }
         composeRule.onNodeWithTag("farm-section-root").assertDoesNotExist()
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+        // #369: the Farm was chosen in Mi Campo; this Cuaderno keeps it.
+        composeRule.onNodeWithTag("notebook-change-farm").assertDoesNotExist()
 
         pressBack()
         waitForTag("farm-detail-root")
+    }
+
+    /** #369: a Farm's Cuaderno has no «Cambiar finca»; the Cuaderno tab is the general hub again. */
+    @Test
+    fun theCuadernoTabChangesFarmWhileAFarmsCuadernoKeepsIt() {
+        enterMainShell()
+        composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
+        listOf("Finca Contexto A", "Finca Contexto B").forEach { name ->
+            waitForTag("add-farm")
+            openSheet("add-farm", "farm-name")
+            composeRule.onNodeWithTag("farm-name").performTextInput(name)
+            saveEditor("save-farm", "farm-name")
+            composeRule.waitUntil(UI_TIMEOUT_MS) { composeRule.onAllNodesWithTag("farm-name").fetchSemanticsNodes().isEmpty() }
+        }
+        clickByText("Finca Contexto A")
+        waitForTag("farm-detail-root")
+        clickByTag("farm-section-notebook")
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            composeRule.onAllNodes(hasTestTag("notebook-context") and hasText("Finca Contexto A", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("notebook-change-farm").assertDoesNotExist()
+
+        // The Cuaderno tab opens the general Cuaderno, where the Farm can be changed.
+        composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
+        waitForTag("notebook-change-farm")
+        composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+        pressBack()
+        waitForTag("home-reference-root")
     }
 
     @Test
