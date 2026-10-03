@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.campaigns.CampaignViewModelTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.611Z" hostname="ISICIO" time="0.021">
+  <properties/>
+  <testcase name="partitionsCurrentAndHistoryAndValidatesCreate" classname="com.isivoltpro.maginaolivo.feature.campaigns.CampaignViewModelTest" time="0.013"/>
+  <testcase name="detailExposesTransitionsAndConsumesSuccessMessage" classname="com.isivoltpro.maginaolivo.feature.campaigns.CampaignViewModelTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

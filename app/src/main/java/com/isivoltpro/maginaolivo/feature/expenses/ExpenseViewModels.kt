@@ -7,6 +7,9 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
+import com.isivoltpro.maginaolivo.data.local.model.isRunning
+import com.isivoltpro.maginaolivo.domain.campaign.Campaign
+import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
@@ -54,6 +57,8 @@ data class ExpenseForm(
     val notes: String = "",
     /** Phase 19F: kept from the Expense so editing it never unlinks it from its Jornada. */
     val harvestId: UUID? = null,
+    val campaignId: UUID? = null,
+    val currency: String = "EUR",
 )
 
 data class LineForm(
@@ -61,6 +66,8 @@ data class LineForm(
     val quantity: String = "",
     val unit: String = "",
     val total: String = "",
+    /** The current form edits the line total, so retain the recorded unit price unchanged. */
+    val unitPriceMinor: Long? = null,
 )
 
 data class ExpenseFormErrors(
@@ -78,23 +85,26 @@ data class ExpenseFormErrors(
  */
 internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDraft?, ExpenseFormErrors> {
     val parsedDate = runCatching { LocalDate.parse(date.trim()) }.getOrNull()
-    val amountMinor = Money.parseMinor(amount)
+    val supportedCurrency = runCatching { java.util.Currency.getInstance(currency).defaultFractionDigits >= 0 }.getOrDefault(false)
+    val amountMinor = Money.parseMinor(amount, currency)
     val parsedLines = lines.filter { it.product.isNotBlank() }.map { line ->
         PurchaseLine(
             productName = line.product.trim(),
             quantity = line.quantity.replace(',', '.').trim().toDoubleOrNull(),
             unit = line.unit.trim().ifEmpty { null },
-            lineTotalMinor = Money.parseMinor(line.total),
+            unitPriceMinor = line.unitPriceMinor,
+            lineTotalMinor = Money.parseMinor(line.total, currency),
         )
     }
     val badLine = lines.any { line ->
         line.product.isNotBlank() &&
             ((line.quantity.isNotBlank() && line.quantity.replace(',', '.').trim().toDoubleOrNull() == null) ||
-                (line.total.isNotBlank() && Money.parseMinor(line.total) == null))
+                (line.total.isNotBlank() && Money.parseMinor(line.total, currency) == null))
     }
     val errors = ExpenseFormErrors(
         date = if (parsedDate == null) "Elige una fecha" else null,
         amount = when {
+            !supportedCurrency -> "La moneda histórica $currency no admite edición. Se conserva el importe original."
             amount.isBlank() && requireAmount -> "Escribe el importe"
             amount.isNotBlank() && amountMinor == null -> "Escribe un importe como 65 o 65,50"
             requireAmount && amountMinor == 0L -> "El importe debe ser mayor que cero"
@@ -109,6 +119,8 @@ internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDra
         concept = concept.trim(),
         category = category,
         amountMinor = amountMinor ?: 0L,
+        currency = currency,
+        campaignId = campaignId,
         supplierOrganizationId = supplierOrganizationId,
         supplierText = supplierText.trim().ifEmpty { null },
         farmId = farmId,
@@ -123,7 +135,9 @@ internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDra
 
 internal fun Expense.toForm() = ExpenseForm(
     date = expenseDate.toString(),
-    amount = Money.editable(amountMinor),
+    amount = Money.editable(amountMinor, currency),
+    currency = currency,
+    campaignId = campaignId,
     concept = concept,
     category = category,
     supplierOrganizationId = supplierOrganizationId,
@@ -138,7 +152,8 @@ internal fun Expense.toForm() = ExpenseForm(
             product = it.productName,
             quantity = it.quantity?.let { quantity -> quantity.toString().removeSuffix(".0").replace('.', ',') }.orEmpty(),
             unit = it.unit.orEmpty(),
-            total = Money.editable(it.lineTotalMinor),
+            total = Money.editable(it.lineTotalMinor, currency),
+            unitPriceMinor = it.unitPriceMinor,
         )
     },
     notes = notes.orEmpty(),
@@ -175,7 +190,36 @@ data class RelationOptions(
     val parcels: List<Parcel> = emptyList(),
     val activities: List<Activity> = emptyList(),
     val suppliers: List<Organization> = emptyList(),
+    /** Campaigns of the selected Farm, to name the explicit «Gasto de recogida» choice. */
+    val campaigns: List<Campaign> = emptyList(),
 )
+
+/**
+ * Owner decision 2026-10-03 (CR-012 Slice 4 amendment): the campaign an expense may be put on
+ * by the farmer's explicit choice in the form — the campaign it already carries (editing), or
+ * else the running recolección of its Farm. Null when there is nothing to choose: no Farm, no
+ * running campaign, or a Jornada-linked expense whose campaign comes from its day.
+ */
+internal fun RelationOptions.recollectionCampaignFor(form: ExpenseForm, linkedCampaignId: UUID? = null): Campaign? {
+    if (form.harvestId != null || form.farmId == null) return null
+    val onFarm = campaigns.filter { it.farmId == form.farmId }
+    return (form.campaignId ?: linkedCampaignId)?.let { id -> onFarm.firstOrNull { it.id == id } }
+        ?: onFarm.firstOrNull { it.status.isRunning }
+}
+
+/**
+ * Cuaderno → Gasto with a running recolección: the form starts on «Gasto de recogida», shown
+ * and changeable. Never applied to an expense that already has a choice or a Jornada.
+ */
+internal fun ExpenseForm.withRecollectionPreselected(options: RelationOptions): ExpenseForm {
+    if (campaignId != null || harvestId != null || farmId == null) return this
+    val running = options.campaigns.firstOrNull { it.farmId == farmId && it.status.isRunning } ?: return this
+    return copy(campaignId = running.id)
+}
+
+/** «Campaña 2026/27» whether the farmer typed the word or only the years. */
+internal fun Campaign.choiceLabel(): String =
+    if (name.startsWith("Campaña", ignoreCase = true)) name else "Campaña $name"
 
 data class ExpensesUiState(
     val isLoading: Boolean = true,
@@ -288,6 +332,7 @@ class RelationSource(
     private val parcels: ParcelRepository,
     private val activities: ActivityRepository,
     private val organizations: OrganizationRepository,
+    private val campaigns: CampaignRepository? = null,
 ) {
     private val selectedFarm = MutableStateFlow<UUID?>(null)
     private var options = RelationOptions()
@@ -325,6 +370,16 @@ class RelationSource(
                 }.catch { }.collect {
                     options = options.copy(activities = it)
                     onChange(options)
+                }
+            }
+            campaigns?.let { source ->
+                launch {
+                    selectedFarm.flatMapLatest { farmId ->
+                        farmId?.let(source::observeForFarm) ?: flowOf(emptyList())
+                    }.catch { }.collect {
+                        options = options.copy(campaigns = it)
+                        onChange(options)
+                    }
                 }
             }
         }

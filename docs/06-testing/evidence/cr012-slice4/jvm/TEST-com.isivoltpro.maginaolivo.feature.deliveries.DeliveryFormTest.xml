@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.856Z" hostname="ISICIO" time="0.009">
+  <properties/>
+  <testcase name="yieldIsOptionalPerFigureButNotBoth" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.002"/>
+  <testcase name="theCuadernosParcelIsPreselectedOnlyWhenItIsInThatFarmsCampaign" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.001"/>
+  <testcase name="whatTheTicketDidNotReadStaysAsTyped" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.0"/>
+  <testcase name="aTicketsHourAndCooperativeFillTheFormOnlyWhenTheyAreClear" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.001"/>
+  <testcase name="aMixedLoadIsTheDefaultAndInventsNoParcelKilos" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.001"/>
+  <testcase name="theNextPesadaKeepsTheDayAndStartsItsOwnWeighingEmpty" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.0"/>
+  <testcase name="everyPesadaSaysWhereItsOlivesWerePicked" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.0"/>
+  <testcase name="theHourIsOptionalAndReadAsAFarmerWritesIt" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.001"/>
+  <testcase name="aTicketProposalOnlyFillsWhatTheTicketSaid" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.0"/>
+  <testcase name="theTicketsWeightsMustAgree" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.001"/>
+  <testcase name="aTicketReadFromAnOpenPesadaKeepsWhatWasTypedAndFillsWhatItRead" classname="com.isivoltpro.maginaolivo.feature.deliveries.DeliveryFormTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

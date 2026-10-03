@@ -193,7 +193,7 @@ fun NotebookRootRoute(
         onTabRequestHandled = onTabRequestHandled,
     )
     labourCampaign?.let { id ->
-        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { labourCampaign = null }) {
+        androidx.compose.material3.ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { labourCampaign = null }) {
             com.isivoltpro.maginaolivo.feature.harvests.LabourPaymentsRoute(UUID.fromString(id), persistence) { labourCampaign = null }
         }
     }

@@ -480,21 +480,13 @@ internal fun HarvestEditor(
             }
         }
 
-        MoSectionHeader("Recogida")
-        MoSelectField(
-            "Método de recogida", form.collectionMethod?.label() ?: "Sin indicar", { picker = "method" },
-            Modifier.testTag("harvest-method"),
-        )
-        MoTextField(
-            form.workers, { form = form.copy(workers = it) }, "Personas trabajando (opcional)",
-            isError = errors.workers != null, supportingText = errors.workers,
-            modifier = Modifier.fillMaxWidth().testTag("harvest-workers"),
-        )
-        MoTextField(
-            form.machinery, { form = form.copy(machinery = it) }, "Maquinaria (opcional)",
-            modifier = Modifier.fillMaxWidth(),
-        )
-        MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
+        var moreDetails by rememberSaveable { mutableStateOf(false) }
+        if (form.workers.isNotBlank()) Text("Personas trabajando (histórico): ${form.workers}", color = MoTextSecondary)
+        if (form.machinery.isNotBlank()) Text("Maquinaria (histórico): ${form.machinery}", color = MoTextSecondary)
+        if (moreDetails || form.collectionMethod != null || form.notes.isNotBlank()) {
+            MoSelectField("Método de recogida", form.collectionMethod?.label() ?: "Sin indicar", { picker = "method" }, Modifier.testTag("harvest-method"))
+            MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
+        } else MoTertiaryButton("Más detalles", { moreDetails = true }, Modifier.testTag("harvest-more-details"))
 
         MoPrimaryButton(
             saveText,
@@ -631,7 +623,7 @@ fun HarvestDetailRoute(
     )
     val campaign = state.harvest?.campaignId
     if (labourPerson != null && campaign != null) {
-        ModalBottomSheet(onDismissRequest = { labourPerson = null }) {
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { labourPerson = null }) {
             LabourPaymentsRoute(campaign, persistence, UUID.fromString(labourPerson)) { labourPerson = null }
         }
     }
@@ -655,6 +647,7 @@ fun HarvestDetailScreen(
     onPreferCalculated: (DayCostKind) -> Unit = {},
     onLinkCost: (UUID) -> Unit = {},
 ) {
+    var resourceDetail by rememberSaveable { mutableStateOf<String?>(null) }
     var costVisible by rememberSaveable { mutableStateOf(false) }
     var ratesVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.ratesSaved) { if (state.ratesSaved > 0) ratesVisible = false }
@@ -682,35 +675,28 @@ fun HarvestDetailScreen(
                 else -> {
                     HarvestSummaryBlock(harvest, state.pesadas.size)
                     JornadaPesadas(state.pesadas, harvest.editable, onAddPesada, onPesadaSelected)
-                    JornadaLabour(
-                        labour = state.labour,
-                        editable = harvest.editable,
-                        message = state.labourMessage.takeUnless { labourVisible },
-                        error = state.labourError.takeUnless { labourVisible },
-                        onRegister = { labourActions.onClear(); labourVisible = true },
-                        onRemove = labourActions.onRemove,
-                        onPerson = labourActions.onPerson,
-                        onEdit = { labourActions.onClear(); editLabour = it.toString() },
-                        loaded = state.labourLoaded,
-                        readFailed = state.labourReadFailed,
-                    )
-                    JornadaEquipment(
-                        lines = state.equipment,
-                        editable = harvest.editable,
-                        error = state.equipmentError.takeUnless { equipmentVisible },
-                        onEdit = { equipmentVisible = true },
-                    )
-                    JornadaCosts(
-                        expenses = state.costs,
-                        editable = harvest.editable,
-                        error = state.costError.takeUnless { costVisible },
-                        onAdd = { costVisible = true },
-                        onExpenseSelected = onExpenseSelected,
-                        onPreferCalculated = onPreferCalculated,
-                        onEditRates = state.rates?.let { { ratesVisible = true } },
-                        unlinked = state.unlinkedCosts,
-                        onLink = onLinkCost,
-                    )
+                    MoSectionHeader("Recursos del día")
+                    val ledger = harvest.campaignId?.let { com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(it, state.costs, state.pesadas) }.orEmpty()
+                    val labourSummary = com.isivoltpro.maginaolivo.domain.labour.LabourSummary.of(state.labour)
+                    MoKpiMetric("Jornales", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.LABOUR),
+                        Modifier.fillMaxWidth().testTag("day-resource-labour"), icon = MoIcons.People, kind = MoKpiKind.JORNALES,
+                        supportingText = when { state.labourReadFailed -> "No pudimos leer los jornales"; !state.labourLoaded -> "Cargando jornales…";
+                            else -> listOfNotNull("${labourSummary.people} personas · ${labourSummary.label()} · Ver detalle",
+                                labourCostNote(state.labour, state.costs)).joinToString("\n") },
+                        onClick = { resourceDetail = "labour" })
+                    MoKpiMetric("Maquinaria", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.EQUIPMENT),
+                        Modifier.fillMaxWidth().testTag("day-resource-equipment"), icon = MoIcons.Tractor, kind = MoKpiKind.MAQUINARIA,
+                        supportingText = when { !state.equipmentLoaded -> "Cargando maquinaria…"; state.equipmentReadFailed -> "No pudimos leer la maquinaria";
+                            else -> listOfNotNull("${state.equipment.sumOf { it.quantity }} equipos/usos · Ver detalle",
+                                equipmentCostNote(state.equipment, state.costs)).joinToString("\n") }, onClick = { resourceDetail = "equipment" })
+                    MoKpiMetric("Otros gastos", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.OTHER),
+                        Modifier.fillMaxWidth().testTag("day-resource-other"), icon = MoIcons.Euro, kind = MoKpiKind.COSTES,
+                        supportingText = when { !state.costsLoaded -> "Cargando gastos…"; state.costsReadFailed -> "No pudimos leer los gastos";
+                            else -> "Combustible, transporte, reparación · Ver gastos" }, onClick = { resourceDetail = "costs" })
+                    MoSectionHeader("Resumen económico")
+                    RecollectionTotalCards(ledger, true, state.pesadas.sumOf { it.netGrams }.takeIf { it > 0 }?.let(Weight::format))
+                    state.costError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    state.equipmentError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     if (harvest.editable) {
                         MoSecondaryButton(
                             "Editar día de recolección", { editorVisible = true },
@@ -740,8 +726,56 @@ fun HarvestDetailScreen(
 
     val harvest = state.harvest
     val context = state.context
+    if (resourceDetail != null && harvest != null) {
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { resourceDetail = null }) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                when (resourceDetail) {
+                    "labour" -> {
+                    JornadaLabour(
+                        labour = state.labour,
+                        editable = harvest.editable,
+                        message = state.labourMessage.takeUnless { labourVisible },
+                        error = state.labourError.takeUnless { labourVisible },
+                        onRegister = { labourActions.onClear(); resourceDetail = null; labourVisible = true },
+                        onRemove = labourActions.onRemove,
+                        onPerson = labourActions.onPerson,
+                        onEdit = { labourActions.onClear(); resourceDetail = null; editLabour = it.toString() },
+                        loaded = state.labourLoaded,
+                        readFailed = state.labourReadFailed,
+                    )
+                    }
+                    "equipment" -> {
+                    JornadaEquipment(
+                        lines = state.equipment,
+                        editable = harvest.editable,
+                        error = state.equipmentError.takeUnless { equipmentVisible },
+                        onEdit = { resourceDetail = null; equipmentVisible = true },
+                        loaded = state.equipmentLoaded,
+                        readFailed = state.equipmentReadFailed,
+                    )
+                    }
+                    "costs" -> {
+                    JornadaCosts(
+                        expenses = state.costs,
+                        editable = harvest.editable,
+                        error = state.costError.takeUnless { costVisible },
+                        onAdd = { resourceDetail = null; costVisible = true },
+                        onExpenseSelected = onExpenseSelected,
+                        onPreferCalculated = onPreferCalculated,
+                        onEditRates = state.rates?.let { { resourceDetail = null; ratesVisible = true } },
+                        unlinked = state.unlinkedCosts,
+                        onLink = onLinkCost,
+                        loaded = state.costsLoaded,
+                        readFailed = state.costsReadFailed,
+                    )
+                    }
+                }
+                MoTertiaryButton("Cerrar", { resourceDetail = null }, Modifier.fillMaxWidth().testTag("resource-detail-close"))
+            }
+        }
+    }
     if (editorVisible && harvest != null && context != null) {
-        ModalBottomSheet(onDismissRequest = { editorVisible = false; onEditorClosed() }) {
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { editorVisible = false; onEditorClosed() }) {
             HarvestEditor(
                 title = "Editar día de recolección",
                 initial = harvest.toForm(),
@@ -758,7 +792,7 @@ fun HarvestDetailScreen(
     }
     val rates = state.rates
     if (ratesVisible && harvest != null && rates != null) {
-        ModalBottomSheet(onDismissRequest = { ratesVisible = false }) {
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { ratesVisible = false }) {
             RatesSheet(
                 rates = rates,
                 isSaving = state.isSaving,
@@ -769,8 +803,11 @@ fun HarvestDetailScreen(
         }
     }
     if (costVisible && harvest != null) {
-        ModalBottomSheet(onDismissRequest = { costVisible = false }) {
+        val currencyContext = state.newCostCurrencyContext()
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { costVisible = false }) {
             CostSheet(
+                currency = currencyContext.currency,
+                currencyError = currencyContext.error,
                 isSaving = state.isSaving,
                 error = state.costError,
                 onSave = onAddCost,
@@ -780,7 +817,7 @@ fun HarvestDetailScreen(
     }
     if (equipmentVisible && harvest != null) {
         val equipmentCurrency = equipmentCurrencyContext(harvest.id, harvest.campaignId, state.equipment, state.costs, state.rates?.currency)
-        ModalBottomSheet(onDismissRequest = { equipmentVisible = false }) {
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { equipmentVisible = false }) {
             EquipmentSheet(
                 current = state.equipment,
                 machines = state.machines,
@@ -796,14 +833,14 @@ fun HarvestDetailScreen(
         }
     }
     val editingLabour = state.labour.firstOrNull { it.id.toString() == editLabour }
-    val labourCurrency = harvest?.let { labourCurrencyContext(it.id, it.campaignId, state.labour, state.costs, state.rates?.currency) }
+    val labourCurrency = state.resolvedLabourCurrency()
     if (editingLabour != null && harvest != null && harvest.editable) {
-        ModalBottomSheet(onDismissRequest = { if (!state.isSaving) { editLabour = null; labourActions.onClear() } }) {
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { if (!state.isSaving) { editLabour = null; labourActions.onClear() } }) {
             LabourPriceSheet(editingLabour, harvest.harvestDate, labourCurrency?.currency, state.isSaving, state.labourError, { labourActions.onUpdate(editingLabour.id, it) }, { editLabour = null; labourActions.onClear() }, labourCurrency?.error)
         }
     }
     if (labourVisible && harvest?.campaignId != null) {
-        ModalBottomSheet(onDismissRequest = { if (!state.isSaving) { labourVisible = false; labourActions.onClear() } }) {
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { if (!state.isSaving) { labourVisible = false; labourActions.onClear() } }) {
             if (labourCurrency?.currency == null) {
                 Column(Modifier.padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
                     Text(labourCurrency?.error ?: "La moneda de los jornales no está disponible.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-currency-error"))
@@ -826,7 +863,7 @@ fun HarvestDetailScreen(
         }
     }
     if (confirmDelete) {
-        ModalBottomSheet(onDismissRequest = { confirmDelete = false }) {
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { confirmDelete = false }) {
             MoConfirmationSheet(
                 title = "Eliminar día de recolección",
                 body = listOfNotNull(
@@ -882,20 +919,11 @@ private fun JornadaPesadas(
             modifier = Modifier.testTag("jornada-no-pesadas"),
         )
     } else {
-        val destinations = pesadas.map { it.destinationName }.distinct()
-        // #254 (254-C): the Jornada's yield is its Pesadas' own, weighted by kilos; never typed here.
         val summary = DeliverySummary.of(pesadas)
-        Text(
-            listOfNotNull(
-                if (pesadas.size == 1) "1 pesada" else "${pesadas.size} pesadas",
-                Weight.format(pesadas.sumOf { it.netGrams }),
-                destinations.joinToString(", "),
-                summary.fatYield?.let { "rend. ${Percent.format(it.hundredths)}" },
-            ).joinToString(" · "),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MoOliveDark,
-            modifier = Modifier.testTag("jornada-pesadas-summary"),
-        )
+        summary.fatYield?.let {
+            Text("Rendimiento del día ${Percent.format(it.hundredths)} · sobre el ${summary.coveragePercent(it)} % de los kilos",
+                style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-pesadas-summary"))
+        }
         pesadas.forEach { pesada ->
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { onPesadaSelected(pesada.id) }
@@ -970,10 +998,11 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
             modifier = Modifier.testTag("harvest-unallocated"),
         )
     }
-    DetailValue("Método de recogida", harvest.collectionMethod?.label())
-    DetailValue("Personas trabajando", harvest.workerCount?.toString())
-    DetailValue("Maquinaria", harvest.machineryText)
-    harvest.notes?.let { DetailValue("Notas", it) }
+    var detailsVisible by rememberSaveable { mutableStateOf(false) }
+    if (detailsVisible) { DetailValue("Método de recogida", harvest.collectionMethod?.label()); harvest.notes?.let { DetailValue("Notas", it) } }
+    else MoTertiaryButton("Más detalles", { detailsVisible = true }, Modifier.testTag("day-more-details"))
+    harvest.workerCount?.let { DetailValue("Personas trabajando (histórico)", it.toString()) }
+    harvest.machineryText?.let { DetailValue("Maquinaria (histórico)", it) }
 }
 
 @Composable

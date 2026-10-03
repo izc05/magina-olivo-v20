@@ -147,6 +147,10 @@ class OfflineFirstLabourRepository(
                 throw LabourInvalid("unit", "historical_only")
             }
             val rate = change.appliedRate ?: current.toLabourEntry().appliedRate
+            val savedCurrency = current.toLabourEntry().appliedRate?.currency
+            if (savedCurrency != null && rate?.currency != savedCurrency) {
+                throw LabourFinanceInvalid("currency", "currency_mismatch")
+            }
             val candidate = current.copy(quantity = change.quantity, unit = change.unit.name, minutes = change.minutes).withRate(rate)
             LabourPricing.amountMinor(candidate.toLabourEntry())
             val now = clock.nowInstant()

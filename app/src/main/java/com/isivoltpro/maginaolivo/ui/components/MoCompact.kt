@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.ui.theme.MoInk
@@ -99,6 +100,8 @@ enum class MoKpiKind(val tint: Color, val container: Color) {
     JORNALES(MoIconTone.LABOUR.tint, MoIconTone.LABOUR.container),
     MAQUINARIA(MoIconTone.LAND.tint, MoIconTone.LAND.container),
     COSTES(MoIconTone.MONEY.tint, MoIconTone.MONEY.container),
+    TOTAL(com.isivoltpro.maginaolivo.ui.theme.MoInfoText, com.isivoltpro.maginaolivo.ui.theme.MoInfoTint),
+    YIELD(com.isivoltpro.maginaolivo.ui.theme.MoSuccessText, com.isivoltpro.maginaolivo.ui.theme.MoSuccessTint),
     CAMPAIGN(MoOliveDark, MoOliveTint),
 }
 
@@ -116,10 +119,12 @@ fun MoKpiMetric(
     icon: ImageVector? = null,
     supportingText: String? = null,
     kind: MoKpiKind,
+    onClick: (() -> Unit)? = null,
 ) {
     val accent = kind
     Surface(
-        modifier = modifier,
+        modifier = modifier.semantics(mergeDescendants = true) {}.heightIn(min = MoSize.minTouchTarget)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
         shape = MoShape.card,
         color = MoWarmWhite,
         border = BorderStroke(1.dp, accent.tint.copy(alpha = 0.45f)),
@@ -140,7 +145,7 @@ fun MoKpiMetric(
                 }
                 Text(value, style = MaterialTheme.typography.headlineSmall, color = MoInk)
                 if (supportingText != null) {
-                    Text(supportingText, style = MaterialTheme.typography.labelMedium, color = MoTextSecondary, maxLines = 3)
+                    Text(supportingText, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary)
                 }
             }
         }

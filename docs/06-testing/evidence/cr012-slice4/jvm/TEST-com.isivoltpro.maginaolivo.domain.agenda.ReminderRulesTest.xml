@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.agenda.ReminderRulesTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:10.894Z" hostname="ISICIO" time="0.014">
+  <properties/>
+  <testcase name="sameDayNeverSlipsIntoTheNightBefore" classname="com.isivoltpro.maginaolivo.domain.agenda.ReminderRulesTest" time="0.006"/>
+  <testcase name="sameDayWarnsAnHourBeforeOrEarlyWithoutAnHour" classname="com.isivoltpro.maginaolivo.domain.agenda.ReminderRulesTest" time="0.0"/>
+  <testcase name="customUsesTheChosenMoment" classname="com.isivoltpro.maginaolivo.domain.agenda.ReminderRulesTest" time="0.002"/>
+  <testcase name="remindersMustBeCompleteAndDistinct" classname="com.isivoltpro.maginaolivo.domain.agenda.ReminderRulesTest" time="0.002"/>
+  <testcase name="theWallClockHoldsAcrossSummerTime" classname="com.isivoltpro.maginaolivo.domain.agenda.ReminderRulesTest" time="0.0"/>
+  <testcase name="previousDayWarnsTheEveningBefore" classname="com.isivoltpro.maginaolivo.domain.agenda.ReminderRulesTest" time="0.001"/>
+  <testcase name="planningIsOptionalButNeverNonsense" classname="com.isivoltpro.maginaolivo.domain.agenda.ReminderRulesTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

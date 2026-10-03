@@ -1,0 +1,29 @@
+
+com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest:
+Error in economicCardsOpenCanonicalDetailsWithoutDuplicateMoneyOrAnnualWork(com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'notebook-summary-labour')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest.economicCardsOpenCanonicalDetailsWithoutDuplicateMoneyOrAnnualWork(RecollectionSummaryScreenTest.kt:42)
+
+
+Time: 1.833
+There was 1 failure:
+1) economicCardsOpenCanonicalDetailsWithoutDuplicateMoneyOrAnnualWork(com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (TestTag = 'notebook-summary-labour')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest.economicCardsOpenCanonicalDetailsWithoutDuplicateMoneyOrAnnualWork(RecollectionSummaryScreenTest.kt:42)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+

@@ -1,0 +1,887 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="408" failures="0" errors="0" skipped="0" time="338.987" timestamp="2026-10-02T15:35:12" hostname="localhost">
+  <testsuite name="com.isivoltpro.maginaolivo.ActivityEditorCompactTest" tests="4" failures="0" errors="0" skipped="0" time="7.211" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="anEditThatAlreadyHasACostShowsIt" classname="com.isivoltpro.maginaolivo.ActivityEditorCompactTest" time="2.557" />
+    <testcase name="taskSpecificFieldsStartFoldedAndRemainAvailable" classname="com.isivoltpro.maginaolivo.ActivityEditorCompactTest" time="1.505" />
+    <testcase name="oneTypeAtATimeAndTheOptionalFieldsStartFolded" classname="com.isivoltpro.maginaolivo.ActivityEditorCompactTest" time="1.721" />
+    <testcase name="moreOptionsUnfoldsAndAnEditWithACostStartsOpen" classname="com.isivoltpro.maginaolivo.ActivityEditorCompactTest" time="1.428" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.ActivityEditorPresetTest" tests="2" failures="0" errors="0" skipped="0" time="1.766" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="aPresetTypeHidesTheTypeList" classname="com.isivoltpro.maginaolivo.ActivityEditorPresetTest" time="0.825" />
+    <testcase name="withoutAPresetTheFarmerStillChoosesTheType" classname="com.isivoltpro.maginaolivo.ActivityEditorPresetTest" time="0.941" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.AppNavigationTest" tests="23" failures="0" errors="0" skipped="0" time="116.766" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="profileShowsMisMaquinasAndNoProntoRows" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="2.243" />
+    <testcase name="completedOnboardingStaysCompletedAfterActivityRecreation" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="1.507" />
+    <testcase name="cuadernoPesadaAndGastoOpenTheirScreensOnThatFarm" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="5.385" />
+    <testcase name="registrarPlusCreatesARealActivityOnTheSelectedFarm" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="10.384" />
+    <testcase name="theActivityEditorShowsOnlyTheTypedBlockOfTheChosenType" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="11.277" />
+    <testcase name="registerTodayShowsInTheDiaryAndSurvivesARestart" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="13.966" />
+    <testcase name="revisitingRootDoesNotAddDuplicateDestination" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="1.819" />
+    <testcase name="developerGalleryIsReachableFromDevProfile" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="1.238" />
+    <testcase name="farmParcelCampaignLifecyclePersistsAcrossRecreation" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="12.675" />
+    <testcase name="activeRootSurvivesActivityRecreation" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="1.446" />
+    <testcase name="registerFromAFarmOpensCuadernoWithThatFarm" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="3.354" />
+    <testcase name="cuadernoWorkActionOpensTheFlowDirectly" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="3.279" />
+    <testcase name="allFrozenRootsAreReachableAndSelected" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="1.685" />
+    <testcase name="nestedFarmRouteReturnsToOlivar" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="3.288" />
+    <testcase name="backFromAnotherRootReturnsToHome" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="1.58" />
+    <testcase name="cuadernoJornalOpensTodaysDayOnceAndItSurvivesARestart" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="12.457" />
+    <testcase name="oneActivityTargetsTwoParcelsAsASingleCanonicalRecord" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="12.771" />
+    <testcase name="helpAndPrivacyAreReachableFromPerfil" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="2.085" />
+    <testcase name="aFarmsCuadernoIsTheOneCuadernoOnThatFarm" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="3.443" />
+    <testcase name="aTabAlwaysOpensItsOwnRootScreenFromWhereverTheFarmerIs" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="2.41" />
+    <testcase name="parcelCanBeCreatedAndOpenedFromItsFarm" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="5.091" />
+    <testcase name="avisosPlansWorkAndCuadernoRegistersIt" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="1.378" />
+    <testcase name="backWalksTheScreensActuallyVisited" classname="com.isivoltpro.maginaolivo.AppNavigationTest" time="2.005" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.AttachmentsSectionTest" tests="3" failures="0" errors="0" skipped="0" time="2.262" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="anEmptyOwnerSaysSoAndOffersBothWaysToAdd" classname="com.isivoltpro.maginaolivo.AttachmentsSectionTest" time="0.864" />
+    <testcase name="aFailedUploadIsShownAsKeptOnTheDeviceNotAsLost" classname="com.isivoltpro.maginaolivo.AttachmentsSectionTest" time="0.574" />
+    <testcase name="removalAsksForConfirmationFirst" classname="com.isivoltpro.maginaolivo.AttachmentsSectionTest" time="0.824" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.CadastreImportScreenTest" tests="4" failures="0" errors="0" skipped="0" time="3.274" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="waitsForConfirmationAndUsesPreselectedFarm" classname="com.isivoltpro.maginaolivo.CadastreImportScreenTest" time="0.815" />
+    <testcase name="multipleMapOrFileCandidatesRequireExplicitSelection" classname="com.isivoltpro.maginaolivo.CadastreImportScreenTest" time="0.819" />
+    <testcase name="cannotImportWithoutAFarm" classname="com.isivoltpro.maginaolivo.CadastreImportScreenTest" time="0.828" />
+    <testcase name="duplicateOffersOpeningTheExistingParcel" classname="com.isivoltpro.maginaolivo.CadastreImportScreenTest" time="0.812" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.CampaignChartsScreenTest" tests="3" failures="0" errors="0" skipped="0" time="2.409" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="theSummaryLinesAreTheRawTotals" classname="com.isivoltpro.maginaolivo.CampaignChartsScreenTest" time="0.816" />
+    <testcase name="noRecordsIsAnExplicitEmptyState" classname="com.isivoltpro.maginaolivo.CampaignChartsScreenTest" time="0.845" />
+    <testcase name="theComparisonNeverShowsAnInventedCost" classname="com.isivoltpro.maginaolivo.CampaignChartsScreenTest" time="0.748" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.CampaignScreensTest" tests="2" failures="0" errors="0" skipped="0" time="2.023" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="emptyStateAndCreateValidationAreAccessible" classname="com.isivoltpro.maginaolivo.CampaignScreensTest" time="0.882" />
+    <testcase name="closedDetailRendersFrozenSnapshotAndUnknownMetrics" classname="com.isivoltpro.maginaolivo.CampaignScreensTest" time="1.141" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.Cr012SurfacesTest" tests="13" failures="0" errors="0" skipped="0" time="22.372" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="comparisonKeepsMixedCurrenciesVisibleWithoutConversion" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="0.798" />
+    <testcase name="loadingFinancialContextCannotSaveAGuessedExpenseCurrency" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="1.458" />
+    <testcase name="actualPersonAndPaymentShowIndependentBalancesAfterClose" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="1.901" />
+    <testcase name="historicalJpyCostsTabDoesNotClaimNoPostedExpenses" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="0.678" />
+    <testcase name="resourceReadErrorsAreVisibleWithoutOpeningDetailsAndNoZeroIsInvented" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="0.908" />
+    <testcase name="mixedDayCurrencyBlocksContextualCostWithoutInventingCurrency" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="1.521" />
+    <testcase name="equipmentSaveIsPhysicallyReachableAfterPriceEditAndImeDismissal" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="2.866" />
+    <testcase name="dayExpenseUsesHistoricalJpyBeforeTodaysEurAndEmitsJpyMinorUnits" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="2.259" />
+    <testcase name="legacyJpyLabourSaveIsPhysicallyReachableAfterPriceEditAndImeDismissal" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="2.829" />
+    <testcase name="actualDayCardsShowCanonical530Over3200AndOpenEachResource" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="2.418" />
+    <testcase name="campaignExpenseTotalsKeepOriginalCurrenciesSeparate" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="0.698" />
+    <testcase name="contextualExpenseFormEmitsExplicitCampaignWhileFarmOnlyIsOutside" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="2.518" />
+    <testcase name="actualCampaignHasSeparateProductionAndCompactCostsWithoutWorkerLists" classname="com.isivoltpro.maginaolivo.Cr012SurfacesTest" time="1.52" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.EquipmentScreenTest" tests="9" failures="0" errors="0" skipped="0" time="17.705" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="clearingNewUsualPrefillSavesExplicitUnknownInsteadOfHiddenPrice" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.162" />
+    <testcase name="recordedEquipmentReadsAsOneLine" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.152" />
+    <testcase name="usualUnitPriceIsEditableAndPreviewMultipliesQuantityOnce" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.258" />
+    <testcase name="clearingAnAlreadyConfirmedPriceCannotSilentlyKeepIt" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.746" />
+    <testcase name="capturesUsualPriceSheet" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.859" />
+    <testcase name="multiplicationOverflowShowsErrorAndDisablesSave" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.104" />
+    <testcase name="overflowShowsErrorAndDisablesSave" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.623" />
+    <testcase name="steppersBuildTheDaysEquipment" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="1.92" />
+    <testcase name="unchangedUsualPrefillAndExplicitZeroStayConfirmed" classname="com.isivoltpro.maginaolivo.EquipmentScreenTest" time="2.881" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.FarmMapScreenTest" tests="3" failures="0" errors="0" skipped="0" time="3.069" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="locatingAHandMadeParcelWaitsForOneTappedParcel" classname="com.isivoltpro.maginaolivo.FarmMapScreenTest" time="1.007" />
+    <testcase name="reviewNamesEveryParcelBeforeIncorporatingThem" classname="com.isivoltpro.maginaolivo.FarmMapScreenTest" time="1.304" />
+    <testcase name="addModeCountsTheMarkedParcels" classname="com.isivoltpro.maginaolivo.FarmMapScreenTest" time="0.758" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.FarmScreensTest" tests="5" failures="0" errors="0" skipped="0" time="6.112" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="errorStateExplainsLocalFailure" classname="com.isivoltpro.maginaolivo.FarmScreensTest" time="0.853" />
+    <testcase name="twentyFarmsStayReachableInLazyList" classname="com.isivoltpro.maginaolivo.FarmScreensTest" time="0.902" />
+    <testcase name="editorReturnsAllUserEnteredFields" classname="com.isivoltpro.maginaolivo.FarmScreensTest" time="3.052" />
+    <testcase name="emptyStateRemainsActionable" classname="com.isivoltpro.maginaolivo.FarmScreensTest" time="0.652" />
+    <testcase name="fiftyFarmsStayReachableInLazyList" classname="com.isivoltpro.maginaolivo.FarmScreensTest" time="0.653" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.FormDetailsDisclosureTest" tests="2" failures="0" errors="0" skipped="0" time="1.815" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="aNewExpenseKeepsTheRarelyUsedFieldsUnderMoreDetails" classname="com.isivoltpro.maginaolivo.FormDetailsDisclosureTest" time="0.998" />
+    <testcase name="anExpenseThatAlreadyHasNotesShowsThem" classname="com.isivoltpro.maginaolivo.FormDetailsDisclosureTest" time="0.817" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" tests="14" failures="0" errors="0" skipped="0" time="15.898" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="captureUiPolishCampaign" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="0.869" />
+    <testcase name="captureUiPolishProfile" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="0.759" />
+    <testcase name="captureWeatherOnPhoto" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="1.87" />
+    <testcase name="captureUiPolishHarvest" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="0.997" />
+    <testcase name="captureUiPolishOlivar" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="0.927" />
+    <testcase name="captureUiPolishFarm" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="1.588" />
+    <testcase name="captureUiPolishHome" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="1.689" />
+    <testcase name="captureUiPolishCalendarMonth" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="0.962" />
+    <testcase name="captureUiPolishNotebook" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="0.854" />
+    <testcase name="captureUiPolishCalendarAgenda" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="0.94" />
+    <testcase name="captureDeliveryOcrReviewReference" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="1.053" />
+    <testcase name="captureUiPolishActivity" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="0.872" />
+    <testcase name="captureWeatherWeekAndItsLastDay" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="1.233" />
+    <testcase name="captureParcelDetailReference" classname="com.isivoltpro.maginaolivo.Gate3EvidenceScreenshotTest" time="1.285" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.HarvestsNoOpenDayTest" tests="1" failures="0" errors="0" skipped="0" time="0.702" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="recoleccionHasNoOpenTodayButton" classname="com.isivoltpro.maginaolivo.HarvestsNoOpenDayTest" time="0.702" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.HomeFeedsScreenTest" tests="6" failures="0" errors="0" skipped="0" time="5.057" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="noLocationExplainsWhereToAddTheMunicipality" classname="com.isivoltpro.maginaolivo.HomeFeedsScreenTest" time="0.844" />
+    <testcase name="externalFeedsDoNotReplaceFarmSummaryAndQuickAccessIsRemoved" classname="com.isivoltpro.maginaolivo.HomeFeedsScreenTest" time="1.102" />
+    <testcase name="tappingHeroWeatherOpensTheWeek" classname="com.isivoltpro.maginaolivo.HomeFeedsScreenTest" time="0.827" />
+    <testcase name="theHeaderFollowsCurrentSkyAndStaysStillInTests" classname="com.isivoltpro.maginaolivo.HomeFeedsScreenTest" time="0.769" />
+    <testcase name="anOutOfDateSkyDrawsNothingOverThePhoto" classname="com.isivoltpro.maginaolivo.HomeFeedsScreenTest" time="0.704" />
+    <testcase name="heroWeatherShowsCurrentValueLocationAndCachedWarning" classname="com.isivoltpro.maginaolivo.HomeFeedsScreenTest" time="0.811" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.HomeOilMarketScreenTest" tests="2" failures="0" errors="0" skipped="0" time="1.904" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="officialGraphShowsThreePricesSourceAndOpensMarketDetail" classname="com.isivoltpro.maginaolivo.HomeOilMarketScreenTest" time="0.992" />
+    <testcase name="staleAndUnavailableMarketStatesStayClear" classname="com.isivoltpro.maginaolivo.HomeOilMarketScreenTest" time="0.912" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.JornadaCostScreenTest" tests="2" failures="0" errors="0" skipped="0" time="3.169" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="kindAmountSave" classname="com.isivoltpro.maginaolivo.JornadaCostScreenTest" time="2.082" />
+    <testcase name="theTotalIsThePostedLedgerRowsOnly" classname="com.isivoltpro.maginaolivo.JornadaCostScreenTest" time="1.087" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.JornadaScreenTest" tests="4" failures="0" errors="0" skipped="0" time="3.398" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="eachPesadaSaysItsOriginAndYieldAndTheJornadaWeighsThem" classname="com.isivoltpro.maginaolivo.JornadaScreenTest" time="0.863" />
+    <testcase name="threePesadasToTwoCooperativesReadAsOneDay" classname="com.isivoltpro.maginaolivo.JornadaScreenTest" time="0.996" />
+    <testcase name="aJornadaOpenedBeforeItsPesadasShowsPendingKilosNeverZero" classname="com.isivoltpro.maginaolivo.JornadaScreenTest" time="0.808" />
+    <testcase name="aJornadaWithoutPesadasInvitesTheFirstOne" classname="com.isivoltpro.maginaolivo.JornadaScreenTest" time="0.731" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.LabourByWorkerScreenTest" tests="2" failures="0" errors="0" skipped="0" time="1.706" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="onlyCountsStillSayTheyHaveNoName" classname="com.isivoltpro.maginaolivo.LabourByWorkerScreenTest" time="0.847" />
+    <testcase name="oneRowPerPersonAndTheUnnamedApart" classname="com.isivoltpro.maginaolivo.LabourByWorkerScreenTest" time="0.859" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" tests="5" failures="0" errors="0" skipped="0" time="8.695" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="partlyConfirmedDayKeepsTheOtherPersonsJpySnapshotWithoutLedger" classname="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" time="1.452" />
+    <testcase name="legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates" classname="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" time="2.126" />
+    <testcase name="ambiguousHistoricalCurrenciesExplainWhyConfirmationCannotSave" classname="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" time="1.168" />
+    <testcase name="newAttendanceOnJpyDayDoesNotPrefillOrSaveCurrentEurRate" classname="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" time="2.144" />
+    <testcase name="overflowingHourlyCostExplainsReducingPriceOrDurationAndDisablesSave" classname="com.isivoltpro.maginaolivo.LabourCurrencyAndOverflowUiTest" time="1.805" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.LabourDeviceCheckTest" tests="3" failures="0" errors="0" skipped="0" time="2.663" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="aDayStillLoadingDoesNotSayItHasNoJornales" classname="com.isivoltpro.maginaolivo.LabourDeviceCheckTest" time="0.744" />
+    <testcase name="selectedPersonSurvivesARotation" classname="com.isivoltpro.maginaolivo.LabourDeviceCheckTest" time="1.214" />
+    <testcase name="aFailedReadIsShownAsAnErrorNotAsNoJornales" classname="com.isivoltpro.maginaolivo.LabourDeviceCheckTest" time="0.705" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" tests="14" failures="0" errors="0" skipped="0" time="24.308" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="legacyPriceRequiresExplicitConfirmationAndNoCurrentRateBackfill" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="1.308" />
+    <testcase name="completeHoursPriceAndSinglePersonAreRequiredWithNoAnonymousOrHalfDay" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="2.575" />
+    <testcase name="screenshotPayment" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="1.8" />
+    <testcase name="pricedHoursChangedToDayAlsoRequiresNewDayPrice" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="1.374" />
+    <testcase name="pricedDayChangedToHoursRequiresNewHourlyPriceBeforeSaving" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="1.864" />
+    <testcase name="legacyHalfDayAndFullDayRetainAgreedDayPriceAcrossRestore" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="0.994" />
+    <testcase name="screenshotForm" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="1.875" />
+    <testcase name="pendingAndPaidStatesHaveIconsAndSavingDisablesThePaymentButton" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="0.88" />
+    <testcase name="fullInitialPaymentUsesAppliedRate" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="1.333" />
+    <testcase name="partialInitialPaymentSurvivesRotationWithStableIdAndInvalidAmountCannotSave" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="2.606" />
+    <testcase name="personShows24018060WithSeparateWorkPaymentsAndClosedSettlement" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="1.914" />
+    <testcase name="correctingPaymentRequiresAnExplicitMovementAndConfirmation" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="1.144" />
+    <testcase name="screenshotPerson" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="2.658" />
+    <testcase name="paymentDateNoteAndUuidSurviveRotationAndStatesHaveIconText" classname="com.isivoltpro.maginaolivo.LabourPaymentsUiTest" time="1.983" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.LabourScreenTest" tests="2" failures="0" errors="0" skipped="0" time="2.49" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="newFormRequiresOnePersonAndPriceWithoutAnonymousOrHalfDay" classname="com.isivoltpro.maginaolivo.LabourScreenTest" time="1.436" />
+    <testcase name="recordedJornalesShowTheirDeterministicSummary" classname="com.isivoltpro.maginaolivo.LabourScreenTest" time="1.054" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.MainActivitySmokeTest" tests="2" failures="0" errors="0" skipped="0" time="1.878" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="launcherShowsOnboardingReference" classname="com.isivoltpro.maginaolivo.MainActivitySmokeTest" time="0.742" />
+    <testcase name="skipOnboardingShowsHomeReference" classname="com.isivoltpro.maginaolivo.MainActivitySmokeTest" time="1.136" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.MoStatStripAccessibilityTest" tests="1" failures="0" errors="0" skipped="0" time="0.811" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="narrowScreenAndLargeTextKeepLabelsAndUnitsComplete" classname="com.isivoltpro.maginaolivo.MoStatStripAccessibilityTest" time="0.811" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.MyProfileScreenTest" tests="4" failures="0" errors="0" skipped="0" time="5.594" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="anEmptyProfileSaysWhatEachRowIsFor" classname="com.isivoltpro.maginaolivo.MyProfileScreenTest" time="0.773" />
+    <testcase name="theCooperativeIsChosenFromTheFarmersOwnListOrAdded" classname="com.isivoltpro.maginaolivo.MyProfileScreenTest" time="1.858" />
+    <testcase name="remindersCanBeSwitchedOffAndTheDayBeforeHourChosen" classname="com.isivoltpro.maginaolivo.MyProfileScreenTest" time="0.986" />
+    <testcase name="theMunicipalityIsTypedAndSaved" classname="com.isivoltpro.maginaolivo.MyProfileScreenTest" time="1.977" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.NotebookChronologyTest" tests="1" failures="0" errors="0" skipped="0" time="0.814" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="theDiaryDrawsOneLinePerDayAndNamesToday" classname="com.isivoltpro.maginaolivo.NotebookChronologyTest" time="0.814" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.NotebookHomeScreenTest" tests="9" failures="0" errors="0" skipped="0" time="9.344" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="aParcelFromMiCampoIsShownAndCanBeDropped" classname="com.isivoltpro.maginaolivo.NotebookHomeScreenTest" time="0.775" />
+    <testcase name="withoutACampaignTheNotebookSaysSo" classname="com.isivoltpro.maginaolivo.NotebookHomeScreenTest" time="0.675" />
+    <testcase name="quickActionsAndTabsAreLabelledControls" classname="com.isivoltpro.maginaolivo.NotebookHomeScreenTest" time="1.321" />
+    <testcase name="anEmptyCampaignSaysSoInTheDiary" classname="com.isivoltpro.maginaolivo.NotebookHomeScreenTest" time="0.866" />
+    <testcase name="theFourTabsShowTheSameRecords" classname="com.isivoltpro.maginaolivo.NotebookHomeScreenTest" time="1.54" />
+    <testcase name="inicioCanOpenTheCampaignView" classname="com.isivoltpro.maginaolivo.NotebookHomeScreenTest" time="0.924" />
+    <testcase name="contextAndTheSixActionsAreAlwaysAtHandWithNoSecondMenu" classname="com.isivoltpro.maginaolivo.NotebookHomeScreenTest" time="1.421" />
+    <testcase name="withoutFarmsMiCampoIsOffered" classname="com.isivoltpro.maginaolivo.NotebookHomeScreenTest" time="0.792" />
+    <testcase name="at360dpWithLargeTextLabelsStayWholeAndEveryViewIsVisible" classname="com.isivoltpro.maginaolivo.NotebookHomeScreenTest" time="1.03" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.OilMarketScreenTest" tests="4" failures="0" errors="0" skipped="0" time="3.381" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="theHomeCardOpensTheMarketOnlyWhenThereAreOfficialWeeks" classname="com.isivoltpro.maginaolivo.OilMarketScreenTest" time="0.867" />
+    <testcase name="aWeekTheSourceDidNotPublishIsSaidAsMissingNeverFilledIn" classname="com.isivoltpro.maginaolivo.OilMarketScreenTest" time="0.85" />
+    <testcase name="theOfficialWeeksAreDrawnWithTheSameNumbersInWordsAndTheirSource" classname="com.isivoltpro.maginaolivo.OilMarketScreenTest" time="0.94" />
+    <testcase name="withoutOfficialDataTheScreenSaysSo" classname="com.isivoltpro.maginaolivo.OilMarketScreenTest" time="0.724" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.ParcelScreensTest" tests="6" failures="0" errors="0" skipped="0" time="5.072" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="detailLabelsManualProvenanceAndUnknownData" classname="com.isivoltpro.maginaolivo.ParcelScreensTest" time="0.836" />
+    <testcase name="registerOnAParcelHandsItsFarmAndNameToCuaderno" classname="com.isivoltpro.maginaolivo.ParcelScreensTest" time="0.903" />
+    <testcase name="manualParcelFormKeepsSecondaryFieldsAvailableButFolded" classname="com.isivoltpro.maginaolivo.ParcelScreensTest" time="0.92" />
+    <testcase name="farmSectionShowsTruthfulEmptyState" classname="com.isivoltpro.maginaolivo.ParcelScreensTest" time="0.746" />
+    <testcase name="addOffersManualOrMapWithoutDuplicatingTheHeaderAction" classname="com.isivoltpro.maginaolivo.ParcelScreensTest" time="0.807" />
+    <testcase name="activeParcelOpensPersistedIdentifier" classname="com.isivoltpro.maginaolivo.ParcelScreensTest" time="0.86" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.PesadaSearchScreenTest" tests="1" failures="0" errors="0" skipped="0" time="1.398" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="pendingFilterAndTicketSearchNarrowTheList" classname="com.isivoltpro.maginaolivo.PesadaSearchScreenTest" time="1.398" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.Phase3CampaignRegisterReferenceTest" tests="2" failures="0" errors="0" skipped="0" time="2.013" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="campaignReferenceRendersCanonicalSections" classname="com.isivoltpro.maginaolivo.Phase3CampaignRegisterReferenceTest" time="0.939" />
+    <testcase name="registerReferenceRendersTypedForm" classname="com.isivoltpro.maginaolivo.Phase3CampaignRegisterReferenceTest" time="1.074" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.Phase3ComponentCatalogueTest" tests="1" failures="0" errors="0" skipped="0" time="0.774" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="catalogueRendersCoreStates" classname="com.isivoltpro.maginaolivo.Phase3ComponentCatalogueTest" time="0.774" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.Phase3HarvestExpensesWeatherReferenceTest" tests="3" failures="0" errors="0" skipped="0" time="2.784" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="expensesReferenceRenders" classname="com.isivoltpro.maginaolivo.Phase3HarvestExpensesWeatherReferenceTest" time="0.967" />
+    <testcase name="weatherReferenceRenders" classname="com.isivoltpro.maginaolivo.Phase3HarvestExpensesWeatherReferenceTest" time="0.936" />
+    <testcase name="harvestReferenceRenders" classname="com.isivoltpro.maginaolivo.Phase3HarvestExpensesWeatherReferenceTest" time="0.881" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.Phase3MapReferenceTest" tests="1" failures="0" errors="0" skipped="0" time="0.708" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="mapReferenceRendersSelectionAndImportBoundary" classname="com.isivoltpro.maginaolivo.Phase3MapReferenceTest" time="0.708" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.Phase3OlivarReferenceTest" tests="2" failures="0" errors="0" skipped="0" time="1.511" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="olivarReferenceRendersCanonicalContent" classname="com.isivoltpro.maginaolivo.Phase3OlivarReferenceTest" time="0.837" />
+    <testcase name="farmDetailReferenceRendersCanonicalContent" classname="com.isivoltpro.maginaolivo.Phase3OlivarReferenceTest" time="0.674" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.Phase3ParcelOcrReferenceTest" tests="2" failures="0" errors="0" skipped="0" time="3.175" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="ocrReviewReferenceRendersUnconfirmedState" classname="com.isivoltpro.maginaolivo.Phase3ParcelOcrReferenceTest" time="1.756" />
+    <testcase name="parcelDetailReferenceRenders" classname="com.isivoltpro.maginaolivo.Phase3ParcelOcrReferenceTest" time="1.419" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.RadarScreenTest" tests="5" failures="0" errors="0" skipped="0" time="4.575" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="offlineTheRadarSaysItNeedsAConnectionAndCanRetry" classname="com.isivoltpro.maginaolivo.RadarScreenTest" time="0.92" />
+    <testcase name="theRadarCentresOnTheFarmOrOnTheHomeArea" classname="com.isivoltpro.maginaolivo.RadarScreenTest" time="0.679" />
+    <testcase name="withoutConfigurationItSaysSo" classname="com.isivoltpro.maginaolivo.RadarScreenTest" time="0.727" />
+    <testcase name="thePictureShowsItsTimeSourceAndFrames" classname="com.isivoltpro.maginaolivo.RadarScreenTest" time="1.491" />
+    <testcase name="anOlderFrameSaysHowMuchOlderItIs" classname="com.isivoltpro.maginaolivo.RadarScreenTest" time="0.758" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest" tests="3" failures="0" errors="0" skipped="0" time="2.864" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="economicCardsOpenCanonicalDetailsWithoutDuplicateMoneyOrAnnualWork" classname="com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest" time="0.991" />
+    <testcase name="aRunningCampaignOffersNewPesadaFirstAndOneSummary" classname="com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest" time="1.079" />
+    <testcase name="aClosedCampaignTakesNoNewPesada" classname="com.isivoltpro.maginaolivo.RecollectionSummaryScreenTest" time="0.794" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.WeatherMoodLayerTest" tests="2" failures="0" errors="0" skipped="0" time="1.49" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="reducedMotionDrawsEveryLookStill" classname="com.isivoltpro.maginaolivo.WeatherMoodLayerTest" time="0.788" />
+    <testcase name="unknownWeatherDrawsNothing" classname="com.isivoltpro.maginaolivo.WeatherMoodLayerTest" time="0.702" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.WeatherWeekScreenTest" tests="4" failures="0" errors="0" skipped="0" time="3.383" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="unresolvedLocationIsExplained" classname="com.isivoltpro.maginaolivo.WeatherWeekScreenTest" time="0.582" />
+    <testcase name="showsOnlyReceivedMeasuresAndAttributesTheirSource" classname="com.isivoltpro.maginaolivo.WeatherWeekScreenTest" time="1.061" />
+    <testcase name="missingCacheExplainsThatConnectivityIsNeeded" classname="com.isivoltpro.maginaolivo.WeatherWeekScreenTest" time="0.693" />
+    <testcase name="cachedWeekSaysItIsOldAndRadarOpensTheExistingRoute" classname="com.isivoltpro.maginaolivo.WeatherWeekScreenTest" time="1.047" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" tests="12" failures="0" errors="0" skipped="0" time="1.464" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="plannedActivityRequiresAtLeastOneParcel" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.184" />
+    <testcase name="registerTodayCreatesCompletedWorkWhilePlanningRemainsPlanned" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.137" />
+    <testcase name="oneActivityTargetsManyParcelsWithoutDuplicatingTheHeader" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.13" />
+    <testcase name="completedActivityIsProtectedFromEditsUntilItIsReopened" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.081" />
+    <testcase name="repeatedTargetingNeverDuplicatesAParcelRow" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.134" />
+    <testcase name="illegalTransitionsLeaveThePersistedStateUntouched" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.131" />
+    <testcase name="aDraftMayBeSavedEmptyAndResumedIntoPlanned" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.106" />
+    <testcase name="createEnqueuesExactlyOneDeterministicCreateIntent" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.081" />
+    <testcase name="repeatedMutationsNeverDuplicateTheActivityOutboxIntent" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.133" />
+    <testcase name="parcelOutsideTheFarmIsRejectedWithoutPersistingTheActivity" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.105" />
+    <testcase name="activityAndTargetsSurviveAProcessRestart" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.134" />
+    <testcase name="archiveIsProtectedForPlannedAndCompletedAndCannotResurrect" classname="com.isivoltpro.maginaolivo.data.local.ActivityEngineContractTest" time="0.108" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" tests="11" failures="0" errors="0" skipped="0" time="1.376" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="theNotifierPostsOnceAndStaysSilentForFinishedWork" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.207" />
+    <testcase name="theAlarmServiceRegistersAndCancelsAReminder" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.105" />
+    <testcase name="aMomentAlreadyGoneIsNeverRungLate" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.135" />
+    <testcase name="completingOrCancellingSilencesTheWork" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.106" />
+    <testcase name="planningAndRemindersAreWrittenWithTheActivityAndOneIntent" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.132" />
+    <testcase name="remindersSurviveARestartAndAreRescheduled" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.106" />
+    <testcase name="theReceiversAreDeclaredForAlarmsAndReboots" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.107" />
+    <testcase name="planningIsOptionalAndNonsenseIsRefusedBeforeWriting" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.133" />
+    <testcase name="aTimeZoneChangeKeepsTheLocalMeaningOfEachReminder" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.133" />
+    <testcase name="theAgendaListsOnlyPlannedWorkAcrossFarms" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.132" />
+    <testcase name="aDroppedReminderIsSwitchedOffAndItsAlarmCancelled" classname="com.isivoltpro.maginaolivo.data.local.AgendaReminderContractTest" time="0.08" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" tests="14" failures="0" errors="0" skipped="0" time="2.276" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="attachmentsAreListedOnlyUnderTheirOwner" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.872" />
+    <testcase name="aFailedUploadNeverDestroysTheLocalReference" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.159" />
+    <testcase name="aCoverMustBeAnImage" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.082" />
+    <testcase name="aFileSchemeSourceIsRefused" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.082" />
+    <testcase name="anAttachmentSurvivesAnAppRestart" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.108" />
+    <testcase name="theAttachmentOutlivesTheFileTheUserPicked" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.108" />
+    <testcase name="removalQueuesATombstoneAndReleasesTheCopy" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.106" />
+    <testcase name="eachAttachmentQueuesOneUploadIntentAndNoneForItsOwner" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.132" />
+    <testcase name="photosAndPdfsGetADerivedThumbnail" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.111" />
+    <testcase name="anEmptyFileIsRejected" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.08" />
+    <testcase name="anUnsupportedFileIsRejectedWithoutARowAFileOrAnIntent" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.082" />
+    <testcase name="aPhotoIsCopiedIntoAppStorageWithItsHashAndSize" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.108" />
+    <testcase name="theFarmCoverIsACopiedFarmPhotoAndRemovingItClearsTheCover" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.106" />
+    <testcase name="aMissingOwnerIsRejectedBeforeAnythingIsCopied" classname="com.isivoltpro.maginaolivo.data.local.AttachmentContractTest" time="0.14" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" tests="13" failures="0" errors="0" skipped="0" time="1.343" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="archivedPreparationIsRemovedFromTheFarmAndCannotBeResurrected" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.106" />
+    <testcase name="archiveIsRejectedForActiveHarvestAndClosedCampaigns" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.082" />
+    <testcase name="endDateBeforeStartDateIsRejectedWithoutClosingTheCampaign" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.083" />
+    <testcase name="lifecycleIsBorradorActivaCerradaAndLegacyHarvestStillCloses" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.133" />
+    <testcase name="repeatedMutationsNeverDuplicateTheCampaignOutboxIntent" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.133" />
+    <testcase name="illegalTransitionsLeaveThePersistedStateUntouched" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.108" />
+    <testcase name="activationWithoutParcelsFailsWithoutMutatingStatusOrOutbox" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.107" />
+    <testcase name="historicalSnapshotsSurviveLaterFarmAndParcelRenames" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.106" />
+    <testcase name="reopenIsRejectedWhileAnotherCurrentCampaignHoldsTheFarmSlot" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.081" />
+    <testcase name="createEnqueuesExactlyOneDeterministicCreateIntent" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.108" />
+    <testcase name="secondCurrentCampaignForTheSameFarmIsRejectedAtomically" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.107" />
+    <testcase name="closeThenReopenIsExplicitAuditedAndClearsTheEndDate" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.109" />
+    <testcase name="parcelOutsideTheFarmIsRejectedWithoutPersistingTheCampaign" classname="com.isivoltpro.maginaolivo.data.local.CampaignLifecycleContractTest" time="0.08" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" tests="15" failures="0" errors="0" skipped="0" time="1.788" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="aClosedCampaignRefusesToSwapWhichCostCounts" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.159" />
+    <testcase name="oilForTheMachinesAddsToTheirCalculatedDayAndNeverReplacesIt" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.109" />
+    <testcase name="aHandTypedCostOfTheSameKindStandsUntilTheFarmerPicksTheCalculation" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.133" />
+    <testcase name="partialLegacyConfirmationRejectsKnownSubtotalOverflowBeforeWriting" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.108" />
+    <testcase name="unknownHistoricalMachineryRejectsRentalCreatePostUpdateAndLinkWithoutWrites" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.133" />
+    <testcase name="attendanceAndPricesPostOneCalculatedEntryUpdatedInPlace" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.106" />
+    <testcase name="aClosedCampaignKeepsItsCostsAndARemovedDayTakesItsCalculatedOnes" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.133" />
+    <testcase name="historicalYenLedgerSurvivesPartialConfirmationAndEuroUsualRate" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.134" />
+    <testcase name="cr012FreezesRateAndRoundsEachPerson" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.105" />
+    <testcase name="machinerySnapshotsPostOnceAndUsualChangesDoNotRepriceThem" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.16" />
+    <testcase name="unknownLegacyPriceBlocksPricedAppendAndPreservesExistingLedger" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.081" />
+    <testcase name="explicitUnknownNewLineDoesNotCaptureUsualPriceButDefaultsAndZeroStillDo" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.107" />
+    <testcase name="anUnlinkedHandTypedCostOfTheSameDateIsShownAndOnlyTheFarmerLinksIt" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.131" />
+    <testcase name="cr012RejectsNewAnonymousCounts" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.081" />
+    <testcase name="explicitZeroIsPostedAndOverflowRollsBackRowsAndOutbox" classname="com.isivoltpro.maginaolivo.data.local.DayCostContractTest" time="0.108" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" tests="13" failures="0" errors="0" skipped="0" time="1.464" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="aDeliveryIsItsOwnRecordAndNeedNotMatchTheHarvest" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.107" />
+    <testcase name="aConfirmedTicketGoesToItsAutomaticDayAndNeverToAHandRecordedJornada" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.133" />
+    <testcase name="aLaterYieldNeverChangesTheOriginalDelivery" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.131" />
+    <testcase name="anIncompleteReadingNeedsReviewAndAnInvalidReviewWritesNothing" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.133" />
+    <testcase name="yieldCanArriveAfterTheCampaignClosesWhileTheDeliveryStaysHistory" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.106" />
+    <testcase name="anExactSplitMustReconcileWithTheDeliveredKilos" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.08" />
+    <testcase name="confirmingATicketRecordsTheReviewedValuesOnceAndFreezesTheReading" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.132" />
+    <testcase name="readingATicketNeverRecordsADelivery" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.132" />
+    <testcase name="deliveriesAndYieldSurviveARestart" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.079" />
+    <testcase name="aSavedCooperativeIsCopiedByNameOntoTheDelivery" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.082" />
+    <testcase name="yieldIsWeightedByDeliveredKilosWithItsCoverage" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.131" />
+    <testcase name="theOriginOfTheOlivesIsKeptWithThePesada" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.083" />
+    <testcase name="aDeletedDeliveryLeavesTheTotalsWithItsYield" classname="com.isivoltpro.maginaolivo.data.local.DeliveryContractTest" time="0.135" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.EquipmentContractTest" tests="3" failures="0" errors="0" skipped="0" time="0.319" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="twoShakersACombAndATractorWithoutAnyMachineAsset" classname="com.isivoltpro.maginaolivo.data.local.EquipmentContractTest" time="0.106" />
+    <testcase name="savingTheSheetAgainReplacesItDeterministically" classname="com.isivoltpro.maginaolivo.data.local.EquipmentContractTest" time="0.106" />
+    <testcase name="aRegisteredMachineIsReferencedOnlyAndAClosedCampaignTakesNothing" classname="com.isivoltpro.maginaolivo.data.local.EquipmentContractTest" time="0.107" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" tests="26" failures="0" errors="0" skipped="0" time="3.11" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="activeCostCannotBeReparentedIntoAClosedCampaign" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.132" />
+    <testcase name="closedLinkedManualCostCannotBeRewritten" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.131" />
+    <testcase name="closedCostCannotBeReparentedToAnActiveCampaign" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.107" />
+    <testcase name="closedCampaignAllowsNonmutatingPostAndDeleteRetries" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.138" />
+    <testcase name="closedLinkedDocumentDraftCannotBePosted" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.105" />
+    <testcase name="theLedgerSurvivesARestart" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.108" />
+    <testcase name="aFailedReadingKeepsTheDocumentAndCanBeRetried" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.107" />
+    <testcase name="aDeletedExpenseLeavesTheTotalsAndQueuesOneTombstone" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.106" />
+    <testcase name="anExtraExpenseOnTheSameActivityIsCountedOnceNextToItsCost" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.104" />
+    <testcase name="aConfirmedDocumentCannotCreateASecondExpense" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.107" />
+    <testcase name="anOrganizationWithTwoRolesIsOneRowReusedAcrossContexts" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.133" />
+    <testcase name="aDraftWithoutAnAmountCannotBePosted" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.157" />
+    <testcase name="aDiscardedDocumentLeavesNoMoneyAndNoFile" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.131" />
+    <testcase name="purchaseLinesDescribeTheExpenseAndNeverAddMoney" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.131" />
+    <testcase name="aPostedExpenseIsCountedOnceWhereverItIsSeen" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.107" />
+    <testcase name="farmExpenseRemainsOutsideCampaignUnlessExplicitlySelected" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.183" />
+    <testcase name="closedActivityCostRewriteAndRemovalRollBackTheActivityAndIntents" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.106" />
+    <testcase name="aReviewedDocumentBecomesADraftThatIsNeverCountedUntilPosted" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.133" />
+    <testcase name="relationsOutsideTheFarmAreRejectedWithoutWritingMoney" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.079" />
+    <testcase name="closedLinkedManualCostCannotBeDeletedWithItsPurchase" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.134" />
+    <testcase name="anActivityCostIsOneLinkedExpenseAndNeverASecondNumber" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.106" />
+    <testcase name="closedDayCannotReceiveANewManualCost" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.107" />
+    <testcase name="closedActivityCannotGainANewCostAndNewCostBearingActivityRollsBack" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.104" />
+    <testcase name="documentReviewCannotCreateACostInAClosedCampaignOrReownItsAttachment" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.159" />
+    <testcase name="closedUnlinkedCostCannotBeMovedToAnActiveDayByLinking" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.112" />
+    <testcase name="explicitClosedCampaignCannotReceiveACostWithoutADay" classname="com.isivoltpro.maginaolivo.data.local.ExpenseLedgerContractTest" time="0.083" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" tests="11" failures="0" errors="0" skipped="0" time="1.097" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="aFutureDateOrADateBeforeTheCampaignIsRefused" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.106" />
+    <testcase name="anExactSplitMustReconcileWithTheTotalToTheGram" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.081" />
+    <testcase name="campaignTotalsStayTruthfulAcrossHarvests" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.106" />
+    <testcase name="aPartialSplitKeepsTheRestUnallocatedAndNeverAssignsIt" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.109" />
+    <testcase name="aHarvestAndItsParcelsAreOneAggregateWithOneIntent" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.107" />
+    <testcase name="anUnknownSplitStoresOnlyTheTotalAndNoParcelKilos" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.108" />
+    <testcase name="onlyFarmsWithARunningCampaignAreOfferedAndCanRecordHarvest" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.08" />
+    <testcase name="deletingAHarvestRemovesItsKilosAndQueuesOneTombstone" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.082" />
+    <testcase name="originParcelsMustBelongToTheCampaign" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.106" />
+    <testcase name="aHarvestSurvivesARestart" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.105" />
+    <testcase name="aClosedCampaignsHarvestIsHistoryAndCannotChange" classname="com.isivoltpro.maginaolivo.data.local.HarvestContractTest" time="0.107" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.JornadaCostContractTest" tests="2" failures="0" errors="0" skipped="0" time="0.265" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="theJornadaCostIsExactlyItsPostedLedgerRows" classname="com.isivoltpro.maginaolivo.data.local.JornadaCostContractTest" time="0.158" />
+    <testcase name="aCostCannotJoinAnotherFarmsJornadaAndARemovedJornadaKeepsItsMoneyInTheLedger" classname="com.isivoltpro.maginaolivo.data.local.JornadaCostContractTest" time="0.107" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest" tests="9" failures="0" errors="0" skipped="0" time="1.068" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="aPesadaLinkedBeforeCr010KeepsItsJornadaUntilItsDateChanges" classname="com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest" time="0.132" />
+    <testcase name="anAutomaticDayNeverKeepsKilosItNoLongerHas" classname="com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest" time="0.158" />
+    <testcase name="aDayWithWhatTheFarmerTypedOnItStaysAndItsOriginGoesBackToTheWholeFarm" classname="com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest" time="0.081" />
+    <testcase name="aYieldAddedDaysLaterChangesOnlyTheYieldRecordAndTheDerivedMetrics" classname="com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest" time="0.109" />
+    <testcase name="aHandRecordedJornadaIsNeverReusedAndKeepsItsOwnKilos" classname="com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest" time="0.133" />
+    <testcase name="anAutomaticDayKeepsItsDateKilosAndParcelsWhenItsFormIsSaved" classname="com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest" time="0.131" />
+    <testcase name="aJornadaOpenedBeforeAnyPesadaStartsAtZeroAndThenCarriesItsPesadas" classname="com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest" time="0.106" />
+    <testcase name="aDaysOriginIsTheUnionOfItsPesadasParcelsWithoutASplit" classname="com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest" time="0.113" />
+    <testcase name="threePesadasOfOneDayToTwoCooperativesSurviveRestartAsOneTruthfulJornada" classname="com.isivoltpro.maginaolivo.data.local.JornadaPesadasContractTest" time="0.105" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.LabourContractTest" tests="3" failures="0" errors="0" skipped="0" time="0.371" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="theSamePersonIsNotCountedTwiceInOneJornadaAndYesterdaysCrewCanBeRepeated" classname="com.isivoltpro.maginaolivo.data.local.LabourContractTest" time="0.134" />
+    <testcase name="aClosedCampaignTakesNoLabourAndARemovedJornadaTakesItsLabourWithIt" classname="com.isivoltpro.maginaolivo.data.local.LabourContractTest" time="0.105" />
+    <testcase name="fiveWorkersInOneSaveAndTotalsStayDeterministicAfterEdits" classname="com.isivoltpro.maginaolivo.data.local.LabourContractTest" time="0.132" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" tests="10" failures="0" errors="0" skipped="0" time="1.277" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="partialInitialAndLaterPaymentsSurviveReopenAndSettleAfterCloseWithoutChangingCost" classname="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" time="0.184" />
+    <testcase name="concurrentPaymentsAndUuidRetriesCannotOverpayOrResurrect" classname="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" time="0.107" />
+    <testcase name="incompleteLegacyDayPreservesItsLedgerThroughPreferencesAndExplicitPriceConfirmation" classname="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" time="0.133" />
+    <testcase name="deletedAndForeignContextCannotReceivePayments" classname="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" time="0.082" />
+    <testcase name="unknownLegacyStaysUnknownUntilExplicitConfirmationAndZeroIsKnown" classname="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" time="0.159" />
+    <testcase name="postingManualCollisionRollsBackAndConfirmedCalculationRemainsPayable" classname="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" time="0.134" />
+    <testcase name="initialPaymentFailureRollsBackCrewExpenseAndIntents" classname="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" time="0.082" />
+    <testcase name="hoursRequireExplicitCompatibleRateAndCurrenciesNeverMixInSingleDayLedger" classname="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" time="0.107" />
+    <testcase name="reductionsHarvestRemovalAndManualCollisionsRollbackRowsAndOutboxUntilPaymentCorrected" classname="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" time="0.158" />
+    <testcase name="agreedRatesFreezeAndThreePeoplePost180" classname="com.isivoltpro.maginaolivo.data.local.LabourPaymentContractTest" time="0.131" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.MachineryContractTest" tests="7" failures="0" errors="0" skipped="0" time="0.638" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="machinesAreChildrenOfTheActivityWithOneIntent" classname="com.isivoltpro.maginaolivo.data.local.MachineryContractTest" time="0.106" />
+    <testcase name="aRetiredMachineStaysOnPastActivitiesButCannotBeChosenAgain" classname="com.isivoltpro.maginaolivo.data.local.MachineryContractTest" time="0.107" />
+    <testcase name="machinesAndTheirUseSurviveARestart" classname="com.isivoltpro.maginaolivo.data.local.MachineryContractTest" time="0.106" />
+    <testcase name="aMachineNeedsOnlyAName" classname="com.isivoltpro.maginaolivo.data.local.MachineryContractTest" time="0.079" />
+    <testcase name="aMachineShowsTheActivitiesThatUsedItAndOnlyRecordedHours" classname="com.isivoltpro.maginaolivo.data.local.MachineryContractTest" time="0.079" />
+    <testcase name="inconsistentHoursAreRefusedWithoutWritingTheActivity" classname="com.isivoltpro.maginaolivo.data.local.MachineryContractTest" time="0.08" />
+    <testcase name="anActivityNeedsNoMachineAndNoHours" classname="com.isivoltpro.maginaolivo.data.local.MachineryContractTest" time="0.081" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest" tests="2" failures="0" errors="0" skipped="0" time="0.212" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="preparationSelectionCanChangeButCannotAfterActivation" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest" time="0.079" />
+    <testcase name="activationIsAtomicAndHistoricalSnapshotsStayImmutableAcrossRestart" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstCampaignRepositoryTest" time="0.133" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmCoverRepositoryTest" tests="1" failures="0" errors="0" skipped="0" time="0.106" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="copiedCoverAndOutboxSurviveRestart" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmCoverRepositoryTest" time="0.106" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest" tests="9" failures="0" errors="0" skipped="0" time="0.775" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="parcelLifecyclePreservesMembershipHistoryAndOutbox" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest" time="0.08" />
+    <testcase name="handMadeParcelLinkedToCatastroKeepsItsOwnDataAndRefusesATakenReference" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest" time="0.108" />
+    <testcase name="groveDescriptionRoundTripsAndNonsenseIsRefused" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest" time="0.08" />
+    <testcase name="offlineCreateArchiveAndOutboxSurviveDatabaseRestart" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest" time="0.107" />
+    <testcase name="editArchiveAndRestoreSurviveRestartWithOrderedOutbox" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest" time="0.104" />
+    <testcase name="devFixtureSeedIsDeterministicIdempotentAndDoesNotQueueSync" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest" time="0.054" />
+    <testcase name="activeSummaryDerivesCurrentParcelAreaAndCampaign" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest" time="0.107" />
+    <testcase name="localWorkspaceBootstrapIsIdempotentAndQueuesCreateOnce" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest" time="0.055" />
+    <testcase name="failedForeignKeyRollsBackFarmAndOutboxTogether" classname="com.isivoltpro.maginaolivo.data.local.OfflineFirstFarmRepositoryTest" time="0.08" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.OilMarketFeedContractTest" tests="3" failures="0" errors="0" skipped="0" time="0.219" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="aBrokenAnswerNeverReplacesGoodWeeks" classname="com.isivoltpro.maginaolivo.data.local.OilMarketFeedContractTest" time="0.083" />
+    <testcase name="theCachedWeeksGiveTheTrendAndSurviveAFailureUntilTheyAreOld" classname="com.isivoltpro.maginaolivo.data.local.OilMarketFeedContractTest" time="0.08" />
+    <testcase name="withoutASourceItIsNotConfiguredAndAFailedFirstFetchIsUnavailable" classname="com.isivoltpro.maginaolivo.data.local.OilMarketFeedContractTest" time="0.056" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.ProfileSettingsContractTest" tests="5" failures="0" errors="0" skipped="0" time="0.425" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="anUnsetProfileClaimsNothing" classname="com.isivoltpro.maginaolivo.data.local.ProfileSettingsContractTest" time="0.079" />
+    <testcase name="clearingTheProfileLeavesNothingBehind" classname="com.isivoltpro.maginaolivo.data.local.ProfileSettingsContractTest" time="0.08" />
+    <testcase name="onlyAnActiveCooperativeOrMillCanBeTheFarmersCooperative" classname="com.isivoltpro.maginaolivo.data.local.ProfileSettingsContractTest" time="0.079" />
+    <testcase name="theProfilePersistsAcrossARestartAndEachSaveIsQueuedForSync" classname="com.isivoltpro.maginaolivo.data.local.ProfileSettingsContractTest" time="0.082" />
+    <testcase name="theCooperativeIsALiveReferenceRenamedOrArchived" classname="com.isivoltpro.maginaolivo.data.local.ProfileSettingsContractTest" time="0.105" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.RecollectionFlowContractTest" tests="1" failures="0" errors="0" skipped="0" time="0.131" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="onePesadaWithItsTicketPhotoOpensTheJornadaAndEveryTotalComesFromItsLedger" classname="com.isivoltpro.maginaolivo.data.local.RecollectionFlowContractTest" time="0.131" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.ReminderPreferencesContractTest" tests="4" failures="0" errors="0" skipped="0" time="0.4" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="theLocationAndTheRemindersAreSavedWithoutUndoingEachOther" classname="com.isivoltpro.maginaolivo.data.local.ReminderPreferencesContractTest" time="0.107" />
+    <testcase name="withoutAChoiceRemindersAreOnAndTheDayBeforeRingsAt0800" classname="com.isivoltpro.maginaolivo.data.local.ReminderPreferencesContractTest" time="0.079" />
+    <testcase name="aNewDayBeforeHourMovesEveryDayBeforeReminderAndSurvivesARestart" classname="com.isivoltpro.maginaolivo.data.local.ReminderPreferencesContractTest" time="0.108" />
+    <testcase name="switchingRemindersOffWithdrawsEveryAlarmAndKeepsEveryReminder" classname="com.isivoltpro.maginaolivo.data.local.ReminderPreferencesContractTest" time="0.106" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" tests="21" failures="0" errors="0" skipped="0" time="4.047" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="migration16To17MarksOnlyUnweighedJornadasAsAutomaticDaysAndKeepsTypedKilos" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.312" />
+    <testcase name="migration13To14AddsEmptyLabourTablesAndKeepsHarvests" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.208" />
+    <testcase name="migration6To7KeepsExistingHarvestsAndAddsTheirOriginParcels" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.182" />
+    <testcase name="migration2To3PreservesCampaignAndAddsHistoricalParcelSnapshots" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.156" />
+    <testcase name="migration18To19AddsAnEmptyProfileTable" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.183" />
+    <testcase name="migration7To8AddsEmptyDeliveryTablesAndKeepsHarvests" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.157" />
+    <testcase name="migration19To20KeepsTheProfileAndTurnsRemindersOnAt0800" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.183" />
+    <testcase name="migration15To16KeepsEveryPesadaWithoutAnOrigin" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.183" />
+    <testcase name="migration4To5KeepsTheActivityAggregateAndAddsTypedDetails" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.159" />
+    <testcase name="migration3To4PreservesActivitiesAndAddsParcelTargets" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.158" />
+    <testcase name="migration21To22PreservesLegacyEquipmentWithoutInventingPrice" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.183" />
+    <testcase name="migration11To12BackfillsCatastroProvenanceAndKeepsManualRowsEmpty" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.26" />
+    <testcase name="migration12To13KeepsEveryPesadaUnlinkedAndWithoutAnHour" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.288" />
+    <testcase name="migration8To9AddsEmptyMachineryTables" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.234" />
+    <testcase name="migration9To10AddsEmptyPlanningAndReminderTables" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.232" />
+    <testcase name="migration5To6KeepsExistingExpensesAsPostedMoneyAndAddsTheLedgerTables" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.184" />
+    <testcase name="migration14To15AddsAnEmptyEquipmentTable" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.159" />
+    <testcase name="migration20To21PreservesAnonymousHalfDayWithoutInventingPriceOrPayments" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.207" />
+    <testcase name="migration17To18AddsAnEmptyPriceTableAndTouchesNoMoney" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.132" />
+    <testcase name="migration1To2PreservesDataAndCreatesCoreTables" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.106" />
+    <testcase name="migration10To11KeepsParcelsAndLeavesTheirGroveDescriptionEmpty" classname="com.isivoltpro.maginaolivo.data.local.RoomMigrationTest" time="0.181" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" tests="17" failures="0" errors="0" skipped="0" time="1.499" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="maintenanceKeepsTypeAndAsset" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.105" />
+    <testcase name="irrigationKeepsDurationVolumeSectorAndSystem" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.105" />
+    <testcase name="editingADetailMovesTheActivityAggregateVersion" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.055" />
+    <testcase name="typedDetailsSurviveAProcessRestart" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.106" />
+    <testcase name="phytosanitaryKeepsSubstanceReasonAndEquipment" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.079" />
+    <testcase name="negativeAgronomicNumbersAreRejected" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.059" />
+    <testcase name="incidentKeepsCategorySeverityAndState" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.106" />
+    <testcase name="pruningKeepsItsOwnAgronomicFields" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.088" />
+    <testcase name="theDetailIsWrittenInTheSameTransactionAsTheHeader" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.08" />
+    <testcase name="theIrrigationTariffIsAHistoricalSnapshotAndNotASecondLedger" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.105" />
+    <testcase name="aDetailOfAnotherTypeIsRejectedWithoutPersistingAnything" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.08" />
+    <testcase name="multiParcelTargetingIsUntouchedByTypedDetails" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.106" />
+    <testcase name="fertilizationKeepsTheProductAsHistoricalTextWithoutAProductsModule" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.081" />
+    <testcase name="observationAndOtherCarryNoDetailTable" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.079" />
+    <testcase name="soilWorkKeepsItsWorkTypeAndMethod" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.106" />
+    <testcase name="retypingAnActivityReplacesItsDetailInsteadOfKeepingTwo" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.054" />
+    <testcase name="aDetailNeverQueuesAnIntentOfItsOwn" classname="com.isivoltpro.maginaolivo.data.local.TypedActivityDetailContractTest" time="0.105" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.local.WeatherFeedContractTest" tests="5" failures="0" errors="0" skipped="0" time="0.296" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="theSamePlaceSpelledDifferentlySharesItsCache" classname="com.isivoltpro.maginaolivo.data.local.WeatherFeedContractTest" time="0.08" />
+    <testcase name="aFailedFirstFetchIsUnavailableNeverAGuess" classname="com.isivoltpro.maginaolivo.data.local.WeatherFeedContractTest" time="0.053" />
+    <testcase name="aFreshValueIsNotFetchedAgainAndAStaleOneSurvivesAFailure" classname="com.isivoltpro.maginaolivo.data.local.WeatherFeedContractTest" time="0.08" />
+    <testcase name="withoutASourceOrAPlaceTheFeedSaysSo" classname="com.isivoltpro.maginaolivo.data.local.WeatherFeedContractTest" time="0.002" />
+    <testcase name="theCacheRecordsTheProviderThatActuallyAnswered" classname="com.isivoltpro.maginaolivo.data.local.WeatherFeedContractTest" time="0.081" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.remote.EdgeOilMarketResponseTest" tests="4" failures="0" errors="0" skipped="0" time="0.007" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="eurosPer100KgBecomeEurosPerKgExactlyAndKeepTheirOriginal" classname="com.isivoltpro.maginaolivo.data.remote.EdgeOilMarketResponseTest" time="0.002" />
+    <testcase name="anotherSourceAWrongConversionOrAnUnknownCategoryIsAFailedAnswer" classname="com.isivoltpro.maginaolivo.data.remote.EdgeOilMarketResponseTest" time="0.001" />
+    <testcase name="anUnpublishedWeekIsAbsentNeverZero" classname="com.isivoltpro.maginaolivo.data.remote.EdgeOilMarketResponseTest" time="0.002" />
+    <testcase name="theVerifiedJuntaWeeksReadAsOneSeriesWithThreeCategories" classname="com.isivoltpro.maginaolivo.data.remote.EdgeOilMarketResponseTest" time="0.002" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.remote.EdgeRadarResponseTest" tests="2" failures="0" errors="0" skipped="0" time="0.03" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="anythingUnusableIsNoRadarNeverAGuess" classname="com.isivoltpro.maginaolivo.data.remote.EdgeRadarResponseTest" time="0.029" />
+    <testcase name="theRealAnswerGivesFramesOldestFirstWithTheirCredit" classname="com.isivoltpro.maginaolivo.data.remote.EdgeRadarResponseTest" time="0.001" />
+  </testsuite>
+  <testsuite name="com.isivoltpro.maginaolivo.data.remote.EdgeWeatherResponseTest" tests="4" failures="0" errors="0" skipped="0" time="0.009" timestamp="2026-10-02T15:35:12" hostname="localhost">
+    <properties>
+      <property name="device" value="MaginaOlivo_CR012_API35(AVD) - 15" />
+      <property name="flavor" value="dev" />
+      <property name="project" value=":app" />
+    </properties>
+    <testcase name="anIncompleteOrUnknownAnswerIsAFailureNotAGuess" classname="com.isivoltpro.maginaolivo.data.remote.EdgeWeatherResponseTest" time="0.002" />
+    <testcase name="anAemetAnswerKeepsItsProviderTimeAndCredit" classname="com.isivoltpro.maginaolivo.data.remote.EdgeWeatherResponseTest" time="0.003" />
+    <testcase name="dailyForecastIsParsedAndOldCurrentOnlyResponsesStayValid" classname="com.isivoltpro.maginaolivo.data.remote.EdgeWeatherResponseTest" time="0.002" />
+    <testcase name="aMetNorwayFallbackHasNoInventedRainProbability" classname="com.isivoltpro.maginaolivo.data.remote.EdgeWeatherResponseTest" time="0.002" />
+  </testsuite>
+</testsuites>

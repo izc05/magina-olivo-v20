@@ -69,6 +69,11 @@ fun DocumentReviewRoute(
     persistence: LocalPersistence,
     onExpenseCreated: (UUID) -> Unit,
     onClosed: () -> Unit,
+    /** The screen the document was taken from: its Farm, and its Campaign when it had one. */
+    contextFarmId: UUID? = null,
+    contextCampaignId: UUID? = null,
+    /** Taken from Cuaderno → Gasto: «Gasto de recogida» starts chosen if a recolección runs. */
+    preselectRecollection: Boolean = false,
 ) {
     val viewModel: DocumentReviewViewModel = viewModel(
         key = "document-$extractionId",
@@ -93,6 +98,9 @@ fun DocumentReviewRoute(
         onKeep = viewModel::keepWithoutExpense,
         onDiscard = viewModel::discard,
         onFarmSelected = viewModel::selectFarm,
+        contextFarmId = contextFarmId,
+        contextCampaignId = contextCampaignId,
+        preselectRecollection = preselectRecollection,
     )
 }
 
@@ -109,7 +117,12 @@ fun DocumentReviewScreen(
     onKeep: () -> Unit,
     onDiscard: () -> Unit,
     onFarmSelected: (UUID?) -> Unit,
+    contextFarmId: UUID? = null,
+    contextCampaignId: UUID? = null,
+    preselectRecollection: Boolean = false,
 ) {
+    // The Farm's parcels, works and campaigns are offered in the reviewed form from the start.
+    LaunchedEffect(contextFarmId) { contextFarmId?.let(onFarmSelected) }
     var rawTextVisible by rememberSaveable { mutableStateOf(false) }
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
 
@@ -162,7 +175,9 @@ fun DocumentReviewScreen(
             if (extraction != null && extraction.status != OcrStatus.CONFIRMED && !state.isReading &&
                 extraction.status != OcrStatus.PENDING
             ) {
-                val initial = remember(extraction.id, extraction.status, extraction.proposal) { extraction.toReviewForm() }
+                val initial = remember(extraction.id, extraction.status, extraction.proposal, contextFarmId, contextCampaignId) {
+                    extraction.toReviewForm(contextFarmId, contextCampaignId)
+                }
                 ExpenseEditor(
                     title = "Datos para el gasto",
                     subtitle = "Lo que leímos aparece rellenado: revísalo y corrígelo. Se creará un borrador que no suma hasta que lo confirmes.",
@@ -176,6 +191,7 @@ fun DocumentReviewScreen(
                     onSave = onCreateDraft,
                     onCancel = { confirmDiscard = true },
                     scrollable = false,
+                    preselectRecollection = preselectRecollection && contextCampaignId == null,
                     extraActions = {
                         MoSecondaryButton(
                             "Guardar solo como documento",

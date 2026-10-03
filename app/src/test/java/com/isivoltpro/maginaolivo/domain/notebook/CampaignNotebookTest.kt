@@ -23,6 +23,27 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CampaignNotebookTest {
+    @Test fun recollectionBucketsAreExclusivePerCurrencyAndHistoricalLabourKeepsItsCost() {
+        val rows = listOf(
+            expense(30000, ExpenseCategory.HARVEST, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2)).copy(concept = "Jornales/servicio"),
+            expense(18000, ExpenseCategory.MACHINERY, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2)),
+            expense(2000, ExpenseCategory.FUEL, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2)),
+            expense(3000, ExpenseCategory.REPAIR, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2)),
+            expense(99999, ExpenseCategory.MACHINERY, ExpenseStatus.DRAFT, LocalDate.of(2026, 10, 2)).copy(origin = ExpenseOrigin.DAY_EQUIPMENT),
+        )
+        val ledger = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(campaign.id, rows, emptyList()).single()
+        assertEquals(30000L, ledger.amount(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.LABOUR))
+        assertEquals(18000L, ledger.amount(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.EQUIPMENT))
+        assertEquals(5000L, ledger.amount(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.OTHER))
+        assertEquals(53000L, ledger.amount())
+    }
+    @Test fun farmAndDateNeverAssignEconomicCampaignContext() {
+        val explicit = expense(1000, ExpenseCategory.OTHER, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2))
+        val outside = explicit.copy(id = UUID.randomUUID(), campaignId = null)
+        val notebook = CampaignNotebook.project(campaign, emptyList(), emptyList(), emptyList(), listOf(explicit, outside))
+        assertEquals(listOf(explicit), notebook.expenses)
+        assertEquals(1000L, notebook.recollectionExpenseSummary.totalMinor)
+    }
     private val workspace = UUID.randomUUID()
     private val farm = UUID.randomUUID()
     private val otherFarm = UUID.randomUUID()
@@ -68,12 +89,12 @@ class CampaignNotebookTest {
         assertEquals(DeliverySummary.of(deliveries), notebook.deliverySummary)
         assertEquals(ExpenseSummary.of(expenses), notebook.expenseSummary)
         assertEquals(16_500, notebook.expenseSummary.totalMinor) // the draft is listed, never summed
-        assertEquals(12_000, notebook.recollectionExpenseSummary.totalMinor)
+        assertEquals(16_500, notebook.recollectionExpenseSummary.totalMinor)
         // Yield only from analysed kilos, with its coverage; the pending delivery never counts as 0 %.
         assertEquals(2_280, notebook.deliverySummary.fatYield!!.hundredths)
         assertEquals(47, notebook.deliverySummary.coveragePercent(notebook.deliverySummary.fatYield))
         // Two recolección days, newest first, each row the canonical record.
-        assertEquals(listOf(LocalDate.of(2026, 11, 21), LocalDate.of(2026, 11, 20)), notebook.recollectionDays.map { it.date })
+        assertEquals(listOf(LocalDate.of(2026, 11, 21), LocalDate.of(2026, 11, 20), LocalDate.of(2026, 10, 2)), notebook.recollectionDays.map { it.date })
         assertTrue(notebook.recollectionDays.first().items.first() is RecollectionItem.HarvestItem)
     }
 

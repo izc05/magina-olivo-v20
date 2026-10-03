@@ -38,17 +38,21 @@ internal fun DocumentType.suggestedCategory(): ExpenseCategory = when (this) {
  * Pre-fills the review form from what the document seemed to say. Every value stays
  * editable and is shown as read from the document, never as confirmed.
  */
-internal fun DocumentExtraction.toReviewForm(): ExpenseForm {
+internal fun DocumentExtraction.toReviewForm(farmId: UUID? = null, campaignId: UUID? = null): ExpenseForm {
     val proposal = proposal
     return ExpenseForm(
+        // CR-012 P1: the Farm/Campaign the document was taken from travel to the saved draft.
+        farmId = farmId,
+        campaignId = campaignId?.takeIf { farmId != null },
         date = proposal?.invoiceDate?.toString().orEmpty(),
-        amount = Money.editable(proposal?.totalMinor),
+        amount = Money.editable(proposal?.totalMinor, proposal?.currency ?: "EUR"),
+        currency = proposal?.currency ?: "EUR",
         concept = listOfNotNull(documentType.label(), proposal?.supplierName).joinToString(" · "),
         category = documentType.suggestedCategory(),
         supplierText = proposal?.supplierName.orEmpty(),
         invoiceNumber = proposal?.invoiceNumber.orEmpty(),
         lines = proposal?.lines.orEmpty().map {
-            LineForm(product = it.productName, unit = it.unit.orEmpty(), total = Money.editable(it.lineTotalMinor))
+            LineForm(product = it.productName, unit = it.unit.orEmpty(), total = Money.editable(it.lineTotalMinor, proposal?.currency ?: "EUR"), unitPriceMinor = it.unitPriceMinor)
         },
     )
 }

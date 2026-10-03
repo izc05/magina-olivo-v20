@@ -61,10 +61,10 @@ data class CampaignNotebook(
     val expenseSummary: ExpenseSummary = ExpenseSummary.of(expenses)
 
     /**
-     * Expenses the farmer files under recolección: harvest and transport, and (Phase 19F) any
-     * cost linked to a Jornada. Each Expense is listed once; nothing is copied.
+     * Every explicitly campaign-linked Expense belongs to its recollection ledger, regardless
+     * of category. Each Expense is listed once; nothing is copied.
      */
-    val recollectionExpenses: List<Expense> = expenses.filter { it.category in RECOLLECTION_CATEGORIES || it.harvestId != null }
+    val recollectionExpenses: List<Expense> = expenses.filter { it.campaignId == campaign.id }
 
     /** Phase 19F: the cost of one Jornada — its posted ledger Expenses, nothing else. */
     fun jornadaCost(harvestId: java.util.UUID): ExpenseSummary = ExpenseSummary.of(expenses.filter { it.harvestId == harvestId })
@@ -115,8 +115,9 @@ data class CampaignNotebook(
 
         /**
          * What belongs to [campaign]: records linked to it, plus the Farm's records that were
-         * saved without a Campaign but fall inside its dates (they would otherwise be lost
-         * between campaigns). Nothing from another Farm or another Campaign is ever pulled in.
+         * saved without a Campaign but fall inside its dates. Financial Expenses require an
+         * explicit Campaign link: Farm/date never assigns economic context. Original outside
+         * Expenses remain in the Farm/Parcel ledger, with no historical rewrite.
          */
         fun project(
             campaign: Campaign,
@@ -138,7 +139,7 @@ data class CampaignNotebook(
                 harvestDays = own.filter { it.type == ActivityType.HARVEST_DAY },
                 harvests = harvests.filter { belongs(it.campaignId, it.farmId, it.harvestDate) },
                 deliveries = deliveries.filter { belongs(it.campaignId, it.farmId, it.deliveryDate) },
-                expenses = expenses.filter { belongs(it.campaignId, it.farmId, it.expenseDate) }
+                expenses = expenses.filter { it.campaignId == campaign.id }
                     .sortedByDescending { it.expenseDate },
                 labour = labour,
                 equipment = equipment,

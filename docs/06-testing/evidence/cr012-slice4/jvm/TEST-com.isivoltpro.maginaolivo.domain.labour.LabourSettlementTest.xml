@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.161Z" hostname="ISICIO" time="0.016">
+  <properties/>
+  <testcase name="repeatedMovementOrAllocationIdsCannotDoubleTheMoney" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.004"/>
+  <testcase name="debtsAndPaymentsAreScopedByWorkerCampaignAndCurrency" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.002"/>
+  <testcase name="changingFarmRateNeverChangesHistoricalDebtOrPayments" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.001"/>
+  <testcase name="threePeopleShareOnePostedExpenseWithoutDuplicatingIts180Euros" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.0"/>
+  <testcase name="aSingleSmallerPaymentIsPartial" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.001"/>
+  <testcase name="zeroPaymentsLeaves240EurosPending" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.0"/>
+  <testcase name="severalPartialMovementsSumWithoutLosingTheirIdentity" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.001"/>
+  <testcase name="legacyAnonymousCostIsNotDistributedToNamedPeople" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.0"/>
+  <testcase name="draftExpenseAndUnpricedOrMismatchedLinesCannotBecomeDebt" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.002"/>
+  <testcase name="invalidPersistedPaymentCannotBeSilentlySummed" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.001"/>
+  <testcase name="closedCampaignAllowsLateSettlementButNeverCostEditing" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.001"/>
+  <testcase name="paymentValidationRejectsZeroNegativeAndWrongContext" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.0"/>
+  <testcase name="costReductionBelowAlreadyPaidMustBeCorrectedBeforeEditing" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.0"/>
+  <testcase name="exactFinalPaymentSettlesDebtWithoutAnotherExpense" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.001"/>
+  <testcase name="overpaymentIsRejectedWithTheActualPendingBalance" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.001"/>
+  <testcase name="manualAndNonLabourCostsAreNeverGuessedIntoWorkerDebt" classname="com.isivoltpro.maginaolivo.domain.labour.LabourSettlementTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.maps.ParcelMapFeatureTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:12.097Z" hostname="ISICIO" time="0.051">
+  <properties/>
+  <testcase name="savedPolygonBecomesSelectableFeatureWithoutChangingItsGeometry" classname="com.isivoltpro.maginaolivo.feature.maps.ParcelMapFeatureTest" time="0.048"/>
+  <testcase name="eachBaseLayerIsLightByDefaultAndCatastroLinesOnlyWhenAsked" classname="com.isivoltpro.maginaolivo.feature.maps.ParcelMapFeatureTest" time="0.002"/>
+  <testcase name="theNumberOnTheMapIsTheCatastroParcelNumber" classname="com.isivoltpro.maginaolivo.feature.maps.ParcelMapFeatureTest" time="0.0"/>
+  <testcase name="malformedStoredGeometryIsSkippedInsteadOfCrashingTheFarmMap" classname="com.isivoltpro.maginaolivo.feature.maps.ParcelMapFeatureTest" time="0.0"/>
+  <testcase name="theRadarIsDrawnOverTheBaseAndUnderTheParcels" classname="com.isivoltpro.maginaolivo.feature.maps.ParcelMapFeatureTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

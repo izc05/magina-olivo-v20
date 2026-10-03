@@ -133,17 +133,23 @@ data class HarvestDetailUiState(
     val labourError: String? = null,
     /** Phase 19E: equipment used on this Jornada, and the registered machines to pick from. */
     val equipment: List<EquipmentLine> = emptyList(),
+    val equipmentLoaded: Boolean = true,
+    val equipmentReadFailed: Boolean = false,
     val machines: List<Machine> = emptyList(),
     val equipmentSaved: Int = 0,
     val equipmentError: String? = null,
     /** Phase 19F: the ledger Expenses linked to this Jornada. */
     val costs: List<Expense> = emptyList(),
+    val costsLoaded: Boolean = true,
+    val costsReadFailed: Boolean = false,
     val costSaved: Int = 0,
     val costError: String? = null,
     /** Set when a cost was saved with "añadir foto": the Expense to open for its ticket. */
     val openExpenseId: UUID? = null,
     /** CR-010 A3: the Farm's recollection prices, null until read or where not wired. */
     val rates: RecollectionRates? = null,
+    val ratesLoaded: Boolean = true,
+    val ratesReadFailed: Boolean = false,
     val ratesSaved: Int = 0,
     val ratesError: String? = null,
     /** CR-010 A3: hand-typed costs of this Farm and date linked to no day (ambiguous). */
@@ -161,7 +167,8 @@ class HarvestDetailViewModel(
     private val expenses: ExpenseRepository? = null,
     private val dayCosts: DayCostRepository? = null,
 ) : ViewModel() {
-    private val mutableState = MutableStateFlow(HarvestDetailUiState(labourLoaded = labour == null))
+    private val mutableState = MutableStateFlow(HarvestDetailUiState(labourLoaded = labour == null,
+        equipmentLoaded = equipment == null, costsLoaded = expenses == null, ratesLoaded = dayCosts == null))
     val state: StateFlow<HarvestDetailUiState> = mutableState.asStateFlow()
     private var contexts: List<HarvestContext> = emptyList()
     private var allExpenses: List<Expense> = emptyList()
@@ -214,8 +221,8 @@ class HarvestDetailViewModel(
         }
         equipment?.let { repository ->
             viewModelScope.launch {
-                repository.observeForHarvest(harvestId).catch { }
-                    .collect { mutableState.value = mutableState.value.copy(equipment = it) }
+                repository.observeForHarvest(harvestId).catch { mutableState.value = mutableState.value.copy(equipmentLoaded = true, equipmentReadFailed = true, equipmentError = "No pudimos leer la maquinaria") }
+                    .collect { mutableState.value = mutableState.value.copy(equipment = it, equipmentLoaded = true, equipmentReadFailed = false) }
             }
         }
         machines?.let { repository ->
@@ -225,7 +232,7 @@ class HarvestDetailViewModel(
         }
         expenses?.let { repository ->
             viewModelScope.launch {
-                repository.observeForHarvest(harvestId).catch { }.collect { mutableState.value = mutableState.value.copy(costs = it) }
+                repository.observeForHarvest(harvestId).catch { mutableState.value = mutableState.value.copy(costsLoaded = true, costsReadFailed = true, costError = "No pudimos leer los gastos") }.collect { mutableState.value = mutableState.value.copy(costs = it, costsLoaded = true, costsReadFailed = false) }
             }
             if (dayCosts != null) {
                 viewModelScope.launch {
@@ -271,7 +278,8 @@ class HarvestDetailViewModel(
         if (ratesFarm == farmId) return
         ratesFarm = farmId
         viewModelScope.launch {
-            repository.observeRates(farmId).catch { }.collect { mutableState.value = mutableState.value.copy(rates = it) }
+            repository.observeRates(farmId).catch { mutableState.value = mutableState.value.copy(ratesLoaded = true, ratesReadFailed = true) }
+                .collect { mutableState.value = mutableState.value.copy(rates = it, ratesLoaded = true, ratesReadFailed = false) }
         }
     }
 
@@ -311,6 +319,12 @@ class HarvestDetailViewModel(
     fun addCost(kind: JornadaExpenseKind, amountMinor: Long, concept: String?, openAfter: Boolean) {
         val repository = expenses ?: return
         val harvest = mutableState.value.harvest ?: return
+        val state = mutableState.value
+        val currencyContext = state.newCostCurrencyContext()
+        val currency = currencyContext.currency ?: run {
+            mutableState.value = state.copy(costError = currencyContext.error)
+            return
+        }
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, costError = null)
             val draft = ExpenseDraft(
@@ -318,6 +332,7 @@ class HarvestDetailViewModel(
                 concept = kind.concept(concept),
                 category = kind.category,
                 amountMinor = amountMinor,
+                currency = currency,
                 farmId = harvest.farmId,
                 campaignId = harvest.campaignId,
                 harvestId = harvest.id,

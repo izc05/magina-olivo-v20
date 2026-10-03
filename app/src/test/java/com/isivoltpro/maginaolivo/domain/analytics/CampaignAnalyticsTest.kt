@@ -19,6 +19,26 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CampaignAnalyticsTest {
+    @Test fun exposedCostPerKgHandlesHighAmountsEveryIsoPrecisionAndConfirmedZero() {
+        listOf("EUR" to 53000L, "JPY" to 530L, "KWD" to 530000L, "EUR" to Long.MAX_VALUE, "EUR" to 0L).forEach { (currency, minor) ->
+            val notebook = CampaignNotebook.project(current, emptyList(), emptyList(),
+                listOf(delivery(current, 3200000, day(24), "Coop", null)),
+                listOf(expense(current, minor, ExpenseStatus.POSTED).copy(currency = currency)))
+            val expected = java.math.BigDecimal.valueOf(minor).multiply(java.math.BigDecimal.valueOf(1000))
+                .divide(java.math.BigDecimal.valueOf(3200000), 0, java.math.RoundingMode.HALF_UP).longValueExact()
+            assertEquals(expected, CampaignDashboard.of(notebook, day(24)).costPerKgMinor)
+            assertEquals(expected, CampaignComparison.of(listOf(notebook)).single().costPerKgMinor)
+        }
+    }
+
+    @Test fun unsupportedCurrencyAndMissingWeighingStayUnavailableOnKpis() {
+        val expense = expense(current, 1000, ExpenseStatus.POSTED).copy(currency = "ZZZ")
+        val notebook = CampaignNotebook.project(current, emptyList(), emptyList(),
+            listOf(delivery(current, 3200000, day(24), "Coop", null)), listOf(expense))
+        assertNull(CampaignDashboard.of(notebook, day(24)).costPerKgMinor)
+        assertNull(CampaignComparison.of(listOf(notebook)).single().costPerKgMinor)
+        assertNull(CampaignDashboard.of(notebook.copy(deliveries = emptyList()), day(24)).costPerKgMinor)
+    }
     private val workspace = UUID.randomUUID()
     private val farm = UUID.randomUUID()
     private val last = campaign("2025/26", LocalDate.of(2025, 10, 1), CampaignStatus.CLOSED)

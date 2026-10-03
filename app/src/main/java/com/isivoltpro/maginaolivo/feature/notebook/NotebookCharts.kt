@@ -140,7 +140,9 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>) {
                             Weight.format(kg) + (row.deliveredChangePercent?.let { if (it >= 0) " (+$it %)" else " ($it %)" } ?: "")
                         } ?: "Pesado: sin datos",
                         row.fatYield?.let { "rend. ${Percent.format(it.hundredths)} sobre el ${row.yieldCoveragePercent} %" } ?: "rend. sin datos",
-                        row.costPerKgMinor?.let { "coste ${Money.format(it, row.currency)}/kg" } ?: "coste/kg sin datos",
+                        if (row.costsByCurrency.isEmpty()) "coste/kg sin datos" else row.costsByCurrency.joinToString(" · ") { cost ->
+                            cost.costPerKgMinor?.let { "coste ${Money.format(it, cost.currency)}/kg" } ?: "coste/kg sin datos (${cost.currency})"
+                        },
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MoTextSecondary,

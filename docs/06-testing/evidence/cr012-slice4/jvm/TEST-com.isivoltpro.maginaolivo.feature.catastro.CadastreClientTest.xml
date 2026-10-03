@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.catastro.CadastreClientTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.634Z" hostname="ISICIO" time="0.202">
+  <properties/>
+  <testcase name="refusesDoctypeInUtf16BeforeXmlParsing" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreClientTest" time="0.003"/>
+  <testcase name="acceptsCanaryIslandsParcelsAndRejectsSwappedAxes" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreClientTest" time="0.069"/>
+  <testcase name="parsesOfficialHuelmaParcelAndSwapsAxisForGeoJson" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreClientTest" time="0.012"/>
+  <testcase name="rejectsUnrecognizedCrsEvenWhenItsNameContains4326" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreClientTest" time="0.005"/>
+  <testcase name="convertsOfficialUtm30CoordinatesToStoredWgs84Order" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreClientTest" time="0.094"/>
+  <testcase name="rejectsAnotherReferenceEvenWhenResponseContainsAParcel" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreClientTest" time="0.005"/>
+  <testcase name="rejectsSelfIntersectingParcelInsteadOfRepairingIt" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreClientTest" time="0.005"/>
+  <testcase name="refusesAnyDocumentThatDeclaresADoctype" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreClientTest" time="0.0"/>
+  <testcase name="preservesMultipartAndInteriorRings" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreClientTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

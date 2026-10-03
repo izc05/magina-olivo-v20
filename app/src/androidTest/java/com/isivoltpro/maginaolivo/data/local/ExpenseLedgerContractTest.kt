@@ -46,6 +46,12 @@ import com.isivoltpro.maginaolivo.domain.ocr.OcrText
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationDraft
 import com.isivoltpro.maginaolivo.domain.organization.OrganizationRole
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
+import com.isivoltpro.maginaolivo.feature.expenses.ExpenseForm
+import com.isivoltpro.maginaolivo.feature.expenses.RelationOptions
+import com.isivoltpro.maginaolivo.feature.expenses.toDraft
+import com.isivoltpro.maginaolivo.feature.expenses.toForm
+import com.isivoltpro.maginaolivo.feature.expenses.toReviewForm
+import com.isivoltpro.maginaolivo.feature.expenses.withRecollectionPreselected
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.time.Instant
@@ -196,13 +202,82 @@ class ExpenseLedgerContractTest {
     }
 
     @Test
-    fun anExpenseOnAFarmWithARunningCampaignCountsInThatCampaign() = runBlocking {
+    fun farmExpenseRemainsOutsideCampaignUnlessExplicitlySelected() = runBlocking {
         val meta = LocalMetadata(now, now)
         db.campaignDao().upsert(
             CampaignEntity(campaignId, workspaceId, farmId, "Campaña 2025/26", date.minusMonths(6), status = CampaignStatus.ACTIVE, metadata = meta),
         )
         val id = ok(expenses.create(draft(3_000, farmId = farmId)))
-        assertEquals(campaignId, expenses.observe(id).first()!!.campaignId)
+        assertNull(expenses.observe(id).first()!!.campaignId)
+        val explicit = ok(expenses.create(draft(3_000, farmId = farmId).copy(campaignId = campaignId)))
+        assertEquals(campaignId, expenses.observe(explicit).first()!!.campaignId)
+        listOf("JPY" to 1000L, "EUR" to 12345L, "KWD" to 123456L).forEach { (currency, amount) ->
+            val contextual = draft(amount, farmId = farmId).copy(campaignId = campaignId, currency = currency,
+                lines = listOf(PurchaseLine("Producto", lineTotalMinor = amount)))
+            val expense = ok(expenses.create(contextual))
+            ok(expenses.update(expense, contextual.copy(concept = "Corregido")))
+            val saved = expenses.observe(expense).first()!!
+            assertEquals(currency, saved.currency)
+            assertEquals(amount, saved.amountMinor)
+            assertEquals(amount, saved.lines.single().lineTotalMinor)
+            assertEquals(campaignId, saved.campaignId)
+        }
+    }
+
+    /**
+     * Owner decision 2026-10-03 + CR-012 P1: Cuaderno → Gasto starts on «Gasto de recogida»,
+     * «Gasto general» stays outside, a ticket from «Gastos de recogida» keeps Farm + Campaign
+     * through OCR review, and editing never re-assigns. Only the explicit choice counts.
+     */
+    @Test
+    fun onlyTheFormsExplicitChoiceCountsInCampaignCostsAndCostPerKg() = runBlocking {
+        val meta = LocalMetadata(now, now)
+        db.campaignDao().upsert(
+            CampaignEntity(campaignId, workspaceId, farmId, "2025/26", date.minusMonths(6), status = CampaignStatus.HARVEST, metadata = meta),
+        )
+        val running = com.isivoltpro.maginaolivo.domain.campaign.Campaign(
+            campaignId, workspaceId, farmId, "2025/26", date.minusMonths(6), null, CampaignStatus.HARVEST, null, emptyList(), 1,
+        )
+        val options = RelationOptions(campaigns = listOf(running))
+
+        // Cuaderno → Gasto: preselected «Gasto de recogida».
+        val cuaderno = ExpenseForm(date.toString(), "40", "Gasoil recogida", farmId = farmId).withRecollectionPreselected(options)
+        assertEquals(campaignId, cuaderno.campaignId)
+        val inCampaign = ok(expenses.create(cuaderno.toDraft().first!!))
+        // Same entry switched expressly to «Gasto general de finca/parcela».
+        val general = ok(expenses.create(cuaderno.copy(amount = "25", concept = "Poda", campaignId = null).toDraft().first!!))
+        // «Gastos de recogida» → Ticket o factura → OCR review → draft → confirm.
+        val documentId = ok(documents.importDocument(DocumentType.PURCHASE_INVOICE, source("recogida.jpg")))
+        val reviewed = documents.observe(documentId).first()!!.toReviewForm(farmId, campaignId)
+            .copy(date = date.toString(), amount = "12", concept = "Factura sacos")
+        val fromDocument = ok(documents.createExpenseDraft(documentId, reviewed.toDraft(requireAmount = false).first!!))
+        ok(expenses.post(fromDocument))
+
+        // Editing keeps each saved choice; nothing is re-assigned.
+        val savedGeneral = expenses.observe(general).first()!!
+        ok(expenses.update(general, savedGeneral.toForm().copy(concept = "Poda corregida").toDraft().first!!))
+        val savedCampaign = expenses.observe(inCampaign).first()!!
+        ok(expenses.update(inCampaign, savedCampaign.toForm().copy(concept = "Gasoil corregido").toDraft().first!!))
+        assertNull(expenses.observe(general).first()!!.campaignId)
+        assertEquals(campaignId, expenses.observe(inCampaign).first()!!.campaignId)
+        with(expenses.observe(fromDocument).first()!!) {
+            assertEquals(campaignId, this.campaignId)
+            assertEquals(farmId, this.farmId)
+            assertEquals(ExpenseStatus.POSTED, status)
+        }
+
+        // 40 + 12 EUR over 400 kg = 0,13 €/kg; the 25 EUR general expense never counts.
+        val pesada = com.isivoltpro.maginaolivo.domain.delivery.Delivery(
+            id = UUID.randomUUID(), workspaceId = workspaceId, farmId = farmId, campaignId = campaignId,
+            deliveryDate = date, destinationOrganizationId = null, destinationName = "Cooperativa",
+            netGrams = 400_000, grossGrams = null, tareGrams = null, deliveryNumber = null, ticketNumber = null,
+            source = com.isivoltpro.maginaolivo.domain.delivery.DeliverySource.MANUAL, shares = emptyList(), notes = null, version = 1,
+        )
+        val ledger = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger
+            .of(campaignId, expenses.observeAll().first(), listOf(pesada)).single()
+        assertEquals(setOf(inCampaign, fromDocument), ledger.posted.map { it.id }.toSet())
+        assertEquals(5_200L, ledger.amount())
+        assertEquals(13L, ledger.costPerKgMinor)
     }
 
     @Test

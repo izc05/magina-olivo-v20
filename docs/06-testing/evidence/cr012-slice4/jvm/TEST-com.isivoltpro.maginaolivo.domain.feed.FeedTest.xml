@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.feed.FeedTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.092Z" hostname="ISICIO" time="0.021">
+  <properties/>
+  <testcase name="theCacheCodecRoundTripsAndRefusesPartialValues" classname="com.isivoltpro.maginaolivo.domain.feed.FeedTest" time="0.014"/>
+  <testcase name="theAgeIsSaidInWords" classname="com.isivoltpro.maginaolivo.domain.feed.FeedTest" time="0.002"/>
+  <testcase name="theCacheKeepsWeeklyDaysAndReadsPreWeekCacheRows" classname="com.isivoltpro.maginaolivo.domain.feed.FeedTest" time="0.001"/>
+  <testcase name="oneSharedPlaceOrNone" classname="com.isivoltpro.maginaolivo.domain.feed.FeedTest" time="0.002"/>
+  <testcase name="weatherIsStaleOnlyPastItsWindow" classname="com.isivoltpro.maginaolivo.domain.feed.FeedTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

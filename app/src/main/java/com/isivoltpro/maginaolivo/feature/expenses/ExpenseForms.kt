@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
@@ -93,12 +96,25 @@ internal fun ExpenseEditor(
     onSave: (ExpenseForm) -> Unit,
     onCancel: () -> Unit,
     subtitle: String = "Se guardará primero en este dispositivo.",
-    amountLabel: String = "Importe (€)",
+    amountLabel: String = "Importe (${initial.currency})",
     extraActions: @Composable () -> Unit = {},
     /** False when the form is placed inside a screen that already scrolls. */
     scrollable: Boolean = true,
+    /** Cuaderno → Gasto: start on «Gasto de recogida» when the Farm has a running recolección. */
+    preselectRecollection: Boolean = false,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
+    // An expense that already carries a choice (editing, campaign screen) is never re-assigned.
+    var campaignChoiceMade by rememberSaveable(initial) { mutableStateOf(initial.campaignId != null) }
+    LaunchedEffect(preselectRecollection, options.campaigns, form.farmId) {
+        if (preselectRecollection && !campaignChoiceMade) {
+            val preselected = form.withRecollectionPreselected(options)
+            if (preselected.campaignId != null) {
+                form = preselected
+                campaignChoiceMade = true
+            }
+        }
+    }
     var picker by rememberSaveable { mutableStateOf<String?>(null) }
 
     val scrolling = if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier
@@ -108,6 +124,24 @@ internal fun ExpenseEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
+        val recollection = options.recollectionCampaignFor(form, initial.campaignId)
+        if (recollection != null) {
+            Column(Modifier.fillMaxWidth().selectableGroup().testTag("expense-kind")) {
+                Text("Tipo de gasto", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+                ExpenseKindRow("Gasto de recogida · ${recollection.choiceLabel()}", form.campaignId == recollection.id, "expense-kind-recollection") {
+                    form = form.copy(campaignId = recollection.id)
+                    campaignChoiceMade = true
+                }
+                ExpenseKindRow("Gasto general de finca/parcela", form.campaignId == null, "expense-kind-general") {
+                    form = form.copy(campaignId = null)
+                    campaignChoiceMade = true
+                }
+            }
+        } else if (form.campaignId != null) {
+            Text("Gasto vinculado explícitamente a la campaña", color = MoTextSecondary)
+        }
+        if (!runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false))
+            Text("La moneda histórica ${form.currency} no admite edición. Se conserva el importe original.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("expense-currency-error"))
         MoTextField(
             form.concept, { form = form.copy(concept = it) }, "Concepto",
             isError = errors.concept != null, supportingText = errors.concept,
@@ -209,7 +243,7 @@ internal fun ExpenseEditor(
             saveText,
             { onSave(form) },
             modifier = Modifier.fillMaxWidth().testTag("save-expense"),
-            enabled = !isSaving,
+            enabled = !isSaving && runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false),
         )
         extraActions()
         MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
@@ -240,7 +274,8 @@ internal fun ExpenseEditor(
             { key ->
                 val farmId = key?.let(UUID::fromString)
                 if (farmId != form.farmId) {
-                    form = form.copy(farmId = farmId, parcelId = null, activityId = null, harvestId = null)
+                    form = form.copy(farmId = farmId, parcelId = null, activityId = null, harvestId = null, campaignId = null)
+                    campaignChoiceMade = true
                     onFarmSelected(farmId)
                 }
             },
@@ -265,6 +300,20 @@ internal fun ExpenseEditor(
             { picker = null },
             "expense-activity-sheet",
         )
+    }
+}
+
+/** One explicit, full-width choice; the label wraps at 360 dp with large text. */
+@Composable
+private fun ExpenseKindRow(label: String, selected: Boolean, tag: String, onSelect: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
+            .testTag(tag),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f).padding(start = MoSpacing.xs))
     }
 }
 

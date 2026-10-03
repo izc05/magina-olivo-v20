@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.expense.MoneyTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.053Z" hostname="ISICIO" time="0.016">
+  <properties/>
+  <testcase name="formatsHistoricalCurrenciesWithoutLosingMinorUnits" classname="com.isivoltpro.maginaolivo.domain.expense.MoneyTest" time="0.001"/>
+  <testcase name="onlyPostedMoneyIsSummed" classname="com.isivoltpro.maginaolivo.domain.expense.MoneyTest" time="0.001"/>
+  <testcase name="editableTextRoundTrips" classname="com.isivoltpro.maginaolivo.domain.expense.MoneyTest" time="0.005"/>
+  <testcase name="readsWhatAFarmerTypes" classname="com.isivoltpro.maginaolivo.domain.expense.MoneyTest" time="0.003"/>
+  <testcase name="isoPrecisionRoundTripsAndRejectsExcessDigits" classname="com.isivoltpro.maginaolivo.domain.expense.MoneyTest" time="0.003"/>
+  <testcase name="unsupportedHistoricalCurrenciesExposeOriginalCodeWithoutGuessingAnAmount" classname="com.isivoltpro.maginaolivo.domain.expense.MoneyTest" time="0.001"/>
+  <testcase name="overflowingInputIsRejectedInsteadOfThrowing" classname="com.isivoltpro.maginaolivo.domain.expense.MoneyTest" time="0.0"/>
+  <testcase name="anUnreadableAmountIsNullNeverZero" classname="com.isivoltpro.maginaolivo.domain.expense.MoneyTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

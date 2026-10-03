@@ -74,7 +74,8 @@ object AppDestination {
     const val CampaignPattern = "campaign/{campaignId}"
     const val ActivityPattern = "activity/{activityId}"
     const val ExpensePattern = "expense/{expenseId}"
-    const val DocumentPattern = "document/{extractionId}"
+    /** CR-012 P1: a document taken on a Farm/Campaign screen is reviewed with that context. */
+    const val DocumentPattern = "document/{extractionId}?farmId={farmId}&campaignId={campaignId}&recollection={recollection}"
     const val HarvestPattern = "harvest/{harvestId}"
     /** CR-011: Cuaderno → Jornal, today's día de recolección of a Farm (found or created). */
     const val TodayHarvestPattern = "harvest/today/{farmId}"
@@ -83,7 +84,7 @@ object AppDestination {
     /** CR-011: «Cuaderno → Pesada», the form open on the Cuaderno's Farm. */
     const val NewPesadaPattern = "deliveries/new/{farmId}?parcelId={parcelId}"
     /** CR-011: «Cuaderno → Gasto», a new expense starting on the Cuaderno's Farm. */
-    const val FarmExpensesPattern = "expenses/farm/{farmId}?parcelId={parcelId}"
+    const val FarmExpensesPattern = "expenses/farm/{farmId}?parcelId={parcelId}&campaignId={campaignId}"
     const val PendingYieldsRoute = "deliveries/pending"
     const val DeliveryYieldPattern = "delivery/{deliveryId}/yield"
     const val TicketPattern = "delivery-ticket/{extractionId}"
@@ -111,6 +112,19 @@ object AppDestination {
 
     fun document(extractionId: String): String = nestedRoute("document", extractionId)
 
+    /**
+     * The review of a document just taken on an expense screen: its Farm, its Campaign
+     * («Gastos de recogida») or, from Cuaderno → Gasto, the «Gasto de recogida» preselection.
+     */
+    fun documentInContext(extractionId: String, farmId: String?, campaignId: String?, preselectRecollection: Boolean): String {
+        val query = listOfNotNull(
+            farmId?.let { "farmId=${android.net.Uri.encode(it)}" },
+            campaignId?.let { "campaignId=${android.net.Uri.encode(it)}" },
+            "recollection=true".takeIf { preselectRecollection },
+        )
+        return document(extractionId) + if (query.isEmpty()) "" else query.joinToString("&", prefix = "?")
+    }
+
     fun harvest(harvestId: String): String = nestedRoute(Harvest, harvestId)
 
     fun todayHarvest(farmId: String): String = "$Harvest/today/${android.net.Uri.encode(farmId)}"
@@ -128,8 +142,9 @@ object AppDestination {
 
     fun help(topic: String): String = nestedRoute("help", topic)
 
-    fun farmExpenses(farmId: String, parcelId: String? = null): String =
-        "$Expenses/farm/${android.net.Uri.encode(farmId)}" + parcelQuery(parcelId)
+    fun farmExpenses(farmId: String, parcelId: String? = null, campaignId: String? = null): String =
+        "$Expenses/farm/${android.net.Uri.encode(farmId)}" + parcelQuery(parcelId) +
+            (campaignId?.let { "${if (parcelId.isNullOrBlank()) "?" else "&"}campaignId=${android.net.Uri.encode(it)}" } ?: "")
 
     /** CR-011 §14: the Cuaderno's Parcel travels with Pesada and Gasto when there is one. */
     private fun parcelQuery(parcelId: String?): String =

@@ -2,6 +2,11 @@ package com.isivoltpro.maginaolivo.feature.notebook
 
 import com.isivoltpro.maginaolivo.feature.expenses.DATE_FORMAT
 import com.isivoltpro.maginaolivo.domain.analytics.CampaignDashboard
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.padding
+import com.isivoltpro.maginaolivo.feature.harvests.moneyLabel
+import com.isivoltpro.maginaolivo.feature.harvests.title
+import com.isivoltpro.maginaolivo.feature.harvests.icon
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -90,6 +95,7 @@ data class NotebookActions(
     val onExpenses: () -> Unit = {},
     val onCampaigns: () -> Unit = {},
     val onLabour: (UUID) -> Unit = {},
+    val onCampaignExpenses: ((UUID) -> Unit)? = null,
 )
 
 @Composable
@@ -197,8 +203,8 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
         title = expense.concept,
         subtitle = "${expense.category.label()} · ${Money.format(expense.amountMinor, expense.currency)}",
         icon = MoIcons.Euro,
-        iconTint = MoIconTone.LAND.tint,
-        iconContainer = MoIconTone.LAND.container,
+        iconTint = MoIconTone.MONEY.tint,
+        iconContainer = MoIconTone.MONEY.container,
         onClick = onClick,
         modifier = Modifier.testTag("notebook-expense"),
         container = if (expense.status == ExpenseStatus.DRAFT) MoSurfaceSoft else MoWarmWhite,
@@ -207,87 +213,53 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
 }
 
 @Composable
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 internal fun SummaryTab(
     notebook: CampaignNotebook,
     comparison: List<CampaignComparison> = emptyList(),
     today: LocalDate = LocalDate.now(),
     payments: List<com.isivoltpro.maginaolivo.domain.labour.LabourPayment> = emptyList(),
     onLabour: () -> Unit = {},
+    onExpenses: () -> Unit = {},
+    onHarvest: (UUID) -> Unit = {},
 ) {
     val deliveries = notebook.deliverySummary
-    val expenses = notebook.expenseSummary
+    val ledger = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(notebook.campaign.id, notebook.expenses, notebook.deliveries)
+    var machineryDetail by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs), modifier = Modifier.testTag("notebook-summary")) {
+        MoSectionHeader("Producción")
         CampaignAtAGlance(CampaignDashboard.of(notebook, today), deliveries.deliveredGrams)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            MoKpiMetric(
-                "Trabajos", "${notebook.completedWorks} hechos", Modifier.weight(1f),
-                icon = MoIcons.Checklist,
-                kind = MoKpiKind.CAMPAIGN,
-                supportingText = if (notebook.plannedWorks == 0) "Nada planificado" else "${notebook.plannedWorks} planificados",
-            )
-            MoKpiMetric(
-                "Días de recolección", notebook.harvests.size.toString(), Modifier.weight(1f),
-                icon = MoIcons.Harvest,
-                kind = MoKpiKind.CAMPAIGN,
-                supportingText = listOfNotNull(
-                    notebook.harvests.size.takeIf { it > 0 }?.let { "Días de recolección" },
-                ).joinToString(" · ").ifEmpty { null },
-            )
+        MoKpiMetric("Días de recolección", notebook.harvests.size.toString(), Modifier.fillMaxWidth(), icon = MoIcons.Harvest, kind = MoKpiKind.CAMPAIGN)
+        MoKpiMetric("Kg pesados", if (deliveries.deliveryCount == 0) "—" else Weight.format(deliveries.deliveredGrams), Modifier.fillMaxWidth(),
+            icon = MoIcons.Delivery, kind = MoKpiKind.PESADAS, supportingText = if (deliveries.deliveryCount == 1) "1 pesada" else "${deliveries.deliveryCount} pesadas")
+        MoKpiMetric("Rendimiento", deliveries.fatYield?.let { Percent.format(it.hundredths) } ?: "—", Modifier.fillMaxWidth(),
+            icon = MoIcons.Percent, kind = MoKpiKind.YIELD,
+            supportingText = deliveries.fatYield?.let { "Sobre el ${deliveries.coveragePercent(it)} % de los kilos" } ?: "Pendiente de análisis")
+        MoSectionHeader("Costes de recogida")
+        val accounts = runCatching { com.isivoltpro.maginaolivo.feature.harvests.labourAccounts(notebook.campaign.id, notebook.labour, notebook.expenses, payments) }.getOrNull()
+        val balances = accounts?.flatMap { it.balances }.orEmpty()
+        val settlements = balances.groupBy { it.currency }.map { (currency, rows) ->
+            runCatching {
+                val paid = rows.fold(0L) { total, row -> Math.addExact(total, row.paidMinor) }
+                val pending = rows.fold(0L) { total, row -> Math.addExact(total, row.pendingMinor) }
+                "${Money.format(paid, currency)} pagados · ${Money.format(pending, currency)} pendientes"
+            }.getOrDefault("Saldo no disponible ($currency)")
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            MoKpiMetric(
-                "Kg pesados", if (deliveries.deliveryCount == 0) "—" else Weight.format(deliveries.deliveredGrams), Modifier.weight(1f),
-                icon = MoIcons.Delivery,
-                kind = MoKpiKind.PESADAS,
-                supportingText = if (deliveries.deliveryCount == 1) "1 pesada" else "${deliveries.deliveryCount} pesadas",
-            )
-            MoKpiMetric(
-                "Rendimiento", deliveries.fatYield?.let { Percent.format(it.hundredths) } ?: "—", Modifier.weight(1f),
-                icon = MoIcons.Percent,
-                kind = MoKpiKind.PESADAS,
-                supportingText = deliveries.fatYield?.let { "Sobre el ${deliveries.coveragePercent(it)} % de los kilos" } ?: "Pendiente de análisis",
-            )
-        }
-        if (!notebook.labourSummary.isEmpty) {
-            val named = notebook.labourByWorker.size
-            MoKpiMetric(
-                "Jornales",
-                // Whole days, half days and hours stay apart: never one number that mixes them.
-                notebook.labourSummary.label(),
-                Modifier.fillMaxWidth().testTag("notebook-summary-labour"),
-                icon = MoIcons.People,
-                kind = MoKpiKind.JORNALES,
-                supportingText = named.takeIf { it > 0 }?.let { if (it == 1) "1 persona con nombre" else "$it personas con nombre" },
-            )
-            LabourCampaignSummary(notebook, payments, onLabour)
-        }
-        if (!notebook.equipmentSummary.isEmpty) {
-            MoKpiMetric(
-                "Maquinaria (días de uso)",
-                notebook.equipmentSummary.label(),
-                Modifier.fillMaxWidth().testTag("notebook-summary-equipment"),
-                icon = MoIcons.Tractor,
-                kind = MoKpiKind.MAQUINARIA,
-            )
-        }
-        MoKpiMetric(
-            "Gastos de la campaña",
-            if (expenses.postedCount == 0) "—" else Money.format(expenses.totalMinor, expenses.currency),
-            Modifier.fillMaxWidth().testTag("notebook-summary-expenses"),
-            icon = MoIcons.Euro,
-            kind = MoKpiKind.COSTES,
-            supportingText = when {
-                expenses.draftCount > 0 -> "${expenses.draftCount} en borrador sin contar"
-                expenses.postedCount == 0 -> "Sin gastos anotados"
-                else -> null
-            },
-        )
-        expenses.byCategory.entries.sortedByDescending { it.value }.forEach { (category, amount) ->
-            Row(Modifier.fillMaxWidth()) {
-                Text(category.label(), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                Text(Money.format(amount, expenses.currency), style = MaterialTheme.typography.bodyMedium, color = MoOliveDark)
-            }
-        }
+        MoKpiMetric("Jornales", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.LABOUR),
+            Modifier.fillMaxWidth().testTag("notebook-summary-labour"), icon = MoIcons.People, kind = MoKpiKind.JORNALES,
+            supportingText = (listOf("${notebook.labourByWorker.size} personas · ${notebook.labourSummary.label()}") + settlements +
+                listOfNotNull(if (!notebook.unnamedLabour.isEmpty) "Sin identificar (histórico)" else null,
+                    com.isivoltpro.maginaolivo.feature.harvests.labourCostNote(notebook.labour, notebook.expenses),
+                    if (accounts == null || accounts.any { it.unconfirmed } || (balances.isEmpty() && ledger.any { (it.amount(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.LABOUR) ?: 0) > 0 })) "Hay precios o costes sin atribuir" else null)).joinToString("\n"), onClick = onLabour)
+        MoKpiMetric("Maquinaria", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.EQUIPMENT),
+            Modifier.fillMaxWidth().testTag("notebook-summary-equipment"), icon = MoIcons.Tractor, kind = MoKpiKind.MAQUINARIA,
+            supportingText = listOfNotNull("${notebook.equipment.sumOf { it.quantity }} equipos/usos · Ver detalle",
+                com.isivoltpro.maginaolivo.feature.harvests.equipmentCostNote(notebook.equipment, notebook.expenses)).joinToString("\n"), onClick = { machineryDetail = true })
+        MoKpiMetric("Otros gastos", ledger.moneyLabel(com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket.OTHER),
+            Modifier.fillMaxWidth().testTag("notebook-summary-other"), icon = MoIcons.Euro, kind = MoKpiKind.COSTES,
+            supportingText = "Combustible, transporte, reparaciones y otros · Ver gastos", onClick = onExpenses)
+        com.isivoltpro.maginaolivo.feature.harvests.RecollectionTotalCards(ledger, false,
+            deliveries.deliveredGrams.takeIf { it > 0 }?.let(Weight::format))
         ParcelYields(notebook)
         // Phase 19G: charts and year-over-year, all derived from the same records.
         CampaignCharts(CampaignSeries.of(notebook))
@@ -302,6 +274,24 @@ internal fun SummaryTab(
         }
         CampaignComparisonList(comparison)
     }
+    if (machineryDetail) {
+        androidx.compose.material3.ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { machineryDetail = false },
+            sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen), verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                MoSectionHeader("Maquinaria de la campaña")
+                if (notebook.equipment.isEmpty()) Text("Sin maquinaria anotada", color = MoTextSecondary)
+                notebook.equipment.forEach { line ->
+                    MoCompactListItem(title = "${line.quantity} · ${line.type.title()}",
+                        subtitle = notebook.harvests.firstOrNull { it.id == line.harvestId }?.harvestDate?.format(DATE_FORMAT),
+                        icon = line.type.icon(), iconTint = com.isivoltpro.maginaolivo.ui.theme.MoEarthText,
+                        iconContainer = com.isivoltpro.maginaolivo.ui.theme.MoEarthTint,
+                        onClick = { machineryDetail = false; onHarvest(line.harvestId) })
+                }
+                com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton("Cerrar", { machineryDetail = false })
+            }
+        }
+    }
+
 }
 
 /**
@@ -335,25 +325,7 @@ private fun CampaignAtAGlance(dashboard: CampaignDashboard, weighedGrams: Long) 
             modifier = Modifier.testTag("dashboard-pesada-dates"),
         )
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        MoKpiMetric(
-            "Coste", if (dashboard.postedCostMinor > 0) Money.format(dashboard.postedCostMinor, dashboard.currency) else "—",
-            Modifier.weight(1f).testTag("dashboard-cost"),
-            icon = MoIcons.Euro,
-            kind = MoKpiKind.COSTES,
-            supportingText = listOfNotNull(
-                dashboard.calculatedLabourMinor.takeIf { it > 0 }?.let { "jornales ${Money.format(it, dashboard.currency)}" },
-                dashboard.calculatedMachineryMinor.takeIf { it > 0 }?.let { "maquinaria ${Money.format(it, dashboard.currency)}" },
-            ).joinToString(" · ").ifEmpty { "Solo gastos contabilizados" },
-        )
-        MoKpiMetric(
-            "Coste por kilo", dashboard.costPerKgMinor?.let { Money.format(it, dashboard.currency) } ?: "—",
-            Modifier.weight(1f).testTag("dashboard-cost-per-kg"),
-            icon = MoIcons.Percent,
-            kind = MoKpiKind.COSTES,
-            supportingText = if (weighedGrams > 0) "Sobre ${Weight.format(weighedGrams)} pesados" else "Sin kilos pesados",
-        )
-    }
+
 }
 
 /**

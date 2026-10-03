@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.CoreArchitectureTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:10.736Z" hostname="ISICIO" time="0.094">
+  <properties/>
+  <testcase name="idGeneratorCanBeDeterministicInTests" classname="com.isivoltpro.maginaolivo.CoreArchitectureTest" time="0.002"/>
+  <testcase name="clockCanBeDeterministicInTests" classname="com.isivoltpro.maginaolivo.CoreArchitectureTest" time="0.02"/>
+  <testcase name="compositionRootIsConstructibleForDev" classname="com.isivoltpro.maginaolivo.CoreArchitectureTest" time="0.063"/>
+  <testcase name="appResultMapsSuccessWithoutLosingFailureContract" classname="com.isivoltpro.maginaolivo.CoreArchitectureTest" time="0.004"/>
+  <testcase name="regionalDefaultsAreExplicitNotDomainIdentity" classname="com.isivoltpro.maginaolivo.CoreArchitectureTest" time="0.0"/>
+  <testcase name="preconditionsNormalizeRequiredText" classname="com.isivoltpro.maginaolivo.CoreArchitectureTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

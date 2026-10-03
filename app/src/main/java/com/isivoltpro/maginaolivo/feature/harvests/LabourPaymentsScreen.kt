@@ -11,6 +11,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -111,13 +114,17 @@ private fun LabourPersonCard(account: LabourAccount, onDetail: (() -> Unit)?, on
                 MoIconBadge(MoIcons.People, tint = MoLabourText, container = MoLabourTint)
                 Column {
                     Text(account.person.name, style = MaterialTheme.typography.titleMedium)
-                    Text("${account.person.jornadas} días · ${account.person.summary.label()}", color = MoTextSecondary)
+                    Text("${account.person.jornadas} ${if (account.person.jornadas == 1) "día" else "días"} · ${account.person.summary.label()}", color = MoTextSecondary)
                 }
             }
             if (account.unconfirmed) Text("Precio sin confirmar o coste sin atribuir. El saldo de esos jornales no está disponible.", color = MoWarningText, modifier = Modifier.testTag("labour-unconfirmed"))
             account.balances.forEach { balance ->
                 Text("${Money.format(balance.generatedMinor, balance.currency)} generados", color = MoLabourText, modifier = Modifier.testTag("person-generated"))
-                Text("${Money.format(balance.paidMinor, balance.currency)} pagados · ${Money.format(balance.pendingMinor, balance.currency)} pendientes", color = MoOliveDark, modifier = Modifier.testTag("person-paid-pending"))
+                Text(buildAnnotatedString {
+                    withStyle(SpanStyle(color = MoSuccessText)) { append("${Money.format(balance.paidMinor, balance.currency)} pagados") }
+                    append(" · ")
+                    withStyle(SpanStyle(color = MoWarningText)) { append("${Money.format(balance.pendingMinor, balance.currency)} pendientes") }
+                }, color = MoTextSecondary, modifier = Modifier.testTag("person-paid-pending"))
                 LabourPaymentStatus(balance.state)
                 if (balance.pendingMinor > 0) MoSecondaryButton("Registrar pago${if (account.balances.size > 1) " (${balance.currency})" else ""}", { onPay(balance.currency) }, enabled = !saving, modifier = Modifier.fillMaxWidth().testTag("person-register-payment"))
             }

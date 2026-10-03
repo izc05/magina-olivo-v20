@@ -1,0 +1,53 @@
+
+com.isivoltpro.maginaolivo.Cr012SurfacesTest:..
+Error in equipmentSaveIsPhysicallyReachableAfterPriceEditAndImeDismissal(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 5000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.capture(Cr012SurfacesTest.kt:192)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.equipmentSaveIsPhysicallyReachableAfterPriceEditAndImeDismissal(Cr012SurfacesTest.kt:131)
+.....
+com.isivoltpro.maginaolivo.JornadaScreenTest:
+Error in eachPesadaSaysItsOriginAndYieldAndTheJornadaWeighsThem(com.isivoltpro.maginaolivo.JornadaScreenTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'rend. 21 %' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #1385 at (l=60.0, t=1503.0, r=1020.0, b=1653.0)px, Tag: 'jornada-pesadas-summary'
+Text = '[Rendimiento del día 21 % · sobre el 85 % de los kilos]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 20 siblings
+Selector used: (TestTag = 'jornada-pesadas-summary')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.JornadaScreenTest.eachPesadaSaysItsOriginAndYieldAndTheJornadaWeighsThem(JornadaScreenTest.kt:110)
+...
+
+Time: 27.736
+There were 2 failures:
+1) equipmentSaveIsPhysicallyReachableAfterPriceEditAndImeDismissal(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 5000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.capture(Cr012SurfacesTest.kt:192)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.equipmentSaveIsPhysicallyReachableAfterPriceEditAndImeDismissal(Cr012SurfacesTest.kt:131)
+2) eachPesadaSaysItsOriginAndYieldAndTheJornadaWeighsThem(com.isivoltpro.maginaolivo.JornadaScreenTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'rend. 21 %' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #1385 at (l=60.0, t=1503.0, r=1020.0, b=1653.0)px, Tag: 'jornada-pesadas-summary'
+Text = '[Rendimiento del día 21 % · sobre el 85 % de los kilos]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 20 siblings
+Selector used: (TestTag = 'jornada-pesadas-summary')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.JornadaScreenTest.eachPesadaSaysItsOriginAndYieldAndTheJornadaWeighsThem(JornadaScreenTest.kt:110)
+
+FAILURES!!!
+Tests run: 12,  Failures: 2
+
+

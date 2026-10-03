@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummaryTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.072Z" hostname="ISICIO" time="0.017">
+  <properties/>
+  <testcase name="draftsOutsideCampaignAndOtherCurrenciesDoNotEnterCampaignCost" classname="com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummaryTest" time="0.001"/>
+  <testcase name="noWeighingsOrNoConfirmedCostsMeansUnknownCostPerKg" classname="com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummaryTest" time="0.001"/>
+  <testcase name="legacyAnonymousExpenseCountsOnceWithoutInventingIndividualDebt" classname="com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummaryTest" time="0.0"/>
+  <testcase name="confirmed530EurosOver3200WeighedKgPreservesExactPrecision" classname="com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummaryTest" time="0.001"/>
+  <testcase name="aRepeatingRatioKeepsMoreThanDisplayPrecision" classname="com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummaryTest" time="0.0"/>
+  <testcase name="repeatedCanonicalExpenseOrWeighingIdsCannotDoubleCount" classname="com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummaryTest" time="0.003"/>
+  <testcase name="payingAfterClosureLeavesExpenseAndCostPerKgUnchanged" classname="com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummaryTest" time="0.008"/>
+  <testcase name="ratioDoesNotOverflowOnLargeTotalsAndRespectsCurrencyUnits" classname="com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummaryTest" time="0.002"/>
+  <testcase name="negativeCostsOrKgAreRefusedInsteadOfCreatingMisleadingRatios" classname="com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummaryTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

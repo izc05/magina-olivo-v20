@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.domain.agenda.AgendaTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:10.845Z" hostname="ISICIO" time="0.014">
+  <properties/>
+  <testcase name="sectionsAreOrderedAndOnlyNonEmpty" classname="com.isivoltpro.maginaolivo.domain.agenda.AgendaTest" time="0.012"/>
+  <testcase name="nothingPlannedIsAnEmptyAgenda" classname="com.isivoltpro.maginaolivo.domain.agenda.AgendaTest" time="0.002"/>
+  <testcase name="bucketsFollowTheCalendar" classname="com.isivoltpro.maginaolivo.domain.agenda.AgendaTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

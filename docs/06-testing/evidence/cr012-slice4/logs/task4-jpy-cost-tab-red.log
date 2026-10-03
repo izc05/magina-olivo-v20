@@ -1,0 +1,39 @@
+
+com.isivoltpro.maginaolivo.Cr012SurfacesTest:
+Error in historicalJpyCostsTabDoesNotClaimNoPostedExpenses(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'JPY' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #7 at (l=0.0, t=144.0, r=712.0, b=217.0)px, Tag: 'notebook-expenses-total'
+Text = '[Sin gastos contabilizados]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 9 siblings
+Selector used: (TestTag = 'notebook-expenses-total')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.historicalJpyCostsTabDoesNotClaimNoPostedExpenses(Cr012SurfacesTest.kt:200)
+
+
+Time: 1.576
+There was 1 failure:
+1) historicalJpyCostsTabDoesNotClaimNoPostedExpenses(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'JPY' (ignoreCase: false) as substring)
+Semantics of the node:
+Node #7 at (l=0.0, t=144.0, r=712.0, b=217.0)px, Tag: 'notebook-expenses-total'
+Text = '[Sin gastos contabilizados]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 9 siblings
+Selector used: (TestTag = 'notebook-expenses-total')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.historicalJpyCostsTabDoesNotClaimNoPostedExpenses(Cr012SurfacesTest.kt:200)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+

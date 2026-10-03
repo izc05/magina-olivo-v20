@@ -1,0 +1,29 @@
+
+com.isivoltpro.maginaolivo.Cr012SurfacesTest:.
+Error in resourceReadErrorsAreVisibleWithoutOpeningDetailsAndNoZeroIsInvented(com.isivoltpro.maginaolivo.Cr012SurfacesTest):
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (Text + InputText + EditableText contains 'No pudimos leer los gastos' (ignoreCase: false))
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.resourceReadErrorsAreVisibleWithoutOpeningDetailsAndNoZeroIsInvented(Cr012SurfacesTest.kt:56)
+.....
+
+Time: 16.383
+There was 1 failure:
+1) resourceReadErrorsAreVisibleWithoutOpeningDetailsAndNoZeroIsInvented(com.isivoltpro.maginaolivo.Cr012SurfacesTest)
+java.lang.AssertionError: Action performScrollTo() failed.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (Text + InputText + EditableText contains 'No pudimos leer los gastos' (ignoreCase: false))
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.ActionsKt.performScrollTo(Actions.kt:82)
+	at com.isivoltpro.maginaolivo.Cr012SurfacesTest.resourceReadErrorsAreVisibleWithoutOpeningDetailsAndNoZeroIsInvented(Cr012SurfacesTest.kt:56)
+
+FAILURES!!!
+Tests run: 7,  Failures: 1
+
+

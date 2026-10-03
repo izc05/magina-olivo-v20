@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.harvests.DayRowLineTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.935Z" hostname="ISICIO" time="0.003">
+  <properties/>
+  <testcase name="aDayWithOnlyJornalesSaysItsKilosAreStillPending" classname="com.isivoltpro.maginaolivo.feature.harvests.DayRowLineTest" time="0.001"/>
+  <testcase name="aFullDayShowsKilosPesadasJornalesAndMachinery" classname="com.isivoltpro.maginaolivo.feature.harvests.DayRowLineTest" time="0.001"/>
+  <testcase name="labourKeepsItsUnits" classname="com.isivoltpro.maginaolivo.feature.harvests.DayRowLineTest" time="0.0"/>
+  <testcase name="nothingRecordedIsLeftOutNotShownAsZero" classname="com.isivoltpro.maginaolivo.feature.harvests.DayRowLineTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

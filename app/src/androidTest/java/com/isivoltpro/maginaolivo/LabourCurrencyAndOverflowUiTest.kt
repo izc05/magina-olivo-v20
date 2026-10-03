@@ -31,6 +31,7 @@ class LabourCurrencyAndOverflowUiTest {
     @Test fun legacyConfirmationKeepsJpyLedgerInsteadOfCurrentEurRates() {
         var change: LabourChange? = null
         showDay(listOf(legacy), listOf(ledger("JPY")), LabourActions(onUpdate = { _, value -> change = value }))
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onNodeWithTag("jornada-labour-edit").performScrollTo().performClick()
         rule.onNodeWithText("Precio por jornada (JPY)").assertExists()
         assertEquals("", rule.onNodeWithTag("labour-edit-rate").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
@@ -49,9 +50,49 @@ class LabourCurrencyAndOverflowUiTest {
         }
     }
 
+    @Test fun pendingCostReadBlocksLegacyConfirmationAndNewAttendance() {
+        unavailableCostReadBlocksLabourForms(loaded = false, failed = false, expected = "Cargando")
+    }
+
+    @Test fun failedCostReadBlocksLegacyConfirmationAndNewAttendance() {
+        unavailableCostReadBlocksLabourForms(loaded = true, failed = true, expected = "No pudimos leer los gastos")
+    }
+
+    private fun unavailableCostReadBlocksLabourForms(loaded: Boolean, failed: Boolean, expected: String) {
+        var changes = 0
+        var creates = 0
+        rule.setContent { MaginaOlivoTheme { HarvestDetailScreen(HarvestDetailUiState(isLoading = false,
+            harvest = harvest, labour = listOf(legacy), workers = listOf(worker), costs = emptyList(),
+            costsLoaded = loaded, costsReadFailed = failed, rates = rates), {}, {},
+            labourActions = LabourActions(onUpdate = { _, _ -> changes++ }, onSaveCrew = { creates++ })) } }
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
+        rule.onNodeWithTag("jornada-labour-edit").performScrollTo().performClick()
+        rule.onNodeWithTag("labour-currency-error").assertTextContains(expected, substring = true)
+        rule.onNodeWithTag("labour-edit-rate").assertIsNotEnabled()
+        rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
+        rule.onNodeWithText("Cancelar").performClick()
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
+        rule.onNodeWithTag("jornada-register-labour").performScrollTo().performClick()
+        rule.onNodeWithTag("labour-currency-error").assertTextContains(expected, substring = true)
+        rule.onNodeWithTag("labour-save").assertDoesNotExist()
+        rule.runOnIdle { assertEquals(0, changes); assertEquals(0, creates) }
+    }
+
+    @Test fun successfulEmptyCostReadAllowsUsualCurrencyConfirmation() {
+        var change: LabourChange? = null
+        showDay(listOf(legacy), emptyList(), LabourActions(onUpdate = { _, value -> change = value }))
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
+        rule.onNodeWithTag("jornada-labour-edit").performScrollTo().performClick()
+        rule.onNodeWithText("Precio por jornada (EUR)").assertExists()
+        rule.onNodeWithTag("labour-edit-rate").performTextInput("60")
+        rule.onNodeWithTag("labour-edit-save").performScrollTo().assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
+        rule.runOnIdle { assertEquals("EUR", change?.appliedRate?.currency); assertEquals(6_000L, change?.appliedRate?.unitPriceMinor) }
+    }
+
     @Test fun partlyConfirmedDayKeepsTheOtherPersonsJpySnapshotWithoutLedger() {
         val confirmed = legacy.copy(id = UUID.randomUUID(), workerId = UUID.randomUUID(), workerName = "Ana López", appliedRate = LabourRateSnapshot(1000, "JPY", date, LabourRateBasis.DAY))
         showDay(listOf(legacy, confirmed), emptyList())
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onAllNodesWithTag("jornada-labour-edit")[0].performScrollTo().performClick()
         rule.onNodeWithText("Precio por jornada (JPY)").assertExists()
         rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
@@ -59,6 +100,7 @@ class LabourCurrencyAndOverflowUiTest {
 
     @Test fun ambiguousHistoricalCurrenciesExplainWhyConfirmationCannotSave() {
         showDay(listOf(legacy), listOf(ledger("JPY"), ledger("EUR")))
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onNodeWithTag("jornada-labour-edit").performScrollTo().performClick()
         rule.onNodeWithTag("labour-currency-error").assertIsDisplayed()
         rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
@@ -67,6 +109,7 @@ class LabourCurrencyAndOverflowUiTest {
     @Test fun newAttendanceOnJpyDayDoesNotPrefillOrSaveCurrentEurRate() {
         var draft: CrewDraft? = null
         showDay(emptyList(), listOf(ledger("JPY")), LabourActions(onSaveCrew = { draft = it }))
+        rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onNodeWithTag("jornada-register-labour").performScrollTo().performClick()
         rule.onNodeWithText("Precio del jornal (JPY)").assertExists()
         rule.onNodeWithTag("labour-rate").assertTextContains("Confirma un precio válido", substring = true)

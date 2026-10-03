@@ -67,8 +67,20 @@ internal fun EquipmentType.icon() = when (this) {
 
 /** Phase 19E — what equipment the Jornada used, by kind and quantity. */
 @Composable
-internal fun JornadaEquipment(lines: List<EquipmentLine>, editable: Boolean, error: String?, onEdit: () -> Unit) {
+internal fun JornadaEquipment(
+    lines: List<EquipmentLine>, editable: Boolean, error: String?, onEdit: () -> Unit,
+    loaded: Boolean = true, readFailed: Boolean = false,
+) {
     MoSectionHeader("Uso de maquinaria")
+    if (readFailed || !loaded) {
+        Text(
+            if (readFailed) "No pudimos leer la maquinaria de este día." else "Cargando maquinaria…",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (readFailed) MaterialTheme.colorScheme.error else MoTextSecondary,
+            modifier = Modifier.testTag(if (readFailed) "jornada-equipment-read-error" else "jornada-equipment-loading"),
+        )
+        return
+    }
     val summary = EquipmentSummary.of(lines)
     if (summary.isEmpty) {
         Text("Sin maquinaria anotada.", style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-no-equipment"))
@@ -78,7 +90,7 @@ internal fun JornadaEquipment(lines: List<EquipmentLine>, editable: Boolean, err
             val total = line.appliedPrice?.let { runCatching { Math.multiplyExact(line.quantity.toLong(), it.unitPriceMinor) }.getOrNull() }
             val subtitle = if (total == null) "Coste sin confirmar" else
                 "${Money.format(line.appliedPrice.unitPriceMinor, line.appliedPrice.currency)} por uso · ${Money.format(total, line.appliedPrice.currency)} total"
-            MoCompactListItem(title = line.text(), subtitle = subtitle, icon = line.type.icon(), modifier = Modifier.testTag("jornada-equipment-line"))
+            MoCompactListItem(title = line.text(), subtitle = subtitle, icon = line.type.icon(), iconTint = com.isivoltpro.maginaolivo.ui.theme.MoEarthText, iconContainer = com.isivoltpro.maginaolivo.ui.theme.MoEarthTint, modifier = Modifier.testTag("jornada-equipment-line"))
         }
     }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -169,7 +181,7 @@ internal fun EquipmentSheet(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("equipment-sheet"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        Text("Uso de maquinaria del día", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
+        Text("Uso de maquinaria del día", style = MaterialTheme.typography.headlineSmall, color = com.isivoltpro.maginaolivo.ui.theme.MoEarthText)
         Text(
             "Indica cuántas se usaron. No hace falta registrar cada máquina.",
             style = MaterialTheme.typography.bodyMedium,

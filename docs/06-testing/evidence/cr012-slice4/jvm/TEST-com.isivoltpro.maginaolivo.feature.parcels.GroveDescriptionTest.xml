@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.parcels.GroveDescriptionTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:12.160Z" hostname="ISICIO" time="0.005">
+  <properties/>
+  <testcase name="irrigationSystemsHaveFarmerLabels" classname="com.isivoltpro.maginaolivo.feature.parcels.GroveDescriptionTest" time="0.004"/>
+  <testcase name="irrigationDaysReadAsSpanishInWeekOrder" classname="com.isivoltpro.maginaolivo.feature.parcels.GroveDescriptionTest" time="0.001"/>
+  <testcase name="oliveTreeCountAcceptsWholePositiveNumbersOnly" classname="com.isivoltpro.maginaolivo.feature.parcels.GroveDescriptionTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

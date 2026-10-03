@@ -50,6 +50,7 @@ class LabourScreenTest {
                 )
             }
         }
+        composeRule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-no-labour").assertExists()
         composeRule.onNodeWithTag("jornada-register-labour").performScrollTo().performClick()
         composeRule.onNodeWithTag("labour-save").assertIsNotEnabled()
@@ -71,6 +72,7 @@ class LabourScreenTest {
                 )
             }
         }
+        composeRule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-labour-summary").assertTextContains("4 personas · 1 jornada · 3 medias")
     }
 }

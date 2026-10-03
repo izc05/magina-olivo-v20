@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.catastro.CadastreLocatorTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:11.838Z" hostname="ISICIO" time="0.011">
+  <properties/>
+  <testcase name="anErrorAnswerIsNotFoundNotAGuess" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreLocatorTest" time="0.002"/>
+  <testcase name="readsEveryReferenceOfAListAnswer" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreLocatorTest" time="0.003"/>
+  <testcase name="queryUsesCatastroNamesAndPlainNumbers" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreLocatorTest" time="0.002"/>
+  <testcase name="aDoctypeIsRefusedBeforeParsing" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreLocatorTest" time="0.0"/>
+  <testcase name="readsTheReferenceOfASingleAnswer" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreLocatorTest" time="0.002"/>
+  <testcase name="queryRefusesMissingOrNonNumericData" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreLocatorTest" time="0.0"/>
+  <testcase name="queryKeepsTheEnye" classname="com.isivoltpro.maginaolivo.feature.catastro.CadastreLocatorTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

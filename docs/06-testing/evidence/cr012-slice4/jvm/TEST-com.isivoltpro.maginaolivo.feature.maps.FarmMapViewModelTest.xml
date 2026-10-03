@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.isivoltpro.maginaolivo.feature.maps.FarmMapViewModelTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-02T15:16:12.057Z" hostname="ISICIO" time="0.029">
+  <properties/>
+  <testcase name="severalTappedParcelsAreIncorporatedInOneGoAndTakenOnesAreNeverOffered" classname="com.isivoltpro.maginaolivo.feature.maps.FarmMapViewModelTest" time="0.013"/>
+  <testcase name="badCoordinatesExplainTheFormatAndMoveNothing" classname="com.isivoltpro.maginaolivo.feature.maps.FarmMapViewModelTest" time="0.007"/>
+  <testcase name="aHandMadeParcelIsLinkedToTheOneCatastroParcelTapped" classname="com.isivoltpro.maginaolivo.feature.maps.FarmMapViewModelTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

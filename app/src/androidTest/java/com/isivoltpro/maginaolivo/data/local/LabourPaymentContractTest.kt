@@ -301,6 +301,50 @@ class LabourPaymentContractTest {
     }
 
     @Test
+    fun legacyJpyLedgerRejectsEurConfirmationWithoutChangingLabourExpenseOrOutbox() = runBlocking {
+        val d = ok(harvests.openJornada(farmId, day))
+        val worker = ok(labour.addWorker("Juan"))
+        val row = HarvestLabourEntity(UUID.randomUUID(), workspaceId, d, workerId = worker,
+            workerName = "Juan", quantity = 1, unit = LabourUnit.FULL_DAY.name,
+            metadata = LocalMetadata(now, now))
+        db.labourDao().upsertLabour(listOf(row))
+        val oldCost = com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity(UUID.randomUUID(), workspaceId,
+            campaignId = campaignId, farmId = farmId, harvestId = d, expenseDate = day, concept = "Jornales",
+            category = "LABOR", amountMinor = 1_000, currency = "JPY", status = "POSTED",
+            origin = "DAY_LABOUR", metadata = LocalMetadata(now, now))
+        db.expenseDao().upsert(oldCost)
+        ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 6_000, currency = "EUR")))
+        val before = dumpFinancialState()
+        val rejected = labour.update(row.id, LabourChange(1, LabourUnit.FULL_DAY, null, rate(1_000)))
+        assertEquals(AppError.Validation("currency", "currency_mismatch"), (rejected as AppResult.Failure).error)
+        assertEquals(before, dumpFinancialState())
+        assertNull(labour.observeForHarvest(d).first().single().appliedRate)
+        assertEquals(oldCost, db.expenseDao().findById(oldCost.id))
+
+        ok(labour.update(row.id, LabourChange(1, LabourUnit.FULL_DAY, null,
+            LabourRateSnapshot(1_000, "JPY", day, LabourRateBasis.DAY))))
+        assertEquals(oldCost.id, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.id)
+        assertEquals("JPY", calculated(d, ExpenseOrigin.DAY_LABOUR)!!.currency)
+        assertEquals(1_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+    }
+
+    @Test
+    fun confirmedJpySnapshotCannotBeReplacedWithEurWhenLedgerIsMissing() = runBlocking {
+        val d = ok(harvests.openJornada(farmId, day))
+        val worker = ok(labour.addWorker("Ana"))
+        val row = HarvestLabourEntity(UUID.randomUUID(), workspaceId, d, workerId = worker,
+            workerName = "Ana", quantity = 1, unit = LabourUnit.FULL_DAY.name,
+            appliedPriceMinor = 1_000, appliedCurrency = "JPY", appliedPriceDate = day,
+            appliedBasis = LabourRateBasis.DAY.name, metadata = LocalMetadata(now, now))
+        db.labourDao().upsertLabour(listOf(row))
+        val before = dumpFinancialState()
+        val rejected = labour.update(row.id, LabourChange(1, LabourUnit.FULL_DAY, null, rate(1_000)))
+        assertEquals(AppError.Validation("currency", "currency_mismatch"), (rejected as AppResult.Failure).error)
+        assertEquals(before, dumpFinancialState())
+        assertEquals("JPY", labour.observeForHarvest(d).first().single().appliedRate?.currency)
+    }
+
+    @Test
     fun hoursRequireExplicitCompatibleRateAndCurrenciesNeverMixInSingleDayLedger() = runBlocking {
         val (d, worker) = pricedDay()
         val row = labour.observeForHarvest(d).first().single()

@@ -10,7 +10,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -398,13 +397,14 @@ class AppNavigationTest {
             "campaign-metric-expenses" to "Gastos",
         ).forEach { (tag, label) ->
             composeRule.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
-            composeRule.onNode(hasTestTag(tag) and hasAnyDescendant(hasText(label)) and hasAnyDescendant(hasText("—")))
+            // Accessible KPI cards merge their title and value; the same unknown values remain.
+            composeRule.onNode(hasTestTag(tag) and hasText(label) and hasText("—"))
                 .assertExists()
         }
         composeRule.onNode(
             hasTestTag("campaign-metric-weighings") and
-                hasAnyDescendant(hasText("Pesadas")) and
-                hasAnyDescendant(hasText("0")),
+                hasText("Pesadas") and
+                hasText("0"),
         ).assertExists()
 
         // A closed campaign stays protected after the restart, and reopening it is an
@@ -758,24 +758,24 @@ class AppNavigationTest {
         }
         clickByTag("notebook-quick-labour")
         // Build 683: the container alone renders while still loading; wait for the day itself.
-        waitForTagOrDumpScreen("jornada-register-labour")
+        waitForTagOrDumpScreen("day-resource-labour")
 
         // Back and Jornal again, before any restart: the same day opens again.
         pressBack()
         waitForTag("notebook-root")
         clickByTag("notebook-quick-labour")
-        waitForTagOrDumpScreen("jornada-register-labour")
+        waitForTagOrDumpScreen("day-resource-labour")
 
         // Cold restart: the same day is still there.
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
-        waitForTagOrDumpScreen("jornada-register-labour")
+        waitForTagOrDumpScreen("day-resource-labour")
 
         // Jornal again the same day reuses it.
         pressBack()
         waitForTag("notebook-root")
         clickByTag("notebook-quick-labour")
-        waitForTagOrDumpScreen("jornada-register-labour")
+        waitForTagOrDumpScreen("day-resource-labour")
 
         // The campaign holds exactly one día de recolección.
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
