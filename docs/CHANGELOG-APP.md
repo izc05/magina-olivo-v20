@@ -24,6 +24,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   agua, nublado gris, parcialmente nublado azul claro, despejado dorado), además de su icono y su
   nombre. «Hoy» se destaca con borde e icono mayor; la máxima manda y la mínima queda secundaria;
   «Sin lluvia» en lugar de «0 mm»; arriba, un resumen de la semana. La fuente queda como nota discreta.
+- **Recolección más clara (#366).** «Días de recolección» cuenta fechas: dos fincas el mismo día son
+  un día («En 2 fincas»), no dos. Cada día dice su finca («Estacas · 3 oct 2026»); las tarjetas de
+  campaña dicen «1 día de recolección» y «Sin pesadas todavía», y los kilos sin repartir se leen
+  «3.150 kg pendientes de repartir entre 2 parcelas» («Sin kg asignados» en cada parcela).
 - **Inicio más natural y radar más nítido (#360).** La foto de Inicio ya no se tiñe de verde: una
   sombra neutra mantiene sus colores y el texto blanco sigue legible (≥ 4,5:1). El radar de lluvia
   pide a RainViewer su imagen de 512 px, con el doble de detalle que la de 256 px que se ampliaba.
