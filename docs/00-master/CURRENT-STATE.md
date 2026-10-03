@@ -77,8 +77,10 @@ A1–A3 tests). Gate 20 PASSED 2026-09-28; all six slices merged 2026-09-28; Gat
   kilos, campaign, farm or costs. «Leer vale», «Añadir vale y leer datos» and «Ticket o factura»
   left the normal path. OCR code and stored documents stay dormant. OCR is not a requirement for
   1.0, Gate 21, the APK, Backend/Auth, Sync, PDF, Web or release.
-- **Next:** #345 (rain probability on Inicio, honest null, #315 refresh policy, radar identity).
-  Then the Gate 21 checkpoint and a candidate DEV APK for the owner's device.
+- **#345 MERGED** (PR #348, merge `908b5023`): rain probability on Inicio (null never 0 %), weather
+  fresh for 1 h with refresh on entering/resuming Inicio, «Actualizar», water-blue rain radar.
+- **Gate 21 checkpoint prepared:** `docs/06-testing/PHASE21-GATE-CHECKLIST.md`; candidate DEV APK =
+  Android CI run #761 on `main` `908b5023`. Waiting for the owner's device run.
 - **Web:** WEB-0 (#346) may advance only in design, storyboard, public structure, staging and visual
   preparation. It must not touch Auth, schema, RLS or Sync before Phases 22/23.
 - **Perfil** is the single source of municipality, cooperative and territorial preferences. Weather,
