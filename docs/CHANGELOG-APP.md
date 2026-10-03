@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Previsión semanal más visual (#362).** Cada día tiene el color suave de su estado (lluvia azul
+  agua, nublado gris, parcialmente nublado azul claro, despejado dorado), además de su icono y su
+  nombre. «Hoy» se destaca con borde e icono mayor; la máxima manda y la mínima queda secundaria;
+  «Sin lluvia» en lugar de «0 mm»; arriba, un resumen de la semana. La fuente queda como nota discreta.
 - **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
   de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
   finca» queda como acción secundaria.
