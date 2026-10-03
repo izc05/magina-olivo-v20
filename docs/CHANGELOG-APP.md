@@ -24,6 +24,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   agua, nublado gris, parcialmente nublado azul claro, despejado dorado), además de su icono y su
   nombre. «Hoy» se destaca con borde e icono mayor; la máxima manda y la mínima queda secundaria;
   «Sin lluvia» en lugar de «0 mm»; arriba, un resumen de la semana. La fuente queda como nota discreta.
+- **La Pesada recuerda de dónde vienes (#373, #375).** Desde una finca, una campaña, una parcela o un
+  día de recolección, «Nueva pesada» ya no vuelve a pedir la finca: muestra «Salinillas · Campaña
+  2026-2027» como contexto fijo. En una campaña en marcha, «Pesadas» abre la nueva pesada de esa
+  finca. Desde el listado general se sigue eligiendo la finca.
 - **Cuaderno: finca a la vista.** El encabezado muestra la finca como dato principal y el estado
   de la campaña en una etiqueta aparte («Campaña 2026/27» o «Sin campaña en marcha»); «Cambiar
   finca» queda como acción secundaria.
