@@ -25,6 +25,11 @@ class FarmOverviewCopyTest {
         assertEquals("—", overviewCostPerKg(20, costs))
     }
 
+    @Test fun theNoteSaysTheConfirmedLabourCost() {
+        val overview = FarmOverview("2026/27", emptyList(), emptyList(), nothing, listOf(CurrencyTotal("EUR", 30_000, 6_500)))
+        assertTrue(overviewNote(overview), overviewNote(overview).startsWith("Jornales 65,00"))
+    }
+
     @Test fun theNoteNamesFarmsWithoutCampaign() {
         val overview = FarmOverview("2026/27", emptyList(), listOf("Los Llanos"), nothing, emptyList())
         assertEquals("0 de 1 fincas con campaña 2026/27 · Sin campaña: Los Llanos", overviewNote(overview))

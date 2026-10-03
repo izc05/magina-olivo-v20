@@ -54,6 +54,8 @@ internal fun overviewCostPerKg(costPerKgMinor: Long?, costs: List<CurrencyTotal>
 /** «Análisis sobre el 75 % de los kilos · 2 de 3 fincas con campaña · Sin campaña: Los Llanos». */
 internal fun overviewNote(overview: FarmOverview): String = listOfNotNull(
     overview.delivery.fatYield?.let { "Análisis sobre el ${overview.yieldCoveragePercent} % de los kilos" },
+    overview.costs.mapNotNull { total -> total.labourMinor?.let { Money.format(it, total.currency) } }
+        .takeIf { it.isNotEmpty() }?.let { "Jornales ${it.joinToString(" · ")}" },
     "${overview.farms.size} de ${overview.farms.size + overview.farmsWithoutCampaign.size} fincas con campaña ${overview.season}",
     overview.farmsWithoutCampaign.takeIf { it.isNotEmpty() }?.let { "Sin campaña: ${it.joinToString(", ")}" },
     if (overview.costs.size > 1) "Varias monedas: sin coste por kilo conjunto" else null,
