@@ -224,12 +224,18 @@ class AppNavigationTest {
         // «Cambiar finca» opens the Farm choice; that open state lives only in the screen.
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         clickByTag("notebook-change-farm")
-        composeRule.waitUntil(UI_TIMEOUT_MS) { composeRule.onAllNodesWithTag("notebook-farm-option").fetchSemanticsNodes().size == 2 }
+        // Other tests share the database, so the choice can list more Farms than these two.
+        composeRule.waitUntil(UI_TIMEOUT_MS) {
+            listOf("Finca Reselección A", "Finca Reselección B").all { name ->
+                composeRule.onAllNodes(hasTestTag("notebook-farm-option") and hasText(name)).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        val options = composeRule.onAllNodesWithTag("notebook-farm-option").fetchSemanticsNodes().size
 
         // Recreating the root would close it again.
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         composeRule.waitForIdle()
-        assertEquals(2, composeRule.onAllNodesWithTag("notebook-farm-option").fetchSemanticsNodes().size)
+        assertEquals(options, composeRule.onAllNodesWithTag("notebook-farm-option").fetchSemanticsNodes().size)
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
 
         // The same for another root, and Back still returns to Inicio once.
