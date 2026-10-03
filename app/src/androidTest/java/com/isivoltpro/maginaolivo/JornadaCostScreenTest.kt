@@ -1,6 +1,9 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -49,9 +52,19 @@ class JornadaCostScreenTest {
         composeRule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
         composeRule.onNodeWithTag("jornada-add-cost").performScrollTo().performClick()
         composeRule.onNodeWithTag("cost-save").assertIsNotEnabled()
-        composeRule.onNodeWithTag("cost-kind-RENTAL").performClick()
-        composeRule.onNodeWithTag("cost-amount").performTextInput("120")
-        composeRule.onNodeWithTag("cost-save").performScrollTo().performClick()
+        // The sheet can still be settling: bring each control into view and let the choice land
+        // before the next step, so a tap never falls outside the sheet.
+        composeRule.onNodeWithTag("cost-kind-RENTAL").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodes(hasTestTag("cost-kind-RENTAL") and isSelected()).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("cost-amount").performScrollTo().performTextInput("120")
+        composeRule.onNodeWithTag("cost-save").performScrollTo()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodes(hasTestTag("cost-save") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("cost-save").performClick()
+        composeRule.waitUntil(5_000) { saved != null }
         composeRule.runOnIdle { assertEquals(Triple(JornadaExpenseKind.RENTAL, 12_000L, false), saved) }
     }
 
