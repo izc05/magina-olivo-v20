@@ -71,7 +71,7 @@ data class FarmOverview(
                 if (own.isEmpty()) return@mapNotNull null
                 val ids = own.map { it.id }.toSet()
                 val weighed = deliveries.filter { it.campaignId in ids }
-                FarmSeasonFigures(farm.id, farm.name, own.size, DeliverySummary.of(weighed), totals(ids, expenses, weighed))
+                FarmSeasonFigures(farm.id, seasonName(farm, own), own.size, DeliverySummary.of(weighed), totals(ids, expenses, weighed))
             }
             val ids = inSeason.filter { campaign -> farms.any { it.id == campaign.farmId } }.map { it.id }.toSet()
             val weighed = deliveries.filter { it.campaignId in ids }
@@ -84,6 +84,17 @@ data class FarmOverview(
             )
         }
 
+        /**
+         * Codex #384: a season whose campaigns are all closed keeps the Farm's name as frozen in
+         * their snapshots, so renaming the Farm later never rewrites that history.
+         */
+        private fun seasonName(farm: Farm, campaigns: List<Campaign>): String =
+            if (campaigns.all { it.status == com.isivoltpro.maginaolivo.data.local.model.CampaignStatus.CLOSED }) {
+                campaigns.sortedByDescending { it.startDate }.flatMap { it.snapshots }.firstNotNullOfOrNull { it.farmName.takeIf(String::isNotBlank) } ?: farm.name
+            } else {
+                farm.name
+            }
+
         /** Posted recollection costs of these Campaigns, one total per currency, nothing converted. */
         private fun totals(campaignIds: Set<UUID>, expenses: List<Expense>, deliveries: List<Delivery>): List<CurrencyTotal> =
             campaignIds.flatMap { RecollectionLedger.of(it, expenses, deliveries) }
@@ -91,8 +102,9 @@ data class FarmOverview(
                 .map { (currency, ledgers) ->
                     // A ledger too large to add up makes the total unknown, never a smaller number.
                     val all = ledgers.map { it.amount() }
+                    val labour = ledgers.filter { it.hasPosted(RecollectionBucket.LABOUR) }.map { it.amount(RecollectionBucket.LABOUR) }
                     CurrencyTotal(currency, if (all.any { it == null }) null else sum(all),
-                        sum(ledgers.filter { it.hasPosted(RecollectionBucket.LABOUR) }.map { it.amount(RecollectionBucket.LABOUR) }))
+                        if (labour.any { it == null }) null else sum(labour))
                 }
 
         private fun sum(values: List<Long?>): Long? = runCatching {

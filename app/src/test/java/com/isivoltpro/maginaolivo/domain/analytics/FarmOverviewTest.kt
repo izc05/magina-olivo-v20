@@ -63,6 +63,24 @@ class FarmOverviewTest {
         assertNull(overview.costPerKgMinor)
     }
 
+    /** Codex #384: a closed season keeps the Farm's frozen name; a running one shows today's. */
+    @Test fun aClosedSeasonKeepsTheFarmsFrozenName() {
+        val renamed = estacas.copy(name = "Estacas Nuevas")
+        val closed = estacasBefore.copy(status = CampaignStatus.CLOSED,
+            snapshots = listOf(com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelSnapshot(UUID.randomUUID(), "Estacas", "Haza", null, null, null)))
+        assertEquals(listOf("Estacas"), FarmOverview.of("2025/26", listOf(renamed), listOf(closed), emptyList(), emptyList()).farms.map { it.farmName })
+        assertEquals(listOf("Estacas Nuevas"), FarmOverview.of("2026/27", listOf(renamed), listOf(estacasNow), emptyList(), emptyList()).farms.map { it.farmName })
+    }
+
+    /** Codex #384: a labour subtotal too large to add makes the labour total unknown, never smaller. */
+    @Test fun anOverflowingLabourTotalIsUnknown() {
+        val labour = { campaign: Campaign, minor: Long -> cost(campaign, minor).copy(category = ExpenseCategory.LABOR, origin = ExpenseOrigin.DAY_LABOUR) }
+        val overview = FarmOverview.of("2026/27", listOf(estacas, cerro), listOf(estacasNow, cerroNow), emptyList(),
+            listOf(labour(estacasNow, Long.MAX_VALUE), labour(estacasNow, 1), labour(cerroNow, 6_500)))
+        assertNull(overview.costs.single().labourMinor)
+        assertNull(overview.costs.single().amountMinor)
+    }
+
     @Test fun nothingWeighedIsUnknownNotZero() {
         val overview = FarmOverview.of("2026/27", listOf(estacas), listOf(estacasNow), emptyList(), emptyList())
         assertNull(overview.delivery.fatYield)
