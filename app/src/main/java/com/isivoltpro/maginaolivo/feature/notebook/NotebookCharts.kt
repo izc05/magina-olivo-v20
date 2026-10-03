@@ -2,6 +2,9 @@ package com.isivoltpro.maginaolivo.feature.notebook
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -241,16 +244,28 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
     }
     Text(costLine, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-cost-summary"))
 
-    // The campaigns under the charts, in the same order; each opens that campaign.
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        points.forEach { point ->
-            Text(
-                point.name,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (point.campaignId == selected) MoOliveDark else MoTextSecondary,
-                maxLines = 2,
-                modifier = Modifier.weight(1f).clickable { onSelectCampaign(point.campaignId) }.testTag("history-campaign"),
-            )
+    // The campaigns under the charts, in the same order; each opens that campaign. Codex #383:
+    // each is a 48 dp target; when they no longer fit under their columns the row scrolls.
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val fits = maxWidth / points.size >= 48.dp
+        val row = if (fits) Modifier.fillMaxWidth() else Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState())
+        Row(row) {
+            points.forEach { point ->
+                val slot = if (fits) Modifier.weight(1f) else Modifier.width(72.dp)
+                androidx.compose.foundation.layout.Box(
+                    slot.heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { onSelectCampaign(point.campaignId) }
+                        .testTag("history-campaign"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        point.name,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (point.campaignId == selected) MoOliveDark else MoTextSecondary,
+                        maxLines = 2,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
+            }
         }
     }
 }

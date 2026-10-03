@@ -5,6 +5,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -60,6 +63,8 @@ class CampaignChartsScreenTest {
         composeRule.onAllNodesWithTag("history-cost").assertCountEquals(0)
         composeRule.onNodeWithTag("history-cost-summary").assertTextContains("2026/27: sin datos", substring = true)
         composeRule.onAllNodesWithTag("history-campaign").assertCountEquals(2)
+        // Codex #383: each campaign is a 48 dp target.
+        composeRule.onAllNodesWithTag("history-campaign")[0].assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
         composeRule.onAllNodesWithTag("history-campaign")[0].performClick()
         composeRule.runOnIdle { org.junit.Assert.assertEquals(listOf(last.id), opened) }
     }
