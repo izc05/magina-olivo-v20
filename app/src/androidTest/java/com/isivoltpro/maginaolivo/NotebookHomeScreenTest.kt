@@ -10,6 +10,9 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -53,8 +56,11 @@ class NotebookHomeScreenTest {
         // #351 (1): the Farm is the main datum and the campaign is its own chip, not running text.
         composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca de ejemplo").assertTextContains("Campaña de ejemplo", substring = true)
         // The chip says the campaign's state in words, not only by colour.
-        composeRule.onNodeWithTag("notebook-campaign-chip", useUnmergedTree = true)
-            .assertTextContains(com.isivoltpro.maginaolivo.feature.notebook.campaignChipText(campaign.name, campaign.status))
+        composeRule.onNode(
+            hasTestTag("notebook-campaign-chip") and
+                hasAnyDescendant(hasText(com.isivoltpro.maginaolivo.feature.notebook.campaignChipText(campaign.name, campaign.status))),
+            useUnmergedTree = true,
+        ).assertExists()
         // CR-011 §4: the actions are shown directly; no «Registrar hoy» repeats them.
         composeRule.onAllNodesWithTag("notebook-register-today").fetchSemanticsNodes().let { assertEquals(0, it.size) }
         NotebookQuickAction.entries.forEach { action ->
@@ -164,7 +170,10 @@ class NotebookHomeScreenTest {
 
     @Test fun withoutACampaignTheNotebookSaysSo() {
         show(state = NotebookUiState(isLoading = false))
-        composeRule.onNodeWithTag("notebook-campaign-chip", useUnmergedTree = true).assertTextContains("Sin campaña en marcha", substring = true)
+        composeRule.onNode(
+            hasTestTag("notebook-campaign-chip") and hasAnyDescendant(hasText("Sin campaña en marcha")),
+            useUnmergedTree = true,
+        ).assertExists()
         composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca de ejemplo", substring = true)
         composeRule.onNodeWithTag("notebook-no-campaign").performScrollTo().assertIsDisplayed()
     }
