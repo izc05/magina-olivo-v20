@@ -1,7 +1,12 @@
-import { PublicPlaceholderPage } from "@/features/scaffold/PublicPlaceholderPage";
+import { LegalPage } from "@/features/public/PublicContentPages";
+import { publicMetadata } from "@/lib/public-metadata";
 
-export const metadata = { title: "Privacidad" };
+export const metadata = publicMetadata(
+  "Privacidad",
+  "Información provisional sobre la privacidad de Mágina Olivo, pendiente de revisión legal.",
+  "/privacidad",
+);
 
-export default function PrivacyPage() {
-  return <PublicPlaceholderPage title="Privacidad" />;
+export default function PrivacyRoute() {
+  return <LegalPage kind="privacidad" />;
 }

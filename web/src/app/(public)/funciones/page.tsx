@@ -1,12 +1,12 @@
-import { PublicPlaceholderPage } from "@/features/scaffold/PublicPlaceholderPage";
+import { FunctionsPage as PublicFunctionsPage } from "@/features/public/PublicContentPages";
+import { publicMetadata } from "@/lib/public-metadata";
 
-export const metadata = { title: "Funciones" };
+export const metadata = publicMetadata(
+  "Funciones",
+  "Conoce cómo Mágina Olivo organiza fincas, Cuaderno, campañas e información útil.",
+  "/funciones",
+);
 
-export default function FunctionsPage() {
-  return (
-    <PublicPlaceholderPage
-      title="Funciones"
-      description="Fincas, cuaderno, campañas, tiempo y mercado."
-    />
-  );
+export default function FunctionsRoute() {
+  return <PublicFunctionsPage />;
 }

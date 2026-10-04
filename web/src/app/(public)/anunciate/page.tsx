@@ -1,7 +1,12 @@
-import { PublicPlaceholderPage } from "@/features/scaffold/PublicPlaceholderPage";
+import { AdvertisePage as PublicAdvertisePage } from "@/features/public/PublicContentPages";
+import { publicMetadata } from "@/lib/public-metadata";
 
-export const metadata = { title: "Anúnciate" };
+export const metadata = publicMetadata(
+  "Anúnciate",
+  "Información provisional sobre espacios locales para empresas vinculadas al olivar.",
+  "/anunciate",
+);
 
-export default function AdvertisePage() {
-  return <PublicPlaceholderPage id="empresas" title="Anúnciate" />;
+export default function AdvertiseRoute() {
+  return <PublicAdvertisePage />;
 }

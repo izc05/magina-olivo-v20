@@ -1,7 +1,12 @@
-import { PublicPlaceholderPage } from "@/features/scaffold/PublicPlaceholderPage";
+import { DownloadPage as PublicDownloadPage } from "@/features/public/PublicContentPages";
+import { publicMetadata } from "@/lib/public-metadata";
 
-export const metadata = { title: "Descargar Android" };
+export const metadata = publicMetadata(
+  "Descargar Android",
+  "Consulta el estado del enlace oficial, la versión y los requisitos de Mágina Olivo.",
+  "/descargar",
+);
 
-export default function DownloadPage() {
-  return <PublicPlaceholderPage title="Descargar Android" />;
+export default function DownloadRoute() {
+  return <PublicDownloadPage />;
 }
