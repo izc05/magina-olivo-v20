@@ -338,6 +338,10 @@ fun AppNavigation(
                     developerGalleryEnabled = compositionRoot.environment == AppEnvironment.DEV,
                     onDeveloperGallery = { navController.navigate(AppDestination.DeveloperGallery) },
                     persistence = compositionRoot.localPersistence,
+                    // #399: the demo farm exists only in the dev flavor and only in a DEV environment.
+                    demoFarm = compositionRoot.localPersistence
+                        ?.takeIf { compositionRoot.environment == AppEnvironment.DEV }
+                        ?.let { com.isivoltpro.maginaolivo.app.DevTools.demoFarm(it) },
                     onHelp = { topic -> navController.navigate(AppDestination.help(topic.route)) },
                 )
             }

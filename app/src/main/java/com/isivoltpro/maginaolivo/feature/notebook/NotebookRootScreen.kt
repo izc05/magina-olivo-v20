@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.notebook
 
+import com.isivoltpro.maginaolivo.domain.notebook.FarmNotebook
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -407,32 +408,11 @@ private fun NotebookHub(
     when {
         state == null || state.isLoading -> CircularProgressIndicator(Modifier.testTag("notebook-loading"))
         state.error != null -> Text(state.error, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("notebook-error"))
-        state.notebook == null || actions == null -> {
-            MoEmptyState(
-                "Aún no hay campañas",
-                "El cuaderno se ordena por campañas. Crea la de este año y aquí verás lo que registres.",
-                actionText = actions?.let { "Ir a Campañas" },
-                onAction = actions?.onCampaigns,
-                icon = MoIcons.Campaign,
-                modifier = Modifier.testTag("notebook-no-campaign"),
-            )
-            // Work can be written down before any Campaign exists; the Farm's list keeps it.
-            actions?.let { FarmWorksLink(it) }
-        }
+        actions == null -> Unit
         else -> {
-            val notebook = state.notebook
-            if (state.campaigns.size > 1) {
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                    state.campaigns.sortedByDescending { it.startDate }.forEach { campaign ->
-                        FilterChip(
-                            selected = campaign.id == state.selectedCampaignId,
-                            onClick = { onSelectCampaign(campaign.id) },
-                            label = { Text(campaign.name) },
-                            modifier = Modifier.testTag("notebook-campaign"),
-                        )
-                    }
-                }
-            }
+            // #417: Diario, Fitosanitario and Gastos are the Farm's, with or without a Campaign;
+            // only the Campaña view needs one.
+            val farmNotebook = state.farmNotebook ?: state.notebook?.let { FarmNotebook.of(it) } ?: FarmNotebook.EMPTY
             // Device checks (builds 680, 683): fixed tabs cut «Fitosanitario», and scrollable tabs
             // hid «Campaña» at 360 dp. Four chips that wrap keep every view visible and whole at
             // any width or font scale.
@@ -452,12 +432,38 @@ private fun NotebookHub(
             // UX-E: four views of the same records; nothing is copied or totalled twice.
             when (tab) {
                 NotebookHubTab.DIARY -> {
-                    DiaryView(notebook, actions)
+                    DiaryView(farmNotebook, actions)
                     FarmWorksLink(actions)
                 }
-                NotebookHubTab.PHYTO -> PhytoView(notebook, actions)
-                NotebookHubTab.EXPENSES -> CostsView(notebook, actions)
-                NotebookHubTab.CAMPAIGN -> CampaignView(notebook, state, actions, onSelectCampaign)
+                NotebookHubTab.PHYTO -> PhytoView(farmNotebook, actions)
+                NotebookHubTab.EXPENSES -> FarmCostsView(farmNotebook, state.notebook?.campaign, actions)
+                NotebookHubTab.CAMPAIGN -> {
+                    val notebook = state.notebook
+                    if (notebook == null) {
+                        MoEmptyState(
+                            "Aún no hay campañas",
+                            "La campaña es la recogida: pesadas, días y jornales. El resto del año ya se anota en Diario.",
+                            actionText = "Ir a Campañas",
+                            onAction = actions.onCampaigns,
+                            icon = MoIcons.Campaign,
+                            modifier = Modifier.testTag("notebook-no-campaign"),
+                        )
+                    } else {
+                        if (state.campaigns.size > 1) {
+                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                                state.campaigns.sortedByDescending { it.startDate }.forEach { campaign ->
+                                    FilterChip(
+                                        selected = campaign.id == state.selectedCampaignId,
+                                        onClick = { onSelectCampaign(campaign.id) },
+                                        label = { Text(campaign.name) },
+                                        modifier = Modifier.testTag("notebook-campaign"),
+                                    )
+                                }
+                            }
+                        }
+                        CampaignView(notebook, state, actions, onSelectCampaign)
+                    }
+                }
             }
         }
     }
