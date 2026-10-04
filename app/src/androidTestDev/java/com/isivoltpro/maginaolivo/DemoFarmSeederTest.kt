@@ -53,6 +53,13 @@ class DemoFarmSeederTest {
         assertEquals(118_500L, season.generalCosts.single().amountMinor) // never in recollection
         assertEquals(262_500L, season.totalCosts.single().amountMinor)
         assertEquals(46L, season.totalCostPerKgMinor)
+        // Owner on #413: general work and a general cost inside the campaign's dates, never in its ledger.
+        val inCampaignDates = { date: java.time.LocalDate -> !date.isBefore(running.startDate) && !date.isAfter(DemoFarmSeeder.LAST_DAY) }
+        val generalWork = persistence.activityRepository.observeForFarm(demo.id).first()
+            .filter { it.campaignId == null && inCampaignDates(it.activityDate) }
+        assertEquals(2, generalWork.size)
+        val generalCost = expenses.filter { it.farmId == demo.id && it.campaignId == null && inCampaignDates(it.expenseDate) }
+        assertEquals(listOf(9_000L), generalCost.map { it.amountMinor })
         val history = FarmOverview.of("2025/26", listOf(demo), campaigns, deliveries, expenses)
         assertEquals(5_100_000L, history.delivery.deliveredGrams)       // kept apart
 

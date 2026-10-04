@@ -81,6 +81,9 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
             Triple(ActivityType.IRRIGATION, LocalDate.of(2026, 7, 10), "Riego (DEMO)") to setOf(llanos),
             Triple(ActivityType.IRRIGATION, LocalDate.of(2026, 7, 22), "Riego (DEMO)") to setOf(loma),
             Triple(ActivityType.IRRIGATION, LocalDate.of(2026, 8, 18), "Riego (DEMO)") to setOf(barranco),
+            // Owner on #413 (#417 QA): general work inside the 2026/27 dates; it never belongs to the campaign.
+            Triple(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 9, 30), "Tratamiento general, no de recogida (DEMO)") to setOf(loma),
+            Triple(ActivityType.MAINTENANCE, LocalDate.of(2026, 10, 2), "Reparación de valla (DEMO)") to setOf(barranco),
         ).forEach { (what, parcels) ->
             p.activityRepository.create(
                 NewActivity(farmId = farm, type = what.first, activityDate = what.second, description = what.third,
@@ -111,7 +114,8 @@ internal class DemoFarmSeeder(private val p: LocalPersistence) : DemoFarmTools {
             Triple(LocalDate.of(2026, 9, 5), "Poda / mano de obra general (DEMO)", ExpenseCategory.LABOR) to 52_000L,
             Triple(LocalDate.of(2026, 9, 8), "Producto de tratamiento (DEMO)", ExpenseCategory.PRODUCTS) to 18_000L,
             Triple(LocalDate.of(2026, 9, 12), "Abonado (DEMO)", ExpenseCategory.PRODUCTS) to 32_000L,
-            Triple(LocalDate.of(2026, 9, 16), "Gasóleo general (DEMO)", ExpenseCategory.FUEL) to 9_000L,
+            // Inside the campaign's dates but general: it must stay out of the recollection cost.
+            Triple(LocalDate.of(2026, 10, 2), "Gasóleo general (DEMO)", ExpenseCategory.FUEL) to 9_000L,
             Triple(LocalDate.of(2026, 9, 20), "Riego / energía (DEMO)", ExpenseCategory.IRRIGATION) to 7_500L,
         ).forEach { (what, minor) -> expense(farm, null, what.first, what.second, what.third, minor) }
 

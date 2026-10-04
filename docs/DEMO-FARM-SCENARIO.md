@@ -33,7 +33,8 @@ Sin referencia catastral ni geometría: no se finge Catastro.
 
 ## Gastos generales fuera de campaña (temporada 2026/27)
 Poda 520 € · producto 180 € · abonado 320 € · gasóleo 90 € · riego/energía 75 € → **1.185 €**, sin campaña,
-nunca dentro del coste de recogida. **Coste total 2.625 €** · **coste total/kg ≈ 0,46 €/kg**.
+nunca dentro del coste de recogida. El gasóleo general (02-10-2026) cae **dentro de las fechas de la campaña**
+2026/27 a propósito: es QA de #417 — pertenecer a la campaña solo por relación explícita, nunca por fecha. **Coste total 2.625 €** · **coste total/kg ≈ 0,46 €/kg**.
 
 ## Campaña histórica 2025/26 (cerrada 15-12-2025)
 3 pesadas (1.600 + 1.900 + 1.600 = **5.100 kg**; 19,50 / 20,40 / 19,60 %), 3 días, jornales 3 × 3 × 60 € = 540 €,
@@ -42,7 +43,9 @@ maquinaria 3 × 170 € = 510 €, transporte 70 €; todo pagado. Separada de 2
 ## Trabajos
 Tratamiento de otoño (20-09-2025), poda, labores de suelo, abonado, tratamiento de primavera, mantenimiento,
 observación y cuatro riegos (15-06, 10-07, 22-07, 18-08-2026) en distintas parcelas; sin importe (el dinero
-está solo en el libro de gastos).
+está solo en el libro de gastos). Durante la campaña activa hay además un **tratamiento general** (30-09-2026,
+La Loma) y una **reparación de valla** (02-10-2026, El Barranco), sin campaña: deben verse en el Cuaderno
+general y no en el ledger, los totales ni el coste/kg de la campaña.
 
 ## Límites conocidos
 - **Restablecer** cierra la campaña en curso de la demo y **archiva** la finca anterior (queda en «Fincas
