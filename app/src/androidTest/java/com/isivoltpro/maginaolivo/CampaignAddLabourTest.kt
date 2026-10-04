@@ -27,15 +27,22 @@ class CampaignAddLabourTest {
     private val campaign = UiPolishFixtures.campaign
     private val entry = LabourEntry(UUID.randomUUID(), UUID.randomUUID(), null, null, 1, LabourUnit.FULL_DAY, null, 1, null)
 
-    private fun show(status: CampaignStatus, withEntries: Boolean, onAdd: (() -> Unit)?) {
+    private fun show(status: CampaignStatus, withEntries: Boolean, start: java.time.LocalDate = campaign.startDate, onAdd: (() -> Unit)?) {
         val state = LabourPaymentsUiState(
             isLoading = false,
-            campaign = campaign.copy(status = status),
+            campaign = campaign.copy(status = status, startDate = start),
             entries = if (withEntries) listOf(entry) else emptyList(),
         )
         rule.setContent {
             MaginaOlivoTheme { Surface(Modifier.fillMaxSize(), color = MoCream) { LabourPaymentsScreen(state, onAddLabour = onAdd) } }
         }
+    }
+
+    /** Codex #401: an active campaign that starts later cannot open today's day yet. */
+    @Test fun aCampaignStartingLaterSaysWhenJornalesCanBeAdded() {
+        show(CampaignStatus.ACTIVE, withEntries = false, start = java.time.LocalDate.now().plusDays(10)) {}
+        rule.onNodeWithTag("labour-add").assertDoesNotExist()
+        rule.onNodeWithTag("labour-add-later").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun runningCampaignWithoutJornalesOffersToAddOne() {

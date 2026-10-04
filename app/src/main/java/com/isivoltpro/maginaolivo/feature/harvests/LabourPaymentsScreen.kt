@@ -92,8 +92,13 @@ internal fun LabourPaymentsScreen(state: LabourPaymentsUiState, initialPerson: U
                 if (state.entries.isNotEmpty()) Text(LabourSummary.of(state.entries).label(), color = MoLabourText)
                 val status = state.campaign.status
                 // #365: the campaign already knows its Farm, so the entry is right here.
-                if (onAddLabour != null && status.isRunning) {
+                // Codex #401: a day before the campaign starts cannot be opened; say when it can.
+                val startsLater = state.campaign.startDate.isAfter(today)
+                if (onAddLabour != null && status.isRunning && !startsLater) {
                     MoPrimaryButton("+ Añadir jornal", onAddLabour, modifier = Modifier.fillMaxWidth().testTag("labour-add"), enabled = !state.isSaving)
+                }
+                if (onAddLabour != null && status.isRunning && startsLater) {
+                    Text("La campaña empieza el ${state.campaign.startDate.format(WORK_DATE)}: podrás añadir jornales desde ese día.", color = MoTextSecondary, modifier = Modifier.testTag("labour-add-later"))
                 }
                 if (onAddLabour != null && status == CampaignStatus.CLOSED && state.entries.isNotEmpty()) {
                     Text("Campaña cerrada. Reábrela para añadir nuevos jornales.", color = MoTextSecondary, modifier = Modifier.testTag("labour-add-closed"))
@@ -102,6 +107,7 @@ internal fun LabourPaymentsScreen(state: LabourPaymentsUiState, initialPerson: U
                     "Sin jornales anotados",
                     when {
                         onAddLabour == null -> "Registra un jornal desde el Cuaderno o un día de recolección."
+                        status.isRunning && startsLater -> "Todavía no hay jornales: la campaña aún no ha empezado."
                         status.isRunning -> "Todavía no has registrado jornales en esta campaña."
                         status == CampaignStatus.CLOSED -> "Esta campaña está cerrada."
                         else -> "Activa la campaña para añadir jornales."
