@@ -177,6 +177,8 @@ fun CampaignDetailRoute(
     onDeliveries: () -> Unit = {},
     /** #373/#375: a running campaign's «Pesadas» opens Nueva pesada on its Farm, not the global list. */
     onNewPesada: (farmId: UUID) -> Unit = {},
+    /** #365: «+ Añadir jornal» opens today's recolección day of this campaign's Farm on its Jornales. */
+    onAddLabour: (farmId: UUID) -> Unit = {},
 ) {
     val vm: CampaignDetailViewModel = viewModel(key = "campaign-$campaignId", factory = viewModelFactory {
         initializer { CampaignDetailViewModel(campaignId, persistence.campaignRepository) }
@@ -221,7 +223,17 @@ fun CampaignDetailRoute(
     // #365: the one Jornales detail (people and payments) of this campaign, as from the Cuaderno.
     if (labourOpen) {
         ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { labourOpen = false }) {
-            com.isivoltpro.maginaolivo.feature.harvests.LabourPaymentsRoute(campaignId, persistence) { labourOpen = false }
+            com.isivoltpro.maginaolivo.feature.harvests.LabourPaymentsRoute(
+                campaignId,
+                persistence,
+                onAddLabour = {
+                    val campaign = state.campaign
+                    if (campaign != null && campaign.status.isRunning) {
+                        labourOpen = false
+                        onAddLabour(campaign.farmId)
+                    }
+                },
+            ) { labourOpen = false }
         }
     }
 }
