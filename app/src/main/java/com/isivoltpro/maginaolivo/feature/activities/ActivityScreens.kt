@@ -469,6 +469,8 @@ internal fun ActivityEditor(
     val detailFields = remember(initial.detail) {
         mutableStateMapOf<String, String>().apply { putAll(initial.detail.toFields()) }
     }
+    // #473: typed text the form could not read, keyed by field; shown next to it until corrected.
+    val detailErrors = remember { mutableStateMapOf<String, String>() }
     var agronomicDetailsOpen by rememberSaveable(initial.type) {
         mutableStateOf(initial.detail.toFields().isNotEmpty() || doneWork)
     }
@@ -499,6 +501,15 @@ internal fun ActivityEditor(
         }
         machinesError = null
         return uses.sortedBy { it.machineId.toString() }
+    }
+
+    /** #473: false (and the errors shown, the block open) while a typed value cannot be read. */
+    fun readTypedDetail(): Boolean {
+        val errors = detailFieldErrors(runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER), detailFields)
+        detailErrors.clear()
+        detailErrors.putAll(errors)
+        if (errors.isNotEmpty()) agronomicDetailsOpen = true
+        return errors.isEmpty()
     }
 
     // Hour, people, machinery, reminders, notes and cost are optional: folded unless used.
@@ -577,7 +588,7 @@ internal fun ActivityEditor(
                 }
             }
             if (agronomicDetailsOpen) {
-                ActivityTypedDetailFields(type = activityType, fields = detailFields)
+                ActivityTypedDetailFields(type = activityType, fields = detailFields, errors = detailErrors)
             }
         }
         FormLabel("Parcelas")
@@ -678,6 +689,7 @@ internal fun ActivityEditor(
                 }
                 val machineUses = readMachines() ?: return@MoPrimaryButton
                 val planned = readPlanning() ?: return@MoPrimaryButton
+                if (!readTypedDetail()) return@MoPrimaryButton
                 onSave(
                     ActivityDraft(
                         runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
@@ -688,6 +700,7 @@ internal fun ActivityEditor(
                         buildActivityDetail(
                             runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
                             detailFields,
+                            runCatching { LocalDate.parse(date) }.getOrNull(),
                         ),
                         costMinor,
                         machines = machineUses,
@@ -709,6 +722,7 @@ internal fun ActivityEditor(
                     }
                     val machineUses = readMachines() ?: return@MoSecondaryButton
                     val planned = readPlanning() ?: return@MoSecondaryButton
+                    if (!readTypedDetail()) return@MoSecondaryButton
                     saveDraft(
                         ActivityDraft(
                             runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
@@ -719,6 +733,7 @@ internal fun ActivityEditor(
                             buildActivityDetail(
                                 runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
                                 detailFields,
+                                runCatching { LocalDate.parse(date) }.getOrNull(),
                             ),
                             costMinor,
                             machines = machineUses,
@@ -942,7 +957,11 @@ private fun Activity.targetsLabel(): String = when (targets.size) {
  * because the contract gives them no structured fields to show.
  */
 @Composable
-private fun ActivityTypedDetailFields(type: ActivityType, fields: SnapshotStateMap<String, String>) {
+private fun ActivityTypedDetailFields(
+    type: ActivityType,
+    fields: SnapshotStateMap<String, String>,
+    errors: SnapshotStateMap<String, String> = remember { mutableStateMapOf() },
+) {
     if (!type.hasTypedDetail()) return
     // #414: what the record held when the editor opened. A retired field stays editable only there.
     val stored = remember { fields.filterValues { it.isNotBlank() }.keys.toSet() }
@@ -954,7 +973,7 @@ private fun ActivityTypedDetailFields(type: ActivityType, fields: SnapshotStateM
         Modifier.fillMaxWidth().testTag("activity-detail-block"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        layout.visible.forEach { key -> DetailInput(fields, key) }
+        layout.visible.forEach { key -> DetailInput(fields, key, errors) }
         if (layout.advanced.isNotEmpty()) {
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -966,12 +985,12 @@ private fun ActivityTypedDetailFields(type: ActivityType, fields: SnapshotStateM
                 Icon(if (advancedOpen) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoOliveMid)
                 Text("Más detalles", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
             }
-            if (advancedOpen) layout.advanced.forEach { key -> DetailInput(fields, key) }
+            if (advancedOpen || layout.advanced.any { it in errors }) layout.advanced.forEach { key -> DetailInput(fields, key, errors) }
         }
         if (retired.isNotEmpty()) {
             // Kept so an older record loses nothing; new records no longer ask for these.
             Text("Datos anteriores de este registro", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
-            retired.forEach { key -> DetailInput(fields, key) }
+            retired.forEach { key -> DetailInput(fields, key, errors) }
         }
     }
 }
@@ -1020,7 +1039,7 @@ internal fun detailLayout(type: ActivityType): DetailLayout = when (type) {
 
 /** One typed input: a choice for the closed lists, a text field for the rest. */
 @Composable
-private fun DetailInput(fields: SnapshotStateMap<String, String>, key: String) {
+private fun DetailInput(fields: SnapshotStateMap<String, String>, key: String, errors: SnapshotStateMap<String, String>) {
     when (key) {
         ActivityDetailFields.SEVERITY -> {
             Text("Gravedad", style = MaterialTheme.typography.titleSmall)
@@ -1034,7 +1053,7 @@ private fun DetailInput(fields: SnapshotStateMap<String, String>, key: String) {
             Text("Tarifa (histórica)", style = MaterialTheme.typography.titleSmall)
             DetailChoice(fields, key, IrrigationPricingBasis.entries.map { it.name to it.label() })
         }
-        else -> DetailField(fields, key, detailInputLabel(key))
+        else -> DetailField(fields, key, detailInputLabel(key), errors)
     }
 }
 
@@ -1051,11 +1070,20 @@ private fun detailInputLabel(key: String): String = when (key) {
 }
 
 @Composable
-private fun DetailField(fields: SnapshotStateMap<String, String>, key: String, label: String) {
+private fun DetailField(
+    fields: SnapshotStateMap<String, String>,
+    key: String,
+    label: String,
+    errors: SnapshotStateMap<String, String>? = null,
+) {
+    // #473: the typed text stays on screen with its error; it is never cleared or guessed.
+    val error = errors?.get(key)
     MoTextField(
         fields[key].orEmpty(),
-        { fields[key] = it },
+        { fields[key] = it; errors?.remove(key) },
         label,
+        isError = error != null,
+        supportingText = error,
         modifier = Modifier.fillMaxWidth().testTag("detail-$key"),
     )
 }
