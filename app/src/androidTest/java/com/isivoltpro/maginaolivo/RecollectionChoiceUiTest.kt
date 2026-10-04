@@ -44,7 +44,7 @@ class RecollectionChoiceUiTest {
     private val farm = farm("La Solana")
     private val otherFarm = farm("El Chaparral")
     private val running = campaign(farm.id, "2026/27", CampaignStatus.HARVEST)
-    private val options = RelationOptions(farms = listOf(farm, otherFarm), campaigns = listOf(running))
+    private val options = RelationOptions(farms = listOf(farm, otherFarm), campaigns = listOf(running), campaignsFor = farm.id)
 
     @Test fun cuadernoGastoRequiresAnExplicitChoice() {
         rule.setContent {
@@ -59,6 +59,22 @@ class RecollectionChoiceUiTest {
         rule.onNodeWithTag("expense-kind-recollection").assertIsNotSelected()
         rule.onNodeWithTag("expense-kind-general").assertIsNotSelected()
         rule.onNodeWithTag("expense-kind-required").assertExists()
+        rule.onNodeWithTag("save-expense").performScrollTo().assertIsNotEnabled()
+    }
+
+    /** Codex #423: while the Farm's campaigns load, «no running campaign» is unknown, so no save yet. */
+    @Test fun cuadernoGastoWaitsForTheFarmsCampaigns() {
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpensesScreen(
+                    ExpensesUiState(isLoading = false, options = options.copy(campaigns = emptyList(), campaignsFor = null)),
+                    date, {}, {}, { _, _ -> }, {}, {}, {}, {},
+                    presetFarmId = farm.id,
+                )
+            }
+        }
+        rule.onNodeWithTag("add-expense").performClick()
+        rule.onNodeWithTag("expense-kind-loading").performScrollTo().assertExists()
         rule.onNodeWithTag("save-expense").performScrollTo().assertIsNotEnabled()
     }
 

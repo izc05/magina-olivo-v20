@@ -154,6 +154,14 @@ internal fun ExpenseEditor(
             }
         } else if (form.campaignId != null) {
             Text("Gasto vinculado explícitamente a la campaña", color = MoTextSecondary)
+        } else if (!campaignChoiceMade && !options.campaignsKnownFor(form.farmId)) {
+            // #411: an empty list while the Farm's campaigns load is not «no running campaign».
+            Text(
+                "Comprobando las campañas de la finca…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("expense-kind-loading"),
+            )
         }
         if (!runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false))
             Text("La moneda histórica ${form.currency} no admite edición. Se conserva el importe original.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("expense-currency-error"))
@@ -265,7 +273,7 @@ internal fun ExpenseEditor(
             { onSave(form) },
             modifier = Modifier.fillMaxWidth().testTag("save-expense"),
             enabled = !isSaving &&
-                (recollection == null || campaignChoiceMade) &&
+                (campaignChoiceMade || (recollection == null && options.campaignsKnownFor(form.farmId))) &&
                 runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false),
         )
         extraActions()
