@@ -128,9 +128,9 @@ class ActivityEditorCompactTest {
 
     private fun show(
         initial: ActivityDraft,
-        onSave: (ActivityDraft) -> Unit = {},
         options: List<ActivityParcelOption> = parcels,
         doneWork: Boolean = false,
+        onSave: (ActivityDraft) -> Unit = {},
     ) {
         composeRule.setContent {
             MaginaOlivoTheme {
