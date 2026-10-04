@@ -102,7 +102,7 @@ fun HarvestsRoute(
     persistence: LocalPersistence,
     clock: AppClock,
     onHarvestSelected: (UUID) -> Unit,
-    onDeliveries: (UUID?) -> Unit = {},
+    onDeliveries: (UUID?) -> Unit = { _ -> },
     /** #408: when present, this surface belongs to one Campaign and must never leak another one. */
     campaignId: UUID? = null,
 ) {
