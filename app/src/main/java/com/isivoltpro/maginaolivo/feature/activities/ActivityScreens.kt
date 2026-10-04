@@ -349,12 +349,18 @@ internal fun ActivityTypeChooser(farmName: String, onSelected: (ActivityType) ->
 }
 
 /**
- * #378: the kinds of work offered. «Jornada de recolección» is an agenda appointment for the
- * recogida (Avisos → Planificar), never an ordinary Trabajo: recolección lives in Campaña,
- * Pesada and Jornal.
+ * #378/#410: one concept, one main path.
+ * Cuaderno → Trabajo is only for general work. Riego and Tratamiento keep their direct
+ * Cuaderno actions, and Jornada de recolección belongs to Campaña/Avisos.
+ * Planning still exposes the complete catalogue because Avisos is the planning surface.
  */
 internal fun workTypes(planning: Boolean): List<ActivityType> =
-    ActivityType.entries.filter { planning || it != ActivityType.HARVEST_DAY }
+    if (planning) ActivityType.entries
+    else ActivityType.entries.filterNot {
+        it == ActivityType.HARVEST_DAY ||
+            it == ActivityType.IRRIGATION ||
+            it == ActivityType.PHYTOSANITARY
+    }
 
 private fun ActivityType.shortDescription(): String = when (this) {
     ActivityType.OBSERVATION -> "Revisar el estado del olivar"
@@ -498,9 +504,11 @@ internal fun ActivityEditor(
                 horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                 verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
             ) {
-                // #378: a recogida day is planned in Avisos, not written down as a Trabajo; an
-                // existing one keeps its own type.
-                workTypes(planning = initial.planning != null || initial.type == ActivityType.HARVEST_DAY).forEach { option ->
+                // #378/#410: a recogida day is planned in Avisos and Riego/Tratamiento have their own
+                // Cuaderno actions, so a new Trabajo does not offer them; an existing record keeps
+                // its own type.
+                val offered = workTypes(planning = initial.planning != null || initial.type == ActivityType.HARVEST_DAY)
+                (offered + listOfNotNull(initial.type.takeIf { it !in offered })).forEach { option ->
                     FilterChip(
                         selected = option.name == type,
                         onClick = { type = option.name },
