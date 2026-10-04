@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **No volver a pedir la finca (#375).** Trabajo, Riego y Tratamiento abiertos desde el Cuaderno de
+  una finca ya no ofrecen «Cambiar finca», y Gasto/Jornal abiertos con una finca elegida la muestran
+  como contexto en lugar del selector «Finca», igual que Pesada. Desde los listados globales se
+  sigue eligiendo.
 - **Campañas con resumen en cada tarjeta (#246).** Sin entrar, cada campaña muestra kg pesados,
   nº de pesadas, días de recogida, coste de jornales y rendimiento medio, en pequeñas etiquetas con
   icono y texto y un color suave por tipo (producción verde oliva, días ámbar, costes tierra,
