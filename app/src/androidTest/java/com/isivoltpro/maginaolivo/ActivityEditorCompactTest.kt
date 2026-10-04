@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
@@ -196,6 +197,27 @@ class ActivityEditorCompactTest {
             val pruning = saved?.detail as com.isivoltpro.maginaolivo.domain.activity.ActivityDetail.Pruning
             assertEquals(3, pruning.workerCount)
             assertEquals(6.0, pruning.hours!!, 0.0)
+        }
+    }
+
+    /** #473: «abc» as hours is shown back with its error and nothing is saved, never a silent null. */
+    @Test fun anUnreadableNumberBlocksTheSaveAndStaysOnScreen() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.IRRIGATION),
+            options = parcels.take(1), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.VOLUME_M3}").performScrollTo().performTextInput("doce")
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.onNodeWithText("Escribe el volumen como 12,5").assertExists()
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.VOLUME_M3}").assertTextContains("doce")
+        composeRule.runOnIdle { assertEquals(null, saved) }
+        // Once corrected, it saves the number written.
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.VOLUME_M3}").performTextClearance()
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.VOLUME_M3}").performTextInput("12,5")
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle {
+            assertEquals(12.5, (saved?.detail as com.isivoltpro.maginaolivo.domain.activity.ActivityDetail.Irrigation).volumeM3!!, 0.0)
         }
     }
 
