@@ -635,7 +635,11 @@ internal fun ActivityEditor(
                 Text("Más opciones", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
                 if (!showMore) {
                     Text(
-                        if (doneWork) "Maquinaria, notas y coste" else "Hora, personas, maquinaria, avisos, notas y coste",
+                        when {
+                            doneWork -> "Maquinaria y notas"
+                            initial.costMinor != null -> "Hora, personas, maquinaria, avisos, notas y coste"
+                            else -> "Hora, personas, maquinaria, avisos y notas"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MoTextSecondary,
                     )
@@ -678,15 +682,18 @@ internal fun ActivityEditor(
                 )
             }
             MoTextField(notes, { notes = it }, "Notas")
-            // D2: a convenience for the linked Expense, never a second number on the Activity.
-            MoTextField(
-                cost,
-                { cost = it; costError = null },
-                "Coste (opcional, €)",
-                isError = costError != null,
-                supportingText = costError ?: "Se anota en Gastos, una sola vez.",
-                modifier = Modifier.testTag("activity-cost"),
-            )
+            // #416: a new work carries no money (Jornal, Gasto and Maquinaria do, once each); only a
+            // cost already linked before 1.0 stays editable, still one row in Gastos.
+            if (initial.costMinor != null) {
+                MoTextField(
+                    cost,
+                    { cost = it; costError = null },
+                    "Coste histórico vinculado (€)",
+                    isError = costError != null,
+                    supportingText = costError ?: "Se anota en Gastos, una sola vez. Vacío lo quita.",
+                    modifier = Modifier.testTag("activity-cost"),
+                )
+            }
         }
         MoPrimaryButton(
             if (doneWork && !chosenType.needsDescription()) "Guardar ${chosenType.label().lowercase()}" else "Guardar actuación",
@@ -759,7 +766,12 @@ internal fun ActivityEditor(
 }
 
 @Composable
-fun ActivityDetailRoute(activityId: UUID, persistence: LocalPersistence) {
+fun ActivityDetailRoute(
+    activityId: UUID,
+    persistence: LocalPersistence,
+    /** #416: opens Gasto tied to this work (its Farm, its single Parcel, the work itself). */
+    onAddRelatedExpense: ((Activity) -> Unit)? = null,
+) {
     val vm: ActivityDetailViewModel = viewModel(key = "activity-$activityId", factory = viewModelFactory {
         initializer { ActivityDetailViewModel(activityId, persistence.activityRepository) }
     })
@@ -772,6 +784,7 @@ fun ActivityDetailRoute(activityId: UUID, persistence: LocalPersistence) {
         vm::cancel,
         vm::reopen,
         vm::archive,
+        onAddRelatedExpense = onAddRelatedExpense,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.ACTIVITY, activityId),
@@ -792,6 +805,7 @@ fun ActivityDetailScreen(
     onCancelActivity: () -> Unit,
     onReopen: () -> Unit,
     onArchive: () -> Unit,
+    onAddRelatedExpense: ((Activity) -> Unit)? = null,
     attachmentContent: @Composable () -> Unit = {},
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
@@ -846,12 +860,21 @@ fun ActivityDetailScreen(
                     }
                     PlanningSummary(activity.planning, activity.reminders)
                     activity.costMinor?.let { cost ->
+                        // #416: a cost typed on the work before 1.0 stays visible, read as what it is.
                         MoSummaryMetric(
-                            "Coste",
+                            "Coste histórico vinculado",
                             Money.format(cost),
                             Modifier.fillMaxWidth().testTag("activity-cost-summary"),
                             icon = MoIcons.Euro,
-                            supportingText = "Anotado en Gastos",
+                            supportingText = "Anotado en Gastos una sola vez",
+                        )
+                    }
+                    // #416: money for done work is a Gasto of its own, tied to the work — never a second figure.
+                    if (onAddRelatedExpense != null && activity.status == ActivityStatus.COMPLETED && activity.farmId != null) {
+                        MoSecondaryButton(
+                            "Añadir gasto relacionado",
+                            { onAddRelatedExpense(activity) },
+                            modifier = Modifier.fillMaxWidth().testTag("activity-add-expense"),
                         )
                     }
 

@@ -456,7 +456,22 @@ fun AppNavigation(
                 val activityId = backStackEntry.arguments?.getString("activityId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 if (persistence == null || activityId == null) PersistenceUnavailableScreen()
-                else ActivityDetailRoute(activityId, persistence)
+                else ActivityDetailRoute(
+                    activityId,
+                    persistence,
+                    // #416: money for a work is its own Gasto, tied to the work; never a second figure.
+                    onAddRelatedExpense = { activity ->
+                        activity.farmId?.let { farmId ->
+                            navController.navigate(
+                                AppDestination.farmExpenses(
+                                    farmId.toString(),
+                                    parcelId = activity.targets.singleOrNull()?.parcelId?.toString(),
+                                    activityId = activity.id.toString(),
+                                ),
+                            )
+                        }
+                    },
+                )
             }
             composable(AppDestination.MapCatastro) {
                 val persistence = compositionRoot.localPersistence
@@ -643,6 +658,7 @@ fun AppNavigation(
                     navArgument("farmId") { type = NavType.StringType },
                     navArgument("parcelId") { type = NavType.StringType; nullable = true; defaultValue = null },
                     navArgument("campaignId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("activityId") { type = NavType.StringType; nullable = true; defaultValue = null },
                 ),
             ) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
@@ -651,6 +667,8 @@ fun AppNavigation(
                 val parcelId = backStackEntry.arguments?.getString("parcelId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 val campaignId = backStackEntry.arguments?.getString("campaignId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val activityId = backStackEntry.arguments?.getString("activityId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 if (persistence == null || farmId == null) {
                     PersistenceUnavailableScreen()
@@ -664,6 +682,7 @@ fun AppNavigation(
                         presetFarmId = farmId,
                         presetParcelId = parcelId,
                         presetCampaignId = campaignId,
+                        presetActivityId = activityId,
                         onDocumentImported = { id ->
                             navController.navigate(
                                 AppDestination.documentInContext(

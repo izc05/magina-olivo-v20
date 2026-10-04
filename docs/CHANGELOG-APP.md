@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El dinero de un trabajo va en Gastos (#416).** Un trabajo nuevo ya no tiene campo «Coste»,
+  para no contar dos veces lo que ya está en Jornales, compras o maquinaria. En un trabajo hecho,
+  «Añadir gasto relacionado» abre Gasto con la finca, la parcela (si es una) y el trabajo ya puestos;
+  la categoría la eliges tú. Un coste anotado antes sigue visible y editable como «Coste histórico
+  vinculado».
 - **El gasto de un trabajo sigue a ese trabajo (#433).** Un gasto ligado a una poda o tratamiento
   general ya no puede ponerse en la campaña de recogida, ni en otra campaña distinta de la del
   trabajo, ni en una parcela donde no se hizo. Si se liga a un trabajo o a una parcela sin indicar
