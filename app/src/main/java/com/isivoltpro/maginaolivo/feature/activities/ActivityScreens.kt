@@ -538,7 +538,12 @@ internal fun ActivityEditor(
         MoTextField(
             description, { description = it },
             // #414: only Observación and Otro need words; any other type already says what was done.
-            if (chosenType.needsDescription()) "Descripción" else "Detalle breve (opcional)",
+            when {
+                chosenType.needsDescription() -> "Descripción"
+                // #414: an Incidencia must say what happened: its category or a short detail.
+                chosenType == ActivityType.INCIDENT -> "Detalle breve (o indica la categoría)"
+                else -> "Detalle breve (opcional)"
+            },
             isError = descriptionError != null, supportingText = descriptionError,
             modifier = Modifier.testTag("activity-description"),
         )
@@ -677,7 +682,7 @@ internal fun ActivityEditor(
                     ActivityDraft(
                         runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
                         runCatching { LocalDate.parse(date) }.getOrNull(),
-                        description.ifBlank { chosenType.defaultDescription() },
+                        description.ifBlank { chosenType.defaultDescription(detailFields) },
                         selected.map(UUID::fromString).toSet(),
                         notes,
                         buildActivityDetail(
@@ -708,7 +713,7 @@ internal fun ActivityEditor(
                         ActivityDraft(
                             runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
                             runCatching { LocalDate.parse(date) }.getOrNull(),
-                            description.ifBlank { chosenType.defaultDescription() },
+                            description.ifBlank { chosenType.defaultDescription(detailFields) },
                             selected.map(UUID::fromString).toSet(),
                             notes,
                             buildActivityDetail(
@@ -1157,8 +1162,13 @@ internal fun ActivityStatus.tone() = when (this) {
 /** #414: Observación and Otro say nothing by themselves, so they still ask for a description. */
 internal fun ActivityType.needsDescription(): Boolean = this == ActivityType.OBSERVATION || this == ActivityType.OTHER
 
-/** #414: the title a typed work takes when the farmer adds no detail; empty when words are needed. */
-internal fun ActivityType.defaultDescription(): String = if (needsDescription()) "" else label()
+/** #414: the title a typed work takes when the farmer adds no detail; empty when words are still needed. */
+internal fun ActivityType.defaultDescription(fields: Map<String, String> = emptyMap()): String = when {
+    needsDescription() -> ""
+    // #414: an Incidencia with neither category nor detail says nothing; it is not saved anonymous.
+    this == ActivityType.INCIDENT && fields[ActivityDetailFields.CATEGORY].isNullOrBlank() -> ""
+    else -> label()
+}
 
 internal fun ActivityType.label() = when (this) {
     ActivityType.OBSERVATION -> "Observación"

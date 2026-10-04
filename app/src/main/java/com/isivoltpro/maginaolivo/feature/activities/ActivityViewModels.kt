@@ -122,7 +122,11 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
     fun consumeMessage() { mutableState.value = mutableState.value.copy(message = null) }
 
     private fun validate(draft: ActivityDraft, asDraft: Boolean, completeImmediately: Boolean = false): Boolean {
-        val descriptionError = if (draft.description.isBlank()) "Describe la actuación" else null
+        val descriptionError = when {
+            !draft.description.isBlank() -> null
+            draft.type == ActivityType.INCIDENT -> "Indica la categoría o un detalle breve"
+            else -> "Describe la actuación"
+        }
         val dateError = when {
             draft.activityDate == null -> "Selecciona una fecha"
             // #435/#414: the Cuaderno records facts; a date ahead is planned from Avisos.

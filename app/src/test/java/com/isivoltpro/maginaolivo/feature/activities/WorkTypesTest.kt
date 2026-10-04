@@ -42,4 +42,11 @@ class WorkTypesTest {
         assertEquals("Tratamiento", ActivityType.PHYTOSANITARY.defaultDescription())
         assertFalse(ActivityType.PRUNING.needsDescription())
     }
+
+    /** #414: an Incidencia needs its category or a short detail; never saved anonymous. */
+    @Test fun anIncidentNeedsACategoryOrADetail() {
+        assertEquals("", ActivityType.INCIDENT.defaultDescription())
+        assertEquals("", ActivityType.INCIDENT.defaultDescription(mapOf(ActivityDetailFields.CATEGORY to "  ")))
+        assertEquals("Incidencia", ActivityType.INCIDENT.defaultDescription(mapOf(ActivityDetailFields.CATEGORY to "Granizo")))
+    }
 }

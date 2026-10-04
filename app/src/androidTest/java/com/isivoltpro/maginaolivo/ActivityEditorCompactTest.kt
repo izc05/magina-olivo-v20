@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.feature.activities.ActivityDraft
@@ -141,6 +142,30 @@ class ActivityEditorCompactTest {
     @Test fun planningStillTakesADateAhead() {
         show(ActivityDraft(activityDate = LocalDate.now().plusDays(1), type = ActivityType.PRUNING))
         composeRule.onNodeWithTag("save-activity").performScrollTo().assertIsEnabled()
+    }
+
+    /** #414: an Incidencia without category or detail keeps no made-up title (the save is refused upstream). */
+    @Test fun anAnonymousIncidentGetsNoTitle() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.INCIDENT),
+            options = parcels.take(1), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithText("Detalle breve (o indica la categoría)").assertExists()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals("", saved?.description) }
+    }
+
+    /** #414: with its category, an Incidencia takes the type as title. */
+    @Test fun anIncidentWithACategorySaves() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.INCIDENT),
+            options = parcels.take(1), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.CATEGORY}").performScrollTo().performTextInput("Granizo")
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals("Incidencia", saved?.description) }
     }
 
     private fun typeChip(label: String) =
