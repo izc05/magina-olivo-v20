@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -88,6 +90,9 @@ class ReminderNotifier(
             .setStyle(NotificationCompat.BigTextStyle().bigText(message.text))
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            // Pre-O fallback; Android O+ takes sound/vibration from the versioned channel below.
+            .setSound(defaultSoundUri())
+            .setVibrate(VIBRATION_PATTERN)
             .setAutoCancel(true)
             .setContentIntent(content)
             .build()
@@ -100,13 +105,37 @@ class ReminderNotifier(
     }
 
     companion object {
-        const val CHANNEL_ID = "planned_work"
+        // Android freezes channel sound/vibration after first creation, so this ID is versioned.
+        const val CHANNEL_ID = "planned_work_v2"
+        private const val LEGACY_CHANNEL_ID = "planned_work"
         const val EXTRA_ACTIVITY_ID = "com.isivoltpro.maginaolivo.extra.ACTIVITY_ID"
+        internal val VIBRATION_PATTERN = longArrayOf(0L, 180L, 120L, 220L)
+
+        private fun defaultSoundUri() = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
         fun ensureChannel(context: Context) {
-            val channel = NotificationChannel(CHANNEL_ID, "Trabajos planificados", NotificationManager.IMPORTANCE_DEFAULT)
-            channel.description = "Avisos de los trabajos que has planificado en tu olivar."
-            context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            val manager = context.getSystemService(NotificationManager::class.java)
+            val audio = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Trabajos planificados",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "Avisos de los trabajos que has planificado en tu olivar."
+                setSound(defaultSoundUri(), audio)
+                enableVibration(true)
+                vibrationPattern = VIBRATION_PATTERN
+            }
+            manager.createNotificationChannel(channel)
+
+            // The previous channel cannot be reconfigured in place. Remove it after creating v2
+            // so Settings does not show two identical «Trabajos planificados» channels.
+            if (manager.getNotificationChannel(LEGACY_CHANNEL_ID) != null) {
+                manager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
+            }
         }
     }
 }
