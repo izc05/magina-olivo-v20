@@ -438,7 +438,7 @@ fun AppNavigation(
                 else CampaignDetailRoute(
                     campaignId,
                     persistence,
-                    onHarvests = { navController.navigate(AppDestination.Harvest) },
+                    onHarvests = { navController.navigate(AppDestination.campaignHarvests(campaignId.toString())) },
                     onDeliveries = { navController.navigate(AppDestination.Deliveries) },
                     onNewPesada = { farmId -> navController.navigate(AppDestination.newPesada(farmId.toString())) },
                     // #365: the same day as Cuaderno → Jornal; find-or-create keeps it a single day.
@@ -446,6 +446,25 @@ fun AppNavigation(
                         navController.navigate(AppDestination.todayHarvest(farmId.toString())) { launchSingleTop = true }
                     },
                 )
+            }
+            composable(AppDestination.CampaignHarvestsPattern) { backStackEntry ->
+                val persistence = compositionRoot.localPersistence
+                val campaignId = backStackEntry.arguments?.getString("campaignId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || campaignId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    HarvestsRoute(
+                        persistence = persistence,
+                        clock = compositionRoot.clock,
+                        campaignId = campaignId,
+                        onHarvestSelected = { id -> navController.navigate(AppDestination.harvest(id.toString())) },
+                        // #408: from a running Campaign, Nueva pesada keeps its Farm context.
+                        onDeliveries = { farmId ->
+                            if (farmId != null) navController.navigate(AppDestination.newPesada(farmId.toString()))
+                        },
+                    )
+                }
             }
             composable(AppDestination.ActivityPattern) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
@@ -507,7 +526,7 @@ fun AppNavigation(
                         persistence = persistence,
                         clock = compositionRoot.clock,
                         onHarvestSelected = { id -> navController.navigate(AppDestination.harvest(id.toString())) },
-                        onDeliveries = { navController.navigate(AppDestination.Deliveries) },
+                        onDeliveries = { _ -> navController.navigate(AppDestination.Deliveries) },
                     )
                 }
             }
