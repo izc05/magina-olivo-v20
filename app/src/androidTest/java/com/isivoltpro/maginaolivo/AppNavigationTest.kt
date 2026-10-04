@@ -790,14 +790,15 @@ class AppNavigationTest {
         // Poda shows pruning fields, and only those.
         clickInSheetByText("Poda")
         clickInSheetByTag("activity-detail-more")
-        waitForTag("detail-workerCount")
-        composeRule.onAllNodesWithTag("detail-volumeM3").assertCountEquals(0)
+        waitForTag("detail-pruningType")
+        // #414: a new Poda no longer asks for people and hours (Jornal holds them).
+        composeRule.onAllNodesWithTag("detail-workerCount").assertCountEquals(0)
 
         // Switching to Labores de suelo swaps the whole block: no pruning field is left behind.
         // (#410: Riego and Tratamiento have their own Cuaderno actions, not a Trabajo chip.)
         clickInSheetByText("Labores de suelo")
         waitForTag("detail-workType")
-        composeRule.onAllNodesWithTag("detail-workerCount").assertCountEquals(0)
+        composeRule.onAllNodesWithTag("detail-pruningType").assertCountEquals(0)
         composeRule.onNodeWithTag("detail-workType").performScrollTo().performTextInput("Grada")
         composeRule.onNodeWithTag("detail-method").performScrollTo().performTextInput("Tractor")
 

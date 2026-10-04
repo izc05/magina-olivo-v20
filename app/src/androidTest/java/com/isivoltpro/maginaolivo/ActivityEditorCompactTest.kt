@@ -168,6 +168,37 @@ class ActivityEditorCompactTest {
         composeRule.runOnIdle { assertEquals("Incidencia", saved?.description) }
     }
 
+    /** #414: a new Riego shows duration, volume and sector; no tariff; Sistema waits in «Más detalles». */
+    @Test fun aNewIrrigationShowsOnlyTheEssentials() {
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.IRRIGATION), doneWork = true)
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.SECTOR_TEXT}").performScrollTo().assertIsDisplayed()
+        assertEquals(0, composeRule.onAllNodesWithTag("detail-${ActivityDetailFields.UNIT_PRICE}").fetchSemanticsNodes().size)
+        assertEquals(0, composeRule.onAllNodesWithTag("detail-${ActivityDetailFields.SYSTEM_TEXT}").fetchSemanticsNodes().size)
+        composeRule.onNodeWithTag("activity-detail-advanced").performScrollTo().performClick()
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.SYSTEM_TEXT}").performScrollTo().assertIsDisplayed()
+    }
+
+    /** #414: an older Poda that holds people and hours keeps them on screen and in what is saved. */
+    @Test fun anOlderPodaKeepsItsPeopleAndHours() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(
+                activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING, description = "Poda",
+                parcelIds = setOf(parcels[0].id),
+                detail = com.isivoltpro.maginaolivo.domain.activity.ActivityDetail.Pruning("Formación", 3, 6.0, null),
+            ),
+            onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("activity-detail-more").performScrollTo()
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.WORKER_COUNT}").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle {
+            val pruning = saved?.detail as com.isivoltpro.maginaolivo.domain.activity.ActivityDetail.Pruning
+            assertEquals(3, pruning.workerCount)
+            assertEquals(6.0, pruning.hours!!, 0.0)
+        }
+    }
+
     private fun typeChip(label: String) =
         composeRule.onAllNodesWithTag("activity-type-option").filterToOne(hasText(label))
 
