@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo.feature.campaigns
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
@@ -114,20 +115,34 @@ class CampaignDetailViewModel(private val campaignId: UUID, private val reposito
         mutate("Cambios guardados") { repository.updatePreparation(campaignId,
             CampaignPreparationChanges(draft.name.trim(), draft.startDate, draft.parcelIds, draft.notes.nullIfBlank())) }
     }
-    fun activate() = mutate("Campaña activada") { repository.activate(campaignId) }
+    fun activate() = mutate("Campaña activada", ::campaignActivationErrorMessage) { repository.activate(campaignId) }
     fun markHarvest() = mutate("Recolección iniciada") { repository.markHarvest(campaignId) }
     fun close(endDate: LocalDate) = mutate("Campaña cerrada") { repository.close(campaignId, endDate) }
     fun reopen() = mutate("Campaña reabierta") { repository.reopen(campaignId) }
     fun archivePreparation() = mutate("Borrador archivado") { repository.archivePreparation(campaignId) }
     fun consumeMessage() { mutableState.value = mutableState.value.copy(message = null) }
 
-    private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) = viewModelScope.launch {
+    private fun mutate(
+        message: String,
+        failureMessage: (AppError) -> String = { "La operación no se pudo completar" },
+        operation: suspend () -> AppResult<Unit>,
+    ) = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
-        mutableState.value = when (operation()) {
+        mutableState.value = when (val result = operation()) {
             is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
-            is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = "La operación no se pudo completar")
+            is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = failureMessage(result.error))
         }
     }
+}
+
+internal fun campaignActivationErrorMessage(error: AppError): String = when {
+    error is AppError.Validation && error.field == "parcelIds" ->
+        "Añade al menos una parcela antes de activar la campaña."
+    error == AppError.Conflict("active_campaign_exists") ->
+        "Ya hay una campaña activa en esta finca. Cierra la campaña actual antes de activar otra."
+    error == AppError.Conflict("illegal_campaign_transition") ->
+        "Esta campaña ya no se puede activar desde su estado actual."
+    else -> "La operación no se pudo completar"
 }
 
 private fun String.nullIfBlank(): String? = trim().takeIf(String::isNotEmpty)
