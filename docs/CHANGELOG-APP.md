@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Campañas con resumen en cada tarjeta (#246).** Sin entrar, cada campaña muestra kg pesados,
+  nº de pesadas, días de recogida, coste de jornales y rendimiento medio, en pequeñas etiquetas con
+  icono y texto y un color suave por tipo (producción verde oliva, días ámbar, costes tierra,
+  rendimiento verde salvia). Sin datos dice «Sin pesadas», nunca un cero inventado.
 - **Los formularios se cierran en cada guardado (#380).** Máquinas, Pesadas, Gastos, Organizaciones,
   Jornadas, Trabajos, Campañas, Parcelas y Fincas cerraban el formulario solo la primera vez: al
   guardar otra vez con el mismo mensaje se quedaba abierto. Ahora cada guardado correcto cuenta y

@@ -85,12 +85,31 @@ fun FarmCampaignsRoute(farmId: UUID, persistence: LocalPersistence, onCampaignSe
         initializer { FarmCampaignsViewModel(farmId, persistence.campaignRepository) }
     })
     val state by vm.state.collectAsStateWithLifecycle()
-    FarmCampaignsSection(state, onCampaignSelected, vm::create)
+    // #246: each card's figures, from the same Pesadas, days and posted ledger as the campaign.
+    val deliveries by remember { persistence.deliveryRepository.observeAll() }.collectAsStateWithLifecycle(null)
+    val harvests by remember { persistence.harvestRepository.observeAll() }.collectAsStateWithLifecycle(null)
+    val expenses by remember { persistence.expenseRepository.observeAll() }.collectAsStateWithLifecycle(null)
+    val summaries = remember(state.current, state.history, deliveries, harvests, expenses) {
+        val loadedDeliveries = deliveries
+        val loadedHarvests = harvests
+        val loadedExpenses = expenses
+        if (loadedDeliveries == null || loadedHarvests == null || loadedExpenses == null) emptyMap()
+        else (state.current + state.history).associate { campaign ->
+            campaign.id to CampaignCardSummary.of(campaign.id, loadedDeliveries, loadedHarvests, loadedExpenses)
+        }
+    }
+    FarmCampaignsSection(state, onCampaignSelected, vm::create, summaries)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FarmCampaignsSection(state: FarmCampaignsUiState, onCampaignSelected: (UUID) -> Unit, onCreate: (CampaignDraft) -> Unit) {
+fun FarmCampaignsSection(
+    state: FarmCampaignsUiState,
+    onCampaignSelected: (UUID) -> Unit,
+    onCreate: (CampaignDraft) -> Unit,
+    /** #246: figures per campaign; a campaign missing here (still loading) shows its header only. */
+    summaries: Map<UUID, CampaignCardSummary> = emptyMap(),
+) {
     var editor by rememberSaveable { mutableStateOf(false) }
     OnEachSave(state.saveCount) { editor = false }
     MoSectionHeader("Campañas", action = { TextButton(onClick = { editor = true }, modifier = Modifier.testTag("add-campaign")) { Text("Añadir") } })
@@ -99,10 +118,10 @@ fun FarmCampaignsSection(state: FarmCampaignsUiState, onCampaignSelected: (UUID)
         state.error != null -> MoErrorState("No pudimos abrir las campañas", state.error)
         state.current.isEmpty() && state.history.isEmpty() -> MoEmptyState("Aún no hay campañas", "Crea una campaña y selecciona las parcelas que participan.", icon = MoIcons.Campaign)
         else -> {
-            state.current.forEach { CampaignRow(it, onCampaignSelected) }
+            state.current.forEach { CampaignRow(it, summaries[it.id], onCampaignSelected) }
             if (state.history.isNotEmpty()) {
                 MoSectionHeader("Histórico")
-                state.history.forEach { CampaignRow(it, onCampaignSelected) }
+                state.history.forEach { CampaignRow(it, summaries[it.id], onCampaignSelected) }
             }
         }
     }
@@ -112,15 +131,21 @@ fun FarmCampaignsSection(state: FarmCampaignsUiState, onCampaignSelected: (UUID)
 }
 
 @Composable
-private fun CampaignRow(campaign: Campaign, onSelected: (UUID) -> Unit) {
+private fun CampaignRow(campaign: Campaign, summary: CampaignCardSummary?, onSelected: (UUID) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { onSelected(campaign.id) }.testTag("campaign-row"),
         colors = CardDefaults.cardColors(containerColor = MoWarmWhite),
         border = androidx.compose.foundation.BorderStroke(1.dp, MoOutline),
-    ) { Row(Modifier.fillMaxWidth().padding(horizontal = MoSpacing.sm, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) { Text(campaign.name, style = MaterialTheme.typography.titleSmall); Text("Inicio ${campaign.startDate.format(SHORT_DATE)}", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary) }
-        MoStatusChip(campaign.status.label(), tone = campaign.status.tone())
-    } }
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = MoSpacing.sm, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text(campaign.name, style = MaterialTheme.typography.titleSmall); Text("Inicio ${campaign.startDate.format(SHORT_DATE)}", style = MaterialTheme.typography.bodySmall, color = MoTextSecondary) }
+                MoStatusChip(campaign.status.label(), tone = campaign.status.tone())
+            }
+            // #246: a quick summary outside, the full detail inside.
+            summary?.let { CampaignFacts(campaignFacts(it)) }
+        }
+    }
 }
 
 @Composable
