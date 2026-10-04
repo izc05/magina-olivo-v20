@@ -68,6 +68,29 @@ class CampaignScreensTest {
         compose.runOnIdle { assertEquals(1, opened) }
     }
 
+    /** #246: each campaign card shows its figures with icon and words, closed or running. */
+    @Test fun campaignCardsSummariseWithoutOpening() {
+        val running = campaign().copy(id = UUID.randomUUID(), name = "2026/27", status = CampaignStatus.ACTIVE, endDate = null)
+        val closed = campaign()
+        val summaries = mapOf(
+            running.id to com.isivoltpro.maginaolivo.feature.campaigns.CampaignCardSummary(5_700_000, 3, 3, listOf("EUR" to 65_000L), 2_082),
+            closed.id to com.isivoltpro.maginaolivo.feature.campaigns.CampaignCardSummary(0, 0, 0, emptyList(), null),
+        )
+        compose.setContent { MaginaOlivoTheme {
+            androidx.compose.foundation.layout.Column {
+                com.isivoltpro.maginaolivo.feature.campaigns.FarmCampaignsSection(
+                    com.isivoltpro.maginaolivo.feature.campaigns.FarmCampaignsUiState(isLoading = false, current = listOf(running), history = listOf(closed)),
+                    {}, {}, summaries,
+                )
+            }
+        } }
+        compose.onNodeWithText("3 pesadas", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("3 días", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("Rend. 20,82 %", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("Jornales " + com.isivoltpro.maginaolivo.domain.expense.Money.format(65_000, "EUR"), useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("Sin pesadas", useUnmergedTree = true).assertIsDisplayed()
+    }
+
     private fun campaign() = Campaign(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "2025/26",
         LocalDate.parse("2025-10-01"), LocalDate.parse("2026-02-01"), CampaignStatus.CLOSED, null,
         listOf(CampaignParcelSnapshot(UUID.randomUUID(), "Finca histórica", "Parcela histórica", 1000.0, null, null)), 3)
