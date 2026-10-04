@@ -923,7 +923,8 @@ class AppNavigationTest {
 
         composeRule.onNodeWithTag("bottom-Cuaderno").performClick()
         chooseNotebookFarm("Finca Sin Campaña E2E")
-        waitForTag("notebook-no-campaign")
+        // #417: without a Campaign the Cuaderno still opens on the Farm's own views.
+        waitForTag("notebook-views")
         clickByTag("notebook-quick-labour")
         waitForTag("expenses-root")
         waitForNodeOrDump("Jornal fuera de campaña") { composeRule.onAllNodesWithText("Jornal fuera de campaña") }

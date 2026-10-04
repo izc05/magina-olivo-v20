@@ -72,6 +72,36 @@ class CampaignNotebookTest {
         assertEquals(1, notebook.recollectionDays.size)
     }
 
+    /** #417: the Farm's Cuaderno holds all its records, with or without a Campaign; none from another Farm. */
+    @Test fun theFarmNotebookListsTheFarmsRecordsWhateverTheCampaign() {
+        val general = expense(1000, ExpenseCategory.OTHER, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2)).copy(campaignId = null)
+        val linked = expense(2000, ExpenseCategory.HARVEST, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2))
+        val elsewhere = expense(500, ExpenseCategory.OTHER, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2)).copy(farmId = otherFarm, campaignId = null)
+        val notebook = FarmNotebook.of(
+            farm,
+            activities = listOf(
+                activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 2), campaign.id),
+                activity(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 9, 20), null),
+                activity(ActivityType.IRRIGATION, LocalDate.of(2026, 8, 1), null),
+                activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 3), null, farmId = otherFarm),
+            ),
+            harvests = emptyList(), deliveries = emptyList(), expenses = listOf(general, linked, elsewhere),
+        )
+        assertEquals(3, notebook.activities.size)
+        assertEquals(listOf(ActivityType.PHYTOSANITARY), notebook.phytoRecords.map { it.activity.type })
+        assertEquals(listOf(general), notebook.generalExpenses)
+        assertEquals(listOf(linked), notebook.recollectionExpenses)
+        // Diario: newest day first, the work and both own expenses, nothing from the other Farm.
+        assertEquals(listOf(LocalDate.of(2026, 10, 2), LocalDate.of(2026, 9, 20), LocalDate.of(2026, 8, 1)), notebook.diary.map { it.date })
+        assertEquals(3, notebook.diary.first().entries.size)
+    }
+
+    @Test fun aFarmWithoutCampaignsStillHasItsNotebook() {
+        val notebook = FarmNotebook.of(farm, listOf(activity(ActivityType.FERTILIZATION, LocalDate.of(2026, 3, 1), null)), emptyList(), emptyList(), emptyList())
+        assertEquals(1, notebook.diary.size)
+        assertTrue(notebook.recollectionExpenses.isEmpty())
+    }
+
     @Test fun totalsAreTheSameSummariesTheirOwnScreensShow() {
         val harvests = listOf(harvest(2_850_000, LocalDate.of(2026, 11, 20)), harvest(1_920_000, LocalDate.of(2026, 11, 21)))
         val deliveries = listOf(
