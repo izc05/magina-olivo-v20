@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsDisplayed
@@ -121,6 +123,24 @@ class ActivityEditorCompactTest {
         show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING))
         composeRule.onNodeWithTag("activity-more").performScrollTo().performClick()
         composeRule.onNodeWithTag("planning-people").performScrollTo().assertIsDisplayed()
+    }
+
+    /** #435/#414: a quick entry dated tomorrow is not saved as a quiet plan; Avisos plans it. */
+    @Test fun aQuickEntryDatedAheadCannotBeSaved() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.now().plusDays(1), type = ActivityType.PHYTOSANITARY),
+            options = parcels.take(1), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithText("La fecha es futura. Para trabajos pendientes usa Avisos → Planificar.").assertExists()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().assertIsNotEnabled().performClick()
+        composeRule.runOnIdle { assertEquals(null, saved) }
+    }
+
+    /** #435: planning (Avisos, the Farm's sheet) still takes a date ahead. */
+    @Test fun planningStillTakesADateAhead() {
+        show(ActivityDraft(activityDate = LocalDate.now().plusDays(1), type = ActivityType.PRUNING))
+        composeRule.onNodeWithTag("save-activity").performScrollTo().assertIsEnabled()
     }
 
     private fun typeChip(label: String) =

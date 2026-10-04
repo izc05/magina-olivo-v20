@@ -542,9 +542,12 @@ internal fun ActivityEditor(
             isError = descriptionError != null, supportingText = descriptionError,
             modifier = Modifier.testTag("activity-description"),
         )
+        // #435/#414: work already done cannot be dated ahead; it is never saved as a quiet plan.
+        val futureDoneWork = doneWork && runCatching { LocalDate.parse(date) }.getOrNull()?.isAfter(LocalDate.now()) == true
         MoDateInputField(
             date, { date = it }, "Fecha",
-            isError = dateError != null, supportingText = dateError,
+            isError = dateError != null || futureDoneWork,
+            supportingText = if (futureDoneWork) FUTURE_DONE_WORK else dateError,
             modifier = Modifier.testTag("activity-date"),
         )
         val activityType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
@@ -688,7 +691,7 @@ internal fun ActivityEditor(
                     ),
                 )
             },
-            modifier = Modifier.fillMaxWidth().testTag("save-activity"), enabled = !isSaving,
+            modifier = Modifier.fillMaxWidth().testTag("save-activity"), enabled = !isSaving && !futureDoneWork,
         )
         onSaveDraft?.let { saveDraft ->
             MoSecondaryButton(

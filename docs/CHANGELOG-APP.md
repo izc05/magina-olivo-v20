@@ -24,7 +24,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   (horas, m³, producto, dosis…) salen abiertos; la descripción es un «Detalle breve (opcional)»
   salvo en Observación y Otro; una finca con una sola parcela la trae marcada; el botón dice
   «Guardar riego», «Guardar tratamiento»… Lo realizado ya no muestra hora, personas ni avisos
-  previstos (eso está en Avisos → Planificar trabajo) ni «Guardar borrador».
+  previstos (eso está en Avisos → Planificar trabajo) ni «Guardar borrador». Con fecha futura no
+  se guarda: «La fecha es futura. Para trabajos pendientes usa Avisos → Planificar.» (antes se
+  convertía en silencio en un trabajo previsto).
 - **El Cuaderno funciona sin campaña (#417).** Diario, Fitosanitario y Gastos son ahora los de la
   finca: muestran poda, riegos, tratamientos y gastos de todo el año aunque no exista ninguna
   campaña. Solo la pestaña Campaña (pesadas, días y jornales de recogida) pide crear una. En Gastos,
