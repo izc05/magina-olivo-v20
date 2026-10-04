@@ -241,6 +241,14 @@ fun detailFieldErrors(type: ActivityType, fields: Map<String, String>): Map<Stri
         }
         if (message != null) errors[key] = message
     }
+    // #473: a price, a quantity or a date means nothing without how the tariff applies; ask for
+    // that choice instead of dropping what was written.
+    if (type == ActivityType.IRRIGATION && fields.text(ActivityDetailFields.PRICE_BASIS) == null &&
+        listOf(ActivityDetailFields.UNIT_PRICE, ActivityDetailFields.PRICED_QUANTITY, ActivityDetailFields.PRICE_DATE)
+            .any { fields.text(it) != null }
+    ) {
+        errors[ActivityDetailFields.PRICE_BASIS] = "Elige cómo se aplica esta tarifa."
+    }
     return errors
 }
 

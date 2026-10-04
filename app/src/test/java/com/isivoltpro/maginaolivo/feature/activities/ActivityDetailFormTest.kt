@@ -158,6 +158,26 @@ class ActivityDetailFormTest {
     }
 
     @Test
+    fun `a tariff value without its basis asks for the basis instead of vanishing`() {
+        listOf(
+            ActivityDetailFields.UNIT_PRICE to "0,12",
+            ActivityDetailFields.PRICED_QUANTITY to "240",
+            ActivityDetailFields.PRICE_DATE to "2026-03-01",
+        ).forEach { written ->
+            val errors = detailFieldErrors(ActivityType.IRRIGATION, mapOf(written, ActivityDetailFields.VOLUME_M3 to "12"))
+            assertEquals(mapOf(ActivityDetailFields.PRICE_BASIS to "Elige cómo se aplica esta tarifa."), errors)
+        }
+        // With its basis the snapshot is kept; with every tariff field empty there is nothing to ask.
+        assertTrue(
+            detailFieldErrors(
+                ActivityType.IRRIGATION,
+                mapOf(ActivityDetailFields.PRICE_BASIS to IrrigationPricingBasis.PER_M3.name, ActivityDetailFields.UNIT_PRICE to "0,12"),
+            ).isEmpty(),
+        )
+        assertTrue(detailFieldErrors(ActivityType.IRRIGATION, mapOf(ActivityDetailFields.UNIT_PRICE to " ")).isEmpty())
+    }
+
+    @Test
     fun `a tariff without its own date takes the date of the work, never today`() {
         val detail = buildActivityDetail(
             ActivityType.IRRIGATION,

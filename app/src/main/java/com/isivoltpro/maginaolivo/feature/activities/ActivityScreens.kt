@@ -975,7 +975,8 @@ private fun ActivityTypedDetailFields(
     // #414: what the record held when the editor opened. A retired field stays editable only there.
     val stored = remember { fields.filterValues { it.isNotBlank() }.keys.toSet() }
     val layout = detailLayout(type)
-    val retired = layout.retired.filter { it in stored }
+    // A retired field is shown while it holds a stored value, or while it carries an error to fix.
+    val retired = layout.retired.filter { it in stored || it in errors }
     var advancedOpen by rememberSaveable(type) { mutableStateOf(layout.advanced.any { it in stored }) }
     MoSectionHeader(type.detailSectionTitle())
     Column(
@@ -1060,7 +1061,11 @@ private fun DetailInput(fields: SnapshotStateMap<String, String>, key: String, e
         }
         ActivityDetailFields.PRICE_BASIS -> {
             Text("Tarifa (histórica)", style = MaterialTheme.typography.titleSmall)
-            DetailChoice(fields, key, IrrigationPricingBasis.entries.map { it.name to it.label() })
+            DetailChoice(fields, key, IrrigationPricingBasis.entries.map { it.name to it.label() }, errors)
+            errors[key]?.let { message ->
+                Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag("detail-$key-error"))
+            }
         }
         else -> DetailField(fields, key, detailInputLabel(key), errors)
     }
@@ -1102,16 +1107,18 @@ private fun DetailChoice(
     fields: SnapshotStateMap<String, String>,
     key: String,
     options: List<Pair<String, String>>,
+    errors: SnapshotStateMap<String, String>? = null,
 ) {
     options.forEach { (value, label) ->
         val checked = fields[key] == value
+        val choose = { fields[key] = value; errors?.remove(key); Unit }
         Row(
             Modifier.fillMaxWidth().testTag("detail-$key-option")
-                .clickable(role = Role.Checkbox) { fields[key] = value }
+                .clickable(role = Role.Checkbox) { choose() }
                 .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Checkbox(checked, { fields[key] = value })
+            Checkbox(checked, { choose() })
             Text(label)
         }
     }
