@@ -893,6 +893,15 @@ class AppNavigationTest {
         clickByTag("campaign-row")
         waitForTag("campaign-detail-root")
         waitForText("1 día")
+
+        // #365 follow-up: Campaña → Jornales adds a jornal right there, on that same day of today.
+        composeRule.onNodeWithTag("campaign-open-labour").performScrollTo().performClick()
+        clickInSheetByTag("labour-add")
+        waitForTagOrDumpScreen("day-resource-labour")
+        closeJornalFocus()
+        pressBack()
+        waitForTag("campaign-detail-root")
+        waitForText("1 día")
     }
 
     /** #378: without a running campaign, Cuaderno → Jornal opens the Farm's labour, labelled as such. */

@@ -27,6 +27,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   total** y el **Coste total/kg** (solo con una moneda; sin kilos, «—»). Debajo del resumen,
   «Buscar finca…» filtra por nombre o municipio (sin tildes) y «+ Añadir finca» queda junto al
   listado.
+- **Añadir jornal desde la campaña (#365).** En Campaña → Jornales, una campaña activa muestra
+  «+ Añadir jornal», también cuando ya hay jornales: abre el día de recolección de hoy de esa finca
+  con Jornales a mano (el mismo de Cuaderno → Jornal, sin duplicarlo) y al volver la campaña ya
+  muestra el jornal. Una campaña cerrada solo se consulta: «Campaña cerrada. Reábrela para añadir
+  nuevos jornales.»
 - **Los formularios se cierran en cada guardado (#380).** Máquinas, Pesadas, Gastos, Organizaciones,
   Jornadas, Trabajos, Campañas, Parcelas y Fincas cerraban el formulario solo la primera vez: al
   guardar otra vez con el mismo mensaje se quedaba abierto. Ahora cada guardado correcto cuenta y
