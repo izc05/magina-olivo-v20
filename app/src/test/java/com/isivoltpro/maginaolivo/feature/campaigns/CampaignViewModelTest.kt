@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.feature.campaigns
 
+import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
@@ -60,6 +61,25 @@ class CampaignViewModelTest {
         fake.fail = true
         viewModel.markHarvest(); advanceUntilIdle()
         assertEquals("La operación no se pudo completar", viewModel.state.value.error)
+    }
+
+    @Test fun activationFailuresExplainWhatTheFarmerCanDo() {
+        assertEquals(
+            "Añade al menos una parcela antes de activar la campaña.",
+            campaignActivationErrorMessage(AppError.Validation("parcelIds", "empty")),
+        )
+        assertEquals(
+            "Ya hay una campaña activa en esta finca. Cierra la campaña actual antes de activar otra.",
+            campaignActivationErrorMessage(AppError.Conflict("active_campaign_exists")),
+        )
+        assertEquals(
+            "Esta campaña ya no se puede activar desde su estado actual.",
+            campaignActivationErrorMessage(AppError.Conflict("illegal_campaign_transition")),
+        )
+        assertEquals(
+            "La operación no se pudo completar",
+            campaignActivationErrorMessage(AppError.Storage("activate_campaign")),
+        )
     }
 
     /** #380: two edits bring the same message; only the count tells the editor to close again. */

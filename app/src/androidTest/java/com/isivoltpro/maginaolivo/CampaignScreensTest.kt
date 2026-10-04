@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
+import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelOption
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelSnapshot
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailScreen
 import com.isivoltpro.maginaolivo.feature.campaigns.CampaignDetailUiState
@@ -47,6 +48,48 @@ class CampaignScreensTest {
         compose.onAllNodesWithText("Sin datos").assertCountEquals(0)
         compose.onNodeWithTag("reopen-campaign").performScrollTo().performClick()
         compose.onNodeWithText("Confirmar cambio").assertIsDisplayed()
+    }
+
+    @Test fun preparationWithoutParcelsGuidesToTheSelectorInsteadOfActivation() {
+        val parcelId = UUID.randomUUID()
+        val draft = Campaign(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "2026/27",
+            LocalDate.parse("2026-10-01"), null, CampaignStatus.PREPARATION, null, emptyList(), 1,
+        )
+        compose.setContent { MaginaOlivoTheme {
+            CampaignDetailScreen(
+                CampaignDetailUiState(
+                    isLoading = false,
+                    campaign = draft,
+                    parcels = listOf(CampaignParcelOption(parcelId, "Parcela nueva", 2_000.0)),
+                ),
+                {}, {}, {}, {}, {}, {},
+            )
+        } }
+
+        compose.onNodeWithText("Para activar la campaña, selecciona al menos una parcela.")
+            .performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Activar campaña").assertCountEquals(0)
+        compose.onNodeWithTag("campaign-select-parcels").performScrollTo().performClick()
+        compose.onNodeWithTag("campaign-parcel-option").assertIsDisplayed()
+    }
+
+    @Test fun preparationWithoutAnyFarmParcelExplainsTheRealPrerequisite() {
+        val draft = Campaign(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "2026/27",
+            LocalDate.parse("2026-10-01"), null, CampaignStatus.PREPARATION, null, emptyList(), 1,
+        )
+        compose.setContent { MaginaOlivoTheme {
+            CampaignDetailScreen(
+                CampaignDetailUiState(isLoading = false, campaign = draft, parcels = emptyList()),
+                {}, {}, {}, {}, {}, {},
+            )
+        } }
+
+        compose.onNodeWithText("Esta finca todavía no tiene parcelas. Añade una parcela antes de activar la campaña.")
+            .performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Activar campaña").assertCountEquals(0)
+        compose.onAllNodesWithText("Seleccionar parcelas").assertCountEquals(0)
     }
 
     /** #365: Jornales sits under Pesadas with its summary and opens the campaign's Jornales detail. */

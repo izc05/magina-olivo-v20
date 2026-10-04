@@ -400,7 +400,33 @@ fun CampaignDetailScreen(
                     Spacer(Modifier.height(MoSpacing.xs))
                     when (campaign.status) {
                         CampaignStatus.PREPARATION -> {
-                            MoPrimaryButton("Activar campaña", { confirmation = "activate" }, modifier = Modifier.fillMaxWidth().testTag("activate-campaign"), enabled = !state.isSaving)
+                            if (campaign.snapshots.isEmpty()) {
+                                Text(
+                                    if (state.parcels.isEmpty()) {
+                                        "Esta finca todavía no tiene parcelas. Añade una parcela antes de activar la campaña."
+                                    } else {
+                                        "Para activar la campaña, selecciona al menos una parcela."
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MoTextSecondary,
+                                    modifier = Modifier.testTag("campaign-parcels-required"),
+                                )
+                                if (state.parcels.isNotEmpty()) {
+                                    MoPrimaryButton(
+                                        "Seleccionar parcelas",
+                                        { editor = true },
+                                        modifier = Modifier.fillMaxWidth().testTag("campaign-select-parcels"),
+                                        enabled = !state.isSaving,
+                                    )
+                                }
+                            } else {
+                                MoPrimaryButton(
+                                    "Activar campaña",
+                                    { confirmation = "activate" },
+                                    modifier = Modifier.fillMaxWidth().testTag("activate-campaign"),
+                                    enabled = !state.isSaving,
+                                )
+                            }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                                 MoSecondaryButton("Editar", { editor = true }, modifier = Modifier.weight(1f).testTag("edit-campaign"), enabled = !state.isSaving)
                                 MoDestructiveButton("Archivar borrador", { confirmation = "archive" }, modifier = Modifier.weight(1f))
