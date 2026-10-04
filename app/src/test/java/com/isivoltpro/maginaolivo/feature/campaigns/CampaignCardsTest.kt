@@ -45,6 +45,14 @@ class CampaignCardsTest {
         )
     }
 
+    /** Codex #404: a yield measured on part of the kilos says so. */
+    @Test fun aPartialYieldShowsItsCoverage() {
+        val deliveries = listOf(delivery(campaign, 1_000_000, 2_000), delivery(campaign, 3_000_000, null))
+        val summary = CampaignCardSummary.of(campaign, deliveries, emptyList(), emptyList())
+        assertEquals(25, summary.yieldCoveragePercent)
+        assertEquals(true, campaignFacts(summary).last().text.endsWith("· 25 % analizado"))
+    }
+
     @Test fun nothingRecordedSaysSoWithoutZeros() {
         val facts = campaignFacts(CampaignCardSummary(0, 0, 0, emptyList(), null))
         assertEquals(listOf("Sin pesadas"), facts.map { it.text })

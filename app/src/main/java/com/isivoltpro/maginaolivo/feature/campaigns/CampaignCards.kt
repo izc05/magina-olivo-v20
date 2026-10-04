@@ -51,6 +51,8 @@ data class CampaignCardSummary(
     /** Posted labour per currency; an amount too large to add is null. Empty without jornales. */
     val labour: List<Pair<String, Long?>>,
     val yieldHundredths: Int?,
+    /** Codex #404: share of the weighed kilos the yield is measured on; below 100 it is partial. */
+    val yieldCoveragePercent: Int = 100,
 ) {
     companion object {
         fun of(campaignId: UUID, deliveries: List<Delivery>, harvests: List<Harvest>, expenses: List<Expense>): CampaignCardSummary {
@@ -64,6 +66,7 @@ data class CampaignCardSummary(
                     .filter { it.hasPosted(RecollectionBucket.LABOUR) }
                     .map { it.currency to it.amount(RecollectionBucket.LABOUR) },
                 yieldHundredths = summary.fatYield?.hundredths,
+                yieldCoveragePercent = summary.coveragePercent(summary.fatYield),
             )
         }
     }
@@ -88,7 +91,10 @@ internal fun campaignFacts(summary: CampaignCardSummary): List<CampaignFact> = b
             minor?.let { Money.format(it, currency) } ?: "importe no disponible ($currency)"
         }))
     }
-    summary.yieldHundredths?.let { add(CampaignFact(CampaignFactKind.YIELD, "Rend. ${Percent.format(it)}")) }
+    summary.yieldHundredths?.let { hundredths ->
+        val partial = summary.yieldCoveragePercent < 100
+        add(CampaignFact(CampaignFactKind.YIELD, "Rend. ${Percent.format(hundredths)}" + if (partial) " · ${summary.yieldCoveragePercent} % analizado" else ""))
+    }
 }
 
 private fun CampaignFactKind.icon(): ImageVector = when (this) {
