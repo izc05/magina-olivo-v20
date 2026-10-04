@@ -186,6 +186,13 @@ class OfflineFirstActivityRepository(
         notNegative("costMinor", command.costMinor?.toDouble())?.let { return it }
         MachineRules.validateUses(command.machines)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         ReminderRules.validate(command.planning, command.reminders)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
+        // #435/#414: work recorded as done cannot be dated ahead; it is never quietly turned into a
+        // plan. Pending work is planned from Avisos.
+        if (command.completeImmediately && !command.asDraft && command.type != ActivityType.HARVEST_DAY &&
+            command.activityDate.isAfter(clock.today(zone()))
+        ) {
+            return AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
+        }
         return withContext(dispatchers.io) {
             safely("create_activity") {
                 val farm = database.farmDao().findById(command.farmId)
@@ -205,12 +212,11 @@ class OfflineFirstActivityRepository(
                         type = command.type.name,
                         status = when {
                             command.asDraft -> ActivityStatus.DRAFT
-                            // "Registrar hoy" records work already done. A date still ahead, a
-                            // reminder asked for, or a harvest-day appointment (read by the agenda
-                            // only while planned) stays planned, whatever route saved it.
+                            // "Registrar hoy" records work already done (a date ahead was refused
+                            // above). A reminder asked for, or a harvest-day appointment (read by
+                            // the agenda only while planned) stays planned, whatever route saved it.
                             command.completeImmediately &&
                                 command.type != ActivityType.HARVEST_DAY &&
-                                !command.activityDate.isAfter(clock.today(zone())) &&
                                 command.reminders.isEmpty() -> ActivityStatus.COMPLETED
                             else -> ActivityStatus.PLANNED
                         },

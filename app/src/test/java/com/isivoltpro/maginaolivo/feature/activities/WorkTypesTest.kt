@@ -32,4 +32,21 @@ class WorkTypesTest {
         assertTrue(ActivityType.IRRIGATION in workTypes(planning = true))
         assertTrue(ActivityType.PHYTOSANITARY in workTypes(planning = true))
     }
+
+    /** #414: only Observación and Otro need words; any other type is its own title. */
+    @Test fun aTypedWorkNeedsNoDescription() {
+        assertTrue(ActivityType.OBSERVATION.needsDescription())
+        assertTrue(ActivityType.OTHER.needsDescription())
+        assertEquals("", ActivityType.OBSERVATION.defaultDescription())
+        assertEquals("Riego", ActivityType.IRRIGATION.defaultDescription())
+        assertEquals("Tratamiento", ActivityType.PHYTOSANITARY.defaultDescription())
+        assertFalse(ActivityType.PRUNING.needsDescription())
+    }
+
+    /** #414: an Incidencia needs its category or a short detail; never saved anonymous. */
+    @Test fun anIncidentNeedsACategoryOrADetail() {
+        assertEquals("", ActivityType.INCIDENT.defaultDescription())
+        assertEquals("", ActivityType.INCIDENT.defaultDescription(mapOf(ActivityDetailFields.CATEGORY to "  ")))
+        assertEquals("Incidencia", ActivityType.INCIDENT.defaultDescription(mapOf(ActivityDetailFields.CATEGORY to "Granizo")))
+    }
 }

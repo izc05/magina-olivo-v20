@@ -1,6 +1,8 @@
 package com.isivoltpro.maginaolivo
 
 import android.content.Context
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionCollection
@@ -646,7 +648,7 @@ class AppNavigationTest {
         waitForTag("activity-date")
         pickDate("activity-date", "2026-02-02")
         waitForTag("activity-parcel-option")
-        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        ensureFirstParcelSelected()
         clickByTag("save-activity")
 
         waitForText("Poda desde Registrar")
@@ -724,12 +726,12 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("activity-description").performTextInput("Poda anotada hoy E2E")
         composeRule.onNodeWithTag("activity-type-chooser").assertDoesNotExist()
         composeRule.onNodeWithTag("activity-type-option").assertDoesNotExist()
-        composeRule.onNodeWithTag("activity-detail-more").performScrollTo().performClick()
-        composeRule.onNodeWithText("Tipo de poda").assertIsDisplayed()
+        // #414: a Cuaderno quick entry opens its typed fields at once, without another tap.
+        composeRule.onNodeWithText("Tipo de poda").performScrollTo().assertIsDisplayed()
         waitForTag("activity-date")
         pickDate("activity-date", "2026-02-02")
         waitForTag("activity-parcel-option")
-        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        ensureFirstParcelSelected()
         clickByTag("save-activity")
         waitForTag("activity-row")
         assertTextVisible("Completada")
@@ -788,19 +790,20 @@ class AppNavigationTest {
         // Poda shows pruning fields, and only those.
         clickInSheetByText("Poda")
         clickInSheetByTag("activity-detail-more")
-        waitForTag("detail-workerCount")
-        composeRule.onAllNodesWithTag("detail-volumeM3").assertCountEquals(0)
+        waitForTag("detail-pruningType")
+        // #414: a new Poda no longer asks for people and hours (Jornal holds them).
+        composeRule.onAllNodesWithTag("detail-workerCount").assertCountEquals(0)
 
         // Switching to Labores de suelo swaps the whole block: no pruning field is left behind.
         // (#410: Riego and Tratamiento have their own Cuaderno actions, not a Trabajo chip.)
         clickInSheetByText("Labores de suelo")
         waitForTag("detail-workType")
-        composeRule.onAllNodesWithTag("detail-workerCount").assertCountEquals(0)
+        composeRule.onAllNodesWithTag("detail-pruningType").assertCountEquals(0)
         composeRule.onNodeWithTag("detail-workType").performScrollTo().performTextInput("Grada")
         composeRule.onNodeWithTag("detail-method").performScrollTo().performTextInput("Tractor")
 
         waitForTag("activity-parcel-option")
-        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        ensureFirstParcelSelected()
         clickInSheetByTag("save-activity")
         waitForSaved("activity-description", "Trabajo tipado E2E")
         waitForTag("activity-row")
@@ -1217,6 +1220,14 @@ class AppNavigationTest {
      * UI polish v2: dates are chosen in the month picker sheet, never typed. Opens it from
      * [fieldTag], walks from the current month to [iso]'s month and confirms that day.
      */
+    /** #414: a Farm with a single Parcel arrives with it ticked; tick the first one only when it is not. */
+    private fun ensureFirstParcelSelected() {
+        composeRule.waitForIdle()
+        val first = composeRule.onAllNodesWithTag("activity-parcel-option")[0]
+        first.performScrollTo()
+        if (first.fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected) != true) first.performClick()
+    }
+
     private fun pickDate(fieldTag: String, iso: String) {
         val target = java.time.LocalDate.parse(iso)
         // The field usually follows a text input: close the keyboard first so the resize it

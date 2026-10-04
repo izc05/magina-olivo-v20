@@ -168,17 +168,25 @@ class ActivityEngineContractTest {
         val plannedId = (repository.create(
             NewActivity(farmId, null, ActivityType.IRRIGATION, date, "Riego pendiente", setOf(parcelA)),
         ) as AppResult.Success).value
-        // A date still ahead is planned work even when saved from "Registrar hoy".
-        val aheadId = (repository.create(
+        // #435/#414: a date still ahead is refused as done work, never quietly saved as planned.
+        val ahead = repository.create(
             NewActivity(
                 farmId, null, ActivityType.IRRIGATION, today.plusDays(3), "Riego del viernes", setOf(parcelA),
+                completeImmediately = true,
+            ),
+        )
+        assertEquals(AppResult.Failure(AppError.Validation("activityDate", "future_completed_work")), ahead)
+        // Yesterday is still a fact recorded late.
+        val yesterdayId = (repository.create(
+            NewActivity(
+                farmId, null, ActivityType.PRUNING, today.minusDays(1), "Poda de ayer", setOf(parcelA),
                 completeImmediately = true,
             ),
         ) as AppResult.Success).value
 
         assertEquals(ActivityStatus.COMPLETED, db.activityDao().findById(todayId)?.status)
+        assertEquals(ActivityStatus.COMPLETED, db.activityDao().findById(yesterdayId)?.status)
         assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(plannedId)?.status)
-        assertEquals(ActivityStatus.PLANNED, db.activityDao().findById(aheadId)?.status)
         // A harvest day is an appointment the agenda shows while planned, even if dated today.
         val harvestDayId = (repository.create(
             NewActivity(
