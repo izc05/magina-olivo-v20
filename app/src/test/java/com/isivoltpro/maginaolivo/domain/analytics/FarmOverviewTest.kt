@@ -102,6 +102,8 @@ class FarmOverviewTest {
             general(cerro, 66_500, LocalDate.of(2026, 9, 1)),            // first day of the season
             general(estacas, 99_000, LocalDate.of(2026, 8, 31)),         // previous season: out
             general(estacas, 7_000, LocalDate.of(2027, 1, 5)).copy(status = ExpenseStatus.DRAFT), // draft: out
+            // Codex #402: an unassigned expense of another workspace in the same store: out.
+            general(estacas, 50_000, LocalDate.of(2027, 1, 5)).copy(farmId = null, workspaceId = UUID.randomUUID()),
         )
         val overview = FarmOverview.of("2026/27", listOf(estacas, cerro), listOf(estacasNow, cerroNow),
             listOf(delivery(estacasNow, 5_700_000, null)), expenses)

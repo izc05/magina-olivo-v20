@@ -107,14 +107,17 @@ data class FarmOverview(
         }
 
         /**
-         * Posted expenses of these Farms (or of the whole holding, with no Farm) dated in the
+         * Posted expenses of these Farms (or of the same holding, with no Farm) dated in the
          * season and assigned to no Campaign. Drafts never count.
          */
         private fun general(season: String, farms: List<Farm>, expenses: List<Expense>): List<CurrencyTotal> {
             val range = OliveSeason.range(season)
             val farmIds = farms.map { it.id }.toSet()
+            // Codex #402: the local store may hold other workspaces; only this holding's expenses count.
+            val workspaces = farms.map { it.workspaceId }.toSet()
             return expenses.filter { expense ->
-                expense.status == com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus.POSTED &&
+                expense.workspaceId in workspaces &&
+                    expense.status == com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus.POSTED &&
                     expense.campaignId == null &&
                     (expense.farmId == null || expense.farmId in farmIds) &&
                     expense.expenseDate in range
