@@ -20,6 +20,13 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Mi Campo: periodo visible, gastos generales y buscador (#359).** El resumen muestra siempre
+  su campaña («Campaña 2026/27 ▾», con menú si hay varias), para que los kilos nunca parezcan «de
+  siempre». «Coste/kg» pasa a **Coste recogida/kg** y, aparte, «Gastos generales del periodo»
+  muestra los gastos confirmados sin campaña de esa temporada (septiembre-agosto), el **Coste
+  total** y el **Coste total/kg** (solo con una moneda; sin kilos, «—»). Debajo del resumen,
+  «Buscar finca…» filtra por nombre o municipio (sin tildes) y «+ Añadir finca» queda junto al
+  listado.
 - **Los formularios se cierran en cada guardado (#380).** Máquinas, Pesadas, Gastos, Organizaciones,
   Jornadas, Trabajos, Campañas, Parcelas y Fincas cerraban el formulario solo la primera vez: al
   guardar otra vez con el mismo mensaje se quedaba abierto. Ahora cada guardado correcto cuenta y

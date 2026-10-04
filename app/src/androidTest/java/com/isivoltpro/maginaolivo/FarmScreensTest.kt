@@ -239,6 +239,32 @@ class FarmScreensTest {
         assertEquals(0, composeRule.onAllNodesWithText("Sin pesadas").fetchSemanticsNodes().size)
     }
 
+    /** #359 follow-up: «Buscar finca…» filters the listed Farms locally, and says when none match. */
+    @Test
+    fun searchFiltersTheFarmsByNameOrMunicipality() {
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                FarmListScreen(
+                    state = FarmListUiState(isLoading = false, farms = listOf(farm(1), farm(2), farm(3))),
+                    onFarmSelected = {}, onCreate = {}, onRestore = {}, onRetry = {},
+                )
+            }
+        }
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-search"))
+        composeRule.onNodeWithTag("farm-search").performTextInput("huelma")
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("Finca 1").fetchSemanticsNodes().isEmpty() }
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasText("Finca 2"))
+        assertEquals(0, composeRule.onAllNodesWithText("Finca 3").fetchSemanticsNodes().size)
+
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-search"))
+        composeRule.onNodeWithTag("farm-search").performTextInput("zzz")
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("farm-search-empty"))
+        composeRule.onNodeWithText("No encontramos ninguna finca").assertIsDisplayed()
+        // «Añadir finca» stays available whatever the search says.
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag("add-farm"))
+        composeRule.onNodeWithTag("add-farm").assertIsDisplayed()
+    }
+
     private fun farm(index: Int) = Farm(
         id = UUID.nameUUIDFromBytes("farm-$index".toByteArray()),
         workspaceId = UUID.fromString("10000000-0000-0000-0000-000000000060"),

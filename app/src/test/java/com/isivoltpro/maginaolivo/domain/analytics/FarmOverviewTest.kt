@@ -89,6 +89,49 @@ class FarmOverviewTest {
         assertEquals(emptyList<CurrencyTotal>(), overview.costs)
     }
 
+    /** #359 follow-up: costs linked to no campaign are counted apart and only in their season. */
+    @Test fun generalCostsStayOutOfTheRecollectionCostAndAddToTheTotal() {
+        val general = { farm: Farm, minor: Long, date: LocalDate -> Expense(
+            id = UUID.randomUUID(), workspaceId = workspace, expenseDate = date, concept = "Poda",
+            category = ExpenseCategory.LABOR, amountMinor = minor, currency = "EUR", status = ExpenseStatus.POSTED,
+            origin = ExpenseOrigin.MANUAL, farmId = farm.id,
+        ) }
+        val expenses = listOf(
+            cost(estacasNow, 144_000),                                   // recollection 1.440 €
+            general(estacas, 52_000, LocalDate.of(2027, 2, 10)),         // in season
+            general(cerro, 66_500, LocalDate.of(2026, 9, 1)),            // first day of the season
+            general(estacas, 99_000, LocalDate.of(2026, 8, 31)),         // previous season: out
+            general(estacas, 7_000, LocalDate.of(2027, 1, 5)).copy(status = ExpenseStatus.DRAFT), // draft: out
+        )
+        val overview = FarmOverview.of("2026/27", listOf(estacas, cerro), listOf(estacasNow, cerroNow),
+            listOf(delivery(estacasNow, 5_700_000, null)), expenses)
+
+        assertEquals(144_000L, overview.costs.single().amountMinor)
+        assertEquals(25L, overview.costPerKgMinor) // 1.440 € / 5.700 kg, general costs never inside
+        assertEquals(118_500L, overview.generalCosts.single().amountMinor)
+        assertEquals(262_500L, overview.totalCosts.single().amountMinor)
+        assertEquals(46L, overview.totalCostPerKgMinor) // 2.625 € / 5.700 kg
+    }
+
+    @Test fun generalCostsInAnotherCurrencyGiveNoTotalCostPerKg() {
+        val usd = Expense(
+            id = UUID.randomUUID(), workspaceId = workspace, expenseDate = LocalDate.of(2027, 3, 1), concept = "Riego",
+            category = ExpenseCategory.FUEL, amountMinor = 5_000, currency = "USD", status = ExpenseStatus.POSTED,
+            origin = ExpenseOrigin.MANUAL, farmId = estacas.id,
+        )
+        val overview = FarmOverview.of("2026/27", listOf(estacas), listOf(estacasNow),
+            listOf(delivery(estacasNow, 1_000_000, null)), listOf(cost(estacasNow, 10_000), usd))
+        assertEquals(listOf("EUR", "USD"), overview.totalCosts.map { it.currency })
+        assertEquals(10L, overview.costPerKgMinor)
+        assertNull(overview.totalCostPerKgMinor)
+    }
+
+    @Test fun withoutKilosTheTotalShowsButNotPerKg() {
+        val overview = FarmOverview.of("2026/27", listOf(estacas), listOf(estacasNow), emptyList(), listOf(cost(estacasNow, 10_000)))
+        assertEquals(10_000L, overview.totalCosts.single().amountMinor)
+        assertNull(overview.totalCostPerKgMinor)
+    }
+
     private fun farm(name: String) = Farm(UUID.randomUUID(), workspace, name, null, null, null, null, null, 1, null, null, null, 1)
 
     private fun campaign(farm: Farm, name: String, start: LocalDate) = Campaign(
