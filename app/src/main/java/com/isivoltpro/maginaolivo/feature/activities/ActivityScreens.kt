@@ -504,9 +504,11 @@ internal fun ActivityEditor(
                 horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                 verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
             ) {
-                // #378: a recogida day is planned in Avisos, not written down as a Trabajo; an
-                // existing one keeps its own type.
-                workTypes(planning = initial.planning != null || initial.type == ActivityType.HARVEST_DAY).forEach { option ->
+                // #378/#410: a recogida day is planned in Avisos and Riego/Tratamiento have their own
+                // Cuaderno actions, so a new Trabajo does not offer them; an existing record keeps
+                // its own type.
+                val offered = workTypes(planning = initial.planning != null || initial.type == ActivityType.HARVEST_DAY)
+                (offered + listOfNotNull(initial.type.takeIf { it !in offered })).forEach { option ->
                     FilterChip(
                         selected = option.name == type,
                         onClick = { type = option.name },
@@ -631,9 +633,9 @@ internal fun ActivityEditor(
             MoTextField(
                 cost,
                 { cost = it; costError = null },
-                "Coste total del trabajo (opcional, €)",
+                "Coste (opcional, €)",
                 isError = costError != null,
-                supportingText = costError ?: "Se guardará una sola vez en Gastos.",
+                supportingText = costError ?: "Se anota en Gastos, una sola vez.",
                 modifier = Modifier.testTag("activity-cost"),
             )
         }

@@ -3,6 +3,7 @@ package com.isivoltpro.maginaolivo
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.filter
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -36,10 +37,13 @@ class ActivityEditorCompactTest {
         show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), description = "Cura")) { saved = it }
 
         // Picking a type replaces the previous one: never two ticked.
-        typeChip("Tratamiento").performScrollTo().performClick()
+        typeChip("Poda").performScrollTo().performClick()
         typeChip("Abonado").performScrollTo().performClick()
         typeChip("Abonado").assertIsSelected()
-        typeChip("Tratamiento").assertIsNotSelected()
+        typeChip("Poda").assertIsNotSelected()
+        // #410: Riego and Tratamiento have their own Cuaderno actions; a new Trabajo does not repeat them.
+        assertEquals(0, composeRule.onAllNodesWithTag("activity-type-option").filter(hasText("Riego")).fetchSemanticsNodes().size)
+        assertEquals(0, composeRule.onAllNodesWithTag("activity-type-option").filter(hasText("Tratamiento")).fetchSemanticsNodes().size)
         // Hour, machinery, notes and cost are out of the way until asked for.
         assertEquals(0, composeRule.onAllNodesWithTag("activity-cost").fetchSemanticsNodes().size)
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
@@ -48,6 +52,12 @@ class ActivityEditorCompactTest {
             assertEquals(ActivityType.FERTILIZATION, saved?.type)
             assertEquals(setOf(parcels[0].id), saved?.parcelIds)
         }
+    }
+
+    /** #410: editing an existing Riego keeps its own type selectable even though a new Trabajo hides it. */
+    @Test fun anExistingIrrigationKeepsItsType() {
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.IRRIGATION, description = "Riego"))
+        typeChip("Riego").performScrollTo().assertIsSelected()
     }
 
     @Test fun moreOptionsUnfoldsAndAnEditWithACostStartsOpen() {

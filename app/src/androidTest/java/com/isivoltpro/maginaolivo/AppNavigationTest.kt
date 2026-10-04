@@ -631,24 +631,25 @@ class AppNavigationTest {
         waitForTag("register-activity-root")
 
         // The farm is known from Cuaderno, then choose the specific task before its form.
+        // #410: Riego and Tratamiento have their own quick actions, so Trabajo starts with Poda.
         composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithTag("register-activity-type-irrigation").fetchSemanticsNodes().isNotEmpty() ||
+            composeRule.onAllNodesWithTag("register-activity-type-pruning").fetchSemanticsNodes().isNotEmpty() ||
                 composeRule.onAllNodesWithTag("register-farm-option").fetchSemanticsNodes().isNotEmpty()
         }
-        if (composeRule.onAllNodesWithTag("register-activity-type-irrigation").fetchSemanticsNodes().isEmpty()) {
+        if (composeRule.onAllNodesWithTag("register-activity-type-pruning").fetchSemanticsNodes().isEmpty()) {
             clickByText("Finca Registrar E2E")
         }
-        composeRule.onNodeWithTag("register-activity-type-irrigation").performClick()
+        composeRule.onNodeWithTag("register-activity-type-pruning").performClick()
         waitForTag("activity-description")
         composeRule.onNodeWithTag("activity-description").performTextClearance()
-        composeRule.onNodeWithTag("activity-description").performTextInput("Riego desde Registrar")
+        composeRule.onNodeWithTag("activity-description").performTextInput("Poda desde Registrar")
         waitForTag("activity-date")
         pickDate("activity-date", "2026-02-02")
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
         clickByTag("save-activity")
 
-        waitForText("Riego desde Registrar")
+        waitForText("Poda desde Registrar")
         // The typed description is on screen before the save lands; wait for the saved row.
         waitForTag("activity-row")
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
@@ -673,7 +674,7 @@ class AppNavigationTest {
         waitForTag("farm-detail-root")
         openFarmSection("activities")
         waitForTag("add-activity")
-        waitForText("Riego desde Registrar")
+        waitForText("Poda desde Registrar")
         // The typed description is on screen before the save lands; wait for the saved row.
         waitForTag("activity-row")
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
@@ -790,12 +791,13 @@ class AppNavigationTest {
         waitForTag("detail-workerCount")
         composeRule.onAllNodesWithTag("detail-volumeM3").assertCountEquals(0)
 
-        // Switching to Riego swaps the whole block: no pruning field is left behind.
-        clickInSheetByText("Riego")
-        waitForTag("detail-volumeM3")
+        // Switching to Labores de suelo swaps the whole block: no pruning field is left behind.
+        // (#410: Riego and Tratamiento have their own Cuaderno actions, not a Trabajo chip.)
+        clickInSheetByText("Labores de suelo")
+        waitForTag("detail-workType")
         composeRule.onAllNodesWithTag("detail-workerCount").assertCountEquals(0)
-        composeRule.onNodeWithTag("detail-volumeM3").performScrollTo().performTextInput("240")
-        composeRule.onNodeWithTag("detail-sectorText").performScrollTo().performTextInput("Sector 3")
+        composeRule.onNodeWithTag("detail-workType").performScrollTo().performTextInput("Grada")
+        composeRule.onNodeWithTag("detail-method").performScrollTo().performTextInput("Tractor")
 
         waitForTag("activity-parcel-option")
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
@@ -803,19 +805,19 @@ class AppNavigationTest {
         waitForSaved("activity-description", "Trabajo tipado E2E")
         waitForTag("activity-row")
 
-        // The saved Activity carries the irrigation block it was given, and one record.
+        // The saved Activity carries the soil-work block it was given, and one record.
         composeRule.onAllNodesWithTag("activity-row").assertCountEquals(1)
         clickByTag("activity-row")
         waitForTag("activity-detail-root")
         waitForTag("activity-detail-summary")
-        assertTextVisible("Volumen (m³): 240")
-        assertTextVisible("Sector: Sector 3")
+        assertTextVisible("Tipo de labor: Grada")
+        assertTextVisible("Método: Tractor")
 
         // It survives a restart as part of the same aggregate, not as a second record.
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
         waitForTag("activity-detail-summary")
-        assertTextVisible("Volumen (m³): 240")
+        assertTextVisible("Tipo de labor: Grada")
     }
 
     /**
