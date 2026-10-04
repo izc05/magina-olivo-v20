@@ -140,6 +140,8 @@ class ActivityDetailFormTest {
             detailFieldErrors(
                 ActivityType.IRRIGATION,
                 mapOf(
+                    // A basis is chosen, so only the unreadable values are reported here.
+                    ActivityDetailFields.PRICE_BASIS to IrrigationPricingBasis.PER_M3.name,
                     ActivityDetailFields.VOLUME_M3 to "doce",
                     ActivityDetailFields.DURATION_MINUTES to "hora y media",
                     ActivityDetailFields.UNIT_PRICE to "barato",
