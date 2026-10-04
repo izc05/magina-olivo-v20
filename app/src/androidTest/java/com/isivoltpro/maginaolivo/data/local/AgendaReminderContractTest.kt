@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.media.RingtoneManager
 import android.os.Build
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -262,6 +263,21 @@ class AgendaReminderContractTest {
         ok(activities.cancel(cancelled))
         val silent = db.agendaDao().listForOwner("ACTIVITY", cancelled).single()
         assertEquals(ReminderOutcome.NOT_DUE, notifier.fire(silent.id))
+    }
+
+    @Test
+    fun reminderChannelUsesDefaultSoundAndVibration() {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.deleteNotificationChannel(ReminderNotifier.CHANNEL_ID)
+
+        ReminderNotifier.ensureChannel(context)
+
+        val channel = manager.getNotificationChannel(ReminderNotifier.CHANNEL_ID)
+        assertNotNull(channel)
+        channel!!
+        assertEquals(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), channel.sound)
+        assertTrue(channel.shouldVibrate())
+        assertTrue(channel.vibrationPattern?.any { it > 0L } == true)
     }
 
     @Test
