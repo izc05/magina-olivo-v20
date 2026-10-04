@@ -1,14 +1,16 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { BrandLogo } from "@/components/layouts/BrandLogo";
 import { MiNavigation } from "@/components/layouts/MiNavigation";
 
 export function MiLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="mi-shell">
       <aside className="mi-sidebar">
-        <Link className="brand mi-brand" href="/mi">
-          Mágina Olivo
-        </Link>
+        <BrandLogo
+          className="mi-brand"
+          href="/mi"
+          label="Mágina Olivo, inicio"
+        />
         <span className="demo-label">DEMO</span>
         <MiNavigation />
       </aside>

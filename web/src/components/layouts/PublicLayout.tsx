@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BrandLogo } from "@/components/layouts/BrandLogo";
 import { publicNavigation } from "@/lib/navigation";
 
 export function PublicLayout({ children }: Readonly<{ children: ReactNode }>) {
@@ -9,9 +10,7 @@ export function PublicLayout({ children }: Readonly<{ children: ReactNode }>) {
         Saltar al contenido
       </a>
       <header className="public-header">
-        <Link className="brand" href="/" aria-label="Mágina Olivo, inicio">
-          Mágina Olivo
-        </Link>
+        <BrandLogo href="/" label="Mágina Olivo, inicio" />
         <nav className="public-nav" aria-label="Navegación principal">
           {publicNavigation.map(({ href, label }) => (
             <Link href={href} key={label}>
@@ -30,9 +29,7 @@ export function PublicLayout({ children }: Readonly<{ children: ReactNode }>) {
         {children}
       </div>
       <footer className="public-footer">
-        <Link className="brand" href="/">
-          Mágina Olivo
-        </Link>
+        <BrandLogo href="/" label="Mágina Olivo, inicio" />
         <nav aria-label="Información legal">
           <Link href="/privacidad">Privacidad</Link> ·{" "}
           <Link href="/terminos">Términos</Link> ·{" "}
