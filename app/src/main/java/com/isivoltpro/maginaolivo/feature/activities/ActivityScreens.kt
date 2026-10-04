@@ -156,6 +156,7 @@ fun FarmActivitiesSection(
             title = editorTitle,
             lockInitialType = lockInitialType,
             doneWork = quickEntry,
+            autoSelectSingleParcel = true,
         )
     } else {
         // UX-D: saving is confirmed where the farmer is looking, not only by the closed sheet.
@@ -200,6 +201,7 @@ fun FarmActivitiesSection(
                     initial = initialDraft,
                     title = editorTitle,
                     lockInitialType = lockInitialType,
+                    autoSelectSingleParcel = true,
                 )
             }
         }
@@ -452,6 +454,8 @@ internal fun ActivityEditor(
      * planning and reminders of Avisos → Planificar trabajo are not offered.
      */
     doneWork: Boolean = false,
+    /** #414: only creation flows tick a Farm's single Parcel; edits keep exactly what was saved. */
+    autoSelectSingleParcel: Boolean = false,
 ) {
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
@@ -460,9 +464,14 @@ internal fun ActivityEditor(
     var costError by rememberSaveable { mutableStateOf<String?>(null) }
     var type by rememberSaveable(initial.type) { mutableStateOf(initial.type.name) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
-    // #414: a Farm with a single Parcel needs no choice; it is ticked (and can still be unticked).
-    LaunchedEffect(parcels) {
-        if (selected.isEmpty() && parcels.size == 1) selected = listOf(parcels.single().id.toString())
+    // #414: a new entry on a Farm with a single Parcel needs no choice; it is ticked once (and can
+    // still be unticked). Never on an edit: a record saved without Parcels keeps none.
+    var singleParcelOffered by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(parcels, autoSelectSingleParcel) {
+        if (autoSelectSingleParcel && !singleParcelOffered && selected.isEmpty() && parcels.size == 1) {
+            selected = listOf(parcels.single().id.toString())
+            singleParcelOffered = true
+        }
     }
     // Deliberately not rememberSaveable: the sheet itself does not survive process death,
     // so saving the typed block alone would restore it into an editor that is not there.

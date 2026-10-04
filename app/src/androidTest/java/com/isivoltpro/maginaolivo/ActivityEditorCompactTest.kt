@@ -199,6 +199,26 @@ class ActivityEditorCompactTest {
         }
     }
 
+    /** #414 (owner P1): editing a record saved without Parcels never ticks the Farm's only one. */
+    @Test fun anEditWithoutParcelsStaysWithout() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING, description = "Poda general"),
+            options = parcels.take(1), onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("activity-parcel-option").performScrollTo().assertIsNotSelected()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(emptySet<java.util.UUID>(), saved?.parcelIds) }
+    }
+
+    /** #414: on a new entry the single Parcel is ticked once; unticked, it stays unticked. */
+    @Test fun anUntickedSingleParcelIsNotTickedAgain() {
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING), options = parcels.take(1), autoSelect = true)
+        composeRule.onNodeWithTag("activity-parcel-option").performScrollTo().assertIsSelected().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("activity-parcel-option").assertIsNotSelected()
+    }
+
     private fun typeChip(label: String) =
         composeRule.onAllNodesWithTag("activity-type-option").filterToOne(hasText(label))
 
@@ -206,6 +226,7 @@ class ActivityEditorCompactTest {
         initial: ActivityDraft,
         options: List<ActivityParcelOption> = parcels,
         doneWork: Boolean = false,
+        autoSelect: Boolean = doneWork,
         onSave: (ActivityDraft) -> Unit = {},
     ) {
         composeRule.setContent {
@@ -221,6 +242,7 @@ class ActivityEditorCompactTest {
                     initial = initial,
                     lockInitialType = doneWork,
                     doneWork = doneWork,
+                    autoSelectSingleParcel = autoSelect,
                 )
             }
         }
