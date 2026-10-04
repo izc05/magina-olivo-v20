@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Finca Demo (solo versión de desarrollo, #399).** Perfil → «Herramientas de desarrollo» →
+  «Cargar Finca Demo» crea una finca de prueba completa (3 parcelas, campañas 2025/26 y 2026/27,
+  pesadas, jornales, maquinaria, gastos y trabajos) con las cifras de `docs/DEMO-FARM-SCENARIO.md`.
+  No existe en las versiones de pruebas ni de producción y nunca se crea sola.
 - **No volver a pedir la finca (#375).** Trabajo, Riego y Tratamiento abiertos desde el Cuaderno de
   una finca ya no ofrecen «Cambiar finca», y Gasto/Jornal abiertos con una finca elegida la muestran
   como contexto en lugar del selector «Finca», igual que Pesada. Desde los listados globales se
