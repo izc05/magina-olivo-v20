@@ -1,7 +1,7 @@
-import { MiPlaceholderPage } from "@/features/scaffold/MiPlaceholderPage";
+import { MiDashboardPage } from "@/features/mi/MiPages";
 
 export const metadata = { title: "Panel general" };
 
 export default function MiHomePage() {
-  return <MiPlaceholderPage title="Panel general" />;
+  return <MiDashboardPage />;
 }

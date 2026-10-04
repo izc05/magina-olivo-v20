@@ -1,7 +1,7 @@
-import { MiPlaceholderPage } from "@/features/scaffold/MiPlaceholderPage";
+import { CooperativePage } from "@/features/mi/MiPages";
 
-export const metadata = { title: "Cooperativas" };
+export const metadata = { title: "Cooperativa" };
 
-export default function CooperativePage() {
-  return <MiPlaceholderPage title="Cooperativas" />;
+export default function Page() {
+  return <CooperativePage />;
 }

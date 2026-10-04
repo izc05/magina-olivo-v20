@@ -1,7 +1,7 @@
-import { MiPlaceholderPage } from "@/features/scaffold/MiPlaceholderPage";
+import { MarketPage } from "@/features/mi/MiPages";
 
-export const metadata = { title: "Mercado" };
+export const metadata = { title: "Mercado del aceite" };
 
-export default function MarketPage() {
-  return <MiPlaceholderPage title="Mercado" />;
+export default function Page() {
+  return <MarketPage />;
 }

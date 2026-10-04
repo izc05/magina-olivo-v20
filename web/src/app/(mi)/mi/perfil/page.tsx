@@ -1,7 +1,7 @@
-import { MiPlaceholderPage } from "@/features/scaffold/MiPlaceholderPage";
+import { ProfilePage } from "@/features/mi/MiPages";
 
 export const metadata = { title: "Perfil" };
 
-export default function ProfilePage() {
-  return <MiPlaceholderPage title="Perfil" />;
+export default function Page() {
+  return <ProfilePage />;
 }

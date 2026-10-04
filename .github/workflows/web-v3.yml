@@ -67,11 +67,15 @@ jobs:
             mi/index.html \
             mi/fincas/index.html \
             mi/fincas/demo/index.html \
+            mi/fincas/salinillas/index.html \
             mi/parcelas/index.html \
             mi/parcelas/demo/index.html \
+            mi/parcelas/las-lomas/index.html \
+            mi/parcelas/el-cerrillo/index.html \
             mi/mapa/index.html \
             mi/campanas/index.html \
             mi/campanas/demo/index.html \
+            mi/campanas/2025-2026/index.html \
             mi/cuaderno/index.html \
             mi/documentos/index.html \
             mi/informes/index.html \

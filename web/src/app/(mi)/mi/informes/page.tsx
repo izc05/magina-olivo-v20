@@ -1,7 +1,7 @@
-import { MiPlaceholderPage } from "@/features/scaffold/MiPlaceholderPage";
+import { ReportsPage } from "@/features/mi/MiPages";
 
 export const metadata = { title: "Informes" };
 
-export default function ReportsPage() {
-  return <MiPlaceholderPage title="Informes" />;
+export default function Page() {
+  return <ReportsPage />;
 }
