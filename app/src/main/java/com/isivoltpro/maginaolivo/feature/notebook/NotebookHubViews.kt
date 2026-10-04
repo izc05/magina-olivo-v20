@@ -248,7 +248,7 @@ internal fun FarmCostsView(notebook: FarmNotebook, campaign: com.isivoltpro.magi
     }
     val recollection = RecollectionLedger.posted(notebook.recollectionExpenses)
     val general = RecollectionLedger.posted(notebook.generalExpenses)
-    val machines = notebook.activities.filter { it.machines.isNotEmpty() }
+    val machines = notebook.machineWork
     val documents = notebook.expenses.filter { !it.invoiceNumber.isNullOrBlank() || it.origin == com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin.DOCUMENT_OCR }
     Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
         MoKpiMetric("Recogida", if (recollection.isEmpty()) "—" else recollection.moneyLabel(), Modifier.fillMaxWidth().testTag("notebook-costs-recollection"),
