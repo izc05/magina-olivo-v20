@@ -54,12 +54,13 @@ class CampaignNotebookTest {
     )
     private val otherCampaign = UUID.randomUUID()
 
-    @Test fun onlyThisCampaignsRecordsAndTheFarmsUnassignedOnesInsideItsDates() {
+    /** #417: a Campaign holds what is linked to it; general work inside its dates stays the Farm's. */
+    @Test fun onlyRecordsExplicitlyLinkedToThisCampaign() {
         val notebook = CampaignNotebook.project(
             campaign,
             activities = listOf(
                 activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 2), campaign.id),
-                activity(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 9, 20), null), // unassigned, inside dates
+                activity(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 9, 20), null), // general work inside its dates: not absorbed
                 activity(ActivityType.IRRIGATION, LocalDate.of(2026, 8, 1), null), // before the campaign
                 activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 3), otherCampaign), // another campaign
                 activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 3), null, farmId = otherFarm), // another farm
@@ -67,7 +68,7 @@ class CampaignNotebookTest {
             ),
             harvests = emptyList(), deliveries = emptyList(), expenses = emptyList(),
         )
-        assertEquals(listOf(ActivityType.PRUNING, ActivityType.PHYTOSANITARY), notebook.works.map { it.type })
+        assertEquals(listOf(ActivityType.PRUNING), notebook.works.map { it.type })
         assertEquals(1, notebook.harvestDays.size)
         assertEquals(1, notebook.recollectionDays.size)
     }
@@ -100,6 +101,20 @@ class CampaignNotebookTest {
         val notebook = FarmNotebook.of(farm, listOf(activity(ActivityType.FERTILIZATION, LocalDate.of(2026, 3, 1), null)), emptyList(), emptyList(), emptyList())
         assertEquals(1, notebook.diary.size)
         assertTrue(notebook.recollectionExpenses.isEmpty())
+    }
+
+    /** #417: legacy recogida saved without a Campaign is still read by date; general work never. */
+    @Test fun legacyRecogidaWithoutLinkIsStillReadByDate() {
+        val legacyDay = activity(ActivityType.HARVEST_DAY, LocalDate.of(2026, 11, 2), null)
+        val legacyJornada = harvest(1_000_000, LocalDate.of(2026, 11, 2)).copy(campaignId = null)
+        val notebook = CampaignNotebook.project(
+            campaign,
+            activities = listOf(legacyDay, activity(ActivityType.IRRIGATION, LocalDate.of(2026, 11, 2), null)),
+            harvests = listOf(legacyJornada), deliveries = emptyList(), expenses = emptyList(),
+        )
+        assertEquals(listOf(legacyDay), notebook.harvestDays)
+        assertTrue(notebook.works.isEmpty())
+        assertEquals(listOf(legacyJornada), notebook.harvests)
     }
 
     @Test fun totalsAreTheSameSummariesTheirOwnScreensShow() {

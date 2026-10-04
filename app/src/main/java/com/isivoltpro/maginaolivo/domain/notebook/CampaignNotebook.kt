@@ -114,10 +114,11 @@ data class CampaignNotebook(
         val RECOLLECTION_CATEGORIES = setOf(ExpenseCategory.HARVEST, ExpenseCategory.TRANSPORT)
 
         /**
-         * What belongs to [campaign]: records linked to it, plus the Farm's records that were
-         * saved without a Campaign but fall inside its dates. Financial Expenses require an
-         * explicit Campaign link: Farm/date never assigns economic context. Original outside
-         * Expenses remain in the Farm/Parcel ledger, with no historical rewrite.
+         * What belongs to [campaign] (#417): records explicitly linked to it. A general Activity
+         * (pruning, irrigation, a treatment…) done during the campaign's dates stays the Farm's
+         * work and is never absorbed by date. Only legacy recogida records saved before the link
+         * existed — Jornadas, Pesadas and harvest-day appointments of the Farm with no Campaign —
+         * are still read by date. Financial Expenses always require an explicit Campaign link.
          */
         fun project(
             campaign: Campaign,
@@ -131,8 +132,10 @@ data class CampaignNotebook(
             fun belongs(campaignId: java.util.UUID?, farmId: java.util.UUID?, date: LocalDate): Boolean =
                 campaignId == campaign.id ||
                     (campaignId == null && farmId == campaign.farmId && campaign.contains(date))
-            val own = activities.filter { belongs(it.campaignId, it.farmId, it.activityDate) }
-                .sortedByDescending { it.activityDate }
+            val own = activities.filter { activity ->
+                activity.campaignId == campaign.id ||
+                    (activity.type == ActivityType.HARVEST_DAY && belongs(activity.campaignId, activity.farmId, activity.activityDate))
+            }.sortedByDescending { it.activityDate }
             return CampaignNotebook(
                 campaign = campaign,
                 works = own.filter { it.type != ActivityType.HARVEST_DAY },
