@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 const routes = [
+  "/mi/fincas/salinillas",
+  "/mi/parcelas/las-lomas",
+  "/mi/parcelas/el-cerrillo",
+  "/mi/campanas/2025-2026",
   "/",
   "/funciones",
   "/como-funciona",
@@ -56,11 +60,15 @@ test("Mi layout is explicitly a demo and retains desktop sidebar navigation", as
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/mi");
 
-  await expect(page.getByText("Demo · interfaz de preparación")).toBeVisible();
+  await expect(
+    page.getByText("Demo · Datos ficticios para revisión visual"),
+  ).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "Navegación Mi Mágina Olivo" }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Fincas" })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Fincas", exact: true }),
+  ).toBeVisible();
 });
 
 test("mobile Mi menu opens without horizontal overflow", async ({
@@ -212,7 +220,7 @@ for (const [route, expectedText] of publicPageContent) {
 
     for (const text of expectedText) {
       await expect(
-        page.getByText(text, { exact: false }).first(),
+        page.locator("main").getByText(text, { exact: false }).first(),
       ).toBeVisible();
     }
 
@@ -256,3 +264,128 @@ test("health route returns a minimal healthy status", async ({ request }) => {
   await expect(response).toBeOK();
   await expect(response.json()).resolves.toEqual({ status: "ok" });
 });
+
+test("Mi dashboard follows the approved private visual hierarchy with demo-only data", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.includes("mobile"),
+    "desktop dashboard assertions",
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/mi");
+
+  await expect(
+    page.getByRole("searchbox", { name: "Buscar en Mi Mágina Olivo" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("img", { name: "Avisos Demo sin datos conectados" }),
+  ).toBeVisible();
+
+  for (const heading of [
+    "Panel general",
+    "Tiempo en tu zona",
+    "Radar de lluvia",
+    "Mis fincas",
+    "Producción total",
+    "Resumen por fincas",
+    "Mercado del aceite",
+    "Cuaderno de hoy",
+    "Jornales y maquinaria",
+  ]) {
+    await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+  }
+
+  for (const label of [
+    "Fincas",
+    "Parcelas",
+    "Superficie",
+    "Olivos",
+    "Kg campaña",
+    "Rendimiento",
+    "Coste/kg",
+  ]) {
+    await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
+  }
+
+  await expect(page.getByText("Demo", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText(/sin cuenta conectada/i)).toBeVisible();
+});
+
+test("Mi sidebar links every prepared route and marks the current page semantically", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.includes("mobile"),
+    "desktop sidebar assertions",
+  );
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/mi/fincas");
+
+  const sidebar = page.locator(".mi-sidebar");
+  for (const href of [
+    "/mi",
+    "/mi/fincas",
+    "/mi/parcelas",
+    "/mi/mapa",
+    "/mi/campanas",
+    "/mi/cuaderno",
+    "/mi/documentos",
+    "/mi/informes",
+    "/mi/mercado",
+    "/mi/tiempo",
+    "/mi/cooperativa",
+    "/mi/perfil",
+    "/mi/cuenta",
+  ]) {
+    await expect(
+      sidebar.locator(`.mi-desktop-navigation a[href="${href}"]`).first(),
+    ).toBeVisible();
+  }
+  await expect(
+    sidebar.locator('.mi-desktop-navigation a[href="/mi/fincas"]').first(),
+  ).toHaveAttribute("aria-current", "page");
+});
+
+const miPageContent = [
+  ["/mi/fincas", ["Estacas", "Salinillas", "Superficie total"]],
+  ["/mi/fincas/demo", ["Parcelas de Estacas", "Los Llanos", "Campaña"]],
+  ["/mi/fincas/salinillas", ["Finca Salinillas", "Las Lomas", "El Cerrillo"]],
+  ["/mi/parcelas", ["Los Llanos", "Las Lomas", "Finca"]],
+  ["/mi/parcelas/demo", ["Parcela Los Llanos", "Superficie", "Historial"]],
+  ["/mi/parcelas/las-lomas", ["Parcela Las Lomas", "Salinillas", "Historial"]],
+  [
+    "/mi/parcelas/el-cerrillo",
+    ["Parcela El Cerrillo", "Salinillas", "Historial"],
+  ],
+  ["/mi/mapa", ["Mapa de parcelas", "Vista de mapa Demo"]],
+  ["/mi/campanas", ["2026–2027", "2025–2026", "Campaña activa"]],
+  ["/mi/campanas/demo", ["Resumen de campaña", "Coste/kg", "Pesadas"]],
+  [
+    "/mi/campanas/2025-2026",
+    ["Resumen de campaña 2025–2026", "Coste/kg", "Pesadas"],
+  ],
+  ["/mi/cuaderno", ["Actividad reciente", "Recolección", "Consulta"]],
+  ["/mi/documentos", ["Documentos de demo", "Certificado", "Sin archivos"]],
+  ["/mi/informes", ["Informe de campaña", "PDF de ejemplo"]],
+  ["/mi/mercado", ["Precio de referencia", "Fuente demo", "€/kg"]],
+  ["/mi/tiempo", ["Previsión demo", "Radar de lluvia", "Bedmar"]],
+  ["/mi/cooperativa", ["Sin cooperativa asignada", "Datos de demostración"]],
+  ["/mi/perfil", ["Perfil de demostración", "Municipio", "Jaén"]],
+  ["/mi/cuenta", ["Cuenta de demostración", "Sin sesión", "Sync no conectado"]],
+] as const;
+
+for (const [route, expectedText] of miPageContent) {
+  test(`${route} shows a useful demo view instead of the preparation placeholder`, async ({
+    page,
+  }) => {
+    const response = await page.goto(route);
+    expect(response?.status()).toBe(200);
+    await expect(page.locator("main h1")).toBeVisible();
+    for (const text of expectedText) {
+      await expect(
+        page.locator("main").getByText(text, { exact: false }).first(),
+      ).toBeVisible();
+    }
+  });
+}

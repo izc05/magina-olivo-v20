@@ -2,6 +2,7 @@
 @import "../styles/tokens.css";
 @import "../styles/home.css";
 @import "../styles/public-content.css";
+@import "../styles/mi-workspace.css";
 
 * {
   box-sizing: border-box;

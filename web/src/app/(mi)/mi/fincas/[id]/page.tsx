@@ -1,18 +1,18 @@
-import { MiPlaceholderPage } from "@/features/scaffold/MiPlaceholderPage";
+import { miReadAdapter } from "@/data/mock/mi-demo";
+import { FarmDetailPage } from "@/features/mi/MiPages";
 
 export function generateStaticParams() {
-  return [{ id: "demo" }];
+  return miReadAdapter.getFarms().map(({ id }) => ({ id }));
 }
 
 export const dynamicParams = false;
-
 export const metadata = { title: "Detalle de finca · Demo" };
 
-export default async function FarmDetailPage({
+export default async function Page({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <MiPlaceholderPage title={`Detalle de finca · ${id}`} />;
+  return <FarmDetailPage id={id} />;
 }

@@ -1,7 +1,7 @@
-import { MiPlaceholderPage } from "@/features/scaffold/MiPlaceholderPage";
+import { NotebookPage } from "@/features/mi/MiPages";
 
 export const metadata = { title: "Cuaderno" };
 
-export default function NotebookPage() {
-  return <MiPlaceholderPage title="Cuaderno" />;
+export default function Page() {
+  return <NotebookPage />;
 }
