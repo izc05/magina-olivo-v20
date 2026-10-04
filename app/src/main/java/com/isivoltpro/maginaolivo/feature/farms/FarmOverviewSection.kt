@@ -1,19 +1,22 @@
 package com.isivoltpro.maginaolivo.feature.farms
 
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import com.isivoltpro.maginaolivo.domain.analytics.CurrencyTotal
@@ -25,10 +28,10 @@ import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
-import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoStat
 import com.isivoltpro.maginaolivo.ui.components.MoStatStrip
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
+import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.util.UUID
@@ -50,6 +53,21 @@ internal fun overviewCost(costs: List<CurrencyTotal>): String =
 /** Total cost over total kilos, in the one currency; «—» otherwise. */
 internal fun overviewCostPerKg(costPerKgMinor: Long?, costs: List<CurrencyTotal>): String =
     costPerKgMinor?.let { minor -> costs.singleOrNull()?.let { "${Money.format(minor, it.currency)}/kg" } } ?: "—"
+
+/** #359 follow-up: recollection plus general cost over the weighed kilos; «—» otherwise. */
+internal fun overviewTotalCostPerKg(overview: FarmOverview): String =
+    overviewCostPerKg(overview.totalCostPerKgMinor, overview.totalCosts)
+
+/** Farms whose name or municipality contains [query], ignoring case and accents. */
+internal fun matchesFarmSearch(query: String, name: String, municipality: String?): Boolean {
+    val needle = query.trim().fold()
+    if (needle.isEmpty()) return true
+    return name.fold().contains(needle) || municipality?.fold()?.contains(needle) == true
+}
+
+private fun String.fold(): String =
+    java.text.Normalizer.normalize(lowercase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{Mn}+"), "")
 
 /** «Análisis sobre el 75 % de los kilos · 2 de 3 fincas con campaña · Sin campaña: Los Llanos». */
 internal fun overviewNote(overview: FarmOverview): String = listOfNotNull(
@@ -80,17 +98,27 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
     var seasonName by rememberSaveable { mutableStateOf(overviews.first().season) }
     var byFarm by rememberSaveable { mutableStateOf(false) }
     val overview = overviews.firstOrNull { it.season == seasonName } ?: overviews.first()
+    var periodMenu by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().testTag("farm-overview"), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-        MoSectionHeader("Resumen de la explotación")
-        if (overviews.size > 1) {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                overviews.forEach { option ->
-                    FilterChip(
-                        selected = option.season == overview.season,
-                        onClick = { seasonName = option.season },
-                        label = { Text("Campaña ${option.season}") },
-                        modifier = Modifier.testTag("farm-overview-season"),
-                    )
+        // #359 follow-up: the period is always visible, so the kilos never read as «of all time».
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Resumen de la explotación", style = MaterialTheme.typography.titleMedium, color = MoOliveDark, modifier = Modifier.weight(1f))
+            Box {
+                if (overviews.size > 1) {
+                    TextButton(onClick = { periodMenu = true }, modifier = Modifier.testTag("farm-overview-period")) {
+                        Text("Campaña ${overview.season} ▾")
+                    }
+                    DropdownMenu(expanded = periodMenu, onDismissRequest = { periodMenu = false }) {
+                        overviews.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text("Campaña ${option.season}") },
+                                onClick = { seasonName = option.season; periodMenu = false },
+                                modifier = Modifier.testTag("farm-overview-season"),
+                            )
+                        }
+                    }
+                } else {
+                    Text("Campaña ${overview.season}", color = MoTextSecondary, modifier = Modifier.testTag("farm-overview-period"))
                 }
             }
         }
@@ -100,9 +128,16 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
         ), Modifier.testTag("farm-overview-production"))
         MoStatStrip(listOf(
             MoStat("Coste recogida", overviewCost(overview.costs), MoIcons.Euro),
-            MoStat("Coste/kg", overviewCostPerKg(overview.costPerKgMinor, overview.costs), MoIcons.Euro),
+            MoStat("Coste recogida/kg", overviewCostPerKg(overview.costPerKgMinor, overview.costs), MoIcons.Euro),
         ), Modifier.testTag("farm-overview-costs"))
         Text(overviewNote(overview), style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("farm-overview-note"))
+        // #359 follow-up: costs linked to no campaign are shown apart, never inside the recollection cost/kg.
+        Text("Gastos generales del periodo", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
+        MoStatStrip(listOf(
+            MoStat("Fuera de campaña", overviewCost(overview.generalCosts), MoIcons.Euro),
+            MoStat("Coste total", overviewCost(overview.totalCosts), MoIcons.Euro),
+            MoStat("Coste total/kg", overviewTotalCostPerKg(overview), MoIcons.Euro),
+        ), Modifier.testTag("farm-overview-general"))
         if (overview.farms.isNotEmpty()) {
             MoTertiaryButton(if (byFarm) "Ocultar por finca" else "Ver por finca", { byFarm = !byFarm }, Modifier.testTag("farm-overview-by-farm"))
         }

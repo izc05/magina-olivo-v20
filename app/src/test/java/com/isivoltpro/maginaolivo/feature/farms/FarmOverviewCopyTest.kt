@@ -34,4 +34,13 @@ class FarmOverviewCopyTest {
         val overview = FarmOverview("2026/27", emptyList(), listOf("Los Llanos"), nothing, emptyList())
         assertEquals("0 de 1 fincas con campaña 2026/27 · Sin campaña: Los Llanos", overviewNote(overview))
     }
+
+    /** #359 follow-up: a local, accent-insensitive search by name or municipality. */
+    @Test fun farmSearchMatchesNameOrMunicipality() {
+        assertEquals(true, matchesFarmSearch("", "Estacas", null))
+        assertEquals(true, matchesFarmSearch("  esta ", "Estacas", null))
+        assertEquals(true, matchesFarmSearch("jodar", "El Cerro", "Jódar"))
+        assertEquals(true, matchesFarmSearch("ÁLAMO", "Haza del Alamo", null))
+        assertEquals(false, matchesFarmSearch("llanos", "Estacas", "Huelma"))
+    }
 }
