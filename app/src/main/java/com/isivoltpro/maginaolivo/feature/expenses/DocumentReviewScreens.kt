@@ -73,8 +73,8 @@ fun DocumentReviewRoute(
     /** The screen the document was taken from: its Farm, and its Campaign when it had one. */
     contextFarmId: UUID? = null,
     contextCampaignId: UUID? = null,
-    /** Taken from Cuaderno → Gasto: «Gasto de recogida» starts chosen if a recolección runs. */
-    preselectRecollection: Boolean = false,
+    /** #411: taken from Cuaderno → Gasto; a running Campaign requires an explicit choice. */
+    requireCampaignChoice: Boolean = false,
 ) {
     val viewModel: DocumentReviewViewModel = viewModel(
         key = "document-$extractionId",
@@ -101,7 +101,7 @@ fun DocumentReviewRoute(
         onFarmSelected = viewModel::selectFarm,
         contextFarmId = contextFarmId,
         contextCampaignId = contextCampaignId,
-        preselectRecollection = preselectRecollection,
+        requireCampaignChoice = requireCampaignChoice,
     )
 }
 
@@ -120,7 +120,7 @@ fun DocumentReviewScreen(
     onFarmSelected: (UUID?) -> Unit,
     contextFarmId: UUID? = null,
     contextCampaignId: UUID? = null,
-    preselectRecollection: Boolean = false,
+    requireCampaignChoice: Boolean = false,
 ) {
     // The Farm's parcels, works and campaigns are offered in the reviewed form from the start.
     LaunchedEffect(contextFarmId) { contextFarmId?.let(onFarmSelected) }
@@ -192,7 +192,8 @@ fun DocumentReviewScreen(
                     onSave = onCreateDraft,
                     onCancel = { confirmDiscard = true },
                     scrollable = false,
-                    preselectRecollection = preselectRecollection && contextCampaignId == null,
+                    preselectRecollection = false,
+                    requireCampaignChoice = requireCampaignChoice && contextCampaignId == null,
                     extraActions = {
                         MoSecondaryButton(
                             "Guardar solo como documento",
