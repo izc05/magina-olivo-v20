@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Campañas con resumen en cada tarjeta (#246).** Sin entrar, cada campaña muestra kg pesados,
+  nº de pesadas, días de recogida, coste de jornales y rendimiento medio, en pequeñas etiquetas con
+  icono y texto y un color suave por tipo (producción verde oliva, días ámbar, costes tierra,
+  rendimiento verde salvia). Sin datos dice «Sin pesadas», nunca un cero inventado.
 - **Mi Campo: periodo visible, gastos generales y buscador (#359).** El resumen muestra siempre
   su campaña («Campaña 2026/27 ▾», con menú si hay varias), para que los kilos nunca parezcan «de
   siempre». «Coste/kg» pasa a **Coste recogida/kg** y, aparte, «Gastos generales del periodo»
