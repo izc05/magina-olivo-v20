@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El gasto de un trabajo sigue a ese trabajo (#433).** Un gasto ligado a una poda o tratamiento
+  general ya no puede ponerse en la campaña de recogida, ni en otra campaña distinta de la del
+  trabajo, ni en una parcela donde no se hizo. Si se liga a un trabajo o a una parcela sin indicar
+  la finca, toma la suya; nunca queda un gasto con parcela o trabajo pero sin finca.
 - **Un gasto general no cae solo en la campaña (#411).** Desde el Cuaderno, con una recogida en
   marcha, el gasto pregunta «¿Dónde pertenece este gasto?» —Recogida o Fuera de campaña— sin nada
   marcado, y no se guarda hasta elegir. Mientras se comprueban las campañas de la finca tampoco se

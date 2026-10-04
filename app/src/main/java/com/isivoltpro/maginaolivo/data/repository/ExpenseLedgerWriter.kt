@@ -117,33 +117,48 @@ internal class ExpenseLedgerWriter(
                 ?.takeIf { it.workspaceId == workspaceId && it.metadata.deletedAt == null }
                 ?: throw InvalidExpense("harvestId", "not_found")
         }
-        if (harvest != null && draft.farmId != null && draft.farmId != harvest.farmId) {
-            throw InvalidExpense("harvestId", "not_in_farm")
+        val activity = draft.activityId?.let { activityId ->
+            database.activityDao().findById(activityId)
+                ?.takeIf { it.workspaceId == workspaceId && it.metadata.deletedAt == null }
+                ?: throw InvalidExpense("activityId", "not_found")
         }
-        val farm = (draft.farmId ?: harvest?.farmId)?.let { farmId ->
-            database.farmDao().findById(farmId)?.takeIf { it.workspaceId == workspaceId && it.metadata.deletedAt == null }
-                ?: throw InvalidExpense("farmId", "not_found")
-        }
-        draft.parcelId?.let { parcelId ->
+        val parcelFarmId = draft.parcelId?.let { parcelId ->
             val parcel = database.parcelDao().findById(parcelId)
             if (parcel == null || parcel.status != RecordStatus.ACTIVE || parcel.workspaceId != workspaceId) {
                 throw InvalidExpense("parcelId", "not_found")
             }
-            if (farm != null && database.parcelDao().findCurrentMembership(parcelId)?.farmId != farm.id) {
-                throw InvalidExpense("parcelId", "not_in_farm")
-            }
+            database.parcelDao().findCurrentMembership(parcelId)?.farmId
         }
-        draft.activityId?.let { activityId ->
-            val activity = database.activityDao().findById(activityId)
-            if (activity == null || activity.workspaceId != workspaceId || activity.metadata.deletedAt != null) {
-                throw InvalidExpense("activityId", "not_found")
+        // #433: every relation that knows its Farm must name the same one, and an Expense with a
+        // Parcel or an Activity always keeps that Farm (never a child relation without its Farm).
+        val farmId = draft.farmId ?: harvest?.farmId ?: activity?.farmId ?: parcelFarmId
+        if (harvest != null && farmId != harvest.farmId) throw InvalidExpense("harvestId", "not_in_farm")
+        if (activity != null && activity.farmId != null && farmId != activity.farmId) throw InvalidExpense("activityId", "not_in_farm")
+        if (draft.parcelId != null && (farmId == null || parcelFarmId != farmId)) throw InvalidExpense("parcelId", "not_in_farm")
+        if (activity != null && farmId == null) throw InvalidExpense("activityId", "not_in_farm")
+        val farm = farmId?.let {
+            database.farmDao().findById(it)?.takeIf { farm -> farm.workspaceId == workspaceId && farm.metadata.deletedAt == null }
+                ?: throw InvalidExpense("farmId", "not_found")
+        }
+        if (activity != null) {
+            // #433 C: the Parcel of a work's cost is one the work was done on; a work with no
+            // Parcel targets keeps its cost without a Parcel.
+            draft.parcelId?.let { parcelId ->
+                val targets = database.activityDao().listTargets(activity.id).filter { it.metadata.deletedAt == null }
+                if (targets.none { it.parcelId == parcelId }) throw InvalidExpense("parcelId", "not_in_activity")
             }
-            if (farm != null && activity.farmId != farm.id) throw InvalidExpense("activityId", "not_in_farm")
+            // #433 F: a Jornada cost may only name work of that same recolección.
+            if (harvest != null && activity.campaignId != harvest.campaignId) throw InvalidExpense("activityId", "not_in_day")
         }
         if (harvest?.campaignId != null && draft.campaignId != null && harvest.campaignId != draft.campaignId) {
             throw InvalidExpense("campaignId", "not_in_day")
         }
-        val campaignId = harvest?.campaignId ?: draft.campaignId
+        // #433 A/B/E: the cost of a work takes that work's Campaign. General work (no Campaign)
+        // never puts its cost on a Campaign, and work of one Campaign never on another.
+        if (activity != null && harvest == null && draft.campaignId != null && draft.campaignId != activity.campaignId) {
+            throw InvalidExpense("campaignId", if (activity.campaignId == null) "activity_general" else "not_in_activity")
+        }
+        val campaignId = harvest?.campaignId ?: draft.campaignId ?: activity?.campaignId
         campaignId?.let { campaignId ->
             val campaign = database.campaignDao().findById(campaignId)
                 ?.takeIf { it.workspaceId == workspaceId && it.metadata.deletedAt == null }

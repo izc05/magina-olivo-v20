@@ -166,6 +166,12 @@ internal fun expenseErrorMessage(error: AppError): String = when (error) {
         error.code == "below_paid" -> "Debes corregir los pagos antes de reducir el coste por debajo de lo pagado."
         error.field == "appliedPrice" && error.code == "confirm_missing_prices" ->
             "Confirma primero los precios de la maquinaria histórica de este día antes de guardar el alquiler."
+        // #433: the cost of a work follows that work.
+        error.code == "activity_general" ->
+            "Ese trabajo es general de la finca: su gasto va «Fuera de campaña», no en la recogida."
+        error.field == "campaignId" && error.code == "not_in_activity" -> "Ese trabajo pertenece a otra campaña."
+        error.field == "parcelId" && error.code == "not_in_activity" -> "Ese trabajo no se hizo en la parcela elegida."
+        error.field == "activityId" && error.code == "not_in_day" -> "Ese trabajo no es de esta jornada de recogida."
         else -> when (error.field) {
         "parcelId" -> "La parcela elegida no pertenece a esa finca"
         "activityId" -> "La actuación elegida no pertenece a esa finca"
