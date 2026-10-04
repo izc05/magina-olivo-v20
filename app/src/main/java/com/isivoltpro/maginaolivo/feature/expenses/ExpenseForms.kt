@@ -177,8 +177,10 @@ internal fun ExpenseEditor(
 
         MoSectionHeader("Relación")
         val farm = options.farms.firstOrNull { it.id == form.farmId }
-        if (farmLocked && farm != null) {
-            Text(farm.name, style = MaterialTheme.typography.titleMedium, color = MoOliveDark, modifier = Modifier.testTag("expense-farm-context"))
+        if (farmLocked) {
+            // Codex #405: never a selector while locked, not even before the Farms have loaded.
+            Text(farm?.name ?: "Cargando la finca…", style = MaterialTheme.typography.titleMedium,
+                color = if (farm != null) MoOliveDark else MoTextSecondary, modifier = Modifier.testTag("expense-farm-context"))
         } else {
             MoSelectField("Finca", farm?.name ?: "Sin finca", { picker = "farm" }, Modifier.testTag("expense-farm"))
         }

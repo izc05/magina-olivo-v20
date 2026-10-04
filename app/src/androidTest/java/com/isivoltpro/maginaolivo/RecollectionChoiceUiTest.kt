@@ -134,11 +134,18 @@ class RecollectionChoiceUiTest {
         rule.runOnIdle { assertEquals(farm.id, saved?.farmId) }
     }
 
-    private fun editor(initial: ExpenseForm, preselect: Boolean = false, farmLocked: Boolean = false, onSave: (ExpenseForm) -> Unit) {
+    /** Codex #405: before the Farms load, a locked Farm is still not a selector. */
+    @Test fun aLockedFarmIsNotSelectableWhileLoading() {
+        editor(ExpenseForm(date.toString(), "12", "Gasoil", farmId = farm.id), farmLocked = true, loaded = options.copy(farms = emptyList())) {}
+        rule.onNodeWithTag("expense-farm").assertDoesNotExist()
+        rule.onNodeWithTag("expense-farm-context").performScrollTo().assertTextContains("Cargando la finca…")
+    }
+
+    private fun editor(initial: ExpenseForm, preselect: Boolean = false, farmLocked: Boolean = false, loaded: RelationOptions = options, onSave: (ExpenseForm) -> Unit) {
         rule.setContent {
             MaginaOlivoTheme {
                 ExpenseEditor(
-                    title = "Editar gasto", initial = initial, options = options, errors = ExpenseFormErrors(),
+                    title = "Editar gasto", initial = initial, options = loaded, errors = ExpenseFormErrors(),
                     isSaving = false, saveText = "Guardar cambios", onFarmSelected = {}, onSave = onSave, onCancel = {},
                     preselectRecollection = preselect, farmLocked = farmLocked,
                 )
