@@ -102,6 +102,8 @@ internal fun ExpenseEditor(
     scrollable: Boolean = true,
     /** Cuaderno → Gasto: start on «Gasto de recogida» when the Farm has a running recolección. */
     preselectRecollection: Boolean = false,
+    /** #375: opened on a Farm already chosen; it is shown as context, never as a selector. */
+    farmLocked: Boolean = false,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
     // An expense that already carries a choice (editing, campaign screen) is never re-assigned.
@@ -175,7 +177,11 @@ internal fun ExpenseEditor(
 
         MoSectionHeader("Relación")
         val farm = options.farms.firstOrNull { it.id == form.farmId }
-        MoSelectField("Finca", farm?.name ?: "Sin finca", { picker = "farm" }, Modifier.testTag("expense-farm"))
+        if (farmLocked && farm != null) {
+            Text(farm.name, style = MaterialTheme.typography.titleMedium, color = MoOliveDark, modifier = Modifier.testTag("expense-farm-context"))
+        } else {
+            MoSelectField("Finca", farm?.name ?: "Sin finca", { picker = "farm" }, Modifier.testTag("expense-farm"))
+        }
         if (farm != null) {
             val parcel = options.parcels.firstOrNull { it.id == form.parcelId }
             MoSelectField("Parcela", parcel?.displayName ?: "Toda la finca", { picker = "parcel" })

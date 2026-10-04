@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **No volver a pedir la finca (#375).** Trabajo, Riego y Tratamiento abiertos desde el Cuaderno de
+  una finca ya no ofrecen «Cambiar finca», y Gasto/Jornal abiertos con una finca elegida la muestran
+  como contexto en lugar del selector «Finca», igual que Pesada. Desde los listados globales se
+  sigue eligiendo.
 - **Los formularios se cierran en cada guardado (#380).** Máquinas, Pesadas, Gastos, Organizaciones,
   Jornadas, Trabajos, Campañas, Parcelas y Fincas cerraban el formulario solo la primera vez: al
   guardar otra vez con el mismo mensaje se quedaba abierto. Ahora cada guardado correcto cuenta y

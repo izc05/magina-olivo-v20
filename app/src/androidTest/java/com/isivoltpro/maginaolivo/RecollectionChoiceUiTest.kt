@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso
@@ -123,13 +124,23 @@ class RecollectionChoiceUiTest {
         return { saved }
     }
 
-    private fun editor(initial: ExpenseForm, preselect: Boolean = false, onSave: (ExpenseForm) -> Unit) {
+    /** #375: opened on a Farm already chosen (Cuaderno, campaign), the Farm is context only. */
+    @Test fun aFarmFromContextIsShownNotAsked() {
+        var saved: ExpenseForm? = null
+        editor(ExpenseForm(date.toString(), "12", "Gasoil", farmId = farm.id), farmLocked = true) { saved = it }
+        rule.onNodeWithTag("expense-farm").assertDoesNotExist()
+        rule.onNodeWithTag("expense-farm-context").performScrollTo().assertTextContains(farm.name)
+        rule.onNodeWithTag("save-expense").performScrollTo().performClick()
+        rule.runOnIdle { assertEquals(farm.id, saved?.farmId) }
+    }
+
+    private fun editor(initial: ExpenseForm, preselect: Boolean = false, farmLocked: Boolean = false, onSave: (ExpenseForm) -> Unit) {
         rule.setContent {
             MaginaOlivoTheme {
                 ExpenseEditor(
                     title = "Editar gasto", initial = initial, options = options, errors = ExpenseFormErrors(),
                     isSaving = false, saveText = "Guardar cambios", onFarmSelected = {}, onSave = onSave, onCancel = {},
-                    preselectRecollection = preselect,
+                    preselectRecollection = preselect, farmLocked = farmLocked,
                 )
             }
         }

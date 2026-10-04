@@ -363,6 +363,12 @@ class AppNavigationTest {
         composeRule.onNodeWithTag("register-action-sheet").assertDoesNotExist()
         composeRule.onNodeWithTag("notebook-quick-work").assertIsDisplayed()
         composeRule.onNodeWithTag("bottom-Cuaderno").assertIsSelected()
+
+        // #375: Riego from this Farm's Cuaderno keeps the Farm; it is not asked again.
+        clickByTag("notebook-quick-irrigation")
+        waitForTag("save-activity")
+        composeRule.waitUntil(UI_TIMEOUT_MS) { composeRule.onAllNodesWithText("El Cerro").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("change-activity-farm").assertDoesNotExist()
     }
 
     @Test
