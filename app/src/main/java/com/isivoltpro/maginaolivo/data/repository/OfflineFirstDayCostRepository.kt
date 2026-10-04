@@ -102,6 +102,13 @@ class OfflineFirstDayCostRepository(
             if (campaign == null || (campaign.status != CampaignStatus.ACTIVE && campaign.status != CampaignStatus.HARVEST)) {
                 return@inTransaction AppResult.Failure(AppError.Conflict("campaign_closed"))
             }
+            // #433: a cost tied to a work joins a Jornada only when that work is of the same recolección.
+            expense.activityId?.let { activityId ->
+                val activity = database.activityDao().findById(activityId)
+                if (activity == null || activity.campaignId != day.campaignId) {
+                    return@inTransaction AppResult.Failure(AppError.Validation("activityId", "not_in_day"))
+                }
+            }
             ExpenseLedgerWriter(database, idGenerator).requireEditableCampaign(expense)
             val now = clock.nowInstant()
             database.expenseDao().upsert(

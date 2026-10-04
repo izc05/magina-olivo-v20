@@ -401,6 +401,25 @@ class DayCostContractTest {
         assertEquals(30_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
     }
 
+    /** Codex #477 (#433): a same-day cost tied to general work never joins a Jornada of a Campaign. */
+    @Test
+    fun aCostOfGeneralWorkIsNotLinkedToAJornada() = runBlocking {
+        val dayId = ok(harvests.openJornada(farmId, day))
+        val general = UUID.randomUUID()
+        db.activityDao().upsert(
+            com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity(
+                general, workspaceId, campaignId = null, farmId = farmId, activityDate = day, type = "PRUNING",
+                status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED, description = "Poda general",
+                metadata = LocalMetadata(now, now),
+            ),
+        )
+        val withWork = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 12_000).copy(harvestId = null, activityId = general)))
+        val before = db.expenseDao().findById(withWork)!!
+
+        assertEquals(AppError.Validation("activityId", "not_in_day"), (costs.linkToDay(withWork, dayId) as AppResult.Failure).error)
+        assertEquals(before, db.expenseDao().findById(withWork))
+    }
+
     @Test
     fun anUnlinkedHandTypedCostOfTheSameDateIsShownAndOnlyTheFarmerLinksIt() = runBlocking {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
