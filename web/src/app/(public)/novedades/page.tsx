@@ -1,7 +1,12 @@
-import { PublicPlaceholderPage } from "@/features/scaffold/PublicPlaceholderPage";
+import { NewsPage as PublicNewsPage } from "@/features/public/PublicContentPages";
+import { publicMetadata } from "@/lib/public-metadata";
 
-export const metadata = { title: "Novedades" };
+export const metadata = publicMetadata(
+  "Novedades",
+  "Avisos confirmados sobre cambios y mejoras de Mágina Olivo.",
+  "/novedades",
+);
 
-export default function NewsPage() {
-  return <PublicPlaceholderPage title="Novedades" />;
+export default function NewsRoute() {
+  return <PublicNewsPage />;
 }

@@ -176,6 +176,79 @@ test("V3 review exposes all keyframes as pending and stays noindex", async ({
   await expect(references.last()).toBeVisible();
 });
 
+const publicPageContent = [
+  ["/funciones", ["Mi Campo", "Cuaderno", "Pesadas", "Jornales"]],
+  ["/como-funciona", ["Finca", "Parcela", "Informe"]],
+  ["/novedades", ["Aún no hay novedades publicadas"]],
+  ["/ayuda", ["Crear una finca o parcela", "Registrar una pesada"]],
+  [
+    "/descargar",
+    ["Descarga oficial de Android", "El enlace oficial está pendiente"],
+  ],
+  [
+    "/anunciate",
+    ["Publicidad local", "Canal de contacto pendiente de confirmar"],
+  ],
+  ["/privacidad", ["Contenido provisional"]],
+  ["/terminos", ["Contenido provisional"]],
+  ["/aviso-legal", ["Contenido provisional"]],
+] as const;
+
+for (const [route, expectedText] of publicPageContent) {
+  test(`${route} contains its specific public information`, async ({
+    page,
+  }) => {
+    const response = await page.goto(route);
+    expect(response?.status()).toBe(200);
+    await expect(page.locator("main h1")).toBeVisible();
+    await expect(page.locator("meta[name=description]")).toHaveAttribute(
+      "content",
+      /.+/,
+    );
+    const canonical = await page
+      .locator("link[rel=canonical]")
+      .getAttribute("href");
+    expect(canonical).toContain(route);
+
+    for (const text of expectedText) {
+      await expect(
+        page.getByText(text, { exact: false }).first(),
+      ).toBeVisible();
+    }
+
+    const unresolvedLinks = await page
+      .locator('a[href="#"], a[href=""]')
+      .count();
+    expect(unresolvedLinks).toBe(0);
+
+    const brokenAnchors = await page.evaluate(
+      () =>
+        Array.from(document.querySelectorAll('a[href^="#"]')).filter(
+          (anchor) => {
+            const target = anchor.getAttribute("href")?.slice(1);
+            return !target || !document.getElementById(target);
+          },
+        ).length,
+    );
+    expect(brokenAnchors).toBe(0);
+  });
+}
+
+test("public navigation reaches the advertised businesses section", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.includes("mobile"),
+    "header anchor navigation checked on desktop",
+  );
+  await page.goto("/");
+  await page.getByRole("link", { name: "Empresas", exact: true }).click();
+  await expect(page).toHaveURL(/\/anunciate\/?#empresas$/);
+  await expect(
+    page.getByRole("heading", { name: "Espacios locales" }),
+  ).toBeVisible();
+});
+
 test("health route returns a minimal healthy status", async ({ request }) => {
   const response = await request.get("/api/health");
 
