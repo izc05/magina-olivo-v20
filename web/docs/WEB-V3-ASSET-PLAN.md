@@ -6,6 +6,8 @@ La review incluye `public/v3-review/storyboard-concept.webp`, una lámina concep
 
 La primera maqueta de Home usa `public/images/v3/home-hero.webp` y seis crops WebP de `step-*` / `territory-*`, generados como material conceptual a partir de las referencias compartidas. No contienen datos, logotipos ni UI de producto legible; aún requieren revisión explícita antes de considerarse fotografía final. `docs/screenshots/v3-home-desktop.webp` y `docs/screenshots/v3-home-mobile.webp` registran el encuadre responsive de esta maqueta.
 
+El logotipo horizontal y el icono de aplicación de `public/brand/` proceden del archivo oficial compartido por el propietario. Los recortes conservan el arte, los colores y la transparencia originales; no se reconstruyó ni reinterpretó la marca.
+
 ## Paquetes de entrega
 
 | Paquete | Keyframes | Formatos previstos | Brief |

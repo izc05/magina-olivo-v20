@@ -598,9 +598,9 @@
   background: #fffdf7;
 }
 .preview-brand {
-  color: var(--color-forest);
-  font-family: var(--font-editorial);
-  font-weight: 700;
+  display: block;
+  width: 8rem;
+  height: auto;
 }
 .preview-body {
   display: grid;

@@ -126,6 +126,23 @@ test("public home follows the V3 visual reference and keeps demo data labeled", 
     .toBeGreaterThan(0);
 });
 
+test("official Mágina Olivo logo loads from the public brand assets", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const logoLink = page
+    .getByRole("link", { name: "Mágina Olivo, inicio" })
+    .first();
+  await expect(logoLink.locator("img")).toHaveAttribute(
+    "src",
+    /\/brand\/logo-horizontal\.png$/,
+  );
+
+  const logoResponse = await page.request.get("/brand/logo-horizontal.png");
+  expect(logoResponse.status()).toBe(200);
+});
+
 test("V3 review exposes all keyframes as pending and stays noindex", async ({
   page,
 }) => {

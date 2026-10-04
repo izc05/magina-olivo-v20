@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { staticAssetPath } from "@/lib/static-asset-path";
 
 const features = [
   {
@@ -269,7 +270,13 @@ export default function HomePage() {
           aria-labelledby="preview-heading"
         >
           <div className="preview-topbar">
-            <span className="preview-brand">Mágina Olivo</span>
+            <Image
+              alt=""
+              className="preview-brand"
+              height={343}
+              src={staticAssetPath("/brand/logo-horizontal.png")}
+              width={1275}
+            />
             <span className="demo-label">Demo visual</span>
           </div>
           <div className="preview-body">

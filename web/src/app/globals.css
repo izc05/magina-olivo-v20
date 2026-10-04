@@ -69,6 +69,17 @@ a {
   white-space: nowrap;
 }
 
+.brand-logo {
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.brand-logo-image {
+  display: block;
+  width: clamp(9.5rem, 12vw, 11rem);
+  height: auto;
+}
+
 .public-nav {
   display: flex;
   flex-wrap: wrap;
@@ -358,6 +369,14 @@ a {
 
 .v3-review-topline .brand {
   font-size: 1.25rem;
+}
+
+.mi-brand .brand-logo-image {
+  width: min(100%, 13.5rem);
+}
+
+.v3-review-topline .brand-logo-image {
+  width: 10rem;
 }
 
 @media (max-width: 800px) {

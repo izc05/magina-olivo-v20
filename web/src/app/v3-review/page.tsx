@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
+import { BrandLogo } from "@/components/layouts/BrandLogo";
 
 export const metadata: Metadata = {
   title: "Review storyboard V3 | Mágina Olivo",
@@ -142,9 +142,7 @@ export default function V3ReviewPage() {
   return (
     <>
       <header className="v3-review-topline">
-        <Link className="brand" href="/">
-          Mágina Olivo
-        </Link>
+        <BrandLogo href="/" label="Mágina Olivo, inicio" />
         <span>Review interna · WEB-0C</span>
       </header>
       <main className="v3-review page-wrap">
