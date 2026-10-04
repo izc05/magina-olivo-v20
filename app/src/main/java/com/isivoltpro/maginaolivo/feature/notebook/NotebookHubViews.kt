@@ -260,7 +260,10 @@ internal fun FarmCostsView(notebook: FarmNotebook, campaign: com.isivoltpro.magi
             supportingText = LabourSummary.of(notebook.labour).takeUnless { it.isEmpty }?.label() ?: "Sin jornales anotados")
         MoKpiMetric("Maquinaria", currencies.moneyLabel(RecollectionBucket.EQUIPMENT), Modifier.fillMaxWidth().testTag("notebook-costs-machinery"),
             icon = MoIcons.Tractor, kind = MoKpiKind.MAQUINARIA,
-            supportingText = machines.size.takeIf { it > 0 }?.let { if (it == 1) "1 trabajo con máquina" else "$it trabajos con máquina" } ?: "Sin uso de maquinaria anotado")
+            supportingText = listOfNotNull(
+                machines.size.takeIf { it > 0 }?.let { if (it == 1) "1 trabajo con máquina" else "$it trabajos con máquina" },
+                notebook.equipmentSummary.takeUnless { it.isEmpty }?.label(),
+            ).joinToString(" · ").ifEmpty { "Sin uso de maquinaria anotado" })
         MoKpiMetric("Facturas y documentos", if (documents.isEmpty()) "—" else if (documents.size == 1) "1 papel" else "${documents.size} papeles",
             Modifier.fillMaxWidth().testTag("notebook-costs-documents"), icon = MoIcons.Document, kind = MoKpiKind.COSTES,
             supportingText = if (documents.isEmpty()) "Sin facturas ni tickets" else "Con número de factura o escaneados")
