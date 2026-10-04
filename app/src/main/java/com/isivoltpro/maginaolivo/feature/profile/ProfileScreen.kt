@@ -44,7 +44,11 @@ import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.ui.brand.OliveMark
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
 import com.isivoltpro.maginaolivo.ui.components.MoIcons
+import com.isivoltpro.maginaolivo.ui.components.MoDestructiveButton
+import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
+import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
+import kotlinx.coroutines.launch
 import com.isivoltpro.maginaolivo.ui.components.MoStatusChip
 import com.isivoltpro.maginaolivo.ui.components.MoStatusTone
 import com.isivoltpro.maginaolivo.ui.theme.MoCream
@@ -62,6 +66,8 @@ fun ProfileRoute(
     persistence: LocalPersistence? = null,
     /** Phase 21C: Perfil → Ayuda y privacidad. */
     onHelp: (HelpTopic) -> Unit = {},
+    /** #399: DEV/QA demo farm; null outside the dev flavor, so nothing is shown there. */
+    demoFarm: com.isivoltpro.maginaolivo.app.DemoFarmTools? = null,
 ) {
     val context = LocalContext.current
     val profileRepository = persistence?.profileRepository
@@ -104,6 +110,7 @@ fun ProfileRoute(
         } else {
             null
         },
+        devTools = demoFarm?.let { tools -> { DemoFarmSection(tools) } },
         reminderSettings = if (profileViewModel != null) {
             {
                 val state by profileViewModel.state.collectAsStateWithLifecycle()
@@ -135,6 +142,8 @@ fun ProfileScreen(
     myProfile: (@Composable () -> Unit)? = null,
     /** Phase 21B: Perfil → Avisos (switch + day-before hour); absent where no storage exists. */
     reminderSettings: (@Composable () -> Unit)? = null,
+    /** #399: «Herramientas de desarrollo», only in the dev flavor. */
+    devTools: (@Composable () -> Unit)? = null,
 ) {
     Column(
         Modifier
@@ -231,6 +240,7 @@ fun ProfileScreen(
                 trailing = { Chevron() },
             )
         }
+        devTools?.invoke()
         Spacer(Modifier.height(MoSpacing.lg))
     }
 }
@@ -243,3 +253,34 @@ private fun Chevron() {
 /** "0.2.0-dev · compilación 531": the version plus the CI build, so each APK is identifiable. */
 internal fun appVersionLabel(versionName: String, buildNumber: Int): String =
     if (buildNumber > 0) "$versionName · compilación $buildNumber" else "$versionName · compilación local"
+
+/**
+ * #399 — load or reset the DEV/QA «Finca Demo». Both actions write through the canonical
+ * repositories; nothing runs by itself and the section never exists outside the dev flavor.
+ */
+@Composable
+private fun DemoFarmSection(tools: com.isivoltpro.maginaolivo.app.DemoFarmTools) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
+    var confirmReset by remember { mutableStateOf(false) }
+    val run: (suspend () -> com.isivoltpro.maginaolivo.core.common.AppResult<String>) -> Unit = { action ->
+        busy = true
+        scope.launch {
+            status = action().fold({ it }, { "No se pudo completar: ${it}" })
+            busy = false
+        }
+    }
+    MoSectionHeader("Herramientas de desarrollo")
+    Text("Finca Demo Mágina: datos ficticios para revisar la app (solo DEV, nunca en producción).", color = MoTextSecondary, style = MaterialTheme.typography.bodySmall)
+    MoSecondaryButton("Cargar Finca Demo", { run(tools::load) }, modifier = Modifier.fillMaxWidth().testTag("profile-demo-load"), enabled = !busy)
+    if (confirmReset) {
+        Text("Se cerrará y archivará la Finca Demo actual y se creará de nuevo. Tus fincas no se tocan.", style = MaterialTheme.typography.bodySmall)
+        MoDestructiveButton("Restablecer ahora", { confirmReset = false; run(tools::reset) }, modifier = Modifier.fillMaxWidth().testTag("profile-demo-reset-confirm"), enabled = !busy)
+        MoTertiaryButton("Cancelar", { confirmReset = false }, modifier = Modifier.fillMaxWidth())
+    } else {
+        MoTertiaryButton("Restablecer Finca Demo", { confirmReset = true }, modifier = Modifier.fillMaxWidth().testTag("profile-demo-reset"), enabled = !busy)
+    }
+    if (busy) Text("Trabajando…", color = MoTextSecondary, modifier = Modifier.testTag("profile-demo-busy"))
+    status?.let { Text(it, modifier = Modifier.testTag("profile-demo-status")) }
+}

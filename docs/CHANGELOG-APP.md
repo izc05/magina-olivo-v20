@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Finca Demo (solo versión de desarrollo, #399).** Perfil → «Herramientas de desarrollo» →
+  «Cargar Finca Demo» crea una finca de prueba completa (3 parcelas, campañas 2025/26 y 2026/27,
+  pesadas, jornales, maquinaria, gastos y trabajos) con las cifras de `docs/DEMO-FARM-SCENARIO.md`.
+  No existe en las versiones de pruebas ni de producción y nunca se crea sola.
 - **Añadir jornal desde la campaña (#365).** En Campaña → Jornales, una campaña activa muestra
   «+ Añadir jornal», también cuando ya hay jornales: abre el día de recolección de hoy de esa finca
   con Jornales a mano (el mismo de Cuaderno → Jornal, sin duplicarlo) y al volver la campaña ya
