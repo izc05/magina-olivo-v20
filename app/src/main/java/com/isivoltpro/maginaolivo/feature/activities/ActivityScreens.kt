@@ -349,12 +349,18 @@ internal fun ActivityTypeChooser(farmName: String, onSelected: (ActivityType) ->
 }
 
 /**
- * #378: the kinds of work offered. «Jornada de recolección» is an agenda appointment for the
- * recogida (Avisos → Planificar), never an ordinary Trabajo: recolección lives in Campaña,
- * Pesada and Jornal.
+ * #378/#410: one concept, one main path.
+ * Cuaderno → Trabajo is only for general work. Riego and Tratamiento keep their direct
+ * Cuaderno actions, and Jornada de recolección belongs to Campaña/Avisos.
+ * Planning still exposes the complete catalogue because Avisos is the planning surface.
  */
 internal fun workTypes(planning: Boolean): List<ActivityType> =
-    ActivityType.entries.filter { planning || it != ActivityType.HARVEST_DAY }
+    if (planning) ActivityType.entries
+    else ActivityType.entries.filterNot {
+        it == ActivityType.HARVEST_DAY ||
+            it == ActivityType.IRRIGATION ||
+            it == ActivityType.PHYTOSANITARY
+    }
 
 private fun ActivityType.shortDescription(): String = when (this) {
     ActivityType.OBSERVATION -> "Revisar el estado del olivar"
@@ -625,9 +631,9 @@ internal fun ActivityEditor(
             MoTextField(
                 cost,
                 { cost = it; costError = null },
-                "Coste (opcional, €)",
+                "Coste total del trabajo (opcional, €)",
                 isError = costError != null,
-                supportingText = costError ?: "Se anota en Gastos, una sola vez.",
+                supportingText = costError ?: "Se guardará una sola vez en Gastos.",
                 modifier = Modifier.testTag("activity-cost"),
             )
         }
