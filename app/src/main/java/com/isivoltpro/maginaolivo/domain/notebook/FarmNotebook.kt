@@ -6,6 +6,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentSummary
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
@@ -42,6 +43,9 @@ data class FarmNotebook(
     val machineWork: List<Activity> get() = realizedActivities.filter { it.machines.isNotEmpty() }
 
     private val listedJornadas: Set<UUID> = harvests.map { it.id }.toSet()
+
+    /** Equipment recorded on the Farm's recolección Jornadas (canonical, never typed twice). */
+    val equipmentSummary: EquipmentSummary get() = EquipmentSummary.of(equipment.filter { it.harvestId in listedJornadas })
 
     /** Pesadas and Expenses not already shown inside a listed Jornada (no kilo or euro twice). */
     private fun standsAlone(harvestId: UUID?): Boolean = harvestId == null || harvestId !in listedJornadas

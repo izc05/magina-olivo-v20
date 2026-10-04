@@ -9,6 +9,9 @@ import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.YieldAnalysis
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentSummary
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
@@ -130,6 +133,16 @@ class CampaignNotebookTest {
             emptyList(), emptyList(), emptyList(),
         )
         assertEquals(1, confirmed.diary.flatMap { it.entries }.filterIsInstance<DiaryEntry.Work>().count { it.activity.id == plannedPruning.id })
+    }
+
+    @Test fun jornadaEquipmentIsPartOfTheFarmsMachineryUse() {
+        val jornada = harvest(1_000_000, LocalDate.of(2026, 11, 2))
+        val shaker = EquipmentLine(UUID.randomUUID(), jornada.id, EquipmentType.SHAKER, null, 2, null, 1)
+        val stray = EquipmentLine(UUID.randomUUID(), UUID.randomUUID(), EquipmentType.TRACTOR, null, 1, null, 1)
+        val notebook = FarmNotebook.of(farm, emptyList(), listOf(jornada), emptyList(), emptyList(), equipment = listOf(shaker, stray))
+        // No annual work with a machine, yet the Jornada's vibradoras are real use; a line of no listed Jornada is not.
+        assertTrue(notebook.machineWork.isEmpty())
+        assertEquals(EquipmentSummary.of(listOf(shaker)), notebook.equipmentSummary)
     }
 
     @Test fun totalsAreTheSameSummariesTheirOwnScreensShow() {
