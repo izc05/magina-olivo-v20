@@ -17,7 +17,7 @@ import java.util.UUID
 import org.junit.Rule
 import org.junit.Test
 
-/** The Cuaderno reads day by day: today's line apart from yesterday's, done apart from planned. */
+/** The Cuaderno reads day by day, today's line apart from yesterday's; planned work stays in Avisos (#424). */
 class NotebookChronologyTest {
     @get:Rule val composeRule = createComposeRule()
 
@@ -42,9 +42,10 @@ class NotebookChronologyTest {
         composeRule.onNodeWithTag("notebook-day-today").assertTextContains("Hoy · ", substring = true)
         composeRule.onAllNodesWithTag("notebook-day").assertCountEquals(1)
         composeRule.onNodeWithTag("notebook-day").assertTextContains("Ayer · ", substring = true)
-        composeRule.onAllNodesWithTag("notebook-work").assertCountEquals(3)
-        // Done and planned differ in words and mark, not only colour.
-        composeRule.onNodeWithText("Planificada").assertExists()
+        // Only what was done is a diary fact; the planned cleaning is not listed.
+        composeRule.onAllNodesWithTag("notebook-work").assertCountEquals(2)
+        composeRule.onNodeWithText("Trabajo de limpieza").assertDoesNotExist()
+        composeRule.onNodeWithText("Planificada").assertDoesNotExist()
         composeRule.onAllNodesWithTag("notebook-work")[0].assertTextContains("Completada", substring = true)
     }
 }

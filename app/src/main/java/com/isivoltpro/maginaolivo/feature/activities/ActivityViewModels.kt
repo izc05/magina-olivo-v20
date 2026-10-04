@@ -92,7 +92,7 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
 
     /** A planned activity requires at least one Parcel; a resumable draft does not. */
     fun create(draft: ActivityDraft, asDraft: Boolean = false, completeImmediately: Boolean = false) {
-        if (!validate(draft, asDraft)) return
+        if (!validate(draft, asDraft, completeImmediately)) return
         mutate("Actuación guardada en este dispositivo") {
             when (
                 val result = repository.create(
@@ -121,9 +121,19 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
 
     fun consumeMessage() { mutableState.value = mutableState.value.copy(message = null) }
 
-    private fun validate(draft: ActivityDraft, asDraft: Boolean): Boolean {
-        val descriptionError = if (draft.description.isBlank()) "Describe la actuación" else null
-        val dateError = if (draft.activityDate == null) "Selecciona una fecha" else null
+    private fun validate(draft: ActivityDraft, asDraft: Boolean, completeImmediately: Boolean = false): Boolean {
+        val descriptionError = when {
+            !draft.description.isBlank() -> null
+            draft.type == ActivityType.INCIDENT -> "Indica la categoría o un detalle breve"
+            else -> "Describe la actuación"
+        }
+        val dateError = when {
+            draft.activityDate == null -> "Selecciona una fecha"
+            // #435/#414: the Cuaderno records facts; a date ahead is planned from Avisos.
+            completeImmediately && !asDraft && draft.type != ActivityType.HARVEST_DAY &&
+                draft.activityDate.isAfter(java.time.LocalDate.now()) -> FUTURE_DONE_WORK
+            else -> null
+        }
         val parcelsError =
             if (!asDraft && draft.parcelIds.isEmpty()) "Selecciona al menos una parcela" else null
         mutableState.value = mutableState.value.copy(
@@ -290,3 +300,6 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
 }
 
 private fun String.nullIfBlank(): String? = trim().takeIf(String::isNotEmpty)
+
+/** #435/#414: why the Cuaderno will not save work dated ahead. */
+internal const val FUTURE_DONE_WORK = "La fecha es futura. Para trabajos pendientes usa Avisos → Planificar."

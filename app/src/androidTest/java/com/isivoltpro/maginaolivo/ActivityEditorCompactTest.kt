@@ -1,15 +1,21 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.filter
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.feature.activities.ActivityDraft
@@ -36,10 +42,13 @@ class ActivityEditorCompactTest {
         show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), description = "Cura")) { saved = it }
 
         // Picking a type replaces the previous one: never two ticked.
-        typeChip("Tratamiento").performScrollTo().performClick()
+        typeChip("Poda").performScrollTo().performClick()
         typeChip("Abonado").performScrollTo().performClick()
         typeChip("Abonado").assertIsSelected()
-        typeChip("Tratamiento").assertIsNotSelected()
+        typeChip("Poda").assertIsNotSelected()
+        // #410: Riego and Tratamiento have their own Cuaderno actions; a new Trabajo does not repeat them.
+        assertEquals(0, composeRule.onAllNodesWithTag("activity-type-option").filter(hasText("Riego")).fetchSemanticsNodes().size)
+        assertEquals(0, composeRule.onAllNodesWithTag("activity-type-option").filter(hasText("Tratamiento")).fetchSemanticsNodes().size)
         // Hour, machinery, notes and cost are out of the way until asked for.
         assertEquals(0, composeRule.onAllNodesWithTag("activity-cost").fetchSemanticsNodes().size)
         composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
@@ -48,6 +57,12 @@ class ActivityEditorCompactTest {
             assertEquals(ActivityType.FERTILIZATION, saved?.type)
             assertEquals(setOf(parcels[0].id), saved?.parcelIds)
         }
+    }
+
+    /** #410: editing an existing Riego keeps its own type selectable even though a new Trabajo hides it. */
+    @Test fun anExistingIrrigationKeepsItsType() {
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.IRRIGATION, description = "Riego"))
+        typeChip("Riego").performScrollTo().assertIsSelected()
     }
 
     @Test fun moreOptionsUnfoldsAndAnEditWithACostStartsOpen() {
@@ -70,14 +85,154 @@ class ActivityEditorCompactTest {
             .performScrollTo().assertIsDisplayed()
     }
 
+    /** #414 (QA 1, 3, 8): Riego from the Cuaderno opens its fields, plans nothing and needs no words. */
+    @Test fun aQuickIrrigationIsShortAndSavesAsDoneWork() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.IRRIGATION),
+            onSave = { saved = it }, options = parcels.take(1), doneWork = true,
+        )
+        // The irrigation fields are open at once, without «Detalles».
+        composeRule.onNodeWithTag("detail-volumeM3").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Detalle breve (opcional)").assertExists()
+        // Planning and reminders belong to Avisos, not to work already done.
+        composeRule.onNodeWithTag("activity-more").performScrollTo().performClick()
+        assertEquals(0, composeRule.onAllNodesWithTag("planning-time").fetchSemanticsNodes().size)
+        assertEquals(0, composeRule.onAllNodesWithTag("planning-people").fetchSemanticsNodes().size)
+        // The only Parcel is already ticked: saving needs no other tap.
+        composeRule.onNodeWithTag("save-activity").performScrollTo().assertTextContains("Guardar riego").performClick()
+        composeRule.runOnIdle {
+            assertEquals(ActivityType.IRRIGATION, saved?.type)
+            assertEquals("Riego", saved?.description)
+            assertEquals(setOf(parcels[0].id), saved?.parcelIds)
+            assertEquals(null, saved?.planning)
+        }
+    }
+
+    /** #414: Observación says nothing by itself, so it still asks for a description. */
+    @Test fun anObservationStillAsksForWords() {
+        var saved: ActivityDraft? = null
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.OBSERVATION), onSave = { saved = it }, doneWork = true)
+        composeRule.onNodeWithText("Descripción").assertExists()
+        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals("", saved?.description) }
+    }
+
+    /** #414: outside the Cuaderno quick entry (Avisos, the Farm's sheet) planning stays available. */
+    @Test fun planningStaysOutsideTheQuickEntry() {
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING))
+        composeRule.onNodeWithTag("activity-more").performScrollTo().performClick()
+        composeRule.onNodeWithTag("planning-people").performScrollTo().assertIsDisplayed()
+    }
+
+    /** #435/#414: a quick entry dated tomorrow is not saved as a quiet plan; Avisos plans it. */
+    @Test fun aQuickEntryDatedAheadCannotBeSaved() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.now().plusDays(1), type = ActivityType.PHYTOSANITARY),
+            options = parcels.take(1), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithText("La fecha es futura. Para trabajos pendientes usa Avisos → Planificar.").assertExists()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().assertIsNotEnabled().performClick()
+        composeRule.runOnIdle { assertEquals(null, saved) }
+    }
+
+    /** #435: planning (Avisos, the Farm's sheet) still takes a date ahead. */
+    @Test fun planningStillTakesADateAhead() {
+        show(ActivityDraft(activityDate = LocalDate.now().plusDays(1), type = ActivityType.PRUNING))
+        composeRule.onNodeWithTag("save-activity").performScrollTo().assertIsEnabled()
+    }
+
+    /** #414: an Incidencia without category or detail keeps no made-up title (the save is refused upstream). */
+    @Test fun anAnonymousIncidentGetsNoTitle() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.INCIDENT),
+            options = parcels.take(1), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithText("Detalle breve (o indica la categoría)").assertExists()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals("", saved?.description) }
+    }
+
+    /** #414: with its category, an Incidencia takes the type as title. */
+    @Test fun anIncidentWithACategorySaves() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.INCIDENT),
+            options = parcels.take(1), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.CATEGORY}").performScrollTo().performTextInput("Granizo")
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals("Incidencia", saved?.description) }
+    }
+
+    /** #414: a new Riego shows duration, volume and sector; no tariff; Sistema waits in «Más detalles». */
+    @Test fun aNewIrrigationShowsOnlyTheEssentials() {
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.IRRIGATION), doneWork = true)
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.SECTOR_TEXT}").performScrollTo().assertIsDisplayed()
+        assertEquals(0, composeRule.onAllNodesWithTag("detail-${ActivityDetailFields.UNIT_PRICE}").fetchSemanticsNodes().size)
+        assertEquals(0, composeRule.onAllNodesWithTag("detail-${ActivityDetailFields.SYSTEM_TEXT}").fetchSemanticsNodes().size)
+        composeRule.onNodeWithTag("activity-detail-advanced").performScrollTo().performClick()
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.SYSTEM_TEXT}").performScrollTo().assertIsDisplayed()
+    }
+
+    /** #414: an older Poda that holds people and hours keeps them on screen and in what is saved. */
+    @Test fun anOlderPodaKeepsItsPeopleAndHours() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(
+                activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING, description = "Poda",
+                parcelIds = setOf(parcels[0].id),
+                detail = com.isivoltpro.maginaolivo.domain.activity.ActivityDetail.Pruning("Formación", 3, 6.0, null),
+            ),
+            onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("activity-detail-more").performScrollTo()
+        composeRule.onNodeWithTag("detail-${ActivityDetailFields.WORKER_COUNT}").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle {
+            val pruning = saved?.detail as com.isivoltpro.maginaolivo.domain.activity.ActivityDetail.Pruning
+            assertEquals(3, pruning.workerCount)
+            assertEquals(6.0, pruning.hours!!, 0.0)
+        }
+    }
+
+    /** #414 (owner P1): editing a record saved without Parcels never ticks the Farm's only one. */
+    @Test fun anEditWithoutParcelsStaysWithout() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING, description = "Poda general"),
+            options = parcels.take(1), onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("activity-parcel-option").performScrollTo().assertIsNotSelected()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(emptySet<java.util.UUID>(), saved?.parcelIds) }
+    }
+
+    /** #414: on a new entry the single Parcel is ticked once; unticked, it stays unticked. */
+    @Test fun anUntickedSingleParcelIsNotTickedAgain() {
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING), options = parcels.take(1), autoSelect = true)
+        composeRule.onNodeWithTag("activity-parcel-option").performScrollTo().assertIsSelected().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("activity-parcel-option").assertIsNotSelected()
+    }
+
     private fun typeChip(label: String) =
         composeRule.onAllNodesWithTag("activity-type-option").filterToOne(hasText(label))
 
-    private fun show(initial: ActivityDraft, onSave: (ActivityDraft) -> Unit = {}) {
+    private fun show(
+        initial: ActivityDraft,
+        options: List<ActivityParcelOption> = parcels,
+        doneWork: Boolean = false,
+        autoSelect: Boolean = doneWork,
+        onSave: (ActivityDraft) -> Unit = {},
+    ) {
         composeRule.setContent {
             MaginaOlivoTheme {
                 ActivityEditor(
-                    parcels = parcels,
+                    parcels = options,
                     descriptionError = null,
                     dateError = null,
                     parcelsError = null,
@@ -85,6 +240,9 @@ class ActivityEditorCompactTest {
                     onSave = onSave,
                     onCancel = {},
                     initial = initial,
+                    lockInitialType = doneWork,
+                    doneWork = doneWork,
+                    autoSelectSingleParcel = autoSelect,
                 )
             }
         }

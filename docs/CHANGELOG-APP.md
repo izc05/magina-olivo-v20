@@ -20,6 +20,30 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Riego, Tratamiento y Trabajo más rápidos (#414).** Desde el Cuaderno, los campos propios
+  (horas, m³, producto, dosis…) salen abiertos; la descripción es un «Detalle breve (opcional)»
+  salvo en Observación y Otro; una finca con una sola parcela la trae marcada; el botón dice
+  «Guardar riego», «Guardar tratamiento»… Lo realizado ya no muestra hora, personas ni avisos
+  previstos (eso está en Avisos → Planificar trabajo) ni «Guardar borrador». Con fecha futura no
+  se guarda: «La fecha es futura. Para trabajos pendientes usa Avisos → Planificar.» (antes se
+  convertía en silencio en un trabajo previsto). Cada tipo muestra primero lo esencial (Riego:
+  duración, volumen y sector; Tratamiento: producto, dosis y motivo; Abonado: producto y dosis) y
+  el resto en «Más detalles». Una Poda nueva ya no pide operarios ni horas (van en Jornal), un
+  Tratamiento nuevo no pide «Equipo» (está Maquinaria) y un Riego nuevo no pide tarifa; los
+  registros antiguos que tengan esos datos los conservan y se pueden editar.
+- **El Cuaderno funciona sin campaña (#417).** Diario, Fitosanitario y Gastos son ahora los de la
+  finca: muestran poda, riegos, tratamientos y gastos de todo el año aunque no exista ninguna
+  campaña. Solo la pestaña Campaña (pesadas, días y jornales de recogida) pide crear una. En Gastos,
+  «Recogida» (lo vinculado a una campaña) y «Fuera de campaña» se ven por separado, nunca mezclados.
+  Solo cuenta lo hecho: un trabajo o tratamiento previsto sigue en Avisos y no aparece en el Diario,
+  en Fitosanitario ni como uso de maquinaria hasta que se confirma.
+- **La campaña solo cuenta lo que es suyo (#417).** Un trabajo, riego o tratamiento general ya no
+  entra en la campaña por caer en sus fechas: solo lo vinculado expresamente a ella. Los días de
+  recogida antiguos sin vínculo se siguen leyendo por fecha para no perder el histórico.
+- **Finca Demo (solo versión de desarrollo, #399).** Perfil → «Herramientas de desarrollo» →
+  «Cargar Finca Demo» crea una finca de prueba completa (3 parcelas, campañas 2025/26 y 2026/27,
+  pesadas, jornales, maquinaria, gastos y trabajos) con las cifras de `docs/DEMO-FARM-SCENARIO.md`.
+  No existe en las versiones de pruebas ni de producción y nunca se crea sola.
 - **No volver a pedir la finca (#375).** Trabajo, Riego y Tratamiento abiertos desde el Cuaderno de
   una finca ya no ofrecen «Cambiar finca», y Gasto/Jornal abiertos con una finca elegida la muestran
   como contexto en lugar del selector «Finca», igual que Pesada. Desde los listados globales se

@@ -120,6 +120,7 @@ fun FarmActivitiesRoute(
         editorTitle = editorTitle,
         lockInitialType = lockInitialType,
         editorAsScreen = editorAsScreen,
+        quickEntry = completeOnSave,
     )
 }
 
@@ -134,6 +135,8 @@ fun FarmActivitiesSection(
     editorTitle: String = "Nueva actuación",
     lockInitialType: Boolean = false,
     editorAsScreen: Boolean = false,
+    /** #414: a Cuaderno quick action records work already done: no planning, no draft step. */
+    quickEntry: Boolean = false,
 ) {
     var editor by rememberSaveable { mutableStateOf(startWithEditor) }
     OnEachSave(state.saveCount) { editor = false }
@@ -146,11 +149,14 @@ fun FarmActivitiesSection(
             parcelsError = state.parcelsError,
             isSaving = state.isSaving,
             onSave = { draft -> onCreate(draft, false) },
-            onSaveDraft = { draft -> onCreate(draft, true) },
+            // #414: saving is already local-first; a quick entry needs no second «borrador» choice.
+            onSaveDraft = if (quickEntry) null else { draft -> onCreate(draft, true) },
             onCancel = { editor = false },
             initial = initialDraft,
             title = editorTitle,
             lockInitialType = lockInitialType,
+            doneWork = quickEntry,
+            autoSelectSingleParcel = true,
         )
     } else {
         // UX-D: saving is confirmed where the farmer is looking, not only by the closed sheet.
@@ -195,6 +201,7 @@ fun FarmActivitiesSection(
                     initial = initialDraft,
                     title = editorTitle,
                     lockInitialType = lockInitialType,
+                    autoSelectSingleParcel = true,
                 )
             }
         }
@@ -309,7 +316,8 @@ fun RegisterActivityRoute(
                             initialDraft = ActivityDraft(
                                 type = activityType,
                                 activityDate = LocalDate.now(),
-                                description = activityType.label(),
+                                // #414: the type already says what was done; a short detail is optional.
+                                description = "",
                                 // Only while the Parcel's own Farm is the one chosen.
                                 parcelIds = preselectedParcelId
                                     ?.takeIf { selectedFarmId.toString() == parcelFarmId }
@@ -349,12 +357,18 @@ internal fun ActivityTypeChooser(farmName: String, onSelected: (ActivityType) ->
 }
 
 /**
- * #378: the kinds of work offered. «Jornada de recolección» is an agenda appointment for the
- * recogida (Avisos → Planificar), never an ordinary Trabajo: recolección lives in Campaña,
- * Pesada and Jornal.
+ * #378/#410: one concept, one main path.
+ * Cuaderno → Trabajo is only for general work. Riego and Tratamiento keep their direct
+ * Cuaderno actions, and Jornada de recolección belongs to Campaña/Avisos.
+ * Planning still exposes the complete catalogue because Avisos is the planning surface.
  */
 internal fun workTypes(planning: Boolean): List<ActivityType> =
-    ActivityType.entries.filter { planning || it != ActivityType.HARVEST_DAY }
+    if (planning) ActivityType.entries
+    else ActivityType.entries.filterNot {
+        it == ActivityType.HARVEST_DAY ||
+            it == ActivityType.IRRIGATION ||
+            it == ActivityType.PHYTOSANITARY
+    }
 
 private fun ActivityType.shortDescription(): String = when (this) {
     ActivityType.OBSERVATION -> "Revisar el estado del olivar"
@@ -435,6 +449,13 @@ internal fun ActivityEditor(
     machines: List<MachineOption> = emptyList(),
     /** True when the preceding Cuaderno choice already fixed the work type. */
     lockInitialType: Boolean = false,
+    /**
+     * #414: the Cuaderno records work already done. Its typed fields start open, and the
+     * planning and reminders of Avisos → Planificar trabajo are not offered.
+     */
+    doneWork: Boolean = false,
+    /** #414: only creation flows tick a Farm's single Parcel; edits keep exactly what was saved. */
+    autoSelectSingleParcel: Boolean = false,
 ) {
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
@@ -443,13 +464,22 @@ internal fun ActivityEditor(
     var costError by rememberSaveable { mutableStateOf<String?>(null) }
     var type by rememberSaveable(initial.type) { mutableStateOf(initial.type.name) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
+    // #414: a new entry on a Farm with a single Parcel needs no choice; it is ticked once (and can
+    // still be unticked). Never on an edit: a record saved without Parcels keeps none.
+    var singleParcelOffered by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(parcels, autoSelectSingleParcel) {
+        if (autoSelectSingleParcel && !singleParcelOffered && selected.isEmpty() && parcels.size == 1) {
+            selected = listOf(parcels.single().id.toString())
+            singleParcelOffered = true
+        }
+    }
     // Deliberately not rememberSaveable: the sheet itself does not survive process death,
     // so saving the typed block alone would restore it into an editor that is not there.
     val detailFields = remember(initial.detail) {
         mutableStateMapOf<String, String>().apply { putAll(initial.detail.toFields()) }
     }
     var agronomicDetailsOpen by rememberSaveable(initial.type) {
-        mutableStateOf(initial.detail.toFields().isNotEmpty())
+        mutableStateOf(initial.detail.toFields().isNotEmpty() || doneWork)
     }
     // Selected machine id → the hours typed for it ("" when not given).
     val machineHours = remember(initial.machines) {
@@ -498,9 +528,11 @@ internal fun ActivityEditor(
                 horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                 verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
             ) {
-                // #378: a recogida day is planned in Avisos, not written down as a Trabajo; an
-                // existing one keeps its own type.
-                workTypes(planning = initial.planning != null || initial.type == ActivityType.HARVEST_DAY).forEach { option ->
+                // #378/#410: a recogida day is planned in Avisos and Riego/Tratamiento have their own
+                // Cuaderno actions, so a new Trabajo does not offer them; an existing record keeps
+                // its own type.
+                val offered = workTypes(planning = initial.planning != null || initial.type == ActivityType.HARVEST_DAY)
+                (offered + listOfNotNull(initial.type.takeIf { it !in offered })).forEach { option ->
                     FilterChip(
                         selected = option.name == type,
                         onClick = { type = option.name },
@@ -511,14 +543,25 @@ internal fun ActivityEditor(
                 }
             }
         }
+        val chosenType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
         MoTextField(
-            description, { description = it }, "Descripción",
+            description, { description = it },
+            // #414: only Observación and Otro need words; any other type already says what was done.
+            when {
+                chosenType.needsDescription() -> "Descripción"
+                // #414: an Incidencia must say what happened: its category or a short detail.
+                chosenType == ActivityType.INCIDENT -> "Detalle breve (o indica la categoría)"
+                else -> "Detalle breve (opcional)"
+            },
             isError = descriptionError != null, supportingText = descriptionError,
             modifier = Modifier.testTag("activity-description"),
         )
+        // #435/#414: work already done cannot be dated ahead; it is never saved as a quiet plan.
+        val futureDoneWork = doneWork && runCatching { LocalDate.parse(date) }.getOrNull()?.isAfter(LocalDate.now()) == true
         MoDateInputField(
             date, { date = it }, "Fecha",
-            isError = dateError != null, supportingText = dateError,
+            isError = dateError != null || futureDoneWork,
+            supportingText = if (futureDoneWork) FUTURE_DONE_WORK else dateError,
             modifier = Modifier.testTag("activity-date"),
         )
         val activityType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
@@ -581,7 +624,7 @@ internal fun ActivityEditor(
                 Text("Más opciones", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
                 if (!showMore) {
                     Text(
-                        "Hora, personas, maquinaria, avisos, notas y coste",
+                        if (doneWork) "Maquinaria, notas y coste" else "Hora, personas, maquinaria, avisos, notas y coste",
                         style = MaterialTheme.typography.bodySmall,
                         color = MoTextSecondary,
                     )
@@ -615,11 +658,14 @@ internal fun ActivityEditor(
                     }
                 }
             }
-            PlanningFields(
-                input = planning,
-                error = planningError,
-                onChange = { planning = it; planningError = null },
-            )
+            // #414: planning and reminders live in Avisos → Planificar trabajo, not in done work.
+            if (!doneWork) {
+                PlanningFields(
+                    input = planning,
+                    error = planningError,
+                    onChange = { planning = it; planningError = null },
+                )
+            }
             MoTextField(notes, { notes = it }, "Notas")
             // D2: a convenience for the linked Expense, never a second number on the Activity.
             MoTextField(
@@ -632,7 +678,7 @@ internal fun ActivityEditor(
             )
         }
         MoPrimaryButton(
-            "Guardar actuación",
+            if (doneWork && !chosenType.needsDescription()) "Guardar ${chosenType.label().lowercase()}" else "Guardar actuación",
             {
                 val costMinor = Money.parseMinor(cost)
                 if (cost.isNotBlank() && costMinor == null) {
@@ -645,7 +691,7 @@ internal fun ActivityEditor(
                     ActivityDraft(
                         runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
                         runCatching { LocalDate.parse(date) }.getOrNull(),
-                        description,
+                        description.ifBlank { chosenType.defaultDescription(detailFields) },
                         selected.map(UUID::fromString).toSet(),
                         notes,
                         buildActivityDetail(
@@ -659,7 +705,7 @@ internal fun ActivityEditor(
                     ),
                 )
             },
-            modifier = Modifier.fillMaxWidth().testTag("save-activity"), enabled = !isSaving,
+            modifier = Modifier.fillMaxWidth().testTag("save-activity"), enabled = !isSaving && !futureDoneWork,
         )
         onSaveDraft?.let { saveDraft ->
             MoSecondaryButton(
@@ -676,7 +722,7 @@ internal fun ActivityEditor(
                         ActivityDraft(
                             runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
                             runCatching { LocalDate.parse(date) }.getOrNull(),
-                            description,
+                            description.ifBlank { chosenType.defaultDescription(detailFields) },
                             selected.map(UUID::fromString).toSet(),
                             notes,
                             buildActivityDetail(
@@ -907,84 +953,110 @@ private fun Activity.targetsLabel(): String = when (targets.size) {
 @Composable
 private fun ActivityTypedDetailFields(type: ActivityType, fields: SnapshotStateMap<String, String>) {
     if (!type.hasTypedDetail()) return
+    // #414: what the record held when the editor opened. A retired field stays editable only there.
+    val stored = remember { fields.filterValues { it.isNotBlank() }.keys.toSet() }
+    val layout = detailLayout(type)
+    val retired = layout.retired.filter { it in stored }
+    var advancedOpen by rememberSaveable(type) { mutableStateOf(layout.advanced.any { it in stored }) }
     MoSectionHeader(type.detailSectionTitle())
     Column(
         Modifier.fillMaxWidth().testTag("activity-detail-block"),
         verticalArrangement = Arrangement.spacedBy(MoSpacing.sm),
     ) {
-        when (type) {
-            ActivityType.PRUNING -> {
-                DetailField(fields, ActivityDetailFields.PRUNING_TYPE, "Tipo de poda")
-                DetailField(fields, ActivityDetailFields.WORKER_COUNT, "Nº de operarios")
-                DetailField(fields, ActivityDetailFields.HOURS, "Horas")
-                DetailField(fields, ActivityDetailFields.RESIDUE_MANAGEMENT, "Gestión de restos")
+        layout.visible.forEach { key -> DetailInput(fields, key) }
+        if (layout.advanced.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .clickable(role = Role.Button) { advancedOpen = !advancedOpen }
+                    .testTag("activity-detail-advanced"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+            ) {
+                Icon(if (advancedOpen) MoIcons.ChevronDown else MoIcons.ChevronRight, contentDescription = null, tint = MoOliveMid)
+                Text("Más detalles", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
             }
-            ActivityType.FERTILIZATION -> {
-                DetailField(fields, ActivityDetailFields.PRODUCT_NAME, "Producto")
-                DetailField(fields, ActivityDetailFields.TOTAL_QUANTITY, "Cantidad total")
-                DetailField(fields, ActivityDetailFields.UNIT, "Unidad")
-                DetailField(fields, ActivityDetailFields.DOSE_VALUE, "Dosis")
-                DetailField(fields, ActivityDetailFields.DOSE_UNIT, "Unidad de dosis")
-                DetailField(fields, ActivityDetailFields.APPLICATION_METHOD, "Método de aplicación")
-            }
-            ActivityType.PHYTOSANITARY -> {
-                DetailField(fields, ActivityDetailFields.PRODUCT_NAME, "Producto")
-                DetailField(fields, ActivityDetailFields.ACTIVE_SUBSTANCE, "Materia activa")
-                DetailField(fields, ActivityDetailFields.TOTAL_QUANTITY, "Cantidad total")
-                DetailField(fields, ActivityDetailFields.UNIT, "Unidad")
-                DetailField(fields, ActivityDetailFields.DOSE_VALUE, "Dosis")
-                DetailField(fields, ActivityDetailFields.DOSE_UNIT, "Unidad de dosis")
-                DetailField(fields, ActivityDetailFields.REASON, "Motivo")
-                DetailField(fields, ActivityDetailFields.EQUIPMENT_TEXT, "Equipo")
-            }
-            ActivityType.SOIL_WORK -> {
-                DetailField(fields, ActivityDetailFields.WORK_TYPE, "Tipo de labor")
-                DetailField(fields, ActivityDetailFields.METHOD, "Método")
-            }
-            ActivityType.IRRIGATION -> {
-                DetailField(fields, ActivityDetailFields.DURATION_MINUTES, "Duración (minutos)")
-                DetailField(fields, ActivityDetailFields.VOLUME_M3, "Volumen (m³)")
-                DetailField(fields, ActivityDetailFields.SECTOR_TEXT, "Sector")
-                DetailField(fields, ActivityDetailFields.SYSTEM_TEXT, "Sistema")
-                // A tariff snapshot, kept with the irrigation that used it. It is an
-                // estimate for the farmer's own reading: the expense ledger remains the
-                // authoritative cost, and nothing here is summed into a financial total.
-                Text(
-                    "Tarifa (opcional, histórica)",
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                DetailChoice(
-                    fields,
-                    ActivityDetailFields.PRICE_BASIS,
-                    IrrigationPricingBasis.entries.map { it.name to it.label() },
-                )
-                DetailField(fields, ActivityDetailFields.UNIT_PRICE, "Precio unitario (€)")
-                DetailField(fields, ActivityDetailFields.PRICED_QUANTITY, "Cantidad facturada")
-                DetailField(fields, ActivityDetailFields.PRICE_DATE, "Fecha de tarifa (AAAA-MM-DD)")
-            }
-            ActivityType.MAINTENANCE -> {
-                DetailField(fields, ActivityDetailFields.MAINTENANCE_TYPE, "Tipo de mantenimiento")
-                DetailField(fields, ActivityDetailFields.ASSET_TEXT, "Elemento o equipo")
-            }
-            ActivityType.INCIDENT -> {
-                DetailField(fields, ActivityDetailFields.CATEGORY, "Categoría")
-                Text("Gravedad", style = MaterialTheme.typography.titleSmall)
-                DetailChoice(
-                    fields,
-                    ActivityDetailFields.SEVERITY,
-                    IncidentSeverity.entries.map { it.name to it.label() },
-                )
-                Text("Estado", style = MaterialTheme.typography.titleSmall)
-                DetailChoice(
-                    fields,
-                    ActivityDetailFields.INCIDENT_STATE,
-                    IncidentState.entries.map { it.name to it.label() },
-                )
-                DetailField(fields, ActivityDetailFields.ACTION_TAKEN, "Actuación realizada")
-            }
-            ActivityType.OBSERVATION, ActivityType.OTHER, ActivityType.HARVEST_DAY -> Unit
+            if (advancedOpen) layout.advanced.forEach { key -> DetailInput(fields, key) }
+        }
+        if (retired.isNotEmpty()) {
+            // Kept so an older record loses nothing; new records no longer ask for these.
+            Text("Datos anteriores de este registro", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
+            retired.forEach { key -> DetailInput(fields, key) }
         }
     }
+}
+
+/**
+ * #414: which typed fields a form shows first, which wait behind «Más detalles», and which new
+ * records no longer ask for (Jornal holds people and hours, Maquinaria the equipment, and the
+ * Expense ledger the money), shown only while an older record still holds a value.
+ */
+internal data class DetailLayout(val visible: List<String>, val advanced: List<String> = emptyList(), val retired: List<String> = emptyList())
+
+internal fun detailLayout(type: ActivityType): DetailLayout = when (type) {
+    ActivityType.PRUNING -> DetailLayout(
+        visible = listOf(ActivityDetailFields.PRUNING_TYPE),
+        advanced = listOf(ActivityDetailFields.RESIDUE_MANAGEMENT),
+        retired = listOf(ActivityDetailFields.WORKER_COUNT, ActivityDetailFields.HOURS),
+    )
+    ActivityType.FERTILIZATION -> DetailLayout(
+        visible = listOf(ActivityDetailFields.PRODUCT_NAME, ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.DOSE_UNIT),
+        advanced = listOf(ActivityDetailFields.TOTAL_QUANTITY, ActivityDetailFields.UNIT, ActivityDetailFields.APPLICATION_METHOD),
+    )
+    ActivityType.PHYTOSANITARY -> DetailLayout(
+        visible = listOf(ActivityDetailFields.PRODUCT_NAME, ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.DOSE_UNIT, ActivityDetailFields.REASON),
+        advanced = listOf(ActivityDetailFields.ACTIVE_SUBSTANCE, ActivityDetailFields.TOTAL_QUANTITY, ActivityDetailFields.UNIT),
+        retired = listOf(ActivityDetailFields.EQUIPMENT_TEXT),
+    )
+    ActivityType.SOIL_WORK -> DetailLayout(visible = listOf(ActivityDetailFields.WORK_TYPE, ActivityDetailFields.METHOD))
+    ActivityType.IRRIGATION -> DetailLayout(
+        visible = listOf(ActivityDetailFields.DURATION_MINUTES, ActivityDetailFields.VOLUME_M3, ActivityDetailFields.SECTOR_TEXT),
+        advanced = listOf(ActivityDetailFields.SYSTEM_TEXT),
+        // A historical tariff snapshot, never summed into money: the Expense ledger is the cost.
+        retired = listOf(
+            ActivityDetailFields.PRICE_BASIS, ActivityDetailFields.UNIT_PRICE,
+            ActivityDetailFields.PRICED_QUANTITY, ActivityDetailFields.PRICE_DATE,
+        ),
+    )
+    ActivityType.MAINTENANCE -> DetailLayout(visible = listOf(ActivityDetailFields.MAINTENANCE_TYPE, ActivityDetailFields.ASSET_TEXT))
+    ActivityType.INCIDENT -> DetailLayout(
+        visible = listOf(
+            ActivityDetailFields.CATEGORY, ActivityDetailFields.SEVERITY,
+            ActivityDetailFields.INCIDENT_STATE, ActivityDetailFields.ACTION_TAKEN,
+        ),
+    )
+    ActivityType.OBSERVATION, ActivityType.OTHER, ActivityType.HARVEST_DAY -> DetailLayout(emptyList())
+}
+
+/** One typed input: a choice for the closed lists, a text field for the rest. */
+@Composable
+private fun DetailInput(fields: SnapshotStateMap<String, String>, key: String) {
+    when (key) {
+        ActivityDetailFields.SEVERITY -> {
+            Text("Gravedad", style = MaterialTheme.typography.titleSmall)
+            DetailChoice(fields, key, IncidentSeverity.entries.map { it.name to it.label() })
+        }
+        ActivityDetailFields.INCIDENT_STATE -> {
+            Text("Estado", style = MaterialTheme.typography.titleSmall)
+            DetailChoice(fields, key, IncidentState.entries.map { it.name to it.label() })
+        }
+        ActivityDetailFields.PRICE_BASIS -> {
+            Text("Tarifa (histórica)", style = MaterialTheme.typography.titleSmall)
+            DetailChoice(fields, key, IrrigationPricingBasis.entries.map { it.name to it.label() })
+        }
+        else -> DetailField(fields, key, detailInputLabel(key))
+    }
+}
+
+private fun detailInputLabel(key: String): String = when (key) {
+    ActivityDetailFields.DURATION_MINUTES -> "Duración (minutos)"
+    ActivityDetailFields.UNIT_PRICE -> "Precio unitario (€)"
+    ActivityDetailFields.PRICED_QUANTITY -> "Cantidad facturada"
+    ActivityDetailFields.PRICE_DATE -> "Fecha de tarifa (AAAA-MM-DD)"
+    ActivityDetailFields.ASSET_TEXT -> "Elemento o equipo"
+    ActivityDetailFields.EQUIPMENT_TEXT -> "Equipo"
+    ActivityDetailFields.WORKER_COUNT -> "Nº de operarios"
+    ActivityDetailFields.ACTION_TAKEN -> "Actuación realizada"
+    else -> key.detailFieldLabel()
 }
 
 @Composable
@@ -1120,6 +1192,17 @@ internal fun ActivityStatus.tone() = when (this) {
     ActivityStatus.PLANNED -> MoStatusTone.Info
     ActivityStatus.COMPLETED -> MoStatusTone.Success
     ActivityStatus.CANCELLED -> MoStatusTone.Warning
+}
+
+/** #414: Observación and Otro say nothing by themselves, so they still ask for a description. */
+internal fun ActivityType.needsDescription(): Boolean = this == ActivityType.OBSERVATION || this == ActivityType.OTHER
+
+/** #414: the title a typed work takes when the farmer adds no detail; empty when words are still needed. */
+internal fun ActivityType.defaultDescription(fields: Map<String, String> = emptyMap()): String = when {
+    needsDescription() -> ""
+    // #414: an Incidencia with neither category nor detail says nothing; it is not saved anonymous.
+    this == ActivityType.INCIDENT && fields[ActivityDetailFields.CATEGORY].isNullOrBlank() -> ""
+    else -> label()
 }
 
 internal fun ActivityType.label() = when (this) {
