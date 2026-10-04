@@ -100,14 +100,19 @@ internal fun ExpenseEditor(
     extraActions: @Composable () -> Unit = {},
     /** False when the form is placed inside a screen that already scrolls. */
     scrollable: Boolean = true,
-    /** Cuaderno → Gasto: start on «Gasto de recogida» when the Farm has a running recolección. */
+    /** Legacy/explicit flows may still preselect a running recolección. */
     preselectRecollection: Boolean = false,
+    /** #411: a Farm-level new expense with a running Campaign must choose where it belongs. */
+    requireCampaignChoice: Boolean = false,
     /** #375: opened on a Farm already chosen; it is shown as context, never as a selector. */
     farmLocked: Boolean = false,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
-    // An expense that already carries a choice (editing, campaign screen) is never re-assigned.
-    var campaignChoiceMade by rememberSaveable(initial) { mutableStateOf(initial.campaignId != null) }
+    // #411: a new Farm-level expense may start deliberately undecided; existing/explicit
+    // Campaign expenses and ordinary editors keep their current classification.
+    var campaignChoiceMade by rememberSaveable(initial, requireCampaignChoice) {
+        mutableStateOf(initial.campaignId != null || !requireCampaignChoice)
+    }
     LaunchedEffect(preselectRecollection, options.campaigns, form.farmId) {
         if (preselectRecollection && !campaignChoiceMade) {
             val preselected = form.withRecollectionPreselected(options)
@@ -129,15 +134,23 @@ internal fun ExpenseEditor(
         val recollection = options.recollectionCampaignFor(form, initial.campaignId)
         if (recollection != null) {
             Column(Modifier.fillMaxWidth().selectableGroup().testTag("expense-kind")) {
-                Text("Tipo de gasto", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
-                ExpenseKindRow("Gasto de recogida · ${recollection.choiceLabel()}", form.campaignId == recollection.id, "expense-kind-recollection") {
+                Text("¿Dónde pertenece este gasto?", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+                ExpenseKindRow("Recogida · ${recollection.choiceLabel()}", campaignChoiceMade && form.campaignId == recollection.id, "expense-kind-recollection") {
                     form = form.copy(campaignId = recollection.id)
                     campaignChoiceMade = true
                 }
-                ExpenseKindRow("Gasto general de finca/parcela", form.campaignId == null, "expense-kind-general") {
+                ExpenseKindRow("Finca/parcela · Fuera de campaña", campaignChoiceMade && form.campaignId == null, "expense-kind-general") {
                     form = form.copy(campaignId = null)
                     campaignChoiceMade = true
                 }
+            }
+            if (!campaignChoiceMade) {
+                Text(
+                    "Elige Recogida o Fuera de campaña antes de guardar.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoTextSecondary,
+                    modifier = Modifier.testTag("expense-kind-required"),
+                )
             }
         } else if (form.campaignId != null) {
             Text("Gasto vinculado explícitamente a la campaña", color = MoTextSecondary)
@@ -251,7 +264,9 @@ internal fun ExpenseEditor(
             saveText,
             { onSave(form) },
             modifier = Modifier.fillMaxWidth().testTag("save-expense"),
-            enabled = !isSaving && runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false),
+            enabled = !isSaving &&
+                (recollection == null || campaignChoiceMade) &&
+                runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false),
         )
         extraActions()
         MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
@@ -283,7 +298,7 @@ internal fun ExpenseEditor(
                 val farmId = key?.let(UUID::fromString)
                 if (farmId != form.farmId) {
                     form = form.copy(farmId = farmId, parcelId = null, activityId = null, harvestId = null, campaignId = null)
-                    campaignChoiceMade = true
+                    campaignChoiceMade = !requireCampaignChoice
                     onFarmSelected(farmId)
                 }
             },
