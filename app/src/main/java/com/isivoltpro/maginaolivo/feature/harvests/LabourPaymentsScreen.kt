@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.expense.Money
+import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.domain.labour.*
 import com.isivoltpro.maginaolivo.ui.components.*
 import com.isivoltpro.maginaolivo.ui.theme.*
@@ -30,17 +31,24 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 @Composable
-internal fun LabourPaymentsRoute(campaignId: UUID, persistence: LocalPersistence, personId: UUID? = null, onClose: () -> Unit) {
+internal fun LabourPaymentsRoute(
+    campaignId: UUID,
+    persistence: LocalPersistence,
+    personId: UUID? = null,
+    /** #365: from Campaña → Jornales, a running campaign adds a jornal through today's day. */
+    onAddLabour: (() -> Unit)? = null,
+    onClose: () -> Unit,
+) {
     val model: LabourPaymentsViewModel = viewModel(key = "labour-payments-$campaignId", factory = viewModelFactory {
         initializer { LabourPaymentsViewModel(campaignId, persistence.campaignRepository, persistence.labourRepository, persistence.harvestRepository, persistence.expenseRepository) }
     })
     val state by model.state.collectAsStateWithLifecycle()
-    LabourPaymentsScreen(state, personId, onPay = model::record, onRemove = model::remove, onClearError = model::clearError, onClose = onClose)
+    LabourPaymentsScreen(state, personId, onPay = model::record, onRemove = model::remove, onClearError = model::clearError, onClose = onClose, onAddLabour = onAddLabour)
 }
 
 /** Same campaign data from both entry points. Payments are displayed separately from work. */
 @Composable
-internal fun LabourPaymentsScreen(state: LabourPaymentsUiState, initialPerson: UUID? = null, today: LocalDate = LocalDate.now(), onPay: (LabourPayment) -> Unit = {}, onRemove: (UUID) -> Unit = {}, onClearError: () -> Unit = {}, onClose: () -> Unit = {}) {
+internal fun LabourPaymentsScreen(state: LabourPaymentsUiState, initialPerson: UUID? = null, today: LocalDate = LocalDate.now(), onPay: (LabourPayment) -> Unit = {}, onRemove: (UUID) -> Unit = {}, onClearError: () -> Unit = {}, onClose: () -> Unit = {}, onAddLabour: (() -> Unit)? = null) {
     var person by rememberSaveable { mutableStateOf(initialPerson?.toString()) }
     var paymentCurrency by rememberSaveable { mutableStateOf<String?>(null) }
     var removeId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -82,7 +90,30 @@ internal fun LabourPaymentsScreen(state: LabourPaymentsUiState, initialPerson: U
                 val named = state.accounts.size
                 if (named > 0) Text(if (named == 1) "1 persona con nombre" else "$named personas con nombre", color = MoTextSecondary)
                 if (state.entries.isNotEmpty()) Text(LabourSummary.of(state.entries).label(), color = MoLabourText)
-                if (state.entries.isEmpty()) MoEmptyState("Sin jornales anotados", "Registra un jornal desde el Cuaderno o un día de recolección.", icon = MoIcons.People)
+                val status = state.campaign.status
+                // #365: the campaign already knows its Farm, so the entry is right here.
+                // Codex #401: a day before the campaign starts cannot be opened; say when it can.
+                val startsLater = state.campaign.startDate.isAfter(today)
+                if (onAddLabour != null && status.isRunning && !startsLater) {
+                    MoPrimaryButton("+ Añadir jornal", onAddLabour, modifier = Modifier.fillMaxWidth().testTag("labour-add"), enabled = !state.isSaving)
+                }
+                if (onAddLabour != null && status.isRunning && startsLater) {
+                    Text("La campaña empieza el ${state.campaign.startDate.format(WORK_DATE)}: podrás añadir jornales desde ese día.", color = MoTextSecondary, modifier = Modifier.testTag("labour-add-later"))
+                }
+                if (onAddLabour != null && status == CampaignStatus.CLOSED && state.entries.isNotEmpty()) {
+                    Text("Campaña cerrada. Reábrela para añadir nuevos jornales.", color = MoTextSecondary, modifier = Modifier.testTag("labour-add-closed"))
+                }
+                if (state.entries.isEmpty()) MoEmptyState(
+                    "Sin jornales anotados",
+                    when {
+                        onAddLabour == null -> "Registra un jornal desde el Cuaderno o un día de recolección."
+                        status.isRunning && startsLater -> "Todavía no hay jornales: la campaña aún no ha empezado."
+                        status.isRunning -> "Todavía no has registrado jornales en esta campaña."
+                        status == CampaignStatus.CLOSED -> "Esta campaña está cerrada."
+                        else -> "Activa la campaña para añadir jornales."
+                    },
+                    icon = MoIcons.People,
+                )
                 state.accounts.forEach { current ->
                     LabourPersonCard(current, { person = current.person.workerId.toString() }, { currency -> person = current.person.workerId.toString(); paymentCurrency = currency; savedAtOpen = state.saved; onClearError() }, state.isSaving)
                 }
