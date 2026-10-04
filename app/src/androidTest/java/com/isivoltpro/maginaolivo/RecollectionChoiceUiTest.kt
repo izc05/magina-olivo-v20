@@ -1,6 +1,7 @@
 package com.isivoltpro.maginaolivo
 
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -35,11 +36,7 @@ import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
-/**
- * Owner decision 2026-10-03 (CR-012 Slice 4) and P1: «Gasto de recogida · Campaña …» is
- * preselected and visible from Cuaderno → Gasto, «Gasto general de finca/parcela» is an
- * explicit alternative, and a ticket keeps its Farm/Campaign through OCR review.
- */
+/** #411: a running Campaign never silently captures a Farm-level expense. */
 class RecollectionChoiceUiTest {
     @get:Rule val rule = createComposeRule()
     private val date = LocalDate.of(2026, 11, 20)
@@ -47,11 +44,38 @@ class RecollectionChoiceUiTest {
     private val farm = farm("La Solana")
     private val otherFarm = farm("El Chaparral")
     private val running = campaign(farm.id, "2026/27", CampaignStatus.HARVEST)
-    private val options = RelationOptions(farms = listOf(farm, otherFarm), campaigns = listOf(running))
+    private val options = RelationOptions(farms = listOf(farm, otherFarm), campaigns = listOf(running), campaignsFor = farm.id)
 
-    @Test fun cuadernoGastoStartsOnTheRunningRecolection() {
-        val saved = cuadernoExpense(options) {}
-        rule.runOnIdle { assertEquals(running.id, saved()?.campaignId); assertEquals(farm.id, saved()?.farmId) }
+    @Test fun cuadernoGastoRequiresAnExplicitChoice() {
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpensesScreen(
+                    ExpensesUiState(isLoading = false, options = options), date, {}, {}, { _, _ -> }, {}, {}, {}, {},
+                    presetFarmId = farm.id,
+                )
+            }
+        }
+        rule.onNodeWithTag("add-expense").performClick()
+        rule.onNodeWithTag("expense-kind-recollection").assertIsNotSelected()
+        rule.onNodeWithTag("expense-kind-general").assertIsNotSelected()
+        rule.onNodeWithTag("expense-kind-required").assertExists()
+        rule.onNodeWithTag("save-expense").performScrollTo().assertIsNotEnabled()
+    }
+
+    /** Codex #423: while the Farm's campaigns load, «no running campaign» is unknown, so no save yet. */
+    @Test fun cuadernoGastoWaitsForTheFarmsCampaigns() {
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpensesScreen(
+                    ExpensesUiState(isLoading = false, options = options.copy(campaigns = emptyList(), campaignsFor = null)),
+                    date, {}, {}, { _, _ -> }, {}, {}, {}, {},
+                    presetFarmId = farm.id,
+                )
+            }
+        }
+        rule.onNodeWithTag("add-expense").performClick()
+        rule.onNodeWithTag("expense-kind-loading").performScrollTo().assertExists()
+        rule.onNodeWithTag("save-expense").performScrollTo().assertIsNotEnabled()
     }
 
     @Test fun farmerCanSwitchToAGeneralFarmExpense() {
@@ -110,8 +134,8 @@ class RecollectionChoiceUiTest {
         }
         rule.onNodeWithTag("add-expense").performClick()
         if (expectChoice) {
-            rule.onNodeWithText("Gasto de recogida · Campaña 2026/27").assertExists()
-            rule.onNodeWithTag("expense-kind-recollection").assertIsSelected()
+            rule.onNodeWithText("Recogida · Campaña 2026/27").assertExists()
+            rule.onNodeWithTag("expense-kind-recollection").assertIsNotSelected()
             rule.onNodeWithTag("expense-kind-general").assertIsNotSelected()
         } else {
             rule.onNodeWithTag("expense-kind").assertDoesNotExist()
@@ -166,11 +190,15 @@ class RecollectionChoiceUiTest {
                 DocumentReviewScreen(
                     state = DocumentReviewUiState(isLoading = false, extraction = extraction, options = options),
                     onRead = {}, onCreateDraft = { reviewed = it }, onKeep = {}, onDiscard = {}, onFarmSelected = {},
-                    contextFarmId = farm.id, contextCampaignId = contextCampaignId, preselectRecollection = preselect,
+                    contextFarmId = farm.id, contextCampaignId = contextCampaignId, requireCampaignChoice = preselect,
                 )
             }
         }
-        rule.onNodeWithTag("expense-kind-recollection").performScrollTo().assertIsSelected()
+        if (contextCampaignId == null && preselect) {
+            rule.onNodeWithTag("expense-kind-recollection").performScrollTo().assertIsNotSelected().performClick().assertIsSelected()
+        } else {
+            rule.onNodeWithTag("expense-kind-recollection").performScrollTo().assertIsSelected()
+        }
         rule.onNodeWithTag("save-expense").performScrollTo().performClick()
         return { reviewed }
     }
