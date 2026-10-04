@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un gasto general no cae solo en la campaña (#411).** Desde el Cuaderno, con una recogida en
+  marcha, el gasto pregunta «¿Dónde pertenece este gasto?» —Recogida o Fuera de campaña— sin nada
+  marcado, y no se guarda hasta elegir. Mientras se comprueban las campañas de la finca tampoco se
+  puede guardar, para no dar por hecho que no hay ninguna.
 - **Riego, Tratamiento y Trabajo más rápidos (#414).** Desde el Cuaderno, los campos propios
   (horas, m³, producto, dosis…) salen abiertos; la descripción es un «Detalle breve (opcional)»
   salvo en Observación y Otro; una finca con una sola parcela la trae marcada; el botón dice

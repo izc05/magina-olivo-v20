@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** What the expense form holds while a person is typing: text, not yet money. */
@@ -192,7 +193,17 @@ data class RelationOptions(
     val suppliers: List<Organization> = emptyList(),
     /** Campaigns of the selected Farm, to name the explicit «Gasto de recogida» choice. */
     val campaigns: List<Campaign> = emptyList(),
-)
+    /**
+     * #411: false only for a source that never reads campaigns. Until the first read lands it stays
+     * true with no [campaignsFor], so «no running campaign» is never assumed while loading.
+     */
+    val campaignsTracked: Boolean = true,
+    /** #411: the Farm [campaigns] were last read for; until it matches, «no running campaign» is unknown. */
+    val campaignsFor: UUID? = null,
+) {
+    /** #411: whether [campaigns] already answer for [farmId] (an empty list then really means none). */
+    fun campaignsKnownFor(farmId: UUID?): Boolean = !campaignsTracked || campaignsFor == farmId
+}
 
 /**
  * Owner decision 2026-10-03 (CR-012 Slice 4 amendment): the campaign an expense may be put on
@@ -337,7 +348,7 @@ class RelationSource(
     private val campaigns: CampaignRepository? = null,
 ) {
     private val selectedFarm = MutableStateFlow<UUID?>(null)
-    private var options = RelationOptions()
+    private var options = RelationOptions(campaignsTracked = campaigns != null)
 
     fun selectFarm(farmId: UUID?) {
         selectedFarm.value = farmId
@@ -377,9 +388,9 @@ class RelationSource(
             campaigns?.let { source ->
                 launch {
                     selectedFarm.flatMapLatest { farmId ->
-                        farmId?.let(source::observeForFarm) ?: flowOf(emptyList())
-                    }.catch { }.collect {
-                        options = options.copy(campaigns = it)
+                        (farmId?.let(source::observeForFarm) ?: flowOf(emptyList())).map { farmId to it }
+                    }.catch { }.collect { (farmId, list) ->
+                        options = options.copy(campaigns = list, campaignsFor = farmId)
                         onChange(options)
                     }
                 }
