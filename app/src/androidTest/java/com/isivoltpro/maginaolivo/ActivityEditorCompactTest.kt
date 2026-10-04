@@ -9,6 +9,8 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
@@ -80,14 +82,60 @@ class ActivityEditorCompactTest {
             .performScrollTo().assertIsDisplayed()
     }
 
+    /** #414 (QA 1, 3, 8): Riego from the Cuaderno opens its fields, plans nothing and needs no words. */
+    @Test fun aQuickIrrigationIsShortAndSavesAsDoneWork() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.IRRIGATION),
+            onSave = { saved = it }, options = parcels.take(1), doneWork = true,
+        )
+        // The irrigation fields are open at once, without «Detalles».
+        composeRule.onNodeWithTag("detail-volumeM3").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Detalle breve (opcional)").assertExists()
+        // Planning and reminders belong to Avisos, not to work already done.
+        composeRule.onNodeWithTag("activity-more").performScrollTo().performClick()
+        assertEquals(0, composeRule.onAllNodesWithTag("planning-time").fetchSemanticsNodes().size)
+        assertEquals(0, composeRule.onAllNodesWithTag("planning-people").fetchSemanticsNodes().size)
+        // The only Parcel is already ticked: saving needs no other tap.
+        composeRule.onNodeWithTag("save-activity").performScrollTo().assertTextContains("Guardar riego").performClick()
+        composeRule.runOnIdle {
+            assertEquals(ActivityType.IRRIGATION, saved?.type)
+            assertEquals("Riego", saved?.description)
+            assertEquals(setOf(parcels[0].id), saved?.parcelIds)
+            assertEquals(null, saved?.planning)
+        }
+    }
+
+    /** #414: Observación says nothing by itself, so it still asks for a description. */
+    @Test fun anObservationStillAsksForWords() {
+        var saved: ActivityDraft? = null
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.OBSERVATION), onSave = { saved = it }, doneWork = true)
+        composeRule.onNodeWithText("Descripción").assertExists()
+        composeRule.onAllNodesWithTag("activity-parcel-option")[0].performScrollTo().performClick()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals("", saved?.description) }
+    }
+
+    /** #414: outside the Cuaderno quick entry (Avisos, the Farm's sheet) planning stays available. */
+    @Test fun planningStaysOutsideTheQuickEntry() {
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING))
+        composeRule.onNodeWithTag("activity-more").performScrollTo().performClick()
+        composeRule.onNodeWithTag("planning-people").performScrollTo().assertIsDisplayed()
+    }
+
     private fun typeChip(label: String) =
         composeRule.onAllNodesWithTag("activity-type-option").filterToOne(hasText(label))
 
-    private fun show(initial: ActivityDraft, onSave: (ActivityDraft) -> Unit = {}) {
+    private fun show(
+        initial: ActivityDraft,
+        onSave: (ActivityDraft) -> Unit = {},
+        options: List<ActivityParcelOption> = parcels,
+        doneWork: Boolean = false,
+    ) {
         composeRule.setContent {
             MaginaOlivoTheme {
                 ActivityEditor(
-                    parcels = parcels,
+                    parcels = options,
                     descriptionError = null,
                     dateError = null,
                     parcelsError = null,
@@ -95,6 +143,8 @@ class ActivityEditorCompactTest {
                     onSave = onSave,
                     onCancel = {},
                     initial = initial,
+                    lockInitialType = doneWork,
+                    doneWork = doneWork,
                 )
             }
         }

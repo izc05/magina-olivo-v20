@@ -120,6 +120,7 @@ fun FarmActivitiesRoute(
         editorTitle = editorTitle,
         lockInitialType = lockInitialType,
         editorAsScreen = editorAsScreen,
+        quickEntry = completeOnSave,
     )
 }
 
@@ -134,6 +135,8 @@ fun FarmActivitiesSection(
     editorTitle: String = "Nueva actuación",
     lockInitialType: Boolean = false,
     editorAsScreen: Boolean = false,
+    /** #414: a Cuaderno quick action records work already done: no planning, no draft step. */
+    quickEntry: Boolean = false,
 ) {
     var editor by rememberSaveable { mutableStateOf(startWithEditor) }
     OnEachSave(state.saveCount) { editor = false }
@@ -146,11 +149,13 @@ fun FarmActivitiesSection(
             parcelsError = state.parcelsError,
             isSaving = state.isSaving,
             onSave = { draft -> onCreate(draft, false) },
-            onSaveDraft = { draft -> onCreate(draft, true) },
+            // #414: saving is already local-first; a quick entry needs no second «borrador» choice.
+            onSaveDraft = if (quickEntry) null else { draft -> onCreate(draft, true) },
             onCancel = { editor = false },
             initial = initialDraft,
             title = editorTitle,
             lockInitialType = lockInitialType,
+            doneWork = quickEntry,
         )
     } else {
         // UX-D: saving is confirmed where the farmer is looking, not only by the closed sheet.
@@ -309,7 +314,8 @@ fun RegisterActivityRoute(
                             initialDraft = ActivityDraft(
                                 type = activityType,
                                 activityDate = LocalDate.now(),
-                                description = activityType.label(),
+                                // #414: the type already says what was done; a short detail is optional.
+                                description = "",
                                 // Only while the Parcel's own Farm is the one chosen.
                                 parcelIds = preselectedParcelId
                                     ?.takeIf { selectedFarmId.toString() == parcelFarmId }
@@ -441,6 +447,11 @@ internal fun ActivityEditor(
     machines: List<MachineOption> = emptyList(),
     /** True when the preceding Cuaderno choice already fixed the work type. */
     lockInitialType: Boolean = false,
+    /**
+     * #414: the Cuaderno records work already done. Its typed fields start open, and the
+     * planning and reminders of Avisos → Planificar trabajo are not offered.
+     */
+    doneWork: Boolean = false,
 ) {
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
@@ -449,13 +460,17 @@ internal fun ActivityEditor(
     var costError by rememberSaveable { mutableStateOf<String?>(null) }
     var type by rememberSaveable(initial.type) { mutableStateOf(initial.type.name) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
+    // #414: a Farm with a single Parcel needs no choice; it is ticked (and can still be unticked).
+    LaunchedEffect(parcels) {
+        if (selected.isEmpty() && parcels.size == 1) selected = listOf(parcels.single().id.toString())
+    }
     // Deliberately not rememberSaveable: the sheet itself does not survive process death,
     // so saving the typed block alone would restore it into an editor that is not there.
     val detailFields = remember(initial.detail) {
         mutableStateMapOf<String, String>().apply { putAll(initial.detail.toFields()) }
     }
     var agronomicDetailsOpen by rememberSaveable(initial.type) {
-        mutableStateOf(initial.detail.toFields().isNotEmpty())
+        mutableStateOf(initial.detail.toFields().isNotEmpty() || doneWork)
     }
     // Selected machine id → the hours typed for it ("" when not given).
     val machineHours = remember(initial.machines) {
@@ -519,8 +534,11 @@ internal fun ActivityEditor(
                 }
             }
         }
+        val chosenType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
         MoTextField(
-            description, { description = it }, "Descripción",
+            description, { description = it },
+            // #414: only Observación and Otro need words; any other type already says what was done.
+            if (chosenType.needsDescription()) "Descripción" else "Detalle breve (opcional)",
             isError = descriptionError != null, supportingText = descriptionError,
             modifier = Modifier.testTag("activity-description"),
         )
@@ -589,7 +607,7 @@ internal fun ActivityEditor(
                 Text("Más opciones", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
                 if (!showMore) {
                     Text(
-                        "Hora, personas, maquinaria, avisos, notas y coste",
+                        if (doneWork) "Maquinaria, notas y coste" else "Hora, personas, maquinaria, avisos, notas y coste",
                         style = MaterialTheme.typography.bodySmall,
                         color = MoTextSecondary,
                     )
@@ -623,11 +641,14 @@ internal fun ActivityEditor(
                     }
                 }
             }
-            PlanningFields(
-                input = planning,
-                error = planningError,
-                onChange = { planning = it; planningError = null },
-            )
+            // #414: planning and reminders live in Avisos → Planificar trabajo, not in done work.
+            if (!doneWork) {
+                PlanningFields(
+                    input = planning,
+                    error = planningError,
+                    onChange = { planning = it; planningError = null },
+                )
+            }
             MoTextField(notes, { notes = it }, "Notas")
             // D2: a convenience for the linked Expense, never a second number on the Activity.
             MoTextField(
@@ -640,7 +661,7 @@ internal fun ActivityEditor(
             )
         }
         MoPrimaryButton(
-            "Guardar actuación",
+            if (doneWork && !chosenType.needsDescription()) "Guardar ${chosenType.label().lowercase()}" else "Guardar actuación",
             {
                 val costMinor = Money.parseMinor(cost)
                 if (cost.isNotBlank() && costMinor == null) {
@@ -653,7 +674,7 @@ internal fun ActivityEditor(
                     ActivityDraft(
                         runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
                         runCatching { LocalDate.parse(date) }.getOrNull(),
-                        description,
+                        description.ifBlank { chosenType.defaultDescription() },
                         selected.map(UUID::fromString).toSet(),
                         notes,
                         buildActivityDetail(
@@ -684,7 +705,7 @@ internal fun ActivityEditor(
                         ActivityDraft(
                             runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
                             runCatching { LocalDate.parse(date) }.getOrNull(),
-                            description,
+                            description.ifBlank { chosenType.defaultDescription() },
                             selected.map(UUID::fromString).toSet(),
                             notes,
                             buildActivityDetail(
@@ -1129,6 +1150,12 @@ internal fun ActivityStatus.tone() = when (this) {
     ActivityStatus.COMPLETED -> MoStatusTone.Success
     ActivityStatus.CANCELLED -> MoStatusTone.Warning
 }
+
+/** #414: Observación and Otro say nothing by themselves, so they still ask for a description. */
+internal fun ActivityType.needsDescription(): Boolean = this == ActivityType.OBSERVATION || this == ActivityType.OTHER
+
+/** #414: the title a typed work takes when the farmer adds no detail; empty when words are needed. */
+internal fun ActivityType.defaultDescription(): String = if (needsDescription()) "" else label()
 
 internal fun ActivityType.label() = when (this) {
     ActivityType.OBSERVATION -> "Observación"

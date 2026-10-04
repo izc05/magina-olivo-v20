@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Riego, Tratamiento y Trabajo más rápidos (#414).** Desde el Cuaderno, los campos propios
+  (horas, m³, producto, dosis…) salen abiertos; la descripción es un «Detalle breve (opcional)»
+  salvo en Observación y Otro; una finca con una sola parcela la trae marcada; el botón dice
+  «Guardar riego», «Guardar tratamiento»… Lo realizado ya no muestra hora, personas ni avisos
+  previstos (eso está en Avisos → Planificar trabajo) ni «Guardar borrador».
 - **El Cuaderno funciona sin campaña (#417).** Diario, Fitosanitario y Gastos son ahora los de la
   finca: muestran poda, riegos, tratamientos y gastos de todo el año aunque no exista ninguna
   campaña. Solo la pestaña Campaña (pesadas, días y jornales de recogida) pide crear una. En Gastos,
