@@ -105,7 +105,8 @@ class OfflineFirstDayCostRepository(
             // #433: a cost tied to a work joins a Jornada only when that work is of the same recolección.
             expense.activityId?.let { activityId ->
                 val activity = database.activityDao().findById(activityId)
-                if (activity == null || activity.campaignId != day.campaignId) {
+                    ?.takeIf { it.workspaceId == expense.workspaceId && it.metadata.deletedAt == null }
+                if (activity == null || activity.farmId != day.farmId || activity.campaignId != day.campaignId) {
                     return@inTransaction AppResult.Failure(AppError.Validation("activityId", "not_in_day"))
                 }
             }
