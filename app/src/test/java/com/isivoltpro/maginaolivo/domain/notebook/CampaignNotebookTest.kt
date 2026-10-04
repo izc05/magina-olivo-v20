@@ -16,6 +16,8 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
+import com.isivoltpro.maginaolivo.domain.machinery.ActivityMachine
+import com.isivoltpro.maginaolivo.domain.machinery.MachineCategory
 import java.time.LocalDate
 import java.util.UUID
 import org.junit.Assert.assertEquals
@@ -115,6 +117,34 @@ class CampaignNotebookTest {
         assertEquals(listOf(legacyDay), notebook.harvestDays)
         assertTrue(notebook.works.isEmpty())
         assertEquals(listOf(legacyJornada), notebook.harvests)
+    }
+
+    @Test fun onlyDoneWorkIsAFactInTheFarmNotebook() {
+        val tractor = ActivityMachine(UUID.randomUUID(), "Tractor", MachineCategory.TRACTOR, null, null, 2.0)
+        val plannedPruning = activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 5), null).copy(status = ActivityStatus.PLANNED)
+        val donePruning = activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 1), null)
+        val plannedTreatment = activity(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 10, 6), null)
+            .copy(status = ActivityStatus.PLANNED, machines = listOf(tractor))
+        val doneTreatment = activity(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 9, 20), null).copy(machines = listOf(tractor))
+        val draft = activity(ActivityType.IRRIGATION, LocalDate.of(2026, 9, 1), null).copy(status = ActivityStatus.DRAFT)
+        val cancelled = activity(ActivityType.IRRIGATION, LocalDate.of(2026, 9, 2), null).copy(status = ActivityStatus.CANCELLED)
+        val notebook = FarmNotebook.of(
+            farm, listOf(plannedPruning, donePruning, plannedTreatment, doneTreatment, draft, cancelled),
+            emptyList(), emptyList(), emptyList(),
+        )
+        val diaryWork = notebook.diary.flatMap { it.entries }.filterIsInstance<DiaryEntry.Work>().map { it.activity.id }
+        // Diario: only what was done; planned, draft and cancelled work stays out.
+        assertEquals(listOf(donePruning.id, doneTreatment.id), diaryWork)
+        // Fitosanitario: a planned treatment is never read as applied.
+        assertEquals(listOf(doneTreatment.id), notebook.phytoRecords.map { it.activity.id })
+        // Machinery: planned machines never count as use.
+        assertEquals(listOf(doneTreatment.id), notebook.machineWork.map { it.id })
+        // Once confirmed (#438) the same record enters the realised projections exactly once.
+        val confirmed = FarmNotebook.of(
+            farm, listOf(plannedPruning.copy(status = ActivityStatus.COMPLETED, version = 2), donePruning),
+            emptyList(), emptyList(), emptyList(),
+        )
+        assertEquals(1, confirmed.diary.flatMap { it.entries }.filterIsInstance<DiaryEntry.Work>().count { it.activity.id == plannedPruning.id })
     }
 
     @Test fun totalsAreTheSameSummariesTheirOwnScreensShow() {

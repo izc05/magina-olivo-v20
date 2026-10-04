@@ -46,6 +46,7 @@ class NotebookHomeScreenTest {
     private val campaign = UiPolishFixtures.campaign
     private val treatment = UiPolishFixtures.activity.copy(
         type = ActivityType.PHYTOSANITARY,
+        status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
         campaignId = campaign.id,
         activityDate = campaign.startDate.plusDays(5),
         description = "Cobre de ejemplo",
@@ -209,7 +210,10 @@ class NotebookHomeScreenTest {
 
     /** #417: with no Campaign at all, the Farm's work and costs are in Diario, Fitosanitario and Gastos. */
     @Test fun withoutACampaignTheFarmsRecordsAreStillThere() {
-        val general = UiPolishFixtures.activity.copy(type = ActivityType.PHYTOSANITARY, campaignId = null, description = "Cobre general")
+        val general = UiPolishFixtures.activity.copy(
+            type = ActivityType.PHYTOSANITARY, status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
+            campaignId = null, description = "Cobre general",
+        )
         val cost = com.isivoltpro.maginaolivo.domain.expense.Expense(
             java.util.UUID.randomUUID(), farm.workspaceId, general.activityDate, "Gasóleo general",
             com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory.FUEL, 9_000, "EUR",

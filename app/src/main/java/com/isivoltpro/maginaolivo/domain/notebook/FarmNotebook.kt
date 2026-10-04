@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo.domain.notebook
 
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
@@ -30,18 +31,28 @@ data class FarmNotebook(
     val labour: List<LabourEntry> = emptyList(),
     val equipment: List<EquipmentLine> = emptyList(),
 ) {
+    /**
+     * The Activities that were actually done (#424/#438): the only ones the Diario, Fitosanitario
+     * and machinery use read. Planned work stays in Avisos until confirmed; drafts and cancelled
+     * work are never facts.
+     */
+    val realizedActivities: List<Activity> get() = activities.filter { it.status == ActivityStatus.COMPLETED }
+
+    /** Machinery actually used: only on done work, never machinery merely planned. */
+    val machineWork: List<Activity> get() = realizedActivities.filter { it.machines.isNotEmpty() }
+
     private val listedJornadas: Set<UUID> = harvests.map { it.id }.toSet()
 
     /** Pesadas and Expenses not already shown inside a listed Jornada (no kilo or euro twice). */
     private fun standsAlone(harvestId: UUID?): Boolean = harvestId == null || harvestId !in listedJornadas
 
     /**
-     * Diario: the Farm's timeline, newest day first. An Expense that is the cost of an Activity
+     * Diario: the Farm's timeline of what was done, newest day first. An Expense that is the cost of an Activity
      * is read in that Activity's row, and a Jornada's own Pesadas and costs inside the Jornada.
      */
     val diary: List<DiaryDay>
         get() = (
-            activities.map { DiaryEntry.Work(it) } +
+            realizedActivities.map { DiaryEntry.Work(it) } +
                 harvests.map { DiaryEntry.HarvestEntry(it) } +
                 deliveries.filter { standsAlone(it.harvestId) }.map { DiaryEntry.DeliveryEntry(it) } +
                 expenses.filter { it.activityId == null && it.origin != ExpenseOrigin.ACTIVITY_COST && standsAlone(it.harvestId) }
@@ -51,9 +62,9 @@ data class FarmNotebook(
             .toSortedMap(compareByDescending { it })
             .map { (date, entries) -> DiaryDay(date, entries.sortedBy { it.order }) }
 
-    /** Fitosanitario: every treatment of the Farm, newest first, whatever its Campaign. */
+    /** Fitosanitario: every treatment applied on the Farm, newest first, whatever its Campaign. */
     val phytoRecords: List<PhytoRecord>
-        get() = activities.mapNotNull { PhytoRecord.of(it) }.sortedByDescending { it.date }
+        get() = realizedActivities.mapNotNull { PhytoRecord.of(it) }.sortedByDescending { it.date }
 
     /** Expenses linked to no Campaign: the Farm's general costs. */
     val generalExpenses: List<Expense> get() = expenses.filter { it.campaignId == null }
