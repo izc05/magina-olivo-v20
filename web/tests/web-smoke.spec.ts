@@ -93,6 +93,39 @@ test("preview metadata stays noindex by default", async ({ page }) => {
   );
 });
 
+test("public home follows the V3 visual reference and keeps demo data labeled", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await expect(
+    page.getByRole("heading", { name: "Tu olivar, claro y al día." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Del campo al móvil" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Todo lo importante en una sola app" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Tu explotación, siempre bajo control" }),
+  ).toBeVisible();
+  await expect(page.getByText("Demo visual")).toBeVisible();
+  await expect(page.locator(".home-step")).toHaveCount(3);
+  await expect(page.locator(".home-feature-card")).toHaveCount(6);
+  await expect(page.locator(".home-community-card")).toHaveCount(4);
+  await expect(page.locator(".home-step-photo, .community-photo")).toHaveCount(
+    7,
+  );
+
+  const hero = page.locator(".home-hero-image");
+  await expect
+    .poll(() =>
+      hero.evaluate((image) => (image as HTMLImageElement).naturalWidth),
+    )
+    .toBeGreaterThan(0);
+});
+
 test("V3 review exposes all keyframes as pending and stays noindex", async ({
   page,
 }) => {
@@ -115,11 +148,15 @@ test("V3 review exposes all keyframes as pending and stays noindex", async ({
     )
     .toBeGreaterThan(0);
   await expect(
-    page.getByText("aprobación pendiente", { exact: false }),
+    page.getByText("continuidad y movimiento pendientes", { exact: false }),
   ).toBeVisible();
   await expect(
     page.getByText("Fuente: producción original V3 pendiente").first(),
   ).toBeVisible();
+  const references = page.locator(".v3-reference img");
+  await expect(references).toHaveCount(2);
+  await expect(references.first()).toBeVisible();
+  await expect(references.last()).toBeVisible();
 });
 
 test("health route returns a minimal healthy status", async ({ request }) => {

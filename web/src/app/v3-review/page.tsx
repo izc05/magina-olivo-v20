@@ -135,6 +135,8 @@ const storyboardImage =
   process.env.GITHUB_PAGES === "true"
     ? "/magina-olivo-v20/v3-review/storyboard-concept.webp"
     : "/v3-review/storyboard-concept.webp";
+const reviewBase =
+  process.env.GITHUB_PAGES === "true" ? "/magina-olivo-v20" : "";
 
 export default function V3ReviewPage() {
   return (
@@ -149,13 +151,49 @@ export default function V3ReviewPage() {
         <p className="page-eyebrow">WEB V3 · Gate V3-A</p>
         <h1 className="page-title">Revisión de continuidad</h1>
         <p className="page-description">
-          Storyboard para revisar hero, persona, gesto y takeover antes de
-          producir la Home. El Visual Lock de #394 manda sobre esta propuesta.
+          Storyboard para revisar la continuidad del hero, la persona, el gesto
+          y el paso del campo al producto. El Visual Lock de #394 manda sobre
+          esta propuesta.
         </p>
         <p className="v3-review-status" role="status">
-          12 keyframes definidos · arte original pendiente · aprobación
-          pendiente
+          Referencias visuales recibidas · home en implementación · continuidad
+          y movimiento pendientes
         </p>
+        <section aria-labelledby="reference-title">
+          <h2 id="reference-title">Referencias compartidas del proyecto</h2>
+          <p className="page-description">
+            Estas imágenes guían la Home pública y la futura zona privada. La
+            pantalla completa sirve como referencia de diseño; no se usa como
+            asset de producto ni como fuente de datos.
+          </p>
+          <div className="v3-reference-grid">
+            <figure className="v3-reference">
+              <Image
+                src={`${reviewBase}/v3-review/reference-public-home.jpg`}
+                alt="Referencia visual compartida para la Home pública: hero fotográfico, producto móvil y secciones editoriales en crema y verde oliva"
+                width={711}
+                height={1536}
+                sizes="(max-width: 800px) 100vw, 58rem"
+                loading="eager"
+              />
+              <figcaption>
+                Home pública · referencia proporcionada por el proyecto.
+              </figcaption>
+            </figure>
+            <figure className="v3-reference">
+              <Image
+                src={`${reviewBase}/v3-review/reference-dashboard.jpg`}
+                alt="Referencia visual compartida para la futura zona privada: navegación lateral y dashboard de explotación"
+                width={1280}
+                height={960}
+                sizes="(max-width: 800px) 100vw, 42rem"
+              />
+              <figcaption>
+                Dashboard privado · referencia para #391, aún no implementado.
+              </figcaption>
+            </figure>
+          </div>
+        </section>
         <nav className="v3-review-index" aria-label="Índice de keyframes">
           {keyframes.map(({ id, title }) => (
             <a href={`#${id}`} key={id}>
@@ -213,10 +251,10 @@ export default function V3ReviewPage() {
           ))}
         </div>
         <p className="v3-review-note">
-          Esta página documenta el storyboard; no contiene fotografías generadas
-          o aprobadas ni registra decisiones. No se inicia la producción extensa
-          hasta revisar hero desktop/móvil, continuidad y transición
-          campo→móvil.
+          La Home actual da forma a la composición de la referencia pública.
+          Este storyboard mantiene pendientes la continuidad de los keyframes,
+          el encuadre móvil específico y la transición campo→móvil antes de
+          construir una secuencia cinematográfica controlada por scroll.
         </p>
       </main>
     </>

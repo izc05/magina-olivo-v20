@@ -1,8 +1,10 @@
 # WEB V3 — Asset plan
 
-Estado: **sin assets visuales aprobados**. No se reutilizarán por defecto imágenes, vídeo, teléfono ni composición de V1/V2. Las referencias visuales de esta fase son briefs textuales y estados de review, no imágenes finales.
+Estado: **sin assets visuales finales aprobados**. Las dos imágenes de referencia compartidas por el proyecto fijan la dirección editorial de la Home pública y el futuro dashboard. No se reutilizan por defecto imágenes, vídeo, teléfono ni composición de V1/V2.
 
 La review incluye `public/v3-review/storyboard-concept.webp`, una lámina conceptual generada con IA para discutir tono y continuidad global. Está etiquetada como concepto y no se aprueba como fotografía, UI final ni correspondencia frame por frame.
+
+La primera maqueta de Home usa `public/images/v3/home-hero.webp` y seis crops WebP de `step-*` / `territory-*`, generados como material conceptual a partir de las referencias compartidas. No contienen datos, logotipos ni UI de producto legible; aún requieren revisión explícita antes de considerarse fotografía final. `docs/screenshots/v3-home-desktop.webp` y `docs/screenshots/v3-home-mobile.webp` registran el encuadre responsive de esta maqueta.
 
 ## Paquetes de entrega
 

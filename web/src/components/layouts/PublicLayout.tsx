@@ -10,7 +10,10 @@ export function PublicLayout({ children }: Readonly<{ children: ReactNode }>) {
       </a>
       <header className="public-header">
         <Link className="brand" href="/" aria-label="Mágina Olivo, inicio">
-          Mágina Olivo
+          <span className="brand-leaf" aria-hidden="true">
+            ❧
+          </span>
+          <span>Mágina Olivo</span>
         </Link>
         <nav className="public-nav" aria-label="Navegación principal">
           {publicNavigation.map(({ href, label }) => (
