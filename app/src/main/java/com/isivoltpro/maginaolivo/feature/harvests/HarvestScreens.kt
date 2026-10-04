@@ -102,14 +102,30 @@ fun HarvestsRoute(
     persistence: LocalPersistence,
     clock: AppClock,
     onHarvestSelected: (UUID) -> Unit,
-    onDeliveries: () -> Unit = {},
+    onDeliveries: (UUID?) -> Unit = {},
+    /** #408: when present, this surface belongs to one Campaign and must never leak another one. */
+    campaignId: UUID? = null,
 ) {
     val viewModel: HarvestsViewModel = viewModel(
-        key = "harvests",
+        key = "harvests-${campaignId ?: "all"}",
         factory = viewModelFactory { initializer { HarvestsViewModel(persistence.harvestRepository, clock) } },
     )
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    val deliveries by remember { persistence.deliveryRepository.observeAll() }.collectAsStateWithLifecycle(emptyList())
+    val rawState by viewModel.state.collectAsStateWithLifecycle()
+    val state = remember(rawState, campaignId) {
+        if (campaignId == null) rawState
+        else {
+            val scoped = rawState.harvests.filter { it.campaignId == campaignId }
+            rawState.copy(
+                harvests = scoped,
+                campaigns = rawState.campaigns.filter { it.campaignId == campaignId },
+                contexts = rawState.contexts.filter { it.campaignId == campaignId },
+            )
+        }
+    }
+    val deliveries by remember(campaignId) {
+        if (campaignId == null) persistence.deliveryRepository.observeAll()
+        else persistence.deliveryRepository.observeForCampaign(campaignId)
+    }.collectAsStateWithLifecycle(emptyList())
     // CR-011 §9/§23: jornales and machinery of the days listed, read from their own ledgers.
     val campaignIds = remember(state.harvests) { state.harvests.mapNotNull { it.campaignId }.distinct() }
     val labour by remember(campaignIds) {
@@ -136,7 +152,7 @@ fun HarvestsRoute(
         onCreate = viewModel::create,
         onHarvestSelected = onHarvestSelected,
         onEditorClosed = viewModel::clearFormErrors,
-        onDeliveries = onDeliveries,
+        onDeliveries = { onDeliveries(state.contexts.singleOrNull()?.farmId) },
         deliverySummary = remember(deliveries) { DeliverySummary.of(deliveries) },
         dayLines = dayLines,
     )
