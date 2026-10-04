@@ -441,6 +441,10 @@ fun AppNavigation(
                     onHarvests = { navController.navigate(AppDestination.Harvest) },
                     onDeliveries = { navController.navigate(AppDestination.Deliveries) },
                     onNewPesada = { farmId -> navController.navigate(AppDestination.newPesada(farmId.toString())) },
+                    // #365: the same day as Cuaderno → Jornal; find-or-create keeps it a single day.
+                    onAddLabour = { farmId ->
+                        navController.navigate(AppDestination.todayHarvest(farmId.toString())) { launchSingleTop = true }
+                    },
                 )
             }
             composable(AppDestination.ActivityPattern) { backStackEntry ->
