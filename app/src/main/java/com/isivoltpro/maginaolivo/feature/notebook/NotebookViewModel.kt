@@ -15,6 +15,7 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentRepository
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourRepository
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
+import com.isivoltpro.maginaolivo.domain.notebook.FarmNotebook
 import java.util.UUID
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,8 @@ data class NotebookUiState(
     /** Phase 19G: every Campaign of the Farm, oldest first, for the year-over-year view. */
     val comparison: List<CampaignComparison> = emptyList(),
     val labourPayments: List<com.isivoltpro.maginaolivo.domain.labour.LabourPayment> = emptyList(),
+    /** #417: the Farm's own Cuaderno (Diario, Fitosanitario, Gastos), with or without a Campaign. */
+    val farmNotebook: FarmNotebook? = null,
 )
 
 /**
@@ -93,8 +96,33 @@ class NotebookViewModel(
         CampaignComparison.of(list.map { CampaignNotebook.project(it, acts, crops, weighings, costs) })
     }
 
-    val state: StateFlow<NotebookUiState> = combine(current, comparison) { base, years ->
-        base.copy(comparison = years)
+    /** #417: the jornales and equipment of every Campaign of the Farm, for its Jornada rows. */
+    private val farmCrews = campaigns.observeForFarm(farmId).flatMapLatest { list ->
+        if (list.isEmpty() || (labour == null && equipment == null)) {
+            flowOf(emptyList<LabourEntry>() to emptyList<EquipmentLine>())
+        } else {
+            combine(list.map { campaign ->
+                combine(
+                    labour?.observeForCampaign(campaign.id) ?: flowOf(emptyList<LabourEntry>()),
+                    equipment?.observeForCampaign(campaign.id) ?: flowOf(emptyList<EquipmentLine>()),
+                ) { jornales, maquinaria -> jornales to maquinaria }
+            }) { parts -> parts.flatMap { it.first } to parts.flatMap { it.second } }
+        }
+    }
+
+    /** #417: the Farm's Cuaderno, built whether or not any Campaign exists. */
+    private val farmNotebook = combine(
+        activities.observeForFarm(farmId),
+        harvests.observeAll(),
+        deliveries.observeAll(),
+        expenses.observeAll(),
+        farmCrews,
+    ) { acts, crops, weighings, costs, (jornales, maquinaria) ->
+        FarmNotebook.of(farmId, acts, crops, weighings, costs, jornales, maquinaria)
+    }
+
+    val state: StateFlow<NotebookUiState> = combine(current, comparison, farmNotebook) { base, years, farm ->
+        base.copy(comparison = years, farmNotebook = farm)
     }
         .catch { emit(NotebookUiState(isLoading = false, error = "No hemos podido abrir el cuaderno en este dispositivo.")) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NotebookUiState())

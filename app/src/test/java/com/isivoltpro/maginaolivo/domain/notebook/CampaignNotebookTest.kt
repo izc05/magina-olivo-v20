@@ -9,6 +9,9 @@ import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySource
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.YieldAnalysis
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentSummary
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
@@ -16,6 +19,8 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
+import com.isivoltpro.maginaolivo.domain.machinery.ActivityMachine
+import com.isivoltpro.maginaolivo.domain.machinery.MachineCategory
 import java.time.LocalDate
 import java.util.UUID
 import org.junit.Assert.assertEquals
@@ -70,6 +75,74 @@ class CampaignNotebookTest {
         assertEquals(listOf(ActivityType.PRUNING, ActivityType.PHYTOSANITARY), notebook.works.map { it.type })
         assertEquals(1, notebook.harvestDays.size)
         assertEquals(1, notebook.recollectionDays.size)
+    }
+
+    /** #417: the Farm's Cuaderno holds all its records, with or without a Campaign; none from another Farm. */
+    @Test fun theFarmNotebookListsTheFarmsRecordsWhateverTheCampaign() {
+        val general = expense(1000, ExpenseCategory.OTHER, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2)).copy(campaignId = null)
+        val linked = expense(2000, ExpenseCategory.HARVEST, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2))
+        val elsewhere = expense(500, ExpenseCategory.OTHER, ExpenseStatus.POSTED, LocalDate.of(2026, 10, 2)).copy(farmId = otherFarm, campaignId = null)
+        val notebook = FarmNotebook.of(
+            farm,
+            activities = listOf(
+                activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 2), campaign.id),
+                activity(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 9, 20), null),
+                activity(ActivityType.IRRIGATION, LocalDate.of(2026, 8, 1), null),
+                activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 3), null, farmId = otherFarm),
+            ),
+            harvests = emptyList(), deliveries = emptyList(), expenses = listOf(general, linked, elsewhere),
+        )
+        assertEquals(3, notebook.activities.size)
+        assertEquals(listOf(ActivityType.PHYTOSANITARY), notebook.phytoRecords.map { it.activity.type })
+        assertEquals(listOf(general), notebook.generalExpenses)
+        assertEquals(listOf(linked), notebook.recollectionExpenses)
+        // Diario: newest day first, the work and both own expenses, nothing from the other Farm.
+        assertEquals(listOf(LocalDate.of(2026, 10, 2), LocalDate.of(2026, 9, 20), LocalDate.of(2026, 8, 1)), notebook.diary.map { it.date })
+        assertEquals(3, notebook.diary.first().entries.size)
+    }
+
+    @Test fun aFarmWithoutCampaignsStillHasItsNotebook() {
+        val notebook = FarmNotebook.of(farm, listOf(activity(ActivityType.FERTILIZATION, LocalDate.of(2026, 3, 1), null)), emptyList(), emptyList(), emptyList())
+        assertEquals(1, notebook.diary.size)
+        assertTrue(notebook.recollectionExpenses.isEmpty())
+    }
+
+    @Test fun onlyDoneWorkIsAFactInTheFarmNotebook() {
+        val tractor = ActivityMachine(UUID.randomUUID(), "Tractor", MachineCategory.TRACTOR, null, null, 2.0)
+        val plannedPruning = activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 5), null).copy(status = ActivityStatus.PLANNED)
+        val donePruning = activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 1), null)
+        val plannedTreatment = activity(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 10, 6), null)
+            .copy(status = ActivityStatus.PLANNED, machines = listOf(tractor))
+        val doneTreatment = activity(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 9, 20), null).copy(machines = listOf(tractor))
+        val draft = activity(ActivityType.IRRIGATION, LocalDate.of(2026, 9, 1), null).copy(status = ActivityStatus.DRAFT)
+        val cancelled = activity(ActivityType.IRRIGATION, LocalDate.of(2026, 9, 2), null).copy(status = ActivityStatus.CANCELLED)
+        val notebook = FarmNotebook.of(
+            farm, listOf(plannedPruning, donePruning, plannedTreatment, doneTreatment, draft, cancelled),
+            emptyList(), emptyList(), emptyList(),
+        )
+        val diaryWork = notebook.diary.flatMap { it.entries }.filterIsInstance<DiaryEntry.Work>().map { it.activity.id }
+        // Diario: only what was done; planned, draft and cancelled work stays out.
+        assertEquals(listOf(donePruning.id, doneTreatment.id), diaryWork)
+        // Fitosanitario: a planned treatment is never read as applied.
+        assertEquals(listOf(doneTreatment.id), notebook.phytoRecords.map { it.activity.id })
+        // Machinery: planned machines never count as use.
+        assertEquals(listOf(doneTreatment.id), notebook.machineWork.map { it.id })
+        // Once confirmed (#438) the same record enters the realised projections exactly once.
+        val confirmed = FarmNotebook.of(
+            farm, listOf(plannedPruning.copy(status = ActivityStatus.COMPLETED, version = 2), donePruning),
+            emptyList(), emptyList(), emptyList(),
+        )
+        assertEquals(1, confirmed.diary.flatMap { it.entries }.filterIsInstance<DiaryEntry.Work>().count { it.activity.id == plannedPruning.id })
+    }
+
+    @Test fun jornadaEquipmentIsPartOfTheFarmsMachineryUse() {
+        val jornada = harvest(1_000_000, LocalDate.of(2026, 11, 2))
+        val shaker = EquipmentLine(UUID.randomUUID(), jornada.id, EquipmentType.SHAKER, null, 2, null, 1)
+        val stray = EquipmentLine(UUID.randomUUID(), UUID.randomUUID(), EquipmentType.TRACTOR, null, 1, null, 1)
+        val notebook = FarmNotebook.of(farm, emptyList(), listOf(jornada), emptyList(), emptyList(), equipment = listOf(shaker, stray))
+        // No annual work with a machine, yet the Jornada's vibradoras are real use; a line of no listed Jornada is not.
+        assertTrue(notebook.machineWork.isEmpty())
+        assertEquals(EquipmentSummary.of(listOf(shaker)), notebook.equipmentSummary)
     }
 
     @Test fun totalsAreTheSameSummariesTheirOwnScreensShow() {

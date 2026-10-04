@@ -46,6 +46,7 @@ class NotebookHomeScreenTest {
     private val campaign = UiPolishFixtures.campaign
     private val treatment = UiPolishFixtures.activity.copy(
         type = ActivityType.PHYTOSANITARY,
+        status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
         campaignId = campaign.id,
         activityDate = campaign.startDate.plusDays(5),
         description = "Cobre de ejemplo",
@@ -201,7 +202,33 @@ class NotebookHomeScreenTest {
             useUnmergedTree = true,
         ).assertExists()
         composeRule.onNodeWithTag("notebook-context").assertTextContains("Finca de ejemplo", substring = true)
+        // #417: the Diario is the Farm's and opens without a Campaign; only Campaña asks for one.
+        composeRule.onNodeWithTag("notebook-diary-empty").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-tab-campaign").performScrollTo().performClick()
         composeRule.onNodeWithTag("notebook-no-campaign").performScrollTo().assertIsDisplayed()
+    }
+
+    /** #417: with no Campaign at all, the Farm's work and costs are in Diario, Fitosanitario and Gastos. */
+    @Test fun withoutACampaignTheFarmsRecordsAreStillThere() {
+        val general = UiPolishFixtures.activity.copy(
+            type = ActivityType.PHYTOSANITARY, status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
+            campaignId = null, description = "Cobre general",
+        )
+        val cost = com.isivoltpro.maginaolivo.domain.expense.Expense(
+            java.util.UUID.randomUUID(), farm.workspaceId, general.activityDate, "Gasóleo general",
+            com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory.FUEL, 9_000, "EUR",
+            com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus.POSTED, com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin.MANUAL,
+            farmId = farm.id,
+        )
+        val farmNotebook = com.isivoltpro.maginaolivo.domain.notebook.FarmNotebook.of(farm.id, listOf(general), emptyList(), emptyList(), listOf(cost))
+        show(state = NotebookUiState(isLoading = false, farmNotebook = farmNotebook))
+        composeRule.onNodeWithTag("notebook-work").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-tab-phyto").performScrollTo().performClick()
+        composeRule.onNodeWithTag("notebook-phyto-record").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("notebook-tab-expenses").performScrollTo().performClick()
+        composeRule.onNodeWithTag("notebook-costs-general").performScrollTo()
+            .assertTextContains(com.isivoltpro.maginaolivo.domain.expense.Money.format(9_000, "EUR"), substring = true)
+        composeRule.onNodeWithTag("notebook-costs-recollection").performScrollTo().assertTextContains("—", substring = true)
     }
 
     /** #378: without a running campaign Jornal is passed on (it opens the Farm's own labour), no notice. */

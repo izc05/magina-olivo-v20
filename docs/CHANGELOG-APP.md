@@ -20,6 +20,12 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El Cuaderno funciona sin campaña (#417).** Diario, Fitosanitario y Gastos son ahora los de la
+  finca: muestran poda, riegos, tratamientos y gastos de todo el año aunque no exista ninguna
+  campaña. Solo la pestaña Campaña (pesadas, días y jornales de recogida) pide crear una. En Gastos,
+  «Recogida» (lo vinculado a una campaña) y «Fuera de campaña» se ven por separado, nunca mezclados.
+  Solo cuenta lo hecho: un trabajo o tratamiento previsto sigue en Avisos y no aparece en el Diario,
+  en Fitosanitario ni como uso de maquinaria hasta que se confirma.
 - **Finca Demo (solo versión de desarrollo, #399).** Perfil → «Herramientas de desarrollo» →
   «Cargar Finca Demo» crea una finca de prueba completa (3 parcelas, campañas 2025/26 y 2026/27,
   pesadas, jornales, maquinaria, gastos y trabajos) con las cifras de `docs/DEMO-FARM-SCENARIO.md`.
