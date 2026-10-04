@@ -807,7 +807,7 @@ fun AppNavigation(
                         onClosed = { navController.popBackStack() },
                         contextFarmId = contextFarmId,
                         contextCampaignId = contextCampaignId,
-                        preselectRecollection = backStackEntry.arguments?.getBoolean("recollection") == true,
+                        requireCampaignChoice = backStackEntry.arguments?.getBoolean("recollection") == true,
                     )
                 }
             }
