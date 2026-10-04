@@ -19,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.isRoot
@@ -343,9 +344,7 @@ class AppNavigationTest {
     fun registerFromAFarmOpensCuadernoWithThatFarm() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
-        }
+        waitForTag("add-farm")
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("El Cerro")
         saveEditor("save-farm", "farm-name")
@@ -375,9 +374,7 @@ class AppNavigationTest {
     fun nestedFarmRouteReturnsToOlivar() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
-        }
+        waitForTag("add-farm")
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("La Solana")
         saveEditor("save-farm", "farm-name")
@@ -400,9 +397,7 @@ class AppNavigationTest {
     fun parcelCanBeCreatedAndOpenedFromItsFarm() {
         enterMainShell()
         composeRule.onNodeWithTag("bottom-Mi Campo").performClick()
-        composeRule.waitUntil(UI_TIMEOUT_MS) {
-            composeRule.onAllNodesWithTag("add-farm").fetchSemanticsNodes().isNotEmpty()
-        }
+        waitForTag("add-farm")
         openSheet("add-farm", "farm-name")
         composeRule.onNodeWithTag("farm-name").performTextInput("Los Llanos")
         saveEditor("save-farm", "farm-name")
@@ -1039,9 +1034,19 @@ class AppNavigationTest {
 
     private fun waitForTag(tag: String, timeoutMillis: Long = UI_TIMEOUT_MS) {
         composeRule.waitUntil(timeoutMillis) {
-            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() || revealInFarmList(tag)
         }
     }
+
+    /**
+     * #359: Mi Campo's summary sits above «Añadir finca» and the Farms; on a short screen those
+     * rows are below the fold of the lazy list, so scroll the list to them.
+     */
+    private fun revealInFarmList(tag: String): Boolean = runCatching {
+        if (composeRule.onAllNodesWithTag("farm-list").fetchSemanticsNodes().isEmpty()) return false
+        composeRule.onNodeWithTag("farm-list").performScrollToNode(hasTestTag(tag))
+        composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+    }.getOrDefault(false)
 
     /**
      * Waits until an editor sheet has closed and its saved name is on screen. Waiting for the
@@ -1164,6 +1169,14 @@ class AppNavigationTest {
      * depend on which screen happens to be composed at that instant.
      */
     private fun clickByText(text: String) {
+        runCatching {
+            composeRule.waitUntil(UI_TIMEOUT_MS) {
+                composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() || runCatching {
+                    composeRule.onNodeWithTag("farm-list").performScrollToNode(hasText(text))
+                    true
+                }.getOrDefault(false)
+            }
+        }
         waitForNodeOrDump("clickable node \"$text\"") { composeRule.onAllNodesWithText(text) }
         val node = clickableNodeWithText(text)
         scrollIntoViewIfPossible { node }
