@@ -109,16 +109,87 @@ class ActivityDetailFormTest {
     }
 
     @Test
-    fun `an unreadable value is dropped rather than guessed`() {
-        val detail = buildActivityDetail(
+    fun `an unreadable value is an error next to its field, never dropped`() {
+        // #473: «cuatro» is not «no data»; the form refuses to save until it is corrected.
+        val errors = detailFieldErrors(
             ActivityType.PRUNING,
             mapOf(
                 ActivityDetailFields.WORKER_COUNT to "cuatro",
+                ActivityDetailFields.HOURS to "abc",
                 ActivityDetailFields.PRUNING_TYPE to "Formación",
             ),
-        ) as ActivityDetail.Pruning
-        assertNull(detail.workerCount)
-        assertEquals("Formación", detail.pruningType)
+        )
+        assertEquals(setOf(ActivityDetailFields.WORKER_COUNT, ActivityDetailFields.HOURS), errors.keys)
+        assertEquals("Escribe las horas como 7,5", errors[ActivityDetailFields.HOURS])
+    }
+
+    @Test
+    fun `readable and empty values raise no error`() {
+        assertTrue(detailFieldErrors(ActivityType.PRUNING, mapOf(ActivityDetailFields.HOURS to "7,5")).isEmpty())
+        assertTrue(detailFieldErrors(ActivityType.IRRIGATION, mapOf(ActivityDetailFields.VOLUME_M3 to "12,5")).isEmpty())
+        // An optional field left empty is still a valid «no data».
+        assertTrue(detailFieldErrors(ActivityType.IRRIGATION, mapOf(ActivityDetailFields.VOLUME_M3 to "  ")).isEmpty())
+        assertTrue(detailFieldErrors(ActivityType.OBSERVATION, mapOf(ActivityDetailFields.HOURS to "abc")).isEmpty())
+    }
+
+    @Test
+    fun `every typed number and the tariff date are checked`() {
+        assertEquals(
+            setOf(ActivityDetailFields.VOLUME_M3, ActivityDetailFields.DURATION_MINUTES, ActivityDetailFields.UNIT_PRICE,
+                ActivityDetailFields.PRICED_QUANTITY, ActivityDetailFields.PRICE_DATE),
+            detailFieldErrors(
+                ActivityType.IRRIGATION,
+                mapOf(
+                    // A basis is chosen, so only the unreadable values are reported here.
+                    ActivityDetailFields.PRICE_BASIS to IrrigationPricingBasis.PER_M3.name,
+                    ActivityDetailFields.VOLUME_M3 to "doce",
+                    ActivityDetailFields.DURATION_MINUTES to "hora y media",
+                    ActivityDetailFields.UNIT_PRICE to "barato",
+                    ActivityDetailFields.PRICED_QUANTITY to "mucho",
+                    ActivityDetailFields.PRICE_DATE to "31/02/2026",
+                ),
+            ).keys,
+        )
+        assertEquals(
+            setOf(ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.TOTAL_QUANTITY),
+            detailFieldErrors(
+                ActivityType.PHYTOSANITARY,
+                mapOf(ActivityDetailFields.DOSE_VALUE to "dos", ActivityDetailFields.TOTAL_QUANTITY to "x"),
+            ).keys,
+        )
+    }
+
+    @Test
+    fun `a tariff value without its basis asks for the basis instead of vanishing`() {
+        listOf(
+            ActivityDetailFields.UNIT_PRICE to "0,12",
+            ActivityDetailFields.PRICED_QUANTITY to "240",
+            ActivityDetailFields.PRICE_DATE to "2026-03-01",
+        ).forEach { written ->
+            val errors = detailFieldErrors(ActivityType.IRRIGATION, mapOf(written, ActivityDetailFields.VOLUME_M3 to "12"))
+            assertEquals(mapOf(ActivityDetailFields.PRICE_BASIS to "Elige cómo se aplica esta tarifa."), errors)
+        }
+        // With its basis the snapshot is kept; with every tariff field empty there is nothing to ask.
+        assertTrue(
+            detailFieldErrors(
+                ActivityType.IRRIGATION,
+                mapOf(ActivityDetailFields.PRICE_BASIS to IrrigationPricingBasis.PER_M3.name, ActivityDetailFields.UNIT_PRICE to "0,12"),
+            ).isEmpty(),
+        )
+        assertTrue(detailFieldErrors(ActivityType.IRRIGATION, mapOf(ActivityDetailFields.UNIT_PRICE to " ")).isEmpty())
+    }
+
+    @Test
+    fun `a tariff without its own date takes the date of the work, never today`() {
+        val detail = buildActivityDetail(
+            ActivityType.IRRIGATION,
+            mapOf(
+                ActivityDetailFields.PRICE_BASIS to IrrigationPricingBasis.PER_M3.name,
+                ActivityDetailFields.UNIT_PRICE to "0,12",
+            ),
+            activityDate = LocalDate.parse("2025-07-10"),
+        ) as ActivityDetail.Irrigation
+        assertEquals(LocalDate.parse("2025-07-10"), detail.price!!.priceDate)
     }
 
     @Test

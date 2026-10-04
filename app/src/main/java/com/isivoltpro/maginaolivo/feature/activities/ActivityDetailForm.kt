@@ -61,7 +61,12 @@ fun ActivityType.hasTypedDetail(): Boolean =
  * empty, so an untouched form never writes a row of nulls. Anything the farmer did type
  * is kept, even partially: a pruning with only the hours filled in is still a pruning.
  */
-fun buildActivityDetail(type: ActivityType, fields: Map<String, String>): ActivityDetail? {
+fun buildActivityDetail(
+    type: ActivityType,
+    fields: Map<String, String>,
+    /** #473: a tariff without its own date is dated on the work it priced, never «today» by accident. */
+    activityDate: LocalDate? = null,
+): ActivityDetail? {
     if (!type.hasTypedDetail()) return null
     val detail = when (type) {
         ActivityType.PRUNING -> ActivityDetail.Pruning(
@@ -97,7 +102,7 @@ fun buildActivityDetail(type: ActivityType, fields: Map<String, String>): Activi
             volumeM3 = fields.decimal(ActivityDetailFields.VOLUME_M3),
             sectorText = fields.text(ActivityDetailFields.SECTOR_TEXT),
             systemText = fields.text(ActivityDetailFields.SYSTEM_TEXT),
-            price = buildIrrigationPrice(fields),
+            price = buildIrrigationPrice(fields, activityDate),
         )
         ActivityType.MAINTENANCE -> ActivityDetail.Maintenance(
             maintenanceType = fields.text(ActivityDetailFields.MAINTENANCE_TYPE),
@@ -181,13 +186,16 @@ fun ActivityDetail?.toFields(): Map<String, String> {
  * independent number they have to keep in step: it is an estimate for their own reading
  * and the Expense ledger remains the authoritative cost.
  */
-private fun buildIrrigationPrice(fields: Map<String, String>): IrrigationPrice? {
+private fun buildIrrigationPrice(fields: Map<String, String>, activityDate: LocalDate?): IrrigationPrice? {
     val basis = fields.enumOrNull(ActivityDetailFields.PRICE_BASIS, IrrigationPricingBasis::valueOf)
         ?: return null
     val unitPrice = fields.decimal(ActivityDetailFields.UNIT_PRICE)
     val quantity = fields.decimal(ActivityDetailFields.PRICED_QUANTITY)
+    // A typed date that cannot be read never reaches here (see [detailFieldErrors]); an empty one
+    // takes the date of the work itself.
     val priceDate = fields.text(ActivityDetailFields.PRICE_DATE)
         ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        ?: activityDate
         ?: LocalDate.now()
     val unitPriceMinor = unitPrice?.toMinorUnits()
     val estimated = when {
@@ -205,6 +213,75 @@ private fun buildIrrigationPrice(fields: Map<String, String>): IrrigationPrice? 
         estimatedAmountMinor = estimated,
     )
 }
+
+/**
+ * #473: what the farmer typed but the form cannot read. An empty field is a valid «no data»;
+ * written text that is not a number or a date is an error shown next to the field, and nothing
+ * is saved until it is corrected — never quietly dropped, never replaced by a guess.
+ */
+fun detailFieldErrors(type: ActivityType, fields: Map<String, String>): Map<String, String> {
+    if (!type.hasTypedDetail()) return emptyMap()
+    val errors = linkedMapOf<String, String>()
+    typedKeys(type).forEach { key ->
+        val text = fields.text(key) ?: return@forEach
+        val message = when (key) {
+            ActivityDetailFields.WORKER_COUNT ->
+                "Escribe un número de operarios".takeIf { text.toIntOrNull() == null }
+            ActivityDetailFields.DURATION_MINUTES ->
+                "Escribe los minutos como 90".takeIf { text.toIntOrNull() == null }
+            ActivityDetailFields.HOURS -> "Escribe las horas como 7,5".takeIf { text.notDecimal() }
+            ActivityDetailFields.VOLUME_M3 -> "Escribe el volumen como 12,5".takeIf { text.notDecimal() }
+            ActivityDetailFields.DOSE_VALUE -> "Revisa la dosis: escribe un número como 2,5".takeIf { text.notDecimal() }
+            ActivityDetailFields.TOTAL_QUANTITY -> "Escribe la cantidad como 12,5".takeIf { text.notDecimal() }
+            ActivityDetailFields.UNIT_PRICE -> "Escribe el precio como 0,12".takeIf { text.notDecimal() }
+            ActivityDetailFields.PRICED_QUANTITY -> "Escribe la cantidad como 240".takeIf { text.notDecimal() }
+            ActivityDetailFields.PRICE_DATE ->
+                "Usa una fecha válida (AAAA-MM-DD)".takeIf { runCatching { LocalDate.parse(text) }.isFailure }
+            else -> null
+        }
+        if (message != null) errors[key] = message
+    }
+    // #473: a price, a quantity or a date means nothing without how the tariff applies; ask for
+    // that choice instead of dropping what was written.
+    if (type == ActivityType.IRRIGATION && fields.text(ActivityDetailFields.PRICE_BASIS) == null &&
+        listOf(ActivityDetailFields.UNIT_PRICE, ActivityDetailFields.PRICED_QUANTITY, ActivityDetailFields.PRICE_DATE)
+            .any { fields.text(it) != null }
+    ) {
+        errors[ActivityDetailFields.PRICE_BASIS] = "Elige cómo se aplica esta tarifa."
+    }
+    return errors
+}
+
+/** The fields one typed block can hold. */
+private fun typedKeys(type: ActivityType): List<String> = when (type) {
+    ActivityType.PRUNING -> listOf(
+        ActivityDetailFields.PRUNING_TYPE, ActivityDetailFields.WORKER_COUNT,
+        ActivityDetailFields.HOURS, ActivityDetailFields.RESIDUE_MANAGEMENT,
+    )
+    ActivityType.FERTILIZATION -> listOf(
+        ActivityDetailFields.PRODUCT_NAME, ActivityDetailFields.TOTAL_QUANTITY, ActivityDetailFields.UNIT,
+        ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.DOSE_UNIT, ActivityDetailFields.APPLICATION_METHOD,
+    )
+    ActivityType.PHYTOSANITARY -> listOf(
+        ActivityDetailFields.PRODUCT_NAME, ActivityDetailFields.ACTIVE_SUBSTANCE, ActivityDetailFields.TOTAL_QUANTITY,
+        ActivityDetailFields.UNIT, ActivityDetailFields.DOSE_VALUE, ActivityDetailFields.DOSE_UNIT,
+        ActivityDetailFields.REASON, ActivityDetailFields.EQUIPMENT_TEXT,
+    )
+    ActivityType.SOIL_WORK -> listOf(ActivityDetailFields.WORK_TYPE, ActivityDetailFields.METHOD)
+    ActivityType.IRRIGATION -> listOf(
+        ActivityDetailFields.DURATION_MINUTES, ActivityDetailFields.VOLUME_M3, ActivityDetailFields.SECTOR_TEXT,
+        ActivityDetailFields.SYSTEM_TEXT, ActivityDetailFields.PRICE_BASIS, ActivityDetailFields.UNIT_PRICE,
+        ActivityDetailFields.PRICED_QUANTITY, ActivityDetailFields.PRICE_DATE,
+    )
+    ActivityType.MAINTENANCE -> listOf(ActivityDetailFields.MAINTENANCE_TYPE, ActivityDetailFields.ASSET_TEXT)
+    ActivityType.INCIDENT -> listOf(
+        ActivityDetailFields.CATEGORY, ActivityDetailFields.SEVERITY,
+        ActivityDetailFields.INCIDENT_STATE, ActivityDetailFields.ACTION_TAKEN,
+    )
+    ActivityType.OBSERVATION, ActivityType.OTHER, ActivityType.HARVEST_DAY -> emptyList()
+}
+
+private fun String.notDecimal(): Boolean = replace(',', '.').toDoubleOrNull() == null
 
 private fun ActivityDetail.isEmpty(): Boolean = when (this) {
     is ActivityDetail.Pruning ->

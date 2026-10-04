@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un número mal escrito ya no desaparece (#473).** Si en horas, operarios, dosis, cantidad,
+  volumen, duración, precio o fecha de tarifa se escribe algo que no se entiende («doce»,
+  «31/02/2026»), el campo lo marca («Escribe el volumen como 12,5») y no se guarda hasta
+  corregirlo; antes se perdía en silencio. Una tarifa sin fecha toma la fecha del riego, nunca «hoy».
 - **Un gasto general no cae solo en la campaña (#411).** Desde el Cuaderno, con una recogida en
   marcha, el gasto pregunta «¿Dónde pertenece este gasto?» —Recogida o Fuera de campaña— sin nada
   marcado, y no se guarda hasta elegir. Mientras se comprueban las campañas de la finca tampoco se
