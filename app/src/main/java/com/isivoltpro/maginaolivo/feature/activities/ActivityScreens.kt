@@ -286,8 +286,10 @@ fun RegisterActivityRoute(
                             )
                             return@Column
                         }
+                        // #375: a Farm brought from the Cuaderno is context; only a free choice can change.
+                        val farmFromContext = parcelFarmId != null && selectedFarmId.toString() == parcelFarmId
                         val changeFarm: (@Composable () -> Unit)? =
-                            if (state.farms.size > 1) {
+                            if (state.farms.size > 1 && !farmFromContext) {
                                 {
                                     TextButton(
                                         onClick = vm::changeFarm,

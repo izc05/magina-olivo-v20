@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.analytics.CurrencyTotal
@@ -45,15 +46,37 @@ class FarmOverviewScreenTest {
         }
         composeRule.onNodeWithTag("farm-overview-note").assertTextContains("1 de 2 fincas con campaña 2026/27", substring = true)
         composeRule.onNodeWithTag("farm-overview-note").assertTextContains("Sin campaña: Los Llanos", substring = true)
-        composeRule.onAllNodesWithTag("farm-overview-season").assertCountEquals(2)
+        // #359 follow-up: the period is always shown; the other seasons are in its menu.
+        composeRule.onNodeWithTag("farm-overview-period").assertTextContains("Campaña 2026/27", substring = true)
+        composeRule.onAllNodesWithTag("farm-overview-season").assertCountEquals(0)
 
         composeRule.onNodeWithTag("farm-overview-by-farm").performScrollTo().performClick()
         composeRule.onNodeWithTag("farm-overview-farm").performScrollTo().performClick()
         composeRule.runOnIdle { assertEquals(listOf(estacas), opened) }
 
         // Another season shows its own figures, never the newer ones.
-        composeRule.onAllNodesWithTag("farm-overview-season")[1].performScrollTo().performClick()
+        composeRule.onNodeWithTag("farm-overview-period").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("farm-overview-season").fetchSemanticsNodes().size == 2 }
+        composeRule.onAllNodesWithTag("farm-overview-season")[1].performClick()
         composeRule.onNodeWithTag("farm-overview-note").assertTextContains("0 de 2 fincas con campaña 2025/26", substring = true)
         composeRule.onAllNodesWithTag("farm-overview-by-farm").assertCountEquals(0)
+    }
+
+    /** #359 follow-up: recollection cost/kg apart from general costs, and the total of both. */
+    @Test fun generalCostsAreShownApartWithTheTotal() {
+        val kilos = DeliverySummary(3, 5_700_000, 0, null, null)
+        val season = FarmOverview("2026/27", emptyList(), emptyList(), kilos,
+            listOf(CurrencyTotal("EUR", 144_000, 65_000)), listOf(CurrencyTotal("EUR", 118_500, null)))
+        composeRule.setContent {
+            MaginaOlivoTheme { Column(Modifier.verticalScroll(rememberScrollState())) { FarmOverviewSection(listOf(season)) {} } }
+        }
+        composeRule.onNodeWithTag("farm-overview-period").assertTextContains("Campaña 2026/27")
+        val money = { minor: Long -> com.isivoltpro.maginaolivo.domain.expense.Money.format(minor, "EUR") }
+        // Recollection cost/kg stays 1.440 € / 5.700 kg; general costs and the total are apart.
+        composeRule.onNodeWithText(money(25) + "/kg", useUnmergedTree = true).performScrollTo()
+        composeRule.onNodeWithTag("farm-overview-general").performScrollTo()
+        composeRule.onNodeWithText(money(118_500), useUnmergedTree = true).performScrollTo()
+        composeRule.onNodeWithText(money(262_500), useUnmergedTree = true).performScrollTo()
+        composeRule.onNodeWithText(money(46) + "/kg", useUnmergedTree = true).performScrollTo()
     }
 }

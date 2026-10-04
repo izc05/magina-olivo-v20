@@ -278,6 +278,8 @@ fun ExpensesScreen(
                 // Owner 2026-10-03: Cuaderno → Gasto starts on «Gasto de recogida» if one runs.
                 // A labour form outside a campaign stays outside: it is the Farm's own labour.
                 preselectRecollection = presetFarmId != null && presetCampaignId == null && !presetLabour,
+                // #375: from a Farm's Cuaderno or a campaign, the Farm is context, not a question.
+                farmLocked = presetFarmId != null,
             )
         }
     }

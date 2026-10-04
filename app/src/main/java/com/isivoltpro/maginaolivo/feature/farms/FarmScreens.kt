@@ -167,6 +167,9 @@ fun FarmListScreen(
     overviews: List<com.isivoltpro.maginaolivo.domain.analytics.FarmOverview> = emptyList(),
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
+    // #359 follow-up: a local filter of the Farms already listed; nothing is queried or stored.
+    var query by rememberSaveable { mutableStateOf("") }
+    val visibleFarms = state.farms.filter { matchesFarmSearch(query, it.name, it.municipality) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     OnEachSave(state.saveCount) {
@@ -219,18 +222,26 @@ fun FarmListScreen(
                 }
             }
 
-            if (state.farms.isNotEmpty()) item {
-                MoPrimaryButton(
-                    text = "Añadir finca",
-                    onClick = { editorVisible = true },
-                    enabled = !state.isLoading && !state.isSaving,
-                    modifier = Modifier.testTag("add-farm"),
-                )
-            }
-
-            // #359: above the Farms, under «Añadir finca», so the button stays near the top.
+            // #359 follow-up: the summary is read first; search and «Añadir finca» sit above the Farms.
             if (!state.isLoading && state.error == null && state.farms.isNotEmpty() && overviews.isNotEmpty()) item {
                 FarmOverviewSection(overviews, onFarmSelected)
+            }
+
+            if (state.farms.isNotEmpty()) item {
+                Column(verticalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                    MoTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        label = "Buscar finca…",
+                        modifier = Modifier.fillMaxWidth().testTag("farm-search"),
+                    )
+                    MoPrimaryButton(
+                        text = "+ Añadir finca",
+                        onClick = { editorVisible = true },
+                        enabled = !state.isLoading && !state.isSaving,
+                        modifier = Modifier.fillMaxWidth().testTag("add-farm"),
+                    )
+                }
             }
 
             when {
@@ -252,8 +263,16 @@ fun FarmListScreen(
                         icon = MoIcons.Tree,
                     )
                 }
+                visibleFarms.isEmpty() -> item {
+                    Text(
+                        text = "No encontramos ninguna finca",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MoTextSecondary,
+                        modifier = Modifier.testTag("farm-search-empty"),
+                    )
+                }
                 else -> items(
-                    items = state.farms,
+                    items = visibleFarms,
                     key = { farm -> farm.id },
                 ) { farm ->
                     FarmCard(

@@ -24,6 +24,21 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   «Cargar Finca Demo» crea una finca de prueba completa (3 parcelas, campañas 2025/26 y 2026/27,
   pesadas, jornales, maquinaria, gastos y trabajos) con las cifras de `docs/DEMO-FARM-SCENARIO.md`.
   No existe en las versiones de pruebas ni de producción y nunca se crea sola.
+- **No volver a pedir la finca (#375).** Trabajo, Riego y Tratamiento abiertos desde el Cuaderno de
+  una finca ya no ofrecen «Cambiar finca», y Gasto/Jornal abiertos con una finca elegida la muestran
+  como contexto en lugar del selector «Finca», igual que Pesada. Desde los listados globales se
+  sigue eligiendo.
+- **Campañas con resumen en cada tarjeta (#246).** Sin entrar, cada campaña muestra kg pesados,
+  nº de pesadas, días de recogida, coste de jornales y rendimiento medio, en pequeñas etiquetas con
+  icono y texto y un color suave por tipo (producción verde oliva, días ámbar, costes tierra,
+  rendimiento verde salvia). Sin datos dice «Sin pesadas», nunca un cero inventado.
+- **Mi Campo: periodo visible, gastos generales y buscador (#359).** El resumen muestra siempre
+  su campaña («Campaña 2026/27 ▾», con menú si hay varias), para que los kilos nunca parezcan «de
+  siempre». «Coste/kg» pasa a **Coste recogida/kg** y, aparte, «Gastos generales del periodo»
+  muestra los gastos confirmados sin campaña de esa temporada (septiembre-agosto), el **Coste
+  total** y el **Coste total/kg** (solo con una moneda; sin kilos, «—»). Debajo del resumen,
+  «Buscar finca…» filtra por nombre o municipio (sin tildes) y «+ Añadir finca» queda junto al
+  listado.
 - **Añadir jornal desde la campaña (#365).** En Campaña → Jornales, una campaña activa muestra
   «+ Añadir jornal», también cuando ya hay jornales: abre el día de recolección de hoy de esa finca
   con Jornales a mano (el mismo de Cuaderno → Jornal, sin duplicarlo) y al volver la campaña ya

@@ -22,6 +22,12 @@ object OliveSeason {
         return String.format(java.util.Locale.ROOT, "%d/%02d", start, (start + 1) % 100)
     }
 
+    /** The dates a season covers: 1 September to 31 August. */
+    fun range(season: String): ClosedRange<LocalDate> {
+        val start = season.substringBefore('/').toInt()
+        return LocalDate.of(start, 9, 1)..LocalDate.of(start + 1, 8, 31)
+    }
+
     /** Seasons with at least one Campaign, newest first. */
     fun available(campaigns: List<Campaign>): List<String> =
         campaigns.map { of(it.startDate) }.distinct().sortedDescending()
@@ -54,9 +60,24 @@ data class FarmOverview(
     val farmsWithoutCampaign: List<String>,
     val delivery: DeliverySummary,
     val costs: List<CurrencyTotal>,
+    /**
+     * #359 follow-up: posted costs of these Farms dated in the season and linked to no Campaign
+     * (pruning, treatments, irrigation, fuel…). Never part of [costs] nor of the recollection cost/kg.
+     */
+    val generalCosts: List<CurrencyTotal> = emptyList(),
 ) {
     val yieldCoveragePercent: Int get() = delivery.coveragePercent(delivery.fatYield)
     val costPerKgMinor: Long? get() = costPerKg(costs, delivery)
+
+    /** Recollection plus general costs, one total per currency, nothing converted. */
+    val totalCosts: List<CurrencyTotal> get() = (costs + generalCosts).groupBy { it.currency }.toSortedMap()
+        .map { (currency, parts) ->
+            val amounts = parts.map { it.amountMinor }
+            CurrencyTotal(currency, if (amounts.any { it == null }) null else sum(amounts), labourMinor = null)
+        }
+
+    /** Total cost over weighed kilos, only with one currency. */
+    val totalCostPerKgMinor: Long? get() = costPerKg(totalCosts, delivery)
 
     /** A Farm's share of the season's weighed kilos, in whole percent; null without kilos. */
     fun sharePercent(figures: FarmSeasonFigures): Int? =
@@ -81,7 +102,28 @@ data class FarmOverview(
                 farmsWithoutCampaign = farms.filter { farm -> figures.none { it.farmId == farm.id } }.map { it.name },
                 delivery = DeliverySummary.of(weighed),
                 costs = totals(ids, expenses, weighed),
+                generalCosts = general(season, farms, expenses),
             )
+        }
+
+        /**
+         * Posted expenses of these Farms (or of the same holding, with no Farm) dated in the
+         * season and assigned to no Campaign. Drafts never count.
+         */
+        private fun general(season: String, farms: List<Farm>, expenses: List<Expense>): List<CurrencyTotal> {
+            val range = OliveSeason.range(season)
+            val farmIds = farms.map { it.id }.toSet()
+            // Codex #402: the local store may hold other workspaces; only this holding's expenses count.
+            val workspaces = farms.map { it.workspaceId }.toSet()
+            return expenses.filter { expense ->
+                expense.workspaceId in workspaces &&
+                    expense.status == com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus.POSTED &&
+                    expense.campaignId == null &&
+                    (expense.farmId == null || expense.farmId in farmIds) &&
+                    expense.expenseDate in range
+            }.groupBy { it.currency }.toSortedMap().map { (currency, rows) ->
+                CurrencyTotal(currency, sum(rows.map { it.amountMinor }), labourMinor = null)
+            }
         }
 
         /**
@@ -107,11 +149,12 @@ data class FarmOverview(
                         if (labour.any { it == null }) null else sum(labour))
                 }
 
-        private fun sum(values: List<Long?>): Long? = runCatching {
-            values.filterNotNull().takeIf { it.isNotEmpty() }?.fold(0L) { total, value -> Math.addExact(total, value) }
-        }.getOrNull()
     }
 }
+
+private fun sum(values: List<Long?>): Long? = runCatching {
+    values.filterNotNull().takeIf { it.isNotEmpty() }?.fold(0L) { total, value -> Math.addExact(total, value) }
+}.getOrNull()
 
 /** Minor units per kilo: total cost over total weighed kilos, only with one currency. */
 private fun costPerKg(costs: List<CurrencyTotal>, delivery: DeliverySummary): Long? {
