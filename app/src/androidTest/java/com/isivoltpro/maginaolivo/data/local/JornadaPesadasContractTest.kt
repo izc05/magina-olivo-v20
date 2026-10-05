@@ -26,6 +26,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.PesadaQuery
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaSearch
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
 import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
+import com.isivoltpro.maginaolivo.domain.harvest.HARVEST_HAS_DELIVERIES
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestDraft
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestShareInput
@@ -43,6 +44,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -180,13 +182,15 @@ class JornadaPesadasContractTest {
         assertTrue(left.awaitingPesadas)
         assertEquals(HarvestAllocation.UNALLOCATED, left.shares.single().allocation)
 
-        // Removing a day releases its Pesadas with every figure intact.
-        db.expenseDao().upsert(expenseOn(moved)) // so the day stays when its Pesada leaves
-        ok(harvests.delete(moved))
-        val released = deliveries.observe(a).first()!!
-        assertNull(released.harvestId)
-        assertEquals(2_300_000L, released.netGrams)
-        assertEquals("V-9", released.ticketNumber)
+        // #457: a day with Pesadas is never removed from under them; they keep it, intact.
+        db.expenseDao().upsert(expenseOn(moved)) // so the day would stay even without its Pesada
+        val refused = harvests.delete(moved)
+        assertEquals(AppError.Conflict(HARVEST_HAS_DELIVERIES), (refused as AppResult.Failure).error)
+        val kept = deliveries.observe(a).first()!!
+        assertEquals(moved, kept.harvestId)
+        assertEquals(2_300_000L, kept.netGrams)
+        assertEquals("V-9", kept.ticketNumber)
+        assertNotNull(harvests.observe(moved).first())
     }
 
     @Test
