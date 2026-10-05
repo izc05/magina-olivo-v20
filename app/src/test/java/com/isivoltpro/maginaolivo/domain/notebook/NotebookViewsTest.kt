@@ -66,7 +66,7 @@ class NotebookViewsTest {
         val entries = notebook.diary.single().entries
         assertEquals(2, entries.size)
         assertEquals(irrigation.description, (entries[1] as DiaryEntry.ExpenseEntry).relatedWork)
-        assertEquals(3_000, notebook.costs.ledger.totalMinor)
+        assertEquals(3_000L, notebook.costs.ledger.single().amount())
     }
 
     /** #478 QA 1/3: a manual Gasto of a Tratamiento is shown on its own date, naming the work. */
@@ -136,9 +136,9 @@ class NotebookViewsTest {
         )
         val costs = project(listOf(worked), expenses = expenses).costs
 
-        assertEquals(27_500, costs.ledger.totalMinor)
-        assertEquals(20_000, costs.labourMoney.totalMinor)
-        assertEquals(5_500, costs.machineryMoney.totalMinor) // the draft is never summed
+        assertEquals(27_500L, costs.ledger.single().amount())
+        assertEquals(20_000L, costs.labourMoney.single().amount())
+        assertEquals(5_500L, costs.machineryMoney.single().amount()) // the draft is never summed
         assertEquals(1, costs.machineUses)
         assertEquals(3.5, costs.machineHours, 0.0)
         assertEquals(2, costs.documents.size)
@@ -190,8 +190,8 @@ class NotebookViewsTest {
         assertTrue(recollection.none { it is RecollectionItem.DeliveryItem && it.delivery.id == own.id })
         // Totals still count everything exactly once.
         assertEquals(3_390_000L, notebook.deliverySummary.deliveredGrams)
-        assertEquals(5_000L, notebook.jornadaCost(jornada.id).totalMinor)
-        assertEquals(5_000L, notebook.expenseSummary.totalMinor)
+        assertEquals(5_000L, notebook.jornadaCost(jornada.id).single().amount())
+        assertEquals(5_000L, notebook.expensesByCurrency.single().amount())
         assertEquals("rend. pendiente", notebook.jornadaYieldLabel(jornada.id))
     }
 

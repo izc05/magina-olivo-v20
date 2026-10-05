@@ -20,6 +20,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El Cuaderno tampoco oculta otras monedas (#450, Cuaderno).** Cada día de recolección del diario muestra
+  su coste por moneda («50,00 € · 30,00 US$»), y los resúmenes internos del Cuaderno (gastos de la campaña,
+  recolección, jornales y maquinaria) guardan un total por moneda. Nada se convierte ni se suma entre monedas.
 - **Una persona que ya no trabaja puede cobrar lo que se le debe (#481).** Si un trabajador deja de
   estar activo, ya no se ofrece para nuevos jornales, pero sus jornales pendientes se pueden pagar (y los
   pagos corregir) sin restaurarlo. Nunca se puede pagar más de lo pendiente.
