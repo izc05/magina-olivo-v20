@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un gasto antiguo sigue editable aunque su parcela se archive o cambie de finca (#476).** Corregir
+  importe, nota o concepto conserva la finca y la parcela con que se anotó; el editor la muestra como
+  «Parcela 1 · archivada» o «· ahora en otra finca». Para un gasto nuevo, o al cambiar de parcela, solo
+  se ofrecen las parcelas activas de esa finca. Solo vale para gastos ya confirmados: un borrador
+  todavía no es histórico y, al confirmarlo, vuelve a comprobar que su parcela sigue activa (#456).
 - **Gasto del día: «Se añade» o «Sustituye», siempre lo decide el agricultor (#475).** Al anotar jornales
   o un alquiler de maquinaria en un día que ya tiene ese coste calculado, la app pregunta «¿Cómo cuenta
   este gasto?»: «Se añade al cálculo» o «Sustituye el cálculo». Si el día no tiene cálculo de ese tipo,

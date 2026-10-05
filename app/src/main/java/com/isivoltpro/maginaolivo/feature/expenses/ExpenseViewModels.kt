@@ -241,7 +241,24 @@ data class RelationOptions(
     val campaignsTracked: Boolean = true,
     /** #411: the Farm [campaigns] were last read for; until it matches, «no running campaign» is unknown. */
     val campaignsFor: UUID? = null,
+    /** #476: the Parcel the edited Expense already has, archived or moved since or not. */
+    val recordedParcel: Parcel? = null,
 ) {
+    /**
+     * #476: how the form names [parcelId] on [farmId]: an active Parcel by its name; the one the
+     * Expense already had, if archived or moved since, by its name and that fact; null otherwise.
+     */
+    fun parcelLabel(parcelId: UUID?, farmId: UUID?): String? {
+        if (parcelId == null) return null
+        parcels.firstOrNull { it.id == parcelId }?.let { return it.displayName }
+        val recorded = recordedParcel?.takeIf { it.id == parcelId } ?: return null
+        return when {
+            recorded.archivedAt != null -> "${recorded.displayName} · archivada"
+            recorded.farmId != farmId -> "${recorded.displayName} · ahora en otra finca"
+            else -> recorded.displayName
+        }
+    }
+
     /** #411: whether [campaigns] already answer for [farmId] (an empty list then really means none). */
     fun campaignsKnownFor(farmId: UUID?): Boolean = !campaignsTracked || campaignsFor == farmId
 }
@@ -433,6 +450,7 @@ class RelationSource(
     private val dayCosts: com.isivoltpro.maginaolivo.domain.expense.DayCostRepository? = null,
 ) {
     private val selectedFarm = MutableStateFlow<UUID?>(null)
+    private val recordedParcel = MutableStateFlow<UUID?>(null)
 
     /** #475: what a cost of [category] on that recolección day may be asked; null asks nothing. */
     suspend fun dayCostQuestion(harvestId: UUID, category: ExpenseCategory): com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion? =
@@ -441,6 +459,11 @@ class RelationSource(
 
     fun selectFarm(farmId: UUID?) {
         selectedFarm.value = farmId
+    }
+
+    /** #476: the Parcel an existing Expense already has, read even when archived or moved since. */
+    fun recordParcel(parcelId: UUID?) {
+        recordedParcel.value = parcelId
     }
 
     fun collectInto(scope: kotlinx.coroutines.CoroutineScope, onChange: (RelationOptions) -> Unit): Job =
@@ -463,6 +486,14 @@ class RelationSource(
                     farmId?.let(parcels::observeActive) ?: flowOf(emptyList())
                 }.catch { }.collect {
                     options = options.copy(parcels = it)
+                    onChange(options)
+                }
+            }
+            launch {
+                recordedParcel.flatMapLatest { parcelId ->
+                    parcelId?.let(parcels::observeById) ?: flowOf(null)
+                }.catch { }.collect {
+                    options = options.copy(recordedParcel = it)
                     onChange(options)
                 }
             }
@@ -515,6 +546,7 @@ class ExpenseDetailViewModel(
                 .collect { expense ->
                     mutableState.value = mutableState.value.copy(isLoading = false, expense = expense)
                     if (expense?.farmId != null) relations.selectFarm(expense.farmId)
+                    relations.recordParcel(expense?.parcelId)
                 }
         }
         relations.collectInto(viewModelScope) { options ->
