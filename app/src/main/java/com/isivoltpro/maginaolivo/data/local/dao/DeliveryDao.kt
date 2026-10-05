@@ -42,6 +42,9 @@ interface DeliveryDao {
     @Query("DELETE FROM delivery_parcels WHERE delivery_id = :deliveryId")
     suspend fun deleteParcels(deliveryId: UUID)
 
+    @Query("DELETE FROM delivery_parcels WHERE id IN (:ids)")
+    suspend fun deleteParcelsById(ids: List<UUID>)
+
     @Upsert suspend fun upsertParcels(rows: List<DeliveryParcelEntity>)
 
     @Upsert suspend fun upsertAnalysis(analysis: DeliveryYieldAnalysisEntity)
