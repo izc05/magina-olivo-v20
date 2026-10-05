@@ -11,10 +11,12 @@ import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 /** A rejected expense field. Thrown inside a transaction so everything rolls back. */
@@ -64,10 +66,23 @@ internal class ExpenseLedgerWriter(
         database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, current.id, OutboxOperation.UPDATE, now)
     }
 
-    suspend fun post(current: ExpenseEntity, now: Instant) {
+    suspend fun post(current: ExpenseEntity, now: Instant, today: LocalDate) {
         if (current.status == ExpenseStatus.POSTED.name) return
         requireEditableCampaign(current)
         if (current.amountMinor <= 0) throw InvalidExpense("amountMinor", "not_positive")
+        // #456: the moment money starts to count is a domain confirmation, not a status flip. The
+        // draft is checked against today's truth — real date, Farm, Parcel, work, day, Campaign —
+        // with the same rules as any save; a relation that no longer holds keeps it a DRAFT.
+        if (current.expenseDate.isAfter(today)) throw InvalidExpense("expenseDate", "future")
+        resolve(
+            current.id,
+            current.workspaceId,
+            current.asDraftForCheck(),
+            ExpenseStatus.POSTED,
+            ExpenseOrigin.valueOf(current.origin),
+            current.metadata,
+        )
+        // Only the status changes: the supplier name and every snapshot stay as captured (#451).
         database.expenseDao().upsert(current.copy(status = ExpenseStatus.POSTED.name, metadata = current.metadata.next(now)))
         database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, current.id, OutboxOperation.UPDATE, now)
     }
@@ -90,6 +105,22 @@ internal class ExpenseLedgerWriter(
         }
         database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, current.id, OutboxOperation.DELETE, now)
     }
+
+    private fun ExpenseEntity.asDraftForCheck() = ExpenseDraft(
+        expenseDate = expenseDate,
+        concept = concept,
+        category = ExpenseCategory.entries.firstOrNull { it.name == category } ?: ExpenseCategory.OTHER,
+        amountMinor = amountMinor,
+        currency = currency,
+        supplierOrganizationId = supplierOrganizationId,
+        supplierText = provider,
+        farmId = farmId,
+        parcelId = parcelId,
+        campaignId = campaignId,
+        activityId = activityId,
+        notes = notes,
+        harvestId = harvestId,
+    )
 
     /** Also used by day linking, which changes context without rewriting purchase detail. */
     suspend fun requireEditableCampaign(expense: ExpenseEntity) {

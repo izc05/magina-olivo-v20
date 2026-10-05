@@ -118,6 +118,72 @@ class ExpenseLedgerContractTest {
         attachmentsRoot.deleteRecursively()
     }
 
+    // ------------------------------------------------------------ #456 posting re-checks the draft
+
+    /** A DRAFT as a reviewed document leaves it: counted nowhere until a person confirms it. */
+    private suspend fun draftOf(expense: ExpenseDraft, change: (com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity) -> com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity = { it }): UUID {
+        val id = ok(expenses.create(expense))
+        val row = db.expenseDao().findById(id)!!
+        db.expenseDao().upsert(change(row.copy(status = ExpenseStatus.DRAFT.name)))
+        return id
+    }
+
+    private suspend fun assertStillDraft(id: UUID, before: Long) {
+        assertEquals(ExpenseStatus.DRAFT, expenses.observe(id).first()!!.status)
+        assertEquals(before, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+    }
+
+    @Test
+    fun aValidDraftIsPosted() = runBlocking {
+        val id = draftOf(draft(3_000, farmId = farmId, parcelId = parcelA))
+        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        ok(expenses.post(id))
+        assertEquals(3_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+    }
+
+    @Test
+    fun aDraftDatedAfterTodayIsNotPosted() = runBlocking {
+        val id = draftOf(draft(3_000, farmId = farmId)) { it.copy(expenseDate = LocalDate.parse("2027-01-15")) }
+        assertValidation("expenseDate", expenses.post(id))
+        assertStillDraft(id, 0)
+    }
+
+    @Test
+    fun aDraftWhoseParcelNoLongerHoldsIsNotPosted() = runBlocking {
+        val id = draftOf(draft(3_000, farmId = farmId, parcelId = parcelA))
+        val parcel = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(parcel.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED))
+        assertValidation("parcelId", expenses.post(id))
+        assertStillDraft(id, 0)
+    }
+
+    @Test
+    fun aDraftOfGeneralWorkOnACampaignIsNotPosted() = runBlocking {
+        runningDay()
+        val general = activity(costMinor = null)
+        val id = draftOf(draft(3_000, farmId = farmId, activityId = general)) { it.copy(campaignId = campaignId) }
+        assertValidation("campaignId", expenses.post(id))
+        assertStillDraft(id, 0)
+    }
+
+    @Test
+    fun aDraftOfAClosedCampaignStaysBlocked() = runBlocking {
+        runningDay()
+        val id = draftOf(draft(3_000, farmId = farmId)) { it.copy(campaignId = campaignId) }
+        closeCampaign()
+        assertClosedMutation(expenses.post(id))
+        assertStillDraft(id, 0)
+    }
+
+    @Test
+    fun postingKeepsTheSupplierNameAsCaptured() = runBlocking {
+        val supplier = ok(organizations.create(OrganizationDraft("Agro Sur", setOf(OrganizationRole.SUPPLIER))))
+        val id = draftOf(draft(3_000, farmId = farmId).copy(supplierOrganizationId = supplier))
+        ok(organizations.update(supplier, OrganizationDraft("Agro Sur SL", setOf(OrganizationRole.SUPPLIER))))
+        ok(expenses.post(id))
+        assertEquals("Agro Sur", db.expenseDao().findById(id)!!.provider)
+    }
+
     // ------------------------------------------------------------ #429 work not done holds no money
 
     @Test
