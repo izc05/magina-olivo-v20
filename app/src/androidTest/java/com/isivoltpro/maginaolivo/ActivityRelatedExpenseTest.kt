@@ -58,6 +58,17 @@ class ActivityRelatedExpenseTest {
         composeRule.onNodeWithTag("activity-add-expense-closed").assertExists()
     }
 
+    /** #416: «Añadir gasto relacionado» carries the work (and its single Parcel) into Gasto. */
+    @Test fun aRelatedExpenseRouteCarriesTheWork() {
+        assertEquals("expenses/farm/f?parcelId=p&activityId=a",
+            com.isivoltpro.maginaolivo.navigation.AppDestination.farmExpenses("f", parcelId = "p", activityId = "a"))
+        assertEquals("expenses/farm/f?activityId=a",
+            com.isivoltpro.maginaolivo.navigation.AppDestination.farmExpenses("f", activityId = "a"))
+        assertEquals("expenses/farm/f?campaignId=c",
+            com.isivoltpro.maginaolivo.navigation.AppDestination.farmExpenses("f", campaignId = "c"))
+        assertEquals("expenses/farm/f", com.isivoltpro.maginaolivo.navigation.AppDestination.farmExpenses("f"))
+    }
+
     private fun show(
         activity: Activity,
         historicCostExpenseId: java.util.UUID? = null,

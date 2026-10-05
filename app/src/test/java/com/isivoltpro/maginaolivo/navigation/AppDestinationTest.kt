@@ -68,13 +68,4 @@ class AppDestinationTest {
             }
         }
     }
-
-    /** #416: «Añadir gasto relacionado» carries the work (and its single Parcel) into Gasto. */
-    @Test
-    fun aRelatedExpenseRouteCarriesTheWork() {
-        assertEquals("expenses/farm/f?parcelId=p&activityId=a", AppDestination.farmExpenses("f", parcelId = "p", activityId = "a"))
-        assertEquals("expenses/farm/f?activityId=a", AppDestination.farmExpenses("f", activityId = "a"))
-        assertEquals("expenses/farm/f?campaignId=c", AppDestination.farmExpenses("f", campaignId = "c"))
-        assertEquals("expenses/farm/f", AppDestination.farmExpenses("f"))
-    }
 }
