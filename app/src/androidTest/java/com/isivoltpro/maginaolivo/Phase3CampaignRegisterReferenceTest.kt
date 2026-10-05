@@ -39,7 +39,7 @@ class Phase3CampaignRegisterReferenceTest {
 
         composeRule.onNodeWithTag("register-reference-root").assertIsDisplayed()
         composeRule.onNodeWithTag("activity-type-Treatment").assertIsSelected()
-        composeRule.onNodeWithText("Tipo de actuación").assertIsDisplayed()
-        composeRule.onNodeWithText("Guardar actuación").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Tipo de trabajo").assertIsDisplayed()
+        composeRule.onNodeWithText("Guardar trabajo").performScrollTo().assertIsDisplayed()
     }
 }

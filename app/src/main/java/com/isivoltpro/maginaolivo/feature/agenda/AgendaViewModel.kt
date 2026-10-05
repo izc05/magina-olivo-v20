@@ -69,7 +69,7 @@ class AgendaViewModel(
             is AppResult.Failure -> mutableState.value.copy(
                 isSaving = false,
                 error = if (result.error is AppError.Validation) {
-                    "Para darlo por hecho, elige antes sus parcelas en la actuación."
+                    "Para darlo por hecho, elige antes sus parcelas en el trabajo."
                 } else {
                     "No se pudo guardar en este dispositivo"
                 },

@@ -99,7 +99,7 @@ fun MachineryScreen(
             Spacer(Modifier.height(MoSpacing.md))
             Text("Mis máquinas", style = MaterialTheme.typography.headlineLarge, color = MoOliveDark)
             Text(
-                "Tus máquinas, para anotarlas en las actuaciones si quieres. Solo hace falta el nombre.",
+                "Tus máquinas, para anotarlas en los trabajos si quieres. Solo hace falta el nombre.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MoTextSecondary,
             )
@@ -115,7 +115,7 @@ fun MachineryScreen(
                 state.isLoading -> CircularProgressIndicator()
                 state.active.isEmpty() -> MoEmptyState(
                     "Aún no has añadido máquinas",
-                    "No es obligatorio: las actuaciones se registran igual sin maquinaria.",
+                    "No es obligatorio: los trabajos se registran igual sin maquinaria.",
                     icon = MoIcons.Tractor,
                 )
                 else -> state.active.forEach { machine -> MachineRow(machine) { onMachineSelected(machine.id) } }
@@ -266,18 +266,18 @@ fun MachineDetailScreen(
                     DetailValue("Horas del contador", machine.currentHours?.let { "${editableHours(it)} h" })
                     machine.notes?.let { DetailValue("Notas", it) }
 
-                    MoSectionHeader("Actuaciones con esta máquina")
+                    MoSectionHeader("Trabajos con esta máquina")
                     if (state.uses.isEmpty()) {
-                        Text("Todavía no se ha anotado en ninguna actuación.", color = MoTextSecondary)
+                        Text("Todavía no se ha anotado en ningún trabajo.", color = MoTextSecondary)
                     } else {
                         MoMetricCard(
                             "Horas anotadas",
                             "${editableHours(state.recordedHours)} h",
                             Modifier.fillMaxWidth().testTag("machine-recorded-hours"),
                             supportingText = if (state.usesWithoutHours > 0) {
-                                "${state.usesWithoutHours} ${if (state.usesWithoutHours == 1) "actuación" else "actuaciones"} sin horas"
+                                "${state.usesWithoutHours} ${if (state.usesWithoutHours == 1) "trabajo" else "trabajos"} sin horas"
                             } else {
-                                "${state.uses.size} ${if (state.uses.size == 1) "actuación" else "actuaciones"}"
+                                "${state.uses.size} ${if (state.uses.size == 1) "trabajo" else "trabajos"}"
                             },
                         )
                         state.uses.forEach { use ->
@@ -321,7 +321,7 @@ fun MachineDetailScreen(
         "archive" -> ModalBottomSheet(onDismissRequest = { sheet = null }) {
             MoConfirmationSheet(
                 title = "Retirar máquina",
-                body = "Dejará de aparecer al registrar actuaciones. Las actuaciones pasadas la seguirán mostrando.",
+                body = "Dejará de aparecer al registrar trabajos. Los trabajos pasados la seguirán mostrando.",
                 confirmText = "Retirar",
                 onConfirm = { sheet = null; onArchive() },
                 onCancel = { sheet = null },

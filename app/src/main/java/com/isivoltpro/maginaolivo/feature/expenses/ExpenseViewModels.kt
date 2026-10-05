@@ -209,7 +209,7 @@ internal fun expenseErrorMessage(error: AppError): String = when (error) {
             "Este coste es de su trabajo. Para separarlo usa «Conservar como gasto independiente»."
         else -> when (error.field) {
         "parcelId" -> "La parcela elegida no pertenece a esa finca"
-        "activityId" -> "La actuación elegida no pertenece a esa finca"
+        "activityId" -> "El trabajo elegido no pertenece a esa finca"
         "amountMinor" -> "El importe debe ser mayor que cero"
         "concept" -> "Describe el gasto"
         "farmId" -> "La finca ya no está disponible"
