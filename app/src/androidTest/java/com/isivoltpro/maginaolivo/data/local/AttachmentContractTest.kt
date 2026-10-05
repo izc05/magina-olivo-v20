@@ -288,7 +288,14 @@ class AttachmentContractTest {
 
     @Test
     fun theFarmCoverIsACopiedFarmPhotoAndRemovingItClearsTheCover() = runBlocking {
-        val covers = OfflineFirstFarmCoverRepository(db, AndroidAttachmentFileStore(context), FixedClock(now), RandomIds, TestDispatchers)
+        val covers = OfflineFirstFarmCoverRepository(
+            db,
+            AndroidAttachmentFileStore(context),
+            fixedWorkspaceRepository(workspaceId),
+            FixedClock(now),
+            RandomIds,
+            TestDispatchers,
+        )
         val bytes = jpeg()
         val sourceFile = File(sourceDirectory, "portada.jpg")
 
@@ -312,7 +319,14 @@ class AttachmentContractTest {
 
     @Test
     fun aCoverMustBeAnImage() = runBlocking {
-        val covers = OfflineFirstFarmCoverRepository(db, AndroidAttachmentFileStore(context), FixedClock(now), RandomIds, TestDispatchers)
+        val covers = OfflineFirstFarmCoverRepository(
+            db,
+            AndroidAttachmentFileStore(context),
+            fixedWorkspaceRepository(workspaceId),
+            FixedClock(now),
+            RandomIds,
+            TestDispatchers,
+        )
 
         val result = covers.attachCover(farmId, source("plano.pdf", pdf()))
 
@@ -376,19 +390,20 @@ class AttachmentContractTest {
     private fun newRepository(database: MaginaOlivoDatabase): AttachmentRepository =
         repositoryFor(database, workspaceId)
 
-    private fun repositoryFor(database: MaginaOlivoDatabase, activeWorkspaceId: UUID): AttachmentRepository {
-        val workspaces = object : WorkspaceRepository {
-            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(activeWorkspaceId)
-        }
-        return OfflineFirstAttachmentRepository(
+    private fun repositoryFor(database: MaginaOlivoDatabase, activeWorkspaceId: UUID): AttachmentRepository =
+        OfflineFirstAttachmentRepository(
             database,
             AndroidAttachmentFileStore(context),
-            workspaces,
+            fixedWorkspaceRepository(activeWorkspaceId),
             FixedClock(now),
             RandomIds,
             TestDispatchers,
         )
-    }
+
+    private fun fixedWorkspaceRepository(activeWorkspaceId: UUID): WorkspaceRepository =
+        object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(activeWorkspaceId)
+        }
 
     private suspend fun attached(
         owner: AttachmentOwner,
