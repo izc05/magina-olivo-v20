@@ -20,6 +20,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El Cuaderno tampoco oculta otras monedas (#450, Cuaderno).** Cada día de recolección del diario muestra
+  su coste por moneda («50,00 € · 30,00 US$»), y los resúmenes internos del Cuaderno (gastos de la campaña,
+  recolección, jornales y maquinaria) guardan un total por moneda. Nada se convierte ni se suma entre monedas.
 - **Los gastos de una campaña ya no ocultan otras monedas (#450, campaña).** El detalle de la campaña
   muestra cada moneda por separado («800,00 € · 300,00 GBP», sin convertir); una campaña con gastos solo
   en otra moneda ya no dice «Aún no hay gastos». El resumen interno de la campaña guarda un total por

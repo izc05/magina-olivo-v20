@@ -16,7 +16,6 @@ import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.machinery.ActivityMachine
@@ -47,7 +46,7 @@ class CampaignNotebookTest {
         val outside = explicit.copy(id = UUID.randomUUID(), campaignId = null)
         val notebook = CampaignNotebook.project(campaign, emptyList(), emptyList(), emptyList(), listOf(explicit, outside))
         assertEquals(listOf(explicit), notebook.expenses)
-        assertEquals(1000L, notebook.recollectionExpenseSummary.totalMinor)
+        assertEquals(1000L, notebook.recollectionByCurrency.single().amount())
     }
     private val workspace = UUID.randomUUID()
     private val farm = UUID.randomUUID()
@@ -189,9 +188,9 @@ class CampaignNotebookTest {
 
         assertEquals(HarvestSummary.of(harvests), notebook.harvestSummary)
         assertEquals(DeliverySummary.of(deliveries), notebook.deliverySummary)
-        assertEquals(ExpenseSummary.of(expenses), notebook.expenseSummary)
-        assertEquals(16_500, notebook.expenseSummary.totalMinor) // the draft is listed, never summed
-        assertEquals(16_500, notebook.recollectionExpenseSummary.totalMinor)
+        assertEquals(listOf("EUR"), notebook.expensesByCurrency.map { it.currency })
+        assertEquals(16_500L, notebook.expensesByCurrency.single().amount()) // the draft is listed, never summed
+        assertEquals(16_500L, notebook.recollectionByCurrency.single().amount())
         // Yield only from analysed kilos, with its coverage; the pending delivery never counts as 0 %.
         assertEquals(2_280, notebook.deliverySummary.fatYield!!.hundredths)
         assertEquals(47, notebook.deliverySummary.coveragePercent(notebook.deliverySummary.fatYield))
@@ -221,6 +220,20 @@ class CampaignNotebookTest {
             shares = emptyList(), notes = null, version = 1,
             analysis = yieldHundredths?.let { YieldAnalysis(UUID.randomUUID(), id, date.plusDays(3), it, null, null, 1) },
         )
+    }
+
+    /** #450: the Cuaderno never shows one currency as the campaign's whole ledger. */
+    @Test fun theNotebookKeepsEveryCurrencyApart() {
+        val day = LocalDate.of(2026, 11, 20)
+        val harvestId = UUID.randomUUID()
+        val eur = expense(5_000, ExpenseCategory.LABOR, ExpenseStatus.POSTED, day).copy(harvestId = harvestId)
+        val usd = expense(3_000, ExpenseCategory.FUEL, ExpenseStatus.POSTED, day).copy(currency = "USD", harvestId = harvestId)
+        val notebook = CampaignNotebook.project(campaign, emptyList(), emptyList(), emptyList(), listOf(eur, usd))
+        assertEquals(listOf("EUR" to 5_000L, "USD" to 3_000L), notebook.expensesByCurrency.map { it.currency to it.amount() })
+        assertEquals(listOf("EUR" to 5_000L, "USD" to 3_000L), notebook.jornadaCost(harvestId).map { it.currency to it.amount() })
+        assertEquals(listOf("EUR" to 5_000L, "USD" to 3_000L), notebook.recollectionByCurrency.map { it.currency to it.amount() })
+        assertEquals(listOf("EUR" to 5_000L), notebook.costs.labourMoney.map { it.currency to it.amount() })
+        assertEquals(listOf("USD" to 3_000L), notebook.costs.machineryMoney.map { it.currency to it.amount() })
     }
 
     private fun expense(minor: Long, category: ExpenseCategory, status: ExpenseStatus, date: LocalDate) = Expense(
