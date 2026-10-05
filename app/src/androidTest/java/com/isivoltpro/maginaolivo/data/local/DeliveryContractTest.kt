@@ -473,7 +473,7 @@ class DeliveryContractTest {
         deliveries = OfflineFirstDeliveryRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
         harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
         organizations = OfflineFirstOrganizationRepository(db, workspaces, clock, RandomIds, TestDispatchers)
-        attachments = OfflineFirstAttachmentRepository(db, AndroidAttachmentFileStore(context), clock, RandomIds, TestDispatchers)
+        attachments = OfflineFirstAttachmentRepository(db, AndroidAttachmentFileStore(context), workspaces, clock, RandomIds, TestDispatchers)
         documents = OfflineFirstDocumentOcrRepository(
             db, attachments, workspaces, engine, JsonProposalCodec(), clock, RandomIds, TestDispatchers,
         ) { ZoneOffset.UTC }
