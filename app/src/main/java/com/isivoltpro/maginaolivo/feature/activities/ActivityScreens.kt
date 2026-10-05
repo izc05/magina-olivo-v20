@@ -835,7 +835,7 @@ fun ActivityDetailScreen(
             when {
                 state.isLoading -> CircularProgressIndicator()
                 state.activity == null ->
-                    MoErrorState("Trabajo no disponible", state.error ?: "No está guardada en este dispositivo.")
+                    MoErrorState("Trabajo no disponible", state.error ?: "No está guardado en este dispositivo.")
                 else -> {
                     val activity = state.activity
                     // UI polish v2: one first card with what the farmer needs at a glance.
@@ -944,7 +944,7 @@ fun ActivityDetailScreen(
                             LinkedExpensesHoldArchive(relatedExpenses, onOpenExpense)
                         }
                         ActivityStatus.PLANNED -> {
-                            MoPrimaryButton("Marcar completada", { confirmation = "complete" }, modifier = Modifier.fillMaxWidth().testTag("complete-activity"), enabled = !state.isSaving)
+                            MoPrimaryButton("Marcar completado", { confirmation = "complete" }, modifier = Modifier.fillMaxWidth().testTag("complete-activity"), enabled = !state.isSaving)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                                 MoSecondaryButton("Editar", { editor = true }, modifier = Modifier.weight(1f).testTag("edit-activity"), enabled = !state.isSaving)
                                 MoDestructiveButton("Cancelar trabajo", { confirmation = "cancel" }, modifier = Modifier.weight(1f).testTag("cancel-activity"), enabled = !costHeld)
