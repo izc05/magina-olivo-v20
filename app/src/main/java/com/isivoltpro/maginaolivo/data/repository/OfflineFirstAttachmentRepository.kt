@@ -181,20 +181,19 @@ class OfflineFirstAttachmentRepository(
     }
 
     override suspend fun recordUploadFailure(
+        workspaceId: UUID,
         id: UUID,
         errorCode: String,
         errorMessage: String?,
     ): AppResult<Unit> = withContext(dispatchers.io) {
-        val activeWorkspace = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
-            is AppResult.Failure -> return@withContext workspace
-            is AppResult.Success -> workspace.value
-        }
         val now = clock.nowInstant()
         runCatching {
             database.withTransaction {
                 val document = database.documentDao().findById(id)
                     ?: return@withTransaction AppResult.Failure(AppError.NotFound("attachment"))
-                if (document.workspaceId != activeWorkspace) {
+                // Background sync is intentionally workspace-scoped rather than tied to whichever
+                // Workspace the UI currently has active.
+                if (document.workspaceId != workspaceId) {
                     return@withTransaction AppResult.Failure(AppError.Validation("attachment", "context_mismatch"))
                 }
                 if (document.metadata.deletedAt != null) {
