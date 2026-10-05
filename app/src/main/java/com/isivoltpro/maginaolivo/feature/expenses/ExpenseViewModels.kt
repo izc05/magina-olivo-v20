@@ -200,6 +200,11 @@ internal fun expenseErrorMessage(error: AppError): String = when (error) {
         error.field == "activityId" && error.code == "not_in_day" -> "Ese trabajo no es de esta jornada de recogida."
         error.field == "supplierOrganizationId" && error.code == "archived" ->
             "Ese proveedor está archivado. Elige otro proveedor o escríbelo a mano."
+        error.field == "dayCostRole" && error.code == "labour_paid" ->
+            "Ese día tiene pagos por persona: los jornales solo pueden añadirse al cálculo."
+        error.field == "dayCostRole" && error.code == "nothing_to_replace" ->
+            "Ese día no tiene coste calculado de este tipo que sustituir: el importe se añade."
+        error.field == "dayCostRole" -> "Este gasto no puede sustituir el cálculo del día."
         error.code == "activity_cost_locked" ->
             "Este coste es de su trabajo. Para separarlo usa «Conservar como gasto independiente»."
         else -> when (error.field) {

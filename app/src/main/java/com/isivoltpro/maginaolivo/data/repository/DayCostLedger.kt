@@ -198,18 +198,30 @@ internal class DayCostLedger(
         database.expenseDao().listDraftCalculated().forEach { calculated ->
             val dayId = calculated.harvestId ?: return@forEach
             val kind = DayCostKind.entries.firstOrNull { it.origin.name == calculated.origin } ?: return@forEach
-            val ofDay = database.expenseDao().listForHarvest(dayId)
-            if (ofDay.any { it.origin == ExpenseOrigin.DAY_REPLACEMENT.name && it.category == kind.category.name }) return@forEach
-            ofDay.filter { expense ->
-                val category = runCatching { ExpenseCategory.valueOf(expense.category) }.getOrNull()
-                expense.origin in LEGACY_REPLACING && expense.status == ExpenseStatus.POSTED.name &&
-                    category != null && kind.isReplacedBy(category, expense.concept)
-            }.forEach { expense ->
-                database.expenseDao().upsert(
-                    expense.copy(origin = ExpenseOrigin.DAY_REPLACEMENT.name, metadata = expense.metadata.next(now)),
-                )
-                database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, expense.id, OutboxOperation.UPDATE, now)
-            }
+            markLegacyDay(dayId, kind, now)
+        }
+    }
+
+    /**
+     * A day written before #475 is recognised by its calculation kept as a draft with no explicit
+     * replacement of that kind ever recorded on it (not even deleted or taken back as a draft):
+     * the hand-typed cost that then replaced it by its category is marked as the replacement. Any
+     * day that has ever had an explicit one is in the new rule and is never reinterpreted.
+     */
+    private suspend fun markLegacyDay(harvestId: UUID, kind: DayCostKind, now: Instant) {
+        val ofDay = database.expenseDao().listForHarvest(harvestId)
+        val calculated = ofDay.firstOrNull { it.origin == kind.origin.name } ?: return
+        if (calculated.status != ExpenseStatus.DRAFT.name) return
+        if (database.expenseDao().countReplacementsEver(harvestId, kind.category.name) > 0) return
+        ofDay.filter { expense ->
+            val category = runCatching { ExpenseCategory.valueOf(expense.category) }.getOrNull()
+            expense.origin in LEGACY_REPLACING && expense.status == ExpenseStatus.POSTED.name &&
+                category != null && kind.isReplacedBy(category, expense.concept)
+        }.forEach { expense ->
+            database.expenseDao().upsert(
+                expense.copy(origin = ExpenseOrigin.DAY_REPLACEMENT.name, metadata = expense.metadata.next(now)),
+            )
+            database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, expense.id, OutboxOperation.UPDATE, now)
         }
     }
 

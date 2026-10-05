@@ -225,6 +225,27 @@ internal fun ExpenseEditor(
                 modifier = Modifier.testTag("expense-category-required"),
             )
         }
+        // #475 (Codex on #583): a day's jornales or machinery show, and may change, how they count.
+        if (form.harvestId != null && categoryChosen &&
+            com.isivoltpro.maginaolivo.domain.expense.DayCostKind.of(form.category) != null
+        ) {
+            Text("¿Cómo cuenta en su día de recolección?", style = MaterialTheme.typography.titleSmall)
+            androidx.compose.foundation.layout.Row(
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(MoSpacing.xs),
+            ) {
+                listOf(
+                    com.isivoltpro.maginaolivo.domain.expense.DayCostRole.ADDITIVE to "Se añade al cálculo",
+                    com.isivoltpro.maginaolivo.domain.expense.DayCostRole.REPLACEMENT to "Sustituye el cálculo",
+                ).forEach { (role, label) ->
+                    androidx.compose.material3.FilterChip(
+                        form.dayCostRole == role,
+                        { form = form.copy(dayCostRole = role) },
+                        { Text(label) },
+                        Modifier.testTag("expense-role-${role.name}"),
+                    )
+                }
+            }
+        }
         MoSectionHeader("Relación")
         val farm = options.farms.firstOrNull { it.id == form.farmId }
         if (farmLocked) {
