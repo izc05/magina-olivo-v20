@@ -239,6 +239,46 @@ class TypedActivityDetailContractTest {
     // ------------------------------------------------------ aggregate rules
 
     @Test
+    fun affectedSurfaceIsExplicitAndCanBeSmallerThanTheParcel() = runBlocking {
+        val result = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento parcial",
+                parcelIds = setOf(parcelA),
+                parcelAreasM2 = mapOf(parcelA to 500.0),
+                detail = ActivityDetail.Phytosanitary(productName = "Cobre"),
+            ),
+        )
+        assertTrue(result is AppResult.Success)
+        val id = (result as AppResult.Success).value
+        assertEquals(500.0, repository.observe(id).first()!!.targets.single().areaAffectedM2!!, 0.001)
+    }
+
+    @Test
+    fun selectingAParcelWithoutAnAreaNeverInfersItsWholeManagedSurface() = runBlocking {
+        val id = create(ActivityType.PHYTOSANITARY, ActivityDetail.Phytosanitary(productName = "Cobre"))
+        assertNull(repository.observe(id).first()!!.targets.single().areaAffectedM2)
+    }
+
+    @Test
+    fun affectedSurfaceCannotSilentlyExceedTheKnownParcelSurface() = runBlocking {
+        val result = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento imposible",
+                parcelIds = setOf(parcelA),
+                parcelAreasM2 = mapOf(parcelA to 1_001.0),
+            ),
+        )
+        assertValidation("parcelAreasM2", result)
+        assertEquals(0, repository.observeForFarm(farmId).first().size)
+    }
+
+    @Test
     fun editingADetailMovesTheActivityAggregateVersion() = runBlocking {
         val id = create(ActivityType.PRUNING, ActivityDetail.Pruning("Formación", 3, 6.0, null))
         val before = db.activityDao().findById(id)!!.metadata.version
