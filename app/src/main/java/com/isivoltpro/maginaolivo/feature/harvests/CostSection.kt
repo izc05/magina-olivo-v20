@@ -310,9 +310,16 @@ internal fun CostSheet(
             }
         }
         Text(
-            "Se guarda en Gastos, el único registro del dinero. No se cuenta dos veces.",
+            // #475: honest about what this money does to the day's calculation.
+            when {
+                question == null -> "Se guarda en Gastos y se suma a los costes de este día."
+                chosen == DayCostRole.REPLACEMENT -> "Se guarda en Gastos y cuenta en lugar del cálculo; el cálculo queda guardado sin sumar."
+                chosen == DayCostRole.ADDITIVE -> "Se guarda en Gastos y se suma al cálculo del día."
+                else -> "Se guarda en Gastos. Elige si se añade al cálculo o lo sustituye."
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MoTextSecondary,
+            modifier = Modifier.testTag("cost-sheet-ledger-note"),
         )
         currencyError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("day-expense-currency-error")) }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
