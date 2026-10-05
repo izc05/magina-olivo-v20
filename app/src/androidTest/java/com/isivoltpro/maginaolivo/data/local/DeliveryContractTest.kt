@@ -311,6 +311,29 @@ class DeliveryContractTest {
         assertEquals("Cooperativa San Isidro", delivery.destinationName)
     }
 
+    /** #451: editing a Pesada keeps the cooperative name it was saved with, even once archived. */
+    @Test
+    fun editingAPesadaKeepsTheCooperativeNameAsCaptured() = runBlocking {
+        val cooperative = ok(organizations.create(OrganizationDraft("Cooperativa San Isidro", setOf(OrganizationRole.COOPERATIVE))))
+        val saved = draft(1_000_000, north to null).copy(destinationOrganizationId = cooperative, destinationName = null)
+        val id = ok(deliveries.create(saved))
+        ok(organizations.update(cooperative, OrganizationDraft("S.C.A. San Isidro", setOf(OrganizationRole.COOPERATIVE))))
+
+        ok(deliveries.update(id, saved.copy(notes = "Vale 1234")))
+        assertEquals("Cooperativa San Isidro", deliveries.observe(id).first()!!.destinationName)
+
+        ok(organizations.archive(cooperative))
+        ok(deliveries.update(id, saved.copy(ticketNumber = "A-77")))
+        val kept = deliveries.observe(id).first()!!
+        assertEquals("Cooperativa San Isidro", kept.destinationName)
+        assertEquals(cooperative, kept.destinationOrganizationId)
+        assertEquals("A-77", kept.ticketNumber)
+
+        val mill = ok(organizations.create(OrganizationDraft("Almazara La Loma", setOf(OrganizationRole.MILL))))
+        ok(deliveries.update(id, saved.copy(destinationOrganizationId = mill)))
+        assertEquals("Almazara La Loma", deliveries.observe(id).first()!!.destinationName)
+    }
+
     /** #455: a Pesada is never moved after its own yield analysis; an undated analysis asks nothing. */
     @Test
     fun aPesadaIsNeverDatedAfterItsYieldAnalysis() = runBlocking {

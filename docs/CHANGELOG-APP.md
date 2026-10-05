@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Corregir una pesada o un gasto no cambia la cooperativa/proveedor con que se guardó (#451).** Si
+  la cooperativa o el proveedor se renombra o se archiva, la pesada o el gasto siguen con el nombre de
+  entonces al corregir notas, vale, kilos o importe, y se pueden seguir editando. El editor muestra el
+  nombre guardado y, si ha cambiado, «Ahora: …». Solo elegir otra cooperativa o proveedor toma su
+  nombre actual.
 - **Un día de recolección con pesadas no se elimina (#457).** Si el día tiene pesadas, ya no aparece
   «Eliminar día de recolección»: «Este día existe porque tiene pesadas. Para cambiarlo, corrige o mueve
   las pesadas.». Una pesada viva siempre conserva su día; al moverla de fecha, el día viejo se retira
