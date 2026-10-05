@@ -38,7 +38,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 - **El gasto de un trabajo sigue a ese trabajo (#433).** Un gasto ligado a una poda o tratamiento
   general ya no puede ponerse en la campaña de recogida, ni en otra campaña distinta de la del
   trabajo, ni en una parcela donde no se hizo. Si se liga a un trabajo o a una parcela sin indicar
-  la finca, toma la suya; nunca queda un gasto con parcela o trabajo pero sin finca.
+  la finca, toma la suya; nunca queda un gasto con parcela o trabajo pero sin finca. En el
+  formulario, al elegir un trabajo desaparece «Recogida / Fuera de campaña» (se muestra la campaña
+  del trabajo), la parcela solo ofrece las del trabajo o «Todo el trabajo», y se quita sola una
+  parcela, campaña o jornada que ya no encaje; al quitar el trabajo vuelves a elegir.
 - **Un número mal escrito ya no desaparece (#473).** Si en horas, operarios, dosis, cantidad,
   volumen, duración, precio o fecha de tarifa se escribe algo que no se entiende («doce»,
   «31/02/2026»), el campo lo marca («Escribe el volumen como 12,5») y no se guarda hasta

@@ -119,11 +119,12 @@ internal fun ExpenseEditor(
     // #411: a new Farm-level expense may start deliberately undecided; existing/explicit
     // Campaign expenses and ordinary editors keep their current classification.
     var campaignChoiceMade by rememberSaveable(initial, requireCampaignChoice) {
-        mutableStateOf(initial.campaignId != null || !requireCampaignChoice)
+        // #433: an expense tied to a work takes that work's Campaign; there is nothing left to choose.
+        mutableStateOf(initial.campaignId != null || initial.activityId != null || !requireCampaignChoice)
     }
     LaunchedEffect(preselectRecollection, options.campaigns, form.farmId) {
         // Codex #480: a related expense takes its work's Campaign; nothing is preselected over it.
-        if (preselectRecollection && !campaignChoiceMade && !activityLocked) {
+        if (preselectRecollection && !campaignChoiceMade && !activityLocked && form.activityId == null) {
             val preselected = form.withRecollectionPreselected(options)
             if (preselected.campaignId != null) {
                 form = preselected
@@ -140,9 +141,11 @@ internal fun ExpenseEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-        // Codex #480: with the work locked, its Campaign (or none, for general work) is context, not a choice.
-        val recollection = if (activityLocked) null else options.recollectionCampaignFor(form, initial.campaignId)
-        if (activityLocked) {
+        // Codex #480 / #433: once the expense is tied to a work (locked or chosen), its Campaign — or
+        // none, for general work — is context, not a choice.
+        val workBound = activityLocked || form.activityId != null
+        val recollection = if (workBound) null else options.recollectionCampaignFor(form, initial.campaignId)
+        if (workBound) {
             val work = options.activities.firstOrNull { it.id == form.activityId }
             val workCampaign = work?.campaignId?.let { id -> options.campaigns.firstOrNull { it.id == id } }
             if (work != null) {
@@ -260,9 +263,21 @@ internal fun ExpenseEditor(
                     )
                 }
             } else {
-                val parcel = options.parcels.firstOrNull { it.id == form.parcelId }
-                MoSelectField("Parcela", parcel?.displayName ?: "Toda la finca", { picker = "parcel" })
-                MoSelectField("Actuación", activity?.description ?: "Ninguna", { picker = "activity" })
+                MoSelectField("Actuación", activity?.description ?: "Ninguna", { picker = "activity" },
+                    Modifier.testTag("expense-activity"))
+                if (activity != null) {
+                    // #433: with a work chosen, only the Parcels it was done on (or the whole work).
+                    MoSelectField(
+                        "Parcela",
+                        activity.targets.firstOrNull { it.parcelId == form.parcelId }?.parcelName ?: "Todo el trabajo",
+                        { picker = "work-parcel" },
+                        Modifier.testTag("expense-parcel"),
+                    )
+                } else {
+                    val parcel = options.parcels.firstOrNull { it.id == form.parcelId }
+                    MoSelectField("Parcela", parcel?.displayName ?: "Toda la finca", { picker = "parcel" },
+                        Modifier.testTag("expense-parcel"))
+                }
             }
         }
 
@@ -396,7 +411,14 @@ internal fun ExpenseEditor(
                 Choice(it.id.toString(), "${it.description} · ${it.activityDate}")
             },
             form.activityId?.toString(),
-            { key -> form = form.copy(activityId = key?.let(UUID::fromString)) },
+            { key ->
+                // #433: choosing or dropping a work clears what no longer fits it.
+                val chosen = key?.let(UUID::fromString)?.let { id -> options.activities.firstOrNull { it.id == id } }
+                if (chosen?.id != form.activityId) {
+                    form = form.withActivity(chosen)
+                    campaignChoiceMade = chosen != null || form.campaignId != null || !requireCampaignChoice
+                }
+            },
             { picker = null },
             "expense-activity-sheet",
         )

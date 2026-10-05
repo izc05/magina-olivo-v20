@@ -232,6 +232,43 @@ class RecollectionChoiceUiTest {
         rule.onNodeWithTag("expense-work-campaign").performScrollTo().assertTextContains("2026/27", substring = true)
     }
 
+    /** #433: choosing a general work drops the Recogida choice and offers only the work's Parcels. */
+    @Test fun choosingAWorkMakesItsRelationsContext() {
+        val norte = UUID.randomUUID()
+        val work = com.isivoltpro.maginaolivo.domain.activity.Activity(
+            id = UUID.randomUUID(), workspaceId = workspace, farmId = farm.id, campaignId = null,
+            type = com.isivoltpro.maginaolivo.domain.activity.ActivityType.PRUNING,
+            status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
+            activityDate = date, description = "Poda general", notes = null,
+            targets = listOf(com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget(norte, "Norte")),
+            version = 1,
+        )
+        var saved: ExpenseForm? = null
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpenseEditor(
+                    title = "Nuevo gasto", initial = ExpenseForm(date.toString(), "20", "Gasoil", farmId = farm.id),
+                    options = options.copy(activities = listOf(work)), errors = ExpenseFormErrors(),
+                    isSaving = false, saveText = "Guardar gasto", onFarmSelected = {}, onSave = { saved = it }, onCancel = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("expense-kind").assertExists()
+        rule.onNodeWithTag("expense-activity").performScrollTo().performClick()
+        rule.onNodeWithTag("choice-${work.id}").performClick()
+        assertEquals(0, rule.onAllNodesWithTag("expense-kind").fetchSemanticsNodes().size)
+        rule.onNodeWithTag("expense-work-campaign").assertTextContains("Fuera de campaña", substring = true)
+        rule.onNodeWithTag("expense-parcel").performScrollTo().performClick()
+        rule.onNodeWithTag("choice-$norte").assertExists()
+        rule.onNodeWithTag("choice-$norte").performClick()
+        rule.onNodeWithTag("save-expense").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals(work.id, saved?.activityId)
+            assertEquals(norte, saved?.parcelId)
+            assertNull(saved?.campaignId)
+        }
+    }
+
     private fun editor(initial: ExpenseForm, preselect: Boolean = false, farmLocked: Boolean = false, loaded: RelationOptions = options, onSave: (ExpenseForm) -> Unit) {
         rule.setContent {
             MaginaOlivoTheme {
