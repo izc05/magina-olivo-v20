@@ -25,7 +25,9 @@ data class Organization(
     val taxId: String? = null,
     val municipality: String? = null,
     val province: String? = null,
+    val address: String? = null,
     val phone: String? = null,
+    val website: String? = null,
     val notes: String? = null,
 )
 
@@ -35,7 +37,9 @@ data class OrganizationDraft(
     val taxId: String? = null,
     val municipality: String? = null,
     val province: String? = null,
+    val address: String? = null,
     val phone: String? = null,
+    val website: String? = null,
     val notes: String? = null,
 )
 
