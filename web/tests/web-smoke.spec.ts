@@ -1,5 +1,26 @@
 import { expect, test } from "@playwright/test";
 
+function relativeLuminance(color: string) {
+  const channels = color
+    .match(/[\d.]+/g)
+    ?.slice(0, 3)
+    .map(Number);
+  if (channels?.length !== 3) {
+    throw new Error(`Unsupported computed color: ${color}`);
+  }
+  const linear = channels.map((channel) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+}
+
+function contrastRatio(foreground: string, background: string) {
+  const first = relativeLuminance(foreground);
+  const second = relativeLuminance(background);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+
 const routes = [
   "/mi/fincas/salinillas",
   "/mi/parcelas/las-lomas",
@@ -93,11 +114,266 @@ test("mobile Mi menu opens without horizontal overflow", async ({
   expect(hasHorizontalOverflow).toBe(false);
 });
 
+test("mobile Mi menu can be opened from the keyboard", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !testInfo.project.name.includes("mobile"),
+    "mobile-only keyboard navigation",
+  );
+  await page.goto("/mi");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+
+  const summary = page.locator(".mobile-nav summary");
+  await expect(summary).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".mobile-nav")).toHaveAttribute("open", "");
+  await expect(
+    page.getByRole("navigation", { name: "Navegación Mi Mágina Olivo" }).last(),
+  ).toBeVisible();
+});
+
+test("private workspace starts keyboard navigation with a skip link", async ({
+  page,
+}) => {
+  await page.goto("/mi");
+  await page.keyboard.press("Tab");
+
+  const skipLink = page.getByRole("link", { name: "Saltar al contenido" });
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#mi-contenido$/);
+  await expect(page.locator("#mi-contenido")).toBeFocused();
+});
+
+test("Mi muted navigation and keyboard focus retain readable contrast", async ({
+  page,
+}) => {
+  await page.goto("/mi");
+  const colors = await page.evaluate(() => {
+    const pending = document.querySelector<HTMLElement>(
+      ".mi-nav-link.nav-pending",
+    );
+    return {
+      pendingText: pending ? getComputedStyle(pending).color : "",
+      pageBackground: getComputedStyle(document.body).backgroundColor,
+    };
+  });
+  expect(
+    contrastRatio(colors.pendingText, colors.pageBackground),
+  ).toBeGreaterThanOrEqual(4.5);
+
+  await page.keyboard.press("Tab");
+  const focus = await page.locator(":focus").evaluate((element) => ({
+    color: getComputedStyle(element).outlineColor,
+    width: getComputedStyle(element).outlineWidth,
+  }));
+  expect(focus.width).toBe("3px");
+  expect(
+    contrastRatio(focus.color, colors.pageBackground),
+  ).toBeGreaterThanOrEqual(3);
+});
+
+test("public and private mobile navigation targets are at least 48px tall", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !testInfo.project.name.includes("mobile"),
+    "touch target sizing checked in mobile Chromium",
+  );
+
+  await page.goto("/");
+  const publicTargetHeights = await page
+    .locator(
+      ".public-nav a:visible, .header-actions a:visible, .home-button:visible, .public-footer a:visible",
+    )
+    .evaluateAll((elements) =>
+      elements.map((element) =>
+        Math.round(element.getBoundingClientRect().height),
+      ),
+    );
+  expect(publicTargetHeights.length).toBeGreaterThan(0);
+  expect(Math.min(...publicTargetHeights)).toBeGreaterThanOrEqual(48);
+
+  await page.goto("/mi");
+  await page.locator(".mobile-nav summary").click();
+  const privateTargetHeights = await page
+    .locator(".mobile-nav summary:visible, .mobile-nav .mi-nav-link:visible")
+    .evaluateAll((elements) =>
+      elements.map((element) =>
+        Math.round(element.getBoundingClientRect().height),
+      ),
+    );
+  expect(privateTargetHeights.length).toBeGreaterThan(0);
+  expect(Math.min(...privateTargetHeights)).toBeGreaterThanOrEqual(48);
+});
+
+test("public home starts keyboard navigation with a working skip link", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.keyboard.press("Tab");
+
+  const skipLink = page.getByRole("link", { name: "Saltar al contenido" });
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#contenido$/);
+  await expect(page.locator("#contenido")).toBeFocused();
+});
+
+test("private routes inherit noindex in preview mode", async ({ page }) => {
+  await page.goto("/mi");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex,\s*nofollow/,
+  );
+  await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+});
+
+test("production SEO indexes public pages but keeps Mi private", async ({
+  page,
+}) => {
+  test.skip(
+    process.env.ALLOW_INDEXING !== "true",
+    "production SEO configuration only",
+  );
+
+  await page.goto("/");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /index,\s*follow/,
+  );
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://magina-olivo.test",
+  );
+
+  const robotsResponse = await page.request.get("/robots.txt");
+  expect(await robotsResponse.text()).toContain("Allow: /");
+  const sitemapResponse = await page.request.get("/sitemap.xml");
+  const sitemap = await sitemapResponse.text();
+  expect(sitemap).toContain("https://magina-olivo.test/funciones");
+  expect(sitemap).not.toContain("/mi");
+
+  await page.goto("/mi");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex,\s*nofollow/,
+  );
+  await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+});
+
+test("public home and private dashboard reflow at the WEB-0F viewport matrix", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.includes("mobile"),
+    "matrix exercised in the desktop Chromium project",
+  );
+
+  const viewports = [
+    { width: 360, height: 800 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    { width: 768, height: 1024 },
+    { width: 1366, height: 768 },
+    { width: 1440, height: 900 },
+    { width: 1920, height: 1080 },
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    for (const route of ["/", "/mi"]) {
+      const response = await page.goto(route);
+      expect(response?.status(), `${route} at ${viewport.width}px`).toBe(200);
+      await expect(page.locator("main h1")).toBeVisible();
+      const hasHorizontalOverflow = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth >
+          document.documentElement.clientWidth + 2,
+      );
+      expect(
+        hasHorizontalOverflow,
+        `horizontal overflow on ${route} at ${viewport.width}px`,
+      ).toBe(false);
+      if (viewport.width === 390 && route === "/") {
+        await page.screenshot({
+          path: "docs/screenshots/web-0f-home-mobile.png",
+          fullPage: true,
+        });
+      }
+      if (viewport.width === 1440 && route === "/mi") {
+        await page.screenshot({
+          path: "docs/screenshots/web-0f-mi-desktop.png",
+          fullPage: true,
+        });
+      }
+      if (viewport.width === 390 && route === "/mi") {
+        await page.screenshot({
+          path: "docs/screenshots/web-0f-mi-mobile.png",
+          fullPage: true,
+        });
+      }
+    }
+  }
+});
+
+test("all public home photography loads and reduced motion is respected", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  await expect(page.locator(".home-hero-image")).toBeVisible();
+  for (const image of await page
+    .locator(".home-step-photo, .community-photo")
+    .all()) {
+    await image.scrollIntoViewIfNeeded();
+    await expect
+      .poll(() =>
+        image.evaluate((node) => (node as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0);
+  }
+  expect(
+    await page.evaluate(
+      () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    ),
+  ).toBe(true);
+});
+
 test("preview metadata stays noindex by default", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
     "content",
     /noindex,\s*nofollow/,
+  );
+});
+
+test("SEO metadata exposes an absolute social image and a valid manifest", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    "content",
+    /images\/v3\/home-hero\.webp$/,
+  );
+
+  const response = await page.request.get("/manifest.webmanifest");
+  expect(response.status()).toBe(200);
+  const manifest = await response.json();
+  expect(manifest).toMatchObject({
+    name: "Mágina Olivo",
+    start_url: "/",
+    scope: "/",
+    display: "standalone",
+  });
+  expect(manifest.icons).toContainEqual(
+    expect.objectContaining({ src: "/brand/app-icon.png", type: "image/png" }),
   );
 });
 

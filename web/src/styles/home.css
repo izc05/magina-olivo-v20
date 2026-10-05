@@ -93,7 +93,7 @@
 }
 .home-button {
   display: inline-flex;
-  min-height: 2.9rem;
+  min-height: 3rem;
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
@@ -884,7 +884,7 @@
     display: inline-flex;
   }
   .header-actions .button-link {
-    min-height: 2.5rem;
+    min-height: 3rem;
     padding: 0.5rem 0.8rem;
     font-size: 0.72rem;
   }
