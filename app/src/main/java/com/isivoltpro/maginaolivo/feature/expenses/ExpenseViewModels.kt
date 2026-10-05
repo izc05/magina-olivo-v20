@@ -160,6 +160,19 @@ internal fun Expense.toForm() = ExpenseForm(
     notes = notes.orEmpty(),
 )
 
+/**
+ * #456: why a DRAFT did not become counted money. A relation that no longer holds sends it back
+ * to review, said plainly; it stays a DRAFT and counts nothing until then.
+ */
+internal fun postErrorMessage(error: AppError): String = when {
+    error is AppError.Validation && error.field == "expenseDate" && error.code == "future" ->
+        "La fecha de este gasto es posterior a hoy. Corrígela antes de confirmarlo."
+    error is AppError.Validation && error.code != "campaign_closed" &&
+        error.field in setOf("farmId", "parcelId", "activityId", "campaignId", "harvestId", "supplierOrganizationId") ->
+        "Este gasto necesita revisar su finca/parcela/trabajo antes de confirmarlo."
+    else -> expenseErrorMessage(error)
+}
+
 internal fun expenseErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> when {
         error.code == "campaign_closed" -> "La campaña está cerrada: el coste histórico no se modifica."
@@ -493,7 +506,7 @@ class ExpenseDetailViewModel(
     }
 
     /** The one human step that turns a reviewed draft into counted money. */
-    fun post() = mutate("Gasto confirmado") { expenses.post(expenseId) }
+    fun post() = mutate("Gasto confirmado", ::postErrorMessage) { expenses.post(expenseId) }
 
     /** #429: the cost of a work no longer done really was spent: it stays, as a Gasto of its own. */
     fun keepAsIndependent() = mutate("Conservado como gasto independiente") { expenses.keepAsIndependent(expenseId) }
@@ -512,12 +525,16 @@ class ExpenseDetailViewModel(
         mutableState.value = mutableState.value.copy(formErrors = ExpenseFormErrors())
     }
 
-    private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) {
+    private fun mutate(
+        message: String,
+        errorText: (AppError) -> String = ::expenseErrorMessage,
+        operation: suspend () -> AppResult<Unit>,
+    ) {
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
             mutableState.value = when (val result = operation()) {
                 is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1, formErrors = ExpenseFormErrors())
-                is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = expenseErrorMessage(result.error))
+                is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = errorText(result.error))
             }
         }
     }

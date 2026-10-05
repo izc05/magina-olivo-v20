@@ -25,6 +25,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   vinculados. Consérvala cancelada o revisa esos gastos antes de archivarla.», con cada gasto a un
   toque. Nunca se borra ni se desliga un gasto real al archivar; un trabajo cancelado ya no sale en
   el Diario aunque no se archive.
+- **Confirmar un borrador revisa todo otra vez (#456).** Un gasto en borrador solo empieza a contar
+  si hoy sigue siendo válido: fecha no posterior a hoy, finca, parcela, trabajo, jornada y campaña
+  coherentes y campaña abierta. Si algo cambió mientras esperaba, sigue en borrador y avisa «Este
+  gasto necesita revisar su finca/parcela/trabajo antes de confirmarlo.». El nombre del proveedor
+  se queda como se anotó.
 - **Gasto rápido (#415).** Un gasto nuevo muestra solo importe, concepto, fecha, categoría, la finca
   y, si hay recogida en curso, «Recogida / Fuera de campaña». Desde el Cuaderno de una parcela se
   lee «Parcela · Los Llanos» y no se vuelve a preguntar. Proveedor, «Relacionado con» (el trabajo;
