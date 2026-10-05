@@ -296,9 +296,11 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
             is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
             is AppResult.Failure -> mutableState.value.copy(
                 isSaving = false,
-                error = (result.error as? AppError.Conflict)?.takeIf { it.resource == ActivityCostRules.COST_TO_REVIEW && move != null }
-                    ?.let { costToReview(move!!) }
-                    ?: "La operación no se pudo completar",
+                error = when ((result.error as? AppError.Conflict)?.resource) {
+                    ActivityCostRules.COST_TO_REVIEW -> move?.let(::costToReview)
+                    ActivityCostRules.LINKED_EXPENSES -> LINKED_EXPENSES_TEXT
+                    else -> null
+                } ?: "La operación no se pudo completar",
             )
         }
     }
@@ -306,6 +308,10 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
 
 /** #429: said when a counted cost holds a move back; the detail offers «Revisar gasto vinculado». */
 internal fun costToReview(move: String) = "Este trabajo tiene un coste contabilizado. Revísalo antes de $move."
+
+/** #437: said when Gastos of their own still point at the work. */
+internal const val LINKED_EXPENSES_TEXT =
+    "Este trabajo tiene gastos vinculados. Consérvalo cancelado o revisa esos gastos antes de archivarlo."
 
 
 private fun String.nullIfBlank(): String? = trim().takeIf(String::isNotEmpty)

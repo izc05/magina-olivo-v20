@@ -187,4 +187,10 @@ object ActivityCostRules {
 
     /** Conflict code: the work holds a counted cost the person has to review before this move. */
     const val COST_TO_REVIEW = "activity_cost_posted"
+
+    /**
+     * #437 conflict code: Gastos of their own still point at the work, so it cannot be archived;
+     * it stays (cancelled) and reachable, and they are never removed or unlinked by the archive.
+     */
+    const val LINKED_EXPENSES = "activity_has_expenses"
 }

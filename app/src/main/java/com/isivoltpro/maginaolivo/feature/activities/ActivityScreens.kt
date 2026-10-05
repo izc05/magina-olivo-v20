@@ -776,6 +776,8 @@ fun ActivityDetailRoute(
         vm::archive,
         onAddRelatedExpense = onAddRelatedExpense,
         historicCostExpenseId = historicCostId,
+        // #437: Gastos of their own pointing at this work (never its convenience cost).
+        relatedExpenses = linkedExpenses.filter { it.origin != com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin.ACTIVITY_COST },
         onOpenExpense = onOpenExpense,
         campaignClosed = campaignClosed,
         relatedExpenseAdded = relatedExpenseAdded,
@@ -802,6 +804,7 @@ fun ActivityDetailScreen(
     onArchive: () -> Unit,
     onAddRelatedExpense: ((Activity) -> Unit)? = null,
     historicCostExpenseId: UUID? = null,
+    relatedExpenses: List<com.isivoltpro.maginaolivo.domain.expense.Expense> = emptyList(),
     onOpenExpense: ((UUID) -> Unit)? = null,
     campaignClosed: Boolean = false,
     relatedExpenseAdded: Boolean = false,
@@ -931,8 +934,9 @@ fun ActivityDetailScreen(
                             MoPrimaryButton("Planificar", { confirmation = "plan" }, modifier = Modifier.fillMaxWidth().testTag("plan-activity"), enabled = !state.isSaving && !costHeld)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                                 MoSecondaryButton("Editar borrador", { editor = true }, modifier = Modifier.weight(1f).testTag("edit-activity"), enabled = !state.isSaving)
-                                MoDestructiveButton("Archivar borrador", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"), enabled = !costHeld)
+                                MoDestructiveButton("Archivar borrador", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"), enabled = !costHeld && relatedExpenses.isEmpty())
                             }
+                            LinkedExpensesHoldArchive(relatedExpenses, onOpenExpense)
                         }
                         ActivityStatus.PLANNED -> {
                             MoPrimaryButton("Marcar completada", { confirmation = "complete" }, modifier = Modifier.fillMaxWidth().testTag("complete-activity"), enabled = !state.isSaving)
@@ -950,8 +954,9 @@ fun ActivityDetailScreen(
                             Text("Actuación cancelada", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                                 MoSecondaryButton("Reabrir", { confirmation = "reopen" }, modifier = Modifier.weight(1f).testTag("reopen-activity"), enabled = !costHeld)
-                                MoDestructiveButton("Archivar", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"), enabled = !costHeld)
+                                MoDestructiveButton("Archivar", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"), enabled = !costHeld && relatedExpenses.isEmpty())
                             }
+                            LinkedExpensesHoldArchive(relatedExpenses, onOpenExpense)
                         }
                     }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -1373,6 +1378,33 @@ private fun hectaresLabel(areaM2: Double): String =
 @Composable
 private fun FormLabel(text: String) {
     Text(text, style = MaterialTheme.typography.titleSmall, color = MoOliveDark, modifier = Modifier.padding(top = MoSpacing.xs))
+}
+
+/**
+ * #437: Gastos of their own still point at this work, so it is not archived: it stays (cancelled
+ * work already leaves the Diario) and each Gasto is one tap away. Nothing is unlinked or removed.
+ */
+@Composable
+private fun LinkedExpensesHoldArchive(
+    expenses: List<com.isivoltpro.maginaolivo.domain.expense.Expense>,
+    onOpenExpense: ((UUID) -> Unit)?,
+) {
+    if (expenses.isEmpty()) return
+    Text(
+        LINKED_EXPENSES_TEXT,
+        style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+        modifier = Modifier.fillMaxWidth().testTag("activity-linked-expenses-note"),
+    )
+    if (onOpenExpense != null) {
+        Text("Ver gastos vinculados", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+        expenses.forEach { expense ->
+            MoTertiaryButton(
+                "${expense.concept} · ${Money.format(expense.amountMinor, expense.currency)}",
+                { onOpenExpense(expense.id) },
+                modifier = Modifier.fillMaxWidth().testTag("activity-linked-expense"),
+            )
+        }
+    }
 }
 
 /** #429: why a move is held back, and the way to the Gasto where it is resolved. */
