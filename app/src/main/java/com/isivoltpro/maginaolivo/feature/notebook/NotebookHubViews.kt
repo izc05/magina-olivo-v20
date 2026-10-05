@@ -73,7 +73,7 @@ internal fun DiaryView(notebook: FarmNotebook, actions: NotebookActions, today: 
                         notebook.jornadaYieldLabel(entry.harvest.id),
                     ) { actions.onHarvest(entry.harvest.id) }
                     is DiaryEntry.DeliveryEntry -> DeliveryRow(entry.delivery) { actions.onDelivery(entry.delivery.id) }
-                    is DiaryEntry.ExpenseEntry -> ExpenseRow(entry.expense) { actions.onExpense(entry.expense.id) }
+                    is DiaryEntry.ExpenseEntry -> ExpenseRow(entry.expense, entry.relatedWork) { actions.onExpense(entry.expense.id) }
                 }
             }
         }

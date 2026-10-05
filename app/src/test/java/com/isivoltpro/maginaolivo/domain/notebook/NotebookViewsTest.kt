@@ -56,14 +56,29 @@ class NotebookViewsTest {
         assertEquals(fuel.id, (oldest[1] as DiaryEntry.ExpenseEntry).expense.id)
     }
 
-    @Test fun anActivitysOwnCostIsNotListedTwiceInTheDiaryButStaysInTheLedger() {
+    /** #478: a work's cost, even a legacy ACTIVITY_COST, is never hidden in the Diario; it is shown, not summed. */
+    @Test fun aWorksCostIsItsOwnDiaryRowAndCountsOnceInTheLedger() {
         val irrigation = activity(ActivityType.IRRIGATION, day1)
         val cost = expense(3_000, ExpenseCategory.IRRIGATION, day1)
             .copy(activityId = irrigation.id, origin = ExpenseOrigin.ACTIVITY_COST)
         val notebook = project(listOf(irrigation), expenses = listOf(cost))
 
-        assertEquals(1, notebook.diary.single().entries.size)
+        val entries = notebook.diary.single().entries
+        assertEquals(2, entries.size)
+        assertEquals(irrigation.description, (entries[1] as DiaryEntry.ExpenseEntry).relatedWork)
         assertEquals(3_000, notebook.costs.ledger.totalMinor)
+    }
+
+    /** #478 QA 1/3: a manual Gasto of a Tratamiento is shown on its own date, naming the work. */
+    @Test fun aManualGastoOfAWorkIsShownOnItsOwnDate() {
+        val treatment = activity(ActivityType.PHYTOSANITARY, day1)
+        val invoice = expense(8_500, ExpenseCategory.PRODUCTS, day2).copy(activityId = treatment.id)
+        val notebook = project(listOf(treatment), expenses = listOf(invoice))
+
+        assertEquals(listOf(day2, day1), notebook.diary.map { it.date })
+        val row = notebook.diary.first().entries.single() as DiaryEntry.ExpenseEntry
+        assertEquals(invoice.id, row.expense.id)
+        assertEquals(treatment.description, row.relatedWork)
     }
 
     @Test fun phytoRecordShowsOnlyWhatWasWrittenAndNamesWhatIsMissing() {

@@ -32,6 +32,11 @@ class RoomMigrationTest {
     }
 
     @Test
+    fun databaseVersionMatchesLatestExportedSchema() {
+        assertEquals(22, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
     fun migration21To22PreservesLegacyEquipmentWithoutInventingPrice() {
         migrationHelper.createDatabase(TEST_DATABASE, 21).use { database ->
             database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Farm','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
