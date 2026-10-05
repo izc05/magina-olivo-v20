@@ -8,7 +8,9 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.data.local.entity.AgriculturalOrganizationEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
+import com.isivoltpro.maginaolivo.data.local.entity.OrganizationRoleEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstOrganizationRepository
@@ -124,6 +126,47 @@ class ProfileSettingsContractTest {
         assertEquals(AppError.Validation("municipality", "blank"), (provinceOnly as AppResult.Failure).error)
         // The refused saves left the profile as it was.
         assertEquals(mill, profile.observe().first().preferredCooperative?.id)
+    }
+
+    @Test
+    fun preferredCooperativeCannotCrossWorkspaceEvenWithAValidRole() = runBlocking {
+        val own = ok(organizations.create(OrganizationDraft("Coop. propia", setOf(OrganizationRole.COOPERATIVE))))
+        ok(profile.save(ProfileDraft("Bedmar", "Jaén", own)))
+
+        val foreignWorkspace = UUID.fromString("10000000-0000-0000-0000-0000000021b2")
+        val foreignOrganization = UUID.fromString("70000000-0000-0000-0000-0000000021b2")
+        db.workspaceDao().upsert(
+            WorkspaceEntity(
+                foreignWorkspace,
+                "Otro olivar",
+                UUID.randomUUID(),
+                "ES",
+                "Europe/Madrid",
+                "es-ES",
+                "EUR",
+                LocalMetadata(now, now),
+            ),
+        )
+        db.organizationDao().upsert(
+            AgriculturalOrganizationEntity(
+                id = foreignOrganization,
+                workspaceId = foreignWorkspace,
+                name = "Coop. ajena",
+                metadata = LocalMetadata(now, now),
+            ),
+        )
+        db.organizationDao().insertRoles(
+            listOf(OrganizationRoleEntity(foreignOrganization, OrganizationRole.COOPERATIVE.name)),
+        )
+
+        val refused = profile.save(ProfileDraft("Bedmar", "Jaén", foreignOrganization))
+        assertEquals(
+            AppError.Validation("organization", "context_mismatch"),
+            (refused as AppResult.Failure).error,
+        )
+        // A failed cross-workspace selection never rewrites the current profile.
+        assertEquals(own, profile.observe().first().preferredCooperative?.id)
+        assertEquals(1, count("profile_settings"))
     }
 
     @Test
