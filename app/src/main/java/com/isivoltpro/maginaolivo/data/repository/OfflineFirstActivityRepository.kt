@@ -447,6 +447,9 @@ class OfflineFirstActivityRepository(
         val activity = database.activityDao().findById(activityId) ?: error("activity missing")
         val farmId = activity.farmId ?: throw InvalidSelection("activity_without_farm")
         if (parcelAreasM2.keys.any { it !in parcelIds }) throw InvalidParcelArea("area_for_unselected_parcel")
+        // A later change to Parcel.managedAreaM2 never invalidates an historical Activity target.
+        // The current surface is a guard only for newly introduced/changed values.
+        val existingAreas = database.activityDao().listTargets(activityId).associate { it.parcelId to it.areaAffectedM2 }
         val rows = parcelIds.sortedBy(UUID::toString).map { parcelId ->
             val parcel = database.parcelDao().findById(parcelId) ?: throw InvalidSelection("parcel_not_found")
             val membership = database.parcelDao().findCurrentMembership(parcelId)
@@ -459,7 +462,12 @@ class OfflineFirstActivityRepository(
             if (affected != null && (!affected.isFinite() || affected <= 0.0)) {
                 throw InvalidParcelArea("invalid_area")
             }
-            if (affected != null && parcel.managedAreaM2 != null && affected > parcel.managedAreaM2 + AREA_EPSILON_M2) {
+            val historicalArea = existingAreas[parcelId]
+            val changesHistoricalArea =
+                historicalArea == null || affected == null || kotlin.math.abs(affected - historicalArea) > AREA_EPSILON_M2
+            if (affected != null && parcel.managedAreaM2 != null &&
+                affected > parcel.managedAreaM2 + AREA_EPSILON_M2 && changesHistoricalArea
+            ) {
                 throw InvalidParcelArea("area_exceeds_parcel")
             }
             ActivityParcelTargetEntity(
