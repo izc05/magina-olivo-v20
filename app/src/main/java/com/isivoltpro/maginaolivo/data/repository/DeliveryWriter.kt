@@ -132,24 +132,46 @@ internal class DeliveryWriter(
         return organization.name
     }
 
+    /**
+     * Writes the origin Parcels of a Pesada (#454). A Parcel it already had keeps its row: id,
+     * `parcelNameAtDelivery` and Campaign link stay as recorded, and only a real change of its
+     * kilos touches it. Only a Parcel added now takes today's name; a Parcel taken out loses
+     * only its own row.
+     */
     private suspend fun replaceShares(delivery: DeliveryEntity, draft: DeliveryDraft, now: Instant) {
-        val campaignParcels = database.harvestDao().listCampaignParcels(delivery.campaignId).associateBy { it.parcelId }
-        val rows = draft.shares.sortedBy { it.parcelId.toString() }.map { share ->
-            val parcel = campaignParcels[share.parcelId] ?: throw InvalidDelivery("parcels", "parcel_not_in_campaign")
-            DeliveryParcelEntity(
-                id = idGenerator.newId(),
-                workspaceId = delivery.workspaceId,
-                deliveryId = delivery.id,
-                parcelId = parcel.parcelId,
-                campaignParcelId = parcel.campaignParcelId,
-                parcelNameAtDelivery = parcel.name,
-                weightGrams = share.weightGrams,
-                allocationMode = if (share.weightGrams == null) HarvestAllocation.UNALLOCATED.name else HarvestAllocation.EXACT.name,
-                metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
-            )
+        val existing = database.deliveryDao().listParcels(delivery.id).associateBy { it.parcelId }
+        val wanted = draft.shares.map { it.parcelId }.toSet()
+        val removed = existing.values.filter { it.parcelId !in wanted }.map { it.id }
+        if (removed.isNotEmpty()) database.deliveryDao().deleteParcelsById(removed)
+        val added = draft.shares.filter { it.parcelId !in existing }
+        val campaignParcels = if (added.isEmpty()) {
+            emptyMap()
+        } else {
+            database.harvestDao().listCampaignParcels(delivery.campaignId).associateBy { it.parcelId }
         }
-        database.deliveryDao().deleteParcels(delivery.id)
-        database.deliveryDao().upsertParcels(rows)
+        val rows = draft.shares.sortedBy { it.parcelId.toString() }.mapNotNull { share ->
+            val mode = if (share.weightGrams == null) HarvestAllocation.UNALLOCATED.name else HarvestAllocation.EXACT.name
+            val kept = existing[share.parcelId]
+            when {
+                kept == null -> {
+                    val parcel = campaignParcels[share.parcelId] ?: throw InvalidDelivery("parcels", "parcel_not_in_campaign")
+                    DeliveryParcelEntity(
+                        id = idGenerator.newId(),
+                        workspaceId = delivery.workspaceId,
+                        deliveryId = delivery.id,
+                        parcelId = parcel.parcelId,
+                        campaignParcelId = parcel.campaignParcelId,
+                        parcelNameAtDelivery = parcel.name,
+                        weightGrams = share.weightGrams,
+                        allocationMode = mode,
+                        metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
+                    )
+                }
+                kept.weightGrams == share.weightGrams && kept.allocationMode == mode -> null
+                else -> kept.copy(weightGrams = share.weightGrams, allocationMode = mode, metadata = kept.metadata.next(now))
+            }
+        }
+        if (rows.isNotEmpty()) database.deliveryDao().upsertParcels(rows)
     }
 
     private fun LocalMetadata.next(now: Instant) =

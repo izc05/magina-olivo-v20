@@ -375,6 +375,52 @@ class DeliveryContractTest {
         assertEquals(PesadaOrigin.GROUND, deliveries.observe(id).first()!!.origin)
     }
 
+    /** Issue #454: editing a Pesada keeps the origin rows it had and their recorded names. */
+    @Test
+    fun editingAPesadaKeepsItsParcelRowsAndTheirRecordedNames() = runBlocking {
+        val id = ok(deliveries.create(draft(2_000_000, north to null, south to null)))
+        val recorded = db.deliveryDao().listParcels(id).associateBy { it.parcelId }
+        rename(north, "Parcela 1")
+
+        // Only the notes change: same rows, same ids, same recorded names.
+        ok(deliveries.update(id, draft(2_000_000, north to null, south to null).copy(notes = "Vale en la guantera")))
+        assertEquals(recorded.values.toSet(), db.deliveryDao().listParcels(id).toSet())
+
+        // Only the kilos change: same rows and names, new kilos.
+        ok(deliveries.update(id, draft(2_000_000, north to 1_200_000, south to 800_000)))
+        val split = db.deliveryDao().listParcels(id).associateBy { it.parcelId }
+        assertEquals(recorded.mapValues { it.value.id }, split.mapValues { it.value.id })
+        assertEquals("Norte", split.getValue(north).parcelNameAtDelivery)
+        assertEquals(recorded.getValue(north).campaignParcelId, split.getValue(north).campaignParcelId)
+        assertEquals(1_200_000L, split.getValue(north).weightGrams)
+        assertEquals(HarvestAllocation.EXACT.name, split.getValue(north).allocationMode)
+
+        // Adding a Parcel creates only its row, named as it is now; taking one out drops only its own.
+        val east = UUID.fromString("30000000-0000-0000-0000-0000000000d3")
+        addToCampaign(east, "Este")
+        rename(east, "Olivar del Este")
+        ok(deliveries.update(id, draft(2_000_000, north to null, east to null)))
+        val after = db.deliveryDao().listParcels(id).associateBy { it.parcelId }
+        assertEquals(setOf(north, east), after.keys)
+        assertEquals(recorded.getValue(north).id, after.getValue(north).id)
+        assertEquals("Norte", after.getValue(north).parcelNameAtDelivery)
+        assertEquals("Olivar del Este", after.getValue(east).parcelNameAtDelivery)
+        assertEquals("Norte", deliveries.observe(id).first()!!.shares.single { it.parcelId == north }.parcelName)
+    }
+
+    private suspend fun rename(parcelId: UUID, name: String) {
+        val parcel = db.parcelDao().findById(parcelId)!!
+        db.parcelDao().upsert(parcel.copy(displayName = name))
+    }
+
+    private suspend fun addToCampaign(parcelId: UUID, name: String) {
+        val meta = LocalMetadata(now, now)
+        db.parcelDao().upsert(ParcelEntity(parcelId, workspaceId, name, source = "MANUAL", metadata = meta))
+        db.campaignDao().upsertSnapshots(
+            listOf(CampaignParcelSnapshotEntity(UUID.randomUUID(), workspaceId, campaignId, parcelId, farmId, "La Solana", name, metadata = meta)),
+        )
+    }
+
     private fun open() {
         db = MaginaOlivoDatabase.create(context, DB)
         val workspaces = object : WorkspaceRepository {
