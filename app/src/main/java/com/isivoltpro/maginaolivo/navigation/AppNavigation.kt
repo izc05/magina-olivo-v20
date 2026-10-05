@@ -471,6 +471,7 @@ fun AppNavigation(
                             )
                         }
                     },
+                    onOpenExpense = { expenseId -> navController.navigate(AppDestination.expense(expenseId.toString())) },
                 )
             }
             composable(AppDestination.MapCatastro) {
@@ -683,6 +684,8 @@ fun AppNavigation(
                         presetParcelId = parcelId,
                         presetCampaignId = campaignId,
                         presetActivityId = activityId,
+                        // #416: back to the work the expense was added from.
+                        onContextDone = { navController.popBackStack() },
                         onDocumentImported = { id ->
                             navController.navigate(
                                 AppDestination.documentInContext(

@@ -165,6 +165,45 @@ class RecollectionChoiceUiTest {
         rule.onNodeWithTag("expense-farm-context").performScrollTo().assertTextContains("Cargando la finca…")
     }
 
+    /** Owner #480: from a work the expense keeps that work, offers only its Parcels and asks the category. */
+    @Test fun aRelatedExpenseKeepsItsWorkAndAsksTheCategory() {
+        val work = com.isivoltpro.maginaolivo.domain.activity.Activity(
+            id = UUID.randomUUID(), workspaceId = workspace, farmId = farm.id, campaignId = null,
+            type = com.isivoltpro.maginaolivo.domain.activity.ActivityType.PRUNING,
+            status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
+            activityDate = date, description = "Poda de olivar", notes = null,
+            targets = listOf(
+                com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget(UUID.randomUUID(), "Norte"),
+                com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget(UUID.randomUUID(), "Sur"),
+            ),
+            version = 1,
+        )
+        var saved: ExpenseForm? = null
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpenseEditor(
+                    title = "Nuevo gasto", initial = ExpenseForm(date.toString(), "65", "Afilado", farmId = farm.id, activityId = work.id),
+                    options = options.copy(activities = listOf(work)), errors = ExpenseFormErrors(),
+                    isSaving = false, saveText = "Guardar gasto", onFarmSelected = {}, onSave = { saved = it }, onCancel = {},
+                    farmLocked = true, activityLocked = true,
+                )
+            }
+        }
+        rule.onNodeWithTag("expense-activity-context").performScrollTo().assertTextContains("Poda de olivar", substring = true)
+        // Category on purpose: no save until chosen.
+        rule.onNodeWithTag("expense-category-required").assertExists()
+        rule.onNodeWithTag("save-expense").performScrollTo().assertIsNotEnabled()
+        // Only the work's two Parcels (and the whole work) are offered.
+        rule.onNodeWithTag("expense-parcel").performScrollTo().performClick()
+        rule.onNodeWithText("Norte").assertExists()
+        rule.onNodeWithText("Sur").assertExists()
+        rule.onNodeWithText("Todo el trabajo").performClick()
+        rule.onNodeWithTag("expense-category").performScrollTo().performClick()
+        rule.onNodeWithText("Reparaciones").performClick()
+        rule.onNodeWithTag("save-expense").performScrollTo().performClick()
+        rule.runOnIdle { assertEquals(work.id, saved?.activityId); assertNull(saved?.parcelId) }
+    }
+
     private fun editor(initial: ExpenseForm, preselect: Boolean = false, farmLocked: Boolean = false, loaded: RelationOptions = options, onSave: (ExpenseForm) -> Unit) {
         rule.setContent {
             MaginaOlivoTheme {

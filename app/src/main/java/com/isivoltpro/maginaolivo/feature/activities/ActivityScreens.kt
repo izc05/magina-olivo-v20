@@ -771,11 +771,23 @@ fun ActivityDetailRoute(
     persistence: LocalPersistence,
     /** #416: opens Gasto tied to this work (its Farm, its single Parcel, the work itself). */
     onAddRelatedExpense: ((Activity) -> Unit)? = null,
+    /** #416: opens one Gasto by id (the historic cost row of this work). */
+    onOpenExpense: ((UUID) -> Unit)? = null,
 ) {
     val vm: ActivityDetailViewModel = viewModel(key = "activity-$activityId", factory = viewModelFactory {
         initializer { ActivityDetailViewModel(activityId, persistence.activityRepository) }
     })
     val state by vm.state.collectAsStateWithLifecycle()
+    // #416: the canonical Expense row of a cost typed on the work before 1.0 (money lives in Gastos).
+    val linkedExpenses by remember(activityId) { persistence.expenseRepository.observeForActivity(activityId) }
+        .collectAsStateWithLifecycle(emptyList())
+    val historicCostId = linkedExpenses.firstOrNull { it.origin == com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin.ACTIVITY_COST }?.id
+    // #416: a work of a closed Campaign cannot take new money until the Campaign is reopened.
+    val campaignId = state.activity?.campaignId
+    val campaign by remember(campaignId) {
+        campaignId?.let(persistence.campaignRepository::observe) ?: kotlinx.coroutines.flow.flowOf(null)
+    }.collectAsStateWithLifecycle(null)
+    val campaignClosed = campaign?.status == com.isivoltpro.maginaolivo.data.local.model.CampaignStatus.CLOSED
     ActivityDetailScreen(
         state,
         vm::update,
@@ -785,6 +797,9 @@ fun ActivityDetailRoute(
         vm::reopen,
         vm::archive,
         onAddRelatedExpense = onAddRelatedExpense,
+        historicCostExpenseId = historicCostId,
+        onOpenExpense = onOpenExpense,
+        campaignClosed = campaignClosed,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.ACTIVITY, activityId),
@@ -806,6 +821,9 @@ fun ActivityDetailScreen(
     onReopen: () -> Unit,
     onArchive: () -> Unit,
     onAddRelatedExpense: ((Activity) -> Unit)? = null,
+    historicCostExpenseId: UUID? = null,
+    onOpenExpense: ((UUID) -> Unit)? = null,
+    campaignClosed: Boolean = false,
     attachmentContent: @Composable () -> Unit = {},
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
@@ -866,16 +884,39 @@ fun ActivityDetailScreen(
                             Money.format(cost),
                             Modifier.fillMaxWidth().testTag("activity-cost-summary"),
                             icon = MoIcons.Euro,
-                            supportingText = "Anotado en Gastos una sola vez",
+                            supportingText = "Ya contabilizado en Gastos una sola vez",
                         )
+                        // #416: the money is corrected on its Expense row, without reopening the work.
+                        if (historicCostExpenseId != null && onOpenExpense != null) {
+                            MoTertiaryButton(
+                                "Ver / corregir gasto histórico",
+                                { onOpenExpense(historicCostExpenseId) },
+                                modifier = Modifier.fillMaxWidth().testTag("activity-historic-expense"),
+                            )
+                        }
                     }
                     // #416: money for done work is a Gasto of its own, tied to the work — never a second figure.
                     if (onAddRelatedExpense != null && activity.status == ActivityStatus.COMPLETED && activity.farmId != null) {
+                        val historic = activity.costMinor
                         MoSecondaryButton(
-                            "Añadir gasto relacionado",
+                            if (historic != null) "Añadir otro gasto relacionado" else "Añadir gasto relacionado",
                             { onAddRelatedExpense(activity) },
                             modifier = Modifier.fillMaxWidth().testTag("activity-add-expense"),
+                            enabled = !campaignClosed,
                         )
+                        when {
+                            campaignClosed -> Text(
+                                "La campaña está cerrada. Reábrela para añadir gastos de recogida.",
+                                style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+                                modifier = Modifier.testTag("activity-add-expense-closed"),
+                            )
+                            historic != null -> Text(
+                                "El coste histórico de ${Money.format(historic)} ya está contabilizado. " +
+                                    "Añade otro gasto solo si es un importe distinto.",
+                                style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+                                modifier = Modifier.testTag("activity-add-expense-note"),
+                            )
+                        }
                     }
 
                     // Principal / secundaria / destructiva — never three large green buttons.

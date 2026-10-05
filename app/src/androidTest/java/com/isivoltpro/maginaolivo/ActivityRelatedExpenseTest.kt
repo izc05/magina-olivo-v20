@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -38,13 +39,41 @@ class ActivityRelatedExpenseTest {
         composeRule.onNodeWithText("Coste histórico vinculado").assertExists()
     }
 
-    private fun show(activity: Activity, onAddRelatedExpense: (Activity) -> Unit) {
+    /** Owner #480: with a historic cost the CTA says «otro» and links to the cost's own Gasto. */
+    @Test fun aHistoricCostLeadsToItsOwnExpenseAndTheCtaSaysOther() {
+        val historicId = java.util.UUID.randomUUID()
+        var opened: java.util.UUID? = null
+        show(UiPolishFixtures.activity.copy(status = ActivityStatus.COMPLETED, costMinor = 6_500), historicCostExpenseId = historicId,
+            onOpenExpense = { opened = it }) {}
+        composeRule.onNodeWithText("Añadir otro gasto relacionado").performScrollTo().assertExists()
+        composeRule.onNodeWithTag("activity-add-expense-note").assertExists()
+        composeRule.onNodeWithTag("activity-historic-expense").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(historicId, opened) }
+    }
+
+    /** Owner #480: no new money on a work of a closed Campaign; it says how to proceed. */
+    @Test fun aClosedCampaignDisablesTheCta() {
+        show(UiPolishFixtures.activity.copy(status = ActivityStatus.COMPLETED), campaignClosed = true) {}
+        composeRule.onNodeWithTag("activity-add-expense").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithTag("activity-add-expense-closed").assertExists()
+    }
+
+    private fun show(
+        activity: Activity,
+        historicCostExpenseId: java.util.UUID? = null,
+        onOpenExpense: ((java.util.UUID) -> Unit)? = null,
+        campaignClosed: Boolean = false,
+        onAddRelatedExpense: (Activity) -> Unit,
+    ) {
         composeRule.setContent {
             MaginaOlivoTheme {
                 ActivityDetailScreen(
                     ActivityDetailUiState(isLoading = false, activity = activity),
                     {}, {}, {}, {}, {}, {},
                     onAddRelatedExpense = onAddRelatedExpense,
+                    historicCostExpenseId = historicCostExpenseId,
+                    onOpenExpense = onOpenExpense,
+                    campaignClosed = campaignClosed,
                 )
             }
         }

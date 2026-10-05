@@ -104,6 +104,8 @@ fun ExpensesRoute(
     presetLabour: Boolean = false,
     /** #416: «Añadir gasto relacionado» — a new expense tied to this work, opened at once. */
     presetActivityId: UUID? = null,
+    /** #416: a contextual entry returns where it started, after saving or cancelling. */
+    onContextDone: (() -> Unit)? = null,
     /**
      * A document just taken on this screen; it is reviewed with this screen's Farm/Campaign
      * context. Documents listed «por revisar» open with [onDocumentSelected], without context.
@@ -151,6 +153,7 @@ fun ExpensesRoute(
         presetCampaignId = presetCampaignId,
         presetLabour = presetLabour,
         presetActivityId = presetActivityId,
+        onContextDone = onContextDone,
     )
 }
 
@@ -173,10 +176,14 @@ fun ExpensesScreen(
     presetCampaignId: UUID? = null,
     presetLabour: Boolean = false,
     presetActivityId: UUID? = null,
+    onContextDone: (() -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(presetLabour || presetActivityId != null) }
     var uploadVisible by rememberSaveable { mutableStateOf(false) }
-    OnEachSave(state.saveCount) { editorVisible = false }
+    OnEachSave(state.saveCount) {
+        editorVisible = false
+        if (presetActivityId != null) onContextDone?.invoke()
+    }
     // The Farm's parcels and works are offered in the form from the start.
     LaunchedEffect(presetFarmId) { presetFarmId?.let(onFarmSelected) }
 
@@ -262,7 +269,12 @@ fun ExpensesScreen(
     }
 
     if (editorVisible) {
-        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { editorVisible = false; onEditorClosed() }) {
+        val closeEditor = {
+            editorVisible = false
+            onEditorClosed()
+            if (presetActivityId != null) onContextDone?.invoke()
+        }
+        ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { closeEditor() }) {
             ExpenseEditor(
                 // #378: outside a campaign, Jornal is the Farm's labour — said so, with Mano de obra chosen.
                 title = if (presetLabour) LABOUR_OUTSIDE_CAMPAIGN_TITLE else "Nuevo gasto",
@@ -279,13 +291,14 @@ fun ExpensesScreen(
                 saveText = "Guardar gasto",
                 onFarmSelected = onFarmSelected,
                 onSave = onCreate,
-                onCancel = { editorVisible = false; onEditorClosed() },
+                onCancel = { closeEditor() },
                 // #411: a running Campaign never silently captures a general Farm expense.
                 preselectRecollection = false,
                 // #416/#433: a work's expense follows that work's Campaign; there is nothing to choose.
                 requireCampaignChoice = presetFarmId != null && presetCampaignId == null && !presetLabour && presetActivityId == null,
                 // #375: from a Farm's Cuaderno or a campaign, the Farm is context, not a question.
                 farmLocked = presetFarmId != null,
+                activityLocked = presetActivityId != null,
             )
         }
     }
