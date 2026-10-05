@@ -454,6 +454,27 @@ class ExpenseLedgerContractTest {
         assertNull(db.expenseDao().findById(id)!!.parcelId)
     }
 
+    /** #476 vs #456: a DRAFT is not history; its archived Parcel is re-checked, a POSTED one keeps it. */
+    @Test
+    fun onlyAPostedGastoKeepsAnArchivedParcelADraftIsReChecked() = runBlocking {
+        val saved = draft(2_000, farmId = farmId, parcelId = parcelA)
+        val pending = draftOf(saved)
+        val posted = ok(expenses.create(saved))
+        val parcel = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(parcel.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED))
+
+        assertValidation("parcelId", expenses.update(pending, saved.copy(notes = "Revisado")))
+        assertValidation("parcelId", expenses.post(pending))
+        assertStillDraft(pending, 2_000)
+        assertEquals(parcelA, db.expenseDao().findById(pending)!!.parcelId)
+
+        ok(expenses.update(posted, saved.copy(amountMinor = 2_500, notes = "Revisado")))
+        val kept = db.expenseDao().findById(posted)!!
+        assertEquals(parcelA, kept.parcelId)
+        assertEquals(farmId, kept.farmId)
+        assertEquals(2_500L, kept.amountMinor)
+    }
+
     @Test
     fun onlyAWorkCostCanBeKeptOnItsOwn() = runBlocking {
         val manual = ok(expenses.create(draft(1_000, farmId = farmId)))

@@ -89,7 +89,6 @@ internal class ExpenseLedgerWriter(
             ExpenseOrigin.valueOf(current.origin),
             current.metadata,
             historicalSupplierId = current.supplierOrganizationId,
-            recorded = current,
         )
         // Only the status changes: the supplier name and every snapshot stay as captured (#451).
         database.expenseDao().upsert(current.copy(status = ExpenseStatus.POSTED.name, metadata = current.metadata.next(now)))
@@ -155,7 +154,7 @@ internal class ExpenseLedgerWriter(
         metadata: LocalMetadata,
         keptProvider: String? = null,
         historicalSupplierId: UUID? = null,
-        /** The Expense as stored, when rewriting it: its Farm/Parcel pair is history (#476). */
+        /** The Expense as stored, when rewriting it: once POSTED, its Farm/Parcel pair is history (#476). */
         recorded: ExpenseEntity? = null,
     ): ExpenseEntity {
         val concept = draft.concept.trim()
@@ -175,10 +174,12 @@ internal class ExpenseLedgerWriter(
                 ?.takeIf { it.workspaceId == workspaceId && it.metadata.deletedAt == null }
                 ?: throw InvalidExpense("activityId", "not_found")
         }
-        // #476: a Parcel the Expense already had, on the same Farm, is a historical fact: it stays
-        // valid though the Parcel was archived or moved to another Farm since. Only a Parcel chosen
-        // now must be active and belong to that Farm today.
-        val keptParcel = recorded != null && draft.parcelId != null && draft.parcelId == recorded.parcelId &&
+        // #476: a Parcel a POSTED Expense already had, on the same Farm, is a historical fact: it
+        // stays valid though the Parcel was archived or moved to another Farm since. A DRAFT is not
+        // history yet (#456: confirming it re-checks every live relation), and a Parcel chosen now
+        // must be active and belong to that Farm today.
+        val keptParcel = recorded != null && recorded.status == ExpenseStatus.POSTED.name &&
+            draft.parcelId != null && draft.parcelId == recorded.parcelId &&
             (draft.farmId ?: recorded.farmId) == recorded.farmId
         val parcelFarmId = draft.parcelId?.let { parcelId ->
             val parcel = database.parcelDao().findById(parcelId)
