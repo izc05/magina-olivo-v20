@@ -193,4 +193,10 @@ object ActivityCostRules {
      * it stays (cancelled) and reachable, and they are never removed or unlinked by the archive.
      */
     const val LINKED_EXPENSES = "activity_has_expenses"
+
+    /**
+     * #441 conflict code: a Parcel the edit would drop from the work still carries a Gasto tied to
+     * that work. Gastos never move with a correction of the work; the person reviews them first.
+     */
+    const val PARCEL_HAS_EXPENSES = "activity_parcel_has_expenses"
 }

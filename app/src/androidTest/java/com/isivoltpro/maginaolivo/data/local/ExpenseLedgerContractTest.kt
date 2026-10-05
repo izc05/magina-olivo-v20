@@ -118,6 +118,59 @@ class ExpenseLedgerContractTest {
         attachmentsRoot.deleteRecursively()
     }
 
+    // ------------------------------------------------------------ #441 a work's Parcels keep its Gastos
+
+    private suspend fun secondParcel(): UUID {
+        val meta = LocalMetadata(now, now)
+        val parcelB = UUID.randomUUID()
+        db.parcelDao().upsert(ParcelEntity(parcelB, workspaceId, "Parcela B", source = "MANUAL", metadata = meta))
+        db.parcelDao().upsertMembership(FarmParcelMembershipEntity(UUID.randomUUID(), workspaceId, farmId, parcelB, now, metadata = meta))
+        return parcelB
+    }
+
+    private fun assertParcelHasExpenses(result: AppResult<*>) {
+        assertTrue("Expected activity_parcel_has_expenses but was $result",
+            result is AppResult.Failure && (result.error as? AppError.Conflict)?.resource == ActivityCostRules.PARCEL_HAS_EXPENSES)
+    }
+
+    @Test
+    fun aParcelAGastoNamesIsNotDroppedFromTheWork() = runBlocking {
+        val parcelB = secondParcel()
+        val work = activity(costMinor = null)
+        val gasto = ok(expenses.create(draft(2_000, farmId = farmId, parcelId = parcelA, activityId = work, concept = "Abono A")))
+        val before = expenses.observe(gasto).first()!!
+
+        assertParcelHasExpenses(activities.update(work, ActivityChanges(ActivityType.FERTILIZATION, date, "Abonado de primavera", setOf(parcelB))))
+        assertEquals(before, expenses.observe(gasto).first())
+        assertEquals(listOf(parcelA), activities.observe(work).first()!!.targets.map { it.parcelId })
+
+        // Adding a Parcel while keeping A leaves the Gasto as it was.
+        ok(activities.update(work, ActivityChanges(ActivityType.FERTILIZATION, date, "Abonado de primavera", setOf(parcelA, parcelB))))
+        assertEquals(before.parcelId, expenses.observe(gasto).first()!!.parcelId)
+
+        // Once the Gasto no longer names A, A can go.
+        ok(expenses.delete(gasto))
+        ok(activities.update(work, ActivityChanges(ActivityType.FERTILIZATION, date, "Abonado de primavera", setOf(parcelB))))
+    }
+
+    @Test
+    fun retypingOrRedatingTheWorkLeavesItsGastosAlone() = runBlocking {
+        val work = activity(costMinor = null)
+        val gasto = ok(expenses.create(draft(2_000, farmId = farmId, parcelId = parcelA, activityId = work,
+            concept = "Abono A", category = ExpenseCategory.PRODUCTS)))
+        ok(activities.update(work, ActivityChanges(ActivityType.PRUNING, date.minusDays(2), "Poda", setOf(parcelA))))
+        val after = expenses.observe(gasto).first()!!
+        assertEquals(ExpenseCategory.PRODUCTS, after.category)
+        assertEquals(date, after.expenseDate)
+    }
+
+    @Test
+    fun aWorkBecomingWholeFarmKeepsAParcelGasto() = runBlocking {
+        val draftWork = ok(activities.create(NewActivity(farmId, null, ActivityType.PRUNING, date, "Poda", setOf(parcelA), asDraft = true)))
+        ok(expenses.create(draft(500, farmId = farmId, parcelId = parcelA, activityId = draftWork, concept = "Afilado")))
+        assertParcelHasExpenses(activities.update(draftWork, ActivityChanges(ActivityType.PRUNING, date, "Poda", emptySet())))
+    }
+
     // ------------------------------------------------------------ #437 archive keeps real money linked
 
     @Test

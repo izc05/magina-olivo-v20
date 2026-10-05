@@ -173,6 +173,8 @@ internal fun deliveryProblemMessage(problem: DeliveryProblem): String = when (pr
     "future" -> "La fecha no puede ser posterior a hoy"
     "before_campaign" -> "La fecha es anterior al inicio de la campaña"
     "before_delivery" -> "El análisis no puede ser anterior a la pesada"
+    "after_analysis" ->
+        "La nueva fecha de la pesada sería posterior a su análisis de rendimiento. Corrige primero la fecha del análisis o mantén la fecha de la pesada."
     "empty" -> "Elige al menos una parcela de origen"
     "duplicate" -> "Cada parcela solo puede aparecer una vez"
     "exceeds_total" -> "Las parcelas suman más kilos que la pesada"
