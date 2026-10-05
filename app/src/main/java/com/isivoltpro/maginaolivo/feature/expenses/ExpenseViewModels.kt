@@ -350,6 +350,8 @@ class ExpensesViewModel(
 
     fun selectFarm(farmId: UUID?) = relations.selectFarm(farmId)
 
+    suspend fun dayCostQuestion(harvestId: UUID, category: ExpenseCategory) = relations.dayCostQuestion(harvestId, category)
+
     fun create(form: ExpenseForm) {
         val (draft, errors) = form.toDraft()
         mutableState.value = mutableState.value.copy(formErrors = errors)
@@ -428,8 +430,13 @@ class RelationSource(
     private val activities: ActivityRepository,
     private val organizations: OrganizationRepository,
     private val campaigns: CampaignRepository? = null,
+    private val dayCosts: com.isivoltpro.maginaolivo.domain.expense.DayCostRepository? = null,
 ) {
     private val selectedFarm = MutableStateFlow<UUID?>(null)
+
+    /** #475: what a cost of [category] on that recolección day may be asked; null asks nothing. */
+    suspend fun dayCostQuestion(harvestId: UUID, category: ExpenseCategory): com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion? =
+        dayCosts?.questionFor(harvestId, category)
     private var options = RelationOptions(campaignsTracked = campaigns != null)
 
     fun selectFarm(farmId: UUID?) {
@@ -516,6 +523,8 @@ class ExpenseDetailViewModel(
     }
 
     fun selectFarm(farmId: UUID?) = relations.selectFarm(farmId)
+
+    suspend fun dayCostQuestion(harvestId: UUID, category: ExpenseCategory) = relations.dayCostQuestion(harvestId, category)
 
     fun update(form: ExpenseForm) {
         val current = mutableState.value.expense ?: return

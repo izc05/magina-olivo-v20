@@ -16,6 +16,7 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.CalculatedCost
 import com.isivoltpro.maginaolivo.domain.expense.DayCostCalculator
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
@@ -178,6 +179,14 @@ internal class DayCostLedger(
             throw InvalidExpense("dayCostRole", "nothing_to_replace")
         }
         if (kind == DayCostKind.LABOUR && labourPaid(day)) throw InvalidExpense("dayCostRole", "labour_paid")
+    }
+
+    /** #475: the question a cost of [category] on that day gets, from the day's real state. */
+    suspend fun question(harvestId: UUID, category: ExpenseCategory): DayCostQuestion? {
+        val kind = DayCostKind.of(category) ?: return null
+        val day = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null } ?: return null
+        if (database.expenseDao().listForHarvest(day.id).none { it.origin == kind.origin.name }) return null
+        return DayCostQuestion(kind, canReplace = !(kind == DayCostKind.LABOUR && labourPaid(day)))
     }
 
     /** Whether anyone who worked that day has a payment recorded in its Campaign. */

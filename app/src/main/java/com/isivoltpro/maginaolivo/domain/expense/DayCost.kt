@@ -187,4 +187,10 @@ interface DayCostRepository {
      * today keeps counting exactly the same. Nothing else is reinterpreted. Idempotent.
      */
     suspend fun markExistingReplacements(): AppResult<Unit> = AppResult.Success(Unit)
+
+    /**
+     * #475: what a cost of [category] on that day may be asked, from the day as it is: null when the
+     * day has no calculation of that kind (nothing to ask); with jornales paid, it can only add.
+     */
+    suspend fun questionFor(harvestId: UUID, category: ExpenseCategory): DayCostQuestion? = null
 }

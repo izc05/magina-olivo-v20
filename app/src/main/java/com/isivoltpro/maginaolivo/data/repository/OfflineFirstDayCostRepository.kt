@@ -15,8 +15,10 @@ import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.DayCostLedger.Companion.toDomain
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion
 import com.isivoltpro.maginaolivo.domain.expense.DayCostRepository
 import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.UnlinkedDayCosts
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
@@ -91,6 +93,9 @@ class OfflineFirstDayCostRepository(
             costs.markExistingReplacements(clock.nowInstant())
             AppResult.Success(Unit)
         }
+
+    override suspend fun questionFor(harvestId: UUID, category: ExpenseCategory): DayCostQuestion? =
+        withContext(dispatchers.io) { runCatching { costs.question(harvestId, category) }.getOrNull() }
 
     override suspend fun linkToDay(expenseId: UUID, harvestId: UUID, role: DayCostRole): AppResult<Unit> =
         inTransaction("link_to_day") {

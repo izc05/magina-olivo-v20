@@ -23,6 +23,8 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstLabourRepository
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
+import com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
@@ -183,6 +185,20 @@ class LabourPaymentContractTest {
         assertTrue(labour.recordPayment(saved) is AppResult.Failure)
         assertEquals(6_000L, balance(worker).pendingMinor)
         assertEquals(6_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+    }
+
+    /** #475 (owner audit on #583): the Gasto editor asks only what the day really allows. */
+    @Test
+    fun theDayCostQuestionFollowsTheDayAsItIs() = runBlocking {
+        val (d, worker) = pricedDay()
+        // A calculation of jornales exists and nobody is paid yet: both answers.
+        assertEquals(DayCostQuestion(DayCostKind.LABOUR, canReplace = true), costs.questionFor(d, ExpenseCategory.LABOR))
+        // No machinery calculated that day, and products never replace anything: nothing to ask.
+        assertNull(costs.questionFor(d, ExpenseCategory.MACHINERY))
+        assertNull(costs.questionFor(d, ExpenseCategory.PRODUCTS))
+        // With a payment recorded per person, jornales can only add.
+        ok(labour.recordPayment(payment(worker, 1_000)))
+        assertEquals(DayCostQuestion(DayCostKind.LABOUR, canReplace = false), costs.questionFor(d, ExpenseCategory.LABOR))
     }
 
     @Test

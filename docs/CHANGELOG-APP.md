@@ -28,6 +28,7 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   jornales solo pueden añadirse: los pagos nunca se tocan. Al sustituir jornales sin pagos, el importe
   cuenta en la campaña sin repartir por persona. Un gasto «Fuera de campaña» ya no se ofrece para
   enlazarlo a una jornada ni se absorbe. Lo que contaba antes de este cambio sigue contando igual.
+  Al editar el gasto se ve la misma pregunta, solo con las opciones que ese día permite de verdad.
 - **«Trabajo» en lugar de «actuación» en toda la app.** Pantallas, botones y avisos hablan de
   «Nuevo trabajo», «Editar trabajo», «Trabajo completado», «Trabajos con esta máquina», «Coste de un
   trabajo»… Solo cambia el texto; los datos y su sincronización no cambian. «Actuación realizada» se
