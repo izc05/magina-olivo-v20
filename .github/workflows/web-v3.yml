@@ -94,7 +94,9 @@ jobs:
             test -f "out/$route"
           done
           test -f out/manifest.webmanifest
-          test -f out/brand/app-icon.png
+          test -f out/brand/app-icon-192.png
+          test -f out/brand/app-icon-512.png
+          node -e 'const fs=require("node:fs"); for (const [file,size] of [["out/brand/app-icon-192.png",192],["out/brand/app-icon-512.png",512]]) { const b=fs.readFileSync(file); if (b.toString("hex",0,8)!=="89504e470d0a1a0a" || b.readUInt32BE(16)!==size || b.readUInt32BE(20)!==size) throw new Error(`${file} must be a ${size}x${size} PNG`); }'
           jq -e '.start_url == "/magina-olivo-v20/" and .scope == "/magina-olivo-v20/"' out/manifest.webmanifest >/dev/null
           grep -Fq 'property="og:image" content="https://izc05.github.io/magina-olivo-v20/images/v3/home-hero.webp"' out/index.html
           test -f out/robots.txt

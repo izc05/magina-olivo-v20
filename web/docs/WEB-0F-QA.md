@@ -41,7 +41,7 @@ No se ejecutó una auditoría con lector de pantalla ni una exploración exhaust
 ## SEO, metadatos y rutas
 
 - Prueba de configuración con `ALLOW_INDEXING=true` y `SITE_URL` de comprobación: metadatos `index,follow`, canonical de Home, `robots.txt` con Allow, sitemap con rutas públicas y sin `/mi`; Mi conserva `noindex,nofollow` y carece de canonical.
-- Exportación Pages: manifiesto con `start_url` y `scope` bajo `/magina-olivo-v20/`, icono de marca, Open Graph con URL absoluta, sitemap sin rutas y `robots.txt` con bloqueo de indexación.
+- Exportación Pages: manifiesto con `start_url` y `scope` bajo `/magina-olivo-v20/`, iconos de marca cuadrados de 192 × 192 y 512 × 512, Open Graph con URL absoluta, sitemap sin rutas y `robots.txt` con bloqueo de indexación.
 - Las comprobaciones E2E visitan las rutas públicas y privadas preparadas; además validan el endpoint `/api/health` en modo servidor.
 
 ## Rendimiento local
