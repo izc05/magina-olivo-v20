@@ -70,6 +70,30 @@ data class MapParcel(
 /** A camera request; a new [token] moves the map again to the same place. */
 data class MapFocus(val point: GeoPoint, val zoom: Double = 16.5, val token: Long = System.nanoTime())
 
+/** Pixels occupied by UI floating over the MapView. They are not part of the usable camera viewport. */
+data class MapCameraInsets(
+    val leftPx: Int = 0,
+    val topPx: Int = 0,
+    val rightPx: Int = 0,
+    val bottomPx: Int = 0,
+) {
+    init {
+        require(leftPx >= 0 && topPx >= 0 && rightPx >= 0 && bottomPx >= 0) { "negative_map_insets" }
+    }
+
+    internal fun withMargin(marginPx: Int): MapCameraInsets = MapCameraInsets(
+        leftPx = leftPx + marginPx,
+        topPx = topPx + marginPx,
+        rightPx = rightPx + marginPx,
+        bottomPx = bottomPx + marginPx,
+    )
+}
+
+private data class MapFrameKey(
+    val parcels: List<Pair<String, String>>,
+    val padding: MapCameraInsets,
+)
+
 /**
  * What is drawn under the parcels. [MAP] is the light IGN base map (streets, paths, towns);
  * [AERIAL] is the PNOA photo, heavier on the phone; [NONE] draws only the saved boundaries and
@@ -100,6 +124,8 @@ fun ParcelMap(
     overlayTiles: String? = null,
     /** Credit for [overlayTiles], added to the map's attribution line. */
     overlayAttribution: String? = null,
+    /** #574: UI panels floating over the map; framing and labels stay inside the uncovered area. */
+    cameraInsets: MapCameraInsets = MapCameraInsets(),
     /** #361: where «Mi ubicación» found the phone, drawn as a blue dot; never tracked or stored. */
     myLocation: GeoPoint? = null,
 ) {
@@ -109,11 +135,14 @@ fun ParcelMap(
     val tap by rememberUpdatedState(onTap)
     val ready by rememberUpdatedState(onReady)
     val snapshot by rememberUpdatedState(onMapSnapshot)
+    val density = LocalDensity.current
+    val frameMarginPx = with(density) { MAP_FRAME_MARGIN.roundToPx() }
+    val framePadding = remember(cameraInsets, frameMarginPx) { cameraInsets.withMargin(frameMarginPx) }
     val effectiveBase = base ?: if (imagery) MapBase.AERIAL else MapBase.NONE
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleReady by remember { mutableStateOf(false) }
     // Frame the farmer's own parcels when they change, not on every selection tap.
-    var framedKey by remember { mutableStateOf<List<String>?>(null) }
+    var framedKey by remember { mutableStateOf<MapFrameKey?>(null) }
     // Screen positions of the labels, refreshed when the camera stops (never while it moves).
     var labelSpots by remember { mutableStateOf<List<Pair<String, IntOffset>>>(emptyList()) }
     var cameraTick by remember { mutableStateOf(0) }
@@ -164,7 +193,7 @@ fun ParcelMap(
     }
     val selection = remember(selectedId, selectedIds) { selectedIds + listOfNotNull(selectedId) }
     val data = remember(parcels, selection) { mapFeatureCollection(parcels, selection) }
-    DisposableEffect(map, styleReady, data, parcels.map { it.id }, snapshot != null) {
+    DisposableEffect(map, styleReady, data, parcels.map { it.id to it.geometry }, framePadding, snapshot != null) {
         val current = map
         if (!styleReady || current == null) return@DisposableEffect onDispose {}
 
@@ -185,9 +214,9 @@ fun ParcelMap(
         }
         current.style?.getSourceAs<GeoJsonSource>("saved-parcels")?.setGeoJson(data)
         val saved = parcels.filter { it.kind == MapParcelKind.SAVED }
-        val savedKey = saved.map { it.id }
+        val savedKey = MapFrameKey(saved.map { it.id to it.geometry }, framePadding)
         if (framedKey != savedKey && focus == null) {
-            fitParcels(current, saved)
+            fitParcels(current, saved, framePadding)
             framedKey = savedKey
         }
         cameraTick++
@@ -200,7 +229,7 @@ fun ParcelMap(
         focus?.let { current.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.point.latitude, it.point.longitude), it.zoom)) }
     }
     val labelled = remember(parcels) { parcels.mapNotNull { p -> p.label?.let { label -> labelPoint(p.geometry)?.let { Triple(p.id, label, it) } } } }
-    LaunchedEffect(map, cameraTick, labelled) {
+    LaunchedEffect(map, cameraTick, labelled, cameraInsets) {
         val current = map ?: return@LaunchedEffect
         // Numbers only once the parcels are big enough to tell apart, and never a crowd.
         labelSpots = if (current.cameraPosition.zoom < LABEL_MIN_ZOOM) {
@@ -208,12 +237,11 @@ fun ParcelMap(
         } else {
             labelled.mapNotNull { (_, label, point) ->
                 val spot = current.projection.toScreenLocation(point)
-                if (spot.x < 0 || spot.y < 0 || spot.x > view.width || spot.y > view.height) null
+                if (!insideSafeViewport(spot.x, spot.y, view.width, view.height, cameraInsets)) null
                 else label to IntOffset(spot.x.roundToInt(), spot.y.roundToInt())
             }.take(MAX_LABELS)
         }
     }
-    val density = LocalDensity.current
     Box(modifier) {
         AndroidView(factory = { view }, modifier = Modifier.fillMaxSize().testTag("parcel-map-view"))
         labelSpots.forEach { (label, spot) ->
@@ -227,7 +255,7 @@ fun ParcelMap(
                 MapButton("+", "Acercar") { map?.animateCamera(CameraUpdateFactory.zoomIn()) }
                 MapButton("−", "Alejar") { map?.animateCamera(CameraUpdateFactory.zoomOut()) }
                 MapButton("⤢", "Encuadrar mis parcelas") {
-                    map?.let { fitParcels(it, parcels.filter { p -> p.kind == MapParcelKind.SAVED }.ifEmpty { parcels }) }
+                    map?.let { fitParcels(it, parcels.filter { p -> p.kind == MapParcelKind.SAVED }.ifEmpty { parcels }, framePadding) }
                 }
             }
         }
@@ -239,7 +267,8 @@ fun ParcelMap(
             } + (overlayAttribution?.let { " · $it" } ?: ""),
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
             color = MoInk,
-            modifier = Modifier.align(Alignment.BottomStart).padding(4.dp)
+            modifier = Modifier.align(Alignment.BottomStart)
+                .padding(start = 4.dp, bottom = with(density) { cameraInsets.bottomPx.toDp() } + 4.dp)
                 .semantics { contentDescription = "Atribución del mapa" },
         )
     }
@@ -308,7 +337,7 @@ fun mapFeatureCollection(parcels: List<MapParcel>, selectedIds: Set<String>): St
 internal fun labelPoint(geometry: String): LatLng? =
     parcelLabelPoint(geometry)?.let { LatLng(it.latitude, it.longitude) }
 
-private fun fitParcels(map: MapLibreMap, parcels: List<MapParcel>) {
+private fun fitParcels(map: MapLibreMap, parcels: List<MapParcel>, padding: MapCameraInsets) {
     val points = mutableListOf<LatLng>()
     fun collect(array: JsonArray) {
         if (array.size() >= 2 && array[0].isJsonPrimitive && array[0].asJsonPrimitive.isNumber) {
@@ -316,8 +345,33 @@ private fun fitParcels(map: MapLibreMap, parcels: List<MapParcel>) {
         } else array.filter { it.isJsonArray }.forEach { collect(it.asJsonArray) }
     }
     parcels.forEach { runCatching { collect(JsonParser.parseString(it.geometry).asJsonObject.getAsJsonArray("coordinates")) } }
-    if (points.size >= 3) map.moveCamera(CameraUpdateFactory.newLatLngBounds(LatLngBounds.Builder().includes(points).build(), 48))
+    if (points.size >= 3) {
+        val bounds = LatLngBounds.Builder().includes(points).build()
+        map.moveCamera(
+            CameraUpdateFactory.newLatLngBounds(
+                bounds,
+                0.0,
+                0.0,
+                padding.leftPx,
+                padding.topPx,
+                padding.rightPx,
+                padding.bottomPx,
+            ),
+        )
+    }
 }
+
+internal fun insideSafeViewport(
+    x: Float,
+    y: Float,
+    widthPx: Int,
+    heightPx: Int,
+    insets: MapCameraInsets,
+): Boolean =
+    x >= insets.leftPx &&
+        x <= widthPx - insets.rightPx &&
+        y >= insets.topPx &&
+        y <= heightPx - insets.bottomPx
 
 internal fun parcelStyle(imagery: Boolean): String = parcelStyle(if (imagery) MapBase.AERIAL else MapBase.NONE, cadastreLines = false)
 
@@ -366,6 +420,7 @@ internal fun myLocationFeature(point: GeoPoint): String =
 /** The pixel size an overlay template asks for: 512 when its path says so, else the usual 256. */
 internal fun overlayTileSize(template: String): Int = if ("/512/" in template) 512 else 256
 
+private val MAP_FRAME_MARGIN = 24.dp
 private const val LABEL_MIN_ZOOM = 15.5
 private const val OVERLAY_MAX_ZOOM = 7
 private const val MAX_LABELS = 60
