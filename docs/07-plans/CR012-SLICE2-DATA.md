@@ -60,7 +60,9 @@ Payment soft-delete corrects mistaken payments; no payments deleted with Harvest
 recordPayment allows CLOSED as well as active; never sync Expense or reopen campaign.
 Validate latest pending inside same transaction; duplicate UUID exact matching live
 content is successful retry, mismatch conflict; do not resurrect removed movement.
-Reject deleted worker/campaign and wrong workspace/context. Positive amount only,
+Reject deleted campaign and wrong workspace/context. An archived (soft-deleted) worker
+may still be paid up to its outstanding pending (#481): archiving blocks new jornales,
+not debt already accrued; without pending the payment is rejected. Positive amount only,
 no advances or currency conversion. Cost edit below already paid blocked atomically.
 
 ## Required tests (real Room, TDD)

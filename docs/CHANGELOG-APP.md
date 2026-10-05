@@ -23,6 +23,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 - **Una máquina archivada sigue en los días en que trabajó (#446).** Al editar la maquinaria de un día,
   la máquina archivada aparece como «Fendt 209 · Archivada» con su tipo, cantidad y precio de entonces,
   y se conserva al guardar (o se quita si el agricultor lo decide). En un día nuevo no se puede añadir.
+- **Una persona que ya no trabaja puede cobrar lo que se le debe (#481).** Si un trabajador deja de
+  estar activo, ya no se ofrece para nuevos jornales, pero sus jornales pendientes se pueden pagar (y los
+  pagos corregir) sin restaurarlo. Nunca se puede pagar más de lo pendiente.
 - **«Trabajo» en lugar de «actuación» en toda la app.** Pantallas, botones y avisos hablan de
   «Nuevo trabajo», «Editar trabajo», «Trabajo completado», «Trabajos con esta máquina», «Coste de un
   trabajo»… Solo cambia el texto; los datos y su sincronización no cambian. «Actuación realizada» se
