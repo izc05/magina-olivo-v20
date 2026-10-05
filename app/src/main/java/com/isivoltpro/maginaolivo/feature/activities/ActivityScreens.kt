@@ -99,7 +99,7 @@ fun FarmActivitiesRoute(
     startWithEditor: Boolean = false,
     /** UX-D: what "Registrar hoy" already knows (type, today's date). */
     initialDraft: ActivityDraft = ActivityDraft(),
-    editorTitle: String = "Nueva actuación",
+    editorTitle: String = "Nuevo trabajo",
     /** The Cuaderno already asked for the type, so the editor must not ask again. */
     lockInitialType: Boolean = false,
     /** Register-from-notebook uses a real page; farm history keeps its contextual sheet. */
@@ -132,7 +132,7 @@ fun FarmActivitiesSection(
     onCreate: (ActivityDraft, Boolean) -> Unit,
     startWithEditor: Boolean = false,
     initialDraft: ActivityDraft = ActivityDraft(),
-    editorTitle: String = "Nueva actuación",
+    editorTitle: String = "Nuevo trabajo",
     lockInitialType: Boolean = false,
     editorAsScreen: Boolean = false,
     /** #414: a Cuaderno quick action records work already done: no planning, no draft step. */
@@ -164,16 +164,16 @@ fun FarmActivitiesSection(
             MoStatusChip(message, tone = MoStatusTone.Success, modifier = Modifier.testTag("activities-saved"))
         }
         MoSectionHeader(
-            "Actuaciones",
+            "Trabajos",
             action = {
                 TextButton(onClick = { editor = true }, modifier = Modifier.testTag("add-activity")) { Text("Añadir") }
             },
         )
         when {
             state.isLoading -> CircularProgressIndicator()
-            state.error != null -> MoErrorState("No pudimos abrir las actuaciones", state.error)
+            state.error != null -> MoErrorState("No pudimos abrir los trabajos", state.error)
             state.drafts.isEmpty() && state.planned.isEmpty() && state.history.isEmpty() ->
-                MoEmptyState("Aún no hay actuaciones", "Registra un trabajo y selecciona las parcelas donde se realiza.", icon = MoIcons.Activity)
+                MoEmptyState("Aún no hay trabajos", "Registra un trabajo y selecciona las parcelas donde se realiza.", icon = MoIcons.Activity)
             else -> {
                 if (state.drafts.isNotEmpty()) {
                     MoSectionHeader("Borradores")
@@ -272,7 +272,7 @@ fun RegisterActivityRoute(
                 )
                 state.farms.isEmpty() -> MoEmptyState(
                     "Aún no tienes fincas",
-                    "Crea una finca en Mi Campo y podrás registrar actuaciones sobre sus parcelas.",
+                    "Crea una finca en Mi Campo y podrás registrar trabajos en sus parcelas.",
                     icon = MoIcons.Tree,
                 )
                 else -> {
@@ -444,7 +444,7 @@ internal fun ActivityEditor(
     onCancel: () -> Unit,
     onSaveDraft: ((ActivityDraft) -> Unit)? = null,
     initial: ActivityDraft = ActivityDraft(),
-    title: String = "Nueva actuación",
+    title: String = "Nuevo trabajo",
     /** Machines that can be named; empty hides nothing but the choice (Phase 15). */
     machines: List<MachineOption> = emptyList(),
     /** True when the preceding Cuaderno choice already fixed the work type. */
@@ -688,7 +688,7 @@ internal fun ActivityEditor(
             // never counts a cost; a cost linked before 1.0 is corrected on its own Gasto.
         }
         MoPrimaryButton(
-            if (doneWork && !chosenType.needsDescription()) "Guardar ${chosenType.label().lowercase()}" else "Guardar actuación",
+            if (doneWork && !chosenType.needsDescription()) "Guardar ${chosenType.label().lowercase()}" else "Guardar trabajo",
             {
                 val machineUses = readMachines() ?: return@MoPrimaryButton
                 val planned = readPlanning() ?: return@MoPrimaryButton
@@ -835,7 +835,7 @@ fun ActivityDetailScreen(
             when {
                 state.isLoading -> CircularProgressIndicator()
                 state.activity == null ->
-                    MoErrorState("Actuación no disponible", state.error ?: "No está guardada en este dispositivo.")
+                    MoErrorState("Trabajo no disponible", state.error ?: "No está guardada en este dispositivo.")
                 else -> {
                     val activity = state.activity
                     // UI polish v2: one first card with what the farmer needs at a glance.
@@ -855,7 +855,7 @@ fun ActivityDetailScreen(
                     if (activity.targets.isEmpty()) {
                         MoEmptyState(
                             "Sin parcelas todavía",
-                            "Edita la actuación y elige dónde se hace el trabajo.",
+                            "Edita el trabajo y elige en qué parcelas se hace.",
                             icon = MoIcons.Parcels,
                         )
                     }
@@ -947,16 +947,16 @@ fun ActivityDetailScreen(
                             MoPrimaryButton("Marcar completada", { confirmation = "complete" }, modifier = Modifier.fillMaxWidth().testTag("complete-activity"), enabled = !state.isSaving)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                                 MoSecondaryButton("Editar", { editor = true }, modifier = Modifier.weight(1f).testTag("edit-activity"), enabled = !state.isSaving)
-                                MoDestructiveButton("Cancelar actuación", { confirmation = "cancel" }, modifier = Modifier.weight(1f).testTag("cancel-activity"), enabled = !costHeld)
+                                MoDestructiveButton("Cancelar trabajo", { confirmation = "cancel" }, modifier = Modifier.weight(1f).testTag("cancel-activity"), enabled = !costHeld)
                             }
                         }
                         ActivityStatus.COMPLETED -> {
                             Text("Registro protegido", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
-                            MoSecondaryButton("Reabrir actuación", { confirmation = "reopen" }, modifier = Modifier.fillMaxWidth().testTag("reopen-activity"), enabled = !costHeld)
+                            MoSecondaryButton("Reabrir trabajo", { confirmation = "reopen" }, modifier = Modifier.fillMaxWidth().testTag("reopen-activity"), enabled = !costHeld)
                             if (costHeld) CostToReview(costToReview("volver a planificarlo"), historicCostExpenseId, onOpenExpense)
                         }
                         ActivityStatus.CANCELLED -> {
-                            Text("Actuación cancelada", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
+                            Text("Trabajo cancelado", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                                 MoSecondaryButton("Reabrir", { confirmation = "reopen" }, modifier = Modifier.weight(1f).testTag("reopen-activity"), enabled = !costHeld)
                                 MoDestructiveButton("Archivar", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"), enabled = !costHeld && relatedExpenses.isEmpty())
@@ -1004,7 +1004,7 @@ fun ActivityDetailScreen(
                     planning = activity.planning,
                     reminders = activity.reminders.map { it.toRequest() },
                 ),
-                title = "Editar actuación",
+                title = "Editar trabajo",
                 // A retired machine the Activity already named stays choosable here only.
                 machines = state.machines + activity.machines.filter { it.archived }
                     .map { MachineOption(it.machineId, "${it.name} (retirada)", it.category) },
@@ -1019,7 +1019,7 @@ fun ActivityDetailScreen(
             ) {
                 Text("Confirmar cambio", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Esta acción actualizará el estado de la actuación guardada en este dispositivo.",
+                    "Esta acción actualizará el estado del trabajo guardado en este dispositivo.",
                     color = MoTextSecondary,
                 )
                 val confirm = {

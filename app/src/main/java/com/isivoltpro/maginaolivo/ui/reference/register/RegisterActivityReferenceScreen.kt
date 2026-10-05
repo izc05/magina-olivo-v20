@@ -79,7 +79,7 @@ fun RegisterActivityReferenceScreen(
             Spacer(Modifier.height(MoSpacing.md))
 
             Text(
-                text = "Registrar actuación",
+                text = "Registrar trabajo",
                 style = MaterialTheme.typography.headlineLarge,
                 color = MoOliveDark,
             )
@@ -92,7 +92,7 @@ fun RegisterActivityReferenceScreen(
             Spacer(Modifier.height(MoSpacing.lg))
 
             Text(
-                text = "Tipo de actuación",
+                text = "Tipo de trabajo",
                 style = MaterialTheme.typography.titleMedium,
                 color = MoOliveDark,
             )
@@ -202,7 +202,7 @@ fun RegisterActivityReferenceScreen(
             Spacer(Modifier.height(MoSpacing.lg))
 
             MoPrimaryButton(
-                text = "Guardar actuación",
+                text = "Guardar trabajo",
                 onClick = {},
                 modifier = Modifier.fillMaxWidth(),
             )

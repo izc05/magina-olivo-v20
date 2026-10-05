@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **«Trabajo» en lugar de «actuación» en toda la app.** Pantallas, botones y avisos hablan de
+  «Nuevo trabajo», «Editar trabajo», «Trabajo completado», «Trabajos con esta máquina», «Coste de un
+  trabajo»… Solo cambia el texto; los datos y su sincronización no cambian. «Actuación realizada» se
+  mantiene en el seguimiento de plagas, donde es la medida adoptada, y en el CUE se respetará la
+  denominación oficial.
 - **Un día sin pesadas no se atribuye a todas las parcelas (#458).** Un día de recolección abierto
   sin pesadas, o que se queda sin ellas pero conserva jornales, maquinaria, gastos o notas, muestra
   «Origen sin determinar» y no aparece en el historial de ninguna parcela. Al llegar, cambiar o irse
