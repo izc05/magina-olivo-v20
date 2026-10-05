@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -163,6 +164,72 @@ class RecollectionChoiceUiTest {
         editor(ExpenseForm(date.toString(), "12", "Gasoil", farmId = farm.id), farmLocked = true, loaded = options.copy(farms = emptyList())) {}
         rule.onNodeWithTag("expense-farm").assertDoesNotExist()
         rule.onNodeWithTag("expense-farm-context").performScrollTo().assertTextContains("Cargando la finca…")
+    }
+
+    /** Owner #480: from a work the expense keeps that work, offers only its Parcels and asks the category. */
+    @Test fun aRelatedExpenseKeepsItsWorkAndAsksTheCategory() {
+        val work = com.isivoltpro.maginaolivo.domain.activity.Activity(
+            id = UUID.randomUUID(), workspaceId = workspace, farmId = farm.id, campaignId = null,
+            type = com.isivoltpro.maginaolivo.domain.activity.ActivityType.PRUNING,
+            status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
+            activityDate = date, description = "Poda de olivar", notes = null,
+            targets = listOf(
+                com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget(UUID.randomUUID(), "Norte"),
+                com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget(UUID.randomUUID(), "Sur"),
+            ),
+            version = 1,
+        )
+        var saved: ExpenseForm? = null
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpenseEditor(
+                    title = "Nuevo gasto", initial = ExpenseForm(date.toString(), "65", "Afilado", farmId = farm.id, activityId = work.id),
+                    options = options.copy(activities = listOf(work)), errors = ExpenseFormErrors(),
+                    isSaving = false, saveText = "Guardar gasto", onFarmSelected = {}, onSave = { saved = it }, onCancel = {},
+                    farmLocked = true, activityLocked = true,
+                )
+            }
+        }
+        rule.onNodeWithTag("expense-activity-context").performScrollTo().assertTextContains("Poda de olivar", substring = true)
+        // Codex #480: general work on a Farm with a running campaign — no Recogida choice, said as context.
+        assertEquals(0, rule.onAllNodesWithTag("expense-kind").fetchSemanticsNodes().size)
+        rule.onNodeWithTag("expense-work-campaign").assertTextContains("Fuera de campaña", substring = true)
+        // Category on purpose: no save until chosen.
+        rule.onNodeWithTag("expense-category-required").assertExists()
+        rule.onNodeWithTag("save-expense").performScrollTo().assertIsNotEnabled()
+        // Only the work's two Parcels (and the whole work) are offered.
+        rule.onNodeWithTag("expense-parcel").performScrollTo().performClick()
+        rule.onNodeWithText("Norte").assertExists()
+        rule.onNodeWithText("Sur").assertExists()
+        rule.onNodeWithTag("choice-none").performClick() // «Todo el trabajo» in the sheet; the field says it too
+        rule.onNodeWithTag("expense-category").performScrollTo().performClick()
+        rule.onNodeWithText("Reparaciones").performClick()
+        rule.onNodeWithTag("save-expense").performScrollTo().performClick()
+        rule.runOnIdle { assertEquals(work.id, saved?.activityId); assertNull(saved?.parcelId); assertNull(saved?.campaignId) }
+    }
+
+    /** Codex #480: work of the running campaign shows that campaign as context, never a choice. */
+    @Test fun aRelatedExpenseOfCampaignWorkShowsItsCampaign() {
+        val work = com.isivoltpro.maginaolivo.domain.activity.Activity(
+            id = UUID.randomUUID(), workspaceId = workspace, farmId = farm.id, campaignId = running.id,
+            type = com.isivoltpro.maginaolivo.domain.activity.ActivityType.OTHER,
+            status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
+            activityDate = date, description = "Limpieza de fardos", notes = null,
+            targets = listOf(com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget(UUID.randomUUID(), "Norte")),
+            version = 1,
+        )
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpenseEditor(
+                    title = "Nuevo gasto", initial = ExpenseForm(date.toString(), "20", "Sacos", farmId = farm.id, activityId = work.id),
+                    options = options.copy(activities = listOf(work)), errors = ExpenseFormErrors(),
+                    isSaving = false, saveText = "Guardar gasto", onFarmSelected = {}, onSave = {}, onCancel = {},
+                    preselectRecollection = true, farmLocked = true, activityLocked = true,
+                )
+            }
+        }
+        assertEquals(0, rule.onAllNodesWithTag("expense-kind").fetchSemanticsNodes().size)
+        rule.onNodeWithTag("expense-work-campaign").performScrollTo().assertTextContains("2026/27", substring = true)
     }
 
     private fun editor(initial: ExpenseForm, preselect: Boolean = false, farmLocked: Boolean = false, loaded: RelationOptions = options, onSave: (ExpenseForm) -> Unit) {

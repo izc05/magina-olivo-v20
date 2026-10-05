@@ -66,15 +66,26 @@ class ActivityEditorCompactTest {
         typeChip("Riego").performScrollTo().assertIsSelected()
     }
 
-    @Test fun moreOptionsUnfoldsAndAnEditWithACostStartsOpen() {
+    /** #416: a new work carries no money field; «Más opciones» never offers a «Coste» for it. */
+    @Test fun aNewWorkHasNoCostField() {
         show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27)))
         composeRule.onNodeWithTag("activity-more").performScrollTo().performClick()
-        composeRule.onNodeWithTag("activity-cost").performScrollTo()
+        composeRule.onNodeWithTag("activity-more").assertExists()
+        assertEquals(0, composeRule.onAllNodesWithTag("activity-cost").fetchSemanticsNodes().size)
     }
 
-    @Test fun anEditThatAlreadyHasACostShowsIt() {
-        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), costMinor = 5_000))
+    /** #416: a cost linked before 1.0 stays visible and editable, named for what it is. */
+    @Test fun anEditThatAlreadyHasACostShowsItAsHistoric() {
+        var saved: ActivityDraft? = null
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING, description = "Poda",
+                parcelIds = setOf(parcels[0].id), costMinor = 5_000),
+            onSave = { saved = it },
+        )
         composeRule.onNodeWithTag("activity-cost").performScrollTo()
+        composeRule.onNodeWithText("Coste histórico vinculado (€)").assertExists()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(5_000L, saved?.costMinor) }
     }
 
     @Test fun taskSpecificFieldsStartFoldedAndRemainAvailable() {

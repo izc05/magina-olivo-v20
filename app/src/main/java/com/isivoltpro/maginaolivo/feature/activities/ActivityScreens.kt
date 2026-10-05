@@ -635,7 +635,11 @@ internal fun ActivityEditor(
                 Text("Más opciones", style = MaterialTheme.typography.titleSmall, color = MoOliveMid)
                 if (!showMore) {
                     Text(
-                        if (doneWork) "Maquinaria, notas y coste" else "Hora, personas, maquinaria, avisos, notas y coste",
+                        when {
+                            doneWork -> "Maquinaria y notas"
+                            initial.costMinor != null -> "Hora, personas, maquinaria, avisos, notas y coste"
+                            else -> "Hora, personas, maquinaria, avisos y notas"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MoTextSecondary,
                     )
@@ -678,15 +682,18 @@ internal fun ActivityEditor(
                 )
             }
             MoTextField(notes, { notes = it }, "Notas")
-            // D2: a convenience for the linked Expense, never a second number on the Activity.
-            MoTextField(
-                cost,
-                { cost = it; costError = null },
-                "Coste (opcional, €)",
-                isError = costError != null,
-                supportingText = costError ?: "Se anota en Gastos, una sola vez.",
-                modifier = Modifier.testTag("activity-cost"),
-            )
+            // #416: a new work carries no money (Jornal, Gasto and Maquinaria do, once each); only a
+            // cost already linked before 1.0 stays editable, still one row in Gastos.
+            if (initial.costMinor != null) {
+                MoTextField(
+                    cost,
+                    { cost = it; costError = null },
+                    "Coste histórico vinculado (€)",
+                    isError = costError != null,
+                    supportingText = costError ?: "Se anota en Gastos, una sola vez. Vacío lo quita.",
+                    modifier = Modifier.testTag("activity-cost"),
+                )
+            }
         }
         MoPrimaryButton(
             if (doneWork && !chosenType.needsDescription()) "Guardar ${chosenType.label().lowercase()}" else "Guardar actuación",
@@ -759,11 +766,31 @@ internal fun ActivityEditor(
 }
 
 @Composable
-fun ActivityDetailRoute(activityId: UUID, persistence: LocalPersistence) {
+fun ActivityDetailRoute(
+    activityId: UUID,
+    persistence: LocalPersistence,
+    /** #416: opens Gasto tied to this work (its Farm, its single Parcel, the work itself). */
+    onAddRelatedExpense: ((Activity) -> Unit)? = null,
+    /** #416: opens one Gasto by id (the historic cost row of this work). */
+    onOpenExpense: ((UUID) -> Unit)? = null,
+    /** #416: a related Gasto was just saved from this work; said once on return. */
+    relatedExpenseAdded: Boolean = false,
+    onRelatedExpenseNoticeShown: () -> Unit = {},
+) {
     val vm: ActivityDetailViewModel = viewModel(key = "activity-$activityId", factory = viewModelFactory {
         initializer { ActivityDetailViewModel(activityId, persistence.activityRepository) }
     })
     val state by vm.state.collectAsStateWithLifecycle()
+    // #416: the canonical Expense row of a cost typed on the work before 1.0 (money lives in Gastos).
+    val linkedExpenses by remember(activityId) { persistence.expenseRepository.observeForActivity(activityId) }
+        .collectAsStateWithLifecycle(emptyList())
+    val historicCostId = linkedExpenses.firstOrNull { it.origin == com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin.ACTIVITY_COST }?.id
+    // #416: a work of a closed Campaign cannot take new money until the Campaign is reopened.
+    val campaignId = state.activity?.campaignId
+    val campaign by remember(campaignId) {
+        campaignId?.let(persistence.campaignRepository::observe) ?: kotlinx.coroutines.flow.flowOf(null)
+    }.collectAsStateWithLifecycle(null)
+    val campaignClosed = campaign?.status == com.isivoltpro.maginaolivo.data.local.model.CampaignStatus.CLOSED
     ActivityDetailScreen(
         state,
         vm::update,
@@ -772,6 +799,12 @@ fun ActivityDetailRoute(activityId: UUID, persistence: LocalPersistence) {
         vm::cancel,
         vm::reopen,
         vm::archive,
+        onAddRelatedExpense = onAddRelatedExpense,
+        historicCostExpenseId = historicCostId,
+        onOpenExpense = onOpenExpense,
+        campaignClosed = campaignClosed,
+        relatedExpenseAdded = relatedExpenseAdded,
+        onRelatedExpenseNoticeShown = onRelatedExpenseNoticeShown,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.ACTIVITY, activityId),
@@ -792,9 +825,22 @@ fun ActivityDetailScreen(
     onCancelActivity: () -> Unit,
     onReopen: () -> Unit,
     onArchive: () -> Unit,
+    onAddRelatedExpense: ((Activity) -> Unit)? = null,
+    historicCostExpenseId: UUID? = null,
+    onOpenExpense: ((UUID) -> Unit)? = null,
+    campaignClosed: Boolean = false,
+    relatedExpenseAdded: Boolean = false,
+    onRelatedExpenseNoticeShown: () -> Unit = {},
     attachmentContent: @Composable () -> Unit = {},
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
+    // #416: the notice stays a few seconds, then the flag is spent so it never repeats.
+    LaunchedEffect(relatedExpenseAdded) {
+        if (relatedExpenseAdded) {
+            kotlinx.coroutines.delay(RELATED_EXPENSE_NOTICE_MS)
+            onRelatedExpenseNoticeShown()
+        }
+    }
     var editor by rememberSaveable { mutableStateOf(false) }
     OnEachSave(state.saveCount) { editor = false }
     Scaffold(Modifier.fillMaxSize().testTag("activity-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
@@ -846,13 +892,52 @@ fun ActivityDetailScreen(
                     }
                     PlanningSummary(activity.planning, activity.reminders)
                     activity.costMinor?.let { cost ->
+                        // #416: a cost typed on the work before 1.0 stays visible, read as what it is.
                         MoSummaryMetric(
-                            "Coste",
+                            "Coste histórico vinculado",
                             Money.format(cost),
                             Modifier.fillMaxWidth().testTag("activity-cost-summary"),
                             icon = MoIcons.Euro,
-                            supportingText = "Anotado en Gastos",
+                            supportingText = "Ya contabilizado en Gastos una sola vez",
                         )
+                        // #416: the money is corrected on its Expense row, without reopening the work.
+                        if (historicCostExpenseId != null && onOpenExpense != null) {
+                            MoTertiaryButton(
+                                "Ver / corregir gasto histórico",
+                                { onOpenExpense(historicCostExpenseId) },
+                                modifier = Modifier.fillMaxWidth().testTag("activity-historic-expense"),
+                            )
+                        }
+                    }
+                    // #416: money for done work is a Gasto of its own, tied to the work — never a second figure.
+                    if (onAddRelatedExpense != null && activity.status == ActivityStatus.COMPLETED && activity.farmId != null) {
+                        val historic = activity.costMinor
+                        if (relatedExpenseAdded) {
+                            Text(
+                                "Gasto añadido · queda vinculado a este trabajo en Gastos.",
+                                style = MaterialTheme.typography.bodyMedium, color = MoOliveDark,
+                                modifier = Modifier.fillMaxWidth().testTag("activity-expense-added"),
+                            )
+                        }
+                        MoSecondaryButton(
+                            if (historic != null) "Añadir otro gasto relacionado" else "Añadir gasto relacionado",
+                            { onAddRelatedExpense(activity) },
+                            modifier = Modifier.fillMaxWidth().testTag("activity-add-expense"),
+                            enabled = !campaignClosed,
+                        )
+                        when {
+                            campaignClosed -> Text(
+                                "La campaña está cerrada. Reábrela para añadir gastos de recogida.",
+                                style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+                                modifier = Modifier.testTag("activity-add-expense-closed"),
+                            )
+                            historic != null -> Text(
+                                "El coste histórico de ${Money.format(historic)} ya está contabilizado. " +
+                                    "Añade otro gasto solo si es un importe distinto.",
+                                style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+                                modifier = Modifier.testTag("activity-add-expense-note"),
+                            )
+                        }
                     }
 
                     // Principal / secundaria / destructiva — never three large green buttons.
@@ -1304,3 +1389,5 @@ private fun hectaresLabel(areaM2: Double): String =
 private fun FormLabel(text: String) {
     Text(text, style = MaterialTheme.typography.titleSmall, color = MoOliveDark, modifier = Modifier.padding(top = MoSpacing.xs))
 }
+
+private const val RELATED_EXPENSE_NOTICE_MS = 4_000L

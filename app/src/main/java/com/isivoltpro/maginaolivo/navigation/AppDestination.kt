@@ -84,7 +84,7 @@ object AppDestination {
     /** CR-011: «Cuaderno → Pesada», the form open on the Cuaderno's Farm. */
     const val NewPesadaPattern = "deliveries/new/{farmId}?parcelId={parcelId}"
     /** CR-011: «Cuaderno → Gasto», a new expense starting on the Cuaderno's Farm. */
-    const val FarmExpensesPattern = "expenses/farm/{farmId}?parcelId={parcelId}&campaignId={campaignId}"
+    const val FarmExpensesPattern = "expenses/farm/{farmId}?parcelId={parcelId}&campaignId={campaignId}&activityId={activityId}"
     /** #378: Cuaderno → Jornal outside a running campaign — the Farm's own labour. */
     const val FarmLabourPattern = "expenses/farm-labour/{farmId}?parcelId={parcelId}"
     const val PendingYieldsRoute = "deliveries/pending"
@@ -144,9 +144,13 @@ object AppDestination {
 
     fun help(topic: String): String = nestedRoute("help", topic)
 
-    fun farmExpenses(farmId: String, parcelId: String? = null, campaignId: String? = null): String =
-        "$Expenses/farm/${android.net.Uri.encode(farmId)}" + parcelQuery(parcelId) +
-            (campaignId?.let { "${if (parcelId.isNullOrBlank()) "?" else "&"}campaignId=${android.net.Uri.encode(it)}" } ?: "")
+    fun farmExpenses(farmId: String, parcelId: String? = null, campaignId: String? = null, activityId: String? = null): String =
+        "$Expenses/farm/${android.net.Uri.encode(farmId)}" + listOfNotNull(
+            parcelId?.takeIf { it.isNotBlank() }?.let { "parcelId=${android.net.Uri.encode(it)}" },
+            campaignId?.takeIf { it.isNotBlank() }?.let { "campaignId=${android.net.Uri.encode(it)}" },
+            // #416: «Añadir gasto relacionado» from a work.
+            activityId?.takeIf { it.isNotBlank() }?.let { "activityId=${android.net.Uri.encode(it)}" },
+        ).joinToString("&").let { if (it.isEmpty()) "" else "?$it" }
 
     /** CR-011 §14: the Cuaderno's Parcel travels with Pesada and Gasto when there is one. */
     fun farmLabour(farmId: String, parcelId: String? = null): String =

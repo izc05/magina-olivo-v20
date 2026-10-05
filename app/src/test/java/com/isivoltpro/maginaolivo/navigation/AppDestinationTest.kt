@@ -36,7 +36,7 @@ class AppDestinationTest {
         assertEquals("harvest/today/{farmId}", AppDestination.TodayHarvestPattern)
         // CR-011 §14: Pesada and Gasto carry the Cuaderno's Parcel as an optional argument.
         assertEquals("deliveries/new/{farmId}?parcelId={parcelId}", AppDestination.NewPesadaPattern)
-        assertEquals("expenses/farm/{farmId}?parcelId={parcelId}&campaignId={campaignId}", AppDestination.FarmExpensesPattern)
+        assertEquals("expenses/farm/{farmId}?parcelId={parcelId}&campaignId={campaignId}&activityId={activityId}", AppDestination.FarmExpensesPattern)
         assertEquals(RootDestination.Notebook, AppDestination.rootForRoute(AppDestination.TodayHarvestPattern))
         assertEquals(RootDestination.Notebook, RootDestination.entries.single { it.isPrimaryAction })
         assertEquals(RootDestination.Profile, AppDestination.rootForRoute(AppDestination.DeveloperGallery))

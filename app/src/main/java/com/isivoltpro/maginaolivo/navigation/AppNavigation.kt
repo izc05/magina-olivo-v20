@@ -455,8 +455,28 @@ fun AppNavigation(
                 val persistence = compositionRoot.localPersistence
                 val activityId = backStackEntry.arguments?.getString("activityId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val expenseAdded by backStackEntry.savedStateHandle
+                    .getStateFlow(RELATED_EXPENSE_ADDED_KEY, false).collectAsStateWithLifecycle()
                 if (persistence == null || activityId == null) PersistenceUnavailableScreen()
-                else ActivityDetailRoute(activityId, persistence)
+                else ActivityDetailRoute(
+                    activityId,
+                    persistence,
+                    relatedExpenseAdded = expenseAdded,
+                    onRelatedExpenseNoticeShown = { backStackEntry.savedStateHandle[RELATED_EXPENSE_ADDED_KEY] = false },
+                    // #416: money for a work is its own Gasto, tied to the work; never a second figure.
+                    onAddRelatedExpense = { activity ->
+                        activity.farmId?.let { farmId ->
+                            navController.navigate(
+                                AppDestination.farmExpenses(
+                                    farmId.toString(),
+                                    parcelId = activity.targets.singleOrNull()?.parcelId?.toString(),
+                                    activityId = activity.id.toString(),
+                                ),
+                            )
+                        }
+                    },
+                    onOpenExpense = { expenseId -> navController.navigate(AppDestination.expense(expenseId.toString())) },
+                )
             }
             composable(AppDestination.MapCatastro) {
                 val persistence = compositionRoot.localPersistence
@@ -643,6 +663,7 @@ fun AppNavigation(
                     navArgument("farmId") { type = NavType.StringType },
                     navArgument("parcelId") { type = NavType.StringType; nullable = true; defaultValue = null },
                     navArgument("campaignId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("activityId") { type = NavType.StringType; nullable = true; defaultValue = null },
                 ),
             ) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
@@ -651,6 +672,8 @@ fun AppNavigation(
                 val parcelId = backStackEntry.arguments?.getString("parcelId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 val campaignId = backStackEntry.arguments?.getString("campaignId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val activityId = backStackEntry.arguments?.getString("activityId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 if (persistence == null || farmId == null) {
                     PersistenceUnavailableScreen()
@@ -664,6 +687,12 @@ fun AppNavigation(
                         presetFarmId = farmId,
                         presetParcelId = parcelId,
                         presetCampaignId = campaignId,
+                        presetActivityId = activityId,
+                        // #416: back to the work the expense was added from, which says so when it was saved.
+                        onContextDone = { saved ->
+                            if (saved) navController.previousBackStackEntry?.savedStateHandle?.set(RELATED_EXPENSE_ADDED_KEY, true)
+                            navController.popBackStack()
+                        },
                         onDocumentImported = { id ->
                             navController.navigate(
                                 AppDestination.documentInContext(
@@ -863,6 +892,7 @@ private fun NavHostController.navigateToRoot(destination: RootDestination) {
 private const val NOTEBOOK_ORIGIN_KEY = "notebook-origin"
 private const val NOTEBOOK_PARCEL_ID_KEY = "notebook-parcel-id"
 private const val NOTEBOOK_PARCEL_NAME_KEY = "notebook-parcel-name"
+private const val RELATED_EXPENSE_ADDED_KEY = "related-expense-added"
 
 /** The Cuaderno's links, the same from Mi Cuaderno and from a Farm in Mi Campo. */
 private fun NavHostController.notebookActions(farmId: UUID) = NotebookActions(

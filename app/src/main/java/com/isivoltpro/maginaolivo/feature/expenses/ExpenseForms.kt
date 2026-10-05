@@ -106,15 +106,22 @@ internal fun ExpenseEditor(
     requireCampaignChoice: Boolean = false,
     /** #375: opened on a Farm already chosen; it is shown as context, never as a selector. */
     farmLocked: Boolean = false,
+    /**
+     * #416: «Añadir gasto relacionado» — the work is context, not a choice; its Parcel is one of the
+     * work's own, and the category must be chosen on purpose rather than left on «Otro».
+     */
+    activityLocked: Boolean = false,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
+    var categoryChosen by rememberSaveable(initial, activityLocked) { mutableStateOf(!activityLocked) }
     // #411: a new Farm-level expense may start deliberately undecided; existing/explicit
     // Campaign expenses and ordinary editors keep their current classification.
     var campaignChoiceMade by rememberSaveable(initial, requireCampaignChoice) {
         mutableStateOf(initial.campaignId != null || !requireCampaignChoice)
     }
     LaunchedEffect(preselectRecollection, options.campaigns, form.farmId) {
-        if (preselectRecollection && !campaignChoiceMade) {
+        // Codex #480: a related expense takes its work's Campaign; nothing is preselected over it.
+        if (preselectRecollection && !campaignChoiceMade && !activityLocked) {
             val preselected = form.withRecollectionPreselected(options)
             if (preselected.campaignId != null) {
                 form = preselected
@@ -131,8 +138,24 @@ internal fun ExpenseEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-        val recollection = options.recollectionCampaignFor(form, initial.campaignId)
-        if (recollection != null) {
+        // Codex #480: with the work locked, its Campaign (or none, for general work) is context, not a choice.
+        val recollection = if (activityLocked) null else options.recollectionCampaignFor(form, initial.campaignId)
+        if (activityLocked) {
+            val work = options.activities.firstOrNull { it.id == form.activityId }
+            val workCampaign = work?.campaignId?.let { id -> options.campaigns.firstOrNull { it.id == id } }
+            if (work != null) {
+                Text(
+                    when {
+                        workCampaign != null -> "Campaña del trabajo · ${workCampaign.choiceLabel()}"
+                        work.campaignId != null -> "En la campaña del trabajo"
+                        else -> "Fuera de campaña · trabajo general de la finca"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MoTextSecondary,
+                    modifier = Modifier.testTag("expense-work-campaign"),
+                )
+            }
+        } else if (recollection != null) {
             Column(Modifier.fillMaxWidth().selectableGroup().testTag("expense-kind")) {
                 Text("¿Dónde pertenece este gasto?", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
                 ExpenseKindRow("Recogida · ${recollection.choiceLabel()}", campaignChoiceMade && form.campaignId == recollection.id, "expense-kind-recollection") {
@@ -181,9 +204,16 @@ internal fun ExpenseEditor(
             modifier = Modifier.fillMaxWidth().testTag("expense-date"),
         )
         MoSelectField(
-            "Categoría", form.category.label(), { picker = "category" },
+            "Categoría", if (categoryChosen) form.category.label() else "Elige la categoría", { picker = "category" },
             Modifier.testTag("expense-category"),
         )
+        if (!categoryChosen) {
+            Text(
+                "Indica qué tipo de gasto es (producto, mano de obra, maquinaria…) antes de guardar.",
+                style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+                modifier = Modifier.testTag("expense-category-required"),
+            )
+        }
         val supplier = options.suppliers.firstOrNull { it.id == form.supplierOrganizationId }
         MoSelectField(
             "Proveedor guardado", supplier?.name ?: "Ninguno", { picker = "supplier" },
@@ -206,10 +236,32 @@ internal fun ExpenseEditor(
             MoSelectField("Finca", farm?.name ?: "Sin finca", { picker = "farm" }, Modifier.testTag("expense-farm"))
         }
         if (farm != null) {
-            val parcel = options.parcels.firstOrNull { it.id == form.parcelId }
-            MoSelectField("Parcela", parcel?.displayName ?: "Toda la finca", { picker = "parcel" })
             val activity = options.activities.firstOrNull { it.id == form.activityId }
-            MoSelectField("Actuación", activity?.description ?: "Ninguna", { picker = "activity" })
+            if (activityLocked) {
+                // #416: the work this expense belongs to; changing it means opening another work.
+                Text(
+                    activity?.let { "Relacionado con · ${it.description} · ${it.activityDate}" } ?: "Cargando el trabajo…",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (activity != null) MoOliveDark else MoTextSecondary,
+                    modifier = Modifier.testTag("expense-activity-context"),
+                )
+                val targets = activity?.targets.orEmpty()
+                if (targets.size == 1) {
+                    Text("Parcela · ${targets.single().parcelName}", style = MaterialTheme.typography.bodyMedium,
+                        color = MoTextSecondary, modifier = Modifier.testTag("expense-parcel-context"))
+                } else if (targets.size > 1) {
+                    MoSelectField(
+                        "Parcela",
+                        targets.firstOrNull { it.parcelId == form.parcelId }?.parcelName ?: "Todo el trabajo",
+                        { picker = "work-parcel" },
+                        Modifier.testTag("expense-parcel"),
+                    )
+                }
+            } else {
+                val parcel = options.parcels.firstOrNull { it.id == form.parcelId }
+                MoSelectField("Parcela", parcel?.displayName ?: "Toda la finca", { picker = "parcel" })
+                MoSelectField("Actuación", activity?.description ?: "Ninguna", { picker = "activity" })
+            }
         }
 
         // CR-011 §24: invoice number, purchase lines and notes wait under «Más detalles»; they open
@@ -272,7 +324,7 @@ internal fun ExpenseEditor(
             saveText,
             { onSave(form) },
             modifier = Modifier.fillMaxWidth().testTag("save-expense"),
-            enabled = !isSaving &&
+            enabled = !isSaving && categoryChosen &&
                 (campaignChoiceMade || (recollection == null && options.campaignsKnownFor(form.farmId))) &&
                 runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false),
         )
@@ -286,7 +338,10 @@ internal fun ExpenseEditor(
             "Categoría",
             ExpenseCategory.entries.map { Choice(it.name, it.label()) },
             form.category.name,
-            { key -> form = form.copy(category = ExpenseCategory.entries.firstOrNull { it.name == key } ?: form.category) },
+            { key ->
+                form = form.copy(category = ExpenseCategory.entries.firstOrNull { it.name == key } ?: form.category)
+                categoryChosen = true
+            },
             { picker = null },
             "expense-category-sheet",
         )
@@ -321,6 +376,18 @@ internal fun ExpenseEditor(
             { picker = null },
             "expense-parcel-sheet",
         )
+        "work-parcel" -> {
+            // #416: only the Parcels the work was done on, or the whole work (#433).
+            val targets = options.activities.firstOrNull { it.id == form.activityId }?.targets.orEmpty()
+            ChoiceSheet(
+                "Parcela",
+                listOf(Choice(null, "Todo el trabajo")) + targets.map { Choice(it.parcelId.toString(), it.parcelName) },
+                form.parcelId?.toString(),
+                { key -> form = form.copy(parcelId = key?.let(UUID::fromString)) },
+                { picker = null },
+                "expense-work-parcel-sheet",
+            )
+        }
         "activity" -> ChoiceSheet(
             "Actuación",
             listOf(Choice(null, "Ninguna")) + options.activities.map {
