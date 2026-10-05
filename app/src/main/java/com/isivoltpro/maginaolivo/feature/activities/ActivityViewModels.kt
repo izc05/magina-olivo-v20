@@ -299,6 +299,7 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                 error = when ((result.error as? AppError.Conflict)?.resource) {
                     ActivityCostRules.COST_TO_REVIEW -> move?.let(::costToReview)
                     ActivityCostRules.LINKED_EXPENSES -> LINKED_EXPENSES_TEXT
+                    ActivityCostRules.PARCEL_HAS_EXPENSES -> PARCEL_HAS_EXPENSES_TEXT
                     else -> null
                 } ?: "La operación no se pudo completar",
             )
@@ -308,6 +309,10 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
 
 /** #429: said when a counted cost holds a move back; the detail offers «Revisar gasto vinculado». */
 internal fun costToReview(move: String) = "Este trabajo tiene un coste contabilizado. Revísalo antes de $move."
+
+/** #441: said when an edit would drop a Parcel a Gasto of the work names. */
+internal const val PARCEL_HAS_EXPENSES_TEXT =
+    "Hay gastos vinculados a esta parcela dentro del trabajo. Revísalos antes de cambiar las parcelas."
 
 /** #437: said when Gastos of their own still point at the work. */
 internal const val LINKED_EXPENSES_TEXT =
