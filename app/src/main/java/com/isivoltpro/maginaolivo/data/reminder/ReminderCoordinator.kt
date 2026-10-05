@@ -51,6 +51,7 @@ class ReminderCoordinator(
     private val lock = Mutex()
 
     override suspend fun reconcile() = lock.withLock {
+        repairLegacyRequestCodeCollisions()
         val current = preferences.current()
         followWallClock(current)
         if (!current.enabled) {
@@ -64,6 +65,25 @@ class ReminderCoordinator(
             .filter { it.id !in dueIds }
             .forEach { scheduler.cancel(it.localNotificationId) }
         due.forEach { scheduler.schedule(ScheduledReminder(it.id, it.ownerId, it.localNotificationId, it.triggerAt)) }
+    }
+
+    /**
+     * #573 upgrade path without a Room schema bump. Request codes are device state, so duplicate
+     * legacy slots can be reassigned in place. Cancelling the shared old slot first is safe:
+     * the normal reconcile below immediately rebuilds every alarm that should still exist.
+     */
+    private suspend fun repairLegacyRequestCodeCollisions() {
+        val dao = database.agendaDao()
+        val rows = dao.listAllReminders()
+        if (rows.size < 2) return
+        val repaired = repairReminderRequestCodes(rows.map { it.id to it.localNotificationId })
+        rows.forEach { row ->
+            val requestCode = repaired[row.id] ?: return@forEach
+            if (requestCode != row.localNotificationId) {
+                scheduler.cancel(row.localNotificationId)
+                dao.updateLocalNotificationId(row.id, requestCode)
+            }
+        }
     }
 
     /**
