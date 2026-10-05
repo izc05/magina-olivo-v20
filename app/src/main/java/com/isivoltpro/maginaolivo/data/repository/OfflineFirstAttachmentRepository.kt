@@ -19,9 +19,12 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentRepository
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentUploadState
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -36,29 +39,51 @@ import kotlinx.coroutines.withContext
 class OfflineFirstAttachmentRepository(
     private val database: MaginaOlivoDatabase,
     private val fileStore: AttachmentFileStore,
+    private val workspaceRepository: WorkspaceRepository,
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
 ) : AttachmentRepository {
-    override fun observeForOwner(owner: AttachmentOwner): Flow<List<Attachment>> =
-        database.documentDao()
-            .observeForOwner(owner.type.name, owner.id)
-            .map { rows -> rows.mapNotNull { it.toDomain() } }
-            .flowOn(dispatchers.io)
+    override fun observeForOwner(owner: AttachmentOwner): Flow<List<Attachment>> = flow {
+        val activeWorkspace = activeWorkspaceIdOrNull()
+        val ownerWorkspace = resolveOwner(owner).successValueOrNull()
+        if (activeWorkspace == null || ownerWorkspace != activeWorkspace) {
+            emit(emptyList())
+        } else {
+            emitAll(
+                database.documentDao()
+                    .observeForOwner(owner.type.name, owner.id)
+                    .map { rows -> rows.filter { it.workspaceId == activeWorkspace }.mapNotNull { it.toDomain() } },
+            )
+        }
+    }.flowOn(dispatchers.io)
 
-    override fun observe(id: UUID): Flow<Attachment?> =
-        database.documentDao()
-            .observeById(id)
-            .map { it?.toDomain() }
-            .flowOn(dispatchers.io)
+    override fun observe(id: UUID): Flow<Attachment?> = flow {
+        val activeWorkspace = activeWorkspaceIdOrNull()
+        if (activeWorkspace == null) {
+            emit(null)
+        } else {
+            emitAll(
+                database.documentDao()
+                    .observeById(id)
+                    .map { row -> row?.takeIf { it.workspaceId == activeWorkspace }?.toDomain() },
+            )
+        }
+    }.flowOn(dispatchers.io)
 
     override suspend fun attach(
         owner: AttachmentOwner,
         sourceUri: String,
     ): AppResult<UUID> = withContext(dispatchers.io) {
+        val activeWorkspace = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return@withContext workspace
+            is AppResult.Success -> workspace.value
+        }
         when (val resolved = resolveOwner(owner)) {
             is AppResult.Failure -> return@withContext resolved
-            is AppResult.Success -> Unit
+            is AppResult.Success -> if (resolved.value != activeWorkspace) {
+                return@withContext AppResult.Failure(AppError.Validation("owner", "context_mismatch"))
+            }
         }
         val attachmentId = idGenerator.newId()
         val stored = when (val copied = copyIn(sourceUri, attachmentId) { AttachmentKind.fromMimeType(it) != null }) {
@@ -73,6 +98,9 @@ class OfflineFirstAttachmentRepository(
                 val workspaceId = when (val current = resolveOwner(owner)) {
                     is AppResult.Failure -> return@withTransaction current
                     is AppResult.Success -> current.value
+                }
+                if (workspaceId != activeWorkspace) {
+                    return@withTransaction AppResult.Failure(AppError.Validation("owner", "context_mismatch"))
                 }
                 database.documentDao().insert(
                     stored.toEntity(attachmentId, workspaceId, owner, kind, now),
@@ -93,12 +121,19 @@ class OfflineFirstAttachmentRepository(
     }
 
     override suspend fun remove(id: UUID): AppResult<Unit> = withContext(dispatchers.io) {
+        val activeWorkspace = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return@withContext workspace
+            is AppResult.Success -> workspace.value
+        }
         val now = clock.nowInstant()
         var released: DocumentEntity? = null
         val result = runCatching {
             database.withTransaction {
                 val document = database.documentDao().findById(id)
                     ?: return@withTransaction AppResult.Failure(AppError.NotFound("attachment"))
+                if (document.workspaceId != activeWorkspace) {
+                    return@withTransaction AppResult.Failure(AppError.Validation("attachment", "context_mismatch"))
+                }
                 if (document.metadata.deletedAt != null) return@withTransaction AppResult.Success(Unit)
 
                 database.documentDao().update(
@@ -147,11 +182,18 @@ class OfflineFirstAttachmentRepository(
         errorCode: String,
         errorMessage: String?,
     ): AppResult<Unit> = withContext(dispatchers.io) {
+        val activeWorkspace = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return@withContext workspace
+            is AppResult.Success -> workspace.value
+        }
         val now = clock.nowInstant()
         runCatching {
             database.withTransaction {
                 val document = database.documentDao().findById(id)
                     ?: return@withTransaction AppResult.Failure(AppError.NotFound("attachment"))
+                if (document.workspaceId != activeWorkspace) {
+                    return@withTransaction AppResult.Failure(AppError.Validation("attachment", "context_mismatch"))
+                }
                 if (document.metadata.deletedAt != null) {
                     return@withTransaction AppResult.Failure(AppError.Conflict("attachment"))
                 }
@@ -197,6 +239,15 @@ class OfflineFirstAttachmentRepository(
             ),
         )
     }
+
+    private suspend fun activeWorkspaceIdOrNull(): UUID? =
+        when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Success -> workspace.value
+            is AppResult.Failure -> null
+        }
+
+    private fun <T> AppResult<T>.successValueOrNull(): T? =
+        (this as? AppResult.Success<T>)?.value
 
     private suspend fun resolveOwner(owner: AttachmentOwner): AppResult<UUID> {
         val (workspaceId, deletedAt) = when (owner.type) {
