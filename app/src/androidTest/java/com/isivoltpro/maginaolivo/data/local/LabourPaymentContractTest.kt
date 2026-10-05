@@ -375,6 +375,31 @@ class LabourPaymentContractTest {
         assertEquals(ExpenseStatus.DRAFT, expenses.observe(draft.id).first()!!.status)
     }
 
+    /** #481: an archived person with jornales owed can still be paid, never beyond what is owed. */
+    @Test
+    fun anArchivedPersonWithDebtCanStillBePaid() = runBlocking {
+        val (d, worker) = pricedDay()
+        val owed = balance(worker).pendingMinor
+        assertTrue(owed > 0)
+        val entity = db.labourDao().findWorker(worker)!!
+        db.labourDao().upsertWorker(entity.copy(metadata = entity.metadata.copy(deletedAt = now)))
+
+        val first = payment(worker, owed - 100)
+        ok(labour.recordPayment(first))
+        assertEquals(100L, balance(worker).pendingMinor)
+        // Archived does not open the door to inventing payments.
+        assertTrue(labour.recordPayment(payment(worker, 101)) is AppResult.Failure)
+        ok(labour.recordPayment(payment(worker, 100)))
+        assertEquals(0L, balance(worker).pendingMinor)
+        // A payment of an archived person can still be corrected.
+        ok(labour.removePayment(first.id))
+        assertEquals(owed - 100, balance(worker).pendingMinor)
+        // And they are not offered again for new jornales.
+        val otherDay = ok(harvests.openJornada(farmId, day.minusDays(1)))
+        assertTrue(labour.recordCrew(CrewDraft(otherDay, listOf(worker), LabourUnit.FULL_DAY, appliedRate = rate(6_000))) is AppResult.Failure)
+        assertEquals(d, labour.observeForCampaign(campaignId).first().single().harvestId)
+    }
+
     private fun rate(amount: Long) = LabourRateSnapshot(amount, "EUR", day, LabourRateBasis.DAY)
     private fun payment(worker: UUID, amount: Long) = LabourPayment(UUID.randomUUID(), worker, campaignId, day, amount, "EUR")
     private suspend fun pricedDay(): Pair<UUID, UUID> {

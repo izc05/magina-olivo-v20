@@ -20,6 +20,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Una persona que ya no trabaja puede cobrar lo que se le debe (#481).** Si un trabajador deja de
+  estar activo, ya no se ofrece para nuevos jornales, pero sus jornales pendientes se pueden pagar (y los
+  pagos corregir) sin restaurarlo. Nunca se puede pagar más de lo pendiente.
 - **Un día sin pesadas no se atribuye a todas las parcelas (#458).** Un día de recolección abierto
   sin pesadas, o que se queda sin ellas pero conserva jornales, maquinaria, gastos o notas, muestra
   «Origen sin determinar» y no aparece en el historial de ninguna parcela. Al llegar, cambiar o irse
