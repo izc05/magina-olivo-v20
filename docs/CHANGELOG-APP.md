@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El Diario ya no oculta los gastos de un trabajo (#478).** Un gasto ligado a un trabajo (a mano,
+  de un documento o el coste antiguo del trabajo) sale en el Diario como fila propia, en su fecha, con
+  «Relacionado con Tratamiento» (o el trabajo que sea), y se abre como el gasto que es. El Diario
+  muestra el dinero, no lo suma; los gastos propios de una jornada siguen dentro de la jornada.
 - **Un trabajo con gastos propios no se archiva (#437).** Si un borrador o un trabajo cancelado tiene
   gastos anotados que apuntan a él, «Archivar» queda desactivado: «Este trabajo tiene gastos
   vinculados. Consérvalo cancelado o revisa esos gastos antes de archivarlo.», con cada gasto a un

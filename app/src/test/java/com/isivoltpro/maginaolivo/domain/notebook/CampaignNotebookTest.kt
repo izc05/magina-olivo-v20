@@ -122,6 +122,20 @@ class CampaignNotebookTest {
         assertEquals(listOf(legacyJornada), notebook.harvests)
     }
 
+    /** #478: the Farm Diario shows a Gasto tied to a work as its own row, with or without a Campaign. */
+    @Test fun aGastoOfAWorkIsNeverHiddenFromTheFarmDiario() {
+        val treatment = activity(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 3, 10), null)
+        val manual = expense(8_500, ExpenseCategory.PRODUCTS, ExpenseStatus.POSTED, LocalDate.of(2026, 3, 12))
+            .copy(activityId = treatment.id)
+        val ocr = expense(4_000, ExpenseCategory.PRODUCTS, ExpenseStatus.POSTED, LocalDate.of(2026, 3, 10))
+            .copy(activityId = treatment.id, origin = ExpenseOrigin.DOCUMENT_OCR)
+        val notebook = FarmNotebook.of(farm, listOf(treatment), emptyList(), emptyList(), listOf(manual, ocr))
+        val gastos = notebook.diary.flatMap { it.entries }.filterIsInstance<DiaryEntry.ExpenseEntry>()
+        assertEquals(setOf(manual.id, ocr.id), gastos.map { it.expense.id }.toSet())
+        assertTrue(gastos.all { it.relatedWork == treatment.description })
+        assertEquals(LocalDate.of(2026, 3, 12), notebook.diary.first().date)
+    }
+
     @Test fun onlyDoneWorkIsAFactInTheFarmNotebook() {
         val tractor = ActivityMachine(UUID.randomUUID(), "Tractor", MachineCategory.TRACTOR, null, null, 2.0)
         val plannedPruning = activity(ActivityType.PRUNING, LocalDate.of(2026, 10, 5), null).copy(status = ActivityStatus.PLANNED)

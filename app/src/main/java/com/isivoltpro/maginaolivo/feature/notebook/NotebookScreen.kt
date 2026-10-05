@@ -198,10 +198,14 @@ internal fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
 }
 
 @Composable
-internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
+internal fun ExpenseRow(expense: Expense, relatedWork: String? = null, onClick: () -> Unit) {
     MoCompactListItem(
         title = expense.concept,
-        subtitle = "${expense.category.label()} · ${Money.format(expense.amountMinor, expense.currency)}",
+        subtitle = listOfNotNull(
+            "${expense.category.label()} · ${Money.format(expense.amountMinor, expense.currency)}",
+            // #478: a Gasto tied to a work says which, and is opened as the Gasto it is.
+            relatedWork?.let { "Relacionado con $it" },
+        ).joinToString(" · "),
         icon = MoIcons.Euro,
         iconTint = MoIconTone.MONEY.tint,
         iconContainer = MoIconTone.MONEY.container,
