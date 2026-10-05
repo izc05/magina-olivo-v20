@@ -201,7 +201,7 @@ class RecollectionChoiceUiTest {
         rule.onNodeWithTag("expense-parcel").performScrollTo().performClick()
         rule.onNodeWithText("Norte").assertExists()
         rule.onNodeWithText("Sur").assertExists()
-        rule.onNodeWithText("Todo el trabajo").performClick()
+        rule.onNodeWithTag("choice-none").performClick() // «Todo el trabajo» in the sheet; the field says it too
         rule.onNodeWithTag("expense-category").performScrollTo().performClick()
         rule.onNodeWithText("Reparaciones").performClick()
         rule.onNodeWithTag("save-expense").performScrollTo().performClick()
