@@ -143,8 +143,12 @@ data class ActivityChanges(
     val planning: ActivityPlanning? = null,
     /** The reminders after the change; an empty list turns them all off. */
     val reminders: List<ReminderRequest> = emptyList(),
-    /** Explicit affected surface per selected Parcel, in square metres; null means not confirmed. */
-    val parcelAreasM2: Map<UUID, Double?> = emptyMap(),
+    /**
+     * Explicit affected surface per selected Parcel, in square metres.
+     * Null means this caller is legacy/unaware and existing areas must be preserved.
+     * A map containing parcelId -> null explicitly clears that Parcel's confirmed area.
+     */
+    val parcelAreasM2: Map<UUID, Double?>? = null,
 )
 
 /**
