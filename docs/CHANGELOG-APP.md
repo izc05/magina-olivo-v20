@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Los gastos de una campaña ya no ocultan otras monedas (#450, campaña).** El detalle de la campaña
+  muestra cada moneda por separado («800,00 € · 300,00 GBP», sin convertir); una campaña con gastos solo
+  en otra moneda ya no dice «Aún no hay gastos». El resumen interno de la campaña guarda un total por
+  moneda y el coste/kg global sigue sin calcularse cuando hay varias.
 - **Un gasto antiguo sigue editable aunque su parcela se archive o cambie de finca (#476).** Corregir
   importe, nota o concepto conserva la finca y la parcela con que se anotó; el editor la muestra como
   «Parcela 1 · archivada» o «· ahora en otra finca». Para un gasto nuevo, o al cambiar de parcela, solo
