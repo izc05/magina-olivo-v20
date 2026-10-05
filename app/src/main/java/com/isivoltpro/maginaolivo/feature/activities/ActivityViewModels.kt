@@ -44,6 +44,8 @@ data class ActivityDraft(
     val reminders: List<ReminderRequest> = emptyList(),
     /** Confirmed/suggested affected surface per selected Parcel, in square metres. */
     val parcelAreasM2: Map<UUID, Double?> = emptyMap(),
+    /** Inclusive interval end; null means one day. */
+    val activityEndDate: LocalDate? = null,
 )
 
 data class FarmActivitiesUiState(
@@ -112,6 +114,7 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
                         planning = draft.planning,
                         reminders = draft.reminders,
                         parcelAreasM2 = draft.parcelAreasM2,
+                        activityEndDate = draft.activityEndDate,
                     ),
                 )
             ) {
@@ -277,6 +280,7 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                     draft.planning,
                     draft.reminders,
                     parcelAreasM2 = draft.parcelAreasM2,
+                    activityEndDate = draft.activityEndDate,
                 ),
             )
         }
