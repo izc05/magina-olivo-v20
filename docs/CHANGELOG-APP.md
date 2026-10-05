@@ -20,6 +20,14 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Gasto del día: «Se añade» o «Sustituye», siempre lo decide el agricultor (#475).** Al anotar jornales
+  o un alquiler de maquinaria en un día que ya tiene ese coste calculado, la app pregunta «¿Cómo cuenta
+  este gasto?»: «Se añade al cálculo» o «Sustituye el cálculo». Si el día no tiene cálculo de ese tipo,
+  se añade sin preguntar; gasoil, aceite, transporte, reparaciones y otros siempre se suman. La decisión
+  se guarda (no se deduce del concepto ni de la categoría). Si alguien de ese día ya tiene pagos, los
+  jornales solo pueden añadirse: los pagos nunca se tocan. Al sustituir jornales sin pagos, el importe
+  cuenta en la campaña sin repartir por persona. Un gasto «Fuera de campaña» ya no se ofrece para
+  enlazarlo a una jornada ni se absorbe. Lo que contaba antes de este cambio sigue contando igual.
 - **Un día sin pesadas no se atribuye a todas las parcelas (#458).** Un día de recolección abierto
   sin pesadas, o que se queda sin ellas pero conserva jornales, maquinaria, gastos o notas, muestra
   «Origen sin determinar» y no aparece en el historial de ninguna parcela. Al llegar, cambiar o irse

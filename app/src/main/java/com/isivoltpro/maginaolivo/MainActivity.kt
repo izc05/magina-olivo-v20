@@ -27,6 +27,10 @@ class MainActivity : ComponentActivity() {
         compositionRoot.localPersistence?.reminders?.let { reminders ->
             lifecycleScope.launch { runCatching { reminders.reconcile() } }
         }
+        // #475: what counts today keeps counting once «Se añade / Sustituye» is explicit.
+        compositionRoot.localPersistence?.dayCostRepository?.let { dayCosts ->
+            lifecycleScope.launch { runCatching { dayCosts.markExistingReplacements() } }
+        }
         // #458: automatic days without Pesadas stop being attributed to every Parcel.
         compositionRoot.localPersistence?.harvestRepository?.let { harvests ->
             lifecycleScope.launch { runCatching { harvests.clearUnfoundedDayOrigins() } }

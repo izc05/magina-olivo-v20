@@ -107,5 +107,8 @@ interface ExpenseDao {
         """,
     )
     fun observeItemsForExpense(expenseId: UUID): Flow<List<PurchaseItemEntity>>
-}
 
+    /** #475: live calculated day costs kept as a draft because a hand-typed one stands for them. */
+    @Query("SELECT * FROM expenses WHERE origin IN ('DAY_LABOUR', 'DAY_EQUIPMENT') AND status = 'DRAFT' AND deleted_at IS NULL")
+    suspend fun listDraftCalculated(): List<ExpenseEntity>
+}

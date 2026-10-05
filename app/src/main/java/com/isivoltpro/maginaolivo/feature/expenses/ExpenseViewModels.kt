@@ -10,6 +10,9 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
+import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
+import com.isivoltpro.maginaolivo.domain.expense.dayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
@@ -61,6 +64,8 @@ data class ExpenseForm(
     val notes: String = "",
     /** Phase 19F: kept from the Expense so editing it never unlinks it from its Jornada. */
     val harvestId: UUID? = null,
+    /** #475: how this cost counts against its day's calculation; kept as the farmer chose it. */
+    val dayCostRole: DayCostRole = DayCostRole.ADDITIVE,
     val campaignId: UUID? = null,
     val currency: String = "EUR",
 )
@@ -134,6 +139,8 @@ internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDra
         lines = parsedLines,
         notes = notes.trim().ifEmpty { null },
         harvestId = harvestId,
+        // Only jornales or machinery of a day can replace its calculation; anything else adds.
+        dayCostRole = if (harvestId != null && DayCostKind.of(category) != null) dayCostRole else DayCostRole.ADDITIVE,
     ) to errors
 }
 
@@ -152,6 +159,7 @@ internal fun Expense.toForm() = ExpenseForm(
     parcelId = parcelId,
     activityId = activityId,
     harvestId = harvestId,
+    dayCostRole = dayCostRole,
     invoiceNumber = invoiceNumber.orEmpty(),
     lines = lines.map {
         LineForm(

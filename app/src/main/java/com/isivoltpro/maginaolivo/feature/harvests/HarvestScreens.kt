@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo.feature.harvests
 
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import android.util.Log
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import androidx.compose.foundation.layout.WindowInsets
@@ -650,11 +651,11 @@ fun HarvestDetailScreen(
     onPesadaSelected: (UUID) -> Unit = {},
     labourActions: LabourActions = LabourActions(),
     onSaveEquipment: (List<EquipmentDraftLine>) -> Unit = {},
-    onAddCost: (JornadaExpenseKind, Long, String?, Boolean) -> Unit = { _, _, _, _ -> },
+    onAddCost: (JornadaExpenseKind, Long, String?, Boolean, DayCostRole) -> Unit = { _, _, _, _, _ -> },
     onExpenseSelected: (UUID) -> Unit = {},
     onSaveRates: (RecollectionRates) -> Unit = {},
     onPreferCalculated: (DayCostKind) -> Unit = {},
-    onLinkCost: (UUID) -> Unit = {},
+    onLinkCost: (UUID, DayCostRole) -> Unit = { _, _ -> },
     /**
      * #365: the resource detail open on arrival. Cuaderno → Jornal lands on the day's Jornales,
      * with «Registrar jornal» at hand, instead of on its Pesadas; the day stays one screen.
@@ -798,6 +799,7 @@ fun HarvestDetailScreen(
                         onEditRates = state.rates?.let { { resourceDetail = null; ratesVisible = true } },
                         unlinked = state.unlinkedCosts,
                         onLink = onLinkCost,
+                        labourPaid = state.labourPaid,
                         loaded = state.costsLoaded,
                         readFailed = state.costsReadFailed,
                     )
@@ -843,7 +845,10 @@ fun HarvestDetailScreen(
                 currencyError = currencyContext.error,
                 isSaving = state.isSaving,
                 error = state.costError,
-                onSave = onAddCost,
+                onSave = { kind, amount, concept, openAfter -> onAddCost(kind, amount, concept, openAfter, DayCostRole.ADDITIVE) },
+                onSaveWithRole = onAddCost,
+                calculated = state.calculatedKinds(),
+                labourPaid = state.labourPaid,
                 onCancel = { costVisible = false },
             )
         }
