@@ -17,4 +17,19 @@ internal fun allocateReminderRequestCode(reminderId: UUID, used: Set<Int>): Int 
     error("reminder_request_code_exhausted")
 }
 
+/**
+ * Repairs a legacy ordered registry. The first owner of a slot keeps it; later collisions move to
+ * the next free deterministic slot. Callers provide stable ordering (created_at, id).
+ */
+internal fun repairReminderRequestCodes(rows: List<Pair<UUID, Int>>): Map<UUID, Int> {
+    val used = mutableSetOf<Int>()
+    val repaired = linkedMapOf<UUID, Int>()
+    rows.forEach { (id, stored) ->
+        val code = if (stored !in used) stored else allocateReminderRequestCode(id, used)
+        used += code
+        repaired[id] = code
+    }
+    return repaired
+}
+
 private const val MAX_PROBES = 1_000_000
