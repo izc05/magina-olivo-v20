@@ -111,9 +111,11 @@ internal fun ExpenseEditor(
      * work's own, and the category must be chosen on purpose rather than left on «Otro».
      */
     activityLocked: Boolean = false,
+    /** #416: a new related expense asks its category on purpose; an edit keeps the one it has. */
+    askCategory: Boolean = activityLocked,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
-    var categoryChosen by rememberSaveable(initial, activityLocked) { mutableStateOf(!activityLocked) }
+    var categoryChosen by rememberSaveable(initial, askCategory) { mutableStateOf(!askCategory) }
     // #411: a new Farm-level expense may start deliberately undecided; existing/explicit
     // Campaign expenses and ordinary editors keep their current classification.
     var campaignChoiceMade by rememberSaveable(initial, requireCampaignChoice) {

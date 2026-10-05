@@ -72,6 +72,15 @@ internal class ExpenseLedgerWriter(
         database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, current.id, OutboxOperation.UPDATE, now)
     }
 
+    /** #429: the money stays exactly as counted; only its tie to a work (and that origin) goes. */
+    suspend fun detachFromActivity(current: ExpenseEntity, now: Instant) {
+        requireEditableCampaign(current)
+        database.expenseDao().upsert(
+            current.copy(activityId = null, origin = ExpenseOrigin.MANUAL.name, metadata = current.metadata.next(now)),
+        )
+        database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, current.id, OutboxOperation.UPDATE, now)
+    }
+
     suspend fun delete(current: ExpenseEntity, now: Instant) {
         if (current.metadata.deletedAt != null) return
         requireEditableCampaign(current)

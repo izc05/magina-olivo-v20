@@ -20,6 +20,13 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un trabajo no hecho no suma dinero (#429).** Planificar o guardar un borrador ya no puede crear
+  un gasto real, venga de la pantalla que venga, y editar un trabajo nunca toca su coste. Completar
+  un trabajo no inventa gasto. Si un trabajo hecho tiene un coste anotado antes, «Reabrir» espera:
+  «Este trabajo tiene un coste contabilizado. Revísalo antes de volver a planificarlo.» y «Revisar
+  gasto vinculado» abre ese gasto, donde eliges «Conservar como gasto independiente» (sigue contando,
+  ya sin ligarse al trabajo) o «Eliminar gasto» (deja de contarse). Lo mismo para cancelar, planificar
+  o archivar un trabajo antiguo con coste; los gastos anotados a mano nunca bloquean ni se borran.
 - **El dinero de un trabajo va en Gastos (#416).** Un trabajo nuevo ya no tiene campo «Coste»,
   para no contar dos veces lo que ya está en Jornales, compras o maquinaria. En un trabajo hecho,
   «Añadir gasto relacionado» abre Gasto con la finca, la parcela (si es una) y el trabajo ya puestos;

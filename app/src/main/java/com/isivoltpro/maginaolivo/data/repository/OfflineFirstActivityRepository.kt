@@ -28,6 +28,7 @@ import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityChanges
+import com.isivoltpro.maginaolivo.domain.activity.ActivityCostRules
 import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget
@@ -200,6 +201,20 @@ class OfflineFirstActivityRepository(
                 if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
                     return@safely AppResult.Failure(AppError.Conflict("archived_farm"))
                 }
+                val status = when {
+                    command.asDraft -> ActivityStatus.DRAFT
+                    // "Registrar hoy" records work already done (a date ahead was refused
+                    // above). A reminder asked for, or a harvest-day appointment (read by
+                    // the agenda only while planned) stays planned, whatever route saved it.
+                    command.completeImmediately &&
+                        command.type != ActivityType.HARVEST_DAY &&
+                        command.reminders.isEmpty() -> ActivityStatus.COMPLETED
+                    else -> ActivityStatus.PLANNED
+                }
+                // #429: work not done yet never counts money as spent, whichever caller sends a cost.
+                if (status != ActivityStatus.COMPLETED && command.costMinor.counts()) {
+                    return@safely AppResult.Failure(AppError.Validation("costMinor", ActivityCostRules.NOT_DONE_WORK))
+                }
                 val id = idGenerator.newId()
                 val now = clock.nowInstant()
                 database.activityDao().upsert(
@@ -210,16 +225,7 @@ class OfflineFirstActivityRepository(
                         farmId = farm.id,
                         activityDate = command.activityDate,
                         type = command.type.name,
-                        status = when {
-                            command.asDraft -> ActivityStatus.DRAFT
-                            // "Registrar hoy" records work already done (a date ahead was refused
-                            // above). A reminder asked for, or a harvest-day appointment (read by
-                            // the agenda only while planned) stays planned, whatever route saved it.
-                            command.completeImmediately &&
-                                command.type != ActivityType.HARVEST_DAY &&
-                                command.reminders.isEmpty() -> ActivityStatus.COMPLETED
-                            else -> ActivityStatus.PLANNED
-                        },
+                        status = status,
                         description = description,
                         notes = command.notes.normalized(),
                         metadata = pending(now),
@@ -231,7 +237,7 @@ class OfflineFirstActivityRepository(
                 replacePlanning(id, farm.workspaceId, command.planning, now)
                 replaceReminders(id, command.reminders, now)
                 enqueue(id, OutboxOperation.CREATE, now)
-                syncCost(id, command.costMinor, now)
+                if (status == ActivityStatus.COMPLETED) postCost(id, command.costMinor, now)
                 AppResult.Success(id)
             }
         }.alsoReconcile()
@@ -242,6 +248,9 @@ class OfflineFirstActivityRepository(
         if (description.isEmpty()) return AppResult.Failure(AppError.Validation("description", "blank"))
         validateDetail(changes.type, changes.detail)?.let { return it }
         notNegative("costMinor", changes.costMinor?.toDouble())?.let { return it }
+        // #429: only DRAFT and PLANNED work is editable, and neither carries money; a cost typed
+        // before 1.0 is corrected on its own Gasto, so a null here leaves it exactly as it is.
+        if (changes.costMinor.counts()) return AppResult.Failure(AppError.Validation("costMinor", ActivityCostRules.NOT_DONE_WORK))
         MachineRules.validateUses(changes.machines)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         ReminderRules.validate(changes.planning, changes.reminders)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         return mutate(id, "update_activity") { current, now ->
@@ -264,26 +273,30 @@ class OfflineFirstActivityRepository(
             replacePlanning(id, current.workspaceId, changes.planning, now)
             replaceReminders(id, changes.reminders, now)
             enqueue(id, OutboxOperation.UPDATE, now)
-            syncCost(id, changes.costMinor, now)
             AppResult.Success(Unit)
         }.alsoReconcile()
     }
 
-    override suspend fun plan(id: UUID): AppResult<Unit> = transition(id, setOf(ActivityStatus.DRAFT), ActivityStatus.PLANNED, "plan_activity", requireTargets = true)
+    override suspend fun plan(id: UUID): AppResult<Unit> =
+        transition(id, setOf(ActivityStatus.DRAFT), ActivityStatus.PLANNED, "plan_activity", requireTargets = true, costMustBeReviewed = true)
 
-    override suspend fun complete(id: UUID): AppResult<Unit> = transition(id, setOf(ActivityStatus.PLANNED), ActivityStatus.COMPLETED, "complete_activity", requireTargets = true)
+    // Completing makes a legacy cost coherent again, so it is the one move a counted cost never blocks.
+    override suspend fun complete(id: UUID): AppResult<Unit> =
+        transition(id, setOf(ActivityStatus.PLANNED), ActivityStatus.COMPLETED, "complete_activity", requireTargets = true, costMustBeReviewed = false)
 
-    override suspend fun cancel(id: UUID): AppResult<Unit> = transition(id, setOf(ActivityStatus.DRAFT, ActivityStatus.PLANNED), ActivityStatus.CANCELLED, "cancel_activity", requireTargets = false)
+    override suspend fun cancel(id: UUID): AppResult<Unit> =
+        transition(id, setOf(ActivityStatus.DRAFT, ActivityStatus.PLANNED), ActivityStatus.CANCELLED, "cancel_activity", requireTargets = false, costMustBeReviewed = true)
 
-    override suspend fun reopen(id: UUID): AppResult<Unit> = transition(id, setOf(ActivityStatus.COMPLETED, ActivityStatus.CANCELLED), ActivityStatus.PLANNED, "reopen_activity", requireTargets = true)
+    override suspend fun reopen(id: UUID): AppResult<Unit> =
+        transition(id, setOf(ActivityStatus.COMPLETED, ActivityStatus.CANCELLED), ActivityStatus.PLANNED, "reopen_activity", requireTargets = true, costMustBeReviewed = true)
 
     override suspend fun archive(id: UUID): AppResult<Unit> = mutate(id, "archive_activity", allowArchived = true) { current, now ->
         if (current.metadata.deletedAt != null) return@mutate AppResult.Success(Unit)
         if (current.status !in ARCHIVABLE) return@mutate conflict("protected_activity")
+        // #429: a counted cost is never dropped in silence with the work; the person decides on its Gasto.
+        if (database.expenseDao().findActivityCost(id) != null) return@mutate conflict(ActivityCostRules.COST_TO_REVIEW)
         database.activityDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
         enqueue(id, OutboxOperation.DELETE, now)
-        // Only DRAFT or CANCELLED work can be archived: its convenience cost goes with it.
-        syncCost(id, null, now)
         AppResult.Success(Unit)
     }.alsoReconcile()
 
@@ -293,8 +306,14 @@ class OfflineFirstActivityRepository(
         to: ActivityStatus,
         operation: String,
         requireTargets: Boolean,
+        costMustBeReviewed: Boolean,
     ) = mutate(id, operation) { current, now ->
         if (current.status !in from) return@mutate conflict("illegal_activity_transition")
+        // #429: work that would end up not done cannot keep a counted cost. It is not undone or
+        // converted here: the person keeps it as its own Gasto or stops counting it, then moves on.
+        if (costMustBeReviewed && database.expenseDao().findActivityCost(id) != null) {
+            return@mutate conflict(ActivityCostRules.COST_TO_REVIEW)
+        }
         if (requireTargets && database.activityDao().countTargets(id) == 0) {
             return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
         }
@@ -380,38 +399,30 @@ class OfflineFirstActivityRepository(
     private fun passed(trigger: Instant, now: Instant): Instant? = if (trigger.isAfter(now)) null else now
 
     /**
-     * `RC1-NORMATIVE-ADDENDUM` D2: the Activity form's Coste is a convenience for its one
-     * linked ACTIVITY_COST Expense, written in this same transaction. Editing it edits that
-     * Expense, clearing it deletes it, and it is never a second number on the Activity.
-     * Other Expenses a person linked to the Activity are left alone.
+     * `RC1-NORMATIVE-ADDENDUM` D2 as narrowed by #416/#429: a cost sent with work recorded as
+     * done becomes its one linked ACTIVITY_COST Expense, in this same transaction. Nothing else
+     * writes one: planned or draft work holds no money, and an existing cost is corrected on its
+     * own Gasto, never from the work.
      */
-    private suspend fun syncCost(activityId: UUID, costMinor: Long?, now: Instant) {
+    private suspend fun postCost(activityId: UUID, costMinor: Long?, now: Instant) {
+        if (!costMinor.counts()) return
         val activity = database.activityDao().findById(activityId) ?: return
-        val existing = database.expenseDao().findActivityCost(activityId)
-        if (costMinor == null || costMinor == 0L) {
-            existing?.let { ledger.delete(it, now) }
-            return
-        }
+        check(activity.status == ActivityStatus.COMPLETED) { "cost on work not done" }
         val draft = ExpenseDraft(
             expenseDate = activity.activityDate,
             concept = activity.description,
             category = costCategory(activity.type),
-            amountMinor = costMinor,
-            currency = existing?.currency ?: DEFAULT_CURRENCY,
-            supplierOrganizationId = existing?.supplierOrganizationId,
-            supplierText = existing?.provider,
+            amountMinor = costMinor!!,
+            currency = DEFAULT_CURRENCY,
             farmId = activity.farmId,
             // #433: the cost of a work follows the work's Campaign; general work stays general.
             campaignId = activity.campaignId,
             activityId = activityId,
-            notes = existing?.notes,
         )
-        if (existing == null) {
-            ledger.insert(activity.workspaceId, draft, ExpenseStatus.POSTED, ExpenseOrigin.ACTIVITY_COST, now)
-        } else {
-            ledger.rewrite(existing, draft, now)
-        }
+        ledger.insert(activity.workspaceId, draft, ExpenseStatus.POSTED, ExpenseOrigin.ACTIVITY_COST, now)
     }
+
+    private fun Long?.counts() = this != null && this != 0L
 
     private fun costCategory(type: String): ExpenseCategory = when (runCatching { ActivityType.valueOf(type) }.getOrNull()) {
         ActivityType.FERTILIZATION, ActivityType.PHYTOSANITARY -> ExpenseCategory.PRODUCTS

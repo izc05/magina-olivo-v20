@@ -100,7 +100,10 @@ data class NewActivity(
     val completeImmediately: Boolean = false,
     /** The typed agronomic detail. It must match [type], and may be absent. */
     val detail: ActivityDetail? = null,
-    /** Optional convenience cost. Saving it writes the linked Expense, never the Activity. */
+    /**
+     * Optional cost, accepted only with work saved as done: it writes the one linked Expense, never
+     * the Activity. With draft or planned work it is refused (#429). The app's forms send none (#416).
+     */
     val costMinor: Long? = null,
     /** Optional machines; a child of the Activity aggregate, never required. */
     val machines: List<MachineUseInput> = emptyList(),
@@ -124,7 +127,10 @@ data class ActivityChanges(
      * the type. Passing null clears the detail.
      */
     val detail: ActivityDetail? = null,
-    /** The convenience cost after the change; null removes the linked cost Expense. */
+    /**
+     * Must stay null (#429): only draft or planned work is edited and it holds no money. A cost
+     * linked before is left as it is and corrected on its own Expense.
+     */
     val costMinor: Long? = null,
     /** The machines after the change; an empty list removes them. */
     val machines: List<MachineUseInput> = emptyList(),
@@ -169,4 +175,16 @@ interface ActivityRepository {
     /** Reopens a COMPLETED or CANCELLED activity back to PLANNED, explicitly and audited. */
     suspend fun reopen(id: UUID): AppResult<Unit>
     suspend fun archive(id: UUID): AppResult<Unit>
+}
+
+/**
+ * #429: money and work that is not done. Planned or draft work never counts a cost; a cost
+ * typed before 1.0 on work that would stop being done is reviewed on its own Gasto first.
+ */
+object ActivityCostRules {
+    /** Validation code on `costMinor`: a cost sent with work that is not done. */
+    const val NOT_DONE_WORK = "not_done_work"
+
+    /** Conflict code: the work holds a counted cost the person has to review before this move. */
+    const val COST_TO_REVIEW = "activity_cost_posted"
 }

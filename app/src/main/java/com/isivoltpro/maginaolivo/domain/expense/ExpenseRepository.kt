@@ -125,4 +125,10 @@ interface ExpenseRepository {
     suspend fun post(id: UUID): AppResult<Unit>
 
     suspend fun delete(id: UUID): AppResult<Unit>
+
+    /**
+     * #429: a cost typed on a work before 1.0 that really was spent stays counted as a Gasto of
+     * its own — same amount, Farm, Parcel and Campaign — no longer tied to that work.
+     */
+    suspend fun keepAsIndependent(id: UUID): AppResult<Unit>
 }

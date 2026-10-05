@@ -460,8 +460,6 @@ internal fun ActivityEditor(
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
-    var cost by rememberSaveable(initial.costMinor) { mutableStateOf(Money.editable(initial.costMinor)) }
-    var costError by rememberSaveable { mutableStateOf<String?>(null) }
     var type by rememberSaveable(initial.type) { mutableStateOf(initial.type.name) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
     // #414: a new entry on a Farm with a single Parcel needs no choice; it is ticked once (and can
@@ -521,11 +519,11 @@ internal fun ActivityEditor(
         return errors.isEmpty()
     }
 
-    // Hour, people, machinery, reminders, notes and cost are optional: folded unless used.
+    // Hour, people, machinery, reminders and notes are optional: folded unless used.
     val hasExtras = initial.machines.isNotEmpty() || initial.planning != null || initial.reminders.isNotEmpty() ||
-        initial.notes.isNotBlank() || initial.costMinor != null
+        initial.notes.isNotBlank()
     var moreOpen by rememberSaveable(hasExtras) { mutableStateOf(hasExtras) }
-    val showMore = moreOpen || costError != null || machinesError != null || planningError != null
+    val showMore = moreOpen || machinesError != null || planningError != null
 
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(MoSpacing.screen),
@@ -637,7 +635,6 @@ internal fun ActivityEditor(
                     Text(
                         when {
                             doneWork -> "Maquinaria y notas"
-                            initial.costMinor != null -> "Hora, personas, maquinaria, avisos, notas y coste"
                             else -> "Hora, personas, maquinaria, avisos y notas"
                         },
                         style = MaterialTheme.typography.bodySmall,
@@ -682,27 +679,12 @@ internal fun ActivityEditor(
                 )
             }
             MoTextField(notes, { notes = it }, "Notas")
-            // #416: a new work carries no money (Jornal, Gasto and Maquinaria do, once each); only a
-            // cost already linked before 1.0 stays editable, still one row in Gastos.
-            if (initial.costMinor != null) {
-                MoTextField(
-                    cost,
-                    { cost = it; costError = null },
-                    "Coste histórico vinculado (€)",
-                    isError = costError != null,
-                    supportingText = costError ?: "Se anota en Gastos, una sola vez. Vacío lo quita.",
-                    modifier = Modifier.testTag("activity-cost"),
-                )
-            }
+            // #416/#429: the editor holds no money. Only draft or planned work is edited here and it
+            // never counts a cost; a cost linked before 1.0 is corrected on its own Gasto.
         }
         MoPrimaryButton(
             if (doneWork && !chosenType.needsDescription()) "Guardar ${chosenType.label().lowercase()}" else "Guardar actuación",
             {
-                val costMinor = Money.parseMinor(cost)
-                if (cost.isNotBlank() && costMinor == null) {
-                    costError = "Escribe un importe como 65 o 65,50"
-                    return@MoPrimaryButton
-                }
                 val machineUses = readMachines() ?: return@MoPrimaryButton
                 val planned = readPlanning() ?: return@MoPrimaryButton
                 if (!readTypedDetail()) return@MoPrimaryButton
@@ -718,7 +700,6 @@ internal fun ActivityEditor(
                             detailFields,
                             runCatching { LocalDate.parse(date) }.getOrNull(),
                         ),
-                        costMinor,
                         machines = machineUses,
                         planning = planned.planning,
                         reminders = planned.reminders,
@@ -731,11 +712,6 @@ internal fun ActivityEditor(
             MoSecondaryButton(
                 "Guardar borrador",
                 {
-                    val costMinor = Money.parseMinor(cost)
-                    if (cost.isNotBlank() && costMinor == null) {
-                        costError = "Escribe un importe como 65 o 65,50"
-                        return@MoSecondaryButton
-                    }
                     val machineUses = readMachines() ?: return@MoSecondaryButton
                     val planned = readPlanning() ?: return@MoSecondaryButton
                     if (!readTypedDetail()) return@MoSecondaryButton
@@ -751,7 +727,6 @@ internal fun ActivityEditor(
                                 detailFields,
                                 runCatching { LocalDate.parse(date) }.getOrNull(),
                             ),
-                            costMinor,
                             machines = machineUses,
                             planning = planned.planning,
                             reminders = planned.reminders,
@@ -940,31 +915,42 @@ fun ActivityDetailScreen(
                         }
                     }
 
+                    // #429: a counted cost on work that is (or would become) not done is reviewed
+                    // on its Gasto first; only completing the work stays open, since it makes it coherent.
+                    val costHeld = activity.costMinor != null
+                    if (costHeld && activity.status != ActivityStatus.COMPLETED) {
+                        CostToReview(
+                            "Este trabajo no está hecho, pero tiene un coste contabilizado. Revísalo: consérvalo " +
+                                "como gasto independiente si ocurrió, o deja de contabilizarlo.",
+                            historicCostExpenseId, onOpenExpense,
+                        )
+                    }
                     // Principal / secundaria / destructiva — never three large green buttons.
                     when (activity.status) {
                         ActivityStatus.DRAFT -> {
-                            MoPrimaryButton("Planificar", { confirmation = "plan" }, modifier = Modifier.fillMaxWidth().testTag("plan-activity"), enabled = !state.isSaving)
+                            MoPrimaryButton("Planificar", { confirmation = "plan" }, modifier = Modifier.fillMaxWidth().testTag("plan-activity"), enabled = !state.isSaving && !costHeld)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                                 MoSecondaryButton("Editar borrador", { editor = true }, modifier = Modifier.weight(1f).testTag("edit-activity"), enabled = !state.isSaving)
-                                MoDestructiveButton("Archivar borrador", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"))
+                                MoDestructiveButton("Archivar borrador", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"), enabled = !costHeld)
                             }
                         }
                         ActivityStatus.PLANNED -> {
                             MoPrimaryButton("Marcar completada", { confirmation = "complete" }, modifier = Modifier.fillMaxWidth().testTag("complete-activity"), enabled = !state.isSaving)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                                 MoSecondaryButton("Editar", { editor = true }, modifier = Modifier.weight(1f).testTag("edit-activity"), enabled = !state.isSaving)
-                                MoDestructiveButton("Cancelar actuación", { confirmation = "cancel" }, modifier = Modifier.weight(1f).testTag("cancel-activity"))
+                                MoDestructiveButton("Cancelar actuación", { confirmation = "cancel" }, modifier = Modifier.weight(1f).testTag("cancel-activity"), enabled = !costHeld)
                             }
                         }
                         ActivityStatus.COMPLETED -> {
                             Text("Registro protegido", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
-                            MoSecondaryButton("Reabrir actuación", { confirmation = "reopen" }, modifier = Modifier.fillMaxWidth().testTag("reopen-activity"))
+                            MoSecondaryButton("Reabrir actuación", { confirmation = "reopen" }, modifier = Modifier.fillMaxWidth().testTag("reopen-activity"), enabled = !costHeld)
+                            if (costHeld) CostToReview(costToReview("volver a planificarlo"), historicCostExpenseId, onOpenExpense)
                         }
                         ActivityStatus.CANCELLED -> {
                             Text("Actuación cancelada", style = MaterialTheme.typography.titleSmall, color = MoTextSecondary)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-                                MoSecondaryButton("Reabrir", { confirmation = "reopen" }, modifier = Modifier.weight(1f).testTag("reopen-activity"))
-                                MoDestructiveButton("Archivar", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"))
+                                MoSecondaryButton("Reabrir", { confirmation = "reopen" }, modifier = Modifier.weight(1f).testTag("reopen-activity"), enabled = !costHeld)
+                                MoDestructiveButton("Archivar", { confirmation = "archive" }, modifier = Modifier.weight(1f).testTag("archive-activity"), enabled = !costHeld)
                             }
                         }
                     }
@@ -992,7 +978,6 @@ fun ActivityDetailScreen(
                     parcelIds = activity.targets.map { it.parcelId }.toSet(),
                     notes = activity.notes.orEmpty(),
                     detail = activity.detail,
-                    costMinor = activity.costMinor,
                     machines = activity.machines.map { MachineUseInput(it.machineId, it.startHours, it.endHours, it.usageHours) },
                     planning = activity.planning,
                     reminders = activity.reminders.map { it.toRequest() },
@@ -1388,6 +1373,23 @@ private fun hectaresLabel(areaM2: Double): String =
 @Composable
 private fun FormLabel(text: String) {
     Text(text, style = MaterialTheme.typography.titleSmall, color = MoOliveDark, modifier = Modifier.padding(top = MoSpacing.xs))
+}
+
+/** #429: why a move is held back, and the way to the Gasto where it is resolved. */
+@Composable
+private fun CostToReview(text: String, expenseId: UUID?, onOpenExpense: ((UUID) -> Unit)?) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+        modifier = Modifier.fillMaxWidth().testTag("activity-cost-to-review"),
+    )
+    if (expenseId != null && onOpenExpense != null) {
+        MoTertiaryButton(
+            "Revisar gasto vinculado",
+            { onOpenExpense(expenseId) },
+            modifier = Modifier.fillMaxWidth().testTag("activity-review-cost"),
+        )
+    }
 }
 
 private const val RELATED_EXPENSE_NOTICE_MS = 4_000L

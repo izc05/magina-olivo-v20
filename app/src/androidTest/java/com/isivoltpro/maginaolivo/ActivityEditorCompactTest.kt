@@ -74,20 +74,6 @@ class ActivityEditorCompactTest {
         assertEquals(0, composeRule.onAllNodesWithTag("activity-cost").fetchSemanticsNodes().size)
     }
 
-    /** #416: a cost linked before 1.0 stays visible and editable, named for what it is. */
-    @Test fun anEditThatAlreadyHasACostShowsItAsHistoric() {
-        var saved: ActivityDraft? = null
-        show(
-            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING, description = "Poda",
-                parcelIds = setOf(parcels[0].id), costMinor = 5_000),
-            onSave = { saved = it },
-        )
-        composeRule.onNodeWithTag("activity-cost").performScrollTo()
-        composeRule.onNodeWithText("Coste histórico vinculado (€)").assertExists()
-        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
-        composeRule.runOnIdle { assertEquals(5_000L, saved?.costMinor) }
-    }
-
     @Test fun taskSpecificFieldsStartFoldedAndRemainAvailable() {
         show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.PRUNING))
         composeRule.onNodeWithTag("activity-detail-more").performScrollTo().assertIsDisplayed()
