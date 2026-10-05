@@ -211,10 +211,14 @@ class OfflineFirstHarvestRepository(
             if (current.metadata.deletedAt != null) return@inTransaction AppResult.Success(Unit)
             val campaign = current.campaignId?.let { database.campaignDao().findById(it) }
             if (campaign == null || campaign.status !in RUNNING) return@inTransaction conflict("closed_campaign")
+            // #457: a live Pesada always has its day; a day with Pesadas is changed by moving or
+            // correcting them, never removed from under them.
+            if (database.deliveryDao().listLiveForHarvest(id).isNotEmpty()) {
+                return@inTransaction conflict(com.isivoltpro.maginaolivo.domain.harvest.HARVEST_HAS_DELIVERIES)
+            }
             val now = clock.nowInstant()
             database.harvestDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, id, OutboxOperation.DELETE, now)
-            jornadas.release(id, now)
             // Phase 19D: its jornales only describe this Jornada; they go with it.
             database.labourDao().listForHarvest(id).forEach { line ->
                 database.labourDao().upsertLabour(

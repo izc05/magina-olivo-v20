@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un día de recolección con pesadas no se elimina (#457).** Si el día tiene pesadas, ya no aparece
+  «Eliminar día de recolección»: «Este día existe porque tiene pesadas. Para cambiarlo, corrige o mueve
+  las pesadas.». Una pesada viva siempre conserva su día; al moverla de fecha, el día viejo se retira
+  solo si se queda sin datos. Un día sin pesadas se puede seguir eliminando como antes.
 - **El Diario ya no oculta los gastos de un trabajo (#478).** Un gasto ligado a un trabajo (a mano,
   de un documento o el coste antiguo del trabajo) sale en el Diario como fila propia, en su fecha, con
   «Relacionado con Tratamiento» (o el trabajo que sea), y se abre como el gasto que es. El Diario

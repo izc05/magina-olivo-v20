@@ -481,6 +481,8 @@ internal fun harvestErrorMessage(error: AppError): String = when (error) {
         "no_running_campaign" -> "Esta finca no tiene una campaña activa o en recolección"
         "closed_campaign" -> "La campaña está cerrada: este día de recolección ya es histórico y no se modifica"
         "archived_farm" -> "La finca está archivada"
+        com.isivoltpro.maginaolivo.domain.harvest.HARVEST_HAS_DELIVERIES ->
+            "Este día tiene pesadas. Muévelas, corrígelas o elimínalas antes de eliminar la jornada."
         else -> "No se pudo guardar por un conflicto con otros datos"
     }
     is AppError.Storage -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."
