@@ -45,3 +45,6 @@ interface HarvestRepository {
 
     suspend fun delete(id: UUID): AppResult<Unit>
 }
+
+/** #457 conflict code: the day still has Pesadas; they are moved or corrected before it can go. */
+const val HARVEST_HAS_DELIVERIES = "harvest_has_deliveries"

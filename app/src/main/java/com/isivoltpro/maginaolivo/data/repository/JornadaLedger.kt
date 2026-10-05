@@ -162,19 +162,6 @@ internal class JornadaLedger(
             database.documentDao().countLiveForOwner(AttachmentOwnerType.HARVEST.name, harvestId) > 0
     }
 
-    /** A removed Jornada releases its Pesadas: they stay, unlinked, with every figure intact. */
-    suspend fun release(harvestId: UUID, now: Instant) {
-        database.deliveryDao().listLiveForHarvest(harvestId).forEach { delivery ->
-            database.deliveryDao().upsert(
-                delivery.copy(
-                    harvestId = null,
-                    metadata = delivery.metadata.next(now),
-                ),
-            )
-            database.enqueueCollapsed(idGenerator, SyncEntityType.DELIVERY, delivery.id, OutboxOperation.UPDATE, now)
-        }
-    }
-
     private fun LocalMetadata.next(now: Instant) =
         copy(updatedAt = now, version = version + 1, syncStatus = SyncStatus.PENDING)
 }

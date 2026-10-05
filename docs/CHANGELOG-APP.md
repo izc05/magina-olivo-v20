@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un día de recolección con pesadas no se elimina (#457).** Si el día tiene pesadas, ya no aparece
+  «Eliminar día de recolección»: «Este día existe porque tiene pesadas. Para cambiarlo, corrige o mueve
+  las pesadas.». Una pesada viva siempre conserva su día; al moverla de fecha, el día viejo se retira
+  solo si se queda sin datos. Un día sin pesadas se puede seguir eliminando como antes.
 - **Una pesada no se mueve a después de su análisis de rendimiento (#455).** Al corregir la fecha de
   una pesada que ya tiene análisis fechado, no se puede poner un día posterior al análisis: «La nueva
   fecha de la pesada sería posterior a su análisis de rendimiento. Corrige primero la fecha del
