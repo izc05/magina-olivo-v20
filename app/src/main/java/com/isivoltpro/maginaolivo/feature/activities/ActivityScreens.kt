@@ -370,7 +370,7 @@ internal fun workTypes(planning: Boolean): List<ActivityType> =
             it == ActivityType.PHYTOSANITARY
     }
 
-private fun ActivityType.needsAffectedArea(): Boolean =
+internal fun ActivityType.needsAffectedArea(): Boolean =
     this == ActivityType.PHYTOSANITARY || this == ActivityType.FERTILIZATION || this == ActivityType.IRRIGATION
 
 private fun ActivityType.shortDescription(): String = when (this) {
