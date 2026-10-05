@@ -6,6 +6,10 @@ RUN npm ci
 FROM node:22-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG SITE_URL
+ARG ALLOW_INDEXING=false
+ENV SITE_URL=${SITE_URL} \
+    ALLOW_INDEXING=${ALLOW_INDEXING}
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

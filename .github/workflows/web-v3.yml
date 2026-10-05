@@ -41,11 +41,18 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Production build
+        env:
+          SITE_URL: https://magina-olivo.test
         run: npm run build
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: Playwright smoke
         run: npm run test:e2e
+      - name: Verify public indexing and private noindex configuration
+        env:
+          ALLOW_INDEXING: "true"
+          SITE_URL: https://magina-olivo.test
+        run: npm run test:e2e -- --grep "production SEO"
       - name: Build static Pages preview
         run: npm run build:pages
       - name: Verify static routes and noindex
@@ -86,10 +93,16 @@ jobs:
             mi/cuenta/index.html; do
             test -f "out/$route"
           done
+          test -f out/manifest.webmanifest
+          test -f out/brand/app-icon.png
+          jq -e '.start_url == "/magina-olivo-v20/" and .scope == "/magina-olivo-v20/"' out/manifest.webmanifest >/dev/null
+          grep -Fq 'property="og:image" content="https://izc05.github.io/magina-olivo-v20/images/v3/home-hero.webp"' out/index.html
           test -f out/robots.txt
           grep -q "Disallow: /" out/robots.txt
           grep -Eq 'name="robots" content="noindex, ?nofollow"' out/index.html
           grep -Eq 'name="robots" content="noindex, ?nofollow"' out/v3-review/index.html
+          grep -Eq 'name="robots" content="noindex, ?nofollow"' out/mi/index.html
+          if grep -q '<link rel="canonical"' out/mi/index.html; then exit 1; fi
           test -f out/v3-review/storyboard-concept.webp
           grep -q 'src="/magina-olivo-v20/v3-review/storyboard-concept.webp"' out/v3-review/index.html
       - name: Build and smoke Docker standalone
@@ -98,7 +111,10 @@ jobs:
           set -euo pipefail
           image="magina-olivo-web-v3:${GITHUB_SHA}"
           container="magina-web-v3-${GITHUB_RUN_ID}"
-          docker build -t "$image" .
+          docker build \
+            --build-arg SITE_URL=https://magina-olivo.test \
+            --build-arg ALLOW_INDEXING=false \
+            -t "$image" .
           docker run -d --rm --name "$container" -p 127.0.0.1:3210:3000 "$image"
           cleanup() { docker stop "$container" >/dev/null 2>&1 || true; }
           trap cleanup EXIT

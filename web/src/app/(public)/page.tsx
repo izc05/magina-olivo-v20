@@ -1,6 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import { publicMetadata } from "@/lib/public-metadata";
 import { staticAssetPath } from "@/lib/static-asset-path";
+
+export const metadata = publicMetadata(
+  "Tu olivar, claro y al día.",
+  "Gestión clara del olivar: fincas, campañas, cuaderno, tiempo y mercado.",
+  "/",
+);
 
 const features = [
   {
