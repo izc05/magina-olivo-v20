@@ -24,6 +24,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   muestra «Gastos confirmados» y «Este mes» con un total por moneda, y las categorías por moneda (los
   porcentajes solo dentro de cada una). El coste de un día de recolección guarda un total por moneda y
   no inventa un total único cuando hay varias. Nada se convierte.
+- **Una persona que ya no trabaja puede cobrar lo que se le debe (#481).** Si un trabajador deja de
+  estar activo, ya no se ofrece para nuevos jornales, pero sus jornales pendientes se pueden pagar (y los
+  pagos corregir) sin restaurarlo. Nunca se puede pagar más de lo pendiente.
 - **«Trabajo» en lugar de «actuación» en toda la app.** Pantallas, botones y avisos hablan de
   «Nuevo trabajo», «Editar trabajo», «Trabajo completado», «Trabajos con esta máquina», «Coste de un
   trabajo»… Solo cambia el texto; los datos y su sincronización no cambian. «Actuación realizada» se
