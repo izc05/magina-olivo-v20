@@ -172,6 +172,8 @@ internal fun expenseErrorMessage(error: AppError): String = when (error) {
         error.field == "campaignId" && error.code == "not_in_activity" -> "Ese trabajo pertenece a otra campaña."
         error.field == "parcelId" && error.code == "not_in_activity" -> "Ese trabajo no se hizo en la parcela elegida."
         error.field == "activityId" && error.code == "not_in_day" -> "Ese trabajo no es de esta jornada de recogida."
+        error.code == "activity_cost_locked" ->
+            "Este coste es de su trabajo. Para separarlo usa «Conservar como gasto independiente»."
         else -> when (error.field) {
         "parcelId" -> "La parcela elegida no pertenece a esa finca"
         "activityId" -> "La actuación elegida no pertenece a esa finca"

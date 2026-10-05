@@ -212,6 +212,22 @@ class ExpenseLedgerContractTest {
         assertEquals(19_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
     }
 
+    /** Codex #520: a plain edit never moves a work's cost to another work, nor drops the link. */
+    @Test
+    fun aWorkCostKeepsItsWorkInAPlainEdit() = runBlocking {
+        val id = activity(costMinor = 6_500)
+        val other = activity(costMinor = null, done = true)
+        val cost = expenses.observeForActivity(id).first().single()
+        listOf(null, other).forEach { target ->
+            val result = expenses.update(cost.id, draft(6_500, farmId = farmId, activityId = target, concept = "Abonado de primavera"))
+            assertTrue(result is AppResult.Failure && (result.error as? AppError.Validation)?.code == "activity_cost_locked")
+        }
+        ok(expenses.update(cost.id, draft(7_000, farmId = farmId, activityId = id, concept = "Abonado de primavera")))
+        assertEquals(id, expenses.observe(cost.id).first()!!.activityId)
+        assertEquals(ExpenseOrigin.ACTIVITY_COST, expenses.observe(cost.id).first()!!.origin)
+        assertEquals(7_000, expenses.observe(cost.id).first()!!.amountMinor)
+    }
+
     @Test
     fun onlyAWorkCostCanBeKeptOnItsOwn() = runBlocking {
         val manual = ok(expenses.create(draft(1_000, farmId = farmId)))

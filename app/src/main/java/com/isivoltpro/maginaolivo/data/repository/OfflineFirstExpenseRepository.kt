@@ -74,6 +74,10 @@ class OfflineFirstExpenseRepository(
         inTransaction("update_expense") {
             val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
             if (current.origin in DayCostLedger.CALCULATED) return@inTransaction AppResult.Failure(AppError.Conflict("calculated_cost"))
+            // Codex #520: a work's cost never moves to another work or loses it in a plain edit.
+            if (current.origin == ExpenseOrigin.ACTIVITY_COST.name && draft.activityId != current.activityId) {
+                return@inTransaction AppResult.Failure(AppError.Validation("activityId", "activity_cost_locked"))
+            }
             val now = clock.nowInstant()
             writer.rewrite(current, draft, now)
             costs.sync(current.harvestId, now)

@@ -178,6 +178,11 @@ fun ExpenseDetailScreen(
                 onFarmSelected = onFarmSelected,
                 onSave = onUpdate,
                 onCancel = { editorVisible = false; onEditorClosed() },
+                // Codex #520: a work's cost stays tied to that work in a plain edit; it is
+                // detached only through «Conservar como gasto independiente».
+                activityLocked = expense.origin == ExpenseOrigin.ACTIVITY_COST,
+                farmLocked = expense.origin == ExpenseOrigin.ACTIVITY_COST,
+                askCategory = false,
             )
         }
     }
