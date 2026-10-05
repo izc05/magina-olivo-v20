@@ -139,6 +139,32 @@ class EquipmentContractTest {
         assertEquals(AppError.Conflict("closed_campaign"), (result as AppResult.Failure).error)
     }
 
+    @Test
+    fun archivedMachineAlreadyUsedCanBeCorrectedWithoutRefreshingItsSnapshot() = runBlocking {
+        val machineId = ok(machines.create(MachineDraft(name = "Vibradora Pellenc", category = MachineCategory.SHAKER)))
+        val jornada = jornada()
+        ok(equipment.replaceForHarvest(jornada, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1, machineId = machineId))))
+        val before = equipment.observeForHarvest(jornada).first().single()
+        assertEquals("Vibradora Pellenc", before.label)
+
+        ok(machines.update(machineId, MachineDraft(name = "Pellenc renombrada", category = MachineCategory.SHAKER)))
+        ok(machines.archive(machineId))
+
+        ok(equipment.replaceForHarvest(jornada, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 2, machineId = machineId))))
+        val after = equipment.observeForHarvest(jornada).first().single()
+        assertEquals(before.id, after.id)
+        assertEquals("Vibradora Pellenc", after.label)
+        assertEquals(2, after.quantity)
+        assertEquals(machineId, after.machineId)
+
+        // Archived machines cannot be introduced into a different Jornada as a new relation.
+        val otherDay = jornada()
+        assertValidation(
+            "machineId",
+            equipment.replaceForHarvest(otherDay, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1, machineId = machineId))),
+        )
+    }
+
     private suspend fun jornada(): UUID =
         ok(harvests.create(HarvestDraft(farmId, day, 1_000_000, listOf(HarvestShareInput(north, 1_000_000)))))
 
