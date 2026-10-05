@@ -783,6 +783,7 @@ class OfflineFirstActivityRepository(
     }
 
     private companion object {
+        const val AREA_EPSILON_M2 = 0.01
         const val DEFAULT_CURRENCY = "EUR"
         val EDITABLE = setOf(ActivityStatus.DRAFT, ActivityStatus.PLANNED)
         val ARCHIVABLE = setOf(ActivityStatus.DRAFT, ActivityStatus.CANCELLED)
