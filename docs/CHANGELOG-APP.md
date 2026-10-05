@@ -25,6 +25,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   «Parcela 1 · archivada» o «· ahora en otra finca». Para un gasto nuevo, o al cambiar de parcela, solo
   se ofrecen las parcelas activas de esa finca. Solo vale para gastos ya confirmados: un borrador
   todavía no es histórico y, al confirmarlo, vuelve a comprobar que su parcela sigue activa (#456).
+- **Una persona que ya no trabaja puede cobrar lo que se le debe (#481).** Si un trabajador deja de
+  estar activo, ya no se ofrece para nuevos jornales, pero sus jornales pendientes se pueden pagar (y los
+  pagos corregir) sin restaurarlo. Nunca se puede pagar más de lo pendiente.
 - **«Trabajo» en lugar de «actuación» en toda la app.** Pantallas, botones y avisos hablan de
   «Nuevo trabajo», «Editar trabajo», «Trabajo completado», «Trabajos con esta máquina», «Coste de un
   trabajo»… Solo cambia el texto; los datos y su sincronización no cambian. «Actuación realizada» se

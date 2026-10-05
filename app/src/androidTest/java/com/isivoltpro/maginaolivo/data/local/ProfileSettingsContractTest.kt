@@ -127,6 +127,30 @@ class ProfileSettingsContractTest {
     }
 
     @Test
+    fun preferredCooperativeFromAnotherWorkspaceIsRejectedWithoutChangingProfile() = runBlocking {
+        val own = ok(organizations.create(OrganizationDraft("Coop. propia", setOf(OrganizationRole.COOPERATIVE))))
+        ok(profile.save(ProfileDraft("Bedmar", "Jaén", own)))
+        val profileRowsBefore = count("profile_settings")
+        val profileOutboxBefore = count("sync_outbox WHERE entity_type = 'PROFILE_SETTINGS'")
+
+        val otherWorkspaceId = UUID.randomUUID()
+        db.workspaceDao().upsert(
+            WorkspaceEntity(otherWorkspaceId, "Otro olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", LocalMetadata(now, now)),
+        )
+        val otherWorkspaces = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(otherWorkspaceId)
+        }
+        val foreignOrganizations = OfflineFirstOrganizationRepository(db, otherWorkspaces, FixedClock(now), RandomIds, TestDispatchers)
+        val foreign = ok(foreignOrganizations.create(OrganizationDraft("Coop. ajena", setOf(OrganizationRole.COOPERATIVE))))
+
+        val refused = profile.save(ProfileDraft("Bedmar", "Jaén", foreign))
+        assertEquals(AppError.Validation("organization", "context_mismatch"), (refused as AppResult.Failure).error)
+        assertEquals(own, profile.observe().first().preferredCooperative?.id)
+        assertEquals(profileRowsBefore, count("profile_settings"))
+        assertEquals(profileOutboxBefore, count("sync_outbox WHERE entity_type = 'PROFILE_SETTINGS'"))
+    }
+
+    @Test
     fun clearingTheProfileLeavesNothingBehind() = runBlocking {
         val cooperative = ok(organizations.create(OrganizationDraft("Coop. Santa Isabel", setOf(OrganizationRole.COOPERATIVE))))
         ok(profile.save(ProfileDraft("Bedmar", "Jaén", cooperative)))
