@@ -121,6 +121,9 @@ class OfflineFirstEquipmentRepository(
                 if (machine == null || machine.metadata.deletedAt != null || machine.workspaceId != harvest.workspaceId) {
                     throw EquipmentInvalid("machineId", "not_found")
                 }
+                // #446: a machine archived since stays on the days it already worked (its line keeps
+                // its recorded name and price); it is never added to a day as a new line.
+                if (key !in current && machine.status != "ACTIVE") throw EquipmentInvalid("machineId", "archived_machine")
                 machine.name
             }
             val label = machineName ?: line.label?.trim()?.takeIf { line.type == EquipmentType.OTHER }

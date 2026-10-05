@@ -20,6 +20,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Una máquina archivada sigue en los días en que trabajó (#446).** Al editar la maquinaria de un día,
+  la máquina archivada aparece como «Fendt 209 · Archivada» con su tipo, cantidad y precio de entonces,
+  y se conserva al guardar (o se quita si el agricultor lo decide). En un día nuevo no se puede añadir.
 - **«Trabajo» en lugar de «actuación» en toda la app.** Pantallas, botones y avisos hablan de
   «Nuevo trabajo», «Editar trabajo», «Trabajo completado», «Trabajos con esta máquina», «Coste de un
   trabajo»… Solo cambia el texto; los datos y su sincronización no cambian. «Actuación realizada» se

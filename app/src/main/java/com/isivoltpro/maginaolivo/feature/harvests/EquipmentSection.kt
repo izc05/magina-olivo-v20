@@ -48,6 +48,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
 import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import java.time.LocalDate
+import java.util.UUID
 
 internal fun EquipmentType.title(): String = when (this) {
     EquipmentType.TRACTOR -> "Tractor"
@@ -138,9 +139,17 @@ internal fun EquipmentSheet(
         return prices[key] ?: if (current.none { EquipmentRules.key(EquipmentDraftLine(it.type, it.quantity, it.label, it.machineId)) == key } && rates?.currency == currency)
             Money.editable(rates.equipmentDayMinor[line.type], currency) else ""
     }
+    // #446: a machine archived since still belongs to the days it worked: its line is part of the
+    // form with the type, name, quantity and price it was recorded with.
+    val historicalMachines = remember(current, machines) {
+        current.filter { line -> line.machineId != null && machines.none { it.id == line.machineId } }
+    }
+    fun machineLine(id: UUID): EquipmentDraftLine? =
+        machines.firstOrNull { it.id == id }?.let { EquipmentDraftLine(it.category.toEquipment(), 1, machineId = it.id) }
+            ?: historicalMachines.firstOrNull { it.machineId == id }?.let { EquipmentDraftLine(it.type, it.quantity, it.label, machineId = id) }
     val selected = counts.map { (type, n) -> EquipmentDraftLine(type, n) } +
         others.map { (name, n) -> EquipmentDraftLine(EquipmentType.OTHER, n, label = name) } +
-        chosenMachines.mapNotNull { id -> machines.firstOrNull { it.id == id } }.map { EquipmentDraftLine(it.category.toEquipment(), 1, machineId = it.id) }
+        chosenMachines.mapNotNull(::machineLine)
     val malformed = selected.any { line -> priceText(line).isNotBlank() && Money.parseMinor(priceText(line), currency) == null }
     val totalOverflow = runCatching {
         selected.fold(0L) { total, line ->
@@ -218,7 +227,7 @@ internal fun EquipmentSheet(
                 enabled = otherName.isNotBlank(),
             )
         }
-        if (machines.isNotEmpty()) {
+        if (machines.isNotEmpty() || historicalMachines.isNotEmpty()) {
             Text("Máquinas registradas (opcional, para su historial)", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                 machines.forEach { machine ->
@@ -229,10 +238,21 @@ internal fun EquipmentSheet(
                         modifier = Modifier.testTag("equipment-machine"),
                     )
                 }
+                historicalMachines.forEach { line ->
+                    val id = line.machineId!!
+                    FilterChip(
+                        selected = id in chosenMachines,
+                        onClick = { chosenMachines = if (id in chosenMachines) chosenMachines - id else chosenMachines + id },
+                        label = { Text("${line.label ?: "Máquina"} · Archivada") },
+                        modifier = Modifier.testTag("equipment-machine-archived"),
+                    )
+                }
             }
-            chosenMachines.mapNotNull { id -> machines.firstOrNull { it.id == id } }.forEach { machine ->
-                EquipmentPriceField(machine.name, 1, currency, priceText(EquipmentDraftLine(machine.category.toEquipment(), 1, machineId = machine.id)), "equipment-machine-${machine.id}") {
-                    prices = prices + ("machine:${machine.id}" to it)
+            chosenMachines.forEach { id ->
+                val line = machineLine(id) ?: return@forEach
+                val name = machines.firstOrNull { it.id == id }?.name ?: line.label ?: "Máquina"
+                EquipmentPriceField(name, line.quantity, currency, priceText(line), "equipment-machine-$id") {
+                    prices = prices + ("machine:$id" to it)
                 }
             }
         }
