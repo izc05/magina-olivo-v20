@@ -89,8 +89,9 @@ internal class ExpenseLedgerWriter(
             ExpenseOrigin.valueOf(current.origin),
             current.metadata,
             historicalSupplierId = current.supplierOrganizationId,
-            recorded = current,
         )
+        // #456: POST validates every live relation again. #476's historical Parcel exception only
+        // applies after the Expense is already POSTED; a DRAFT is not yet a historical fact.
         // Only the status changes: the supplier name and every snapshot stay as captured (#451).
         database.expenseDao().upsert(current.copy(status = ExpenseStatus.POSTED.name, metadata = current.metadata.next(now)))
         database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, current.id, OutboxOperation.UPDATE, now)
