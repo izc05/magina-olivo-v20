@@ -26,6 +26,7 @@ import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import com.isivoltpro.maginaolivo.data.reminder.allocateReminderRequestCode
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityChanges
 import com.isivoltpro.maginaolivo.domain.activity.ActivityCostRules
@@ -371,6 +372,9 @@ class OfflineFirstActivityRepository(
         val zoneId = zone()
         val startTime = dao.findPlannedStartTime(activityId)?.let(LocalTime::parse)
         val remaining = dao.listForOwner(OWNER_ACTIVITY, activityId).toMutableList()
+        // #573: a requestCode identifies a PendingIntent on this device. It must be unique across
+        // every Reminder row, including disabled/fired rows whose notification may still exist.
+        val usedNotificationIds = dao.listAllReminders().mapTo(mutableSetOf()) { it.localNotificationId }
         val previousDayTime = reminderPreferences.current().previousDayTime
         val rows = requests.map { request ->
             val trigger = ReminderRules.triggerAt(activity.activityDate, startTime, request, zoneId, previousDayTime)
@@ -386,6 +390,8 @@ class OfflineFirstActivityRepository(
                 }
             } else {
                 val id = idGenerator.newId()
+                val requestCode = allocateReminderRequestCode(id, usedNotificationIds)
+                usedNotificationIds += requestCode
                 ReminderEntity(
                     id = id,
                     workspaceId = activity.workspaceId,
@@ -393,7 +399,7 @@ class OfflineFirstActivityRepository(
                     ownerId = activityId,
                     triggerAt = trigger,
                     kind = request.kind.name,
-                    localNotificationId = id.hashCode(),
+                    localNotificationId = requestCode,
                     firedAt = passed(trigger, now),
                     metadata = pending(now),
                 )
