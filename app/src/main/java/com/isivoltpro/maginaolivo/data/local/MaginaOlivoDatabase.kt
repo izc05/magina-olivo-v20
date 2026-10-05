@@ -1,5 +1,7 @@
 package com.isivoltpro.maginaolivo.data.local
 
+private const val DATABASE_VERSION = 22
+
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
@@ -111,7 +113,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
         RecollectionRatesEntity::class,
         ProfileSettingsEntity::class,
     ],
-    version = 22,
+    version = DATABASE_VERSION,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -158,7 +160,7 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
 
     companion object {
         const val DATABASE_NAME = "magina-olivo.db"
-        const val VERSION = 15
+        const val VERSION = DATABASE_VERSION
 
         @Volatile
         private var instance: MaginaOlivoDatabase? = null
