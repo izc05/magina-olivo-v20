@@ -37,12 +37,17 @@ private data class Point2(val x: Double, val y: Double)
 
 private fun parsePolygon(array: JsonArray): List<List<Point2>> =
     array.mapNotNull { ringElement ->
-        if (!ringElement.isJsonArray) return@mapNotNull null
-        val ring = ringElement.asJsonArray.map { position ->
-            parsePosition(position) ?: return@mapNotNull null
-        }
-        ring.takeIf { it.size >= 4 }
+        if (!ringElement.isJsonArray) null else parseRing(ringElement.asJsonArray)
     }
+
+private fun parseRing(array: JsonArray): List<Point2>? {
+    if (array.size() < 4) return null
+    val points = ArrayList<Point2>(array.size())
+    for (element in array) {
+        points += parsePosition(element) ?: return null
+    }
+    return points
+}
 
 private fun parsePosition(element: JsonElement): Point2? {
     if (!element.isJsonArray) return null
