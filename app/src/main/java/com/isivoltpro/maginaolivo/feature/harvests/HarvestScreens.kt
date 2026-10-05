@@ -713,19 +713,28 @@ fun HarvestDetailScreen(
                             Modifier.fillMaxWidth().testTag("edit-harvest"),
                             enabled = state.context != null && !state.isSaving,
                         )
-                        if (state.pesadas.isEmpty()) {
+                        // #457: deleting is offered only once the day is known to have no Pesadas.
+                        val noPesadas = state.pesadasLoaded && !state.pesadasReadFailed && state.pesadas.isEmpty()
+                        if (noPesadas) {
                             MoSecondaryButton(
                                 "Eliminar día de recolección", { confirmDelete = true },
                                 Modifier.fillMaxWidth().testTag("delete-harvest"),
                                 enabled = !state.isSaving,
                             )
-                        } else {
+                        } else if (state.pesadas.isNotEmpty()) {
                             // #457: the day is there because it has Pesadas; it moves with them.
                             Text(
                                 "Este día existe porque tiene pesadas. Para cambiarlo, corrige o mueve las pesadas.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MoTextSecondary,
                                 modifier = Modifier.testTag("harvest-delete-held"),
+                            )
+                        } else if (state.pesadasReadFailed) {
+                            Text(
+                                "No pudimos leer las pesadas de este día: vuelve a abrirlo para poder eliminarlo.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.testTag("harvest-pesadas-unread"),
                             )
                         }
                     } else {
@@ -882,7 +891,8 @@ fun HarvestDetailScreen(
             )
         }
     }
-    if (confirmDelete) {
+    // A Pesada that arrives while the confirmation is open closes it (#457).
+    if (confirmDelete && state.pesadas.isEmpty()) {
         ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { confirmDelete = false }) {
             MoConfirmationSheet(
                 title = "Eliminar día de recolección",

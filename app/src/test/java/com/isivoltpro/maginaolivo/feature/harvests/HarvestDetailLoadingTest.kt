@@ -1,6 +1,8 @@
 package com.isivoltpro.maginaolivo.feature.harvests
 
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.domain.delivery.Delivery
+import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
@@ -25,6 +27,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -70,6 +73,37 @@ class HarvestDetailLoadingTest {
         crewArrives.complete(Unit)
         advanceUntilIdle()
         assertFalse("the day stays loaded after the previous crew arrives", viewModel.state.value.isLoading)
+    }
+
+    /** #457 (Codex): deleting the day is not offered before its Pesadas are known, nor after a failed read. */
+    @Test fun thePesadasAreKnownBeforeTheDayCanBeDeleted() = runTest(dispatcher) {
+        val pesadasArrive = CompletableDeferred<Unit>()
+        val deliveries = object : DeliveryRepository by unused() {
+            override fun observeAll(): Flow<List<Delivery>> = flow {
+                pesadasArrive.await()
+                emit(emptyList())
+            }
+        }
+        val viewModel = HarvestDetailViewModel(harvestId, quietHarvests(), FixedClock, deliveries = deliveries)
+        advanceUntilIdle()
+        assertFalse("not known yet", viewModel.state.value.pesadasLoaded)
+
+        pesadasArrive.complete(Unit)
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.pesadasLoaded)
+        assertFalse(viewModel.state.value.pesadasReadFailed)
+
+        val failing = object : DeliveryRepository by unused() {
+            override fun observeAll(): Flow<List<Delivery>> = flow { error("disk") }
+        }
+        val unread = HarvestDetailViewModel(harvestId, quietHarvests(), FixedClock, deliveries = failing)
+        advanceUntilIdle()
+        assertTrue("a failed read is never «no Pesadas»", unread.state.value.pesadasReadFailed)
+    }
+
+    private fun quietHarvests(): HarvestRepository = object : HarvestRepository by unused() {
+        override fun observe(id: UUID): Flow<Harvest?> = flowOf(null)
+        override fun observeContexts(): Flow<List<HarvestContext>> = flowOf(emptyList())
     }
 
     private object FixedClock : AppClock {
