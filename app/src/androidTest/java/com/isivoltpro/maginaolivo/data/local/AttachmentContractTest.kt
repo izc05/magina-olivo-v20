@@ -229,6 +229,20 @@ class AttachmentContractTest {
         )
     }
 
+    @Test
+    fun archivedOwnerKeepsItsHistoricalAttachmentsReadableInsideTheSameWorkspace() = runBlocking {
+        val id = attached(parcel, source("historica.jpg", jpeg()))
+        val row = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(
+            row.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED),
+        )
+
+        assertEquals(id, repository.observeForOwner(parcel).first().single().id)
+        assertEquals(id, repository.observe(id).first()!!.id)
+        // Archive blocks adding another file; it does not erase or hide the historical one.
+        assertValidation("archived_owner", repository.attach(parcel, source("nueva.jpg", jpeg())))
+    }
+
     // -------------------------------------------------------------- rejection
 
     @Test
