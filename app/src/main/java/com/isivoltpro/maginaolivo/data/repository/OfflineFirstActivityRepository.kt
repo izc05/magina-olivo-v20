@@ -268,7 +268,10 @@ class OfflineFirstActivityRepository(
                 ),
             )
             replaceDetail(id, current.workspaceId, changes.detail, now)
-            replaceTargets(id, changes.parcelIds, changes.parcelAreasM2, now)
+            val areas = changes.parcelAreasM2 ?: database.activityDao().listTargets(id)
+                .filter { it.parcelId in changes.parcelIds }
+                .associate { it.parcelId to it.areaAffectedM2 }
+            replaceTargets(id, changes.parcelIds, areas, now)
             replaceMachines(id, current.workspaceId, changes.machines)
             replacePlanning(id, current.workspaceId, changes.planning, now)
             replaceReminders(id, changes.reminders, now)
