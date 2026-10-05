@@ -224,6 +224,50 @@ class ExpenseLedgerContractTest {
         }
     }
 
+    /** #433: the cost of a work follows that work: its Farm, its Campaign (or none), one of its Parcels. */
+    @Test
+    fun anExpenseNeverMixesAWorkWithAnIncompatibleCampaignParcelOrFarm() = runBlocking {
+        val meta = LocalMetadata(now, now)
+        db.campaignDao().upsert(
+            CampaignEntity(campaignId, workspaceId, farmId, "2025/26", date.minusMonths(6), status = CampaignStatus.HARVEST, metadata = meta),
+        )
+        val otherCampaign = UUID.randomUUID()
+        db.campaignDao().upsert(
+            CampaignEntity(otherCampaign, workspaceId, farmId, "2024/25", date.minusMonths(18), status = CampaignStatus.CLOSED, metadata = meta),
+        )
+        val parcelB = UUID.randomUUID()
+        db.parcelDao().upsert(ParcelEntity(parcelB, workspaceId, "Parcela B", source = "MANUAL", metadata = meta))
+        db.parcelDao().upsertMembership(FarmParcelMembershipEntity(UUID.randomUUID(), workspaceId, farmId, parcelB, now, metadata = meta))
+        val general = activity(costMinor = null) // Parcela A, no Campaign
+
+        // 1. General work + the running recolección → refused; 2. kept general → fine.
+        assertValidation("campaignId", expenses.create(draft(1_000, farmId = farmId, activityId = general).copy(campaignId = campaignId)))
+        val kept = ok(expenses.create(draft(1_000, farmId = farmId, activityId = general)))
+        assertNull(expenses.observe(kept).first()!!.campaignId)
+
+        // 3. Work of Campaign X + Expense X → fine; without a Campaign it takes X; 4. Campaign Y → refused.
+        val ofCampaign = ok(
+            activities.create(NewActivity(farmId, campaignId, ActivityType.PRUNING, date, "Poda de recogida", setOf(parcelA))),
+        )
+        ok(expenses.create(draft(1_000, farmId = farmId, activityId = ofCampaign).copy(campaignId = campaignId)))
+        val derived = ok(expenses.create(draft(1_000, farmId = farmId, activityId = ofCampaign)))
+        assertEquals(campaignId, expenses.observe(derived).first()!!.campaignId)
+        assertValidation("campaignId", expenses.create(draft(1_000, farmId = farmId, activityId = ofCampaign).copy(campaignId = otherCampaign)))
+
+        // 5. A Parcel the work was not done on → refused; 6. one it was → fine.
+        assertValidation("parcelId", expenses.create(draft(1_000, farmId = farmId, parcelId = parcelB, activityId = general)))
+        ok(expenses.create(draft(1_000, farmId = farmId, parcelId = parcelA, activityId = general)))
+
+        // 9./10./12. The Farm comes from the work or the Parcel; a child relation never lacks it.
+        val fromWork = ok(expenses.create(draft(1_000, activityId = general)))
+        assertEquals(farmId, expenses.observe(fromWork).first()!!.farmId)
+        val fromParcel = ok(expenses.create(draft(1_000, parcelId = parcelA)))
+        assertEquals(farmId, expenses.observe(fromParcel).first()!!.farmId)
+        // 11. Parcel and work of different Farms → refused.
+        assertValidation("parcelId", expenses.create(draft(1_000, parcelId = otherParcel, activityId = general)))
+        assertValidation("activityId", expenses.create(draft(1_000, farmId = otherFarmId, activityId = general)))
+    }
+
     /**
      * Owner decision 2026-10-03 + CR-012 P1: Cuaderno → Gasto starts on «Gasto de recogida»,
      * «Gasto general» stays outside, a ticket from «Gastos de recogida» keeps Farm + Campaign

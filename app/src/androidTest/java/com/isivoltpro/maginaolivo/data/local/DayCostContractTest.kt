@@ -401,6 +401,45 @@ class DayCostContractTest {
         assertEquals(30_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
     }
 
+    /** Codex #477 (#433): a same-day cost tied to work joins a Jornada only when that work is of its Campaign. */
+    @Test
+    fun aCostOfWorkJoinsAJornadaOnlyWhenTheWorkIsOfThatCampaign() = runBlocking {
+        val dayId = ok(harvests.openJornada(farmId, day))
+        val otherCampaign = UUID.randomUUID()
+        db.campaignDao().upsert(
+            CampaignEntity(otherCampaign, workspaceId, farmId, "2025/26", LocalDate.parse("2025-10-01"), null, CampaignStatus.ACTIVE, metadata = LocalMetadata(now, now)),
+        )
+        val general = work(campaign = null)
+        val ofThisCampaign = work(campaign = campaignId)
+        val ofAnother = work(campaign = otherCampaign)
+
+        // General work and work of another Campaign are refused, and nothing changes.
+        listOf(general, ofAnother).forEach { activityId ->
+            val id = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 12_000).copy(harvestId = null, activityId = activityId)))
+            val before = db.expenseDao().findById(id)!!
+            val outboxBefore = outboxCount()
+            assertEquals(AppError.Validation("activityId", "not_in_day"), (costs.linkToDay(id, dayId) as AppResult.Failure).error)
+            assertEquals(before, db.expenseDao().findById(id))
+            assertEquals(outboxBefore, outboxCount())
+        }
+        // Work of this Jornada's Campaign is linked.
+        val linked = ok(expenses.create(cost(dayId, JornadaExpenseKind.TRANSPORT, 3_000).copy(harvestId = null, activityId = ofThisCampaign)))
+        ok(costs.linkToDay(linked, dayId))
+        val after = db.expenseDao().findById(linked)!!
+        assertEquals(dayId, after.harvestId)
+        assertEquals(campaignId, after.campaignId)
+    }
+
+    private suspend fun work(campaign: UUID?): UUID = UUID.randomUUID().also { id ->
+        db.activityDao().upsert(
+            com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity(
+                id, workspaceId, campaignId = campaign, farmId = farmId, activityDate = day, type = "PRUNING",
+                status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED, description = "Poda",
+                metadata = LocalMetadata(now, now),
+            ),
+        )
+    }
+
     @Test
     fun anUnlinkedHandTypedCostOfTheSameDateIsShownAndOnlyTheFarmerLinksIt() = runBlocking {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))

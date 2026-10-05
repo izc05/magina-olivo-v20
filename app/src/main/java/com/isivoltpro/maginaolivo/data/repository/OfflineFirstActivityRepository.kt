@@ -401,7 +401,8 @@ class OfflineFirstActivityRepository(
             supplierOrganizationId = existing?.supplierOrganizationId,
             supplierText = existing?.provider,
             farmId = activity.farmId,
-            campaignId = activity.campaignId ?: existing?.campaignId,
+            // #433: the cost of a work follows the work's Campaign; general work stays general.
+            campaignId = activity.campaignId,
             activityId = activityId,
             notes = existing?.notes,
         )
