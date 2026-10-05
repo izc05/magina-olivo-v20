@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Los gastos de una campaña ya no ocultan otras monedas (#450, campaña).** El detalle de la campaña
+  muestra cada moneda por separado («800,00 € · 300,00 GBP», sin convertir); una campaña con gastos solo
+  en otra moneda ya no dice «Aún no hay gastos». El resumen interno de la campaña guarda un total por
+  moneda y el coste/kg global sigue sin calcularse cuando hay varias.
 - **«Trabajo» en lugar de «actuación» en toda la app.** Pantallas, botones y avisos hablan de
   «Nuevo trabajo», «Editar trabajo», «Trabajo completado», «Trabajos con esta máquina», «Coste de un
   trabajo»… Solo cambia el texto; los datos y su sincronización no cambian. «Actuación realizada» se
