@@ -79,6 +79,13 @@ class OfflineFirstProfileRepository(
                         if (organization == null || organization.metadata.deletedAt != null) {
                             return@withTransaction AppResult.Failure(AppError.NotFound("organization"))
                         }
+                        // #577: Profile is a workspace-owned aggregate. A valid UUID from another
+                        // workspace must never become a cross-tenant preferred cooperative.
+                        if (organization.workspaceId != workspaceId) {
+                            return@withTransaction AppResult.Failure(
+                                AppError.Validation("organization", "context_mismatch"),
+                            )
+                        }
                         val roles = database.organizationDao().listRoles(id)
                         if (PREFERRED_COOPERATIVE_ROLES.none { it.name in roles }) {
                             return@withTransaction AppResult.Failure(AppError.Validation("organization", "not_cooperative"))
