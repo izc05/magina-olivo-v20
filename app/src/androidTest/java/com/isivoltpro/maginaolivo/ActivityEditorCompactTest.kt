@@ -107,6 +107,35 @@ class ActivityEditorCompactTest {
         }
     }
 
+    @Test fun aTreatmentDoesNotAssumeTheWholeParcelUntilTheFarmerConfirmsIt() {
+        var saved: ActivityDraft? = null
+        val option = ActivityParcelOption(UUID.randomUUID(), "Olivar Norte", 20_000.0)
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 10, 5), type = ActivityType.PHYTOSANITARY),
+            options = listOf(option), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("activity-parcel-area").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("activity-parcel-use-full-area").assertIsDisplayed()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle {
+            assertEquals(null, saved?.parcelAreasM2?.get(option.id))
+        }
+    }
+
+    @Test fun useAllExplicitlyConfirmsTheKnownParcelSurface() {
+        var saved: ActivityDraft? = null
+        val option = ActivityParcelOption(UUID.randomUUID(), "Olivar Norte", 20_000.0)
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 10, 5), type = ActivityType.PHYTOSANITARY),
+            options = listOf(option), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("activity-parcel-use-full-area").performScrollTo().performClick()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle {
+            assertEquals(20_000.0, saved?.parcelAreasM2?.get(option.id)!!, 0.001)
+        }
+    }
+
     /** #414: Observación says nothing by itself, so it still asks for a description. */
     @Test fun anObservationStillAsksForWords() {
         var saved: ActivityDraft? = null
