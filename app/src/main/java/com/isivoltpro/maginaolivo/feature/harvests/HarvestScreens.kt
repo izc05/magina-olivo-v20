@@ -685,7 +685,7 @@ fun HarvestDetailScreen(
             val harvest = state.harvest
             when {
                 state.isLoading -> CircularProgressIndicator()
-                harvest == null -> MoErrorState("Día de recolección no disponible", state.error ?: "No está guardada en este dispositivo.")
+                harvest == null -> MoErrorState("Día de recolección no disponible", state.error ?: "No está guardado en este dispositivo.")
                 else -> {
                     HarvestSummaryBlock(harvest, state.pesadas.size)
                     JornadaPesadas(state.pesadas, harvest.editable, onAddPesada, onPesadaSelected)

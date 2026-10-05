@@ -173,6 +173,8 @@ class OfflineFirstLabourRepository(
             database.labourDao().upsertLabour(listOf(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now))))
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, entryId, OutboxOperation.DELETE, now)
             costs.sync(current.harvestId, now)
+            // #502: an automatic day left with nothing goes with its last jornal.
+            JornadaLedger(database, idGenerator).reconcileAutomatic(current.harvestId, now)
             AppResult.Success(Unit)
         }
 

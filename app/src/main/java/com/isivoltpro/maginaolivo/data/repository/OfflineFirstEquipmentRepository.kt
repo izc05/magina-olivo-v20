@@ -153,6 +153,8 @@ class OfflineFirstEquipmentRepository(
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_EQUIPMENT, row.id, operation, now)
         }
         costs.sync(harvestId, now)
+        // #502: an automatic day left with nothing goes with its last machine.
+        JornadaLedger(database, idGenerator).reconcileAutomatic(harvestId, now)
     }
 
     private fun keyOf(row: HarvestEquipmentEntity): String =

@@ -24,6 +24,8 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstLabourRepository
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentPriceSnapshot
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestDraft
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestShareInput
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
@@ -142,6 +144,35 @@ class DayCostContractTest {
         assertEquals(35_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
     }
 
+    /** #502: an automatic day goes with its last jornal, machine or Gasto; a hand-recorded one never does. */
+    @Test
+    fun anAutomaticDayGoesWithItsLastChildAndAHandRecordedOneStays() = runBlocking {
+        // Last jornal.
+        val byLabour = ok(harvests.openJornada(farmId, day))
+        named(byLabour, 1)
+        ok(labour.remove(labour.observeForHarvest(byLabour).first().single().id))
+        assertNull(harvests.observe(byLabour).first())
+
+        // Last Gasto.
+        val byExpense = ok(harvests.openJornada(farmId, day.minusDays(1)))
+        val diesel = ok(expenses.create(cost(byExpense, JornadaExpenseKind.DIESEL, 3_000).copy(expenseDate = day.minusDays(1))))
+        ok(expenses.delete(diesel))
+        assertNull(harvests.observe(byExpense).first())
+
+        // A day that still holds something stays.
+        val kept = ok(harvests.openJornada(farmId, day.minusDays(2)))
+        ok(expenses.create(cost(kept, JornadaExpenseKind.DIESEL, 3_000).copy(expenseDate = day.minusDays(2))))
+        named(kept, 1)
+        ok(labour.remove(labour.observeForHarvest(kept).first().single().id))
+        assertEquals(kept, harvests.observe(kept).first()!!.id)
+
+        // A Jornada recorded by hand keeps its typed kilos when its last Gasto goes.
+        val byHand = ok(harvests.create(HarvestDraft(farmId, day.minusDays(3), 5_000_000, listOf(HarvestShareInput(north, null)))))
+        val handCost = ok(expenses.create(cost(byHand, JornadaExpenseKind.TRANSPORT, 2_000).copy(expenseDate = day.minusDays(3))))
+        ok(expenses.delete(handCost))
+        assertEquals(5_000_000L, harvests.observe(byHand).first()!!.totalGrams)
+    }
+
     @Test
     fun machinerySnapshotsPostOnceAndUsualChangesDoNotRepriceThem() = runBlocking {
         val dayId = ok(harvests.openJornada(farmId, day))
@@ -205,14 +236,17 @@ class DayCostContractTest {
         assertNull(calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT))
 
         ok(equipment.replaceForHarvest(dayId, emptyList()))
-        ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1))))
-        assertEquals(7_000L, equipment.observeForHarvest(dayId).first().single().appliedPrice!!.unitPriceMinor)
-        assertEquals(7_000L, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
+        // #502: with nothing left, the automatic day went with its last machine; the next one opens it again.
+        assertNull(harvests.observe(dayId).first())
+        val again = ok(harvests.openJornada(farmId, day))
+        ok(equipment.replaceForHarvest(again, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1))))
+        assertEquals(7_000L, equipment.observeForHarvest(again).first().single().appliedPrice!!.unitPriceMinor)
+        assertEquals(7_000L, calculated(again, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
 
-        ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1,
+        ok(equipment.replaceForHarvest(again, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1,
             appliedPrice = EquipmentPriceSnapshot(0, "EUR", day), captureUsualPriceWhenMissing = false))))
-        assertEquals(0L, equipment.observeForHarvest(dayId).first().single().appliedPrice!!.unitPriceMinor)
-        assertEquals(0L, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
+        assertEquals(0L, equipment.observeForHarvest(again).first().single().appliedPrice!!.unitPriceMinor)
+        assertEquals(0L, calculated(again, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
     }
 
     @Test
