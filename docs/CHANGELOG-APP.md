@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Una pesada no se mueve a después de su análisis de rendimiento (#455).** Al corregir la fecha de
+  una pesada que ya tiene análisis fechado, no se puede poner un día posterior al análisis: «La nueva
+  fecha de la pesada sería posterior a su análisis de rendimiento. Corrige primero la fecha del
+  análisis o mantén la fecha de la pesada.». Un análisis sin fecha no lo impide y el análisis nunca se
+  modifica.
 - **Corregir una pesada no cambia el nombre de parcela con el que se guardó (#454).** Editar notas,
   vale o kilos de una pesada conserva sus filas de parcela tal como estaban (mismo identificador y
   mismo nombre de entonces, aunque la parcela se haya renombrado después). Solo una parcela añadida en

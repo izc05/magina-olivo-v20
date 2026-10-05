@@ -76,6 +76,14 @@ internal class DeliveryWriter(
         if (current.farmId != draft.farmId) throw InvalidDelivery("farmId", "cannot_change")
         val campaign = runningCampaign(current)
         checkDate(draft, campaign)
+        // #455: a Pesada is never dated after its own yield analysis; an analysis without a
+        // date asks nothing.
+        if (draft.deliveryDate != current.deliveryDate) {
+            val analysisDate = database.deliveryDao().findLiveAnalysis(current.id)?.analysisDate
+            if (analysisDate != null && analysisDate.isBefore(draft.deliveryDate)) {
+                throw InvalidDelivery("deliveryDate", "after_analysis")
+            }
+        }
         // CR-010 (note 2): a Pesada whose date is kept stays in its day (a link to a hand-recorded
         // Jornada made before CR-010 included); a new date moves it to that date's automatic day.
         val keptDay = current.harvestId?.takeIf { draft.deliveryDate == current.deliveryDate && liveDay(it) }
