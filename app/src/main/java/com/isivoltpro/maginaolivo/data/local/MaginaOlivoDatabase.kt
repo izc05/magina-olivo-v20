@@ -1,7 +1,5 @@
 package com.isivoltpro.maginaolivo.data.local
 
-private const val DATABASE_VERSION = 22
-
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
@@ -67,6 +65,8 @@ import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.entity.UserProfileEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WeatherCacheEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+
+private const val DATABASE_VERSION = 22
 
 @Database(
     entities = [
