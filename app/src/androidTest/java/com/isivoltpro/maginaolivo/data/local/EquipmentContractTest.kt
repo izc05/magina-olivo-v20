@@ -145,15 +145,21 @@ class EquipmentContractTest {
         val fendt = ok(machines.create(MachineDraft(name = "Fendt 209", category = MachineCategory.TRACTOR)))
         val jornada = jornada()
         ok(equipment.replaceForHarvest(jornada, listOf(EquipmentDraftLine(EquipmentType.TRACTOR, 1, machineId = fendt))))
+        val snapshot = equipment.observeForHarvest(jornada).first().single()
+        // The live catalogue may change afterwards; the Jornada remains what was actually recorded.
+        ok(machines.update(fendt, MachineDraft(name = "Fendt 209 nuevo", category = MachineCategory.TRACTOR)))
         ok(machines.archive(fendt))
 
-        // Editing the day (another line added) keeps the archived machine's line, name and identity.
+        // Editing the day keeps the archived machine's historical line, name, id and price.
         ok(equipment.replaceForHarvest(jornada, listOf(
-            EquipmentDraftLine(EquipmentType.TRACTOR, 1, label = "Fendt 209", machineId = fendt),
+            EquipmentDraftLine(EquipmentType.TRACTOR, 2, label = "Fendt 209", machineId = fendt),
             EquipmentDraftLine(EquipmentType.SHAKER, 2),
         )))
         val kept = equipment.observeForHarvest(jornada).first()
-        assertEquals("Fendt 209", kept.single { it.machineId == fendt }.label)
+        val historical = kept.single { it.machineId == fendt }
+        assertEquals(snapshot.id, historical.id)
+        assertEquals("Fendt 209", historical.label)
+        assertEquals(2, historical.quantity)
         assertEquals(2, kept.size)
 
         // On another day it is a new line: refused.
