@@ -24,6 +24,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   «Eliminar día de recolección»: «Este día existe porque tiene pesadas. Para cambiarlo, corrige o mueve
   las pesadas.». Una pesada viva siempre conserva su día; al moverla de fecha, el día viejo se retira
   solo si se queda sin datos. Un día sin pesadas se puede seguir eliminando como antes.
+- **Corregir una pesada no cambia el nombre de parcela con el que se guardó (#454).** Editar notas,
+  vale o kilos de una pesada conserva sus filas de parcela tal como estaban (mismo identificador y
+  mismo nombre de entonces, aunque la parcela se haya renombrado después). Solo una parcela añadida en
+  la corrección toma su nombre actual, y quitar una parcela borra únicamente la suya.
 - **El Diario ya no oculta los gastos de un trabajo (#478).** Un gasto ligado a un trabajo (a mano,
   de un documento o el coste antiguo del trabajo) sale en el Diario como fila propia, en su fecha, con
   «Relacionado con Tratamiento» (o el trabajo que sea), y se abre como el gasto que es. El Diario
