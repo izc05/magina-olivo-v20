@@ -258,6 +258,13 @@ class OfflineFirstActivityRepository(
             if (current.status == ActivityStatus.PLANNED && changes.parcelIds.isEmpty()) {
                 return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
             }
+            // #441: a Parcel named by a Gasto linked to this work cannot disappear from the work.
+            // Adding Parcels, changing surface or editing the Activity never moves the Gasto.
+            val currentTargets = database.activityDao().listTargets(id)
+            val dropped = currentTargets.map { it.parcelId }.toSet() - changes.parcelIds
+            if (dropped.isNotEmpty() && database.expenseDao().listForActivity(id).any { it.parcelId in dropped }) {
+                return@mutate conflict(ActivityCostRules.PARCEL_HAS_EXPENSES)
+            }
             database.activityDao().upsert(
                 current.copy(
                     type = changes.type.name,
@@ -268,7 +275,7 @@ class OfflineFirstActivityRepository(
                 ),
             )
             replaceDetail(id, current.workspaceId, changes.detail, now)
-            val areas = changes.parcelAreasM2 ?: database.activityDao().listTargets(id)
+            val areas = changes.parcelAreasM2 ?: currentTargets
                 .filter { it.parcelId in changes.parcelIds }
                 .associate { it.parcelId to it.areaAffectedM2 }
             replaceTargets(id, changes.parcelIds, areas, now)
@@ -447,10 +454,10 @@ class OfflineFirstActivityRepository(
         val activity = database.activityDao().findById(activityId) ?: error("activity missing")
         val farmId = activity.farmId ?: throw InvalidSelection("activity_without_farm")
         if (parcelAreasM2.keys.any { it !in parcelIds }) throw InvalidParcelArea("area_for_unselected_parcel")
-        // A later change to Parcel.managedAreaM2 never invalidates an historical Activity target.
-        // The current surface is a guard only for newly introduced/changed values.
-        val existingAreas = database.activityDao().listTargets(activityId).associate { it.parcelId to it.areaAffectedM2 }
-        val rows = parcelIds.sortedBy(UUID::toString).map { parcelId ->
+
+        val dao = database.activityDao()
+        val existingByParcel = dao.listTargets(activityId).associateBy { it.parcelId }
+        val keptOrAdded = parcelIds.sortedBy(UUID::toString).map { parcelId ->
             val parcel = database.parcelDao().findById(parcelId) ?: throw InvalidSelection("parcel_not_found")
             val membership = database.parcelDao().findCurrentMembership(parcelId)
             if (membership?.farmId != farmId || parcel.status != RecordStatus.ACTIVE ||
@@ -458,32 +465,55 @@ class OfflineFirstActivityRepository(
             ) {
                 throw InvalidSelection("parcel_not_in_farm")
             }
+
             val affected = parcelAreasM2[parcelId]
             if (affected != null && (!affected.isFinite() || affected <= 0.0)) {
                 throw InvalidParcelArea("invalid_area")
             }
-            val historicalArea = existingAreas[parcelId]
-            val changesHistoricalArea =
-                historicalArea == null || affected == null || kotlin.math.abs(affected - historicalArea) > AREA_EPSILON_M2
+
+            val existing = existingByParcel[parcelId]
+            val changesHistoricalArea = existing == null || !sameArea(existing.areaAffectedM2, affected)
             if (affected != null && parcel.managedAreaM2 != null &&
                 affected > parcel.managedAreaM2 + AREA_EPSILON_M2 && changesHistoricalArea
             ) {
                 throw InvalidParcelArea("area_exceeds_parcel")
             }
-            ActivityParcelTargetEntity(
-                id = idGenerator.newId(),
-                workspaceId = activity.workspaceId,
-                activityId = activityId,
-                parcelId = parcel.id,
-                parcelNameAtTarget = parcel.displayName,
-                // #546: never assert that the whole Parcel was affected just because it was selected.
-                areaAffectedM2 = affected,
-                metadata = pending(now),
-            )
+
+            if (existing == null) {
+                ActivityParcelTargetEntity(
+                    id = idGenerator.newId(),
+                    workspaceId = activity.workspaceId,
+                    activityId = activityId,
+                    parcelId = parcel.id,
+                    parcelNameAtTarget = parcel.displayName,
+                    // #546: selecting a Parcel never asserts that all of it was affected.
+                    areaAffectedM2 = affected,
+                    metadata = pending(now),
+                )
+            } else if (sameArea(existing.areaAffectedM2, affected)) {
+                // #444: editing another field never refreshes a historical Parcel snapshot or child id.
+                existing
+            } else {
+                existing.copy(
+                    areaAffectedM2 = affected,
+                    metadata = existing.metadata.next(now),
+                )
+            }
         }
-        database.activityDao().deleteTargets(activityId)
-        if (rows.isNotEmpty()) database.activityDao().upsertTargets(rows)
+
+        // Remove only relations the farmer actually dropped. Every surviving target keeps its
+        // stable child id, snapshot name and notes.
+        (existingByParcel.keys - parcelIds).forEach { parcelId ->
+            dao.deleteTarget(activityId, parcelId)
+        }
+        if (keptOrAdded.isNotEmpty()) dao.upsertTargets(keptOrAdded)
     }
+
+    private fun sameArea(left: Double?, right: Double?): Boolean =
+        when {
+            left == null || right == null -> left == right
+            else -> kotlin.math.abs(left - right) <= AREA_EPSILON_M2
+        }
 
     private suspend fun enqueue(id: UUID, requested: OutboxOperation, now: Instant) {
         val existing = database.syncOutboxDao().listForEntity(SyncEntityType.ACTIVITY, id)
