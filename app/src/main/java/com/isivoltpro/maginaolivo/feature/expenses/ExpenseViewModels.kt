@@ -452,6 +452,9 @@ class ExpenseDetailViewModel(
     /** The one human step that turns a reviewed draft into counted money. */
     fun post() = mutate("Gasto confirmado") { expenses.post(expenseId) }
 
+    /** #429: the cost of a work no longer done really was spent: it stays, as a Gasto of its own. */
+    fun keepAsIndependent() = mutate("Conservado como gasto independiente") { expenses.keepAsIndependent(expenseId) }
+
     fun delete() {
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null)

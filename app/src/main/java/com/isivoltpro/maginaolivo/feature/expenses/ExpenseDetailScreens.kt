@@ -71,6 +71,7 @@ fun ExpenseDetailRoute(
         onUpdate = viewModel::update,
         onPost = viewModel::post,
         onDelete = viewModel::delete,
+        onKeepIndependent = viewModel::keepAsIndependent,
         onFarmSelected = viewModel::selectFarm,
         onEditorClosed = viewModel::clearFormErrors,
         attachmentContent = {
@@ -93,6 +94,7 @@ fun ExpenseDetailScreen(
     onDelete: () -> Unit,
     onFarmSelected: (UUID?) -> Unit,
     onEditorClosed: () -> Unit = {},
+    onKeepIndependent: () -> Unit = {},
     attachmentContent: @Composable () -> Unit = {},
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
@@ -135,6 +137,21 @@ fun ExpenseDetailScreen(
                             enabled = !state.isSaving,
                         )
                     }
+                    if (expense.origin == ExpenseOrigin.ACTIVITY_COST) {
+                        // #429: the two explicit ways out for a cost typed on a work before 1.0.
+                        Text(
+                            "Este coste se anotó en un trabajo. Si ese trabajo ya no se da por hecho: consérvalo " +
+                                "como gasto independiente si el dinero se gastó, o elimínalo para dejar de contabilizarlo.",
+                            color = MoTextSecondary,
+                            modifier = Modifier.testTag("expense-activity-cost-note"),
+                        )
+                        MoSecondaryButton(
+                            "Conservar como gasto independiente",
+                            { confirmation = "keep" },
+                            Modifier.fillMaxWidth().testTag("keep-expense-independent"),
+                            enabled = !state.isSaving,
+                        )
+                    }
                     if (!calculated) {
                         MoSecondaryButton("Editar gasto", { editorVisible = true }, Modifier.fillMaxWidth().testTag("edit-expense"))
                         MoSecondaryButton("Eliminar gasto", { confirmation = "delete" }, Modifier.fillMaxWidth().testTag("delete-expense"))
@@ -167,16 +184,28 @@ fun ExpenseDetailScreen(
     confirmation?.let { action ->
         ModalBottomSheet(onDismissRequest = { confirmation = null }) {
             MoConfirmationSheet(
-                title = if (action == "post") "Confirmar gasto" else "Eliminar gasto",
-                body = if (action == "post") {
-                    "A partir de ahora este importe sumará en tus gastos."
-                } else {
-                    "El gasto dejará de contar en los totales. Esta acción no se puede deshacer."
+                title = when (action) {
+                    "post" -> "Confirmar gasto"
+                    "keep" -> "Conservar como gasto independiente"
+                    else -> "Eliminar gasto"
                 },
-                confirmText = if (action == "post") "Confirmar" else "Eliminar",
+                body = when (action) {
+                    "post" -> "A partir de ahora este importe sumará en tus gastos."
+                    "keep" -> "El importe sigue contando igual, en su finca, parcela y campaña, pero deja de estar ligado al trabajo."
+                    else -> "El gasto dejará de contar en los totales. Esta acción no se puede deshacer."
+                },
+                confirmText = when (action) {
+                    "post" -> "Confirmar"
+                    "keep" -> "Conservar"
+                    else -> "Eliminar"
+                },
                 onConfirm = {
                     confirmation = null
-                    if (action == "post") onPost() else onDelete()
+                    when (action) {
+                        "post" -> onPost()
+                        "keep" -> onKeepIndependent()
+                        else -> onDelete()
+                    }
                 },
                 onCancel = { confirmation = null },
                 modifier = Modifier.padding(horizontal = MoSpacing.md).testTag("expense-confirmation"),

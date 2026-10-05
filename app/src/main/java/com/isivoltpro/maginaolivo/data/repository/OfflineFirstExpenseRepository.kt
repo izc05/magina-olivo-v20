@@ -104,6 +104,16 @@ class OfflineFirstExpenseRepository(
             AppResult.Success(Unit)
         }
 
+    override suspend fun keepAsIndependent(id: UUID): AppResult<Unit> =
+        inTransaction("keep_expense_independent") {
+            val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
+            if (current.origin != ExpenseOrigin.ACTIVITY_COST.name) {
+                return@inTransaction AppResult.Failure(AppError.Conflict("not_activity_cost"))
+            }
+            writer.detachFromActivity(current, clock.nowInstant())
+            AppResult.Success(Unit)
+        }
+
     private suspend fun live(id: UUID): ExpenseEntity? =
         database.expenseDao().findById(id)?.takeIf { it.metadata.deletedAt == null }
 

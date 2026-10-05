@@ -4,10 +4,12 @@ import com.isivoltpro.maginaolivo.domain.machinery.MachineOption
 import com.isivoltpro.maginaolivo.domain.machinery.MachineUseInput
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityChanges
+import com.isivoltpro.maginaolivo.domain.activity.ActivityCostRules
 import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
@@ -34,8 +36,6 @@ data class ActivityDraft(
     val notes: String = "",
     /** The typed agronomic block of [type], built from the form the editor showed. */
     val detail: ActivityDetail? = null,
-    /** Optional convenience cost; it is saved as the linked Expense (D2). */
-    val costMinor: Long? = null,
     /** Optional machines used (Phase 15). */
     val machines: List<MachineUseInput> = emptyList(),
     /** Optional planning: hour, duration, people, crew (Phase 16). */
@@ -106,7 +106,6 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
                         asDraft = asDraft,
                         completeImmediately = completeImmediately && !asDraft,
                         detail = draft.detail,
-                        costMinor = draft.costMinor,
                         machines = draft.machines,
                         planning = draft.planning,
                         reminders = draft.reminders,
@@ -269,7 +268,8 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                     draft.parcelIds,
                     draft.notes.nullIfBlank(),
                     draft.detail,
-                    draft.costMinor,
+                    // #429: an edit never touches money; a cost linked before 1.0 stays on its Gasto.
+                    null,
                     draft.machines,
                     draft.planning,
                     draft.reminders,
@@ -278,26 +278,35 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
         }
     }
 
-    fun plan() = mutate("Actuación planificada") { repository.plan(activityId) }
+    fun plan() = mutate("Actuación planificada", "volver a planificarlo") { repository.plan(activityId) }
 
     fun complete() = mutate("Actuación completada") { repository.complete(activityId) }
 
-    fun cancel() = mutate("Actuación cancelada") { repository.cancel(activityId) }
+    fun cancel() = mutate("Actuación cancelada", "cancelarlo") { repository.cancel(activityId) }
 
-    fun reopen() = mutate("Actuación reabierta") { repository.reopen(activityId) }
+    fun reopen() = mutate("Actuación reabierta", "volver a planificarlo") { repository.reopen(activityId) }
 
-    fun archive() = mutate("Actuación archivada") { repository.archive(activityId) }
+    fun archive() = mutate("Actuación archivada", "archivarlo") { repository.archive(activityId) }
 
     fun consumeMessage() { mutableState.value = mutableState.value.copy(message = null) }
 
-    private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) = viewModelScope.launch {
+    private fun mutate(message: String, move: String? = null, operation: suspend () -> AppResult<Unit>) = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
-        mutableState.value = when (operation()) {
+        mutableState.value = when (val result = operation()) {
             is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
-            is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = "La operación no se pudo completar")
+            is AppResult.Failure -> mutableState.value.copy(
+                isSaving = false,
+                error = (result.error as? AppError.Conflict)?.takeIf { it.resource == ActivityCostRules.COST_TO_REVIEW && move != null }
+                    ?.let { costToReview(move!!) }
+                    ?: "La operación no se pudo completar",
+            )
         }
     }
 }
+
+/** #429: said when a counted cost holds a move back; the detail offers «Revisar gasto vinculado». */
+internal fun costToReview(move: String) = "Este trabajo tiene un coste contabilizado. Revísalo antes de $move."
+
 
 private fun String.nullIfBlank(): String? = trim().takeIf(String::isNotEmpty)
 

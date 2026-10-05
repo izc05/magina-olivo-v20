@@ -17,6 +17,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
@@ -29,6 +30,7 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDayCostRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstExpenseRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstOrganizationRepository
 import com.isivoltpro.maginaolivo.domain.activity.ActivityChanges
+import com.isivoltpro.maginaolivo.domain.activity.ActivityCostRules
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.activity.NewActivity
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
@@ -116,6 +118,107 @@ class ExpenseLedgerContractTest {
         attachmentsRoot.deleteRecursively()
     }
 
+    // ------------------------------------------------------------ #429 work not done holds no money
+
+    @Test
+    fun plannedWorkWithACostFromALegacyCallerPostsNothing() = runBlocking {
+        assertNotDoneWork(activities.create(NewActivity(farmId, null, ActivityType.PRUNING, date, "Poda",
+            setOf(parcelA), costMinor = 6_000)))
+        // Typed as done but kept planned (a harvest-day appointment): still no money.
+        assertNotDoneWork(activities.create(NewActivity(farmId, null, ActivityType.HARVEST_DAY, date, "Recogida",
+            setOf(parcelA), completeImmediately = true, costMinor = 3_000)))
+        assertNotDoneWork(activities.create(NewActivity(farmId, null, ActivityType.PRUNING, date, "Poda",
+            setOf(parcelA), asDraft = true, costMinor = 6_000)))
+        assertTrue(expenses.observeAll().first().isEmpty())
+    }
+
+    @Test
+    fun editingPlannedWorkNeverTouchesMoney() = runBlocking {
+        val id = activity(costMinor = null)
+        assertNotDoneWork(activities.update(id, changes(5_000)))
+        ok(activities.update(id, changes(null)))
+        assertTrue(expenses.observeAll().first().isEmpty())
+    }
+
+    @Test
+    fun completingOrCancellingPlannedWorkLeavesTheLedgerAsItWas() = runBlocking {
+        val completed = activity(costMinor = null)
+        val cancelled = activity(costMinor = null)
+        // A hand-typed Gasto tied to the work is money of its own: it neither blocks nor goes.
+        val manual = ok(expenses.create(draft(2_000, farmId = farmId, activityId = cancelled, concept = "Transporte")))
+
+        ok(activities.complete(completed))
+        ok(activities.cancel(cancelled))
+
+        assertEquals(listOf(manual), expenses.observeAll().first().map { it.id })
+        assertEquals(2_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+    }
+
+    @Test
+    fun aRealExpenseAddedAfterTheWorkIsOneRow() = runBlocking {
+        val id = activity(costMinor = null)
+        ok(activities.complete(id))
+        ok(expenses.create(draft(4_000, farmId = farmId, activityId = id, concept = "Gasoil")))
+        assertEquals(1, expenses.observeForActivity(id).first().size)
+        assertEquals(4_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+    }
+
+    @Test
+    fun reopeningDoneWorkWithACountedCostWaitsUntilItIsKeptOnItsOwn() = runBlocking {
+        val id = activity(costMinor = 6_500)
+        val cost = expenses.observeForActivity(id).first().single()
+
+        assertCostToReview(activities.reopen(id))
+        assertEquals(ActivityStatus.COMPLETED, activities.observe(id).first()!!.status)
+
+        ok(expenses.keepAsIndependent(cost.id))
+        val kept = expenses.observe(cost.id).first()!!
+        assertEquals(ExpenseOrigin.MANUAL, kept.origin)
+        assertNull(kept.activityId)
+        assertEquals(farmId, kept.farmId)
+        assertEquals(6_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+
+        ok(activities.reopen(id))
+        assertEquals(ActivityStatus.PLANNED, activities.observe(id).first()!!.status)
+        assertEquals(6_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+    }
+
+    @Test
+    fun reopeningDoneWorkAfterTheCostStopsCountingIsNormal() = runBlocking {
+        val id = activity(costMinor = 6_500)
+        ok(expenses.delete(expenses.observeForActivity(id).first().single().id))
+        ok(activities.reopen(id))
+        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+
+        val plain = activity(costMinor = null, done = true)
+        ok(activities.reopen(plain))
+    }
+
+    @Test
+    fun aLegacyCostOnWorkNotDoneHoldsEveryMoveButCompleting() = runBlocking {
+        val planned = legacyCostOn(ActivityStatus.PLANNED)
+        assertCostToReview(activities.cancel(planned))
+        ok(activities.complete(planned))
+
+        val draft = legacyCostOn(ActivityStatus.DRAFT)
+        assertCostToReview(activities.plan(draft))
+        assertCostToReview(activities.archive(draft))
+
+        val cancelled = legacyCostOn(ActivityStatus.CANCELLED)
+        assertCostToReview(activities.reopen(cancelled))
+        assertCostToReview(activities.archive(cancelled))
+        // An edit of the work leaves the counted cost exactly as it is.
+        assertEquals(3, expenses.observeAll().first().count { it.origin == ExpenseOrigin.ACTIVITY_COST })
+        assertEquals(19_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+    }
+
+    @Test
+    fun onlyAWorkCostCanBeKeptOnItsOwn() = runBlocking {
+        val manual = ok(expenses.create(draft(1_000, farmId = farmId)))
+        val result = expenses.keepAsIndependent(manual)
+        assertTrue(result is AppResult.Failure && (result.error as? AppError.Conflict)?.resource == "not_activity_cost")
+    }
+
     // ------------------------------------------------------------ no double counting
 
     @Test
@@ -139,16 +242,11 @@ class ExpenseLedgerContractTest {
         assertEquals(6_500L, activities.observe(activityId).first()!!.costMinor)
         // The Activity table never carries its own amount (D2).
         assertNull(db.activityDao().findById(activityId)!!.costMinor)
-
-        ok(activities.update(activityId, changes(costMinor = 8_000)))
-        val edited = expenses.observeForActivity(activityId).first().single()
-        assertEquals(linked.id, edited.id)
-        assertEquals(8_000, edited.amountMinor)
+        // #416/#429: the work never rewrites it; the amount is corrected on its own Gasto.
+        assertTrue(activities.update(activityId, changes(costMinor = 8_000)) is AppResult.Failure)
+        ok(expenses.update(linked.id, draft(8_000, farmId = farmId, activityId = activityId, concept = "Abonado de primavera")))
+        assertEquals(8_000, expenses.observeForActivity(activityId).first().single().amountMinor)
         assertEquals(8_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
-
-        ok(activities.update(activityId, changes(costMinor = null)))
-        assertTrue(expenses.observeForActivity(activityId).first().isEmpty())
-        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
     }
 
     @Test
@@ -156,9 +254,7 @@ class ExpenseLedgerContractTest {
         val activityId = activity(costMinor = 6_500)
         val extra = ok(expenses.create(draft(2_000, farmId = farmId, activityId = activityId, concept = "Transporte")))
 
-        ok(activities.update(activityId, changes(costMinor = 7_000)))
-
-        assertEquals(9_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(8_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
         assertEquals(2_000, expenses.observe(extra).first()!!.amountMinor)
         assertEquals(2, expenses.observeForActivity(activityId).first().size)
     }
@@ -457,13 +553,16 @@ class ExpenseLedgerContractTest {
     fun closedActivityCostRewriteAndRemovalRollBackTheActivityAndIntents() = runBlocking {
         runningDay()
         val id = ok(activities.create(NewActivity(farmId, campaignId, ActivityType.FERTILIZATION,
-            date, "Abonado", setOf(parcelA), costMinor = 6_000)))
+            date, "Abonado", setOf(parcelA), completeImmediately = true, costMinor = 6_000)))
         closeCampaign()
         val before = ledgerState()
 
-        assertClosedMutation(activities.update(id, changes(4_000)))
+        // #429: done work is protected and never rewrites its cost; neither move touches the ledger.
+        assertTrue(activities.update(id, changes(4_000)) is AppResult.Failure)
         assertEquals(before, ledgerState())
-        assertClosedMutation(activities.update(id, changes(null)))
+        assertTrue(activities.update(id, changes(null)) is AppResult.Failure)
+        assertEquals(before, ledgerState())
+        assertClosedMutation(expenses.keepAsIndependent(expenses.observeForActivity(id).first().single().id))
         assertEquals(before, ledgerState())
         assertEquals(6_000L, activities.observe(id).first()!!.costMinor)
         assertEquals("Abonado", activities.observe(id).first()!!.description)
@@ -477,10 +576,10 @@ class ExpenseLedgerContractTest {
         closeCampaign()
         val before = ledgerState()
 
-        assertClosedMutation(activities.update(id, changes(6_000)))
+        assertNotDoneWork(activities.update(id, changes(6_000)))
         assertEquals(before, ledgerState())
         assertClosedMutation(activities.create(NewActivity(farmId, campaignId, ActivityType.FERTILIZATION,
-            date, "Nueva actuación", setOf(parcelA), costMinor = 6_000)))
+            date, "Nueva actuación", setOf(parcelA), completeImmediately = true, costMinor = 6_000)))
         assertEquals(before, ledgerState())
     }
 
@@ -642,11 +741,33 @@ class ExpenseLedgerContractTest {
         )
     }
 
-    private suspend fun activity(costMinor: Long?): UUID = ok(
+    /** A cost only goes with work recorded as done (#429). */
+    private suspend fun activity(costMinor: Long?, done: Boolean = costMinor != null): UUID = ok(
         activities.create(
-            NewActivity(farmId, null, ActivityType.FERTILIZATION, date, "Abonado de primavera", setOf(parcelA), costMinor = costMinor),
+            NewActivity(farmId, null, ActivityType.FERTILIZATION, date, "Abonado de primavera", setOf(parcelA),
+                completeImmediately = done, costMinor = costMinor),
         ),
     )
+
+    private fun assertNotDoneWork(result: AppResult<*>) {
+        val error = (result as? AppResult.Failure)?.error
+        assertTrue("Expected costMinor/not_done_work but was $result",
+            error is AppError.Validation && error.field == "costMinor" && error.code == ActivityCostRules.NOT_DONE_WORK)
+    }
+
+    private fun assertCostToReview(result: AppResult<*>) {
+        val error = (result as? AppResult.Failure)?.error
+        assertTrue("Expected activity_cost_posted conflict but was $result",
+            error is AppError.Conflict && error.resource == ActivityCostRules.COST_TO_REVIEW)
+    }
+
+    /** A cost linked before #429 on work that is not done (only reachable through old data). */
+    private suspend fun legacyCostOn(status: ActivityStatus): UUID {
+        val id = activity(costMinor = 6_500)
+        val row = db.activityDao().findById(id)!!
+        db.activityDao().upsert(row.copy(status = status))
+        return id
+    }
 
     private fun changes(costMinor: Long?) =
         ActivityChanges(ActivityType.FERTILIZATION, date, "Abonado de primavera", setOf(parcelA), costMinor = costMinor)

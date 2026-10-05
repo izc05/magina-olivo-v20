@@ -1,5 +1,6 @@
 package com.isivoltpro.maginaolivo
 
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -71,6 +72,35 @@ class ActivityRelatedExpenseTest {
     @Test fun noNoticeWithoutASavedExpense() {
         show(UiPolishFixtures.activity.copy(status = ActivityStatus.COMPLETED)) {}
         assertEquals(0, composeRule.onAllNodesWithTag("activity-expense-added").fetchSemanticsNodes().size)
+    }
+
+    /** #429 QA 7: done work with a counted cost is not reopened until that cost is reviewed on its Gasto. */
+    @Test fun aCountedCostHoldsReopeningAndLeadsToItsGasto() {
+        val historicId = java.util.UUID.randomUUID()
+        var opened: java.util.UUID? = null
+        show(UiPolishFixtures.activity.copy(status = ActivityStatus.COMPLETED, costMinor = 6_500), historicCostExpenseId = historicId,
+            onOpenExpense = { opened = it }) {}
+        composeRule.onNodeWithTag("reopen-activity").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithText("Este trabajo tiene un coste contabilizado. Revísalo antes de volver a planificarlo.")
+            .performScrollTo().assertExists()
+        composeRule.onNodeWithTag("activity-review-cost").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(historicId, opened) }
+    }
+
+    /** #429 QA 9: without a counted cost, reopening is as before. */
+    @Test fun doneWorkWithoutACostReopensAsBefore() {
+        show(UiPolishFixtures.activity.copy(status = ActivityStatus.COMPLETED)) {}
+        composeRule.onNodeWithTag("reopen-activity").performScrollTo().assertIsEnabled()
+        assertEquals(0, composeRule.onAllNodesWithTag("activity-cost-to-review").fetchSemanticsNodes().size)
+    }
+
+    /** #429 QA 8: a legacy cost on planned work is said, never hidden; only completing stays open. */
+    @Test fun aLegacyCostOnPlannedWorkIsSaidAndHoldsCancelling() {
+        show(UiPolishFixtures.activity.copy(status = ActivityStatus.PLANNED, costMinor = 6_500),
+            historicCostExpenseId = java.util.UUID.randomUUID(), onOpenExpense = {}) {}
+        composeRule.onNodeWithTag("activity-cost-to-review").performScrollTo().assertExists()
+        composeRule.onNodeWithTag("cancel-activity").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithTag("complete-activity").performScrollTo().assertIsEnabled()
     }
 
     /** #416: «Añadir gasto relacionado» carries the work (and its single Parcel) into Gasto. */
