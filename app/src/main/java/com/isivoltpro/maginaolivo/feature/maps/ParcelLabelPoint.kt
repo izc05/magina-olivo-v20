@@ -36,16 +36,23 @@ internal fun parcelLabelPoint(geometry: String): ParcelLabelPoint? = runCatching
 private data class Point2(val x: Double, val y: Double)
 
 private fun parsePolygon(array: JsonArray): List<List<Point2>> =
-    array.mapNotNull { ring ->
-        ring.takeIf(JsonElement::isJsonArray)?.asJsonArray?.mapNotNull { position ->
-            val values = position.takeIf(JsonElement::isJsonArray)?.asJsonArray ?: return@mapNotNull null
-            if (values.size() < 2) return@mapNotNull null
-            val x = values[0].takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }?.asDouble ?: return@mapNotNull null
-            val y = values[1].takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }?.asDouble ?: return@mapNotNull null
-            if (!x.isFinite() || !y.isFinite()) return@mapNotNull null
-            Point2(x, y)
-        }?.takeIf { it.size >= 4 }
+    array.mapNotNull { ringElement ->
+        if (!ringElement.isJsonArray) return@mapNotNull null
+        val ring = ringElement.asJsonArray.map { position ->
+            parsePosition(position) ?: return@mapNotNull null
+        }
+        ring.takeIf { it.size >= 4 }
     }
+
+private fun parsePosition(element: JsonElement): Point2? {
+    if (!element.isJsonArray) return null
+    val values = element.asJsonArray
+    if (values.size() < 2) return null
+    val x = values[0].takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }?.asDouble ?: return null
+    val y = values[1].takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }?.asDouble ?: return null
+    if (!x.isFinite() || !y.isFinite()) return null
+    return Point2(x, y)
+}
 
 private fun polygonArea(polygon: List<List<Point2>>): Double =
     polygon.firstOrNull()?.let(::ringArea) ?: 0.0
