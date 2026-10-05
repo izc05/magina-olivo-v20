@@ -25,6 +25,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   fecha de la pesada sería posterior a su análisis de rendimiento. Corrige primero la fecha del
   análisis o mantén la fecha de la pesada.». Un análisis sin fecha no lo impide y el análisis nunca se
   modifica.
+- **Las parcelas de un trabajo no dejan gastos colgando (#441).** Al editar un trabajo no se puede
+  quitar una parcela (ni pasarlo a toda la finca) si un gasto de ese trabajo la nombra: «Hay gastos
+  vinculados a esta parcela dentro del trabajo. Revísalos antes de cambiar las parcelas.», con esos
+  gastos a un toque. Añadir parcelas, cambiar el tipo o la fecha del trabajo nunca mueve ni cambia
+  sus gastos.
 - **Corregir una pesada no cambia el nombre de parcela con el que se guardó (#454).** Editar notas,
   vale o kilos de una pesada conserva sus filas de parcela tal como estaban (mismo identificador y
   mismo nombre de entonces, aunque la parcela se haya renombrado después). Solo una parcela añadida en
