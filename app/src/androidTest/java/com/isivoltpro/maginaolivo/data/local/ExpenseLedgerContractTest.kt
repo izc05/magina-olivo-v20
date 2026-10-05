@@ -419,6 +419,32 @@ class ExpenseLedgerContractTest {
         assertEquals(7_000, expenses.observe(cost.id).first()!!.amountMinor)
     }
 
+    /**
+     * Owner decision (#429, 5-oct-2026): «Conservar como gasto independiente» only drops the link to
+     * the work. Same row, same money, date, concept, supplier, Farm/Parcel and Campaign; no new
+     * Expense, nothing duplicated, nothing removed. It only ever runs on the farmer's tap.
+     */
+    @Test
+    fun keepingAWorkCostOnItsOwnOnlyDropsItsWork() = runBlocking {
+        val id = activity(costMinor = 6_500)
+        val before = db.expenseDao().listForActivity(id).single()
+        val rowsBefore = expenses.observeAll().first().size
+
+        ok(expenses.keepAsIndependent(before.id))
+        val after = db.expenseDao().findById(before.id)!!
+        assertNull(after.activityId)
+        assertEquals(ExpenseOrigin.MANUAL.name, after.origin)
+        assertEquals(
+            before.copy(activityId = null, origin = ExpenseOrigin.MANUAL.name, metadata = after.metadata),
+            after,
+        )
+        assertEquals(before.metadata.version + 1, after.metadata.version)
+        assertNull(after.metadata.deletedAt)
+        assertEquals(rowsBefore, expenses.observeAll().first().size)
+        assertEquals(6_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertTrue(expenses.observeForActivity(id).first().isEmpty())
+    }
+
     @Test
     fun onlyAWorkCostCanBeKeptOnItsOwn() = runBlocking {
         val manual = ok(expenses.create(draft(1_000, farmId = farmId)))

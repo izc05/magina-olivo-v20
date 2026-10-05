@@ -57,7 +57,7 @@ private val pages = listOf(
     ),
     OnboardingPage(
         title = "Actividad y campaña",
-        body = "Registra actuaciones, fotos, costes, fechas y el seguimiento de tu campaña paso a paso.",
+        body = "Registra trabajos, fotos, costes, fechas y el seguimiento de tu campaña paso a paso.",
         kind = OnboardingArtworkKind.Activity,
     ),
     OnboardingPage(
