@@ -236,6 +236,25 @@ internal fun ExpenseForm.withRecollectionPreselected(options: RelationOptions): 
     return copy(campaignId = running.id)
 }
 
+/**
+ * #433: the expense follows the work it is tied to. Its Parcel stays only if the work was done
+ * there, its Campaign is the work's (none for general work), and a recolección day stays only
+ * when the work is of that day's Campaign (the form carries the day's Campaign as stored).
+ * Dropping the work leaves the expense
+ * outside any Campaign unless a day still gives it one, so the person chooses again.
+ */
+internal fun ExpenseForm.withActivity(activity: Activity?): ExpenseForm {
+    if (activity == null) return copy(activityId = null, campaignId = if (harvestId != null) campaignId else null)
+    val targets = activity.targets.map { it.parcelId }.toSet()
+    return copy(
+        activityId = activity.id,
+        parcelId = parcelId?.takeIf { it in targets },
+        campaignId = activity.campaignId,
+        // Codex #522: a day of another Campaign would make the expense unsavable; it goes.
+        harvestId = harvestId?.takeIf { activity.campaignId != null && activity.campaignId == campaignId },
+    )
+}
+
 /** «Campaña 2026/27» whether the farmer typed the word or only the years. */
 internal fun Campaign.choiceLabel(): String =
     if (name.startsWith("Campaña", ignoreCase = true)) name else "Campaña $name"
