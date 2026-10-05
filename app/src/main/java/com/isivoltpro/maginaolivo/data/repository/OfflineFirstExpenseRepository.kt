@@ -91,7 +91,7 @@ class OfflineFirstExpenseRepository(
             if (current.status == ExpenseStatus.POSTED.name) return@inTransaction AppResult.Success(Unit)
             if (current.origin in DayCostLedger.CALCULATED) return@inTransaction AppResult.Failure(AppError.Conflict("calculated_cost"))
             val now = clock.nowInstant()
-            writer.post(current, now)
+            writer.post(current, now, clock.today(java.time.ZoneId.systemDefault()))
             costs.sync(current.harvestId, now)
             AppResult.Success(Unit)
         }
