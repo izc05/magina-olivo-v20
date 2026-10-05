@@ -59,6 +59,10 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE harvest_id = :harvestId AND deleted_at IS NULL")
     suspend fun listForHarvest(harvestId: UUID): List<ExpenseEntity>
 
+    /** #441: the live Expenses that point at one Activity (drafts included). */
+    @Query("SELECT * FROM expenses WHERE activity_id = :activityId AND deleted_at IS NULL")
+    suspend fun listForActivity(activityId: UUID): List<ExpenseEntity>
+
     /** #437: real money tied to an Activity besides its own convenience cost (drafts included). */
     @Query(
         """
