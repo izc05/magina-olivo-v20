@@ -370,6 +370,9 @@ internal fun workTypes(planning: Boolean): List<ActivityType> =
             it == ActivityType.PHYTOSANITARY
     }
 
+private fun ActivityType.needsAffectedArea(): Boolean =
+    this == ActivityType.PHYTOSANITARY || this == ActivityType.FERTILIZATION || this == ActivityType.IRRIGATION
+
 private fun ActivityType.shortDescription(): String = when (this) {
     ActivityType.OBSERVATION -> "Revisar el estado del olivar"
     ActivityType.PRUNING -> "Poda de los olivos"
@@ -483,9 +486,12 @@ internal fun ActivityEditor(
         // A known full area is offered in the editable field. Seeing it in the form is the
         // confirmation step; if the farmer clears it, the Activity remains locally valid but
         // incomplete for a future CUE validator.
-        parcels.filter { it.id.toString() in selected }.forEach { parcel ->
-            val key = parcel.id.toString()
-            if (key !in parcelAreaHa) parcel.managedAreaM2?.let { parcelAreaHa[key] = editableAreaHa(it) }
+        val areaRelevant = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER).needsAffectedArea()
+        if (areaRelevant) {
+            parcels.filter { it.id.toString() in selected }.forEach { parcel ->
+                val key = parcel.id.toString()
+                if (key !in parcelAreaHa) parcel.managedAreaM2?.let { parcelAreaHa[key] = editableAreaHa(it) }
+            }
         }
     }
     fun readParcelAreas(): Map<UUID, Double?>? {
@@ -660,7 +666,9 @@ internal fun ActivityEditor(
                             parcelAreaErrors.remove(key)
                         } else {
                             selected = selected + key
-                            parcel.managedAreaM2?.let { parcelAreaHa[key] = editableAreaHa(it) }
+                            if (chosenType.needsAffectedArea()) {
+                                parcel.managedAreaM2?.let { parcelAreaHa[key] = editableAreaHa(it) }
+                            }
                         }
                     },
                     label = { Text(parcel.name) },
@@ -673,17 +681,19 @@ internal fun ActivityEditor(
                 )
             }
         }
-        parcels.filter { it.id.toString() in selected }.forEach { parcel ->
-            val key = parcel.id.toString()
-            val known = parcel.managedAreaM2?.let { " · parcela ${hectaresLabel(it)}" }.orEmpty()
-            MoTextField(
-                parcelAreaHa[key].orEmpty(),
-                { parcelAreaHa[key] = it; parcelAreaErrors.remove(key) },
-                "Superficie afectada · ${parcel.name} (ha)",
-                isError = parcelAreaErrors[key] != null,
-                supportingText = parcelAreaErrors[key] ?: "Editable$known",
-                modifier = Modifier.fillMaxWidth().testTag("activity-parcel-area"),
-            )
+        if (chosenType.needsAffectedArea()) {
+            parcels.filter { it.id.toString() in selected }.forEach { parcel ->
+                val key = parcel.id.toString()
+                val known = parcel.managedAreaM2?.let { " · parcela ${hectaresLabel(it)}" }.orEmpty()
+                MoTextField(
+                    parcelAreaHa[key].orEmpty(),
+                    { parcelAreaHa[key] = it; parcelAreaErrors.remove(key) },
+                    "Superficie afectada · ${parcel.name} (ha)",
+                    isError = parcelAreaErrors[key] != null,
+                    supportingText = parcelAreaErrors[key] ?: "Editable$known",
+                    modifier = Modifier.fillMaxWidth().testTag("activity-parcel-area"),
+                )
+            }
         }
         Row(
             Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { moreOpen = !showMore }
