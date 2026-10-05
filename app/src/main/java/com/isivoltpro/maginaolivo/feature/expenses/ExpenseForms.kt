@@ -285,12 +285,20 @@ internal fun ExpenseEditor(
         var showDetails by rememberSaveable { mutableStateOf(false) }
         LaunchedEffect(hasDetails) { if (hasDetails) showDetails = true }
         if (showDetails || hasDetails) {
-            val supplier = options.suppliers.firstOrNull { it.id == form.supplierOrganizationId }
+            val supplier = form.supplierShown(options.suppliers)
             MoSelectField(
-                "Proveedor guardado", supplier?.name ?: "Ninguno", { picker = "supplier" },
+                "Proveedor guardado", supplier.name ?: "Ninguno", { picker = "supplier" },
                 Modifier.testTag("expense-supplier"),
             )
-            if (supplier == null) {
+            supplier.currentName?.let { now ->
+                Text(
+                    "Ahora: $now",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoTextSecondary,
+                    modifier = Modifier.testTag("expense-supplier-now"),
+                )
+            }
+            if (supplier.name == null) {
                 MoTextField(
                     form.supplierText, { form = form.copy(supplierText = it) }, "Proveedor (texto libre)",
                     modifier = Modifier.fillMaxWidth(),

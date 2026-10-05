@@ -50,6 +50,9 @@ data class ExpenseForm(
     val category: ExpenseCategory = ExpenseCategory.OTHER,
     val supplierOrganizationId: UUID? = null,
     val supplierText: String = "",
+    /** #451: the supplier this Gasto was saved with and the name it was saved under. */
+    val recordedSupplierId: UUID? = null,
+    val recordedSupplierName: String = "",
     val farmId: UUID? = null,
     val parcelId: UUID? = null,
     val activityId: UUID? = null,
@@ -143,6 +146,8 @@ internal fun Expense.toForm() = ExpenseForm(
     category = category,
     supplierOrganizationId = supplierOrganizationId,
     supplierText = if (supplierOrganizationId == null) supplierName.orEmpty() else "",
+    recordedSupplierId = supplierOrganizationId,
+    recordedSupplierName = supplierName.orEmpty(),
     farmId = farmId,
     parcelId = parcelId,
     activityId = activityId,
@@ -167,7 +172,7 @@ internal fun Expense.toForm() = ExpenseForm(
 internal fun postErrorMessage(error: AppError): String = when {
     error is AppError.Validation && error.field == "expenseDate" && error.code == "future" ->
         "La fecha de este gasto es posterior a hoy. Corrígela antes de confirmarlo."
-    error is AppError.Validation && error.code != "campaign_closed" &&
+    error is AppError.Validation && error.code != "campaign_closed" && error.code != "archived" &&
         error.field in setOf("farmId", "parcelId", "activityId", "campaignId", "harvestId", "supplierOrganizationId") ->
         "Este gasto necesita revisar su finca/parcela/trabajo antes de confirmarlo."
     else -> expenseErrorMessage(error)
@@ -185,6 +190,8 @@ internal fun expenseErrorMessage(error: AppError): String = when (error) {
         error.field == "campaignId" && error.code == "not_in_activity" -> "Ese trabajo pertenece a otra campaña."
         error.field == "parcelId" && error.code == "not_in_activity" -> "Ese trabajo no se hizo en la parcela elegida."
         error.field == "activityId" && error.code == "not_in_day" -> "Ese trabajo no es de esta jornada de recogida."
+        error.field == "supplierOrganizationId" && error.code == "archived" ->
+            "Ese proveedor está archivado. Elige otro proveedor o escríbelo a mano."
         error.code == "activity_cost_locked" ->
             "Este coste es de su trabajo. Para separarlo usa «Conservar como gasto independiente»."
         else -> when (error.field) {
@@ -538,4 +545,14 @@ class ExpenseDetailViewModel(
             }
         }
     }
+}
+
+/** #451: the supplier as the form shows it; see [com.isivoltpro.maginaolivo.feature.deliveries.destinationShown]. */
+internal data class SupplierShown(val name: String?, val currentName: String?)
+
+internal fun ExpenseForm.supplierShown(suppliers: List<Organization>): SupplierShown {
+    val chosen = supplierOrganizationId ?: return SupplierShown(null, null)
+    val current = suppliers.firstOrNull { it.id == chosen }?.name
+    if (chosen != recordedSupplierId || recordedSupplierName.isEmpty()) return SupplierShown(current, null)
+    return SupplierShown(recordedSupplierName, current?.takeIf { it != recordedSupplierName })
 }
