@@ -232,7 +232,7 @@ class OfflineFirstActivityRepository(
                     ),
                 )
                 replaceDetail(id, farm.workspaceId, command.detail, now)
-                replaceTargets(id, command.parcelIds, now)
+                replaceTargets(id, command.parcelIds, command.parcelAreasM2, now)
                 replaceMachines(id, farm.workspaceId, command.machines)
                 replacePlanning(id, farm.workspaceId, command.planning, now)
                 replaceReminders(id, command.reminders, now)
@@ -268,7 +268,7 @@ class OfflineFirstActivityRepository(
                 ),
             )
             replaceDetail(id, current.workspaceId, changes.detail, now)
-            replaceTargets(id, changes.parcelIds, now)
+            replaceTargets(id, changes.parcelIds, changes.parcelAreasM2, now)
             replaceMachines(id, current.workspaceId, changes.machines)
             replacePlanning(id, current.workspaceId, changes.planning, now)
             replaceReminders(id, changes.reminders, now)
@@ -435,9 +435,15 @@ class OfflineFirstActivityRepository(
         else -> ExpenseCategory.OTHER
     }
 
-    private suspend fun replaceTargets(activityId: UUID, parcelIds: Set<UUID>, now: Instant) {
+    private suspend fun replaceTargets(
+        activityId: UUID,
+        parcelIds: Set<UUID>,
+        parcelAreasM2: Map<UUID, Double?>,
+        now: Instant,
+    ) {
         val activity = database.activityDao().findById(activityId) ?: error("activity missing")
         val farmId = activity.farmId ?: throw InvalidSelection("activity_without_farm")
+        if (parcelAreasM2.keys.any { it !in parcelIds }) throw InvalidParcelArea("area_for_unselected_parcel")
         val rows = parcelIds.sortedBy(UUID::toString).map { parcelId ->
             val parcel = database.parcelDao().findById(parcelId) ?: throw InvalidSelection("parcel_not_found")
             val membership = database.parcelDao().findCurrentMembership(parcelId)
@@ -446,13 +452,21 @@ class OfflineFirstActivityRepository(
             ) {
                 throw InvalidSelection("parcel_not_in_farm")
             }
+            val affected = parcelAreasM2[parcelId]
+            if (affected != null && (!affected.isFinite() || affected <= 0.0)) {
+                throw InvalidParcelArea("invalid_area")
+            }
+            if (affected != null && parcel.managedAreaM2 != null && affected > parcel.managedAreaM2 + AREA_EPSILON_M2) {
+                throw InvalidParcelArea("area_exceeds_parcel")
+            }
             ActivityParcelTargetEntity(
                 id = idGenerator.newId(),
                 workspaceId = activity.workspaceId,
                 activityId = activityId,
                 parcelId = parcel.id,
                 parcelNameAtTarget = parcel.displayName,
-                areaAffectedM2 = parcel.managedAreaM2,
+                // #546: never assert that the whole Parcel was affected just because it was selected.
+                areaAffectedM2 = affected,
                 metadata = pending(now),
             )
         }
@@ -494,6 +508,8 @@ class OfflineFirstActivityRepository(
             database.withTransaction { block() }
         } catch (error: InvalidSelection) {
             AppResult.Failure(AppError.Validation("parcelIds", error.message ?: "invalid"))
+        } catch (error: InvalidParcelArea) {
+            AppResult.Failure(AppError.Validation("parcelAreasM2", error.message ?: "invalid"))
         } catch (error: InvalidExpense) {
             AppResult.Failure(AppError.Validation(error.field, error.code))
         } catch (error: InvalidMachine) {
@@ -511,6 +527,8 @@ class OfflineFirstActivityRepository(
     private fun conflict(code: String): AppResult.Failure = AppResult.Failure(AppError.Conflict(code))
 
     private class InvalidSelection(message: String) : RuntimeException(message)
+
+    private class InvalidParcelArea(message: String) : RuntimeException(message)
 
     private class InvalidMachine(message: String) : RuntimeException(message)
 
