@@ -46,7 +46,10 @@ class OfflineFirstAttachmentRepository(
 ) : AttachmentRepository {
     override fun observeForOwner(owner: AttachmentOwner): Flow<List<Attachment>> = flow {
         val activeWorkspace = activeWorkspaceIdOrNull()
-        val ownerWorkspace = resolveOwner(owner).successValueOrNull()
+        // Reading historical attachments must not depend on the owner's live/archive state.
+        // Scope by immutable workspace identity only; attach() remains the place that rejects
+        // an archived owner.
+        val ownerWorkspace = ownerWorkspaceId(owner)
         if (activeWorkspace == null || ownerWorkspace != activeWorkspace) {
             emit(emptyList())
         } else {
@@ -246,8 +249,17 @@ class OfflineFirstAttachmentRepository(
             is AppResult.Failure -> null
         }
 
-    private fun <T> AppResult<T>.successValueOrNull(): T? =
-        (this as? AppResult.Success<T>)?.value
+    private suspend fun ownerWorkspaceId(owner: AttachmentOwner): UUID? =
+        when (owner.type) {
+            AttachmentOwnerType.FARM -> database.farmDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.PARCEL -> database.parcelDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.CAMPAIGN -> database.campaignDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.ACTIVITY -> database.activityDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.EXPENSE -> database.expenseDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.HARVEST -> database.harvestDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.DELIVERY -> database.deliveryDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.DOCUMENT -> database.documentOcrDao().findById(owner.id)?.workspaceId
+        }
 
     private suspend fun resolveOwner(owner: AttachmentOwner): AppResult<UUID> {
         val (workspaceId, deletedAt) = when (owner.type) {
