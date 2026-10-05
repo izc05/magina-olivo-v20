@@ -23,15 +23,23 @@ sealed class DiaryEntry(val date: LocalDate, val order: Int) {
     class Work(val activity: Activity) : DiaryEntry(activity.activityDate, 0)
     class HarvestEntry(val harvest: Harvest) : DiaryEntry(harvest.harvestDate, 1)
     class DeliveryEntry(val delivery: Delivery) : DiaryEntry(delivery.deliveryDate, 2)
-    class ExpenseEntry(val expense: Expense) : DiaryEntry(expense.expenseDate, 3)
+    /**
+     * #478: every real Gasto is a row of its own on its own date; [relatedWork] names the work it
+     * is tied to, so a Gasto linked to a Tratamiento is never hidden behind it.
+     */
+    class ExpenseEntry(val expense: Expense, val relatedWork: String? = null) : DiaryEntry(expense.expenseDate, 3)
 }
 
 data class DiaryDay(val date: LocalDate, val entries: List<DiaryEntry>)
 
+/** #478: the work a Gasto is tied to, as the Diario names it; null for a Gasto of its own. */
+internal fun relatedWorkName(expense: Expense, works: List<Activity>): String? =
+    expense.activityId?.let { id -> works.firstOrNull { it.id == id }?.description ?: "un trabajo" }
+
 /**
- * Diario: everything written down in the Campaign, one timeline, newest day first. An Expense
- * created as the cost of an Activity is already shown by that Activity's row, so it is not
- * listed a second time here (it stays in Gastos, the ledger).
+ * Diario: everything written down in the Campaign, one timeline, newest day first. #478: a Gasto
+ * tied to a work is its own row, on its own date, saying which work; only a Jornada's own costs
+ * are read inside the Jornada. The Diario shows money, it never sums it.
  */
 val CampaignNotebook.diary: List<DiaryDay>
     get() = (
@@ -39,8 +47,8 @@ val CampaignNotebook.diary: List<DiaryDay>
             harvests.map { DiaryEntry.HarvestEntry(it) } +
             // 254-E: a Jornada's own Pesadas and costs are read inside its row, not repeated.
             deliveries.filter { standsAlone(it.harvestId) }.map { DiaryEntry.DeliveryEntry(it) } +
-            expenses.filter { it.activityId == null && it.origin != ExpenseOrigin.ACTIVITY_COST && standsAlone(it.harvestId) }
-                .map { DiaryEntry.ExpenseEntry(it) }
+            expenses.filter { standsAlone(it.harvestId) }
+                .map { expense -> DiaryEntry.ExpenseEntry(expense, relatedWorkName(expense, works + harvestDays)) }
         )
         .groupBy { it.date }
         .toSortedMap(compareByDescending { it })
