@@ -263,6 +263,38 @@ class TypedActivityDetailContractTest {
     }
 
     @Test
+    fun changingTheParcelSurfaceLaterDoesNotInvalidateHistoricalAffectedArea() = runBlocking {
+        val created = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento histórico",
+                parcelIds = setOf(parcelA),
+                parcelAreasM2 = mapOf(parcelA to 900.0),
+            ),
+        )
+        val id = (created as AppResult.Success).value
+
+        val parcel = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(parcel.copy(managedAreaM2 = 800.0))
+
+        assertOk(
+            repository.update(
+                id,
+                ActivityChanges(
+                    type = ActivityType.PHYTOSANITARY,
+                    activityDate = date,
+                    description = "Solo corrijo el texto",
+                    parcelIds = setOf(parcelA),
+                    // Existing 900 m2 is intentionally preserved although today's parcel says 800 m2.
+                ),
+            ),
+        )
+        assertEquals(900.0, repository.observe(id).first()!!.targets.single().areaAffectedM2!!, 0.001)
+    }
+
+    @Test
     fun aLegacyUpdateCallerDoesNotEraseAnAlreadyConfirmedAffectedSurface() = runBlocking {
         val created = repository.create(
             NewActivity(
