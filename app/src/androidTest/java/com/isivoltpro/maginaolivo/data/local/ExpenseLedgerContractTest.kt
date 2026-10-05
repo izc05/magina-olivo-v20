@@ -143,6 +143,8 @@ class ExpenseLedgerContractTest {
         ok(activities.cancel(cancelled))
         ok(activities.archive(cancelled))
         assertNotNull(db.activityDao().findById(cancelled)!!.metadata.deletedAt)
+    }
+
     // ------------------------------------------------------------ #456 posting re-checks the draft
 
     /** A DRAFT as a reviewed document leaves it: counted nowhere until a person confirms it. */
