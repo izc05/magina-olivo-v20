@@ -119,10 +119,12 @@ class OfflineFirstDayCostRepository(
             }
             // #475: a cost kept «Fuera de campaña» is never absorbed by a Jornada.
             if (expense.campaignId == null) return@inTransaction AppResult.Failure(AppError.Conflict("outside_campaign"))
+            // Protect historical money before judging whether it could move to this particular day:
+            // a Gasto of a CLOSED Campaign remains immutable even when the target day is elsewhere.
+            ExpenseLedgerWriter(database, idGenerator).requireEditableCampaign(expense)
             if (expense.campaignId != day.campaignId) {
                 return@inTransaction AppResult.Failure(AppError.Validation("campaignId", "not_in_day"))
             }
-            ExpenseLedgerWriter(database, idGenerator).requireEditableCampaign(expense)
             // #475: linked, it adds to the day's calculation unless the farmer says it replaces it.
             if (role == DayCostRole.REPLACEMENT) costs.requireReplaceable(day.id, expense.category)
             val now = clock.nowInstant()
