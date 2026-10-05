@@ -311,7 +311,7 @@ internal fun costToReview(move: String) = "Este trabajo tiene un coste contabili
 
 /** #437: said when Gastos of their own still point at the work. */
 internal const val LINKED_EXPENSES_TEXT =
-    "Esta actuación tiene gastos vinculados. Consérvala cancelada o revisa esos gastos antes de archivarla."
+    "Este trabajo tiene gastos vinculados. Consérvalo cancelado o revisa esos gastos antes de archivarlo."
 
 
 private fun String.nullIfBlank(): String? = trim().takeIf(String::isNotEmpty)

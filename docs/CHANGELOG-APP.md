@@ -21,8 +21,8 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 ## 0.7.0 — en curso (fase 21, Perfil)
 
 - **Un trabajo con gastos propios no se archiva (#437).** Si un borrador o un trabajo cancelado tiene
-  gastos anotados que apuntan a él, «Archivar» queda desactivado: «Esta actuación tiene gastos
-  vinculados. Consérvala cancelada o revisa esos gastos antes de archivarla.», con cada gasto a un
+  gastos anotados que apuntan a él, «Archivar» queda desactivado: «Este trabajo tiene gastos
+  vinculados. Consérvalo cancelado o revisa esos gastos antes de archivarlo.», con cada gasto a un
   toque. Nunca se borra ni se desliga un gasto real al archivar; un trabajo cancelado ya no sale en
   el Diario aunque no se archive.
 - **Confirmar un borrador revisa todo otra vez (#456).** Un gasto en borrador solo empieza a contar
