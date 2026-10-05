@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.DayCostQuestions
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger
@@ -58,7 +60,9 @@ internal fun JornadaCosts(
     onEditRates: (() -> Unit)? = null,
     /** CR-010 A3: hand-typed costs of this Farm and date linked to no day. */
     unlinked: List<Expense> = emptyList(),
-    onLink: (UUID) -> Unit = {},
+    onLink: (UUID, DayCostRole) -> Unit = { _, _ -> },
+    /** #475: someone of this day has been paid: its jornales can only add to the calculation. */
+    labourPaid: Boolean = false,
     loaded: Boolean = true,
     readFailed: Boolean = false,
 ) {
@@ -120,23 +124,32 @@ internal fun JornadaCosts(
         }
     }
     // A3: an unlinked hand-typed cost of the same date may be this day's jornales or machinery.
-    // The app never merges or drops it: the farmer links it here, or leaves it apart.
+    // The app never merges or drops it: the farmer links it here, saying how it counts (#475).
     unlinked.forEach { expense ->
-        val what = if (expense.category == DayCostKind.LABOUR.category) "los jornales" else "la maquinaria"
+        val kind = DayCostKind.of(expense.category)
+        val what = if (kind == DayCostKind.LABOUR) "los jornales" else "la maquinaria"
+        val canReplace = !(kind == DayCostKind.LABOUR && labourPaid)
         Text(
             "«${expense.concept}» (${Money.format(expense.amountMinor, expense.currency)}) es de este día y no está en " +
-                "ningún día de recolección. ¿Es el mismo coste que $what calculados aquí? Si lo es, enlázalo y solo contará uno. " +
-                "Si es otro gasto (gasoil, aceite, una reparación…), déjalo aparte: sigue sumando.",
+                "ningún día de recolección. Puedes enlazarlo: o se añade a $what calculados aquí, o los sustituye. " +
+                "Si es otro gasto, déjalo aparte: sigue sumando en la campaña.",
             style = MaterialTheme.typography.bodySmall,
             color = MoTextSecondary,
             modifier = Modifier.testTag("jornada-unlinked-cost"),
         )
         if (editable) {
             MoTertiaryButton(
-                "Es el mismo coste: enlazar",
-                { onLink(expense.id) },
+                "Enlazar: se añade al cálculo",
+                { onLink(expense.id, DayCostRole.ADDITIVE) },
                 Modifier.fillMaxWidth().testTag("jornada-link-cost"),
             )
+            if (canReplace) {
+                MoTertiaryButton(
+                    "Enlazar: sustituye el cálculo",
+                    { onLink(expense.id, DayCostRole.REPLACEMENT) },
+                    Modifier.fillMaxWidth().testTag("jornada-link-cost-replaces"),
+                )
+            }
         }
     }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -223,12 +236,28 @@ internal fun CostSheet(
     onCancel: () -> Unit,
     currency: String? = "EUR",
     currencyError: String? = null,
+    /** #475: the calculated costs this day already has, and whether its jornales were paid. */
+    calculated: Set<DayCostKind> = emptySet(),
+    labourPaid: Boolean = false,
+    onSaveWithRole: ((JornadaExpenseKind, Long, String?, Boolean, DayCostRole) -> Unit)? = null,
 ) {
     var kind by rememberSaveable { mutableStateOf(JornadaExpenseKind.DIESEL) }
     var amount by rememberSaveable { mutableStateOf("") }
     var concept by rememberSaveable { mutableStateOf("") }
+    var role by rememberSaveable { mutableStateOf<DayCostRole?>(null) }
     val minor = currency?.let { Money.parseMinor(amount, it) }
-    val valid = minor != null && minor > 0
+    val question = DayCostQuestions.of(kind, calculated, labourPaid)
+    // #475: with a calculated cost of that kind, how this one counts is always the farmer's answer.
+    val chosen = when {
+        question == null -> DayCostRole.ADDITIVE
+        !question.canReplace -> DayCostRole.ADDITIVE
+        else -> role
+    }
+    val valid = minor != null && minor > 0 && chosen != null
+    val save = { openAfter: Boolean ->
+        val text = concept.trim().ifEmpty { null }
+        onSaveWithRole?.invoke(kind, minor!!, text, openAfter, chosen!!) ?: onSave(kind, minor!!, text, openAfter)
+    }
 
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = MoSpacing.screen).testTag("cost-sheet"),
@@ -237,7 +266,7 @@ internal fun CostSheet(
         Text("Gasto del día", style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             JornadaExpenseKind.entries.forEach { option ->
-                FilterChip(kind == option, { kind = option }, { Text(option.label) }, Modifier.testTag("cost-kind-${option.name}"))
+                FilterChip(kind == option, { kind = option; role = null }, { Text(option.label) }, Modifier.testTag("cost-kind-${option.name}"))
             }
         }
         MoTextField(
@@ -248,22 +277,61 @@ internal fun CostSheet(
             modifier = Modifier.fillMaxWidth().testTag("cost-amount"),
         )
         MoTextField(concept, { concept = it }, "Concepto (opcional)", modifier = Modifier.fillMaxWidth().testTag("cost-concept"))
+        question?.let { asked ->
+            val what = if (asked.calculated == DayCostKind.LABOUR) "jornales" else "maquinaria"
+            Text("¿Cómo cuenta este gasto?", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
+            Text(
+                "Este día ya tiene $what calculados.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MoTextSecondary,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+                FilterChip(chosen == DayCostRole.ADDITIVE, { role = DayCostRole.ADDITIVE },
+                    { Text("Se añade al cálculo") }, Modifier.testTag("cost-role-ADDITIVE"))
+                if (asked.canReplace) {
+                    FilterChip(chosen == DayCostRole.REPLACEMENT, { role = DayCostRole.REPLACEMENT },
+                        { Text("Sustituye el cálculo") }, Modifier.testTag("cost-role-REPLACEMENT"))
+                }
+            }
+            if (!asked.canReplace) {
+                Text(
+                    "Este día tiene pagos por persona: el importe se añade al cálculo de jornales, que no se modifica.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoTextSecondary,
+                    modifier = Modifier.testTag("cost-role-labour-paid"),
+                )
+            } else if (chosen == DayCostRole.REPLACEMENT && asked.calculated == DayCostKind.LABOUR) {
+                Text(
+                    "El cálculo de jornales queda guardado sin contar. El importe cuenta en la campaña, sin repartir por persona.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoTextSecondary,
+                    modifier = Modifier.testTag("cost-role-replaces-labour"),
+                )
+            }
+        }
         Text(
-            "Se guarda en Gastos, el único registro del dinero. No se cuenta dos veces.",
+            // #475: honest about what this money does to the day's calculation.
+            when {
+                question == null -> "Se guarda en Gastos y se suma a los costes de este día."
+                chosen == DayCostRole.REPLACEMENT -> "Se guarda en Gastos y cuenta en lugar del cálculo; el cálculo queda guardado sin sumar."
+                chosen == DayCostRole.ADDITIVE -> "Se guarda en Gastos y se suma al cálculo del día."
+                else -> "Se guarda en Gastos. Elige si se añade al cálculo o lo sustituye."
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MoTextSecondary,
+            modifier = Modifier.testTag("cost-sheet-ledger-note"),
         )
         currencyError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("day-expense-currency-error")) }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         MoPrimaryButton(
             "Guardar gasto",
-            { onSave(kind, minor!!, concept.trim().ifEmpty { null }, false) },
+            { save(false) },
             Modifier.fillMaxWidth().testTag("cost-save"),
             enabled = valid && !isSaving,
         )
         MoSecondaryButton(
             "Guardar y añadir foto del tique",
-            { onSave(kind, minor!!, concept.trim().ifEmpty { null }, true) },
+            { save(true) },
             Modifier.fillMaxWidth().testTag("cost-save-photo"),
             enabled = valid && !isSaving,
         )
