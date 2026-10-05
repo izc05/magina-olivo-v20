@@ -311,6 +311,26 @@ class DeliveryContractTest {
         assertEquals("Cooperativa San Isidro", delivery.destinationName)
     }
 
+    /** #455: a Pesada is never moved after its own yield analysis; an undated analysis asks nothing. */
+    @Test
+    fun aPesadaIsNeverDatedAfterItsYieldAnalysis() = runBlocking {
+        val id = ok(deliveries.create(draft(1_000_000, north to null)))
+        ok(deliveries.recordYield(id, YieldDraft(day.plusDays(2), 2_100, null)))
+
+        ok(deliveries.update(id, draft(1_000_000, north to null).copy(deliveryDate = day.plusDays(1))))
+        ok(deliveries.update(id, draft(1_000_000, north to null).copy(deliveryDate = day.plusDays(2))))
+        assertValidation("deliveryDate", deliveries.update(id, draft(1_000_000, north to null).copy(deliveryDate = day.plusDays(3))))
+        assertEquals(day.plusDays(2), deliveries.observe(id).first()!!.deliveryDate)
+        // Unrelated edits that keep the date still save, and the analysis is never touched.
+        ok(deliveries.update(id, draft(1_000_000, north to null).copy(deliveryDate = day.plusDays(2), notes = "Vale 12")))
+        assertEquals(day.plusDays(2), deliveries.observe(id).first()!!.analysis?.analysisDate)
+
+        val undated = ok(deliveries.create(draft(500_000, south to null)))
+        ok(deliveries.recordYield(undated, YieldDraft(null, 2_000, null)))
+        ok(deliveries.update(undated, draft(500_000, south to null).copy(deliveryDate = day.plusDays(5))))
+        assertEquals(day.plusDays(5), deliveries.observe(undated).first()!!.deliveryDate)
+    }
+
     @Test
     fun deliveriesAndYieldSurviveARestart() = runBlocking {
         val id = ok(deliveries.create(draft(2_850_000, north to 2_000_000, south to 850_000)))

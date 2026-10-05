@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Una pesada no se mueve a después de su análisis de rendimiento (#455).** Al corregir la fecha de
+  una pesada que ya tiene análisis fechado, no se puede poner un día posterior al análisis: «La nueva
+  fecha de la pesada sería posterior a su análisis de rendimiento. Corrige primero la fecha del
+  análisis o mantén la fecha de la pesada.». Un análisis sin fecha no lo impide y el análisis nunca se
+  modifica.
 - **Las parcelas de un trabajo no dejan gastos colgando (#441).** Al editar un trabajo no se puede
   quitar una parcela (ni pasarlo a toda la finca) si un gasto de ese trabajo la nombra: «Hay gastos
   vinculados a esta parcela dentro del trabajo. Revísalos antes de cambiar las parcelas.», con esos
