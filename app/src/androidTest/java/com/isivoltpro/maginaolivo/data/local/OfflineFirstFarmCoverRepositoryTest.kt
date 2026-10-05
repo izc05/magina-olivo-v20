@@ -18,6 +18,7 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepositor
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.time.Instant
@@ -89,9 +90,11 @@ class OfflineFirstFarmCoverRepositoryTest {
                 AppResult.Success(farmId),
                 farmRepository.create(NewFarm(workspaceId, "La Solana")),
             )
+            val workspaces = fixedWorkspaceRepository(workspaceId)
             val coverRepository = OfflineFirstFarmCoverRepository(
                 database = database,
                 fileStore = AndroidAttachmentFileStore(context),
+                workspaceRepository = workspaces,
                 clock = FixedClock(now.plusSeconds(30)),
                 idGenerator = FixedIds(
                     documentId,
@@ -139,6 +142,11 @@ class OfflineFirstFarmCoverRepositoryTest {
             reopened.close()
         }
     }
+
+    private fun fixedWorkspaceRepository(workspaceId: UUID): WorkspaceRepository =
+        object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
+        }
 
     private class FixedIds(vararg ids: UUID) : IdGenerator {
         private val values = ArrayDeque(ids.toList())
