@@ -84,7 +84,7 @@ internal class DeliveryWriter(
         val row = current.copy(
             deliveryDate = draft.deliveryDate,
             destinationOrganizationId = draft.destinationOrganizationId,
-            destinationName = destinationName(draft, current.workspaceId),
+            destinationName = keptDestinationName(current, draft) ?: destinationName(draft, current.workspaceId),
             netGrams = draft.netGrams!!,
             grossGrams = draft.grossGrams,
             tareGrams = draft.tareGrams,
@@ -121,6 +121,15 @@ internal class DeliveryWriter(
     private fun checkDate(draft: DeliveryDraft, campaign: CampaignEntity) {
         if (draft.deliveryDate.isBefore(campaign.startDate)) throw InvalidDelivery("deliveryDate", "before_campaign")
     }
+
+    /**
+     * #451: a Pesada that keeps its cooperative keeps the name it was recorded with, even if the
+     * cooperative was renamed or archived since. Only choosing another one takes a new name.
+     */
+    private fun keptDestinationName(current: DeliveryEntity, draft: DeliveryDraft): String? =
+        current.destinationName.takeIf {
+            draft.destinationOrganizationId != null && draft.destinationOrganizationId == current.destinationOrganizationId
+        }
 
     /** A chosen organization is copied by name, so the Delivery reads the same if it is renamed. */
     private suspend fun destinationName(draft: DeliveryDraft, workspaceId: UUID): String {

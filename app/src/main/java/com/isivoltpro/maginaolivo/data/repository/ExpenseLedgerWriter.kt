@@ -59,6 +59,11 @@ internal class ExpenseLedgerWriter(
             ExpenseStatus.valueOf(current.status),
             ExpenseOrigin.valueOf(current.origin),
             current.metadata.next(now),
+            // #451: the same supplier keeps the name it was recorded with; only choosing another
+            // one takes that one's current name.
+            keptProvider = current.provider.takeIf {
+                current.supplierOrganizationId != null && draft.supplierOrganizationId == current.supplierOrganizationId
+            },
         )
         requireEditableCampaign(expense)
         database.expenseDao().upsert(expense)
@@ -144,6 +149,7 @@ internal class ExpenseLedgerWriter(
         status: ExpenseStatus,
         origin: ExpenseOrigin,
         metadata: LocalMetadata,
+        keptProvider: String? = null,
     ): ExpenseEntity {
         val concept = draft.concept.trim()
         if (concept.isEmpty()) throw InvalidExpense("concept", "blank")
@@ -223,7 +229,7 @@ internal class ExpenseLedgerWriter(
             category = draft.category.name,
             amountMinor = draft.amountMinor,
             currency = draft.currency.trim().uppercase(),
-            provider = organization?.name ?: draft.supplierText?.trim()?.ifEmpty { null },
+            provider = organization?.let { keptProvider ?: it.name } ?: draft.supplierText?.trim()?.ifEmpty { null },
             notes = draft.notes?.trim()?.ifEmpty { null },
             status = status.name,
             origin = origin.name,

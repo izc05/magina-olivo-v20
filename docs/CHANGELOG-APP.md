@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Corregir una pesada o un gasto no cambia la cooperativa/proveedor con que se guardó (#451).** Si
+  la cooperativa o el proveedor se renombra o se archiva, la pesada o el gasto siguen con el nombre de
+  entonces al corregir notas, vale, kilos o importe, y se pueden seguir editando. El editor muestra el
+  nombre guardado y, si ha cambiado, «Ahora: …». Solo elegir otra cooperativa o proveedor toma su
+  nombre actual.
 - **Corregir una pesada no cambia el nombre de parcela con el que se guardó (#454).** Editar notas,
   vale o kilos de una pesada conserva sus filas de parcela tal como estaban (mismo identificador y
   mismo nombre de entonces, aunque la parcela se haya renombrado después). Solo una parcela añadida en

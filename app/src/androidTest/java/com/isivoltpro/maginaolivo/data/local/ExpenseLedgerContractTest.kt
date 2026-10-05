@@ -211,6 +211,29 @@ class ExpenseLedgerContractTest {
         assertEquals("Agro Sur", db.expenseDao().findById(id)!!.provider)
     }
 
+    /** #451: editing a Gasto keeps the supplier name it was saved with; only a new supplier takes its name. */
+    @Test
+    fun editingAGastoKeepsTheSupplierNameAsCaptured() = runBlocking {
+        val supplier = ok(organizations.create(OrganizationDraft("Agro Sur", setOf(OrganizationRole.SUPPLIER))))
+        val saved = draft(3_000, farmId = farmId).copy(supplierOrganizationId = supplier)
+        val id = ok(expenses.create(saved))
+        ok(organizations.update(supplier, OrganizationDraft("Agro Sur SL", setOf(OrganizationRole.SUPPLIER))))
+
+        ok(expenses.update(id, saved.copy(amountMinor = 3_500, notes = "Segunda factura")))
+        assertEquals("Agro Sur", db.expenseDao().findById(id)!!.provider)
+
+        // An archived supplier does not stop correcting the rest of the Gasto.
+        ok(organizations.archive(supplier))
+        ok(expenses.update(id, saved.copy(concept = "Abono foliar")))
+        assertEquals("Agro Sur", db.expenseDao().findById(id)!!.provider)
+        assertEquals(supplier, db.expenseDao().findById(id)!!.supplierOrganizationId)
+
+        // Choosing another supplier is an explicit change: it takes that one's name.
+        val other = ok(organizations.create(OrganizationDraft("Fitos Mágina", setOf(OrganizationRole.SUPPLIER))))
+        ok(expenses.update(id, saved.copy(supplierOrganizationId = other)))
+        assertEquals("Fitos Mágina", db.expenseDao().findById(id)!!.provider)
+    }
+
     // ------------------------------------------------------------ #429 work not done holds no money
 
     @Test

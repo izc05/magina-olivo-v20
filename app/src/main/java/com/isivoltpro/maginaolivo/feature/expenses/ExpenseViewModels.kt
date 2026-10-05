@@ -50,6 +50,9 @@ data class ExpenseForm(
     val category: ExpenseCategory = ExpenseCategory.OTHER,
     val supplierOrganizationId: UUID? = null,
     val supplierText: String = "",
+    /** #451: the supplier this Gasto was saved with and the name it was saved under. */
+    val recordedSupplierId: UUID? = null,
+    val recordedSupplierName: String = "",
     val farmId: UUID? = null,
     val parcelId: UUID? = null,
     val activityId: UUID? = null,
@@ -143,6 +146,8 @@ internal fun Expense.toForm() = ExpenseForm(
     category = category,
     supplierOrganizationId = supplierOrganizationId,
     supplierText = if (supplierOrganizationId == null) supplierName.orEmpty() else "",
+    recordedSupplierId = supplierOrganizationId,
+    recordedSupplierName = supplierName.orEmpty(),
     farmId = farmId,
     parcelId = parcelId,
     activityId = activityId,
@@ -538,4 +543,14 @@ class ExpenseDetailViewModel(
             }
         }
     }
+}
+
+/** #451: the supplier as the form shows it; see [com.isivoltpro.maginaolivo.feature.deliveries.destinationShown]. */
+internal data class SupplierShown(val name: String?, val currentName: String?)
+
+internal fun ExpenseForm.supplierShown(suppliers: List<Organization>): SupplierShown {
+    val chosen = supplierOrganizationId ?: return SupplierShown(null, null)
+    val current = suppliers.firstOrNull { it.id == chosen }?.name
+    if (chosen != recordedSupplierId || recordedSupplierName.isEmpty()) return SupplierShown(current, null)
+    return SupplierShown(recordedSupplierName, current?.takeIf { it != recordedSupplierName })
 }
