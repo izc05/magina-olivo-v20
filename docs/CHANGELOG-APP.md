@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Las parcelas de un trabajo no dejan gastos colgando (#441).** Al editar un trabajo no se puede
+  quitar una parcela (ni pasarlo a toda la finca) si un gasto de ese trabajo la nombra: «Hay gastos
+  vinculados a esta parcela dentro del trabajo. Revísalos antes de cambiar las parcelas.», con esos
+  gastos a un toque. Añadir parcelas, cambiar el tipo o la fecha del trabajo nunca mueve ni cambia
+  sus gastos.
 - **Un trabajo con gastos propios no se archiva (#437).** Si un borrador o un trabajo cancelado tiene
   gastos anotados que apuntan a él, «Archivar» queda desactivado: «Este trabajo tiene gastos
   vinculados. Consérvalo cancelado o revisa esos gastos antes de archivarlo.», con cada gasto a un

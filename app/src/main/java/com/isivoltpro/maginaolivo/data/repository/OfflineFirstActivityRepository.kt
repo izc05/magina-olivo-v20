@@ -258,6 +258,12 @@ class OfflineFirstActivityRepository(
             if (current.status == ActivityStatus.PLANNED && changes.parcelIds.isEmpty()) {
                 return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
             }
+            // #441: a Parcel a Gasto of this work names is not dropped from the work (also when it
+            // becomes «Toda la finca»). Adding Parcels, retyping or redating never touches Gastos.
+            val dropped = database.activityDao().listTargets(id).map { it.parcelId }.toSet() - changes.parcelIds
+            if (dropped.isNotEmpty() && database.expenseDao().listForActivity(id).any { it.parcelId in dropped }) {
+                return@mutate conflict(ActivityCostRules.PARCEL_HAS_EXPENSES)
+            }
             database.activityDao().upsert(
                 current.copy(
                     type = changes.type.name,

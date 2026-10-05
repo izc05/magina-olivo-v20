@@ -960,6 +960,10 @@ fun ActivityDetailScreen(
                         }
                     }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    // #441: the Gastos that keep a Parcel in the work, one tap away.
+                    if (state.error == PARCEL_HAS_EXPENSES_TEXT) {
+                        LinkedExpensesList(relatedExpenses.filter { it.parcelId != null }, onOpenExpense)
+                    }
                     attachmentContent()
                 }
             }
@@ -972,7 +976,8 @@ fun ActivityDetailScreen(
                 parcels = state.parcels,
                 descriptionError = null,
                 dateError = null,
-                parcelsError = null,
+                // #441: said where the Parcels are chosen; the Gastos to review are listed below the work.
+                parcelsError = state.error?.takeIf { it == PARCEL_HAS_EXPENSES_TEXT },
                 isSaving = state.isSaving,
                 onSave = onUpdate,
                 onCancel = { editor = false },
@@ -1395,7 +1400,16 @@ private fun LinkedExpensesHoldArchive(
         style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
         modifier = Modifier.fillMaxWidth().testTag("activity-linked-expenses-note"),
     )
-    if (onOpenExpense != null) {
+    LinkedExpensesList(expenses, onOpenExpense)
+}
+
+/** #437/#441: each Gasto tied to the work, opened in one tap. */
+@Composable
+private fun LinkedExpensesList(
+    expenses: List<com.isivoltpro.maginaolivo.domain.expense.Expense>,
+    onOpenExpense: ((UUID) -> Unit)?,
+) {
+    if (expenses.isNotEmpty() && onOpenExpense != null) {
         Text("Ver gastos vinculados", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
         expenses.forEach { expense ->
             MoTertiaryButton(
