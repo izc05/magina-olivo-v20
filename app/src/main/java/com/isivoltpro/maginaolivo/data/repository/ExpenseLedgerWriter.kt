@@ -64,6 +64,7 @@ internal class ExpenseLedgerWriter(
             keptProvider = current.provider.takeIf {
                 current.supplierOrganizationId != null && draft.supplierOrganizationId == current.supplierOrganizationId
             },
+            historicalSupplierId = current.supplierOrganizationId,
         )
         requireEditableCampaign(expense)
         database.expenseDao().upsert(expense)
@@ -86,6 +87,7 @@ internal class ExpenseLedgerWriter(
             ExpenseStatus.POSTED,
             ExpenseOrigin.valueOf(current.origin),
             current.metadata,
+            historicalSupplierId = current.supplierOrganizationId,
         )
         // Only the status changes: the supplier name and every snapshot stay as captured (#451).
         database.expenseDao().upsert(current.copy(status = ExpenseStatus.POSTED.name, metadata = current.metadata.next(now)))
@@ -150,6 +152,7 @@ internal class ExpenseLedgerWriter(
         origin: ExpenseOrigin,
         metadata: LocalMetadata,
         keptProvider: String? = null,
+        historicalSupplierId: UUID? = null,
     ): ExpenseEntity {
         val concept = draft.concept.trim()
         if (concept.isEmpty()) throw InvalidExpense("concept", "blank")
@@ -214,6 +217,11 @@ internal class ExpenseLedgerWriter(
         val organization = draft.supplierOrganizationId?.let { organizationId ->
             database.organizationDao().findById(organizationId)?.takeIf { it.workspaceId == workspaceId }
                 ?: throw InvalidExpense("supplierOrganizationId", "not_found")
+        }
+        // #451: an archived supplier stays on the Gastos that already had it (and their snapshot),
+        // but a new Gasto, or an explicit change of supplier, only takes an active one.
+        if (organization != null && organization.metadata.deletedAt != null && organization.id != historicalSupplierId) {
+            throw InvalidExpense("supplierOrganizationId", "archived")
         }
         return ExpenseEntity(
             id = id,

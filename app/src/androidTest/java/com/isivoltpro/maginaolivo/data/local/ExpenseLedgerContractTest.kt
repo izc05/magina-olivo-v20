@@ -234,6 +234,28 @@ class ExpenseLedgerContractTest {
         assertEquals("Fitos Mágina", db.expenseDao().findById(id)!!.provider)
     }
 
+    /** #451 QA 7/9: an archived supplier is never taken by a new Gasto nor by an explicit change. */
+    @Test
+    fun anArchivedSupplierIsOnlyKeptWhereItAlreadyWas() = runBlocking {
+        val archived = ok(organizations.create(OrganizationDraft("Agro Sur", setOf(OrganizationRole.SUPPLIER))))
+        val active = ok(organizations.create(OrganizationDraft("Fitos Mágina", setOf(OrganizationRole.SUPPLIER))))
+        val kept = draftOf(draft(3_000, farmId = farmId).copy(supplierOrganizationId = archived))
+        ok(organizations.archive(archived))
+
+        val created = expenses.create(draft(2_000, farmId = farmId).copy(supplierOrganizationId = archived))
+        assertTrue(created is AppResult.Failure && (created.error as? AppError.Validation)?.code == "archived")
+
+        val other = ok(expenses.create(draft(2_000, farmId = farmId).copy(supplierOrganizationId = active)))
+        val changed = expenses.update(other, draft(2_000, farmId = farmId).copy(supplierOrganizationId = archived))
+        assertTrue(changed is AppResult.Failure && (changed.error as? AppError.Validation)?.code == "archived")
+        assertEquals(active, db.expenseDao().findById(other)!!.supplierOrganizationId)
+
+        // The DRAFT that already had it still confirms, with its supplier and name as captured.
+        ok(expenses.post(kept))
+        assertEquals(archived, db.expenseDao().findById(kept)!!.supplierOrganizationId)
+        assertEquals("Agro Sur", db.expenseDao().findById(kept)!!.provider)
+    }
+
     // ------------------------------------------------------------ #429 work not done holds no money
 
     @Test

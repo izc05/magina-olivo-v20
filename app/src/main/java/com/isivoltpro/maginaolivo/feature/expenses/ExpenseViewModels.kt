@@ -172,7 +172,7 @@ internal fun Expense.toForm() = ExpenseForm(
 internal fun postErrorMessage(error: AppError): String = when {
     error is AppError.Validation && error.field == "expenseDate" && error.code == "future" ->
         "La fecha de este gasto es posterior a hoy. Corrígela antes de confirmarlo."
-    error is AppError.Validation && error.code != "campaign_closed" &&
+    error is AppError.Validation && error.code != "campaign_closed" && error.code != "archived" &&
         error.field in setOf("farmId", "parcelId", "activityId", "campaignId", "harvestId", "supplierOrganizationId") ->
         "Este gasto necesita revisar su finca/parcela/trabajo antes de confirmarlo."
     else -> expenseErrorMessage(error)
@@ -190,6 +190,8 @@ internal fun expenseErrorMessage(error: AppError): String = when (error) {
         error.field == "campaignId" && error.code == "not_in_activity" -> "Ese trabajo pertenece a otra campaña."
         error.field == "parcelId" && error.code == "not_in_activity" -> "Ese trabajo no se hizo en la parcela elegida."
         error.field == "activityId" && error.code == "not_in_day" -> "Ese trabajo no es de esta jornada de recogida."
+        error.field == "supplierOrganizationId" && error.code == "archived" ->
+            "Ese proveedor está archivado. Elige otro proveedor o escríbelo a mano."
         error.code == "activity_cost_locked" ->
             "Este coste es de su trabajo. Para separarlo usa «Conservar como gasto independiente»."
         else -> when (error.field) {
