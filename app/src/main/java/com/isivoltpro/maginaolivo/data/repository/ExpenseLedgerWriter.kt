@@ -65,6 +65,7 @@ internal class ExpenseLedgerWriter(
                 current.supplierOrganizationId != null && draft.supplierOrganizationId == current.supplierOrganizationId
             },
             historicalSupplierId = current.supplierOrganizationId,
+            recorded = current,
         )
         requireEditableCampaign(expense)
         database.expenseDao().upsert(expense)
@@ -88,6 +89,7 @@ internal class ExpenseLedgerWriter(
             ExpenseOrigin.valueOf(current.origin),
             current.metadata,
             historicalSupplierId = current.supplierOrganizationId,
+            recorded = current,
         )
         // Only the status changes: the supplier name and every snapshot stay as captured (#451).
         database.expenseDao().upsert(current.copy(status = ExpenseStatus.POSTED.name, metadata = current.metadata.next(now)))
@@ -153,6 +155,8 @@ internal class ExpenseLedgerWriter(
         metadata: LocalMetadata,
         keptProvider: String? = null,
         historicalSupplierId: UUID? = null,
+        /** The Expense as stored, when rewriting it: its Farm/Parcel pair is history (#476). */
+        recorded: ExpenseEntity? = null,
     ): ExpenseEntity {
         val concept = draft.concept.trim()
         if (concept.isEmpty()) throw InvalidExpense("concept", "blank")
@@ -171,11 +175,16 @@ internal class ExpenseLedgerWriter(
                 ?.takeIf { it.workspaceId == workspaceId && it.metadata.deletedAt == null }
                 ?: throw InvalidExpense("activityId", "not_found")
         }
+        // #476: a Parcel the Expense already had, on the same Farm, is a historical fact: it stays
+        // valid though the Parcel was archived or moved to another Farm since. Only a Parcel chosen
+        // now must be active and belong to that Farm today.
+        val keptParcel = recorded != null && draft.parcelId != null && draft.parcelId == recorded.parcelId &&
+            (draft.farmId ?: recorded.farmId) == recorded.farmId
         val parcelFarmId = draft.parcelId?.let { parcelId ->
             val parcel = database.parcelDao().findById(parcelId)
-            if (parcel == null || parcel.status != RecordStatus.ACTIVE || parcel.workspaceId != workspaceId) {
-                throw InvalidExpense("parcelId", "not_found")
-            }
+            if (parcel == null || parcel.workspaceId != workspaceId) throw InvalidExpense("parcelId", "not_found")
+            if (keptParcel) return@let recorded!!.farmId
+            if (parcel.status != RecordStatus.ACTIVE) throw InvalidExpense("parcelId", "not_found")
             database.parcelDao().findCurrentMembership(parcelId)?.farmId
         }
         // #433: every relation that knows its Farm must name the same one, and an Expense with a

@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un gasto antiguo sigue editable aunque su parcela se archive o cambie de finca (#476).** Corregir
+  importe, nota o concepto conserva la finca y la parcela con que se anotó; el editor la muestra como
+  «Parcela 1 · archivada» o «· ahora en otra finca». Para un gasto nuevo, o al cambiar de parcela, solo
+  se ofrecen las parcelas activas de esa finca.
 - **Un día sin pesadas no se atribuye a todas las parcelas (#458).** Un día de recolección abierto
   sin pesadas, o que se queda sin ellas pero conserva jornales, maquinaria, gastos o notas, muestra
   «Origen sin determinar» y no aparece en el historial de ninguna parcela. Al llegar, cambiar o irse

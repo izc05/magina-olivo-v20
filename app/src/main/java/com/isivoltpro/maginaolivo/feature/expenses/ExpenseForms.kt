@@ -245,8 +245,7 @@ internal fun ExpenseEditor(
                     Modifier.testTag("expense-parcel"),
                 )
             } else {
-                val parcel = options.parcels.firstOrNull { it.id == form.parcelId }
-                MoSelectField("Parcela", parcel?.displayName ?: "Toda la finca", { picker = "parcel" },
+                MoSelectField("Parcela", options.parcelLabel(form.parcelId, form.farmId) ?: "Toda la finca", { picker = "parcel" },
                     Modifier.testTag("expense-parcel"))
             }
         }
@@ -269,7 +268,7 @@ internal fun ExpenseEditor(
             }
         } else if (parcelInSight) {
             Text(
-                "Parcela · " + (options.parcels.firstOrNull { it.id == lockedParcelId }?.displayName ?: "…"),
+                "Parcela · " + (options.parcelLabel(lockedParcelId, form.farmId) ?: "…"),
                 style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary,
                 modifier = Modifier.testTag("expense-parcel-context"),
             )

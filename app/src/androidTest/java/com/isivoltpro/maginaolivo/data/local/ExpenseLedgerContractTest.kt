@@ -419,6 +419,41 @@ class ExpenseLedgerContractTest {
         assertEquals(7_000, expenses.observe(cost.id).first()!!.amountMinor)
     }
 
+    /** #476: a Parcel the Gasto already had stays valid when archived or moved; a new choice must be current. */
+    @Test
+    fun editingAGastoKeepsItsParcelEvenIfArchivedOrMoved() = runBlocking {
+        val saved = draft(4_000, farmId = farmId, parcelId = parcelA)
+        val id = ok(expenses.create(saved))
+
+        // Archived: a note can still be corrected, and the Gasto keeps Finca/Parcela.
+        val parcel = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(parcel.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED))
+        ok(expenses.update(id, saved.copy(notes = "Factura corregida")))
+        assertEquals(parcelA, db.expenseDao().findById(id)!!.parcelId)
+        assertEquals(farmId, db.expenseDao().findById(id)!!.farmId)
+        // A new Gasto cannot pick it.
+        assertValidation("parcelId", expenses.create(draft(1_000, farmId = farmId, parcelId = parcelA)))
+
+        // Moved to another Farm: the old Gasto still edits on its own Farm and Parcel.
+        db.parcelDao().upsert(parcel)
+        val current = db.parcelDao().findCurrentMembership(parcelA)!!
+        db.parcelDao().upsertMembership(current.copy(validUntil = now))
+        db.parcelDao().upsertMembership(
+            FarmParcelMembershipEntity(UUID.randomUUID(), workspaceId, otherFarmId, parcelA, now, metadata = LocalMetadata(now, now)),
+        )
+        ok(expenses.update(id, saved.copy(amountMinor = 4_500)))
+        val kept = db.expenseDao().findById(id)!!
+        assertEquals(farmId, kept.farmId)
+        assertEquals(parcelA, kept.parcelId)
+        assertEquals(4_500L, kept.amountMinor)
+        // Choosing it now on its old Farm is a new choice: refused.
+        val other = ok(expenses.create(draft(1_000, farmId = farmId)))
+        assertValidation("parcelId", expenses.update(other, draft(1_000, farmId = farmId, parcelId = parcelA)))
+        // An explicit change to no Parcel is fine.
+        ok(expenses.update(id, saved.copy(parcelId = null)))
+        assertNull(db.expenseDao().findById(id)!!.parcelId)
+    }
+
     @Test
     fun onlyAWorkCostCanBeKeptOnItsOwn() = runBlocking {
         val manual = ok(expenses.create(draft(1_000, farmId = farmId)))
