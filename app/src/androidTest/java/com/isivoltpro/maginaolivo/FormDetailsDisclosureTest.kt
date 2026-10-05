@@ -30,6 +30,41 @@ class FormDetailsDisclosureTest {
         composeRule.onNodeWithTag("expense-more-details").assertDoesNotExist()
     }
 
+    /** #415: supplier and relations wait too; the quick view is amount, concept, date and category. */
+    @Test fun aNewExpenseFoldsSupplierAndRelations() {
+        show(ExpenseForm(date = "2026-11-24"))
+        composeRule.onNodeWithTag("expense-amount").assertExists()
+        composeRule.onNodeWithTag("expense-concept").assertExists()
+        composeRule.onNodeWithTag("expense-date").assertExists()
+        composeRule.onNodeWithTag("expense-category").assertExists()
+        composeRule.onNodeWithTag("expense-supplier").assertDoesNotExist()
+        composeRule.onNodeWithTag("expense-more-details").performScrollTo().performClick()
+        composeRule.onNodeWithTag("expense-supplier").performScrollTo().assertExists()
+    }
+
+    @Test fun anExpenseWithASupplierShowsIt() {
+        show(ExpenseForm(date = "2026-11-24", supplierText = "Cooperativa"))
+        composeRule.onNodeWithTag("expense-more-details").assertDoesNotExist()
+        composeRule.onNodeWithText("Cooperativa", useUnmergedTree = true).assertExists()
+    }
+
+    /** #415: «Guardar y añadir foto» saves the same form, then the Gasto opens for its photo. */
+    @Test fun saveAndAddPhotoSavesTheForm() {
+        var saved: ExpenseForm? = null
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ExpenseEditor(
+                    title = "Nuevo gasto", initial = ExpenseForm(date = "2026-11-24", amount = "35", concept = "Gasoil"),
+                    options = RelationOptions(), errors = ExpenseFormErrors(), isSaving = false,
+                    saveText = "Guardar gasto", onFarmSelected = {}, onSave = {}, onCancel = {},
+                    onSaveWithPhoto = { saved = it },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("save-expense-photo").performScrollTo().performClick()
+        composeRule.runOnIdle { org.junit.Assert.assertEquals("Gasoil", saved?.concept) }
+    }
+
     @Test fun anExpenseThatAlreadyHasNotesShowsThem() {
         show(ExpenseForm(date = "2026-11-24", notes = "Pagado en efectivo"))
         composeRule.onNodeWithTag("expense-more-details").assertDoesNotExist()

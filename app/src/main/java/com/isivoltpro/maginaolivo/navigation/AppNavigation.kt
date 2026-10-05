@@ -664,6 +664,7 @@ fun AppNavigation(
                     navArgument("parcelId") { type = NavType.StringType; nullable = true; defaultValue = null },
                     navArgument("campaignId") { type = NavType.StringType; nullable = true; defaultValue = null },
                     navArgument("activityId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("quick") { type = NavType.BoolType; defaultValue = false },
                 ),
             ) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
@@ -675,6 +676,7 @@ fun AppNavigation(
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
                 val activityId = backStackEntry.arguments?.getString("activityId")
                     ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                val quick = backStackEntry.arguments?.getBoolean("quick") ?: false
                 if (persistence == null || farmId == null) {
                     PersistenceUnavailableScreen()
                 } else {
@@ -688,9 +690,19 @@ fun AppNavigation(
                         presetParcelId = parcelId,
                         presetCampaignId = campaignId,
                         presetActivityId = activityId,
+                        presetQuick = quick,
+                        // #415: «Guardar y añadir foto» opens the saved Gasto; a contextual entry is
+                        // replaced by it, so Back returns where the flow started.
+                        onOpenSavedExpense = { id ->
+                            navController.navigate(AppDestination.expense(id.toString())) {
+                                if (quick || activityId != null) {
+                                    popUpTo(AppDestination.FarmExpensesPattern) { inclusive = true }
+                                }
+                            }
+                        },
                         // #416: back to the work the expense was added from, which says so when it was saved.
                         onContextDone = { saved ->
-                            if (saved) navController.previousBackStackEntry?.savedStateHandle?.set(RELATED_EXPENSE_ADDED_KEY, true)
+                            if (saved && activityId != null) navController.previousBackStackEntry?.savedStateHandle?.set(RELATED_EXPENSE_ADDED_KEY, true)
                             navController.popBackStack()
                         },
                         onDocumentImported = { id ->
@@ -923,7 +935,8 @@ private fun NavHostController.openQuickAction(action: NotebookQuickAction, farmI
         NotebookQuickAction.TREATMENT ->
             navigate(AppDestination.register(ActivityType.PHYTOSANITARY.name)) { launchSingleTop = true }
         NotebookQuickAction.WEIGHING -> navigate(AppDestination.newPesada(farmId.toString(), parcelId))
-        NotebookQuickAction.EXPENSE -> navigate(AppDestination.farmExpenses(farmId.toString(), parcelId))
+        // #415: one tap opens the form; saving or cancelling returns to the Cuaderno.
+        NotebookQuickAction.EXPENSE -> navigate(AppDestination.farmExpenses(farmId.toString(), parcelId, quick = true))
         // #378: outside a running campaign, Jornal is the Farm's own labour — a labour expense,
         // opened and labelled as such, never a plain «Nuevo gasto».
         NotebookQuickAction.LABOUR -> navigate(AppDestination.farmLabour(farmId.toString(), parcelId))

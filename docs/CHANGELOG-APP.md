@@ -20,6 +20,13 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Gasto rápido (#415).** Un gasto nuevo muestra solo importe, concepto, fecha, categoría, la finca
+  y, si hay recogida en curso, «Recogida / Fuera de campaña». Desde el Cuaderno de una parcela se
+  lee «Parcela · Los Llanos» y no se vuelve a preguntar. Proveedor, «Relacionado con» (el trabajo;
+  solo los hechos en esa parcela), factura, líneas y notas esperan en «Relacionar y más detalles»,
+  que se abre solo si ya tienen algo. Cuaderno → Gasto abre el formulario a la primera y al guardar o cancelar
+  vuelves al Cuaderno; entrar en Gastos desde el listado sigue mostrando la lista. «Guardar y añadir
+  foto» guarda y abre el gasto, donde se adjunta la foto del ticket o la factura.
 - **Un trabajo no hecho no suma dinero (#429).** Planificar o guardar un borrador ya no puede crear
   un gasto real, venga de la pantalla que venga, y editar un trabajo nunca toca su coste. Completar
   un trabajo no inventa gasto. Si un trabajo hecho tiene un coste anotado antes, «Reabrir» espera:
