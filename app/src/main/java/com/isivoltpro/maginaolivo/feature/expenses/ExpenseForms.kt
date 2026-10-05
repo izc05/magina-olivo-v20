@@ -120,7 +120,8 @@ internal fun ExpenseEditor(
         mutableStateOf(initial.campaignId != null || !requireCampaignChoice)
     }
     LaunchedEffect(preselectRecollection, options.campaigns, form.farmId) {
-        if (preselectRecollection && !campaignChoiceMade) {
+        // Codex #480: a related expense takes its work's Campaign; nothing is preselected over it.
+        if (preselectRecollection && !campaignChoiceMade && !activityLocked) {
             val preselected = form.withRecollectionPreselected(options)
             if (preselected.campaignId != null) {
                 form = preselected
@@ -137,8 +138,24 @@ internal fun ExpenseEditor(
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary)
-        val recollection = options.recollectionCampaignFor(form, initial.campaignId)
-        if (recollection != null) {
+        // Codex #480: with the work locked, its Campaign (or none, for general work) is context, not a choice.
+        val recollection = if (activityLocked) null else options.recollectionCampaignFor(form, initial.campaignId)
+        if (activityLocked) {
+            val work = options.activities.firstOrNull { it.id == form.activityId }
+            val workCampaign = work?.campaignId?.let { id -> options.campaigns.firstOrNull { it.id == id } }
+            if (work != null) {
+                Text(
+                    when {
+                        workCampaign != null -> "Campaña del trabajo · ${workCampaign.choiceLabel()}"
+                        work.campaignId != null -> "En la campaña del trabajo"
+                        else -> "Fuera de campaña · trabajo general de la finca"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MoTextSecondary,
+                    modifier = Modifier.testTag("expense-work-campaign"),
+                )
+            }
+        } else if (recollection != null) {
             Column(Modifier.fillMaxWidth().selectableGroup().testTag("expense-kind")) {
                 Text("¿Dónde pertenece este gasto?", style = MaterialTheme.typography.titleSmall, color = MoOliveDark)
                 ExpenseKindRow("Recogida · ${recollection.choiceLabel()}", campaignChoiceMade && form.campaignId == recollection.id, "expense-kind-recollection") {
