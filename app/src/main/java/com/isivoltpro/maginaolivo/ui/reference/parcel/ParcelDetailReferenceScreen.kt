@@ -131,7 +131,7 @@ fun ParcelDetailReferenceScreen(
                     verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
                 ) {
                     Text(
-                        text = "Próxima actuación",
+                        text = "Próximo trabajo",
                         style = MaterialTheme.typography.labelMedium,
                         color = MoTextSecondary,
                     )
@@ -141,7 +141,7 @@ fun ParcelDetailReferenceScreen(
                         color = MoOliveDark,
                     )
                     Text(
-                        text = "Última actuación: riego · 9 septiembre",
+                        text = "Último trabajo: riego · 9 septiembre",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MoTextSecondary,
                     )

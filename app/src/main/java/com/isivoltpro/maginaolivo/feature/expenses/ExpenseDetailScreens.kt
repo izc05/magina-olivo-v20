@@ -240,7 +240,7 @@ private fun ExpenseSummaryBlock(expense: Expense) {
         "Origen",
         when (expense.origin) {
             ExpenseOrigin.MANUAL -> "Anotado a mano"
-            ExpenseOrigin.ACTIVITY_COST -> "Coste de una actuación"
+            ExpenseOrigin.ACTIVITY_COST -> "Coste de un trabajo"
             ExpenseOrigin.DOCUMENT_OCR -> "Leído de un documento y revisado"
             ExpenseOrigin.DAY_LABOUR -> "Calculado de los jornales del día"
             ExpenseOrigin.DAY_EQUIPMENT -> "Calculado de la maquinaria del día"
