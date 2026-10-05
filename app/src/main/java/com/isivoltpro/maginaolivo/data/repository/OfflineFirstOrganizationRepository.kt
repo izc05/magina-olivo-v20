@@ -145,7 +145,9 @@ class OfflineFirstOrganizationRepository(
             taxId = taxId.normalized(),
             municipality = municipality.normalized(),
             province = province.normalized(),
+            address = address.normalized(),
             phone = phone.normalized(),
+            website = website.normalized(),
             notes = notes.normalized(),
             metadata = metadata,
         )
@@ -162,7 +164,9 @@ class OfflineFirstOrganizationRepository(
                 taxId = row.taxId,
                 municipality = row.municipality,
                 province = row.province,
+                address = row.address,
                 phone = row.phone,
+                website = row.website,
                 notes = row.notes,
             )
         }

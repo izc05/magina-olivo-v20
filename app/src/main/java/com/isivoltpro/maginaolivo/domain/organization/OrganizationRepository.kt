@@ -27,6 +27,9 @@ data class Organization(
     val province: String? = null,
     val phone: String? = null,
     val notes: String? = null,
+    // Appended for source compatibility with older positional call sites.
+    val address: String? = null,
+    val website: String? = null,
 )
 
 data class OrganizationDraft(
@@ -37,6 +40,9 @@ data class OrganizationDraft(
     val province: String? = null,
     val phone: String? = null,
     val notes: String? = null,
+    // Appended for source compatibility with older positional call sites.
+    val address: String? = null,
+    val website: String? = null,
 )
 
 interface OrganizationRepository {
