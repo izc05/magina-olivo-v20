@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -164,6 +165,8 @@ fun FarmMapScreen(
     var layerMenu by remember { mutableStateOf(false) }
     var polygonSheet by rememberSaveable { mutableStateOf(false) }
     var reviewSheet by rememberSaveable { mutableStateOf(false) }
+    var topOverlayHeightPx by remember { mutableStateOf(0) }
+    var bottomOverlayHeightPx by remember { mutableStateOf(0) }
     val mapped = remember(state.parcels, state.candidates, state.taken) {
         state.parcels.mapNotNull { p -> p.geometryGeoJson?.let { MapParcel(p.id.toString(), p.displayName, it) } } +
             state.candidates.filter { it.reference !in state.taken }
@@ -183,12 +186,18 @@ fun FarmMapScreen(
                 onSelected = onTapParcel,
                 onTap = { latitude, longitude -> onTapMap(latitude, longitude) },
                 focus = state.focus,
+                cameraInsets = MapCameraInsets(
+                    topPx = topOverlayHeightPx,
+                    bottomPx = bottomOverlayHeightPx,
+                ),
                 myLocation = state.myLocation,
             )
         }
         // Everything floats over the map, so the map takes the whole screen.
         Surface(
-            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(8.dp),
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                .onSizeChanged { topOverlayHeightPx = it.height }
+                .padding(8.dp),
             shape = MoShape.card,
             color = MoWarmWhite.copy(alpha = 0.97f),
             shadowElevation = 3.dp,
@@ -266,7 +275,9 @@ fun FarmMapScreen(
             }
         }
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(8.dp),
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                .onSizeChanged { bottomOverlayHeightPx = it.height }
+                .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (state.searching) Notice("Consultando Catastro…", MoTextSecondary, progress = true)
