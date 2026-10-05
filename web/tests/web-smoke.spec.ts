@@ -372,9 +372,32 @@ test("SEO metadata exposes an absolute social image and a valid manifest", async
     scope: "/",
     display: "standalone",
   });
-  expect(manifest.icons).toContainEqual(
-    expect.objectContaining({ src: "/brand/app-icon.png", type: "image/png" }),
+  expect(manifest.icons).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        src: "/brand/app-icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      }),
+      expect.objectContaining({
+        src: "/brand/app-icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+      }),
+    ]),
   );
+
+  for (const [path, expectedSize] of [
+    ["/brand/app-icon-192.png", 192],
+    ["/brand/app-icon-512.png", 512],
+  ] as const) {
+    const iconResponse = await page.request.get(path);
+    expect(iconResponse.status()).toBe(200);
+    const png = await iconResponse.body();
+    expect(png.toString("hex", 0, 8)).toBe("89504e470d0a1a0a");
+    expect(png.readUInt32BE(16)).toBe(expectedSize);
+    expect(png.readUInt32BE(20)).toBe(expectedSize);
+  }
 });
 
 test("public home follows the V3 visual reference and keeps demo data labeled", async ({
