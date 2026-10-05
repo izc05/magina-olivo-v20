@@ -111,6 +111,11 @@ data class NewActivity(
     val planning: ActivityPlanning? = null,
     /** Optional local reminders (Phase 16). */
     val reminders: List<ReminderRequest> = emptyList(),
+    /**
+     * Explicit affected surface per selected Parcel, in square metres.
+     * Missing/null means “not confirmed yet”; the repository never infers the full Parcel silently.
+     */
+    val parcelAreasM2: Map<UUID, Double?> = emptyMap(),
 )
 
 data class ActivityChanges(
@@ -138,6 +143,8 @@ data class ActivityChanges(
     val planning: ActivityPlanning? = null,
     /** The reminders after the change; an empty list turns them all off. */
     val reminders: List<ReminderRequest> = emptyList(),
+    /** Explicit affected surface per selected Parcel, in square metres; null means not confirmed. */
+    val parcelAreasM2: Map<UUID, Double?> = emptyMap(),
 )
 
 /**
