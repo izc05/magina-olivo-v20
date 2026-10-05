@@ -1,0 +1,268 @@
+# CUE Andalucía — matriz de implementación
+
+Estado de auditoría: **2026-10-05**  
+Issue maestro: #534  
+Android/Room: #535  
+IUWS/backend: #536
+
+> Este documento es una guía técnica de implementación, no una declaración de cumplimiento jurídico.
+> No declarar Mágina Olivo “conectado oficialmente” hasta superar #555 y pruebas reales de IUWS Andalucía.
+
+## 1. Fuentes de verdad
+
+Orden de uso:
+
+1. **Junta de Andalucía — Cuaderno de explotación / CUE**  
+   https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/agricultura/cuaderno-explotacion.html
+2. **Modelo de Cuaderno de Explotación V9 — 10/03/2026**  
+   https://www.juntadeandalucia.es/sites/default/files/inline-files/2026/03/20260310_MODELO_DE_CUADERNO_DE_EXPLOTACION_v9.pdf
+3. **FEGA SIEX — documentación técnica agrícola 3.11**  
+   https://www.fega.gob.es/es/siex/documentacion-tecnica-agricola-siex
+4. **Anexo V 3.11 — definición de variables REA/CUE**: obligatoriedad y estructura digital.
+5. **Anexo VI IUWS 3.11.4**: operaciones/transporte/contrato.
+6. **Anexo VII**: códigos y catálogos.
+7. **Anexos VIII/IX/X**: representación, autorización y funcionamiento de CUE comercial.
+8. BOE consolidado y normativa sectorial cuando determine aplicabilidad.
+
+Regla: **V9 define el contenido/UX; Anexo V/VII/VI define la representación digital final.**
+
+## 2. Deadline y prioridad
+
+La Junta indica actualmente que el CUE digital será obligatorio desde **01/01/2027 para tratamientos fitosanitarios**.
+
+Por eso el primer vertical productivo será:
+
+REAFA/explotación + parcela/cultivo  
+→ tratamiento offline  
+→ producto oficial MAPA  
+→ aplicador/equipo  
+→ superficie afectada  
+→ validación CUE  
+→ sync Mágina Olivo ↔ Supabase  
+→ cola administrativa  
+→ IUWS Andalucía  
+→ ACCEPTED/REJECTED  
+→ histórico auditable.
+
+Fertilización, riego, suelos, cosecha y documentación siguen en el modelo, pero no deben retrasar ese vertical.
+
+## 3. Qué existe ya en Room v22
+
+| Área | Modelo actual | Reutilizar | Gap principal |
+|---|---|---|---|
+| Explotación visible | FarmEntity | Sí | identidad administrativa/titular separada #545 |
+| Parcela | ParcelEntity | Sí | links oficiales SIGPAC/REAFA versionados #540 |
+| Actuación | ActivityEntity | Sí | intervalo de fechas #547 |
+| Parcelas de actuación | activity_parcels | Sí | no asumir parcela completa #546 |
+| Fitosanitario | PhytosanitaryDetailEntity | Sí | nº registro, eficacia, snapshots, refs legales #535 |
+| Abonado | FertilizationDetailEntity | Sí | composición/plan/variables V9 #538 |
+| Riego | IrrigationDetailEntity | Sí | semántica m³/ha y variables V9 #539 |
+| Máquinas | MachineEntity | Sí | perfil reglamentario ROMA/inspección #544 |
+| Jornaleros | WorkerEntity | **No como aplicador** | identidad legal separada #544 |
+| Organizaciones | AgriculturalOrganizationEntity | Sí | conservar address/web + identidad legal #550 |
+| Pesada/Entrega | DeliveryEntity + delivery_parcels | Sí | snapshot legal receptor + campos CUE #541 |
+| Documentos | DocumentEntity/Attachment | Sí | categoría/retención/owners regulatorios #543 |
+| Sync local | LocalMetadata + sync_outbox | Sí | motor remoto todavía pendiente #330 |
+| Perfil | ProfileSettings | Sí como preferencias | no usar como titular administrativo #545 |
+
+## 4. Fitosanitarios — mapping actual
+
+### Ya existe
+
+- fecha: `activities.activity_date`;
+- finca: `activities.farm_id`;
+- parcelas N:M: `activity_parcels`;
+- superficie por target: `activity_parcels.area_affected_m2`;
+- producto: `phytosanitary_details.product_name`;
+- sustancia activa: `active_substance`;
+- cantidad/unidad: `total_quantity` + `unit`;
+- dosis: `dose_value` + `dose_unit`;
+- motivo/problema: `reason`;
+- notas: `activities.notes`;
+- documentos/fotos: Attachment existente.
+
+### Falta o debe normalizarse
+
+- fecha fin / intervalo → #547;
+- superficie afectada introducida por el usuario → #546;
+- especie/cultivo y variedad como snapshot del momento;
+- nº registro oficial del producto;
+- producto/catálogo MAPA con versión → #553;
+- aplicador/persona/empresa → #544;
+- ROPO/carné/tipo cuando aplique → #544;
+- equipo de aplicación + ROMA/censo/inspección → #544;
+- eficacia;
+- asesoramiento/3.1bis solo cuando aplique;
+- completeness/reglas versionadas → #549/#554.
+
+No crear un aggregate `Treatment` paralelo. El canónico sigue siendo:
+
+`Activity + PhytosanitaryDetail + ActivityParcelTarget + refs/snapshots`.
+
+## 5. Slices Room propuestos
+
+### Slice 0 — integridad
+#548 / PR #551: una sola fuente de verdad para la versión Room.
+
+### Slice 1 — #546, sin cambio de schema
+`area_affected_m2` ya existe. Cambiar contrato para aceptar área por target y dejar de escribir automáticamente toda `managedAreaM2`.
+
+### Slice 2 — #547, Room v23
+Solo añadir:
+
+`activities.activity_end_date TEXT NULL`
+
+Migración v22→v23 puramente aditiva; legacy = null.
+
+### Slice 3 — #544, Room v24
+Identidad legal reutilizable de aplicadores/asesores y perfil reglamentario de equipos.  
+No reutilizar Worker.
+
+### Slice 4 — #535, Room v25
+Ampliación fitosanitaria tras cerrar matriz Anexo V/VII:
+- registration number;
+- efficacy;
+- crop/species snapshot;
+- variety snapshot;
+- operator/advisor refs + snapshots;
+- equipment ref + snapshot;
+- catálogo/source version;
+- extensión GIP cuando corresponda.
+
+No reinterpretar datos legacy ni inventar snapshots históricos.
+
+## 6. UX objetivo
+
+Mantener el diseño actual de Mágina Olivo.
+
+Primera capa de un tratamiento:
+- producto oficial;
+- problema;
+- dosis;
+- parcela(s) y superficie.
+
+Datos que deben poder venir precargados:
+- cultivo/variedad desde parcela oficial;
+- aplicador habitual;
+- equipo habitual.
+
+“Más detalles”:
+- sustancia;
+- nº registro;
+- cantidades;
+- datos administrativos/contextuales que no necesiten atención en cada alta.
+
+Si falta un dato obligatorio para envío:
+- se guarda igualmente offline;
+- estado: **“Guardado · faltan datos para CUE”**;
+- no se inventa nada;
+- no se envía hasta quedar READY.
+
+## 7. Estados: no mezclar
+
+### Sync técnico Android ↔ backend
+`LOCAL_ONLY / PENDING / SYNCING / SYNCED / FAILED / CONFLICT`
+
+### Estado administrativo CUE
+Modelo separado, #549:
+`NOT_APPLICABLE / INCOMPLETE / READY / QUEUED / SUBMITTING / ACCEPTED / REJECTED / SUPERSEDED`
+
+Un registro puede estar:
+- cloud = SYNCED;
+- CUE = REJECTED.
+
+Eso es válido y no debe borrar ni alterar el original.
+
+## 8. Aplicabilidad
+
+#554 decide si un requisito es REQUIRED/CONDITIONAL/OPTIONAL/NOT_APPLICABLE usando:
+- versión normativa;
+- superficie total;
+- regadío/secano;
+- unidad de producción;
+- contexto/cultivo;
+- otras condiciones oficiales.
+
+Nunca hardcodear en el formulario “todo V9 es obligatorio para todos”.
+
+## 9. REAFA/SIGPAC/Catastro
+
+No convertir `ParcelSource` en una sola fuente excluyente.
+
+Una parcela interna puede coexistir con:
+- origen manual;
+- vínculo Catastro;
+- unidades/recintos SIGPAC;
+- datos importados de REAFA.
+
+Usar relación oficial versionada (#540).  
+No reemplazar silenciosamente alias, geometría propia o histórico.
+
+## 10. Nube e IUWS
+
+Orden obligatorio:
+
+Room  
+→ #335 backend Supabase  
+→ #330 sync/WorkManager  
+→ #549 cola/estado CUE  
+→ #536 adaptador IUWS backend  
+→ #555 alta/certificado/sandbox  
+→ producción.
+
+La APK **no** se conecta directamente a IUWS y nunca contiene certificados privados/secretos.
+
+Base Andalucía indicada por la Junta:
+`https://ws108.juntadeandalucia.es/`
+
+## 11. Alta comercial
+
+#555 es un gate de producción.
+
+Camino recomendado para 1.0, sujeto a verificación vigente:
+**empresa desarrolladora → agricultor individual** mediante autorización correspondiente, en lugar de asumir desde el primer día el rol de entidad habilitada.
+
+No usar “homologado”, “conectado con la Junta” o equivalente hasta completar alta y pruebas reales.
+
+## 12. Definition of Done del primer vertical
+
+No se considera cerrado hasta demostrar:
+
+1. alta de tratamiento sin conexión;
+2. persistencia tras matar/reabrir app;
+3. varias parcelas con superficies parciales;
+4. producto oficial + snapshot;
+5. aplicador/equipo;
+6. validación por reglas/versiones;
+7. sync exactamente una vez a backend;
+8. reintento idempotente;
+9. envío IUWS sandbox;
+10. ACCEPTED/REJECTED separado de sync;
+11. corrección/reenvío sin destruir histórico;
+12. segundo dispositivo converge;
+13. certificado/secretos solo backend;
+14. pruebas de migración sin pérdida.
+
+## 13. Issues de referencia
+
+- #534 master
+- #535 fitosanitarios Android
+- #536 IUWS/backend
+- #537 suelos
+- #538 fertilización/plan
+- #539 riego
+- #540 parcela oficial REAFA/SIGPAC
+- #541 cosecha comercializada
+- #542 ecorregímenes
+- #543 documentos
+- #544 aplicadores/asesor/equipos
+- #545 explotación/titular
+- #546 superficie afectada
+- #547 intervalos
+- #549 estado administrativo
+- #550 identidad legal Organization
+- #553 catálogo MAPA
+- #554 aplicabilidad
+- #555 alta oficial Andalucía
+- #335 backend Supabase
+- #330 sync/convergencia
