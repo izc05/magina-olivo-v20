@@ -239,7 +239,8 @@ internal fun ExpenseForm.withRecollectionPreselected(options: RelationOptions): 
 /**
  * #433: the expense follows the work it is tied to. Its Parcel stays only if the work was done
  * there, its Campaign is the work's (none for general work), and a recolección day stays only
- * when the work has a Campaign the domain can still match. Dropping the work leaves the expense
+ * when the work is of that day's Campaign (the form carries the day's Campaign as stored).
+ * Dropping the work leaves the expense
  * outside any Campaign unless a day still gives it one, so the person chooses again.
  */
 internal fun ExpenseForm.withActivity(activity: Activity?): ExpenseForm {
@@ -249,7 +250,8 @@ internal fun ExpenseForm.withActivity(activity: Activity?): ExpenseForm {
         activityId = activity.id,
         parcelId = parcelId?.takeIf { it in targets },
         campaignId = activity.campaignId,
-        harvestId = harvestId?.takeIf { activity.campaignId != null },
+        // Codex #522: a day of another Campaign would make the expense unsavable; it goes.
+        harvestId = harvestId?.takeIf { activity.campaignId != null && activity.campaignId == campaignId },
     )
 }
 

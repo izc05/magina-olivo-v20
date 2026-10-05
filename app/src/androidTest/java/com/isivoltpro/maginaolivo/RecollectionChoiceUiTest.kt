@@ -269,6 +269,34 @@ class RecollectionChoiceUiTest {
         }
     }
 
+    /** Codex #522: dropping the work of an expense in a campaign asks the choice again before saving. */
+    @Test fun droppingTheWorkAsksTheCampaignAgain() {
+        val work = com.isivoltpro.maginaolivo.domain.activity.Activity(
+            id = UUID.randomUUID(), workspaceId = workspace, farmId = farm.id, campaignId = running.id,
+            type = com.isivoltpro.maginaolivo.domain.activity.ActivityType.OTHER,
+            status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
+            activityDate = date, description = "Limpieza", notes = null,
+            targets = listOf(com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget(UUID.randomUUID(), "Norte")),
+            version = 1,
+        )
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpenseEditor(
+                    title = "Editar gasto",
+                    initial = ExpenseForm(date.toString(), "20", "Sacos", farmId = farm.id, activityId = work.id, campaignId = running.id),
+                    options = options.copy(activities = listOf(work)), errors = ExpenseFormErrors(),
+                    isSaving = false, saveText = "Guardar cambios", onFarmSelected = {}, onSave = {}, onCancel = {},
+                )
+            }
+        }
+        assertEquals(0, rule.onAllNodesWithTag("expense-kind").fetchSemanticsNodes().size)
+        rule.onNodeWithTag("expense-activity").performScrollTo().performClick()
+        rule.onNodeWithTag("choice-none").performClick()
+        rule.onNodeWithTag("expense-kind").performScrollTo().assertExists()
+        rule.onNodeWithTag("expense-kind-required").assertExists()
+        rule.onNodeWithTag("save-expense").performScrollTo().assertIsNotEnabled()
+    }
+
     private fun editor(initial: ExpenseForm, preselect: Boolean = false, farmLocked: Boolean = false, loaded: RelationOptions = options, onSave: (ExpenseForm) -> Unit) {
         rule.setContent {
             MaginaOlivoTheme {

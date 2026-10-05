@@ -416,7 +416,9 @@ internal fun ExpenseEditor(
                 val chosen = key?.let(UUID::fromString)?.let { id -> options.activities.firstOrNull { it.id == id } }
                 if (chosen?.id != form.activityId) {
                     form = form.withActivity(chosen)
-                    campaignChoiceMade = chosen != null || form.campaignId != null || !requireCampaignChoice
+                    // Codex #522: dropping the work asks Recogida / Fuera de campaña again, in every
+                    // editor, unless a recolección day still gives the Campaign.
+                    campaignChoiceMade = chosen != null || form.harvestId != null
                 }
             },
             { picker = null },

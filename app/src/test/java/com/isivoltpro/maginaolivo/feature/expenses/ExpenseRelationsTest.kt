@@ -43,6 +43,15 @@ class ExpenseRelationsTest {
         assertNull(base.copy(parcelId = parcelA).withActivity(work(null)).parcelId)
     }
 
+    /** Codex #522: a day stays only with a work of that day's Campaign. */
+    @Test fun aDayOfAnotherCampaignIsDropped() {
+        val other = UUID.randomUUID()
+        val onDay = base.copy(harvestId = day, campaignId = campaign)
+        assertNull(onDay.withActivity(work(other, parcelA)).harvestId)
+        assertEquals(other, onDay.withActivity(work(other, parcelA)).campaignId)
+        assertEquals(day, onDay.withActivity(work(campaign, parcelA)).harvestId)
+    }
+
     @Test fun droppingTheWorkLeavesTheCampaignToChooseAgain() {
         val tied = base.withActivity(work(campaign, parcelA))
         val dropped = tied.withActivity(null)
