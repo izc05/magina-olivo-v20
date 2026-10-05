@@ -32,6 +32,7 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentKind
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentRepository
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentUploadState
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -322,8 +323,19 @@ class AttachmentContractTest {
 
     // ------------------------------------------------------------------ helpers
 
-    private fun newRepository(database: MaginaOlivoDatabase): AttachmentRepository =
-        OfflineFirstAttachmentRepository(database, AndroidAttachmentFileStore(context), FixedClock(now), RandomIds, TestDispatchers)
+    private fun newRepository(database: MaginaOlivoDatabase): AttachmentRepository {
+        val workspaces = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
+        }
+        return OfflineFirstAttachmentRepository(
+            database,
+            AndroidAttachmentFileStore(context),
+            workspaces,
+            FixedClock(now),
+            RandomIds,
+            TestDispatchers,
+        )
+    }
 
     private suspend fun attached(
         owner: AttachmentOwner,
