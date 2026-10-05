@@ -27,6 +27,10 @@ class MainActivity : ComponentActivity() {
         compositionRoot.localPersistence?.reminders?.let { reminders ->
             lifecycleScope.launch { runCatching { reminders.reconcile() } }
         }
+        // #458: automatic days without Pesadas stop being attributed to every Parcel.
+        compositionRoot.localPersistence?.harvestRepository?.let { harvests ->
+            lifecycleScope.launch { runCatching { harvests.clearUnfoundedDayOrigins() } }
+        }
         if (savedInstanceState == null) openActivity.value = activityIdOf(intent)
 
         setContent {

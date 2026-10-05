@@ -90,6 +90,19 @@ internal class JornadaLedger(
         database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, harvestId, OutboxOperation.UPDATE, now)
     }
 
+    /**
+     * #458 upgrade path: an automatic day written while a day without Pesadas still took every
+     * Parcel keeps its record (kilos, jornales, notes…) but loses that presumed origin. Only days
+     * of a running Campaign: a closed Campaign is history. Idempotent.
+     */
+    suspend fun clearUnfoundedOrigins(now: Instant) {
+        database.harvestDao().listUnfoundedAutoDays().forEach { day ->
+            database.harvestDao().deleteParcels(day.id)
+            database.harvestDao().upsert(day.copy(metadata = day.metadata.next(now)))
+            database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, day.id, OutboxOperation.UPDATE, now)
+        }
+    }
+
     private suspend fun reconcileAutoDay(day: HarvestEntity, linked: List<DeliveryEntity>, now: Instant) {
         if (linked.isEmpty() && !ownsAnything(day)) {
             database.harvestDao().upsert(day.copy(weightGrams = 0L, metadata = day.metadata.next(now).copy(deletedAt = now)))

@@ -267,6 +267,36 @@ class JornadaPesadasContractTest {
         assertTrue(db.harvestDao().listParcels(dayId).isEmpty())
     }
 
+    /** #458 (Codex): an automatic day written before this rule loses its presumed origin on start. */
+    @Test
+    fun anOlderAutomaticDayWithoutPesadasLosesItsPresumedOriginOnStart() = runBlocking {
+        val empty = ok(harvests.openJornada(farmId, day))
+        val now = Instant.parse("2026-12-02T08:00:00Z")
+        // As the earlier code wrote it: every Parcel of the Campaign, with no Pesada behind it.
+        db.harvestDao().upsertParcels(
+            listOf(north to "Norte", south to "Sur").map { (parcelId, name) ->
+                com.isivoltpro.maginaolivo.data.local.entity.HarvestParcelEntity(
+                    id = UUID.randomUUID(), workspaceId = workspaceId, harvestId = empty, parcelId = parcelId,
+                    parcelNameAtHarvest = name, allocationMode = HarvestAllocation.UNALLOCATED.name,
+                    metadata = LocalMetadata(now, now),
+                )
+            },
+        )
+        val weighed = ok(deliveries.create(pesada(1_000_000, "Coop. San Isidro", "V-1").copy(deliveryDate = day.minusDays(1))))
+        val weighedDay = deliveries.observe(weighed).first()!!.harvestId!!
+        val weighedRows = db.harvestDao().listParcels(weighedDay)
+
+        ok(harvests.clearUnfoundedDayOrigins())
+        val cleared = harvests.observe(empty).first()!!
+        assertTrue(cleared.shares.isEmpty())
+        assertTrue(cleared.awaitingPesadas)
+        // A day its Pesadas support is left exactly as it was; running it again changes nothing.
+        assertEquals(weighedRows, db.harvestDao().listParcels(weighedDay))
+        val version = cleared.version
+        ok(harvests.clearUnfoundedDayOrigins())
+        assertEquals(version, harvests.observe(empty).first()!!.version)
+    }
+
     /** #458 C/D: a day's Parcel rows are kept as recorded; only Parcels joining or leaving change. */
     @Test
     fun aDayKeepsItsParcelRowsAndNamesWhenItsPesadasChange() = runBlocking {

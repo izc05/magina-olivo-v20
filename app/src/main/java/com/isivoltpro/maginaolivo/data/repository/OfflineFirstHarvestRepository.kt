@@ -116,6 +116,12 @@ class OfflineFirstHarvestRepository(
         }
     }
 
+    override suspend fun clearUnfoundedDayOrigins(): AppResult<Unit> =
+        inTransaction("clear_unfounded_day_origins") {
+            jornadas.clearUnfoundedOrigins(clock.nowInstant())
+            AppResult.Success(Unit)
+        }
+
     override suspend fun openJornada(farmId: UUID, date: LocalDate): AppResult<UUID> {
         if (date.isAfter(clock.today(zoneId()))) return AppResult.Failure(AppError.Validation("harvestDate", "future"))
         return inTransaction("open_jornada") {

@@ -34,6 +34,22 @@ interface HarvestDao {
     )
     suspend fun findAutoDay(farmId: UUID, campaignId: UUID, date: LocalDate): HarvestEntity?
 
+    /**
+     * #458: automatic days of a running Campaign that still carry origin Parcels although no live
+     * Pesada supports them (written before the origin of such a day became «not determined»).
+     */
+    @Query(
+        """
+        SELECT h.* FROM harvests h
+        JOIN campaigns c ON c.id = h.campaign_id
+        WHERE h.day_origin = 'AUTO_DAY' AND h.deleted_at IS NULL
+          AND c.status IN ('ACTIVE', 'HARVEST')
+          AND EXISTS (SELECT 1 FROM harvest_parcels hp WHERE hp.harvest_id = h.id)
+          AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.harvest_id = h.id AND d.deleted_at IS NULL)
+        """,
+    )
+    suspend fun listUnfoundedAutoDays(): List<HarvestEntity>
+
     @Transaction
     @Query("SELECT * FROM harvests WHERE id = :id AND deleted_at IS NULL LIMIT 1")
     fun observeWithParcels(id: UUID): Flow<HarvestWithParcels?>

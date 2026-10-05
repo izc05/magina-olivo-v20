@@ -992,7 +992,8 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
     MoSectionHeader("Parcelas de origen")
     if (harvest.shares.isEmpty()) {
         Text(
-            "$UNKNOWN_DAY_ORIGIN: llegará con sus pesadas.",
+            // A legacy record (before Room v7) has no origin rows and expects no Pesada.
+            if (harvest.automatic && harvest.awaitingPesadas) "$UNKNOWN_DAY_ORIGIN: llegará con sus pesadas." else UNKNOWN_DAY_ORIGIN,
             style = MaterialTheme.typography.bodyLarge,
             color = MoTextSecondary,
             modifier = Modifier.testTag("harvest-origin-unknown"),
