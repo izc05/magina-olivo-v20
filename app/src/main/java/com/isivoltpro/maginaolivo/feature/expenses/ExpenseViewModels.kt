@@ -15,7 +15,6 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseRepository
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.expense.PurchaseLine
 import com.isivoltpro.maginaolivo.domain.farm.Farm
@@ -29,7 +28,6 @@ import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.LocalDate
-import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -282,8 +280,6 @@ internal fun Campaign.choiceLabel(): String =
 data class ExpensesUiState(
     val isLoading: Boolean = true,
     val expenses: List<Expense> = emptyList(),
-    val summary: ExpenseSummary = ExpenseSummary.of(emptyList()),
-    val monthTotalMinor: Long = 0,
     val openDocuments: List<DocumentExtraction> = emptyList(),
     val options: RelationOptions = RelationOptions(),
     val formErrors: ExpenseFormErrors = ExpenseFormErrors(),
@@ -313,13 +309,8 @@ class ExpensesViewModel(
             expenses.observeAll()
                 .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer los gastos") }
                 .collect { rows ->
-                    val month = clock.today(ZoneId.systemDefault()).withDayOfMonth(1)
-                    mutableState.value = mutableState.value.copy(
-                        isLoading = false,
-                        expenses = rows,
-                        summary = ExpenseSummary.of(rows),
-                        monthTotalMinor = ExpenseSummary.of(rows.filter { !it.expenseDate.isBefore(month) }).totalMinor,
-                    )
+                    // #450: totals are read per currency from these rows on screen; none is assumed.
+                    mutableState.value = mutableState.value.copy(isLoading = false, expenses = rows)
                 }
         }
         viewModelScope.launch {

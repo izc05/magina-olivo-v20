@@ -44,12 +44,20 @@ enum class JornadaExpenseKind(
 /**
  * The cost of one Jornada, read from the ledger itself: the posted Expenses linked to it.
  * Drafts are listed and never summed; nothing is copied, so it always equals the ledger.
+ * #450: one total per currency — a day's cost in another currency is never hidden or converted.
  */
-data class JornadaCost(val summary: ExpenseSummary, val expenses: List<Expense>) {
-    val postedMinor: Long get() = summary.totalMinor
-    val draftCount: Int get() = summary.draftCount
+data class JornadaCost(val expenses: List<Expense>) {
+    val byCurrency: List<RecollectionCurrency> = RecollectionLedger.posted(expenses)
+
+    /** The single total when the day has one currency (0 with nothing posted); null with several. */
+    val postedMinor: Long? get() = when (byCurrency.size) {
+        0 -> 0L
+        1 -> byCurrency.single().amount()
+        else -> null
+    }
+    val draftCount: Int get() = expenses.count { it.status == ExpenseStatus.DRAFT }
 
     companion object {
-        fun of(expenses: List<Expense>): JornadaCost = JornadaCost(ExpenseSummary.of(expenses), expenses)
+        fun of(expenses: List<Expense>): JornadaCost = JornadaCost(expenses)
     }
 }

@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Gastos y días de recolección ya no ocultan otras monedas (#450, gastos).** La pantalla de Gastos
+  muestra «Gastos confirmados» y «Este mes» con un total por moneda, y las categorías por moneda (los
+  porcentajes solo dentro de cada una). El coste de un día de recolección guarda un total por moneda y
+  no inventa un total único cuando hay varias. Nada se convierte.
 - **«Trabajo» en lugar de «actuación» en toda la app.** Pantallas, botones y avisos hablan de
   «Nuevo trabajo», «Editar trabajo», «Trabajo completado», «Trabajos con esta máquina», «Coste de un
   trabajo»… Solo cambia el texto; los datos y su sincronización no cambian. «Actuación realizada» se
