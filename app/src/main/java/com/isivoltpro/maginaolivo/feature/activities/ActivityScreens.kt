@@ -504,7 +504,7 @@ internal fun ActivityEditor(
                 hectares == null || !hectares.isFinite() || hectares <= 0.0 ->
                     "Escribe una superficie mayor que 0, por ejemplo 0,50"
                 maxHa != null && hectares > maxHa + 0.000001 ->
-                    "No puede superar ${editableAreaHa(parcel.managedAreaM2)} ha de esta parcela"
+                    "No puede superar ${editableAreaHa(maxHa * 10_000.0)} ha de esta parcela"
                 else -> null
             }
             if (error != null) parcelAreaErrors[idText] = error
