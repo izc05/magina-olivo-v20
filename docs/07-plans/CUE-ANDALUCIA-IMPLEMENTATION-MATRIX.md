@@ -266,3 +266,194 @@ No se considera cerrado hasta demostrar:
 - #555 alta oficial Andalucía
 - #335 backend Supabase
 - #330 sync/convergencia
+
+
+---
+
+## 14. Addendum auditoría V9 oficial — 2026-10-05
+
+Esta sección se verificó directamente contra el **Modelo de Cuaderno de Explotación Andalucía V9 (10/03/2026)**:
+
+https://www.juntadeandalucia.es/sites/default/files/inline-files/2026/03/20260310_MODELO_DE_CUADERNO_DE_EXPLOTACION_v9.pdf
+
+### 14.1 Tratamiento fitosanitario normal — sección 3.1
+
+El registro oficial de parcela contiene:
+
+- parcelas;
+- cultivo: especie y variedad;
+- fecha concreta o intervalo;
+- superficie tratada;
+- problema fitosanitario;
+- aplicador;
+- equipo;
+- producto: nombre comercial / sustancia activa;
+- nº registro;
+- dosis kg/ha o l/ha;
+- eficacia: buena / regular / mala;
+- observaciones.
+
+Mapping:
+
+| V9 3.1 | Mágina Olivo |
+|---|---|
+| Parcelas | `activity_parcels` |
+| Especie/variedad histórica | #557 |
+| Fecha | `Activity.activityDate` |
+| Fecha fin | #547 |
+| Superficie tratada | #546 / PR #560 |
+| Problema | `PhytosanitaryDetail.reason` |
+| Aplicador | #544 |
+| Equipo | #544; `equipmentText` queda legacy |
+| Nombre comercial | `productName` |
+| Sustancia activa | `activeSubstance` |
+| Nº registro | #535/#553 |
+| Dosis | `doseValue + doseUnit` |
+| Eficacia | #535 |
+| Observaciones | `Activity.notes` |
+
+`totalQuantity + unit` sigue siendo útil en Mágina Olivo, pero no se convierte en obligatorio CUE 3.1 por el mero hecho de existir localmente.
+
+### 14.2 GIP 3.1bis
+
+No forma parte del formulario normal.
+
+#563 modela por separado el seguimiento de superficies objeto de asesoramiento:
+
+- plaga;
+- justificación por umbrales/meteorología/etc.;
+- medida no química + intensidad + fecha;
+- intervención química + producto/registro/dosis/fecha;
+- eficacia;
+- validación intermedia y final del asesor/ROPO.
+
+### 14.3 Otros registros fitosanitarios
+
+#564 cubre de forma condicional:
+
+- 3.2 semilla tratada;
+- 3.3 postcosecha;
+- 3.4 locales de almacenamiento;
+- 3.5 medios de transporte.
+
+#565 cubre análisis fitosanitarios realizados: muestra, laboratorio, boletín y sustancias detectadas.
+
+Ninguno debe inflar el formulario 3.1.
+
+### 14.4 Identidad de parcela/cultivo V9 2.1
+
+El modelo distingue:
+
+- provincia;
+- municipio;
+- agregado;
+- zona;
+- polígono;
+- parcela;
+- recinto;
+- uso SIGPAC;
+- superficie SIGPAC;
+- superficie cultivada;
+- especie;
+- variedad;
+- secano/regadío;
+- aire libre/protegido;
+- sistema GIP.
+
+#540 conserva identidad SIGPAC/REAFA versionada.  
+#557 conserva contexto agronómico por periodo.  
+Catastro sigue siendo una fuente diferente.
+
+### 14.5 Fertilización V9 7
+
+#538 debe soportar, según aplicabilidad:
+
+- fecha/intervalo;
+- superficie;
+- secano/regadío;
+- cultivo;
+- tratamiento fondo/cobertera/enmienda;
+- tipo de material;
+- proveedor + REGA/NIF/NIMA cuando corresponda;
+- forma de aplicación;
+- empresa aplicadora + REGFER;
+- rendimiento esperado;
+- riqueza N/P2O5/K2O/MO;
+- dosis;
+- nutrientes aportados/acumulados;
+- extensión de metales para residuos valorizables.
+
+El Plan de abonado es una entidad separada y versionada.
+
+### 14.6 Riego V9 8
+
+#539:
+
+- superficie regada;
+- sistema oficial;
+- fecha/intervalo;
+- volumen m3/ha;
+- acumulado m3/ha;
+- nitratos mg/L;
+- fósforo soluble mg/L.
+
+`durationMinutes` y `sectorText` son útiles localmente pero no sustituyen esos campos.  
+`volumeM3` legacy no se reinterpreta como m3/ha.
+
+### 14.7 Cosecha comercializada V9 5
+
+#541 reutiliza Delivery para:
+
+- fecha;
+- producto;
+- cantidad;
+- parcelas origen;
+- albarán/factura voluntario;
+- lote voluntario;
+- cliente nombre/NIF/dirección;
+- RGSEAA voluntario.
+
+La identidad del cliente se guarda como snapshot histórico.
+
+### 14.8 Documentos y retención
+
+El V9 exige conservar **al menos 3 años**, según proceda:
+
+- compra de fitosanitarios;
+- contratos de tratamientos;
+- inspección de equipos;
+- entrega de envases;
+- boletines de residuos;
+- asesoramiento;
+- venta de cosecha;
+- plan de abonado;
+- documentación de fertilizantes/estiércoles/residuos.
+
+#543 implementa categorías documentales + política de retención versionada.  
+Si otra norma exige un plazo mayor, prevalece el mayor.
+
+### 14.9 Ecorregímenes prioritarios para olivar
+
+#542 prioriza:
+
+- 9.5 cubiertas vegetales en cultivos leñosos;
+- 9.6 cubiertas inertes de restos de poda.
+
+Se registran solo cuando aplican; no se convierten en ruido permanente en Inicio/Cuaderno.
+
+### 14.10 Corrección de hechos realizados
+
+#561 separa:
+
+- lifecycle del trabajo (`COMPLETED`);
+- revisión/corrección administrativa.
+
+Corregir un tratamiento no lo devuelve artificialmente a `PLANNED`.  
+Una submission ya aceptada no se sobrescribe: se versiona/supersede según el contrato IUWS.
+
+### 14.11 Issues añadidos tras auditoría directa V9
+
+- #561 correcciones versionadas de Completed;
+- #563 GIP 3.1bis;
+- #564 fitosanitarios especiales 3.2–3.5;
+- #565 análisis fitosanitarios opcionales.
