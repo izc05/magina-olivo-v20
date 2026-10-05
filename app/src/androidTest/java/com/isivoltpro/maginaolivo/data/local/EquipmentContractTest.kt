@@ -141,13 +141,13 @@ class EquipmentContractTest {
 
     @Test
     fun archivedMachineAlreadyUsedCanBeCorrectedWithoutRefreshingItsSnapshot() = runBlocking {
-        val machineId = ok(machines.create(MachineDraft(name = "Vibradora Pellenc", category = MachineCategory.SHAKER)))
+        val machineId = ok(machines.create(MachineDraft(name = "Vibradora Pellenc", category = MachineCategory.HARVEST)))
         val jornada = jornada()
         ok(equipment.replaceForHarvest(jornada, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1, machineId = machineId))))
         val before = equipment.observeForHarvest(jornada).first().single()
         assertEquals("Vibradora Pellenc", before.label)
 
-        ok(machines.update(machineId, MachineDraft(name = "Pellenc renombrada", category = MachineCategory.SHAKER)))
+        ok(machines.update(machineId, MachineDraft(name = "Pellenc renombrada", category = MachineCategory.HARVEST)))
         ok(machines.archive(machineId))
 
         ok(equipment.replaceForHarvest(jornada, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 2, machineId = machineId))))
