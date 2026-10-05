@@ -33,6 +33,10 @@ interface ActivityDao {
     @Query("DELETE FROM activity_parcels WHERE activity_id = :activityId")
     suspend fun deleteTargets(activityId: UUID)
 
+    /** Removes exactly one target so edits never rebuild unrelated historical snapshots. */
+    @Query("DELETE FROM activity_parcels WHERE activity_id = :activityId AND parcel_id = :parcelId")
+    suspend fun deleteTarget(activityId: UUID, parcelId: UUID)
+
     @Query("SELECT COUNT(*) FROM activity_parcels WHERE activity_id = :activityId")
     suspend fun countTargets(activityId: UUID): Int
 
