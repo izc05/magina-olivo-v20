@@ -15,9 +15,12 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentKind
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.farm.FarmCoverRepository
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 
@@ -30,20 +33,35 @@ import kotlinx.coroutines.withContext
 class OfflineFirstFarmCoverRepository(
     private val database: MaginaOlivoDatabase,
     private val fileStore: AttachmentFileStore,
+    private val workspaceRepository: WorkspaceRepository,
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
 ) : FarmCoverRepository {
-    override fun observeCoverUri(farmId: UUID): Flow<String?> =
-        database.documentDao().observeFarmCoverUri(farmId).flowOn(dispatchers.io)
+    override fun observeCoverUri(farmId: UUID): Flow<String?> = flow {
+        val activeWorkspace = activeWorkspaceIdOrNull()
+        val farm = database.farmDao().findById(farmId)
+        if (activeWorkspace == null || farm?.workspaceId != activeWorkspace) {
+            emit(null)
+        } else {
+            emitAll(database.documentDao().observeFarmCoverUri(farmId))
+        }
+    }.flowOn(dispatchers.io)
 
     override suspend fun attachCover(
         farmId: UUID,
         uri: String,
     ): AppResult<Unit> = withContext(dispatchers.io) {
+        val activeWorkspace = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return@withContext workspace
+            is AppResult.Success -> workspace.value
+        }
         val owner = AttachmentOwner(AttachmentOwnerType.FARM, farmId)
         val existing = database.farmDao().findById(farmId)
             ?: return@withContext AppResult.Failure(AppError.NotFound("farm"))
+        if (existing.workspaceId != activeWorkspace) {
+            return@withContext AppResult.Failure(AppError.Validation("farm", "context_mismatch"))
+        }
         if (existing.metadata.deletedAt != null) {
             return@withContext AppResult.Failure(AppError.Validation(field = "owner", code = "archived_owner"))
         }
@@ -65,6 +83,9 @@ class OfflineFirstFarmCoverRepository(
             database.withTransaction {
                 val farm = database.farmDao().findById(farmId)
                     ?: return@withTransaction AppResult.Failure(AppError.NotFound("farm"))
+                if (farm.workspaceId != activeWorkspace) {
+                    return@withTransaction AppResult.Failure(AppError.Validation("farm", "context_mismatch"))
+                }
                 database.documentDao().insert(
                     stored.toEntity(documentId, farm.workspaceId, owner, AttachmentKind.PHOTO, now),
                 )
@@ -88,6 +109,12 @@ class OfflineFirstFarmCoverRepository(
         if (result is AppResult.Failure) fileStore.delete(stored.localUri, documentId)
         result
     }
+
+    private suspend fun activeWorkspaceIdOrNull(): UUID? =
+        when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Success -> workspace.value
+            is AppResult.Failure -> null
+        }
 
     private suspend fun enqueue(
         entityId: UUID,
