@@ -15,7 +15,10 @@ import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.data.repository.DayCostLedger.Companion.toDomain
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion
 import com.isivoltpro.maginaolivo.domain.expense.DayCostRepository
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.UnlinkedDayCosts
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
@@ -85,7 +88,16 @@ class OfflineFirstDayCostRepository(
             AppResult.Success(Unit)
         }
 
-    override suspend fun linkToDay(expenseId: UUID, harvestId: UUID): AppResult<Unit> =
+    override suspend fun markExistingReplacements(): AppResult<Unit> =
+        inTransaction("mark_existing_replacements") {
+            costs.markExistingReplacements(clock.nowInstant())
+            AppResult.Success(Unit)
+        }
+
+    override suspend fun questionFor(harvestId: UUID, category: ExpenseCategory): DayCostQuestion? =
+        withContext(dispatchers.io) { runCatching { costs.question(harvestId, category) }.getOrNull() }
+
+    override suspend fun linkToDay(expenseId: UUID, harvestId: UUID, role: DayCostRole): AppResult<Unit> =
         inTransaction("link_to_day") {
             val day = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("harvest"))
@@ -110,12 +122,22 @@ class OfflineFirstDayCostRepository(
                     return@inTransaction AppResult.Failure(AppError.Validation("activityId", "not_in_day"))
                 }
             }
+            // #475: a cost kept «Fuera de campaña» is never absorbed by a Jornada.
+            if (expense.campaignId == null) return@inTransaction AppResult.Failure(AppError.Conflict("outside_campaign"))
+            // Protect historical money before judging whether it could move to this particular day:
+            // a Gasto of a CLOSED Campaign remains immutable even when the target day is elsewhere.
             ExpenseLedgerWriter(database, idGenerator).requireEditableCampaign(expense)
+            if (expense.campaignId != day.campaignId) {
+                return@inTransaction AppResult.Failure(AppError.Validation("campaignId", "not_in_day"))
+            }
+            // #475: linked, it adds to the day's calculation unless the farmer says it replaces it.
+            if (role == DayCostRole.REPLACEMENT) costs.requireReplaceable(day.id, expense.category)
             val now = clock.nowInstant()
             database.expenseDao().upsert(
                 expense.copy(
                     harvestId = day.id,
                     campaignId = day.campaignId,
+                    origin = if (role == DayCostRole.REPLACEMENT) ExpenseOrigin.DAY_REPLACEMENT.name else expense.origin,
                     metadata = expense.metadata.copy(
                         updatedAt = now,
                         version = expense.metadata.version + 1,

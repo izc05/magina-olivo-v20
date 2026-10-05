@@ -12,12 +12,15 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.JornadaExpenseKind
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
+import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
+import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestDetailScreen
 import com.isivoltpro.maginaolivo.feature.harvests.HarvestDetailUiState
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
@@ -45,7 +48,7 @@ class JornadaCostScreenTest {
                     state = HarvestDetailUiState(isLoading = false, harvest = harvest),
                     onUpdate = {},
                     onDelete = {},
-                    onAddCost = { kind, minor, _, photo -> saved = Triple(kind, minor, photo) },
+                    onAddCost = { kind, minor, _, photo, _ -> saved = Triple(kind, minor, photo) },
                 )
             }
         }
@@ -66,6 +69,64 @@ class JornadaCostScreenTest {
         composeRule.onNodeWithTag("cost-save").performClick()
         composeRule.waitUntil(5_000) { saved != null }
         composeRule.runOnIdle { assertEquals(Triple(JornadaExpenseKind.RENTAL, 12_000L, false), saved) }
+    }
+
+    /** #475: with the day's jornales already calculated, the farmer answers how the cost counts. */
+    @Test fun aCostThatCouldReplaceTheCalculationAsksHowItCounts() {
+        var saved: Pair<JornadaExpenseKind, DayCostRole>? = null
+        val calculated = expense(35_000, ExpenseStatus.POSTED, "Jornales (calculado)")
+            .copy(origin = ExpenseOrigin.DAY_LABOUR, category = ExpenseCategory.LABOR)
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                HarvestDetailScreen(
+                    state = HarvestDetailUiState(isLoading = false, harvest = harvest, costs = listOf(calculated)),
+                    onUpdate = {},
+                    onDelete = {},
+                    onAddCost = { kind, _, _, _, role -> saved = kind to role },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
+        composeRule.onNodeWithTag("jornada-add-cost").performScrollTo().performClick()
+        composeRule.onNodeWithTag("cost-kind-LABOUR").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodes(hasTestTag("cost-kind-LABOUR") and isSelected()).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("cost-amount").performScrollTo().performTextInput("300")
+        // Nothing is assumed: until the farmer answers, it cannot be saved.
+        composeRule.onNodeWithTag("cost-save").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithTag("cost-role-REPLACEMENT").performScrollTo().performClick()
+        composeRule.onNodeWithTag("cost-role-replaces-labour").performScrollTo().assertExists()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodes(hasTestTag("cost-save") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("cost-save").performScrollTo().performClick()
+        composeRule.waitUntil(5_000) { saved != null }
+        composeRule.runOnIdle { assertEquals(JornadaExpenseKind.LABOUR to DayCostRole.REPLACEMENT, saved) }
+    }
+
+    /** #475: with payments per person, jornales only add; diesel never asks. */
+    @Test fun paidJornalesOnlyAddAndDieselNeverAsks() {
+        val worker = UUID.randomUUID()
+        val calculated = expense(35_000, ExpenseStatus.POSTED, "Jornales (calculado)")
+            .copy(origin = ExpenseOrigin.DAY_LABOUR, category = ExpenseCategory.LABOR)
+        val entry = LabourEntry(UUID.randomUUID(), harvest.id, worker, "Juan", 1, LabourUnit.FULL_DAY, null, 1)
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                HarvestDetailScreen(
+                    state = HarvestDetailUiState(isLoading = false, harvest = harvest, costs = listOf(calculated),
+                        labour = listOf(entry), paidWorkers = setOf(worker)),
+                    onUpdate = {},
+                    onDelete = {},
+                )
+            }
+        }
+        composeRule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
+        composeRule.onNodeWithTag("jornada-add-cost").performScrollTo().performClick()
+        composeRule.onNodeWithTag("cost-role-ADDITIVE").assertDoesNotExist()
+        composeRule.onNodeWithTag("cost-kind-LABOUR").performScrollTo().performClick()
+        composeRule.onNodeWithTag("cost-role-labour-paid").performScrollTo().assertExists()
+        composeRule.onNodeWithTag("cost-role-REPLACEMENT").assertDoesNotExist()
     }
 
     @Test fun theTotalIsThePostedLedgerRowsOnly() {
