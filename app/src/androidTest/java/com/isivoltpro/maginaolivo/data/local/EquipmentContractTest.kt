@@ -152,14 +152,15 @@ class EquipmentContractTest {
 
         // Editing the day keeps the archived machine's historical line, name, id and price.
         ok(equipment.replaceForHarvest(jornada, listOf(
-            EquipmentDraftLine(EquipmentType.TRACTOR, 2, label = "Fendt 209", machineId = fendt),
+            // A registered Machine is one unit per day (EquipmentRules «one_machine»).
+            EquipmentDraftLine(EquipmentType.TRACTOR, 1, label = "Fendt 209", machineId = fendt),
             EquipmentDraftLine(EquipmentType.SHAKER, 2),
         )))
         val kept = equipment.observeForHarvest(jornada).first()
         val historical = kept.single { it.machineId == fendt }
         assertEquals(snapshot.id, historical.id)
         assertEquals("Fendt 209", historical.label)
-        assertEquals(2, historical.quantity)
+        assertEquals(1, historical.quantity)
         assertEquals(2, kept.size)
 
         // On another day it is a new line: refused.
