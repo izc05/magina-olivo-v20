@@ -282,16 +282,26 @@ class JornadaPesadasContractTest {
                 )
             },
         )
+        // A legacy row may even keep kilos with no Pesada behind them.
+        val stale = ok(harvests.openJornada(farmId, day.minusDays(2)))
+        db.harvestDao().upsert(db.harvestDao().findById(stale)!!.copy(weightGrams = 1_500_000L))
         val weighed = ok(deliveries.create(pesada(1_000_000, "Coop. San Isidro", "V-1").copy(deliveryDate = day.minusDays(1))))
         val weighedDay = deliveries.observe(weighed).first()!!.harvestId!!
         val weighedRows = db.harvestDao().listParcels(weighedDay)
+        // The presumption was never history: a closed Campaign is corrected too.
+        val campaign = db.campaignDao().findById(campaignId)!!
+        db.campaignDao().upsert(campaign.copy(status = CampaignStatus.CLOSED, endDate = day))
 
         ok(harvests.clearUnfoundedDayOrigins())
         val cleared = harvests.observe(empty).first()!!
         assertTrue(cleared.shares.isEmpty())
         assertTrue(cleared.awaitingPesadas)
+        val unweighed = harvests.observe(stale).first()!!
+        assertEquals(0L, unweighed.totalGrams)
+        assertTrue(unweighed.shares.isEmpty())
         // A day its Pesadas support is left exactly as it was; running it again changes nothing.
         assertEquals(weighedRows, db.harvestDao().listParcels(weighedDay))
+        assertEquals(1_000_000L, harvests.observe(weighedDay).first()!!.totalGrams)
         val version = cleared.version
         ok(harvests.clearUnfoundedDayOrigins())
         assertEquals(version, harvests.observe(empty).first()!!.version)

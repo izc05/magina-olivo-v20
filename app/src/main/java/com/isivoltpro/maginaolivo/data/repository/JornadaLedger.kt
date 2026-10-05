@@ -91,14 +91,16 @@ internal class JornadaLedger(
     }
 
     /**
-     * #458 upgrade path: an automatic day written while a day without Pesadas still took every
-     * Parcel keeps its record (kilos, jornales, notes…) but loses that presumed origin. Only days
-     * of a running Campaign: a closed Campaign is history. Idempotent.
+     * #458 upgrade path: an automatic day only ever holds the sum of its Pesadas and their origin.
+     * One left without a live Pesada by an earlier version keeps its own record (jornales, notes,
+     * method…) but loses what was only presumed: its origin Parcels and any kilos, back to «Kg
+     * pendientes de pesada». In closed Campaigns too: that presumption was never the farmer's
+     * history. Idempotent.
      */
     suspend fun clearUnfoundedOrigins(now: Instant) {
         database.harvestDao().listUnfoundedAutoDays().forEach { day ->
             database.harvestDao().deleteParcels(day.id)
-            database.harvestDao().upsert(day.copy(metadata = day.metadata.next(now)))
+            database.harvestDao().upsert(day.copy(weightGrams = 0L, metadata = day.metadata.next(now)))
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, day.id, OutboxOperation.UPDATE, now)
         }
     }
