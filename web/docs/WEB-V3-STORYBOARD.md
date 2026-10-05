@@ -1,8 +1,8 @@
 # WEB V3 — Storyboard de revisión
 
-Estado: **12 keyframes definidos; assets y aprobación pendientes**. La página de revisión está en `/v3-review`. Este storyboard describe encuadre y continuidad; no afirma que las imágenes estén producidas.
+Estado: **12 keyframes definidos; una lámina conceptual visual K01–K12 disponible; assets de producción y aprobación pendientes**. La página de revisión está en `/v3-review`. Este storyboard describe encuadre y continuidad; no afirma que las imágenes estén producidas.
 
-La página muestra una lámina conceptual global de continuidad asistida por IA. Sirve para discutir tono y secuencia; no está aprobada como fotografía final ni como asignación exacta a cada ID K01–K12.
+La página muestra `public/v3-review/storyboard-12frames-concept.png`, una lámina asistida por IA con doce paneles en orden de lectura K01–K12. Sirve para revisar tono y secuencia; no está aprobada como fotografía final, no sustituye las composiciones desktop/móvil finales ni valida por sí sola la continuidad exacta de cada plano.
 
 | ID | Acto | Encuadre desktop | Composición móvil | Copy / UI | Continuidad y decisión pendiente |
 |---|---|---|---|---|---|
