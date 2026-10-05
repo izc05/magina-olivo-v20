@@ -233,13 +233,13 @@ fun ExpensesScreen(
                 )
                 MoMetricCard(
                     "Gastos confirmados",
-                    if (ledger.isEmpty()) Money.format(0) else ledger.moneyLabel(),
+                    ledger.moneyLabel(),
                     Modifier.weight(1f).testTag("expenses-total"),
                     supportingText = "${ledger.sumOf { it.posted.size }} apuntes",
                 )
                 MoMetricCard(
                     "Este mes",
-                    if (month.isEmpty()) Money.format(0) else month.moneyLabel(),
+                    month.moneyLabel(),
                     Modifier.weight(1f).testTag("expenses-month"),
                     supportingText = MONTH_FORMAT.format(today),
                 )
