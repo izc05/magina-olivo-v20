@@ -168,8 +168,8 @@ class AttachmentContractTest {
         val id = attached(parcel, source("poda.jpg", bytes))
         val before = repository.observe(id).first()!!
 
-        assertOk(repository.recordUploadFailure(id, "network_timeout", "Tiempo de espera agotado"))
-        assertOk(repository.recordUploadFailure(id, "http_503"))
+        assertOk(repository.recordUploadFailure(workspaceId, id, "network_timeout", "Tiempo de espera agotado"))
+        assertOk(repository.recordUploadFailure(workspaceId, id, "http_503"))
 
         val after = repository.observe(id).first()!!
         assertEquals(before.localUri, after.localUri)
@@ -391,12 +391,17 @@ class AttachmentContractTest {
         assertNull(db.documentDao().findById(foreignId)!!.metadata.deletedAt)
         assertTrue(fileOf(row.localUri).exists())
 
-        val refusedFailure = repository.recordUploadFailure(foreignId, "network", "offline")
+        val refusedFailure = repository.recordUploadFailure(workspaceId, foreignId, "network", "offline")
         assertEquals(
             AppError.Validation("attachment", "context_mismatch"),
             (refusedFailure as AppResult.Failure).error,
         )
         assertEquals(row.uploadStatus, db.documentDao().findById(foreignId)!!.uploadStatus)
+
+        // A background worker can process B explicitly without pretending the UI switched to B.
+        assertOk(repository.recordUploadFailure(otherWorkspace, foreignId, "network", "offline"))
+        assertEquals(AttachmentUploadState.FAILED.name, db.documentDao().findById(foreignId)!!.uploadStatus)
+        assertTrue(fileOf(row.localUri).exists())
     }
 
     // ------------------------------------------------------------------ helpers
