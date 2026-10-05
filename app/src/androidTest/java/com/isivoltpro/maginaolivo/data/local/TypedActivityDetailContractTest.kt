@@ -263,6 +263,36 @@ class TypedActivityDetailContractTest {
     }
 
     @Test
+    fun aLegacyUpdateCallerDoesNotEraseAnAlreadyConfirmedAffectedSurface() = runBlocking {
+        val created = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento parcial",
+                parcelIds = setOf(parcelA),
+                parcelAreasM2 = mapOf(parcelA to 500.0),
+                detail = ActivityDetail.Phytosanitary(productName = "Cobre"),
+            ),
+        )
+        val id = (created as AppResult.Success).value
+        assertOk(
+            repository.update(
+                id,
+                ActivityChanges(
+                    type = ActivityType.PHYTOSANITARY,
+                    activityDate = date,
+                    description = "Tratamiento corregido",
+                    parcelIds = setOf(parcelA),
+                    detail = ActivityDetail.Phytosanitary(productName = "Cobre"),
+                    // Intentionally omit parcelAreasM2: simulates an older caller.
+                ),
+            ),
+        )
+        assertEquals(500.0, repository.observe(id).first()!!.targets.single().areaAffectedM2!!, 0.001)
+    }
+
+    @Test
     fun affectedSurfaceCannotSilentlyExceedTheKnownParcelSurface() = runBlocking {
         val result = repository.create(
             NewActivity(
