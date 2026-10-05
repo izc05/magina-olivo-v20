@@ -136,6 +136,9 @@ internal fun ExpenseEditor(
         }
     }
     var picker by rememberSaveable { mutableStateOf<String?>(null) }
+    // #415 (owner #524): a Parcel the expense was opened on (Cuaderno of a Parcel) is the origin;
+    // it is said, never asked again, and the works offered are those done on it.
+    val lockedParcelId = if (!activityLocked && farmLocked) initial.parcelId else null
 
     val scrolling = if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier
     Column(
@@ -248,7 +251,7 @@ internal fun ExpenseEditor(
             }
         }
         // #415: a Parcel the expense was opened on is context and stays in sight; otherwise it waits.
-        val parcelInSight = !activityLocked && farm != null && farmLocked && initial.parcelId != null
+        val parcelInSight = farm != null && lockedParcelId != null
         if (farm != null && activityLocked) {
             // #416: the work this expense belongs to; changing it means opening another work.
             Text(
@@ -265,7 +268,11 @@ internal fun ExpenseEditor(
                 parcelField()
             }
         } else if (parcelInSight) {
-            parcelField()
+            Text(
+                "Parcela · " + (options.parcels.firstOrNull { it.id == lockedParcelId }?.displayName ?: "…"),
+                style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary,
+                modifier = Modifier.testTag("expense-parcel-context"),
+            )
         }
 
         // CR-011 §24 / #415: supplier, the work, a Parcel not given by context, invoice number,
@@ -290,8 +297,9 @@ internal fun ExpenseEditor(
                 )
             }
             if (relationsFolded) {
-                MoSelectField("Actuación", activity?.description ?: "Ninguna", { picker = "activity" },
-                    Modifier.testTag("expense-activity"))
+                // #415 (owner #524): «Relacionado con»; the domain keeps calling it Activity.
+                MoSelectField("Relacionado con", activity?.let { "${it.description} · ${it.activityDate}" } ?: "Ninguno",
+                    { picker = "activity" }, Modifier.testTag("expense-activity"))
                 if (!parcelInSight) parcelField()
             }
             MoTextField(
@@ -421,10 +429,10 @@ internal fun ExpenseEditor(
             )
         }
         "activity" -> ChoiceSheet(
-            "Actuación",
-            listOf(Choice(null, "Ninguna")) + options.activities.map {
-                Choice(it.id.toString(), "${it.description} · ${it.activityDate}")
-            },
+            "Relacionado con",
+            listOf(Choice(null, "Ninguno")) + options.activities
+                .filter { work -> lockedParcelId == null || work.targets.any { it.parcelId == lockedParcelId } }
+                .map { Choice(it.id.toString(), "${it.description} · ${it.activityDate}") },
             form.activityId?.toString(),
             { key ->
                 // #433: choosing or dropping a work clears what no longer fits it.

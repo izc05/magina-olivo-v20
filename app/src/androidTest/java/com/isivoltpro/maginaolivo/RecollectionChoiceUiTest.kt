@@ -80,6 +80,43 @@ class RecollectionChoiceUiTest {
         rule.runOnIdle { assertEquals(false, done) }
     }
 
+    /** Owner #524: Cuaderno of Parcel A → Gasto says A and never asks it again; works offered are A's. */
+    @Test fun aCuadernoParcelIsContextAndItsWorksAreTheOnlyOnes() {
+        fun parcel(name: String) = com.isivoltpro.maginaolivo.domain.parcel.Parcel(
+            id = UUID.randomUUID(), workspaceId = workspace, farmId = farm.id, displayName = name,
+            cadastralReference = null, cadastralPolygon = null, cadastralParcel = null, municipality = null,
+            province = null, source = com.isivoltpro.maginaolivo.domain.parcel.ParcelSource.MANUAL,
+            geometryGeoJson = null, cadastralAreaM2 = null, managedAreaM2 = null, notes = null, archivedAt = null, version = 1,
+        )
+        fun work(name: String, on: com.isivoltpro.maginaolivo.domain.parcel.Parcel) = com.isivoltpro.maginaolivo.domain.activity.Activity(
+            id = UUID.randomUUID(), workspaceId = workspace, farmId = farm.id, campaignId = null,
+            type = com.isivoltpro.maginaolivo.domain.activity.ActivityType.PRUNING,
+            status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
+            activityDate = date, description = name, notes = null,
+            targets = listOf(com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget(on.id, on.displayName)),
+            version = 1,
+        )
+        val llanos = parcel("Los Llanos")
+        val cerro = parcel("El Cerro")
+        val onLlanos = work("Poda Llanos", llanos)
+        val onCerro = work("Poda Cerro", cerro)
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpensesScreen(
+                    ExpensesUiState(isLoading = false, options = options.copy(parcels = listOf(llanos, cerro), activities = listOf(onLlanos, onCerro))),
+                    date, {}, {}, { _, _ -> }, {}, {}, {}, {},
+                    presetFarmId = farm.id, presetParcelId = llanos.id, presetQuick = true,
+                )
+            }
+        }
+        rule.onNodeWithTag("expense-parcel-context").performScrollTo().assertTextContains("Los Llanos", substring = true)
+        rule.onNodeWithTag("expense-more-details").performScrollTo().performClick()
+        assertEquals(0, rule.onAllNodesWithTag("expense-parcel").fetchSemanticsNodes().size)
+        rule.onNodeWithTag("expense-activity").performScrollTo().assertTextContains("Relacionado con", substring = true).performClick()
+        rule.onNodeWithTag("choice-${onLlanos.id}").assertExists()
+        assertEquals(0, rule.onAllNodesWithTag("choice-${onCerro.id}").fetchSemanticsNodes().size)
+    }
+
     /** #415 QA 12: Gastos opened as a list does not open the form by itself. */
     @Test fun gastosAsAListStaysOnTheList() {
         rule.setContent {
