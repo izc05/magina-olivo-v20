@@ -20,6 +20,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Una máquina archivada sigue en los días en que trabajó (#446).** Al editar la maquinaria de un día,
+  la máquina archivada aparece como «Fendt 209 · Archivada» con su tipo, cantidad y precio de entonces,
+  y se conserva al guardar (o se quita si el agricultor lo decide). En un día nuevo no se puede añadir.
 - **El Cuaderno tampoco oculta otras monedas (#450, Cuaderno).** Cada día de recolección del diario muestra
   su coste por moneda («50,00 € · 30,00 US$»), y los resúmenes internos del Cuaderno (gastos de la campaña,
   recolección, jornales y maquinaria) guardan un total por moneda. Nada se convierte ni se suma entre monedas.
