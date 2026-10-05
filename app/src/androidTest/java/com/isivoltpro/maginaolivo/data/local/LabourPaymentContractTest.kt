@@ -254,12 +254,9 @@ class LabourPaymentContractTest {
     }
 
     @Test
-    fun deletedAndForeignContextCannotReceivePayments() = runBlocking {
+    fun invalidCampaignAndForeignContextCannotReceivePayments() = runBlocking {
         val (_, worker) = pricedDay()
         val entity = db.labourDao().findWorker(worker)!!
-        db.labourDao().upsertWorker(entity.copy(metadata = entity.metadata.copy(deletedAt = now)))
-        assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
-        db.labourDao().upsertWorker(entity)
         val campaign = db.campaignDao().findById(campaignId)!!
         db.campaignDao().upsert(campaign.copy(metadata = campaign.metadata.copy(deletedAt = now)))
         assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
@@ -269,6 +266,14 @@ class LabourPaymentContractTest {
         val otherWorkspace = UUID.randomUUID()
         db.workspaceDao().upsert(WorkspaceEntity(otherWorkspace, "Other", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", LocalMetadata(now, now)))
         db.labourDao().upsertWorker(entity.copy(workspaceId = otherWorkspace))
+        assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
+    }
+
+    @Test
+    fun archivedWorkerWithoutDebtStillCannotInventAPayment() = runBlocking {
+        val worker = ok(labour.addWorker("Sin deuda"))
+        val entity = db.labourDao().findWorker(worker)!!
+        db.labourDao().upsertWorker(entity.copy(metadata = entity.metadata.copy(deletedAt = now)))
         assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
     }
 
