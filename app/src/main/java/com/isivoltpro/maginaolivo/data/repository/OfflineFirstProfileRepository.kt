@@ -76,7 +76,11 @@ class OfflineFirstProfileRepository(
                 database.withTransaction {
                     draft.preferredOrganizationId?.let { id ->
                         val organization = database.organizationDao().findById(id)
-                        if (organization == null || organization.metadata.deletedAt != null) {
+                            ?: return@withTransaction AppResult.Failure(AppError.NotFound("organization"))
+                        if (organization.workspaceId != workspaceId) {
+                            return@withTransaction AppResult.Failure(AppError.Validation("organization", "context_mismatch"))
+                        }
+                        if (organization.metadata.deletedAt != null) {
                             return@withTransaction AppResult.Failure(AppError.NotFound("organization"))
                         }
                         val roles = database.organizationDao().listRoles(id)

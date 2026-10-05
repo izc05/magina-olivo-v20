@@ -194,8 +194,10 @@ class OfflineFirstLabourRepository(
         val campaign = database.campaignDao().findById(payment.campaignId)
             ?.takeIf { it.metadata.deletedAt == null && it.workspaceId == workspaceId }
             ?: throw LabourInvalid("campaign", "not_found")
+        // #481: archiving a person stops new jornales, never settling what they are owed. The
+        // balance check below still refuses paying anyone more than their pending debt.
         database.labourDao().findWorker(payment.workerId)
-            ?.takeIf { it.metadata.deletedAt == null && it.workspaceId == workspaceId }
+            ?.takeIf { it.workspaceId == workspaceId }
             ?: throw LabourInvalid("worker", "not_found")
         val existing = database.labourPaymentDao().find(payment.id)
         if (existing != null) {
