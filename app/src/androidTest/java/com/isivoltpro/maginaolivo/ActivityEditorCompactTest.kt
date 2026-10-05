@@ -115,7 +115,8 @@ class ActivityEditorCompactTest {
             options = listOf(option), doneWork = true, onSave = { saved = it },
         )
         composeRule.onNodeWithTag("activity-parcel-area").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("activity-parcel-use-full-area").assertIsDisplayed()
+        // The suggestion sits immediately below the field and may be outside a compact viewport.
+        composeRule.onNodeWithTag("activity-parcel-use-full-area").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
         composeRule.runOnIdle {
             assertEquals(null, saved?.parcelAreasM2?.get(option.id))
