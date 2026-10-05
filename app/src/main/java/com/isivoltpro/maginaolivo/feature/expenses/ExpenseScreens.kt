@@ -85,6 +85,7 @@ internal fun relationSource(persistence: LocalPersistence) = RelationSource(
     activities = persistence.activityRepository,
     organizations = persistence.organizationRepository,
     campaigns = persistence.campaignRepository,
+    dayCosts = persistence.dayCostRepository,
 )
 
 @Composable
@@ -164,6 +165,7 @@ fun ExpensesRoute(
         presetActivityId = presetActivityId,
         presetQuick = presetQuick,
         onContextDone = onContextDone,
+        dayCostQuestion = viewModel::dayCostQuestion,
     )
 }
 
@@ -190,6 +192,8 @@ fun ExpensesScreen(
     onContextDone: ((saved: Boolean) -> Unit)? = null,
     /** #415: «Guardar y añadir foto»; null hides the button. */
     onCreateWithPhoto: ((ExpenseForm) -> Unit)? = null,
+    /** #475: the question a day's jornales/maquinaria cost gets, from the day as it is. */
+    dayCostQuestion: suspend (UUID, ExpenseCategory) -> com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion? = { _, _ -> null },
 ) {
     // #416/#415: a work's «Añadir gasto relacionado» or Cuaderno → Gasto opens the form at once
     // and returns to where it started; the plain Gastos screen opens on its list.
@@ -324,6 +328,7 @@ fun ExpensesScreen(
                 onFarmSelected = onFarmSelected,
                 onSave = onCreate,
                 onSaveWithPhoto = onCreateWithPhoto,
+                dayCostQuestion = dayCostQuestion,
                 onCancel = { closeEditor() },
                 // #411: a running Campaign never silently captures a general Farm expense.
                 preselectRecollection = false,

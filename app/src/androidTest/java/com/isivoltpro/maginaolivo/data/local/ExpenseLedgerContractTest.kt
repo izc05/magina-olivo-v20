@@ -419,6 +419,62 @@ class ExpenseLedgerContractTest {
         assertEquals(7_000, expenses.observe(cost.id).first()!!.amountMinor)
     }
 
+    /** #476: a Parcel the Gasto already had stays valid when archived or moved; a new choice must be current. */
+    @Test
+    fun editingAGastoKeepsItsParcelEvenIfArchivedOrMoved() = runBlocking {
+        val saved = draft(4_000, farmId = farmId, parcelId = parcelA)
+        val id = ok(expenses.create(saved))
+
+        // Archived: a note can still be corrected, and the Gasto keeps Finca/Parcela.
+        val parcel = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(parcel.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED))
+        ok(expenses.update(id, saved.copy(notes = "Factura corregida")))
+        assertEquals(parcelA, db.expenseDao().findById(id)!!.parcelId)
+        assertEquals(farmId, db.expenseDao().findById(id)!!.farmId)
+        // A new Gasto cannot pick it.
+        assertValidation("parcelId", expenses.create(draft(1_000, farmId = farmId, parcelId = parcelA)))
+
+        // Moved to another Farm: the old Gasto still edits on its own Farm and Parcel.
+        db.parcelDao().upsert(parcel)
+        val current = db.parcelDao().findCurrentMembership(parcelA)!!
+        db.parcelDao().upsertMembership(current.copy(validUntil = now))
+        db.parcelDao().upsertMembership(
+            FarmParcelMembershipEntity(UUID.randomUUID(), workspaceId, otherFarmId, parcelA, now, metadata = LocalMetadata(now, now)),
+        )
+        ok(expenses.update(id, saved.copy(amountMinor = 4_500)))
+        val kept = db.expenseDao().findById(id)!!
+        assertEquals(farmId, kept.farmId)
+        assertEquals(parcelA, kept.parcelId)
+        assertEquals(4_500L, kept.amountMinor)
+        // Choosing it now on its old Farm is a new choice: refused.
+        val other = ok(expenses.create(draft(1_000, farmId = farmId)))
+        assertValidation("parcelId", expenses.update(other, draft(1_000, farmId = farmId, parcelId = parcelA)))
+        // An explicit change to no Parcel is fine.
+        ok(expenses.update(id, saved.copy(parcelId = null)))
+        assertNull(db.expenseDao().findById(id)!!.parcelId)
+    }
+
+    /** #476 vs #456: a DRAFT is not history; its archived Parcel is re-checked, a POSTED one keeps it. */
+    @Test
+    fun onlyAPostedGastoKeepsAnArchivedParcelADraftIsReChecked() = runBlocking {
+        val saved = draft(2_000, farmId = farmId, parcelId = parcelA)
+        val pending = draftOf(saved)
+        val posted = ok(expenses.create(saved))
+        val parcel = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(parcel.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED))
+
+        assertValidation("parcelId", expenses.update(pending, saved.copy(notes = "Revisado")))
+        assertValidation("parcelId", expenses.post(pending))
+        assertStillDraft(pending, 2_000)
+        assertEquals(parcelA, db.expenseDao().findById(pending)!!.parcelId)
+
+        ok(expenses.update(posted, saved.copy(amountMinor = 2_500, notes = "Revisado")))
+        val kept = db.expenseDao().findById(posted)!!
+        assertEquals(parcelA, kept.parcelId)
+        assertEquals(farmId, kept.farmId)
+        assertEquals(2_500L, kept.amountMinor)
+    }
+
     /**
      * Owner decision (#429, 5-oct-2026): «Conservar como gasto independiente» only drops the link to
      * the work. Same row, same money, date, concept, supplier, Farm/Parcel and Campaign; no new
