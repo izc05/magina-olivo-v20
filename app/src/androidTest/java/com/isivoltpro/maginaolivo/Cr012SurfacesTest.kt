@@ -114,7 +114,7 @@ class Cr012SurfacesTest {
     @Test fun dayExpenseUsesHistoricalJpyBeforeTodaysEurAndEmitsJpyMinorUnits() {
         var saved: Long? = null
         val jpy = costs[2].copy(currency = "JPY", amountMinor = 1000)
-        rule.setContent { MaginaOlivoTheme { HarvestDetailScreen(HarvestDetailUiState(isLoading = false, harvest = day, costs = listOf(jpy), rates = RecollectionRates(currency = "EUR")), {}, {}, onAddCost = { _, amount, _, _ -> saved = amount }) } }
+        rule.setContent { MaginaOlivoTheme { HarvestDetailScreen(HarvestDetailUiState(isLoading = false, harvest = day, costs = listOf(jpy), rates = RecollectionRates(currency = "EUR")), {}, {}, onAddCost = { _, amount, _, _, _ -> saved = amount }) } }
         rule.onNodeWithTag("day-resource-other").performScrollTo().performClick()
         rule.onNodeWithTag("jornada-add-cost").performScrollTo().performClick()
         rule.onNodeWithText("Importe (JPY)").assertExists()

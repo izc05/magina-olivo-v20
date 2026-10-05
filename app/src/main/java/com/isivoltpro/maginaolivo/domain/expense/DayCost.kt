@@ -85,6 +85,32 @@ object DayCostCalculator {
     }
 }
 
+/**
+ * #475: how a hand-typed cost of a recollection day counts against that day's calculated cost.
+ * Always the farmer's explicit choice, asked only when the day already has a calculated cost of
+ * that kind; never deduced from the category or the concept.
+ */
+enum class DayCostRole { ADDITIVE, REPLACEMENT }
+
+val Expense.dayCostRole: DayCostRole
+    get() = if (origin == ExpenseOrigin.DAY_REPLACEMENT) DayCostRole.REPLACEMENT else DayCostRole.ADDITIVE
+
+/**
+ * #475: whether saving a cost of [kind] on a day must ask «Se añade / Sustituye». Only jornales
+ * and machinery hire can replace a calculation, and only when the day has one; with payments per
+ * person, jornales can only add ([labourPaid]).
+ */
+data class DayCostQuestion(val calculated: DayCostKind, val canReplace: Boolean)
+
+object DayCostQuestions {
+    fun of(kind: JornadaExpenseKind, calculated: Set<DayCostKind>, labourPaid: Boolean): DayCostQuestion? {
+        if (kind.additive) return null
+        val day = DayCostKind.of(kind.category) ?: return null
+        if (day !in calculated) return null
+        return DayCostQuestion(day, canReplace = !(day == DayCostKind.LABOUR && labourPaid))
+    }
+}
+
 /** CR-010 A3: which calculated cost of a day. */
 enum class DayCostKind(val origin: ExpenseOrigin, val category: ExpenseCategory, val concept: String) {
     LABOUR(ExpenseOrigin.DAY_LABOUR, ExpenseCategory.LABOR, "Jornales (calculado)"),
@@ -98,6 +124,11 @@ enum class DayCostKind(val origin: ExpenseOrigin, val category: ExpenseCategory,
     fun isReplacedBy(category: ExpenseCategory, concept: String): Boolean =
         category == this.category &&
             JornadaExpenseKind.entries.none { it.additive && it.category == category && it.names(concept) }
+
+    companion object {
+        /** #475: the calculated cost a cost of [category] could replace, if any. */
+        fun of(category: ExpenseCategory): DayCostKind? = entries.firstOrNull { it.category == category }
+    }
 }
 
 /**
@@ -106,14 +137,19 @@ enum class DayCostKind(val origin: ExpenseOrigin, val category: ExpenseCategory,
  * a warning and the farmer links one to the day or keeps it apart; it never merges or drops them.
  */
 object UnlinkedDayCosts {
-    fun of(dayId: UUID, farmId: UUID?, date: LocalDate, expenses: List<Expense>): List<Expense> {
-        if (farmId == null) return emptyList()
+    /**
+     * Only costs of the day's own Campaign are candidates: one the farmer kept «Fuera de campaña»
+     * (no Campaign) is never offered to a Jornada nor absorbed by date or category (#475).
+     */
+    fun of(dayId: UUID, farmId: UUID?, date: LocalDate, expenses: List<Expense>, campaignId: UUID?): List<Expense> {
+        if (farmId == null || campaignId == null) return emptyList()
         val calculated = expenses.filter { it.harvestId == dayId }
             .mapNotNull { expense -> DayCostKind.entries.firstOrNull { it.origin == expense.origin } }
             .toSet()
         if (calculated.isEmpty()) return emptyList()
         return expenses.filter { expense ->
             expense.harvestId == null && expense.farmId == farmId && expense.expenseDate == date &&
+                expense.campaignId == campaignId &&
                 expense.status == ExpenseStatus.POSTED && expense.origin in LINKABLE &&
                 calculated.any { it.isReplacedBy(expense.category, expense.concept) }
         }
@@ -143,5 +179,18 @@ interface DayCostRepository {
      * A3: the farmer says an unlinked hand-typed cost of the same Farm and date belongs to this
      * day. It is linked (nothing else changes) and the collision rule then applies to the day.
      */
-    suspend fun linkToDay(expenseId: UUID, harvestId: UUID): AppResult<Unit>
+    suspend fun linkToDay(expenseId: UUID, harvestId: UUID, role: DayCostRole = DayCostRole.ADDITIVE): AppResult<Unit>
+
+    /**
+     * #475, run once per start: a hand-typed cost that already stands for its day's calculation
+     * (the calculation kept as a draft) is marked as an explicit replacement, so what counts
+     * today keeps counting exactly the same. Nothing else is reinterpreted. Idempotent.
+     */
+    suspend fun markExistingReplacements(): AppResult<Unit> = AppResult.Success(Unit)
+
+    /**
+     * #475: what a cost of [category] on that day may be asked, from the day as it is: null when the
+     * day has no calculation of that kind (nothing to ask); with jornales paid, it can only add.
+     */
+    suspend fun questionFor(harvestId: UUID, category: ExpenseCategory): DayCostQuestion? = null
 }

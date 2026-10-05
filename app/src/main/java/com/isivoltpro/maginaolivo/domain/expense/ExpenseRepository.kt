@@ -29,7 +29,12 @@ enum class ExpenseCategory {
 enum class ExpenseStatus { DRAFT, POSTED }
 
 /** CR-010 A3: DAY_LABOUR and DAY_EQUIPMENT are the calculated costs of one day, one of each at most. */
-enum class ExpenseOrigin { MANUAL, ACTIVITY_COST, DOCUMENT_OCR, DAY_LABOUR, DAY_EQUIPMENT }
+/**
+ * Where an Expense came from. `DAY_REPLACEMENT` (#475) is a hand-typed cost of a recollection day
+ * that the farmer said **replaces** that day's calculated jornales or machinery; any other
+ * hand-typed cost of a day adds to the calculation.
+ */
+enum class ExpenseOrigin { MANUAL, ACTIVITY_COST, DOCUMENT_OCR, DAY_LABOUR, DAY_EQUIPMENT, DAY_REPLACEMENT }
 
 data class PurchaseLine(
     val productName: String,
@@ -80,6 +85,8 @@ data class ExpenseDraft(
     val notes: String? = null,
     /** Phase 19F: a recollection cost of one Jornada; its Farm and Campaign follow from it. */
     val harvestId: UUID? = null,
+    /** #475: the farmer's explicit decision when the day already has a calculated cost. */
+    val dayCostRole: DayCostRole = DayCostRole.ADDITIVE,
 )
 
 /** Derived, never stored: posted money only. */

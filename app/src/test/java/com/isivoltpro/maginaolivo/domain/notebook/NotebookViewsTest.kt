@@ -228,8 +228,9 @@ class NotebookViewsTest {
         assertEquals(day1, dashboard.firstPesada)
         assertEquals(day2, dashboard.lastPesada)
         // Posted money once (the calculated jornales are inside it); the draft never counts.
-        assertEquals(40_000L, dashboard.postedCostMinor)
-        assertEquals(35_000L, dashboard.calculatedLabourMinor)
+        assertEquals(40_000L, dashboard.costs.single().postedMinor)
+        assertEquals("EUR", dashboard.costs.single().currency)
+        assertEquals(35_000L, dashboard.costs.single().calculatedLabourMinor)
         // 400 € / 5.000 kg = 0,08 €/kg.
         assertEquals(8L, dashboard.costPerKgMinor)
 
@@ -237,6 +238,20 @@ class NotebookViewsTest {
         val empty = CampaignDashboard.of(CampaignNotebook.project(campaign, emptyList(), emptyList(), emptyList(), listOf(diesel)), LocalDate.of(2026, 11, 21))
         assertEquals(null, empty.costPerKgMinor)
         assertEquals(null, empty.firstPesada)
+        // #450: EUR + GBP — both ledgers visible, nothing converted, no global cost per kilo.
+        val gbp = expense(30_000, ExpenseCategory.MACHINERY, day1).copy(currency = "GBP", origin = ExpenseOrigin.DAY_EQUIPMENT, harvestId = jornada.id)
+        val mixed = CampaignDashboard.of(
+            CampaignNotebook.project(campaign, emptyList(), listOf(jornada), pesadas, listOf(calculated, diesel, gbp), labour),
+            LocalDate.of(2026, 11, 21),
+        )
+        assertEquals(listOf("EUR", "GBP"), mixed.costs.map { it.currency })
+        assertEquals(40_000L, mixed.costs.first { it.currency == "EUR" }.postedMinor)
+        assertEquals(30_000L, mixed.costs.first { it.currency == "GBP" }.postedMinor)
+        assertEquals(30_000L, mixed.costs.first { it.currency == "GBP" }.calculatedMachineryMinor)
+        assertEquals(null, mixed.costPerKgMinor)
+        // Only GBP: GBP is shown, never an empty EUR total.
+        val onlyGbp = CampaignDashboard.of(CampaignNotebook.project(campaign, emptyList(), listOf(jornada), pesadas, listOf(gbp), labour), LocalDate.of(2026, 11, 21))
+        assertEquals(listOf("GBP"), onlyGbp.costs.map { it.currency })
         // A closed Campaign counts until its close date.
         val closed = campaign.copy(status = CampaignStatus.CLOSED, endDate = LocalDate.of(2026, 9, 10))
         assertEquals(10L, CampaignDashboard.of(CampaignNotebook.project(closed, emptyList(), emptyList(), emptyList(), emptyList()), LocalDate.of(2026, 11, 21)).calendarDays)
