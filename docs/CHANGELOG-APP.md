@@ -25,6 +25,15 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   «Parcela 1 · archivada» o «· ahora en otra finca». Para un gasto nuevo, o al cambiar de parcela, solo
   se ofrecen las parcelas activas de esa finca. Solo vale para gastos ya confirmados: un borrador
   todavía no es histórico y, al confirmarlo, vuelve a comprobar que su parcela sigue activa (#456).
+- **Gasto del día: «Se añade» o «Sustituye», siempre lo decide el agricultor (#475).** Al anotar jornales
+  o un alquiler de maquinaria en un día que ya tiene ese coste calculado, la app pregunta «¿Cómo cuenta
+  este gasto?»: «Se añade al cálculo» o «Sustituye el cálculo». Si el día no tiene cálculo de ese tipo,
+  se añade sin preguntar; gasoil, aceite, transporte, reparaciones y otros siempre se suman. La decisión
+  se guarda (no se deduce del concepto ni de la categoría). Si alguien de ese día ya tiene pagos, los
+  jornales solo pueden añadirse: los pagos nunca se tocan. Al sustituir jornales sin pagos, el importe
+  cuenta en la campaña sin repartir por persona. Un gasto «Fuera de campaña» ya no se ofrece para
+  enlazarlo a una jornada ni se absorbe. Lo que contaba antes de este cambio sigue contando igual.
+  Al editar el gasto se ve la misma pregunta, solo con las opciones que ese día permite de verdad.
 - **Una persona que ya no trabaja puede cobrar lo que se le debe (#481).** Si un trabajador deja de
   estar activo, ya no se ofrece para nuevos jornales, pero sus jornales pendientes se pueden pagar (y los
   pagos corregir) sin restaurarlo. Nunca se puede pagar más de lo pendiente.

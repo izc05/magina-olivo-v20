@@ -13,6 +13,7 @@ import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import java.time.Instant
@@ -50,14 +51,19 @@ internal class ExpenseLedgerWriter(
         return id
     }
 
-    suspend fun rewrite(current: ExpenseEntity, draft: ExpenseDraft, now: Instant) {
+    suspend fun rewrite(
+        current: ExpenseEntity,
+        draft: ExpenseDraft,
+        now: Instant,
+        origin: ExpenseOrigin = ExpenseOrigin.valueOf(current.origin),
+    ) {
         requireEditableCampaign(current)
         val expense = resolve(
             current.id,
             current.workspaceId,
             draft,
             ExpenseStatus.valueOf(current.status),
-            ExpenseOrigin.valueOf(current.origin),
+            origin,
             current.metadata.next(now),
             // #451: the same supplier keeps the name it was recorded with; only choosing another
             // one takes that one's current name.
@@ -117,6 +123,7 @@ internal class ExpenseLedgerWriter(
     }
 
     private fun ExpenseEntity.asDraftForCheck() = ExpenseDraft(
+        dayCostRole = if (origin == ExpenseOrigin.DAY_REPLACEMENT.name) DayCostRole.REPLACEMENT else DayCostRole.ADDITIVE,
         expenseDate = expenseDate,
         concept = concept,
         category = ExpenseCategory.entries.firstOrNull { it.name == category } ?: ExpenseCategory.OTHER,
