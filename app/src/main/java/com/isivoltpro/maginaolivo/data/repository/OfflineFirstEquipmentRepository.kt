@@ -116,15 +116,21 @@ class OfflineFirstEquipmentRepository(
             if (key !in wanted) writes += row.copy(metadata = row.metadata.next(now).copy(deletedAt = now)) to OutboxOperation.DELETE
         }
         wanted.forEach { (key, line) ->
+            val existing = current[key]
             val machineName = line.machineId?.let { id ->
-                val machine = database.machineDao().findById(id)
-                if (machine == null || machine.metadata.deletedAt != null || machine.workspaceId != harvest.workspaceId) {
-                    throw EquipmentInvalid("machineId", "not_found")
+                if (existing?.machineId == id) {
+                    // #575: this line already names that physical Machine. Archiving/renaming the
+                    // live catalogue later never rewrites or invalidates the historical snapshot.
+                    existing.label
+                } else {
+                    val machine = database.machineDao().findById(id)
+                    if (machine == null || machine.metadata.deletedAt != null || machine.workspaceId != harvest.workspaceId) {
+                        throw EquipmentInvalid("machineId", "not_found")
+                    }
+                    machine.name
                 }
-                machine.name
             }
             val label = machineName ?: line.label?.trim()?.takeIf { line.type == EquipmentType.OTHER }
-            val existing = current[key]
             val price = resolved[key]
             when {
                 existing == null -> writes += HarvestEquipmentEntity(
