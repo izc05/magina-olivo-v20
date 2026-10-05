@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import com.isivoltpro.maginaolivo.feature.harvests.moneyLabel
 import com.isivoltpro.maginaolivo.feature.harvests.title
 import com.isivoltpro.maginaolivo.feature.harvests.icon
+import com.isivoltpro.maginaolivo.feature.harvests.UNKNOWN_DAY_ORIGIN
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -158,7 +159,8 @@ internal fun HarvestRow(
         title = "Día de recolección · ${if (harvest.awaitingPesadas) "kg pendientes de pesada" else Weight.format(harvest.totalGrams)}",
         subtitle = listOfNotNull(
             when {
-                harvest.shares.isEmpty() -> "Toda la finca"
+                // #458: a day with no Pesada yet has no known origin; it is not the whole Farm.
+                harvest.shares.isEmpty() -> UNKNOWN_DAY_ORIGIN
                 harvest.shares.size == 1 -> harvest.shares.single().parcelName
                 else -> "${harvest.shares.size} parcelas"
             },

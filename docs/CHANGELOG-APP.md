@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un día sin pesadas no se atribuye a todas las parcelas (#458).** Un día de recolección abierto
+  sin pesadas, o que se queda sin ellas pero conserva jornales, maquinaria, gastos o notas, muestra
+  «Origen sin determinar» y no aparece en el historial de ninguna parcela. Al llegar, cambiar o irse
+  pesadas, y al corregir un día anotado a mano, las parcelas que ya estaban conservan su fila y el
+  nombre con que se guardaron; solo se añaden o quitan las que cambian.
 - **Corregir una pesada o un gasto no cambia la cooperativa/proveedor con que se guardó (#451).** Si
   la cooperativa o el proveedor se renombra o se archiva, la pesada o el gasto siguen con el nombre de
   entonces al corregir notas, vale, kilos o importe, y se pueden seguir editando. El editor muestra el
