@@ -52,6 +52,30 @@ class RecollectionCostCompletenessTest {
         assertTrue(result.complete)
     }
 
+    /** Codex #605: a former replacement taken back to «Se añade» and left as a draft is pending again. */
+    @Test fun anAdditiveDraftBesideAPostedCalculationIsPending() {
+        val result = RecollectionCostCompleteness.of(
+            listOf(jornal(6_500)), emptyList(),
+            listOf(
+                cost(6_500, ExpenseOrigin.DAY_LABOUR, ExpenseCategory.LABOR),
+                cost(2_000, ExpenseOrigin.MANUAL, ExpenseCategory.LABOR, ExpenseStatus.DRAFT),
+            ),
+        )
+        assertEquals(setOf(Reason.DRAFT_COSTS), result.reasons)
+    }
+
+    /** Codex #605: an explicit replacement stands for the day's cost even in another currency. */
+    @Test fun aReplacementInAnotherCurrencyCoversTheDay() {
+        val result = RecollectionCostCompleteness.of(
+            listOf(jornal(6_500)), emptyList(),
+            listOf(
+                cost(6_500, ExpenseOrigin.DAY_LABOUR, ExpenseCategory.LABOR, ExpenseStatus.DRAFT),
+                cost(8_000, ExpenseOrigin.DAY_REPLACEMENT, ExpenseCategory.LABOR).copy(currency = "USD"),
+            ),
+        )
+        assertTrue(result.complete)
+    }
+
     @Test fun anUnconfirmedGastoMakesItIncomplete() {
         val result = RecollectionCostCompleteness.of(emptyList(), emptyList(),
             listOf(cost(4_000, ExpenseOrigin.MANUAL, ExpenseCategory.FUEL, ExpenseStatus.DRAFT)))

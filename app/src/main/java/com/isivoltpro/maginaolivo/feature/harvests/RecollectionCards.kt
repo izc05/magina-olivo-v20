@@ -26,11 +26,8 @@ internal fun equipmentCostNote(lines: List<EquipmentLine>, expenses: List<Expens
 /** Operational snapshots only disclose incomplete coverage; they never contribute money. */
 private fun resourceCostNote(bucket: RecollectionBucket, resources: List<Pair<UUID, String?>>, expenses: List<Expense>): String? {
     val costs = expenses.filter { RecollectionBucket.of(it) == bucket }
-    // #449: a draft kept aside because its day's cost of this kind is posted (#475) is not pending.
-    val unconfirmed = costs.any { draft ->
-        draft.status == ExpenseStatus.DRAFT &&
-            (draft.harvestId == null || costs.none { it.status == ExpenseStatus.POSTED && it.harvestId == draft.harvestId })
-    } || resources.any { (day, currency) ->
+    // #449: only a draft that is not one side of the day's explicit #475 pair is pending.
+    val unconfirmed = costs.any { RecollectionCostCompleteness.isPendingDraft(it, costs) } || resources.any { (day, currency) ->
         currency == null || costs.none { it.status == ExpenseStatus.POSTED && it.harvestId == day && it.currency == currency }
     }
     return if (unconfirmed) "Hay precios o costes sin confirmar · solo suma lo confirmado" else null
@@ -57,10 +54,13 @@ internal fun RecollectionTotalCards(
     ledger: List<RecollectionCurrency>,
     day: Boolean,
     weighed: String?,
-    /** #449: unknown costs are named, never summed as 0; the money stays the posted ledger. */
-    completeness: RecollectionCostCompleteness? = null,
+    /**
+     * #449: unknown costs are named, never summed as 0; the money stays the posted ledger. Null
+     * while any of the day's sources is still loading or could not be read: never shown as final.
+     */
+    completeness: RecollectionCostCompleteness?,
 ) {
-    val pending = completeness?.pendingLabel()
+    val pending = if (completeness == null) "Comprobando si faltan costes…" else completeness.pendingLabel()
     MoKpiMetric(
         when {
             pending != null -> if (day) "Coste contabilizado del día" else "Total contabilizado"
