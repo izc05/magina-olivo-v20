@@ -129,6 +129,7 @@ class OfflineFirstActivityRepository(
                     parcelNames = activity.targets.map { it.parcelName },
                     planning = activity.planning,
                     reminders = activity.reminders,
+                    activityEndDate = activity.activityEndDate,
                 )
             }
         }.flowOn(dispatchers.io)
@@ -183,16 +184,21 @@ class OfflineFirstActivityRepository(
         if (!command.asDraft && command.parcelIds.isEmpty()) {
             return AppResult.Failure(AppError.Validation("parcelIds", "empty"))
         }
+        validateDateRange(command.activityDate, command.activityEndDate)?.let { return it }
         validateDetail(command.type, command.detail)?.let { return it }
         notNegative("costMinor", command.costMinor?.toDouble())?.let { return it }
         MachineRules.validateUses(command.machines)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         ReminderRules.validate(command.planning, command.reminders)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         // #435/#414: work recorded as done cannot be dated ahead; it is never quietly turned into a
         // plan. Pending work is planned from Avisos.
-        if (command.completeImmediately && !command.asDraft && command.type != ActivityType.HARVEST_DAY &&
-            command.activityDate.isAfter(clock.today(zone()))
-        ) {
-            return AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
+        if (command.completeImmediately && !command.asDraft && command.type != ActivityType.HARVEST_DAY) {
+            val today = clock.today(zone())
+            if (command.activityDate.isAfter(today)) {
+                return AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
+            }
+            if (command.activityEndDate?.isAfter(today) == true) {
+                return AppResult.Failure(AppError.Validation("activityEndDate", "future_completed_work"))
+            }
         }
         return withContext(dispatchers.io) {
             safely("create_activity") {
@@ -229,6 +235,7 @@ class OfflineFirstActivityRepository(
                         description = description,
                         notes = command.notes.normalized(),
                         metadata = pending(now),
+                        activityEndDate = command.activityEndDate,
                     ),
                 )
                 replaceDetail(id, farm.workspaceId, command.detail, now)
@@ -246,6 +253,7 @@ class OfflineFirstActivityRepository(
     override suspend fun update(id: UUID, changes: ActivityChanges): AppResult<Unit> {
         val description = changes.description.trim()
         if (description.isEmpty()) return AppResult.Failure(AppError.Validation("description", "blank"))
+        validateDateRange(changes.activityDate, changes.activityEndDate)?.let { return it }
         validateDetail(changes.type, changes.detail)?.let { return it }
         notNegative("costMinor", changes.costMinor?.toDouble())?.let { return it }
         // #429: only DRAFT and PLANNED work is editable, and neither carries money; a cost typed
@@ -262,6 +270,7 @@ class OfflineFirstActivityRepository(
                 current.copy(
                     type = changes.type.name,
                     activityDate = changes.activityDate,
+                    activityEndDate = changes.activityEndDate,
                     description = description,
                     notes = changes.notes.normalized(),
                     metadata = current.metadata.next(now),
@@ -578,6 +587,7 @@ class OfflineFirstActivityRepository(
                     customAt = if (kind == ReminderKind.CUSTOM) row.triggerAt.atZone(zone()).toLocalDateTime() else null,
                 )
             },
+            activityEndDate = activity.activityEndDate,
         )
 
     /**
@@ -612,6 +622,13 @@ class OfflineFirstActivityRepository(
             is ActivityDetail.Maintenance -> null
         }
     }
+
+    private fun validateDateRange(start: LocalDate, end: LocalDate?): AppResult.Failure? =
+        if (end != null && end.isBefore(start)) {
+            AppResult.Failure(AppError.Validation("activityEndDate", "before_start"))
+        } else {
+            null
+        }
 
     private fun notNegative(field: String, value: Double?): AppResult.Failure? =
         if (value != null && value < 0) AppResult.Failure(AppError.Validation(field, "negative")) else null
