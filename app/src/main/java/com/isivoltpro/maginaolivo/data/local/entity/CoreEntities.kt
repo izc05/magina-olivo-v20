@@ -227,6 +227,8 @@ data class ActivityEntity(
     val currency: String? = null,
     val notes: String? = null,
     @Embedded val metadata: LocalMetadata,
+    /** Null means a single-day Activity; otherwise the inclusive end of the interval. */
+    @ColumnInfo(name = "activity_end_date") val activityEndDate: LocalDate? = null,
 )
 
 @Entity(
