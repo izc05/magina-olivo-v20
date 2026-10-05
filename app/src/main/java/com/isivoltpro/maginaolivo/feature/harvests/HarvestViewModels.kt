@@ -121,6 +121,10 @@ data class HarvestDetailUiState(
     val deleted: Boolean = false,
     /** Phase 19B: the Pesadas linked to this Jornada, oldest first. */
     val pesadas: List<Delivery> = emptyList(),
+    /** False until this day's Pesadas have been read: deleting the day is only offered once it is true. */
+    val pesadasLoaded: Boolean = true,
+    /** True when the Pesadas could not be read: the day is never treated as having none. */
+    val pesadasReadFailed: Boolean = false,
     /** Phase 19D: the jornales of this Jornada and the people to choose from. */
     val labour: List<LabourEntry> = emptyList(),
     /** False until this day's jornales have been read: «none» is only said once it is true. */
@@ -169,7 +173,7 @@ class HarvestDetailViewModel(
     private val expenses: ExpenseRepository? = null,
     private val dayCosts: DayCostRepository? = null,
 ) : ViewModel() {
-    private val mutableState = MutableStateFlow(HarvestDetailUiState(labourLoaded = labour == null,
+    private val mutableState = MutableStateFlow(HarvestDetailUiState(labourLoaded = labour == null, pesadasLoaded = deliveries == null,
         equipmentLoaded = equipment == null, costsLoaded = expenses == null, ratesLoaded = dayCosts == null))
     val state: StateFlow<HarvestDetailUiState> = mutableState.asStateFlow()
     private var contexts: List<HarvestContext> = emptyList()
@@ -199,9 +203,13 @@ class HarvestDetailViewModel(
         }
         deliveries?.let { repository ->
             viewModelScope.launch {
-                repository.observeAll().catch { }.collect { rows ->
-                    mutableState.value = mutableState.value.copy(pesadas = Jornada.linkedTo(harvestId, rows))
-                }
+                repository.observeAll()
+                    .catch { mutableState.value = mutableState.value.copy(pesadasLoaded = true, pesadasReadFailed = true) }
+                    .collect { rows ->
+                        mutableState.value = mutableState.value.copy(
+                            pesadas = Jornada.linkedTo(harvestId, rows), pesadasLoaded = true, pesadasReadFailed = false,
+                        )
+                    }
             }
         }
         labour?.let { repository ->
@@ -481,6 +489,8 @@ internal fun harvestErrorMessage(error: AppError): String = when (error) {
         "no_running_campaign" -> "Esta finca no tiene una campaña activa o en recolección"
         "closed_campaign" -> "La campaña está cerrada: este día de recolección ya es histórico y no se modifica"
         "archived_farm" -> "La finca está archivada"
+        com.isivoltpro.maginaolivo.domain.harvest.HARVEST_HAS_DELIVERIES ->
+            "Este día tiene pesadas. Muévelas, corrígelas o elimínalas antes de eliminar la jornada."
         else -> "No se pudo guardar por un conflicto con otros datos"
     }
     is AppError.Storage -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."

@@ -717,11 +717,30 @@ fun HarvestDetailScreen(
                             Modifier.fillMaxWidth().testTag("edit-harvest"),
                             enabled = state.context != null && !state.isSaving,
                         )
-                        MoSecondaryButton(
-                            "Eliminar día de recolección", { confirmDelete = true },
-                            Modifier.fillMaxWidth().testTag("delete-harvest"),
-                            enabled = !state.isSaving,
-                        )
+                        // #457: deleting is offered only once the day is known to have no Pesadas.
+                        val noPesadas = state.pesadasLoaded && !state.pesadasReadFailed && state.pesadas.isEmpty()
+                        if (noPesadas) {
+                            MoSecondaryButton(
+                                "Eliminar día de recolección", { confirmDelete = true },
+                                Modifier.fillMaxWidth().testTag("delete-harvest"),
+                                enabled = !state.isSaving,
+                            )
+                        } else if (state.pesadas.isNotEmpty()) {
+                            // #457: the day is there because it has Pesadas; it moves with them.
+                            Text(
+                                "Este día existe porque tiene pesadas. Para cambiarlo, corrige o mueve las pesadas.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MoTextSecondary,
+                                modifier = Modifier.testTag("harvest-delete-held"),
+                            )
+                        } else if (state.pesadasReadFailed) {
+                            Text(
+                                "No pudimos leer las pesadas de este día: vuelve a abrirlo para poder eliminarlo.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.testTag("harvest-pesadas-unread"),
+                            )
+                        }
                     } else {
                         Text(
                             "La campaña está cerrada: este día de recolección forma parte del histórico y no se modifica.",
@@ -876,16 +895,14 @@ fun HarvestDetailScreen(
             )
         }
     }
-    if (confirmDelete) {
+    // A Pesada that arrives while the confirmation is open closes it (#457).
+    if (confirmDelete && state.pesadas.isEmpty()) {
         ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { confirmDelete = false }) {
             MoConfirmationSheet(
                 title = "Eliminar día de recolección",
                 body = listOfNotNull(
-                    if (state.pesadas.isEmpty()) {
-                        "Estos kilos dejarán de contar en la campaña."
-                    } else {
-                        "Sus pesadas se conservan, sin día de recolección, y siguen contando en la campaña."
-                    },
+                    // #457: only a day without Pesadas can be removed.
+                    "Estos kilos dejarán de contar en la campaña.",
                     // Phase 19D: its jornales only describe this Jornada and go with it.
                     if (state.labour.isNotEmpty()) "Sus jornales se quitan con ella." else null,
                     if (state.equipment.isNotEmpty()) "Su maquinaria anotada también." else null,
