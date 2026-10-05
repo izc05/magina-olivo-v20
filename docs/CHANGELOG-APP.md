@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El coste/kg avisa cuando faltan costes por confirmar (#449).** Si hay jornales o maquinaria sin
+  precio, costes del día aún sin calcular o gastos sin confirmar, el total y el coste/kg se llaman
+  «contabilizado» y dicen qué falta («Incompleto · jornales sin precio»). Lo desconocido nunca cuenta como
+  0 € y pagar no cambia nada. Un cálculo apartado porque un gasto anotado a mano lo sustituye (#475) ya no
+  aparece como «sin confirmar».
 - **Gasto del día: «Se añade» o «Sustituye», siempre lo decide el agricultor (#475).** Al anotar jornales
   o un alquiler de maquinaria en un día que ya tiene ese coste calculado, la app pregunta «¿Cómo cuenta
   este gasto?»: «Se añade al cálculo» o «Sustituye el cálculo». Si el día no tiene cálculo de ese tipo,

@@ -709,7 +709,8 @@ fun HarvestDetailScreen(
                         supportingText = when { !state.costsLoaded -> "Cargando gastos…"; state.costsReadFailed -> "No pudimos leer los gastos";
                             else -> "Combustible, transporte, reparación · Ver gastos" }, onClick = { resourceDetail = "costs" })
                     MoSectionHeader("Resumen económico")
-                    RecollectionTotalCards(ledger, true, state.pesadas.sumOf { it.netGrams }.takeIf { it > 0 }?.let(Weight::format))
+                    RecollectionTotalCards(ledger, true, state.pesadas.sumOf { it.netGrams }.takeIf { it > 0 }?.let(Weight::format),
+                        com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(state.labour, state.equipment, state.costs))
                     state.costError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     state.equipmentError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     if (harvest.editable) {

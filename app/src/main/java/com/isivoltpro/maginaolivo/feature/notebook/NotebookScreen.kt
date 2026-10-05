@@ -267,7 +267,8 @@ internal fun SummaryTab(
             Modifier.fillMaxWidth().testTag("notebook-summary-other"), icon = MoIcons.Euro, kind = MoKpiKind.COSTES,
             supportingText = "Combustible, transporte, reparaciones y otros · Ver gastos", onClick = onExpenses)
         com.isivoltpro.maginaolivo.feature.harvests.RecollectionTotalCards(ledger, false,
-            deliveries.deliveredGrams.takeIf { it > 0 }?.let(Weight::format))
+            deliveries.deliveredGrams.takeIf { it > 0 }?.let(Weight::format),
+            com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(notebook.labour, notebook.equipment, notebook.expenses))
         ParcelYields(notebook)
         // Phase 19G: charts and year-over-year, all derived from the same records.
         CampaignCharts(CampaignSeries.of(notebook))

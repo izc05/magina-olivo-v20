@@ -26,7 +26,11 @@ internal fun equipmentCostNote(lines: List<EquipmentLine>, expenses: List<Expens
 /** Operational snapshots only disclose incomplete coverage; they never contribute money. */
 private fun resourceCostNote(bucket: RecollectionBucket, resources: List<Pair<UUID, String?>>, expenses: List<Expense>): String? {
     val costs = expenses.filter { RecollectionBucket.of(it) == bucket }
-    val unconfirmed = costs.any { it.status == ExpenseStatus.DRAFT } || resources.any { (day, currency) ->
+    // #449: a draft kept aside because its day's cost of this kind is posted (#475) is not pending.
+    val unconfirmed = costs.any { draft ->
+        draft.status == ExpenseStatus.DRAFT &&
+            (draft.harvestId == null || costs.none { it.status == ExpenseStatus.POSTED && it.harvestId == draft.harvestId })
+    } || resources.any { (day, currency) ->
         currency == null || costs.none { it.status == ExpenseStatus.POSTED && it.harvestId == day && it.currency == currency }
     }
     return if (unconfirmed) "Hay precios o costes sin confirmar · solo suma lo confirmado" else null
@@ -37,14 +41,38 @@ internal fun List<RecollectionCurrency>.costKgLabel(): String =
         ledger.costPerKgMinor?.let { "${Money.format(it, ledger.currency)}/kg" } ?: "— (${ledger.currency})"
     }
 
+/** #449: what is still unknown, in the farmer's words; null when the cost is complete. */
+internal fun RecollectionCostCompleteness.pendingLabel(): String? = if (complete) null else {
+    val what = listOfNotNull(
+        "jornales sin precio".takeIf { RecollectionCostCompleteness.Reason.LABOUR_UNPRICED in reasons },
+        "maquinaria sin precio".takeIf { RecollectionCostCompleteness.Reason.EQUIPMENT_UNPRICED in reasons },
+        "costes del día sin calcular".takeIf { RecollectionCostCompleteness.Reason.UNPOSTED_RESOURCE_COST in reasons },
+        "gastos sin confirmar".takeIf { RecollectionCostCompleteness.Reason.DRAFT_COSTS in reasons },
+    )
+    "Incompleto · " + what.joinToString(", ")
+}
+
 @Composable
-internal fun RecollectionTotalCards(ledger: List<RecollectionCurrency>, day: Boolean, weighed: String?) {
-    MoKpiMetric(if (day) "Coste del día" else "Total recogida", ledger.moneyLabel(),
+internal fun RecollectionTotalCards(
+    ledger: List<RecollectionCurrency>,
+    day: Boolean,
+    weighed: String?,
+    /** #449: unknown costs are named, never summed as 0; the money stays the posted ledger. */
+    completeness: RecollectionCostCompleteness? = null,
+) {
+    val pending = completeness?.pendingLabel()
+    MoKpiMetric(
+        when {
+            pending != null -> if (day) "Coste contabilizado del día" else "Total contabilizado"
+            day -> "Coste del día"
+            else -> "Total recogida"
+        },
+        ledger.moneyLabel(),
         Modifier.fillMaxWidth().testTag(if (day) "day-cost" else "dashboard-cost"),
         icon = MoIcons.Euro, kind = MoKpiKind.TOTAL,
-        supportingText = "Solo gastos confirmados · pagar no cambia el coste")
-    MoKpiMetric("Coste/kg", ledger.costKgLabel(),
+        supportingText = listOfNotNull(pending, "Solo gastos confirmados · pagar no cambia el coste").joinToString("\n"))
+    MoKpiMetric(if (pending != null) "Coste contabilizado/kg" else "Coste/kg", ledger.costKgLabel(),
         Modifier.fillMaxWidth().testTag(if (day) "day-cost-per-kg" else "dashboard-cost-per-kg"),
         icon = MoIcons.Percent, kind = MoKpiKind.TOTAL,
-        supportingText = weighed?.let { "Sobre $it pesados" } ?: "Sin kilos pesados")
+        supportingText = listOfNotNull(pending, weighed?.let { "Sobre $it pesados" } ?: "Sin kilos pesados").joinToString("\n"))
 }
