@@ -35,6 +35,7 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
 import com.isivoltpro.maginaolivo.ui.components.MoPrimaryButton
+import com.isivoltpro.maginaolivo.ui.components.MoSecondaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoSectionHeader
 import com.isivoltpro.maginaolivo.ui.components.MoSelectField
 import com.isivoltpro.maginaolivo.ui.components.MoTextField
@@ -113,6 +114,8 @@ internal fun ExpenseEditor(
     activityLocked: Boolean = false,
     /** #416: a new related expense asks its category on purpose; an edit keeps the one it has. */
     askCategory: Boolean = activityLocked,
+    /** #415: «Guardar y añadir foto» — saves like [onSave], then the Gasto opens for its photo. */
+    onSaveWithPhoto: ((ExpenseForm) -> Unit)? = null,
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
     var categoryChosen by rememberSaveable(initial, askCategory) { mutableStateOf(!askCategory) }
@@ -219,18 +222,6 @@ internal fun ExpenseEditor(
                 modifier = Modifier.testTag("expense-category-required"),
             )
         }
-        val supplier = options.suppliers.firstOrNull { it.id == form.supplierOrganizationId }
-        MoSelectField(
-            "Proveedor guardado", supplier?.name ?: "Ninguno", { picker = "supplier" },
-            Modifier.testTag("expense-supplier"),
-        )
-        if (supplier == null) {
-            MoTextField(
-                form.supplierText, { form = form.copy(supplierText = it) }, "Proveedor (texto libre)",
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
         MoSectionHeader("Relación")
         val farm = options.farms.firstOrNull { it.id == form.farmId }
         if (farmLocked) {
@@ -240,54 +231,69 @@ internal fun ExpenseEditor(
         } else {
             MoSelectField("Finca", farm?.name ?: "Sin finca", { picker = "farm" }, Modifier.testTag("expense-farm"))
         }
-        if (farm != null) {
-            val activity = options.activities.firstOrNull { it.id == form.activityId }
-            if (activityLocked) {
-                // #416: the work this expense belongs to; changing it means opening another work.
-                Text(
-                    activity?.let { "Relacionado con · ${it.description} · ${it.activityDate}" } ?: "Cargando el trabajo…",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (activity != null) MoOliveDark else MoTextSecondary,
-                    modifier = Modifier.testTag("expense-activity-context"),
+        val activity = options.activities.firstOrNull { it.id == form.activityId }
+        // #433: with a work chosen, only the Parcels it was done on (or the whole work).
+        val parcelField: @Composable () -> Unit = {
+            if (activity != null) {
+                MoSelectField(
+                    "Parcela",
+                    activity.targets.firstOrNull { it.parcelId == form.parcelId }?.parcelName ?: "Todo el trabajo",
+                    { picker = "work-parcel" },
+                    Modifier.testTag("expense-parcel"),
                 )
-                val targets = activity?.targets.orEmpty()
-                if (targets.size == 1) {
-                    Text("Parcela · ${targets.single().parcelName}", style = MaterialTheme.typography.bodyMedium,
-                        color = MoTextSecondary, modifier = Modifier.testTag("expense-parcel-context"))
-                } else if (targets.size > 1) {
-                    MoSelectField(
-                        "Parcela",
-                        targets.firstOrNull { it.parcelId == form.parcelId }?.parcelName ?: "Todo el trabajo",
-                        { picker = "work-parcel" },
-                        Modifier.testTag("expense-parcel"),
-                    )
-                }
             } else {
-                MoSelectField("Actuación", activity?.description ?: "Ninguna", { picker = "activity" },
-                    Modifier.testTag("expense-activity"))
-                if (activity != null) {
-                    // #433: with a work chosen, only the Parcels it was done on (or the whole work).
-                    MoSelectField(
-                        "Parcela",
-                        activity.targets.firstOrNull { it.parcelId == form.parcelId }?.parcelName ?: "Todo el trabajo",
-                        { picker = "work-parcel" },
-                        Modifier.testTag("expense-parcel"),
-                    )
-                } else {
-                    val parcel = options.parcels.firstOrNull { it.id == form.parcelId }
-                    MoSelectField("Parcela", parcel?.displayName ?: "Toda la finca", { picker = "parcel" },
-                        Modifier.testTag("expense-parcel"))
-                }
+                val parcel = options.parcels.firstOrNull { it.id == form.parcelId }
+                MoSelectField("Parcela", parcel?.displayName ?: "Toda la finca", { picker = "parcel" },
+                    Modifier.testTag("expense-parcel"))
             }
         }
+        // #415: a Parcel the expense was opened on is context and stays in sight; otherwise it waits.
+        val parcelInSight = !activityLocked && farm != null && farmLocked && initial.parcelId != null
+        if (farm != null && activityLocked) {
+            // #416: the work this expense belongs to; changing it means opening another work.
+            Text(
+                activity?.let { "Relacionado con · ${it.description} · ${it.activityDate}" } ?: "Cargando el trabajo…",
+                style = MaterialTheme.typography.titleMedium,
+                color = if (activity != null) MoOliveDark else MoTextSecondary,
+                modifier = Modifier.testTag("expense-activity-context"),
+            )
+            val targets = activity?.targets.orEmpty()
+            if (targets.size == 1) {
+                Text("Parcela · ${targets.single().parcelName}", style = MaterialTheme.typography.bodyMedium,
+                    color = MoTextSecondary, modifier = Modifier.testTag("expense-parcel-context"))
+            } else if (targets.size > 1) {
+                parcelField()
+            }
+        } else if (parcelInSight) {
+            parcelField()
+        }
 
-        // CR-011 §24: invoice number, purchase lines and notes wait under «Más detalles»; they open
-        // by themselves when they already hold something (OCR, editing) or have an error.
+        // CR-011 §24 / #415: supplier, the work, a Parcel not given by context, invoice number,
+        // purchase lines and notes wait under «Relacionar y más detalles»; they open by themselves
+        // when they already hold something (OCR, editing, a chosen work) or have an error.
+        val relationsFolded = farm != null && !activityLocked
         val hasDetails = form.invoiceNumber.isNotBlank() || form.lines.isNotEmpty() || form.notes.isNotBlank() ||
-            errors.lines != null
+            errors.lines != null || form.supplierOrganizationId != null || form.supplierText.isNotBlank() ||
+            (relationsFolded && (form.activityId != null || (!parcelInSight && form.parcelId != null)))
         var showDetails by rememberSaveable { mutableStateOf(false) }
         LaunchedEffect(hasDetails) { if (hasDetails) showDetails = true }
         if (showDetails || hasDetails) {
+            val supplier = options.suppliers.firstOrNull { it.id == form.supplierOrganizationId }
+            MoSelectField(
+                "Proveedor guardado", supplier?.name ?: "Ninguno", { picker = "supplier" },
+                Modifier.testTag("expense-supplier"),
+            )
+            if (supplier == null) {
+                MoTextField(
+                    form.supplierText, { form = form.copy(supplierText = it) }, "Proveedor (texto libre)",
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (relationsFolded) {
+                MoSelectField("Actuación", activity?.description ?: "Ninguna", { picker = "activity" },
+                    Modifier.testTag("expense-activity"))
+                if (!parcelInSight) parcelField()
+            }
             MoTextField(
                 form.invoiceNumber, { form = form.copy(invoiceNumber = it) }, "Nº de factura o ticket (opcional)",
                 modifier = Modifier.fillMaxWidth(),
@@ -334,17 +340,26 @@ internal fun ExpenseEditor(
             }
             MoTextField(form.notes, { form = form.copy(notes = it) }, "Notas", singleLine = false, modifier = Modifier.fillMaxWidth())
         } else {
-            MoTertiaryButton("Más detalles", { showDetails = true }, Modifier.testTag("expense-more-details"))
+            MoTertiaryButton("Relacionar y más detalles", { showDetails = true }, Modifier.testTag("expense-more-details"))
         }
 
+        val canSave = !isSaving && categoryChosen &&
+            (campaignChoiceMade || (recollection == null && options.campaignsKnownFor(form.farmId))) &&
+            runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false)
         MoPrimaryButton(
             saveText,
             { onSave(form) },
             modifier = Modifier.fillMaxWidth().testTag("save-expense"),
-            enabled = !isSaving && categoryChosen &&
-                (campaignChoiceMade || (recollection == null && options.campaignsKnownFor(form.farmId))) &&
-                runCatching { java.util.Currency.getInstance(form.currency).defaultFractionDigits >= 0 }.getOrDefault(false),
+            enabled = canSave,
         )
+        onSaveWithPhoto?.let { saveWithPhoto ->
+            MoSecondaryButton(
+                "Guardar y añadir foto",
+                { saveWithPhoto(form) },
+                modifier = Modifier.fillMaxWidth().testTag("save-expense-photo"),
+                enabled = canSave,
+            )
+        }
         extraActions()
         MoTertiaryButton("Cancelar", onCancel, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(MoSpacing.lg))

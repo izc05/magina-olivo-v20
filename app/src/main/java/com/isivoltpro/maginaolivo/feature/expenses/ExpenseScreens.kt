@@ -106,6 +106,10 @@ fun ExpensesRoute(
     presetActivityId: UUID? = null,
     /** #416: a contextual entry returns where it started, after saving or cancelling. */
     onContextDone: ((saved: Boolean) -> Unit)? = null,
+    /** #415: Cuaderno → Gasto — the form opens at once and the entry is contextual. */
+    presetQuick: Boolean = false,
+    /** #415: after «Guardar y añadir foto», the saved Gasto is opened here. */
+    onOpenSavedExpense: (UUID) -> Unit = onExpenseSelected,
     /**
      * A document just taken on this screen; it is reviewed with this screen's Farm/Campaign
      * context. Documents listed «por revisar» open with [onDocumentSelected], without context.
@@ -131,6 +135,12 @@ fun ExpensesRoute(
         allState.copy(expenses = rows, summary = ExpenseSummary.of(rows),
             monthTotalMinor = ExpenseSummary.of(rows.filter { java.time.YearMonth.from(it.expenseDate) == java.time.YearMonth.from(clock.today(ZoneId.systemDefault())) }).totalMinor)
     }
+    LaunchedEffect(state.savedExpenseToOpen) {
+        state.savedExpenseToOpen?.let { id ->
+            viewModel.savedExpenseOpened()
+            onOpenSavedExpense(id)
+        }
+    }
     LaunchedEffect(state.openedDocumentId) {
         state.openedDocumentId?.let { id ->
             viewModel.documentOpened()
@@ -141,6 +151,7 @@ fun ExpensesRoute(
         state = state,
         today = clock.today(ZoneId.systemDefault()),
         onCreate = viewModel::create,
+        onCreateWithPhoto = viewModel::createAndOpen,
         onFarmSelected = viewModel::selectFarm,
         onDocumentPicked = viewModel::importDocument,
         onProblem = viewModel::reportProblem,
@@ -153,6 +164,7 @@ fun ExpensesRoute(
         presetCampaignId = presetCampaignId,
         presetLabour = presetLabour,
         presetActivityId = presetActivityId,
+        presetQuick = presetQuick,
         onContextDone = onContextDone,
     )
 }
@@ -176,14 +188,21 @@ fun ExpensesScreen(
     presetCampaignId: UUID? = null,
     presetLabour: Boolean = false,
     presetActivityId: UUID? = null,
+    presetQuick: Boolean = false,
     onContextDone: ((saved: Boolean) -> Unit)? = null,
+    /** #415: «Guardar y añadir foto»; null hides the button. */
+    onCreateWithPhoto: ((ExpenseForm) -> Unit)? = null,
 ) {
-    var editorVisible by rememberSaveable { mutableStateOf(presetLabour || presetActivityId != null) }
+    // #416/#415: a work's «Añadir gasto relacionado» or Cuaderno → Gasto opens the form at once
+    // and returns to where it started; the plain Gastos screen opens on its list.
+    val contextual = presetActivityId != null || presetQuick
+    var editorVisible by rememberSaveable { mutableStateOf(presetLabour || contextual) }
     var uploadVisible by rememberSaveable { mutableStateOf(false) }
     OnEachSave(state.saveCount) {
         editorVisible = false
-        if (presetActivityId != null) onContextDone?.invoke(true)
+        if (contextual) onContextDone?.invoke(true)
     }
+    LaunchedEffect(state.savedExpenseToOpen) { if (state.savedExpenseToOpen != null) editorVisible = false }
     // The Farm's parcels and works are offered in the form from the start.
     LaunchedEffect(presetFarmId) { presetFarmId?.let(onFarmSelected) }
 
@@ -272,7 +291,7 @@ fun ExpensesScreen(
         val closeEditor = {
             editorVisible = false
             onEditorClosed()
-            if (presetActivityId != null) onContextDone?.invoke(false)
+            if (contextual) onContextDone?.invoke(false)
         }
         ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { closeEditor() }) {
             ExpenseEditor(
@@ -291,6 +310,7 @@ fun ExpensesScreen(
                 saveText = "Guardar gasto",
                 onFarmSelected = onFarmSelected,
                 onSave = onCreate,
+                onSaveWithPhoto = onCreateWithPhoto,
                 onCancel = { closeEditor() },
                 // #411: a running Campaign never silently captures a general Farm expense.
                 preselectRecollection = false,

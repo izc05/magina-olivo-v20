@@ -63,6 +63,37 @@ class RecollectionChoiceUiTest {
         rule.onNodeWithTag("save-expense").performScrollTo().assertIsNotEnabled()
     }
 
+    /** #415 QA 10/11: Cuaderno → Gasto opens the form in one tap and asks only Recogida/General. */
+    @Test fun quickCuadernoGastoOpensTheFormAtOnce() {
+        var done: Boolean? = null
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpensesScreen(
+                    ExpensesUiState(isLoading = false, options = options), date, {}, {}, { _, _ -> }, {}, {}, {}, {},
+                    presetFarmId = farm.id, presetQuick = true, onContextDone = { done = it },
+                )
+            }
+        }
+        rule.onNodeWithTag("expense-kind-required").performScrollTo().assertExists()
+        rule.onNodeWithTag("save-expense").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithText("Cancelar").performScrollTo().performClick()
+        rule.runOnIdle { assertEquals(false, done) }
+    }
+
+    /** #415 QA 12: Gastos opened as a list does not open the form by itself. */
+    @Test fun gastosAsAListStaysOnTheList() {
+        rule.setContent {
+            MaginaOlivoTheme {
+                ExpensesScreen(
+                    ExpensesUiState(isLoading = false, options = options), date, {}, {}, { _, _ -> }, {}, {}, {}, {},
+                    presetFarmId = farm.id,
+                )
+            }
+        }
+        assertEquals(0, rule.onAllNodesWithTag("save-expense").fetchSemanticsNodes().size)
+        rule.onNodeWithTag("add-expense").assertExists()
+    }
+
     /** Codex #423: while the Farm's campaigns load, «no running campaign» is unknown, so no save yet. */
     @Test fun cuadernoGastoWaitsForTheFarmsCampaigns() {
         rule.setContent {
@@ -254,6 +285,8 @@ class RecollectionChoiceUiTest {
             }
         }
         rule.onNodeWithTag("expense-kind").assertExists()
+        // #415: the work waits under «Relacionar y más detalles».
+        rule.onNodeWithTag("expense-more-details").performScrollTo().performClick()
         rule.onNodeWithTag("expense-activity").performScrollTo().performClick()
         rule.onNodeWithTag("choice-${work.id}").performClick()
         assertEquals(0, rule.onAllNodesWithTag("expense-kind").fetchSemanticsNodes().size)

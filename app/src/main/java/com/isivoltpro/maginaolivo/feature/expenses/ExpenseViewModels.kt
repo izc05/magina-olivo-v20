@@ -274,6 +274,8 @@ data class ExpensesUiState(
     val openedDocumentId: UUID? = null,
     /** #380: finished saves; the editor closes when this rises. */
     val saveCount: Int = 0,
+    /** #415: set once after «Guardar y añadir foto», so the screen opens that Gasto. */
+    val savedExpenseToOpen: UUID? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -320,6 +322,26 @@ class ExpensesViewModel(
         mutableState.value = mutableState.value.copy(formErrors = errors)
         if (draft == null) return
         mutate("Gasto guardado en este dispositivo") { expenses.create(draft).map { } }
+    }
+
+    /** #415: «Guardar y añadir foto» — the same save, then the Gasto opens where its photo goes. */
+    fun createAndOpen(form: ExpenseForm) {
+        val (draft, errors) = form.toDraft()
+        mutableState.value = mutableState.value.copy(formErrors = errors)
+        if (draft == null) return
+        viewModelScope.launch {
+            mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
+            mutableState.value = when (val result = expenses.create(draft)) {
+                is AppResult.Success -> mutableState.value.copy(
+                    isSaving = false, savedExpenseToOpen = result.value, formErrors = ExpenseFormErrors(),
+                )
+                is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = expenseErrorMessage(result.error))
+            }
+        }
+    }
+
+    fun savedExpenseOpened() {
+        mutableState.value = mutableState.value.copy(savedExpenseToOpen = null)
     }
 
     fun importDocument(type: DocumentType, sourceUri: String) {
