@@ -144,6 +144,30 @@ class HarvestContractTest {
         assertEquals(summary.totalGrams, summary.parcels.sumOf { it.exactGrams } + summary.unallocatedGrams)
     }
 
+    /** #458 (hallazgo 3): editing a day keeps the Parcel rows it had and their recorded names. */
+    @Test
+    fun editingADayKeepsItsParcelRowsAndTheirRecordedNames() = runBlocking {
+        val id = ok(harvests.create(draft(5_000_000, north to null, south to null)))
+        val recorded = db.harvestDao().listParcels(id).associateBy { it.parcelId }
+        val parcel = db.parcelDao().findById(north)!!
+        db.parcelDao().upsert(parcel.copy(displayName = "Parcela 1"))
+
+        ok(harvests.update(id, draft(5_000_000, north to null, south to null).copy(notes = "Lluvia a media mañana")))
+        assertEquals(recorded.values.toSet(), db.harvestDao().listParcels(id).toSet())
+
+        ok(harvests.update(id, draft(5_000_000, north to 3_000_000, south to 2_000_000)))
+        val split = db.harvestDao().listParcels(id).associateBy { it.parcelId }
+        assertEquals(recorded.mapValues { it.value.id }, split.mapValues { it.value.id })
+        assertEquals(recorded.getValue(north).parcelNameAtHarvest, split.getValue(north).parcelNameAtHarvest)
+        assertEquals(3_000_000L, split.getValue(north).weightGrams)
+
+        ok(harvests.update(id, draft(5_000_000, north to null, east to null)))
+        val after = db.harvestDao().listParcels(id).associateBy { it.parcelId }
+        assertEquals(setOf(north, east), after.keys)
+        assertEquals(recorded.getValue(north).id, after.getValue(north).id)
+        assertEquals(recorded.getValue(north).parcelNameAtHarvest, after.getValue(north).parcelNameAtHarvest)
+    }
+
     // ------------------------------------------------------------ one aggregate (D6)
 
     @Test

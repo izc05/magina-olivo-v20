@@ -67,6 +67,9 @@ interface HarvestDao {
     @Query("DELETE FROM harvest_parcels WHERE harvest_id = :harvestId")
     suspend fun deleteParcels(harvestId: UUID)
 
+    @Query("DELETE FROM harvest_parcels WHERE id IN (:ids)")
+    suspend fun deleteParcelsById(ids: List<UUID>)
+
     @Upsert suspend fun upsertParcels(rows: List<HarvestParcelEntity>)
 
     @Query(

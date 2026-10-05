@@ -412,8 +412,12 @@ internal fun HarvestEditor(
         if (form.automatic) {
             // CR-010 (note 2): the union of its Pesadas' Parcels, or the whole Farm; never a split.
             Text(
-                context?.parcels?.filter { it.parcelId in form.parcelIds }?.joinToString { it.name }
-                    ?.ifEmpty { null } ?: "Toda la finca",
+                if (form.parcelIds.isEmpty()) {
+                    UNKNOWN_DAY_ORIGIN
+                } else {
+                    context?.parcels?.filter { it.parcelId in form.parcelIds }?.joinToString { it.name }
+                        ?.ifEmpty { null } ?: "Toda la finca"
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.testTag("harvest-day-parcels"),
             )
@@ -986,6 +990,14 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
         },
     )
     MoSectionHeader("Parcelas de origen")
+    if (harvest.shares.isEmpty()) {
+        Text(
+            "$UNKNOWN_DAY_ORIGIN: llegará con sus pesadas.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("harvest-origin-unknown"),
+        )
+    }
     harvest.shares.forEach { share ->
         Row(Modifier.fillMaxWidth().testTag("harvest-share"), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(share.parcelName, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))

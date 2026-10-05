@@ -49,3 +49,6 @@ internal fun unallocatedLine(summary: HarvestSummary): String? {
 }
 
 internal const val NO_PESADAS_YET = "Sin pesadas todavía"
+
+/** #458: a day without Pesadas is attributed to no Parcel until one says where it came from. */
+internal const val UNKNOWN_DAY_ORIGIN = "Origen sin determinar"
