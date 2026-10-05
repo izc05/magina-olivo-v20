@@ -28,7 +28,7 @@ internal fun validateParcelGeometryGeoJson(value: String?): AppResult.Failure? {
     if (type != "Polygon" && type != "MultiPolygon") return polygonRequired()
 
     val coordinates = objectRoot.get("coordinates")
-        ?.takeIf(JsonElement::isJsonArray)
+        ?.takeIf { it.isJsonArray }
         ?.asJsonArray
         ?: return invalidGeometry()
 
