@@ -94,6 +94,15 @@ private data class MapFrameKey(
     val padding: MapCameraInsets,
 )
 
+/** A projected parcel label before collision filtering. Pure data so priority can be unit-tested. */
+internal data class MapLabelCandidate(
+    val id: String,
+    val label: String,
+    val x: Int,
+    val y: Int,
+    val selected: Boolean,
+)
+
 /**
  * What is drawn under the parcels. [MAP] is the light IGN base map (streets, paths, towns);
  * [AERIAL] is the PNOA photo, heavier on the phone; [NONE] draws only the saved boundaries and
@@ -137,6 +146,8 @@ fun ParcelMap(
     val snapshot by rememberUpdatedState(onMapSnapshot)
     val density = LocalDensity.current
     val frameMarginPx = with(density) { MAP_FRAME_MARGIN.roundToPx() }
+    val labelHorizontalSpacingPx = with(density) { LABEL_HORIZONTAL_SPACING.roundToPx() }
+    val labelVerticalSpacingPx = with(density) { LABEL_VERTICAL_SPACING.roundToPx() }
     val framePadding = remember(cameraInsets, frameMarginPx) { cameraInsets.withMargin(frameMarginPx) }
     val effectiveBase = base ?: if (imagery) MapBase.AERIAL else MapBase.NONE
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
@@ -229,17 +240,43 @@ fun ParcelMap(
         focus?.let { current.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.point.latitude, it.point.longitude), it.zoom)) }
     }
     val labelled = remember(parcels) { parcels.mapNotNull { p -> p.label?.let { label -> labelPoint(p.geometry)?.let { Triple(p.id, label, it) } } } }
-    LaunchedEffect(map, cameraTick, labelled, cameraInsets) {
+    LaunchedEffect(
+        map,
+        cameraTick,
+        labelled,
+        cameraInsets,
+        selection,
+        labelHorizontalSpacingPx,
+        labelVerticalSpacingPx,
+    ) {
         val current = map ?: return@LaunchedEffect
-        // Numbers only once the parcels are big enough to tell apart, and never a crowd.
+        // #574: selected parcel first; then labels nearest the usable viewport centre. A label
+        // hidden by another is dropped instead of drawing two unreadable number pills.
         labelSpots = if (current.cameraPosition.zoom < LABEL_MIN_ZOOM) {
             emptyList()
         } else {
-            labelled.mapNotNull { (_, label, point) ->
+            val candidates = labelled.mapNotNull { (id, label, point) ->
                 val spot = current.projection.toScreenLocation(point)
-                if (!insideSafeViewport(spot.x, spot.y, view.width, view.height, cameraInsets)) null
-                else label to IntOffset(spot.x.roundToInt(), spot.y.roundToInt())
-            }.take(MAX_LABELS)
+                if (!insideSafeViewport(spot.x, spot.y, view.width, view.height, cameraInsets)) {
+                    null
+                } else {
+                    MapLabelCandidate(
+                        id = id,
+                        label = label,
+                        x = spot.x.roundToInt(),
+                        y = spot.y.roundToInt(),
+                        selected = id in selection,
+                    )
+                }
+            }
+            resolveMapLabelCollisions(
+                candidates = candidates,
+                centerX = (cameraInsets.leftPx + (view.width - cameraInsets.rightPx)) / 2,
+                centerY = (cameraInsets.topPx + (view.height - cameraInsets.bottomPx)) / 2,
+                horizontalSpacingPx = labelHorizontalSpacingPx,
+                verticalSpacingPx = labelVerticalSpacingPx,
+                maxLabels = MAX_LABELS,
+            ).map { it.label to IntOffset(it.x, it.y) }
         }
     }
     Box(modifier) {
@@ -361,6 +398,46 @@ private fun fitParcels(map: MapLibreMap, parcels: List<MapParcel>, padding: MapC
     }
 }
 
+/**
+ * #574 collision policy for Compose labels. All selected labels survive; ordinary labels are
+ * then admitted from the centre out until [maxLabels], skipping pills that would overlap one
+ * already visible. This is deterministic and independent of parcel input order.
+ */
+internal fun resolveMapLabelCollisions(
+    candidates: List<MapLabelCandidate>,
+    centerX: Int,
+    centerY: Int,
+    horizontalSpacingPx: Int,
+    verticalSpacingPx: Int,
+    maxLabels: Int,
+): List<MapLabelCandidate> {
+    if (maxLabels <= 0 && candidates.none { it.selected }) return emptyList()
+
+    fun distanceSquared(candidate: MapLabelCandidate): Long {
+        val dx = candidate.x.toLong() - centerX
+        val dy = candidate.y.toLong() - centerY
+        return dx * dx + dy * dy
+    }
+
+    val selected = candidates.filter { it.selected }
+        .sortedWith(compareBy<MapLabelCandidate>({ distanceSquared(it) }, { it.id }))
+    val accepted = selected.toMutableList()
+    val limit = maxOf(maxLabels, selected.size)
+
+    candidates.asSequence()
+        .filterNot { it.selected }
+        .sortedWith(compareBy<MapLabelCandidate>({ distanceSquared(it) }, { it.id }))
+        .forEach { candidate ->
+            if (accepted.size >= limit) return@forEach
+            val collides = accepted.any { visible ->
+                kotlin.math.abs(candidate.x - visible.x) < horizontalSpacingPx &&
+                    kotlin.math.abs(candidate.y - visible.y) < verticalSpacingPx
+            }
+            if (!collides) accepted += candidate
+        }
+    return accepted
+}
+
 internal fun insideSafeViewport(
     x: Float,
     y: Float,
@@ -421,6 +498,8 @@ internal fun myLocationFeature(point: GeoPoint): String =
 internal fun overlayTileSize(template: String): Int = if ("/512/" in template) 512 else 256
 
 private val MAP_FRAME_MARGIN = 24.dp
+private val LABEL_HORIZONTAL_SPACING = 36.dp
+private val LABEL_VERTICAL_SPACING = 24.dp
 private const val LABEL_MIN_ZOOM = 15.5
 private const val OVERLAY_MAX_ZOOM = 7
 private const val MAX_LABELS = 60
