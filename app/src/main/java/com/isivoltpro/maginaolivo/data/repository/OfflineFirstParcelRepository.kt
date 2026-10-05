@@ -259,12 +259,8 @@ class OfflineFirstParcelRepository(
     private fun String?.normalized() = this?.trim()?.ifEmpty { null }
     private fun validateArea(value: Double?): AppResult.Failure? =
         if (value != null && (!value.isFinite() || value <= 0.0)) AppResult.Failure(AppError.Validation("area", "not_positive")) else null
-    private fun validateGeometry(value: String?): AppResult.Failure? {
-        val geometry = value.normalized() ?: return null
-        return if ("\"Polygon\"" !in geometry && "\"MultiPolygon\"" !in geometry) {
-            AppResult.Failure(AppError.Validation("geometry", "polygon_required"))
-        } else null
-    }
+    private fun validateGeometry(value: String?): AppResult.Failure? =
+        validateParcelGeometryGeoJson(value)
     private fun validateAgronomy(value: ParcelAgronomy): AppResult.Failure? = when {
         value.oliveTreeCount != null && value.oliveTreeCount !in 1..MAX_OLIVE_TREES ->
             AppResult.Failure(AppError.Validation("oliveTreeCount", "out_of_range"))

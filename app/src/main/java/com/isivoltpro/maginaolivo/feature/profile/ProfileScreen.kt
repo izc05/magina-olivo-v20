@@ -168,7 +168,7 @@ fun ProfileScreen(
         MoSectionHeader("Tu olivar")
         MoCompactListItem(
             title = "Mis máquinas",
-            subtitle = "Tus máquinas, para anotarlas en las actuaciones",
+            subtitle = "Tus máquinas, para anotarlas en los trabajos",
             icon = MoIcons.Tractor,
             onClick = onMachinery,
             modifier = Modifier.testTag("profile-machinery"),
