@@ -58,6 +58,21 @@ class ActivityRelatedExpenseTest {
         composeRule.onNodeWithTag("activity-add-expense-closed").assertExists()
     }
 
+    /** Owner #480: back on the work after saving, it says «Gasto añadido» once, then the flag is spent. */
+    @Test fun aSavedRelatedExpenseIsAcknowledgedOnTheWork() {
+        var spent = 0
+        show(UiPolishFixtures.activity.copy(status = ActivityStatus.COMPLETED), relatedExpenseAdded = true,
+            onNoticeShown = { spent++ }) {}
+        composeRule.onNodeWithTag("activity-expense-added").performScrollTo().assertExists()
+        composeRule.mainClock.advanceTimeBy(5_000)
+        composeRule.runOnIdle { assertEquals(1, spent) }
+    }
+
+    @Test fun noNoticeWithoutASavedExpense() {
+        show(UiPolishFixtures.activity.copy(status = ActivityStatus.COMPLETED)) {}
+        assertEquals(0, composeRule.onAllNodesWithTag("activity-expense-added").fetchSemanticsNodes().size)
+    }
+
     /** #416: «Añadir gasto relacionado» carries the work (and its single Parcel) into Gasto. */
     @Test fun aRelatedExpenseRouteCarriesTheWork() {
         assertEquals("expenses/farm/f?parcelId=p&activityId=a",
@@ -74,6 +89,8 @@ class ActivityRelatedExpenseTest {
         historicCostExpenseId: java.util.UUID? = null,
         onOpenExpense: ((java.util.UUID) -> Unit)? = null,
         campaignClosed: Boolean = false,
+        relatedExpenseAdded: Boolean = false,
+        onNoticeShown: () -> Unit = {},
         onAddRelatedExpense: (Activity) -> Unit,
     ) {
         composeRule.setContent {
@@ -85,6 +102,8 @@ class ActivityRelatedExpenseTest {
                     historicCostExpenseId = historicCostExpenseId,
                     onOpenExpense = onOpenExpense,
                     campaignClosed = campaignClosed,
+                    relatedExpenseAdded = relatedExpenseAdded,
+                    onRelatedExpenseNoticeShown = onNoticeShown,
                 )
             }
         }

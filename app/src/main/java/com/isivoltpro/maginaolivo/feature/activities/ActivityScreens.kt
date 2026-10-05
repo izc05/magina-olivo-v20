@@ -773,6 +773,9 @@ fun ActivityDetailRoute(
     onAddRelatedExpense: ((Activity) -> Unit)? = null,
     /** #416: opens one Gasto by id (the historic cost row of this work). */
     onOpenExpense: ((UUID) -> Unit)? = null,
+    /** #416: a related Gasto was just saved from this work; said once on return. */
+    relatedExpenseAdded: Boolean = false,
+    onRelatedExpenseNoticeShown: () -> Unit = {},
 ) {
     val vm: ActivityDetailViewModel = viewModel(key = "activity-$activityId", factory = viewModelFactory {
         initializer { ActivityDetailViewModel(activityId, persistence.activityRepository) }
@@ -800,6 +803,8 @@ fun ActivityDetailRoute(
         historicCostExpenseId = historicCostId,
         onOpenExpense = onOpenExpense,
         campaignClosed = campaignClosed,
+        relatedExpenseAdded = relatedExpenseAdded,
+        onRelatedExpenseNoticeShown = onRelatedExpenseNoticeShown,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.ACTIVITY, activityId),
@@ -824,9 +829,18 @@ fun ActivityDetailScreen(
     historicCostExpenseId: UUID? = null,
     onOpenExpense: ((UUID) -> Unit)? = null,
     campaignClosed: Boolean = false,
+    relatedExpenseAdded: Boolean = false,
+    onRelatedExpenseNoticeShown: () -> Unit = {},
     attachmentContent: @Composable () -> Unit = {},
 ) {
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
+    // #416: the notice stays a few seconds, then the flag is spent so it never repeats.
+    LaunchedEffect(relatedExpenseAdded) {
+        if (relatedExpenseAdded) {
+            kotlinx.coroutines.delay(RELATED_EXPENSE_NOTICE_MS)
+            onRelatedExpenseNoticeShown()
+        }
+    }
     var editor by rememberSaveable { mutableStateOf(false) }
     OnEachSave(state.saveCount) { editor = false }
     Scaffold(Modifier.fillMaxSize().testTag("activity-detail-root"), containerColor = MoCream, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { padding ->
@@ -898,6 +912,13 @@ fun ActivityDetailScreen(
                     // #416: money for done work is a Gasto of its own, tied to the work — never a second figure.
                     if (onAddRelatedExpense != null && activity.status == ActivityStatus.COMPLETED && activity.farmId != null) {
                         val historic = activity.costMinor
+                        if (relatedExpenseAdded) {
+                            Text(
+                                "Gasto añadido · queda vinculado a este trabajo en Gastos.",
+                                style = MaterialTheme.typography.bodyMedium, color = MoOliveDark,
+                                modifier = Modifier.fillMaxWidth().testTag("activity-expense-added"),
+                            )
+                        }
                         MoSecondaryButton(
                             if (historic != null) "Añadir otro gasto relacionado" else "Añadir gasto relacionado",
                             { onAddRelatedExpense(activity) },
@@ -1368,3 +1389,5 @@ private fun hectaresLabel(areaM2: Double): String =
 private fun FormLabel(text: String) {
     Text(text, style = MaterialTheme.typography.titleSmall, color = MoOliveDark, modifier = Modifier.padding(top = MoSpacing.xs))
 }
+
+private const val RELATED_EXPENSE_NOTICE_MS = 4_000L

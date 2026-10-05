@@ -105,7 +105,7 @@ fun ExpensesRoute(
     /** #416: «Añadir gasto relacionado» — a new expense tied to this work, opened at once. */
     presetActivityId: UUID? = null,
     /** #416: a contextual entry returns where it started, after saving or cancelling. */
-    onContextDone: (() -> Unit)? = null,
+    onContextDone: ((saved: Boolean) -> Unit)? = null,
     /**
      * A document just taken on this screen; it is reviewed with this screen's Farm/Campaign
      * context. Documents listed «por revisar» open with [onDocumentSelected], without context.
@@ -176,13 +176,13 @@ fun ExpensesScreen(
     presetCampaignId: UUID? = null,
     presetLabour: Boolean = false,
     presetActivityId: UUID? = null,
-    onContextDone: (() -> Unit)? = null,
+    onContextDone: ((saved: Boolean) -> Unit)? = null,
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(presetLabour || presetActivityId != null) }
     var uploadVisible by rememberSaveable { mutableStateOf(false) }
     OnEachSave(state.saveCount) {
         editorVisible = false
-        if (presetActivityId != null) onContextDone?.invoke()
+        if (presetActivityId != null) onContextDone?.invoke(true)
     }
     // The Farm's parcels and works are offered in the form from the start.
     LaunchedEffect(presetFarmId) { presetFarmId?.let(onFarmSelected) }
@@ -272,7 +272,7 @@ fun ExpensesScreen(
         val closeEditor = {
             editorVisible = false
             onEditorClosed()
-            if (presetActivityId != null) onContextDone?.invoke()
+            if (presetActivityId != null) onContextDone?.invoke(false)
         }
         ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, onDismissRequest = { closeEditor() }) {
             ExpenseEditor(
