@@ -59,6 +59,15 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE harvest_id = :harvestId AND deleted_at IS NULL")
     suspend fun listForHarvest(harvestId: UUID): List<ExpenseEntity>
 
+    /** #437: real money tied to an Activity besides its own convenience cost (drafts included). */
+    @Query(
+        """
+        SELECT COUNT(*) FROM expenses
+        WHERE activity_id = :activityId AND origin != 'ACTIVITY_COST' AND deleted_at IS NULL
+        """,
+    )
+    suspend fun countLinkedToActivity(activityId: UUID): Int
+
     /** The single convenience-cost row an Activity form edits (`RC1-NORMATIVE-ADDENDUM` D2). */
     @Query(
         """

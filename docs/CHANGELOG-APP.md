@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un trabajo con gastos propios no se archiva (#437).** Si un borrador o un trabajo cancelado tiene
+  gastos anotados que apuntan a él, «Archivar» queda desactivado: «Esta actuación tiene gastos
+  vinculados. Consérvala cancelada o revisa esos gastos antes de archivarla.», con cada gasto a un
+  toque. Nunca se borra ni se desliga un gasto real al archivar; un trabajo cancelado ya no sale en
+  el Diario aunque no se archive.
 - **Gasto rápido (#415).** Un gasto nuevo muestra solo importe, concepto, fecha, categoría, la finca
   y, si hay recogida en curso, «Recogida / Fuera de campaña». Desde el Cuaderno de una parcela se
   lee «Parcela · Los Llanos» y no se vuelve a preguntar. Proveedor, «Relacionado con» (el trabajo;

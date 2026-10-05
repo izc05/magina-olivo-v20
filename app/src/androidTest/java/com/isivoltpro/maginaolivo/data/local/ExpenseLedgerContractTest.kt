@@ -118,6 +118,33 @@ class ExpenseLedgerContractTest {
         attachmentsRoot.deleteRecursively()
     }
 
+    // ------------------------------------------------------------ #437 archive keeps real money linked
+
+    @Test
+    fun workWithAGastoOfItsOwnIsNotArchived() = runBlocking {
+        val cancelled = activity(costMinor = null)
+        val manual = ok(expenses.create(draft(2_000, farmId = farmId, activityId = cancelled, concept = "Transporte")))
+        ok(activities.cancel(cancelled))
+        val blocked = activities.archive(cancelled)
+        assertTrue(blocked is AppResult.Failure && (blocked.error as? AppError.Conflict)?.resource == ActivityCostRules.LINKED_EXPENSES)
+        assertNull(db.activityDao().findById(cancelled)!!.metadata.deletedAt)
+        assertEquals(cancelled, expenses.observe(manual).first()!!.activityId)
+        assertEquals(2_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+
+        val draftWork = ok(activities.create(NewActivity(farmId, null, ActivityType.PRUNING, date, "Poda", setOf(parcelA), asDraft = true)))
+        ok(expenses.create(draft(500, farmId = farmId, activityId = draftWork, concept = "Afilado")))
+        val draftBlocked = activities.archive(draftWork)
+        assertTrue(draftBlocked is AppResult.Failure && (draftBlocked.error as? AppError.Conflict)?.resource == ActivityCostRules.LINKED_EXPENSES)
+    }
+
+    @Test
+    fun workWithoutGastosIsArchivedAsBefore() = runBlocking {
+        val cancelled = activity(costMinor = null)
+        ok(activities.cancel(cancelled))
+        ok(activities.archive(cancelled))
+        assertNotNull(db.activityDao().findById(cancelled)!!.metadata.deletedAt)
+    }
+
     // ------------------------------------------------------------ #429 work not done holds no money
 
     @Test

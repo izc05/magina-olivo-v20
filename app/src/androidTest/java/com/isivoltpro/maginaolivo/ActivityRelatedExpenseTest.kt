@@ -103,6 +103,39 @@ class ActivityRelatedExpenseTest {
         composeRule.onNodeWithTag("complete-activity").performScrollTo().assertIsEnabled()
     }
 
+    /** #437: cancelled work with a Gasto of its own is not archived; the Gasto is one tap away. */
+    @Test fun aLinkedGastoHoldsArchivingAndOpens() {
+        var opened: java.util.UUID? = null
+        val gasto = com.isivoltpro.maginaolivo.domain.expense.Expense(
+            id = java.util.UUID.randomUUID(), workspaceId = UiPolishFixtures.activity.workspaceId,
+            expenseDate = UiPolishFixtures.today, concept = "Transporte",
+            category = com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory.TRANSPORT, amountMinor = 2_000,
+            currency = "EUR", status = com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus.POSTED,
+            origin = com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin.MANUAL,
+            activityId = UiPolishFixtures.activity.id,
+        )
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                ActivityDetailScreen(
+                    ActivityDetailUiState(isLoading = false, activity = UiPolishFixtures.activity.copy(status = ActivityStatus.CANCELLED)),
+                    {}, {}, {}, {}, {}, {},
+                    onOpenExpense = { opened = it },
+                    relatedExpenses = listOf(gasto),
+                )
+            }
+        }
+        composeRule.onNodeWithTag("archive-activity").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithTag("activity-linked-expenses-note").performScrollTo().assertExists()
+        composeRule.onNodeWithTag("activity-linked-expense").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(gasto.id, opened) }
+    }
+
+    @Test fun cancelledWorkWithoutGastosCanBeArchived() {
+        show(UiPolishFixtures.activity.copy(status = ActivityStatus.CANCELLED)) {}
+        composeRule.onNodeWithTag("archive-activity").performScrollTo().assertIsEnabled()
+        assertEquals(0, composeRule.onAllNodesWithTag("activity-linked-expenses-note").fetchSemanticsNodes().size)
+    }
+
     /** #416: «Añadir gasto relacionado» carries the work (and its single Parcel) into Gasto. */
     @Test fun aRelatedExpenseRouteCarriesTheWork() {
         assertEquals("expenses/farm/f?parcelId=p&activityId=a",

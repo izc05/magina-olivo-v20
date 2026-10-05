@@ -295,6 +295,8 @@ class OfflineFirstActivityRepository(
         if (current.status !in ARCHIVABLE) return@mutate conflict("protected_activity")
         // #429: a counted cost is never dropped in silence with the work; the person decides on its Gasto.
         if (database.expenseDao().findActivityCost(id) != null) return@mutate conflict(ActivityCostRules.COST_TO_REVIEW)
+        // #437: money of its own never loses the work it points at, nor goes with it.
+        if (database.expenseDao().countLinkedToActivity(id) > 0) return@mutate conflict(ActivityCostRules.LINKED_EXPENSES)
         database.activityDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
         enqueue(id, OutboxOperation.DELETE, now)
         AppResult.Success(Unit)
