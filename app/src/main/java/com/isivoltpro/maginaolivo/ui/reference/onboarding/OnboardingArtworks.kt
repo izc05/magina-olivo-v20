@@ -299,7 +299,7 @@ private fun ActivityArtwork(modifier: Modifier) {
             ) {
                 Text("NOV", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
                 Text("14", style = MaterialTheme.typography.headlineMedium, color = MoOlivePrimary)
-                Text("Actuación", style = MaterialTheme.typography.labelMedium)
+                Text("Trabajo", style = MaterialTheme.typography.labelMedium)
             }
         }
     }

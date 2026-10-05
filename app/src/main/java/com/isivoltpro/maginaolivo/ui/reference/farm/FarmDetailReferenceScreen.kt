@@ -165,7 +165,7 @@ fun FarmDetailReferenceScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Próxima actuación",
+                            text = "Próximo trabajo",
                             style = MaterialTheme.typography.labelMedium,
                             color = MoTextSecondary,
                         )
