@@ -85,9 +85,10 @@ class DayCostCalculatorTest {
     @Test
     fun unlinkedSameDateCostsAreAmbiguousOnlyWhenTheyCouldStandForTheCalculation() {
         val farm = UUID.randomUUID()
+        val campaign = UUID.randomUUID()
         val date = java.time.LocalDate.of(2026, 11, 18)
-        fun expense(origin: ExpenseOrigin, category: ExpenseCategory, concept: String, harvest: UUID? = null, on: java.time.LocalDate = date) =
-            Expense(UUID.randomUUID(), UUID.randomUUID(), on, concept, category, 10_000, "EUR", ExpenseStatus.POSTED, origin, farmId = farm, harvestId = harvest)
+        fun expense(origin: ExpenseOrigin, category: ExpenseCategory, concept: String, harvest: UUID? = null, on: java.time.LocalDate = date, inCampaign: UUID? = campaign) =
+            Expense(UUID.randomUUID(), UUID.randomUUID(), on, concept, category, 10_000, "EUR", ExpenseStatus.POSTED, origin, farmId = farm, harvestId = harvest, campaignId = inCampaign)
         val calculated = expense(ExpenseOrigin.DAY_LABOUR, ExpenseCategory.LABOR, DayCostKind.LABOUR.concept, harvest = day)
         val crew = expense(ExpenseOrigin.MANUAL, ExpenseCategory.LABOR, "Cuadrilla")
         val diesel = expense(ExpenseOrigin.MANUAL, ExpenseCategory.FUEL, "Gasoil")
@@ -96,10 +97,27 @@ class DayCostCalculatorTest {
         // An Activity's cost stays its Activity's: its next edit would drop a day link.
         val activityCost = expense(ExpenseOrigin.ACTIVITY_COST, ExpenseCategory.LABOR, "Poda")
         val scanned = expense(ExpenseOrigin.DOCUMENT_OCR, ExpenseCategory.LABOR, "Factura cuadrilla")
-        val rows = listOf(calculated, crew, diesel, otherDay, linkedElsewhere, activityCost, scanned)
+        // #475: kept «Fuera de campaña» (no Campaign), it is never a candidate for the day.
+        val outside = expense(ExpenseOrigin.MANUAL, ExpenseCategory.LABOR, "Cuadrilla", inCampaign = null)
+        val rows = listOf(calculated, crew, diesel, otherDay, linkedElsewhere, activityCost, scanned, outside)
 
-        assertEquals(listOf(crew, scanned), UnlinkedDayCosts.of(day, farm, date, rows))
+        assertEquals(listOf(crew, scanned), UnlinkedDayCosts.of(day, farm, date, rows, campaign))
         // No calculated cost on the day: nothing is ambiguous.
-        assertEquals(emptyList<Expense>(), UnlinkedDayCosts.of(day, farm, date, rows - calculated))
+        assertEquals(emptyList<Expense>(), UnlinkedDayCosts.of(day, farm, date, rows - calculated, campaign))
+    }
+
+    /** #475: «Se añade / Sustituye» is asked only for jornales or machinery hire on a day with that calculation. */
+    @Test
+    fun theDayAsksHowACostCountsOnlyWhenItCouldReplaceACalculation() {
+        val both = setOf(DayCostKind.LABOUR, DayCostKind.EQUIPMENT)
+        assertEquals(DayCostQuestion(DayCostKind.LABOUR, canReplace = true), DayCostQuestions.of(JornadaExpenseKind.LABOUR, both, labourPaid = false))
+        assertEquals(DayCostQuestion(DayCostKind.EQUIPMENT, canReplace = true), DayCostQuestions.of(JornadaExpenseKind.RENTAL, both, labourPaid = true))
+        // Paid jornales can only add.
+        assertEquals(DayCostQuestion(DayCostKind.LABOUR, canReplace = false), DayCostQuestions.of(JornadaExpenseKind.LABOUR, both, labourPaid = true))
+        // No calculation of that kind: it simply adds, nothing is asked.
+        assertEquals(null, DayCostQuestions.of(JornadaExpenseKind.LABOUR, setOf(DayCostKind.EQUIPMENT), labourPaid = false))
+        // Diesel, oil, transport, repairs and others always add.
+        listOf(JornadaExpenseKind.DIESEL, JornadaExpenseKind.LUBRICANT, JornadaExpenseKind.TRANSPORT, JornadaExpenseKind.REPAIR, JornadaExpenseKind.OTHER)
+            .forEach { assertEquals(null, DayCostQuestions.of(it, both, labourPaid = false)) }
     }
 }

@@ -107,5 +107,12 @@ interface ExpenseDao {
         """,
     )
     fun observeItemsForExpense(expenseId: UUID): Flow<List<PurchaseItemEntity>>
-}
 
+    /** #475: live calculated day costs kept as a draft because a hand-typed one stands for them. */
+    @Query("SELECT * FROM expenses WHERE origin IN ('DAY_LABOUR', 'DAY_EQUIPMENT') AND status = 'DRAFT' AND deleted_at IS NULL")
+    suspend fun listDraftCalculated(): List<ExpenseEntity>
+
+    /** #475: explicit replacements of [category] a day has ever had, deleted or drafted ones included. */
+    @Query("SELECT COUNT(*) FROM expenses WHERE harvest_id = :harvestId AND origin = 'DAY_REPLACEMENT' AND category = :category")
+    suspend fun countReplacementsEver(harvestId: UUID, category: String): Int
+}
