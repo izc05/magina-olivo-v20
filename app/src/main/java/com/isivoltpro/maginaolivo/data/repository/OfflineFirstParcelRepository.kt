@@ -199,16 +199,34 @@ class OfflineFirstParcelRepository(
     }
 
     override suspend fun restore(parcelId: UUID, farmId: UUID): AppResult<Unit> = mutate(parcelId, "restore_parcel") { current, now ->
+        // #494: restore is not a hidden "move to another Farm" operation.
+        if (current.status != RecordStatus.ARCHIVED || current.metadata.deletedAt == null) {
+            return@mutate AppResult.Failure(AppError.Conflict("parcel_not_archived"))
+        }
+        if (database.parcelDao().findCurrentMembership(parcelId) != null) {
+            return@mutate AppResult.Failure(AppError.Conflict("parcel_has_active_membership"))
+        }
+
+        val reference = current.cadastralReference?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }
+        if (current.source == ParcelSource.CATASTRO.name) {
+            if (reference == null || current.geometryGeoJson.isNullOrBlank()) {
+                return@mutate AppResult.Failure(AppError.Validation("catastro", "identity_and_geometry_required"))
+            }
+            validateGeometry(current.geometryGeoJson)?.let { return@mutate it }
+        }
+        reference?.let { cadastralReference ->
+            val holder = database.parcelDao().findActiveByCadastralReference(current.workspaceId, cadastralReference)
+            if (holder != null && holder != parcelId) {
+                return@mutate AppResult.Failure(AppError.Conflict("duplicate_cadastral_reference"))
+            }
+        }
+
         val farm = database.farmDao().findById(farmId)
             ?: return@mutate AppResult.Failure(AppError.NotFound("farm"))
         if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null || farm.workspaceId != current.workspaceId) {
             return@mutate AppResult.Failure(AppError.Conflict("invalid_farm"))
         }
-        database.parcelDao().findCurrentMembership(parcelId)?.let { membership ->
-            database.parcelDao().upsertMembership(
-                membership.copy(validUntil = now, metadata = membership.metadata.next(now)),
-            )
-        }
+
         database.parcelDao().upsertMembership(
             FarmParcelMembershipEntity(
                 id = idGenerator.newId(),
