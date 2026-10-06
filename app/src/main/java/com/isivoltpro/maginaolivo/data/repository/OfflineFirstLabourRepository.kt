@@ -69,8 +69,9 @@ class OfflineFirstLabourRepository(
             is AppResult.Failure -> return workspace
             is AppResult.Success -> workspace.value
         }
+        // #442: Worker.id is the identity; a name is only what is shown. Two people may share it,
+        // so the same name never silently returns an existing person — the form asks first.
         return inTransaction("add_worker") {
-            database.labourDao().findWorkerByName(workspaceId, trimmed)?.let { return@inTransaction AppResult.Success(it.id) }
             val now = clock.nowInstant()
             val id = idGenerator.newId()
             database.labourDao().upsertWorker(WorkerEntity(id, workspaceId, trimmed, LocalMetadata(now, now, syncStatus = SyncStatus.PENDING)))

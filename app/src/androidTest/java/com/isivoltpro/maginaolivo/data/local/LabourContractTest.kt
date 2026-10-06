@@ -109,8 +109,10 @@ class LabourContractTest {
         val yesterday = jornada(day.minusDays(1))
         val crew = listOf("Antonio", "Paco").map { ok(labour.addWorker(it)) }
         ok(labour.recordCrew(CrewDraft(yesterday, crew, LabourUnit.FULL_DAY)))
-        // Saving the same name again returns the same person.
-        assertEquals(crew[0], ok(labour.addWorker("antonio")))
+        // #442: the same name is another person; the identity is the id, never the name.
+        val namesake = ok(labour.addWorker("antonio"))
+        org.junit.Assert.assertNotEquals(crew[0], namesake)
+        assertEquals(2, labour.observeWorkers().first().count { it.name.equals("antonio", ignoreCase = true) })
 
         val today = jornada(day)
         assertEquals(crew.toSet(), labour.previousCrew(today).toSet())
