@@ -141,6 +141,7 @@ fun DeliveriesRoute(
         today = clock.today(ZoneId.systemDefault()),
         onCreate = { form -> viewModel.create(form) },
         onProblem = viewModel::reportProblem,
+        onRetryContexts = viewModel::retryContexts,
         onDeliverySelected = onDeliverySelected,
         onTicketSelected = onTicketSelected,
         onEditorClosed = viewModel::editorClosed,
@@ -164,6 +165,7 @@ fun DeliveriesScreen(
     today: LocalDate,
     onCreate: (DeliveryForm) -> Unit,
     onProblem: (String) -> Unit,
+    onRetryContexts: () -> Unit = {},
     onDeliverySelected: (UUID) -> Unit,
     onTicketSelected: (UUID) -> Unit,
     onEditorClosed: () -> Unit = {},
@@ -201,7 +203,7 @@ fun DeliveriesScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MoTextSecondary,
             )
-            val canRecord = state.contexts.isNotEmpty() && !state.isSaving
+            val canRecord = state.contexts.isNotEmpty() && !state.contextsReadFailed && !state.isSaving
             // #342: kilos are typed and confirmed by the farmer; there is no ticket-reading entry.
             MoPrimaryButton(
                 "+ Nueva pesada",
@@ -209,13 +211,28 @@ fun DeliveriesScreen(
                 Modifier.fillMaxWidth().testTag("add-delivery"),
                 enabled = canRecord,
             )
-            if (!state.isLoading && state.contexts.isEmpty()) {
-                Text(
-                    "Para registrar una pesada, una finca necesita una campaña activa o en recolección.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MoTextSecondary,
-                    modifier = Modifier.testTag("delivery-no-campaign"),
-                )
+            when {
+                state.contextsReadFailed -> {
+                    Text(
+                        "No hemos podido comprobar tus campañas. Reinténtalo antes de registrar la pesada.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.testTag("delivery-context-error"),
+                    )
+                    MoSecondaryButton(
+                        "Reintentar",
+                        onRetryContexts,
+                        Modifier.fillMaxWidth().testTag("delivery-context-retry"),
+                    )
+                }
+                state.contextsLoaded && state.contexts.isEmpty() -> {
+                    Text(
+                        "Para registrar una pesada, una finca necesita una campaña activa o en recolección.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MoTextSecondary,
+                        modifier = Modifier.testTag("delivery-no-campaign"),
+                    )
+                }
             }
             if (state.isSaving) Text("Guardando…", color = MoTextSecondary)
             state.message?.let { Text(it, color = MoTextSecondary, modifier = Modifier.testTag("deliveries-message")) }
