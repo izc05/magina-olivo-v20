@@ -173,7 +173,8 @@ class AgendaReminderContractTest {
 
         assertTrue(alarms.active.isEmpty())
         assertEquals(2, alarms.cancelled.size)
-        // Reopened work is planned again, so its reminder is back.
+        // Reopen is tested again before the reminder date, so it can be scheduled.
+        repositoryClock.value = now
         ok(activities.reopen(first))
         assertEquals(1, alarms.active.size)
     }
