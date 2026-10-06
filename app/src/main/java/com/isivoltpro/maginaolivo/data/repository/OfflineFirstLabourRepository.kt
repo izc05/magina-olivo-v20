@@ -34,6 +34,7 @@ import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import com.isivoltpro.maginaolivo.domain.labour.Worker
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -218,6 +219,12 @@ class OfflineFirstLabourRepository(
         if (runCatching { java.util.Currency.getInstance(payment.currency).defaultFractionDigits >= 0 }.getOrDefault(false).not()) {
             throw LabourInvalid("currency", "invalid")
         }
+        val workspace = database.workspaceDao().findById(workspaceId)
+            ?: throw LabourInvalid("workspace", "not_found")
+        val zone = runCatching { ZoneId.of(workspace.timezone) }
+            .getOrElse { throw LabourInvalid("workspace", "invalid_timezone") }
+        LabourPaymentRules.validateDate(payment.paymentDate, clock.today(zone))
+            ?.let { throw LabourInvalid(it.field, it.code) }
         val balance = LabourSettlement.of(payment.workerId, payment.campaignId, payment.currency,
             LabourFinance(database).costs(payment.campaignId),
             database.labourPaymentDao().listForCampaign(payment.campaignId).map { it.toPayment() })

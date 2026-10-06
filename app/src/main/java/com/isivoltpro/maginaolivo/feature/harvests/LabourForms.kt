@@ -177,6 +177,11 @@ internal fun LabourPaymentSheet(name: String, balance: LabourSettlement, today: 
     var note by rememberSaveable { mutableStateOf("") }
     val minor = Money.parseMinor(amount, balance.currency)
     val paymentDate = runCatching { LocalDate.parse(date, PAYMENT_DATE) }.getOrNull()
+    val dateError = when {
+        paymentDate == null -> "Escribe una fecha válida"
+        LabourPaymentRules.validateDate(paymentDate, today) != null -> "La fecha del pago no puede ser futura"
+        else -> null
+    }
     val amountError = when {
         amount.isBlank() -> null
         minor == null || minor <= 0 -> "Escribe un importe válido mayor que cero"
@@ -189,10 +194,10 @@ internal fun LabourPaymentSheet(name: String, balance: LabourSettlement, today: 
         Text("Pendiente actual: ${Money.format(balance.pendingMinor, balance.currency)}", color = MoWarningText, modifier = Modifier.testTag("payment-pending"))
         MoTextField(amount, { amount = it }, "Importe a pagar (${balance.currency})", enabled = !isSaving, isError = amountError != null, supportingText = amountError, modifier = Modifier.fillMaxWidth().testTag("payment-amount"))
         MoSecondaryButton("Pagar todo (${Money.format(balance.pendingMinor, balance.currency)})", { amount = Money.editable(balance.pendingMinor, balance.currency) }, enabled = !isSaving && balance.pendingMinor > 0, modifier = Modifier.fillMaxWidth().testTag("payment-all"))
-        MoTextField(date, { date = it }, "Fecha (dd/mm/aaaa)", enabled = !isSaving, isError = paymentDate == null, supportingText = if (paymentDate == null) "Escribe una fecha válida" else null, modifier = Modifier.fillMaxWidth().testTag("payment-date"))
+        MoTextField(date, { date = it }, "Fecha (dd/mm/aaaa)", enabled = !isSaving, isError = dateError != null, supportingText = dateError, modifier = Modifier.fillMaxWidth().testTag("payment-date"))
         MoTextField(note, { note = it }, "Nota (opcional)", enabled = !isSaving, modifier = Modifier.fillMaxWidth().testTag("payment-note"))
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("payment-error")) }
-        MoPrimaryButton(if (isSaving) "Guardando…" else "Guardar pago", { onSave(LabourPayment(UUID.fromString(id), balance.workerId, balance.campaignId, paymentDate!!, minor!!, balance.currency, note.trim().takeIf { it.isNotEmpty() })) }, enabled = !isSaving && minor != null && minor > 0 && minor <= balance.pendingMinor && paymentDate != null, modifier = Modifier.fillMaxWidth().testTag("payment-save"))
+        MoPrimaryButton(if (isSaving) "Guardando…" else "Guardar pago", { onSave(LabourPayment(UUID.fromString(id), balance.workerId, balance.campaignId, paymentDate!!, minor!!, balance.currency, note.trim().takeIf { it.isNotEmpty() })) }, enabled = !isSaving && minor != null && minor > 0 && minor <= balance.pendingMinor && paymentDate != null && dateError == null, modifier = Modifier.fillMaxWidth().testTag("payment-save"))
         MoTertiaryButton("Cancelar", onCancel, enabled = !isSaving, modifier = Modifier.fillMaxWidth())
     }
 }
