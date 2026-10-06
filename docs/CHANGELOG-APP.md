@@ -25,6 +25,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   elegir «Usar persona existente» o «Crear otra persona con este nombre». Si hay homónimos, se
   distinguen en pantalla («Juan García · 1», «· 2») sin cambiar el nombre guardado, y sus jornales y
   pagos nunca se mezclan.
+- **Mi Campo avisa cuando el coste de la campaña no está completo (#449).** En «Resumen de la
+  explotación», si alguna campaña del periodo tiene jornales o maquinaria sin precio o gastos sin
+  confirmar, el coste/kg (de recogida y total) y la línea de cada finca afectada se marcan
+  «(incompleto)», y la nota dice «Costes sin confirmar». Las cifras siguen siendo solo lo contabilizado.
 - **Cerrar una campaña con costes sin confirmar avisa (#449).** Al confirmar el cierre, si quedan
   jornales o maquinaria sin precio o gastos pendientes, la app lo dice: «Hay costes sin confirmar.
   Puedes cerrar la campaña, pero el coste/kg quedará marcado como incompleto.» El cierre sigue

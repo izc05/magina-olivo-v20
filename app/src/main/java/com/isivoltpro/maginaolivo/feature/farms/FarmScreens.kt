@@ -111,13 +111,36 @@ fun FarmListRoute(
         else kotlinx.coroutines.flow.combine(farmIds.map { persistence.campaignRepository.observeForFarm(it) }) { lists -> lists.flatMap { it } }
     }.collectAsStateWithLifecycle(null)
     val expenses by remember { persistence.expenseRepository.observeAll() }.collectAsStateWithLifecycle(null)
-    val overviews = remember(state.farms, campaigns, deliveries, expenses) {
+    // #449: each campaign's jornales and machinery, so a season is never shown complete too early.
+    val campaignIds = campaigns.orEmpty().map { it.id }
+    val crews by remember(campaignIds) {
+        if (campaignIds.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyMap<UUID, Pair<List<com.isivoltpro.maginaolivo.domain.labour.LabourEntry>, List<com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine>>>())
+        else kotlinx.coroutines.flow.combine(campaignIds.map { id ->
+            kotlinx.coroutines.flow.combine(
+                persistence.labourRepository.observeForCampaign(id),
+                persistence.equipmentRepository.observeForCampaign(id),
+            ) { jornales, maquinaria -> id to (jornales to maquinaria) }
+        }) { parts -> parts.toMap() }
+    }.collectAsStateWithLifecycle(null)
+    val overviews = remember(state.farms, campaigns, deliveries, expenses, crews) {
         val loadedCampaigns = campaigns
         val loadedDeliveries = deliveries
         val loadedExpenses = expenses
+        val loadedCrews = crews
         if (loadedCampaigns == null || loadedDeliveries == null || loadedExpenses == null) emptyList()
-        else com.isivoltpro.maginaolivo.domain.analytics.OliveSeason.available(loadedCampaigns).map { season ->
-            com.isivoltpro.maginaolivo.domain.analytics.FarmOverview.of(season, state.farms, loadedCampaigns, loadedDeliveries, loadedExpenses)
+        else {
+            // #449: the summary shows as soon as its money and kilos are read, so the list
+            // never jumps; until every campaign's crews are read, completeness is unknown.
+            val incomplete = if (loadedCrews == null || !loadedCrews.keys.containsAll(loadedCampaigns.map { it.id })) null
+            else loadedCampaigns.filter { campaign ->
+                val (jornales, maquinaria) = loadedCrews.getValue(campaign.id)
+                !com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(
+                    jornales, maquinaria, loadedExpenses.filter { it.campaignId == campaign.id },
+                ).complete
+            }.map { it.id }.toSet()
+            com.isivoltpro.maginaolivo.domain.analytics.OliveSeason.available(loadedCampaigns).map { season ->
+                com.isivoltpro.maginaolivo.domain.analytics.FarmOverview.of(season, state.farms, loadedCampaigns, loadedDeliveries, loadedExpenses, incomplete)
+            }
         }
     }
     FarmListScreen(
