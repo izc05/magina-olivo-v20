@@ -134,6 +134,26 @@ class ExpenseLedgerContractTest {
     }
 
     @Test
+    fun expenseFeedNeverMixesWorkspaces() = runBlocking {
+        val otherWorkspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000f2")
+        db.workspaceDao().upsert(
+            WorkspaceEntity(otherWorkspaceId, "Otro olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", LocalMetadata(now, now)),
+        )
+        val otherWorkspaces = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(otherWorkspaceId)
+        }
+        val otherExpenses = OfflineFirstExpenseRepository(db, otherWorkspaces, FixedClock(now), RandomIds, TestDispatchers)
+
+        val mine = ok(expenses.create(draft(500, concept = "Gasto A")))
+        val theirs = ok(otherExpenses.create(draft(800, concept = "Gasto B")))
+
+        assertEquals(listOf(mine), expenses.observeAll().first().map { it.id })
+        assertEquals(500L, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
+        assertEquals(listOf(theirs), otherExpenses.observeAll().first().map { it.id })
+        assertEquals(800L, ExpenseSummary.of(otherExpenses.observeAll().first(), "EUR").totalMinor)
+    }
+
+    @Test
     fun aParcelAGastoNamesIsNotDroppedFromTheWork() = runBlocking {
         val parcelB = secondParcel()
         val work = activity(costMinor = null)
