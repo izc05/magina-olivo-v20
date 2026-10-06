@@ -101,6 +101,18 @@ class OfflineFirstEquipmentRepository(
             wanted.any { (key, _) -> key !in current && resolved[key] != null }) {
             throw EquipmentInvalid("appliedPrice", "confirm_missing_prices")
         }
+        // #449 (audit 04-10, case B): while a price is still missing, a posted cost must never
+        // outlive a change to the lines that were already priced (removed, quantity or price) — it
+        // would no longer be even the known subtotal. Adding an unpriced line alone, or confirming
+        // a missing price, keeps the posted amount; legacy incomplete days keep their ledger.
+        val stillUnpriced = wanted.keys.any { resolved[it] == null }
+        val pricedChanged = current.any { (key, row) ->
+            val price = row.priceSnapshot()
+            price != null && (key !in wanted || wanted.getValue(key).quantity != row.quantity || resolved[key] != price)
+        }
+        if (posted.isNotEmpty() && stillUnpriced && pricedChanged) {
+            throw EquipmentInvalid("appliedPrice", "confirm_before_recompose")
+        }
         val currencies = resolved.values.mapNotNull { it?.currency }.distinct()
         if (currencies.size > 1 || (historicalCurrency != null && currencies.any { it != historicalCurrency })) {
             throw EquipmentInvalid("currency", "currency_mismatch")

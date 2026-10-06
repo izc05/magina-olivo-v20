@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un coste contabilizado ya no se queda desfasado al cambiar la maquinaria (#449).** Si en un día
+  con coste de maquinaria contabilizado falta algún precio, ya no se puede quitar, cambiar de
+  cantidad ni de precio una máquina que sí tenía precio: la app pide confirmar antes los precios que
+  faltan. Añadir una máquina sin precio sigue permitido (el coste se queda como subtotal conocido,
+  marcado como incompleto) y, al confirmar el último precio, se recalcula una sola vez.
 - **El coste/kg avisa cuando faltan costes por confirmar (#449).** Si hay jornales o maquinaria sin
   precio, costes del día aún sin calcular o gastos sin confirmar, el total y el coste/kg se llaman
   «contabilizado» y dicen qué falta («Incompleto · jornales sin precio»). Lo desconocido nunca cuenta como

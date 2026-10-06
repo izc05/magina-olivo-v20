@@ -335,6 +335,52 @@ class DayCostContractTest {
     }
 
     @Test
+    fun aPostedCostNeverOutlivesAChangeToItsPricedLinesWhileAPriceIsMissing() = runBlocking {
+        // #449 (audit 04-10, case B): Tractor 85 + Vibradora 60 = 145 posted.
+        val dayId = ok(harvests.openJornada(farmId, day))
+        val tractor = EquipmentDraftLine(EquipmentType.TRACTOR, 1, appliedPrice = EquipmentPriceSnapshot(8_500, "EUR", day))
+        val shaker = EquipmentDraftLine(EquipmentType.SHAKER, 1, appliedPrice = EquipmentPriceSnapshot(6_000, "EUR", day))
+        val trailer = EquipmentDraftLine(EquipmentType.TRAILER, 1, captureUsualPriceWhenMissing = false)
+        ok(equipment.replaceForHarvest(dayId, listOf(tractor, shaker)))
+        assertEquals(14_500L, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
+
+        // Removing the Tractor and adding a Remolque without price: rejected, nothing written.
+        val rows = equipment.observeForHarvest(dayId).first()
+        val outbox = outboxCount()
+        val swapped = equipment.replaceForHarvest(dayId, listOf(shaker, trailer))
+        assertEquals(AppError.Validation("appliedPrice", "confirm_before_recompose"), (swapped as AppResult.Failure).error)
+        assertEquals(rows, equipment.observeForHarvest(dayId).first())
+        assertEquals(outbox, outboxCount())
+        assertEquals(14_500L, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
+
+        // Adding the Remolque alone keeps 145 as the exact known subtotal.
+        ok(equipment.replaceForHarvest(dayId, listOf(tractor, shaker, trailer)))
+        assertNull(equipment.observeForHarvest(dayId).first().single { it.type == EquipmentType.TRAILER }.appliedPrice)
+        assertEquals(14_500L, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
+
+        // With the Remolque still unpriced, changing a priced line is rejected too.
+        val more = equipment.replaceForHarvest(dayId, listOf(tractor, shaker.copy(quantity = 2), trailer))
+        assertEquals(AppError.Validation("appliedPrice", "confirm_before_recompose"), (more as AppResult.Failure).error)
+        val repriced = equipment.replaceForHarvest(dayId, listOf(tractor,
+            shaker.copy(appliedPrice = EquipmentPriceSnapshot(7_000, "EUR", day)), trailer))
+        assertEquals(AppError.Validation("appliedPrice", "confirm_before_recompose"), (repriced as AppResult.Failure).error)
+        assertEquals(14_500L, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
+
+        // Confirming the last price recalculates once, in place.
+        val postedId = calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.id
+        ok(equipment.replaceForHarvest(dayId, listOf(tractor, shaker,
+            trailer.copy(appliedPrice = EquipmentPriceSnapshot(2_000, "EUR", day)))))
+        val confirmed = calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!
+        assertEquals(postedId, confirmed.id)
+        assertEquals(16_500L, confirmed.amountMinor)
+        assertEquals(1, db.expenseDao().listForHarvest(dayId).count { it.origin == ExpenseOrigin.DAY_EQUIPMENT.name })
+
+        // Once complete, the composition can change freely again.
+        ok(equipment.replaceForHarvest(dayId, listOf(shaker.copy(quantity = 2))))
+        assertEquals(12_000L, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
+    }
+
+    @Test
     fun historicalYenLedgerSurvivesPartialConfirmationAndEuroUsualRate() = runBlocking {
         val dayId = ok(harvests.openJornada(farmId, day))
         ok(equipment.replaceForHarvest(dayId, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 1),
