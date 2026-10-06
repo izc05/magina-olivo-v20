@@ -21,7 +21,7 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 ## 0.7.0 — en curso (fase 21, Perfil)
 
 - **Un coste contabilizado ya no se queda desfasado al cambiar la maquinaria (#449).** Si en un día
-  con coste de maquinaria contabilizado falta algún precio, ya no se puede quitar, cambiar de
+  con coste de maquinaria contabilizado falta algún precio, ya no se puede añadir con precio, quitar, cambiar de
   cantidad ni de precio una máquina que sí tenía precio: la app pide confirmar antes los precios que
   faltan. Añadir una máquina sin precio sigue permitido (el coste se queda como subtotal conocido,
   marcado como incompleto) y, al confirmar el último precio, se recalcula una sola vez.
