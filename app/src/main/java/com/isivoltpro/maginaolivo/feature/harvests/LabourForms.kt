@@ -30,6 +30,9 @@ internal fun LabourSheet(
     var newPerson by rememberSaveable { mutableStateOf(false) }
     var newName by rememberSaveable { mutableStateOf("") }
     var pendingName by rememberSaveable { mutableStateOf<String?>(null) }
+    // #442: the people that existed before «Añadir persona», so the new one is found by id, never by name.
+    var knownBeforeAdd by rememberSaveable { mutableStateOf("") }
+    var askSameName by rememberSaveable { mutableStateOf(false) }
     var unit by rememberSaveable { mutableStateOf(LabourUnit.FULL_DAY) }
     var hours by rememberSaveable { mutableStateOf("") }
     val usualRates = rates?.takeIf { it.currency == currency }
@@ -42,10 +45,16 @@ internal fun LabourSheet(
     var paymentId by rememberSaveable(currency) { mutableStateOf(UUID.randomUUID().toString()) }
     LaunchedEffect(workers, pendingName) {
         val name = pendingName ?: return@LaunchedEffect
-        workers.firstOrNull { it.name.equals(name, true) }?.let {
+        workers.firstOrNull { it.name.equals(name, true) && it.id.toString() !in knownBeforeAdd.split(',') }?.let {
             if (it.id !in alreadyRecorded) selected = it.id.toString()
-            pendingName = null; newPerson = false; newName = ""
+            pendingName = null; newPerson = false; newName = ""; askSameName = false
         }
+    }
+    val namesakes = workers.filter { it.name.equals(newName.trim(), true) }
+    val addPerson = {
+        knownBeforeAdd = workers.joinToString(",") { it.id.toString() }
+        pendingName = newName.trim()
+        onAddWorker(newName)
     }
     LaunchedEffect(rates, unit, currency) {
         if (!touchedPrice) price = Money.editable(if (unit == LabourUnit.HOURS) usualRates?.hourlyMinor else usualRates?.fullDayMinor, currency)
@@ -72,14 +81,26 @@ internal fun LabourSheet(
         if (workers.isEmpty()) Text("Añade una persona para guardar su jornal.", color = MoTextSecondary)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             workers.forEach { worker ->
-                FilterChip(selected == worker.id.toString(), { selected = worker.id.toString() }, { Text(worker.name) }, enabled = !isSaving && worker.id !in alreadyRecorded, modifier = Modifier.testTag("labour-worker"))
+                FilterChip(selected == worker.id.toString(), { selected = worker.id.toString() }, { Text(workerLabel(worker, workers)) }, enabled = !isSaving && worker.id !in alreadyRecorded, modifier = Modifier.testTag("labour-worker"))
             }
         }
         Text(if (workerId == null) "Elige una persona" else "1 seleccionada", color = MoTextSecondary, modifier = Modifier.testTag("labour-selected-count"))
-        MoTertiaryButton("+ Nueva persona", { newPerson = !newPerson }, enabled = !isSaving)
+        MoTertiaryButton("+ Nueva persona", { newPerson = !newPerson }, enabled = !isSaving, modifier = Modifier.testTag("labour-new-person"))
         if (newPerson) {
             MoTextField(newName, { newName = it }, "Nombre y apellidos", enabled = !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-new-name"))
-            MoSecondaryButton("Añadir persona", { pendingName = newName.trim(); onAddWorker(newName) }, enabled = newName.isNotBlank() && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-add-worker"))
+            MoSecondaryButton("Añadir persona", { if (namesakes.isEmpty()) addPerson() else askSameName = true },
+                enabled = newName.isNotBlank() && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-add-worker"))
+            if (askSameName && namesakes.isNotEmpty()) {
+                // #442: the app never decides that the same name is the same person.
+                Text("Ya existe una persona llamada ${newName.trim()}. ¿Es la misma?", color = MoLabourText,
+                    modifier = Modifier.testTag("labour-same-name"))
+                MoSecondaryButton("Usar persona existente", {
+                    namesakes.firstOrNull { it.id !in alreadyRecorded }?.let { selected = it.id.toString() }
+                    askSameName = false; newPerson = false; newName = ""
+                }, enabled = !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-use-existing"))
+                MoTertiaryButton("Crear otra persona con este nombre", { addPerson() }, enabled = !isSaving,
+                    modifier = Modifier.fillMaxWidth().testTag("labour-create-namesake"))
+            }
         }
         Text("Duración", style = MaterialTheme.typography.titleMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
@@ -177,3 +198,12 @@ internal fun LabourPaymentSheet(name: String, balance: LabourSettlement, today: 
 }
 
 private val PAYMENT_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(java.time.format.ResolverStyle.STRICT)
+
+/**
+ * #442: two people may share a name; each keeps it as saved and is told apart on screen by a
+ * derived number in the stable list order («Juan García · 2»). Nothing is stored in the name.
+ */
+internal fun workerLabel(worker: Worker, workers: List<Worker>): String {
+    val same = workers.filter { it.name.equals(worker.name, true) }
+    return if (same.size < 2) worker.name else "${worker.name} · ${same.indexOfFirst { it.id == worker.id } + 1}"
+}
