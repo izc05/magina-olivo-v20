@@ -300,6 +300,6 @@ private fun Stepper(title: String, value: Int, tag: String, onChange: (Int) -> U
 internal fun com.isivoltpro.maginaolivo.domain.machinery.MachineCategory.toEquipment(): EquipmentType = when (this) {
     com.isivoltpro.maginaolivo.domain.machinery.MachineCategory.TRACTOR -> EquipmentType.TRACTOR
     com.isivoltpro.maginaolivo.domain.machinery.MachineCategory.TRAILER -> EquipmentType.TRAILER
-    com.isivoltpro.maginaolivo.domain.machinery.MachineCategory.HARVEST -> EquipmentType.SHAKER
+    com.isivoltpro.maginaolivo.domain.machinery.MachineCategory.HARVEST -> EquipmentType.OTHER
     else -> EquipmentType.OTHER
 }
