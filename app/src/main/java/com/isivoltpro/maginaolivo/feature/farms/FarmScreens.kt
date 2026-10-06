@@ -104,8 +104,12 @@ fun FarmListRoute(
         val loadedDeliveries = deliveries
         if (loadedContexts == null || loadedDeliveries == null) null else runningCampaignKilos(loadedContexts, loadedDeliveries)
     }
-    // #359: every Farm's campaigns, read from the same repositories as each Farm; nothing stored.
-    val farmIds = state.farms.map { it.id }
+    // #359/#616: daily UI remains active-only, but historical analytics must keep archived Farms.
+    // Archiving changes what can be operated now; it never rewrites past Campaigns or totals.
+    val historicalFarms = remember(state.farms, state.archivedFarms) {
+        (state.farms + state.archivedFarms).distinctBy { it.id }
+    }
+    val farmIds = historicalFarms.map { it.id }
     val campaigns by remember(farmIds) {
         if (farmIds.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
         else kotlinx.coroutines.flow.combine(farmIds.map { persistence.campaignRepository.observeForFarm(it) }) { lists -> lists.flatMap { it } }
@@ -122,7 +126,7 @@ fun FarmListRoute(
             ) { jornales, maquinaria -> id to (jornales to maquinaria) }
         }) { parts -> parts.toMap() }
     }.collectAsStateWithLifecycle(null)
-    val overviews = remember(state.farms, campaigns, deliveries, expenses, crews) {
+    val overviews = remember(historicalFarms, campaigns, deliveries, expenses, crews) {
         val loadedCampaigns = campaigns
         val loadedDeliveries = deliveries
         val loadedExpenses = expenses
@@ -139,7 +143,7 @@ fun FarmListRoute(
                 ).complete
             }.map { it.id }.toSet()
             com.isivoltpro.maginaolivo.domain.analytics.OliveSeason.available(loadedCampaigns).map { season ->
-                com.isivoltpro.maginaolivo.domain.analytics.FarmOverview.of(season, state.farms, loadedCampaigns, loadedDeliveries, loadedExpenses, incomplete)
+                com.isivoltpro.maginaolivo.domain.analytics.FarmOverview.of(season, historicalFarms, loadedCampaigns, loadedDeliveries, loadedExpenses, incomplete)
             }
         }
     }
