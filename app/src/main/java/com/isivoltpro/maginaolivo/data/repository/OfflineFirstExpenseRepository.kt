@@ -42,7 +42,7 @@ class OfflineFirstExpenseRepository(
     override fun observeAll(): Flow<List<Expense>> =
         flow {
             when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
-                is AppResult.Failure -> emit(emptyList())
+                is AppResult.Failure -> throw IllegalStateException("active_workspace_unavailable")
                 is AppResult.Success -> emitAll(
                     database.expenseDao().observeForWorkspace(workspace.value)
                         .map { rows -> rows.map { it.toDomain() } },
