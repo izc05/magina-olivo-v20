@@ -91,7 +91,8 @@ jobs:
           grep -Eq 'name="robots" content="noindex, ?nofollow"' out/index.html
           grep -Eq 'name="robots" content="noindex, ?nofollow"' out/v3-review/index.html
           test -f out/v3-review/storyboard-concept.webp
-          grep -q 'src="/magina-olivo-v20/v3-review/storyboard-concept.webp"' out/v3-review/index.html
+          test -f out/v3-review/storyboard-12frames-concept.png
+          grep -q 'src="/magina-olivo-v20/v3-review/storyboard-12frames-concept.png"' out/v3-review/index.html
       - name: Build and smoke Docker standalone
         shell: bash
         run: |

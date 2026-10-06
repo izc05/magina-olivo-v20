@@ -161,8 +161,18 @@ test("V3 review exposes all keyframes as pending and stays noindex", async ({
     /noindex/,
   );
   await expect(page.locator(".v3-frame")).toHaveCount(12);
+  await expect(page.locator(".v3-frame-state")).toHaveCount(12);
+  await expect(page.locator(".v3-frame-state")).toHaveText(
+    Array.from({ length: 12 }, () => "Pendiente"),
+  );
+  await expect(page.locator(".v3-frame-id")).toHaveText(
+    Array.from(
+      { length: 12 },
+      (_, index) => `K${String(index + 1).padStart(2, "0")}`,
+    ),
+  );
   const conceptImage = page.getByAltText(
-    "Lámina conceptual generada para revisar continuidad entre olivar, agricultor, móvil, producto y escritorio",
+    "Lámina conceptual de 12 escenas en el olivar, desde el amanecer y el agricultor hasta el móvil, la aplicación y el cierre",
   );
   await expect(conceptImage).toBeVisible();
   await expect
@@ -173,10 +183,10 @@ test("V3 review exposes all keyframes as pending and stays noindex", async ({
     )
     .toBeGreaterThan(0);
   await expect(
-    page.getByText("continuidad y movimiento pendientes", { exact: false }),
+    page.getByText("12 keyframes conceptuales generados", { exact: false }),
   ).toBeVisible();
   await expect(
-    page.getByText("Fuente: producción original V3 pendiente").first(),
+    page.getByText("Concepto: lámina IA · original V3 pendiente").first(),
   ).toBeVisible();
   const references = page.locator(".v3-reference img");
   await expect(references).toHaveCount(2);

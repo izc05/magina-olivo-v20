@@ -133,8 +133,8 @@ const keyframes = [
 
 const storyboardImage =
   process.env.GITHUB_PAGES === "true"
-    ? "/magina-olivo-v20/v3-review/storyboard-concept.webp"
-    : "/v3-review/storyboard-concept.webp";
+    ? "/magina-olivo-v20/v3-review/storyboard-12frames-concept.png"
+    : "/v3-review/storyboard-12frames-concept.png";
 const reviewBase =
   process.env.GITHUB_PAGES === "true" ? "/magina-olivo-v20" : "";
 
@@ -154,8 +154,8 @@ export default function V3ReviewPage() {
           esta propuesta.
         </p>
         <p className="v3-review-status" role="status">
-          Referencias visuales recibidas · home en implementación · continuidad
-          y movimiento pendientes
+          Home estática · 12 keyframes conceptuales generados · aprobación de
+          continuidad pendiente
         </p>
         <section aria-labelledby="reference-title">
           <h2 id="reference-title">Referencias compartidas del proyecto</h2>
@@ -202,16 +202,17 @@ export default function V3ReviewPage() {
         <figure className="v3-review-contact-sheet">
           <Image
             src={storyboardImage}
-            alt="Lámina conceptual generada para revisar continuidad entre olivar, agricultor, móvil, producto y escritorio"
-            width={1222}
-            height={1287}
+            alt="Lámina conceptual de 12 escenas en el olivar, desde el amanecer y el agricultor hasta el móvil, la aplicación y el cierre"
+            width={1536}
+            height={1024}
             sizes="(max-width: 800px) 100vw, 88rem"
             loading="eager"
           />
           <figcaption>
-            Concepto visual asistido por IA para revisar tono y continuidad; no
-            está aprobado como fotografía ni asigna un asset final a cada
-            keyframe.
+            Concepto visual asistido por IA · lectura de izquierda a derecha y
+            de arriba abajo: K01–K12. Solo para revisión de tono y continuidad;
+            no es fotografía de producción ni un asset aprobado. La UI y los
+            textos reales se incorporarán como DOM.
           </figcaption>
         </figure>
         <div className="v3-review-grid">
@@ -242,17 +243,17 @@ export default function V3ReviewPage() {
                 <span>Continuidad</span> {frame.continuity}
               </p>
               <footer className="v3-frame-footer">
-                <span>Fuente: producción original V3 pendiente</span>
+                <span>Concepto: lámina IA · original V3 pendiente</span>
                 <span>Revisión: pendiente</span>
               </footer>
             </article>
           ))}
         </div>
         <p className="v3-review-note">
-          La Home actual da forma a la composición de la referencia pública.
-          Este storyboard mantiene pendientes la continuidad de los keyframes,
-          el encuadre móvil específico y la transición campo→móvil antes de
-          construir una secuencia cinematográfica controlada por scroll.
+          La Home disponible sigue siendo estática. Este storyboard permite
+          revisar los conceptos K01–K12 y mantiene pendiente su aprobación, la
+          continuidad de personaje y el encuadre móvil antes de construir una
+          secuencia cinematográfica controlada por scroll.
         </p>
       </main>
     </>
