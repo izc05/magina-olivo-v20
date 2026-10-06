@@ -120,6 +120,37 @@ class FarmMapViewModelTest {
     }
 
     @Test
+    fun approximateMyLocationCentresMapButDoesNotQueryCatastro() = runTest(dispatcher) {
+        val client = FakeClient(listOf(candidate("23044A00400021")))
+        val viewModel = FarmMapViewModel(farmId, FakeFarms(), FakeParcels(), client)
+        advanceUntilIdle()
+
+        viewModel.setMode(FarmMapMode.ADD)
+        viewModel.myLocationFound(GeoPoint(37.73, -3.45), approximate = true)
+        advanceUntilIdle()
+
+        assertEquals(GeoPoint(37.73, -3.45), viewModel.state.value.myLocation)
+        assertEquals(GeoPoint(37.73, -3.45), viewModel.state.value.focus?.point)
+        assertTrue(viewModel.state.value.message!!.contains("aproximada"))
+        assertEquals(0, client.nearCalls)
+        assertTrue(viewModel.state.value.candidates.isEmpty())
+    }
+
+    @Test
+    fun preciseMyLocationCanQueryNearbyParcelsInAddMode() = runTest(dispatcher) {
+        val client = FakeClient(listOf(candidate("23044A00400021")))
+        val viewModel = FarmMapViewModel(farmId, FakeFarms(), FakeParcels(), client)
+        advanceUntilIdle()
+
+        viewModel.setMode(FarmMapMode.ADD)
+        viewModel.myLocationFound(GeoPoint(37.73, -3.45))
+        advanceUntilIdle()
+
+        assertEquals(1, client.nearCalls)
+        assertEquals(listOf("23044A00400021"), viewModel.state.value.candidates.map { it.reference })
+    }
+
+    @Test
     fun aCatastroThatCannotSayWhereNeverBlocksTheImport() = runTest(dispatcher) {
         val parcels = FakeParcels()
         val viewModel = FarmMapViewModel(farmId, FakeFarms(), parcels, FakeClient(listOf(candidate("23044A00400021")), placeFails = true))
@@ -200,8 +231,12 @@ class FarmMapViewModelTest {
         private val placeFails: Boolean = false,
         private val placeDelayMillis: Long = 0,
     ) : CadastreClient {
+        var nearCalls: Int = 0
         override suspend fun findByReference(reference: String): CadastralCandidate = near.first { it.reference == reference }
-        override suspend fun findNear(latitude: Double, longitude: Double): List<CadastralCandidate> = near
+        override suspend fun findNear(latitude: Double, longitude: Double): List<CadastralCandidate> {
+            nearCalls++
+            return near
+        }
         override suspend fun locate(reference: String): RegistryLocation? {
             if (placeDelayMillis > 0) kotlinx.coroutines.delay(placeDelayMillis)
             return if (placeFails) throw java.io.IOException("offline") else places[reference]

@@ -106,10 +106,22 @@ class FarmMapViewModel(
         if (mutableState.value.mode != FarmMapMode.VIEW) findNear(point.latitude, point.longitude)
     }
 
-    /** #361: «Mi ubicación» answered: centre there and keep the blue dot on that point. */
-    fun myLocationFound(point: GeoPoint) {
-        mutableState.update { it.copy(myLocation = point) }
-        goTo(point)
+    /** #361/#617: precise fixes may query Catastro; approximate ones only centre the map. */
+    fun myLocationFound(point: GeoPoint, approximate: Boolean = false) {
+        if (!approximate) {
+            mutableState.update { it.copy(myLocation = point) }
+            goTo(point)
+            return
+        }
+        mutableState.update {
+            it.copy(
+                myLocation = point,
+                focus = MapFocus(point),
+                error = null,
+                message = "Ubicación aproximada. Comprueba la parcela en el mapa.",
+                locationProblem = null,
+            )
+        }
     }
 
     fun dismissLocationProblem() = mutableState.update { it.copy(locationProblem = null) }
@@ -326,5 +338,5 @@ private fun CadastreException.farmerMessage(): String = when (kind) {
 enum class LocationProblem(val message: String, val action: String) {
     PERMISSION("Para centrar el mapa donde estás, permite el acceso a la ubicación.", "Permitir ubicación"),
     LOCATION_OFF("La ubicación del teléfono está desactivada.", "Activar ubicación"),
-    NO_FIX("No hemos podido obtener tu ubicación.", "Escribir coordenadas"),
+    NO_FIX("No hemos podido obtener una ubicación actual. Muévete en el mapa o busca por polígono y parcela.", "Escribir coordenadas"),
 }
