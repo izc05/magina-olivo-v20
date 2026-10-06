@@ -139,10 +139,18 @@ data class AppCompositionRoot(
                 dispatchers = defaults.dispatchers,
             )
             val harvestRepository = OfflineFirstHarvestRepository(
-                database, defaults.clock, defaults.idGenerator, defaults.dispatchers,
+                database,
+                defaults.clock,
+                defaults.idGenerator,
+                defaults.dispatchers,
+                workspaceRepository = workspaceRepository,
             )
             val deliveryRepository = OfflineFirstDeliveryRepository(
-                database, defaults.clock, defaults.idGenerator, defaults.dispatchers,
+                database,
+                defaults.clock,
+                defaults.idGenerator,
+                defaults.dispatchers,
+                workspaceRepository = workspaceRepository,
             )
             val machineRepository = OfflineFirstMachineRepository(
                 database, workspaceRepository, defaults.clock, defaults.idGenerator, defaults.dispatchers,
