@@ -251,11 +251,14 @@ class LabourPaymentContractTest {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 6_000)))
         assertNull(labour.observeForHarvest(d).first().single().appliedRate)
         assertNull(calculated(d, ExpenseOrigin.DAY_LABOUR))
-        val before = dumpFinancialState()
-        assertTrue(labour.recordCrew(CrewDraft(d, listOf(worker), LabourUnit.FULL_DAY)) is AppResult.Failure)
-        assertEquals(before, dumpFinancialState())
+        // #449: a priced person may join a day whose legacy line is still unknown; that line stays
+        // unknown and nothing is calculated until every price on the day is confirmed.
+        val rosa = ok(labour.addWorker("Rosa"))
+        ok(labour.recordCrew(CrewDraft(d, listOf(rosa), LabourUnit.FULL_DAY)))
+        assertNull(labour.observeForHarvest(d).first().single { it.id == legacy }.appliedRate)
+        assertNull(calculated(d, ExpenseOrigin.DAY_LABOUR))
         ok(labour.update(legacy, LabourChange(5, LabourUnit.HALF_DAY, null, rate(6_000))))
-        assertEquals(15_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(21_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
         assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
         ok(labour.recordCrew(CrewDraft(d, listOf(worker), LabourUnit.FULL_DAY, appliedRate = rate(0))))
         assertEquals(0L, balance(worker).generatedMinor)
@@ -300,6 +303,36 @@ class LabourPaymentContractTest {
         val entity = db.labourDao().findWorker(worker)!!
         db.labourDao().upsertWorker(entity.copy(metadata = entity.metadata.copy(deletedAt = now)))
         assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
+    }
+
+    /** #449: a person whose price is still unknown is recorded beside priced ones, never as 0 €. */
+    @Test
+    fun aPersonWithoutPriceJoinsAPricedDayAndCountsOnceConfirmed() = runBlocking {
+        val (d, juan) = pricedDay()
+        // Juan was already paid in full: adding an unknown price must not erase his debt (Codex #607).
+        ok(labour.recordPayment(payment(juan, 6_000)))
+        // A usual rate exists, yet «Precio aún sin saber» never fills it in silently.
+        ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 9_000)))
+        val miguel = ok(labour.addWorker("Miguel"))
+        ok(labour.recordCrew(CrewDraft(d, listOf(miguel), LabourUnit.FULL_DAY, priceUnknown = true)))
+        assertEquals(0L, balance(juan).pendingMinor)
+        assertEquals(6_000L, balance(juan).generatedMinor)
+        val lines = labour.observeForHarvest(d).first()
+        assertEquals(2, lines.size)
+        assertNull(lines.single { it.workerId == miguel }.appliedRate)
+        // The posted calculation stays the confirmed subtotal; Miguel adds nothing until priced.
+        assertEquals(6_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(ExpenseStatus.POSTED, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.status)
+
+        // Adding priced money while a price is still missing would make the posted amount stale.
+        val pedro = ok(labour.addWorker("Pedro"))
+        assertEquals(AppError.Validation("appliedRate", "confirm_missing_prices"),
+            (labour.recordCrew(CrewDraft(d, listOf(pedro), LabourUnit.FULL_DAY, appliedRate = rate(5_000))) as AppResult.Failure).error)
+
+        // Confirming Miguel's price recalculates the day once.
+        ok(labour.update(lines.single { it.workerId == miguel }.id, LabourChange(1, LabourUnit.FULL_DAY, null, rate(5_000))))
+        assertEquals(11_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(1, expenses.observeForHarvest(d).first().count { it.origin == ExpenseOrigin.DAY_LABOUR })
     }
 
     @Test
