@@ -296,10 +296,13 @@ private fun Stepper(title: String, value: Int, tag: String, onChange: (Int) -> U
     }
 }
 
-/** A registered Machine's category as a recollection equipment type. */
+/**
+ * A registered Machine's category as a recollection equipment type. #521: only unambiguous
+ * categories map to a specific type; «Recolección» covers shakers, umbrellas and combs alike, so it
+ * stays OTHER with the machine's own name and never receives the usual Vibradora rate.
+ */
 internal fun com.isivoltpro.maginaolivo.domain.machinery.MachineCategory.toEquipment(): EquipmentType = when (this) {
     com.isivoltpro.maginaolivo.domain.machinery.MachineCategory.TRACTOR -> EquipmentType.TRACTOR
     com.isivoltpro.maginaolivo.domain.machinery.MachineCategory.TRAILER -> EquipmentType.TRAILER
-    com.isivoltpro.maginaolivo.domain.machinery.MachineCategory.HARVEST -> EquipmentType.SHAKER
     else -> EquipmentType.OTHER
 }

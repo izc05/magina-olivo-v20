@@ -239,10 +239,16 @@ fun RegisterActivityRoute(
         }
     })
     val state by vm.state.collectAsStateWithLifecycle()
-    // Quick Add opened from a Farm's screen: that Farm is already the answer.
+    // #498: validate the contextual Farm before consuming navigation state.
     LaunchedEffect(preselectedFarmId) {
-        if (preselectedFarmId != null) {
-            vm.selectFarm(preselectedFarmId)
+        if (preselectedFarmId != null) vm.preselectFarm(preselectedFarmId)
+    }
+    LaunchedEffect(preselectedFarmId, state.contextualFarmId, state.contextualFarmAccepted) {
+        if (
+            preselectedFarmId != null &&
+            state.contextualFarmId == preselectedFarmId &&
+            state.contextualFarmAccepted
+        ) {
             onFarmPreselected()
         }
     }
@@ -266,7 +272,7 @@ fun RegisterActivityRoute(
             when {
                 state.isLoading -> CircularProgressIndicator()
                 state.error != null -> MoErrorState(
-                    "No pudimos abrir tus fincas",
+                    if (state.contextualFarmId != null) "Esta finca ya no está disponible" else "No pudimos abrir tus fincas",
                     state.error.orEmpty(),
                     onRetry = vm::retry,
                 )
