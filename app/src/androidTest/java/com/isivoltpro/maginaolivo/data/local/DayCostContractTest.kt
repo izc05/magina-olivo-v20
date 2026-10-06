@@ -353,6 +353,12 @@ class DayCostContractTest {
         assertEquals(outbox, outboxCount())
         assertEquals(14_500L, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.amountMinor)
 
+        // Adding a priced Peine together with the unpriced Remolque would leave 145 short: rejected.
+        val comb = EquipmentDraftLine(EquipmentType.COMB, 1, appliedPrice = EquipmentPriceSnapshot(2_000, "EUR", day))
+        val both = equipment.replaceForHarvest(dayId, listOf(tractor, shaker, comb, trailer))
+        assertEquals(AppError.Validation("appliedPrice", "confirm_before_recompose"), (both as AppResult.Failure).error)
+        assertEquals(rows, equipment.observeForHarvest(dayId).first())
+
         // Adding the Remolque alone keeps 145 as the exact known subtotal.
         ok(equipment.replaceForHarvest(dayId, listOf(tractor, shaker, trailer)))
         assertNull(equipment.observeForHarvest(dayId).first().single { it.type == EquipmentType.TRAILER }.appliedPrice)
