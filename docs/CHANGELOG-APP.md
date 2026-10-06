@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Dos personas pueden llamarse igual (#442).** Añadir un nombre que ya existe ya no reutiliza a esa
+  persona sin preguntar: la app dice «Ya existe una persona llamada Juan García. ¿Es la misma?» y deja
+  elegir «Usar persona existente» o «Crear otra persona con este nombre». Si hay homónimos, se
+  distinguen en pantalla («Juan García · 1», «· 2») sin cambiar el nombre guardado, y sus jornales y
+  pagos nunca se mezclan.
 - **Las tarjetas de campaña y el histórico avisan de costes sin confirmar (#449).** Si una campaña
   tiene jornales o maquinaria sin precio, o gastos pendientes de confirmar, su tarjeta lo dice
   («Costes sin confirmar») y su coste/kg en «Comparar campañas» y en el histórico se marca
