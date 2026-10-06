@@ -206,6 +206,11 @@ data class CampaignSummaryUi(
     val expenses: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency> = emptyList(),
     /** #365: «1 persona · 1 jornada · 65,00 €»; null while the jornales are still loading. */
     val labourLine: String? = null,
+    /**
+     * #449: false when jornales, machinery or costs of the campaign are still unconfirmed; null
+     * while they load (never claimed complete or incomplete before they are read).
+     */
+    val costComplete: Boolean? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -229,8 +234,10 @@ fun CampaignDetailRoute(
     val expenses by remember { persistence.expenseRepository.observeAll() }.collectAsStateWithLifecycle(emptyList())
     val labour by remember(campaignId) { persistence.labourRepository.observeForCampaign(campaignId) }
         .collectAsStateWithLifecycle(null)
+    val equipment by remember(campaignId) { persistence.equipmentRepository.observeForCampaign(campaignId) }
+        .collectAsStateWithLifecycle(null)
     var labourOpen by rememberSaveable { mutableStateOf(false) }
-    val summary = remember(harvests, deliveries, expenses, labour) {
+    val summary = remember(harvests, deliveries, expenses, labour, equipment) {
         val harvest = HarvestSummary.of(harvests)
         val delivery = DeliverySummary.of(deliveries)
         val ledger = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(expenses.filter { it.campaignId == campaignId })
@@ -247,6 +254,16 @@ fun CampaignDetailRoute(
                 com.isivoltpro.maginaolivo.feature.harvests.campaignLabourLine(
                     entries, com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(campaignId, expenses, deliveries),
                 )
+            },
+            costComplete = labour?.let { jornales ->
+                equipment?.let { maquinaria ->
+                    val days = harvests.map { it.id }.toSet()
+                    com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(
+                        jornales.filter { it.harvestId in days },
+                        maquinaria.filter { it.harvestId in days },
+                        expenses.filter { it.campaignId == campaignId },
+                    ).complete
+                }
             },
         )
     }
@@ -482,6 +499,15 @@ fun CampaignDetailScreen(
                 },
                 color = MoTextSecondary,
             )
+            if (confirmation == "close" && summary.costComplete == false) {
+                // #449: closing is allowed; the farmer is told the cost/kg stays marked incomplete.
+                Text(
+                    "Hay costes sin confirmar. Puedes cerrar la campaña, pero el coste/kg quedará marcado como incompleto.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = com.isivoltpro.maginaolivo.ui.theme.MoWarningText,
+                    modifier = Modifier.testTag("close-cost-warning"),
+                )
+            }
             val confirm = {
                 when (confirmation) { "activate" -> onActivate(); "harvest" -> onHarvest(); "close" -> onClose(LocalDate.now()); "reopen" -> onReopen(); "archive" -> onArchive() }
                 confirmation = null
