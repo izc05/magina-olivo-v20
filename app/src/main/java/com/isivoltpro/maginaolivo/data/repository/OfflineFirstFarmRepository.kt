@@ -20,7 +20,10 @@ import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmChanges
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -31,7 +34,9 @@ class OfflineFirstFarmRepository(
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
+    private val workspaceRepository: WorkspaceRepository? = null,
 ) : FarmRepository {
+    private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
     override fun observeActive(workspaceId: UUID): Flow<List<Farm>> =
         database
             .farmDao()
@@ -47,11 +52,16 @@ class OfflineFirstFarmRepository(
             .flowOn(dispatchers.io)
 
     override fun observeById(farmId: UUID): Flow<Farm?> =
-        database
-            .farmDao()
-            .observeSummaryById(farmId)
-            .map { farm -> farm?.toDomain() }
-            .flowOn(dispatchers.io)
+        flow {
+            when (val active = workspaceScope.resolve()) {
+                is AppResult.Failure -> emit(null)
+                is AppResult.Success -> emitAll(
+                    database.farmDao().observeSummaryById(farmId).map { row ->
+                        row?.takeIf { it.farm.workspaceId == active.value }?.toDomain()
+                    },
+                )
+            }
+        }.flowOn(dispatchers.io)
 
     override suspend fun create(command: NewFarm): AppResult<UUID> {
         val name = AppPreconditions.nonBlank(command.name, "name")
@@ -59,6 +69,7 @@ class OfflineFirstFarmRepository(
         val normalizedName = (name as AppResult.Success).value
 
         return withContext(dispatchers.io) {
+            workspaceScope.mismatch(command.workspaceId)?.let { return@withContext it }
             val farmId = idGenerator.newId()
             val operationId = idGenerator.newId()
             val now = clock.nowInstant()
@@ -110,6 +121,10 @@ class OfflineFirstFarmRepository(
         val normalizedName = (name as AppResult.Success).value
 
         return withContext(dispatchers.io) {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@withContext result
+                is AppResult.Success -> result.value
+            }
             val now = clock.nowInstant()
             runCatching {
                 database.withTransaction {
@@ -117,6 +132,9 @@ class OfflineFirstFarmRepository(
                         ?: return@withTransaction AppResult.Failure(
                             AppError.NotFound(resource = "farm"),
                         )
+                    if (current.workspaceId != active) {
+                        return@withTransaction AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+                    }
                     if (current.metadata.deletedAt != null) {
                         return@withTransaction AppResult.Failure(
                             AppError.Conflict(resource = "archived_farm"),
@@ -154,6 +172,10 @@ class OfflineFirstFarmRepository(
 
     override suspend fun archive(farmId: UUID): AppResult<Unit> =
         withContext(dispatchers.io) {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@withContext result
+                is AppResult.Success -> result.value
+            }
             val now = clock.nowInstant()
             runCatching {
                 database.withTransaction {
@@ -161,6 +183,9 @@ class OfflineFirstFarmRepository(
                         ?: return@withTransaction AppResult.Failure(
                             AppError.NotFound(resource = "farm"),
                         )
+                    if (current.workspaceId != active) {
+                        return@withTransaction AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+                    }
 
                     if (current.metadata.deletedAt != null) {
                         return@withTransaction AppResult.Success(Unit)
@@ -192,6 +217,10 @@ class OfflineFirstFarmRepository(
 
     override suspend fun restore(farmId: UUID): AppResult<Unit> =
         withContext(dispatchers.io) {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@withContext result
+                is AppResult.Success -> result.value
+            }
             val now = clock.nowInstant()
             runCatching {
                 database.withTransaction {
@@ -199,6 +228,9 @@ class OfflineFirstFarmRepository(
                         ?: return@withTransaction AppResult.Failure(
                             AppError.NotFound(resource = "farm"),
                         )
+                    if (current.workspaceId != active) {
+                        return@withTransaction AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+                    }
                     if (current.metadata.deletedAt == null && current.status == FarmStatus.ACTIVE) {
                         return@withTransaction AppResult.Success(Unit)
                     }
