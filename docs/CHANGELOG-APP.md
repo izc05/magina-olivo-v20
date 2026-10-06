@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Cerrar una campaña con costes sin confirmar avisa (#449).** Al confirmar el cierre, si quedan
+  jornales o maquinaria sin precio o gastos pendientes, la app lo dice: «Hay costes sin confirmar.
+  Puedes cerrar la campaña, pero el coste/kg quedará marcado como incompleto.» El cierre sigue
+  permitido.
 - **Un coste contabilizado ya no se queda desfasado al cambiar la maquinaria (#449).** Si en un día
   con coste de maquinaria contabilizado falta algún precio, ya no se puede añadir con precio, quitar, cambiar de
   cantidad ni de precio una máquina que sí tenía precio: la app pide confirmar antes los precios que
