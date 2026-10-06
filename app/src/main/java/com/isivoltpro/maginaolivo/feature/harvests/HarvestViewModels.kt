@@ -405,6 +405,7 @@ class HarvestDetailViewModel(
                         is AppError.Conflict -> "La campaña está cerrada: este día de recolección ya es histórico"
                         is AppError.Validation -> when (result.error.code) {
                             "confirm_missing_prices" -> "Confirma primero los precios que faltan en la maquinaria histórica de este día."
+                            "confirm_before_recompose" -> "Hay maquinaria con coste sin confirmar. Confirma los precios antes de cambiar una composición que ya tiene un coste contabilizado."
                             "overflow" -> "El total es demasiado grande. Reduce el precio o la cantidad."
                             "archived_machine" -> "Esa máquina está archivada: solo se conserva en los días en que ya trabajó."
                             "currency_mismatch", "ambiguous_historical_currency" -> "La moneda no coincide con el coste histórico de este día. Revisa los precios."
