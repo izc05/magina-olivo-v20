@@ -81,6 +81,27 @@ class HarvestContractTest {
     // ------------------------------------------------------------ no fabricated split
 
     @Test
+    fun jornadaAndHarvestUseWorkspaceCalendarAtMidnightBoundaries() = runBlocking {
+        val workspace = db.workspaceDao().findById(workspaceId)!!
+        db.workspaceDao().upsert(workspace.copy(timezone = "Pacific/Honolulu"))
+        val repository = OfflineFirstHarvestRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        val utcDay = LocalDate.parse("2026-11-20")
+
+        assertValidation("harvestDate", repository.openJornada(farmId, utcDay))
+        assertValidation(
+            "harvestDate",
+            repository.create(
+                HarvestDraft(
+                    farmId = farmId,
+                    harvestDate = utcDay,
+                    totalGrams = 1_000_000,
+                    shares = listOf(HarvestShareInput(north, 1_000_000)),
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun anUnknownSplitStoresOnlyTheTotalAndNoParcelKilos() = runBlocking {
         val id = ok(harvests.create(draft(5_000_000, north to null, south to null)))
 
