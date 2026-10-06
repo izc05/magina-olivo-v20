@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Tus datos no salen del teléfono por la copia de Android (#461).** La app ya no participa en la
+  copia de seguridad en la nube de Android ni en el paso a un teléfono nuevo: la base de datos, las
+  fotos y documentos adjuntos, la caché de la cámara y las preferencias quedan solo en este teléfono.
+  Así nunca se restaura una finca a medias ni un registro que apunte a una foto que no viajó. Perfil →
+  Ayuda y privacidad lo explica tal cual: si borras la app, sus datos o cambias de teléfono, se pierden.
 - **El coste/kg conserva las milésimas (#486).** El coste por kilo es una ratio, no un pago: ahora se
   muestra con tres decimales (1.440 € / 5.700 kg = **0,253 €/kg**, antes 0,25) en el día, la campaña,
   la comparativa, el histórico y Mi Campo. Los gastos siguen guardándose en céntimos; solo cambia cómo

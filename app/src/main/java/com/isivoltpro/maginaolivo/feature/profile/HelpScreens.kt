@@ -151,7 +151,8 @@ private const val CHANGELOG_ASSET = "CHANGELOG-APP.md"
 private val PRIVACY = listOf(
     "Lo que queda en tu teléfono" to
         "Fincas, parcelas, campañas, trabajos, pesadas, jornales, gastos, fotos y documentos se guardan en este " +
-        "teléfono. Hoy no hay cuenta ni copia en la nube: si borras la app o sus datos, se pierden.",
+        "teléfono y solo en él. Hoy no hay cuenta ni copia en la nube, y la copia de seguridad de Android y el " +
+        "paso a un teléfono nuevo no los llevan: si borras la app o sus datos, o cambias de teléfono, se pierden.",
     "Fotos de vales y facturas" to
         "Una foto de vale o factura se guarda como adjunto en el propio teléfono y no se envía a ningún " +
         "servicio. Las fotos que adjuntas no se leen: los kilos y los importes son los que escribes tú. Los " +
