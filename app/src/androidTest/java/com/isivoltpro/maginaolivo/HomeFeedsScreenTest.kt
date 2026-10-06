@@ -44,6 +44,29 @@ class HomeFeedsScreenTest {
         composeRule.onNodeWithTag("home-cooperative").performScrollTo().assertIsDisplayed()
     }
 
+    @Test fun localReadFailureNeverLooksLikeEmptyAgriculturalDataAndCanRetry() {
+        var retried = 0
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                HomeScreen(
+                    UiPolishFixtures.home.copy(
+                        isLoading = false,
+                        localReadError = "No hemos podido leer los datos de tu olivar.",
+                        campaigns = emptyList(),
+                        upcoming = emptyList(),
+                    ),
+                    LocalTime.of(10, 0), {}, {}, {}, {}, feedNow = now, weatherMotion = false,
+                    onRetryLocalData = { retried++ },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("home-local-error").assertIsDisplayed()
+        composeRule.onNodeWithTag("home-no-campaign").assertDoesNotExist()
+        composeRule.onNodeWithTag("home-no-upcoming").assertDoesNotExist()
+        composeRule.onNodeWithTag("home-local-retry").performClick()
+        composeRule.runOnIdle { assertEquals(1, retried) }
+    }
+
     @Test fun heroWeatherShowsCurrentValueLocationAndCachedWarning() {
         val weather = WeatherNow(22, WeatherCondition.PARTLY_CLOUDY, 15, 11, now.minusSeconds(5 * 3600))
         show(
