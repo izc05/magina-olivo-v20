@@ -36,6 +36,8 @@ internal fun LabourSheet(
     var price by rememberSaveable(currency) { mutableStateOf(Money.editable(usualRates?.fullDayMinor, currency)) }
     var touchedPrice by rememberSaveable(currency) { mutableStateOf(false) }
     var initialPayment by rememberSaveable(currency) { mutableStateOf("NONE") }
+    // #449: the farmer can say the price is not known yet; never 0 € and never the usual rate silently.
+    var priceUnknown by rememberSaveable { mutableStateOf(false) }
     var paymentAmount by rememberSaveable(currency) { mutableStateOf("") }
     var paymentId by rememberSaveable(currency) { mutableStateOf(UUID.randomUUID().toString()) }
     LaunchedEffect(workers, pendingName) {
@@ -86,11 +88,18 @@ internal fun LabourSheet(
             }
         }
         if (unit == LabourUnit.HOURS) MoTextField(hours, { hours = it }, "Horas", enabled = !isSaving, supportingText = if (minutes == null) "Entre 0 y 24 horas; por ejemplo 3 o 3,5" else null, modifier = Modifier.fillMaxWidth().testTag("labour-hours"))
-        MoTextField(price, { price = it; touchedPrice = true }, if (unit == LabourUnit.HOURS) "Tarifa por hora ($currency)" else "Precio del jornal ($currency)", enabled = !isSaving, isError = minor == null, supportingText = if (minor == null) "Confirma un precio válido para guardar" else null, modifier = Modifier.fillMaxWidth().testTag("labour-rate"))
-        total?.let { Text("Coste del jornal: ${Money.format(it, currency)}", color = MoLabourText, modifier = Modifier.testTag("labour-generated")) }
+        FilterChip(priceUnknown, { priceUnknown = !priceUnknown; if (priceUnknown) initialPayment = "NONE" }, { Text("Precio aún sin saber") },
+            enabled = !isSaving, modifier = Modifier.testTag("labour-price-unknown"))
+        if (priceUnknown) {
+            Text("Se anota sin precio: no cuenta como 0 € y el coste del día queda incompleto hasta que lo confirmes.",
+                color = MoTextSecondary, modifier = Modifier.testTag("labour-price-unknown-note"))
+        } else {
+            MoTextField(price, { price = it; touchedPrice = true }, if (unit == LabourUnit.HOURS) "Tarifa por hora ($currency)" else "Precio del jornal ($currency)", enabled = !isSaving, isError = minor == null, supportingText = if (minor == null) "Confirma un precio válido o marca «Precio aún sin saber»" else null, modifier = Modifier.fillMaxWidth().testTag("labour-rate"))
+            total?.let { Text("Coste del jornal: ${Money.format(it, currency)}", color = MoLabourText, modifier = Modifier.testTag("labour-generated")) }
+        }
         calculationError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-calculation-error")) }
-        Text("Pago inicial (opcional)", style = MaterialTheme.typography.titleMedium)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+        if (!priceUnknown) Text("Pago inicial (opcional)", style = MaterialTheme.typography.titleMedium)
+        if (!priceUnknown) FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             listOf("NONE" to "Sin pagar", "PARTIAL" to "Pago parcial", "FULL" to "Pagado completo").forEach { (value, label) ->
                 FilterChip(initialPayment == value, { initialPayment = value }, { Text(label) }, enabled = !isSaving, modifier = Modifier.testTag("labour-payment-$value"))
             }
@@ -100,8 +109,11 @@ internal fun LabourSheet(
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-form-error")) }
         MoPrimaryButton(if (isSaving) "Guardando…" else "Guardar 1 jornal", {
             val paid = when (initialPayment) { "FULL" -> total; "PARTIAL" -> partial; else -> null }
-            onSaveCrew(CrewDraft(harvestId, listOf(workerId!!), unit, minutes, rate!!, paid?.let { listOf(LabourPayment(UUID.fromString(paymentId), workerId, campaignId, date, it, currency)) }.orEmpty()))
-        }, enabled = workerId != null && total != null && rate != null && paymentError == null && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-save"))
+            if (priceUnknown) onSaveCrew(CrewDraft(harvestId, listOf(workerId!!), unit, minutes, priceUnknown = true))
+            else onSaveCrew(CrewDraft(harvestId, listOf(workerId!!), unit, minutes, rate!!, paid?.let { listOf(LabourPayment(UUID.fromString(paymentId), workerId, campaignId, date, it, currency)) }.orEmpty()))
+        }, enabled = workerId != null && !isSaving &&
+            (if (priceUnknown) unit != LabourUnit.HOURS || minutes != null else total != null && rate != null && paymentError == null),
+            modifier = Modifier.fillMaxWidth().testTag("labour-save"))
         MoTertiaryButton("Cancelar", onCancel, enabled = !isSaving, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(MoSpacing.lg))
     }

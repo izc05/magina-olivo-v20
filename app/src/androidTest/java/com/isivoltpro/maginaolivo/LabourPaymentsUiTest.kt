@@ -59,6 +59,24 @@ class LabourPaymentsUiTest {
         rule.runOnIdle { assertEquals(listOf(worker.id), saved!!.workerIds); assertEquals(180, saved!!.minutes); assertEquals(1000L, saved!!.appliedRate!!.unitPriceMinor); assertTrue(saved!!.initialPayments.isEmpty()) }
     }
 
+    /** #449: a person whose price is not known yet is saved without one, never 0 € and never paid. */
+    @Test fun aPersonCanBeSavedWithThePriceNotKnownYet() {
+        var saved: CrewDraft? = null
+        rule.setContent { MaginaOlivoTheme { Surface(androidx.compose.ui.Modifier.fillMaxSize().statusBarsPadding(), color = com.isivoltpro.maginaolivo.ui.theme.MoCream) { LabourSheet(listOf(worker), emptySet(), false, null, day, campaign.id, date, null, { saved = it }, {}, {}) } } }
+        rule.onAllNodesWithTag("labour-worker")[0].performClick()
+        rule.onNodeWithTag("labour-save").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("labour-price-unknown").performScrollTo().performClick()
+        rule.onNodeWithTag("labour-price-unknown-note").assertExists()
+        rule.onNodeWithTag("labour-rate").assertDoesNotExist()
+        rule.onNodeWithTag("labour-payment-FULL").assertDoesNotExist()
+        rule.onNodeWithTag("labour-save").performScrollTo().assertIsEnabled().performClick()
+        rule.runOnIdle {
+            assertTrue(saved!!.priceUnknown)
+            assertNull(saved!!.appliedRate)
+            assertTrue(saved!!.initialPayments.isEmpty())
+        }
+    }
+
     @Test fun partialInitialPaymentSurvivesRotationWithStableIdAndInvalidAmountCannotSave() {
         val restored = StateRestorationTester(rule)
         val saved = mutableListOf<CrewDraft>()

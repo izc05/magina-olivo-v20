@@ -15,6 +15,8 @@ import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.labour.CountDraft
 import com.isivoltpro.maginaolivo.domain.labour.CrewDraft
 import com.isivoltpro.maginaolivo.domain.labour.LabourChange
@@ -107,13 +109,21 @@ class OfflineFirstLabourRepository(
                     minutes = draft.minutes,
                     metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
                 ).let { row ->
-                    val entry = LabourPricing.capture(row.toLabourEntry().copy(appliedRate = draft.appliedRate), rates, harvest.harvestDate)
+                    val entry = if (draft.priceUnknown) row.toLabourEntry()
+                        else LabourPricing.capture(row.toLabourEntry().copy(appliedRate = draft.appliedRate), rates, harvest.harvestDate)
                     LabourPricing.amountMinor(entry)
                     row.withRate(entry.appliedRate)
                 }
             }
+            // #449: a person whose price is not known yet is recorded as such (never as 0 €); the
+            // day's cost is shown as incomplete until the last price is confirmed. What stays
+            // blocked is adding priced money to a day that already has a posted calculation while
+            // another price is still missing: the posted amount would no longer be its subtotal.
             val combined = database.labourDao().listForHarvest(harvest.id) + rows
-            if (combined.any { it.appliedPriceMinor != null } && combined.any { it.appliedPriceMinor == null }) {
+            val postedCalculation = database.expenseDao().listForHarvest(harvest.id).any {
+                it.origin == ExpenseOrigin.DAY_LABOUR.name && it.status == ExpenseStatus.POSTED.name
+            }
+            if (postedCalculation && rows.any { it.appliedPriceMinor != null } && combined.any { it.appliedPriceMinor == null }) {
                 throw LabourFinanceInvalid("appliedRate", "confirm_missing_prices")
             }
             database.labourDao().upsertLabour(rows)
