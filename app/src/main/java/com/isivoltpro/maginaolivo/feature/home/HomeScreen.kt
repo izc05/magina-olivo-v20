@@ -93,6 +93,7 @@ fun HomeRoute(
     HomeScreen(
         state, LocalTime.now(), onCalendar, onWeatherWeek, onCampaign, onActivitySelected, clock.nowInstant(),
         onOilMarket = onOilMarket,
+        onRetryLocalData = viewModel::retryLocalData,
     )
 }
 
@@ -115,6 +116,7 @@ fun HomeScreen(
     weatherMotion: Boolean? = null,
     /** Phase 20D-3: opens the oil market screen; the card offers it once there are official weeks. */
     onOilMarket: (() -> Unit)? = null,
+    onRetryLocalData: () -> Unit = {},
 ) {
     // The navigation shell owns the system-bar insets (visual identity pass); no second inset here.
     Scaffold(
@@ -140,6 +142,16 @@ fun HomeScreen(
             ) {
             if (state.isLoading) {
                 CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally).testTag("home-loading"))
+            } else if (state.localReadError != null) {
+                Text(
+                    state.localReadError,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag("home-local-error"),
+                )
+                TextButton(onClick = onRetryLocalData, modifier = Modifier.testTag("home-local-retry")) {
+                    Text("Reintentar")
+                }
             } else if (state.farms.isNotEmpty()) {
                 MoStatStrip(
                     listOf(
