@@ -204,6 +204,7 @@ class AgriculturalYearContractTest {
         val year = CampaignComparison.of(listOf(notebook)).single()
         assertEquals(5_000_000L, year.deliveredGrams)
         assertEquals(0, BigDecimal("0.116").compareTo(year.canonicalCost!!.summary!!.costPerKg))
+        assertEquals(116L, year.costPerKgMilli)
         assertTrue(year.costComplete)
 
         // Mi Campo: the same season with the general costs apart, never inside the recollection cost.
@@ -213,11 +214,11 @@ class AgriculturalYearContractTest {
         assertEquals(105_000L, overview.generalCosts.single().amountMinor)
         assertEquals(163_000L, overview.totalCosts.single().amountMinor)
         assertEquals(5_000_000L, overview.delivery.deliveredGrams)
-        // 1.630 € over 5.000 kg = 0,326 €/kg (58.000 cts → 0,116; 163.000 cts → 0,326). The season's
-        // exact ratio is asserted once #486 exposes it; until then only its two sides are pinned,
-        // so today's rounding to the cent is never made a contract here.
+        // 1.630 € over 5.000 kg = 0,326 €/kg; recollection 580 € = 0,116 €/kg — #486 exposes the
+        // season's ratio in thousandths, so it is asserted exactly, never rounded to the cent.
         assertEquals(0, BigDecimal("0.326").compareTo(ratio(overview.totalCosts.single().amountMinor!!, overview.delivery.deliveredGrams)))
-        assertEquals(0, BigDecimal("0.116").compareTo(ratio(overview.costs.single().amountMinor!!, overview.delivery.deliveredGrams)))
+        assertEquals(326L, overview.totalCostPerKgMilli)
+        assertEquals(116L, overview.costPerKgMilli)
 
         // Nothing counted twice: the posted ledger is exactly recollection + general costs.
         assertEquals(163_000L, all.filter { it.status == ExpenseStatus.POSTED }.sumOf { it.amountMinor })

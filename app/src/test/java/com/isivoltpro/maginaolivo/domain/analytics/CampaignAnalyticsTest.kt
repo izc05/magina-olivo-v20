@@ -24,10 +24,13 @@ class CampaignAnalyticsTest {
             val notebook = CampaignNotebook.project(current, emptyList(), emptyList(),
                 listOf(delivery(current, 3200000, day(24), "Coop", null)),
                 listOf(expense(current, minor, ExpenseStatus.POSTED).copy(currency = currency)))
-            val expected = java.math.BigDecimal.valueOf(minor).multiply(java.math.BigDecimal.valueOf(1000))
+            // #486: thousandths of the currency unit per kilo, whatever the currency's own decimals.
+            val expected = java.math.BigDecimal.valueOf(minor)
+                .movePointLeft(java.util.Currency.getInstance(currency).defaultFractionDigits)
+                .multiply(java.math.BigDecimal.valueOf(1_000_000))
                 .divide(java.math.BigDecimal.valueOf(3200000), 0, java.math.RoundingMode.HALF_UP).longValueExact()
-            assertEquals(expected, CampaignDashboard.of(notebook, day(24)).costPerKgMinor)
-            assertEquals(expected, CampaignComparison.of(listOf(notebook)).single().costPerKgMinor)
+            assertEquals(expected, CampaignDashboard.of(notebook, day(24)).costPerKgMilli)
+            assertEquals(expected, CampaignComparison.of(listOf(notebook)).single().costPerKgMilli)
         }
     }
 
@@ -35,9 +38,9 @@ class CampaignAnalyticsTest {
         val expense = expense(current, 1000, ExpenseStatus.POSTED).copy(currency = "ZZZ")
         val notebook = CampaignNotebook.project(current, emptyList(), emptyList(),
             listOf(delivery(current, 3200000, day(24), "Coop", null)), listOf(expense))
-        assertNull(CampaignDashboard.of(notebook, day(24)).costPerKgMinor)
-        assertNull(CampaignComparison.of(listOf(notebook)).single().costPerKgMinor)
-        assertNull(CampaignDashboard.of(notebook.copy(deliveries = emptyList()), day(24)).costPerKgMinor)
+        assertNull(CampaignDashboard.of(notebook, day(24)).costPerKgMilli)
+        assertNull(CampaignComparison.of(listOf(notebook)).single().costPerKgMilli)
+        assertNull(CampaignDashboard.of(notebook.copy(deliveries = emptyList()), day(24)).costPerKgMilli)
     }
     private val workspace = UUID.randomUUID()
     private val farm = UUID.randomUUID()
@@ -106,9 +109,9 @@ class CampaignAnalyticsTest {
         assertNull(rows[0].deliveredChangePercent)
         assertEquals(20, rows[1].deliveredChangePercent)
         // 3.600 € posted over 12.000 kg = 0,30 €/kg; the draft is never counted.
-        assertEquals(30L, rows[1].costPerKgMinor)
+        assertEquals(300L, rows[1].costPerKgMilli)
         // No posted cost last year: no cost per kilo, never 0 €.
-        assertNull(rows[0].costPerKgMinor)
+        assertNull(rows[0].costPerKgMilli)
         assertTrue(rows.all { it.yieldCoveragePercent == 100 })
     }
 
@@ -129,7 +132,7 @@ class CampaignAnalyticsTest {
         assertEquals(listOf("2024/25", "2025/26", "2026/27"), history.points.map { it.name })
         assertEquals(listOf(null, 4_000_000L, 2_000_000L), history.points.map { it.deliveredGrams })
         assertEquals(listOf(null, null, 2_100), history.points.map { it.yieldHundredths })
-        assertEquals(comparison.map { it.costPerKgMinor }, history.points.map { it.costPerKgMinor })
+        assertEquals(comparison.map { it.costPerKgMilli }, history.points.map { it.costPerKgMilli })
         assertEquals("EUR", history.costCurrency)
         assertTrue(history.otherCurrencyCampaigns.isEmpty())
     }
@@ -148,10 +151,10 @@ class CampaignAnalyticsTest {
         }
         val comparison = CampaignComparison.of(notebooks)
         assertEquals(listOf(true, false), comparison.map { it.costComplete })
-        assertEquals(20L, comparison.last().costPerKgMinor)
+        assertEquals(200L, comparison.last().costPerKgMilli)
         val history = CampaignHistory.of(comparison)
         assertEquals(listOf(false, true), history.points.map { it.costIncomplete })
-        assertEquals(20L, history.points.last().costPerKgMinor)
+        assertEquals(200L, history.points.last().costPerKgMilli)
     }
 
     @Test fun theCostSeriesNeverMixesCurrencies() {
@@ -163,7 +166,7 @@ class CampaignAnalyticsTest {
         )
         val history = CampaignHistory.of(CampaignComparison.of(notebooks))
         assertEquals("EUR", history.costCurrency)
-        assertNull(history.points.first().costPerKgMinor)
+        assertNull(history.points.first().costPerKgMilli)
         assertEquals(listOf("2025/26"), history.otherCurrencyCampaigns)
     }
 

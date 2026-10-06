@@ -231,12 +231,12 @@ class NotebookViewsTest {
         assertEquals(40_000L, dashboard.costs.single().postedMinor)
         assertEquals("EUR", dashboard.costs.single().currency)
         assertEquals(35_000L, dashboard.costs.single().calculatedLabourMinor)
-        // 400 € / 5.000 kg = 0,08 €/kg.
-        assertEquals(8L, dashboard.costPerKgMinor)
+        // 400 € / 5.000 kg = 0,080 €/kg (#486: thousandths per kilo).
+        assertEquals(80L, dashboard.costPerKgMilli)
 
         // Nothing weighed: no cost per kilo, never a division by zero or a made-up 0.
         val empty = CampaignDashboard.of(CampaignNotebook.project(campaign, emptyList(), emptyList(), emptyList(), listOf(diesel)), LocalDate.of(2026, 11, 21))
-        assertEquals(null, empty.costPerKgMinor)
+        assertEquals(null, empty.costPerKgMilli)
         assertEquals(null, empty.firstPesada)
         // #450: EUR + GBP — both ledgers visible, nothing converted, no global cost per kilo.
         val gbp = expense(30_000, ExpenseCategory.MACHINERY, day1).copy(currency = "GBP", origin = ExpenseOrigin.DAY_EQUIPMENT, harvestId = jornada.id)
@@ -248,7 +248,7 @@ class NotebookViewsTest {
         assertEquals(40_000L, mixed.costs.first { it.currency == "EUR" }.postedMinor)
         assertEquals(30_000L, mixed.costs.first { it.currency == "GBP" }.postedMinor)
         assertEquals(30_000L, mixed.costs.first { it.currency == "GBP" }.calculatedMachineryMinor)
-        assertEquals(null, mixed.costPerKgMinor)
+        assertEquals(null, mixed.costPerKgMilli)
         // Only GBP: GBP is shown, never an empty EUR total.
         val onlyGbp = CampaignDashboard.of(CampaignNotebook.project(campaign, emptyList(), listOf(jornada), pesadas, listOf(gbp), labour), LocalDate.of(2026, 11, 21))
         assertEquals(listOf("GBP"), onlyGbp.costs.map { it.currency })

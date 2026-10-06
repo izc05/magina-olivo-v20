@@ -7,8 +7,6 @@ import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger
 import com.isivoltpro.maginaolivo.domain.farm.Farm
-import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.LocalDate
 import java.util.UUID
 
@@ -49,7 +47,7 @@ data class FarmSeasonFigures(
     val archived: Boolean = false,
 ) {
     val yieldCoveragePercent: Int get() = delivery.coveragePercent(delivery.fatYield)
-    val costPerKgMinor: Long? get() = costPerKg(costs, delivery)
+    val costPerKgMilli: Long? get() = costPerKg(costs, delivery)
 }
 
 /**
@@ -76,7 +74,7 @@ data class FarmOverview(
     val costComplete: Boolean? = true,
 ) {
     val yieldCoveragePercent: Int get() = delivery.coveragePercent(delivery.fatYield)
-    val costPerKgMinor: Long? get() = costPerKg(costs, delivery)
+    val costPerKgMilli: Long? get() = costPerKg(costs, delivery)
 
     /** Recollection plus general costs, one total per currency, nothing converted. */
     val totalCosts: List<CurrencyTotal> get() = (costs + generalCosts).groupBy { it.currency }.toSortedMap()
@@ -86,7 +84,7 @@ data class FarmOverview(
         }
 
     /** Total cost over weighed kilos, only with one currency. */
-    val totalCostPerKgMinor: Long? get() = costPerKg(totalCosts, delivery)
+    val totalCostPerKgMilli: Long? get() = costPerKg(totalCosts, delivery)
 
     /** A Farm's share of the season's weighed kilos, in whole percent; null without kilos. */
     fun sharePercent(figures: FarmSeasonFigures): Int? =
@@ -185,10 +183,12 @@ private fun sum(values: List<Long?>): Long? = runCatching {
     values.filterNotNull().takeIf { it.isNotEmpty() }?.fold(0L) { total, value -> Math.addExact(total, value) }
 }.getOrNull()
 
-/** Minor units per kilo: total cost over total weighed kilos, only with one currency. */
+/**
+ * #486: thousandths of the currency unit per kilo (0,253 €/kg = 253): total cost over total
+ * weighed kilos, only with one currency. A ratio, never rounded to the currency's cents.
+ */
 private fun costPerKg(costs: List<CurrencyTotal>, delivery: DeliverySummary): Long? {
-    val cost = costs.singleOrNull()?.amountMinor ?: return null
-    if (delivery.deliveredGrams <= 0) return null
-    return BigDecimal.valueOf(cost).multiply(BigDecimal.valueOf(1000))
-        .divide(BigDecimal.valueOf(delivery.deliveredGrams), 0, RoundingMode.HALF_UP).longValueExact()
+    val total = costs.singleOrNull() ?: return null
+    val cost = total.amountMinor ?: return null
+    return com.isivoltpro.maginaolivo.domain.expense.CostPerKg.milli(cost, total.currency, delivery.deliveredGrams)
 }

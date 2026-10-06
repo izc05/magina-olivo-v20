@@ -29,12 +29,12 @@ Sin referencia catastral ni geometría: no se finge Catastro.
   **10 jornadas, 650 €**. Pagos: Ana 195 € (completo), Miguel 100 € (parcial), José pendiente, María 130 € (completo).
 - **Maquinaria** por día: tractor 85 €, vibradora 60 €, remolque 35 € → **540 €**.
 - **Otros gastos de recogida**: gasóleo 140 €, aceite/mantenimiento 35 €, transporte 75 € → **250 €**.
-- **Coste de recogida 1.440 €** · **coste recogida/kg ≈ 0,25 €/kg**.
+- **Coste de recogida 1.440 €** · **coste recogida/kg ≈ 0,253 €/kg** (#486: milésimas, no céntimos).
 
 ## Gastos generales fuera de campaña (temporada 2026/27)
 Poda 520 € · producto 180 € · abonado 320 € · gasóleo 90 € · riego/energía 75 € → **1.185 €**, sin campaña,
 nunca dentro del coste de recogida. El gasóleo general (02-10-2026) cae **dentro de las fechas de la campaña**
-2026/27 a propósito: es QA de #417 — pertenecer a la campaña solo por relación explícita, nunca por fecha. **Coste total 2.625 €** · **coste total/kg ≈ 0,46 €/kg**.
+2026/27 a propósito: es QA de #417 — pertenecer a la campaña solo por relación explícita, nunca por fecha. **Coste total 2.625 €** · **coste total/kg ≈ 0,461 €/kg**.
 
 ## Campaña histórica 2025/26 (cerrada 15-12-2025)
 3 pesadas (1.600 + 1.900 + 1.600 = **5.100 kg**; 19,50 / 20,40 / 19,60 %), 3 días, jornales 3 × 3 × 60 € = 540 €,

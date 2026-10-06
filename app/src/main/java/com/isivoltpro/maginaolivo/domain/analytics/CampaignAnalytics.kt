@@ -79,8 +79,8 @@ data class CampaignComparison(
     val costComplete: Boolean = true,
 ) {
     /** Minor units (cents) per delivered kilo. */
-    val costPerKgMinor: Long?
-        get() = canonicalCost?.costPerKgMinor
+    val costPerKgMilli: Long?
+        get() = canonicalCost?.costPerKgMilli
 
     companion object {
         /** Oldest first; each Campaign compared with the one before it. */

@@ -147,7 +147,7 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>, onSelectCamp
                         } ?: "Pesado: sin datos",
                         row.fatYield?.let { "rend. ${Percent.format(it.hundredths)} sobre el ${row.yieldCoveragePercent} %" } ?: "rend. sin datos",
                         if (row.costsByCurrency.isEmpty()) "coste/kg sin datos" else row.costsByCurrency.joinToString(" · ") { cost ->
-                            cost.costPerKgMinor?.let { "coste ${Money.format(it, cost.currency)}/kg" + if (row.costComplete) "" else " (incompleto)" }
+                            cost.costPerKgMilli?.let { "coste ${com.isivoltpro.maginaolivo.domain.expense.CostPerKg.format(it, cost.currency)}" + if (row.costComplete) "" else " (incompleto)" }
                                 ?: "coste/kg sin datos (${cost.currency})"
                         },
                     ).joinToString(" · "),
@@ -179,12 +179,12 @@ internal fun historyYieldLine(history: CampaignHistory): String =
         "${point.name}: " + (point.yieldHundredths?.let { "${Percent.format(it)} sobre el ${point.yieldCoveragePercent} %" } ?: "sin análisis")
     }
 
-/** «2025/26: sin datos · 2026/27: 0,25 €/kg», in the one currency of the series. */
+/** «2025/26: sin datos · 2026/27: 0,253 €/kg», in the one currency of the series. */
 internal fun historyCostLine(history: CampaignHistory): String {
     val currency = history.costCurrency
     val line = history.points.joinToString(" · ") { point ->
-        "${point.name}: " + (point.costPerKgMinor?.let { minor ->
-            if (currency != null) "${Money.format(minor, currency)}/kg" + if (point.costIncomplete) " (incompleto)" else "" else null
+        "${point.name}: " + (point.costPerKgMilli?.let { minor ->
+            if (currency != null) com.isivoltpro.maginaolivo.domain.expense.CostPerKg.format(minor, currency) + if (point.costIncomplete) " (incompleto)" else "" else null
         } ?: "sin datos")
     }
     return if (history.otherCurrencyCampaigns.isEmpty()) line
@@ -240,9 +240,9 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
     Text("Coste de recogida por kilo", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary)
     val costLine = historyCostLine(history)
     if (history.hasCost) {
-        val costs = points.mapNotNull { it.costPerKgMinor }
+        val costs = points.mapNotNull { it.costPerKgMilli }
         Canvas(Modifier.fillMaxWidth().height(80.dp).testTag("history-cost").semantics { contentDescription = costLine }) {
-            drawSeries(points.map { it.costPerKgMinor }, costs.min(), costs.max(), ink)
+            drawSeries(points.map { it.costPerKgMilli }, costs.min(), costs.max(), ink)
         }
     }
     Text(costLine, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-cost-summary"))

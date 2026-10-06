@@ -15,7 +15,7 @@ data class CampaignHistoryPoint(
     val yieldHundredths: Int?,
     val yieldCoveragePercent: Int,
     /** Cost per kilo in [CampaignHistory.costCurrency] only; another currency is a gap. */
-    val costPerKgMinor: Long?,
+    val costPerKgMilli: Long?,
     /** #449: the cost per kilo is only what is confirmed so far; said beside it, never hidden. */
     val costIncomplete: Boolean = false,
 )
@@ -33,7 +33,7 @@ data class CampaignHistory(
 ) {
     val hasKilos: Boolean get() = points.any { it.deliveredGrams != null }
     val hasYield: Boolean get() = points.any { it.yieldHundredths != null }
-    val hasCost: Boolean get() = points.any { it.costPerKgMinor != null }
+    val hasCost: Boolean get() = points.any { it.costPerKgMilli != null }
 
     companion object {
         fun of(rows: List<CampaignComparison>): CampaignHistory {
@@ -47,18 +47,18 @@ data class CampaignHistory(
                     legacyUnweighedGrams = row.legacyUnweighedGrams,
                     yieldHundredths = row.fatYield?.hundredths,
                     yieldCoveragePercent = row.yieldCoveragePercent,
-                    costPerKgMinor = row.singleCostPerKg()?.takeIf { row.costsByCurrency.single().currency == currency },
+                    costPerKgMilli = row.singleCostPerKg()?.takeIf { row.costsByCurrency.single().currency == currency },
                     costIncomplete = !row.costComplete,
                 )
             }
             val other = sorted.filter { row ->
-                row.costsByCurrency.any { it.costPerKgMinor != null } &&
+                row.costsByCurrency.any { it.costPerKgMilli != null } &&
                     (row.costsByCurrency.size > 1 || row.costsByCurrency.single().currency != currency)
             }.map { it.campaign.name }
             return CampaignHistory(points, currency, other)
         }
 
         /** A cost per kilo only when the campaign has exactly one currency. */
-        private fun CampaignComparison.singleCostPerKg(): Long? = costsByCurrency.singleOrNull()?.costPerKgMinor
+        private fun CampaignComparison.singleCostPerKg(): Long? = costsByCurrency.singleOrNull()?.costPerKgMilli
     }
 }

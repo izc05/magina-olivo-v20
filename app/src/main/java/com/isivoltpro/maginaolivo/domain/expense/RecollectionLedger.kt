@@ -1,8 +1,6 @@
 package com.isivoltpro.maginaolivo.domain.expense
 
 import com.isivoltpro.maginaolivo.domain.delivery.Delivery
-import java.math.RoundingMode
-import java.util.Currency
 import java.util.UUID
 
 /** Mutually exclusive recollection buckets. Operational prices and payments never add money. */
@@ -36,12 +34,8 @@ data class RecollectionCurrency(
             ?.fold(0L) { total, expense -> Math.addExact(total, expense.amountMinor) }
     }.getOrNull()
 
-    val costPerKgMinor: Long? get() = summary?.costPerKg?.let { cost ->
-        runCatching {
-            cost.movePointRight(Currency.getInstance(currency).defaultFractionDigits)
-                .setScale(0, RoundingMode.HALF_UP).longValueExact()
-        }.getOrNull()
-    }
+    /** #486: thousandths of the currency unit per kilo (0,253 €/kg = 253), never cents. */
+    val costPerKgMilli: Long? get() = summary?.costPerKg?.let(CostPerKg::milli)
 }
 
 object RecollectionLedger {

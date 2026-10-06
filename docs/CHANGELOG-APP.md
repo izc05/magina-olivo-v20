@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El coste/kg conserva las milésimas (#486).** El coste por kilo es una ratio, no un pago: ahora se
+  muestra con tres decimales (1.440 € / 5.700 kg = **0,253 €/kg**, antes 0,25) en el día, la campaña,
+  la comparativa, el histórico y Mi Campo. Los gastos siguen guardándose en céntimos; solo cambia cómo
+  se calcula y se lee la ratio.
 - **Corregir un trabajo ya no reconstruye sus parcelas (#440, #546).** Al editar cualquier dato de un
   trabajo, sus parcelas se conservan tal como se registraron: mismo nombre de entonces, misma
   superficie tratada y mismos identificadores. Una parcela archivada después ya no impide corregir una
