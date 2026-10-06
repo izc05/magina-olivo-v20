@@ -55,6 +55,56 @@ class FarmOverviewTest {
         assertEquals(overview.delivery.deliveredGrams, overview.farms.sumOf { it.delivery.deliveredGrams })
     }
 
+    /** #616: archiving is operational only; it cannot rewrite a season that already happened. */
+    @Test fun archivedFarmKeepsHistoricalKilosCostsAndGeneralExpenses() {
+        val archivedEstacas = estacas.copy(archivedAt = java.time.Instant.parse("2026-10-06T12:00:00Z"))
+        val deliveries = listOf(
+            delivery(estacasNow, 4_000_000, 2_000),
+            delivery(cerroNow, 6_000_000, 2_000),
+        )
+        val general = Expense(
+            id = UUID.randomUUID(),
+            workspaceId = workspace,
+            expenseDate = LocalDate.of(2027, 2, 10),
+            concept = "Poda histórica",
+            category = ExpenseCategory.LABOR,
+            amountMinor = 12_000,
+            currency = "EUR",
+            status = ExpenseStatus.POSTED,
+            origin = ExpenseOrigin.MANUAL,
+            farmId = estacas.id,
+        )
+        val expenses = listOf(cost(estacasNow, 40_000), cost(cerroNow, 60_000), general)
+
+        val overview = FarmOverview.of(
+            "2026/27",
+            listOf(archivedEstacas, cerro),
+            listOf(estacasNow, cerroNow),
+            deliveries,
+            expenses,
+        )
+
+        assertEquals(10_000_000L, overview.delivery.deliveredGrams)
+        assertEquals(100_000L, overview.costs.single().amountMinor)
+        assertEquals(12_000L, overview.generalCosts.single().amountMinor)
+        assertEquals(true, overview.farms.first { it.farmId == estacas.id }.archived)
+        assertEquals(false, overview.farms.first { it.farmId == cerro.id }.archived)
+        assertEquals(emptyList<String>(), overview.farmsWithoutCampaign)
+    }
+
+    @Test fun archivedFarmWithoutCurrentCampaignIsNotReportedAsMissingOperationalCampaign() {
+        val archived = llanos.copy(archivedAt = java.time.Instant.parse("2026-10-06T12:00:00Z"))
+        val overview = FarmOverview.of(
+            "2026/27",
+            listOf(estacas, archived),
+            listOf(estacasNow),
+            listOf(delivery(estacasNow, 1_000_000, null)),
+            emptyList(),
+        )
+        assertEquals(emptyList<String>(), overview.farmsWithoutCampaign)
+        assertEquals(listOf("Estacas"), overview.farms.map { it.farmName })
+    }
+
     /** #449: an incomplete campaign marks its Farm and the season, never another Farm or season. */
     @Test fun anIncompleteCampaignMarksItsFarmAndSeasonOnly() {
         val deliveries = listOf(delivery(estacasNow, 1_000_000, null), delivery(cerroNow, 1_000_000, null))

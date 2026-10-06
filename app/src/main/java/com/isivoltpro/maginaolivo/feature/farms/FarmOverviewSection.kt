@@ -154,7 +154,7 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
         if (byFarm) {
             overview.farms.forEach { farm ->
                 MoCompactListItem(
-                    title = farm.farmName,
+                    title = if (farm.archived) "${farm.farmName} · Archivada" else farm.farmName,
                     subtitle = overviewFarmLine(overview, farm),
                     icon = MoIcons.Tree,
                     onClick = { onFarmSelected(farm.farmId) },

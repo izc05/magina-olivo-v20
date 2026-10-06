@@ -45,6 +45,8 @@ data class FarmSeasonFigures(
     val costs: List<CurrencyTotal>,
     /** #449: false while a campaign of this Farm in the season has unconfirmed costs; null while unknown. */
     val costComplete: Boolean? = true,
+    /** #616: historical rows can belong to a Farm no longer operational today. */
+    val archived: Boolean = false,
 ) {
     val yieldCoveragePercent: Int get() = delivery.coveragePercent(delivery.fatYield)
     val costPerKgMinor: Long? get() = costPerKg(costs, delivery)
@@ -107,15 +109,25 @@ data class FarmOverview(
                 if (own.isEmpty()) return@mapNotNull null
                 val ids = own.map { it.id }.toSet()
                 val weighed = deliveries.filter { it.campaignId in ids }
-                FarmSeasonFigures(farm.id, seasonName(farm, own), own.size, DeliverySummary.of(weighed), totals(ids, expenses, weighed),
-                    costComplete = incompleteCampaigns?.let { pending -> ids.none { it in pending } })
+                FarmSeasonFigures(
+                    farm.id,
+                    seasonName(farm, own),
+                    own.size,
+                    DeliverySummary.of(weighed),
+                    totals(ids, expenses, weighed),
+                    costComplete = incompleteCampaigns?.let { pending -> ids.none { it in pending } },
+                    archived = farm.archivedAt != null,
+                )
             }
             val ids = inSeason.filter { campaign -> farms.any { it.id == campaign.farmId } }.map { it.id }.toSet()
             val weighed = deliveries.filter { it.campaignId in ids }
             return FarmOverview(
                 season = season,
                 farms = figures.sortedByDescending { it.delivery.deliveredGrams },
-                farmsWithoutCampaign = farms.filter { farm -> figures.none { it.farmId == farm.id } }.map { it.name },
+                // Archived Farms are historical participants, not missing current work.
+                farmsWithoutCampaign = farms.filter { farm ->
+                    farm.archivedAt == null && figures.none { it.farmId == farm.id }
+                }.map { it.name },
                 delivery = DeliverySummary.of(weighed),
                 costs = totals(ids, expenses, weighed),
                 generalCosts = general(season, farms, expenses),
