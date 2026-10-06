@@ -1,6 +1,5 @@
 package com.isivoltpro.maginaolivo.feature.expenses
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 
 import androidx.compose.foundation.layout.WindowInsets
 import android.content.ActivityNotFoundException
@@ -133,8 +132,7 @@ fun ExpensesRoute(
     val allState by viewModel.state.collectAsStateWithLifecycle()
     val state = if (presetCampaignId == null) allState else {
         val rows = allState.expenses.filter { it.campaignId == presetCampaignId }
-        allState.copy(expenses = rows, summary = ExpenseSummary.of(rows),
-            monthTotalMinor = ExpenseSummary.of(rows.filter { java.time.YearMonth.from(it.expenseDate) == java.time.YearMonth.from(clock.today(ZoneId.systemDefault())) }).totalMinor)
+        allState.copy(expenses = rows)
     }
     LaunchedEffect(state.savedExpenseToOpen) {
         state.savedExpenseToOpen?.let { id ->
@@ -232,16 +230,21 @@ fun ExpensesScreen(
                 MoKpiMetric("Este mes", month.moneyLabel(), Modifier.fillMaxWidth(), icon = MoIcons.Euro,
                     kind = MoKpiKind.TOTAL, supportingText = MONTH_FORMAT.format(today))
             } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MoSpacing.sm)) {
+                // #450: one total per currency, never EUR standing for all; nothing converted.
+                val ledger = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(state.expenses)
+                val month = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(
+                    state.expenses.filter { java.time.YearMonth.from(it.expenseDate) == java.time.YearMonth.from(today) },
+                )
                 MoMetricCard(
                     "Gastos confirmados",
-                    Money.format(state.summary.totalMinor),
+                    ledger.moneyLabel(),
                     Modifier.weight(1f).testTag("expenses-total"),
-                    supportingText = "${state.summary.postedCount} apuntes",
+                    supportingText = "${ledger.sumOf { it.posted.size }} apuntes",
                 )
                 MoMetricCard(
                     "Este mes",
-                    Money.format(state.monthTotalMinor),
-                    Modifier.weight(1f),
+                    month.moneyLabel(),
+                    Modifier.weight(1f).testTag("expenses-month"),
                     supportingText = MONTH_FORMAT.format(today),
                 )
             }
@@ -269,10 +272,20 @@ fun ExpensesScreen(
                 drafts.forEach { expense -> ExpenseRow(expense) { onExpenseSelected(expense.id) } }
             }
 
-            if (presetCampaignId == null && state.summary.byCategory.isNotEmpty()) {
+            val byCurrency = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(state.expenses)
+            if (presetCampaignId == null && byCurrency.isNotEmpty()) {
                 MoSectionHeader("Categorías")
-                state.summary.byCategory.entries.sortedByDescending { it.value }.forEach { (category, amount) ->
-                    CategoryRow(category.label(), amount, state.summary.totalMinor)
+                // #450: shares only within one currency; with several, each currency has its own list.
+                byCurrency.forEach { ledger ->
+                    if (byCurrency.size > 1) {
+                        Text("En ${ledger.currency}", style = MaterialTheme.typography.labelLarge, color = MoTextSecondary,
+                            modifier = Modifier.testTag("expenses-categories-${ledger.currency}"))
+                    }
+                    val total = ledger.amount() ?: 0L
+                    ledger.posted.groupBy { it.category }.mapValues { (_, rows) -> rows.sumOf { it.amountMinor } }
+                        .entries.sortedByDescending { it.value }.forEach { (category, amount) ->
+                            CategoryRow(category.label(), amount, total, ledger.currency)
+                        }
                 }
             }
 
@@ -444,7 +457,7 @@ internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
 }
 
 @Composable
-private fun CategoryRow(label: String, amountMinor: Long, totalMinor: Long) {
+private fun CategoryRow(label: String, amountMinor: Long, totalMinor: Long, currency: String) {
     val share = if (totalMinor > 0) (amountMinor * 100 / totalMinor) else 0
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -460,7 +473,7 @@ private fun CategoryRow(label: String, amountMinor: Long, totalMinor: Long) {
                 Text(label, style = MaterialTheme.typography.titleMedium, color = MoOliveDark)
                 Text("$share %", style = MaterialTheme.typography.labelMedium, color = MoTextSecondary)
             }
-            Text(Money.format(amountMinor), style = MaterialTheme.typography.titleMedium, color = MoInk)
+            Text(Money.format(amountMinor, currency), style = MaterialTheme.typography.titleMedium, color = MoInk)
         }
     }
 }

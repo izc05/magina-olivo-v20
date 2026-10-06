@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Gastos y días de recolección ya no ocultan otras monedas (#450, gastos).** La pantalla de Gastos
+  muestra «Gastos confirmados» y «Este mes» con un total por moneda, y las categorías por moneda (los
+  porcentajes solo dentro de cada una). El coste de un día de recolección guarda un total por moneda y
+  no inventa un total único cuando hay varias. Nada se convierte.
 - **Una máquina archivada sigue en los días en que trabajó (#446).** Al editar la maquinaria de un día,
   la máquina archivada aparece como «Fendt 209 · Archivada» con su tipo, cantidad y precio de entonces,
   y se conserva al guardar (o se quita si el agricultor lo decide). En un día nuevo no se puede añadir.
