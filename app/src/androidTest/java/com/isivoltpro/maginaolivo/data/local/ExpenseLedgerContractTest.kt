@@ -1024,7 +1024,7 @@ class ExpenseLedgerContractTest {
         expenses = OfflineFirstExpenseRepository(db, workspaces, FixedClock(now), RandomIds, TestDispatchers)
         activities = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers)
         organizations = OfflineFirstOrganizationRepository(db, workspaces, FixedClock(now), RandomIds, TestDispatchers)
-        attachments = OfflineFirstAttachmentRepository(db, AndroidAttachmentFileStore(context), FixedClock(now), RandomIds, TestDispatchers)
+        attachments = OfflineFirstAttachmentRepository(db, AndroidAttachmentFileStore(context), workspaces, FixedClock(now), RandomIds, TestDispatchers)
         documents = OfflineFirstDocumentOcrRepository(
             db, attachments, workspaces, engine, JsonProposalCodec(), FixedClock(now), RandomIds, TestDispatchers,
         )

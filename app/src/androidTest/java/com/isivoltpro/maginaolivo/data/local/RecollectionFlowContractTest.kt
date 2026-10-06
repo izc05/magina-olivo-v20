@@ -194,7 +194,7 @@ class RecollectionFlowContractTest {
         harvests = OfflineFirstHarvestRepository(db, clock, RandomIds, TestDispatchers) { ZoneOffset.UTC }
         labour = OfflineFirstLabourRepository(db, workspaces, clock, RandomIds, TestDispatchers)
         expenses = OfflineFirstExpenseRepository(db, workspaces, clock, RandomIds, TestDispatchers)
-        attachments = OfflineFirstAttachmentRepository(db, AndroidAttachmentFileStore(context), clock, RandomIds, TestDispatchers)
+        attachments = OfflineFirstAttachmentRepository(db, AndroidAttachmentFileStore(context), workspaces, clock, RandomIds, TestDispatchers)
     }
 
     private suspend fun seed() {

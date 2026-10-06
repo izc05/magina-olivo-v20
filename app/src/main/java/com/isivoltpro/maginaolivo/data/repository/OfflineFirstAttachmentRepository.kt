@@ -10,7 +10,9 @@ import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.local.entity.DocumentEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
+import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
+import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.attachment.Attachment
@@ -19,9 +21,12 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentRepository
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentUploadState
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -36,29 +41,54 @@ import kotlinx.coroutines.withContext
 class OfflineFirstAttachmentRepository(
     private val database: MaginaOlivoDatabase,
     private val fileStore: AttachmentFileStore,
+    private val workspaceRepository: WorkspaceRepository,
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
 ) : AttachmentRepository {
-    override fun observeForOwner(owner: AttachmentOwner): Flow<List<Attachment>> =
-        database.documentDao()
-            .observeForOwner(owner.type.name, owner.id)
-            .map { rows -> rows.mapNotNull { it.toDomain() } }
-            .flowOn(dispatchers.io)
+    override fun observeForOwner(owner: AttachmentOwner): Flow<List<Attachment>> = flow {
+        val activeWorkspace = activeWorkspaceIdOrNull()
+        // Reading historical attachments must not depend on the owner's live/archive state.
+        // Scope by immutable workspace identity only; attach() remains the place that rejects
+        // an archived owner.
+        val ownerWorkspace = ownerWorkspaceId(owner)
+        if (activeWorkspace == null || ownerWorkspace != activeWorkspace) {
+            emit(emptyList())
+        } else {
+            emitAll(
+                database.documentDao()
+                    .observeForOwner(owner.type.name, owner.id)
+                    .map { rows -> rows.filter { it.workspaceId == activeWorkspace }.mapNotNull { it.toDomain() } },
+            )
+        }
+    }.flowOn(dispatchers.io)
 
-    override fun observe(id: UUID): Flow<Attachment?> =
-        database.documentDao()
-            .observeById(id)
-            .map { it?.toDomain() }
-            .flowOn(dispatchers.io)
+    override fun observe(id: UUID): Flow<Attachment?> = flow {
+        val activeWorkspace = activeWorkspaceIdOrNull()
+        if (activeWorkspace == null) {
+            emit(null)
+        } else {
+            emitAll(
+                database.documentDao()
+                    .observeById(id)
+                    .map { row -> row?.takeIf { it.workspaceId == activeWorkspace }?.toDomain() },
+            )
+        }
+    }.flowOn(dispatchers.io)
 
     override suspend fun attach(
         owner: AttachmentOwner,
         sourceUri: String,
     ): AppResult<UUID> = withContext(dispatchers.io) {
+        val activeWorkspace = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return@withContext workspace
+            is AppResult.Success -> workspace.value
+        }
         when (val resolved = resolveOwner(owner)) {
             is AppResult.Failure -> return@withContext resolved
-            is AppResult.Success -> Unit
+            is AppResult.Success -> if (resolved.value != activeWorkspace) {
+                return@withContext AppResult.Failure(AppError.Validation("owner", "context_mismatch"))
+            }
         }
         val attachmentId = idGenerator.newId()
         val stored = when (val copied = copyIn(sourceUri, attachmentId) { AttachmentKind.fromMimeType(it) != null }) {
@@ -73,6 +103,9 @@ class OfflineFirstAttachmentRepository(
                 val workspaceId = when (val current = resolveOwner(owner)) {
                     is AppResult.Failure -> return@withTransaction current
                     is AppResult.Success -> current.value
+                }
+                if (workspaceId != activeWorkspace) {
+                    return@withTransaction AppResult.Failure(AppError.Validation("owner", "context_mismatch"))
                 }
                 database.documentDao().insert(
                     stored.toEntity(attachmentId, workspaceId, owner, kind, now),
@@ -93,12 +126,19 @@ class OfflineFirstAttachmentRepository(
     }
 
     override suspend fun remove(id: UUID): AppResult<Unit> = withContext(dispatchers.io) {
+        val activeWorkspace = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return@withContext workspace
+            is AppResult.Success -> workspace.value
+        }
         val now = clock.nowInstant()
         var released: DocumentEntity? = null
         val result = runCatching {
             database.withTransaction {
                 val document = database.documentDao().findById(id)
                     ?: return@withTransaction AppResult.Failure(AppError.NotFound("attachment"))
+                if (document.workspaceId != activeWorkspace) {
+                    return@withTransaction AppResult.Failure(AppError.Validation("attachment", "context_mismatch"))
+                }
                 if (document.metadata.deletedAt != null) return@withTransaction AppResult.Success(Unit)
 
                 database.documentDao().update(
@@ -147,6 +187,7 @@ class OfflineFirstAttachmentRepository(
     }
 
     override suspend fun recordUploadFailure(
+        workspaceId: UUID,
         id: UUID,
         errorCode: String,
         errorMessage: String?,
@@ -156,6 +197,11 @@ class OfflineFirstAttachmentRepository(
             database.withTransaction {
                 val document = database.documentDao().findById(id)
                     ?: return@withTransaction AppResult.Failure(AppError.NotFound("attachment"))
+                // Background sync is intentionally workspace-scoped rather than tied to whichever
+                // Workspace the UI currently has active.
+                if (document.workspaceId != workspaceId) {
+                    return@withTransaction AppResult.Failure(AppError.Validation("attachment", "context_mismatch"))
+                }
                 if (document.metadata.deletedAt != null) {
                     return@withTransaction AppResult.Failure(AppError.Conflict("attachment"))
                 }
@@ -202,29 +248,49 @@ class OfflineFirstAttachmentRepository(
         )
     }
 
+    private suspend fun activeWorkspaceIdOrNull(): UUID? =
+        when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Success -> workspace.value
+            is AppResult.Failure -> null
+        }
+
+    private suspend fun ownerWorkspaceId(owner: AttachmentOwner): UUID? =
+        when (owner.type) {
+            AttachmentOwnerType.FARM -> database.farmDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.PARCEL -> database.parcelDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.CAMPAIGN -> database.campaignDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.ACTIVITY -> database.activityDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.EXPENSE -> database.expenseDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.HARVEST -> database.harvestDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.DELIVERY -> database.deliveryDao().findById(owner.id)?.workspaceId
+            AttachmentOwnerType.DOCUMENT -> database.documentOcrDao().findById(owner.id)?.workspaceId
+        }
+
     private suspend fun resolveOwner(owner: AttachmentOwner): AppResult<UUID> {
-        val (workspaceId, deletedAt) = when (owner.type) {
+        data class OwnerState(val workspaceId: UUID, val deletedAt: Instant?, val archived: Boolean)
+
+        val state = when (owner.type) {
             AttachmentOwnerType.FARM -> database.farmDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, it.status == FarmStatus.ARCHIVED) }
             AttachmentOwnerType.PARCEL -> database.parcelDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, it.status == RecordStatus.ARCHIVED) }
             AttachmentOwnerType.CAMPAIGN -> database.campaignDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
             AttachmentOwnerType.ACTIVITY -> database.activityDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
             AttachmentOwnerType.EXPENSE -> database.expenseDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
             AttachmentOwnerType.HARVEST -> database.harvestDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
             AttachmentOwnerType.DELIVERY -> database.deliveryDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
             AttachmentOwnerType.DOCUMENT -> database.documentOcrDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
         } ?: return AppResult.Failure(AppError.NotFound(owner.type.name.lowercase()))
-        if (deletedAt != null) {
+        if (state.deletedAt != null || state.archived) {
             return AppResult.Failure(AppError.Validation(field = "owner", code = "archived_owner"))
         }
-        return AppResult.Success(workspaceId)
+        return AppResult.Success(state.workspaceId)
     }
 
     private fun copyIn(

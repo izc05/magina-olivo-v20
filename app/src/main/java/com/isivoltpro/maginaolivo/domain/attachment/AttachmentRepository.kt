@@ -97,10 +97,12 @@ interface AttachmentRepository {
     suspend fun remove(id: UUID): AppResult<Unit>
 
     /**
-     * What a future uploader reports when an attempt fails. It records the failure and
-     * keeps the local reference and the local file exactly as they were.
+     * What a future uploader reports when an attempt fails. Workers are not a UI session, so the
+     * workspace being processed is explicit and is verified against the Document row.
+     * The local reference and local file stay exactly as they were.
      */
     suspend fun recordUploadFailure(
+        workspaceId: UUID,
         id: UUID,
         errorCode: String,
         errorMessage: String? = null,

@@ -6,10 +6,12 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
@@ -18,6 +20,7 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmCoverRepositor
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 import com.isivoltpro.maginaolivo.data.repository.AndroidAttachmentFileStore
 import com.isivoltpro.maginaolivo.domain.farm.NewFarm
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.time.Instant
@@ -89,9 +92,11 @@ class OfflineFirstFarmCoverRepositoryTest {
                 AppResult.Success(farmId),
                 farmRepository.create(NewFarm(workspaceId, "La Solana")),
             )
+            val workspaces = fixedWorkspaceRepository(workspaceId)
             val coverRepository = OfflineFirstFarmCoverRepository(
                 database = database,
                 fileStore = AndroidAttachmentFileStore(context),
+                workspaceRepository = workspaces,
                 clock = FixedClock(now.plusSeconds(30)),
                 idGenerator = FixedIds(
                     documentId,
@@ -139,6 +144,72 @@ class OfflineFirstFarmCoverRepositoryTest {
             reopened.close()
         }
     }
+
+    @Test
+    fun farmCoverCannotBeReadOrReplacedAcrossWorkspaces() = runBlocking {
+        val workspaceA = uuid("10000000-0000-0000-0000-0000000000a1")
+        val workspaceB = uuid("10000000-0000-0000-0000-0000000000b1")
+        val farmB = uuid("20000000-0000-0000-0000-0000000000b1")
+        val documentB = uuid("40000000-0000-0000-0000-0000000000b1")
+        val now = Instant.parse("2026-09-20T08:00:00Z")
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            val meta = LocalMetadata(now, now)
+            database.workspaceDao().upsert(
+                WorkspaceEntity(workspaceA, "A", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
+            )
+            database.workspaceDao().upsert(
+                WorkspaceEntity(workspaceB, "B", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
+            )
+            database.farmDao().upsert(FarmEntity(farmB, workspaceB, "Finca B", metadata = meta))
+
+            val source = File(sources.apply { mkdirs() }, "b.jpg").apply { writeBytes(jpeg()) }
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.attachments", source).toString()
+            val repoB = OfflineFirstFarmCoverRepository(
+                database,
+                AndroidAttachmentFileStore(context),
+                fixedWorkspaceRepository(workspaceB),
+                FixedClock(now),
+                FixedIds(
+                    documentB,
+                    uuid("50000000-0000-0000-0000-0000000000b1"),
+                    uuid("50000000-0000-0000-0000-0000000000b2"),
+                ),
+                TestDispatchers,
+            )
+            assertEquals(AppResult.Success(Unit), repoB.attachCover(farmB, uri))
+            val originalUri = database.documentDao().observeFarmCoverUri(farmB).first()!!
+            assertTrue(File(Uri.parse(originalUri).path!!).exists())
+
+            val repoA = OfflineFirstFarmCoverRepository(
+                database,
+                AndroidAttachmentFileStore(context),
+                fixedWorkspaceRepository(workspaceA),
+                FixedClock(now),
+                FixedIds(uuid("40000000-0000-0000-0000-0000000000a1")),
+                TestDispatchers,
+            )
+            assertEquals(null, repoA.observeCoverUri(farmB).first())
+
+            val foreignSource = File(sources, "a-tries-b.jpg").apply { writeBytes(jpeg()) }
+            val foreignUri = FileProvider.getUriForFile(context, "${context.packageName}.attachments", foreignSource).toString()
+            val refused = repoA.attachCover(farmB, foreignUri)
+            assertEquals(
+                AppError.Validation("farm", "context_mismatch"),
+                (refused as AppResult.Failure).error,
+            )
+            assertEquals(documentB, database.farmDao().findById(farmB)!!.coverDocumentId)
+            assertEquals(originalUri, database.documentDao().observeFarmCoverUri(farmB).first())
+            assertTrue(File(Uri.parse(originalUri).path!!).exists())
+        } finally {
+            database.close()
+        }
+    }
+
+    private fun fixedWorkspaceRepository(workspaceId: UUID): WorkspaceRepository =
+        object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
+        }
 
     private class FixedIds(vararg ids: UUID) : IdGenerator {
         private val values = ArrayDeque(ids.toList())

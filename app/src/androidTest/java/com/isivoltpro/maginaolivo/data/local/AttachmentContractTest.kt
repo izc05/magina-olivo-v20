@@ -32,6 +32,7 @@ import com.isivoltpro.maginaolivo.domain.attachment.AttachmentKind
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentRepository
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentUploadState
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -167,8 +168,8 @@ class AttachmentContractTest {
         val id = attached(parcel, source("poda.jpg", bytes))
         val before = repository.observe(id).first()!!
 
-        assertOk(repository.recordUploadFailure(id, "network_timeout", "Tiempo de espera agotado"))
-        assertOk(repository.recordUploadFailure(id, "http_503"))
+        assertOk(repository.recordUploadFailure(workspaceId, id, "network_timeout", "Tiempo de espera agotado"))
+        assertOk(repository.recordUploadFailure(workspaceId, id, "http_503"))
 
         val after = repository.observe(id).first()!!
         assertEquals(before.localUri, after.localUri)
@@ -226,6 +227,20 @@ class AttachmentContractTest {
         assertTrue(
             repository.observeForOwner(AttachmentOwner(AttachmentOwnerType.PARCEL, parcelB)).first().isEmpty(),
         )
+    }
+
+    @Test
+    fun archivedOwnerKeepsItsHistoricalAttachmentsReadableInsideTheSameWorkspace() = runBlocking {
+        val id = attached(parcel, source("historica.jpg", jpeg()))
+        val row = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(
+            row.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED),
+        )
+
+        assertEquals(id, repository.observeForOwner(parcel).first().single().id)
+        assertEquals(id, repository.observe(id).first()!!.id)
+        // Archive blocks adding another file; it does not erase or hide the historical one.
+        assertValidation("archived_owner", repository.attach(parcel, source("nueva.jpg", jpeg())))
     }
 
     // -------------------------------------------------------------- rejection
@@ -287,7 +302,14 @@ class AttachmentContractTest {
 
     @Test
     fun theFarmCoverIsACopiedFarmPhotoAndRemovingItClearsTheCover() = runBlocking {
-        val covers = OfflineFirstFarmCoverRepository(db, AndroidAttachmentFileStore(context), FixedClock(now), RandomIds, TestDispatchers)
+        val covers = OfflineFirstFarmCoverRepository(
+            db,
+            AndroidAttachmentFileStore(context),
+            fixedWorkspaceRepository(workspaceId),
+            FixedClock(now),
+            RandomIds,
+            TestDispatchers,
+        )
         val bytes = jpeg()
         val sourceFile = File(sourceDirectory, "portada.jpg")
 
@@ -311,7 +333,14 @@ class AttachmentContractTest {
 
     @Test
     fun aCoverMustBeAnImage() = runBlocking {
-        val covers = OfflineFirstFarmCoverRepository(db, AndroidAttachmentFileStore(context), FixedClock(now), RandomIds, TestDispatchers)
+        val covers = OfflineFirstFarmCoverRepository(
+            db,
+            AndroidAttachmentFileStore(context),
+            fixedWorkspaceRepository(workspaceId),
+            FixedClock(now),
+            RandomIds,
+            TestDispatchers,
+        )
 
         val result = covers.attachCover(farmId, source("plano.pdf", pdf()))
 
@@ -320,10 +349,80 @@ class AttachmentContractTest {
         assertTrue(storedFiles().isEmpty())
     }
 
+    @Test
+    fun attachmentOperationsCannotCrossTheActiveWorkspace() = runBlocking {
+        val otherWorkspace = UUID.randomUUID()
+        val otherFarm = UUID.randomUUID()
+        val meta = LocalMetadata(now, now)
+        db.workspaceDao().upsert(
+            WorkspaceEntity(otherWorkspace, "Otro olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
+        )
+        db.farmDao().upsert(FarmEntity(otherFarm, otherWorkspace, "Finca ajena", metadata = meta))
+        val foreignOwner = AttachmentOwner(AttachmentOwnerType.FARM, otherFarm)
+
+        // Reject before copying: a caller holding a foreign UUID cannot leave a file behind.
+        val source = source("ajena.jpg", jpeg())
+        val filesBefore = storedFiles().map { it.name }.toSet()
+        val refusedAttach = repository.attach(foreignOwner, source)
+        assertEquals(
+            AppError.Validation("owner", "context_mismatch"),
+            (refusedAttach as AppResult.Failure).error,
+        )
+        assertEquals(filesBefore, storedFiles().map { it.name }.toSet())
+
+        // Create one legitimate foreign attachment while B is explicitly active.
+        val foreignRepository = repositoryFor(db, otherWorkspace)
+        val foreignId = when (val attached = foreignRepository.attach(foreignOwner, source("b.jpg", jpeg()))) {
+            is AppResult.Success -> attached.value
+            is AppResult.Failure -> throw AssertionError("Foreign setup failed: ${attached.error}")
+        }
+        val row = db.documentDao().findById(foreignId)!!
+        assertTrue(fileOf(row.localUri).exists())
+
+        // A cannot see, delete or mutate upload state of B.
+        assertNull(repository.observe(foreignId).first())
+        assertTrue(repository.observeForOwner(foreignOwner).first().isEmpty())
+
+        val refusedRemove = repository.remove(foreignId)
+        assertEquals(
+            AppError.Validation("attachment", "context_mismatch"),
+            (refusedRemove as AppResult.Failure).error,
+        )
+        assertNull(db.documentDao().findById(foreignId)!!.metadata.deletedAt)
+        assertTrue(fileOf(row.localUri).exists())
+
+        val refusedFailure = repository.recordUploadFailure(workspaceId, foreignId, "network", "offline")
+        assertEquals(
+            AppError.Validation("attachment", "context_mismatch"),
+            (refusedFailure as AppResult.Failure).error,
+        )
+        assertEquals(row.uploadStatus, db.documentDao().findById(foreignId)!!.uploadStatus)
+
+        // A background worker can process B explicitly without pretending the UI switched to B.
+        assertOk(repository.recordUploadFailure(otherWorkspace, foreignId, "network", "offline"))
+        assertEquals(AttachmentUploadState.FAILED.name, db.documentDao().findById(foreignId)!!.uploadStatus)
+        assertTrue(fileOf(row.localUri).exists())
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private fun newRepository(database: MaginaOlivoDatabase): AttachmentRepository =
-        OfflineFirstAttachmentRepository(database, AndroidAttachmentFileStore(context), FixedClock(now), RandomIds, TestDispatchers)
+        repositoryFor(database, workspaceId)
+
+    private fun repositoryFor(database: MaginaOlivoDatabase, activeWorkspaceId: UUID): AttachmentRepository =
+        OfflineFirstAttachmentRepository(
+            database,
+            AndroidAttachmentFileStore(context),
+            fixedWorkspaceRepository(activeWorkspaceId),
+            FixedClock(now),
+            RandomIds,
+            TestDispatchers,
+        )
+
+    private fun fixedWorkspaceRepository(activeWorkspaceId: UUID): WorkspaceRepository =
+        object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(activeWorkspaceId)
+        }
 
     private suspend fun attached(
         owner: AttachmentOwner,
