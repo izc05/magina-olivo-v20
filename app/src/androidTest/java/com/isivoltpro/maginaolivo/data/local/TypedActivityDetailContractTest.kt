@@ -206,6 +206,36 @@ class TypedActivityDetailContractTest {
         assertEquals(90, rows.irrigation?.durationMinutes)
     }
 
+    /** #453: editing the same type never erases what its form does not carry. */
+    @Test
+    fun editingTheSameTypeKeepsWhatItsFormDoesNotCarry() = runBlocking {
+        val stored = IrrigationPrice(
+            basis = IrrigationPricingBasis.PER_M3, priceDate = LocalDate.parse("2026-03-01"),
+            unitPriceMinor = 12, quantity = 240.0, estimatedAmountMinor = 2880, currency = "USD", notes = "Factura marzo",
+        )
+        val id = create(ActivityType.IRRIGATION, ActivityDetail.Irrigation(180, 240.0, "Sector 3", "Goteo", stored))
+        // The form rebuilds the tariff from its own fields only: no currency, notes or Gasto link.
+        val fromForm = IrrigationPrice(basis = IrrigationPricingBasis.PER_M3, priceDate = LocalDate.parse("2026-03-01"),
+            unitPriceMinor = 12, quantity = 300.0, estimatedAmountMinor = 3600)
+        assertOk(
+            repository.update(
+                id,
+                ActivityChanges(
+                    type = ActivityType.IRRIGATION,
+                    activityDate = date,
+                    description = "Riego corregido",
+                    parcelIds = setOf(parcelA),
+                    detail = ActivityDetail.Irrigation(200, 300.0, "Sector 3", "Goteo", fromForm),
+                ),
+            ),
+        )
+        val price = db.activityDao().findWithTargets(id)!!.irrigationPrice!!
+        assertEquals("USD", price.currency)
+        assertEquals("Factura marzo", price.notes)
+        assertEquals(3600L, price.estimatedAmountMinor)
+        assertEquals(0, db.expenseCount())
+    }
+
     @Test
     fun negativeAgronomicNumbersAreRejected() = runBlocking {
         assertValidation(

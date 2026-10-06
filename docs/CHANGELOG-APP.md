@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Editar un trabajo ya no borra datos que el formulario no muestra (#453).** Al corregir un riego,
+  su tarifa histórica conserva su moneda, sus notas y su enlace con el gasto real (antes volvía a
+  euros y perdía el enlace). Una incidencia resuelta conserva cuándo se resolvió. Cambiar el tipo
+  de trabajo sigue sustituyendo los detalles anteriores.
 - **Cerrar una campaña con costes sin confirmar avisa (#449).** Al confirmar el cierre, si quedan
   jornales o maquinaria sin precio o gastos pendientes, la app lo dice: «Hay costes sin confirmar.
   Puedes cerrar la campaña, pero el coste/kg quedará marcado como incompleto.» El cierre sigue
