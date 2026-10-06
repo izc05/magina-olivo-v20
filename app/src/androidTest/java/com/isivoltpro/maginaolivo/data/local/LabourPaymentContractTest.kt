@@ -128,7 +128,7 @@ class LabourPaymentContractTest {
         val initial = payment(worker, 10_000)
         val d = ok(harvests.openJornada(farmId, day))
         ok(labour.recordCrew(CrewDraft(d, listOf(worker), LabourUnit.FULL_DAY, initialPayments = listOf(initial))))
-        val later = payment(worker, 8_000).copy(paymentDate = day.plusDays(5))
+        val later = payment(worker, 8_000)
         ok(labour.recordPayment(later))
         assertEquals(24_000L, balance(worker).generatedMinor)
         assertEquals(18_000L, balance(worker).paidMinor)
@@ -145,7 +145,7 @@ class LabourPaymentContractTest {
         db.campaignDao().upsert(campaign)
         val expenseBefore = expenses.observeAll().first()
         val outboxBefore = outboxExceptPayments()
-        val final = payment(worker, 6_000).copy(paymentDate = day.plusDays(10))
+        val final = payment(worker, 6_000)
         ok(labour.recordPayment(final))
         assertEquals(expenseBefore, expenses.observeAll().first())
         assertEquals(outboxBefore, outboxExceptPayments())
@@ -158,6 +158,17 @@ class LabourPaymentContractTest {
         assertEquals(0L, balance(worker).pendingMinor)
         assertEquals(LabourPaymentState.PAID, balance(worker).state)
         assertEquals(expenseBefore, expenses.observeAll().first())
+    }
+
+    @Test
+    fun aFuturePaymentIsRejectedWithoutChangingBalanceOrOutbox() = runBlocking {
+        val (_, worker) = pricedDay()
+        val before = dumpFinancialState()
+        val result = labour.recordPayment(payment(worker, 1_000).copy(paymentDate = day.plusDays(1)))
+        assertEquals(AppResult.Failure(AppError.Validation("paymentDate", "future")), result)
+        assertEquals(before, dumpFinancialState())
+        assertEquals(0L, balance(worker).paidMinor)
+        assertEquals(6_000L, balance(worker).pendingMinor)
     }
 
     @Test
