@@ -108,7 +108,7 @@ class OfflineFirstExpenseRepository(
                 costs.requireReplaceable(current.harvestId, current.category, requireCalculated = false)
             }
             val now = clock.nowInstant()
-            writer.post(current, now, clock.today(java.time.ZoneId.systemDefault()))
+            writer.post(current, now, database.todayForWorkspace(current.workspaceId, clock))
             costs.sync(current.harvestId, now)
             AppResult.Success(Unit)
         }
