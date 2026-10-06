@@ -72,6 +72,8 @@ object AppDestination {
     const val FarmPattern = "farm/{farmId}"
     const val ParcelPattern = "parcel/{parcelId}"
     const val CampaignPattern = "campaign/{campaignId}"
+    /** #408: Días de recolección scoped to the campaign the user came from. */
+    const val CampaignHarvestsPattern = "campaign/{campaignId}/harvests"
     const val ActivityPattern = "activity/{activityId}"
     const val ExpensePattern = "expense/{expenseId}"
     /** CR-012 P1: a document taken on a Farm/Campaign screen is reviewed with that context. */
@@ -107,6 +109,9 @@ object AppDestination {
     fun parcel(parcelId: String): String = nestedRoute("parcel", parcelId)
 
     fun campaign(campaignId: String): String = nestedRoute("campaign", campaignId)
+
+    /** #408: keep the chosen Campaign while browsing its recollection days. */
+    fun campaignHarvests(campaignId: String): String = "${campaign(campaignId)}/harvests"
 
     fun activity(activityId: String): String = nestedRoute("activity", activityId)
 
