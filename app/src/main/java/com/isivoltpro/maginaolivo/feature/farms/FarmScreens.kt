@@ -127,10 +127,12 @@ fun FarmListRoute(
         val loadedDeliveries = deliveries
         val loadedExpenses = expenses
         val loadedCrews = crews
-        if (loadedCampaigns == null || loadedDeliveries == null || loadedExpenses == null ||
-            loadedCrews == null || !loadedCrews.keys.containsAll(loadedCampaigns.map { it.id })) emptyList()
+        if (loadedCampaigns == null || loadedDeliveries == null || loadedExpenses == null) emptyList()
         else {
-            val incomplete = loadedCampaigns.filter { campaign ->
+            // #449: the summary shows as soon as its money and kilos are read, so the list
+            // never jumps; until every campaign's crews are read, completeness is unknown.
+            val incomplete = if (loadedCrews == null || !loadedCrews.keys.containsAll(loadedCampaigns.map { it.id })) null
+            else loadedCampaigns.filter { campaign ->
                 val (jornales, maquinaria) = loadedCrews.getValue(campaign.id)
                 !com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(
                     jornales, maquinaria, loadedExpenses.filter { it.campaignId == campaign.id },

@@ -54,9 +54,9 @@ internal fun overviewCost(costs: List<CurrencyTotal>): String =
  * Total cost over total kilos, in the one currency; «—» otherwise. #449: built on unconfirmed
  * costs it says «(incompleto)» beside the figure.
  */
-internal fun overviewCostPerKg(costPerKgMinor: Long?, costs: List<CurrencyTotal>, complete: Boolean = true): String =
+internal fun overviewCostPerKg(costPerKgMinor: Long?, costs: List<CurrencyTotal>, complete: Boolean? = true): String =
     costPerKgMinor?.let { minor ->
-        costs.singleOrNull()?.let { "${Money.format(minor, it.currency)}/kg" + if (complete) "" else " (incompleto)" }
+        costs.singleOrNull()?.let { "${Money.format(minor, it.currency)}/kg" + if (complete == false) " (incompleto)" else "" }
     } ?: "—"
 
 /** #359 follow-up: recollection plus general cost over the weighed kilos; «—» otherwise. */
@@ -79,7 +79,11 @@ internal fun overviewNote(overview: FarmOverview): String = listOfNotNull(
     overview.delivery.fatYield?.let { "Análisis sobre el ${overview.yieldCoveragePercent} % de los kilos" },
     overview.costs.mapNotNull { total -> total.labourMinor?.let { Money.format(it, total.currency) } }
         .takeIf { it.isNotEmpty() }?.let { "Jornales ${it.joinToString(" · ")}" },
-    "Costes sin confirmar".takeUnless { overview.costComplete },
+    when (overview.costComplete) {
+        false -> "Costes sin confirmar"
+        null -> "Comprobando si faltan costes…"
+        true -> null
+    },
     "${overview.farms.size} de ${overview.farms.size + overview.farmsWithoutCampaign.size} fincas con campaña ${overview.season}",
     overview.farmsWithoutCampaign.takeIf { it.isNotEmpty() }?.let { "Sin campaña: ${it.joinToString(", ")}" },
     if (overview.costs.size > 1) "Varias monedas: sin coste por kilo conjunto" else null,

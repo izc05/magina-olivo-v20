@@ -43,8 +43,8 @@ data class FarmSeasonFigures(
     val campaignCount: Int,
     val delivery: DeliverySummary,
     val costs: List<CurrencyTotal>,
-    /** #449: false while a campaign of this Farm in the season has unconfirmed costs. */
-    val costComplete: Boolean = true,
+    /** #449: false while a campaign of this Farm in the season has unconfirmed costs; null while unknown. */
+    val costComplete: Boolean? = true,
 ) {
     val yieldCoveragePercent: Int get() = delivery.coveragePercent(delivery.fatYield)
     val costPerKgMinor: Long? get() = costPerKg(costs, delivery)
@@ -67,8 +67,11 @@ data class FarmOverview(
      * (pruning, treatments, irrigation, fuel…). Never part of [costs] nor of the recollection cost/kg.
      */
     val generalCosts: List<CurrencyTotal> = emptyList(),
-    /** #449: false while any campaign of the season has unconfirmed costs; the money stays the posted ledger. */
-    val costComplete: Boolean = true,
+    /**
+     * #449: false while any campaign of the season has unconfirmed costs; null while that is still
+     * being read (never claimed either way). The money stays the posted ledger.
+     */
+    val costComplete: Boolean? = true,
 ) {
     val yieldCoveragePercent: Int get() = delivery.coveragePercent(delivery.fatYield)
     val costPerKgMinor: Long? get() = costPerKg(costs, delivery)
@@ -95,8 +98,8 @@ data class FarmOverview(
             campaigns: List<Campaign>,
             deliveries: List<Delivery>,
             expenses: List<Expense>,
-            /** #449: Campaigns whose jornales, machinery or costs are still unconfirmed. */
-            incompleteCampaigns: Set<UUID> = emptySet(),
+            /** #449: Campaigns whose jornales, machinery or costs are still unconfirmed; null while unknown. */
+            incompleteCampaigns: Set<UUID>? = emptySet(),
         ): FarmOverview {
             val inSeason = campaigns.filter { OliveSeason.of(it.startDate) == season }
             val figures = farms.mapNotNull { farm ->
@@ -105,7 +108,7 @@ data class FarmOverview(
                 val ids = own.map { it.id }.toSet()
                 val weighed = deliveries.filter { it.campaignId in ids }
                 FarmSeasonFigures(farm.id, seasonName(farm, own), own.size, DeliverySummary.of(weighed), totals(ids, expenses, weighed),
-                    costComplete = ids.none { it in incompleteCampaigns })
+                    costComplete = incompleteCampaigns?.let { pending -> ids.none { it in pending } })
             }
             val ids = inSeason.filter { campaign -> farms.any { it.id == campaign.farmId } }.map { it.id }.toSet()
             val weighed = deliveries.filter { it.campaignId in ids }
@@ -116,7 +119,7 @@ data class FarmOverview(
                 delivery = DeliverySummary.of(weighed),
                 costs = totals(ids, expenses, weighed),
                 generalCosts = general(season, farms, expenses),
-                costComplete = ids.none { it in incompleteCampaigns },
+                costComplete = incompleteCampaigns?.let { pending -> ids.none { it in pending } },
             )
         }
 

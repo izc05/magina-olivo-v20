@@ -43,6 +43,10 @@ class FarmOverviewCopyTest {
         assertEquals("—", overviewCostPerKg(null, costs, complete = false))
         val overview = FarmOverview("2026/27", emptyList(), emptyList(), nothing, costs, costComplete = false)
         assertTrue(overviewNote(overview), overviewNote(overview).startsWith("Costes sin confirmar · "))
+        // While the crews are still being read nothing is claimed either way.
+        assertEquals(false, overviewCostPerKg(20, costs, complete = null).contains("incompleto"))
+        val checking = overview.copy(costComplete = null)
+        assertTrue(overviewNote(checking), overviewNote(checking).startsWith("Comprobando si faltan costes… · "))
     }
 
     /** #359 follow-up: a local, accent-insensitive search by name or municipality. */
