@@ -269,6 +269,177 @@ class TypedActivityDetailContractTest {
     // ------------------------------------------------------ aggregate rules
 
     @Test
+    fun affectedSurfaceIsExplicitAndCanBeSmallerThanTheParcel() = runBlocking {
+        val result = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento parcial",
+                parcelIds = setOf(parcelA),
+                parcelAreasM2 = mapOf(parcelA to 500.0),
+                detail = ActivityDetail.Phytosanitary(productName = "Cobre"),
+            ),
+        )
+        assertTrue(result is AppResult.Success)
+        val id = (result as AppResult.Success).value
+        assertEquals(500.0, repository.observe(id).first()!!.targets.single().areaAffectedM2!!, 0.001)
+    }
+
+    @Test
+    fun selectingAParcelWithoutAnAreaNeverInfersItsWholeManagedSurface() = runBlocking {
+        val id = create(ActivityType.PHYTOSANITARY, ActivityDetail.Phytosanitary(productName = "Cobre"))
+        assertNull(repository.observe(id).first()!!.targets.single().areaAffectedM2)
+    }
+
+    @Test
+    fun changingTheParcelSurfaceLaterDoesNotInvalidateHistoricalAffectedArea() = runBlocking {
+        val created = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento histórico",
+                parcelIds = setOf(parcelA),
+                parcelAreasM2 = mapOf(parcelA to 900.0),
+            ),
+        )
+        val id = (created as AppResult.Success).value
+
+        val parcel = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(parcel.copy(managedAreaM2 = 800.0))
+
+        assertOk(
+            repository.update(
+                id,
+                ActivityChanges(
+                    type = ActivityType.PHYTOSANITARY,
+                    activityDate = date,
+                    description = "Solo corrijo el texto",
+                    parcelIds = setOf(parcelA),
+                    // Existing 900 m2 is intentionally preserved although today's parcel says 800 m2.
+                ),
+            ),
+        )
+        assertEquals(900.0, repository.observe(id).first()!!.targets.single().areaAffectedM2!!, 0.001)
+    }
+
+    @Test
+    fun aLegacyUpdateCallerDoesNotEraseAnAlreadyConfirmedAffectedSurface() = runBlocking {
+        val created = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento parcial",
+                parcelIds = setOf(parcelA),
+                parcelAreasM2 = mapOf(parcelA to 500.0),
+                detail = ActivityDetail.Phytosanitary(productName = "Cobre"),
+            ),
+        )
+        val id = (created as AppResult.Success).value
+        assertOk(
+            repository.update(
+                id,
+                ActivityChanges(
+                    type = ActivityType.PHYTOSANITARY,
+                    activityDate = date,
+                    description = "Tratamiento corregido",
+                    parcelIds = setOf(parcelA),
+                    detail = ActivityDetail.Phytosanitary(productName = "Cobre"),
+                    // Intentionally omit parcelAreasM2: simulates an older caller.
+                ),
+            ),
+        )
+        assertEquals(500.0, repository.observe(id).first()!!.targets.single().areaAffectedM2!!, 0.001)
+    }
+
+    /**
+     * #440: correcting a work keeps its targets as they are — same ids, historical names, surface —
+     * even when one of its Parcels has since been archived or renamed. Only a Parcel being added
+     * must still be an active Parcel of the Farm.
+     */
+    @Test
+    fun correctingAWorkNeverRebuildsItsTargetsEvenWithAnArchivedParcel() = runBlocking {
+        val created = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento",
+                parcelIds = setOf(parcelA, parcelB),
+                parcelAreasM2 = mapOf(parcelA to 400.0),
+                detail = ActivityDetail.Phytosanitary(productName = "Cobre"),
+            ),
+        )
+        val id = (created as AppResult.Success).value
+        val before = db.activityDao().listTargets(id).associateBy { it.parcelId }
+
+        // Later: Parcel A is archived and Parcel B is renamed.
+        val a = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(a.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED))
+        val b = db.parcelDao().findById(parcelB)!!
+        db.parcelDao().upsert(b.copy(displayName = "Parcela B renombrada"))
+
+        assertOk(
+            repository.update(
+                id,
+                ActivityChanges(
+                    type = ActivityType.PHYTOSANITARY,
+                    activityDate = date,
+                    description = "Tratamiento corregido",
+                    parcelIds = setOf(parcelA, parcelB),
+                    detail = ActivityDetail.Phytosanitary(productName = "Cobre"),
+                ),
+            ),
+        )
+        val after = db.activityDao().listTargets(id).associateBy { it.parcelId }
+        assertEquals(before.keys, after.keys)
+        assertEquals(before.getValue(parcelA).id, after.getValue(parcelA).id)
+        assertEquals(before.getValue(parcelB).id, after.getValue(parcelB).id)
+        assertEquals("Parcela B", after.getValue(parcelB).parcelNameAtTarget)
+        assertEquals(400.0, after.getValue(parcelA).areaAffectedM2!!, 0.001)
+
+        // An archived Parcel cannot be newly added to another work.
+        val other = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Otro tratamiento",
+                parcelIds = setOf(parcelB),
+            ),
+        )
+        val otherId = (other as AppResult.Success).value
+        val adding = repository.update(
+            otherId,
+            ActivityChanges(
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Otro tratamiento",
+                parcelIds = setOf(parcelA, parcelB),
+            ),
+        )
+        assertTrue("adding an archived Parcel is refused", adding is AppResult.Failure)
+    }
+
+    @Test
+    fun affectedSurfaceCannotSilentlyExceedTheKnownParcelSurface() = runBlocking {
+        val result = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento imposible",
+                parcelIds = setOf(parcelA),
+                parcelAreasM2 = mapOf(parcelA to 1_001.0),
+            ),
+        )
+        assertValidation("parcelAreasM2", result)
+        assertEquals(0, repository.observeForFarm(farmId).first().size)
+    }
+
+    @Test
     fun editingADetailMovesTheActivityAggregateVersion() = runBlocking {
         val id = create(ActivityType.PRUNING, ActivityDetail.Pruning("Formación", 3, 6.0, null))
         val before = db.activityDao().findById(id)!!.metadata.version

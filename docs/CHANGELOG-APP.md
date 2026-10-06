@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Corregir un trabajo ya no reconstruye sus parcelas (#440, #546).** Al editar cualquier dato de un
+  trabajo, sus parcelas se conservan tal como se registraron: mismo nombre de entonces, misma
+  superficie tratada y mismos identificadores. Una parcela archivada después ya no impide corregir una
+  nota; solo al añadir una parcela nueva se exige que esté activa en la finca.
 - **Editar un trabajo ya no borra datos que el formulario no muestra (#453).** Al corregir un riego,
   su tarifa histórica conserva su moneda, sus notas y su enlace con el gasto real (antes volvía a
   euros y perdía el enlace). Una incidencia resuelta conserva cuándo se resolvió. Cambiar el tipo

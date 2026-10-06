@@ -370,6 +370,9 @@ internal fun workTypes(planning: Boolean): List<ActivityType> =
             it == ActivityType.PHYTOSANITARY
     }
 
+internal fun ActivityType.needsAffectedArea(): Boolean =
+    this == ActivityType.PHYTOSANITARY || this == ActivityType.FERTILIZATION || this == ActivityType.IRRIGATION
+
 private fun ActivityType.shortDescription(): String = when (this) {
     ActivityType.OBSERVATION -> "Revisar el estado del olivar"
     ActivityType.PRUNING -> "Poda de los olivos"
@@ -464,14 +467,55 @@ internal fun ActivityEditor(
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
     var type by rememberSaveable(initial.type) { mutableStateOf(initial.type.name) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
+    // #546: area is explicit per target. The Parcel's managed area is only a visible suggestion,
+    // never inferred later by the repository.
+    val parcelAreaHa = remember(initial.parcelAreasM2) {
+        mutableStateMapOf<String, String>().apply {
+            initial.parcelAreasM2.forEach { (id, areaM2) ->
+                areaM2?.let { put(id.toString(), editableAreaHa(it)) }
+            }
+        }
+    }
+    val parcelAreaErrors = remember { mutableStateMapOf<String, String>() }
     // #414: a new entry on a Farm with a single Parcel needs no choice; it is ticked once (and can
     // still be unticked). Never on an edit: a record saved without Parcels keeps none.
     var singleParcelOffered by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(parcels, autoSelectSingleParcel) {
+    LaunchedEffect(parcels, autoSelectSingleParcel, selected) {
         if (autoSelectSingleParcel && !singleParcelOffered && selected.isEmpty() && parcels.size == 1) {
             selected = listOf(parcels.single().id.toString())
             singleParcelOffered = true
         }
+    }
+    fun readParcelAreas(): Map<UUID, Double?>? {
+        parcelAreaErrors.clear()
+        // #546/#440: a type that does not ask for the surface never saves one typed while another
+        // type was chosen (its field is hidden). A new entry saves none; an edit keeps exactly the
+        // surface each target already had — never lost silently, never replaced by a hidden value.
+        val currentType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
+        if (!currentType.needsAffectedArea()) {
+            return selected.map(UUID::fromString).associateWith { initial.parcelAreasM2[it] }
+        }
+        val result = linkedMapOf<UUID, Double?>()
+        selected.forEach { idText ->
+            val parcel = parcels.firstOrNull { it.id.toString() == idText }
+            val text = parcelAreaHa[idText].orEmpty().trim()
+            if (text.isBlank()) {
+                result[UUID.fromString(idText)] = null
+                return@forEach
+            }
+            val hectares = text.replace(',', '.').toDoubleOrNull()
+            val maxHa = parcel?.managedAreaM2?.div(10_000.0)
+            val error = when {
+                hectares == null || !hectares.isFinite() || hectares <= 0.0 ->
+                    "Escribe una superficie mayor que 0, por ejemplo 0,50"
+                maxHa != null && hectares > maxHa + 0.000001 ->
+                    "No puede superar ${editableAreaHa(maxHa * 10_000.0)} ha de esta parcela"
+                else -> null
+            }
+            if (error != null) parcelAreaErrors[idText] = error
+            else result[UUID.fromString(idText)] = hectares!! * 10_000.0
+        }
+        return result.takeIf { parcelAreaErrors.isEmpty() }
     }
     // Deliberately not rememberSaveable: the sheet itself does not survive process death,
     // so saving the typed block alone would restore it into an editor that is not there.
@@ -616,7 +660,16 @@ internal fun ActivityEditor(
                 val checked = parcel.id.toString() in selected
                 FilterChip(
                     selected = checked,
-                    onClick = { selected = if (checked) selected - parcel.id.toString() else selected + parcel.id.toString() },
+                    onClick = {
+                        val key = parcel.id.toString()
+                        if (checked) {
+                            selected = selected - key
+                            parcelAreaHa.remove(key)
+                            parcelAreaErrors.remove(key)
+                        } else {
+                            selected = selected + key
+                        }
+                    },
                     label = { Text(parcel.name) },
                     leadingIcon = if (checked) {
                         { Icon(MoIcons.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
@@ -625,6 +678,37 @@ internal fun ActivityEditor(
                     },
                     modifier = Modifier.testTag("activity-parcel-option"),
                 )
+            }
+        }
+        if (chosenType.needsAffectedArea()) {
+            parcels.filter { it.id.toString() in selected }.forEach { parcel ->
+                val key = parcel.id.toString()
+                val known = parcel.managedAreaM2?.let { " · parcela ${hectaresLabel(it)}" }.orEmpty()
+                MoTextField(
+                    parcelAreaHa[key].orEmpty(),
+                    { parcelAreaHa[key] = it; parcelAreaErrors.remove(key) },
+                    "Superficie afectada · ${parcel.name} (ha)",
+                    isError = parcelAreaErrors[key] != null,
+                    supportingText = parcelAreaErrors[key] ?: if (known.isNotEmpty()) {
+                        "Parcela conocida$known · confirma la superficie realmente trabajada"
+                    } else {
+                        "Indica la superficie realmente trabajada"
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("activity-parcel-area"),
+                )
+                parcel.managedAreaM2?.let { fullArea ->
+                    if (parcelAreaHa[key].orEmpty() != editableAreaHa(fullArea)) {
+                        TextButton(
+                            onClick = {
+                                parcelAreaHa[key] = editableAreaHa(fullArea)
+                                parcelAreaErrors.remove(key)
+                            },
+                            modifier = Modifier.testTag("activity-parcel-use-full-area"),
+                        ) {
+                            Text("Usar toda · ${hectaresLabel(fullArea)}")
+                        }
+                    }
+                }
             }
         }
         Row(
@@ -693,6 +777,7 @@ internal fun ActivityEditor(
                 val machineUses = readMachines() ?: return@MoPrimaryButton
                 val planned = readPlanning() ?: return@MoPrimaryButton
                 if (!readTypedDetail()) return@MoPrimaryButton
+                val parcelAreas = readParcelAreas() ?: return@MoPrimaryButton
                 onSave(
                     ActivityDraft(
                         runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
@@ -708,6 +793,7 @@ internal fun ActivityEditor(
                         machines = machineUses,
                         planning = planned.planning,
                         reminders = planned.reminders,
+                        parcelAreasM2 = parcelAreas,
                     ),
                 )
             },
@@ -720,6 +806,7 @@ internal fun ActivityEditor(
                     val machineUses = readMachines() ?: return@MoSecondaryButton
                     val planned = readPlanning() ?: return@MoSecondaryButton
                     if (!readTypedDetail()) return@MoSecondaryButton
+                    val parcelAreas = readParcelAreas() ?: return@MoSecondaryButton
                     saveDraft(
                         ActivityDraft(
                             runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER),
@@ -735,6 +822,7 @@ internal fun ActivityEditor(
                             machines = machineUses,
                             planning = planned.planning,
                             reminders = planned.reminders,
+                            parcelAreasM2 = parcelAreas,
                         ),
                     )
                 },
@@ -999,6 +1087,7 @@ fun ActivityDetailScreen(
                     description = activity.description,
                     parcelIds = activity.targets.map { it.parcelId }.toSet(),
                     notes = activity.notes.orEmpty(),
+                    parcelAreasM2 = activity.targets.associate { it.parcelId to it.areaAffectedM2 },
                     detail = activity.detail,
                     machines = activity.machines.map { MachineUseInput(it.machineId, it.startHours, it.endHours, it.usageHours) },
                     planning = activity.planning,
@@ -1390,6 +1479,9 @@ private val HEADER_DATE: java.time.format.DateTimeFormatter = java.time.format.D
 
 private fun hectaresLabel(areaM2: Double): String =
     "${java.text.NumberFormat.getNumberInstance(SPANISH_LOCALE).apply { maximumFractionDigits = 2 }.format(areaM2 / 10_000)} ha"
+
+private fun editableAreaHa(areaM2: Double): String =
+    java.math.BigDecimal.valueOf(areaM2 / 10_000.0).stripTrailingZeros().toPlainString().replace('.', ',')
 
 /** A small label over a group of chips, lighter than a section header. */
 @Composable

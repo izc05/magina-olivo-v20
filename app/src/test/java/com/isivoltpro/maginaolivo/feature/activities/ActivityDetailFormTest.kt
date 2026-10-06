@@ -18,6 +18,16 @@ import org.junit.Test
  */
 class ActivityDetailFormTest {
     @Test
+    fun `affected surface stays out of unrelated work types`() {
+        assertTrue(ActivityType.PHYTOSANITARY.needsAffectedArea())
+        assertTrue(ActivityType.FERTILIZATION.needsAffectedArea())
+        assertTrue(ActivityType.IRRIGATION.needsAffectedArea())
+        assertFalse(ActivityType.PRUNING.needsAffectedArea())
+        assertFalse(ActivityType.MAINTENANCE.needsAffectedArea())
+        assertFalse(ActivityType.OBSERVATION.needsAffectedArea())
+    }
+
+    @Test
     fun `observation and other carry no typed detail`() {
         assertFalse(ActivityType.OBSERVATION.hasTypedDetail())
         assertFalse(ActivityType.OTHER.hasTypedDetail())

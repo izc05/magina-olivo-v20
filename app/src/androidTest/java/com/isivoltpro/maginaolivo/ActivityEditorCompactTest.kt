@@ -107,6 +107,74 @@ class ActivityEditorCompactTest {
         }
     }
 
+    @Test fun aTreatmentDoesNotAssumeTheWholeParcelUntilTheFarmerConfirmsIt() {
+        var saved: ActivityDraft? = null
+        val option = ActivityParcelOption(UUID.randomUUID(), "Olivar Norte", 20_000.0)
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 10, 5), type = ActivityType.PHYTOSANITARY),
+            options = listOf(option), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("activity-parcel-area").performScrollTo().assertIsDisplayed()
+        // The suggestion sits immediately below the field and may be outside a compact viewport.
+        composeRule.onNodeWithTag("activity-parcel-use-full-area").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle {
+            assertEquals(null, saved?.parcelAreasM2?.get(option.id))
+        }
+    }
+
+    @Test fun useAllExplicitlyConfirmsTheKnownParcelSurface() {
+        var saved: ActivityDraft? = null
+        val option = ActivityParcelOption(UUID.randomUUID(), "Olivar Norte", 20_000.0)
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 10, 5), type = ActivityType.PHYTOSANITARY),
+            options = listOf(option), doneWork = true, onSave = { saved = it },
+        )
+        composeRule.onNodeWithTag("activity-parcel-use-full-area").performScrollTo().performClick()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle {
+            assertEquals(20_000.0, saved?.parcelAreasM2?.get(option.id)!!, 0.001)
+        }
+    }
+
+    /**
+     * #546/#440 (owner review on #560): a surface typed while a type that asks for it was chosen is
+     * never saved under a type that does not; coming back never invents the whole Parcel.
+     */
+    @Test fun aSurfaceTypedForAnotherTypeIsNeverSavedHidden() {
+        var saved: ActivityDraft? = null
+        val option = ActivityParcelOption(UUID.randomUUID(), "Olivar Norte", 20_000.0)
+        show(ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), description = "Trabajo"), options = listOf(option)) { saved = it }
+        typeChip("Abonado").performScrollTo().performClick()
+        composeRule.onNodeWithTag("activity-parcel-option").performScrollTo().performClick()
+        composeRule.onNodeWithTag("activity-parcel-area").performScrollTo().performTextInput("0,5")
+        typeChip("Poda").performScrollTo().performClick()
+        composeRule.onNodeWithTag("activity-parcel-area").assertDoesNotExist()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle {
+            assertEquals(ActivityType.PRUNING, saved?.type)
+            assertEquals(null, saved?.parcelAreasM2?.get(option.id))
+        }
+        // Back to Abonado: the typed surface, never the whole Parcel.
+        typeChip("Abonado").performScrollTo().performClick()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(5_000.0, saved?.parcelAreasM2?.get(option.id)!!, 0.001) }
+    }
+
+    /** An edit whose new type does not ask for the surface keeps the one it had: no silent loss. */
+    @Test fun anEditChangingToATypeWithoutSurfaceKeepsTheHistoricalOne() {
+        var saved: ActivityDraft? = null
+        val option = ActivityParcelOption(UUID.randomUUID(), "Olivar Norte", 20_000.0)
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 9, 27), type = ActivityType.FERTILIZATION, description = "Abonado",
+                parcelIds = setOf(option.id), parcelAreasM2 = mapOf(option.id to 4_000.0)),
+            options = listOf(option), onSave = { saved = it },
+        )
+        typeChip("Poda").performScrollTo().performClick()
+        composeRule.onNodeWithTag("save-activity").performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(4_000.0, saved?.parcelAreasM2?.get(option.id)!!, 0.001) }
+    }
+
     /** #414: Observación says nothing by itself, so it still asks for a description. */
     @Test fun anObservationStillAsksForWords() {
         var saved: ActivityDraft? = null
