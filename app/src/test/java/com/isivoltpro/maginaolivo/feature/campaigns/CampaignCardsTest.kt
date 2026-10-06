@@ -39,6 +39,8 @@ class CampaignCardsTest {
                 com.isivoltpro.maginaolivo.domain.harvest.Weight.format(3_970_000),
                 "2 pesadas",
                 "Jornales ${Money.format(65_000, "EUR")}",
+                // #449: the draft jornal is never summed, but the card says a cost is pending.
+                "Costes sin confirmar",
                 "Rend. ${com.isivoltpro.maginaolivo.domain.delivery.Percent.format(summary.yieldHundredths!!)}",
             ),
             campaignFacts(summary).map { it.text },
@@ -52,6 +54,29 @@ class CampaignCardsTest {
         assertEquals(25, summary.yieldCoveragePercent)
         assertEquals(true, campaignFacts(summary).last().text.endsWith("· 25 % analizado"))
     }
+
+    /** #449: a machine of this campaign without a price is said on the card; another campaign's is not. */
+    @Test fun anUnconfirmedCostOfThisCampaignIsSaidOnTheCard() {
+        val day = harvest(campaign)
+        val elsewhere = harvest(other)
+        val unpriced = { harvestId: UUID ->
+            com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine(UUID.randomUUID(), harvestId,
+                com.isivoltpro.maginaolivo.domain.equipment.EquipmentType.TRAILER, null, 1, null, 1)
+        }
+        val complete = CampaignCardSummary.of(campaign, emptyList(), listOf(day, elsewhere), emptyList(), equipment = listOf(unpriced(elsewhere.id)))
+        assertEquals(true, complete.costComplete)
+        assertEquals(false, campaignFacts(complete).any { it.text == "Costes sin confirmar" })
+
+        val pending = CampaignCardSummary.of(campaign, emptyList(), listOf(day, elsewhere), emptyList(), equipment = listOf(unpriced(day.id)))
+        assertEquals(false, pending.costComplete)
+        assertEquals(true, campaignFacts(pending).any { it.text == "Costes sin confirmar" })
+    }
+
+    private fun harvest(campaignId: UUID) = com.isivoltpro.maginaolivo.domain.harvest.Harvest(
+        id = UUID.randomUUID(), workspaceId = workspace, farmId = farm, campaignId = campaignId, harvestDate = date,
+        totalGrams = 0, shares = emptyList(), collectionMethod = null, workerCount = null, machineryText = null,
+        notes = null, version = 1,
+    )
 
     @Test fun nothingRecordedSaysSoWithoutZeros() {
         val facts = campaignFacts(CampaignCardSummary(0, 0, 0, emptyList(), null))

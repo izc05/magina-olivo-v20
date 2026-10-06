@@ -38,6 +38,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTreatmentText
 import com.isivoltpro.maginaolivo.ui.theme.MoTreatmentTint
 import com.isivoltpro.maginaolivo.ui.theme.MoWarningText
 import com.isivoltpro.maginaolivo.ui.theme.MoWarningTint
+import com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness
 import java.util.UUID
 
 /**
@@ -53,11 +54,21 @@ data class CampaignCardSummary(
     val yieldHundredths: Int?,
     /** Codex #404: share of the weighed kilos the yield is measured on; below 100 it is partial. */
     val yieldCoveragePercent: Int = 100,
+    /** #449: false while jornales, machinery or costs of the campaign are still unconfirmed. */
+    val costComplete: Boolean = true,
 ) {
     companion object {
-        fun of(campaignId: UUID, deliveries: List<Delivery>, harvests: List<Harvest>, expenses: List<Expense>): CampaignCardSummary {
+        fun of(
+            campaignId: UUID,
+            deliveries: List<Delivery>,
+            harvests: List<Harvest>,
+            expenses: List<Expense>,
+            labour: List<com.isivoltpro.maginaolivo.domain.labour.LabourEntry> = emptyList(),
+            equipment: List<com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine> = emptyList(),
+        ): CampaignCardSummary {
             val own = deliveries.filter { it.campaignId == campaignId }
             val summary = DeliverySummary.of(own)
+            val days = harvests.filter { it.campaignId == campaignId }.map { it.id }.toSet()
             return CampaignCardSummary(
                 deliveredGrams = summary.deliveredGrams,
                 deliveryCount = summary.deliveryCount,
@@ -67,6 +78,11 @@ data class CampaignCardSummary(
                     .map { it.currency to it.amount(RecollectionBucket.LABOUR) },
                 yieldHundredths = summary.fatYield?.hundredths,
                 yieldCoveragePercent = summary.coveragePercent(summary.fatYield),
+                costComplete = RecollectionCostCompleteness.of(
+                    labour.filter { it.harvestId in days },
+                    equipment.filter { it.harvestId in days },
+                    expenses.filter { it.campaignId == campaignId },
+                ).complete,
             )
         }
     }
@@ -91,6 +107,8 @@ internal fun campaignFacts(summary: CampaignCardSummary): List<CampaignFact> = b
             minor?.let { Money.format(it, currency) } ?: "importe no disponible ($currency)"
         }))
     }
+    // #449: said on the card, never left for the farmer to discover inside the campaign.
+    if (!summary.costComplete) add(CampaignFact(CampaignFactKind.COST, "Costes sin confirmar"))
     summary.yieldHundredths?.let { hundredths ->
         val partial = summary.yieldCoveragePercent < 100
         add(CampaignFact(CampaignFactKind.YIELD, "Rend. ${Percent.format(hundredths)}" + if (partial) " · ${summary.yieldCoveragePercent} % analizado" else ""))

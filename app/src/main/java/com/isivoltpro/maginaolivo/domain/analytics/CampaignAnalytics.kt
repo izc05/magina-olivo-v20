@@ -75,6 +75,8 @@ data class CampaignComparison(
     val legacyUnweighedGrams: Long = 0,
     val canonicalCost: com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency? = null,
     val costsByCurrency: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency> = listOfNotNull(canonicalCost),
+    /** #449: false while jornales, machinery or costs of the Campaign are still unconfirmed. */
+    val costComplete: Boolean = true,
 ) {
     /** Minor units (cents) per delivered kilo. */
     val costPerKgMinor: Long?
@@ -105,6 +107,7 @@ data class CampaignComparison(
                     legacyUnweighedGrams = notebook.legacyUnweighedGrams,
                     canonicalCost = cost,
                     costsByCurrency = costs,
+                    costComplete = notebook.costCompleteness.complete,
                 )
             }
         }

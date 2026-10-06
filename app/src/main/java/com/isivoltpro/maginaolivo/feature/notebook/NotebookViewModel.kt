@@ -85,17 +85,6 @@ class NotebookViewModel(
             }
         }
 
-    /** Phase 19G: the same projection for every Campaign of the Farm (read-only). */
-    private val comparison = combine(
-        campaigns.observeForFarm(farmId),
-        activities.observeForFarm(farmId),
-        harvests.observeAll(),
-        deliveries.observeAll(),
-        expenses.observeAll(),
-    ) { list, acts, crops, weighings, costs ->
-        CampaignComparison.of(list.map { CampaignNotebook.project(it, acts, crops, weighings, costs) })
-    }
-
     /** #417: the jornales and equipment of every Campaign of the Farm, for its Jornada rows. */
     private val farmCrews = campaigns.observeForFarm(farmId).flatMapLatest { list ->
         if (list.isEmpty() || (labour == null && equipment == null)) {
@@ -108,6 +97,21 @@ class NotebookViewModel(
                 ) { jornales, maquinaria -> jornales to maquinaria }
             }) { parts -> parts.flatMap { it.first } to parts.flatMap { it.second } }
         }
+    }
+
+    /**
+     * Phase 19G: the same projection for every Campaign of the Farm (read-only). #449: with each
+     * Campaign's jornales and machinery, so an unconfirmed cost is never drawn as complete.
+     */
+    private val comparison = combine(
+        campaigns.observeForFarm(farmId),
+        activities.observeForFarm(farmId),
+        harvests.observeAll(),
+        deliveries.observeAll(),
+        combine(expenses.observeAll(), farmCrews) { costs, crews -> costs to crews },
+    ) { list, acts, crops, weighings, (costs, crews) ->
+        val (jornales, maquinaria) = crews
+        CampaignComparison.of(list.map { CampaignNotebook.project(it, acts, crops, weighings, costs, jornales, maquinaria) })
     }
 
     /** #417: the Farm's Cuaderno, built whether or not any Campaign exists. */
