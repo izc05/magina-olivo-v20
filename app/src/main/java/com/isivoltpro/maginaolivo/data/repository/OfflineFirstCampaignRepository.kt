@@ -25,10 +25,13 @@ import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelOption
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignPreparationChanges
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.campaign.NewCampaign
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -38,27 +41,75 @@ class OfflineFirstCampaignRepository(
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
+    private val workspaceRepository: WorkspaceRepository? = null,
 ) : CampaignRepository {
+    private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
     override fun observeSelectableParcels(farmId: UUID): Flow<List<CampaignParcelOption>> =
-        database.parcelDao().observeActive(farmId).map { rows ->
-            rows.map { CampaignParcelOption(it.parcel.id, it.parcel.displayName, it.parcel.managedAreaM2) }
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
+            }
+            val farm = database.farmDao().findById(farmId)
+            if (farm == null || farm.workspaceId != active || farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
+                emit(emptyList())
+                return@flow
+            }
+            emitAll(
+                database.parcelDao().observeActive(farmId).map { rows ->
+                    rows.map { CampaignParcelOption(it.parcel.id, it.parcel.displayName, it.parcel.managedAreaM2) }
+                },
+            )
         }.flowOn(dispatchers.io)
 
     override fun observeForFarm(farmId: UUID): Flow<List<Campaign>> =
-        database.campaignDao().observeForFarm(farmId).map { rows ->
-            rows.map { campaign -> CampaignWithSnapshots(campaign, database.campaignDao().listSnapshots(campaign.id)).toDomain() }
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
+            }
+            val farm = database.farmDao().findById(farmId)
+            if (farm == null || farm.workspaceId != active) {
+                emit(emptyList())
+                return@flow
+            }
+            // #616: same-Workspace archived Farms keep their historical Campaigns readable.
+            emitAll(
+                database.campaignDao().observeForFarm(farmId).map { rows ->
+                    rows.map { campaign ->
+                        CampaignWithSnapshots(campaign, database.campaignDao().listSnapshots(campaign.id)).toDomain()
+                    }
+                },
+            )
         }.flowOn(dispatchers.io)
 
     override fun observe(id: UUID): Flow<Campaign?> =
-        database.campaignDao().observeWithSnapshots(id).map { it?.toDomain() }.flowOn(dispatchers.io)
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(null)
+                is AppResult.Success -> result.value
+            }
+            emitAll(
+                database.campaignDao().observeWithSnapshots(id).map { row ->
+                    row?.takeIf { it.campaign.workspaceId == active }?.toDomain()
+                },
+            )
+        }.flowOn(dispatchers.io)
 
     override suspend fun create(command: NewCampaign): AppResult<UUID> {
         val name = command.name.trim()
         if (name.isEmpty()) return AppResult.Failure(AppError.Validation("name", "blank"))
         return withContext(dispatchers.io) {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@withContext result
+                is AppResult.Success -> result.value
+            }
             safely("create_campaign") {
                 val farm = database.farmDao().findById(command.farmId)
                     ?: return@safely AppResult.Failure(AppError.NotFound("farm"))
+                if (farm.workspaceId != active) {
+                    return@safely AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+                }
                 if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
                     return@safely AppResult.Failure(AppError.Conflict("archived_farm"))
                 }
@@ -160,11 +211,21 @@ class OfflineFirstCampaignRepository(
         allowArchived: Boolean = false,
         block: suspend (CampaignEntity, Instant) -> AppResult<Unit>,
     ): AppResult<Unit> =
-        withContext(dispatchers.io) { safely(operation) {
-            val current = database.campaignDao().findById(id) ?: return@safely AppResult.Failure(AppError.NotFound("campaign"))
-            if (!allowArchived && current.metadata.deletedAt != null) return@safely conflict("archived_campaign")
-            block(current, clock.nowInstant())
-        } }
+        withContext(dispatchers.io) {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@withContext result
+                is AppResult.Success -> result.value
+            }
+            safely(operation) {
+                val current = database.campaignDao().findById(id)
+                    ?: return@safely AppResult.Failure(AppError.NotFound("campaign"))
+                if (current.workspaceId != active) {
+                    return@safely AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+                }
+                if (!allowArchived && current.metadata.deletedAt != null) return@safely conflict("archived_campaign")
+                block(current, clock.nowInstant())
+            }
+        }
 
     private suspend fun <T> safely(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
         try { database.withTransaction { block() } }

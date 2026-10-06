@@ -63,8 +63,11 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -90,29 +93,75 @@ class OfflineFirstActivityRepository(
     },
     /** The wall clock reminders are read in: the phone's, because the phone rings them. */
     private val zone: () -> ZoneId = ZoneId::systemDefault,
+    private val workspaceRepository: WorkspaceRepository? = null,
 ) : ActivityRepository {
+    private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
+
     override fun observeSelectableParcels(farmId: UUID): Flow<List<ActivityParcelOption>> =
-        database.parcelDao().observeActive(farmId).map { rows ->
-            rows.map { ActivityParcelOption(it.parcel.id, it.parcel.displayName, it.parcel.managedAreaM2) }
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
+            }
+            val farm = database.farmDao().findById(farmId)
+            if (farm == null || farm.workspaceId != active || farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
+                emit(emptyList())
+                return@flow
+            }
+            emitAll(
+                database.parcelDao().observeActive(farmId).map { rows ->
+                    rows.map { ActivityParcelOption(it.parcel.id, it.parcel.displayName, it.parcel.managedAreaM2) }
+                },
+            )
         }.flowOn(dispatchers.io)
 
     override fun observeForFarm(farmId: UUID): Flow<List<Activity>> =
-        database.activityDao().observeForFarm(farmId).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
+            }
+            val farm = database.farmDao().findById(farmId)
+            if (farm == null || farm.workspaceId != active) {
+                emit(emptyList())
+                return@flow
+            }
+            emitAll(database.activityDao().observeForFarm(farmId).map { rows -> rows.map { it.toDomain() } })
+        }.flowOn(dispatchers.io)
 
     override fun observeForParcel(parcelId: UUID): Flow<List<Activity>> =
-        database.activityDao().observeForParcel(parcelId).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
+            }
+            val parcel = database.parcelDao().findById(parcelId)
+            if (parcel == null || parcel.workspaceId != active) {
+                emit(emptyList())
+                return@flow
+            }
+            emitAll(database.activityDao().observeForParcel(parcelId).map { rows -> rows.map { it.toDomain() } })
+        }.flowOn(dispatchers.io)
 
     private val ledger = ExpenseLedgerWriter(database, idGenerator)
 
     override fun observe(id: UUID): Flow<Activity?> =
-        combine(
-            database.activityDao().observeWithTargets(id),
-            database.expenseDao().observeForActivity(id),
-            database.machineDao().observeForActivity(id),
-        ) { row, expenses, uses ->
-            row?.toDomain()?.copy(
-                costMinor = expenses.firstOrNull { it.origin == ExpenseOrigin.ACTIVITY_COST.name }?.amountMinor,
-                machines = machinesOf(uses),
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(null)
+                is AppResult.Success -> result.value
+            }
+            emitAll(
+                combine(
+                    database.activityDao().observeWithTargets(id),
+                    database.expenseDao().observeForActivity(id),
+                    database.machineDao().observeForActivity(id),
+                ) { row, expenses, uses ->
+                    row?.takeIf { it.activity.workspaceId == active }?.toDomain()?.copy(
+                        costMinor = expenses.firstOrNull { it.origin == ExpenseOrigin.ACTIVITY_COST.name }?.amountMinor,
+                        machines = machinesOf(uses),
+                    )
+                },
             )
         }.flowOn(dispatchers.io)
 
@@ -197,11 +246,28 @@ class OfflineFirstActivityRepository(
             return AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
         }
         return withContext(dispatchers.io) {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@withContext result
+                is AppResult.Success -> result.value
+            }
             safely("create_activity") {
                 val farm = database.farmDao().findById(command.farmId)
                     ?: return@safely AppResult.Failure(AppError.NotFound("farm"))
+                if (farm.workspaceId != active) {
+                    return@safely AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+                }
                 if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
                     return@safely AppResult.Failure(AppError.Conflict("archived_farm"))
+                }
+                command.campaignId?.let { campaignId ->
+                    val campaign = database.campaignDao().findById(campaignId)
+                        ?: return@safely AppResult.Failure(AppError.Validation("campaignId", "not_found"))
+                    if (campaign.metadata.deletedAt != null) {
+                        return@safely AppResult.Failure(AppError.Validation("campaignId", "archived"))
+                    }
+                    if (campaign.workspaceId != active || campaign.farmId != farm.id) {
+                        return@safely AppResult.Failure(AppError.Validation("campaignId", "context_mismatch"))
+                    }
                 }
                 val status = when {
                     command.asDraft -> ActivityStatus.DRAFT
@@ -551,9 +617,16 @@ class OfflineFirstActivityRepository(
         block: suspend (ActivityEntity, Instant) -> AppResult<Unit>,
     ): AppResult<Unit> =
         withContext(dispatchers.io) {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@withContext result
+                is AppResult.Success -> result.value
+            }
             safely(operation) {
                 val current = database.activityDao().findById(id)
                     ?: return@safely AppResult.Failure(AppError.NotFound("activity"))
+                if (current.workspaceId != active) {
+                    return@safely AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+                }
                 if (!allowArchived && current.metadata.deletedAt != null) return@safely conflict("archived_activity")
                 block(current, clock.nowInstant())
             }

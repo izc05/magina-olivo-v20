@@ -75,18 +75,19 @@ data class AppCompositionRoot(
             val applicationContext = context.applicationContext
             val defaults = createDefault(environmentValue)
             val database = MaginaOlivoDatabase.getInstance(applicationContext)
-            val farmRepository = OfflineFirstFarmRepository(
-                database = database,
-                clock = defaults.clock,
-                idGenerator = defaults.idGenerator,
-                dispatchers = defaults.dispatchers,
-            )
             val workspaceRepository = LocalWorkspaceRepository(
                 database = database,
                 clock = defaults.clock,
                 idGenerator = defaults.idGenerator,
                 dispatchers = defaults.dispatchers,
                 regionalContext = defaults.regionalContext,
+            )
+            val farmRepository = OfflineFirstFarmRepository(
+                database = database,
+                clock = defaults.clock,
+                idGenerator = defaults.idGenerator,
+                dispatchers = defaults.dispatchers,
+                workspaceRepository = workspaceRepository,
             )
             val attachmentFileStore = AndroidAttachmentFileStore(applicationContext)
             val farmCoverRepository = OfflineFirstFarmCoverRepository(
@@ -103,7 +104,9 @@ data class AppCompositionRoot(
                 idGenerator = defaults.idGenerator,
                 dispatchers = defaults.dispatchers,
             )
-            val campaignRepository = OfflineFirstCampaignRepository(database, defaults.clock, defaults.idGenerator, defaults.dispatchers)
+            val campaignRepository = OfflineFirstCampaignRepository(
+                database, defaults.clock, defaults.idGenerator, defaults.dispatchers, workspaceRepository,
+            )
             // Phase 21B: Perfil → Avisos (on/off, day-before hour) drives the alarms.
             val reminderPreferences = RoomReminderPreferences(database)
             val reminders = ReminderCoordinator(
@@ -111,6 +114,7 @@ data class AppCompositionRoot(
             )
             val activityRepository = OfflineFirstActivityRepository(
                 database, defaults.clock, defaults.idGenerator, defaults.dispatchers, reminders, reminderPreferences,
+                workspaceRepository = workspaceRepository,
             )
             val attachmentRepository = OfflineFirstAttachmentRepository(
                 database = database,

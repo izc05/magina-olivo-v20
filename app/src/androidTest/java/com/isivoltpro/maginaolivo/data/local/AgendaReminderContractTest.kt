@@ -321,7 +321,7 @@ class AgendaReminderContractTest {
     private fun open() {
         db = MaginaOlivoDatabase.create(context, DB)
         coordinator = ReminderCoordinator(db, alarms, FixedClock(now)) { madrid }
-        activities = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers, coordinator) { madrid }
+        activities = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers, coordinator, zone = { madrid })
     }
 
     private suspend fun seed() {
