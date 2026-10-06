@@ -94,8 +94,9 @@ fun FarmMapRoute(
         if (!isLocationEnabled(context)) {
             viewModel.locationUnavailable(LocationProblem.LOCATION_OFF)
         } else {
-            requestCurrentLocation(context) { point ->
-                if (point != null) viewModel.myLocationFound(point) else viewModel.locationUnavailable(LocationProblem.NO_FIX)
+            requestCurrentLocation(context) { fix ->
+                if (fix != null) viewModel.myLocationFound(fix.point, fix.approximate)
+                else viewModel.locationUnavailable(LocationProblem.NO_FIX)
             }
         }
     }
