@@ -40,6 +40,46 @@ class LabourPaymentsUiTest {
         return LabourPaymentsUiState(isLoading = false, campaign = campaign.copy(status = CampaignStatus.CLOSED), entries = entries, days = days, payments = payments, accounts = labourAccounts(campaign.id, entries, ledgers, payments))
     }
 
+    /** #442: a name already in use is never merged silently; a namesake is a new person, chosen by id. */
+    @Test fun aNamesakeIsAskedAboutAndCanBeAnotherPerson() {
+        val people = androidx.compose.runtime.mutableStateOf(listOf(worker))
+        val added = mutableListOf<String>()
+        var saved: CrewDraft? = null
+        rule.setContent { MaginaOlivoTheme { Surface(androidx.compose.ui.Modifier.fillMaxSize().statusBarsPadding(), color = com.isivoltpro.maginaolivo.ui.theme.MoCream) {
+            LabourSheet(people.value, emptySet(), false, null, day, campaign.id, date, null, { saved = it }, { added += it }, {})
+        } } }
+        rule.onNodeWithTag("labour-new-person").performScrollTo().performClick()
+        rule.onNodeWithTag("labour-new-name").performScrollTo().performTextInput("juan garcía lópez")
+        rule.onNodeWithTag("labour-add-worker").performScrollTo().performClick()
+        rule.onNodeWithTag("labour-same-name").assertExists()
+        rule.runOnIdle { assertTrue(added.isEmpty()) }
+        rule.onNodeWithTag("labour-create-namesake").performScrollTo().performClick()
+        rule.runOnIdle { assertEquals(listOf("juan garcía lópez"), added) }
+        val namesake = Worker(UUID.randomUUID(), "Juan García López")
+        people.value = listOf(worker, namesake)
+        rule.onNodeWithText("Juan García López · 1").assertExists()
+        rule.onNodeWithText("Juan García López · 2").assertExists()
+        rule.onNodeWithTag("labour-selected-count").assertTextContains("1 seleccionada")
+        rule.onNodeWithTag("labour-rate").performScrollTo().performTextInput("60")
+        rule.onNodeWithTag("labour-save").performScrollTo().performClick()
+        rule.runOnIdle { assertEquals(listOf(namesake.id), saved!!.workerIds) }
+    }
+
+    @Test fun usingTheExistingPersonAddsNobody() {
+        val added = mutableListOf<String>()
+        var saved: CrewDraft? = null
+        rule.setContent { MaginaOlivoTheme { Surface(androidx.compose.ui.Modifier.fillMaxSize().statusBarsPadding(), color = com.isivoltpro.maginaolivo.ui.theme.MoCream) {
+            LabourSheet(listOf(worker), emptySet(), false, null, day, campaign.id, date, null, { saved = it }, { added += it }, {})
+        } } }
+        rule.onNodeWithTag("labour-new-person").performScrollTo().performClick()
+        rule.onNodeWithTag("labour-new-name").performScrollTo().performTextInput("Juan García López")
+        rule.onNodeWithTag("labour-add-worker").performScrollTo().performClick()
+        rule.onNodeWithTag("labour-use-existing").performScrollTo().performClick()
+        rule.onNodeWithTag("labour-rate").performScrollTo().performTextInput("60")
+        rule.onNodeWithTag("labour-save").performScrollTo().performClick()
+        rule.runOnIdle { assertTrue(added.isEmpty()); assertEquals(listOf(worker.id), saved!!.workerIds) }
+    }
+
     @Test fun completeHoursPriceAndSinglePersonAreRequiredWithNoAnonymousOrHalfDay() {
         var saved: CrewDraft? = null
         rule.setContent { MaginaOlivoTheme { Surface(androidx.compose.ui.Modifier.fillMaxSize().statusBarsPadding(), color = com.isivoltpro.maginaolivo.ui.theme.MoCream) { LabourSheet(listOf(worker), emptySet(), false, null, day, campaign.id, date, null, { saved = it }, {}, {}) } } }
@@ -57,6 +97,24 @@ class LabourPaymentsUiTest {
         rule.onNodeWithTag("labour-generated").assertTextContains("30,00", substring = true)
         rule.onNodeWithTag("labour-save").performScrollTo().performClick()
         rule.runOnIdle { assertEquals(listOf(worker.id), saved!!.workerIds); assertEquals(180, saved!!.minutes); assertEquals(1000L, saved!!.appliedRate!!.unitPriceMinor); assertTrue(saved!!.initialPayments.isEmpty()) }
+    }
+
+    /** #449: a person whose price is not known yet is saved without one, never 0 € and never paid. */
+    @Test fun aPersonCanBeSavedWithThePriceNotKnownYet() {
+        var saved: CrewDraft? = null
+        rule.setContent { MaginaOlivoTheme { Surface(androidx.compose.ui.Modifier.fillMaxSize().statusBarsPadding(), color = com.isivoltpro.maginaolivo.ui.theme.MoCream) { LabourSheet(listOf(worker), emptySet(), false, null, day, campaign.id, date, null, { saved = it }, {}, {}) } } }
+        rule.onAllNodesWithTag("labour-worker")[0].performClick()
+        rule.onNodeWithTag("labour-save").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("labour-price-unknown").performScrollTo().performClick()
+        rule.onNodeWithTag("labour-price-unknown-note").assertExists()
+        rule.onNodeWithTag("labour-rate").assertDoesNotExist()
+        rule.onNodeWithTag("labour-payment-FULL").assertDoesNotExist()
+        rule.onNodeWithTag("labour-save").performScrollTo().assertIsEnabled().performClick()
+        rule.runOnIdle {
+            assertTrue(saved!!.priceUnknown)
+            assertNull(saved!!.appliedRate)
+            assertTrue(saved!!.initialPayments.isEmpty())
+        }
     }
 
     @Test fun partialInitialPaymentSurvivesRotationWithStableIdAndInvalidAmountCannotSave() {

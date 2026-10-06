@@ -38,8 +38,9 @@ internal class JornadaLedger(
 
     /**
      * Creates an automatic day. Stored 0 is "not weighed yet" ([Harvest.awaitingPesadas]); until
-     * its Pesadas say otherwise its origin is the whole Farm, with an unknown split: no kilos are
-     * attributed to a Parcel. [reconcile] sets its kilos and Parcels from its Pesadas.
+     * a Pesada says where its olives came from, its origin is not determined (#458): it has no
+     * Parcel rows, so it is attributed to no Parcel. [reconcile] sets its kilos and Parcels from
+     * its Pesadas.
      */
     suspend fun open(workspaceId: UUID, farmId: UUID, campaignId: UUID, date: LocalDate, now: Instant): UUID {
         val id = idGenerator.newId()
@@ -55,7 +56,6 @@ internal class JornadaLedger(
                 dayOrigin = AUTO_DAY,
             ),
         )
-        database.harvestDao().upsertParcels(dayParcels(id, workspaceId, campaignId, null, now))
         database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, id, OutboxOperation.CREATE, now)
         return id
     }
@@ -90,6 +90,34 @@ internal class JornadaLedger(
         database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, harvestId, OutboxOperation.UPDATE, now)
     }
 
+    /**
+     * #458 upgrade path: an automatic day only ever holds the sum of its Pesadas and their origin.
+     * One left without a live Pesada by an earlier version keeps its own record (jornales, notes,
+     * method…) but loses what was only presumed: its origin Parcels and any kilos, back to «Kg
+     * pendientes de pesada». In closed Campaigns too: that presumption was never the farmer's
+     * history. Idempotent.
+     */
+    suspend fun clearUnfoundedOrigins(now: Instant) {
+        database.harvestDao().listUnfoundedAutoDays().forEach { day ->
+            database.harvestDao().deleteParcels(day.id)
+            database.harvestDao().upsert(day.copy(weightGrams = 0L, metadata = day.metadata.next(now)))
+            database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, day.id, OutboxOperation.UPDATE, now)
+        }
+    }
+
+    /**
+     * #502: after a day's jornal, machinery, Gasto or attachment goes, an automatic day keeps
+     * only what still backs it: with nothing left at all it is removed, as when its last Pesada
+     * goes. A Jornada recorded by hand is never touched here (its kilos are the farmer's). Call it
+     * after the day's calculated costs are settled, so it sees the final ledger.
+     */
+    suspend fun reconcileAutomatic(harvestId: UUID?, now: Instant) {
+        if (harvestId == null) return
+        val day = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null } ?: return
+        if (day.dayOrigin != AUTO_DAY) return
+        reconcileAutoDay(day, database.deliveryDao().listLiveForHarvest(day.id), now)
+    }
+
     private suspend fun reconcileAutoDay(day: HarvestEntity, linked: List<DeliveryEntity>, now: Instant) {
         if (linked.isEmpty() && !ownsAnything(day)) {
             database.harvestDao().upsert(day.copy(weightGrams = 0L, metadata = day.metadata.next(now).copy(deletedAt = now)))
@@ -97,7 +125,7 @@ internal class JornadaLedger(
             return
         }
         val sum = linked.sumOf { it.netGrams }
-        // With no Pesada left, its origin is back to the whole Farm: nothing supports a subset any more.
+        // With no Pesada left, its origin is not determined again: no Parcel is presumed (#458).
         val parcelsChanged = replaceDayParcels(day, linked, now)
         if (sum == day.weightGrams && !parcelsChanged) return
         database.harvestDao().upsert(day.copy(weightGrams = sum, metadata = day.metadata.next(now)))
@@ -106,34 +134,44 @@ internal class JornadaLedger(
 
     /**
      * CR-010 (note 2): a day's origin is the union of its Pesadas' Parcels, except that one
-     * Pesada from the whole Farm (no Parcel chosen) makes the day farm-wide, and so does having no
-     * Pesada at all. Always without a split: exact kilos stay on each Pesada and are never inferred
-     * for the day.
+     * Pesada from the whole Farm (no Parcel chosen) makes the day farm-wide. With no Pesada the
+     * origin is not determined: no Parcel rows at all, never every Parcel (#458). Always without
+     * a split: exact kilos stay on each Pesada and are never inferred for the day.
+     *
+     * Only the difference is written: a Parcel already in the day keeps its row, id and
+     * `parcelNameAtHarvest`; a Parcel joining takes its current name; one leaving loses only its row.
      */
     private suspend fun replaceDayParcels(day: HarvestEntity, linked: List<DeliveryEntity>, now: Instant): Boolean {
-        val origins = linked.map { pesada -> database.deliveryDao().listParcels(pesada.id).map { it.parcelId } }
-        val wanted = if (origins.isEmpty() || origins.any { it.isEmpty() }) null else origins.flatten().toSet()
         val campaignId = day.campaignId ?: return false
-        val rows = dayParcels(day.id, day.workspaceId, campaignId, wanted, now)
+        val origins = linked.map { pesada -> database.deliveryDao().listParcels(pesada.id).map { it.parcelId } }
+        val wanted: Set<UUID> = when {
+            origins.isEmpty() -> emptySet()
+            origins.any { it.isEmpty() } -> database.harvestDao().listCampaignParcels(campaignId).map { it.parcelId }.toSet()
+            else -> origins.flatten().toSet()
+        }
         val current = database.harvestDao().listParcels(day.id)
-        val unchanged = current.map { it.parcelId }.toSet() == rows.map { it.parcelId }.toSet() &&
-            current.all { it.allocationMode == HarvestAllocation.UNALLOCATED.name && it.weightGrams == null }
-        if (unchanged) return false
-        database.harvestDao().deleteParcels(day.id)
-        database.harvestDao().upsertParcels(rows)
+        val removed = current.filter { it.parcelId !in wanted }
+        val reset = current.filter {
+            it.parcelId in wanted && (it.allocationMode != HarvestAllocation.UNALLOCATED.name || it.weightGrams != null)
+        }.map { it.copy(weightGrams = null, allocationMode = HarvestAllocation.UNALLOCATED.name, metadata = it.metadata.next(now)) }
+        val missing = wanted - current.map { it.parcelId }.toSet()
+        val added = if (missing.isEmpty()) emptyList() else dayParcels(day.id, day.workspaceId, campaignId, missing, now)
+        if (removed.isEmpty() && reset.isEmpty() && added.isEmpty()) return false
+        if (removed.isNotEmpty()) database.harvestDao().deleteParcelsById(removed.map { it.id })
+        if (reset.isNotEmpty() || added.isNotEmpty()) database.harvestDao().upsertParcels(reset + added)
         return true
     }
 
-    /** The day's origin rows: [parcelIds] of the Campaign, or all of them (the whole Farm) when null. */
+    /** New origin rows for [parcelIds] of the Campaign, each named as the Parcel is called now. */
     private suspend fun dayParcels(
         harvestId: UUID,
         workspaceId: UUID,
         campaignId: UUID,
-        parcelIds: Set<UUID>?,
+        parcelIds: Set<UUID>,
         now: Instant,
     ): List<HarvestParcelEntity> =
         database.harvestDao().listCampaignParcels(campaignId)
-            .filter { parcelIds == null || it.parcelId in parcelIds }
+            .filter { it.parcelId in parcelIds }
             .sortedBy { it.parcelId.toString() }
             .map { parcel ->
                 HarvestParcelEntity(
@@ -160,19 +198,6 @@ internal class JornadaLedger(
             database.equipmentDao().listForHarvest(harvestId).isNotEmpty() ||
             database.expenseDao().listForHarvest(harvestId).isNotEmpty() ||
             database.documentDao().countLiveForOwner(AttachmentOwnerType.HARVEST.name, harvestId) > 0
-    }
-
-    /** A removed Jornada releases its Pesadas: they stay, unlinked, with every figure intact. */
-    suspend fun release(harvestId: UUID, now: Instant) {
-        database.deliveryDao().listLiveForHarvest(harvestId).forEach { delivery ->
-            database.deliveryDao().upsert(
-                delivery.copy(
-                    harvestId = null,
-                    metadata = delivery.metadata.next(now),
-                ),
-            )
-            database.enqueueCollapsed(idGenerator, SyncEntityType.DELIVERY, delivery.id, OutboxOperation.UPDATE, now)
-        }
     }
 
     private fun LocalMetadata.next(now: Instant) =

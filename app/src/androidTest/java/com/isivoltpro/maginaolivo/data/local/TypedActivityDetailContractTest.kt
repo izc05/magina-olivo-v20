@@ -206,6 +206,36 @@ class TypedActivityDetailContractTest {
         assertEquals(90, rows.irrigation?.durationMinutes)
     }
 
+    /** #453: editing the same type never erases what its form does not carry. */
+    @Test
+    fun editingTheSameTypeKeepsWhatItsFormDoesNotCarry() = runBlocking {
+        val stored = IrrigationPrice(
+            basis = IrrigationPricingBasis.PER_M3, priceDate = LocalDate.parse("2026-03-01"),
+            unitPriceMinor = 12, quantity = 240.0, estimatedAmountMinor = 2880, currency = "USD", notes = "Factura marzo",
+        )
+        val id = create(ActivityType.IRRIGATION, ActivityDetail.Irrigation(180, 240.0, "Sector 3", "Goteo", stored))
+        // The form rebuilds the tariff from its own fields only: no currency, notes or Gasto link.
+        val fromForm = IrrigationPrice(basis = IrrigationPricingBasis.PER_M3, priceDate = LocalDate.parse("2026-03-01"),
+            unitPriceMinor = 12, quantity = 300.0, estimatedAmountMinor = 3600)
+        assertOk(
+            repository.update(
+                id,
+                ActivityChanges(
+                    type = ActivityType.IRRIGATION,
+                    activityDate = date,
+                    description = "Riego corregido",
+                    parcelIds = setOf(parcelA),
+                    detail = ActivityDetail.Irrigation(200, 300.0, "Sector 3", "Goteo", fromForm),
+                ),
+            ),
+        )
+        val price = db.activityDao().findWithTargets(id)!!.irrigationPrice!!
+        assertEquals("USD", price.currency)
+        assertEquals("Factura marzo", price.notes)
+        assertEquals(3600L, price.estimatedAmountMinor)
+        assertEquals(0, db.expenseCount())
+    }
+
     @Test
     fun negativeAgronomicNumbersAreRejected() = runBlocking {
         assertValidation(
@@ -322,6 +352,75 @@ class TypedActivityDetailContractTest {
             ),
         )
         assertEquals(500.0, repository.observe(id).first()!!.targets.single().areaAffectedM2!!, 0.001)
+    }
+
+    /**
+     * #440: correcting a work keeps its targets as they are — same ids, historical names, surface —
+     * even when one of its Parcels has since been archived or renamed. Only a Parcel being added
+     * must still be an active Parcel of the Farm.
+     */
+    @Test
+    fun correctingAWorkNeverRebuildsItsTargetsEvenWithAnArchivedParcel() = runBlocking {
+        val created = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Tratamiento",
+                parcelIds = setOf(parcelA, parcelB),
+                parcelAreasM2 = mapOf(parcelA to 400.0),
+                detail = ActivityDetail.Phytosanitary(productName = "Cobre"),
+            ),
+        )
+        val id = (created as AppResult.Success).value
+        val before = db.activityDao().listTargets(id).associateBy { it.parcelId }
+
+        // Later: Parcel A is archived and Parcel B is renamed.
+        val a = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(a.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED))
+        val b = db.parcelDao().findById(parcelB)!!
+        db.parcelDao().upsert(b.copy(displayName = "Parcela B renombrada"))
+
+        assertOk(
+            repository.update(
+                id,
+                ActivityChanges(
+                    type = ActivityType.PHYTOSANITARY,
+                    activityDate = date,
+                    description = "Tratamiento corregido",
+                    parcelIds = setOf(parcelA, parcelB),
+                    detail = ActivityDetail.Phytosanitary(productName = "Cobre"),
+                ),
+            ),
+        )
+        val after = db.activityDao().listTargets(id).associateBy { it.parcelId }
+        assertEquals(before.keys, after.keys)
+        assertEquals(before.getValue(parcelA).id, after.getValue(parcelA).id)
+        assertEquals(before.getValue(parcelB).id, after.getValue(parcelB).id)
+        assertEquals("Parcela B", after.getValue(parcelB).parcelNameAtTarget)
+        assertEquals(400.0, after.getValue(parcelA).areaAffectedM2!!, 0.001)
+
+        // An archived Parcel cannot be newly added to another work.
+        val other = repository.create(
+            NewActivity(
+                farmId = farmId,
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Otro tratamiento",
+                parcelIds = setOf(parcelB),
+            ),
+        )
+        val otherId = (other as AppResult.Success).value
+        val adding = repository.update(
+            otherId,
+            ActivityChanges(
+                type = ActivityType.PHYTOSANITARY,
+                activityDate = date,
+                description = "Otro tratamiento",
+                parcelIds = setOf(parcelA, parcelB),
+            ),
+        )
+        assertTrue("adding an archived Parcel is refused", adding is AppResult.Failure)
     }
 
     @Test

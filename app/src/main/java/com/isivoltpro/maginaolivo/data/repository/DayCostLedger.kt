@@ -16,6 +16,7 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.CalculatedCost
 import com.isivoltpro.maginaolivo.domain.expense.DayCostCalculator
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
@@ -32,8 +33,9 @@ import org.json.JSONObject
  * version) whenever confirmed attendance or equipment prices change, and removed when no lines
  * remain. Day and Campaign costs read only the ledger, so nothing is ever summed twice.
  *
- * A hand-typed cost of the same kind linked to the same day stands: the calculated one is then
- * kept as a draft, never summed, until the farmer picks it ([preferCalculated]). A closed
+ * A hand-typed cost the farmer marked as replacing the calculation (#475, `DAY_REPLACEMENT`) stands:
+ * the calculated one is then kept as a draft, never summed, until the farmer picks it
+ * ([preferCalculated]). Any other hand-typed cost of the day adds to it. A closed
  * Campaign is history: its entries are never recalculated. Must run inside the caller's
  * transaction.
  */
@@ -152,13 +154,85 @@ internal class DayCostLedger(
         )
     }
 
-    /** Live, posted, hand-typed (or document) costs linked to the same day that stand for [kind]. */
+    /**
+     * #475: the live, posted costs of the day the farmer explicitly marked as replacing [kind].
+     * Never deduced from the category or the concept.
+     */
     private suspend fun manual(harvestId: UUID, kind: DayCostKind): List<ExpenseEntity> =
         database.expenseDao().listForHarvest(harvestId).filter { expense ->
-            val category = runCatching { ExpenseCategory.valueOf(expense.category) }.getOrNull()
-            expense.origin !in CALCULATED && expense.status == ExpenseStatus.POSTED.name &&
-                category != null && kind.isReplacedBy(category, expense.concept)
+            expense.origin == ExpenseOrigin.DAY_REPLACEMENT.name && expense.status == ExpenseStatus.POSTED.name &&
+                expense.category == kind.category.name
         }
+
+    /**
+     * #475: a cost of [category] may replace the day's calculation only when it is jornales or
+     * machinery hire on a day that has that calculation ([requireCalculated]), and, for jornales,
+     * only while no one of that day has been paid: payments per person are never redistributed.
+     */
+    suspend fun requireReplaceable(harvestId: UUID?, category: String, requireCalculated: Boolean = true) {
+        if (harvestId == null) throw InvalidExpense("dayCostRole", "no_day")
+        val kind = runCatching { ExpenseCategory.valueOf(category) }.getOrNull()?.let { DayCostKind.of(it) }
+            ?: throw InvalidExpense("dayCostRole", "not_replaceable")
+        val day = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null }
+            ?: throw InvalidExpense("harvestId", "not_found")
+        if (requireCalculated && database.expenseDao().listForHarvest(day.id).none { it.origin == kind.origin.name }) {
+            throw InvalidExpense("dayCostRole", "nothing_to_replace")
+        }
+        if (kind == DayCostKind.LABOUR && labourPaid(day)) throw InvalidExpense("dayCostRole", "labour_paid")
+    }
+
+    /** #475: the question a cost of [category] on that day gets, from the day's real state. */
+    suspend fun question(harvestId: UUID, category: ExpenseCategory): DayCostQuestion? {
+        val kind = DayCostKind.of(category) ?: return null
+        val day = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null } ?: return null
+        if (database.expenseDao().listForHarvest(day.id).none { it.origin == kind.origin.name }) return null
+        return DayCostQuestion(kind, canReplace = !(kind == DayCostKind.LABOUR && labourPaid(day)))
+    }
+
+    /** Whether anyone who worked that day has a payment recorded in its Campaign. */
+    private suspend fun labourPaid(day: HarvestEntity): Boolean {
+        val campaignId = day.campaignId ?: return false
+        val workers = database.labourDao().listForHarvest(day.id).mapNotNull { it.workerId }.toSet()
+        if (workers.isEmpty()) return false
+        return database.labourPaymentDao().listForCampaign(campaignId).any { it.workerId in workers }
+    }
+
+    /**
+     * #475 upgrade: before the choice was asked, a hand-typed jornales/machinery cost of a day
+     * replaced the calculation by its category. Where that is what counts today (the calculation
+     * kept as a draft and no explicit replacement yet), the cost is marked as the replacement so
+     * the money counted stays exactly the same. Nothing else is reinterpreted; idempotent.
+     */
+    suspend fun markExistingReplacements(now: Instant) {
+        database.expenseDao().listDraftCalculated().forEach { calculated ->
+            val dayId = calculated.harvestId ?: return@forEach
+            val kind = DayCostKind.entries.firstOrNull { it.origin.name == calculated.origin } ?: return@forEach
+            markLegacyDay(dayId, kind, now)
+        }
+    }
+
+    /**
+     * A day written before #475 is recognised by its calculation kept as a draft with no explicit
+     * replacement of that kind ever recorded on it (not even deleted or taken back as a draft):
+     * the hand-typed cost that then replaced it by its category is marked as the replacement. Any
+     * day that has ever had an explicit one is in the new rule and is never reinterpreted.
+     */
+    private suspend fun markLegacyDay(harvestId: UUID, kind: DayCostKind, now: Instant) {
+        val ofDay = database.expenseDao().listForHarvest(harvestId)
+        val calculated = ofDay.firstOrNull { it.origin == kind.origin.name } ?: return
+        if (calculated.status != ExpenseStatus.DRAFT.name) return
+        if (database.expenseDao().countReplacementsEver(harvestId, kind.category.name) > 0) return
+        ofDay.filter { expense ->
+            val category = runCatching { ExpenseCategory.valueOf(expense.category) }.getOrNull()
+            expense.origin in LEGACY_REPLACING && expense.status == ExpenseStatus.POSTED.name &&
+                category != null && kind.isReplacedBy(category, expense.concept)
+        }.forEach { expense ->
+            database.expenseDao().upsert(
+                expense.copy(origin = ExpenseOrigin.DAY_REPLACEMENT.name, metadata = expense.metadata.next(now)),
+            )
+            database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, expense.id, OutboxOperation.UPDATE, now)
+        }
+    }
 
     private suspend fun remove(expense: ExpenseEntity, now: Instant) {
         database.expenseDao().upsert(expense.copy(metadata = expense.metadata.next(now).copy(deletedAt = now)))
@@ -170,6 +244,7 @@ internal class DayCostLedger(
 
     companion object {
         val CALCULATED = setOf(ExpenseOrigin.DAY_LABOUR.name, ExpenseOrigin.DAY_EQUIPMENT.name)
+        private val LEGACY_REPLACING = setOf(ExpenseOrigin.MANUAL.name, ExpenseOrigin.DOCUMENT_OCR.name)
 
         fun RecollectionRatesEntity.toDomain(): RecollectionRates {
             val json = runCatching { JSONObject(equipmentDayJson) }.getOrElse { JSONObject() }

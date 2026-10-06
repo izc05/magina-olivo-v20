@@ -13,6 +13,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.PurchaseItemEntity
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseRepository
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
@@ -63,7 +64,14 @@ class OfflineFirstExpenseRepository(
         }
         return inTransaction("create_expense") {
             val now = clock.nowInstant()
-            val id = writer.insert(workspaceId, draft, ExpenseStatus.POSTED, ExpenseOrigin.MANUAL, now)
+            // #475: a day's cost replaces its calculation only when the farmer said so.
+            val origin = if (draft.dayCostRole == DayCostRole.REPLACEMENT) {
+                costs.requireReplaceable(draft.harvestId, draft.category.name)
+                ExpenseOrigin.DAY_REPLACEMENT
+            } else {
+                ExpenseOrigin.MANUAL
+            }
+            val id = writer.insert(workspaceId, draft, ExpenseStatus.POSTED, origin, now)
             // CR-010 A3: a hand-typed cost on a day decides whether its calculated one counts.
             costs.sync(draft.harvestId, now)
             AppResult.Success(id)
@@ -79,9 +87,14 @@ class OfflineFirstExpenseRepository(
                 return@inTransaction AppResult.Failure(AppError.Validation("activityId", "activity_cost_locked"))
             }
             val now = clock.nowInstant()
-            writer.rewrite(current, draft, now)
+            val origin = roleOrigin(current, draft)
+            writer.rewrite(current, draft, now, origin)
             costs.sync(current.harvestId, now)
-            if (draft.harvestId != current.harvestId) costs.sync(draft.harvestId, now)
+            if (draft.harvestId != current.harvestId) {
+                costs.sync(draft.harvestId, now)
+                // #502: the day it left may now hold nothing.
+                JornadaLedger(database, idGenerator).reconcileAutomatic(current.harvestId, now)
+            }
             AppResult.Success(Unit)
         }
 
@@ -90,6 +103,10 @@ class OfflineFirstExpenseRepository(
             val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
             if (current.status == ExpenseStatus.POSTED.name) return@inTransaction AppResult.Success(Unit)
             if (current.origin in DayCostLedger.CALCULATED) return@inTransaction AppResult.Failure(AppError.Conflict("calculated_cost"))
+            // #475: a replacement taken back into use replaces again: never over paid jornales.
+            if (current.origin == ExpenseOrigin.DAY_REPLACEMENT.name) {
+                costs.requireReplaceable(current.harvestId, current.category, requireCalculated = false)
+            }
             val now = clock.nowInstant()
             writer.post(current, now, clock.today(java.time.ZoneId.systemDefault()))
             costs.sync(current.harvestId, now)
@@ -105,6 +122,8 @@ class OfflineFirstExpenseRepository(
             val now = clock.nowInstant()
             writer.delete(current, now)
             costs.sync(current.harvestId, now)
+            // #502: an automatic day left with nothing goes with its last Gasto.
+            JornadaLedger(database, idGenerator).reconcileAutomatic(current.harvestId, now)
             AppResult.Success(Unit)
         }
 
@@ -117,6 +136,28 @@ class OfflineFirstExpenseRepository(
             writer.detachFromActivity(current, clock.nowInstant())
             AppResult.Success(Unit)
         }
+
+    /**
+     * #475: the origin an edit keeps. A hand-typed or document cost becomes a replacement only by
+     * the farmer's explicit choice (checked like a new one); choosing «Se añade» again makes it an
+     * ordinary hand-typed cost. Any other origin is kept as it is.
+     */
+    private suspend fun roleOrigin(current: ExpenseEntity, draft: ExpenseDraft): ExpenseOrigin {
+        val stored = ExpenseOrigin.entries.firstOrNull { it.name == current.origin } ?: ExpenseOrigin.MANUAL
+        if (stored !in ROLE_ORIGINS) {
+            if (draft.dayCostRole == DayCostRole.REPLACEMENT) throw InvalidExpense("dayCostRole", "not_replaceable")
+            return stored
+        }
+        return when (draft.dayCostRole) {
+            DayCostRole.ADDITIVE -> if (stored == ExpenseOrigin.DAY_REPLACEMENT) ExpenseOrigin.MANUAL else stored
+            DayCostRole.REPLACEMENT -> {
+                val unchanged = stored == ExpenseOrigin.DAY_REPLACEMENT && draft.harvestId == current.harvestId &&
+                    draft.category.name == current.category
+                if (!unchanged) costs.requireReplaceable(draft.harvestId, draft.category.name)
+                ExpenseOrigin.DAY_REPLACEMENT
+            }
+        }
+    }
 
     private suspend fun live(id: UUID): ExpenseEntity? =
         database.expenseDao().findById(id)?.takeIf { it.metadata.deletedAt == null }
@@ -134,6 +175,8 @@ class OfflineFirstExpenseRepository(
             }
         }
 }
+
+private val ROLE_ORIGINS = setOf(ExpenseOrigin.MANUAL, ExpenseOrigin.DOCUMENT_OCR, ExpenseOrigin.DAY_REPLACEMENT)
 
 internal fun ExpenseEntity.toDomain(
     purchase: PurchaseEntity? = null,

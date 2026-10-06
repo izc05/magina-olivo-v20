@@ -20,6 +20,12 @@ data class HarvestContext(
 )
 
 interface HarvestRepository {
+    /**
+     * #458: run once per start. Automatic days with no Pesada lose the origin and kilos they only
+     * had by presumption; nothing else of the day changes.
+     */
+    suspend fun clearUnfoundedDayOrigins(): AppResult<Unit> = AppResult.Success(Unit)
+
     fun observeAll(): Flow<List<Harvest>>
 
     fun observeForCampaign(campaignId: UUID): Flow<List<Harvest>>
@@ -45,3 +51,6 @@ interface HarvestRepository {
 
     suspend fun delete(id: UUID): AppResult<Unit>
 }
+
+/** #457 conflict code: the day still has Pesadas; they are moved or corrected before it can go. */
+const val HARVEST_HAS_DELIVERIES = "harvest_has_deliveries"

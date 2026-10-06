@@ -30,20 +30,31 @@ internal fun LabourSheet(
     var newPerson by rememberSaveable { mutableStateOf(false) }
     var newName by rememberSaveable { mutableStateOf("") }
     var pendingName by rememberSaveable { mutableStateOf<String?>(null) }
+    // #442: the people that existed before «Añadir persona», so the new one is found by id, never by name.
+    var knownBeforeAdd by rememberSaveable { mutableStateOf("") }
+    var askSameName by rememberSaveable { mutableStateOf(false) }
     var unit by rememberSaveable { mutableStateOf(LabourUnit.FULL_DAY) }
     var hours by rememberSaveable { mutableStateOf("") }
     val usualRates = rates?.takeIf { it.currency == currency }
     var price by rememberSaveable(currency) { mutableStateOf(Money.editable(usualRates?.fullDayMinor, currency)) }
     var touchedPrice by rememberSaveable(currency) { mutableStateOf(false) }
     var initialPayment by rememberSaveable(currency) { mutableStateOf("NONE") }
+    // #449: the farmer can say the price is not known yet; never 0 € and never the usual rate silently.
+    var priceUnknown by rememberSaveable { mutableStateOf(false) }
     var paymentAmount by rememberSaveable(currency) { mutableStateOf("") }
     var paymentId by rememberSaveable(currency) { mutableStateOf(UUID.randomUUID().toString()) }
     LaunchedEffect(workers, pendingName) {
         val name = pendingName ?: return@LaunchedEffect
-        workers.firstOrNull { it.name.equals(name, true) }?.let {
+        workers.firstOrNull { it.name.equals(name, true) && it.id.toString() !in knownBeforeAdd.split(',') }?.let {
             if (it.id !in alreadyRecorded) selected = it.id.toString()
-            pendingName = null; newPerson = false; newName = ""
+            pendingName = null; newPerson = false; newName = ""; askSameName = false
         }
+    }
+    val namesakes = workers.filter { it.name.equals(newName.trim(), true) }
+    val addPerson = {
+        knownBeforeAdd = workers.joinToString(",") { it.id.toString() }
+        pendingName = newName.trim()
+        onAddWorker(newName)
     }
     LaunchedEffect(rates, unit, currency) {
         if (!touchedPrice) price = Money.editable(if (unit == LabourUnit.HOURS) usualRates?.hourlyMinor else usualRates?.fullDayMinor, currency)
@@ -70,14 +81,26 @@ internal fun LabourSheet(
         if (workers.isEmpty()) Text("Añade una persona para guardar su jornal.", color = MoTextSecondary)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             workers.forEach { worker ->
-                FilterChip(selected == worker.id.toString(), { selected = worker.id.toString() }, { Text(worker.name) }, enabled = !isSaving && worker.id !in alreadyRecorded, modifier = Modifier.testTag("labour-worker"))
+                FilterChip(selected == worker.id.toString(), { selected = worker.id.toString() }, { Text(workerLabel(worker, workers)) }, enabled = !isSaving && worker.id !in alreadyRecorded, modifier = Modifier.testTag("labour-worker"))
             }
         }
         Text(if (workerId == null) "Elige una persona" else "1 seleccionada", color = MoTextSecondary, modifier = Modifier.testTag("labour-selected-count"))
-        MoTertiaryButton("+ Nueva persona", { newPerson = !newPerson }, enabled = !isSaving)
+        MoTertiaryButton("+ Nueva persona", { newPerson = !newPerson }, enabled = !isSaving, modifier = Modifier.testTag("labour-new-person"))
         if (newPerson) {
             MoTextField(newName, { newName = it }, "Nombre y apellidos", enabled = !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-new-name"))
-            MoSecondaryButton("Añadir persona", { pendingName = newName.trim(); onAddWorker(newName) }, enabled = newName.isNotBlank() && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-add-worker"))
+            MoSecondaryButton("Añadir persona", { if (namesakes.isEmpty()) addPerson() else askSameName = true },
+                enabled = newName.isNotBlank() && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-add-worker"))
+            if (askSameName && namesakes.isNotEmpty()) {
+                // #442: the app never decides that the same name is the same person.
+                Text("Ya existe una persona llamada ${newName.trim()}. ¿Es la misma?", color = MoLabourText,
+                    modifier = Modifier.testTag("labour-same-name"))
+                MoSecondaryButton("Usar persona existente", {
+                    namesakes.firstOrNull { it.id !in alreadyRecorded }?.let { selected = it.id.toString() }
+                    askSameName = false; newPerson = false; newName = ""
+                }, enabled = !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-use-existing"))
+                MoTertiaryButton("Crear otra persona con este nombre", { addPerson() }, enabled = !isSaving,
+                    modifier = Modifier.fillMaxWidth().testTag("labour-create-namesake"))
+            }
         }
         Text("Duración", style = MaterialTheme.typography.titleMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
@@ -86,11 +109,18 @@ internal fun LabourSheet(
             }
         }
         if (unit == LabourUnit.HOURS) MoTextField(hours, { hours = it }, "Horas", enabled = !isSaving, supportingText = if (minutes == null) "Entre 0 y 24 horas; por ejemplo 3 o 3,5" else null, modifier = Modifier.fillMaxWidth().testTag("labour-hours"))
-        MoTextField(price, { price = it; touchedPrice = true }, if (unit == LabourUnit.HOURS) "Tarifa por hora ($currency)" else "Precio del jornal ($currency)", enabled = !isSaving, isError = minor == null, supportingText = if (minor == null) "Confirma un precio válido para guardar" else null, modifier = Modifier.fillMaxWidth().testTag("labour-rate"))
-        total?.let { Text("Coste del jornal: ${Money.format(it, currency)}", color = MoLabourText, modifier = Modifier.testTag("labour-generated")) }
+        FilterChip(priceUnknown, { priceUnknown = !priceUnknown; if (priceUnknown) initialPayment = "NONE" }, { Text("Precio aún sin saber") },
+            enabled = !isSaving, modifier = Modifier.testTag("labour-price-unknown"))
+        if (priceUnknown) {
+            Text("Se anota sin precio: no cuenta como 0 € y el coste del día queda incompleto hasta que lo confirmes.",
+                color = MoTextSecondary, modifier = Modifier.testTag("labour-price-unknown-note"))
+        } else {
+            MoTextField(price, { price = it; touchedPrice = true }, if (unit == LabourUnit.HOURS) "Tarifa por hora ($currency)" else "Precio del jornal ($currency)", enabled = !isSaving, isError = minor == null, supportingText = if (minor == null) "Confirma un precio válido o marca «Precio aún sin saber»" else null, modifier = Modifier.fillMaxWidth().testTag("labour-rate"))
+            total?.let { Text("Coste del jornal: ${Money.format(it, currency)}", color = MoLabourText, modifier = Modifier.testTag("labour-generated")) }
+        }
         calculationError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-calculation-error")) }
-        Text("Pago inicial (opcional)", style = MaterialTheme.typography.titleMedium)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
+        if (!priceUnknown) Text("Pago inicial (opcional)", style = MaterialTheme.typography.titleMedium)
+        if (!priceUnknown) FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
             listOf("NONE" to "Sin pagar", "PARTIAL" to "Pago parcial", "FULL" to "Pagado completo").forEach { (value, label) ->
                 FilterChip(initialPayment == value, { initialPayment = value }, { Text(label) }, enabled = !isSaving, modifier = Modifier.testTag("labour-payment-$value"))
             }
@@ -100,8 +130,11 @@ internal fun LabourSheet(
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-form-error")) }
         MoPrimaryButton(if (isSaving) "Guardando…" else "Guardar 1 jornal", {
             val paid = when (initialPayment) { "FULL" -> total; "PARTIAL" -> partial; else -> null }
-            onSaveCrew(CrewDraft(harvestId, listOf(workerId!!), unit, minutes, rate!!, paid?.let { listOf(LabourPayment(UUID.fromString(paymentId), workerId, campaignId, date, it, currency)) }.orEmpty()))
-        }, enabled = workerId != null && total != null && rate != null && paymentError == null && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-save"))
+            if (priceUnknown) onSaveCrew(CrewDraft(harvestId, listOf(workerId!!), unit, minutes, priceUnknown = true))
+            else onSaveCrew(CrewDraft(harvestId, listOf(workerId!!), unit, minutes, rate!!, paid?.let { listOf(LabourPayment(UUID.fromString(paymentId), workerId, campaignId, date, it, currency)) }.orEmpty()))
+        }, enabled = workerId != null && !isSaving &&
+            (if (priceUnknown) unit != LabourUnit.HOURS || minutes != null else total != null && rate != null && paymentError == null),
+            modifier = Modifier.fillMaxWidth().testTag("labour-save"))
         MoTertiaryButton("Cancelar", onCancel, enabled = !isSaving, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(MoSpacing.lg))
     }
@@ -165,3 +198,12 @@ internal fun LabourPaymentSheet(name: String, balance: LabourSettlement, today: 
 }
 
 private val PAYMENT_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(java.time.format.ResolverStyle.STRICT)
+
+/**
+ * #442: two people may share a name; each keeps it as saved and is told apart on screen by a
+ * derived number in the stable list order («Juan García · 2»). Nothing is stored in the name.
+ */
+internal fun workerLabel(worker: Worker, workers: List<Worker>): String {
+    val same = workers.filter { it.name.equals(worker.name, true) }
+    return if (same.size < 2) worker.name else "${worker.name} · ${same.indexOfFirst { it.id == worker.id } + 1}"
+}

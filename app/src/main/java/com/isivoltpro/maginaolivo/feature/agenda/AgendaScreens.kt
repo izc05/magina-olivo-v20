@@ -259,7 +259,7 @@ fun AgendaScreen(
             MoConfirmationSheet(
                 title = if (action == "complete") "¿Trabajo hecho?" else "¿Cancelar este trabajo?",
                 body = if (action == "complete") {
-                    "Se marcará como completado en la misma actuación y dejará de avisar."
+                    "Se marcará como completado en el mismo trabajo y dejará de avisar."
                 } else {
                     "Quedará como cancelado en el histórico y dejará de avisar."
                 },

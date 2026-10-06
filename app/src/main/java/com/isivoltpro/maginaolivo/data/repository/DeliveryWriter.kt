@@ -76,6 +76,14 @@ internal class DeliveryWriter(
         if (current.farmId != draft.farmId) throw InvalidDelivery("farmId", "cannot_change")
         val campaign = runningCampaign(current)
         checkDate(draft, campaign)
+        // #455: a Pesada is never dated after its own yield analysis; an analysis without a
+        // date asks nothing.
+        if (draft.deliveryDate != current.deliveryDate) {
+            val analysisDate = database.deliveryDao().findLiveAnalysis(current.id)?.analysisDate
+            if (analysisDate != null && analysisDate.isBefore(draft.deliveryDate)) {
+                throw InvalidDelivery("deliveryDate", "after_analysis")
+            }
+        }
         // CR-010 (note 2): a Pesada whose date is kept stays in its day (a link to a hand-recorded
         // Jornada made before CR-010 included); a new date moves it to that date's automatic day.
         val keptDay = current.harvestId?.takeIf { draft.deliveryDate == current.deliveryDate && liveDay(it) }
@@ -84,7 +92,7 @@ internal class DeliveryWriter(
         val row = current.copy(
             deliveryDate = draft.deliveryDate,
             destinationOrganizationId = draft.destinationOrganizationId,
-            destinationName = destinationName(draft, current.workspaceId),
+            destinationName = keptDestinationName(current, draft) ?: destinationName(draft, current.workspaceId),
             netGrams = draft.netGrams!!,
             grossGrams = draft.grossGrams,
             tareGrams = draft.tareGrams,
@@ -122,6 +130,15 @@ internal class DeliveryWriter(
         if (draft.deliveryDate.isBefore(campaign.startDate)) throw InvalidDelivery("deliveryDate", "before_campaign")
     }
 
+    /**
+     * #451: a Pesada that keeps its cooperative keeps the name it was recorded with, even if the
+     * cooperative was renamed or archived since. Only choosing another one takes a new name.
+     */
+    private fun keptDestinationName(current: DeliveryEntity, draft: DeliveryDraft): String? =
+        current.destinationName.takeIf {
+            draft.destinationOrganizationId != null && draft.destinationOrganizationId == current.destinationOrganizationId
+        }
+
     /** A chosen organization is copied by name, so the Delivery reads the same if it is renamed. */
     private suspend fun destinationName(draft: DeliveryDraft, workspaceId: UUID): String {
         val organizationId = draft.destinationOrganizationId ?: return draft.destinationName!!.trim()
@@ -132,24 +149,46 @@ internal class DeliveryWriter(
         return organization.name
     }
 
+    /**
+     * Writes the origin Parcels of a Pesada (#454). A Parcel it already had keeps its row: id,
+     * `parcelNameAtDelivery` and Campaign link stay as recorded, and only a real change of its
+     * kilos touches it. Only a Parcel added now takes today's name; a Parcel taken out loses
+     * only its own row.
+     */
     private suspend fun replaceShares(delivery: DeliveryEntity, draft: DeliveryDraft, now: Instant) {
-        val campaignParcels = database.harvestDao().listCampaignParcels(delivery.campaignId).associateBy { it.parcelId }
-        val rows = draft.shares.sortedBy { it.parcelId.toString() }.map { share ->
-            val parcel = campaignParcels[share.parcelId] ?: throw InvalidDelivery("parcels", "parcel_not_in_campaign")
-            DeliveryParcelEntity(
-                id = idGenerator.newId(),
-                workspaceId = delivery.workspaceId,
-                deliveryId = delivery.id,
-                parcelId = parcel.parcelId,
-                campaignParcelId = parcel.campaignParcelId,
-                parcelNameAtDelivery = parcel.name,
-                weightGrams = share.weightGrams,
-                allocationMode = if (share.weightGrams == null) HarvestAllocation.UNALLOCATED.name else HarvestAllocation.EXACT.name,
-                metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
-            )
+        val existing = database.deliveryDao().listParcels(delivery.id).associateBy { it.parcelId }
+        val wanted = draft.shares.map { it.parcelId }.toSet()
+        val removed = existing.values.filter { it.parcelId !in wanted }.map { it.id }
+        if (removed.isNotEmpty()) database.deliveryDao().deleteParcelsById(removed)
+        val added = draft.shares.filter { it.parcelId !in existing }
+        val campaignParcels = if (added.isEmpty()) {
+            emptyMap()
+        } else {
+            database.harvestDao().listCampaignParcels(delivery.campaignId).associateBy { it.parcelId }
         }
-        database.deliveryDao().deleteParcels(delivery.id)
-        database.deliveryDao().upsertParcels(rows)
+        val rows = draft.shares.sortedBy { it.parcelId.toString() }.mapNotNull { share ->
+            val mode = if (share.weightGrams == null) HarvestAllocation.UNALLOCATED.name else HarvestAllocation.EXACT.name
+            val kept = existing[share.parcelId]
+            when {
+                kept == null -> {
+                    val parcel = campaignParcels[share.parcelId] ?: throw InvalidDelivery("parcels", "parcel_not_in_campaign")
+                    DeliveryParcelEntity(
+                        id = idGenerator.newId(),
+                        workspaceId = delivery.workspaceId,
+                        deliveryId = delivery.id,
+                        parcelId = parcel.parcelId,
+                        campaignParcelId = parcel.campaignParcelId,
+                        parcelNameAtDelivery = parcel.name,
+                        weightGrams = share.weightGrams,
+                        allocationMode = mode,
+                        metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
+                    )
+                }
+                kept.weightGrams == share.weightGrams && kept.allocationMode == mode -> null
+                else -> kept.copy(weightGrams = share.weightGrams, allocationMode = mode, metadata = kept.metadata.next(now))
+            }
+        }
+        if (rows.isNotEmpty()) database.deliveryDao().upsertParcels(rows)
     }
 
     private fun LocalMetadata.next(now: Instant) =

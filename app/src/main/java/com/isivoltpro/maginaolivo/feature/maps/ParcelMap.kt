@@ -304,14 +304,9 @@ fun mapFeatureCollection(parcels: List<MapParcel>, selectedIds: Set<String>): St
     }.toString()
 }
 
-/** Where a label goes: the average of the outer ring of the first polygon (inside for olive plots). */
-internal fun labelPoint(geometry: String): LatLng? = runCatching {
-    val root = JsonParser.parseString(geometry).asJsonObject
-    val coordinates = root.getAsJsonArray("coordinates")
-    val ring = if (root.get("type").asString == "MultiPolygon") coordinates[0].asJsonArray[0].asJsonArray else coordinates[0].asJsonArray
-    val points = ring.map { it.asJsonArray }.dropLast(1).ifEmpty { ring.map { it.asJsonArray } }
-    LatLng(points.map { it[1].asDouble }.average(), points.map { it[0].asDouble }.average())
-}.getOrNull()
+/** #574: a point guaranteed inside the dominant valid polygon component. */
+internal fun labelPoint(geometry: String): LatLng? =
+    parcelLabelPoint(geometry)?.let { LatLng(it.latitude, it.longitude) }
 
 private fun fitParcels(map: MapLibreMap, parcels: List<MapParcel>) {
     val points = mutableListOf<LatLng>()

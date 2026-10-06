@@ -29,6 +29,9 @@ data class DeliveryForm(
     val date: String = "",
     val destinationOrganizationId: UUID? = null,
     val destinationText: String = "",
+    /** #451: the cooperative this Pesada was saved with and the name it was saved under. */
+    val recordedDestinationId: UUID? = null,
+    val recordedDestinationName: String = "",
     val net: String = "",
     val gross: String = "",
     val tare: String = "",
@@ -170,6 +173,8 @@ internal fun deliveryProblemMessage(problem: DeliveryProblem): String = when (pr
     "future" -> "La fecha no puede ser posterior a hoy"
     "before_campaign" -> "La fecha es anterior al inicio de la campaña"
     "before_delivery" -> "El análisis no puede ser anterior a la pesada"
+    "after_analysis" ->
+        "La nueva fecha de la pesada sería posterior a su análisis de rendimiento. Corrige primero la fecha del análisis o mantén la fecha de la pesada."
     "empty" -> "Elige al menos una parcela de origen"
     "duplicate" -> "Cada parcela solo puede aparecer una vez"
     "exceeds_total" -> "Las parcelas suman más kilos que la pesada"
@@ -193,6 +198,8 @@ internal fun Delivery.toForm(): DeliveryForm {
         date = deliveryDate.toString(),
         destinationOrganizationId = destinationOrganizationId,
         destinationText = if (destinationOrganizationId == null) destinationName else "",
+        recordedDestinationId = destinationOrganizationId,
+        recordedDestinationName = destinationName,
         net = Weight.editable(netGrams),
         gross = Weight.editable(grossGrams),
         tare = Weight.editable(tareGrams),
@@ -337,4 +344,17 @@ internal fun presetOriginParcels(contexts: List<HarvestContext>, farmId: UUID?, 
     if (farmId == null || parcelId == null) return emptyList()
     val campaignParcels = contexts.firstOrNull { it.farmId == farmId }?.parcels.orEmpty()
     return if (campaignParcels.any { it.parcelId == parcelId }) listOf(parcelId) else emptyList()
+}
+
+/**
+ * #451: the cooperative as the form shows it. The one the Pesada was saved with reads with its
+ * saved name (also when it was renamed or archived since); the current name is only a hint.
+ */
+internal data class DestinationShown(val name: String?, val currentName: String?)
+
+internal fun DeliveryForm.destinationShown(destinations: List<Organization>): DestinationShown {
+    val chosen = destinationOrganizationId ?: return DestinationShown(null, null)
+    val current = destinations.firstOrNull { it.id == chosen }?.name
+    if (chosen != recordedDestinationId) return DestinationShown(current, null)
+    return DestinationShown(recordedDestinationName, current?.takeIf { it != recordedDestinationName })
 }

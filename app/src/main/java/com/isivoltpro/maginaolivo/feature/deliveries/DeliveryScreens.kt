@@ -625,12 +625,20 @@ internal fun DeliveryEditor(
                 modifier = Modifier.testTag("delivery-day-note"),
             )
         }
-        val destination = destinations.firstOrNull { it.id == form.destinationOrganizationId }
+        val destination = form.destinationShown(destinations)
         MoSelectField(
-            "Cooperativa o almazara", destination?.name ?: "Escribir a mano", { picker = "destination" },
+            "Cooperativa o almazara", destination.name ?: "Escribir a mano", { picker = "destination" },
             Modifier.testTag("delivery-destination"),
         )
-        if (destination == null) {
+        destination.currentName?.let { now ->
+            Text(
+                "Ahora: $now",
+                style = MaterialTheme.typography.bodySmall,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("delivery-destination-now"),
+            )
+        }
+        if (destination.name == null) {
             MoTextField(
                 form.destinationText, { form = form.copy(destinationText = it) }, "Nombre del destino",
                 isError = errors.destination != null, supportingText = errors.destination,

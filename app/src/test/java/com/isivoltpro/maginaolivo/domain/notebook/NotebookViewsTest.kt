@@ -56,14 +56,29 @@ class NotebookViewsTest {
         assertEquals(fuel.id, (oldest[1] as DiaryEntry.ExpenseEntry).expense.id)
     }
 
-    @Test fun anActivitysOwnCostIsNotListedTwiceInTheDiaryButStaysInTheLedger() {
+    /** #478: a work's cost, even a legacy ACTIVITY_COST, is never hidden in the Diario; it is shown, not summed. */
+    @Test fun aWorksCostIsItsOwnDiaryRowAndCountsOnceInTheLedger() {
         val irrigation = activity(ActivityType.IRRIGATION, day1)
         val cost = expense(3_000, ExpenseCategory.IRRIGATION, day1)
             .copy(activityId = irrigation.id, origin = ExpenseOrigin.ACTIVITY_COST)
         val notebook = project(listOf(irrigation), expenses = listOf(cost))
 
-        assertEquals(1, notebook.diary.single().entries.size)
-        assertEquals(3_000, notebook.costs.ledger.totalMinor)
+        val entries = notebook.diary.single().entries
+        assertEquals(2, entries.size)
+        assertEquals(irrigation.description, (entries[1] as DiaryEntry.ExpenseEntry).relatedWork)
+        assertEquals(3_000L, notebook.costs.ledger.single().amount())
+    }
+
+    /** #478 QA 1/3: a manual Gasto of a Tratamiento is shown on its own date, naming the work. */
+    @Test fun aManualGastoOfAWorkIsShownOnItsOwnDate() {
+        val treatment = activity(ActivityType.PHYTOSANITARY, day1)
+        val invoice = expense(8_500, ExpenseCategory.PRODUCTS, day2).copy(activityId = treatment.id)
+        val notebook = project(listOf(treatment), expenses = listOf(invoice))
+
+        assertEquals(listOf(day2, day1), notebook.diary.map { it.date })
+        val row = notebook.diary.first().entries.single() as DiaryEntry.ExpenseEntry
+        assertEquals(invoice.id, row.expense.id)
+        assertEquals(treatment.description, row.relatedWork)
     }
 
     @Test fun phytoRecordShowsOnlyWhatWasWrittenAndNamesWhatIsMissing() {
@@ -121,9 +136,9 @@ class NotebookViewsTest {
         )
         val costs = project(listOf(worked), expenses = expenses).costs
 
-        assertEquals(27_500, costs.ledger.totalMinor)
-        assertEquals(20_000, costs.labourMoney.totalMinor)
-        assertEquals(5_500, costs.machineryMoney.totalMinor) // the draft is never summed
+        assertEquals(27_500L, costs.ledger.single().amount())
+        assertEquals(20_000L, costs.labourMoney.single().amount())
+        assertEquals(5_500L, costs.machineryMoney.single().amount()) // the draft is never summed
         assertEquals(1, costs.machineUses)
         assertEquals(3.5, costs.machineHours, 0.0)
         assertEquals(2, costs.documents.size)
@@ -175,8 +190,8 @@ class NotebookViewsTest {
         assertTrue(recollection.none { it is RecollectionItem.DeliveryItem && it.delivery.id == own.id })
         // Totals still count everything exactly once.
         assertEquals(3_390_000L, notebook.deliverySummary.deliveredGrams)
-        assertEquals(5_000L, notebook.jornadaCost(jornada.id).totalMinor)
-        assertEquals(5_000L, notebook.expenseSummary.totalMinor)
+        assertEquals(5_000L, notebook.jornadaCost(jornada.id).single().amount())
+        assertEquals(5_000L, notebook.expensesByCurrency.single().amount())
         assertEquals("rend. pendiente", notebook.jornadaYieldLabel(jornada.id))
     }
 
@@ -213,8 +228,9 @@ class NotebookViewsTest {
         assertEquals(day1, dashboard.firstPesada)
         assertEquals(day2, dashboard.lastPesada)
         // Posted money once (the calculated jornales are inside it); the draft never counts.
-        assertEquals(40_000L, dashboard.postedCostMinor)
-        assertEquals(35_000L, dashboard.calculatedLabourMinor)
+        assertEquals(40_000L, dashboard.costs.single().postedMinor)
+        assertEquals("EUR", dashboard.costs.single().currency)
+        assertEquals(35_000L, dashboard.costs.single().calculatedLabourMinor)
         // 400 € / 5.000 kg = 0,08 €/kg.
         assertEquals(8L, dashboard.costPerKgMinor)
 
@@ -222,6 +238,20 @@ class NotebookViewsTest {
         val empty = CampaignDashboard.of(CampaignNotebook.project(campaign, emptyList(), emptyList(), emptyList(), listOf(diesel)), LocalDate.of(2026, 11, 21))
         assertEquals(null, empty.costPerKgMinor)
         assertEquals(null, empty.firstPesada)
+        // #450: EUR + GBP — both ledgers visible, nothing converted, no global cost per kilo.
+        val gbp = expense(30_000, ExpenseCategory.MACHINERY, day1).copy(currency = "GBP", origin = ExpenseOrigin.DAY_EQUIPMENT, harvestId = jornada.id)
+        val mixed = CampaignDashboard.of(
+            CampaignNotebook.project(campaign, emptyList(), listOf(jornada), pesadas, listOf(calculated, diesel, gbp), labour),
+            LocalDate.of(2026, 11, 21),
+        )
+        assertEquals(listOf("EUR", "GBP"), mixed.costs.map { it.currency })
+        assertEquals(40_000L, mixed.costs.first { it.currency == "EUR" }.postedMinor)
+        assertEquals(30_000L, mixed.costs.first { it.currency == "GBP" }.postedMinor)
+        assertEquals(30_000L, mixed.costs.first { it.currency == "GBP" }.calculatedMachineryMinor)
+        assertEquals(null, mixed.costPerKgMinor)
+        // Only GBP: GBP is shown, never an empty EUR total.
+        val onlyGbp = CampaignDashboard.of(CampaignNotebook.project(campaign, emptyList(), listOf(jornada), pesadas, listOf(gbp), labour), LocalDate.of(2026, 11, 21))
+        assertEquals(listOf("GBP"), onlyGbp.costs.map { it.currency })
         // A closed Campaign counts until its close date.
         val closed = campaign.copy(status = CampaignStatus.CLOSED, endDate = LocalDate.of(2026, 9, 10))
         assertEquals(10L, CampaignDashboard.of(CampaignNotebook.project(closed, emptyList(), emptyList(), emptyList(), emptyList()), LocalDate.of(2026, 11, 21)).calendarDays)

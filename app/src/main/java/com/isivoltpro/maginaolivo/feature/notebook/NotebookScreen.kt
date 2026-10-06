@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import com.isivoltpro.maginaolivo.feature.harvests.moneyLabel
 import com.isivoltpro.maginaolivo.feature.harvests.title
 import com.isivoltpro.maginaolivo.feature.harvests.icon
+import com.isivoltpro.maginaolivo.feature.harvests.UNKNOWN_DAY_ORIGIN
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,7 +42,6 @@ import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
@@ -149,7 +149,7 @@ internal fun HarvestRow(
     harvest: Harvest,
     pesadas: Int,
     labour: LabourSummary,
-    cost: ExpenseSummary,
+    cost: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency>,
     /** "rend. 21 %" / "rend. pendiente": the Pesadas are not listed again, so their yield shows here. */
     yieldLabel: String? = null,
     onClick: () -> Unit,
@@ -158,7 +158,8 @@ internal fun HarvestRow(
         title = "Día de recolección · ${if (harvest.awaitingPesadas) "kg pendientes de pesada" else Weight.format(harvest.totalGrams)}",
         subtitle = listOfNotNull(
             when {
-                harvest.shares.isEmpty() -> "Toda la finca"
+                // #458: a day with no Pesada yet has no known origin; it is not the whole Farm.
+                harvest.shares.isEmpty() -> UNKNOWN_DAY_ORIGIN
                 harvest.shares.size == 1 -> harvest.shares.single().parcelName
                 else -> "${harvest.shares.size} parcelas"
             },
@@ -168,7 +169,10 @@ internal fun HarvestRow(
                 else -> "$pesadas pesadas"
             },
             labour.takeUnless { it.isEmpty }?.let { if (it.people == 1) "1 jornal" else "${it.people} jornales" },
-            cost.takeIf { it.postedCount > 0 }?.let { Money.format(it.totalMinor, it.currency) },
+            // #450: one amount per currency, never a euro total standing for all.
+            cost.takeIf { it.isNotEmpty() }?.joinToString(" · ") { ledger ->
+                ledger.amount()?.let { Money.format(it, ledger.currency) } ?: "Importe no disponible (${ledger.currency})"
+            },
             yieldLabel,
         ).joinToString(" · "),
         icon = MoIcons.Harvest,
@@ -198,10 +202,14 @@ internal fun DeliveryRow(delivery: Delivery, onClick: () -> Unit) {
 }
 
 @Composable
-internal fun ExpenseRow(expense: Expense, onClick: () -> Unit) {
+internal fun ExpenseRow(expense: Expense, relatedWork: String? = null, onClick: () -> Unit) {
     MoCompactListItem(
         title = expense.concept,
-        subtitle = "${expense.category.label()} · ${Money.format(expense.amountMinor, expense.currency)}",
+        subtitle = listOfNotNull(
+            "${expense.category.label()} · ${Money.format(expense.amountMinor, expense.currency)}",
+            // #478: a Gasto tied to a work says which, and is opened as the Gasto it is.
+            relatedWork?.let { "Relacionado con $it" },
+        ).joinToString(" · "),
         icon = MoIcons.Euro,
         iconTint = MoIconTone.MONEY.tint,
         iconContainer = MoIconTone.MONEY.container,
@@ -261,7 +269,8 @@ internal fun SummaryTab(
             Modifier.fillMaxWidth().testTag("notebook-summary-other"), icon = MoIcons.Euro, kind = MoKpiKind.COSTES,
             supportingText = "Combustible, transporte, reparaciones y otros · Ver gastos", onClick = onExpenses)
         com.isivoltpro.maginaolivo.feature.harvests.RecollectionTotalCards(ledger, false,
-            deliveries.deliveredGrams.takeIf { it > 0 }?.let(Weight::format))
+            deliveries.deliveredGrams.takeIf { it > 0 }?.let(Weight::format),
+            com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(notebook.labour, notebook.equipment, notebook.expenses))
         ParcelYields(notebook)
         // Phase 19G: charts and year-over-year, all derived from the same records.
         CampaignCharts(CampaignSeries.of(notebook))

@@ -21,6 +21,7 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseRepository
 import com.isivoltpro.maginaolivo.domain.expense.JornadaExpenseKind
 import com.isivoltpro.maginaolivo.domain.expense.UnlinkedDayCosts
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentRepository
 import com.isivoltpro.maginaolivo.domain.harvest.Jornada
@@ -121,6 +122,10 @@ data class HarvestDetailUiState(
     val deleted: Boolean = false,
     /** Phase 19B: the Pesadas linked to this Jornada, oldest first. */
     val pesadas: List<Delivery> = emptyList(),
+    /** False until this day's Pesadas have been read: deleting the day is only offered once it is true. */
+    val pesadasLoaded: Boolean = true,
+    /** True when the Pesadas could not be read: the day is never treated as having none. */
+    val pesadasReadFailed: Boolean = false,
     /** Phase 19D: the jornales of this Jornada and the people to choose from. */
     val labour: List<LabourEntry> = emptyList(),
     /** False until this day's jornales have been read: «none» is only said once it is true. */
@@ -154,6 +159,8 @@ data class HarvestDetailUiState(
     val ratesError: String? = null,
     /** CR-010 A3: hand-typed costs of this Farm and date linked to no day (ambiguous). */
     val unlinkedCosts: List<Expense> = emptyList(),
+    /** #475: people of this Campaign with a payment recorded; their day's jornales can only add. */
+    val paidWorkers: Set<UUID> = emptySet(),
     /** #380: finished saves; the editor closes when this rises. */
     val saveCount: Int = 0,
 )
@@ -169,7 +176,7 @@ class HarvestDetailViewModel(
     private val expenses: ExpenseRepository? = null,
     private val dayCosts: DayCostRepository? = null,
 ) : ViewModel() {
-    private val mutableState = MutableStateFlow(HarvestDetailUiState(labourLoaded = labour == null,
+    private val mutableState = MutableStateFlow(HarvestDetailUiState(labourLoaded = labour == null, pesadasLoaded = deliveries == null,
         equipmentLoaded = equipment == null, costsLoaded = expenses == null, ratesLoaded = dayCosts == null))
     val state: StateFlow<HarvestDetailUiState> = mutableState.asStateFlow()
     private var contexts: List<HarvestContext> = emptyList()
@@ -182,11 +189,14 @@ class HarvestDetailViewModel(
                 .collect { harvest ->
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
+                        // #502: an automatic day removed once nothing backs it closes like a deleted one.
+                        deleted = mutableState.value.deleted || (mutableState.value.harvest != null && harvest == null),
                         harvest = harvest,
                         context = contexts.firstOrNull { it.campaignId == harvest?.campaignId },
                     )
                     refreshUnlinked()
                     harvest?.farmId?.let { observeRates(it) }
+                    harvest?.campaignId?.let { observePayments(it) }
                 }
         }
         viewModelScope.launch {
@@ -199,9 +209,13 @@ class HarvestDetailViewModel(
         }
         deliveries?.let { repository ->
             viewModelScope.launch {
-                repository.observeAll().catch { }.collect { rows ->
-                    mutableState.value = mutableState.value.copy(pesadas = Jornada.linkedTo(harvestId, rows))
-                }
+                repository.observeAll()
+                    .catch { mutableState.value = mutableState.value.copy(pesadasLoaded = true, pesadasReadFailed = true) }
+                    .collect { rows ->
+                        mutableState.value = mutableState.value.copy(
+                            pesadas = Jornada.linkedTo(harvestId, rows), pesadasLoaded = true, pesadasReadFailed = false,
+                        )
+                    }
             }
         }
         labour?.let { repository ->
@@ -250,23 +264,38 @@ class HarvestDetailViewModel(
     private fun refreshUnlinked() {
         val harvest = mutableState.value.harvest
         mutableState.value = mutableState.value.copy(
-            unlinkedCosts = harvest?.let { UnlinkedDayCosts.of(harvestId, it.farmId, it.harvestDate, allExpenses) }.orEmpty(),
+            unlinkedCosts = harvest?.let { UnlinkedDayCosts.of(harvestId, it.farmId, it.harvestDate, allExpenses, it.campaignId) }.orEmpty(),
         )
     }
 
-    /** CR-010 A3: the farmer says an unlinked cost of this date belongs to this day. */
-    fun linkCost(expenseId: UUID) {
+    private var paymentsCampaign: UUID? = null
+
+    private fun observePayments(campaignId: UUID) {
+        val repository = labour ?: return
+        if (paymentsCampaign == campaignId) return
+        paymentsCampaign = campaignId
+        viewModelScope.launch {
+            repository.observePayments(campaignId).catch { }.collect { rows ->
+                mutableState.value = mutableState.value.copy(paidWorkers = rows.map { it.workerId }.toSet())
+            }
+        }
+    }
+
+    /** CR-010 A3: the farmer says an unlinked cost of this date belongs to this day, and how it counts (#475). */
+    fun linkCost(expenseId: UUID, role: DayCostRole = DayCostRole.ADDITIVE) {
         val repository = dayCosts ?: return
         viewModelScope.launch {
-            val result = repository.linkToDay(expenseId, harvestId)
+            val result = repository.linkToDay(expenseId, harvestId, role)
             if (result is AppResult.Failure) {
                 mutableState.value = mutableState.value.copy(
                     costError = if (result.error == AppError.Conflict("campaign_closed")) {
                         "La campaña está cerrada: sus gastos ya no cambian."
+                    } else if (result.error == AppError.Conflict("outside_campaign")) {
+                        "Ese gasto está «Fuera de campaña»: no se enlaza a la recogida."
                     } else if (machineryPriceErrorMessage(result.error) != null) {
                         machineryPriceErrorMessage(result.error)!!
                     } else {
-                        "No se pudo enlazar el gasto al día de recolección."
+                        dayCostRoleErrorMessage(result.error) ?: "No se pudo enlazar el gasto al día de recolección."
                     },
                 )
             }
@@ -318,7 +347,13 @@ class HarvestDetailViewModel(
     }
 
     /** Phase 19F: a posted Expense of this Jornada, in the one ledger. */
-    fun addCost(kind: JornadaExpenseKind, amountMinor: Long, concept: String?, openAfter: Boolean) {
+    fun addCost(
+        kind: JornadaExpenseKind,
+        amountMinor: Long,
+        concept: String?,
+        openAfter: Boolean,
+        role: DayCostRole = DayCostRole.ADDITIVE,
+    ) {
         val repository = expenses ?: return
         val harvest = mutableState.value.harvest ?: return
         val state = mutableState.value
@@ -338,6 +373,7 @@ class HarvestDetailViewModel(
                 farmId = harvest.farmId,
                 campaignId = harvest.campaignId,
                 harvestId = harvest.id,
+                dayCostRole = role,
             )
             mutableState.value = when (val result = repository.create(draft)) {
                 is AppResult.Success -> mutableState.value.copy(
@@ -346,7 +382,8 @@ class HarvestDetailViewModel(
                     openExpenseId = if (openAfter) result.value else null,
                 )
                 is AppResult.Failure -> mutableState.value.copy(isSaving = false,
-                    costError = machineryPriceErrorMessage(result.error) ?: "No se pudo guardar el gasto. Revisa el importe.")
+                    costError = machineryPriceErrorMessage(result.error) ?: dayCostRoleErrorMessage(result.error)
+                        ?: "No se pudo guardar el gasto. Revisa el importe.")
             }
         }
     }
@@ -368,7 +405,9 @@ class HarvestDetailViewModel(
                         is AppError.Conflict -> "La campaña está cerrada: este día de recolección ya es histórico"
                         is AppError.Validation -> when (result.error.code) {
                             "confirm_missing_prices" -> "Confirma primero los precios que faltan en la maquinaria histórica de este día."
+                            "confirm_before_recompose" -> "Hay maquinaria con coste sin confirmar. Confirma los precios antes de cambiar una composición que ya tiene un coste contabilizado."
                             "overflow" -> "El total es demasiado grande. Reduce el precio o la cantidad."
+                            "archived_machine" -> "Esa máquina está archivada: solo se conserva en los días en que ya trabajó."
                             "currency_mismatch", "ambiguous_historical_currency" -> "La moneda no coincide con el coste histórico de este día. Revisa los precios."
                             else -> "Revisa la maquinaria: cantidades de 1 a 50 y un nombre para «Otra»"
                         }
@@ -481,8 +520,26 @@ internal fun harvestErrorMessage(error: AppError): String = when (error) {
         "no_running_campaign" -> "Esta finca no tiene una campaña activa o en recolección"
         "closed_campaign" -> "La campaña está cerrada: este día de recolección ya es histórico y no se modifica"
         "archived_farm" -> "La finca está archivada"
+        com.isivoltpro.maginaolivo.domain.harvest.HARVEST_HAS_DELIVERIES ->
+            "Este día tiene pesadas. Muévelas, corrígelas o elimínalas antes de eliminar la jornada."
         else -> "No se pudo guardar por un conflicto con otros datos"
     }
     is AppError.Storage -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."
     else -> "Algo no ha ido bien. Inténtalo de nuevo."
 }
+
+/** #475: why a cost could not be saved as the farmer chose to count it. */
+internal fun dayCostRoleErrorMessage(error: AppError): String? =
+    if (error !is AppError.Validation || error.field != "dayCostRole") null else when (error.code) {
+        "labour_paid" -> "Este día tiene pagos por persona: el importe solo puede añadirse al cálculo de jornales."
+        "nothing_to_replace" -> "Este día no tiene coste calculado que sustituir: el importe se añade."
+        else -> "Este gasto no puede sustituir el cálculo del día."
+    }
+
+/** #475: the calculated costs a hand-typed cost of this day could replace. */
+internal fun HarvestDetailUiState.calculatedKinds(): Set<com.isivoltpro.maginaolivo.domain.expense.DayCostKind> =
+    costs.mapNotNull { expense -> com.isivoltpro.maginaolivo.domain.expense.DayCostKind.entries.firstOrNull { it.origin == expense.origin } }.toSet()
+
+/** #475: someone who worked this day has a payment recorded in the Campaign. */
+internal val HarvestDetailUiState.labourPaid: Boolean
+    get() = labour.any { it.workerId != null && it.workerId in paidWorkers }

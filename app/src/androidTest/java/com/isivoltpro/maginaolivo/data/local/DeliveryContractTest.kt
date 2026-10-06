@@ -311,6 +311,49 @@ class DeliveryContractTest {
         assertEquals("Cooperativa San Isidro", delivery.destinationName)
     }
 
+    /** #451: editing a Pesada keeps the cooperative name it was saved with, even once archived. */
+    @Test
+    fun editingAPesadaKeepsTheCooperativeNameAsCaptured() = runBlocking {
+        val cooperative = ok(organizations.create(OrganizationDraft("Cooperativa San Isidro", setOf(OrganizationRole.COOPERATIVE))))
+        val saved = draft(1_000_000, north to null).copy(destinationOrganizationId = cooperative, destinationName = null)
+        val id = ok(deliveries.create(saved))
+        ok(organizations.update(cooperative, OrganizationDraft("S.C.A. San Isidro", setOf(OrganizationRole.COOPERATIVE))))
+
+        ok(deliveries.update(id, saved.copy(notes = "Vale 1234")))
+        assertEquals("Cooperativa San Isidro", deliveries.observe(id).first()!!.destinationName)
+
+        ok(organizations.archive(cooperative))
+        ok(deliveries.update(id, saved.copy(ticketNumber = "A-77")))
+        val kept = deliveries.observe(id).first()!!
+        assertEquals("Cooperativa San Isidro", kept.destinationName)
+        assertEquals(cooperative, kept.destinationOrganizationId)
+        assertEquals("A-77", kept.ticketNumber)
+
+        val mill = ok(organizations.create(OrganizationDraft("Almazara La Loma", setOf(OrganizationRole.MILL))))
+        ok(deliveries.update(id, saved.copy(destinationOrganizationId = mill)))
+        assertEquals("Almazara La Loma", deliveries.observe(id).first()!!.destinationName)
+    }
+
+    /** #455: a Pesada is never moved after its own yield analysis; an undated analysis asks nothing. */
+    @Test
+    fun aPesadaIsNeverDatedAfterItsYieldAnalysis() = runBlocking {
+        val id = ok(deliveries.create(draft(1_000_000, north to null)))
+        ok(deliveries.recordYield(id, YieldDraft(day.plusDays(2), 2_100, null)))
+
+        ok(deliveries.update(id, draft(1_000_000, north to null).copy(deliveryDate = day.plusDays(1))))
+        ok(deliveries.update(id, draft(1_000_000, north to null).copy(deliveryDate = day.plusDays(2))))
+        assertValidation("deliveryDate", deliveries.update(id, draft(1_000_000, north to null).copy(deliveryDate = day.plusDays(3))))
+        assertEquals(day.plusDays(2), deliveries.observe(id).first()!!.deliveryDate)
+        // Unrelated edits that keep the date still save, and the analysis is never touched.
+        ok(deliveries.update(id, draft(1_000_000, north to null).copy(deliveryDate = day.plusDays(2), notes = "Vale 12")))
+        assertEquals(day.plusDays(2), deliveries.observe(id).first()!!.analysis?.analysisDate)
+
+        val undated = ok(deliveries.create(draft(500_000, south to null)))
+        ok(deliveries.recordYield(undated, YieldDraft(null, 2_000, null)))
+        ok(deliveries.update(undated, draft(500_000, south to null).copy(deliveryDate = day.plusDays(5))))
+        assertEquals(day.plusDays(5), deliveries.observe(undated).first()!!.deliveryDate)
+    }
+
     @Test
     fun deliveriesAndYieldSurviveARestart() = runBlocking {
         val id = ok(deliveries.create(draft(2_850_000, north to 2_000_000, south to 850_000)))
@@ -373,6 +416,52 @@ class DeliveryContractTest {
         db.close()
         open()
         assertEquals(PesadaOrigin.GROUND, deliveries.observe(id).first()!!.origin)
+    }
+
+    /** Issue #454: editing a Pesada keeps the origin rows it had and their recorded names. */
+    @Test
+    fun editingAPesadaKeepsItsParcelRowsAndTheirRecordedNames() = runBlocking {
+        val id = ok(deliveries.create(draft(2_000_000, north to null, south to null)))
+        val recorded = db.deliveryDao().listParcels(id).associateBy { it.parcelId }
+        rename(north, "Parcela 1")
+
+        // Only the notes change: same rows, same ids, same recorded names.
+        ok(deliveries.update(id, draft(2_000_000, north to null, south to null).copy(notes = "Vale en la guantera")))
+        assertEquals(recorded.values.toSet(), db.deliveryDao().listParcels(id).toSet())
+
+        // Only the kilos change: same rows and names, new kilos.
+        ok(deliveries.update(id, draft(2_000_000, north to 1_200_000, south to 800_000)))
+        val split = db.deliveryDao().listParcels(id).associateBy { it.parcelId }
+        assertEquals(recorded.mapValues { it.value.id }, split.mapValues { it.value.id })
+        assertEquals("Norte", split.getValue(north).parcelNameAtDelivery)
+        assertEquals(recorded.getValue(north).campaignParcelId, split.getValue(north).campaignParcelId)
+        assertEquals(1_200_000L, split.getValue(north).weightGrams)
+        assertEquals(HarvestAllocation.EXACT.name, split.getValue(north).allocationMode)
+
+        // Adding a Parcel creates only its row, named as it is now; taking one out drops only its own.
+        val east = UUID.fromString("30000000-0000-0000-0000-0000000000d3")
+        addToCampaign(east, "Este")
+        rename(east, "Olivar del Este")
+        ok(deliveries.update(id, draft(2_000_000, north to null, east to null)))
+        val after = db.deliveryDao().listParcels(id).associateBy { it.parcelId }
+        assertEquals(setOf(north, east), after.keys)
+        assertEquals(recorded.getValue(north).id, after.getValue(north).id)
+        assertEquals("Norte", after.getValue(north).parcelNameAtDelivery)
+        assertEquals("Olivar del Este", after.getValue(east).parcelNameAtDelivery)
+        assertEquals("Norte", deliveries.observe(id).first()!!.shares.single { it.parcelId == north }.parcelName)
+    }
+
+    private suspend fun rename(parcelId: UUID, name: String) {
+        val parcel = db.parcelDao().findById(parcelId)!!
+        db.parcelDao().upsert(parcel.copy(displayName = name))
+    }
+
+    private suspend fun addToCampaign(parcelId: UUID, name: String) {
+        val meta = LocalMetadata(now, now)
+        db.parcelDao().upsert(ParcelEntity(parcelId, workspaceId, name, source = "MANUAL", metadata = meta))
+        db.campaignDao().upsertSnapshots(
+            listOf(CampaignParcelSnapshotEntity(UUID.randomUUID(), workspaceId, campaignId, parcelId, farmId, "La Solana", name, metadata = meta)),
+        )
     }
 
     private fun open() {

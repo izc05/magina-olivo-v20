@@ -95,7 +95,7 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
     /** A planned activity requires at least one Parcel; a resumable draft does not. */
     fun create(draft: ActivityDraft, asDraft: Boolean = false, completeImmediately: Boolean = false) {
         if (!validate(draft, asDraft, completeImmediately)) return
-        mutate("Actuación guardada en este dispositivo") {
+        mutate("Trabajo guardado en este dispositivo") {
             when (
                 val result = repository.create(
                     NewActivity(
@@ -127,7 +127,7 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
         val descriptionError = when {
             !draft.description.isBlank() -> null
             draft.type == ActivityType.INCIDENT -> "Indica la categoría o un detalle breve"
-            else -> "Describe la actuación"
+            else -> "Describe el trabajo"
         }
         val dateError = when {
             draft.activityDate == null -> "Selecciona una fecha"
@@ -237,7 +237,7 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                 mutableState.value = mutableState.value.copy(
                     isLoading = false,
                     activity = activity,
-                    error = if (activity == null) "La actuación no está disponible" else null,
+                    error = if (activity == null) "El trabajo no está disponible" else null,
                 )
                 val farmId = activity?.farmId
                 if (farmId != null && parcelsJob == null) {
@@ -282,15 +282,15 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
         }
     }
 
-    fun plan() = mutate("Actuación planificada", "volver a planificarlo") { repository.plan(activityId) }
+    fun plan() = mutate("Trabajo planificado", "volver a planificarlo") { repository.plan(activityId) }
 
-    fun complete() = mutate("Actuación completada") { repository.complete(activityId) }
+    fun complete() = mutate("Trabajo completado") { repository.complete(activityId) }
 
-    fun cancel() = mutate("Actuación cancelada", "cancelarlo") { repository.cancel(activityId) }
+    fun cancel() = mutate("Trabajo cancelado", "cancelarlo") { repository.cancel(activityId) }
 
-    fun reopen() = mutate("Actuación reabierta", "volver a planificarlo") { repository.reopen(activityId) }
+    fun reopen() = mutate("Trabajo reabierto", "volver a planificarlo") { repository.reopen(activityId) }
 
-    fun archive() = mutate("Actuación archivada", "archivarlo") { repository.archive(activityId) }
+    fun archive() = mutate("Trabajo archivado", "archivarlo") { repository.archive(activityId) }
 
     fun consumeMessage() { mutableState.value = mutableState.value.copy(message = null) }
 
@@ -303,6 +303,7 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                 error = when ((result.error as? AppError.Conflict)?.resource) {
                     ActivityCostRules.COST_TO_REVIEW -> move?.let(::costToReview)
                     ActivityCostRules.LINKED_EXPENSES -> LINKED_EXPENSES_TEXT
+                    ActivityCostRules.PARCEL_HAS_EXPENSES -> PARCEL_HAS_EXPENSES_TEXT
                     else -> null
                 } ?: "La operación no se pudo completar",
             )
@@ -312,6 +313,10 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
 
 /** #429: said when a counted cost holds a move back; the detail offers «Revisar gasto vinculado». */
 internal fun costToReview(move: String) = "Este trabajo tiene un coste contabilizado. Revísalo antes de $move."
+
+/** #441: said when an edit would drop a Parcel a Gasto of the work names. */
+internal const val PARCEL_HAS_EXPENSES_TEXT =
+    "Hay gastos vinculados a esta parcela dentro del trabajo. Revísalos antes de cambiar las parcelas."
 
 /** #437: said when Gastos of their own still point at the work. */
 internal const val LINKED_EXPENSES_TEXT =

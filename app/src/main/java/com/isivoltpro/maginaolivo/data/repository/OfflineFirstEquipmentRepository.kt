@@ -101,6 +101,18 @@ class OfflineFirstEquipmentRepository(
             wanted.any { (key, _) -> key !in current && resolved[key] != null }) {
             throw EquipmentInvalid("appliedPrice", "confirm_missing_prices")
         }
+        // #449 (audit 04-10, case B): while a price is still missing, a posted cost must never
+        // outlive a change to the priced lines (one removed, its quantity or price changed, or a new
+        // priced one added) — it would no longer be even the known subtotal. Adding an unpriced line alone, or confirming
+        // a missing price, keeps the posted amount; legacy incomplete days keep their ledger.
+        val stillUnpriced = wanted.keys.any { resolved[it] == null }
+        val pricedChanged = current.any { (key, row) ->
+            val price = row.priceSnapshot()
+            price != null && (key !in wanted || wanted.getValue(key).quantity != row.quantity || resolved[key] != price)
+        } || wanted.keys.any { it !in current && resolved[it] != null }
+        if (posted.isNotEmpty() && stillUnpriced && pricedChanged) {
+            throw EquipmentInvalid("appliedPrice", "confirm_before_recompose")
+        }
         val currencies = resolved.values.mapNotNull { it?.currency }.distinct()
         if (currencies.size > 1 || (historicalCurrency != null && currencies.any { it != historicalCurrency })) {
             throw EquipmentInvalid("currency", "currency_mismatch")
@@ -116,15 +128,24 @@ class OfflineFirstEquipmentRepository(
             if (key !in wanted) writes += row.copy(metadata = row.metadata.next(now).copy(deletedAt = now)) to OutboxOperation.DELETE
         }
         wanted.forEach { (key, line) ->
+            val existing = current[key]
             val machineName = line.machineId?.let { id ->
-                val machine = database.machineDao().findById(id)
-                if (machine == null || machine.metadata.deletedAt != null || machine.workspaceId != harvest.workspaceId) {
-                    throw EquipmentInvalid("machineId", "not_found")
+                if (existing?.machineId == id) {
+                    // #446/#575/#444: once a Jornada named this Machine, later rename/archive of
+                    // the live catalogue never refreshes its historical label.
+                    existing.label
+                } else {
+                    val machine = database.machineDao().findById(id)
+                    if (machine == null || machine.metadata.deletedAt != null ||
+                        machine.workspaceId != harvest.workspaceId
+                    ) {
+                        throw EquipmentInvalid("machineId", "not_found")
+                    }
+                    if (machine.status != "ACTIVE") throw EquipmentInvalid("machineId", "archived_machine")
+                    machine.name
                 }
-                machine.name
             }
             val label = machineName ?: line.label?.trim()?.takeIf { line.type == EquipmentType.OTHER }
-            val existing = current[key]
             val price = resolved[key]
             when {
                 existing == null -> writes += HarvestEquipmentEntity(
@@ -153,6 +174,8 @@ class OfflineFirstEquipmentRepository(
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_EQUIPMENT, row.id, operation, now)
         }
         costs.sync(harvestId, now)
+        // #502: an automatic day left with nothing goes with its last machine.
+        JornadaLedger(database, idGenerator).reconcileAutomatic(harvestId, now)
     }
 
     private fun keyOf(row: HarvestEquipmentEntity): String =

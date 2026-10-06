@@ -30,6 +30,7 @@ import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityChanges
 import com.isivoltpro.maginaolivo.domain.activity.ActivityCostRules
 import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
+import com.isivoltpro.maginaolivo.domain.activity.ActivityDetailPatch
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
@@ -258,8 +259,9 @@ class OfflineFirstActivityRepository(
             if (current.status == ActivityStatus.PLANNED && changes.parcelIds.isEmpty()) {
                 return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
             }
-            // #441: a Parcel named by a Gasto linked to this work cannot disappear from the work.
-            // Adding Parcels, changing surface or editing the Activity never moves the Gasto.
+            // #441: a Parcel a Gasto of this work names is not dropped from the work (also when it
+            // becomes «Toda la finca»). Adding Parcels, changing surface, retyping or redating never
+            // touches Gastos.
             val currentTargets = database.activityDao().listTargets(id)
             val dropped = currentTargets.map { it.parcelId }.toSet() - changes.parcelIds
             if (dropped.isNotEmpty() && database.expenseDao().listForActivity(id).any { it.parcelId in dropped }) {
@@ -274,7 +276,9 @@ class OfflineFirstActivityRepository(
                     metadata = current.metadata.next(now),
                 ),
             )
-            replaceDetail(id, current.workspaceId, changes.detail, now)
+            // #453: the same type keeps what its form never carries; a new type replaces it all.
+            val previous = database.activityDao().findWithTargets(id)?.toDomainDetail()
+            replaceDetail(id, current.workspaceId, ActivityDetailPatch.keepingHidden(previous, changes.detail), now)
             val areas = changes.parcelAreasM2 ?: currentTargets
                 .filter { it.parcelId in changes.parcelIds }
                 .associate { it.parcelId to it.areaAffectedM2 }
@@ -458,12 +462,18 @@ class OfflineFirstActivityRepository(
         val dao = database.activityDao()
         val existingByParcel = dao.listTargets(activityId).associateBy { it.parcelId }
         val keptOrAdded = parcelIds.sortedBy(UUID::toString).map { parcelId ->
+            val existing = existingByParcel[parcelId]
             val parcel = database.parcelDao().findById(parcelId) ?: throw InvalidSelection("parcel_not_found")
-            val membership = database.parcelDao().findCurrentMembership(parcelId)
-            if (membership?.farmId != farmId || parcel.status != RecordStatus.ACTIVE ||
-                parcel.metadata.deletedAt != null || parcel.workspaceId != activity.workspaceId
-            ) {
-                throw InvalidSelection("parcel_not_in_farm")
+            // #440: a target the work already has is history. Its Parcel may since have been
+            // archived or moved; correcting another field of the work never re-checks it against
+            // today's catalogue. Only a Parcel being added must be an active Parcel of the Farm.
+            if (existing == null) {
+                val membership = database.parcelDao().findCurrentMembership(parcelId)
+                if (membership?.farmId != farmId || parcel.status != RecordStatus.ACTIVE ||
+                    parcel.metadata.deletedAt != null || parcel.workspaceId != activity.workspaceId
+                ) {
+                    throw InvalidSelection("parcel_not_in_farm")
+                }
             }
 
             val affected = parcelAreasM2[parcelId]
@@ -471,7 +481,6 @@ class OfflineFirstActivityRepository(
                 throw InvalidParcelArea("invalid_area")
             }
 
-            val existing = existingByParcel[parcelId]
             val changesHistoricalArea = existing == null || !sameArea(existing.areaAffectedM2, affected)
             if (affected != null && parcel.managedAreaM2 != null &&
                 affected > parcel.managedAreaM2 + AREA_EPSILON_M2 && changesHistoricalArea

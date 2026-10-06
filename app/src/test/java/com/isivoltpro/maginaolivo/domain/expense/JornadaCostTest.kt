@@ -17,9 +17,23 @@ class JornadaCostTest {
                 expense(9_999, ExpenseStatus.DRAFT, ExpenseCategory.OTHER),
             ),
         )
-        assertEquals(16_550L, cost.postedMinor)
+        assertEquals(16_550L, cost.byCurrency.single().amount())
         assertEquals(1, cost.draftCount)
-        assertEquals(mapOf(ExpenseCategory.FUEL to 4_550L, ExpenseCategory.MACHINERY to 12_000L), cost.summary.byCategory)
+        assertEquals(
+            mapOf(ExpenseCategory.FUEL to 4_550L, ExpenseCategory.MACHINERY to 12_000L),
+            cost.byCurrency.single().posted.groupBy { it.category }.mapValues { (_, rows) -> rows.sumOf { it.amountMinor } },
+        )
+    }
+
+    /** #450: a day's cost in another currency is shown apart, never hidden nor added to the euros. */
+    @Test
+    fun aDayWithTwoCurrenciesHasTwoTotals() {
+        val usd = expense(3_000, ExpenseStatus.POSTED, ExpenseCategory.TRANSPORT).copy(currency = "USD")
+        val cost = JornadaCost.of(listOf(expense(4_550, ExpenseStatus.POSTED, ExpenseCategory.FUEL), usd))
+        assertEquals(listOf("EUR" to 4_550L, "USD" to 3_000L), cost.byCurrency.map { it.currency to it.amount() })
+        assertEquals(listOf("USD" to 3_000L), JornadaCost.of(listOf(usd)).byCurrency.map { it.currency to it.amount() })
+        // No single total is made up across currencies.
+        assertEquals(null, cost.postedMinor)
     }
 
     @Test

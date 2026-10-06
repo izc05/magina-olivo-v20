@@ -34,6 +34,7 @@ import com.isivoltpro.maginaolivo.app.LocalPersistence
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwner
 import com.isivoltpro.maginaolivo.domain.attachment.AttachmentOwnerType
 import com.isivoltpro.maginaolivo.domain.expense.Expense
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.expense.Money
@@ -74,6 +75,7 @@ fun ExpenseDetailRoute(
         onKeepIndependent = viewModel::keepAsIndependent,
         onFarmSelected = viewModel::selectFarm,
         onEditorClosed = viewModel::clearFormErrors,
+        dayCostQuestion = viewModel::dayCostQuestion,
         attachmentContent = {
             AttachmentsRoute(
                 owner = AttachmentOwner(AttachmentOwnerType.EXPENSE, expenseId),
@@ -95,6 +97,8 @@ fun ExpenseDetailScreen(
     onFarmSelected: (UUID?) -> Unit,
     onEditorClosed: () -> Unit = {},
     onKeepIndependent: () -> Unit = {},
+    /** #475: the question a day's jornales/maquinaria cost gets, from the day as it is. */
+    dayCostQuestion: suspend (UUID, ExpenseCategory) -> com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion? = { _, _ -> null },
     attachmentContent: @Composable () -> Unit = {},
 ) {
     var editorVisible by rememberSaveable { mutableStateOf(false) }
@@ -183,6 +187,7 @@ fun ExpenseDetailScreen(
                 activityLocked = expense.origin == ExpenseOrigin.ACTIVITY_COST,
                 farmLocked = expense.origin == ExpenseOrigin.ACTIVITY_COST,
                 askCategory = false,
+                dayCostQuestion = dayCostQuestion,
             )
         }
     }
@@ -240,7 +245,8 @@ private fun ExpenseSummaryBlock(expense: Expense) {
         "Origen",
         when (expense.origin) {
             ExpenseOrigin.MANUAL -> "Anotado a mano"
-            ExpenseOrigin.ACTIVITY_COST -> "Coste de una actuación"
+            ExpenseOrigin.DAY_REPLACEMENT -> "Anotado a mano · sustituye el cálculo del día"
+            ExpenseOrigin.ACTIVITY_COST -> "Coste de un trabajo"
             ExpenseOrigin.DOCUMENT_OCR -> "Leído de un documento y revisado"
             ExpenseOrigin.DAY_LABOUR -> "Calculado de los jornales del día"
             ExpenseOrigin.DAY_EQUIPMENT -> "Calculado de la maquinaria del día"

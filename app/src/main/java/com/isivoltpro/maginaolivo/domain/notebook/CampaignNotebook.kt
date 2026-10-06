@@ -12,7 +12,6 @@ import com.isivoltpro.maginaolivo.domain.delivery.PesadaSearch
 import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentSummary
@@ -53,12 +52,24 @@ data class CampaignNotebook(
     val labourByWorker: List<WorkerLabour> = LabourByWorker.of(labour.filter { entry -> harvests.any { it.id == entry.harvestId } })
     val unnamedLabour: LabourSummary = LabourByWorker.unnamed(labour.filter { entry -> harvests.any { it.id == entry.harvestId } })
 
+    /**
+     * #449: whether the posted recollection money of this Campaign is the whole cost, from its own
+     * Jornadas' jornales and machinery and its Expenses. Never a second amount.
+     */
+    val costCompleteness: com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness =
+        com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(
+            labour.filter { entry -> harvests.any { it.id == entry.harvestId } },
+            equipment.filter { line -> harvests.any { it.id == line.harvestId } },
+            expenses,
+        )
+
     /** Phase 19D: the jornales of one Jornada. */
     fun labourFor(harvestId: java.util.UUID): LabourSummary = LabourSummary.of(labour.filter { it.harvestId == harvestId })
 
     val harvestSummary: HarvestSummary = HarvestSummary.of(harvests)
     val deliverySummary: DeliverySummary = DeliverySummary.of(deliveries)
-    val expenseSummary: ExpenseSummary = ExpenseSummary.of(expenses)
+    /** #450: posted money per currency; one currency never stands for the whole ledger. */
+    val expensesByCurrency: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency> = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(expenses)
 
     /**
      * Every explicitly campaign-linked Expense belongs to its recollection ledger, regardless
@@ -67,8 +78,8 @@ data class CampaignNotebook(
     val recollectionExpenses: List<Expense> = expenses.filter { it.campaignId == campaign.id }
 
     /** Phase 19F: the cost of one Jornada — its posted ledger Expenses, nothing else. */
-    fun jornadaCost(harvestId: java.util.UUID): ExpenseSummary = ExpenseSummary.of(expenses.filter { it.harvestId == harvestId })
-    val recollectionExpenseSummary: ExpenseSummary = ExpenseSummary.of(recollectionExpenses)
+    fun jornadaCost(harvestId: java.util.UUID): List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency> = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(expenses.filter { it.harvestId == harvestId })
+    val recollectionByCurrency: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency> = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(recollectionExpenses)
 
     val completedWorks: Int = works.count { it.status == ActivityStatus.COMPLETED }
     val plannedWorks: Int = works.count { it.status == ActivityStatus.PLANNED }

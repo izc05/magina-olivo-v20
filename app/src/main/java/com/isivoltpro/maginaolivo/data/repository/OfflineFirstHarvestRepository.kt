@@ -116,6 +116,12 @@ class OfflineFirstHarvestRepository(
         }
     }
 
+    override suspend fun clearUnfoundedDayOrigins(): AppResult<Unit> =
+        inTransaction("clear_unfounded_day_origins") {
+            jornadas.clearUnfoundedOrigins(clock.nowInstant())
+            AppResult.Success(Unit)
+        }
+
     override suspend fun openJornada(farmId: UUID, date: LocalDate): AppResult<UUID> {
         if (date.isAfter(clock.today(zoneId()))) return AppResult.Failure(AppError.Validation("harvestDate", "future"))
         return inTransaction("open_jornada") {
@@ -211,10 +217,14 @@ class OfflineFirstHarvestRepository(
             if (current.metadata.deletedAt != null) return@inTransaction AppResult.Success(Unit)
             val campaign = current.campaignId?.let { database.campaignDao().findById(it) }
             if (campaign == null || campaign.status !in RUNNING) return@inTransaction conflict("closed_campaign")
+            // #457: a live Pesada always has its day; a day with Pesadas is changed by moving or
+            // correcting them, never removed from under them.
+            if (database.deliveryDao().listLiveForHarvest(id).isNotEmpty()) {
+                return@inTransaction conflict(com.isivoltpro.maginaolivo.domain.harvest.HARVEST_HAS_DELIVERIES)
+            }
             val now = clock.nowInstant()
             database.harvestDao().upsert(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now)))
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, id, OutboxOperation.DELETE, now)
-            jornadas.release(id, now)
             // Phase 19D: its jornales only describe this Jornada; they go with it.
             database.labourDao().listForHarvest(id).forEach { line ->
                 database.labourDao().upsertLabour(
@@ -247,8 +257,10 @@ class OfflineFirstHarvestRepository(
             ?.let { AppResult.Failure(AppError.Validation(it.field, it.code)) }
 
     /**
-     * Rewrites the origin Parcels with the Harvest, inside its transaction. A Parcel must
-     * belong to the Harvest's Campaign; a share without kilos is stored `UNALLOCATED`
+     * Writes the origin Parcels with the Harvest, inside its transaction (#458). A Parcel the day
+     * already had keeps its row, id and `parcelNameAtHarvest`; only a real change of its kilos
+     * touches it. A Parcel added must belong to the Harvest's Campaign and takes its current name;
+     * a Parcel taken out loses only its own row. A share without kilos is stored `UNALLOCATED`
      * with no weight, never as zero and never as a computed part of the total.
      */
     private suspend fun replaceShares(
@@ -258,27 +270,39 @@ class OfflineFirstHarvestRepository(
         shares: List<HarvestShareInput>,
         now: Instant,
     ) {
-        val campaignParcels = database.harvestDao().listCampaignParcels(campaignId).associateBy { it.parcelId }
-        val rows = shares.sortedBy { it.parcelId.toString() }.map { share ->
-            val parcel = campaignParcels[share.parcelId] ?: throw InvalidShare("parcel_not_in_campaign")
-            HarvestParcelEntity(
-                id = idGenerator.newId(),
-                workspaceId = workspaceId,
-                harvestId = harvestId,
-                parcelId = parcel.parcelId,
-                campaignParcelId = parcel.campaignParcelId,
-                parcelNameAtHarvest = parcel.name,
-                weightGrams = share.weightGrams,
-                allocationMode = if (share.weightGrams == null) {
-                    HarvestAllocation.UNALLOCATED.name
-                } else {
-                    HarvestAllocation.EXACT.name
-                },
-                metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
-            )
+        val existing = database.harvestDao().listParcels(harvestId).associateBy { it.parcelId }
+        val wanted = shares.map { it.parcelId }.toSet()
+        val removed = existing.values.filter { it.parcelId !in wanted }.map { it.id }
+        val added = shares.filter { it.parcelId !in existing }
+        val campaignParcels = if (added.isEmpty()) {
+            emptyMap()
+        } else {
+            database.harvestDao().listCampaignParcels(campaignId).associateBy { it.parcelId }
         }
-        database.harvestDao().deleteParcels(harvestId)
-        database.harvestDao().upsertParcels(rows)
+        val rows = shares.sortedBy { it.parcelId.toString() }.mapNotNull { share ->
+            val mode = if (share.weightGrams == null) HarvestAllocation.UNALLOCATED.name else HarvestAllocation.EXACT.name
+            val kept = existing[share.parcelId]
+            when {
+                kept == null -> {
+                    val parcel = campaignParcels[share.parcelId] ?: throw InvalidShare("parcel_not_in_campaign")
+                    HarvestParcelEntity(
+                        id = idGenerator.newId(),
+                        workspaceId = workspaceId,
+                        harvestId = harvestId,
+                        parcelId = parcel.parcelId,
+                        campaignParcelId = parcel.campaignParcelId,
+                        parcelNameAtHarvest = parcel.name,
+                        weightGrams = share.weightGrams,
+                        allocationMode = mode,
+                        metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
+                    )
+                }
+                kept.weightGrams == share.weightGrams && kept.allocationMode == mode -> null
+                else -> kept.copy(weightGrams = share.weightGrams, allocationMode = mode, metadata = kept.metadata.next(now))
+            }
+        }
+        if (removed.isNotEmpty()) database.harvestDao().deleteParcelsById(removed)
+        if (rows.isNotEmpty()) database.harvestDao().upsertParcels(rows)
     }
 
     private suspend fun live(id: UUID): HarvestEntity? =

@@ -12,7 +12,6 @@ import androidx.compose.ui.platform.testTag
 import com.isivoltpro.maginaolivo.feature.harvests.moneyLabel
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionBucket
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import com.isivoltpro.maginaolivo.domain.notebook.DiaryEntry
@@ -73,7 +72,7 @@ internal fun DiaryView(notebook: FarmNotebook, actions: NotebookActions, today: 
                         notebook.jornadaYieldLabel(entry.harvest.id),
                     ) { actions.onHarvest(entry.harvest.id) }
                     is DiaryEntry.DeliveryEntry -> DeliveryRow(entry.delivery) { actions.onDelivery(entry.delivery.id) }
-                    is DiaryEntry.ExpenseEntry -> ExpenseRow(entry.expense) { actions.onExpense(entry.expense.id) }
+                    is DiaryEntry.ExpenseEntry -> ExpenseRow(entry.expense, entry.relatedWork) { actions.onExpense(entry.expense.id) }
                 }
             }
         }
@@ -293,9 +292,6 @@ internal fun CampaignView(notebook: CampaignNotebook, state: NotebookUiState, ac
     RecollectionActions(notebook, actions)
     SummaryTab(notebook, state.comparison, payments = state.labourPayments, onLabour = { actions.onLabour(notebook.campaign.id) }, onExpenses = { actions.onCampaignExpenses?.invoke(notebook.campaign.id) ?: actions.onExpenses() }, onHarvest = actions.onHarvest, onSelectCampaign = onSelectCampaign)
 }
-
-private fun money(summary: ExpenseSummary): String =
-    if (summary.postedCount == 0) "—" else Money.format(summary.totalMinor, summary.currency)
 
 private fun formatHectares(m2: Double): String =
     String.format(SPANISH, "%.2f ha", m2 / 10_000.0)

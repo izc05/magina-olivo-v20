@@ -34,6 +34,21 @@ interface HarvestDao {
     )
     suspend fun findAutoDay(farmId: UUID, campaignId: UUID, date: LocalDate): HarvestEntity?
 
+    /**
+     * #458: automatic days that no live Pesada supports but that still carry origin Parcels or
+     * kilos — a presumption of earlier versions (every Parcel; kilos with no Pesada), never
+     * something the farmer typed. Closed Campaigns included: the presumption was never history.
+     */
+    @Query(
+        """
+        SELECT h.* FROM harvests h
+        WHERE h.day_origin = 'AUTO_DAY' AND h.deleted_at IS NULL
+          AND (h.weight_grams != 0 OR EXISTS (SELECT 1 FROM harvest_parcels hp WHERE hp.harvest_id = h.id))
+          AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.harvest_id = h.id AND d.deleted_at IS NULL)
+        """,
+    )
+    suspend fun listUnfoundedAutoDays(): List<HarvestEntity>
+
     @Transaction
     @Query("SELECT * FROM harvests WHERE id = :id AND deleted_at IS NULL LIMIT 1")
     fun observeWithParcels(id: UUID): Flow<HarvestWithParcels?>
@@ -66,6 +81,9 @@ interface HarvestDao {
 
     @Query("DELETE FROM harvest_parcels WHERE harvest_id = :harvestId")
     suspend fun deleteParcels(harvestId: UUID)
+
+    @Query("DELETE FROM harvest_parcels WHERE id IN (:ids)")
+    suspend fun deleteParcelsById(ids: List<UUID>)
 
     @Upsert suspend fun upsertParcels(rows: List<HarvestParcelEntity>)
 

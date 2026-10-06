@@ -10,12 +10,14 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.data.local.model.isRunning
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
+import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
+import com.isivoltpro.maginaolivo.domain.expense.dayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseRepository
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.expense.PurchaseLine
 import com.isivoltpro.maginaolivo.domain.farm.Farm
@@ -29,7 +31,6 @@ import com.isivoltpro.maginaolivo.domain.parcel.Parcel
 import com.isivoltpro.maginaolivo.domain.parcel.ParcelRepository
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.LocalDate
-import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -50,6 +51,9 @@ data class ExpenseForm(
     val category: ExpenseCategory = ExpenseCategory.OTHER,
     val supplierOrganizationId: UUID? = null,
     val supplierText: String = "",
+    /** #451: the supplier this Gasto was saved with and the name it was saved under. */
+    val recordedSupplierId: UUID? = null,
+    val recordedSupplierName: String = "",
     val farmId: UUID? = null,
     val parcelId: UUID? = null,
     val activityId: UUID? = null,
@@ -58,6 +62,8 @@ data class ExpenseForm(
     val notes: String = "",
     /** Phase 19F: kept from the Expense so editing it never unlinks it from its Jornada. */
     val harvestId: UUID? = null,
+    /** #475: how this cost counts against its day's calculation; kept as the farmer chose it. */
+    val dayCostRole: DayCostRole = DayCostRole.ADDITIVE,
     val campaignId: UUID? = null,
     val currency: String = "EUR",
 )
@@ -131,6 +137,8 @@ internal fun ExpenseForm.toDraft(requireAmount: Boolean = true): Pair<ExpenseDra
         lines = parsedLines,
         notes = notes.trim().ifEmpty { null },
         harvestId = harvestId,
+        // Only jornales or machinery of a day can replace its calculation; anything else adds.
+        dayCostRole = if (harvestId != null && DayCostKind.of(category) != null) dayCostRole else DayCostRole.ADDITIVE,
     ) to errors
 }
 
@@ -143,10 +151,13 @@ internal fun Expense.toForm() = ExpenseForm(
     category = category,
     supplierOrganizationId = supplierOrganizationId,
     supplierText = if (supplierOrganizationId == null) supplierName.orEmpty() else "",
+    recordedSupplierId = supplierOrganizationId,
+    recordedSupplierName = supplierName.orEmpty(),
     farmId = farmId,
     parcelId = parcelId,
     activityId = activityId,
     harvestId = harvestId,
+    dayCostRole = dayCostRole,
     invoiceNumber = invoiceNumber.orEmpty(),
     lines = lines.map {
         LineForm(
@@ -167,7 +178,7 @@ internal fun Expense.toForm() = ExpenseForm(
 internal fun postErrorMessage(error: AppError): String = when {
     error is AppError.Validation && error.field == "expenseDate" && error.code == "future" ->
         "La fecha de este gasto es posterior a hoy. Corrígela antes de confirmarlo."
-    error is AppError.Validation && error.code != "campaign_closed" &&
+    error is AppError.Validation && error.code != "campaign_closed" && error.code != "archived" &&
         error.field in setOf("farmId", "parcelId", "activityId", "campaignId", "harvestId", "supplierOrganizationId") ->
         "Este gasto necesita revisar su finca/parcela/trabajo antes de confirmarlo."
     else -> expenseErrorMessage(error)
@@ -185,11 +196,18 @@ internal fun expenseErrorMessage(error: AppError): String = when (error) {
         error.field == "campaignId" && error.code == "not_in_activity" -> "Ese trabajo pertenece a otra campaña."
         error.field == "parcelId" && error.code == "not_in_activity" -> "Ese trabajo no se hizo en la parcela elegida."
         error.field == "activityId" && error.code == "not_in_day" -> "Ese trabajo no es de esta jornada de recogida."
+        error.field == "supplierOrganizationId" && error.code == "archived" ->
+            "Ese proveedor está archivado. Elige otro proveedor o escríbelo a mano."
+        error.field == "dayCostRole" && error.code == "labour_paid" ->
+            "Ese día tiene pagos por persona: los jornales solo pueden añadirse al cálculo."
+        error.field == "dayCostRole" && error.code == "nothing_to_replace" ->
+            "Ese día no tiene coste calculado de este tipo que sustituir: el importe se añade."
+        error.field == "dayCostRole" -> "Este gasto no puede sustituir el cálculo del día."
         error.code == "activity_cost_locked" ->
             "Este coste es de su trabajo. Para separarlo usa «Conservar como gasto independiente»."
         else -> when (error.field) {
         "parcelId" -> "La parcela elegida no pertenece a esa finca"
-        "activityId" -> "La actuación elegida no pertenece a esa finca"
+        "activityId" -> "El trabajo elegido no pertenece a esa finca"
         "amountMinor" -> "El importe debe ser mayor que cero"
         "concept" -> "Describe el gasto"
         "farmId" -> "La finca ya no está disponible"
@@ -221,7 +239,24 @@ data class RelationOptions(
     val campaignsTracked: Boolean = true,
     /** #411: the Farm [campaigns] were last read for; until it matches, «no running campaign» is unknown. */
     val campaignsFor: UUID? = null,
+    /** #476: the Parcel the edited Expense already has, archived or moved since or not. */
+    val recordedParcel: Parcel? = null,
 ) {
+    /**
+     * #476: how the form names [parcelId] on [farmId]: an active Parcel by its name; the one the
+     * Expense already had, if archived or moved since, by its name and that fact; null otherwise.
+     */
+    fun parcelLabel(parcelId: UUID?, farmId: UUID?): String? {
+        if (parcelId == null) return null
+        parcels.firstOrNull { it.id == parcelId }?.let { return it.displayName }
+        val recorded = recordedParcel?.takeIf { it.id == parcelId } ?: return null
+        return when {
+            recorded.archivedAt != null -> "${recorded.displayName} · archivada"
+            recorded.farmId != farmId -> "${recorded.displayName} · ahora en otra finca"
+            else -> recorded.displayName
+        }
+    }
+
     /** #411: whether [campaigns] already answer for [farmId] (an empty list then really means none). */
     fun campaignsKnownFor(farmId: UUID?): Boolean = !campaignsTracked || campaignsFor == farmId
 }
@@ -275,8 +310,6 @@ internal fun Campaign.choiceLabel(): String =
 data class ExpensesUiState(
     val isLoading: Boolean = true,
     val expenses: List<Expense> = emptyList(),
-    val summary: ExpenseSummary = ExpenseSummary.of(emptyList()),
-    val monthTotalMinor: Long = 0,
     val openDocuments: List<DocumentExtraction> = emptyList(),
     val options: RelationOptions = RelationOptions(),
     val formErrors: ExpenseFormErrors = ExpenseFormErrors(),
@@ -306,13 +339,8 @@ class ExpensesViewModel(
             expenses.observeAll()
                 .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer los gastos") }
                 .collect { rows ->
-                    val month = clock.today(ZoneId.systemDefault()).withDayOfMonth(1)
-                    mutableState.value = mutableState.value.copy(
-                        isLoading = false,
-                        expenses = rows,
-                        summary = ExpenseSummary.of(rows),
-                        monthTotalMinor = ExpenseSummary.of(rows.filter { !it.expenseDate.isBefore(month) }).totalMinor,
-                    )
+                    // #450: totals are read per currency from these rows on screen; none is assumed.
+                    mutableState.value = mutableState.value.copy(isLoading = false, expenses = rows)
                 }
         }
         viewModelScope.launch {
@@ -329,6 +357,8 @@ class ExpensesViewModel(
     }
 
     fun selectFarm(farmId: UUID?) = relations.selectFarm(farmId)
+
+    suspend fun dayCostQuestion(harvestId: UUID, category: ExpenseCategory) = relations.dayCostQuestion(harvestId, category)
 
     fun create(form: ExpenseForm) {
         val (draft, errors) = form.toDraft()
@@ -408,12 +438,23 @@ class RelationSource(
     private val activities: ActivityRepository,
     private val organizations: OrganizationRepository,
     private val campaigns: CampaignRepository? = null,
+    private val dayCosts: com.isivoltpro.maginaolivo.domain.expense.DayCostRepository? = null,
 ) {
     private val selectedFarm = MutableStateFlow<UUID?>(null)
+    private val recordedParcel = MutableStateFlow<UUID?>(null)
+
+    /** #475: what a cost of [category] on that recolección day may be asked; null asks nothing. */
+    suspend fun dayCostQuestion(harvestId: UUID, category: ExpenseCategory): com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion? =
+        dayCosts?.questionFor(harvestId, category)
     private var options = RelationOptions(campaignsTracked = campaigns != null)
 
     fun selectFarm(farmId: UUID?) {
         selectedFarm.value = farmId
+    }
+
+    /** #476: the Parcel an existing Expense already has, read even when archived or moved since. */
+    fun recordParcel(parcelId: UUID?) {
+        recordedParcel.value = parcelId
     }
 
     fun collectInto(scope: kotlinx.coroutines.CoroutineScope, onChange: (RelationOptions) -> Unit): Job =
@@ -436,6 +477,14 @@ class RelationSource(
                     farmId?.let(parcels::observeActive) ?: flowOf(emptyList())
                 }.catch { }.collect {
                     options = options.copy(parcels = it)
+                    onChange(options)
+                }
+            }
+            launch {
+                recordedParcel.flatMapLatest { parcelId ->
+                    parcelId?.let(parcels::observeById) ?: flowOf(null)
+                }.catch { }.collect {
+                    options = options.copy(recordedParcel = it)
                     onChange(options)
                 }
             }
@@ -488,6 +537,7 @@ class ExpenseDetailViewModel(
                 .collect { expense ->
                     mutableState.value = mutableState.value.copy(isLoading = false, expense = expense)
                     if (expense?.farmId != null) relations.selectFarm(expense.farmId)
+                    relations.recordParcel(expense?.parcelId)
                 }
         }
         relations.collectInto(viewModelScope) { options ->
@@ -496,6 +546,8 @@ class ExpenseDetailViewModel(
     }
 
     fun selectFarm(farmId: UUID?) = relations.selectFarm(farmId)
+
+    suspend fun dayCostQuestion(harvestId: UUID, category: ExpenseCategory) = relations.dayCostQuestion(harvestId, category)
 
     fun update(form: ExpenseForm) {
         val current = mutableState.value.expense ?: return
@@ -538,4 +590,14 @@ class ExpenseDetailViewModel(
             }
         }
     }
+}
+
+/** #451: the supplier as the form shows it; see [com.isivoltpro.maginaolivo.feature.deliveries.destinationShown]. */
+internal data class SupplierShown(val name: String?, val currentName: String?)
+
+internal fun ExpenseForm.supplierShown(suppliers: List<Organization>): SupplierShown {
+    val chosen = supplierOrganizationId ?: return SupplierShown(null, null)
+    val current = suppliers.firstOrNull { it.id == chosen }?.name
+    if (chosen != recordedSupplierId || recordedSupplierName.isEmpty()) return SupplierShown(current, null)
+    return SupplierShown(recordedSupplierName, current?.takeIf { it != recordedSupplierName })
 }

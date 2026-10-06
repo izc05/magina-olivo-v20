@@ -26,6 +26,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.PesadaQuery
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaSearch
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
 import com.isivoltpro.maginaolivo.domain.delivery.YieldStatus
+import com.isivoltpro.maginaolivo.domain.harvest.HARVEST_HAS_DELIVERIES
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestDraft
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestShareInput
@@ -43,6 +44,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -180,13 +182,15 @@ class JornadaPesadasContractTest {
         assertTrue(left.awaitingPesadas)
         assertEquals(HarvestAllocation.UNALLOCATED, left.shares.single().allocation)
 
-        // Removing a day releases its Pesadas with every figure intact.
-        db.expenseDao().upsert(expenseOn(moved)) // so the day stays when its Pesada leaves
-        ok(harvests.delete(moved))
-        val released = deliveries.observe(a).first()!!
-        assertNull(released.harvestId)
-        assertEquals(2_300_000L, released.netGrams)
-        assertEquals("V-9", released.ticketNumber)
+        // #457: a day with Pesadas is never removed from under them; they keep it, intact.
+        db.expenseDao().upsert(expenseOn(moved)) // so the day would stay even without its Pesada
+        val refused = harvests.delete(moved)
+        assertEquals(AppError.Conflict(HARVEST_HAS_DELIVERIES), (refused as AppResult.Failure).error)
+        val kept = deliveries.observe(a).first()!!
+        assertEquals(moved, kept.harvestId)
+        assertEquals(2_300_000L, kept.netGrams)
+        assertEquals("V-9", kept.ticketNumber)
+        assertNotNull(harvests.observe(moved).first())
     }
 
     @Test
@@ -198,8 +202,8 @@ class JornadaPesadasContractTest {
         // Stored 0 means "not weighed yet": shown as «Kg pendientes de pesada», out of every total.
         assertTrue(opened.awaitingPesadas)
         assertEquals(0, HarvestSummary.of(listOf(opened)).weighedCount)
-        assertEquals(setOf(north, south), opened.shares.map { it.parcelId }.toSet())
-        assertTrue(opened.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
+        // #458: until a Pesada says where its olives came from, the day is attributed to no Parcel.
+        assertTrue(opened.shares.isEmpty())
         // Opening it again the same day returns the same day: never a second one.
         assertEquals(jornadaId, ok(harvests.openJornada(farmId, day)))
         assertEquals(1, db.harvestDao().observeForCampaign(campaignId).first().size)
@@ -249,7 +253,7 @@ class JornadaPesadasContractTest {
     }
 
     @Test
-    fun aDayWithWhatTheFarmerTypedOnItStaysAndItsOriginGoesBackToTheWholeFarm() = runBlocking {
+    fun aDayWithWhatTheFarmerTypedOnItStaysAndItsOriginIsNoLongerDetermined() = runBlocking {
         // Codex review on #290: people or machinery typed on the day are the farmer's record.
         val p = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1").copy(shares = listOf(DeliveryShareInput(north, 2_000_000)))))
         val dayId = deliveries.observe(p).first()!!.harvestId!!
@@ -261,9 +265,75 @@ class JornadaPesadasContractTest {
         assertTrue(left.awaitingPesadas)
         assertEquals(4, left.workerCount)
         assertEquals("Vibrador", left.machineryText)
-        // No Pesada supports «Norte only» any more: the whole Farm, without a split.
-        assertEquals(setOf(north, south), left.shares.map { it.parcelId }.toSet())
-        assertTrue(left.shares.all { it.allocation == HarvestAllocation.UNALLOCATED && it.weightGrams == null })
+        // #458: no Pesada says where its olives came from any more: no Parcel is presumed, so the
+        // day shows in no Parcel's history.
+        assertTrue(left.shares.isEmpty())
+        assertTrue(db.harvestDao().listParcels(dayId).isEmpty())
+    }
+
+    /** #458 (Codex): an automatic day written before this rule loses its presumed origin on start. */
+    @Test
+    fun anOlderAutomaticDayWithoutPesadasLosesItsPresumedOriginOnStart() = runBlocking {
+        val empty = ok(harvests.openJornada(farmId, day))
+        val now = Instant.parse("2026-12-02T08:00:00Z")
+        // As the earlier code wrote it: every Parcel of the Campaign, with no Pesada behind it.
+        db.harvestDao().upsertParcels(
+            listOf(north to "Norte", south to "Sur").map { (parcelId, name) ->
+                com.isivoltpro.maginaolivo.data.local.entity.HarvestParcelEntity(
+                    id = UUID.randomUUID(), workspaceId = workspaceId, harvestId = empty, parcelId = parcelId,
+                    parcelNameAtHarvest = name, allocationMode = HarvestAllocation.UNALLOCATED.name,
+                    metadata = LocalMetadata(now, now),
+                )
+            },
+        )
+        // A legacy row may even keep kilos with no Pesada behind them.
+        val stale = ok(harvests.openJornada(farmId, day.minusDays(2)))
+        db.harvestDao().upsert(db.harvestDao().findById(stale)!!.copy(weightGrams = 1_500_000L))
+        val weighed = ok(deliveries.create(pesada(1_000_000, "Coop. San Isidro", "V-1").copy(deliveryDate = day.minusDays(1))))
+        val weighedDay = deliveries.observe(weighed).first()!!.harvestId!!
+        val weighedRows = db.harvestDao().listParcels(weighedDay)
+        // The presumption was never history: a closed Campaign is corrected too.
+        val campaign = db.campaignDao().findById(campaignId)!!
+        db.campaignDao().upsert(campaign.copy(status = CampaignStatus.CLOSED, endDate = day))
+
+        ok(harvests.clearUnfoundedDayOrigins())
+        val cleared = harvests.observe(empty).first()!!
+        assertTrue(cleared.shares.isEmpty())
+        assertTrue(cleared.awaitingPesadas)
+        val unweighed = harvests.observe(stale).first()!!
+        assertEquals(0L, unweighed.totalGrams)
+        assertTrue(unweighed.shares.isEmpty())
+        // A day its Pesadas support is left exactly as it was; running it again changes nothing.
+        assertEquals(weighedRows, db.harvestDao().listParcels(weighedDay))
+        assertEquals(1_000_000L, harvests.observe(weighedDay).first()!!.totalGrams)
+        val version = cleared.version
+        ok(harvests.clearUnfoundedDayOrigins())
+        assertEquals(version, harvests.observe(empty).first()!!.version)
+    }
+
+    /** #458 C/D: a day's Parcel rows are kept as recorded; only Parcels joining or leaving change. */
+    @Test
+    fun aDayKeepsItsParcelRowsAndNamesWhenItsPesadasChange() = runBlocking {
+        val a = ok(deliveries.create(pesada(2_000_000, "Coop. San Isidro", "V-1").copy(shares = listOf(DeliveryShareInput(north, 2_000_000)))))
+        val dayId = deliveries.observe(a).first()!!.harvestId!!
+        val recorded = db.harvestDao().listParcels(dayId).single()
+        val parcel = db.parcelDao().findById(north)!!
+        db.parcelDao().upsert(parcel.copy(displayName = "Parcela 1"))
+
+        // Another Pesada of the same Parcel: the day's row for it is untouched.
+        ok(deliveries.create(pesada(500_000, "Coop. San Isidro", "V-2").copy(shares = listOf(DeliveryShareInput(north, 500_000)))))
+        assertEquals(listOf(recorded), db.harvestDao().listParcels(dayId))
+
+        // A Pesada of another Parcel adds only that Parcel's row.
+        val b = ok(deliveries.create(pesada(700_000, "Coop. San Isidro", "V-3").copy(shares = listOf(DeliveryShareInput(south, 700_000)))))
+        val rows = db.harvestDao().listParcels(dayId).associateBy { it.parcelId }
+        assertEquals(setOf(north, south), rows.keys)
+        assertEquals(recorded, rows.getValue(north))
+
+        // It leaving drops only its row.
+        ok(deliveries.delete(b))
+        assertEquals(listOf(recorded), db.harvestDao().listParcels(dayId))
+        assertEquals(recorded.parcelNameAtHarvest, harvests.observe(dayId).first()!!.shares.single().parcelName)
     }
 
     @Test

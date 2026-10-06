@@ -8,6 +8,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.campaign.CampaignParcelOption
@@ -111,6 +113,30 @@ class CampaignScreensTest {
         compose.runOnIdle { assertEquals(1, opened) }
     }
 
+    /** #450: a Campaign with EUR and GBP shows both totals; one with only GBP never says «sin gastos». */
+    @Test fun campaignExpensesShowEveryCurrency() {
+        fun spent(minor: Long, currency: String) = com.isivoltpro.maginaolivo.domain.expense.Expense(
+            id = UUID.randomUUID(), workspaceId = UUID.randomUUID(), expenseDate = LocalDate.of(2026, 11, 20),
+            concept = "Gasto", category = com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory.OTHER,
+            amountMinor = minor, currency = currency, status = com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus.POSTED,
+            origin = com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin.MANUAL,
+        )
+        val ledger = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(listOf(spent(80_000, "EUR"), spent(30_000, "GBP")))
+        var summary by androidx.compose.runtime.mutableStateOf(com.isivoltpro.maginaolivo.feature.campaigns.CampaignSummaryUi(expenses = ledger))
+        compose.setContent { MaginaOlivoTheme {
+            CampaignDetailScreen(CampaignDetailUiState(isLoading = false, campaign = campaign()), {}, {}, {}, {}, {}, {}, summary = summary)
+        } }
+        val eur = com.isivoltpro.maginaolivo.domain.expense.Money.format(80_000, "EUR")
+        val gbp = com.isivoltpro.maginaolivo.domain.expense.Money.format(30_000, "GBP")
+        compose.onNodeWithTag("campaign-metric-expenses").performScrollTo()
+        compose.onNodeWithText("$eur · $gbp", substring = true).assertExists()
+        compose.onNodeWithText("Varias monedas", substring = true).assertExists()
+
+        compose.runOnIdle { summary = summary.copy(expenses = ledger.filter { it.currency == "GBP" }) }
+        compose.onNodeWithText(gbp, substring = true).assertExists()
+        compose.onAllNodesWithText("Aún no hay gastos de esta campaña").assertCountEquals(0)
+    }
+
     /** #246: each campaign card shows its figures with icon and words, closed or running. */
     @Test fun campaignCardsSummariseWithoutOpening() {
         val running = campaign().copy(id = UUID.randomUUID(), name = "2026/27", status = CampaignStatus.ACTIVE, endDate = null)
@@ -132,6 +158,26 @@ class CampaignScreensTest {
         compose.onNodeWithText("Rend. 20,82 %", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("Jornales " + com.isivoltpro.maginaolivo.domain.expense.Money.format(65_000, "EUR"), useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("Sin pesadas", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    /** #449: closing is allowed with unconfirmed costs, and the farmer is told what that means. */
+    @Test fun closingWithUnconfirmedCostsWarnsButStillCloses() {
+        val active = campaign().copy(status = CampaignStatus.ACTIVE, endDate = null)
+        var complete by androidx.compose.runtime.mutableStateOf<Boolean?>(false)
+        var closed = false
+        compose.setContent { MaginaOlivoTheme {
+            CampaignDetailScreen(CampaignDetailUiState(isLoading = false, campaign = active), {}, {}, {}, { closed = true }, {}, {},
+                summary = com.isivoltpro.maginaolivo.feature.campaigns.CampaignSummaryUi(costComplete = complete))
+        } }
+        compose.onNodeWithTag("close-campaign").performScrollTo().performClick()
+        compose.onNodeWithTag("close-cost-warning").assertIsDisplayed()
+        compose.onNodeWithText("Hay costes sin confirmar", substring = true).assertIsDisplayed()
+        complete = true
+        compose.onNodeWithTag("close-cost-warning").assertDoesNotExist()
+        complete = null
+        compose.onNodeWithTag("close-cost-warning").assertDoesNotExist()
+        compose.onNodeWithTag("confirm-campaign-action").performClick()
+        compose.runOnIdle { assertTrue(closed) }
     }
 
     private fun campaign() = Campaign(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "2025/26",

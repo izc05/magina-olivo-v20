@@ -9,7 +9,6 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentSummary
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
@@ -51,16 +50,16 @@ data class FarmNotebook(
     private fun standsAlone(harvestId: UUID?): Boolean = harvestId == null || harvestId !in listedJornadas
 
     /**
-     * Diario: the Farm's timeline of what was done, newest day first. An Expense that is the cost of an Activity
-     * is read in that Activity's row, and a Jornada's own Pesadas and costs inside the Jornada.
+     * Diario: the Farm's timeline of what was done, newest day first. #478: every Gasto is a row of its own on
+     * its own date, saying the work it is tied to; only a Jornada's own Pesadas and costs are read inside it.
      */
     val diary: List<DiaryDay>
         get() = (
             realizedActivities.map { DiaryEntry.Work(it) } +
                 harvests.map { DiaryEntry.HarvestEntry(it) } +
                 deliveries.filter { standsAlone(it.harvestId) }.map { DiaryEntry.DeliveryEntry(it) } +
-                expenses.filter { it.activityId == null && it.origin != ExpenseOrigin.ACTIVITY_COST && standsAlone(it.harvestId) }
-                    .map { DiaryEntry.ExpenseEntry(it) }
+                expenses.filter { standsAlone(it.harvestId) }
+                    .map { expense -> DiaryEntry.ExpenseEntry(expense, relatedWorkName(expense, activities)) }
             )
             .groupBy { it.date }
             .toSortedMap(compareByDescending { it })
@@ -80,7 +79,8 @@ data class FarmNotebook(
 
     fun labourFor(harvestId: UUID): LabourSummary = LabourSummary.of(labour.filter { it.harvestId == harvestId })
 
-    fun jornadaCost(harvestId: UUID): ExpenseSummary = ExpenseSummary.of(expenses.filter { it.harvestId == harvestId })
+    /** #450: the day's posted money per currency. */
+    fun jornadaCost(harvestId: UUID): List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency> = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(expenses.filter { it.harvestId == harvestId })
 
     /** The kilo-weighted yield of a Jornada's Pesadas, «pendiente» while any has none; null without Pesadas. */
     fun jornadaYieldLabel(harvestId: UUID): String? {

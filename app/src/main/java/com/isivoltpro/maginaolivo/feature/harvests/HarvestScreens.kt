@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo.feature.harvests
 
 import com.isivoltpro.maginaolivo.ui.components.OnEachSave
 import android.util.Log
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
 import androidx.compose.foundation.layout.WindowInsets
@@ -412,8 +413,12 @@ internal fun HarvestEditor(
         if (form.automatic) {
             // CR-010 (note 2): the union of its Pesadas' Parcels, or the whole Farm; never a split.
             Text(
-                context?.parcels?.filter { it.parcelId in form.parcelIds }?.joinToString { it.name }
-                    ?.ifEmpty { null } ?: "Toda la finca",
+                if (form.parcelIds.isEmpty()) {
+                    UNKNOWN_DAY_ORIGIN
+                } else {
+                    context?.parcels?.filter { it.parcelId in form.parcelIds }?.joinToString { it.name }
+                        ?.ifEmpty { null } ?: "Toda la finca"
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.testTag("harvest-day-parcels"),
             )
@@ -646,11 +651,11 @@ fun HarvestDetailScreen(
     onPesadaSelected: (UUID) -> Unit = {},
     labourActions: LabourActions = LabourActions(),
     onSaveEquipment: (List<EquipmentDraftLine>) -> Unit = {},
-    onAddCost: (JornadaExpenseKind, Long, String?, Boolean) -> Unit = { _, _, _, _ -> },
+    onAddCost: (JornadaExpenseKind, Long, String?, Boolean, DayCostRole) -> Unit = { _, _, _, _, _ -> },
     onExpenseSelected: (UUID) -> Unit = {},
     onSaveRates: (RecollectionRates) -> Unit = {},
     onPreferCalculated: (DayCostKind) -> Unit = {},
-    onLinkCost: (UUID) -> Unit = {},
+    onLinkCost: (UUID, DayCostRole) -> Unit = { _, _ -> },
     /**
      * #365: the resource detail open on arrival. Cuaderno → Jornal lands on the day's Jornales,
      * with «Registrar jornal» at hand, instead of on its Pesadas; the day stays one screen.
@@ -681,7 +686,7 @@ fun HarvestDetailScreen(
             val harvest = state.harvest
             when {
                 state.isLoading -> CircularProgressIndicator()
-                harvest == null -> MoErrorState("Día de recolección no disponible", state.error ?: "No está guardada en este dispositivo.")
+                harvest == null -> MoErrorState("Día de recolección no disponible", state.error ?: "No está guardado en este dispositivo.")
                 else -> {
                     HarvestSummaryBlock(harvest, state.pesadas.size)
                     JornadaPesadas(state.pesadas, harvest.editable, onAddPesada, onPesadaSelected)
@@ -704,7 +709,11 @@ fun HarvestDetailScreen(
                         supportingText = when { !state.costsLoaded -> "Cargando gastos…"; state.costsReadFailed -> "No pudimos leer los gastos";
                             else -> "Combustible, transporte, reparación · Ver gastos" }, onClick = { resourceDetail = "costs" })
                     MoSectionHeader("Resumen económico")
-                    RecollectionTotalCards(ledger, true, state.pesadas.sumOf { it.netGrams }.takeIf { it > 0 }?.let(Weight::format))
+                    RecollectionTotalCards(ledger, true, state.pesadas.sumOf { it.netGrams }.takeIf { it > 0 }?.let(Weight::format),
+                        // Codex #605: only with every source read; otherwise never presented as final.
+                        com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(state.labour, state.equipment, state.costs)
+                            .takeIf { state.labourLoaded && state.equipmentLoaded && state.costsLoaded &&
+                                !state.labourReadFailed && !state.equipmentReadFailed && !state.costsReadFailed })
                     state.costError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     state.equipmentError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     if (harvest.editable) {
@@ -713,11 +722,30 @@ fun HarvestDetailScreen(
                             Modifier.fillMaxWidth().testTag("edit-harvest"),
                             enabled = state.context != null && !state.isSaving,
                         )
-                        MoSecondaryButton(
-                            "Eliminar día de recolección", { confirmDelete = true },
-                            Modifier.fillMaxWidth().testTag("delete-harvest"),
-                            enabled = !state.isSaving,
-                        )
+                        // #457: deleting is offered only once the day is known to have no Pesadas.
+                        val noPesadas = state.pesadasLoaded && !state.pesadasReadFailed && state.pesadas.isEmpty()
+                        if (noPesadas) {
+                            MoSecondaryButton(
+                                "Eliminar día de recolección", { confirmDelete = true },
+                                Modifier.fillMaxWidth().testTag("delete-harvest"),
+                                enabled = !state.isSaving,
+                            )
+                        } else if (state.pesadas.isNotEmpty()) {
+                            // #457: the day is there because it has Pesadas; it moves with them.
+                            Text(
+                                "Este día existe porque tiene pesadas. Para cambiarlo, corrige o mueve las pesadas.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MoTextSecondary,
+                                modifier = Modifier.testTag("harvest-delete-held"),
+                            )
+                        } else if (state.pesadasReadFailed) {
+                            Text(
+                                "No pudimos leer las pesadas de este día: vuelve a abrirlo para poder eliminarlo.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.testTag("harvest-pesadas-unread"),
+                            )
+                        }
                     } else {
                         Text(
                             "La campaña está cerrada: este día de recolección forma parte del histórico y no se modifica.",
@@ -775,6 +803,7 @@ fun HarvestDetailScreen(
                         onEditRates = state.rates?.let { { resourceDetail = null; ratesVisible = true } },
                         unlinked = state.unlinkedCosts,
                         onLink = onLinkCost,
+                        labourPaid = state.labourPaid,
                         loaded = state.costsLoaded,
                         readFailed = state.costsReadFailed,
                     )
@@ -820,7 +849,10 @@ fun HarvestDetailScreen(
                 currencyError = currencyContext.error,
                 isSaving = state.isSaving,
                 error = state.costError,
-                onSave = onAddCost,
+                onSave = { kind, amount, concept, openAfter -> onAddCost(kind, amount, concept, openAfter, DayCostRole.ADDITIVE) },
+                onSaveWithRole = onAddCost,
+                calculated = state.calculatedKinds(),
+                labourPaid = state.labourPaid,
                 onCancel = { costVisible = false },
             )
         }
@@ -872,16 +904,14 @@ fun HarvestDetailScreen(
             )
         }
     }
-    if (confirmDelete) {
+    // A Pesada that arrives while the confirmation is open closes it (#457).
+    if (confirmDelete && state.pesadas.isEmpty()) {
         ModalBottomSheet(containerColor = com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { confirmDelete = false }) {
             MoConfirmationSheet(
                 title = "Eliminar día de recolección",
                 body = listOfNotNull(
-                    if (state.pesadas.isEmpty()) {
-                        "Estos kilos dejarán de contar en la campaña."
-                    } else {
-                        "Sus pesadas se conservan, sin día de recolección, y siguen contando en la campaña."
-                    },
+                    // #457: only a day without Pesadas can be removed.
+                    "Estos kilos dejarán de contar en la campaña.",
                     // Phase 19D: its jornales only describe this Jornada and go with it.
                     if (state.labour.isNotEmpty()) "Sus jornales se quitan con ella." else null,
                     if (state.equipment.isNotEmpty()) "Su maquinaria anotada también." else null,
@@ -986,6 +1016,15 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
         },
     )
     MoSectionHeader("Parcelas de origen")
+    if (harvest.shares.isEmpty()) {
+        Text(
+            // A legacy record (before Room v7) has no origin rows and expects no Pesada.
+            if (harvest.automatic && harvest.awaitingPesadas) "$UNKNOWN_DAY_ORIGIN: llegará con sus pesadas." else UNKNOWN_DAY_ORIGIN,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MoTextSecondary,
+            modifier = Modifier.testTag("harvest-origin-unknown"),
+        )
+    }
     harvest.shares.forEach { share ->
         Row(Modifier.fillMaxWidth().testTag("harvest-share"), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(share.parcelName, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))

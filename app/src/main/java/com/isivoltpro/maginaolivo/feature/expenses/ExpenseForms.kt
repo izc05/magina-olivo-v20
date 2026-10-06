@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.components.MoDateInputField
@@ -116,6 +117,11 @@ internal fun ExpenseEditor(
     askCategory: Boolean = activityLocked,
     /** #415: «Guardar y añadir foto» — saves like [onSave], then the Gasto opens for its photo. */
     onSaveWithPhoto: ((ExpenseForm) -> Unit)? = null,
+    /**
+     * #475: the question a day's jornales/maquinaria cost gets, read from the day as it is (a
+     * calculation of that kind exists; with jornales paid it can only add). Null asks nothing.
+     */
+    dayCostQuestion: suspend (UUID, ExpenseCategory) -> com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion? = { _, _ -> null },
 ) {
     var form by remember(initial) { mutableStateOf(initial) }
     var categoryChosen by rememberSaveable(initial, askCategory) { mutableStateOf(!askCategory) }
@@ -225,6 +231,45 @@ internal fun ExpenseEditor(
                 modifier = Modifier.testTag("expense-category-required"),
             )
         }
+        // #475: a day's jornales or machinery are asked how they count only when that day has a
+        // calculation of the kind; with jornales paid they can only add. A cost that already
+        // replaces it, unchanged, keeps that choice and may be taken back to «Se añade».
+        var question by remember { mutableStateOf<com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion?>(null) }
+        val dayId = form.harvestId
+        LaunchedEffect(dayId, form.category, categoryChosen) {
+            question = if (dayId != null && categoryChosen) dayCostQuestion(dayId, form.category) else null
+        }
+        val keepsReplacement = initial.dayCostRole == DayCostRole.REPLACEMENT &&
+            form.harvestId == initial.harvestId && form.category == initial.category
+        val canReplace = question?.canReplace == true || keepsReplacement
+        LaunchedEffect(question, keepsReplacement) {
+            if (form.dayCostRole == DayCostRole.REPLACEMENT && !canReplace) form = form.copy(dayCostRole = DayCostRole.ADDITIVE)
+        }
+        if (question != null || keepsReplacement) {
+            Text("¿Cómo cuenta en su día de recolección?", style = MaterialTheme.typography.titleSmall)
+            androidx.compose.foundation.layout.Row(
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(MoSpacing.xs),
+            ) {
+                listOfNotNull(
+                    DayCostRole.ADDITIVE to "Se añade al cálculo",
+                    (DayCostRole.REPLACEMENT to "Sustituye el cálculo").takeIf { canReplace },
+                ).forEach { (role, label) ->
+                    androidx.compose.material3.FilterChip(
+                        form.dayCostRole == role,
+                        { form = form.copy(dayCostRole = role) },
+                        { Text(label) },
+                        Modifier.testTag("expense-role-${role.name}"),
+                    )
+                }
+            }
+            if (!canReplace) {
+                Text(
+                    "Ya hay pagos anotados a personas de este día: este gasto se suma al cálculo y no lo sustituye.",
+                    style = MaterialTheme.typography.bodySmall, color = MoTextSecondary,
+                    modifier = Modifier.testTag("expense-role-labour-paid"),
+                )
+            }
+        }
         MoSectionHeader("Relación")
         val farm = options.farms.firstOrNull { it.id == form.farmId }
         if (farmLocked) {
@@ -245,8 +290,7 @@ internal fun ExpenseEditor(
                     Modifier.testTag("expense-parcel"),
                 )
             } else {
-                val parcel = options.parcels.firstOrNull { it.id == form.parcelId }
-                MoSelectField("Parcela", parcel?.displayName ?: "Toda la finca", { picker = "parcel" },
+                MoSelectField("Parcela", options.parcelLabel(form.parcelId, form.farmId) ?: "Toda la finca", { picker = "parcel" },
                     Modifier.testTag("expense-parcel"))
             }
         }
@@ -269,7 +313,7 @@ internal fun ExpenseEditor(
             }
         } else if (parcelInSight) {
             Text(
-                "Parcela · " + (options.parcels.firstOrNull { it.id == lockedParcelId }?.displayName ?: "…"),
+                "Parcela · " + (options.parcelLabel(lockedParcelId, form.farmId) ?: "…"),
                 style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary,
                 modifier = Modifier.testTag("expense-parcel-context"),
             )
@@ -285,12 +329,20 @@ internal fun ExpenseEditor(
         var showDetails by rememberSaveable { mutableStateOf(false) }
         LaunchedEffect(hasDetails) { if (hasDetails) showDetails = true }
         if (showDetails || hasDetails) {
-            val supplier = options.suppliers.firstOrNull { it.id == form.supplierOrganizationId }
+            val supplier = form.supplierShown(options.suppliers)
             MoSelectField(
-                "Proveedor guardado", supplier?.name ?: "Ninguno", { picker = "supplier" },
+                "Proveedor guardado", supplier.name ?: "Ninguno", { picker = "supplier" },
                 Modifier.testTag("expense-supplier"),
             )
-            if (supplier == null) {
+            supplier.currentName?.let { now ->
+                Text(
+                    "Ahora: $now",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MoTextSecondary,
+                    modifier = Modifier.testTag("expense-supplier-now"),
+                )
+            }
+            if (supplier.name == null) {
                 MoTextField(
                     form.supplierText, { form = form.copy(supplierText = it) }, "Proveedor (texto libre)",
                     modifier = Modifier.fillMaxWidth(),

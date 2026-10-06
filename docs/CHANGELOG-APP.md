@@ -20,6 +20,117 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Corregir un trabajo ya no reconstruye sus parcelas (#440, #546).** Al editar cualquier dato de un
+  trabajo, sus parcelas se conservan tal como se registraron: mismo nombre de entonces, misma
+  superficie tratada y mismos identificadores. Una parcela archivada después ya no impide corregir una
+  nota; solo al añadir una parcela nueva se exige que esté activa en la finca.
+- **Editar un trabajo ya no borra datos que el formulario no muestra (#453).** Al corregir un riego,
+  su tarifa histórica conserva su moneda, sus notas y su enlace con el gasto real (antes volvía a
+  euros y perdía el enlace). Una incidencia resuelta conserva cuándo se resolvió. Cambiar el tipo
+  de trabajo sigue sustituyendo los detalles anteriores.
+- **Dos personas pueden llamarse igual (#442).** Añadir un nombre que ya existe ya no reutiliza a esa
+  persona sin preguntar: la app dice «Ya existe una persona llamada Juan García. ¿Es la misma?» y deja
+  elegir «Usar persona existente» o «Crear otra persona con este nombre». Si hay homónimos, se
+  distinguen en pantalla («Juan García · 1», «· 2») sin cambiar el nombre guardado, y sus jornales y
+  pagos nunca se mezclan.
+- **Mi Campo avisa cuando el coste de la campaña no está completo (#449).** En «Resumen de la
+  explotación», si alguna campaña del periodo tiene jornales o maquinaria sin precio o gastos sin
+  confirmar, el coste/kg (de recogida y total) y la línea de cada finca afectada se marcan
+  «(incompleto)», y la nota dice «Costes sin confirmar». Las cifras siguen siendo solo lo contabilizado.
+- **Cerrar una campaña con costes sin confirmar avisa (#449).** Al confirmar el cierre, si quedan
+  jornales o maquinaria sin precio o gastos pendientes, la app lo dice: «Hay costes sin confirmar.
+  Puedes cerrar la campaña, pero el coste/kg quedará marcado como incompleto.» El cierre sigue
+  permitido.
+- **Las tarjetas de campaña y el histórico avisan de costes sin confirmar (#449).** Si una campaña
+  tiene jornales o maquinaria sin precio, o gastos pendientes de confirmar, su tarjeta lo dice
+  («Costes sin confirmar») y su coste/kg en «Comparar campañas» y en el histórico se marca
+  «(incompleto)». La cifra sigue siendo solo lo contabilizado; nunca se rellena con un 0.
+- **Un coste contabilizado ya no se queda desfasado al cambiar la maquinaria (#449).** Si en un día
+  con coste de maquinaria contabilizado falta algún precio, ya no se puede añadir con precio, quitar, cambiar de
+  cantidad ni de precio una máquina que sí tenía precio: la app pide confirmar antes los precios que
+  faltan. Añadir una máquina sin precio sigue permitido (el coste se queda como subtotal conocido,
+  marcado como incompleto) y, al confirmar el último precio, se recalcula una sola vez.
+- **Se puede anotar a alguien sin saber aún su precio (#449).** En un día con jornales ya pagados a
+  precio conocido se puede añadir a otra persona sin precio: queda registrada, no cuenta como 0 € y el coste
+  del día se muestra como incompleto hasta confirmar su precio; al confirmarlo se recalcula una sola vez. Lo
+  que sigue bloqueado es añadir a alguien con precio mientras otro precio de ese día está pendiente.
+- **El coste/kg avisa cuando faltan costes por confirmar (#449).** Si hay jornales o maquinaria sin
+  precio, costes del día aún sin calcular o gastos sin confirmar, el total y el coste/kg se llaman
+  «contabilizado» y dicen qué falta («Incompleto · jornales sin precio»). Lo desconocido nunca cuenta como
+  0 € y pagar no cambia nada. Un cálculo apartado porque un gasto anotado a mano lo sustituye (#475) ya no
+  aparece como «sin confirmar».
+- **Un día de recolección automático que se queda vacío desaparece (#502).** Si se quita el último
+  jornal, máquina, gasto o foto de un día creado automáticamente y no tiene pesadas ni notas, el día ya
+  no queda como «Kg pendientes» sin nada detrás; la pantalla del día se cierra. Un día anotado a mano
+  nunca se toca.
+- **Gastos y días de recolección ya no ocultan otras monedas (#450, gastos).** La pantalla de Gastos
+  muestra «Gastos confirmados» y «Este mes» con un total por moneda, y las categorías por moneda (los
+  porcentajes solo dentro de cada una). El coste de un día de recolección guarda un total por moneda y
+  no inventa un total único cuando hay varias. Nada se convierte.
+- **Una máquina archivada sigue en los días en que trabajó (#446).** Al editar la maquinaria de un día,
+  la máquina archivada aparece como «Fendt 209 · Archivada» con su tipo, cantidad y precio de entonces,
+  y se conserva al guardar (o se quita si el agricultor lo decide). En un día nuevo no se puede añadir.
+- **El Cuaderno tampoco oculta otras monedas (#450, Cuaderno).** Cada día de recolección del diario muestra
+  su coste por moneda («50,00 € · 30,00 US$»), y los resúmenes internos del Cuaderno (gastos de la campaña,
+  recolección, jornales y maquinaria) guardan un total por moneda. Nada se convierte ni se suma entre monedas.
+- **Los gastos de una campaña ya no ocultan otras monedas (#450, campaña).** El detalle de la campaña
+  muestra cada moneda por separado («800,00 € · 300,00 GBP», sin convertir); una campaña con gastos solo
+  en otra moneda ya no dice «Aún no hay gastos». El resumen interno de la campaña guarda un total por
+  moneda y el coste/kg global sigue sin calcularse cuando hay varias.
+- **Un gasto antiguo sigue editable aunque su parcela se archive o cambie de finca (#476).** Corregir
+  importe, nota o concepto conserva la finca y la parcela con que se anotó; el editor la muestra como
+  «Parcela 1 · archivada» o «· ahora en otra finca». Para un gasto nuevo, o al cambiar de parcela, solo
+  se ofrecen las parcelas activas de esa finca. Solo vale para gastos ya confirmados: un borrador
+  todavía no es histórico y, al confirmarlo, vuelve a comprobar que su parcela sigue activa (#456).
+- **Gasto del día: «Se añade» o «Sustituye», siempre lo decide el agricultor (#475).** Al anotar jornales
+  o un alquiler de maquinaria en un día que ya tiene ese coste calculado, la app pregunta «¿Cómo cuenta
+  este gasto?»: «Se añade al cálculo» o «Sustituye el cálculo». Si el día no tiene cálculo de ese tipo,
+  se añade sin preguntar; gasoil, aceite, transporte, reparaciones y otros siempre se suman. La decisión
+  se guarda (no se deduce del concepto ni de la categoría). Si alguien de ese día ya tiene pagos, los
+  jornales solo pueden añadirse: los pagos nunca se tocan. Al sustituir jornales sin pagos, el importe
+  cuenta en la campaña sin repartir por persona. Un gasto «Fuera de campaña» ya no se ofrece para
+  enlazarlo a una jornada ni se absorbe. Lo que contaba antes de este cambio sigue contando igual.
+  Al editar el gasto se ve la misma pregunta, solo con las opciones que ese día permite de verdad.
+- **Una persona que ya no trabaja puede cobrar lo que se le debe (#481).** Si un trabajador deja de
+  estar activo, ya no se ofrece para nuevos jornales, pero sus jornales pendientes se pueden pagar (y los
+  pagos corregir) sin restaurarlo. Nunca se puede pagar más de lo pendiente.
+- **«Trabajo» en lugar de «actuación» en toda la app.** Pantallas, botones y avisos hablan de
+  «Nuevo trabajo», «Editar trabajo», «Trabajo completado», «Trabajos con esta máquina», «Coste de un
+  trabajo»… Solo cambia el texto; los datos y su sincronización no cambian. «Actuación realizada» se
+  mantiene en el seguimiento de plagas, donde es la medida adoptada, y en el CUE se respetará la
+  denominación oficial.
+- **Un día sin pesadas no se atribuye a todas las parcelas (#458).** Un día de recolección abierto
+  sin pesadas, o que se queda sin ellas pero conserva jornales, maquinaria, gastos o notas, muestra
+  «Origen sin determinar» y no aparece en el historial de ninguna parcela. Al llegar, cambiar o irse
+  pesadas, y al corregir un día anotado a mano, las parcelas que ya estaban conservan su fila y el
+  nombre con que se guardaron; solo se añaden o quitan las que cambian.
+- **Corregir una pesada o un gasto no cambia la cooperativa/proveedor con que se guardó (#451).** Si
+  la cooperativa o el proveedor se renombra o se archiva, la pesada o el gasto siguen con el nombre de
+  entonces al corregir notas, vale, kilos o importe, y se pueden seguir editando. El editor muestra el
+  nombre guardado y, si ha cambiado, «Ahora: …». Solo elegir otra cooperativa o proveedor toma su
+  nombre actual.
+- **Un día de recolección con pesadas no se elimina (#457).** Si el día tiene pesadas, ya no aparece
+  «Eliminar día de recolección»: «Este día existe porque tiene pesadas. Para cambiarlo, corrige o mueve
+  las pesadas.». Una pesada viva siempre conserva su día; al moverla de fecha, el día viejo se retira
+  solo si se queda sin datos. Un día sin pesadas se puede seguir eliminando como antes.
+- **Una pesada no se mueve a después de su análisis de rendimiento (#455).** Al corregir la fecha de
+  una pesada que ya tiene análisis fechado, no se puede poner un día posterior al análisis: «La nueva
+  fecha de la pesada sería posterior a su análisis de rendimiento. Corrige primero la fecha del
+  análisis o mantén la fecha de la pesada.». Un análisis sin fecha no lo impide y el análisis nunca se
+  modifica.
+- **Las parcelas de un trabajo no dejan gastos colgando (#441).** Al editar un trabajo no se puede
+  quitar una parcela (ni pasarlo a toda la finca) si un gasto de ese trabajo la nombra: «Hay gastos
+  vinculados a esta parcela dentro del trabajo. Revísalos antes de cambiar las parcelas.», con esos
+  gastos a un toque. Añadir parcelas, cambiar el tipo o la fecha del trabajo nunca mueve ni cambia
+  sus gastos.
+- **Corregir una pesada no cambia el nombre de parcela con el que se guardó (#454).** Editar notas,
+  vale o kilos de una pesada conserva sus filas de parcela tal como estaban (mismo identificador y
+  mismo nombre de entonces, aunque la parcela se haya renombrado después). Solo una parcela añadida en
+  la corrección toma su nombre actual, y quitar una parcela borra únicamente la suya.
+- **El Diario ya no oculta los gastos de un trabajo (#478).** Un gasto ligado a un trabajo (a mano,
+  de un documento o el coste antiguo del trabajo) sale en el Diario como fila propia, en su fecha, con
+  «Relacionado con Tratamiento» (o el trabajo que sea), y se abre como el gasto que es. El Diario
+  muestra el dinero, no lo suma; los gastos propios de una jornada siguen dentro de la jornada.
 - **Un trabajo con gastos propios no se archiva (#437).** Si un borrador o un trabajo cancelado tiene
   gastos anotados que apuntan a él, «Archivar» queda desactivado: «Este trabajo tiene gastos
   vinculados. Consérvalo cancelado o revisa esos gastos antes de archivarlo.», con cada gasto a un

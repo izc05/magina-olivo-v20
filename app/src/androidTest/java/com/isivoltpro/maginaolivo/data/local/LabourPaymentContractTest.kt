@@ -22,6 +22,9 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstHarvestRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstLabourRepository
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
+import com.isivoltpro.maginaolivo.domain.expense.DayCostQuestion
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
@@ -184,6 +187,20 @@ class LabourPaymentContractTest {
         assertEquals(6_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
     }
 
+    /** #475 (owner audit on #583): the Gasto editor asks only what the day really allows. */
+    @Test
+    fun theDayCostQuestionFollowsTheDayAsItIs() = runBlocking {
+        val (d, worker) = pricedDay()
+        // A calculation of jornales exists and nobody is paid yet: both answers.
+        assertEquals(DayCostQuestion(DayCostKind.LABOUR, canReplace = true), costs.questionFor(d, ExpenseCategory.LABOR))
+        // No machinery calculated that day, and products never replace anything: nothing to ask.
+        assertNull(costs.questionFor(d, ExpenseCategory.MACHINERY))
+        assertNull(costs.questionFor(d, ExpenseCategory.PRODUCTS))
+        // With a payment recorded per person, jornales can only add.
+        ok(labour.recordPayment(payment(worker, 1_000)))
+        assertEquals(DayCostQuestion(DayCostKind.LABOUR, canReplace = false), costs.questionFor(d, ExpenseCategory.LABOR))
+    }
+
     @Test
     fun reductionsHarvestRemovalAndManualCollisionsRollbackRowsAndOutboxUntilPaymentCorrected() = runBlocking {
         val (d, worker) = pricedDay()
@@ -197,18 +214,26 @@ class LabourPaymentContractTest {
         assertEquals(before, dumpFinancialState())
         assertTrue(harvests.delete(d) is AppResult.Failure)
         assertEquals(before, dumpFinancialState())
-        assertTrue(expenses.create(cost(d, JornadaExpenseKind.LABOUR, 6_000)) is AppResult.Failure)
+        // #475: with payments per person, jornales can never replace the calculation.
+        assertEquals(AppError.Validation("dayCostRole", "labour_paid"),
+            (expenses.create(cost(d, JornadaExpenseKind.LABOUR, 6_000).copy(dayCostRole = DayCostRole.REPLACEMENT)) as AppResult.Failure).error)
         assertEquals(before, dumpFinancialState())
         val generated = calculated(d, ExpenseOrigin.DAY_LABOUR)!!
         assertTrue(expenses.delete(generated.id) is AppResult.Failure)
         assertTrue(expenses.update(generated.id, cost(d, JornadaExpenseKind.LABOUR, 4_000)) is AppResult.Failure)
         assertEquals(before, dumpFinancialState())
-        val manual = ok(expenses.create(cost(d, JornadaExpenseKind.LABOUR, 6_000).copy(harvestId = null)))
+        val manual = ok(expenses.create(cost(d, JornadaExpenseKind.LABOUR, 6_000).copy(harvestId = null, campaignId = campaignId)))
         val beforeLink = dumpFinancialState()
-        assertTrue(costs.linkToDay(manual, d) is AppResult.Failure)
+        assertEquals(AppError.Validation("dayCostRole", "labour_paid"),
+            (costs.linkToDay(manual, d, DayCostRole.REPLACEMENT) as AppResult.Failure).error)
         assertEquals(beforeLink, dumpFinancialState())
-        assertTrue(expenses.update(manual, cost(d, JornadaExpenseKind.LABOUR, 6_000)) is AppResult.Failure)
+        assertTrue(expenses.update(manual, cost(d, JornadaExpenseKind.LABOUR, 6_000).copy(dayCostRole = DayCostRole.REPLACEMENT)) is AppResult.Failure)
         assertEquals(beforeLink, dumpFinancialState())
+        // «Se añade» is always possible: the calculation, its allocation and the payment stay as they were.
+        val added = ok(expenses.create(cost(d, JornadaExpenseKind.LABOUR, 1_500)))
+        assertEquals(ExpenseStatus.POSTED, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.status)
+        assertEquals(generated.amountMinor, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        ok(expenses.delete(added))
         ok(labour.removePayment(p.id))
         ok(labour.update(line.id, LabourChange(1, LabourUnit.FULL_DAY, null, rate(4_000))))
         assertEquals(4_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
@@ -226,11 +251,14 @@ class LabourPaymentContractTest {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 6_000)))
         assertNull(labour.observeForHarvest(d).first().single().appliedRate)
         assertNull(calculated(d, ExpenseOrigin.DAY_LABOUR))
-        val before = dumpFinancialState()
-        assertTrue(labour.recordCrew(CrewDraft(d, listOf(worker), LabourUnit.FULL_DAY)) is AppResult.Failure)
-        assertEquals(before, dumpFinancialState())
+        // #449: a priced person may join a day whose legacy line is still unknown; that line stays
+        // unknown and nothing is calculated until every price on the day is confirmed.
+        val rosa = ok(labour.addWorker("Rosa"))
+        ok(labour.recordCrew(CrewDraft(d, listOf(rosa), LabourUnit.FULL_DAY)))
+        assertNull(labour.observeForHarvest(d).first().single { it.id == legacy }.appliedRate)
+        assertNull(calculated(d, ExpenseOrigin.DAY_LABOUR))
         ok(labour.update(legacy, LabourChange(5, LabourUnit.HALF_DAY, null, rate(6_000))))
-        assertEquals(15_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(21_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
         assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
         ok(labour.recordCrew(CrewDraft(d, listOf(worker), LabourUnit.FULL_DAY, appliedRate = rate(0))))
         assertEquals(0L, balance(worker).generatedMinor)
@@ -254,12 +282,9 @@ class LabourPaymentContractTest {
     }
 
     @Test
-    fun deletedAndForeignContextCannotReceivePayments() = runBlocking {
+    fun invalidCampaignAndForeignContextCannotReceivePayments() = runBlocking {
         val (_, worker) = pricedDay()
         val entity = db.labourDao().findWorker(worker)!!
-        db.labourDao().upsertWorker(entity.copy(metadata = entity.metadata.copy(deletedAt = now)))
-        assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
-        db.labourDao().upsertWorker(entity)
         val campaign = db.campaignDao().findById(campaignId)!!
         db.campaignDao().upsert(campaign.copy(metadata = campaign.metadata.copy(deletedAt = now)))
         assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
@@ -270,6 +295,44 @@ class LabourPaymentContractTest {
         db.workspaceDao().upsert(WorkspaceEntity(otherWorkspace, "Other", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", LocalMetadata(now, now)))
         db.labourDao().upsertWorker(entity.copy(workspaceId = otherWorkspace))
         assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
+    }
+
+    @Test
+    fun archivedWorkerWithoutDebtStillCannotInventAPayment() = runBlocking {
+        val worker = ok(labour.addWorker("Sin deuda"))
+        val entity = db.labourDao().findWorker(worker)!!
+        db.labourDao().upsertWorker(entity.copy(metadata = entity.metadata.copy(deletedAt = now)))
+        assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
+    }
+
+    /** #449: a person whose price is still unknown is recorded beside priced ones, never as 0 €. */
+    @Test
+    fun aPersonWithoutPriceJoinsAPricedDayAndCountsOnceConfirmed() = runBlocking {
+        val (d, juan) = pricedDay()
+        // Juan was already paid in full: adding an unknown price must not erase his debt (Codex #607).
+        ok(labour.recordPayment(payment(juan, 6_000)))
+        // A usual rate exists, yet «Precio aún sin saber» never fills it in silently.
+        ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 9_000)))
+        val miguel = ok(labour.addWorker("Miguel"))
+        ok(labour.recordCrew(CrewDraft(d, listOf(miguel), LabourUnit.FULL_DAY, priceUnknown = true)))
+        assertEquals(0L, balance(juan).pendingMinor)
+        assertEquals(6_000L, balance(juan).generatedMinor)
+        val lines = labour.observeForHarvest(d).first()
+        assertEquals(2, lines.size)
+        assertNull(lines.single { it.workerId == miguel }.appliedRate)
+        // The posted calculation stays the confirmed subtotal; Miguel adds nothing until priced.
+        assertEquals(6_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(ExpenseStatus.POSTED, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.status)
+
+        // Adding priced money while a price is still missing would make the posted amount stale.
+        val pedro = ok(labour.addWorker("Pedro"))
+        assertEquals(AppError.Validation("appliedRate", "confirm_missing_prices"),
+            (labour.recordCrew(CrewDraft(d, listOf(pedro), LabourUnit.FULL_DAY, appliedRate = rate(5_000))) as AppResult.Failure).error)
+
+        // Confirming Miguel's price recalculates the day once.
+        ok(labour.update(lines.single { it.workerId == miguel }.id, LabourChange(1, LabourUnit.FULL_DAY, null, rate(5_000))))
+        assertEquals(11_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(1, expenses.observeForHarvest(d).first().count { it.origin == ExpenseOrigin.DAY_LABOUR })
     }
 
     @Test
@@ -287,7 +350,7 @@ class LabourPaymentContractTest {
         assertEquals(oldCost, db.expenseDao().findById(oldCost.id))
         assertEquals(0L, balance(workers.first()).generatedMinor)
         val beforeCollision = dumpFinancialState()
-        assertTrue(expenses.create(cost(d, JornadaExpenseKind.LABOUR, 10_000)) is AppResult.Failure)
+        assertTrue(expenses.create(cost(d, JornadaExpenseKind.LABOUR, 10_000).copy(dayCostRole = DayCostRole.REPLACEMENT)) is AppResult.Failure)
         assertEquals(beforeCollision, dumpFinancialState())
         assertTrue(costs.preferCalculated(d, DayCostKind.LABOUR) is AppResult.Failure)
         assertEquals(beforeCollision, dumpFinancialState())
@@ -363,7 +426,7 @@ class LabourPaymentContractTest {
     fun postingManualCollisionRollsBackAndConfirmedCalculationRemainsPayable() = runBlocking {
         val (d, worker) = pricedDay()
         val generated = db.expenseDao().listForHarvest(d).single()
-        val draft = generated.copy(id = UUID.randomUUID(), origin = "MANUAL", status = "DRAFT")
+        val draft = generated.copy(id = UUID.randomUUID(), origin = "DAY_REPLACEMENT", status = "DRAFT")
         db.expenseDao().upsert(draft)
         ok(labour.recordPayment(payment(worker, 1_000)))
         val before = dumpFinancialState()
@@ -373,6 +436,31 @@ class LabourPaymentContractTest {
         assertEquals(6_000L, balance(worker).generatedMinor)
         assertEquals(1_000L, balance(worker).paidMinor)
         assertEquals(ExpenseStatus.DRAFT, expenses.observe(draft.id).first()!!.status)
+    }
+
+    /** #481: an archived person with jornales owed can still be paid, never beyond what is owed. */
+    @Test
+    fun anArchivedPersonWithDebtCanStillBePaid() = runBlocking {
+        val (d, worker) = pricedDay()
+        val owed = balance(worker).pendingMinor
+        assertTrue(owed > 0)
+        val entity = db.labourDao().findWorker(worker)!!
+        db.labourDao().upsertWorker(entity.copy(metadata = entity.metadata.copy(deletedAt = now)))
+
+        val first = payment(worker, owed - 100)
+        ok(labour.recordPayment(first))
+        assertEquals(100L, balance(worker).pendingMinor)
+        // Archived does not open the door to inventing payments.
+        assertTrue(labour.recordPayment(payment(worker, 101)) is AppResult.Failure)
+        ok(labour.recordPayment(payment(worker, 100)))
+        assertEquals(0L, balance(worker).pendingMinor)
+        // A payment of an archived person can still be corrected.
+        ok(labour.removePayment(first.id))
+        assertEquals(owed - 100, balance(worker).pendingMinor)
+        // And they are not offered again for new jornales.
+        val otherDay = ok(harvests.openJornada(farmId, day.minusDays(1)))
+        assertTrue(labour.recordCrew(CrewDraft(otherDay, listOf(worker), LabourUnit.FULL_DAY, appliedRate = rate(6_000))) is AppResult.Failure)
+        assertEquals(d, labour.observeForCampaign(campaignId).first().single().harvestId)
     }
 
     private fun rate(amount: Long) = LabourRateSnapshot(amount, "EUR", day, LabourRateBasis.DAY)

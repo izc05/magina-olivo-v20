@@ -15,6 +15,8 @@ import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
 import com.isivoltpro.maginaolivo.domain.labour.CountDraft
 import com.isivoltpro.maginaolivo.domain.labour.CrewDraft
 import com.isivoltpro.maginaolivo.domain.labour.LabourChange
@@ -67,8 +69,9 @@ class OfflineFirstLabourRepository(
             is AppResult.Failure -> return workspace
             is AppResult.Success -> workspace.value
         }
+        // #442: Worker.id is the identity; a name is only what is shown. Two people may share it,
+        // so the same name never silently returns an existing person — the form asks first.
         return inTransaction("add_worker") {
-            database.labourDao().findWorkerByName(workspaceId, trimmed)?.let { return@inTransaction AppResult.Success(it.id) }
             val now = clock.nowInstant()
             val id = idGenerator.newId()
             database.labourDao().upsertWorker(WorkerEntity(id, workspaceId, trimmed, LocalMetadata(now, now, syncStatus = SyncStatus.PENDING)))
@@ -107,13 +110,21 @@ class OfflineFirstLabourRepository(
                     minutes = draft.minutes,
                     metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
                 ).let { row ->
-                    val entry = LabourPricing.capture(row.toLabourEntry().copy(appliedRate = draft.appliedRate), rates, harvest.harvestDate)
+                    val entry = if (draft.priceUnknown) row.toLabourEntry()
+                        else LabourPricing.capture(row.toLabourEntry().copy(appliedRate = draft.appliedRate), rates, harvest.harvestDate)
                     LabourPricing.amountMinor(entry)
                     row.withRate(entry.appliedRate)
                 }
             }
+            // #449: a person whose price is not known yet is recorded as such (never as 0 €); the
+            // day's cost is shown as incomplete until the last price is confirmed. What stays
+            // blocked is adding priced money to a day that already has a posted calculation while
+            // another price is still missing: the posted amount would no longer be its subtotal.
             val combined = database.labourDao().listForHarvest(harvest.id) + rows
-            if (combined.any { it.appliedPriceMinor != null } && combined.any { it.appliedPriceMinor == null }) {
+            val postedCalculation = database.expenseDao().listForHarvest(harvest.id).any {
+                it.origin == ExpenseOrigin.DAY_LABOUR.name && it.status == ExpenseStatus.POSTED.name
+            }
+            if (postedCalculation && rows.any { it.appliedPriceMinor != null } && combined.any { it.appliedPriceMinor == null }) {
                 throw LabourFinanceInvalid("appliedRate", "confirm_missing_prices")
             }
             database.labourDao().upsertLabour(rows)
@@ -173,6 +184,8 @@ class OfflineFirstLabourRepository(
             database.labourDao().upsertLabour(listOf(current.copy(metadata = current.metadata.next(now).copy(deletedAt = now))))
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST_LABOUR, entryId, OutboxOperation.DELETE, now)
             costs.sync(current.harvestId, now)
+            // #502: an automatic day left with nothing goes with its last jornal.
+            JornadaLedger(database, idGenerator).reconcileAutomatic(current.harvestId, now)
             AppResult.Success(Unit)
         }
 
@@ -192,8 +205,10 @@ class OfflineFirstLabourRepository(
         val campaign = database.campaignDao().findById(payment.campaignId)
             ?.takeIf { it.metadata.deletedAt == null && it.workspaceId == workspaceId }
             ?: throw LabourInvalid("campaign", "not_found")
+        // #481: archiving a person stops new jornales, never settling what they are owed. The
+        // balance check below still refuses paying anyone more than their pending debt.
         database.labourDao().findWorker(payment.workerId)
-            ?.takeIf { it.metadata.deletedAt == null && it.workspaceId == workspaceId }
+            ?.takeIf { it.workspaceId == workspaceId }
             ?: throw LabourInvalid("worker", "not_found")
         val existing = database.labourPaymentDao().find(payment.id)
         if (existing != null) {
