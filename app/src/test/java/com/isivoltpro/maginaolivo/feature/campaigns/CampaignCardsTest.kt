@@ -39,6 +39,8 @@ class CampaignCardsTest {
                 com.isivoltpro.maginaolivo.domain.harvest.Weight.format(3_970_000),
                 "2 pesadas",
                 "Jornales ${Money.format(65_000, "EUR")}",
+                // #449: the draft jornal is never summed, but the card says a cost is pending.
+                "Costes sin confirmar",
                 "Rend. ${com.isivoltpro.maginaolivo.domain.delivery.Percent.format(summary.yieldHundredths!!)}",
             ),
             campaignFacts(summary).map { it.text },
