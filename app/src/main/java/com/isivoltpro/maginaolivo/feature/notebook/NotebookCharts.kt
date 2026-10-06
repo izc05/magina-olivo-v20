@@ -147,7 +147,8 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>, onSelectCamp
                         } ?: "Pesado: sin datos",
                         row.fatYield?.let { "rend. ${Percent.format(it.hundredths)} sobre el ${row.yieldCoveragePercent} %" } ?: "rend. sin datos",
                         if (row.costsByCurrency.isEmpty()) "coste/kg sin datos" else row.costsByCurrency.joinToString(" · ") { cost ->
-                            cost.costPerKgMinor?.let { "coste ${Money.format(it, cost.currency)}/kg" } ?: "coste/kg sin datos (${cost.currency})"
+                            cost.costPerKgMinor?.let { "coste ${Money.format(it, cost.currency)}/kg" + if (row.costComplete) "" else " (incompleto)" }
+                                ?: "coste/kg sin datos (${cost.currency})"
                         },
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
@@ -182,7 +183,9 @@ internal fun historyYieldLine(history: CampaignHistory): String =
 internal fun historyCostLine(history: CampaignHistory): String {
     val currency = history.costCurrency
     val line = history.points.joinToString(" · ") { point ->
-        "${point.name}: " + (point.costPerKgMinor?.let { if (currency != null) "${Money.format(it, currency)}/kg" else null } ?: "sin datos")
+        "${point.name}: " + (point.costPerKgMinor?.let { minor ->
+            if (currency != null) "${Money.format(minor, currency)}/kg" + if (point.costIncomplete) " (incompleto)" else "" else null
+        } ?: "sin datos")
     }
     return if (history.otherCurrencyCampaigns.isEmpty()) line
     else "$line. En otra moneda, no dibujadas: ${history.otherCurrencyCampaigns.joinToString(", ")}"

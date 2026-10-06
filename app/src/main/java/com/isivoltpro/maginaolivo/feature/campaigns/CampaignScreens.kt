@@ -75,6 +75,8 @@ import com.isivoltpro.maginaolivo.ui.components.MoKpiMetric
 import com.isivoltpro.maginaolivo.ui.components.MoMetricGrid
 import com.isivoltpro.maginaolivo.ui.components.MoTertiaryButton
 import com.isivoltpro.maginaolivo.ui.theme.MoOliveDark
+import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
+import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import java.time.LocalDate
 import java.util.UUID
 
@@ -88,13 +90,26 @@ fun FarmCampaignsRoute(farmId: UUID, persistence: LocalPersistence, onCampaignSe
     val deliveries by remember { persistence.deliveryRepository.observeAll() }.collectAsStateWithLifecycle(null)
     val harvests by remember { persistence.harvestRepository.observeAll() }.collectAsStateWithLifecycle(null)
     val expenses by remember { persistence.expenseRepository.observeAll() }.collectAsStateWithLifecycle(null)
-    val summaries = remember(state.current, state.history, deliveries, harvests, expenses) {
+    // #449: each campaign's jornales and machinery, so a card never reads as complete too early.
+    val campaignIds = (state.current + state.history).map { it.id }
+    val crews by remember(campaignIds) {
+        if (campaignIds.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList<LabourEntry>() to emptyList<EquipmentLine>())
+        else kotlinx.coroutines.flow.combine(campaignIds.map { id ->
+            kotlinx.coroutines.flow.combine(
+                persistence.labourRepository.observeForCampaign(id),
+                persistence.equipmentRepository.observeForCampaign(id),
+            ) { jornales, maquinaria -> jornales to maquinaria }
+        }) { parts -> parts.flatMap { it.first } to parts.flatMap { it.second } }
+    }.collectAsStateWithLifecycle(null)
+    val summaries = remember(state.current, state.history, deliveries, harvests, expenses, crews) {
         val loadedDeliveries = deliveries
         val loadedHarvests = harvests
         val loadedExpenses = expenses
-        if (loadedDeliveries == null || loadedHarvests == null || loadedExpenses == null) emptyMap()
+        val loadedCrews = crews
+        if (loadedDeliveries == null || loadedHarvests == null || loadedExpenses == null || loadedCrews == null) emptyMap()
         else (state.current + state.history).associate { campaign ->
-            campaign.id to CampaignCardSummary.of(campaign.id, loadedDeliveries, loadedHarvests, loadedExpenses)
+            campaign.id to CampaignCardSummary.of(campaign.id, loadedDeliveries, loadedHarvests, loadedExpenses,
+                loadedCrews.first, loadedCrews.second)
         }
     }
     FarmCampaignsSection(state, onCampaignSelected, vm::create, summaries)

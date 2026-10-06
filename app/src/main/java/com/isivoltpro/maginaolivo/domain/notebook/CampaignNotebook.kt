@@ -52,6 +52,17 @@ data class CampaignNotebook(
     val labourByWorker: List<WorkerLabour> = LabourByWorker.of(labour.filter { entry -> harvests.any { it.id == entry.harvestId } })
     val unnamedLabour: LabourSummary = LabourByWorker.unnamed(labour.filter { entry -> harvests.any { it.id == entry.harvestId } })
 
+    /**
+     * #449: whether the posted recollection money of this Campaign is the whole cost, from its own
+     * Jornadas' jornales and machinery and its Expenses. Never a second amount.
+     */
+    val costCompleteness: com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness =
+        com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(
+            labour.filter { entry -> harvests.any { it.id == entry.harvestId } },
+            equipment.filter { line -> harvests.any { it.id == line.harvestId } },
+            expenses,
+        )
+
     /** Phase 19D: the jornales of one Jornada. */
     fun labourFor(harvestId: java.util.UUID): LabourSummary = LabourSummary.of(labour.filter { it.harvestId == harvestId })
 
