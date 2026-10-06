@@ -18,15 +18,6 @@ interface LabourDao {
     @Query("SELECT * FROM workers WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE, id")
     fun observeWorkers(): Flow<List<WorkerEntity>>
 
-    @Query(
-        """
-        SELECT * FROM workers
-        WHERE workspace_id = :workspaceId AND name = :name COLLATE NOCASE AND deleted_at IS NULL
-        LIMIT 1
-        """,
-    )
-    suspend fun findWorkerByName(workspaceId: UUID, name: String): WorkerEntity?
-
     @Upsert suspend fun upsertLabour(rows: List<HarvestLabourEntity>)
 
     @Query("SELECT * FROM harvest_labour WHERE id = :id LIMIT 1")

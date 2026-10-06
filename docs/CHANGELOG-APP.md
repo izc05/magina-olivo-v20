@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Dos personas pueden llamarse igual (#442).** Añadir un nombre que ya existe ya no reutiliza a esa
+  persona sin preguntar: la app dice «Ya existe una persona llamada Juan García. ¿Es la misma?» y deja
+  elegir «Usar persona existente» o «Crear otra persona con este nombre». Si hay homónimos, se
+  distinguen en pantalla («Juan García · 1», «· 2») sin cambiar el nombre guardado, y sus jornales y
+  pagos nunca se mezclan.
 - **Mi Campo avisa cuando el coste de la campaña no está completo (#449).** En «Resumen de la
   explotación», si alguna campaña del periodo tiene jornales o maquinaria sin precio o gastos sin
   confirmar, el coste/kg (de recogida y total) y la línea de cada finca afectada se marcan
