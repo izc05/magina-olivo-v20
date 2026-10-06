@@ -54,6 +54,36 @@ class ManualPesadaUiTest {
         rule.onNodeWithText("Leer vale").assertDoesNotExist()
     }
 
+    @Test fun failedCampaignReadIsNotShownAsNoCampaignAndCanRetry() {
+        var retried = false
+        rule.setContent {
+            MaginaOlivoTheme {
+                DeliveriesScreen(
+                    state = DeliveriesUiState(isLoading = false, contextsLoaded = true, contextsReadFailed = true),
+                    today = today, onCreate = {}, onProblem = {}, onRetryContexts = { retried = true },
+                    onDeliverySelected = {}, onTicketSelected = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("delivery-context-error").assertExists()
+        rule.onNodeWithTag("delivery-no-campaign").assertDoesNotExist()
+        rule.onNodeWithTag("delivery-context-retry").performClick()
+        rule.runOnIdle { assertEquals(true, retried) }
+    }
+
+    @Test fun aSuccessfulEmptyCampaignReadShowsTheRealNoCampaignState() {
+        rule.setContent {
+            MaginaOlivoTheme {
+                DeliveriesScreen(
+                    state = DeliveriesUiState(isLoading = false, contextsLoaded = true),
+                    today = today, onCreate = {}, onProblem = {}, onDeliverySelected = {}, onTicketSelected = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("delivery-no-campaign").assertExists()
+        rule.onNodeWithTag("delivery-context-error").assertDoesNotExist()
+    }
+
     @Test fun nuevaPesadaOffersAnOptionalReceiptPhotoAndNoReading() {
         var asked: DeliveryForm? = null
         editor(typed, onAddReceipt = { asked = it })
