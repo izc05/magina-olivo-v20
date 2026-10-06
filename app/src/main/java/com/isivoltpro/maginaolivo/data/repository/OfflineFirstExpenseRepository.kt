@@ -22,6 +22,8 @@ import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -38,7 +40,15 @@ class OfflineFirstExpenseRepository(
     private val writer = ExpenseLedgerWriter(database, idGenerator)
 
     override fun observeAll(): Flow<List<Expense>> =
-        database.expenseDao().observeAll().map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        flow {
+            when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+                is AppResult.Failure -> emit(emptyList())
+                is AppResult.Success -> emitAll(
+                    database.expenseDao().observeForWorkspace(workspace.value)
+                        .map { rows -> rows.map { it.toDomain() } },
+                )
+            }
+        }.flowOn(dispatchers.io)
 
     override fun observeForActivity(activityId: UUID): Flow<List<Expense>> =
         database.expenseDao().observeForActivity(activityId).map { rows -> rows.map { it.toDomain() } }
