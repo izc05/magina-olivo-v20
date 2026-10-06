@@ -10,7 +10,7 @@ class CostPerKgTest {
     @Test fun theIssueExamplesKeepTheirThousandths() {
         assertEquals(253L, CostPerKg.milli(144_000, "EUR", 5_700_000)) // 1.440 € / 5.700 kg
         assertEquals(114L, CostPerKg.milli(65_000, "EUR", 5_700_000))  // 650 € / 5.700 kg
-        assertEquals(250L, CostPerKg.milli(25_000, "EUR", 100_000))    // exactly 0,250
+        assertEquals(250L, CostPerKg.milli(25_000, "EUR", 1_000_000))  // 250 € / 1.000 kg = exactly 0,250
     }
 
     @Test fun itReadsWithThreeDecimals() {
