@@ -89,7 +89,11 @@ data class ExpenseDraft(
     val dayCostRole: DayCostRole = DayCostRole.ADDITIVE,
 )
 
-/** Derived, never stored: posted money only. */
+/**
+ * Derived, never stored: posted money only, of ONE currency the caller names. #450: there is no
+ * default currency — a screen that may hold several uses `RecollectionLedger.posted` (one total per
+ * currency) instead, so no amount in another currency is ever hidden behind an implicit EUR.
+ */
 data class ExpenseSummary(
     val totalMinor: Long,
     val currency: String,
@@ -98,7 +102,7 @@ data class ExpenseSummary(
     val draftCount: Int,
 ) {
     companion object {
-        fun of(expenses: List<Expense>, currency: String = "EUR"): ExpenseSummary {
+        fun of(expenses: List<Expense>, currency: String): ExpenseSummary {
             val posted = expenses.filter { it.status == ExpenseStatus.POSTED && it.currency == currency }
             return ExpenseSummary(
                 totalMinor = posted.sumOf { it.amountMinor },

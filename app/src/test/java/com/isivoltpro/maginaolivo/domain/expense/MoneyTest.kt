@@ -81,6 +81,7 @@ class MoneyTest {
                 base.copy(id = java.util.UUID.randomUUID(), amountMinor = 2_000, category = ExpenseCategory.FUEL),
                 base.copy(id = java.util.UUID.randomUUID(), amountMinor = 99_999, status = ExpenseStatus.DRAFT),
             ),
+            "EUR",
         )
         assertEquals(7_000L, summary.totalMinor)
         assertEquals(mapOf(ExpenseCategory.PRODUCTS to 5_000L, ExpenseCategory.FUEL to 2_000L), summary.byCategory)
