@@ -23,7 +23,6 @@ import com.isivoltpro.maginaolivo.domain.labour.LabourChange
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourRepository
 import com.isivoltpro.maginaolivo.domain.labour.LabourRules
-import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
 import com.isivoltpro.maginaolivo.domain.labour.LabourPayment
 import com.isivoltpro.maginaolivo.domain.labour.LabourPaymentRules
 import com.isivoltpro.maginaolivo.domain.labour.LabourPricing
@@ -91,7 +90,6 @@ class OfflineFirstLabourRepository(
         LabourRules.validate(draft)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
         return inTransaction("record_crew") {
             val harvest = runningJornada(draft.harvestId)
-            if (draft.unit == LabourUnit.HALF_DAY) throw LabourInvalid("unit", "historical_only")
             val rates = harvest.farmId?.let { database.recollectionRatesDao().findForFarm(it)?.toDomain() } ?: RecollectionRates()
             val already = database.labourDao().listForHarvest(harvest.id).mapNotNull { it.workerId }.toSet()
             if (draft.workerIds.any { it in already }) throw LabourInvalid("workers", "already_recorded")
@@ -155,9 +153,6 @@ class OfflineFirstLabourRepository(
             runningJornada(current.harvestId)
             // A named line is one person: only its unit and hours change.
             if (current.workerId != null && change.quantity != 1) throw LabourInvalid("quantity", "one_person")
-            if (change.unit == LabourUnit.HALF_DAY && current.unit != LabourUnit.HALF_DAY.name) {
-                throw LabourInvalid("unit", "historical_only")
-            }
             val rate = change.appliedRate ?: current.toLabourEntry().appliedRate
             val savedCurrency = current.toLabourEntry().appliedRate?.currency
             if (savedCurrency != null && rate?.currency != savedCurrency) {

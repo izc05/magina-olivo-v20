@@ -55,7 +55,7 @@ class LabourScreenTest {
         composeRule.onNodeWithTag("jornada-register-labour").performScrollTo().performClick()
         composeRule.onNodeWithTag("labour-save").assertIsNotEnabled()
         composeRule.onNodeWithTag("labour-mode-count").assertDoesNotExist()
-        composeRule.onNodeWithTag("labour-unit-HALF_DAY").assertDoesNotExist()
+        composeRule.onNodeWithTag("labour-unit-HALF_DAY").assertExists()
         composeRule.onNodeWithTag("labour-rate").assertExists()
     }
     @Test fun recordedJornalesShowTheirDeterministicSummary() {
