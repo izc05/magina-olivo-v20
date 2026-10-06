@@ -251,11 +251,14 @@ class LabourPaymentContractTest {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 6_000)))
         assertNull(labour.observeForHarvest(d).first().single().appliedRate)
         assertNull(calculated(d, ExpenseOrigin.DAY_LABOUR))
-        val before = dumpFinancialState()
-        assertTrue(labour.recordCrew(CrewDraft(d, listOf(worker), LabourUnit.FULL_DAY)) is AppResult.Failure)
-        assertEquals(before, dumpFinancialState())
+        // #449: a priced person may join a day whose legacy line is still unknown; that line stays
+        // unknown and nothing is calculated until every price on the day is confirmed.
+        val rosa = ok(labour.addWorker("Rosa"))
+        ok(labour.recordCrew(CrewDraft(d, listOf(rosa), LabourUnit.FULL_DAY)))
+        assertNull(labour.observeForHarvest(d).first().single { it.id == legacy }.appliedRate)
+        assertNull(calculated(d, ExpenseOrigin.DAY_LABOUR))
         ok(labour.update(legacy, LabourChange(5, LabourUnit.HALF_DAY, null, rate(6_000))))
-        assertEquals(15_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(21_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
         assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
         ok(labour.recordCrew(CrewDraft(d, listOf(worker), LabourUnit.FULL_DAY, appliedRate = rate(0))))
         assertEquals(0L, balance(worker).generatedMinor)
