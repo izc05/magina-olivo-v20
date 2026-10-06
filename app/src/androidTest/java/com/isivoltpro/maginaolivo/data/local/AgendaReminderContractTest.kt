@@ -175,6 +175,18 @@ class AgendaReminderContractTest {
     }
 
     @Test
+    fun aFiredReminderIsWithdrawnWhenTheWorkCompletes() = runBlocking {
+        val id = ok(activities.create(planned(null, ReminderRequest(ReminderKind.PREVIOUS_DAY))))
+        val reminder = db.agendaDao().listForOwner("ACTIVITY", id).single()
+        db.agendaDao().markFired(reminder.id, now.minusSeconds(60))
+
+        ok(activities.complete(id))
+
+        assertFalse(reminder.id in alarms.active)
+        assertTrue(reminder.localNotificationId in alarms.cancelled)
+    }
+
+    @Test
     fun aDroppedReminderIsSwitchedOffAndItsAlarmCancelled() = runBlocking {
         val id = ok(activities.create(planned(null, ReminderRequest(ReminderKind.CUSTOM, LocalDateTime.parse("2026-11-18T12:00")))))
         val code = db.agendaDao().listForOwner("ACTIVITY", id).single().localNotificationId

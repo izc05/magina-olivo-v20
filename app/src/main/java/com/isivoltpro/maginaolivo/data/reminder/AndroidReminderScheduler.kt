@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.core.app.NotificationManagerCompat
 
 /**
  * Registers reminders with [AlarmManager]. Alarms fire with the phone offline and idle.
@@ -38,6 +39,9 @@ class AndroidReminderScheduler(context: Context) : ReminderScheduler {
     }
 
     override fun cancel(requestCode: Int) {
+        // The same device-local ID is used for the alarm slot and the visible notification.
+        // Cancelling both keeps Android UI aligned when the work is completed/cancelled later.
+        NotificationManagerCompat.from(context).cancel(requestCode)
         val operation = PendingIntent.getBroadcast(
             context,
             requestCode,
