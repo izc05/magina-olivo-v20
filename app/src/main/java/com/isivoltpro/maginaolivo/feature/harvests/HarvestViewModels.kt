@@ -467,7 +467,7 @@ class HarvestDetailViewModel(
             mutableState.value = mutableState.value.copy(isSaving = true, error = null)
             mutableState.value = when (val result = harvests.delete(harvestId)) {
                 is AppResult.Success -> mutableState.value.copy(isSaving = false, deleted = true)
-                is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = harvestErrorMessage(result.error))
+                is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = harvestDeleteErrorMessage(result.error))
             }
         }
     }
@@ -512,6 +512,13 @@ internal fun labourErrorMessage(error: AppError): String = when (error) {
     is AppError.NotFound -> "Ese jornal ya no está en este dispositivo"
     else -> "No se pudo guardar en el dispositivo. Inténtalo de nuevo."
 }
+
+internal fun harvestDeleteErrorMessage(error: AppError): String =
+    if (error is AppError.Validation && error.field == "amount" && error.code == "below_paid") {
+        "No puedes eliminar este día porque dejaría pagos de jornales por encima del coste registrado. Revisa primero los pagos de la campaña."
+    } else {
+        harvestErrorMessage(error)
+    }
 
 internal fun harvestErrorMessage(error: AppError): String = when (error) {
     is AppError.Validation -> harvestProblemMessage(HarvestProblem(error.field ?: "parcels", error.code))
