@@ -104,8 +104,9 @@ internal fun LabourSheet(
         }
         Text("Duración", style = MaterialTheme.typography.titleMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            listOf(LabourUnit.FULL_DAY, LabourUnit.HOURS).forEach { option ->
-                FilterChip(unit == option, { unit = option; touchedPrice = false }, { Text(option.label()) }, enabled = !isSaving, modifier = Modifier.testTag("labour-unit-${option.name}"))
+            // #490: a half day is priced on the full-day rate and costs half of it.
+            listOf(LabourUnit.FULL_DAY, LabourUnit.HALF_DAY, LabourUnit.HOURS).forEach { option ->
+                FilterChip(unit == option, { if ((unit == LabourUnit.HOURS) != (option == LabourUnit.HOURS)) touchedPrice = false; unit = option }, { Text(option.label()) }, enabled = !isSaving, modifier = Modifier.testTag("labour-unit-${option.name}"))
             }
         }
         if (unit == LabourUnit.HOURS) MoTextField(hours, { hours = it }, "Horas", enabled = !isSaving, supportingText = if (minutes == null) "Entre 0 y 24 horas; por ejemplo 3 o 3,5" else null, modifier = Modifier.fillMaxWidth().testTag("labour-hours"))
@@ -115,8 +116,9 @@ internal fun LabourSheet(
             Text("Se anota sin precio: no cuenta como 0 € y el coste del día queda incompleto hasta que lo confirmes.",
                 color = MoTextSecondary, modifier = Modifier.testTag("labour-price-unknown-note"))
         } else {
-            MoTextField(price, { price = it; touchedPrice = true }, if (unit == LabourUnit.HOURS) "Tarifa por hora ($currency)" else "Precio del jornal ($currency)", enabled = !isSaving, isError = minor == null, supportingText = if (minor == null) "Confirma un precio válido o marca «Precio aún sin saber»" else null, modifier = Modifier.fillMaxWidth().testTag("labour-rate"))
-            total?.let { Text("Coste del jornal: ${Money.format(it, currency)}", color = MoLabourText, modifier = Modifier.testTag("labour-generated")) }
+            MoTextField(price, { price = it; touchedPrice = true }, rateLabel(unit, currency), enabled = !isSaving, isError = minor == null,
+                supportingText = if (minor == null) "Confirma un precio válido o marca «Precio aún sin saber»" else halfDayNote(unit), modifier = Modifier.fillMaxWidth().testTag("labour-rate"))
+            total?.let { Text("${if (unit == LabourUnit.HALF_DAY) "Coste de esta media jornada" else "Coste del jornal"}: ${Money.format(it, currency)}", color = MoLabourText, modifier = Modifier.testTag("labour-generated")) }
         }
         calculationError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-calculation-error")) }
         if (!priceUnknown) Text("Pago inicial (opcional)", style = MaterialTheme.typography.titleMedium)
@@ -154,15 +156,15 @@ internal fun LabourPriceSheet(entry: LabourEntry, date: LocalDate, currency: Str
         if (entry.appliedRate == null) Text("Precio sin confirmar. Introduce el precio acordado para este día.", color = MoWarningText)
         if (currency == null) Text(currencyError ?: "Confirma la moneda histórica antes de guardar.", color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("labour-currency-error"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
-            (listOf(LabourUnit.FULL_DAY, LabourUnit.HOURS) + listOfNotNull(entry.unit.takeIf { it == LabourUnit.HALF_DAY })).forEach { option ->
+            listOf(LabourUnit.FULL_DAY, LabourUnit.HALF_DAY, LabourUnit.HOURS).forEach { option ->
                 FilterChip(unit == option, {
                     if ((unit == LabourUnit.HOURS) != (option == LabourUnit.HOURS)) price = ""
                     unit = option
-                }, { Text(option.label()) }, enabled = !isSaving)
+                }, { Text(option.label()) }, enabled = !isSaving, modifier = Modifier.testTag("labour-edit-unit-${option.name}"))
             }
         }
         if (unit == LabourUnit.HOURS) MoTextField(hours, { hours = it }, "Horas", enabled = !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-edit-hours"))
-        MoTextField(price, { price = it }, currency?.let { if (unit == LabourUnit.HOURS) "Tarifa por hora ($it)" else "Precio por jornada ($it)" } ?: "Moneda sin confirmar", enabled = !isSaving && currency != null, isError = minor == null, supportingText = if (minor == null && currency != null) "Confirma un precio válido" else null, modifier = Modifier.fillMaxWidth().testTag("labour-edit-rate"))
+        MoTextField(price, { price = it }, currency?.let { rateLabel(unit, it) } ?: "Moneda sin confirmar", enabled = !isSaving && currency != null, isError = minor == null, supportingText = if (minor == null && currency != null) "Confirma un precio válido" else halfDayNote(unit), modifier = Modifier.fillMaxWidth().testTag("labour-edit-rate"))
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         MoPrimaryButton("Guardar cambios", { onSave(LabourChange(entry.quantity, unit, minutes, LabourRateSnapshot(minor!!, currency, entry.appliedRate?.priceDate ?: date, if (unit == LabourUnit.HOURS) LabourRateBasis.HOUR else LabourRateBasis.DAY))) }, enabled = currency != null && minor != null && (unit != LabourUnit.HOURS || minutes != null) && !isSaving, modifier = Modifier.fillMaxWidth().testTag("labour-edit-save"))
         MoTertiaryButton("Cancelar", onCancel, enabled = !isSaving)
@@ -212,3 +214,13 @@ internal fun workerLabel(worker: Worker, workers: List<Worker>): String {
     val same = workers.filter { it.name.equals(worker.name, true) }
     return if (same.size < 2) worker.name else "${worker.name} · ${same.indexOfFirst { it.id == worker.id } + 1}"
 }
+
+/** #490: Media jornada keeps the full-day rate in its snapshot; the farmer never types the halved price. */
+internal fun rateLabel(unit: LabourUnit, currency: String): String = when (unit) {
+    LabourUnit.FULL_DAY -> "Precio del jornal ($currency)"
+    LabourUnit.HALF_DAY -> "Precio jornada completa ($currency)"
+    LabourUnit.HOURS -> "Tarifa por hora ($currency)"
+}
+
+internal fun halfDayNote(unit: LabourUnit): String? =
+    if (unit == LabourUnit.HALF_DAY) "La media jornada cuenta al 50 %" else null

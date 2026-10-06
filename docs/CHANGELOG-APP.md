@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Media jornada en jornales nuevos (#490).** Al registrar o corregir un jornal, Duración ofrece
+  Jornada completa, Media jornada y Horas. En media jornada se escribe el precio de la jornada
+  completa (por ejemplo 70 €) y el jornal cuesta la mitad (35 €); «Pagado completo» paga esa mitad.
+  El coste del día la cuenta una sola vez y las medias jornadas antiguas se conservan tal cual.
 - **Tus datos no salen del teléfono por la copia de Android (#461).** La app ya no participa en la
   copia de seguridad en la nube de Android ni en el paso a un teléfono nuevo: la base de datos, las
   fotos y documentos adjuntos, la caché de la cámara y las preferencias quedan solo en este teléfono.

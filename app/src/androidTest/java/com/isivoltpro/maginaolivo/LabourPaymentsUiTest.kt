@@ -80,7 +80,7 @@ class LabourPaymentsUiTest {
         rule.runOnIdle { assertTrue(added.isEmpty()); assertEquals(listOf(worker.id), saved!!.workerIds) }
     }
 
-    @Test fun completeHoursPriceAndSinglePersonAreRequiredWithNoAnonymousOrHalfDay() {
+    @Test fun completeHoursPriceAndSinglePersonAreRequiredWithNoAnonymousLine() {
         var saved: CrewDraft? = null
         rule.setContent { MaginaOlivoTheme { Surface(androidx.compose.ui.Modifier.fillMaxSize().statusBarsPadding(), color = com.isivoltpro.maginaolivo.ui.theme.MoCream) { LabourSheet(listOf(worker), emptySet(), false, null, day, campaign.id, date, null, { saved = it }, {}, {}) } } }
         rule.onNodeWithTag("labour-save").assertIsNotEnabled()
@@ -89,7 +89,6 @@ class LabourPaymentsUiTest {
         rule.onNodeWithTag("labour-rate").performScrollTo().performTextInput("60")
         rule.onNodeWithTag("labour-save").performScrollTo().assertIsEnabled()
         rule.onNodeWithTag("labour-mode-count").assertDoesNotExist()
-        rule.onNodeWithTag("labour-unit-HALF_DAY").assertDoesNotExist()
         rule.onNodeWithTag("labour-unit-HOURS").performScrollTo().performClick()
         rule.onNodeWithTag("labour-save").performScrollTo().assertIsNotEnabled()
         rule.onNodeWithTag("labour-hours").performScrollTo().performTextInput("3")
@@ -97,6 +96,27 @@ class LabourPaymentsUiTest {
         rule.onNodeWithTag("labour-generated").assertTextContains("30,00", substring = true)
         rule.onNodeWithTag("labour-save").performScrollTo().performClick()
         rule.runOnIdle { assertEquals(listOf(worker.id), saved!!.workerIds); assertEquals(180, saved!!.minutes); assertEquals(1000L, saved!!.appliedRate!!.unitPriceMinor); assertTrue(saved!!.initialPayments.isEmpty()) }
+    }
+
+    /** #490: Media jornada asks for the full-day price, shows half as its cost and pays only that half. */
+    @Test fun aNewHalfDayIsPricedOnTheFullDayAndPaysHalf() {
+        var saved: CrewDraft? = null
+        rule.setContent { MaginaOlivoTheme { Surface(androidx.compose.ui.Modifier.fillMaxSize().statusBarsPadding(), color = com.isivoltpro.maginaolivo.ui.theme.MoCream) { LabourSheet(listOf(worker), emptySet(), false, null, day, campaign.id, date, null, { saved = it }, {}, {}) } } }
+        rule.onAllNodesWithTag("labour-worker")[0].performClick()
+        rule.onNodeWithTag("labour-unit-HALF_DAY").performScrollTo().performClick()
+        rule.onNodeWithText("Precio jornada completa (EUR)", useUnmergedTree = true).assertExists()
+        rule.onNodeWithTag("labour-rate").performScrollTo().performTextInput("70,01")
+        rule.onNodeWithText("La media jornada cuenta al 50 %", useUnmergedTree = true).assertExists()
+        rule.onNodeWithTag("labour-generated").assertTextContains("Coste de esta media jornada", substring = true)
+        rule.onNodeWithTag("labour-generated").assertTextContains("35,01", substring = true)
+        rule.onNodeWithTag("labour-payment-FULL").performScrollTo().performClick()
+        rule.onNodeWithTag("labour-save").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals(LabourUnit.HALF_DAY, saved!!.unit)
+            assertEquals(7001L, saved!!.appliedRate!!.unitPriceMinor)
+            assertEquals(LabourRateBasis.DAY, saved!!.appliedRate!!.basis)
+            assertEquals(3501L, saved!!.initialPayments.single().amountMinor)
+        }
     }
 
     /** #449: a person whose price is not known yet is saved without one, never 0 € and never paid. */
@@ -248,7 +268,7 @@ class LabourPaymentsUiTest {
         restored.setContent { MaginaOlivoTheme { LabourPriceSheet(halfDay, date, "EUR", false, null, {}, {}) } }
         rule.onNodeWithText("Jornada completa").performClick()
         rule.onNodeWithTag("labour-edit-rate").assertTextContains("240")
-        rule.onNodeWithText("Precio por jornada (EUR)", useUnmergedTree = true).assertExists()
+        rule.onNodeWithText("Precio del jornal (EUR)", useUnmergedTree = true).assertExists()
         rule.onNodeWithTag("labour-edit-save").assertIsEnabled()
         restored.emulateSavedInstanceStateRestore()
         rule.onNodeWithTag("labour-edit-rate").assertTextContains("240")

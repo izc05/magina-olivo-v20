@@ -276,7 +276,31 @@ class LabourPaymentContractTest {
         val zeroDay = ok(harvests.openJornada(farmId, day.minusDays(1)))
         ok(labour.recordCrew(CrewDraft(zeroDay, listOf(worker), LabourUnit.FULL_DAY, appliedRate = rate(0))))
         assertEquals(0L, calculated(zeroDay, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
-        assertTrue(labour.recordCrew(CrewDraft(zeroDay, listOf(ok(labour.addWorker("Ana"))), LabourUnit.HALF_DAY)) is AppResult.Failure)
+    }
+
+    /** #490: Media jornada is recorded today on the full-day rate, costs half and pays only that half. */
+    @Test
+    fun aNewHalfDayCostsHalfTheAgreedDayAndPaysOnlyThatHalf() = runBlocking {
+        val d = ok(harvests.openJornada(farmId, day))
+        val ana = ok(labour.addWorker("Ana"))
+        ok(labour.recordCrew(CrewDraft(d, listOf(ana), LabourUnit.HALF_DAY, appliedRate = rate(7_001),
+            initialPayments = listOf(payment(ana, 3_501)))))
+        val line = labour.observeForHarvest(d).first().single()
+        assertEquals(LabourUnit.HALF_DAY, line.unit)
+        assertEquals(7_001L, line.appliedRate!!.unitPriceMinor)
+        assertEquals(LabourRateBasis.DAY, line.appliedRate!!.basis)
+        assertEquals(3_501L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(3_501L, balance(ana).generatedMinor)
+        assertEquals(LabourPaymentState.PAID, balance(ana).state)
+        // Completa <-> Media corrects the same line: one DAY_LABOUR, recalculated each time.
+        ok(labour.update(line.id, LabourChange(1, LabourUnit.FULL_DAY, null)))
+        assertEquals(7_001L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        ok(labour.update(line.id, LabourChange(1, LabourUnit.HALF_DAY, null)))
+        assertEquals(3_501L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(1, expenses.observeForHarvest(d).first().count { it.origin == ExpenseOrigin.DAY_LABOUR })
+        db.close(); open()
+        assertEquals(LabourUnit.HALF_DAY, labour.observeForHarvest(d).first().single().unit)
+        assertEquals(3_501L, balance(ana).generatedMinor)
     }
 
     @Test
