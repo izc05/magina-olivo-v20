@@ -35,6 +35,20 @@ class FarmOverviewCopyTest {
         assertEquals("0 de 1 fincas con campaña 2026/27 · Sin campaña: Los Llanos", overviewNote(overview))
     }
 
+    /** #449: a season with unconfirmed costs marks its cost per kilo and says so in the note. */
+    @Test fun anIncompleteSeasonMarksItsCostPerKilo() {
+        val costs = listOf(CurrencyTotal("EUR", 20_000, null))
+        assertTrue(overviewCostPerKg(20, costs, complete = false).endsWith("/kg (incompleto)"))
+        assertEquals(false, overviewCostPerKg(20, costs).contains("incompleto"))
+        assertEquals("—", overviewCostPerKg(null, costs, complete = false))
+        val overview = FarmOverview("2026/27", emptyList(), emptyList(), nothing, costs, costComplete = false)
+        assertTrue(overviewNote(overview), overviewNote(overview).startsWith("Costes sin confirmar · "))
+        // While the crews are still being read nothing is claimed either way.
+        assertEquals(false, overviewCostPerKg(20, costs, complete = null).contains("incompleto"))
+        val checking = overview.copy(costComplete = null)
+        assertTrue(overviewNote(checking), overviewNote(checking).startsWith("Comprobando si faltan costes… · "))
+    }
+
     /** #359 follow-up: a local, accent-insensitive search by name or municipality. */
     @Test fun farmSearchMatchesNameOrMunicipality() {
         assertEquals(true, matchesFarmSearch("", "Estacas", null))

@@ -55,6 +55,20 @@ class FarmOverviewTest {
         assertEquals(overview.delivery.deliveredGrams, overview.farms.sumOf { it.delivery.deliveredGrams })
     }
 
+    /** #449: an incomplete campaign marks its Farm and the season, never another Farm or season. */
+    @Test fun anIncompleteCampaignMarksItsFarmAndSeasonOnly() {
+        val deliveries = listOf(delivery(estacasNow, 1_000_000, null), delivery(cerroNow, 1_000_000, null))
+        val expenses = listOf(cost(estacasNow, 10_000), cost(cerroNow, 10_000))
+        val all = listOf(estacasNow, cerroNow, estacasBefore)
+        val now = FarmOverview.of("2026/27", listOf(estacas, cerro), all, deliveries, expenses, incompleteCampaigns = setOf(cerroNow.id))
+        assertEquals(false, now.costComplete)
+        assertEquals(mapOf("Estacas" to true, "El Cerro" to false), now.farms.associate { it.farmName to it.costComplete })
+        // The money is unchanged: still the posted ledger.
+        assertEquals(20_000L, now.costs.single().amountMinor)
+        val before = FarmOverview.of("2025/26", listOf(estacas, cerro), all, deliveries, expenses, incompleteCampaigns = setOf(cerroNow.id))
+        assertEquals(true, before.costComplete)
+    }
+
     @Test fun twoCurrenciesKeepTwoTotalsAndNoGlobalCostPerKg() {
         val overview = FarmOverview.of("2026/27", listOf(estacas, cerro), listOf(estacasNow, cerroNow),
             listOf(delivery(estacasNow, 1_000_000, null), delivery(cerroNow, 1_000_000, null)),
