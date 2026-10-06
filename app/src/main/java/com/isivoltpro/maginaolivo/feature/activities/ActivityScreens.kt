@@ -488,6 +488,13 @@ internal fun ActivityEditor(
     }
     fun readParcelAreas(): Map<UUID, Double?>? {
         parcelAreaErrors.clear()
+        // #546/#440: a type that does not ask for the surface never saves one typed while another
+        // type was chosen (its field is hidden). A new entry saves none; an edit keeps exactly the
+        // surface each target already had — never lost silently, never replaced by a hidden value.
+        val currentType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
+        if (!currentType.needsAffectedArea()) {
+            return selected.map(UUID::fromString).associateWith { initial.parcelAreasM2[it] }
+        }
         val result = linkedMapOf<UUID, Double?>()
         selected.forEach { idText ->
             val parcel = parcels.firstOrNull { it.id.toString() == idText }
