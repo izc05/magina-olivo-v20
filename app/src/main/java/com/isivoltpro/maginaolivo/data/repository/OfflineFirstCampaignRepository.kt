@@ -150,13 +150,24 @@ class OfflineFirstCampaignRepository(
 
     override suspend fun markHarvest(id: UUID) = transition(id, CampaignStatus.ACTIVE, CampaignStatus.HARVEST, "mark_harvest")
 
-    override suspend fun close(id: UUID, endDate: LocalDate): AppResult<Unit> = mutate(id, "close_campaign") { current, now ->
+    override suspend fun close(id: UUID, endDate: LocalDate): AppResult<Unit> =
+        closeAt(id, endDate, "close_campaign")
+
+    override suspend fun closeToday(id: UUID): AppResult<Unit> =
+        mutate(id, "close_campaign_today") { current, now ->
+            closeCurrent(current, database.todayForWorkspace(current.workspaceId, clock), now)
+        }
+
+    private suspend fun closeAt(id: UUID, endDate: LocalDate, operation: String): AppResult<Unit> =
+        mutate(id, operation) { current, now -> closeCurrent(current, endDate, now) }
+
+    private suspend fun closeCurrent(current: CampaignEntity, endDate: LocalDate, now: Instant): AppResult<Unit> {
         // CR-010: Borrador → Activa → Cerrada. A running Campaign (ACTIVE, or legacy HARVEST) closes directly.
-        if (!current.status.isRunning) return@mutate conflict("illegal_campaign_transition")
-        if (endDate.isBefore(current.startDate)) return@mutate AppResult.Failure(AppError.Validation("endDate", "before_start"))
+        if (!current.status.isRunning) return conflict("illegal_campaign_transition")
+        if (endDate.isBefore(current.startDate)) return AppResult.Failure(AppError.Validation("endDate", "before_start"))
         database.campaignDao().upsert(current.copy(status = CampaignStatus.CLOSED, endDate = endDate, metadata = current.metadata.next(now)))
-        enqueue(id, OutboxOperation.UPDATE, now)
-        AppResult.Success(Unit)
+        enqueue(current.id, OutboxOperation.UPDATE, now)
+        return AppResult.Success(Unit)
     }
 
     override suspend fun reopen(id: UUID): AppResult<Unit> = mutate(id, "reopen_campaign") { current, now ->
