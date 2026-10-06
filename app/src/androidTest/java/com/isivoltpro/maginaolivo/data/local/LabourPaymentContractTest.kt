@@ -302,6 +302,30 @@ class LabourPaymentContractTest {
         assertTrue(labour.recordPayment(payment(worker, 1)) is AppResult.Failure)
     }
 
+    /** #449: a person whose price is still unknown is recorded beside priced ones, never as 0 €. */
+    @Test
+    fun aPersonWithoutPriceJoinsAPricedDayAndCountsOnceConfirmed() = runBlocking {
+        val (d, _) = pricedDay()
+        val miguel = ok(labour.addWorker("Miguel"))
+        ok(labour.recordCrew(CrewDraft(d, listOf(miguel), LabourUnit.FULL_DAY)))
+        val lines = labour.observeForHarvest(d).first()
+        assertEquals(2, lines.size)
+        assertNull(lines.single { it.workerId == miguel }.appliedRate)
+        // The posted calculation stays the confirmed subtotal; Miguel adds nothing until priced.
+        assertEquals(6_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(ExpenseStatus.POSTED, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.status)
+
+        // Adding priced money while a price is still missing would make the posted amount stale.
+        val pedro = ok(labour.addWorker("Pedro"))
+        assertEquals(AppError.Validation("appliedRate", "confirm_missing_prices"),
+            (labour.recordCrew(CrewDraft(d, listOf(pedro), LabourUnit.FULL_DAY, appliedRate = rate(5_000))) as AppResult.Failure).error)
+
+        // Confirming Miguel's price recalculates the day once.
+        ok(labour.update(lines.single { it.workerId == miguel }.id, LabourChange(1, LabourUnit.FULL_DAY, null, rate(5_000))))
+        assertEquals(11_000L, calculated(d, ExpenseOrigin.DAY_LABOUR)!!.amountMinor)
+        assertEquals(1, expenses.observeForHarvest(d).first().count { it.origin == ExpenseOrigin.DAY_LABOUR })
+    }
+
     @Test
     fun incompleteLegacyDayPreservesItsLedgerThroughPreferencesAndExplicitPriceConfirmation() = runBlocking {
         val d = ok(harvests.openJornada(farmId, day))

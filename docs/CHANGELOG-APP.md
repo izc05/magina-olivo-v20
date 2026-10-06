@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Se puede anotar a alguien sin saber aún su precio (#449).** En un día con jornales ya pagados a
+  precio conocido se puede añadir a otra persona sin precio: queda registrada, no cuenta como 0 € y el coste
+  del día se muestra como incompleto hasta confirmar su precio; al confirmarlo se recalcula una sola vez. Lo
+  que sigue bloqueado es añadir a alguien con precio mientras otro precio de ese día está pendiente.
 - **Un día de recolección automático que se queda vacío desaparece (#502).** Si se quita el último
   jornal, máquina, gasto o foto de un día creado automáticamente y no tiene pesadas ni notas, el día ya
   no queda como «Kg pendientes» sin nada detrás; la pantalla del día se cierra. Un día anotado a mano
