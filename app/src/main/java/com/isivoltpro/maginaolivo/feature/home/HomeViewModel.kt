@@ -67,6 +67,8 @@ data class HomeUiState(
     val oilMarket: FeedState<OilMarketSeries> = FeedState.NotConfigured,
     /** Phase 21A: the preferred cooperative chosen in Perfil; null when none. */
     val cooperativeName: String? = null,
+    /** #620: local agricultural data could not be read reliably; never present this as empty. */
+    val localReadError: String? = null,
 ) {
     val parcelCount: Long get() = farms.sumOf { it.parcelCount }
     val knownAreaM2: Double? get() = farms.mapNotNull { it.totalAreaM2 }.takeIf { it.isNotEmpty() }?.sum()
@@ -109,6 +111,7 @@ class HomeViewModel(
     val state: StateFlow<HomeUiState> = mutableState.asStateFlow()
     private var weatherRefresh: Job? = null
     private var weatherRefreshPlace: FeedLocation? = null
+    private val localRetry = MutableStateFlow(0)
 
     /**
      * #315: entering or coming back to Inicio (also after the app was in the background) asks for
@@ -116,6 +119,12 @@ class HomeViewModel(
      */
     fun onResumed() {
         mutableState.value.weatherLocation?.let(::refreshWeatherIfStale)
+    }
+
+    /** #620: retries the complete local projection after a storage/workspace read failure. */
+    fun retryLocalData() {
+        if (mutableState.value.localReadError == null) return
+        localRetry.value = localRetry.value + 1
     }
 
     /** One background attempt per place at a time; Inicio never waits for it. */
@@ -127,19 +136,13 @@ class HomeViewModel(
     }
 
     init {
-        val activeFarms = flow { emit(workspaces.ensureLocalWorkspace()) }.flatMapLatest { result ->
-            when (result) {
-                is AppResult.Success -> farms.observeActive(result.value)
-                is AppResult.Failure -> flowOf(emptyList())
-            }
-        }
-        val sharedFarms = activeFarms.shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
         val profileSettings = (profile?.observe() ?: flowOf(ProfileSettings()))
             .catch { emit(ProfileSettings()) }
             .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
         // The farms' one place first; the farmer's own municipality (Perfil) when they give none.
         val location = combine(
-            sharedFarms.map { list -> FeedLocation.common(list.map { it.municipality to it.province }) },
+            state.map { it.farms }.distinctUntilChanged()
+                .map { list -> FeedLocation.common(list.map { it.municipality to it.province }) },
             profileSettings.map { it.location },
         ) { farmPlace, profilePlace -> farmPlace ?: profilePlace }
             .distinctUntilChanged()
@@ -149,41 +152,68 @@ class HomeViewModel(
             (weatherFeed?.observe(place) ?: flowOf(FeedState.NotConfigured)).map { place to it }
         }
         viewModelScope.launch {
-            combine(
-                sharedFarms,
-                activities.observeAgenda(),
-                harvests.observeContexts(),
-                harvests.observeAll(),
-                deliveries.observeAll(),
-            ) { farmList, agenda, running, harvestList, deliveryList ->
-                val today = clock.today(zone())
-                HomeUiState(
-                    isLoading = false,
-                    today = today,
-                    farms = farmList,
-                    campaigns = running.map { context ->
-                        val harvested = harvestList.filter { it.campaignId == context.campaignId && !it.awaitingPesadas }
-                        val delivered = deliveryList.filter { it.campaignId == context.campaignId }
-                        HomeCampaign(
-                            name = context.campaignName,
-                            farmName = context.farmName,
-                            harvestedGrams = harvested.takeIf { it.isNotEmpty() }?.sumOf { it.totalGrams },
-                            deliveredGrams = delivered.takeIf { it.isNotEmpty() }?.sumOf { it.netGrams },
-                            farmId = context.farmId,
-                        )
-                    },
-                    upcoming = agenda.filter { !it.activityDate.isBefore(today) }
-                        .sortedWith(compareBy<AgendaEntry> { it.activityDate }.thenBy(nullsFirst()) { it.planning?.startTime })
-                        .take(3),
-                    overdueCount = agenda.count { it.activityDate.isBefore(today) },
+            localRetry.flatMapLatest {
+                val previous = mutableState.value
+                mutableState.value = previous.copy(
+                    isLoading = previous.today == null && previous.farms.isEmpty(),
+                    localReadError = null,
                 )
+                flow { emit(workspaces.ensureLocalWorkspace()) }.flatMapLatest { result ->
+                    when (result) {
+                        is AppResult.Success -> combine(
+                            farms.observeActive(result.value),
+                            activities.observeAgenda(),
+                            harvests.observeContexts(),
+                            harvests.observeAll(),
+                            deliveries.observeAll(),
+                        ) { farmList, agenda, running, harvestList, deliveryList ->
+                            val today = clock.today(zone())
+                            HomeUiState(
+                                isLoading = false,
+                                today = today,
+                                farms = farmList,
+                                campaigns = running.map { context ->
+                                    val harvested = harvestList.filter { it.campaignId == context.campaignId && !it.awaitingPesadas }
+                                    val delivered = deliveryList.filter { it.campaignId == context.campaignId }
+                                    HomeCampaign(
+                                        name = context.campaignName,
+                                        farmName = context.farmName,
+                                        harvestedGrams = harvested.takeIf { it.isNotEmpty() }?.sumOf { it.totalGrams },
+                                        deliveredGrams = delivered.takeIf { it.isNotEmpty() }?.sumOf { it.netGrams },
+                                        farmId = context.farmId,
+                                    )
+                                },
+                                upcoming = agenda.filter { !it.activityDate.isBefore(today) }
+                                    .sortedWith(compareBy<AgendaEntry> { it.activityDate }.thenBy(nullsFirst()) { it.planning?.startTime })
+                                    .take(3),
+                                overdueCount = agenda.count { it.activityDate.isBefore(today) },
+                            ) as HomeUiState?
+                        }.catch {
+                            mutableState.value = mutableState.value.copy(
+                                isLoading = false,
+                                localReadError = LOCAL_READ_ERROR,
+                            )
+                            emit(null)
+                        }
+                        is AppResult.Failure -> flow {
+                            mutableState.value = mutableState.value.copy(
+                                isLoading = false,
+                                localReadError = LOCAL_READ_ERROR,
+                            )
+                            emit(null)
+                        }
+                    }
+                }
             }.collect { base ->
-                mutableState.value = base.copy(
-                    weatherLocation = mutableState.value.weatherLocation,
-                    weather = mutableState.value.weather,
-                    oilMarket = mutableState.value.oilMarket,
-                    cooperativeName = mutableState.value.cooperativeName,
-                )
+                if (base != null) {
+                    mutableState.value = base.copy(
+                        weatherLocation = mutableState.value.weatherLocation,
+                        weather = mutableState.value.weather,
+                        oilMarket = mutableState.value.oilMarket,
+                        cooperativeName = mutableState.value.cooperativeName,
+                        localReadError = null,
+                    )
+                }
             }
         }
         oilMarketFeed?.let { feed ->
@@ -201,5 +231,9 @@ class HomeViewModel(
                 mutableState.value = mutableState.value.copy(weatherLocation = place, weather = value)
             }
         }
+    }
+
+    private companion object {
+        const val LOCAL_READ_ERROR = "No hemos podido leer los datos de tu olivar."
     }
 }
