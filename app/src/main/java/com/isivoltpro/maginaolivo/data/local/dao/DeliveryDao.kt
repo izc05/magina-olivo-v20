@@ -30,6 +30,16 @@ interface DeliveryDao {
     @Query(
         """
         SELECT * FROM deliveries
+        WHERE workspace_id = :workspaceId AND deleted_at IS NULL
+        ORDER BY delivery_date DESC, created_at DESC, id
+        """,
+    )
+    fun observeAllForWorkspace(workspaceId: UUID): Flow<List<DeliveryWithParcels>>
+
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM deliveries
         WHERE campaign_id = :campaignId AND deleted_at IS NULL
         ORDER BY delivery_date DESC, created_at DESC, id
         """,
