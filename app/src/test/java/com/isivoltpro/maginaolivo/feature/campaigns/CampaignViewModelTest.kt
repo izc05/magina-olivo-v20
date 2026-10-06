@@ -57,7 +57,7 @@ class CampaignViewModelTest {
         assertEquals("activate", fake.lastAction)
         viewModel.closeToday(); advanceUntilIdle()
         assertEquals("closeToday", fake.lastAction)
-        assertEquals("Campaña activada", viewModel.state.value.message)
+        assertEquals("Campaña cerrada", viewModel.state.value.message)
         viewModel.consumeMessage()
         assertNull(viewModel.state.value.message)
         fake.fail = true
