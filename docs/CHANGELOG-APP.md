@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **«Restaurar» parcela solo restaura (#494).** Restaurar solo vale para una parcela archivada: ya no
+  puede mover a otra finca una parcela activa, ni reactivar una parcela cuya referencia catastral
+  tiene ahora otra parcela activa, ni una del Catastro sin referencia o contorno. El aviso explica el
+  motivo y el historial de fincas de la parcela no se toca.
 - **Media jornada en jornales nuevos (#490).** Al registrar o corregir un jornal, Duración ofrece
   Jornada completa, Media jornada y Horas. En media jornada se escribe el precio de la jornada
   completa (por ejemplo 70 €) y el jornal cuesta la mitad (35 €); «Pagado completo» paga esa mitad.
