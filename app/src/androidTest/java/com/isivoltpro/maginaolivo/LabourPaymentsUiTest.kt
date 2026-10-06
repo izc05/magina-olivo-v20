@@ -168,12 +168,21 @@ class LabourPaymentsUiTest {
         val payments = mutableListOf<LabourPayment>()
         restored.setContent { MaginaOlivoTheme { Surface(androidx.compose.ui.Modifier.fillMaxSize().statusBarsPadding(), color = com.isivoltpro.maginaolivo.ui.theme.MoCream) { LabourPaymentSheet(worker.name, state.accounts.single().balances.single(), date, false, null, { payments += it }, {}) } } }
         rule.onNodeWithTag("payment-all").performClick()
-        rule.onNodeWithTag("payment-date").performTextReplacement("15/10/2026")
+        rule.onNodeWithTag("payment-date").performTextReplacement("12/10/2026")
         rule.onNodeWithTag("payment-note").performTextInput("En efectivo")
         rule.onNodeWithTag("payment-save").performScrollTo().performClick()
         restored.emulateSavedInstanceStateRestore()
         rule.onNodeWithTag("payment-save").performScrollTo().performClick()
-        rule.runOnIdle { assertEquals(payments[0], payments[1]); assertEquals(LocalDate.of(2026, 10, 15), payments[0].paymentDate); assertEquals("En efectivo", payments[0].note) }
+        rule.runOnIdle { assertEquals(payments[0], payments[1]); assertEquals(LocalDate.of(2026, 10, 12), payments[0].paymentDate); assertEquals("En efectivo", payments[0].note) }
+    }
+
+    @Test fun futurePaymentDateShowsInlineErrorAndCannotSave() {
+        val state = state()
+        rule.setContent { MaginaOlivoTheme { LabourPaymentSheet(worker.name, state.accounts.single().balances.single(), date, false, null, {}, {}) } }
+        rule.onNodeWithTag("payment-all").performClick()
+        rule.onNodeWithTag("payment-date").performTextReplacement("13/10/2026")
+        rule.onNodeWithText("La fecha del pago no puede ser futura").assertExists()
+        rule.onNodeWithTag("payment-save").performScrollTo().assertIsNotEnabled()
     }
 
     @Test fun correctingPaymentRequiresAnExplicitMovementAndConfirmation() {
