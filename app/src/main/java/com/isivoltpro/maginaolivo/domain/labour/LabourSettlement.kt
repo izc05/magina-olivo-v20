@@ -99,7 +99,11 @@ class LabourSettlement private constructor(
 }
 
 object LabourPaymentRules {
-    /** Validate against the current balance inside the future repository's write transaction. */
+    /** A registered payment is a fact that already happened, never a scheduled future movement. */
+    fun validateDate(paymentDate: LocalDate, today: LocalDate): LabourProblem? =
+        if (paymentDate.isAfter(today)) LabourProblem("paymentDate", "future") else null
+
+    /** Validate against the current balance inside the repository's write transaction. */
     fun validate(payment: LabourPayment, balance: LabourSettlement, campaignStatus: CampaignStatus): LabourProblem? = when {
         payment.workerId != balance.workerId -> LabourProblem("worker", "worker_mismatch")
         payment.campaignId != balance.campaignId -> LabourProblem("campaign", "campaign_mismatch")
