@@ -30,6 +30,7 @@ import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityChanges
 import com.isivoltpro.maginaolivo.domain.activity.ActivityCostRules
 import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
+import com.isivoltpro.maginaolivo.domain.activity.ActivityDetailPatch
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelTarget
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
@@ -273,7 +274,9 @@ class OfflineFirstActivityRepository(
                     metadata = current.metadata.next(now),
                 ),
             )
-            replaceDetail(id, current.workspaceId, changes.detail, now)
+            // #453: the same type keeps what its form never carries; a new type replaces it all.
+            val previous = database.activityDao().findWithTargets(id)?.toDomainDetail()
+            replaceDetail(id, current.workspaceId, ActivityDetailPatch.keepingHidden(previous, changes.detail), now)
             replaceTargets(id, changes.parcelIds, now)
             replaceMachines(id, current.workspaceId, changes.machines)
             replacePlanning(id, current.workspaceId, changes.planning, now)

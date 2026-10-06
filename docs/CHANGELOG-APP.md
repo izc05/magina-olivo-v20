@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Editar un trabajo ya no borra datos que el formulario no muestra (#453).** Al corregir un riego,
+  su tarifa histórica conserva su moneda, sus notas y su enlace con el gasto real (antes volvía a
+  euros y perdía el enlace). Una incidencia resuelta conserva cuándo se resolvió. Cambiar el tipo
+  de trabajo sigue sustituyendo los detalles anteriores.
 - **Dos personas pueden llamarse igual (#442).** Añadir un nombre que ya existe ya no reutiliza a esa
   persona sin preguntar: la app dice «Ya existe una persona llamada Juan García. ¿Es la misma?» y deja
   elegir «Usar persona existente» o «Crear otra persona con este nombre». Si hay homónimos, se
