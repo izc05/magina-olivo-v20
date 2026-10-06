@@ -305,9 +305,15 @@ class LabourPaymentContractTest {
     /** #449: a person whose price is still unknown is recorded beside priced ones, never as 0 €. */
     @Test
     fun aPersonWithoutPriceJoinsAPricedDayAndCountsOnceConfirmed() = runBlocking {
-        val (d, _) = pricedDay()
+        val (d, juan) = pricedDay()
+        // Juan was already paid in full: adding an unknown price must not erase his debt (Codex #607).
+        ok(labour.recordPayment(payment(juan, 6_000)))
+        // A usual rate exists, yet «Precio aún sin saber» never fills it in silently.
+        ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 9_000)))
         val miguel = ok(labour.addWorker("Miguel"))
-        ok(labour.recordCrew(CrewDraft(d, listOf(miguel), LabourUnit.FULL_DAY)))
+        ok(labour.recordCrew(CrewDraft(d, listOf(miguel), LabourUnit.FULL_DAY, priceUnknown = true)))
+        assertEquals(0L, balance(juan).pendingMinor)
+        assertEquals(6_000L, balance(juan).generatedMinor)
         val lines = labour.observeForHarvest(d).first()
         assertEquals(2, lines.size)
         assertNull(lines.single { it.workerId == miguel }.appliedRate)

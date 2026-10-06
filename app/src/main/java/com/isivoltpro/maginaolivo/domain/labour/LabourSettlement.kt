@@ -41,8 +41,12 @@ object LabourLedgerAllocation {
         if (expense.status != ExpenseStatus.POSTED || expense.origin != ExpenseOrigin.DAY_LABOUR ||
             expense.category != ExpenseCategory.LABOR || expense.amountMinor < 0
         ) return null
-        val own = entries.filter { it.harvestId == dayId }
-        if (own.isEmpty() || own.map { it.id }.toSet().size != own.size) return null
+        val day = entries.filter { it.harvestId == dayId }
+        if (day.isEmpty() || day.map { it.id }.toSet().size != day.size) return null
+        // #449: a person whose price is still unknown is pending, not 0 €: the posted amount is the
+        // subtotal of the priced lines, and only if it reconciles exactly with them.
+        val own = day.filter { it.appliedRate != null }
+        if (own.isEmpty()) return null
         val costs = own.map { entry ->
             if (LabourRules.validate(entry.quantity, entry.unit, entry.minutes) != null ||
                 (entry.workerId != null && entry.quantity != 1) ||

@@ -109,7 +109,8 @@ class OfflineFirstLabourRepository(
                     minutes = draft.minutes,
                     metadata = LocalMetadata(now, now, syncStatus = SyncStatus.PENDING),
                 ).let { row ->
-                    val entry = LabourPricing.capture(row.toLabourEntry().copy(appliedRate = draft.appliedRate), rates, harvest.harvestDate)
+                    val entry = if (draft.priceUnknown) row.toLabourEntry()
+                        else LabourPricing.capture(row.toLabourEntry().copy(appliedRate = draft.appliedRate), rates, harvest.harvestDate)
                     LabourPricing.amountMinor(entry)
                     row.withRate(entry.appliedRate)
                 }

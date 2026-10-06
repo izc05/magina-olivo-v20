@@ -149,6 +149,17 @@ class LabourSettlementTest {
         assertNull(LabourLedgerAllocation.of(ledger, emptyList()))
     }
 
+    /** #449 (Codex on #607): a person still without a price is pending; the priced ones keep their debt. */
+    @Test fun aPersonWithoutPriceDoesNotEraseThePricedOnesDebt() {
+        val ledger = expenses.first()
+        val pending = rows.first().copy(id = UUID.randomUUID(), workerId = UUID.randomUUID(), appliedRate = null)
+        val assigned = LabourLedgerAllocation.of(ledger, listOf(rows.first(), pending))!!
+        assertEquals(listOf(rows.first().workerId), assigned.map { it.workerId })
+        assertEquals(6_000L, assigned.single().amountMinor)
+        // Never a guess: a posted amount that is not exactly the priced subtotal stays unallocated.
+        assertNull(LabourLedgerAllocation.of(ledger.copy(amountMinor = 11_000), listOf(rows.first(), pending)))
+    }
+
     @Test fun manualAndNonLabourCostsAreNeverGuessedIntoWorkerDebt() {
         val ledger = expenses.first()
         assertNull(LabourLedgerAllocation.of(ledger.copy(origin = ExpenseOrigin.MANUAL), listOf(rows.first())))
