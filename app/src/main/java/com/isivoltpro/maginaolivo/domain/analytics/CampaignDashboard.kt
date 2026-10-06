@@ -25,11 +25,11 @@ data class CampaignDashboard(
     val firstPesada: LocalDate?,
     val lastPesada: LocalDate?,
     val closedOn: LocalDate?,
-    val postedCostMinor: Long,
-    /** Posted `DAY_LABOUR` / `DAY_EQUIPMENT` entries: already inside [postedCostMinor], never added again. */
-    val calculatedLabourMinor: Long,
-    val calculatedMachineryMinor: Long,
-    val currency: String,
+    /**
+     * #450: posted money of the Campaign, one entry per currency (never converted, never one
+     * currency standing for the whole ledger). Empty when nothing is posted.
+     */
+    val costs: List<CampaignCurrencyCost>,
     /** Currency minor units per weighed kilo; null without a unique currency or weighed kilos. */
     val costPerKgMinor: Long?,
 ) {
@@ -48,8 +48,15 @@ data class CampaignDashboard(
             val labourDays = notebook.harvests.filter { it.id in labourHarvests }.map { it.harvestDate }.distinct().size
             val currencies = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(campaign.id, notebook.expenses, notebook.deliveries)
             val canonical = currencies.singleOrNull()
-            val summary = com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary.of(notebook.expenses, canonical?.currency ?: "EUR")
-            val posted = notebook.expenses.filter { it.status == ExpenseStatus.POSTED && it.currency == summary.currency }
+            val costs = notebook.expenses.filter { it.status == ExpenseStatus.POSTED }.groupBy { it.currency }.toSortedMap()
+                .map { (currency, posted) ->
+                    CampaignCurrencyCost(
+                        currency = currency,
+                        postedMinor = posted.sumOf { it.amountMinor },
+                        calculatedLabourMinor = posted.filter { it.origin == ExpenseOrigin.DAY_LABOUR }.sumOf { it.amountMinor },
+                        calculatedMachineryMinor = posted.filter { it.origin == ExpenseOrigin.DAY_EQUIPMENT }.sumOf { it.amountMinor },
+                    )
+                }
             return CampaignDashboard(
                 calendarDays = days,
                 countedFrom = campaign.startDate.takeIf { days != null },
@@ -58,13 +65,18 @@ data class CampaignDashboard(
                 firstPesada = pesadaDates.firstOrNull(),
                 lastPesada = pesadaDates.lastOrNull(),
                 closedOn = closedOn,
-                postedCostMinor = summary.totalMinor,
-                calculatedLabourMinor = posted.filter { it.origin == ExpenseOrigin.DAY_LABOUR }.sumOf { it.amountMinor },
-                calculatedMachineryMinor = posted.filter { it.origin == ExpenseOrigin.DAY_EQUIPMENT }.sumOf { it.amountMinor },
-                currency = summary.currency,
+                costs = costs,
                 // Slice 1 decimal ratio, rounded only for display in the currency's minor units.
                 costPerKgMinor = canonical?.costPerKgMinor,
             )
         }
     }
 }
+
+/** #450: one currency's posted money of a Campaign; the calculated day costs are already inside [postedMinor]. */
+data class CampaignCurrencyCost(
+    val currency: String,
+    val postedMinor: Long,
+    val calculatedLabourMinor: Long,
+    val calculatedMachineryMinor: Long,
+)

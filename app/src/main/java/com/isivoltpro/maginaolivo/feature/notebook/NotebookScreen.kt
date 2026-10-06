@@ -42,7 +42,6 @@ import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
@@ -150,7 +149,7 @@ internal fun HarvestRow(
     harvest: Harvest,
     pesadas: Int,
     labour: LabourSummary,
-    cost: ExpenseSummary,
+    cost: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency>,
     /** "rend. 21 %" / "rend. pendiente": the Pesadas are not listed again, so their yield shows here. */
     yieldLabel: String? = null,
     onClick: () -> Unit,
@@ -170,7 +169,10 @@ internal fun HarvestRow(
                 else -> "$pesadas pesadas"
             },
             labour.takeUnless { it.isEmpty }?.let { if (it.people == 1) "1 jornal" else "${it.people} jornales" },
-            cost.takeIf { it.postedCount > 0 }?.let { Money.format(it.totalMinor, it.currency) },
+            // #450: one amount per currency, never a euro total standing for all.
+            cost.takeIf { it.isNotEmpty() }?.joinToString(" · ") { ledger ->
+                ledger.amount()?.let { Money.format(it, ledger.currency) } ?: "Importe no disponible (${ledger.currency})"
+            },
             yieldLabel,
         ).joinToString(" · "),
         icon = MoIcons.Harvest,

@@ -57,7 +57,7 @@ class LabourSettlementTest {
         assertEquals(24_000L, settled.paidMinor)
         assertEquals(0L, settled.pendingMinor)
         assertEquals(LabourPaymentState.PAID, settled.state)
-        assertEquals(24_000L, ExpenseSummary.of(expenses).totalMinor)
+        assertEquals(24_000L, ExpenseSummary.of(expenses, "EUR").totalMinor)
         assertEquals(4, expenses.size)
     }
 
@@ -135,7 +135,7 @@ class LabourSettlementTest {
         people.forEach { person ->
             assertEquals(6_000L, LabourSettlement.of(person.workerId!!, campaign, "EUR", assigned, emptyList()).generatedMinor)
         }
-        assertEquals(18_000L, ExpenseSummary.of(listOf(ledger)).totalMinor)
+        assertEquals(18_000L, ExpenseSummary.of(listOf(ledger), "EUR").totalMinor)
     }
 
     @Test fun draftExpenseAndUnpricedOrMismatchedLinesCannotBecomeDebt() {
@@ -163,7 +163,7 @@ class LabourSettlementTest {
         val assigned = LabourLedgerAllocation.of(ledger, listOf(anonymous))!!
         assertNull(assigned.single().workerId)
         assertEquals(0L, LabourSettlement.of(worker, campaign, "EUR", assigned, emptyList()).generatedMinor)
-        assertEquals(30_000L, ExpenseSummary.of(listOf(ledger)).totalMinor)
+        assertEquals(30_000L, ExpenseSummary.of(listOf(ledger), "EUR").totalMinor)
         assertEquals("exceeds_pending", LabourPaymentRules.validate(
             payment(100), LabourSettlement.of(worker, campaign, "EUR", assigned, emptyList()), CampaignStatus.CLOSED,
         )!!.code)

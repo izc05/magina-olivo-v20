@@ -139,6 +139,40 @@ class EquipmentContractTest {
         assertEquals(AppError.Conflict("closed_campaign"), (result as AppResult.Failure).error)
     }
 
+    /** #446: an archived machine stays on the days it worked; it is never added to a new one. */
+    @Test
+    fun anArchivedMachineStaysOnItsDayButIsNeverAddedAgain() = runBlocking {
+        val fendt = ok(machines.create(MachineDraft(name = "Fendt 209", category = MachineCategory.TRACTOR)))
+        val jornada = jornada()
+        ok(equipment.replaceForHarvest(jornada, listOf(EquipmentDraftLine(EquipmentType.TRACTOR, 1, machineId = fendt))))
+        val snapshot = equipment.observeForHarvest(jornada).first().single()
+        // The live catalogue may change afterwards; the Jornada remains what was actually recorded.
+        ok(machines.update(fendt, MachineDraft(name = "Fendt 209 nuevo", category = MachineCategory.TRACTOR)))
+        ok(machines.archive(fendt))
+
+        // Editing the day keeps the archived machine's historical line, name, id and price.
+        ok(equipment.replaceForHarvest(jornada, listOf(
+            // A registered Machine is one unit per day (EquipmentRules «one_machine»).
+            EquipmentDraftLine(EquipmentType.TRACTOR, 1, label = "Fendt 209", machineId = fendt),
+            EquipmentDraftLine(EquipmentType.SHAKER, 2),
+        )))
+        val kept = equipment.observeForHarvest(jornada).first()
+        val historical = kept.single { it.machineId == fendt }
+        assertEquals(snapshot.id, historical.id)
+        assertEquals("Fendt 209", historical.label)
+        assertEquals(1, historical.quantity)
+        assertEquals(2, kept.size)
+
+        // On another day it is a new line: refused.
+        val other = jornada()
+        assertValidation("machineId", equipment.replaceForHarvest(other, listOf(EquipmentDraftLine(EquipmentType.TRACTOR, 1, machineId = fendt))))
+        assertTrue(equipment.observeForHarvest(other).first().isEmpty())
+
+        // Taking it off its day is an explicit choice and is allowed.
+        ok(equipment.replaceForHarvest(jornada, listOf(EquipmentDraftLine(EquipmentType.SHAKER, 2))))
+        assertTrue(equipment.observeForHarvest(jornada).first().none { it.machineId == fendt })
+    }
+
     private suspend fun jornada(): UUID =
         ok(harvests.create(HarvestDraft(farmId, day, 1_000_000, listOf(HarvestShareInput(north, 1_000_000)))))
 

@@ -182,7 +182,7 @@ class ExpenseLedgerContractTest {
         assertTrue(blocked is AppResult.Failure && (blocked.error as? AppError.Conflict)?.resource == ActivityCostRules.LINKED_EXPENSES)
         assertNull(db.activityDao().findById(cancelled)!!.metadata.deletedAt)
         assertEquals(cancelled, expenses.observe(manual).first()!!.activityId)
-        assertEquals(2_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(2_000, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
 
         val draftWork = ok(activities.create(NewActivity(farmId, null, ActivityType.PRUNING, date, "Poda", setOf(parcelA), asDraft = true)))
         ok(expenses.create(draft(500, farmId = farmId, activityId = draftWork, concept = "Afilado")))
@@ -210,15 +210,15 @@ class ExpenseLedgerContractTest {
 
     private suspend fun assertStillDraft(id: UUID, before: Long) {
         assertEquals(ExpenseStatus.DRAFT, expenses.observe(id).first()!!.status)
-        assertEquals(before, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(before, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     @Test
     fun aValidDraftIsPosted() = runBlocking {
         val id = draftOf(draft(3_000, farmId = farmId, parcelId = parcelA))
-        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
         ok(expenses.post(id))
-        assertEquals(3_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(3_000, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     @Test
@@ -342,7 +342,7 @@ class ExpenseLedgerContractTest {
         ok(activities.cancel(cancelled))
 
         assertEquals(listOf(manual), expenses.observeAll().first().map { it.id })
-        assertEquals(2_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(2_000, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     @Test
@@ -351,7 +351,7 @@ class ExpenseLedgerContractTest {
         ok(activities.complete(id))
         ok(expenses.create(draft(4_000, farmId = farmId, activityId = id, concept = "Gasoil")))
         assertEquals(1, expenses.observeForActivity(id).first().size)
-        assertEquals(4_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(4_000, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     @Test
@@ -367,11 +367,11 @@ class ExpenseLedgerContractTest {
         assertEquals(ExpenseOrigin.MANUAL, kept.origin)
         assertNull(kept.activityId)
         assertEquals(farmId, kept.farmId)
-        assertEquals(6_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(6_500, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
 
         ok(activities.reopen(id))
         assertEquals(ActivityStatus.PLANNED, activities.observe(id).first()!!.status)
-        assertEquals(6_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(6_500, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     @Test
@@ -379,7 +379,7 @@ class ExpenseLedgerContractTest {
         val id = activity(costMinor = 6_500)
         ok(expenses.delete(expenses.observeForActivity(id).first().single().id))
         ok(activities.reopen(id))
-        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
 
         val plain = activity(costMinor = null, done = true)
         ok(activities.reopen(plain))
@@ -400,7 +400,7 @@ class ExpenseLedgerContractTest {
         assertCostToReview(activities.archive(cancelled))
         // An edit of the work leaves the counted cost exactly as it is.
         assertEquals(3, expenses.observeAll().first().count { it.origin == ExpenseOrigin.ACTIVITY_COST })
-        assertEquals(19_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(19_500, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     /** Codex #520: a plain edit never moves a work's cost to another work, nor drops the link. */
@@ -417,6 +417,62 @@ class ExpenseLedgerContractTest {
         assertEquals(id, expenses.observe(cost.id).first()!!.activityId)
         assertEquals(ExpenseOrigin.ACTIVITY_COST, expenses.observe(cost.id).first()!!.origin)
         assertEquals(7_000, expenses.observe(cost.id).first()!!.amountMinor)
+    }
+
+    /** #476: a Parcel the Gasto already had stays valid when archived or moved; a new choice must be current. */
+    @Test
+    fun editingAGastoKeepsItsParcelEvenIfArchivedOrMoved() = runBlocking {
+        val saved = draft(4_000, farmId = farmId, parcelId = parcelA)
+        val id = ok(expenses.create(saved))
+
+        // Archived: a note can still be corrected, and the Gasto keeps Finca/Parcela.
+        val parcel = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(parcel.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED))
+        ok(expenses.update(id, saved.copy(notes = "Factura corregida")))
+        assertEquals(parcelA, db.expenseDao().findById(id)!!.parcelId)
+        assertEquals(farmId, db.expenseDao().findById(id)!!.farmId)
+        // A new Gasto cannot pick it.
+        assertValidation("parcelId", expenses.create(draft(1_000, farmId = farmId, parcelId = parcelA)))
+
+        // Moved to another Farm: the old Gasto still edits on its own Farm and Parcel.
+        db.parcelDao().upsert(parcel)
+        val current = db.parcelDao().findCurrentMembership(parcelA)!!
+        db.parcelDao().upsertMembership(current.copy(validUntil = now))
+        db.parcelDao().upsertMembership(
+            FarmParcelMembershipEntity(UUID.randomUUID(), workspaceId, otherFarmId, parcelA, now, metadata = LocalMetadata(now, now)),
+        )
+        ok(expenses.update(id, saved.copy(amountMinor = 4_500)))
+        val kept = db.expenseDao().findById(id)!!
+        assertEquals(farmId, kept.farmId)
+        assertEquals(parcelA, kept.parcelId)
+        assertEquals(4_500L, kept.amountMinor)
+        // Choosing it now on its old Farm is a new choice: refused.
+        val other = ok(expenses.create(draft(1_000, farmId = farmId)))
+        assertValidation("parcelId", expenses.update(other, draft(1_000, farmId = farmId, parcelId = parcelA)))
+        // An explicit change to no Parcel is fine.
+        ok(expenses.update(id, saved.copy(parcelId = null)))
+        assertNull(db.expenseDao().findById(id)!!.parcelId)
+    }
+
+    /** #476 vs #456: a DRAFT is not history; its archived Parcel is re-checked, a POSTED one keeps it. */
+    @Test
+    fun onlyAPostedGastoKeepsAnArchivedParcelADraftIsReChecked() = runBlocking {
+        val saved = draft(2_000, farmId = farmId, parcelId = parcelA)
+        val pending = draftOf(saved)
+        val posted = ok(expenses.create(saved))
+        val parcel = db.parcelDao().findById(parcelA)!!
+        db.parcelDao().upsert(parcel.copy(status = com.isivoltpro.maginaolivo.data.local.model.RecordStatus.ARCHIVED))
+
+        assertValidation("parcelId", expenses.update(pending, saved.copy(notes = "Revisado")))
+        assertValidation("parcelId", expenses.post(pending))
+        assertStillDraft(pending, 2_000)
+        assertEquals(parcelA, db.expenseDao().findById(pending)!!.parcelId)
+
+        ok(expenses.update(posted, saved.copy(amountMinor = 2_500, notes = "Revisado")))
+        val kept = db.expenseDao().findById(posted)!!
+        assertEquals(parcelA, kept.parcelId)
+        assertEquals(farmId, kept.farmId)
+        assertEquals(2_500L, kept.amountMinor)
     }
 
     /**
@@ -441,7 +497,7 @@ class ExpenseLedgerContractTest {
         assertEquals(before.metadata.version + 1, after.metadata.version)
         assertNull(after.metadata.deletedAt)
         assertEquals(rowsBefore, expenses.observeAll().first().size)
-        assertEquals(6_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(6_500, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
         assertTrue(expenses.observeForActivity(id).first().isEmpty())
     }
 
@@ -460,7 +516,7 @@ class ExpenseLedgerContractTest {
         val id = ok(expenses.create(draft(12_000, farmId = farmId, parcelId = parcelA, activityId = activityId)))
 
         val all = expenses.observeAll().first()
-        assertEquals(12_000, ExpenseSummary.of(all).totalMinor)
+        assertEquals(12_000, ExpenseSummary.of(all, "EUR").totalMinor)
         assertEquals(listOf(id), expenses.observeForActivity(activityId).first().map { it.id })
         assertEquals(1, all.size)
     }
@@ -479,7 +535,7 @@ class ExpenseLedgerContractTest {
         assertTrue(activities.update(activityId, changes(costMinor = 8_000)) is AppResult.Failure)
         ok(expenses.update(linked.id, draft(8_000, farmId = farmId, activityId = activityId, concept = "Abonado de primavera")))
         assertEquals(8_000, expenses.observeForActivity(activityId).first().single().amountMinor)
-        assertEquals(8_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(8_000, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     @Test
@@ -487,7 +543,7 @@ class ExpenseLedgerContractTest {
         val activityId = activity(costMinor = 6_500)
         val extra = ok(expenses.create(draft(2_000, farmId = farmId, activityId = activityId, concept = "Transporte")))
 
-        assertEquals(8_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(8_500, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
         assertEquals(2_000, expenses.observe(extra).first()!!.amountMinor)
         assertEquals(2, expenses.observeForActivity(activityId).first().size)
     }
@@ -509,11 +565,11 @@ class ExpenseLedgerContractTest {
         val expense = expenses.observe(id).first()!!
         assertEquals(2, expense.lines.size)
         assertEquals("F-2026-118", expense.invoiceNumber)
-        assertEquals(12_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(12_000, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
 
         ok(expenses.update(id, draft(12_000, farmId = farmId).copy(lines = listOf(PurchaseLine("Abono NPK")))))
         assertEquals(1, expenses.observe(id).first()!!.lines.size)
-        assertEquals(12_000, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(12_000, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     @Test
@@ -522,7 +578,7 @@ class ExpenseLedgerContractTest {
         ok(expenses.delete(id))
         ok(expenses.delete(id))
 
-        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
         assertNull(expenses.observe(id).first())
         assertEquals(
             listOf(OutboxOperation.DELETE),
@@ -666,7 +722,7 @@ class ExpenseLedgerContractTest {
         db.close()
         open()
         assertEquals(5_500, expenses.observe(id).first()!!.amountMinor)
-        assertEquals(5_500, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(5_500, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     // CR-012: closing a campaign freezes its authoritative costs even with no payments.
@@ -696,7 +752,7 @@ class ExpenseLedgerContractTest {
         assertClosedMutation(expenses.delete(id))
 
         assertEquals(before, ledgerState())
-        assertEquals(6_000L, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(6_000L, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
         assertEquals("H-1", expenses.observe(id).first()!!.invoiceNumber)
     }
 
@@ -712,7 +768,7 @@ class ExpenseLedgerContractTest {
 
         assertEquals(before, ledgerState())
         assertEquals(ExpenseStatus.DRAFT, expenses.observe(id).first()!!.status)
-        assertEquals(0L, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(0L, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     @Test
@@ -890,7 +946,7 @@ class ExpenseLedgerContractTest {
         val expense = expenses.observe(expenseId).first()!!
         assertEquals(ExpenseStatus.DRAFT, expense.status)
         assertEquals(ExpenseOrigin.DOCUMENT_OCR, expense.origin)
-        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(0, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
         assertEquals(OcrStatus.CONFIRMED, documents.observe(documentId).first()!!.status)
         assertNotNull(documents.observe(documentId).first()!!.reviewedAt)
         // The original file now belongs to the expense and is still the same file.
@@ -900,7 +956,7 @@ class ExpenseLedgerContractTest {
         )
 
         ok(expenses.post(expenseId))
-        assertEquals(7_260, ExpenseSummary.of(expenses.observeAll().first()).totalMinor)
+        assertEquals(7_260, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
     }
 
     @Test

@@ -63,7 +63,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
@@ -188,7 +187,8 @@ data class CampaignSummaryUi(
     /** CR-010 A2: hand-typed legacy kilos with no Pesada; shown apart, never in the total. */
     val legacyGrams: Long? = null,
     val fatYieldHundredths: Int? = null,
-    val expensesMinor: Long? = null,
+    /** #450: posted money per currency — never one currency shown as the whole ledger. Empty: none yet. */
+    val expenses: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency> = emptyList(),
     /** #365: «1 persona · 1 jornada · 65,00 €»; null while the jornales are still loading. */
     val labourLine: String? = null,
 )
@@ -218,7 +218,7 @@ fun CampaignDetailRoute(
     val summary = remember(harvests, deliveries, expenses, labour) {
         val harvest = HarvestSummary.of(harvests)
         val delivery = DeliverySummary.of(deliveries)
-        val ledger = ExpenseSummary.of(expenses.filter { it.campaignId == campaignId })
+        val ledger = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(expenses.filter { it.campaignId == campaignId })
         CampaignSummaryUi(
             harvestedGrams = harvest.totalGrams.takeIf { harvest.weighedCount > 0 },
             // #366 (Codex): calendar days, the same count as Recolección and the Cuaderno.
@@ -227,7 +227,7 @@ fun CampaignDetailRoute(
             deliveryCount = delivery.deliveryCount,
             legacyGrams = legacyUnweighedGrams(harvests, deliveries).takeIf { it > 0 },
             fatYieldHundredths = delivery.fatYield?.hundredths,
-            expensesMinor = ledger.totalMinor.takeIf { ledger.postedCount > 0 },
+            expenses = ledger,
             labourLine = labour?.let { entries ->
                 com.isivoltpro.maginaolivo.feature.harvests.campaignLabourLine(
                     entries, com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.of(campaignId, expenses, deliveries),
@@ -343,11 +343,17 @@ fun CampaignDetailScreen(
                             { m ->
                                 MoKpiMetric(
                                     "Gastos",
-                                    summary.expensesMinor?.let { Money.format(it) } ?: "—",
+                                    if (summary.expenses.isEmpty()) "—" else summary.expenses.joinToString(" · ") { ledger ->
+                                        ledger.amount()?.let { Money.format(it, ledger.currency) } ?: "Importe no disponible (${ledger.currency})"
+                                    },
                                     m.testTag("campaign-metric-expenses"),
                                     icon = MoIcons.Euro,
                                     kind = MoKpiKind.COSTES,
-                                    supportingText = if (summary.expensesMinor == null) "Aún no hay gastos de esta campaña" else "Gastos anotados",
+                                    supportingText = when {
+                                        summary.expenses.isEmpty() -> "Aún no hay gastos de esta campaña"
+                                        summary.expenses.size > 1 -> "Varias monedas: cada una por separado, sin convertir"
+                                        else -> "Gastos anotados"
+                                    },
                                 )
                             },
                         ),

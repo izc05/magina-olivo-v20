@@ -105,6 +105,19 @@ internal class JornadaLedger(
         }
     }
 
+    /**
+     * #502: after a day's jornal, machinery, Gasto or attachment goes, an automatic day keeps
+     * only what still backs it: with nothing left at all it is removed, as when its last Pesada
+     * goes. A Jornada recorded by hand is never touched here (its kilos are the farmer's). Call it
+     * after the day's calculated costs are settled, so it sees the final ledger.
+     */
+    suspend fun reconcileAutomatic(harvestId: UUID?, now: Instant) {
+        if (harvestId == null) return
+        val day = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null } ?: return
+        if (day.dayOrigin != AUTO_DAY) return
+        reconcileAutoDay(day, database.deliveryDao().listLiveForHarvest(day.id), now)
+    }
+
     private suspend fun reconcileAutoDay(day: HarvestEntity, linked: List<DeliveryEntity>, now: Instant) {
         if (linked.isEmpty() && !ownsAnything(day)) {
             database.harvestDao().upsert(day.copy(weightGrams = 0L, metadata = day.metadata.next(now).copy(deletedAt = now)))

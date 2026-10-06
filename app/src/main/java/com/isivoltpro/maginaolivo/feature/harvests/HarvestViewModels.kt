@@ -189,6 +189,8 @@ class HarvestDetailViewModel(
                 .collect { harvest ->
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
+                        // #502: an automatic day removed once nothing backs it closes like a deleted one.
+                        deleted = mutableState.value.deleted || (mutableState.value.harvest != null && harvest == null),
                         harvest = harvest,
                         context = contexts.firstOrNull { it.campaignId == harvest?.campaignId },
                     )
@@ -404,6 +406,7 @@ class HarvestDetailViewModel(
                         is AppError.Validation -> when (result.error.code) {
                             "confirm_missing_prices" -> "Confirma primero los precios que faltan en la maquinaria histórica de este día."
                             "overflow" -> "El total es demasiado grande. Reduce el precio o la cantidad."
+                            "archived_machine" -> "Esa máquina está archivada: solo se conserva en los días en que ya trabajó."
                             "currency_mismatch", "ambiguous_historical_currency" -> "La moneda no coincide con el coste histórico de este día. Revisa los precios."
                             else -> "Revisa la maquinaria: cantidades de 1 a 50 y un nombre para «Otra»"
                         }

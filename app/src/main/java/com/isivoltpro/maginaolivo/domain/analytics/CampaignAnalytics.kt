@@ -69,8 +69,6 @@ data class CampaignComparison(
     val deliveredGrams: Long?,
     val fatYield: WeightedYield?,
     val yieldCoveragePercent: Int,
-    val postedExpensesMinor: Long,
-    val currency: String,
     /** Change in delivered kilos against the previous Campaign, in whole percent; null when unknown. */
     val deliveredChangePercent: Int?,
     /** CR-010 (A2): hand-typed kilos with no Pesada, disclosed apart and never in [deliveredGrams]. */
@@ -103,8 +101,6 @@ data class CampaignComparison(
                     deliveredGrams = delivered,
                     fatYield = deliveries.fatYield,
                     yieldCoveragePercent = deliveries.coveragePercent(deliveries.fatYield),
-                    postedExpensesMinor = cost?.amount() ?: 0,
-                    currency = cost?.currency ?: notebook.expenseSummary.currency,
                     deliveredChangePercent = change,
                     legacyUnweighedGrams = notebook.legacyUnweighedGrams,
                     canonicalCost = cost,

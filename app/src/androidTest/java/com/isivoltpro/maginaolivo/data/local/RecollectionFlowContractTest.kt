@@ -158,9 +158,9 @@ class RecollectionFlowContractTest {
         assertEquals(5, notebook.labourByWorker.size)
         assertEquals(0, notebook.unnamedLabour.people)
         // The cost is counted once: in the Jornada, the recolección and the campaign.
-        assertEquals(5_000L, notebook.jornadaCost(jornada).totalMinor)
-        assertEquals(5_000L, notebook.recollectionExpenseSummary.totalMinor)
-        assertEquals(5_000L, notebook.expenseSummary.totalMinor)
+        assertEquals(5_000L, notebook.jornadaCost(jornada).single().amount())
+        assertEquals(5_000L, notebook.recollectionByCurrency.single().amount())
+        assertEquals(5_000L, notebook.expensesByCurrency.single().amount())
         // No yield is invented before the analysis arrives.
         assertEquals(null, notebook.deliverySummary.fatYield)
         assertEquals(1, notebook.pendingYieldCount)

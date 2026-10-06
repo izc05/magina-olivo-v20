@@ -9,7 +9,6 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentSummary
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import com.isivoltpro.maginaolivo.domain.labour.LabourEntry
 import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
@@ -80,7 +79,8 @@ data class FarmNotebook(
 
     fun labourFor(harvestId: UUID): LabourSummary = LabourSummary.of(labour.filter { it.harvestId == harvestId })
 
-    fun jornadaCost(harvestId: UUID): ExpenseSummary = ExpenseSummary.of(expenses.filter { it.harvestId == harvestId })
+    /** #450: the day's posted money per currency. */
+    fun jornadaCost(harvestId: UUID): List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency> = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(expenses.filter { it.harvestId == harvestId })
 
     /** The kilo-weighted yield of a Jornada's Pesadas, «pendiente» while any has none; null without Pesadas. */
     fun jornadaYieldLabel(harvestId: UUID): String? {

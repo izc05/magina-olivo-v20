@@ -90,7 +90,11 @@ class OfflineFirstExpenseRepository(
             val origin = roleOrigin(current, draft)
             writer.rewrite(current, draft, now, origin)
             costs.sync(current.harvestId, now)
-            if (draft.harvestId != current.harvestId) costs.sync(draft.harvestId, now)
+            if (draft.harvestId != current.harvestId) {
+                costs.sync(draft.harvestId, now)
+                // #502: the day it left may now hold nothing.
+                JornadaLedger(database, idGenerator).reconcileAutomatic(current.harvestId, now)
+            }
             AppResult.Success(Unit)
         }
 
@@ -118,6 +122,8 @@ class OfflineFirstExpenseRepository(
             val now = clock.nowInstant()
             writer.delete(current, now)
             costs.sync(current.harvestId, now)
+            // #502: an automatic day left with nothing goes with its last Gasto.
+            JornadaLedger(database, idGenerator).reconcileAutomatic(current.harvestId, now)
             AppResult.Success(Unit)
         }
 
