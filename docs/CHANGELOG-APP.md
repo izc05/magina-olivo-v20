@@ -24,6 +24,34 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   jornal, máquina, gasto o foto de un día creado automáticamente y no tiene pesadas ni notas, el día ya
   no queda como «Kg pendientes» sin nada detrás; la pantalla del día se cierra. Un día anotado a mano
   nunca se toca.
+- **Gastos y días de recolección ya no ocultan otras monedas (#450, gastos).** La pantalla de Gastos
+  muestra «Gastos confirmados» y «Este mes» con un total por moneda, y las categorías por moneda (los
+  porcentajes solo dentro de cada una). El coste de un día de recolección guarda un total por moneda y
+  no inventa un total único cuando hay varias. Nada se convierte.
+- **Una máquina archivada sigue en los días en que trabajó (#446).** Al editar la maquinaria de un día,
+  la máquina archivada aparece como «Fendt 209 · Archivada» con su tipo, cantidad y precio de entonces,
+  y se conserva al guardar (o se quita si el agricultor lo decide). En un día nuevo no se puede añadir.
+- **El Cuaderno tampoco oculta otras monedas (#450, Cuaderno).** Cada día de recolección del diario muestra
+  su coste por moneda («50,00 € · 30,00 US$»), y los resúmenes internos del Cuaderno (gastos de la campaña,
+  recolección, jornales y maquinaria) guardan un total por moneda. Nada se convierte ni se suma entre monedas.
+- **Los gastos de una campaña ya no ocultan otras monedas (#450, campaña).** El detalle de la campaña
+  muestra cada moneda por separado («800,00 € · 300,00 GBP», sin convertir); una campaña con gastos solo
+  en otra moneda ya no dice «Aún no hay gastos». El resumen interno de la campaña guarda un total por
+  moneda y el coste/kg global sigue sin calcularse cuando hay varias.
+- **Un gasto antiguo sigue editable aunque su parcela se archive o cambie de finca (#476).** Corregir
+  importe, nota o concepto conserva la finca y la parcela con que se anotó; el editor la muestra como
+  «Parcela 1 · archivada» o «· ahora en otra finca». Para un gasto nuevo, o al cambiar de parcela, solo
+  se ofrecen las parcelas activas de esa finca. Solo vale para gastos ya confirmados: un borrador
+  todavía no es histórico y, al confirmarlo, vuelve a comprobar que su parcela sigue activa (#456).
+- **Gasto del día: «Se añade» o «Sustituye», siempre lo decide el agricultor (#475).** Al anotar jornales
+  o un alquiler de maquinaria en un día que ya tiene ese coste calculado, la app pregunta «¿Cómo cuenta
+  este gasto?»: «Se añade al cálculo» o «Sustituye el cálculo». Si el día no tiene cálculo de ese tipo,
+  se añade sin preguntar; gasoil, aceite, transporte, reparaciones y otros siempre se suman. La decisión
+  se guarda (no se deduce del concepto ni de la categoría). Si alguien de ese día ya tiene pagos, los
+  jornales solo pueden añadirse: los pagos nunca se tocan. Al sustituir jornales sin pagos, el importe
+  cuenta en la campaña sin repartir por persona. Un gasto «Fuera de campaña» ya no se ofrece para
+  enlazarlo a una jornada ni se absorbe. Lo que contaba antes de este cambio sigue contando igual.
+  Al editar el gasto se ve la misma pregunta, solo con las opciones que ese día permite de verdad.
 - **Una persona que ya no trabaja puede cobrar lo que se le debe (#481).** Si un trabajador deja de
   estar activo, ya no se ofrece para nuevos jornales, pero sus jornales pendientes se pueden pagar (y los
   pagos corregir) sin restaurarlo. Nunca se puede pagar más de lo pendiente.

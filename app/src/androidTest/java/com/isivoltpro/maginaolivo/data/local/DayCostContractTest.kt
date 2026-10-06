@@ -26,6 +26,7 @@ import com.isivoltpro.maginaolivo.domain.equipment.EquipmentPriceSnapshot
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestDraft
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestShareInput
+import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
@@ -130,8 +131,10 @@ class DayCostContractTest {
     fun aHandTypedCostOfTheSameKindStandsUntilTheFarmerPicksTheCalculation() = runBlocking {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
         val dayId = ok(harvests.openJornada(farmId, day))
-        val manual = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000)))
         named(dayId, 5)
+        // #475: the farmer says the hand-typed 300 € replace the calculation.
+        val manual = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000).copy(dayCostRole = DayCostRole.REPLACEMENT)))
+        assertEquals(ExpenseOrigin.DAY_REPLACEMENT, expenses.observe(manual).first()!!.origin)
 
         // Never both: the hand-typed 300 € counts; the calculated 350 € is kept as a draft.
         assertEquals(ExpenseStatus.DRAFT, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
@@ -171,6 +174,88 @@ class DayCostContractTest {
         val handCost = ok(expenses.create(cost(byHand, JornadaExpenseKind.TRANSPORT, 2_000).copy(expenseDate = day.minusDays(3))))
         ok(expenses.delete(handCost))
         assertEquals(5_000_000L, harvests.observe(byHand).first()!!.totalGrams)
+    }
+
+    /** #475: a hand-typed cost of the day adds unless the farmer says it replaces; nothing is deduced. */
+    @Test
+    fun aHandTypedCostAddsUnlessTheFarmerSaysItReplaces() = runBlocking {
+        ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
+        val dayId = ok(harvests.openJornada(farmId, day))
+        named(dayId, 5)
+        // Same category as the calculation, chosen «Se añade»: both count.
+        val added = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000)))
+        assertEquals(ExpenseOrigin.MANUAL, expenses.observe(added).first()!!.origin)
+        assertEquals(ExpenseStatus.POSTED, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
+        assertEquals(65_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
+
+        // Changing it to «Sustituye» is the farmer's explicit edit; back to «Se añade», both count again.
+        val draft = cost(dayId, JornadaExpenseKind.LABOUR, 30_000)
+        ok(expenses.update(added, draft.copy(dayCostRole = DayCostRole.REPLACEMENT)))
+        assertEquals(ExpenseOrigin.DAY_REPLACEMENT, expenses.observe(added).first()!!.origin)
+        assertEquals(30_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
+        ok(expenses.update(added, draft))
+        assertEquals(ExpenseOrigin.MANUAL, expenses.observe(added).first()!!.origin)
+        assertEquals(65_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
+
+        // A cost typed before the day had a calculation keeps adding when the calculation arrives.
+        val otherDay = ok(harvests.openJornada(farmId, day.minusDays(1)))
+        val early = ok(expenses.create(cost(otherDay, JornadaExpenseKind.LABOUR, 20_000).copy(expenseDate = day.minusDays(1))))
+        named(otherDay, 2)
+        assertEquals(ExpenseOrigin.MANUAL, expenses.observe(early).first()!!.origin)
+        assertEquals(ExpenseStatus.POSTED, calculated(otherDay, ExpenseOrigin.DAY_LABOUR)!!.status)
+        assertEquals(34_000L, JornadaCost.of(expenses.observeForHarvest(otherDay).first()).postedMinor)
+    }
+
+    /** #475: «Sustituye» needs a calculation of that kind; diesel, oil and the like never replace. */
+    @Test
+    fun replacingNeedsACalculationOfThatKind() = runBlocking {
+        ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
+        val dayId = ok(harvests.openJornada(farmId, day))
+        val before = outboxCount()
+        assertEquals(AppError.Validation("dayCostRole", "nothing_to_replace"),
+            (expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000).copy(dayCostRole = DayCostRole.REPLACEMENT)) as AppResult.Failure).error)
+        named(dayId, 1)
+        val afterCrew = outboxCount()
+        assertEquals(AppError.Validation("dayCostRole", "not_replaceable"),
+            (expenses.create(cost(dayId, JornadaExpenseKind.DIESEL, 3_000).copy(dayCostRole = DayCostRole.REPLACEMENT)) as AppResult.Failure).error)
+        assertEquals(AppError.Validation("dayCostRole", "no_day"),
+            (expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 3_000).copy(harvestId = null, dayCostRole = DayCostRole.REPLACEMENT)) as AppResult.Failure).error)
+        assertEquals(afterCrew, outboxCount())
+        assertTrue(before < afterCrew)
+        assertEquals(ExpenseStatus.POSTED, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
+    }
+
+    /** #475 upgrade: what counted before the choice existed keeps counting exactly the same. */
+    @Test
+    fun existingReplacementsAreMarkedOnceAndNothingElseIsReinterpreted() = runBlocking {
+        ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
+        val dayId = ok(harvests.openJornada(farmId, day))
+        named(dayId, 5)
+        // As an earlier version left it: a hand-typed 300 € of jornales counted, the calculation a draft.
+        val calc = db.expenseDao().listForHarvest(dayId).single { it.origin == ExpenseOrigin.DAY_LABOUR.name }
+        db.expenseDao().upsert(calc.copy(status = ExpenseStatus.DRAFT.name))
+        val legacy = ExpenseEntity(UUID.randomUUID(), workspaceId, campaignId = campaignId, farmId = farmId, harvestId = dayId,
+            expenseDate = day, concept = "Cuadrilla", category = "LABOR", amountMinor = 30_000, currency = "EUR",
+            status = ExpenseStatus.POSTED.name, origin = ExpenseOrigin.MANUAL.name, metadata = LocalMetadata(now, now))
+        db.expenseDao().upsert(legacy)
+        // A day whose calculation counts keeps its hand-typed jornales adding.
+        val otherDay = ok(harvests.openJornada(farmId, day.minusDays(1)))
+        named(otherDay, 1)
+        val adding = ok(expenses.create(cost(otherDay, JornadaExpenseKind.LABOUR, 5_000).copy(expenseDate = day.minusDays(1))))
+
+        ok(costs.markExistingReplacements())
+        assertEquals(ExpenseOrigin.DAY_REPLACEMENT, expenses.observe(legacy.id).first()!!.origin)
+        assertEquals(ExpenseStatus.DRAFT, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
+        assertEquals(30_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
+        assertEquals(ExpenseOrigin.MANUAL, expenses.observe(adding).first()!!.origin)
+
+        // A cost added afterwards on the same day stays «Se añade»: a second run changes nothing.
+        val later = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 2_000)))
+        val version = db.expenseDao().findById(legacy.id)!!.metadata.version
+        ok(costs.markExistingReplacements())
+        assertEquals(ExpenseOrigin.MANUAL, expenses.observe(later).first()!!.origin)
+        assertEquals(version, db.expenseDao().findById(legacy.id)!!.metadata.version)
+        assertEquals(32_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
     }
 
     @Test
@@ -291,7 +376,7 @@ class DayCostContractTest {
             origin = ExpenseOrigin.DAY_EQUIPMENT.name,
             metadata = LocalMetadata(now, now)))
         val originalLedger = db.expenseDao().findById(historicalId)!!
-        val rental = cost(dayId, JornadaExpenseKind.RENTAL, 4_000).copy(currency = "JPY")
+        val rental = cost(dayId, JornadaExpenseKind.RENTAL, 4_000).copy(currency = "JPY", dayCostRole = DayCostRole.REPLACEMENT)
         val beforeCreateOutbox = outboxCount()
         assertEquals(AppError.Validation("appliedPrice", "confirm_missing_prices"),
             (expenses.create(rental) as AppResult.Failure).error)
@@ -302,7 +387,7 @@ class DayCostContractTest {
         db.expenseDao().upsert(ExpenseEntity(draftId, workspaceId, campaignId = campaignId, farmId = farmId,
             harvestId = dayId, expenseDate = day, concept = rental.concept, category = rental.category.name,
             amountMinor = 4_000, currency = "JPY", status = ExpenseStatus.DRAFT.name,
-            origin = ExpenseOrigin.MANUAL.name, metadata = LocalMetadata(now, now)))
+            origin = ExpenseOrigin.DAY_REPLACEMENT.name, metadata = LocalMetadata(now, now)))
         val draftBefore = db.expenseDao().findById(draftId)!!
         val beforePostOutbox = outboxCount()
         assertEquals(AppError.Validation("appliedPrice", "confirm_missing_prices"),
@@ -310,7 +395,7 @@ class DayCostContractTest {
         assertEquals(draftBefore, db.expenseDao().findById(draftId))
         assertEquals(beforePostOutbox, outboxCount())
 
-        val unlinked = ok(expenses.create(rental.copy(harvestId = null)))
+        val unlinked = ok(expenses.create(rental.copy(harvestId = null, campaignId = campaignId, dayCostRole = DayCostRole.ADDITIVE)))
         val unlinkedBefore = db.expenseDao().findById(unlinked)!!
         val beforeUpdateOutbox = outboxCount()
         assertEquals(AppError.Validation("appliedPrice", "confirm_missing_prices"),
@@ -318,7 +403,7 @@ class DayCostContractTest {
         assertEquals(unlinkedBefore, db.expenseDao().findById(unlinked))
         assertEquals(beforeUpdateOutbox, outboxCount())
         assertEquals(AppError.Validation("appliedPrice", "confirm_missing_prices"),
-            (costs.linkToDay(unlinked, dayId) as AppResult.Failure).error)
+            (costs.linkToDay(unlinked, dayId, DayCostRole.REPLACEMENT) as AppResult.Failure).error)
         assertEquals(unlinkedBefore, db.expenseDao().findById(unlinked))
         assertEquals(beforeUpdateOutbox, outboxCount())
         assertEquals(originalLedger, db.expenseDao().findById(historicalId))
@@ -412,8 +497,8 @@ class DayCostContractTest {
         assertEquals(ExpenseStatus.POSTED, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.status)
         assertEquals(5_500L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
 
-        // A hand-typed machinery rental of the day does stand for the calculation.
-        ok(expenses.create(cost(dayId, JornadaExpenseKind.RENTAL, 4_000)))
+        // A machinery rental the farmer says replaces the calculation does stand for it (#475).
+        ok(expenses.create(cost(dayId, JornadaExpenseKind.RENTAL, 4_000).copy(dayCostRole = DayCostRole.REPLACEMENT)))
         assertEquals(ExpenseStatus.DRAFT, calculated(dayId, ExpenseOrigin.DAY_EQUIPMENT)!!.status)
         assertEquals(6_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
     }
@@ -422,8 +507,8 @@ class DayCostContractTest {
     fun aClosedCampaignRefusesToSwapWhichCostCounts() = runBlocking {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
         val dayId = ok(harvests.openJornada(farmId, day))
-        val manual = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000)))
         named(dayId, 5)
+        val manual = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000).copy(dayCostRole = DayCostRole.REPLACEMENT)))
         val campaign = db.campaignDao().findById(campaignId)!!
         db.campaignDao().upsert(campaign.copy(status = CampaignStatus.CLOSED))
 
@@ -479,23 +564,29 @@ class DayCostContractTest {
         ok(costs.saveRates(farmId, RecollectionRates(fullDayMinor = 7_000)))
         val dayId = ok(harvests.openJornada(farmId, day))
         named(dayId, 5)
-        val unlinked = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000).copy(harvestId = null)))
-        val otherDate = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 9_000).copy(harvestId = null, expenseDate = day.plusDays(1))))
+        val unlinked = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000).copy(harvestId = null, campaignId = campaignId)))
+        val otherDate = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 9_000).copy(harvestId = null, campaignId = campaignId, expenseDate = day.plusDays(1))))
+        // #475: one kept «Fuera de campaña» is never a candidate nor linked.
+        val outside = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 5_000).copy(harvestId = null)))
 
         // Ambiguous: listed for the day, never merged or dropped; the calculation still counts.
-        val listed = UnlinkedDayCosts.of(dayId, farmId, day, expenses.observeAll().first())
+        val listed = UnlinkedDayCosts.of(dayId, farmId, day, expenses.observeAll().first(), campaignId)
         assertEquals(listOf(unlinked), listed.map { it.id })
         assertEquals(ExpenseStatus.POSTED, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
 
         // Another date is not this day's.
         assertEquals(AppError.Validation("expense", "other_day"), (costs.linkToDay(otherDate, dayId) as AppResult.Failure).error)
 
-        // Linked by the farmer: the collision rule applies, never both.
-        ok(costs.linkToDay(unlinked, dayId))
+        val outsideBefore = db.expenseDao().findById(outside)!!
+        assertEquals(AppError.Conflict("outside_campaign"), (costs.linkToDay(outside, dayId) as AppResult.Failure).error)
+        assertEquals(outsideBefore, db.expenseDao().findById(outside))
+
+        // Linked by the farmer as replacing the calculation: never both.
+        ok(costs.linkToDay(unlinked, dayId, DayCostRole.REPLACEMENT))
         assertEquals(dayId, expenses.observe(unlinked).first()!!.harvestId)
         assertEquals(ExpenseStatus.DRAFT, calculated(dayId, ExpenseOrigin.DAY_LABOUR)!!.status)
         assertEquals(30_000L, JornadaCost.of(expenses.observeForHarvest(dayId).first()).postedMinor)
-        assertEquals(emptyList<Expense>(), UnlinkedDayCosts.of(dayId, farmId, day, expenses.observeAll().first()))
+        assertEquals(emptyList<Expense>(), UnlinkedDayCosts.of(dayId, farmId, day, expenses.observeAll().first(), campaignId))
     }
 
     @Test

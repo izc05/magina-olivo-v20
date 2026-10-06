@@ -8,7 +8,6 @@ import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.expense.Expense
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
-import com.isivoltpro.maginaolivo.domain.expense.ExpenseSummary
 import com.isivoltpro.maginaolivo.domain.harvest.Harvest
 import java.time.LocalDate
 
@@ -142,11 +141,12 @@ val CampaignNotebook.phytoRecords: List<PhytoRecord>
  * add counts and hours, never a second amount.
  */
 data class NotebookCosts(
-    val ledger: ExpenseSummary,
+    /** #450: every amount per currency, never converted nor reduced to one currency. */
+    val ledger: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency>,
     /** Posted LABOR Expenses. */
-    val labourMoney: ExpenseSummary,
+    val labourMoney: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency>,
     /** Posted MACHINERY, FUEL and REPAIR Expenses. */
-    val machineryMoney: ExpenseSummary,
+    val machineryMoney: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency>,
     /** Hours of machine use written on the Campaign's Activities. */
     val machineHours: Double,
     /** Activities with at least one machine. */
@@ -163,9 +163,9 @@ val CampaignNotebook.costs: NotebookCosts
     get() {
         val withMachines = (works + harvestDays).filter { it.machines.isNotEmpty() }
         return NotebookCosts(
-            ledger = expenseSummary,
-            labourMoney = ExpenseSummary.of(expenses.filter { it.category == ExpenseCategory.LABOR }),
-            machineryMoney = ExpenseSummary.of(expenses.filter { it.category in NotebookCosts.MACHINERY_CATEGORIES }),
+            ledger = expensesByCurrency,
+            labourMoney = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(expenses.filter { it.category == ExpenseCategory.LABOR }),
+            machineryMoney = com.isivoltpro.maginaolivo.domain.expense.RecollectionLedger.posted(expenses.filter { it.category in NotebookCosts.MACHINERY_CATEGORIES }),
             machineHours = withMachines.sumOf { activity -> activity.machines.sumOf { it.hoursUsed ?: 0.0 } },
             machineUses = withMachines.size,
             documents = expenses.filter { !it.invoiceNumber.isNullOrBlank() || it.origin == ExpenseOrigin.DOCUMENT_OCR },
