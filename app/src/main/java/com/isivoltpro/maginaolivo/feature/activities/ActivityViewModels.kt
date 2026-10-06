@@ -165,6 +165,9 @@ data class RegisterActivityUiState(
     val isLoading: Boolean = true,
     val farms: List<Farm> = emptyList(),
     val selectedFarmId: UUID? = null,
+    /** #498: a Farm brought by navigation is context, not a free selection. */
+    val contextualFarmId: UUID? = null,
+    val contextualFarmAccepted: Boolean = false,
     val error: String? = null,
 )
 
@@ -182,17 +185,49 @@ class RegisterActivityViewModel(
 
     fun retry() = load()
 
+    /** Global entry: the farmer is explicitly choosing a Farm now. */
     fun selectFarm(farmId: UUID) {
-        mutableState.value = mutableState.value.copy(selectedFarmId = farmId)
+        mutableState.value = mutableState.value.copy(
+            selectedFarmId = farmId,
+            contextualFarmId = null,
+            contextualFarmAccepted = false,
+            error = null,
+        )
+    }
+
+    /** Context entry: never substitute another Farm if this one is no longer active. */
+    fun preselectFarm(farmId: UUID) {
+        val current = mutableState.value
+        if (current.isLoading) {
+            mutableState.value = current.copy(
+                selectedFarmId = farmId,
+                contextualFarmId = farmId,
+                contextualFarmAccepted = false,
+                error = null,
+            )
+            return
+        }
+        val accepted = current.farms.any { it.id == farmId }
+        mutableState.value = current.copy(
+            selectedFarmId = farmId.takeIf { accepted },
+            contextualFarmId = farmId,
+            contextualFarmAccepted = accepted,
+            error = if (accepted) null else CONTEXT_FARM_MISSING,
+        )
     }
 
     fun changeFarm() {
-        mutableState.value = mutableState.value.copy(selectedFarmId = null)
+        mutableState.value = mutableState.value.copy(
+            selectedFarmId = null,
+            contextualFarmId = null,
+            contextualFarmAccepted = false,
+            error = null,
+        )
     }
 
     private fun load() {
         observationJob?.cancel()
-        mutableState.value = mutableState.value.copy(isLoading = true, error = null)
+        mutableState.value = mutableState.value.copy(isLoading = true, error = null, contextualFarmAccepted = false)
         observationJob = viewModelScope.launch {
             when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
                 is AppResult.Failure -> mutableState.value = mutableState.value.copy(
@@ -201,15 +236,27 @@ class RegisterActivityViewModel(
                 )
                 is AppResult.Success -> farmRepository.observeActive(workspace.value).collect { farms ->
                     val current = mutableState.value
-                    val stillThere = current.selectedFarmId?.takeIf { id -> farms.any { it.id == id } }
+                    val contextual = current.contextualFarmId
+                    val contextAccepted = contextual != null && farms.any { it.id == contextual }
+                    val selected = when {
+                        contextual != null -> contextual.takeIf { contextAccepted }
+                        current.selectedFarmId != null -> current.selectedFarmId.takeIf { id -> farms.any { it.id == id } }
+                        else -> farms.singleOrNull()?.id
+                    }
                     mutableState.value = current.copy(
                         isLoading = false,
                         farms = farms,
-                        selectedFarmId = stillThere ?: farms.singleOrNull()?.id,
+                        selectedFarmId = selected,
+                        contextualFarmAccepted = contextAccepted,
+                        error = if (contextual != null && !contextAccepted) CONTEXT_FARM_MISSING else null,
                     )
                 }
             }
         }
+    }
+
+    private companion object {
+        const val CONTEXT_FARM_MISSING = "Esta finca ya no está activa. Vuelve a Mi Campo y elige otra."
     }
 }
 
