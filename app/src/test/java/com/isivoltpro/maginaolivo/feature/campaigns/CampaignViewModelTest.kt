@@ -55,6 +55,8 @@ class CampaignViewModelTest {
         advanceUntilIdle()
         viewModel.activate(); advanceUntilIdle()
         assertEquals("activate", fake.lastAction)
+        viewModel.closeToday(); advanceUntilIdle()
+        assertEquals("closeToday", fake.lastAction)
         assertEquals("Campaña activada", viewModel.state.value.message)
         viewModel.consumeMessage()
         assertNull(viewModel.state.value.message)
@@ -116,6 +118,7 @@ class CampaignViewModelTest {
         override suspend fun activate(id: UUID) = result("activate")
         override suspend fun markHarvest(id: UUID) = result("harvest")
         override suspend fun close(id: UUID, endDate: LocalDate) = result("close")
+        override suspend fun closeToday(id: UUID) = result("closeToday")
         override suspend fun reopen(id: UUID) = result("reopen")
         override suspend fun archivePreparation(id: UUID) = result("archive")
         private fun result(action: String): AppResult<Unit> { lastAction = action; return if (fail) AppResult.Failure(com.isivoltpro.maginaolivo.core.common.AppError.Conflict(action)) else AppResult.Success(Unit) }
