@@ -34,6 +34,11 @@ data class CrewDraft(
     val harvestId: UUID, val workerIds: List<UUID>, val unit: LabourUnit, val minutes: Int? = null,
     val appliedRate: LabourRateSnapshot? = null,
     val initialPayments: List<LabourPayment> = emptyList(),
+    /**
+     * #449: the farmer says the price is not known yet. The line is saved without a price (never
+     * 0 € and never the usual rate filled in silently) and nothing can be paid on it yet.
+     */
+    val priceUnknown: Boolean = false,
 )
 
 /** Historical anonymous attendance; new recollection must use named people. */
@@ -58,6 +63,7 @@ object LabourRules {
     fun validate(draft: CrewDraft): LabourProblem? = when {
         draft.workerIds.isEmpty() -> LabourProblem("workers", "empty")
         draft.workerIds.toSet().size != draft.workerIds.size -> LabourProblem("workers", "duplicate")
+        draft.priceUnknown && (draft.appliedRate != null || draft.initialPayments.isNotEmpty()) -> LabourProblem("appliedRate", "price_unknown")
         else -> validate(1, draft.unit, draft.minutes)
     }
 

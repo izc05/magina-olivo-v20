@@ -25,6 +25,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
   cantidad ni de precio una máquina que sí tenía precio: la app pide confirmar antes los precios que
   faltan. Añadir una máquina sin precio sigue permitido (el coste se queda como subtotal conocido,
   marcado como incompleto) y, al confirmar el último precio, se recalcula una sola vez.
+- **Se puede anotar a alguien sin saber aún su precio (#449).** En un día con jornales ya pagados a
+  precio conocido se puede añadir a otra persona sin precio: queda registrada, no cuenta como 0 € y el coste
+  del día se muestra como incompleto hasta confirmar su precio; al confirmarlo se recalcula una sola vez. Lo
+  que sigue bloqueado es añadir a alguien con precio mientras otro precio de ese día está pendiente.
 - **El coste/kg avisa cuando faltan costes por confirmar (#449).** Si hay jornales o maquinaria sin
   precio, costes del día aún sin calcular o gastos sin confirmar, el total y el coste/kg se llaman
   «contabilizado» y dicen qué falta («Incompleto · jornales sin precio»). Lo desconocido nunca cuenta como
