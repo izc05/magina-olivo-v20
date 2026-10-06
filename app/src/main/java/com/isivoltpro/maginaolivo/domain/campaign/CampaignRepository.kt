@@ -54,6 +54,8 @@ interface CampaignRepository {
     suspend fun activate(id: UUID): AppResult<Unit>
     suspend fun markHarvest(id: UUID): AppResult<Unit>
     suspend fun close(id: UUID, endDate: LocalDate): AppResult<Unit>
+    /** Close on the Workspace's calendar day; UI must not invent today from the phone timezone. */
+    suspend fun closeToday(id: UUID): AppResult<Unit>
     suspend fun reopen(id: UUID): AppResult<Unit>
     suspend fun archivePreparation(id: UUID): AppResult<Unit>
 }
