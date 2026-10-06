@@ -706,7 +706,7 @@ class ExpenseLedgerContractTest {
             .of(campaignId, expenses.observeAll().first(), listOf(pesada)).single()
         assertEquals(setOf(inCampaign, fromDocument), ledger.posted.map { it.id }.toSet())
         assertEquals(5_200L, ledger.amount())
-        assertEquals(13L, ledger.costPerKgMinor)
+        assertEquals(130L, ledger.costPerKgMilli) // #486: 0,130 €/kg
     }
 
     @Test

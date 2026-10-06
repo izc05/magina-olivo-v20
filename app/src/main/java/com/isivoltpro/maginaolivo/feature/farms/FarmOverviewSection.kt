@@ -24,6 +24,7 @@ import com.isivoltpro.maginaolivo.domain.analytics.FarmOverview
 import com.isivoltpro.maginaolivo.domain.analytics.FarmSeasonFigures
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.Percent
+import com.isivoltpro.maginaolivo.domain.expense.CostPerKg
 import com.isivoltpro.maginaolivo.domain.expense.Money
 import com.isivoltpro.maginaolivo.domain.harvest.Weight
 import com.isivoltpro.maginaolivo.ui.components.MoCompactListItem
@@ -54,14 +55,14 @@ internal fun overviewCost(costs: List<CurrencyTotal>): String =
  * Total cost over total kilos, in the one currency; «—» otherwise. #449: built on unconfirmed
  * costs it says «(incompleto)» beside the figure.
  */
-internal fun overviewCostPerKg(costPerKgMinor: Long?, costs: List<CurrencyTotal>, complete: Boolean? = true): String =
-    costPerKgMinor?.let { minor ->
-        costs.singleOrNull()?.let { "${Money.format(minor, it.currency)}/kg" + if (complete == false) " (incompleto)" else "" }
+internal fun overviewCostPerKg(costPerKgMilli: Long?, costs: List<CurrencyTotal>, complete: Boolean? = true): String =
+    costPerKgMilli?.let { minor ->
+        costs.singleOrNull()?.let { CostPerKg.format(minor, it.currency) + if (complete == false) " (incompleto)" else "" }
     } ?: "—"
 
 /** #359 follow-up: recollection plus general cost over the weighed kilos; «—» otherwise. */
 internal fun overviewTotalCostPerKg(overview: FarmOverview): String =
-    overviewCostPerKg(overview.totalCostPerKgMinor, overview.totalCosts, overview.costComplete)
+    overviewCostPerKg(overview.totalCostPerKgMilli, overview.totalCosts, overview.costComplete)
 
 /** Farms whose name or municipality contains [query], ignoring case and accents. */
 internal fun matchesFarmSearch(query: String, name: String, municipality: String?): Boolean {
@@ -89,12 +90,12 @@ internal fun overviewNote(overview: FarmOverview): String = listOfNotNull(
     if (overview.costs.size > 1) "Varias monedas: sin coste por kilo conjunto" else null,
 ).joinToString(" · ")
 
-/** A Farm's line: «3.000 kg · 75 % del total · rend. 20,00 % · 0,10 €/kg». */
+/** A Farm's line: «3.000 kg · 75 % del total · rend. 20,00 % · 0,100 €/kg». */
 internal fun overviewFarmLine(overview: FarmOverview, farm: FarmSeasonFigures): String = listOf(
     overviewKilos(farm.delivery),
     overview.sharePercent(farm)?.let { "$it % del total" } ?: "sin kilos",
     "rend. ${overviewYield(farm.delivery)}",
-    overviewCostPerKg(farm.costPerKgMinor, farm.costs, farm.costComplete).let { if (it == "—") "coste/kg —" else it },
+    overviewCostPerKg(farm.costPerKgMilli, farm.costs, farm.costComplete).let { if (it == "—") "coste/kg —" else it },
 ).joinToString(" · ")
 
 /**
@@ -138,7 +139,7 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
         ), Modifier.testTag("farm-overview-production"))
         MoStatStrip(listOf(
             MoStat("Coste recogida", overviewCost(overview.costs), MoIcons.Euro),
-            MoStat("Coste recogida/kg", overviewCostPerKg(overview.costPerKgMinor, overview.costs, overview.costComplete), MoIcons.Euro),
+            MoStat("Coste recogida/kg", overviewCostPerKg(overview.costPerKgMilli, overview.costs, overview.costComplete), MoIcons.Euro),
         ), Modifier.testTag("farm-overview-costs"))
         Text(overviewNote(overview), style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("farm-overview-note"))
         // #359 follow-up: costs linked to no campaign are shown apart, never inside the recollection cost/kg.

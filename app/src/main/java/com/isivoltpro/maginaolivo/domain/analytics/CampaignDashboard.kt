@@ -31,7 +31,7 @@ data class CampaignDashboard(
      */
     val costs: List<CampaignCurrencyCost>,
     /** Currency minor units per weighed kilo; null without a unique currency or weighed kilos. */
-    val costPerKgMinor: Long?,
+    val costPerKgMilli: Long?,
 ) {
     companion object {
         fun of(notebook: CampaignNotebook, today: LocalDate): CampaignDashboard {
@@ -67,7 +67,7 @@ data class CampaignDashboard(
                 closedOn = closedOn,
                 costs = costs,
                 // Slice 1 decimal ratio, rounded only for display in the currency's minor units.
-                costPerKgMinor = canonical?.costPerKgMinor,
+                costPerKgMilli = canonical?.costPerKgMilli,
             )
         }
     }

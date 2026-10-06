@@ -35,7 +35,7 @@ private fun resourceCostNote(bucket: RecollectionBucket, resources: List<Pair<UU
 
 internal fun List<RecollectionCurrency>.costKgLabel(): String =
     if (isEmpty()) "—" else joinToString("\n") { ledger ->
-        ledger.costPerKgMinor?.let { "${Money.format(it, ledger.currency)}/kg" } ?: "— (${ledger.currency})"
+        ledger.costPerKgMilli?.let { CostPerKg.format(it, ledger.currency) } ?: "— (${ledger.currency})"
     }
 
 /** #449: what is still unknown, in the farmer's words; null when the cost is complete. */

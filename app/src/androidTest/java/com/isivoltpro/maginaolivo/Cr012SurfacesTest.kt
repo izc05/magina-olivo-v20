@@ -166,7 +166,7 @@ class Cr012SurfacesTest {
         rule.onNodeWithTag("day-resource-equipment").assertTextContains("180,00", substring = true)
         rule.onNodeWithTag("day-resource-other").performScrollTo().assertTextContains("50,00", substring = true)
         capture("day-resources")
-        rule.onNodeWithTag("day-cost-per-kg").performScrollTo().assertTextContains("0,17", substring = true)
+        rule.onNodeWithTag("day-cost-per-kg").performScrollTo().assertTextContains("0,166", substring = true) // #486: 530 € / 3.200 kg = 0,1656… → 0,166
         capture("day-cost-kg")
         rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onAllNodesWithTag("jornada-labour")[0].performClick()
@@ -184,7 +184,7 @@ class Cr012SurfacesTest {
         rule.onNodeWithTag("notebook-summary-labour").performScrollTo().assertTextContains("60,00", substring = true).assertTextContains("240,00", substring = true)
         rule.onNodeWithTag("notebook-summary-other").performScrollTo()
         capture("campaign-costs")
-        rule.onNodeWithTag("dashboard-cost-per-kg").performScrollTo().assertTextContains("0,17", substring = true)
+        rule.onNodeWithTag("dashboard-cost-per-kg").performScrollTo().assertTextContains("0,166", substring = true) // #486: thousandths, never 0,17
         capture("campaign-total-cost-kg")
         rule.onNodeWithText(workers[0].name).assertDoesNotExist()
         rule.onNodeWithText("Trabajos").assertDoesNotExist()

@@ -72,11 +72,12 @@ class FarmOverviewScreenTest {
         }
         composeRule.onNodeWithTag("farm-overview-period").assertTextContains("Campaña 2026/27")
         val money = { minor: Long -> com.isivoltpro.maginaolivo.domain.expense.Money.format(minor, "EUR") }
-        // Recollection cost/kg stays 1.440 € / 5.700 kg; general costs and the total are apart.
-        composeRule.onNodeWithText(money(25) + "/kg", useUnmergedTree = true).performScrollTo()
+        val perKg = { milli: Long -> com.isivoltpro.maginaolivo.domain.expense.CostPerKg.format(milli, "EUR") }
+        // Recollection cost/kg stays 1.440 € / 5.700 kg = 0,253 €/kg (#486, never 0,25); general costs apart.
+        composeRule.onNodeWithText(perKg(253), useUnmergedTree = true).performScrollTo()
         composeRule.onNodeWithTag("farm-overview-general").performScrollTo()
         composeRule.onNodeWithText(money(118_500), useUnmergedTree = true).performScrollTo()
         composeRule.onNodeWithText(money(262_500), useUnmergedTree = true).performScrollTo()
-        composeRule.onNodeWithText(money(46) + "/kg", useUnmergedTree = true).performScrollTo()
+        composeRule.onNodeWithText(perKg(461), useUnmergedTree = true).performScrollTo()
     }
 }

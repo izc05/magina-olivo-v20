@@ -47,8 +47,8 @@ class FarmOverviewTest {
         assertEquals(2_000, overview.delivery.fatYield!!.hundredths)
         assertEquals(75, overview.yieldCoveragePercent)
         assertEquals(80_000L, overview.costs.single().amountMinor)
-        // 800 € / 4.000 kg = 0,20 €/kg — not the average of 0,10 and 0,50.
-        assertEquals(20L, overview.costPerKgMinor)
+        // 800 € / 4.000 kg = 0,200 €/kg — not the average of 0,10 and 0,50 (#486: thousandths).
+        assertEquals(200L, overview.costPerKgMilli)
         assertEquals(listOf("Estacas", "El Cerro"), overview.farms.map { it.farmName })
         assertEquals(75, overview.sharePercent(overview.farms.first()))
         assertEquals(listOf("Los Llanos"), overview.farmsWithoutCampaign)
@@ -124,7 +124,7 @@ class FarmOverviewTest {
             listOf(delivery(estacasNow, 1_000_000, null), delivery(cerroNow, 1_000_000, null)),
             listOf(cost(estacasNow, 10_000), cost(cerroNow, 10_000).copy(currency = "USD")))
         assertEquals(listOf("EUR", "USD"), overview.costs.map { it.currency })
-        assertNull(overview.costPerKgMinor)
+        assertNull(overview.costPerKgMilli)
     }
 
     /** Codex #384: a closed season keeps the Farm's frozen name; a running one shows today's. */
@@ -148,7 +148,7 @@ class FarmOverviewTest {
     @Test fun nothingWeighedIsUnknownNotZero() {
         val overview = FarmOverview.of("2026/27", listOf(estacas), listOf(estacasNow), emptyList(), emptyList())
         assertNull(overview.delivery.fatYield)
-        assertNull(overview.costPerKgMinor)
+        assertNull(overview.costPerKgMilli)
         assertNull(overview.sharePercent(overview.farms.single()))
         assertEquals(emptyList<CurrencyTotal>(), overview.costs)
     }
@@ -173,10 +173,11 @@ class FarmOverviewTest {
             listOf(delivery(estacasNow, 5_700_000, null)), expenses)
 
         assertEquals(144_000L, overview.costs.single().amountMinor)
-        assertEquals(25L, overview.costPerKgMinor) // 1.440 € / 5.700 kg, general costs never inside
+        // #486: 1.440 € / 5.700 kg = 0,2526… → 0,253 €/kg, never 0,25; general costs never inside.
+        assertEquals(253L, overview.costPerKgMilli)
         assertEquals(118_500L, overview.generalCosts.single().amountMinor)
         assertEquals(262_500L, overview.totalCosts.single().amountMinor)
-        assertEquals(46L, overview.totalCostPerKgMinor) // 2.625 € / 5.700 kg
+        assertEquals(461L, overview.totalCostPerKgMilli) // 2.625 € / 5.700 kg = 0,4605… → 0,461 €/kg
     }
 
     @Test fun generalCostsInAnotherCurrencyGiveNoTotalCostPerKg() {
@@ -188,14 +189,14 @@ class FarmOverviewTest {
         val overview = FarmOverview.of("2026/27", listOf(estacas), listOf(estacasNow),
             listOf(delivery(estacasNow, 1_000_000, null)), listOf(cost(estacasNow, 10_000), usd))
         assertEquals(listOf("EUR", "USD"), overview.totalCosts.map { it.currency })
-        assertEquals(10L, overview.costPerKgMinor)
-        assertNull(overview.totalCostPerKgMinor)
+        assertEquals(100L, overview.costPerKgMilli)
+        assertNull(overview.totalCostPerKgMilli)
     }
 
     @Test fun withoutKilosTheTotalShowsButNotPerKg() {
         val overview = FarmOverview.of("2026/27", listOf(estacas), listOf(estacasNow), emptyList(), listOf(cost(estacasNow, 10_000)))
         assertEquals(10_000L, overview.totalCosts.single().amountMinor)
-        assertNull(overview.totalCostPerKgMinor)
+        assertNull(overview.totalCostPerKgMilli)
     }
 
     private fun farm(name: String) = Farm(UUID.randomUUID(), workspace, name, null, null, null, null, null, 1, null, null, null, 1)
