@@ -76,11 +76,13 @@ class AgendaReminderContractTest {
     private lateinit var alarms: FakeScheduler
     private lateinit var coordinator: ReminderCoordinator
     private lateinit var activities: OfflineFirstActivityRepository
+    private lateinit var repositoryClock: MutableClock
 
     @Before
     fun before() = runBlocking {
         context.deleteDatabase(DB)
         alarms = FakeScheduler()
+        repositoryClock = MutableClock(now)
         open()
         seed()
     }
@@ -146,6 +148,7 @@ class AgendaReminderContractTest {
         val harvestDay = ok(activities.create(planned(null, type = ActivityType.HARVEST_DAY)))
         ok(activities.create(NewActivity(farmId, null, ActivityType.PRUNING, day, "Borrador", asDraft = true)))
         val done = ok(activities.create(planned(null)))
+        repositoryClock.value = Instant.parse("2026-11-20T09:00:00Z")
         ok(activities.complete(done))
 
         val agenda = activities.observeAgenda().first()
@@ -164,6 +167,7 @@ class AgendaReminderContractTest {
         val second = ok(activities.create(planned(null, ReminderRequest(ReminderKind.SAME_DAY))))
         assertEquals(2, alarms.active.size)
 
+        repositoryClock.value = Instant.parse("2026-11-20T09:00:00Z")
         ok(activities.complete(first))
         ok(activities.cancel(second))
 
@@ -180,6 +184,7 @@ class AgendaReminderContractTest {
         val reminder = db.agendaDao().listForOwner("ACTIVITY", id).single()
         db.agendaDao().markFired(reminder.id, now.minusSeconds(60))
 
+        repositoryClock.value = Instant.parse("2026-11-20T09:00:00Z")
         ok(activities.complete(id))
 
         assertFalse(reminder.id in alarms.active)
@@ -332,8 +337,8 @@ class AgendaReminderContractTest {
 
     private fun open() {
         db = MaginaOlivoDatabase.create(context, DB)
-        coordinator = ReminderCoordinator(db, alarms, FixedClock(now)) { madrid }
-        activities = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers, coordinator, zone = { madrid })
+        coordinator = ReminderCoordinator(db, alarms, repositoryClock) { madrid }
+        activities = OfflineFirstActivityRepository(db, repositoryClock, RandomIds, TestDispatchers, coordinator, zone = { madrid })
     }
 
     private suspend fun seed() {
@@ -375,6 +380,11 @@ class AgendaReminderContractTest {
     }
 
     private data class FixedClock(val value: Instant) : AppClock {
+        override fun nowInstant() = value
+        override fun today(zoneId: ZoneId) = LocalDate.ofInstant(value, zoneId)
+    }
+
+    private data class MutableClock(var value: Instant) : AppClock {
         override fun nowInstant() = value
         override fun today(zoneId: ZoneId) = LocalDate.ofInstant(value, zoneId)
     }
