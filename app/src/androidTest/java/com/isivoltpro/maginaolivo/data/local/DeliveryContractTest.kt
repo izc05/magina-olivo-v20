@@ -114,6 +114,25 @@ class DeliveryContractTest {
     // ------------------------------------------------------------ delivery ≠ harvest
 
     @Test
+    fun pesadaAndYieldUseWorkspaceCalendarAtMidnightBoundaries() = runBlocking {
+        val workspace = db.workspaceDao().findById(workspaceId)!!
+        db.workspaceDao().upsert(workspace.copy(timezone = "Pacific/Honolulu"))
+        val repository = OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        val utcDay = LocalDate.parse("2026-12-02")
+
+        assertValidation(
+            "deliveryDate",
+            repository.create(draft(2_000_000, north to null).copy(deliveryDate = utcDay)),
+        )
+
+        val validId = ok(repository.create(draft(2_000_000, north to null).copy(deliveryDate = utcDay.minusDays(1))))
+        assertValidation(
+            "analysisDate",
+            repository.recordYield(validId, YieldDraft(analysisDate = utcDay, fatYieldHundredths = 2_000)),
+        )
+    }
+
+    @Test
     fun aDeliveryIsItsOwnRecordAndNeedNotMatchTheHarvest() = runBlocking {
         ok(harvests.create(HarvestDraft(farmId, day, 5_000_000, listOf(HarvestShareInput(north, null), HarvestShareInput(south, null)))))
         val id = ok(deliveries.create(draft(2_850_000, north to null, south to null)))
