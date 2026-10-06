@@ -151,7 +151,7 @@ class ReminderPreferencesContractTest {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
         }
         coordinator = ReminderCoordinator(db, alarms, clock, preferences) { madrid }
-        activities = OfflineFirstActivityRepository(db, clock, RandomIds, TestDispatchers, coordinator, preferences) { madrid }
+        activities = OfflineFirstActivityRepository(db, clock, RandomIds, TestDispatchers, coordinator, preferences, zone = { madrid })
         val organizations = OfflineFirstOrganizationRepository(db, workspaces, clock, RandomIds, TestDispatchers)
         profile = OfflineFirstProfileRepository(db, workspaces, organizations, clock, RandomIds, TestDispatchers)
     }
