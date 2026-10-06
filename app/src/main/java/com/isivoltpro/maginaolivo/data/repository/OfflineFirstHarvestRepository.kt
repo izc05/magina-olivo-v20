@@ -50,7 +50,8 @@ class OfflineFirstHarvestRepository(
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
-    private val zoneId: () -> ZoneId = ZoneId::systemDefault,
+    /** Test override only; production derives the calendar from the persisted Workspace. */
+    private val zoneId: (() -> ZoneId)? = null,
 ) : HarvestRepository {
     private val jornadas = JornadaLedger(database, idGenerator)
 
@@ -80,11 +81,11 @@ class OfflineFirstHarvestRepository(
             }
         }.flowOn(dispatchers.io)
 
-    override suspend fun create(draft: HarvestDraft): AppResult<UUID> {
-        validate(draft)?.let { return it }
-        return inTransaction("create_harvest") {
+    override suspend fun create(draft: HarvestDraft): AppResult<UUID> =
+        inTransaction("create_harvest") {
             val farm = database.farmDao().findById(draft.farmId)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
+            validate(draft, farm.workspaceId)?.let { return@inTransaction it }
             if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
                 return@inTransaction conflict("archived_farm")
             }
@@ -114,7 +115,6 @@ class OfflineFirstHarvestRepository(
             database.enqueueCollapsed(idGenerator, SyncEntityType.HARVEST, id, OutboxOperation.CREATE, now)
             AppResult.Success(id)
         }
-    }
 
     override suspend fun clearUnfoundedDayOrigins(): AppResult<Unit> =
         inTransaction("clear_unfounded_day_origins") {
@@ -122,11 +122,13 @@ class OfflineFirstHarvestRepository(
             AppResult.Success(Unit)
         }
 
-    override suspend fun openJornada(farmId: UUID, date: LocalDate): AppResult<UUID> {
-        if (date.isAfter(clock.today(zoneId()))) return AppResult.Failure(AppError.Validation("harvestDate", "future"))
-        return inTransaction("open_jornada") {
+    override suspend fun openJornada(farmId: UUID, date: LocalDate): AppResult<UUID> =
+        inTransaction("open_jornada") {
             val farm = database.farmDao().findById(farmId)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
+            if (date.isAfter(today(farm.workspaceId))) {
+                return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "future"))
+            }
             if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
                 return@inTransaction conflict("archived_farm")
             }
@@ -142,7 +144,6 @@ class OfflineFirstHarvestRepository(
             // returns it. Stored 0 = not weighed yet (Harvest.awaitingPesadas).
             AppResult.Success(jornadas.autoDay(farm.workspaceId, farm.id, campaign.id, date, clock.nowInstant()))
         }
-    }
 
     override suspend fun update(id: UUID, draft: HarvestDraft): AppResult<Unit> =
         inTransaction("update_harvest") {
@@ -156,7 +157,7 @@ class OfflineFirstHarvestRepository(
                 return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "before_campaign"))
             }
             if (current.dayOrigin == AUTO_DAY) return@inTransaction updateAutoDay(current, draft)
-            validate(draft)?.let { return@inTransaction it }
+            validate(draft, current.workspaceId)?.let { return@inTransaction it }
             // Phase 19B: a Jornada with Pesadas takes its kilos from them, never from the form.
             val pesadas = database.deliveryDao().listLiveForHarvest(id)
             val pesadaGrams = pesadas.sumOf { it.netGrams }
@@ -252,9 +253,12 @@ class OfflineFirstHarvestRepository(
             AppResult.Success(Unit)
         }
 
-    private fun validate(draft: HarvestDraft): AppResult.Failure? =
-        HarvestRules.validate(draft, clock.today(zoneId()))
+    private suspend fun validate(draft: HarvestDraft, workspaceId: UUID): AppResult.Failure? =
+        HarvestRules.validate(draft, today(workspaceId))
             ?.let { AppResult.Failure(AppError.Validation(it.field, it.code)) }
+
+    private suspend fun today(workspaceId: UUID): LocalDate =
+        database.todayForWorkspace(workspaceId, clock, zoneId)
 
     /**
      * Writes the origin Parcels with the Harvest, inside its transaction (#458). A Parcel the day
