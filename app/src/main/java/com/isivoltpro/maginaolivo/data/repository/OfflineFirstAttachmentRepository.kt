@@ -10,7 +10,9 @@ import com.isivoltpro.maginaolivo.data.local.MaginaOlivoDatabase
 import com.isivoltpro.maginaolivo.data.local.entity.DocumentEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
+import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
+import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.local.model.SyncStatus
 import com.isivoltpro.maginaolivo.domain.attachment.Attachment
@@ -261,28 +263,30 @@ class OfflineFirstAttachmentRepository(
         }
 
     private suspend fun resolveOwner(owner: AttachmentOwner): AppResult<UUID> {
-        val (workspaceId, deletedAt) = when (owner.type) {
+        data class OwnerState(val workspaceId: UUID, val deletedAt: Instant?, val archived: Boolean)
+
+        val state = when (owner.type) {
             AttachmentOwnerType.FARM -> database.farmDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, it.status == FarmStatus.ARCHIVED) }
             AttachmentOwnerType.PARCEL -> database.parcelDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, it.status == RecordStatus.ARCHIVED) }
             AttachmentOwnerType.CAMPAIGN -> database.campaignDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
             AttachmentOwnerType.ACTIVITY -> database.activityDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
             AttachmentOwnerType.EXPENSE -> database.expenseDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
             AttachmentOwnerType.HARVEST -> database.harvestDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
             AttachmentOwnerType.DELIVERY -> database.deliveryDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
             AttachmentOwnerType.DOCUMENT -> database.documentOcrDao().findById(owner.id)
-                ?.let { it.workspaceId to it.metadata.deletedAt }
+                ?.let { OwnerState(it.workspaceId, it.metadata.deletedAt, false) }
         } ?: return AppResult.Failure(AppError.NotFound(owner.type.name.lowercase()))
-        if (deletedAt != null) {
+        if (state.deletedAt != null || state.archived) {
             return AppResult.Failure(AppError.Validation(field = "owner", code = "archived_owner"))
         }
-        return AppResult.Success(workspaceId)
+        return AppResult.Success(state.workspaceId)
     }
 
     private fun copyIn(
