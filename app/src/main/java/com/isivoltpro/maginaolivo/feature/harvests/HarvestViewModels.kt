@@ -495,6 +495,7 @@ internal fun labourErrorMessage(error: AppError): String = when (error) {
         "confirm_missing_prices" -> "Confirma primero los precios de los jornales históricos de este día."
         "overflow" -> "El importe es demasiado grande. Revisa el precio y la duración."
         "exceeds_pending" -> "El importe supera el pendiente actual. Revisa el saldo de esta persona."
+        "future" -> if (error.field == "paymentDate") "La fecha del pago no puede ser futura." else "La fecha no puede ser futura."
         "anonymous_not_allowed" -> "Elige una persona para registrar el jornal."
         "currency_mismatch" -> "La moneda debe coincidir con el coste confirmado."
         "already_recorded" -> "Alguna de esas personas ya tiene su jornal en este día de recolección"
