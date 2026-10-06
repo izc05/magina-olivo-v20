@@ -160,6 +160,26 @@ class CampaignScreensTest {
         compose.onNodeWithText("Sin pesadas", useUnmergedTree = true).assertIsDisplayed()
     }
 
+    /** #449: closing is allowed with unconfirmed costs, and the farmer is told what that means. */
+    @Test fun closingWithUnconfirmedCostsWarnsButStillCloses() {
+        val active = campaign().copy(status = CampaignStatus.ACTIVE, endDate = null)
+        var complete by androidx.compose.runtime.mutableStateOf<Boolean?>(false)
+        var closed = false
+        compose.setContent { MaginaOlivoTheme {
+            CampaignDetailScreen(CampaignDetailUiState(isLoading = false, campaign = active), {}, {}, {}, { closed = true }, {}, {},
+                summary = com.isivoltpro.maginaolivo.feature.campaigns.CampaignSummaryUi(costComplete = complete))
+        } }
+        compose.onNodeWithTag("close-campaign").performScrollTo().performClick()
+        compose.onNodeWithTag("close-cost-warning").assertIsDisplayed()
+        compose.onNodeWithText("Hay costes sin confirmar", substring = true).assertIsDisplayed()
+        complete = true
+        compose.onNodeWithTag("close-cost-warning").assertDoesNotExist()
+        complete = null
+        compose.onNodeWithTag("close-cost-warning").assertDoesNotExist()
+        compose.onNodeWithTag("confirm-campaign-action").performClick()
+        compose.runOnIdle { assertTrue(closed) }
+    }
+
     private fun campaign() = Campaign(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "2025/26",
         LocalDate.parse("2025-10-01"), LocalDate.parse("2026-02-01"), CampaignStatus.CLOSED, null,
         listOf(CampaignParcelSnapshot(UUID.randomUUID(), "Finca histórica", "Parcela histórica", 1000.0, null, null)), 3)
