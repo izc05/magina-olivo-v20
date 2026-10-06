@@ -16,6 +16,8 @@ data class CampaignHistoryPoint(
     val yieldCoveragePercent: Int,
     /** Cost per kilo in [CampaignHistory.costCurrency] only; another currency is a gap. */
     val costPerKgMinor: Long?,
+    /** #449: the cost per kilo is only what is confirmed so far; said beside it, never hidden. */
+    val costIncomplete: Boolean = false,
 )
 
 /**
@@ -46,6 +48,7 @@ data class CampaignHistory(
                     yieldHundredths = row.fatYield?.hundredths,
                     yieldCoveragePercent = row.yieldCoveragePercent,
                     costPerKgMinor = row.singleCostPerKg()?.takeIf { row.costsByCurrency.single().currency == currency },
+                    costIncomplete = !row.costComplete,
                 )
             }
             val other = sorted.filter { row ->

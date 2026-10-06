@@ -134,6 +134,26 @@ class CampaignAnalyticsTest {
         assertTrue(history.otherCurrencyCampaigns.isEmpty())
     }
 
+    /** #449: a campaign with a machine still unpriced keeps its cost per kilo, marked incomplete. */
+    @Test fun anUnconfirmedCostMarksOnlyItsOwnCampaign() {
+        val lastDay = harvest(last, 0, LocalDate.of(2025, 11, 20))
+        val currentDay = harvest(current, 0, day(24))
+        val unpriced = com.isivoltpro.maginaolivo.domain.equipment.EquipmentLine(UUID.randomUUID(), currentDay.id,
+            com.isivoltpro.maginaolivo.domain.equipment.EquipmentType.TRAILER, null, 1, null, 1)
+        val notebooks = listOf(last, current).map { campaign ->
+            CampaignNotebook.project(campaign, emptyList(), listOf(lastDay, currentDay),
+                listOf(delivery(last, 1_000_000, LocalDate.of(2025, 11, 20), "Coop", null), delivery(current, 1_000_000, day(24), "Coop", null)),
+                listOf(expense(last, 10_000, ExpenseStatus.POSTED), expense(current, 20_000, ExpenseStatus.POSTED)),
+                equipment = listOf(unpriced))
+        }
+        val comparison = CampaignComparison.of(notebooks)
+        assertEquals(listOf(true, false), comparison.map { it.costComplete })
+        assertEquals(20L, comparison.last().costPerKgMinor)
+        val history = CampaignHistory.of(comparison)
+        assertEquals(listOf(false, true), history.points.map { it.costIncomplete })
+        assertEquals(20L, history.points.last().costPerKgMinor)
+    }
+
     @Test fun theCostSeriesNeverMixesCurrencies() {
         val notebooks = listOf(
             CampaignNotebook.project(last, emptyList(), emptyList(), listOf(delivery(last, 1_000_000, LocalDate.of(2025, 11, 20), "Coop", null)),
