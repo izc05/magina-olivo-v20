@@ -50,13 +50,18 @@ internal fun overviewCost(costs: List<CurrencyTotal>): String =
         total.amountMinor?.let { Money.format(it, total.currency) } ?: "Importe no disponible (${total.currency})"
     }
 
-/** Total cost over total kilos, in the one currency; «—» otherwise. */
-internal fun overviewCostPerKg(costPerKgMinor: Long?, costs: List<CurrencyTotal>): String =
-    costPerKgMinor?.let { minor -> costs.singleOrNull()?.let { "${Money.format(minor, it.currency)}/kg" } } ?: "—"
+/**
+ * Total cost over total kilos, in the one currency; «—» otherwise. #449: built on unconfirmed
+ * costs it says «(incompleto)» beside the figure.
+ */
+internal fun overviewCostPerKg(costPerKgMinor: Long?, costs: List<CurrencyTotal>, complete: Boolean? = true): String =
+    costPerKgMinor?.let { minor ->
+        costs.singleOrNull()?.let { "${Money.format(minor, it.currency)}/kg" + if (complete == false) " (incompleto)" else "" }
+    } ?: "—"
 
 /** #359 follow-up: recollection plus general cost over the weighed kilos; «—» otherwise. */
 internal fun overviewTotalCostPerKg(overview: FarmOverview): String =
-    overviewCostPerKg(overview.totalCostPerKgMinor, overview.totalCosts)
+    overviewCostPerKg(overview.totalCostPerKgMinor, overview.totalCosts, overview.costComplete)
 
 /** Farms whose name or municipality contains [query], ignoring case and accents. */
 internal fun matchesFarmSearch(query: String, name: String, municipality: String?): Boolean {
@@ -74,6 +79,11 @@ internal fun overviewNote(overview: FarmOverview): String = listOfNotNull(
     overview.delivery.fatYield?.let { "Análisis sobre el ${overview.yieldCoveragePercent} % de los kilos" },
     overview.costs.mapNotNull { total -> total.labourMinor?.let { Money.format(it, total.currency) } }
         .takeIf { it.isNotEmpty() }?.let { "Jornales ${it.joinToString(" · ")}" },
+    when (overview.costComplete) {
+        false -> "Costes sin confirmar"
+        null -> "Comprobando si faltan costes…"
+        true -> null
+    },
     "${overview.farms.size} de ${overview.farms.size + overview.farmsWithoutCampaign.size} fincas con campaña ${overview.season}",
     overview.farmsWithoutCampaign.takeIf { it.isNotEmpty() }?.let { "Sin campaña: ${it.joinToString(", ")}" },
     if (overview.costs.size > 1) "Varias monedas: sin coste por kilo conjunto" else null,
@@ -84,7 +94,7 @@ internal fun overviewFarmLine(overview: FarmOverview, farm: FarmSeasonFigures): 
     overviewKilos(farm.delivery),
     overview.sharePercent(farm)?.let { "$it % del total" } ?: "sin kilos",
     "rend. ${overviewYield(farm.delivery)}",
-    overviewCostPerKg(farm.costPerKgMinor, farm.costs).let { if (it == "—") "coste/kg —" else it },
+    overviewCostPerKg(farm.costPerKgMinor, farm.costs, farm.costComplete).let { if (it == "—") "coste/kg —" else it },
 ).joinToString(" · ")
 
 /**
@@ -128,7 +138,7 @@ internal fun FarmOverviewSection(overviews: List<FarmOverview>, onFarmSelected: 
         ), Modifier.testTag("farm-overview-production"))
         MoStatStrip(listOf(
             MoStat("Coste recogida", overviewCost(overview.costs), MoIcons.Euro),
-            MoStat("Coste recogida/kg", overviewCostPerKg(overview.costPerKgMinor, overview.costs), MoIcons.Euro),
+            MoStat("Coste recogida/kg", overviewCostPerKg(overview.costPerKgMinor, overview.costs, overview.costComplete), MoIcons.Euro),
         ), Modifier.testTag("farm-overview-costs"))
         Text(overviewNote(overview), style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("farm-overview-note"))
         // #359 follow-up: costs linked to no campaign are shown apart, never inside the recollection cost/kg.
