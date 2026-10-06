@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Una máquina de recolección ya no se convierte en «Vibradora» (#521).** Al llevar a una jornada
+  una máquina de la categoría «Recolección» (vibrador, paraguas, peine…) se anota con su propio
+  nombre, sin tipo inventado y sin la tarifa habitual de vibradora: su precio lo confirmas tú.
+  Tractor y remolque siguen reconociéndose como tales.
 - **Media jornada en jornales nuevos (#490).** Al registrar o corregir un jornal, Duración ofrece
   Jornada completa, Media jornada y Horas. En media jornada se escribe el precio de la jornada
   completa (por ejemplo 70 €) y el jornal cuesta la mitad (35 €); «Pagado completo» paga esa mitad.
