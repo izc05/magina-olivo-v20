@@ -30,6 +30,13 @@ class CampaignHistoryLinesTest {
         assertTrue(line, !line.contains("0,00 %"))
     }
 
+    /** #449: a cost per kilo built on unconfirmed costs says so beside the figure. */
+    @Test fun anIncompleteCostPerKiloIsMarked() {
+        val incomplete = history.copy(points = history.points.map { if (it.name == "2026/27") it.copy(costIncomplete = true) else it })
+        assertTrue(historyCostLine(incomplete), historyCostLine(incomplete).endsWith("/kg (incompleto)"))
+        assertTrue(historyCostLine(history), !historyCostLine(history).contains("incompleto"))
+    }
+
     @Test fun costNamesCampaignsInAnotherCurrency() {
         val line = historyCostLine(history.copy(otherCurrencyCampaigns = listOf("2024/25")))
         assertTrue(line, line.contains("2025/26: sin datos"))

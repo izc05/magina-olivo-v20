@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Las tarjetas de campaña y el histórico avisan de costes sin confirmar (#449).** Si una campaña
+  tiene jornales o maquinaria sin precio, o gastos pendientes de confirmar, su tarjeta lo dice
+  («Costes sin confirmar») y su coste/kg en «Comparar campañas» y en el histórico se marca
+  «(incompleto)». La cifra sigue siendo solo lo contabilizado; nunca se rellena con un 0.
 - **El coste/kg avisa cuando faltan costes por confirmar (#449).** Si hay jornales o maquinaria sin
   precio, costes del día aún sin calcular o gastos sin confirmar, el total y el coste/kg se llaman
   «contabilizado» y dicen qué falta («Incompleto · jornales sin precio»). Lo desconocido nunca cuenta como
