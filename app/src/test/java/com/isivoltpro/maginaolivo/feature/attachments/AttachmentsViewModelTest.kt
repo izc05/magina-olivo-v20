@@ -158,6 +158,7 @@ class AttachmentsViewModelTest {
         }
 
         override suspend fun recordUploadFailure(
+            workspaceId: UUID,
             id: UUID,
             errorCode: String,
             errorMessage: String?,
