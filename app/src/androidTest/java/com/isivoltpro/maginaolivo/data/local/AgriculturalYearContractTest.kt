@@ -44,6 +44,7 @@ import com.isivoltpro.maginaolivo.domain.labour.LabourUnit
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import com.isivoltpro.maginaolivo.domain.parcel.NewParcel
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -198,9 +199,11 @@ class AgriculturalYearContractTest {
         assertEquals(58_000L, notebook.expensesByCurrency.single().amount())
         assertTrue(notebook.costCompleteness.complete)
 
-        // The history: 580 € over 5.000 kg = 0,116 €/kg, rounded to the cent.
+        // The history: 580 € over 5.000 kg = 0,116 €/kg. #486: a cost per kilo is a ratio and keeps
+        // its thousandths; the year test asserts the exact ratio, never a rounding to the cent.
         val year = CampaignComparison.of(listOf(notebook)).single()
-        assertEquals(12L, year.costPerKgMinor)
+        assertEquals(5_000_000L, year.deliveredGrams)
+        assertEquals(0, BigDecimal("0.116").compareTo(year.canonicalCost!!.summary!!.costPerKg))
         assertTrue(year.costComplete)
 
         // Mi Campo: the same season with the general costs apart, never inside the recollection cost.
@@ -209,8 +212,12 @@ class AgriculturalYearContractTest {
         assertEquals(58_000L, overview.costs.single().amountMinor)
         assertEquals(105_000L, overview.generalCosts.single().amountMinor)
         assertEquals(163_000L, overview.totalCosts.single().amountMinor)
-        // 1.630 € over 5.000 kg = 0,326 €/kg.
-        assertEquals(33L, overview.totalCostPerKgMinor)
+        assertEquals(5_000_000L, overview.delivery.deliveredGrams)
+        // 1.630 € over 5.000 kg = 0,326 €/kg (58.000 cts → 0,116; 163.000 cts → 0,326). The season's
+        // exact ratio is asserted once #486 exposes it; until then only its two sides are pinned,
+        // so today's rounding to the cent is never made a contract here.
+        assertEquals(0, BigDecimal("0.326").compareTo(ratio(overview.totalCosts.single().amountMinor!!, overview.delivery.deliveredGrams)))
+        assertEquals(0, BigDecimal("0.116").compareTo(ratio(overview.costs.single().amountMinor!!, overview.delivery.deliveredGrams)))
 
         // Nothing counted twice: the posted ledger is exactly recollection + general costs.
         assertEquals(163_000L, all.filter { it.status == ExpenseStatus.POSTED }.sumOf { it.amountMinor })
@@ -232,6 +239,11 @@ class AgriculturalYearContractTest {
         )))
         return deliveries.observe(id).first()!!.harvestId!!
     }
+
+    /** Euros per kilo from cents and grams, exact (the #486 contract). */
+    private fun ratio(cents: Long, grams: Long): BigDecimal =
+        BigDecimal.valueOf(cents).movePointLeft(2).multiply(BigDecimal.valueOf(1_000))
+            .divide(BigDecimal.valueOf(grams), java.math.MathContext.DECIMAL128)
 
     private fun jornal(day: String) = LabourRateSnapshot(6_000, "EUR", date(day), LabourRateBasis.DAY)
 
