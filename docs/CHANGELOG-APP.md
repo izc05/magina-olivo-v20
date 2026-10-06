@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un día de recolección automático que se queda vacío desaparece (#502).** Si se quita el último
+  jornal, máquina, gasto o foto de un día creado automáticamente y no tiene pesadas ni notas, el día ya
+  no queda como «Kg pendientes» sin nada detrás; la pantalla del día se cierra. Un día anotado a mano
+  nunca se toca.
 - **Gastos y días de recolección ya no ocultan otras monedas (#450, gastos).** La pantalla de Gastos
   muestra «Gastos confirmados» y «Este mes» con un total por moneda, y las categorías por moneda (los
   porcentajes solo dentro de cada una). El coste de un día de recolección guarda un total por moneda y

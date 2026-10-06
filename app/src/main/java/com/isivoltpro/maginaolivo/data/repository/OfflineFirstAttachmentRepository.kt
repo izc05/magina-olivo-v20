@@ -131,6 +131,10 @@ class OfflineFirstAttachmentRepository(
                         enqueue(farm.id, SyncEntityType.FARM, OutboxOperation.UPDATE, now)
                     }
                 }
+                // #502: an automatic day left with nothing goes with its last attachment.
+                if (document.ownerType == AttachmentOwnerType.HARVEST.name) {
+                    JornadaLedger(database, idGenerator).reconcileAutomatic(document.ownerId, now)
+                }
                 released = document
                 AppResult.Success(Unit)
             }

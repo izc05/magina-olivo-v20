@@ -189,6 +189,8 @@ class HarvestDetailViewModel(
                 .collect { harvest ->
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
+                        // #502: an automatic day removed once nothing backs it closes like a deleted one.
+                        deleted = mutableState.value.deleted || (mutableState.value.harvest != null && harvest == null),
                         harvest = harvest,
                         context = contexts.firstOrNull { it.campaignId == harvest?.campaignId },
                     )
