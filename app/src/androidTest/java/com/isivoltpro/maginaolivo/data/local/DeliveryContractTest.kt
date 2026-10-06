@@ -128,7 +128,7 @@ class DeliveryContractTest {
         val validId = ok(repository.create(draft(2_000_000, north to null).copy(deliveryDate = utcDay.minusDays(1))))
         assertValidation(
             "analysisDate",
-            repository.recordYield(validId, YieldDraft(analysisDate = utcDay, fatYieldHundredths = 2_000)),
+            repository.recordYield(validId, YieldDraft(analysisDate = utcDay, fatYieldHundredths = 2_000, industrialYieldHundredths = null)),
         )
     }
 
