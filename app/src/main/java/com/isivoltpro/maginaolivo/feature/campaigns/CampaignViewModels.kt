@@ -117,7 +117,7 @@ class CampaignDetailViewModel(private val campaignId: UUID, private val reposito
     }
     fun activate() = mutate("Campaña activada", ::campaignActivationErrorMessage) { repository.activate(campaignId) }
     fun markHarvest() = mutate("Recolección iniciada") { repository.markHarvest(campaignId) }
-    fun close(endDate: LocalDate) = mutate("Campaña cerrada") { repository.close(campaignId, endDate) }
+    fun closeToday() = mutate("Campaña cerrada") { repository.closeToday(campaignId) }
     fun reopen() = mutate("Campaña reabierta") { repository.reopen(campaignId) }
     fun archivePreparation() = mutate("Borrador archivado") { repository.archivePreparation(campaignId) }
     fun consumeMessage() { mutableState.value = mutableState.value.copy(message = null) }
