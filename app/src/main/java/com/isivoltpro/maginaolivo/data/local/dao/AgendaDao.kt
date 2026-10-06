@@ -51,6 +51,14 @@ interface AgendaDao {
     @Query("SELECT * FROM reminders WHERE id = :id LIMIT 1")
     suspend fun findReminder(id: UUID): ReminderEntity?
 
+    /** Device-local request-code registry. Stable ordering makes legacy collision repair deterministic. */
+    @Query("SELECT * FROM reminders ORDER BY created_at, id")
+    suspend fun listAllReminders(): List<ReminderEntity>
+
+    /** Device state only: Android alarm slot changes never bump the Activity or enter sync. */
+    @Query("UPDATE reminders SET local_notification_id = :requestCode WHERE id = :id")
+    suspend fun updateLocalNotificationId(id: UUID, requestCode: Int)
+
     /** Device state, not an edit: no version bump and no outbox intent. */
     @Query("UPDATE reminders SET fired_at = :firedAt WHERE id = :id")
     suspend fun markFired(id: UUID, firedAt: Instant)
