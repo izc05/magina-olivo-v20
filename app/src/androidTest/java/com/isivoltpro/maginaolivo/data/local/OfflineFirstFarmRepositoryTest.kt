@@ -5,6 +5,7 @@ import com.isivoltpro.maginaolivo.domain.parcel.RegistryLink
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
@@ -408,6 +409,109 @@ class OfflineFirstFarmRepositoryTest {
                 listOf(OutboxOperation.CREATE, OutboxOperation.DELETE, OutboxOperation.UPDATE),
                 database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelId).map { it.operation },
             )
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun parcelRestoreNeverMovesAnActiveParcelOrReactivatesADuplicateCatastroReference() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000084")
+        val farmA = uuid("20000000-0000-0000-0000-000000000084")
+        val farmB = uuid("20000000-0000-0000-0000-000000000085")
+        val parcelA = uuid("40000000-0000-0000-0000-000000000084")
+        val parcelB = uuid("40000000-0000-0000-0000-000000000085")
+        val geometry = """{"type":"Polygon","coordinates":[[[-3.48,37.63],[-3.47,37.63],[-3.47,37.64],[-3.48,37.63]]]}"""
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            val farms = repository(
+                database,
+                TEST_INSTANT,
+                listOf(
+                    farmA, uuid("30000000-0000-0000-0000-000000000084"),
+                    farmB, uuid("30000000-0000-0000-0000-000000000085"),
+                ),
+            )
+            assertEquals(AppResult.Success(farmA), farms.create(NewFarm(workspaceId, "Finca A")))
+            assertEquals(AppResult.Success(farmB), farms.create(NewFarm(workspaceId, "Finca B")))
+
+            val parcels = OfflineFirstParcelRepository(
+                database,
+                FixedClock(TEST_INSTANT),
+                QueuedIdGenerator(
+                    listOf(
+                        parcelA,
+                        uuid("50000000-0000-0000-0000-000000000084"),
+                        uuid("60000000-0000-0000-0000-000000000084"),
+                        uuid("60000000-0000-0000-0000-000000000085"),
+                        parcelB,
+                        uuid("50000000-0000-0000-0000-000000000085"),
+                        uuid("60000000-0000-0000-0000-000000000086"),
+                        uuid("50000000-0000-0000-0000-000000000086"),
+                        uuid("60000000-0000-0000-0000-000000000087"),
+                    ),
+                ),
+                TestDispatchers,
+            )
+
+            assertEquals(
+                AppResult.Success(parcelA),
+                parcels.create(
+                    NewParcel(
+                        farmA,
+                        "Parcela A",
+                        cadastralReference = "23044A00400099",
+                        source = ParcelSource.CATASTRO,
+                        geometryGeoJson = geometry,
+                        sourceProvider = "ES_CATASTRO",
+                        sourceImportedAt = TEST_INSTANT,
+                    ),
+                ),
+            )
+
+            val membershipBefore = database.parcelDao().findCurrentMembership(parcelA)!!
+            val parcelBefore = database.parcelDao().findById(parcelA)!!
+            val outboxBefore = database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelA)
+
+            val moveByRestore = parcels.restore(parcelA, farmB)
+            assertTrue(
+                moveByRestore is AppResult.Failure &&
+                    (moveByRestore.error as? AppError.Conflict)?.resource == "parcel_not_archived",
+            )
+            assertEquals(membershipBefore, database.parcelDao().findCurrentMembership(parcelA))
+            assertEquals(parcelBefore, database.parcelDao().findById(parcelA))
+            assertEquals(outboxBefore, database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelA))
+
+            assertEquals(AppResult.Success(Unit), parcels.archive(parcelA))
+            assertEquals(
+                AppResult.Success(parcelB),
+                parcels.create(
+                    NewParcel(
+                        farmB,
+                        "Parcela B",
+                        cadastralReference = "23044A00400099",
+                        source = ParcelSource.CATASTRO,
+                        geometryGeoJson = geometry,
+                        sourceProvider = "ES_CATASTRO",
+                        sourceImportedAt = TEST_INSTANT,
+                    ),
+                ),
+            )
+
+            val archivedBeforeRestore = database.parcelDao().findById(parcelA)!!
+            val historyBeforeRestore = database.parcelDao().listMemberships(parcelA)
+            val outboxBeforeRestore = database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelA)
+
+            val duplicate = parcels.restore(parcelA, farmA)
+            assertTrue(
+                duplicate is AppResult.Failure &&
+                    (duplicate.error as? AppError.Conflict)?.resource == "duplicate_cadastral_reference",
+            )
+            assertEquals(archivedBeforeRestore, database.parcelDao().findById(parcelA))
+            assertEquals(historyBeforeRestore, database.parcelDao().listMemberships(parcelA))
+            assertEquals(outboxBeforeRestore, database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelA))
+            assertEquals(null, database.parcelDao().findCurrentMembership(parcelA))
         } finally {
             database.close()
         }
