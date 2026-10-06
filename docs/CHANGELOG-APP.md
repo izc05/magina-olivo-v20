@@ -20,6 +20,10 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Mi Campo avisa cuando el coste de la campaña no está completo (#449).** En «Resumen de la
+  explotación», si alguna campaña del periodo tiene jornales o maquinaria sin precio o gastos sin
+  confirmar, el coste/kg (de recogida y total) y la línea de cada finca afectada se marcan
+  «(incompleto)», y la nota dice «Costes sin confirmar». Las cifras siguen siendo solo lo contabilizado.
 - **Un coste contabilizado ya no se queda desfasado al cambiar la maquinaria (#449).** Si en un día
   con coste de maquinaria contabilizado falta algún precio, ya no se puede añadir con precio, quitar, cambiar de
   cantidad ni de precio una máquina que sí tenía precio: la app pide confirmar antes los precios que
