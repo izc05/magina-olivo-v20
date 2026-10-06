@@ -56,6 +56,8 @@ data class DeliveriesUiState(
     val jornadas: List<Harvest> = emptyList(),
     /** Codex #377: true once the running campaigns have been read; until then nothing is claimed. */
     val contextsLoaded: Boolean = false,
+    /** #621: a failed context read is not the same thing as “there is no running campaign”. */
+    val contextsReadFailed: Boolean = false,
     /** Codex #377: true once the Jornadas have been read (or could not be). */
     val jornadasLoaded: Boolean = false,
     /** Set after "Guardar y añadir otra": the editor stays open on this form. */
@@ -94,9 +96,7 @@ class DeliveriesViewModel(
                     )
                 }
         }
-        viewModelScope.launch {
-            deliveries.observeContexts().catch { }.collect { mutableState.value = mutableState.value.copy(contexts = it, contextsLoaded = true) }
-        }
+        observeContexts()
         viewModelScope.launch {
             organizations.observeWithAnyRole(DESTINATION_ROLES).catch { }
                 .collect { mutableState.value = mutableState.value.copy(destinations = it) }
@@ -116,6 +116,36 @@ class DeliveriesViewModel(
                 )
             }
         }
+    }
+
+    private fun observeContexts() {
+        viewModelScope.launch {
+            val current = mutableState.value
+            mutableState.value = current.copy(
+                contextsLoaded = current.contexts.isNotEmpty(),
+                contextsReadFailed = false,
+            )
+            deliveries.observeContexts()
+                .catch {
+                    mutableState.value = mutableState.value.copy(
+                        contextsLoaded = true,
+                        contextsReadFailed = true,
+                    )
+                }
+                .collect { rows ->
+                    mutableState.value = mutableState.value.copy(
+                        contexts = rows,
+                        contextsLoaded = true,
+                        contextsReadFailed = false,
+                    )
+                }
+        }
+    }
+
+    /** #621: retry only after the previous context Flow has failed/completed. */
+    fun retryContexts() {
+        if (!mutableState.value.contextsReadFailed) return
+        observeContexts()
     }
 
     /** With [again], the editor stays open for the next Pesada of the same day (Phase 19B). */
