@@ -9,6 +9,7 @@ import com.isivoltpro.maginaolivo.domain.agenda.ReminderPreferences
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderPreferencesSource
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderRequest
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderRules
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -54,11 +55,21 @@ class ReminderCoordinator(
         repairLegacyRequestCodeCollisions()
         val current = preferences.current()
         followWallClock(current)
+        val all = database.agendaDao().listAllReminders()
         if (!current.enabled) {
-            // Reminders switched off in Perfil: every alarm is withdrawn, every reminder kept.
-            database.agendaDao().listUnfired().forEach { scheduler.cancel(it.localNotificationId) }
+            // Reminders switched off in Perfil: withdraw alarms and any notifications already shown.
+            all.forEach { scheduler.cancel(it.localNotificationId) }
             return@withLock
         }
+
+        // A reminder may already have fired and therefore be absent from listUnfired(). If its
+        // Activity is no longer planned, its visible notification must still be withdrawn.
+        all.filter { reminder ->
+            if (reminder.ownerType != OWNER_ACTIVITY) return@filter false
+            val activity = database.activityDao().findById(reminder.ownerId)
+            activity == null || activity.status != ActivityStatus.PLANNED || activity.metadata.deletedAt != null
+        }.forEach { scheduler.cancel(it.localNotificationId) }
+
         val due = database.agendaDao().listDue(clock.nowInstant().minus(MISSED_GRACE))
         val dueIds = due.map { it.id }.toSet()
         database.agendaDao().listUnfired()
@@ -102,6 +113,8 @@ class ReminderCoordinator(
     }
 
     companion object {
+        private const val OWNER_ACTIVITY = "ACTIVITY"
+
         /** A reminder missed while the phone was off still rings if it is at most this late. */
         val MISSED_GRACE: Duration = Duration.ofHours(12)
     }
