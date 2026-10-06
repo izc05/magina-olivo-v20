@@ -20,6 +20,11 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **El coste/kg avisa cuando faltan costes por confirmar (#449).** Si hay jornales o maquinaria sin
+  precio, costes del día aún sin calcular o gastos sin confirmar, el total y el coste/kg se llaman
+  «contabilizado» y dicen qué falta («Incompleto · jornales sin precio»). Lo desconocido nunca cuenta como
+  0 € y pagar no cambia nada. Un cálculo apartado porque un gasto anotado a mano lo sustituye (#475) ya no
+  aparece como «sin confirmar».
 - **Un día de recolección automático que se queda vacío desaparece (#502).** Si se quita el último
   jornal, máquina, gasto o foto de un día creado automáticamente y no tiene pesadas ni notas, el día ya
   no queda como «Kg pendientes» sin nada detrás; la pantalla del día se cierra. Un día anotado a mano
