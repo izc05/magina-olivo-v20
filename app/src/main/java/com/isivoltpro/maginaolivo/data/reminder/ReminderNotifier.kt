@@ -64,6 +64,13 @@ class ReminderNotifier(
             parcelNames = row.targets.map { it.parcelNameAtTarget },
         )
         database.agendaDao().markFired(reminder.id, clock.nowInstant())
+        // Keep at most one visible reminder card per Activity. Alarm request codes remain distinct;
+        // only already-published Android notifications are replaced here.
+        val manager = NotificationManagerCompat.from(context)
+        database.agendaDao().listForOwner(OWNER_ACTIVITY, activity.id)
+            .asSequence()
+            .filter { it.id != reminder.id && it.firedAt != null }
+            .forEach { manager.cancel(it.localNotificationId) }
         return if (post(reminder.localNotificationId, activity.id, message)) {
             ReminderOutcome.POSTED
         } else {
@@ -109,6 +116,7 @@ class ReminderNotifier(
         const val CHANNEL_ID = "planned_work_v2"
         private const val LEGACY_CHANNEL_ID = "planned_work"
         const val EXTRA_ACTIVITY_ID = "com.isivoltpro.maginaolivo.extra.ACTIVITY_ID"
+        private const val OWNER_ACTIVITY = "ACTIVITY"
         internal val VIBRATION_PATTERN = longArrayOf(0L, 180L, 120L, 220L)
 
         private fun defaultSoundUri() = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
