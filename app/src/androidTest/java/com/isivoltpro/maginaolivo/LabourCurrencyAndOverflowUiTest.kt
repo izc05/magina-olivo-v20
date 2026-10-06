@@ -33,7 +33,7 @@ class LabourCurrencyAndOverflowUiTest {
         showDay(listOf(legacy), listOf(ledger("JPY")), LabourActions(onUpdate = { _, value -> change = value }))
         rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onNodeWithTag("jornada-labour-edit").performScrollTo().performClick()
-        rule.onNodeWithText("Precio por jornada (JPY)").assertExists()
+        rule.onNodeWithText("Precio del jornal (JPY)").assertExists()
         assertEquals("", rule.onNodeWithTag("labour-edit-rate").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
         rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
         rule.onNodeWithTag("labour-edit-rate").performTextInput("1000")
@@ -83,7 +83,7 @@ class LabourCurrencyAndOverflowUiTest {
         showDay(listOf(legacy), emptyList(), LabourActions(onUpdate = { _, value -> change = value }))
         rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onNodeWithTag("jornada-labour-edit").performScrollTo().performClick()
-        rule.onNodeWithText("Precio por jornada (EUR)").assertExists()
+        rule.onNodeWithText("Precio del jornal (EUR)").assertExists()
         rule.onNodeWithTag("labour-edit-rate").performTextInput("60")
         rule.onNodeWithTag("labour-edit-save").performScrollTo().assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
         rule.runOnIdle { assertEquals("EUR", change?.appliedRate?.currency); assertEquals(6_000L, change?.appliedRate?.unitPriceMinor) }
@@ -94,7 +94,7 @@ class LabourCurrencyAndOverflowUiTest {
         showDay(listOf(legacy, confirmed), emptyList())
         rule.onNodeWithTag("day-resource-labour").performScrollTo().performClick()
         rule.onAllNodesWithTag("jornada-labour-edit")[0].performScrollTo().performClick()
-        rule.onNodeWithText("Precio por jornada (JPY)").assertExists()
+        rule.onNodeWithText("Precio del jornal (JPY)").assertExists()
         rule.onNodeWithTag("labour-edit-save").assertIsNotEnabled()
     }
 
