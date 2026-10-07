@@ -18,7 +18,7 @@ La petición viva identificó HTTP 200, envoltorio, claves, fecha, conteos y che
 | T06 | v1 → v2 | SYN-00001 CANCELLED, SYN-00002 ausente; snapshot anterior idéntico byte a byte |
 | T07 | timeout, 429/Retry-After, 5xx, fallo almacenamiento | LKG intacto; fetchedAt original; freshness STALE |
 | T08 | sin LKG y error upstream | 503 catalog_unavailable, nunca 200 vacío |
-| T09 | mismo checksum; igual Fecha/diferente checksum; Fecha anterior | Idempotencia; revisión serializada; rollback bloqueado |
+| T09 | misma Fecha+checksum; mismo checksum/nueva Fecha; igual Fecha/diferente checksum; Fecha anterior | Idempotencia solo de sourceVersion idéntica; nueva versión de metadatos cuando cambia Fecha; revisión serializada; rollback bloqueado |
 | T10 | registro 00001/ES-001, Unicode, espacios, null, lista tipo erróneo | Mantener identidad; error en tipos ilegales; null no es cero |
 | T11 | NP, NO PROCEDE, dosis %, concentración expresada en Cu, rango 7-14 | Texto/unidades intactos, no convertir ni inventar 0 días |
 | T12 | min>max, NaN, Infinity, negativo, fecha 2026/02/30 | Candidato inválido; sin publicar parte válida |
