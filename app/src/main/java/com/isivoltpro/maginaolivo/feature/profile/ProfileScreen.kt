@@ -61,6 +61,7 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 fun ProfileRoute(
     appVersion: String,
     onMachinery: () -> Unit,
+    onAgronomicPeople: () -> Unit,
     developerGalleryEnabled: Boolean,
     onDeveloperGallery: () -> Unit,
     persistence: LocalPersistence? = null,
@@ -93,6 +94,7 @@ fun ProfileRoute(
             )
         },
         onMachinery = onMachinery,
+        onAgronomicPeople = onAgronomicPeople,
         developerGalleryEnabled = developerGalleryEnabled,
         onDeveloperGallery = onDeveloperGallery,
         onHelp = onHelp,
@@ -134,6 +136,7 @@ fun ProfileScreen(
     notificationsOn: Boolean,
     onNotifications: () -> Unit,
     onMachinery: () -> Unit,
+    onAgronomicPeople: () -> Unit = {},
     developerGalleryEnabled: Boolean = false,
     onDeveloperGallery: () -> Unit = {},
     /** Phase 21C: Perfil → Ayuda y privacidad; rows are hidden where no navigation exists. */
@@ -172,6 +175,14 @@ fun ProfileScreen(
             icon = MoIcons.Tractor,
             onClick = onMachinery,
             modifier = Modifier.testTag("profile-machinery"),
+            trailing = { Chevron() },
+        )
+        MoCompactListItem(
+            title = "Aplicadores y asesores",
+            subtitle = "Personas y credenciales para el cuaderno",
+            icon = MoIcons.People,
+            onClick = onAgronomicPeople,
+            modifier = Modifier.testTag("profile-agronomic-people"),
             trailing = { Chevron() },
         )
         MoSectionHeader("Ajustes")
