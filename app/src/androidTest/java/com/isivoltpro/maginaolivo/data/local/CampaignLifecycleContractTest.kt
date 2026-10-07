@@ -56,7 +56,7 @@ class CampaignLifecycleContractTest {
     private val otherFarmId = UUID.fromString("20000000-0000-0000-0000-0000000000b2")
     private val otherParcelId = UUID.fromString("30000000-0000-0000-0000-0000000000b2")
     private val start = LocalDate.parse("2026-10-01")
-    private val now = Instant.parse("2026-09-21T09:00:00Z")
+    private val now = Instant.parse("2026-10-04T09:00:00Z")
 
     private lateinit var db: MaginaOlivoDatabase
     private lateinit var repository: CampaignRepository
@@ -112,6 +112,22 @@ class CampaignLifecycleContractTest {
     }
 
     // ------------------------------------------------------------ activation
+
+    @Test
+    fun futureCampaignCanBePreparedButNotActivatedBeforeItsStartDate() = runBlocking {
+        val futureStart = LocalDate.parse("2026-10-15")
+        val id = created("2026/27 futura", setOf(parcelId), futureStart)
+        val before = db.campaignDao().findById(id)!!
+        val outboxBefore = db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
+
+        val result = repository.activate(id)
+
+        assertValidation("startDate", result)
+        val error = (result as AppResult.Failure).error as AppError.Validation
+        assertEquals("future_activation", error.code)
+        assertEquals(before, db.campaignDao().findById(id))
+        assertEquals(outboxBefore, db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id))
+    }
 
     @Test
     fun activationWithoutParcelsFailsWithoutMutatingStatusOrOutbox() = runBlocking {
@@ -233,7 +249,7 @@ class CampaignLifecycleContractTest {
         assertOk(repository.activate(id))
         assertOk(repository.closeToday(id))
 
-        assertEquals(LocalDate.parse("2026-09-20"), db.campaignDao().findById(id)?.endDate)
+        assertEquals(LocalDate.parse("2026-10-03"), db.campaignDao().findById(id)?.endDate)
     }
 
     @Test

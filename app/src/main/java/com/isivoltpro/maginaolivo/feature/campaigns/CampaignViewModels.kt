@@ -136,6 +136,8 @@ class CampaignDetailViewModel(private val campaignId: UUID, private val reposito
 }
 
 internal fun campaignActivationErrorMessage(error: AppError): String = when {
+    error is AppError.Validation && error.field == "startDate" && error.code == "future_activation" ->
+        "Esta campaña todavía no ha comenzado. Podrás activarla en su fecha de inicio o cambia esa fecha."
     error is AppError.Validation && error.field == "parcelIds" ->
         "Añade al menos una parcela antes de activar la campaña."
     error == AppError.Conflict("active_campaign_exists") ->

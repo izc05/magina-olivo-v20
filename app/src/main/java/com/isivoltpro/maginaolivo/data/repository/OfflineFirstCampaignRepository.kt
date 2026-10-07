@@ -139,6 +139,10 @@ class OfflineFirstCampaignRepository(
 
     override suspend fun activate(id: UUID): AppResult<Unit> = mutate(id, "activate_campaign") { current, now ->
         if (current.status != CampaignStatus.PREPARATION) return@mutate conflict("illegal_campaign_transition")
+        val today = database.todayForWorkspace(current.workspaceId, clock)
+        if (current.startDate.isAfter(today)) {
+            return@mutate AppResult.Failure(AppError.Validation("startDate", "future_activation"))
+        }
         val parcelIds = database.campaignDao().listSnapshots(id).map { it.parcelId }.toSet()
         if (parcelIds.isEmpty()) return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
         if (database.campaignDao().countOtherCurrent(current.farmId, id) > 0) return@mutate conflict("active_campaign_exists")
