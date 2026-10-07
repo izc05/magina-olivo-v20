@@ -64,7 +64,7 @@ class OfflineFirstCampaignRepositoryTest {
         assertEquals(CampaignStatus.PREPARATION, db.campaignDao().findById(secondId)?.status)
         assertEquals(AppResult.Success(Unit), repository.markHarvest(campaignId))
         assertTrue(repository.close(campaignId, LocalDate.parse("2026-09-30")) is AppResult.Failure)
-        assertEquals(AppResult.Success(Unit), repository.close(campaignId, LocalDate.parse("2027-02-01")))
+        assertEquals(AppResult.Success(Unit), repository.close(campaignId, LocalDate.parse("2026-10-03")))
         assertTrue(repository.archivePreparation(campaignId) is AppResult.Failure)
 
         db.farmDao().upsert(db.farmDao().findById(farmId)!!.copy(name = "Nombre posterior"))
