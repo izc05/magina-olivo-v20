@@ -49,6 +49,8 @@ data class ActivityDraft(
     val parcelAreasM2: Map<UUID, Double?> = emptyMap(),
     /** #482: required for HARVEST_DAY; null for ordinary Farm work. */
     val campaignId: UUID? = null,
+    /** Inclusive end of a multi-day agronomic operation; null means one day. */
+    val activityEndDate: LocalDate? = null,
 )
 
 data class FarmActivitiesUiState(
@@ -141,6 +143,7 @@ class FarmActivitiesViewModel(
                         planning = draft.planning,
                         reminders = draft.reminders,
                         parcelAreasM2 = draft.parcelAreasM2,
+                        activityEndDate = draft.activityEndDate,
                     ),
                 )
             ) {
@@ -395,6 +398,7 @@ class ActivityDetailViewModel(private val activityId: UUID, private val reposito
                     draft.planning,
                     draft.reminders,
                     parcelAreasM2 = draft.parcelAreasM2,
+                    activityEndDate = draft.activityEndDate,
                 ),
             )
         }
