@@ -63,6 +63,7 @@ object EdgeWeatherResponse {
                 windKmh = day.optIntOrNull("windKmh"),
             )
         }.take(7)
+        val solar = body.optJSONObject("solar")
         return WeatherReading(
             provider = provider,
             weather = WeatherNow(
@@ -74,6 +75,12 @@ object EdgeWeatherResponse {
                 updatedAt = Instant.parse(body.getString("updatedAt")),
                 attribution = body.optString("attribution").ifBlank { null },
                 daily = daily,
+                solarDate = solar?.optString("date")?.takeIf(String::isNotBlank)
+                    ?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+                sunriseAt = solar?.optString("sunriseAt")?.takeIf(String::isNotBlank)
+                    ?.let { runCatching { Instant.parse(it) }.getOrNull() },
+                sunsetAt = solar?.optString("sunsetAt")?.takeIf(String::isNotBlank)
+                    ?.let { runCatching { Instant.parse(it) }.getOrNull() },
             ),
         )
     }
