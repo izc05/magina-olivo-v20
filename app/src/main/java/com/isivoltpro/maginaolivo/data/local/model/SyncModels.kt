@@ -38,6 +38,8 @@ enum class SyncEntityType {
     HARVEST_EQUIPMENT,
     RECOLLECTION_RATES,
     PROFILE_SETTINGS,
+    AGRONOMIC_PERSON,
+    PHYTO_EQUIPMENT_PROFILE,
 }
 
 enum class OutboxStatus {
