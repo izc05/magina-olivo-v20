@@ -21,6 +21,8 @@ import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 
@@ -37,15 +39,20 @@ class OfflineFirstOrganizationRepository(
     private val dispatchers: AppDispatchers,
 ) : OrganizationRepository {
     override fun observeAll(): Flow<List<Organization>> =
-        combine(database.organizationDao().observeActive(), database.organizationDao().observeRoles()) { rows, roles ->
-            rows.toDomain(roles)
-        }.flowOn(dispatchers.io)
+        scoped { workspaceId ->
+            combine(
+                database.organizationDao().observeActive(workspaceId),
+                database.organizationDao().observeRoles(workspaceId),
+            ) { rows, roles -> rows.toDomain(roles) }
+        }
 
     override fun observeWithAnyRole(roles: Set<OrganizationRole>): Flow<List<Organization>> =
-        combine(
-            database.organizationDao().observeWithAnyRole(roles.map { it.name }),
-            database.organizationDao().observeRoles(),
-        ) { rows, allRoles -> rows.toDomain(allRoles) }.flowOn(dispatchers.io)
+        scoped { workspaceId ->
+            combine(
+                database.organizationDao().observeWithAnyRole(workspaceId, roles.map { it.name }),
+                database.organizationDao().observeRoles(workspaceId),
+            ) { rows, allRoles -> rows.toDomain(allRoles) }
+        }
 
     override suspend fun create(draft: OrganizationDraft): AppResult<UUID> {
         validate(draft)?.let { return it }
@@ -73,10 +80,17 @@ class OfflineFirstOrganizationRepository(
 
     override suspend fun update(id: UUID, draft: OrganizationDraft): AppResult<Unit> {
         validate(draft)?.let { return it }
+        val workspaceId = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
         return withContext(dispatchers.io) {
             safely("update_organization") {
                 val current = database.organizationDao().findById(id)
                     ?: return@safely AppResult.Failure(AppError.NotFound("organization"))
+                if (current.workspaceId != workspaceId) {
+                    return@safely AppResult.Failure(AppError.Validation("organization", "context_mismatch"))
+                }
                 if (current.metadata.deletedAt != null) return@safely AppResult.Failure(AppError.Conflict("archived_organization"))
                 val duplicate = database.organizationDao().findActiveByName(current.workspaceId, draft.name.trim())
                 if (duplicate != null && duplicate.id != id) {
@@ -97,27 +111,44 @@ class OfflineFirstOrganizationRepository(
         }
     }
 
-    override suspend fun archive(id: UUID): AppResult<Unit> = withContext(dispatchers.io) {
-        safely("archive_organization") {
-            val current = database.organizationDao().findById(id)
-                ?: return@safely AppResult.Failure(AppError.NotFound("organization"))
-            if (current.metadata.deletedAt != null) return@safely AppResult.Success(Unit)
-            val now = clock.nowInstant()
-            // Expenses keep their supplier name as written; archiving never rewrites history.
-            database.organizationDao().upsert(
-                current.copy(
-                    metadata = current.metadata.copy(
-                        updatedAt = now,
-                        deletedAt = now,
-                        version = current.metadata.version + 1,
-                        syncStatus = SyncStatus.PENDING,
+    override suspend fun archive(id: UUID): AppResult<Unit> {
+        val workspaceId = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
+        return withContext(dispatchers.io) {
+            safely("archive_organization") {
+                val current = database.organizationDao().findById(id)
+                    ?: return@safely AppResult.Failure(AppError.NotFound("organization"))
+                if (current.workspaceId != workspaceId) {
+                    return@safely AppResult.Failure(AppError.Validation("organization", "context_mismatch"))
+                }
+                if (current.metadata.deletedAt != null) return@safely AppResult.Success(Unit)
+                val now = clock.nowInstant()
+                // Expenses keep their supplier name as written; archiving never rewrites history.
+                database.organizationDao().upsert(
+                    current.copy(
+                        metadata = current.metadata.copy(
+                            updatedAt = now,
+                            deletedAt = now,
+                            version = current.metadata.version + 1,
+                            syncStatus = SyncStatus.PENDING,
+                        ),
                     ),
-                ),
-            )
-            database.enqueueCollapsed(idGenerator, SyncEntityType.ORGANIZATION, id, OutboxOperation.DELETE, now)
-            AppResult.Success(Unit)
+                )
+                database.enqueueCollapsed(idGenerator, SyncEntityType.ORGANIZATION, id, OutboxOperation.DELETE, now)
+                AppResult.Success(Unit)
+            }
         }
     }
+
+    private fun scoped(source: (UUID) -> Flow<List<Organization>>): Flow<List<Organization>> =
+        flow {
+            when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+                is AppResult.Failure -> emit(emptyList())
+                is AppResult.Success -> emitAll(source(workspace.value))
+            }
+        }.flowOn(dispatchers.io)
 
     private suspend fun replaceRoles(id: UUID, roles: Set<OrganizationRole>) {
         database.organizationDao().deleteRoles(id)
