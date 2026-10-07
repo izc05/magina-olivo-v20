@@ -37,7 +37,7 @@ internal class DeliveryWriter(
     private val jornadas = JornadaLedger(database, idGenerator)
 
     suspend fun insert(draft: DeliveryDraft, source: DeliverySource, today: LocalDate, now: Instant): DeliveryEntity {
-        DeliveryRules.validate(draft, today)?.let { throw InvalidDelivery(it.field, it.code) }
+        DeliveryRules.validateNew(draft, today)?.let { throw InvalidDelivery(it.field, it.code) }
         val farm = database.farmDao().findById(draft.farmId) ?: throw InvalidDelivery("farmId", "not_found")
         if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) throw DeliveryConflict("archived_farm")
         val campaign = database.campaignDao().findCurrent(farm.id) ?: throw DeliveryConflict("no_running_campaign")
