@@ -74,6 +74,16 @@ test("Bedmar solar times are derived from coordinates without another provider",
   assert.ok(sunset >= Date.parse("2026-09-25T17:30:00Z") && sunset <= Date.parse("2026-09-25T18:40:00Z"));
 });
 
+test("solar date follows Canary civil time at the Madrid/Canary boundary", () => {
+  const boundary = new Date("2026-09-25T22:30:00Z"); // 23:30 Canary, 00:30 Madrid next day
+  const canary = solarTimesFor(boundary, 28.1235, -15.4363, "Atlantic/Canary")!;
+  const mainland = solarTimesFor(boundary, 37.8216, -3.4101, "Europe/Madrid")!;
+  assert.equal(canary.date, "2026-09-25");
+  assert.equal(canary.timeZone, "Atlantic/Canary");
+  assert.equal(mainland.date, "2026-09-26");
+  assert.equal(mainland.timeZone, "Europe/Madrid");
+});
+
 test("AEMET hourly: the current hour, its rain range and wind; codes map without guessing", () => {
   const { current, updatedAt } = parseAemetHourly(HOURLY, NOW);
   assert.deepEqual(current, {
