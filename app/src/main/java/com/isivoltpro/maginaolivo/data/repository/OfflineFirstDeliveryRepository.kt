@@ -92,7 +92,7 @@ class OfflineFirstDeliveryRepository(
                             campaignName = row.campaignName,
                             campaignStatus = row.campaignStatus,
                             campaignStart = row.campaignStart,
-                            parcels = database.harvestDao().listSelectableCampaignParcels(row.campaignId)
+                            parcels = database.harvestDao().listCampaignParcels(row.campaignId)
                                 .map { HarvestParcelOption(it.parcelId, it.name) },
                         )
                     }
