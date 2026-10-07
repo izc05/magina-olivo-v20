@@ -725,7 +725,7 @@ fun HarvestDetailScreen(
                         supportingText = when { !state.costsLoaded -> "Cargando gastos…"; state.costsReadFailed -> "No pudimos leer los gastos";
                             else -> "Combustible, transporte, reparación · Ver gastos" }, onClick = { resourceDetail = "costs" })
                     MoSectionHeader("Resumen económico")
-                    RecollectionTotalCards(ledger, true, state.pesadas.sumOf { it.netGrams }.takeIf { it > 0 }?.let(Weight::format),
+                    RecollectionTotalCards(ledger, true, DeliverySummary.of(state.pesadas).deliveredGrams?.takeIf { it > 0 }?.let(Weight::format),
                         // Codex #605: only with every source read; otherwise never presented as final.
                         com.isivoltpro.maginaolivo.domain.expense.RecollectionCostCompleteness.of(state.labour, state.equipment, state.costs)
                             .takeIf { state.labourLoaded && state.equipmentLoaded && state.costsLoaded &&
@@ -1066,7 +1066,7 @@ private fun HarvestSummaryBlock(harvest: Harvest, pesadaCount: Int) {
     }
     if (harvest.allocationMode != HarvestAllocationMode.EXACT) {
         Text(
-            "Sin repartir entre parcelas: ${Weight.format(harvest.unallocatedGrams)}",
+            "Sin repartir entre parcelas: ${harvest.unallocatedGrams?.let(Weight::format) ?: \"No disponible\"}",
             style = MaterialTheme.typography.bodyMedium,
             color = MoTextSecondary,
             modifier = Modifier.testTag("harvest-unallocated"),
