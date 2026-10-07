@@ -33,7 +33,33 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(23, MaginaOlivoDatabase.VERSION)
+        assertEquals(24, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
+    fun migration23To24AddsPhytosanitaryResourcesWithoutTouchingExistingMachines() {
+        migrationHelper.createDatabase(TEST_DATABASE, 23).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Farm','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO machines (id, workspace_id, name, category, registration_or_serial, status, created_at, updated_at, version, sync_status) VALUES ('m','w','Atomizador','ATOMIZER','SERIE-1','ACTIVE',1000,1000,4,'PENDING')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 24, true, DatabaseMigrations.MIGRATION_23_24).use { database ->
+            database.query("SELECT name, category, registration_or_serial, version, sync_status FROM machines WHERE id='m'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Atomizador", cursor.getString(0))
+                assertEquals("ATOMIZER", cursor.getString(1))
+                assertEquals("SERIE-1", cursor.getString(2))
+                assertEquals(4, cursor.getInt(3))
+                assertEquals("PENDING", cursor.getString(4))
+            }
+            database.query("SELECT COUNT(*) FROM agronomic_people").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+            database.query("SELECT COUNT(*) FROM phytosanitary_equipment_profiles").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
     }
 
     @Test
