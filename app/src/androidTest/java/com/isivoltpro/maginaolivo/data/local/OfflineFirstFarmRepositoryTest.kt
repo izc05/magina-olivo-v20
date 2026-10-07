@@ -513,6 +513,78 @@ class OfflineFirstFarmRepositoryTest {
         }
     }
 
+    /** #468: editing never breaks or duplicates Catastro identity. */
+    @Test
+    fun editingCatastroParcelKeepsAValidUniqueIdentity() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000188")
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            val random = object : IdGenerator { override fun newId(): UUID = UUID.randomUUID() }
+            val farms = OfflineFirstFarmRepository(database, FixedClock(TEST_INSTANT), random, TestDispatchers)
+            val farmId = (farms.create(NewFarm(workspaceId, "Cortijo")) as AppResult.Success).value
+            val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers)
+            val geometry = """{"type":"Polygon","coordinates":[[[-3.48,37.63],[-3.47,37.63],[-3.47,37.64],[-3.48,37.63]]]}"""
+            fun catastro(name: String, reference: String) = NewParcel(
+                farmId = farmId,
+                displayName = name,
+                cadastralReference = reference,
+                source = ParcelSource.CATASTRO,
+                geometryGeoJson = geometry,
+                sourceProvider = "ES_CATASTRO",
+                sourceImportedAt = TEST_INSTANT,
+            )
+
+            val parcelA = (parcels.create(catastro("Norte", "23044A00400040")) as AppResult.Success).value
+            val parcelB = (parcels.create(catastro("Sur", "23044A00400041")) as AppResult.Success).value
+
+            fun changes(name: String, reference: String?, shape: String?) = ParcelChanges(
+                displayName = name,
+                cadastralReference = reference,
+                geometryGeoJson = shape,
+            )
+
+            assertEquals(
+                AppResult.Success(Unit),
+                parcels.update(parcelB, changes("Sur corregida", "23044a00400041", geometry)),
+            )
+            val corrected = database.parcelDao().findById(parcelB)!!
+            assertEquals("Sur corregida", corrected.displayName)
+            assertEquals("23044A00400041", corrected.cadastralReference)
+            assertEquals(geometry, corrected.geometryGeoJson)
+
+            val beforeMissingReference = database.parcelDao().findById(parcelB)!!
+            val outboxBeforeMissingReference = database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelB)
+            assertEquals(
+                AppResult.Failure(AppError.Validation("catastro", "identity_and_geometry_required")),
+                parcels.update(parcelB, changes("No debe guardar", null, geometry)),
+            )
+            assertEquals(beforeMissingReference, database.parcelDao().findById(parcelB))
+            assertEquals(outboxBeforeMissingReference, database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelB))
+
+            assertEquals(
+                AppResult.Failure(AppError.Validation("catastro", "identity_and_geometry_required")),
+                parcels.update(parcelB, changes("No debe guardar", "23044A00400041", null)),
+            )
+
+            val beforeDuplicate = database.parcelDao().findById(parcelB)!!
+            val outboxBeforeDuplicate = database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelB)
+            assertEquals(
+                AppResult.Failure(AppError.Conflict("duplicate_cadastral_reference")),
+                parcels.update(parcelB, changes("No debe guardar", "23044A00400040", geometry)),
+            )
+            assertEquals(beforeDuplicate, database.parcelDao().findById(parcelB))
+            assertEquals(outboxBeforeDuplicate, database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelB))
+            assertEquals("23044A00400040", database.parcelDao().findById(parcelA)!!.cadastralReference)
+
+            val manual = (parcels.create(NewParcel(farmId, "Manual")) as AppResult.Success).value
+            assertEquals(AppResult.Success(Unit), parcels.update(manual, ParcelChanges("Manual corregida")))
+            assertEquals(null, database.parcelDao().findById(manual)!!.cadastralReference)
+        } finally {
+            database.close()
+        }
+    }
+
     /** #494: «Restaurar» only brings back an archived Parcel: never a move, never a duplicate identity. */
     @Test
     fun restoreOnlyReactivatesAnArchivedParcelWithAFreeIdentity() = runBlocking {
