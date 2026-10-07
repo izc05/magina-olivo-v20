@@ -1091,13 +1091,21 @@ private fun DeliverySummaryBlock(delivery: Delivery) {
             )
         }
     }
-    if (delivery.unallocatedGrams > 0) {
-        Text(
-            "Sin repartir entre parcelas: ${Weight.format(delivery.unallocatedGrams)}",
+    when (val unallocated = delivery.unallocatedGrams) {
+        null -> Text(
+            "Sin repartir entre parcelas: No disponible",
             style = MaterialTheme.typography.bodyMedium,
             color = MoTextSecondary,
             modifier = Modifier.testTag("delivery-unallocated"),
         )
+        else -> if (unallocated > 0) {
+            Text(
+                "Sin repartir entre parcelas: ${Weight.format(unallocated)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("delivery-unallocated"),
+            )
+        }
     }
     delivery.notes?.let { DetailValue("Notas", it) }
 }

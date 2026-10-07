@@ -173,10 +173,10 @@ internal fun CampaignComparisonList(rows: List<CampaignComparison>, onSelectCamp
                     color = MoTextSecondary,
                     modifier = Modifier.testTag("comparison-line"),
                 )
-                if (row.legacyUnweighedGrams > 0) {
+                row.legacyUnweighedGrams?.takeIf { it > 0 }?.let { legacy ->
                     // CR-010 (A2): disclosed apart, never added to the weighed kilos above.
                     Text(
-                        "Además, ${Weight.format(row.legacyUnweighedGrams)} registrados sin pesada (histórico)",
+                        "Además, ${Weight.format(legacy)} registrados sin pesada (histórico)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MoTextSecondary,
                         modifier = Modifier.testTag("comparison-legacy-kilos"),
@@ -241,7 +241,7 @@ internal fun CampaignHistoryCharts(history: CampaignHistory, selected: java.util
         }
     }
     Text(kilosLine, style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-kg-summary"))
-    if (points.any { it.legacyUnweighedGrams > 0 }) {
+    if (points.any { (it.legacyUnweighedGrams ?: 0L) > 0 }) {
         Text("Solo pesadas: los kilos registrados sin pesada (histórico) no están en las barras.",
             style = MaterialTheme.typography.bodySmall, color = MoTextSecondary, modifier = Modifier.testTag("history-legacy-note"))
     }

@@ -102,7 +102,7 @@ data class CampaignComparison(
     /** Change in delivered kilos against the previous Campaign, in whole percent; null when unknown. */
     val deliveredChangePercent: Int?,
     /** CR-010 (A2): hand-typed kilos with no Pesada, disclosed apart and never in [deliveredGrams]. */
-    val legacyUnweighedGrams: Long = 0,
+    val legacyUnweighedGrams: Long? = 0,
     val canonicalCost: com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency? = null,
     val costsByCurrency: List<com.isivoltpro.maginaolivo.domain.expense.RecollectionCurrency> = listOfNotNull(canonicalCost),
     /** #449: false while jornales, machinery or costs of the Campaign are still unconfirmed. */

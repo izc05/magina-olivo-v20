@@ -11,7 +11,7 @@ data class CampaignHistoryPoint(
     val name: String,
     /** Canonical Pesadas only; legacy kilos without a Pesada stay in [legacyUnweighedGrams]. */
     val deliveredGrams: Long?,
-    val legacyUnweighedGrams: Long,
+    val legacyUnweighedGrams: Long?,
     val yieldHundredths: Int?,
     val yieldCoveragePercent: Int?,
     /** Cost per kilo in [CampaignHistory.costCurrency] only; another currency is a gap. */

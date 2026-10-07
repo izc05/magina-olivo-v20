@@ -247,7 +247,7 @@ fun CampaignDetailRoute(
             harvestCount = com.isivoltpro.maginaolivo.feature.harvests.harvestDayCount(harvests),
             deliveredGrams = delivery.deliveredGrams?.takeIf { delivery.deliveryCount > 0 },
             deliveryCount = delivery.deliveryCount,
-            legacyGrams = legacyUnweighedGrams(harvests, deliveries).takeIf { it > 0 },
+            legacyGrams = legacyUnweighedGrams(harvests, deliveries)?.takeIf { it > 0 },
             fatYieldHundredths = delivery.fatYield?.hundredths,
             expenses = ledger,
             labourLine = labour?.let { entries ->
