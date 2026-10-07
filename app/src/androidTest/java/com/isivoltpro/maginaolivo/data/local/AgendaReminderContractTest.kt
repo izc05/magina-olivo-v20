@@ -14,11 +14,14 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
+import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.reminder.AndroidReminderScheduler
@@ -68,6 +71,7 @@ class AgendaReminderContractTest {
     private val workspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000f1")
     private val farmId = UUID.fromString("20000000-0000-0000-0000-0000000000f1")
     private val parcelId = UUID.fromString("30000000-0000-0000-0000-0000000000f1")
+    private val campaignId = UUID.fromString("40000000-0000-0000-0000-0000000000f1")
     private val madrid = ZoneId.of("Europe/Madrid")
     private val now = Instant.parse("2026-11-10T09:00:00Z")
     private val day = LocalDate.parse("2026-11-20")
@@ -331,7 +335,7 @@ class AgendaReminderContractTest {
         planning: ActivityPlanning?,
         vararg reminders: ReminderRequest,
         type: ActivityType = ActivityType.PRUNING,
-    ) = NewActivity(farmId, null, type, day, "Poda", setOf(parcelId), planning = planning, reminders = reminders.toList())
+    ) = NewActivity(farmId, if (type == ActivityType.HARVEST_DAY) campaignId else null, type, day, "Poda", setOf(parcelId), planning = planning, reminders = reminders.toList())
 
     private fun changes(date: LocalDate, planning: ActivityPlanning?, vararg reminders: ReminderRequest) =
         ActivityChanges(ActivityType.PRUNING, date, "Poda", setOf(parcelId), planning = planning, reminders = reminders.toList())
@@ -351,6 +355,26 @@ class AgendaReminderContractTest {
         db.parcelDao().upsert(ParcelEntity(parcelId, workspaceId, "Norte", source = "MANUAL", metadata = meta))
         db.parcelDao().upsertMembership(
             FarmParcelMembershipEntity(UUID.randomUUID(), workspaceId, farmId, parcelId, now, metadata = meta),
+        )
+        db.campaignDao().upsert(
+            CampaignEntity(
+                campaignId, workspaceId, farmId, "Campaña agenda", day.minusMonths(1),
+                status = CampaignStatus.PREPARATION, metadata = meta,
+            ),
+        )
+        db.campaignDao().upsertSnapshots(
+            listOf(
+                CampaignParcelSnapshotEntity(
+                    id = UUID.randomUUID(),
+                    workspaceId = workspaceId,
+                    campaignId = campaignId,
+                    parcelId = parcelId,
+                    farmIdAtStart = farmId,
+                    farmNameAtStart = "La Solana",
+                    parcelNameAtStart = "Norte",
+                    metadata = meta,
+                ),
+            ),
         )
     }
 
