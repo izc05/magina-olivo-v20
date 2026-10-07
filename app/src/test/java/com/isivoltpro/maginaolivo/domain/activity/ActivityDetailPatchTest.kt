@@ -38,6 +38,50 @@ class ActivityDetailPatchTest {
         assertNull((ActivityDetailPatch.keepingHidden(resolved, reopened) as ActivityDetail.Incident).resolvedAt)
     }
 
+    @Test fun aLegacyPhytosanitaryEditKeepsHiddenCueMetadata() {
+        val operatorId = UUID.randomUUID()
+        val machineId = UUID.randomUUID()
+        val providerId = UUID.randomUUID()
+        val fetchedAt = Instant.parse("2026-10-07T12:00:00Z")
+        val storedTreatment = ActivityDetail.Phytosanitary(
+            productName = "Cobre 50%",
+            activeSubstance = "Oxicloruro de cobre",
+            reason = "Repilo",
+            equipmentText = "Atomizador",
+            operatorPersonId = operatorId,
+            applicationMachineId = machineId,
+            serviceProviderOrganizationId = providerId,
+            productRegistrationNumber = "ES-12345",
+            productSource = "MAPA_REGFI",
+            productSourceVersion = "2026-W41",
+            productFetchedAt = fetchedAt,
+            authorizationContextSnapshot = """{"crop":"olivo"}""",
+            pestProblemCode = "REPILO",
+            efficacyCode = "GOOD",
+            treatmentObservations = "Sin deriva",
+        )
+        val legacyForm = ActivityDetail.Phytosanitary(
+            productName = "Cobre 50%",
+            activeSubstance = "Oxicloruro de cobre",
+            reason = "Repilo leve",
+            equipmentText = "Atomizador",
+        )
+
+        val patched = ActivityDetailPatch.keepingHidden(storedTreatment, legacyForm) as ActivityDetail.Phytosanitary
+        assertEquals("Repilo leve", patched.reason)
+        assertEquals(operatorId, patched.operatorPersonId)
+        assertEquals(machineId, patched.applicationMachineId)
+        assertEquals(providerId, patched.serviceProviderOrganizationId)
+        assertEquals("ES-12345", patched.productRegistrationNumber)
+        assertEquals("MAPA_REGFI", patched.productSource)
+        assertEquals("2026-W41", patched.productSourceVersion)
+        assertEquals(fetchedAt, patched.productFetchedAt)
+        assertEquals("""{"crop":"olivo"}""", patched.authorizationContextSnapshot)
+        assertEquals("REPILO", patched.pestProblemCode)
+        assertEquals("GOOD", patched.efficacyCode)
+        assertEquals("Sin deriva", patched.treatmentObservations)
+    }
+
     @Test fun anotherTypeReplacesEverything() {
         val pruning = ActivityDetail.Pruning("Formación", 3, 6.0, null)
         assertEquals(pruning, ActivityDetailPatch.keepingHidden(stored, pruning))
