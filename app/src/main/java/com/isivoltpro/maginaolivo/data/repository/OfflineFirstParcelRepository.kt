@@ -207,6 +207,9 @@ class OfflineFirstParcelRepository(
         if (current.source == ParcelSource.CATASTRO.name &&
             (current.cadastralReference.isNullOrBlank() || current.geometryGeoJson.isNullOrBlank())
         ) return@mutate AppResult.Failure(AppError.Validation("catastro", "identity_and_geometry_required"))
+        if (current.source == ParcelSource.CATASTRO.name) {
+            validateGeometry(current.geometryGeoJson)?.let { return@mutate it }
+        }
         current.cadastralReference?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }?.let { reference ->
             val holder = database.parcelDao().findActiveByCadastralReference(current.workspaceId, reference)
             if (holder != null && holder != parcelId) return@mutate AppResult.Failure(AppError.Conflict("duplicate_cadastral_reference"))
