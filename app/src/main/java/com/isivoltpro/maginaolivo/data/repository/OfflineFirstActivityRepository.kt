@@ -370,6 +370,11 @@ class OfflineFirstActivityRepository(
         validateChanges(changes, validateScheduling = false)?.let { return it }
         return mutate(id, "correct_completed_activity") { current, now ->
             if (current.status != ActivityStatus.COMPLETED) return@mutate conflict("activity_not_completed")
+            // Current 1.0 invariant: every non-draft Activity has Parcel scope. #425 will relax
+            // this only for explicit whole-Farm types; correction must not create that state early.
+            if (changes.parcelIds.isEmpty()) {
+                return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
+            }
 
             current.campaignId?.let { campaignId ->
                 val campaign = database.campaignDao().findById(campaignId)
