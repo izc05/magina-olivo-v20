@@ -68,7 +68,7 @@
 - `CatalogStore.recordAttempt(at: string, error: string | null): Promise<void>`
 - `refreshCatalog(deps: { fetch: typeof fetch; now: () => Date; store: CatalogStore }): Promise<{ outcome: 'PUBLISHED'|'UNCHANGED'|'RETAINED'|'QUARANTINED'; sourceVersion: string | null }>`
 
-- [ ] Escribir tests T07–T09, T14–T17 con fetch/store fakes. Assertions: error upstream no llama CAS, fetchedAt anterior no cambia; sin LKG retorna RETAINED/null; hash idéntico UNCHANGED; pérdida >20% QUARANTINED; segunda CAS obsoleta falla; snapshot v1 serializado antes/después es idéntico.
+- [ ] Escribir tests T07–T09, T14–T17 con fetch/store fakes. Assertions: error upstream no llama CAS, fetchedAt anterior no cambia; sin LKG retorna RETAINED/null; `Fecha + checksum` idénticos dan UNCHANGED; mismo hash con nueva Fecha crea una nueva versión de metadatos sin duplicar necesariamente los bytes raw; pérdida >20% QUARANTINED; segunda CAS obsoleta falla; snapshot v1 serializado antes/después es idéntico.
 - [ ] Ejecutar `node --experimental-strip-types --test supabase/functions/phytosanitary-catalog/refresh.test.ts`; confirmar fallo inicial.
 - [ ] Implementar POST form a endpoint configurado, límites, staging, métricas, retry acotado y publicación. No crear catálogo vacío por catch.
 - [ ] Conectar repositorio durable solo en entorno local de pruebas; verificar fallo antes/después del CAS y recuperación tras reinicio. Retener objetos versionados con referencias históricas.
