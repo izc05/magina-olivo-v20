@@ -131,6 +131,16 @@ internal fun HomeWeatherHero(
                     }
                     when (val weather = state.weather) {
                         is FeedState.Value -> {
+                            weather.value.solarLine(state.today)?.let { line ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                                    modifier = Modifier.testTag("home-weather-solar"),
+                                ) {
+                                    Icon(MoIcons.Sun, null, tint = MoSoftGold, modifier = Modifier.size(20.dp))
+                                    Text(line, style = MaterialTheme.typography.bodyMedium, color = MoWarmWhite)
+                                }
+                            }
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 WeatherTemperature(weather.value.temperatureC, Modifier.weight(1f), MoWarmWhite)
                                 WeatherConditionIcon(weather.value.condition, Modifier.size(56.dp), onPhoto = true)
@@ -145,16 +155,6 @@ internal fun HomeWeatherHero(
                                 ) {
                                     Icon(MoIcons.Drop, null, tint = MoWarmWhite, modifier = Modifier.size(20.dp))
                                     Text(line, style = MaterialTheme.typography.titleMedium, color = MoWarmWhite)
-                                }
-                            }
-                            weather.value.solarLine(state.today)?.let { line ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
-                                    modifier = Modifier.testTag("home-weather-solar"),
-                                ) {
-                                    Icon(MoIcons.Sun, null, tint = MoSoftGold, modifier = Modifier.size(20.dp))
-                                    Text(line, style = MaterialTheme.typography.bodyMedium, color = MoWarmWhite)
                                 }
                             }
                             if (weather.stale) {
