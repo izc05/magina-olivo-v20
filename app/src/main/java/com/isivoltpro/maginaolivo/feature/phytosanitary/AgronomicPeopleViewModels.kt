@@ -221,13 +221,13 @@ internal fun currentCredentialSummary(
             (credential.validUntil == null || !credential.validUntil.isBefore(today))
     } ?: return null
     return buildList {
-        add(credentialKindLabel(current.credentialType))
+        add(credentialSummaryKindLabel(current.credentialType))
         add(maskIdentifier(current.number))
         current.validUntil?.let { add("hasta $it") }
     }.joinToString(" · ")
 }
 
-internal fun credentialKindLabel(value: String): String = when (value) {
+internal fun credentialSummaryKindLabel(value: String): String = when (value) {
     "APPLICATOR_CARD", "ROPO_APPLICATOR" -> "Carné / ROPO"
     "ADVISOR" -> "Asesor"
     else -> value
