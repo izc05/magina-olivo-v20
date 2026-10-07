@@ -13,7 +13,9 @@ import com.isivoltpro.maginaolivo.data.local.entity.MachineEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstPhytosanitaryResourceRepository
+import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicCredentialDraft
 import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicPersonDraft
+import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentInspectionDraft
 import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentProfileDraft
 import com.isivoltpro.maginaolivo.domain.phytosanitary.RegulatoryResourceSource
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
@@ -74,14 +76,12 @@ class PhytosanitaryResourcesContractTest {
     }
 
     @Test
-    fun agronomicPersonIsNotAWorkerAndKeepsLegalFieldsOffline() = runBlocking {
+    fun agronomicPersonIsNotAWorkerAndKeepsIdentityOffline() = runBlocking {
         val id = ok(
             repository.createPerson(
                 AgronomicPersonDraft(
                     displayName = "Juan Aplicador",
                     taxId = "12345678Z",
-                    ropoOrCardNumber = "ROPO-123",
-                    cardTypeCode = "QUALIFIED",
                     isAdvisor = true,
                 ),
             ),
@@ -89,8 +89,6 @@ class PhytosanitaryResourcesContractTest {
         val person = repository.observeActivePeople().first().single()
         assertEquals(id, person.id)
         assertEquals("12345678Z", person.taxId)
-        assertEquals("ROPO-123", person.ropoOrCardNumber)
-        assertEquals("QUALIFIED", person.cardTypeCode)
         assertTrue(person.isAdvisor)
         assertTrue(db.syncOutboxDao().listForEntity(SyncEntityType.AGRONOMIC_PERSON, id).isNotEmpty())
 
@@ -105,10 +103,47 @@ class PhytosanitaryResourcesContractTest {
     }
 
     @Test
-    fun invalidPersonValidityRangeIsRejected() = runBlocking {
-        val result = repository.createPerson(
-            AgronomicPersonDraft(
-                displayName = "Asesor",
+    fun credentialsAreHistoricalAndAReissueNeverOverwritesThePreviousOne() = runBlocking {
+        val personId = ok(repository.createPerson(AgronomicPersonDraft("Juan Aplicador")))
+        val firstId = ok(
+            repository.addCredential(
+                personId,
+                AgronomicCredentialDraft(
+                    credentialType = "ROPO_APPLICATOR",
+                    number = "ROPO-2025",
+                    categoryCode = "BASIC",
+                    validFrom = LocalDate.parse("2025-01-01"),
+                    validUntil = LocalDate.parse("2026-12-31"),
+                ),
+            ),
+        )
+        val secondId = ok(
+            repository.addCredential(
+                personId,
+                AgronomicCredentialDraft(
+                    credentialType = "ROPO_APPLICATOR",
+                    number = "ROPO-2027",
+                    categoryCode = "QUALIFIED",
+                    validFrom = LocalDate.parse("2027-01-01"),
+                ),
+            ),
+        )
+        val credentials = repository.observeCredentials(personId).first()
+        assertEquals(setOf(firstId, secondId), credentials.map { it.id }.toSet())
+        assertTrue(credentials.any { it.number == "ROPO-2025" && it.categoryCode == "BASIC" })
+        assertTrue(credentials.any { it.number == "ROPO-2027" && it.categoryCode == "QUALIFIED" })
+        assertTrue(db.syncOutboxDao().listForEntity(SyncEntityType.AGRONOMIC_CREDENTIAL, firstId).isNotEmpty())
+        assertTrue(db.syncOutboxDao().listForEntity(SyncEntityType.AGRONOMIC_CREDENTIAL, secondId).isNotEmpty())
+    }
+
+    @Test
+    fun invalidCredentialValidityRangeIsRejected() = runBlocking {
+        val personId = ok(repository.createPerson(AgronomicPersonDraft("Asesor")))
+        val result = repository.addCredential(
+            personId,
+            AgronomicCredentialDraft(
+                credentialType = "ADVISOR",
+                number = "ADV-1",
                 validFrom = LocalDate.parse("2026-10-10"),
                 validUntil = LocalDate.parse("2026-10-01"),
             ),
@@ -125,7 +160,6 @@ class PhytosanitaryResourcesContractTest {
                 PhytosanitaryEquipmentProfileDraft(
                     romaRegistration = "ROMA-JA-001",
                     acquisitionDate = LocalDate.parse("2024-02-01"),
-                    lastInspectionDate = LocalDate.parse("2026-03-01"),
                     source = RegulatoryResourceSource.REAFA,
                     externalId = "rea-machine-1",
                     sourceVersion = "2026-10",
@@ -139,6 +173,33 @@ class PhytosanitaryResourcesContractTest {
         assertEquals("rea-machine-1", profile.externalId)
         assertEquals(before, db.machineDao().findById(machineId))
         assertTrue(db.syncOutboxDao().listForEntity(SyncEntityType.PHYTO_EQUIPMENT_PROFILE, machineId).isNotEmpty())
+
+        val oldInspection = ok(
+            repository.addEquipmentInspection(
+                machineId,
+                PhytosanitaryEquipmentInspectionDraft(
+                    inspectionDate = LocalDate.parse("2026-03-01"),
+                    resultCode = "PASS",
+                    certificateReference = "CERT-2026",
+                ),
+            ),
+        )
+        val newInspection = ok(
+            repository.addEquipmentInspection(
+                machineId,
+                PhytosanitaryEquipmentInspectionDraft(
+                    inspectionDate = LocalDate.parse("2029-03-01"),
+                    resultCode = "PASS",
+                    certificateReference = "CERT-2029",
+                ),
+            ),
+        )
+        val inspections = repository.observeEquipmentInspections(machineId).first()
+        assertEquals(setOf(oldInspection, newInspection), inspections.map { it.id }.toSet())
+        assertTrue(inspections.any { it.inspectionDate == LocalDate.parse("2026-03-01") })
+        assertTrue(inspections.any { it.inspectionDate == LocalDate.parse("2029-03-01") })
+        assertEquals(before, db.machineDao().findById(machineId))
+        assertTrue(db.syncOutboxDao().listForEntity(SyncEntityType.PHYTO_EQUIPMENT_INSPECTION, oldInspection).isNotEmpty())
     }
 
     @Test
