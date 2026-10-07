@@ -203,6 +203,35 @@ class PhytosanitaryResourcesContractTest {
     }
 
     @Test
+    fun archivedMachineCannotReceiveNewRegulatoryWrites() = runBlocking {
+        val machine = db.machineDao().findById(machineId)!!
+        db.machineDao().upsert(machine.copy(status = "ARCHIVED"))
+
+        val profile = repository.saveEquipmentProfile(
+            machineId,
+            PhytosanitaryEquipmentProfileDraft(romaRegistration = "ROMA-NO"),
+        )
+        assertEquals(
+            AppError.Conflict("archived_machine"),
+            (profile as AppResult.Failure).error,
+        )
+
+        val inspection = repository.addEquipmentInspection(
+            machineId,
+            PhytosanitaryEquipmentInspectionDraft(
+                inspectionDate = LocalDate.parse("2026-03-01"),
+                resultCode = "PASS",
+            ),
+        )
+        assertEquals(
+            AppError.Conflict("archived_machine"),
+            (inspection as AppResult.Failure).error,
+        )
+        assertNull(repository.observeEquipmentProfile(machineId).first())
+        assertTrue(repository.observeEquipmentInspections(machineId).first().isEmpty())
+    }
+
+    @Test
     fun foreignWorkspaceCannotAttachAProfileToThisMachine() = runBlocking {
         val other = OfflineFirstPhytosanitaryResourceRepository(
             db, Workspaces(UUID.randomUUID()), FixedClock(now), RandomIds, TestDispatchers,
