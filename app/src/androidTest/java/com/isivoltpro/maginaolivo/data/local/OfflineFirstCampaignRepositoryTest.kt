@@ -39,7 +39,7 @@ class OfflineFirstCampaignRepositoryTest {
     private val workspaceId = UUID.fromString("10000000-0000-0000-0000-000000000001")
     private val farmId = UUID.fromString("20000000-0000-0000-0000-000000000001")
     private val parcelId = UUID.fromString("30000000-0000-0000-0000-000000000001")
-    private val now = Instant.parse("2026-09-20T10:00:00Z")
+    private val now = Instant.parse("2026-10-04T10:00:00Z")
 
     @Before fun before() { context.deleteDatabase(DB) }
     @After fun after() { context.deleteDatabase(DB) }
