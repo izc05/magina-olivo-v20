@@ -145,6 +145,43 @@ class OfflineFirstPhytosanitaryResourceRepository(
         }
     }
 
+    override suspend fun restorePerson(id: UUID): AppResult<Unit> {
+        val workspaceId = activeWorkspace() ?: return AppResult.Failure(AppError.NotFound("workspace"))
+        return safely("restore_agronomic_person") {
+            val current = database.phytosanitaryResourceDao().findPersonById(id)
+                ?: return@safely AppResult.Failure(AppError.NotFound("agronomic_person"))
+            if (current.workspaceId != workspaceId) {
+                return@safely AppResult.Failure(AppError.Validation("person", "context_mismatch"))
+            }
+            if (current.status == ACTIVE && current.metadata.deletedAt == null) return@safely AppResult.Success(Unit)
+            val duplicate = database.phytosanitaryResourceDao()
+                .findActivePersonByName(workspaceId, current.displayName)
+            if (duplicate != null && duplicate.id != id) {
+                return@safely AppResult.Failure(AppError.Conflict("duplicate_agronomic_person"))
+            }
+            val now = clock.nowInstant()
+            database.phytosanitaryResourceDao().upsertPerson(
+                current.copy(
+                    status = ACTIVE,
+                    metadata = current.metadata.copy(
+                        updatedAt = now,
+                        deletedAt = null,
+                        version = current.metadata.version + 1,
+                        syncStatus = SyncStatus.PENDING,
+                    ),
+                ),
+            )
+            database.enqueueCollapsed(
+                idGenerator,
+                SyncEntityType.AGRONOMIC_PERSON,
+                id,
+                OutboxOperation.UPDATE,
+                now,
+            )
+            AppResult.Success(Unit)
+        }
+    }
+
     override suspend fun saveEquipmentProfile(
         machineId: UUID,
         draft: PhytosanitaryEquipmentProfileDraft,
