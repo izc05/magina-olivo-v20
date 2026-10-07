@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.machinery.Machine
 import com.isivoltpro.maginaolivo.domain.machinery.MachineCategory
+import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicCredential
 import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicPerson
 import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentInspection
 import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentProfile
@@ -17,11 +18,13 @@ import com.isivoltpro.maginaolivo.feature.machinery.MachineDetailScreen
 import com.isivoltpro.maginaolivo.feature.machinery.MachineDetailUiState
 import com.isivoltpro.maginaolivo.feature.phytosanitary.AgronomicPeopleScreen
 import com.isivoltpro.maginaolivo.feature.phytosanitary.AgronomicPeopleUiState
+import com.isivoltpro.maginaolivo.feature.phytosanitary.currentCredentialSummary
 import com.isivoltpro.maginaolivo.feature.profile.ProfileScreen
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -56,7 +59,11 @@ class PhytosanitaryResourceUiTest {
         rule.setContent {
             MaginaOlivoTheme {
                 AgronomicPeopleScreen(
-                    state = AgronomicPeopleUiState(isLoading = false, active = listOf(person)),
+                    state = AgronomicPeopleUiState(
+                        isLoading = false,
+                        active = listOf(person),
+                        credentialSummaries = mapOf(person.id to "Carné / ROPO · ••••2027 · hasta 2027-12-31"),
+                    ),
                     onCreate = {},
                     onPersonSelected = {},
                 )
@@ -64,7 +71,33 @@ class PhytosanitaryResourceUiTest {
         }
         rule.onNodeWithTag("agronomic-person-row").assertIsDisplayed()
             .assertTextContains("Juan Aplicador", substring = true)
+            .assertTextContains("Asesor", substring = true)
             .assertTextContains("••••678Z", substring = true)
+            .assertTextContains("Carné / ROPO", substring = true)
+            .assertTextContains("••••2027", substring = true)
+    }
+
+    @Test fun currentCredentialSummaryUsesOnlyAValidCredentialAndMasksItsNumber() {
+        val personId = UUID.randomUUID()
+        val expired = AgronomicCredential(
+            id = UUID.randomUUID(),
+            personId = personId,
+            credentialType = "ROPO_APPLICATOR",
+            number = "ROPO-2025",
+            validUntil = LocalDate.parse("2025-12-31"),
+        )
+        val current = AgronomicCredential(
+            id = UUID.randomUUID(),
+            personId = personId,
+            credentialType = "ROPO_APPLICATOR",
+            number = "ROPO-2027",
+            validFrom = LocalDate.parse("2026-01-01"),
+            validUntil = LocalDate.parse("2027-12-31"),
+        )
+        assertEquals(
+            "Carné / ROPO · ••••2027 · hasta 2027-12-31",
+            currentCredentialSummary(listOf(expired, current), LocalDate.parse("2026-10-07")),
+        )
     }
 
     @Test fun machineDetailShowsOfficialProfileAndInspectionHistoryWithoutAnotherMachine() {
