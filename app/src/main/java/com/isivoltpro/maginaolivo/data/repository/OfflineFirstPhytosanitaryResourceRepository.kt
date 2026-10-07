@@ -55,6 +55,12 @@ class OfflineFirstPhytosanitaryResourceRepository(
                 .map { rows -> rows.map { it.toDomain() } }
         }
 
+    override fun observeArchivedPeople(): Flow<List<AgronomicPerson>> =
+        scoped { workspaceId ->
+            database.phytosanitaryResourceDao().observeArchivedPeople(workspaceId)
+                .map { rows -> rows.map { it.toDomain() } }
+        }
+
     override fun observeCredentials(personId: UUID): Flow<List<AgronomicCredential>> =
         scoped { workspaceId ->
             database.phytosanitaryResourceDao().observeCredentials(workspaceId, personId)
