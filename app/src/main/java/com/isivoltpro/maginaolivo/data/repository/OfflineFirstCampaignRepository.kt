@@ -210,8 +210,9 @@ class OfflineFirstCampaignRepository(
             return@mutate conflict("archived_farm")
         }
         if (database.campaignDao().countOtherCurrent(current.farmId, id) > 0) return@mutate conflict("active_campaign_exists")
-        // Keep endDate as the correction boundary: reopening history must not turn an old
-        // Campaign into an unbounded current one. An explicit close(id, newEndDate) may change it.
+        // #428 invariant: keep endDate as the correction boundary. Reopening history must not
+        // turn an old Campaign into an unbounded current one. Only explicit close(id, newEndDate)
+        // may change that historical boundary.
         database.campaignDao().upsert(current.copy(status = CampaignStatus.ACTIVE, metadata = current.metadata.next(now)))
         enqueue(id, OutboxOperation.UPDATE, now)
         AppResult.Success(Unit)
