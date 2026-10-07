@@ -139,8 +139,9 @@ class PhytosanitaryResourceUiTest {
         rule.onNodeWithTag("machine-phyto-details").performScrollTo().performClick()
         rule.onNodeWithTag("machine-phyto-source").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("REAFA", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        rule.onNodeWithTag("machine-phyto-inspection").performScrollTo()
-            .assertTextContains("CERT-2026", substring = true)
+        rule.onNodeWithTag("machine-phyto-inspection").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("CERT-2026", substring = true, useUnmergedTree = true)
+            .assertIsDisplayed()
         rule.onNodeWithTag("machine-phyto-edit").assertDoesNotExist()
     }
 }
