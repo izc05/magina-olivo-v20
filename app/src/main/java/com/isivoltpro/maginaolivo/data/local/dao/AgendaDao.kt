@@ -29,8 +29,18 @@ interface AgendaDao {
     @Query("SELECT * FROM activities WHERE status = 'PLANNED' AND deleted_at IS NULL ORDER BY activity_date, id")
     fun observePlanned(): Flow<List<ActivityWithTargets>>
 
+    @Transaction
+    @Query(
+        "SELECT * FROM activities WHERE workspace_id = :workspaceId AND status = 'PLANNED' " +
+            "AND deleted_at IS NULL ORDER BY activity_date, id",
+    )
+    fun observePlannedForWorkspace(workspaceId: UUID): Flow<List<ActivityWithTargets>>
+
     @Query("SELECT id, name FROM farms")
     fun observeFarmNames(): Flow<List<FarmNameRow>>
+
+    @Query("SELECT id, name FROM farms WHERE workspace_id = :workspaceId")
+    fun observeFarmNamesForWorkspace(workspaceId: UUID): Flow<List<FarmNameRow>>
 
     @Upsert suspend fun upsertPlanning(planning: ActivityPlanningEntity)
 

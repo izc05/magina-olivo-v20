@@ -166,22 +166,33 @@ class OfflineFirstActivityRepository(
         }.flowOn(dispatchers.io)
 
     override fun observeAgenda(): Flow<List<AgendaEntry>> =
-        combine(database.agendaDao().observePlanned(), database.agendaDao().observeFarmNames()) { rows, farms ->
-            val names = farms.associate { it.id to it.name }
-            rows.map { row ->
-                val activity = row.toDomain()
-                AgendaEntry(
-                    activityId = activity.id,
-                    farmId = activity.farmId,
-                    farmName = activity.farmId?.let(names::get),
-                    type = activity.type,
-                    activityDate = activity.activityDate,
-                    description = activity.description,
-                    parcelNames = activity.targets.map { it.parcelName },
-                    planning = activity.planning,
-                    reminders = activity.reminders,
-                )
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
             }
+            emitAll(
+                combine(
+                    database.agendaDao().observePlannedForWorkspace(active),
+                    database.agendaDao().observeFarmNamesForWorkspace(active),
+                ) { rows, farms ->
+                    val names = farms.associate { it.id to it.name }
+                    rows.map { row ->
+                        val activity = row.toDomain()
+                        AgendaEntry(
+                            activityId = activity.id,
+                            farmId = activity.farmId,
+                            farmName = activity.farmId?.let(names::get),
+                            type = activity.type,
+                            activityDate = activity.activityDate,
+                            description = activity.description,
+                            parcelNames = activity.targets.map { it.parcelName },
+                            planning = activity.planning,
+                            reminders = activity.reminders,
+                        )
+                    }
+                },
+            )
         }.flowOn(dispatchers.io)
 
     override fun observeSelectableMachines(): Flow<List<MachineOption>> =

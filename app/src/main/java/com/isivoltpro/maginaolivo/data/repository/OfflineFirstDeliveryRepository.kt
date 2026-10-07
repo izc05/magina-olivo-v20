@@ -26,11 +26,14 @@ import com.isivoltpro.maginaolivo.domain.delivery.YieldRules
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocation
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestContext
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestParcelOption
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -47,13 +50,24 @@ class OfflineFirstDeliveryRepository(
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
+    private val workspaceRepository: WorkspaceRepository? = null,
     /** Test override only; production derives the calendar from the persisted Workspace. */
     private val zoneId: (() -> ZoneId)? = null,
 ) : DeliveryRepository {
     private val writer = DeliveryWriter(database, idGenerator)
+    private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
 
     override fun observeAll(): Flow<List<Delivery>> =
-        database.deliveryDao().observeAll().map { rows -> toDomain(rows) }.flowOn(dispatchers.io)
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
+            }
+            emitAll(
+                database.deliveryDao().observeAllForWorkspace(active)
+                    .map { rows -> toDomain(rows) },
+            )
+        }.flowOn(dispatchers.io)
 
     override fun observeForCampaign(campaignId: UUID): Flow<List<Delivery>> =
         database.deliveryDao().observeForCampaign(campaignId).map { rows -> toDomain(rows) }.flowOn(dispatchers.io)
@@ -63,19 +77,27 @@ class OfflineFirstDeliveryRepository(
             .flowOn(dispatchers.io)
 
     override fun observeContexts(): Flow<List<HarvestContext>> =
-        database.harvestDao().observeRunningCampaigns().map { rows ->
-            rows.map { row ->
-                HarvestContext(
-                    farmId = row.farmId,
-                    farmName = row.farmName,
-                    campaignId = row.campaignId,
-                    campaignName = row.campaignName,
-                    campaignStatus = row.campaignStatus,
-                    campaignStart = row.campaignStart,
-                    parcels = database.harvestDao().listCampaignParcels(row.campaignId)
-                        .map { HarvestParcelOption(it.parcelId, it.name) },
-                )
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
             }
+            emitAll(
+                database.harvestDao().observeRunningCampaignsForWorkspace(active).map { rows ->
+                    rows.map { row ->
+                        HarvestContext(
+                            farmId = row.farmId,
+                            farmName = row.farmName,
+                            campaignId = row.campaignId,
+                            campaignName = row.campaignName,
+                            campaignStatus = row.campaignStatus,
+                            campaignStart = row.campaignStart,
+                            parcels = database.harvestDao().listCampaignParcels(row.campaignId)
+                                .map { HarvestParcelOption(it.parcelId, it.name) },
+                        )
+                    }
+                },
+            )
         }.flowOn(dispatchers.io)
 
     override suspend fun create(draft: DeliveryDraft): AppResult<UUID> =
