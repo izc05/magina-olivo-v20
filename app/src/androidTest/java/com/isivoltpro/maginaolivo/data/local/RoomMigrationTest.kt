@@ -33,7 +33,34 @@ class RoomMigrationTest {
 
     @Test
     fun databaseVersionMatchesLatestExportedSchema() {
-        assertEquals(24, MaginaOlivoDatabase.VERSION)
+        assertEquals(25, MaginaOlivoDatabase.VERSION)
+    }
+
+    @Test
+    fun migration24To25KeepsLegacyTreatmentAndAddsEmptyCueFields() {
+        migrationHelper.createDatabase(TEST_DATABASE, 24).use { database ->
+            database.execSQL("INSERT INTO workspaces (id, name, owner_user_id, country_code, timezone, locale, currency, created_at, updated_at, version, sync_status) VALUES ('w','Farm','owner','ES','Europe/Madrid','es-ES','EUR',1000,1000,1,'LOCAL_ONLY')")
+            database.execSQL("INSERT INTO activities (id, workspace_id, farm_id, activity_date, type, status, description, created_at, updated_at, version, sync_status) VALUES ('a','w',NULL,'2026-10-05','PHYTOSANITARY','COMPLETED','Tratamiento',1000,1000,7,'PENDING')")
+            database.execSQL("INSERT INTO phytosanitary_details (activity_id, workspace_id, product_name, active_substance, dose_value, dose_unit, reason, equipment_text, created_at, updated_at, version, sync_status) VALUES ('a','w','Cobre 50%','Oxicloruro de cobre',2.0,'kg/ha','Repilo','Atomizador',1000,1000,7,'PENDING')")
+        }
+        migrationHelper.runMigrationsAndValidate(TEST_DATABASE, 25, true, DatabaseMigrations.MIGRATION_24_25).use { database ->
+            database.query(
+                "SELECT product_name, active_substance, dose_value, dose_unit, reason, equipment_text, " +
+                    "operator_person_id, application_machine_id, service_provider_organization_id, " +
+                    "product_registration_number, product_source, product_source_version, product_fetched_at, " +
+                    "authorization_context_snapshot, pest_problem_code, efficacy_code, treatment_observations " +
+                    "FROM phytosanitary_details WHERE activity_id='a'",
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Cobre 50%", cursor.getString(0))
+                assertEquals("Oxicloruro de cobre", cursor.getString(1))
+                assertEquals(2.0, cursor.getDouble(2), 0.0)
+                assertEquals("kg/ha", cursor.getString(3))
+                assertEquals("Repilo", cursor.getString(4))
+                assertEquals("Atomizador", cursor.getString(5))
+                for (column in 6..16) assertTrue(cursor.isNull(column))
+            }
+        }
     }
 
     @Test
