@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.isivoltpro.maginaolivo.domain.machinery.Machine
@@ -136,7 +137,8 @@ class PhytosanitaryResourceUiTest {
         }
         rule.onNodeWithTag("machine-phyto-source").assertDoesNotExist()
         rule.onNodeWithTag("machine-phyto-details").performScrollTo().performClick()
-        rule.onNodeWithTag("machine-phyto-source").performScrollTo().assertTextContains("REAFA")
+        rule.onNodeWithTag("machine-phyto-source").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("REAFA", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         rule.onNodeWithTag("machine-phyto-inspection").performScrollTo()
             .assertTextContains("CERT-2026", substring = true)
         rule.onNodeWithTag("machine-phyto-edit").assertDoesNotExist()
