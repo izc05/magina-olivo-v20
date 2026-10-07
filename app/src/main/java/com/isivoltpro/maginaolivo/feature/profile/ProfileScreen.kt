@@ -179,6 +179,7 @@ fun ProfileScreen(
             modifier = Modifier.testTag("profile-machinery"),
             trailing = { Chevron() },
         )
+        MoSectionHeader("Datos del cuaderno")
         MoCompactListItem(
             title = "Aplicadores y asesores",
             subtitle = "Personas y credenciales para el cuaderno",
