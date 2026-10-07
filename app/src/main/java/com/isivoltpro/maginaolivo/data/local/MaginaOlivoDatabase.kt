@@ -66,7 +66,9 @@ import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.entity.UserProfileEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WeatherCacheEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.entity.AgronomicCredentialEntity
 import com.isivoltpro.maginaolivo.data.local.entity.AgronomicPersonEntity
+import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryEquipmentInspectionEntity
 import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryEquipmentProfileEntity
 
 private const val DATABASE_VERSION = 24
@@ -116,7 +118,9 @@ private const val DATABASE_VERSION = 24
         RecollectionRatesEntity::class,
         ProfileSettingsEntity::class,
         AgronomicPersonEntity::class,
+        AgronomicCredentialEntity::class,
         PhytosanitaryEquipmentProfileEntity::class,
+        PhytosanitaryEquipmentInspectionEntity::class,
     ],
     version = DATABASE_VERSION,
     exportSchema = true,
