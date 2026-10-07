@@ -617,7 +617,7 @@ class DayCostContractTest {
         val dayId = ok(harvests.openJornada(farmId, day))
         named(dayId, 5)
         val unlinked = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 30_000).copy(harvestId = null, campaignId = campaignId)))
-        val otherDate = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 9_000).copy(harvestId = null, campaignId = campaignId, expenseDate = day.plusDays(1))))
+        val otherDate = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 9_000).copy(harvestId = null, campaignId = campaignId, expenseDate = day.minusDays(1))))
         // #475: one kept «Fuera de campaña» is never a candidate nor linked.
         val outside = ok(expenses.create(cost(dayId, JornadaExpenseKind.LABOUR, 5_000).copy(harvestId = null)))
 
