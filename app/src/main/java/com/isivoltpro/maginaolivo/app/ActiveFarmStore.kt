@@ -12,6 +12,9 @@ interface ActiveFarmStore {
     fun get(): UUID?
 
     fun set(farmId: UUID)
+
+    /** #427: no active Farm means no persisted fallback UUID from an archived/deleted Farm. */
+    fun clear()
 }
 
 class InMemoryActiveFarmStore(private var farmId: UUID? = null) : ActiveFarmStore {
@@ -19,6 +22,10 @@ class InMemoryActiveFarmStore(private var farmId: UUID? = null) : ActiveFarmStor
 
     override fun set(farmId: UUID) {
         this.farmId = farmId
+    }
+
+    override fun clear() {
+        farmId = null
     }
 }
 
@@ -30,6 +37,10 @@ class AndroidActiveFarmStore(context: Context) : ActiveFarmStore {
 
     override fun set(farmId: UUID) {
         preferences.edit { putString(KEY_ACTIVE_FARM, farmId.toString()) }
+    }
+
+    override fun clear() {
+        preferences.edit { remove(KEY_ACTIVE_FARM) }
     }
 
     private companion object {
