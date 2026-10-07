@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 24,
-    "identityHash": "9449a4df25af922df76c25a733ff4e41",
+    "identityHash": "09e3c20999215ab3be652c8882b430a8",
     "entities": [
       {
         "tableName": "workspaces",
@@ -1726,7 +1726,7 @@
       },
       {
         "tableName": "phytosanitary_details",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `product_name` TEXT, `product_id` TEXT, `active_substance` TEXT, `total_quantity` REAL, `unit` TEXT, `dose_value` REAL, `dose_unit` TEXT, `reason` TEXT, `equipment_text` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`activity_id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`activity_id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `product_name` TEXT, `product_id` TEXT, `active_substance` TEXT, `total_quantity` REAL, `unit` TEXT, `dose_value` REAL, `dose_unit` TEXT, `reason` TEXT, `equipment_text` TEXT, `operator_person_id` TEXT, `application_machine_id` TEXT, `service_provider_organization_id` TEXT, `product_registration_number` TEXT, `product_source` TEXT, `product_source_version` TEXT, `product_fetched_at` INTEGER, `authorization_context_snapshot` TEXT, `pest_problem_code` TEXT, `efficacy_code` TEXT, `treatment_observations` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`activity_id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`activity_id`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "activityId",
@@ -1783,6 +1783,61 @@
           {
             "fieldPath": "equipmentText",
             "columnName": "equipment_text",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "operatorPersonId",
+            "columnName": "operator_person_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "applicationMachineId",
+            "columnName": "application_machine_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "serviceProviderOrganizationId",
+            "columnName": "service_provider_organization_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "productRegistrationNumber",
+            "columnName": "product_registration_number",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "productSource",
+            "columnName": "product_source",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "productSourceVersion",
+            "columnName": "product_source_version",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "productFetchedAt",
+            "columnName": "product_fetched_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "authorizationContextSnapshot",
+            "columnName": "authorization_context_snapshot",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pestProblemCode",
+            "columnName": "pest_problem_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "efficacyCode",
+            "columnName": "efficacy_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "treatmentObservations",
+            "columnName": "treatment_observations",
             "affinity": "TEXT"
           },
           {
@@ -6455,7 +6510,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9449a4df25af922df76c25a733ff4e41')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '09e3c20999215ab3be652c8882b430a8')"
     ]
   }
 }
