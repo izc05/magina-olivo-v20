@@ -184,6 +184,11 @@ interface ActivityRepository {
     fun observe(id: UUID): Flow<Activity?>
     suspend fun create(command: NewActivity): AppResult<UUID>
     suspend fun update(id: UUID, changes: ActivityChanges): AppResult<Unit>
+    /**
+     * #426: corrects a historical COMPLETED record without turning it back into planning.
+     * Planning/reminders are preserved as history and money remains in the Expense ledger.
+     */
+    suspend fun correctCompleted(id: UUID, changes: ActivityChanges): AppResult<Unit>
     /** Promotes a resumable DRAFT to PLANNED once it targets at least one Parcel. */
     suspend fun plan(id: UUID): AppResult<Unit>
     suspend fun complete(id: UUID): AppResult<Unit>
