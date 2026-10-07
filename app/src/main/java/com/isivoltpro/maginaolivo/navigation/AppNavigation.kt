@@ -498,6 +498,7 @@ fun AppNavigation(
                 else ActivityDetailRoute(
                     activityId,
                     persistence,
+                    clock = compositionRoot.clock,
                     relatedExpenseAdded = expenseAdded,
                     onRelatedExpenseNoticeShown = { backStackEntry.savedStateHandle[RELATED_EXPENSE_ADDED_KEY] = false },
                     // #416: money for a work is its own Gasto, tied to the work; never a second figure.
