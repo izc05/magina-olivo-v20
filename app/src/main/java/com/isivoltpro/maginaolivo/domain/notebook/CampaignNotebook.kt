@@ -21,6 +21,38 @@ import com.isivoltpro.maginaolivo.domain.labour.LabourByWorker
 import com.isivoltpro.maginaolivo.domain.labour.LabourSummary
 import com.isivoltpro.maginaolivo.domain.labour.WorkerLabour
 import java.time.LocalDate
+import java.util.UUID
+
+/**
+ * #509: legacy recollection rows without campaignId may be inferred only when exactly one
+ * Campaign of the Farm covers their date. Ambiguous rows stay unassigned until the farmer
+ * explicitly chooses a Campaign; they must never be copied into several histories.
+ */
+sealed interface LegacyCampaignResolution {
+    data class Resolved(val campaignId: UUID) : LegacyCampaignResolution
+    data object Unassigned : LegacyCampaignResolution
+    data class Ambiguous(val candidateIds: List<UUID>) : LegacyCampaignResolution
+}
+
+object LegacyCampaignResolver {
+    fun resolve(campaigns: List<Campaign>, farmId: UUID?, date: LocalDate): LegacyCampaignResolution {
+        if (farmId == null) return LegacyCampaignResolution.Unassigned
+        val candidates = campaigns.asSequence()
+            .filter { it.farmId == farmId && it.includes(date) }
+            .map { it.id }
+            .distinct()
+            .sortedBy(UUID::toString)
+            .toList()
+        return when (candidates.size) {
+            0 -> LegacyCampaignResolution.Unassigned
+            1 -> LegacyCampaignResolution.Resolved(candidates.single())
+            else -> LegacyCampaignResolution.Ambiguous(candidates)
+        }
+    }
+
+    private fun Campaign.includes(date: LocalDate): Boolean =
+        !date.isBefore(startDate) && (endDate == null || !date.isAfter(endDate))
+}
 
 /**
  * Phase 19A (CR-005) — the Cuaderno of one Campaign: a read-only projection over the canonical
@@ -139,10 +171,13 @@ data class CampaignNotebook(
             expenses: List<Expense>,
             labour: List<LabourEntry> = emptyList(),
             equipment: List<EquipmentLine> = emptyList(),
+            candidateCampaigns: List<Campaign> = listOf(campaign),
         ): CampaignNotebook {
-            fun belongs(campaignId: java.util.UUID?, farmId: java.util.UUID?, date: LocalDate): Boolean =
+            fun belongs(campaignId: UUID?, farmId: UUID?, date: LocalDate): Boolean =
                 campaignId == campaign.id ||
-                    (campaignId == null && farmId == campaign.farmId && campaign.contains(date))
+                    (campaignId == null &&
+                        LegacyCampaignResolver.resolve(candidateCampaigns, farmId, date) ==
+                        LegacyCampaignResolution.Resolved(campaign.id))
             val own = activities.filter { activity ->
                 activity.campaignId == campaign.id ||
                     (activity.type == ActivityType.HARVEST_DAY && belongs(activity.campaignId, activity.farmId, activity.activityDate))
@@ -160,8 +195,6 @@ data class CampaignNotebook(
             )
         }
 
-        private fun Campaign.contains(date: LocalDate): Boolean =
-            !date.isBefore(startDate) && (endDate == null || !date.isAfter(endDate))
     }
 }
 

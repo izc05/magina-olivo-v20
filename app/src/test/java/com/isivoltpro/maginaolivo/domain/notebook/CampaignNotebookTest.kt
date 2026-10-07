@@ -121,6 +121,74 @@ class CampaignNotebookTest {
         assertEquals(listOf(legacyJornada), notebook.harvests)
     }
 
+    @Test fun legacyResolverRequiresExactlyOneCandidate() {
+        val date = LocalDate.of(2026, 11, 2)
+        val bounded = campaign.copy(endDate = LocalDate.of(2026, 12, 31))
+        val second = campaign.copy(
+            id = UUID.randomUUID(), name = "Solapada",
+            startDate = LocalDate.of(2026, 10, 15), endDate = LocalDate.of(2026, 12, 15),
+        )
+        val third = campaign.copy(
+            id = UUID.randomUUID(), name = "Solapada 3",
+            startDate = LocalDate.of(2026, 11, 1), endDate = LocalDate.of(2026, 11, 30),
+        )
+
+        assertEquals(
+            LegacyCampaignResolution.Unassigned,
+            LegacyCampaignResolver.resolve(listOf(bounded), otherFarm, date),
+        )
+        assertEquals(
+            LegacyCampaignResolution.Resolved(bounded.id),
+            LegacyCampaignResolver.resolve(listOf(bounded), farm, date),
+        )
+        val two = LegacyCampaignResolver.resolve(listOf(bounded, second), farm, date)
+        assertTrue(two is LegacyCampaignResolution.Ambiguous)
+        assertEquals(setOf(bounded.id, second.id), (two as LegacyCampaignResolution.Ambiguous).candidateIds.toSet())
+        val three = LegacyCampaignResolver.resolve(listOf(bounded, second, third), farm, date)
+        assertTrue(three is LegacyCampaignResolution.Ambiguous)
+        assertEquals(3, (three as LegacyCampaignResolution.Ambiguous).candidateIds.size)
+    }
+
+    @Test fun overlappingCampaignsNeverDuplicateLegacyRecollection() {
+        val date = LocalDate.of(2026, 11, 2)
+        val first = campaign.copy(endDate = LocalDate.of(2026, 12, 31))
+        val second = campaign.copy(
+            id = UUID.randomUUID(), name = "2026/27 B",
+            startDate = LocalDate.of(2026, 10, 15), endDate = LocalDate.of(2026, 12, 15),
+        )
+        val candidates = listOf(first, second)
+        val legacyDay = activity(ActivityType.HARVEST_DAY, date, null)
+        val legacyJornada = harvest(1_000_000, date).copy(campaignId = null)
+
+        fun notebook(c: Campaign) = CampaignNotebook.project(
+            c,
+            activities = listOf(legacyDay),
+            harvests = listOf(legacyJornada),
+            deliveries = emptyList(),
+            expenses = emptyList(),
+            candidateCampaigns = candidates,
+        )
+
+        val a = notebook(first)
+        val b = notebook(second)
+        assertTrue(a.harvestDays.isEmpty() && b.harvestDays.isEmpty())
+        assertTrue(a.harvests.isEmpty() && b.harvests.isEmpty())
+        // Historical comparison must not count the same hand-entered kilos in both Campaigns.
+        val comparison = com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison.of(listOf(a, b))
+        assertTrue(comparison.all { it.legacyUnweighedGrams == 0L })
+
+        // Once a legacy row is explicitly assigned, date overlap no longer matters.
+        val assigned = legacyJornada.copy(campaignId = second.id)
+        val assignedA = CampaignNotebook.project(
+            first, emptyList(), listOf(assigned), emptyList(), emptyList(), candidateCampaigns = candidates,
+        )
+        val assignedB = CampaignNotebook.project(
+            second, emptyList(), listOf(assigned), emptyList(), emptyList(), candidateCampaigns = candidates,
+        )
+        assertTrue(assignedA.harvests.isEmpty())
+        assertEquals(listOf(assigned), assignedB.harvests)
+    }
+
     /** #478: the Farm Diario shows a Gasto tied to a work as its own row, with or without a Campaign. */
     @Test fun aGastoOfAWorkIsNeverHiddenFromTheFarmDiario() {
         val treatment = activity(ActivityType.PHYTOSANITARY, LocalDate.of(2026, 3, 10), null)
