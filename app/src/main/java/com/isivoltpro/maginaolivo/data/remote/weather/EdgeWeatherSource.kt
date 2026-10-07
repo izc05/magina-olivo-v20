@@ -77,6 +77,7 @@ object EdgeWeatherResponse {
                 daily = daily,
                 solarDate = solar?.optString("date")?.takeIf(String::isNotBlank)
                     ?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+                solarTimeZone = solar?.optString("timeZone")?.takeIf(String::isNotBlank),
                 sunriseAt = solar?.optString("sunriseAt")?.takeIf(String::isNotBlank)
                     ?.let { runCatching { Instant.parse(it) }.getOrNull() },
                 sunsetAt = solar?.optString("sunsetAt")?.takeIf(String::isNotBlank)
