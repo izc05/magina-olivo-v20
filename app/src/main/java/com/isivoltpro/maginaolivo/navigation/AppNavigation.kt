@@ -27,6 +27,8 @@ import com.isivoltpro.maginaolivo.app.AppEnvironment
 import com.isivoltpro.maginaolivo.feature.farms.FarmDetailRoute
 import com.isivoltpro.maginaolivo.feature.agenda.AgendaRoute
 import com.isivoltpro.maginaolivo.feature.profile.ProfileRoute
+import com.isivoltpro.maginaolivo.feature.phytosanitary.AgronomicPeopleRoute
+import com.isivoltpro.maginaolivo.feature.phytosanitary.AgronomicPersonDetailRoute
 import com.isivoltpro.maginaolivo.feature.profile.appVersionLabel
 import com.isivoltpro.maginaolivo.feature.farms.FarmListRoute
 import com.isivoltpro.maginaolivo.feature.parcels.ParcelDetailRoute
@@ -337,6 +339,7 @@ fun AppNavigation(
                         com.isivoltpro.maginaolivo.BuildConfig.BUILD_NUMBER,
                     ),
                     onMachinery = { navController.navigate(AppDestination.Machinery) },
+                    onAgronomicPeople = { navController.navigate(AppDestination.AgronomicPeople) },
                     developerGalleryEnabled = compositionRoot.environment == AppEnvironment.DEV,
                     onDeveloperGallery = { navController.navigate(AppDestination.DeveloperGallery) },
                     persistence = compositionRoot.localPersistence,
@@ -346,6 +349,27 @@ fun AppNavigation(
                         ?.let { com.isivoltpro.maginaolivo.app.DevTools.demoFarm(it) },
                     onHelp = { topic -> navController.navigate(AppDestination.help(topic.route)) },
                 )
+            }
+            composable(AppDestination.AgronomicPeople) {
+                val persistence = compositionRoot.localPersistence
+                if (persistence == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    AgronomicPeopleRoute(
+                        persistence = persistence,
+                        onPersonSelected = { id -> navController.navigate(AppDestination.agronomicPerson(id.toString())) },
+                    )
+                }
+            }
+            composable(AppDestination.AgronomicPersonPattern) { entry ->
+                val persistence = compositionRoot.localPersistence
+                val personId = entry.arguments?.getString("personId")
+                    ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                if (persistence == null || personId == null) {
+                    PersistenceUnavailableScreen()
+                } else {
+                    AgronomicPersonDetailRoute(personId = personId, persistence = persistence)
+                }
             }
             composable(AppDestination.FarmPattern) { backStackEntry ->
                 val persistence = compositionRoot.localPersistence
