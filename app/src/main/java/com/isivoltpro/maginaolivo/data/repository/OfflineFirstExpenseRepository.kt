@@ -51,26 +51,67 @@ class OfflineFirstExpenseRepository(
         }.flowOn(dispatchers.io)
 
     override fun observeForActivity(activityId: UUID): Flow<List<Expense>> =
-        database.expenseDao().observeForActivity(activityId).map { rows -> rows.map { it.toDomain() } }
-            .flowOn(dispatchers.io)
+        flow {
+            val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> workspace.value
+            }
+            val activity = database.activityDao().findById(activityId)
+            if (activity == null || activity.workspaceId != active) {
+                emit(emptyList())
+            } else {
+                emitAll(
+                    database.expenseDao().observeForActivity(activityId)
+                        .map { rows -> rows.filter { it.workspaceId == active }.map { it.toDomain() } },
+                )
+            }
+        }.flowOn(dispatchers.io)
 
     override fun observeForHarvest(harvestId: UUID): Flow<List<Expense>> =
-        database.expenseDao().observeForHarvest(harvestId).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        flow {
+            val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> workspace.value
+            }
+            val harvest = database.harvestDao().findById(harvestId)
+            if (harvest == null || harvest.workspaceId != active) {
+                emit(emptyList())
+            } else {
+                emitAll(
+                    database.expenseDao().observeForHarvest(harvestId)
+                        .map { rows -> rows.filter { it.workspaceId == active }.map { it.toDomain() } },
+                )
+            }
+        }.flowOn(dispatchers.io)
 
     override fun observe(id: UUID): Flow<Expense?> =
-        combine(
-            database.expenseDao().observeById(id),
-            database.expenseDao().observePurchaseForExpense(id),
-            database.expenseDao().observeItemsForExpense(id),
-        ) { expense, purchase, items -> expense?.toDomain(purchase, items) }.flowOn(dispatchers.io)
+        flow {
+            val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+                is AppResult.Failure -> return@flow emit(null)
+                is AppResult.Success -> workspace.value
+            }
+            emitAll(
+                combine(
+                    database.expenseDao().observeById(id),
+                    database.expenseDao().observePurchaseForExpense(id),
+                    database.expenseDao().observeItemsForExpense(id),
+                ) { expense, purchase, items ->
+                    expense?.takeIf { it.workspaceId == active }?.toDomain(purchase, items)
+                },
+            )
+        }.flowOn(dispatchers.io)
 
     override suspend fun create(draft: ExpenseDraft): AppResult<UUID> {
-        val workspaceId = draft.farmId?.let { farmId ->
-            withContext(dispatchers.io) { database.farmDao().findById(farmId)?.workspaceId }
-                ?: return AppResult.Failure(AppError.Validation("farmId", "not_found"))
-        } ?: when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+        val workspaceId = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
             is AppResult.Failure -> return workspace
             is AppResult.Success -> workspace.value
+        }
+        draft.farmId?.let { farmId ->
+            val farm = withContext(dispatchers.io) { database.farmDao().findById(farmId) }
+                ?: return AppResult.Failure(AppError.Validation("farmId", "not_found"))
+            if (farm.workspaceId != workspaceId) {
+                return AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+            }
         }
         return inTransaction("create_expense") {
             val now = clock.nowInstant()
@@ -91,9 +132,16 @@ class OfflineFirstExpenseRepository(
         }
     }
 
-    override suspend fun update(id: UUID, draft: ExpenseDraft): AppResult<Unit> =
-        inTransaction("update_expense") {
+    override suspend fun update(id: UUID, draft: ExpenseDraft): AppResult<Unit> {
+        val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
+        return inTransaction("update_expense") {
             val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
+            if (current.workspaceId != active) {
+                return@inTransaction AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+            }
             if (
                 current.status == ExpenseStatus.POSTED.name &&
                 draft.expenseDate.isAfter(database.todayForWorkspace(current.workspaceId, clock))
@@ -116,10 +164,18 @@ class OfflineFirstExpenseRepository(
             }
             AppResult.Success(Unit)
         }
+    }
 
-    override suspend fun post(id: UUID): AppResult<Unit> =
-        inTransaction("post_expense") {
+    override suspend fun post(id: UUID): AppResult<Unit> {
+        val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
+        return inTransaction("post_expense") {
             val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
+            if (current.workspaceId != active) {
+                return@inTransaction AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+            }
             if (current.status == ExpenseStatus.POSTED.name) return@inTransaction AppResult.Success(Unit)
             if (current.origin in DayCostLedger.CALCULATED) return@inTransaction AppResult.Failure(AppError.Conflict("calculated_cost"))
             // #475: a replacement taken back into use replaces again: never over paid jornales.
@@ -131,11 +187,19 @@ class OfflineFirstExpenseRepository(
             costs.sync(current.harvestId, now)
             AppResult.Success(Unit)
         }
+    }
 
-    override suspend fun delete(id: UUID): AppResult<Unit> =
-        inTransaction("delete_expense") {
+    override suspend fun delete(id: UUID): AppResult<Unit> {
+        val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
+        return inTransaction("delete_expense") {
             val current = database.expenseDao().findById(id)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
+            if (current.workspaceId != active) {
+                return@inTransaction AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+            }
             if (current.metadata.deletedAt != null) return@inTransaction AppResult.Success(Unit)
             if (current.origin in DayCostLedger.CALCULATED) return@inTransaction AppResult.Failure(AppError.Conflict("calculated_cost"))
             val now = clock.nowInstant()
@@ -145,16 +209,25 @@ class OfflineFirstExpenseRepository(
             JornadaLedger(database, idGenerator).reconcileAutomatic(current.harvestId, now)
             AppResult.Success(Unit)
         }
+    }
 
-    override suspend fun keepAsIndependent(id: UUID): AppResult<Unit> =
-        inTransaction("keep_expense_independent") {
+    override suspend fun keepAsIndependent(id: UUID): AppResult<Unit> {
+        val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return workspace
+            is AppResult.Success -> workspace.value
+        }
+        return inTransaction("keep_expense_independent") {
             val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
+            if (current.workspaceId != active) {
+                return@inTransaction AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+            }
             if (current.origin != ExpenseOrigin.ACTIVITY_COST.name) {
                 return@inTransaction AppResult.Failure(AppError.Conflict("not_activity_cost"))
             }
             writer.detachFromActivity(current, clock.nowInstant())
             AppResult.Success(Unit)
         }
+    }
 
     /**
      * #475: the origin an edit keeps. A hand-typed or document cost becomes a replacement only by
