@@ -74,6 +74,9 @@ class OfflineFirstExpenseRepository(
         }
         return inTransaction("create_expense") {
             val now = clock.nowInstant()
+            if (draft.expenseDate.isAfter(database.todayForWorkspace(workspaceId, clock))) {
+                return@inTransaction AppResult.Failure(AppError.Validation("expenseDate", "future_real_expense"))
+            }
             // #475: a day's cost replaces its calculation only when the farmer said so.
             val origin = if (draft.dayCostRole == DayCostRole.REPLACEMENT) {
                 costs.requireReplaceable(draft.harvestId, draft.category.name)
@@ -91,6 +94,12 @@ class OfflineFirstExpenseRepository(
     override suspend fun update(id: UUID, draft: ExpenseDraft): AppResult<Unit> =
         inTransaction("update_expense") {
             val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
+            if (
+                current.status == ExpenseStatus.POSTED.name &&
+                draft.expenseDate.isAfter(database.todayForWorkspace(current.workspaceId, clock))
+            ) {
+                return@inTransaction AppResult.Failure(AppError.Validation("expenseDate", "future_real_expense"))
+            }
             if (current.origin in DayCostLedger.CALCULATED) return@inTransaction AppResult.Failure(AppError.Conflict("calculated_cost"))
             // Codex #520: a work's cost never moves to another work or loses it in a plain edit.
             if (current.origin == ExpenseOrigin.ACTIVITY_COST.name && draft.activityId != current.activityId) {
