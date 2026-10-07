@@ -50,6 +50,7 @@ class OfflineFirstExpenseRepository(
             }
         }.flowOn(dispatchers.io)
 
+    // #467: UUID-scoped reads first prove that their owner belongs to the active Workspace.
     override fun observeForActivity(activityId: UUID): Flow<List<Expense>> =
         flow {
             val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
