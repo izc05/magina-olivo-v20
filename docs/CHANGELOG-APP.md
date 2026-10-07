@@ -20,6 +20,9 @@ concreta está en la ejecución de CI con ese número (Actions → Android CI �
 
 ## 0.7.0 — en curso (fase 21, Perfil)
 
+- **Un rendimiento del 100 % ya se puede escribir (#499).** El formulario de rendimiento aceptaba
+  hasta 99,99 % aunque el 100 % es válido: ahora admite «100» y «100,00» y sigue rechazando cualquier
+  valor por encima. Un rendimiento guardado al 100 % se puede abrir y volver a guardar sin error.
 - **«Restaurar» parcela solo restaura (#494).** Restaurar solo vale para una parcela archivada: ya no
   puede mover a otra finca una parcela activa, ni reactivar una parcela cuya referencia catastral
   tiene ahora otra parcela activa, ni una del Catastro sin referencia o contorno. El aviso explica el

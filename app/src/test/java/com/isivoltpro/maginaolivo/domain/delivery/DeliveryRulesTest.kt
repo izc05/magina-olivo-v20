@@ -80,6 +80,20 @@ class DeliveryRulesTest {
         assertEquals("18", Percent.editable(1_800))
     }
 
+    /** #499: 100 % is a valid yield, so the form must read it; anything above stays refused. */
+    @Test
+    fun aHundredPercentYieldIsReadAndRoundTrips() {
+        assertEquals(2_150, Percent.parseHundredths("21,5"))
+        assertEquals(9_999, Percent.parseHundredths("99,99"))
+        assertEquals(10_000, Percent.parseHundredths("100"))
+        assertEquals(10_000, Percent.parseHundredths("100,0"))
+        assertEquals(10_000, Percent.parseHundredths("100,00 %"))
+        assertNull(Percent.parseHundredths("100,01"))
+        assertNull(Percent.parseHundredths("101"))
+        assertNull(Percent.parseHundredths("1000"))
+        listOf(1, 1_800, 2_135, 9_999, 10_000).forEach { assertEquals(it, Percent.parseHundredths(Percent.editable(it))) }
+    }
+
     @Test
     fun yieldIsWeightedByDeliveredKilosAndShowsItsCoverage() {
         val summary = DeliverySummary.of(
