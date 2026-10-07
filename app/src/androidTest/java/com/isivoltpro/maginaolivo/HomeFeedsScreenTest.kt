@@ -111,6 +111,7 @@ class HomeFeedsScreenTest {
         val solarWeather = WeatherNow(
             18, WeatherCondition.CLEAR, 0, 7, now,
             solarDate = LocalDate.parse("2026-11-26"),
+            solarTimeZone = "Europe/Madrid",
             sunriseAt = Instant.parse("2026-11-26T07:05:00Z"),
             sunsetAt = Instant.parse("2026-11-26T16:56:00Z"),
         )
@@ -121,7 +122,7 @@ class HomeFeedsScreenTest {
                 weather = FeedState.Value(solarWeather, "AEMET", now, stale = false),
             ),
         )
-        composeRule.onNodeWithTag("home-weather-solar").assertIsDisplayed()
+        composeRule.onNodeWithTag("home-weather-summary").assertIsDisplayed()
             .assertTextContains("Salida 08:05").assertTextContains("Puesta 17:56")
     }
 
@@ -129,6 +130,7 @@ class HomeFeedsScreenTest {
         val yesterday = WeatherNow(
             18, WeatherCondition.CLEAR, 0, 7, now,
             solarDate = LocalDate.parse("2026-11-25"),
+            solarTimeZone = "Europe/Madrid",
             sunriseAt = Instant.parse("2026-11-25T07:04:00Z"),
             sunsetAt = Instant.parse("2026-11-25T16:57:00Z"),
         )
