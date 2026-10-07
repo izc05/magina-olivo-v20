@@ -76,6 +76,27 @@ class CampaignAnalyticsTest {
     }
 
     @Test
+    fun cooperativeAnalyticsUsesOrganizationIdAndKeepsManualDestinationsSeparate() {
+        val bedmar = UUID.randomUUID()
+        val jodar = UUID.randomUUID()
+        val notebook = CampaignNotebook.project(
+            current, emptyList(), emptyList(),
+            listOf(
+                delivery(current, 1_000_000, day(23), "Cooperativa San Isidro", null, bedmar),
+                delivery(current, 2_000_000, day(24), "S.C.A. San Isidro", null, bedmar),
+                delivery(current, 3_000_000, day(25), "San Isidro", null, jodar),
+                delivery(current, 4_000_000, day(26), "San Isidro", null, null),
+            ),
+            emptyList(),
+        )
+
+        val rows = CampaignSeries.of(notebook).cooperatives
+        assertEquals(3, rows.size)
+        assertEquals(3_000_000L, rows.single { it.name == "S.C.A. San Isidro" }.summary.deliveredGrams)
+        assertEquals(listOf(3_000_000L, 4_000_000L), rows.filter { it.name == "San Isidro" }.map { it.summary.deliveredGrams }.sorted())
+    }
+
+    @Test
     fun aJornadaAwaitingItsFirstPesadaAddsNoKilosAndNoChartPoint() {
         // Gate 20: opened before any Pesada, it stores 0 meaning "not weighed yet" — never a fake zero.
         val open = harvest(current, 0, day(27))
@@ -182,11 +203,18 @@ class CampaignAnalyticsTest {
         notes = null, version = 1,
     )
 
-    private fun delivery(campaign: Campaign, grams: Long, date: LocalDate, destination: String, fat: Int?): Delivery {
+    private fun delivery(
+        campaign: Campaign,
+        grams: Long,
+        date: LocalDate,
+        destination: String,
+        fat: Int?,
+        organizationId: UUID? = null,
+    ): Delivery {
         val id = UUID.randomUUID()
         return Delivery(
             id = id, workspaceId = workspace, farmId = farm, campaignId = campaign.id, deliveryDate = date,
-            destinationOrganizationId = null, destinationName = destination, netGrams = grams, grossGrams = null,
+            destinationOrganizationId = organizationId, destinationName = destination, netGrams = grams, grossGrams = null,
             tareGrams = null, deliveryNumber = null, ticketNumber = null, source = DeliverySource.MANUAL,
             shares = emptyList(), notes = null, version = 1,
             analysis = fat?.let { YieldAnalysis(UUID.randomUUID(), id, date, it, null, null, 1) },

@@ -1,11 +1,13 @@
 package com.isivoltpro.maginaolivo.domain.analytics
 
 import com.isivoltpro.maginaolivo.domain.campaign.Campaign
+import com.isivoltpro.maginaolivo.domain.delivery.Delivery
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.WeightedYield
 import com.isivoltpro.maginaolivo.domain.notebook.CampaignNotebook
 import com.isivoltpro.maginaolivo.domain.notebook.legacyUnweighedGrams
 import java.time.LocalDate
+import java.util.UUID
 
 /**
  * Phase 19G — one day of a Campaign, derived from its canonical rows. A day with deliveries
@@ -51,13 +53,37 @@ data class CampaignSeries(val days: List<DayPoint>, val cooperatives: List<Coope
                 )
             }
             val cooperatives = notebook.deliveries
-                .groupBy { it.destinationName.trim() }
-                .map { (name, rows) -> CooperativeYield(name, DeliverySummary.of(rows)) }
+                .groupBy { delivery ->
+                    delivery.destinationOrganizationId
+                        ?.let { CooperativeYieldKey.Organization(it) }
+                        ?: CooperativeYieldKey.Manual(delivery.destinationName.normalizedDestination())
+                }
+                .map { (key, rows) ->
+                    val name = when (key) {
+                        is CooperativeYieldKey.Organization -> rows.latestDestinationName()
+                        is CooperativeYieldKey.Manual -> rows.first().destinationName.trim()
+                    }
+                    CooperativeYield(name, DeliverySummary.of(rows))
+                }
                 .sortedByDescending { it.summary.deliveredGrams }
             return CampaignSeries(days, cooperatives)
         }
     }
 }
+
+private sealed interface CooperativeYieldKey {
+    data class Organization(val id: UUID) : CooperativeYieldKey
+    data class Manual(val normalizedName: String) : CooperativeYieldKey
+}
+
+private fun String.normalizedDestination(): String =
+    trim().lowercase().replace(Regex("""\s+"""), " ")
+
+private fun List<Delivery>.latestDestinationName(): String =
+    maxWithOrNull(compareBy<Delivery>({ it.deliveryDate }, { it.id.toString() }))
+        ?.destinationName
+        ?.trim()
+        .orEmpty()
 
 /**
  * One Campaign in the year-over-year comparison. Cost per kilo exists only when both sides
