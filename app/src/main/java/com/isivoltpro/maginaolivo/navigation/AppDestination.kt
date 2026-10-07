@@ -68,6 +68,8 @@ object AppDestination {
     const val Organizations = "organizations"
     const val Deliveries = "deliveries"
     const val Machinery = "machinery"
+    const val AgronomicPeople = "agronomic-people"
+    const val AgronomicPersonPattern = "agronomic-person/{personId}"
 
     const val FarmPattern = "farm/{farmId}"
     const val ParcelPattern = "parcel/{parcelId}"
@@ -181,6 +183,8 @@ object AppDestination {
 
     fun machine(machineId: String): String = nestedRoute("machine", machineId)
 
+    fun agronomicPerson(personId: String): String = nestedRoute("agronomic-person", personId)
+
     fun catastro(farmId: String): String = nestedRoute(MapCatastro, farmId)
 
     /** `register` or `register?type=IRRIGATION`. */
@@ -222,7 +226,7 @@ object AppDestination {
             "document",
             -> RootDestination.Notebook
             RootDestination.Alerts.route, Calendar, PlanWork -> RootDestination.Alerts
-            RootDestination.Profile.route, DeveloperGallery, "help" -> RootDestination.Profile
+            RootDestination.Profile.route, DeveloperGallery, "help", AgronomicPeople, "agronomic-person" -> RootDestination.Profile
             else -> null
         }
     }

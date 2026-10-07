@@ -9,6 +9,13 @@ import com.isivoltpro.maginaolivo.domain.machinery.MachineCategory
 import com.isivoltpro.maginaolivo.domain.machinery.MachineDraft
 import com.isivoltpro.maginaolivo.domain.machinery.MachineRepository
 import com.isivoltpro.maginaolivo.domain.machinery.MachineUse
+import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentInspection
+import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentInspectionDraft
+import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentProfile
+import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryEquipmentProfileDraft
+import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryResourceRepository
+import com.isivoltpro.maginaolivo.domain.phytosanitary.RegulatoryResourceSource
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -124,10 +131,48 @@ class MachineryViewModel(private val machines: MachineRepository) : ViewModel() 
     }
 }
 
+data class PhytosanitaryEquipmentForm(
+    val romaRegistration: String = "",
+    val censusReference: String = "",
+    val acquisitionDate: String = "",
+) {
+    fun toDraft(existing: PhytosanitaryEquipmentProfile?): PhytosanitaryEquipmentProfileDraft? {
+        val parsedDate = acquisitionDate.trim().takeIf { it.isNotEmpty() }
+            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() ?: return null }
+        return PhytosanitaryEquipmentProfileDraft(
+            romaRegistration = romaRegistration.trim().ifEmpty { null },
+            censusReference = censusReference.trim().ifEmpty { null },
+            acquisitionDate = parsedDate,
+            regulatoryTypeCode = existing?.regulatoryTypeCode,
+            source = existing?.source ?: RegulatoryResourceSource.MANUAL,
+            externalId = existing?.externalId,
+            sourceVersion = existing?.sourceVersion,
+            fetchedAt = existing?.fetchedAt,
+        )
+    }
+}
+
+data class PhytosanitaryInspectionForm(
+    val inspectionDate: String = "",
+    val resultCode: String = "",
+    val certificateReference: String = "",
+) {
+    fun toDraft(): PhytosanitaryEquipmentInspectionDraft? {
+        val date = runCatching { LocalDate.parse(inspectionDate.trim()) }.getOrNull() ?: return null
+        return PhytosanitaryEquipmentInspectionDraft(
+            inspectionDate = date,
+            resultCode = resultCode.trim().ifEmpty { null },
+            certificateReference = certificateReference.trim().ifEmpty { null },
+        )
+    }
+}
+
 data class MachineDetailUiState(
     val isLoading: Boolean = true,
     val machine: Machine? = null,
     val uses: List<MachineUse> = emptyList(),
+    val phytosanitaryProfile: PhytosanitaryEquipmentProfile? = null,
+    val phytosanitaryInspections: List<PhytosanitaryEquipmentInspection> = emptyList(),
     val formErrors: MachineFormErrors = MachineFormErrors(),
     val isSaving: Boolean = false,
     val message: String? = null,
@@ -140,7 +185,11 @@ data class MachineDetailUiState(
     val usesWithoutHours: Int get() = uses.count { it.hoursUsed == null }
 }
 
-class MachineDetailViewModel(private val machineId: UUID, private val machines: MachineRepository) : ViewModel() {
+class MachineDetailViewModel(
+    private val machineId: UUID,
+    private val machines: MachineRepository,
+    private val phytosanitary: PhytosanitaryResourceRepository? = null,
+) : ViewModel() {
     private val mutableState = MutableStateFlow(MachineDetailUiState())
     val state: StateFlow<MachineDetailUiState> = mutableState.asStateFlow()
 
@@ -153,6 +202,18 @@ class MachineDetailViewModel(private val machineId: UUID, private val machines: 
         viewModelScope.launch {
             machines.observeUses(machineId).catch { }.collect { mutableState.value = mutableState.value.copy(uses = it) }
         }
+        phytosanitary?.let { resources ->
+            viewModelScope.launch {
+                resources.observeEquipmentProfile(machineId).catch { }.collect {
+                    mutableState.value = mutableState.value.copy(phytosanitaryProfile = it)
+                }
+            }
+            viewModelScope.launch {
+                resources.observeEquipmentInspections(machineId).catch { }.collect {
+                    mutableState.value = mutableState.value.copy(phytosanitaryInspections = it)
+                }
+            }
+        }
     }
 
     fun update(form: MachineForm) {
@@ -160,6 +221,31 @@ class MachineDetailViewModel(private val machineId: UUID, private val machines: 
         mutableState.value = mutableState.value.copy(formErrors = errors, message = null)
         if (draft == null) return
         mutate("Cambios guardados") { machines.update(machineId, draft) }
+    }
+
+    fun savePhytosanitaryProfile(form: PhytosanitaryEquipmentForm) {
+        val resources = phytosanitary ?: return
+        val draft = form.toDraft(mutableState.value.phytosanitaryProfile)
+        if (draft == null) {
+            mutableState.value = mutableState.value.copy(error = "Revisa la fecha de adquisición")
+            return
+        }
+        mutate("Datos fitosanitarios guardados") { resources.saveEquipmentProfile(machineId, draft) }
+    }
+
+    fun addPhytosanitaryInspection(form: PhytosanitaryInspectionForm) {
+        val resources = phytosanitary ?: return
+        val draft = form.toDraft()
+        if (draft == null) {
+            mutableState.value = mutableState.value.copy(error = "Selecciona una fecha de inspección válida")
+            return
+        }
+        mutate("Inspección añadida") {
+            when (val result = resources.addEquipmentInspection(machineId, draft)) {
+                is AppResult.Success -> AppResult.Success(Unit)
+                is AppResult.Failure -> result
+            }
+        }
     }
 
     fun archive() = mutate("Máquina retirada") { machines.archive(machineId) }

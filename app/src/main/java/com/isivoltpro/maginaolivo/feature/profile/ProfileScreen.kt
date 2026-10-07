@@ -68,6 +68,8 @@ fun ProfileRoute(
     onHelp: (HelpTopic) -> Unit = {},
     /** #399: DEV/QA demo farm; null outside the dev flavor, so nothing is shown there. */
     demoFarm: com.isivoltpro.maginaolivo.app.DemoFarmTools? = null,
+    /** #671: nested CUE resource management, never a bottom-bar destination. */
+    onAgronomicPeople: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val profileRepository = persistence?.profileRepository
@@ -93,6 +95,7 @@ fun ProfileRoute(
             )
         },
         onMachinery = onMachinery,
+        onAgronomicPeople = onAgronomicPeople,
         developerGalleryEnabled = developerGalleryEnabled,
         onDeveloperGallery = onDeveloperGallery,
         onHelp = onHelp,
@@ -144,6 +147,8 @@ fun ProfileScreen(
     reminderSettings: (@Composable () -> Unit)? = null,
     /** #399: «Herramientas de desarrollo», only in the dev flavor. */
     devTools: (@Composable () -> Unit)? = null,
+    /** #671: CUE resources live under Perfil, not in the root navigation. */
+    onAgronomicPeople: () -> Unit = {},
 ) {
     Column(
         Modifier
@@ -172,6 +177,14 @@ fun ProfileScreen(
             icon = MoIcons.Tractor,
             onClick = onMachinery,
             modifier = Modifier.testTag("profile-machinery"),
+            trailing = { Chevron() },
+        )
+        MoCompactListItem(
+            title = "Aplicadores y asesores",
+            subtitle = "Personas y credenciales para el cuaderno",
+            icon = MoIcons.People,
+            onClick = onAgronomicPeople,
+            modifier = Modifier.testTag("profile-agronomic-people"),
             trailing = { Chevron() },
         )
         MoSectionHeader("Ajustes")
