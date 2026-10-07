@@ -135,7 +135,7 @@ Con múltiples variantes diferentes: `resolution=REVIEW_REQUIRED`, `administrati
 ## Versiones, publicación y última versión válida
 
 1. Descargar y guardar raw en staging; verificar status, tipos y estructura antes de normalizar. Preservar transporte y Contenido con checksum separado si se almacena el transporte.
-2. `sourceVersion = Fecha + ':sha256:' + checksum`. Fecha literal no se sustituye por fetchedAt. Distintos checksums con igual Fecha son versiones distintas. El mismo checksum es una actualización idempotente; no se reescribe fetchedAt original, sí lastCheckedAt operativo.
+2. `sourceVersion = Fecha + ':sha256:' + checksum`. Fecha literal no se sustituye por fetchedAt. La identidad de versión exige **ambos** componentes: solo `Fecha + checksum` idénticos son un refresh idempotente; no se reescribe `fetchedAt` original y sí `lastCheckedAt` operativo. Distintos checksums con igual Fecha son versiones distintas. El mismo checksum con una `Fecha` distinta también crea una nueva versión de metadatos de fuente (los bytes raw pueden deduplicarse físicamente por checksum), porque no se debe perder la fecha que publicó MAPA.
 3. Validar todo el candidato antes de publicación; prohibido publicar parcialmente o convertir errores en `products=[]`.
 4. Guardar raw + catálogo normalizado como objetos inmutables por versión; publicar cambiando **atómicamente** un puntero al catálogo validado. Lectores ven el anterior o el nuevo, nunca mitad de ambos.
 5. Control optimista compare-and-swap del puntero; una ingestión retrasada no pisa una nueva. Rechazar Fecha anterior a la versión actual; una restauración requiere acción explícita y trazable. Igual Fecha/diferente checksum exige serializar el refresh, nunca decidir orden por hash.
