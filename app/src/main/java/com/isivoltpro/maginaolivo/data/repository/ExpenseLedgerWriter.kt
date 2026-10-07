@@ -86,7 +86,7 @@ internal class ExpenseLedgerWriter(
         // #456: the moment money starts to count is a domain confirmation, not a status flip. The
         // draft is checked against today's truth — real date, Farm, Parcel, work, day, Campaign —
         // with the same rules as any save; a relation that no longer holds keeps it a DRAFT.
-        if (current.expenseDate.isAfter(today)) throw InvalidExpense("expenseDate", "future")
+        if (current.expenseDate.isAfter(today)) throw InvalidExpense("expenseDate", "future_real_expense")
         resolve(
             current.id,
             current.workspaceId,
