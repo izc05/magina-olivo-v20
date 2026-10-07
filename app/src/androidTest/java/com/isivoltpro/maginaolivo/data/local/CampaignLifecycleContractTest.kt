@@ -218,9 +218,10 @@ class CampaignLifecycleContractTest {
         // Reopen returns to Activa, never to the legacy HARVEST state.
         assertOk(repository.reopen(id))
         assertEquals(CampaignStatus.ACTIVE, db.campaignDao().findById(id)?.status)
-        assertNull(db.campaignDao().findById(id)?.endDate)
+        assertEquals(LocalDate.parse("2026-10-03"), db.campaignDao().findById(id)?.endDate)
 
-        // A Campaign already in the legacy HARVEST state keeps working and closes too.
+        // A Campaign already in the legacy HARVEST state keeps working and an explicit close
+        // can deliberately extend its real boundary.
         assertOk(repository.markHarvest(id))
         assertOk(repository.close(id, LocalDate.parse("2026-10-04")))
         assertEquals(CampaignStatus.CLOSED, db.campaignDao().findById(id)?.status)
@@ -313,7 +314,7 @@ class CampaignLifecycleContractTest {
     }
 
     @Test
-    fun closeThenReopenIsExplicitAuditedAndClearsTheEndDate() = runBlocking {
+    fun closeThenReopenPreservesHistoricalBoundaryAndCloseTodayKeepsIt() = runBlocking {
         val id = created("2026/27", setOf(parcelId))
         assertOk(repository.activate(id))
         assertOk(repository.markHarvest(id))
@@ -328,7 +329,7 @@ class CampaignLifecycleContractTest {
 
         val reopened = db.campaignDao().findById(id)!!
         assertEquals(CampaignStatus.ACTIVE, reopened.status)
-        assertNull(reopened.endDate)
+        assertEquals(endDate, reopened.endDate)
         // Reopening is audited: the aggregate version advances and stays pending.
         assertTrue(reopened.metadata.version > closed.metadata.version)
         assertTrue(reopened.metadata.deletedAt == null)
@@ -336,9 +337,11 @@ class CampaignLifecycleContractTest {
         // Snapshots frozen at activation survive the reopen untouched.
         assertEquals(1, db.campaignDao().listSnapshots(id).size)
 
-        // The campaign can be closed again.
-        assertOk(repository.close(id, LocalDate.parse("2026-10-04")))
-        assertEquals(CampaignStatus.CLOSED, db.campaignDao().findById(id)?.status)
+        // A correction-only reclose does not silently replace 03/10 with today's 04/10.
+        assertOk(repository.closeToday(id))
+        val reclosed = db.campaignDao().findById(id)!!
+        assertEquals(CampaignStatus.CLOSED, reclosed.status)
+        assertEquals(endDate, reclosed.endDate)
     }
 
     @Test
