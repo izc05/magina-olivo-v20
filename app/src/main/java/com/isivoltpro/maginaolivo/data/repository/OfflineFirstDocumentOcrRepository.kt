@@ -142,7 +142,7 @@ class OfflineFirstDocumentOcrRepository(
         if (row.status == OcrStatus.CONFIRMED.name) return AppResult.Failure(AppError.Conflict("already_confirmed"))
         val attachment = attachments.observe(row.attachmentId).first()
             ?: return recordFailure(workspaceId, id, "attachment_missing")
-        if (!attachment.isAvailableLocally) return recordFailure(id, "attachment_missing")
+        if (!attachment.isAvailableLocally) return recordFailure(workspaceId, id, "attachment_missing")
 
         val text = try {
             engine.recognize(attachment.localUri, attachment.mimeType)
