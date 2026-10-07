@@ -78,6 +78,7 @@ interface PhytosanitaryResourceRepository {
     suspend fun createPerson(draft: AgronomicPersonDraft): AppResult<UUID>
     suspend fun updatePerson(id: UUID, draft: AgronomicPersonDraft): AppResult<Unit>
     suspend fun archivePerson(id: UUID): AppResult<Unit>
+    suspend fun restorePerson(id: UUID): AppResult<Unit>
 
     suspend fun saveEquipmentProfile(
         machineId: UUID,
