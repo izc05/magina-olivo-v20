@@ -113,6 +113,7 @@ data class PhytosanitaryEquipmentInspectionDraft(
 
 interface PhytosanitaryResourceRepository {
     fun observeActivePeople(): Flow<List<AgronomicPerson>>
+    fun observeArchivedPeople(): Flow<List<AgronomicPerson>>
     fun observeCredentials(personId: UUID): Flow<List<AgronomicCredential>>
     fun observeEquipmentProfile(machineId: UUID): Flow<PhytosanitaryEquipmentProfile?>
     fun observeEquipmentInspections(machineId: UUID): Flow<List<PhytosanitaryEquipmentInspection>>
