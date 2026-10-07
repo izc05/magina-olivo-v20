@@ -35,9 +35,9 @@ function solarTransitJ(approxTransit: number, meanAnomaly: number, longitude: nu
   return J2000 + approxTransit + 0.0053 * Math.sin(meanAnomaly) - 0.0069 * Math.sin(2 * longitude);
 }
 
-function localDateKey(date: Date): string {
+function localDateKey(date: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Madrid",
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -46,15 +46,21 @@ function localDateKey(date: Date): string {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-/** Civil sunrise/sunset for mainland Spain, returned as UTC instants. */
-export function solarTimesFor(date: Date, latitude: number | null, longitude: number | null): {
+/** Civil sunrise/sunset for the place's local day, returned as UTC instants. */
+export function solarTimesFor(
+  date: Date,
+  latitude: number | null,
+  longitude: number | null,
+  timeZone = "Europe/Madrid",
+): {
   date: string;
+  timeZone: string;
   sunriseAt: string | null;
   sunsetAt: string | null;
 } | null {
   if (latitude == null || longitude == null || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
 
-  const dateKey = localDateKey(date);
+  const dateKey = localDateKey(date, timeZone);
   const noonUtc = new Date(`${dateKey}T12:00:00.000Z`);
   const days = toJulian(noonUtc) - J2000;
   const lw = -longitude * RAD;
@@ -69,7 +75,7 @@ export function solarTimesFor(date: Date, latitude: number | null, longitude: nu
   const hourCos = (Math.sin(SUNRISE_ANGLE) - Math.sin(phi) * Math.sin(dec)) /
     (Math.cos(phi) * Math.cos(dec));
   if (hourCos < -1 || hourCos > 1) {
-    return { date: dateKey, sunriseAt: null, sunsetAt: null };
+    return { date: dateKey, timeZone, sunriseAt: null, sunsetAt: null };
   }
 
   const hourAngle = Math.acos(hourCos);
@@ -79,6 +85,7 @@ export function solarTimesFor(date: Date, latitude: number | null, longitude: nu
 
   return {
     date: dateKey,
+    timeZone,
     sunriseAt: fromJulian(sunriseJulian).toISOString(),
     sunsetAt: fromJulian(sunsetJulian).toISOString(),
   };
