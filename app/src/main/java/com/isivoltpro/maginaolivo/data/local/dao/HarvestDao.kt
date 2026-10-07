@@ -138,4 +138,5 @@ interface HarvestDao {
         """,
     )
     suspend fun listCampaignParcels(campaignId: UUID): List<CampaignParcelRow>
+
 }

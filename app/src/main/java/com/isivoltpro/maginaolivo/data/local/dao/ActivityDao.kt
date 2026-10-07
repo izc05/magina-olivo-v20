@@ -40,6 +40,20 @@ interface ActivityDao {
     @Query("SELECT COUNT(*) FROM activity_parcels WHERE activity_id = :activityId")
     suspend fun countTargets(activityId: UUID): Int
 
+    /** #427: planned work must be resolved explicitly before archiving its Farm. */
+    @Query("SELECT COUNT(*) FROM activities WHERE farm_id = :farmId AND status = 'PLANNED' AND deleted_at IS NULL")
+    suspend fun countPlannedForFarm(farmId: UUID): Int
+
+    /** #427: a Parcel targeted by future work cannot disappear from the operational context. */
+    @Query(
+        """
+        SELECT COUNT(*) FROM activities a
+        JOIN activity_parcels t ON t.activity_id = a.id
+        WHERE t.parcel_id = :parcelId AND a.status = 'PLANNED' AND a.deleted_at IS NULL
+        """,
+    )
+    suspend fun countPlannedForParcel(parcelId: UUID): Int
+
 
     @Upsert suspend fun upsertPruning(detail: PruningDetailEntity)
 

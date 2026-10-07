@@ -28,6 +28,23 @@ interface CampaignDao {
     @Query("SELECT COUNT(*) FROM campaigns WHERE farm_id = :farmId AND status IN ('ACTIVE', 'HARVEST') AND deleted_at IS NULL AND id != :excludedId")
     suspend fun countOtherCurrent(farmId: UUID, excludedId: UUID): Int
 
+    /** #427: a Farm with operational Campaign state is not archivable. */
+    @Query("SELECT COUNT(*) FROM campaigns WHERE farm_id = :farmId AND status IN ('PREPARATION', 'ACTIVE', 'HARVEST') AND deleted_at IS NULL")
+    suspend fun countBlockingForFarm(farmId: UUID): Int
+
+    /** #427: a Parcel snapshot in a live/preparation Campaign blocks normal archive. */
+    @Query(
+        """
+        SELECT COUNT(*) FROM campaign_parcels cp
+        JOIN campaigns c ON c.id = cp.campaign_id
+        WHERE cp.parcel_id = :parcelId
+          AND cp.deleted_at IS NULL
+          AND c.deleted_at IS NULL
+          AND c.status IN ('PREPARATION', 'ACTIVE', 'HARVEST')
+        """,
+    )
+    suspend fun countBlockingForParcel(parcelId: UUID): Int
+
     @Query("SELECT * FROM campaigns WHERE farm_id = :farmId AND deleted_at IS NULL ORDER BY start_date DESC, id")
     fun observeForFarm(farmId: UUID): Flow<List<CampaignEntity>>
 
