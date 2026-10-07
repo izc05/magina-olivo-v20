@@ -280,9 +280,11 @@ fun NotebookHomeScreen(
                     modifier = Modifier.testTag("notebook-root-no-farms"),
                 )
                 else -> {
-                    // Context always visible: which Farm and which Campaign this writes into.
-                    // #351 (1): the Farm is the main datum; the campaign state is its own chip.
-                    val campaign = notebook?.notebook?.campaign
+                    // #511: the general Cuaderno context is operational, never the historical
+                    // Campaign selected only for consultation in the Campaña tab.
+                    val runningCampaign = notebook?.campaigns.orEmpty()
+                        .filter { it.status.isRunning }
+                        .maxByOrNull { it.startDate }
                     Surface(shape = MoShape.card, color = MoWarmWhite, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(MoSpacing.md), verticalArrangement = Arrangement.spacedBy(MoSpacing.xs)) {
                             Column(
@@ -293,8 +295,8 @@ fun NotebookHomeScreen(
                                 Text(activeFarm.name, style = MaterialTheme.typography.headlineSmall, color = MoOliveDark)
                                 // Status in words as well as colour (accessibility contract).
                                 MoStatusChip(
-                                    campaignChipText(campaign?.name, campaign?.status),
-                                    tone = if (campaign?.status?.isRunning == true) MoStatusTone.Success else MoStatusTone.Neutral,
+                                    campaignChipText(runningCampaign?.name, runningCampaign?.status),
+                                    tone = if (runningCampaign != null) MoStatusTone.Success else MoStatusTone.Neutral,
                                     modifier = Modifier.testTag("notebook-campaign-chip"),
                                 )
                             }
@@ -436,7 +438,12 @@ private fun NotebookHub(
                     FarmWorksLink(actions)
                 }
                 NotebookHubTab.PHYTO -> PhytoView(farmNotebook, actions)
-                NotebookHubTab.EXPENSES -> FarmCostsView(farmNotebook, state.notebook?.campaign, actions)
+                NotebookHubTab.EXPENSES -> {
+                    val runningCampaign = state.campaigns
+                        .filter { it.status.isRunning }
+                        .maxByOrNull { it.startDate }
+                    FarmCostsView(farmNotebook, runningCampaign, actions)
+                }
                 NotebookHubTab.CAMPAIGN -> {
                     val notebook = state.notebook
                     if (notebook == null) {
@@ -460,6 +467,14 @@ private fun NotebookHub(
                                     )
                                 }
                             }
+                        }
+                        if (!notebook.campaign.status.isRunning) {
+                            Text(
+                                "Viendo ${campaignChipText(notebook.campaign.name, notebook.campaign.status)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MoTextSecondary,
+                                modifier = Modifier.testTag("notebook-selected-campaign-context"),
+                            )
                         }
                         CampaignView(notebook, state, actions, onSelectCampaign)
                     }

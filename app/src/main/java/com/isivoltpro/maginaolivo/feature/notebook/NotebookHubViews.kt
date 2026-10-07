@@ -233,7 +233,13 @@ internal fun CostsView(notebook: CampaignNotebook, actions: NotebookActions) {
  */
 @Composable
 internal fun FarmCostsView(notebook: FarmNotebook, campaign: com.isivoltpro.maginaolivo.domain.campaign.Campaign?, actions: NotebookActions) {
-    campaign?.let { MoSecondaryButton("Jornales y pagos", { actions.onLabour(it.id) }, Modifier.fillMaxWidth().testTag("notebook-open-labour")) }
+    campaign?.let {
+        MoSecondaryButton(
+            "Jornales y pagos · ${campaignLabel(it.name)}",
+            { actions.onLabour(it.id) },
+            Modifier.fillMaxWidth().testTag("notebook-open-labour"),
+        )
+    }
     val currencies = RecollectionLedger.posted(notebook.expenses)
     val draftCount = notebook.expenses.count { it.status == com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus.DRAFT }
     Text(

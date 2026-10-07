@@ -195,6 +195,66 @@ class NotebookHomeScreenTest {
         composeRule.runOnIdle { assertEquals(1, toFields) }
     }
 
+    @Test fun selectedHistoricalCampaignDoesNotReplaceRunningContext() {
+        val closed = campaign.copy(
+            id = java.util.UUID.randomUUID(),
+            name = "2025/26",
+            status = com.isivoltpro.maginaolivo.data.local.model.CampaignStatus.CLOSED,
+            endDate = campaign.startDate.plusDays(45),
+        )
+        val running = campaign.copy(
+            id = java.util.UUID.randomUUID(),
+            name = "2026/27",
+            startDate = campaign.startDate.plusYears(1),
+            endDate = null,
+            status = com.isivoltpro.maginaolivo.data.local.model.CampaignStatus.ACTIVE,
+        )
+        val selected = CampaignNotebook.project(closed, emptyList(), emptyList(), emptyList(), emptyList())
+        var labourCampaign: java.util.UUID? = null
+        composeRule.setContent {
+            MaginaOlivoTheme {
+                NotebookHomeScreen(
+                    isLoading = false,
+                    error = null,
+                    farms = UiPolishFixtures.farms,
+                    activeFarm = farm,
+                    notebook = NotebookUiState(
+                        isLoading = false,
+                        campaigns = listOf(closed, running),
+                        selectedCampaignId = closed.id,
+                        notebook = selected,
+                    ),
+                    actions = NotebookActions(onLabour = { labourCampaign = it }),
+                    onSelectFarm = {},
+                    onSelectCampaign = {},
+                    onQuickAction = {},
+                )
+            }
+        }
+
+        // The general header stays operational although the historical Campaign is selected.
+        composeRule.onNode(
+            hasTestTag("notebook-campaign-chip") and
+                hasAnyDescendant(hasText(com.isivoltpro.maginaolivo.feature.notebook.campaignChipText(running.name, running.status))),
+            useUnmergedTree = true,
+        ).assertExists()
+
+        composeRule.onNodeWithTag("notebook-tab-expenses").performScrollTo().performClick()
+        composeRule.onNode(
+            hasTestTag("notebook-open-labour") and
+                hasAnyDescendant(hasText("Jornales y pagos · Campaña 2026/27")),
+            useUnmergedTree = true,
+        ).performScrollTo().performClick()
+        composeRule.runOnIdle { assertEquals(running.id, labourCampaign) }
+
+        // Only the Campaign tab says which historical Campaign is being consulted.
+        composeRule.onNodeWithTag("notebook-tab-campaign").performScrollTo().performClick()
+        composeRule.onNodeWithTag("notebook-selected-campaign-context")
+            .performScrollTo()
+            .assertTextContains("2025/26", substring = true)
+            .assertTextContains("Cerrada", substring = true)
+    }
+
     @Test fun withoutACampaignTheNotebookSaysSo() {
         show(state = NotebookUiState(isLoading = false))
         composeRule.onNode(
