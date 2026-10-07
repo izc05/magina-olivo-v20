@@ -8,6 +8,7 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
@@ -15,6 +16,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
@@ -256,6 +258,37 @@ class CampaignLifecycleContractTest {
         assertEquals("future", ((result as AppResult.Failure).error as AppError.Validation).code)
         assertEquals(before, db.campaignDao().findById(id))
         assertEquals(outboxBefore, db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id))
+    }
+
+    @Test
+    fun campaignCannotCloseWhileHarvestDayIsStillPlanned() = runBlocking {
+        val id = created("2026/27", setOf(parcelId))
+        assertOk(repository.activate(id))
+        val appointmentId = UUID.randomUUID()
+        db.activityDao().upsert(
+            ActivityEntity(
+                id = appointmentId,
+                workspaceId = workspaceId,
+                campaignId = id,
+                farmId = farmId,
+                activityDate = LocalDate.parse("2026-10-04"),
+                type = "HARVEST_DAY",
+                status = ActivityStatus.PLANNED,
+                description = "Jornada de recolección",
+                metadata = LocalMetadata(now, now),
+            ),
+        )
+        val before = db.campaignDao().findById(id)!!
+        val outboxBefore = db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
+
+        assertConflict("planned_harvest_days", repository.close(id, LocalDate.parse("2026-10-04")))
+        assertEquals(before, db.campaignDao().findById(id))
+        assertEquals(outboxBefore, db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id))
+
+        val appointment = db.activityDao().findById(appointmentId)!!
+        db.activityDao().upsert(appointment.copy(status = ActivityStatus.CANCELLED))
+        assertOk(repository.close(id, LocalDate.parse("2026-10-04")))
+        assertEquals(CampaignStatus.CLOSED, db.campaignDao().findById(id)?.status)
     }
 
     @Test
