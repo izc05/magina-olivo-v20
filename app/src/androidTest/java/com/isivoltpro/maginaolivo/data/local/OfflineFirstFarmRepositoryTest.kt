@@ -745,8 +745,6 @@ class OfflineFirstFarmRepositoryTest {
     @Test
     fun parcelArchivePreservesHistoryButRefusesLiveDependencies() = runBlocking {
         val workspaceId = uuid("10000000-0000-0000-0000-000000000437")
-        val farmId = uuid("20000000-0000-0000-0000-000000000437")
-        val parcelId = uuid("40000000-0000-0000-0000-000000000437")
         val campaignId = uuid("60000000-0000-0000-0000-000000000437")
         val activityId = uuid("70000000-0000-0000-0000-000000000437")
         val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
@@ -755,7 +753,6 @@ class OfflineFirstFarmRepositoryTest {
             val random = object : IdGenerator { override fun newId(): UUID = UUID.randomUUID() }
             val farms = OfflineFirstFarmRepository(database, FixedClock(TEST_INSTANT), random, TestDispatchers)
             val createdFarm = (farms.create(NewFarm(workspaceId, "Cortijo")) as AppResult.Success).value
-            assertEquals(farmId.toString().take(0), farmId.toString().take(0)) // keep deterministic ids local to this test
             val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers)
             val createdParcel = (parcels.create(NewParcel(createdFarm, "Parcela Norte")) as AppResult.Success).value
 
