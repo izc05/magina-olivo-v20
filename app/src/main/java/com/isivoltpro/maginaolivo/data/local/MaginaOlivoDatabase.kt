@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.isivoltpro.maginaolivo.data.local.dao.FarmDao
 import com.isivoltpro.maginaolivo.data.local.dao.ProfileSettingsDao
+import com.isivoltpro.maginaolivo.data.local.dao.PhytosanitaryResourceDao
 import com.isivoltpro.maginaolivo.data.local.dao.ActivityDao
 import com.isivoltpro.maginaolivo.data.local.dao.CampaignDao
 import com.isivoltpro.maginaolivo.data.local.dao.DocumentDao
@@ -65,8 +66,10 @@ import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.entity.UserProfileEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WeatherCacheEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.entity.AgronomicPersonEntity
+import com.isivoltpro.maginaolivo.data.local.entity.PhytosanitaryEquipmentProfileEntity
 
-private const val DATABASE_VERSION = 23
+private const val DATABASE_VERSION = 24
 
 @Database(
     entities = [
@@ -112,6 +115,8 @@ private const val DATABASE_VERSION = 23
         HarvestEquipmentEntity::class,
         RecollectionRatesEntity::class,
         ProfileSettingsEntity::class,
+        AgronomicPersonEntity::class,
+        PhytosanitaryEquipmentProfileEntity::class,
     ],
     version = DATABASE_VERSION,
     exportSchema = true,
@@ -157,6 +162,8 @@ abstract class MaginaOlivoDatabase : RoomDatabase() {
     abstract fun equipmentDao(): EquipmentDao
 
     abstract fun weatherCacheDao(): WeatherCacheDao
+
+    abstract fun phytosanitaryResourceDao(): PhytosanitaryResourceDao
 
     companion object {
         const val DATABASE_NAME = "magina-olivo.db"
