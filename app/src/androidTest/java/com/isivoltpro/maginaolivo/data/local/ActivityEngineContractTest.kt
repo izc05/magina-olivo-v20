@@ -405,6 +405,20 @@ class ActivityEngineContractTest {
         assertEquals("Poda registrada", db.activityDao().findById(completed)?.description)
         assertEquals(ActivityStatus.COMPLETED, db.activityDao().findById(completed)?.status)
 
+        assertValidation(
+            "parcelIds",
+            repository.correctCompleted(
+                completed,
+                ActivityChanges(
+                    ActivityType.PRUNING,
+                    today.minusDays(1),
+                    "Sin ámbito",
+                    emptySet(),
+                ),
+            ),
+        )
+        assertEquals(setOf(parcelA), db.activityDao().listTargets(completed).map { it.parcelId }.toSet())
+
         val planned = created("Pendiente", setOf(parcelA))
         assertConflict(
             "activity_not_completed",
