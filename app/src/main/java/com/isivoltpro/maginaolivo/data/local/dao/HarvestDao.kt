@@ -138,4 +138,27 @@ interface HarvestDao {
         """,
     )
     suspend fun listCampaignParcels(campaignId: UUID): List<CampaignParcelRow>
+
+    /**
+     * #427: operational selector, deliberately separate from [listCampaignParcels]. Historical
+     * snapshots survive archive/moves, but a new Pesada may only select a currently active Parcel
+     * that still belongs to the Campaign's Farm.
+     */
+    @Query(
+        """
+        SELECT cp.id AS campaignParcelId, cp.parcel_id AS parcelId,
+               COALESCE(p.display_name, cp.parcel_name_at_start) AS name
+        FROM campaign_parcels cp
+        JOIN campaigns c ON c.id = cp.campaign_id
+        JOIN parcels p ON p.id = cp.parcel_id
+        JOIN farm_parcel_memberships m
+          ON m.parcel_id = cp.parcel_id AND m.farm_id = c.farm_id
+        WHERE cp.campaign_id = :campaignId
+          AND cp.deleted_at IS NULL
+          AND p.deleted_at IS NULL AND p.status = 'ACTIVE'
+          AND m.deleted_at IS NULL AND m.valid_until IS NULL
+        ORDER BY name COLLATE NOCASE, cp.parcel_id
+        """,
+    )
+    suspend fun listSelectableCampaignParcels(campaignId: UUID): List<CampaignParcelRow>
 }
