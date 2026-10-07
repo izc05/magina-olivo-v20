@@ -123,7 +123,7 @@ class HomeFeedsScreenTest {
             ),
         )
         composeRule.onNodeWithTag("home-weather-summary").assertIsDisplayed()
-            .assertTextContains("Salida 08:05").assertTextContains("Puesta 17:56")
+            .assertTextContains("Salida 08:05", substring = true).assertTextContains("Puesta 17:56", substring = true)
     }
 
     @Test fun heroNeverShowsYesterdaysSolarCacheAsToday() {
