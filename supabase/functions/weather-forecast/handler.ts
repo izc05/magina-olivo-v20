@@ -74,6 +74,11 @@ function validRequest(body: unknown): ForecastRequest | null {
   return request;
 }
 
+function solarTimeZone(place: Place): string {
+  const provinceCode = place.code.slice(0, 2);
+  return provinceCode === "35" || provinceCode === "38" ? "Atlantic/Canary" : "Europe/Madrid";
+}
+
 function respond(provider: ProviderId, place: Place, reading: { current: Current; daily: DailyForecast[]; updatedAt: string }, now: Date): Result {
   return {
     status: 200,
@@ -86,7 +91,7 @@ function respond(provider: ProviderId, place: Place, reading: { current: Current
       location: { code: place.code, name: place.name, province: place.province },
       current: reading.current,
       daily: reading.daily,
-      solar: solarTimesFor(now, place.latitude, place.longitude),
+      solar: solarTimesFor(now, place.latitude, place.longitude, solarTimeZone(place)),
     },
   };
 }
