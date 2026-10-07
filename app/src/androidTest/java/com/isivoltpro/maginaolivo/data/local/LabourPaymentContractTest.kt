@@ -20,6 +20,7 @@ import com.isivoltpro.maginaolivo.data.repository.OfflineFirstEquipmentRepositor
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstExpenseRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstHarvestRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstLabourRepository
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentDraftLine
 import com.isivoltpro.maginaolivo.domain.equipment.EquipmentType
 import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
@@ -135,8 +136,11 @@ class LabourPaymentContractTest {
         assertEquals(6_000L, balance(worker).pendingMinor)
         assertEquals(LabourPaymentState.PARTIAL, balance(worker).state)
         val deliveries = com.isivoltpro.maginaolivo.data.repository.OfflineFirstDeliveryRepository(db, FixedClock(now), RandomIds, TestDispatchers)
-        ok(deliveries.create(com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft(farmId, day, null, "Cooperativa", 3_200_000,
-            listOf(com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput(north, 3_200_000)))))
+        ok(deliveries.create(com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft(
+            farmId, day, null, "Cooperativa", 3_200_000,
+            listOf(com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput(north, 3_200_000)),
+            origin = PesadaOrigin.TREE,
+        )))
         val weighedBefore = deliveries.observeForCampaign(campaignId).first()
         val ratioBefore = com.isivoltpro.maginaolivo.domain.expense.RecollectionCostSummary.of(campaignId,
             expenses.observeAll().first(), weighedBefore, "EUR").costPerKg
