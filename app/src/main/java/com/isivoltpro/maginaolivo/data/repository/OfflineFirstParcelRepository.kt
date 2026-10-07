@@ -129,15 +129,30 @@ class OfflineFirstParcelRepository(
         validateAgronomy(changes.agronomy)?.let { return it }
         return mutate(parcelId, "update_parcel") { current, now ->
             if (current.metadata.deletedAt != null) return@mutate AppResult.Failure(AppError.Conflict("archived_parcel"))
+
+            val reference = changes.cadastralReference.normalized()?.let {
+                if (current.source == ParcelSource.CATASTRO.name) it.uppercase() else it
+            }
+            val geometry = changes.geometryGeoJson.normalized()
+            if (current.source == ParcelSource.CATASTRO.name && (reference == null || geometry == null)) {
+                return@mutate AppResult.Failure(AppError.Validation("catastro", "identity_and_geometry_required"))
+            }
+            reference?.let { candidate ->
+                val holder = database.parcelDao().findActiveByCadastralReference(current.workspaceId, candidate.uppercase())
+                if (holder != null && holder != parcelId) {
+                    return@mutate AppResult.Failure(AppError.Conflict("duplicate_cadastral_reference"))
+                }
+            }
+
             database.parcelDao().upsert(
                 current.copy(
                     displayName = (name as AppResult.Success).value,
-                    cadastralReference = changes.cadastralReference.normalized(),
+                    cadastralReference = reference,
                     cadastralPolygon = changes.cadastralPolygon.normalized(),
                     cadastralParcel = changes.cadastralParcel.normalized(),
                     municipality = changes.municipality.normalized(),
                     province = changes.province.normalized(),
-                    geometryGeoJson = changes.geometryGeoJson.normalized(),
+                    geometryGeoJson = geometry,
                     cadastralAreaM2 = changes.cadastralAreaM2,
                     managedAreaM2 = changes.managedAreaM2,
                     notes = changes.notes.normalized(),
