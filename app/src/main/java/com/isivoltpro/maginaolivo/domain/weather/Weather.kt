@@ -45,6 +45,8 @@ data class WeatherNow(
     val daily: List<WeatherDayForecast> = emptyList(),
     /** Local calendar date the solar calculation belongs to. */
     val solarDate: LocalDate? = null,
+    /** IANA zone used for the solar civil date/times; null for old cached responses. */
+    val solarTimeZone: String? = null,
     /** Civil sunrise/sunset as UTC instants; null when coordinates were unavailable. */
     val sunriseAt: Instant? = null,
     val sunsetAt: Instant? = null,
@@ -86,6 +88,7 @@ object WeatherCodec {
         weather.updatedAt?.let { "u=${it.epochSecond}" },
         weather.attribution?.let { "a=${it.replace('\n', ' ')}" },
         weather.solarDate?.let { "sd=$it" },
+        weather.solarTimeZone?.let { "sz=$it" },
         weather.sunriseAt?.let { "sr=${it.epochSecond}" },
         weather.sunsetAt?.let { "ss=${it.epochSecond}" },
     ) + weather.daily.map { day ->
@@ -133,6 +136,7 @@ object WeatherCodec {
             attribution = fields["a"]?.takeIf { it.isNotBlank() },
             daily = daily,
             solarDate = fields["sd"]?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+            solarTimeZone = fields["sz"]?.takeIf { it.isNotBlank() },
             sunriseAt = fields["sr"]?.toLongOrNull()?.let(Instant::ofEpochSecond),
             sunsetAt = fields["ss"]?.toLongOrNull()?.let(Instant::ofEpochSecond),
         )
