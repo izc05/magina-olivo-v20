@@ -103,6 +103,17 @@ data class PhytosanitaryDetailEntity(
     @ColumnInfo(name = "dose_unit") val doseUnit: String? = null,
     val reason: String? = null,
     @ColumnInfo(name = "equipment_text") val equipmentText: String? = null,
+    @ColumnInfo(name = "operator_person_id") val operatorPersonId: UUID? = null,
+    @ColumnInfo(name = "application_machine_id") val applicationMachineId: UUID? = null,
+    @ColumnInfo(name = "service_provider_organization_id") val serviceProviderOrganizationId: UUID? = null,
+    @ColumnInfo(name = "product_registration_number") val productRegistrationNumber: String? = null,
+    @ColumnInfo(name = "product_source") val productSource: String? = null,
+    @ColumnInfo(name = "product_source_version") val productSourceVersion: String? = null,
+    @ColumnInfo(name = "product_fetched_at") val productFetchedAt: Instant? = null,
+    @ColumnInfo(name = "authorization_context_snapshot") val authorizationContextSnapshot: String? = null,
+    @ColumnInfo(name = "pest_problem_code") val pestProblemCode: String? = null,
+    @ColumnInfo(name = "efficacy_code") val efficacyCode: String? = null,
+    @ColumnInfo(name = "treatment_observations") val treatmentObservations: String? = null,
     @Embedded val metadata: LocalMetadata,
 )
 
