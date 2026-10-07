@@ -233,14 +233,18 @@ class NotebookHomeScreenTest {
         }
 
         // The general header stays operational although the historical Campaign is selected.
-        composeRule.onNodeWithTag("notebook-campaign-chip")
-            .assertTextContains("2026/27", substring = true)
+        composeRule.onNode(
+            hasTestTag("notebook-campaign-chip") and
+                hasAnyDescendant(hasText(com.isivoltpro.maginaolivo.feature.notebook.campaignChipText(running.name, running.status))),
+            useUnmergedTree = true,
+        ).assertExists()
 
         composeRule.onNodeWithTag("notebook-tab-expenses").performScrollTo().performClick()
-        composeRule.onNodeWithTag("notebook-open-labour")
-            .performScrollTo()
-            .assertTextContains("2026/27", substring = true)
-            .performClick()
+        composeRule.onNode(
+            hasTestTag("notebook-open-labour") and
+                hasAnyDescendant(hasText("Jornales y pagos · Campaña 2026/27")),
+            useUnmergedTree = true,
+        ).performScrollTo().performClick()
         composeRule.runOnIdle { assertEquals(running.id, labourCampaign) }
 
         // Only the Campaign tab says which historical Campaign is being consulted.
