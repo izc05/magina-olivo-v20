@@ -40,6 +40,23 @@ class EdgeWeatherResponseTest {
     }
 
     @Test
+    fun solarTimesAreOptionalAndParsedWhenPresent() {
+        val withSolar = aemet.replace(
+            "\"current\":{",
+            "\"solar\":{\"date\":\"2026-09-25\",\"sunriseAt\":\"2026-09-25T06:04:57Z\",\"sunsetAt\":\"2026-09-25T18:08:28Z\"},\"current\":{",
+        )
+        val weather = EdgeWeatherResponse.parse(withSolar).weather
+        assertEquals(LocalDate.parse("2026-09-25"), weather.solarDate)
+        assertEquals(Instant.parse("2026-09-25T06:04:57Z"), weather.sunriseAt)
+        assertEquals(Instant.parse("2026-09-25T18:08:28Z"), weather.sunsetAt)
+
+        val legacy = EdgeWeatherResponse.parse(aemet).weather
+        assertNull(legacy.solarDate)
+        assertNull(legacy.sunriseAt)
+        assertNull(legacy.sunsetAt)
+    }
+
+    @Test
     fun dailyForecastIsParsedAndOldCurrentOnlyResponsesStayValid() {
         val withDaily = aemet.replace(
             "\"current\":{",
