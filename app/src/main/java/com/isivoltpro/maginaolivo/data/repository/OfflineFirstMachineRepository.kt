@@ -22,6 +22,8 @@ import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -38,26 +40,36 @@ class OfflineFirstMachineRepository(
     private val dispatchers: AppDispatchers,
 ) : MachineRepository {
     override fun observeActive(): Flow<List<Machine>> =
-        database.machineDao().observeByStatus(ACTIVE).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        scoped { workspaceId ->
+            database.machineDao().observeByStatus(workspaceId, ACTIVE)
+                .map { rows -> rows.map { it.toDomain() } }
+        }
 
     override fun observeArchived(): Flow<List<Machine>> =
-        database.machineDao().observeByStatus(ARCHIVED).map { rows -> rows.map { it.toDomain() } }.flowOn(dispatchers.io)
+        scoped { workspaceId ->
+            database.machineDao().observeByStatus(workspaceId, ARCHIVED)
+                .map { rows -> rows.map { it.toDomain() } }
+        }
 
     override fun observe(id: UUID): Flow<Machine?> =
-        database.machineDao().observeById(id).map { it?.toDomain() }.flowOn(dispatchers.io)
+        scoped { workspaceId ->
+            database.machineDao().observeById(workspaceId, id).map { it?.toDomain() }
+        }
 
     override fun observeUses(id: UUID): Flow<List<MachineUse>> =
-        database.machineDao().observeUses(id).map { rows ->
-            rows.map { row ->
-                MachineUse(
-                    activityId = row.activityId,
-                    activityDate = row.activityDate,
-                    description = row.description,
-                    hoursUsed = row.usageHours
-                        ?: if (row.startHours != null && row.endHours != null) row.endHours - row.startHours else null,
-                )
+        scoped { workspaceId ->
+            database.machineDao().observeUses(workspaceId, id).map { rows ->
+                rows.map { row ->
+                    MachineUse(
+                        activityId = row.activityId,
+                        activityDate = row.activityDate,
+                        description = row.description,
+                        hoursUsed = row.usageHours
+                            ?: if (row.startHours != null && row.endHours != null) row.endHours - row.startHours else null,
+                    )
+                }
             }
-        }.flowOn(dispatchers.io)
+        }
 
     override suspend fun create(draft: MachineDraft): AppResult<UUID> {
         MachineRules.validate(draft)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
@@ -133,10 +145,25 @@ class OfflineFirstMachineRepository(
         operation: String,
         block: suspend (MachineEntity, Instant) -> AppResult<Unit>,
     ): AppResult<Unit> = inTransaction(operation) {
+        val active = when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+            is AppResult.Failure -> return@inTransaction workspace
+            is AppResult.Success -> workspace.value
+        }
         val current = database.machineDao().findById(id)?.takeIf { it.metadata.deletedAt == null }
             ?: return@inTransaction AppResult.Failure(AppError.NotFound("machine"))
+        if (current.workspaceId != active) {
+            return@inTransaction AppResult.Failure(AppError.Validation("machine", "context_mismatch"))
+        }
         block(current, clock.nowInstant())
     }
+
+    private fun <T> scoped(source: (UUID) -> Flow<T>): Flow<T> =
+        flow {
+            when (val workspace = workspaceRepository.ensureLocalWorkspace()) {
+                is AppResult.Failure -> return@flow
+                is AppResult.Success -> emitAll(source(workspace.value))
+            }
+        }.flowOn(dispatchers.io)
 
     private suspend fun <T> inTransaction(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
         withContext(dispatchers.io) {
