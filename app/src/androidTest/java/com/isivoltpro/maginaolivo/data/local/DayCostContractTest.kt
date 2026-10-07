@@ -30,6 +30,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestShareInput
 import com.isivoltpro.maginaolivo.domain.expense.DayCostRole
 import com.isivoltpro.maginaolivo.domain.expense.DayCostKind
 import com.isivoltpro.maginaolivo.domain.expense.Expense
+import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseDraft
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseStatus
