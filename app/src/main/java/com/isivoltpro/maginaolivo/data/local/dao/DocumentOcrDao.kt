@@ -14,26 +14,26 @@ interface DocumentOcrDao {
     @Query("SELECT * FROM document_ocr_extractions WHERE id = :id LIMIT 1")
     suspend fun findById(id: UUID): DocumentOcrExtractionEntity?
 
-    @Query("SELECT * FROM document_ocr_extractions WHERE id = :id LIMIT 1")
-    fun observeById(id: UUID): Flow<DocumentOcrExtractionEntity?>
+    @Query("SELECT * FROM document_ocr_extractions WHERE id = :id AND workspace_id = :workspaceId LIMIT 1")
+    fun observeById(workspaceId: UUID, id: UUID): Flow<DocumentOcrExtractionEntity?>
 
     /** Documents still waiting for a person: never CONFIRMED, never discarded. */
     @Query(
         """
         SELECT * FROM document_ocr_extractions
-        WHERE deleted_at IS NULL AND status != 'CONFIRMED'
+        WHERE workspace_id = :workspaceId AND deleted_at IS NULL AND status != 'CONFIRMED'
         ORDER BY created_at DESC, id
         """,
     )
-    fun observeOpen(): Flow<List<DocumentOcrExtractionEntity>>
+    fun observeOpen(workspaceId: UUID): Flow<List<DocumentOcrExtractionEntity>>
 
     @Query(
         """
         SELECT * FROM document_ocr_extractions
-        WHERE deleted_at IS NULL
+        WHERE workspace_id = :workspaceId AND deleted_at IS NULL
         ORDER BY created_at DESC, id
         LIMIT 30
         """,
     )
-    fun observeRecent(): Flow<List<DocumentOcrExtractionEntity>>
+    fun observeRecent(workspaceId: UUID): Flow<List<DocumentOcrExtractionEntity>>
 }
