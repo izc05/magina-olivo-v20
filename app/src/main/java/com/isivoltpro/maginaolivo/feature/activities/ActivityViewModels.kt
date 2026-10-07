@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
+import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityChanges
 import com.isivoltpro.maginaolivo.domain.activity.ActivityCostRules
@@ -15,6 +16,8 @@ import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
 import com.isivoltpro.maginaolivo.domain.activity.NewActivity
+import com.isivoltpro.maginaolivo.domain.campaign.Campaign
+import com.isivoltpro.maginaolivo.domain.campaign.CampaignRepository
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
@@ -44,6 +47,8 @@ data class ActivityDraft(
     val reminders: List<ReminderRequest> = emptyList(),
     /** Confirmed/suggested affected surface per selected Parcel, in square metres. */
     val parcelAreasM2: Map<UUID, Double?> = emptyMap(),
+    /** #482: required for HARVEST_DAY; null for ordinary Farm work. */
+    val campaignId: UUID? = null,
 )
 
 data class FarmActivitiesUiState(
@@ -54,6 +59,9 @@ data class FarmActivitiesUiState(
     val history: List<Activity> = emptyList(),
     val parcels: List<ActivityParcelOption> = emptyList(),
     val machines: List<MachineOption> = emptyList(),
+    /** Campaigns this Farm may use for a planned harvest appointment. */
+    val campaigns: List<Campaign> = emptyList(),
+    val campaignError: String? = null,
     val descriptionError: String? = null,
     val dateError: String? = null,
     val parcelsError: String? = null,
@@ -63,7 +71,11 @@ data class FarmActivitiesUiState(
     val saveCount: Int = 0,
 )
 
-class FarmActivitiesViewModel(private val farmId: UUID, private val repository: ActivityRepository) : ViewModel() {
+class FarmActivitiesViewModel(
+    private val farmId: UUID,
+    private val repository: ActivityRepository,
+    private val campaignRepository: CampaignRepository? = null,
+) : ViewModel() {
     private val mutableState = MutableStateFlow(FarmActivitiesUiState())
     val state: StateFlow<FarmActivitiesUiState> = mutableState.asStateFlow()
 
@@ -90,16 +102,31 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
                 mutableState.value = mutableState.value.copy(machines = it)
             }
         }
+        campaignRepository?.let { campaigns ->
+            viewModelScope.launch {
+                campaigns.observeForFarm(farmId).collect { rows ->
+                    mutableState.value = mutableState.value.copy(
+                        campaigns = rows.filter { it.status != CampaignStatus.CLOSED },
+                    )
+                }
+            }
+        }
     }
 
     /** A planned activity requires at least one Parcel; a resumable draft does not. */
     fun create(draft: ActivityDraft, asDraft: Boolean = false, completeImmediately: Boolean = false) {
-        if (!validate(draft, asDraft, completeImmediately)) return
+        val harvestCampaignId = if (draft.type == ActivityType.HARVEST_DAY) {
+            draft.campaignId ?: mutableState.value.campaigns.singleOrNull()?.id
+        } else {
+            draft.campaignId
+        }
+        if (!validate(draft.copy(campaignId = harvestCampaignId), asDraft, completeImmediately)) return
         mutate("Trabajo guardado en este dispositivo") {
             when (
                 val result = repository.create(
                     NewActivity(
                         farmId = farmId,
+                        campaignId = harvestCampaignId,
                         type = draft.type,
                         activityDate = draft.activityDate!!,
                         description = draft.description.trim(),
@@ -124,6 +151,13 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
     fun consumeMessage() { mutableState.value = mutableState.value.copy(message = null) }
 
     private fun validate(draft: ActivityDraft, asDraft: Boolean, completeImmediately: Boolean = false): Boolean {
+        val campaignError = when {
+            draft.type != ActivityType.HARVEST_DAY -> null
+            draft.campaignId != null -> null
+            mutableState.value.campaigns.isEmpty() ->
+                "Crea o prepara una campaña antes de planificar una jornada de recolección."
+            else -> "Elige la campaña de esta jornada de recolección."
+        }
         val descriptionError = when {
             !draft.description.isBlank() -> null
             draft.type == ActivityType.INCIDENT -> "Indica la categoría o un detalle breve"
@@ -139,20 +173,51 @@ class FarmActivitiesViewModel(private val farmId: UUID, private val repository: 
         val parcelsError =
             if (!asDraft && draft.parcelIds.isEmpty()) "Selecciona al menos una parcela" else null
         mutableState.value = mutableState.value.copy(
+            campaignError = campaignError,
             descriptionError = descriptionError,
             dateError = dateError,
             parcelsError = parcelsError,
         )
-        return descriptionError == null && dateError == null && parcelsError == null
+        return campaignError == null && descriptionError == null && dateError == null && parcelsError == null
     }
 
     private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
-        mutableState.value = when (operation()) {
-            is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
-            is AppResult.Failure -> mutableState.value.copy(isSaving = false, error = "No se pudo guardar en este dispositivo")
+        mutableState.value = when (val result = operation()) {
+            is AppResult.Success -> mutableState.value.copy(
+                isSaving = false,
+                message = message,
+                saveCount = mutableState.value.saveCount + 1,
+                campaignError = null,
+            )
+            is AppResult.Failure -> mutableState.value.copy(
+                isSaving = false,
+                error = activitySaveErrorMessage(result.error),
+                campaignError = if (
+                    result.error is AppError.Validation && result.error.field == "campaignId"
+                ) activitySaveErrorMessage(result.error) else mutableState.value.campaignError,
+            )
         }
     }
+}
+
+internal fun activitySaveErrorMessage(error: AppError): String = when {
+    error is AppError.Validation &&
+        error.field == "campaignId" && error.code == "required_for_harvest_day" ->
+        "Crea o prepara una campaña antes de planificar una jornada de recolección."
+    error is AppError.Validation &&
+        error.field == "campaignId" && error.code == "closed" ->
+        "Esa campaña está cerrada. Reábrela o elige otra campaña para planificar la jornada."
+    error is AppError.Validation &&
+        error.field == "campaignId" ->
+        "La campaña elegida ya no es válida para esta finca."
+    error is AppError.Validation &&
+        error.field == "activityDate" && error.code == "before_campaign" ->
+        "La jornada no puede ser anterior al inicio de la campaña."
+    error is AppError.Validation &&
+        error.field == "parcelIds" && error.code == "not_in_campaign" ->
+        "Alguna parcela elegida no forma parte de esta campaña."
+    else -> "No se pudo guardar en este dispositivo"
 }
 
 /**

@@ -20,6 +20,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.SoilWorkDetailEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.SyncOutboxEntity
 import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
+import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.ActivityWithTargets
 import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
@@ -272,6 +273,15 @@ class OfflineFirstActivityRepository(
                 ) {
                     return@safely AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
                 }
+                if (command.type == ActivityType.HARVEST_DAY) {
+                    validateHarvestDayContext(
+                        workspaceId = farm.workspaceId,
+                        farmId = farm.id,
+                        campaignId = command.campaignId,
+                        date = command.activityDate,
+                        parcelIds = command.parcelIds,
+                    )?.let { return@safely it }
+                }
                 command.campaignId?.let { campaignId ->
                     val campaign = database.campaignDao().findById(campaignId)
                         ?: return@safely AppResult.Failure(AppError.Validation("campaignId", "not_found"))
@@ -338,6 +348,17 @@ class OfflineFirstActivityRepository(
             if (current.status !in EDITABLE) return@mutate conflict("protected_activity")
             if (current.status == ActivityStatus.PLANNED && changes.parcelIds.isEmpty()) {
                 return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
+            }
+            if (changes.type == ActivityType.HARVEST_DAY) {
+                val farmId = current.farmId
+                    ?: return@mutate AppResult.Failure(AppError.Validation("farmId", "not_found"))
+                validateHarvestDayContext(
+                    workspaceId = current.workspaceId,
+                    farmId = farmId,
+                    campaignId = current.campaignId,
+                    date = changes.activityDate,
+                    parcelIds = changes.parcelIds,
+                )?.let { return@mutate it }
             }
             // #441: a Parcel a Gasto of this work names is not dropped from the work (also when it
             // becomes «Toda la finca»). Adding Parcels, changing surface, retyping or redating never
@@ -413,6 +434,17 @@ class OfflineFirstActivityRepository(
         if (requireTargets && database.activityDao().countTargets(id) == 0) {
             return@mutate AppResult.Failure(AppError.Validation("parcelIds", "empty"))
         }
+        if (to == ActivityStatus.PLANNED && current.type == ActivityType.HARVEST_DAY.name) {
+            val farmId = current.farmId
+                ?: return@mutate AppResult.Failure(AppError.Validation("farmId", "not_found"))
+            validateHarvestDayContext(
+                workspaceId = current.workspaceId,
+                farmId = farmId,
+                campaignId = current.campaignId,
+                date = current.activityDate,
+                parcelIds = database.activityDao().listTargets(id).map { it.parcelId }.toSet(),
+            )?.let { return@mutate it }
+        }
         if (
             to == ActivityStatus.COMPLETED &&
             current.type != ActivityType.HARVEST_DAY.name &&
@@ -432,6 +464,41 @@ class OfflineFirstActivityRepository(
     private suspend fun <T> AppResult<T>.alsoReconcile(): AppResult<T> {
         if (this is AppResult.Success) runCatching { reminderReconciler?.reconcile() }
         return this
+    }
+
+    /**
+     * #482 block A: a harvest-day appointment always belongs to one explicit Campaign.
+     * Dates never infer identity, and its Parcel targets must be Campaign snapshots.
+     */
+    private suspend fun validateHarvestDayContext(
+        workspaceId: UUID,
+        farmId: UUID,
+        campaignId: UUID?,
+        date: java.time.LocalDate,
+        parcelIds: Set<UUID>,
+    ): AppResult.Failure? {
+        if (campaignId == null) {
+            return AppResult.Failure(AppError.Validation("campaignId", "required_for_harvest_day"))
+        }
+        val campaign = database.campaignDao().findById(campaignId)
+            ?: return AppResult.Failure(AppError.Validation("campaignId", "not_found"))
+        if (campaign.metadata.deletedAt != null) {
+            return AppResult.Failure(AppError.Validation("campaignId", "archived"))
+        }
+        if (campaign.workspaceId != workspaceId || campaign.farmId != farmId) {
+            return AppResult.Failure(AppError.Validation("campaignId", "context_mismatch"))
+        }
+        if (campaign.status == CampaignStatus.CLOSED) {
+            return AppResult.Failure(AppError.Validation("campaignId", "closed"))
+        }
+        if (date.isBefore(campaign.startDate)) {
+            return AppResult.Failure(AppError.Validation("activityDate", "before_campaign"))
+        }
+        val campaignParcels = database.campaignDao().listSnapshots(campaignId).map { it.parcelId }.toSet()
+        if (!campaignParcels.containsAll(parcelIds)) {
+            return AppResult.Failure(AppError.Validation("parcelIds", "not_in_campaign"))
+        }
+        return null
     }
 
     /** Planning is a child of the Activity aggregate (D5): same transaction, same intent. */

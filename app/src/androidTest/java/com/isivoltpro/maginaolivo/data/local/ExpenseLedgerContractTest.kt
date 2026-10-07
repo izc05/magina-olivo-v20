@@ -12,6 +12,7 @@ import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
+import com.isivoltpro.maginaolivo.data.local.entity.CampaignParcelSnapshotEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
@@ -362,7 +363,28 @@ class ExpenseLedgerContractTest {
         assertNotDoneWork(activities.create(NewActivity(farmId, null, ActivityType.PRUNING, date, "Poda",
             setOf(parcelA), costMinor = 6_000)))
         // Typed as done but kept planned (a harvest-day appointment): still no money.
-        assertNotDoneWork(activities.create(NewActivity(farmId, null, ActivityType.HARVEST_DAY, date, "Recogida",
+        val meta = LocalMetadata(now, now)
+        db.campaignDao().upsert(
+            CampaignEntity(
+                campaignId, workspaceId, farmId, "Recogida", date.minusMonths(1),
+                status = CampaignStatus.ACTIVE, metadata = meta,
+            ),
+        )
+        db.campaignDao().upsertSnapshots(
+            listOf(
+                CampaignParcelSnapshotEntity(
+                    id = UUID.randomUUID(),
+                    workspaceId = workspaceId,
+                    campaignId = campaignId,
+                    parcelId = parcelA,
+                    farmIdAtStart = farmId,
+                    farmNameAtStart = "Finca principal",
+                    parcelNameAtStart = "Parcela A",
+                    metadata = meta,
+                ),
+            ),
+        )
+        assertNotDoneWork(activities.create(NewActivity(farmId, campaignId, ActivityType.HARVEST_DAY, date, "Recogida",
             setOf(parcelA), completeImmediately = true, costMinor = 3_000)))
         assertNotDoneWork(activities.create(NewActivity(farmId, null, ActivityType.PRUNING, date, "Poda",
             setOf(parcelA), asDraft = true, costMinor = 6_000)))

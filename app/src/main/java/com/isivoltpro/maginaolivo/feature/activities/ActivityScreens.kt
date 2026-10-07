@@ -61,6 +61,7 @@ import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityDetail
 import com.isivoltpro.maginaolivo.domain.activity.ActivityParcelOption
 import com.isivoltpro.maginaolivo.domain.activity.ActivityType
+import com.isivoltpro.maginaolivo.domain.campaign.Campaign
 import com.isivoltpro.maginaolivo.domain.activity.IncidentSeverity
 import com.isivoltpro.maginaolivo.domain.activity.IncidentState
 import com.isivoltpro.maginaolivo.domain.activity.IrrigationPricingBasis
@@ -108,7 +109,13 @@ fun FarmActivitiesRoute(
     completeOnSave: Boolean = false,
 ) {
     val vm: FarmActivitiesViewModel = viewModel(key = "farm-activities-$farmId", factory = viewModelFactory {
-        initializer { FarmActivitiesViewModel(farmId, persistence.activityRepository) }
+        initializer {
+            FarmActivitiesViewModel(
+                farmId,
+                persistence.activityRepository,
+                persistence.campaignRepository,
+            )
+        }
     })
     val state by vm.state.collectAsStateWithLifecycle()
     FarmActivitiesSection(
@@ -143,6 +150,8 @@ fun FarmActivitiesSection(
     if (editorAsScreen && editor) {
         ActivityEditor(
             parcels = state.parcels,
+            campaigns = state.campaigns,
+            campaignError = state.campaignError,
             machines = state.machines,
             descriptionError = state.descriptionError,
             dateError = state.dateError,
@@ -190,6 +199,8 @@ fun FarmActivitiesSection(
             ModalBottomSheet(onDismissRequest = { editor = false }) {
                 ActivityEditor(
                     parcels = state.parcels,
+                    campaigns = state.campaigns,
+                    campaignError = state.campaignError,
                     machines = state.machines,
                     descriptionError = state.descriptionError,
                     dateError = state.dateError,
@@ -467,12 +478,45 @@ internal fun ActivityEditor(
     autoSelectSingleParcel: Boolean = false,
     /** #441 (Codex #530): shown under [parcelsError], inside the sheet, so its links can be used. */
     parcelsErrorContent: @Composable () -> Unit = {},
+    /** #482: Campaign context is only relevant to HARVEST_DAY planning. Appended for source compatibility. */
+    campaigns: List<Campaign> = emptyList(),
+    campaignError: String? = null,
 ) {
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
     var type by rememberSaveable(initial.type) { mutableStateOf(initial.type.name) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
+    var selectedCampaignId by rememberSaveable(initial.campaignId) {
+        mutableStateOf(initial.campaignId?.toString())
+    }
+    val selectedType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
+    LaunchedEffect(type, campaigns) {
+        if (selectedType == ActivityType.HARVEST_DAY) {
+            if (selectedCampaignId == null && campaigns.size == 1) {
+                selectedCampaignId = campaigns.single().id.toString()
+            } else if (selectedCampaignId != null && campaigns.none { it.id.toString() == selectedCampaignId }) {
+                selectedCampaignId = null
+            }
+        }
+    }
+    val selectedCampaign = if (selectedType == ActivityType.HARVEST_DAY) {
+        campaigns.firstOrNull { it.id.toString() == selectedCampaignId } ?: campaigns.singleOrNull()
+    } else {
+        null
+    }
+    val selectableParcels = if (selectedType == ActivityType.HARVEST_DAY) {
+        val allowed = selectedCampaign?.snapshots?.map { it.parcelId }?.toSet().orEmpty()
+        parcels.filter { it.id in allowed }
+    } else {
+        parcels
+    }
+    LaunchedEffect(type, selectedCampaign?.id) {
+        if (selectedType == ActivityType.HARVEST_DAY) {
+            val allowed = selectableParcels.map { it.id.toString() }.toSet()
+            selected = selected.filter { it in allowed }
+        }
+    }
     // #546: area is explicit per target. The Parcel's managed area is only a visible suggestion,
     // never inferred later by the repository.
     val parcelAreaHa = remember(initial.parcelAreasM2) {
@@ -486,9 +530,9 @@ internal fun ActivityEditor(
     // #414: a new entry on a Farm with a single Parcel needs no choice; it is ticked once (and can
     // still be unticked). Never on an edit: a record saved without Parcels keeps none.
     var singleParcelOffered by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(parcels, autoSelectSingleParcel, selected) {
-        if (autoSelectSingleParcel && !singleParcelOffered && selected.isEmpty() && parcels.size == 1) {
-            selected = listOf(parcels.single().id.toString())
+    LaunchedEffect(selectableParcels, autoSelectSingleParcel, selected) {
+        if (autoSelectSingleParcel && !singleParcelOffered && selected.isEmpty() && selectableParcels.size == 1) {
+            selected = listOf(selectableParcels.single().id.toString())
             singleParcelOffered = true
         }
     }
@@ -503,7 +547,7 @@ internal fun ActivityEditor(
         }
         val result = linkedMapOf<UUID, Double?>()
         selected.forEach { idText ->
-            val parcel = parcels.firstOrNull { it.id.toString() == idText }
+            val parcel = selectableParcels.firstOrNull { it.id.toString() == idText }
             val text = parcelAreaHa[idText].orEmpty().trim()
             if (text.isBlank()) {
                 result[UUID.fromString(idText)] = null
@@ -605,6 +649,41 @@ internal fun ActivityEditor(
             }
         }
         val chosenType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
+        if (chosenType == ActivityType.HARVEST_DAY) {
+            FormLabel("Campaña")
+            when {
+                campaigns.isEmpty() -> Text(
+                    "Crea o prepara una campaña antes de planificar una jornada de recolección.",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag("harvest-day-no-campaign"),
+                )
+                campaigns.size == 1 -> {
+                    MoStatusChip(
+                        campaigns.single().name,
+                        tone = MoStatusTone.Info,
+                        modifier = Modifier.testTag("harvest-day-campaign-fixed"),
+                    )
+                }
+                else -> FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                ) {
+                    campaigns.forEach { campaign ->
+                        FilterChip(
+                            selected = selectedCampaignId == campaign.id.toString(),
+                            onClick = {
+                                selectedCampaignId = campaign.id.toString()
+                                selected = emptyList()
+                                singleParcelOffered = false
+                            },
+                            label = { Text(campaign.name) },
+                            modifier = Modifier.testTag("harvest-day-campaign-option"),
+                        )
+                    }
+                }
+            }
+            campaignError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        }
         MoTextField(
             description, { description = it },
             // #414: only Observación and Otro need words; any other type already says what was done.
@@ -653,7 +732,18 @@ internal fun ActivityEditor(
         FormLabel("Parcelas")
         // One canonical Activity may target many Parcels; selecting several never
         // creates several Activities.
-        if (parcels.isEmpty()) Text("Primero añade una parcela a esta finca.", color = MoTextSecondary)
+        if (selectableParcels.isEmpty()) {
+            Text(
+                when {
+                    chosenType == ActivityType.HARVEST_DAY && selectedCampaign == null ->
+                        "Elige primero la campaña de esta jornada."
+                    chosenType == ActivityType.HARVEST_DAY ->
+                        "Esta campaña todavía no tiene parcelas disponibles para la jornada."
+                    else -> "Primero añade una parcela a esta finca."
+                },
+                color = MoTextSecondary,
+            )
+        }
         parcelsError?.let {
             Text(it, color = MaterialTheme.colorScheme.error)
             parcelsErrorContent()
@@ -662,7 +752,7 @@ internal fun ActivityEditor(
             horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
             verticalArrangement = Arrangement.spacedBy(MoSpacing.xs),
         ) {
-            parcels.forEach { parcel ->
+            selectableParcels.forEach { parcel ->
                 val checked = parcel.id.toString() in selected
                 FilterChip(
                     selected = checked,
@@ -687,7 +777,7 @@ internal fun ActivityEditor(
             }
         }
         if (chosenType.needsAffectedArea()) {
-            parcels.filter { it.id.toString() in selected }.forEach { parcel ->
+            selectableParcels.filter { it.id.toString() in selected }.forEach { parcel ->
                 val key = parcel.id.toString()
                 val known = parcel.managedAreaM2?.let { " · parcela ${hectaresLabel(it)}" }.orEmpty()
                 MoTextField(
@@ -800,6 +890,7 @@ internal fun ActivityEditor(
                         planning = planned.planning,
                         reminders = planned.reminders,
                         parcelAreasM2 = parcelAreas,
+                        campaignId = selectedCampaign?.id,
                     ),
                 )
             },
@@ -829,6 +920,7 @@ internal fun ActivityEditor(
                             planning = planned.planning,
                             reminders = planned.reminders,
                             parcelAreasM2 = parcelAreas,
+                        campaignId = selectedCampaign?.id,
                         ),
                     )
                 },
