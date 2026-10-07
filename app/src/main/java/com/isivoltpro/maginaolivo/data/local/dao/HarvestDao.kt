@@ -67,6 +67,16 @@ interface HarvestDao {
     @Query(
         """
         SELECT * FROM harvests
+        WHERE workspace_id = :workspaceId AND deleted_at IS NULL
+        ORDER BY harvest_date DESC, created_at DESC, id
+        """,
+    )
+    fun observeAllForWorkspace(workspaceId: UUID): Flow<List<HarvestWithParcels>>
+
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM harvests
         WHERE campaign_id = :campaignId AND deleted_at IS NULL
         ORDER BY harvest_date DESC, created_at DESC, id
         """,
@@ -99,6 +109,20 @@ interface HarvestDao {
         """,
     )
     fun observeRunningCampaigns(): Flow<List<RunningCampaignRow>>
+
+    @Query(
+        """
+        SELECT c.id AS campaignId, c.name AS campaignName, c.status AS campaignStatus,
+               c.start_date AS campaignStart, f.id AS farmId, f.name AS farmName
+        FROM campaigns c
+        JOIN farms f ON f.id = c.farm_id
+        WHERE c.workspace_id = :workspaceId
+          AND c.deleted_at IS NULL AND c.status IN ('ACTIVE', 'HARVEST')
+          AND f.deleted_at IS NULL AND f.status = 'ACTIVE'
+        ORDER BY f.name COLLATE NOCASE, f.id
+        """,
+    )
+    fun observeRunningCampaignsForWorkspace(workspaceId: UUID): Flow<List<RunningCampaignRow>>
 
     @Query(
         """
