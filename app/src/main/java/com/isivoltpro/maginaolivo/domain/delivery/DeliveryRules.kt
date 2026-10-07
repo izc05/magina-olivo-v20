@@ -102,6 +102,13 @@ object DeliveryRules {
         }
         return ParcelSplit.problem(net, draft.shares.map { it.weightGrams })?.let { DeliveryProblem("parcels", it) }
     }
+
+    /**
+     * #525: every newly-created Pesada must state whether the olives are from árbol/vuelo or suelo.
+     * Legacy rows may still carry null, so edits keep using [validate] and never invent an origin.
+     */
+    fun validateNew(draft: DeliveryDraft, today: LocalDate): DeliveryProblem? =
+        validate(draft, today) ?: if (draft.origin == null) DeliveryProblem("origin", "required") else null
 }
 
 /**
