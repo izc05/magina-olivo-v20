@@ -22,6 +22,7 @@ import com.isivoltpro.maginaolivo.domain.delivery.DeliveryDraft
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryShareInput
 import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.delivery.ParcelYield
+import com.isivoltpro.maginaolivo.domain.delivery.PesadaOrigin
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaQuery
 import com.isivoltpro.maginaolivo.domain.delivery.PesadaSearch
 import com.isivoltpro.maginaolivo.domain.delivery.YieldDraft
@@ -409,6 +410,7 @@ class JornadaPesadasContractTest {
         shares = listOf(DeliveryShareInput(north, null), DeliveryShareInput(south, null)),
         ticketNumber = ticket,
         deliveryTime = time?.let(LocalTime::parse),
+        origin = PesadaOrigin.TREE,
     )
 
     private fun open() {
