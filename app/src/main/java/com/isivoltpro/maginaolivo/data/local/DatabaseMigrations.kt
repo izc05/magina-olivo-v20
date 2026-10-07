@@ -253,7 +253,7 @@ object DatabaseMigrations {
         }
     }
 
-    /** #544 / CUE V9: reusable applicators/advisors and a regulatory extension of Machine. */
+    /** #544 / CUE V9: reusable applicators/advisors and regulatory Machine resources. */
     val MIGRATION_23_24 = object : Migration(23, 24) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
@@ -265,11 +265,7 @@ object DatabaseMigrations {
                     `given_name` TEXT,
                     `family_name` TEXT,
                     `tax_id` TEXT,
-                    `ropo_or_card_number` TEXT,
-                    `card_type_code` TEXT,
                     `is_advisor` INTEGER NOT NULL,
-                    `valid_from` TEXT,
-                    `valid_until` TEXT,
                     `source` TEXT NOT NULL,
                     `external_id` TEXT,
                     `source_version` TEXT,
@@ -293,13 +289,44 @@ object DatabaseMigrations {
 
             db.execSQL(
                 """
+                CREATE TABLE IF NOT EXISTS `agronomic_credentials` (
+                    `id` TEXT NOT NULL,
+                    `workspace_id` TEXT NOT NULL,
+                    `person_id` TEXT NOT NULL,
+                    `credential_type` TEXT NOT NULL,
+                    `number` TEXT NOT NULL,
+                    `category_code` TEXT,
+                    `valid_from` TEXT,
+                    `valid_until` TEXT,
+                    `source` TEXT NOT NULL,
+                    `external_id` TEXT,
+                    `source_version` TEXT,
+                    `fetched_at` INTEGER,
+                    `created_at` INTEGER NOT NULL,
+                    `updated_at` INTEGER NOT NULL,
+                    `deleted_at` INTEGER,
+                    `version` INTEGER NOT NULL,
+                    `sync_status` TEXT NOT NULL,
+                    `remote_version` INTEGER,
+                    `last_synced_at` INTEGER,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`person_id`) REFERENCES `agronomic_people`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_agronomic_credentials_person_id_valid_from` ON `agronomic_credentials` (`person_id`, `valid_from`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_agronomic_credentials_workspace_id` ON `agronomic_credentials` (`workspace_id`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_agronomic_credentials_workspace_id_external_id` ON `agronomic_credentials` (`workspace_id`, `external_id`)")
+
+            db.execSQL(
+                """
                 CREATE TABLE IF NOT EXISTS `phytosanitary_equipment_profiles` (
                     `machine_id` TEXT NOT NULL,
                     `workspace_id` TEXT NOT NULL,
                     `roma_registration` TEXT,
                     `census_reference` TEXT,
                     `acquisition_date` TEXT,
-                    `last_inspection_date` TEXT,
                     `regulatory_type_code` TEXT,
                     `source` TEXT NOT NULL,
                     `external_id` TEXT,
@@ -320,6 +347,36 @@ object DatabaseMigrations {
             )
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_phytosanitary_equipment_profiles_workspace_id` ON `phytosanitary_equipment_profiles` (`workspace_id`)")
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_phytosanitary_equipment_profiles_workspace_id_external_id` ON `phytosanitary_equipment_profiles` (`workspace_id`, `external_id`)")
+
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `phytosanitary_equipment_inspections` (
+                    `id` TEXT NOT NULL,
+                    `workspace_id` TEXT NOT NULL,
+                    `machine_id` TEXT NOT NULL,
+                    `inspection_date` TEXT NOT NULL,
+                    `result_code` TEXT,
+                    `certificate_reference` TEXT,
+                    `source` TEXT NOT NULL,
+                    `external_id` TEXT,
+                    `source_version` TEXT,
+                    `fetched_at` INTEGER,
+                    `created_at` INTEGER NOT NULL,
+                    `updated_at` INTEGER NOT NULL,
+                    `deleted_at` INTEGER,
+                    `version` INTEGER NOT NULL,
+                    `sync_status` TEXT NOT NULL,
+                    `remote_version` INTEGER,
+                    `last_synced_at` INTEGER,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`machine_id`) REFERENCES `machines`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_phytosanitary_equipment_inspections_machine_id_inspection_date` ON `phytosanitary_equipment_inspections` (`machine_id`, `inspection_date`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_phytosanitary_equipment_inspections_workspace_id` ON `phytosanitary_equipment_inspections` (`workspace_id`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_phytosanitary_equipment_inspections_workspace_id_external_id` ON `phytosanitary_equipment_inspections` (`workspace_id`, `external_id`)")
         }
     }
 
