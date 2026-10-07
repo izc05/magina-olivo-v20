@@ -8,6 +8,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.DeliveryEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.DeliveryYieldAnalysisEntity
 import com.isivoltpro.maginaolivo.data.local.model.DeliveryWithParcels
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 
@@ -45,6 +46,9 @@ interface DeliveryDao {
         """,
     )
     fun observeForCampaign(campaignId: UUID): Flow<List<DeliveryWithParcels>>
+
+    @Query("SELECT MAX(delivery_date) FROM deliveries WHERE campaign_id = :campaignId AND deleted_at IS NULL")
+    suspend fun lastLiveDateForCampaign(campaignId: UUID): LocalDate?
 
     @Query("SELECT * FROM delivery_parcels WHERE delivery_id = :deliveryId ORDER BY parcel_name_at_delivery COLLATE NOCASE, parcel_id")
     suspend fun listParcels(deliveryId: UUID): List<DeliveryParcelEntity>

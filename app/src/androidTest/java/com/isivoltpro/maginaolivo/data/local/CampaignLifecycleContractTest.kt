@@ -8,8 +8,10 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.data.local.entity.DeliveryEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
+import com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
@@ -101,7 +103,7 @@ class CampaignLifecycleContractTest {
         }
         assertOk(repository.activate(id))
         assertOk(repository.markHarvest(id))
-        assertOk(repository.close(id, LocalDate.parse("2027-02-01")))
+        assertOk(repository.close(id, LocalDate.parse("2026-10-03")))
 
         // One aggregate, one pending intent; snapshots never synchronize on their own.
         val intents = db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
@@ -199,7 +201,7 @@ class CampaignLifecycleContractTest {
         assertIllegal(id, CampaignStatus.HARVEST) { repository.markHarvest(id) }
 
         // CLOSED rejects every forward transition; only reopen is legal.
-        assertOk(repository.close(id, LocalDate.parse("2027-02-01")))
+        assertOk(repository.close(id, LocalDate.parse("2026-10-03")))
         assertIllegal(id, CampaignStatus.CLOSED) { repository.activate(id) }
         assertIllegal(id, CampaignStatus.CLOSED) { repository.markHarvest(id) }
         assertIllegal(id, CampaignStatus.CLOSED) { repository.close(id, LocalDate.parse("2027-03-01")) }
@@ -210,7 +212,7 @@ class CampaignLifecycleContractTest {
         // CR-010: Borrador -> Activa -> Cerrada, with no «Iniciar recolección» step.
         val id = created("2026/27", setOf(parcelId))
         assertOk(repository.activate(id))
-        assertOk(repository.close(id, LocalDate.parse("2027-02-01")))
+        assertOk(repository.close(id, LocalDate.parse("2026-10-03")))
         assertEquals(CampaignStatus.CLOSED, db.campaignDao().findById(id)?.status)
 
         // Reopen returns to Activa, never to the legacy HARVEST state.
@@ -220,7 +222,7 @@ class CampaignLifecycleContractTest {
 
         // A Campaign already in the legacy HARVEST state keeps working and closes too.
         assertOk(repository.markHarvest(id))
-        assertOk(repository.close(id, LocalDate.parse("2027-03-01")))
+        assertOk(repository.close(id, LocalDate.parse("2026-10-04")))
         assertEquals(CampaignStatus.CLOSED, db.campaignDao().findById(id)?.status)
     }
 
@@ -241,6 +243,64 @@ class CampaignLifecycleContractTest {
     }
 
     @Test
+    fun futureEndDateIsRejectedWithoutClosingTheCampaign() = runBlocking {
+        val id = created("2026/27", setOf(parcelId))
+        assertOk(repository.activate(id))
+        val before = db.campaignDao().findById(id)!!
+        val outboxBefore = db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
+
+        val result = repository.close(id, LocalDate.parse("2026-10-05"))
+
+        assertValidation("endDate", result)
+        assertEquals("future", ((result as AppResult.Failure).error as AppError.Validation).code)
+        assertEquals(before, db.campaignDao().findById(id))
+        assertEquals(outboxBefore, db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id))
+    }
+
+    @Test
+    fun closeCannotPrecedeTheLastHarvestOrDelivery() = runBlocking {
+        val id = created("2026/27", setOf(parcelId))
+        assertOk(repository.activate(id))
+        val meta = LocalMetadata(now, now)
+        db.harvestDao().upsert(
+            HarvestEntity(
+                id = UUID.randomUUID(),
+                workspaceId = workspaceId,
+                campaignId = id,
+                farmId = farmId,
+                harvestDate = LocalDate.parse("2026-10-03"),
+                weightGrams = 0,
+                metadata = meta,
+            ),
+        )
+        db.deliveryDao().upsert(
+            DeliveryEntity(
+                id = UUID.randomUUID(),
+                workspaceId = workspaceId,
+                farmId = farmId,
+                campaignId = id,
+                deliveryDate = LocalDate.parse("2026-10-04"),
+                destinationName = "Cooperativa",
+                netGrams = 1_000_000,
+                source = "MANUAL",
+                metadata = meta,
+            ),
+        )
+
+        val beforeHarvest = repository.close(id, LocalDate.parse("2026-10-02"))
+        assertValidation("endDate", beforeHarvest)
+        assertEquals("before_last_record", ((beforeHarvest as AppResult.Failure).error as AppError.Validation).code)
+
+        val beforeDelivery = repository.close(id, LocalDate.parse("2026-10-03"))
+        assertValidation("endDate", beforeDelivery)
+        assertEquals("before_last_record", ((beforeDelivery as AppResult.Failure).error as AppError.Validation).code)
+
+        assertOk(repository.close(id, LocalDate.parse("2026-10-04")))
+        assertEquals(CampaignStatus.CLOSED, db.campaignDao().findById(id)?.status)
+        assertEquals(LocalDate.parse("2026-10-04"), db.campaignDao().findById(id)?.endDate)
+    }
+
+    @Test
     fun closeTodayUsesTheWorkspaceCalendarNotThePhoneCalendar() = runBlocking {
         val workspace = db.workspaceDao().findById(workspaceId)!!
         db.workspaceDao().upsert(workspace.copy(timezone = "Pacific/Honolulu"))
@@ -257,7 +317,7 @@ class CampaignLifecycleContractTest {
         val id = created("2026/27", setOf(parcelId))
         assertOk(repository.activate(id))
         assertOk(repository.markHarvest(id))
-        val endDate = LocalDate.parse("2027-02-01")
+        val endDate = LocalDate.parse("2026-10-03")
         assertOk(repository.close(id, endDate))
 
         val closed = db.campaignDao().findById(id)!!
@@ -277,7 +337,7 @@ class CampaignLifecycleContractTest {
         assertEquals(1, db.campaignDao().listSnapshots(id).size)
 
         // The campaign can be closed again.
-        assertOk(repository.close(id, LocalDate.parse("2027-03-01")))
+        assertOk(repository.close(id, LocalDate.parse("2026-10-04")))
         assertEquals(CampaignStatus.CLOSED, db.campaignDao().findById(id)?.status)
     }
 
@@ -285,7 +345,7 @@ class CampaignLifecycleContractTest {
     fun reopenIsRejectedWhenItsFarmIsArchivedLegacyState() = runBlocking {
         val id = created("2026/27", setOf(parcelId))
         assertOk(repository.activate(id))
-        assertOk(repository.close(id, LocalDate.parse("2027-02-01")))
+        assertOk(repository.close(id, LocalDate.parse("2026-10-03")))
         val before = db.campaignDao().findById(id)!!
         val snapshotsBefore = db.campaignDao().listSnapshots(id)
         val outboxBefore = db.syncOutboxDao().listForEntity(SyncEntityType.CAMPAIGN, id)
@@ -310,7 +370,7 @@ class CampaignLifecycleContractTest {
         val first = created("2026/27", setOf(parcelId))
         assertOk(repository.activate(first))
         assertOk(repository.markHarvest(first))
-        assertOk(repository.close(first, LocalDate.parse("2027-02-01")))
+        assertOk(repository.close(first, LocalDate.parse("2026-10-03")))
 
         val second = created("2027/28", setOf(parcelId))
         assertOk(repository.activate(second))
@@ -333,7 +393,7 @@ class CampaignLifecycleContractTest {
         assertConflict("protected_campaign", repository.archivePreparation(id))
         assertNull(db.campaignDao().findById(id)?.metadata?.deletedAt)
 
-        assertOk(repository.close(id, LocalDate.parse("2027-02-01")))
+        assertOk(repository.close(id, LocalDate.parse("2026-10-03")))
         assertConflict("protected_campaign", repository.archivePreparation(id))
         assertNull(db.campaignDao().findById(id)?.metadata?.deletedAt)
         assertEquals(CampaignStatus.CLOSED, db.campaignDao().findById(id)?.status)
@@ -376,7 +436,7 @@ class CampaignLifecycleContractTest {
         val id = created("2026/27", setOf(parcelId))
         assertOk(repository.activate(id))
         assertOk(repository.markHarvest(id))
-        assertOk(repository.close(id, LocalDate.parse("2027-02-01")))
+        assertOk(repository.close(id, LocalDate.parse("2026-10-03")))
 
         db.farmDao().upsert(db.farmDao().findById(farmId)!!.copy(name = "Finca renombrada"))
         db.parcelDao().upsert(

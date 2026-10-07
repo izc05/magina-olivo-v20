@@ -168,7 +168,25 @@ class OfflineFirstCampaignRepository(
     private suspend fun closeCurrent(current: CampaignEntity, endDate: LocalDate, now: Instant): AppResult<Unit> {
         // CR-010: Borrador → Activa → Cerrada. A running Campaign (ACTIVE, or legacy HARVEST) closes directly.
         if (!current.status.isRunning) return conflict("illegal_campaign_transition")
-        if (endDate.isBefore(current.startDate)) return AppResult.Failure(AppError.Validation("endDate", "before_start"))
+        val farm = database.farmDao().findById(current.farmId)
+            ?: return AppResult.Failure(AppError.NotFound("farm"))
+        if (farm.workspaceId != current.workspaceId) {
+            return AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+        }
+        if (endDate.isBefore(current.startDate)) {
+            return AppResult.Failure(AppError.Validation("endDate", "before_start"))
+        }
+        val today = database.todayForWorkspace(current.workspaceId, clock)
+        if (endDate.isAfter(today)) {
+            return AppResult.Failure(AppError.Validation("endDate", "future"))
+        }
+        val lastOperationalDate = listOfNotNull(
+            database.harvestDao().lastLiveDateForCampaign(current.id),
+            database.deliveryDao().lastLiveDateForCampaign(current.id),
+        ).maxOrNull()
+        if (lastOperationalDate != null && endDate.isBefore(lastOperationalDate)) {
+            return AppResult.Failure(AppError.Validation("endDate", "before_last_record"))
+        }
         database.campaignDao().upsert(current.copy(status = CampaignStatus.CLOSED, endDate = endDate, metadata = current.metadata.next(now)))
         enqueue(current.id, OutboxOperation.UPDATE, now)
         return AppResult.Success(Unit)
