@@ -114,6 +114,85 @@ class DeliveryContractTest {
     // ------------------------------------------------------------ delivery ≠ harvest
 
     @Test
+    fun deliveryIdFromAnotherWorkspaceCannotBeReadOrMutated() = runBlocking {
+        val otherWorkspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000d2")
+        val otherFarmId = UUID.fromString("20000000-0000-0000-0000-0000000000d2")
+        val otherCampaignId = UUID.fromString("40000000-0000-0000-0000-0000000000d2")
+        val otherParcelId = UUID.fromString("30000000-0000-0000-0000-0000000000d3")
+        val meta = LocalMetadata(now, now)
+
+        db.workspaceDao().upsert(
+            WorkspaceEntity(otherWorkspaceId, "Otro olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
+        )
+        db.farmDao().upsert(FarmEntity(otherFarmId, otherWorkspaceId, "Finca B", metadata = meta))
+        db.parcelDao().upsert(ParcelEntity(otherParcelId, otherWorkspaceId, "Parcela B", source = "MANUAL", metadata = meta))
+        db.campaignDao().upsert(
+            CampaignEntity(otherCampaignId, otherWorkspaceId, otherFarmId, "2026/27 B", LocalDate.parse("2026-10-01"), null, CampaignStatus.HARVEST, metadata = meta),
+        )
+        db.campaignDao().upsertSnapshots(
+            listOf(
+                CampaignParcelSnapshotEntity(
+                    UUID.randomUUID(), otherWorkspaceId, otherCampaignId, otherParcelId, otherFarmId,
+                    "Finca B", "Parcela B", metadata = meta,
+                ),
+            ),
+        )
+
+        val workspaceA = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
+        }
+        val workspaceB = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(otherWorkspaceId)
+        }
+        val repoA = OfflineFirstDeliveryRepository(
+            db, FixedClock(now), RandomIds, TestDispatchers,
+            workspaceRepository = workspaceA,
+            zoneId = { ZoneOffset.UTC },
+        )
+        val repoB = OfflineFirstDeliveryRepository(
+            db, FixedClock(now), RandomIds, TestDispatchers,
+            workspaceRepository = workspaceB,
+            zoneId = { ZoneOffset.UTC },
+        )
+        val otherId = ok(
+            repoB.create(
+                DeliveryDraft(
+                    farmId = otherFarmId,
+                    deliveryDate = day,
+                    destinationOrganizationId = null,
+                    destinationName = "Cooperativa B",
+                    netGrams = 900_000,
+                    shares = listOf(DeliveryShareInput(otherParcelId, null)),
+                    origin = PesadaOrigin.TREE,
+                ),
+            ),
+        )
+
+        assertNull(repoA.observe(otherId).first())
+        assertValidation(
+            "workspaceId",
+            repoA.update(
+                otherId,
+                DeliveryDraft(
+                    farmId = otherFarmId,
+                    deliveryDate = day,
+                    destinationOrganizationId = null,
+                    destinationName = "Cooperativa B",
+                    netGrams = 950_000,
+                    shares = listOf(DeliveryShareInput(otherParcelId, null)),
+                    origin = PesadaOrigin.TREE,
+                ),
+            ),
+        )
+        assertValidation("workspaceId", repoA.delete(otherId))
+        assertValidation("workspaceId", repoA.recordYield(otherId, YieldDraft(null, 2_100, null)))
+        assertValidation("workspaceId", repoA.removeYield(otherId))
+
+        assertEquals(900_000L, repoB.observe(otherId).first()!!.netGrams)
+        assertNull(repoB.observe(otherId).first()!!.analysis)
+    }
+
+    @Test
     fun pesadaAndYieldUseWorkspaceCalendarAtMidnightBoundaries() = runBlocking {
         val workspace = db.workspaceDao().findById(workspaceId)!!
         db.workspaceDao().upsert(workspace.copy(timezone = "Pacific/Honolulu"))
