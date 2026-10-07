@@ -106,7 +106,7 @@ class HomeFeedsScreenTest {
         composeRule.onNode(hasTestTag("home-weather-summary") and hasText("%", substring = true)).assertDoesNotExist()
     }
 
-    @Test fun heroShowsTodaySunriseAndSunsetButNeverYesterdaysSolarCache() {
+    @Test fun heroShowsTodaySunriseAndSunset() {
         val solarWeather = WeatherNow(
             18, WeatherCondition.CLEAR, 0, 7, now,
             solarDate = LocalDate.parse("2026-11-26"),
@@ -122,8 +122,15 @@ class HomeFeedsScreenTest {
         )
         composeRule.onNodeWithTag("home-weather-solar").assertIsDisplayed()
             .assertTextContains("Salida 08:05").assertTextContains("Puesta 17:56")
+    }
 
-        val yesterday = solarWeather.copy(solarDate = LocalDate.parse("2026-11-25"))
+    @Test fun heroNeverShowsYesterdaysSolarCacheAsToday() {
+        val yesterday = WeatherNow(
+            18, WeatherCondition.CLEAR, 0, 7, now,
+            solarDate = LocalDate.parse("2026-11-25"),
+            sunriseAt = Instant.parse("2026-11-25T07:04:00Z"),
+            sunsetAt = Instant.parse("2026-11-25T16:57:00Z"),
+        )
         show(
             UiPolishFixtures.home.copy(
                 today = LocalDate.parse("2026-11-26"),
