@@ -164,7 +164,7 @@ internal class DeliveryWriter(
         val campaignParcels = if (added.isEmpty()) {
             emptyMap()
         } else {
-            database.harvestDao().listCampaignParcels(delivery.campaignId).associateBy { it.parcelId }
+            database.harvestDao().listSelectableCampaignParcels(delivery.campaignId).associateBy { it.parcelId }
         }
         val rows = draft.shares.sortedBy { it.parcelId.toString() }.mapNotNull { share ->
             val mode = if (share.weightGrams == null) HarvestAllocation.UNALLOCATED.name else HarvestAllocation.EXACT.name
