@@ -44,6 +44,18 @@ interface ActivityDao {
     @Query("SELECT COUNT(*) FROM activities WHERE farm_id = :farmId AND status = 'PLANNED' AND deleted_at IS NULL")
     suspend fun countPlannedForFarm(farmId: UUID): Int
 
+    /** #482: a Campaign with future collection appointments cannot close underneath them. */
+    @Query(
+        """
+        SELECT COUNT(*) FROM activities
+        WHERE campaign_id = :campaignId
+          AND type = 'HARVEST_DAY'
+          AND status = 'PLANNED'
+          AND deleted_at IS NULL
+        """,
+    )
+    suspend fun countPlannedHarvestDaysForCampaign(campaignId: UUID): Int
+
     /** #427: a Parcel targeted by future work cannot disappear from the operational context. */
     @Query(
         """
