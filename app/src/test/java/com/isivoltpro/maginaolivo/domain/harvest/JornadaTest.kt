@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -42,6 +43,14 @@ class JornadaTest {
         val jornada = Jornada.of(harvest, emptyList())
         assertFalse(jornada.kilosFromPesadas)
         assertEquals(0L, jornada.pesadaGrams)
+    }
+
+    @Test
+    fun anOverflowingPesadaTotalIsUnknownNeverNegative() {
+        val huge = delivery(Long.MAX_VALUE)
+        val one = delivery(1)
+        val jornada = Jornada.of(harvest, listOf(huge, one))
+        assertNull(jornada.pesadaGrams)
     }
 
     private fun pesada(net: Long, destination: String, time: LocalTime?, harvestId: UUID?) = Delivery(
