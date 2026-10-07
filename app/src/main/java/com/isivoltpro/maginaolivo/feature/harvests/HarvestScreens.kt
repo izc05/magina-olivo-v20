@@ -191,7 +191,7 @@ fun HarvestsScreen(
             if (!state.isLoading) {
                 MoMetricGrid(
                     content = listOf(
-                        { m -> MoKpiMetric("Kg pesados", deliverySummary?.takeIf { it.deliveryCount > 0 }?.let { Weight.format(it.deliveredGrams) } ?: "—", m.testTag("harvest-metric-kg"), icon = MoIcons.Delivery, kind = MoKpiKind.PESADAS) },
+                        { m -> MoKpiMetric("Kg pesados", deliverySummary?.takeIf { it.deliveryCount > 0 }?.deliveredGrams?.let(Weight::format) ?: "—", m.testTag("harvest-metric-kg"), icon = MoIcons.Delivery, kind = MoKpiKind.PESADAS) },
                         { m -> MoKpiMetric("Pesadas", (deliverySummary?.deliveryCount ?: 0).toString(), m, icon = MoIcons.Checklist, kind = MoKpiKind.PESADAS) },
                         { m ->
                             // #366: calendar days, not records — two Farms on 3 oct are one day.
@@ -977,8 +977,17 @@ private fun JornadaPesadas(
     } else {
         val summary = DeliverySummary.of(pesadas)
         summary.fatYield?.let {
-            Text("Rendimiento del día ${Percent.format(it.hundredths)} · sobre el ${summary.coveragePercent(it)} % de los kilos",
-                style = MaterialTheme.typography.bodyMedium, color = MoTextSecondary, modifier = Modifier.testTag("jornada-pesadas-summary"))
+            val coverage = summary.coveragePercent(it)
+            Text(
+                if (coverage == null) {
+                    "Rendimiento del día ${Percent.format(it.hundredths)} · cobertura no disponible"
+                } else {
+                    "Rendimiento del día ${Percent.format(it.hundredths)} · sobre el $coverage % de los kilos"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MoTextSecondary,
+                modifier = Modifier.testTag("jornada-pesadas-summary"),
+            )
         }
         pesadas.forEach { pesada ->
             Row(

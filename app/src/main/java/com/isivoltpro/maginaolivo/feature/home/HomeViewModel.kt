@@ -7,11 +7,13 @@ import com.isivoltpro.maginaolivo.core.time.AppClock
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
 import com.isivoltpro.maginaolivo.domain.activity.AgendaEntry
 import com.isivoltpro.maginaolivo.domain.delivery.DeliveryRepository
+import com.isivoltpro.maginaolivo.domain.delivery.DeliverySummary
 import com.isivoltpro.maginaolivo.domain.farm.Farm
 import com.isivoltpro.maginaolivo.domain.farm.FarmRepository
 import com.isivoltpro.maginaolivo.domain.feed.FeedLocation
 import com.isivoltpro.maginaolivo.domain.feed.FeedState
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestRepository
+import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
 import com.isivoltpro.maginaolivo.domain.market.OilMarketFeed
 import com.isivoltpro.maginaolivo.domain.market.OilMarketSeries
 import com.isivoltpro.maginaolivo.domain.profile.ProfileRepository
@@ -178,8 +180,8 @@ class HomeViewModel(
                                     HomeCampaign(
                                         name = context.campaignName,
                                         farmName = context.farmName,
-                                        harvestedGrams = harvested.takeIf { it.isNotEmpty() }?.sumOf { it.totalGrams },
-                                        deliveredGrams = delivered.takeIf { it.isNotEmpty() }?.sumOf { it.netGrams },
+                                        harvestedGrams = harvested.takeIf { it.isNotEmpty() }?.let(HarvestSummary::of)?.totalGrams,
+                                        deliveredGrams = delivered.takeIf { it.isNotEmpty() }?.let(DeliverySummary::of)?.deliveredGrams,
                                         farmId = context.farmId,
                                     )
                                 },

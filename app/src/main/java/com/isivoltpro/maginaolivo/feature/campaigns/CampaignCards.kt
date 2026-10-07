@@ -46,14 +46,14 @@ import java.util.UUID
  * campaign itself (Pesadas, days, posted labour). Nothing is stored or estimated.
  */
 data class CampaignCardSummary(
-    val deliveredGrams: Long,
+    val deliveredGrams: Long?,
     val deliveryCount: Int,
     val dayCount: Int,
     /** Posted labour per currency; an amount too large to add is null. Empty without jornales. */
     val labour: List<Pair<String, Long?>>,
     val yieldHundredths: Int?,
     /** Codex #404: share of the weighed kilos the yield is measured on; below 100 it is partial. */
-    val yieldCoveragePercent: Int = 100,
+    val yieldCoveragePercent: Int? = 100,
     /** #449: false while jornales, machinery or costs of the campaign are still unconfirmed. */
     val costComplete: Boolean = true,
 ) {
@@ -98,7 +98,12 @@ internal fun campaignFacts(summary: CampaignCardSummary): List<CampaignFact> = b
     if (summary.deliveryCount == 0) {
         add(CampaignFact(CampaignFactKind.PRODUCTION, "Sin pesadas"))
     } else {
-        add(CampaignFact(CampaignFactKind.PRODUCTION, Weight.format(summary.deliveredGrams)))
+        add(
+            CampaignFact(
+                CampaignFactKind.PRODUCTION,
+                summary.deliveredGrams?.let(Weight::format) ?: "Kilos no disponibles",
+            ),
+        )
         add(CampaignFact(CampaignFactKind.PRODUCTION, if (summary.deliveryCount == 1) "1 pesada" else "${summary.deliveryCount} pesadas"))
     }
     if (summary.dayCount > 0) add(CampaignFact(CampaignFactKind.TIME, harvestDays(summary.dayCount)))
@@ -110,8 +115,13 @@ internal fun campaignFacts(summary: CampaignCardSummary): List<CampaignFact> = b
     // #449: said on the card, never left for the farmer to discover inside the campaign.
     if (!summary.costComplete) add(CampaignFact(CampaignFactKind.COST, "Costes sin confirmar"))
     summary.yieldHundredths?.let { hundredths ->
-        val partial = summary.yieldCoveragePercent < 100
-        add(CampaignFact(CampaignFactKind.YIELD, "Rend. ${Percent.format(hundredths)}" + if (partial) " · ${summary.yieldCoveragePercent} % analizado" else ""))
+        val coverage = summary.yieldCoveragePercent
+        val suffix = when {
+            coverage == null -> " · cobertura no disponible"
+            coverage < 100 -> " · $coverage % analizado"
+            else -> ""
+        }
+        add(CampaignFact(CampaignFactKind.YIELD, "Rend. ${Percent.format(hundredths)}$suffix"))
     }
 }
 

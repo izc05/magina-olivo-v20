@@ -39,7 +39,7 @@ import java.util.UUID
 
 /** #359: weighed kilos, «—» when nothing was weighed (never «0 kg»). */
 internal fun overviewKilos(delivery: DeliverySummary): String =
-    if (delivery.deliveryCount == 0) "—" else Weight.format(delivery.deliveredGrams)
+    if (delivery.deliveryCount == 0) "—" else delivery.deliveredGrams?.let(Weight::format) ?: "No disponible"
 
 /** Weighted yield, «—» without any analysis. */
 internal fun overviewYield(delivery: DeliverySummary): String =
