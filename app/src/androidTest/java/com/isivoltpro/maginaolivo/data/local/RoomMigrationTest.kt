@@ -51,13 +51,16 @@ class RoomMigrationTest {
                 assertEquals(4, cursor.getInt(3))
                 assertEquals("PENDING", cursor.getString(4))
             }
-            database.query("SELECT COUNT(*) FROM agronomic_people").use { cursor ->
-                assertTrue(cursor.moveToFirst())
-                assertEquals(0, cursor.getInt(0))
-            }
-            database.query("SELECT COUNT(*) FROM phytosanitary_equipment_profiles").use { cursor ->
-                assertTrue(cursor.moveToFirst())
-                assertEquals(0, cursor.getInt(0))
+            for (table in listOf(
+                "agronomic_people",
+                "agronomic_credentials",
+                "phytosanitary_equipment_profiles",
+                "phytosanitary_equipment_inspections",
+            )) {
+                database.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
+                }
             }
         }
     }
