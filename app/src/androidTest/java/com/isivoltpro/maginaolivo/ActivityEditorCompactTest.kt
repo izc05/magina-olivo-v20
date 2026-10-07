@@ -193,20 +193,28 @@ class ActivityEditorCompactTest {
     }
 
     /** #435/#414: a quick entry dated tomorrow is not saved as a quiet plan; Avisos plans it. */
-    @Test fun aQuickEntryDatedAheadCannotBeSaved() {
+    @Test fun aQuickEntryDatedAheadUsesTheWorkspaceDayNotThePhoneDay() {
         var saved: ActivityDraft? = null
+        val workspaceToday = LocalDate.of(2026, 10, 6)
         show(
-            ActivityDraft(activityDate = LocalDate.now().plusDays(1), type = ActivityType.PHYTOSANITARY),
-            options = parcels.take(1), doneWork = true, onSave = { saved = it },
+            ActivityDraft(activityDate = LocalDate.of(2026, 10, 7), type = ActivityType.PHYTOSANITARY),
+            options = parcels.take(1),
+            doneWork = true,
+            today = workspaceToday,
+            onSave = { saved = it },
         )
         composeRule.onNodeWithText("La fecha es futura. Para trabajos pendientes usa Avisos → Planificar.").assertExists()
         composeRule.onNodeWithTag("save-activity").performScrollTo().assertIsNotEnabled().performClick()
         composeRule.runOnIdle { assertEquals(null, saved) }
     }
 
-    /** #435: planning (Avisos, the Farm's sheet) still takes a date ahead. */
+    /** #435: planning still accepts a date ahead of the Workspace's day. */
     @Test fun planningStillTakesADateAhead() {
-        show(ActivityDraft(activityDate = LocalDate.now().plusDays(1), type = ActivityType.PRUNING))
+        val workspaceToday = LocalDate.of(2026, 10, 6)
+        show(
+            ActivityDraft(activityDate = LocalDate.of(2026, 10, 7), type = ActivityType.PRUNING),
+            today = workspaceToday,
+        )
         composeRule.onNodeWithTag("save-activity").performScrollTo().assertIsEnabled()
     }
 
@@ -314,6 +322,7 @@ class ActivityEditorCompactTest {
         options: List<ActivityParcelOption> = parcels,
         doneWork: Boolean = false,
         autoSelect: Boolean = doneWork,
+        today: LocalDate? = null,
         onSave: (ActivityDraft) -> Unit = {},
     ) {
         composeRule.setContent {
@@ -330,6 +339,7 @@ class ActivityEditorCompactTest {
                     lockInitialType = doneWork,
                     doneWork = doneWork,
                     autoSelectSingleParcel = autoSelect,
+                    today = today,
                 )
             }
         }
