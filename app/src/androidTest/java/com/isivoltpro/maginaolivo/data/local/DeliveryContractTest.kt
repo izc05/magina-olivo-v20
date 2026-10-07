@@ -114,6 +114,22 @@ class DeliveryContractTest {
     // ------------------------------------------------------------ delivery ≠ harvest
 
     @Test
+    fun addingAPesadaCannotOverflowItsJornadaTotal() = runBlocking {
+        val first = ok(deliveries.create(draft(Long.MAX_VALUE, north to Long.MAX_VALUE)))
+        val beforeIds = deliveries.observeAll().first().map { it.id }
+
+        val result = deliveries.create(draft(1, north to 1))
+        assertValidation("netGrams", result)
+        val error = (result as AppResult.Failure).error as AppError.Validation
+        assertEquals("day_total_overflow", error.code)
+
+        assertEquals(beforeIds, deliveries.observeAll().first().map { it.id })
+        assertEquals(first, deliveries.observeAll().first().single().id)
+        assertEquals(Long.MAX_VALUE, harvests.observeForCampaign(campaignId).first().single().totalGrams)
+    }
+
+
+    @Test
     fun deliveryIdFromAnotherWorkspaceCannotBeReadOrMutated() = runBlocking {
         val otherWorkspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000d2")
         val otherFarmId = UUID.fromString("20000000-0000-0000-0000-0000000000d2")
