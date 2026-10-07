@@ -196,8 +196,16 @@ class OfflineFirstActivityRepository(
         }.flowOn(dispatchers.io)
 
     override fun observeSelectableMachines(): Flow<List<MachineOption>> =
-        database.machineDao().observeByStatus(MACHINE_ACTIVE).map { rows ->
-            rows.map { MachineOption(it.id, it.name, it.category.toMachineCategory()) }
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
+            }
+            emitAll(
+                database.machineDao().observeByStatus(active, MACHINE_ACTIVE).map { rows ->
+                    rows.map { MachineOption(it.id, it.name, it.category.toMachineCategory()) }
+                },
+            )
         }.flowOn(dispatchers.io)
 
     private suspend fun machinesOf(uses: List<ActivityMachineEntity>): List<ActivityMachine> {
