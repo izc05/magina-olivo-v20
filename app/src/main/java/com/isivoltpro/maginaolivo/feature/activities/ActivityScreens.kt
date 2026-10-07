@@ -1267,6 +1267,7 @@ fun ActivityDetailScreen(
                     machines = activity.machines.map { MachineUseInput(it.machineId, it.startHours, it.endHours, it.usageHours) },
                     planning = activity.planning,
                     reminders = activity.reminders.map { it.toRequest() },
+                    activityEndDate = activity.activityEndDate,
                 ),
                 title = "Editar trabajo",
                 // A retired machine the Activity already named stays choosable here only.
