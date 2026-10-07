@@ -121,6 +121,26 @@ class ExpenseLedgerContractTest {
     }
 
     @Test
+    fun postedExpenseCannotBeCreatedOrMovedToAFutureWorkspaceDate() = runBlocking {
+        val future = LocalDate.parse("2026-09-24")
+        val create = expenses.create(draft(2_500, farmId = farmId).copy(expenseDate = future))
+        val createError = (create as? AppResult.Failure)?.error as? AppError.Validation
+        assertEquals("expenseDate", createError?.field)
+        assertEquals("future_real_expense", createError?.code)
+        assertTrue(expenses.observeAll().first().isEmpty())
+
+        val id = ok(expenses.create(draft(2_500, farmId = farmId)))
+        val before = ledgerState()
+        val update = expenses.update(id, draft(3_000, farmId = farmId).copy(expenseDate = future))
+        val updateError = (update as? AppResult.Failure)?.error as? AppError.Validation
+        assertEquals("expenseDate", updateError?.field)
+        assertEquals("future_real_expense", updateError?.code)
+        assertEquals(before, ledgerState())
+        assertEquals(date, expenses.observe(id).first()!!.expenseDate)
+        assertEquals(2_500L, expenses.observe(id).first()!!.amountMinor)
+    }
+
+    @Test
     fun postingADraftUsesTheWorkspaceCalendarAtMidnightBoundaries() = runBlocking {
         val workspace = db.workspaceDao().findById(workspaceId)!!
         db.workspaceDao().upsert(workspace.copy(timezone = "Pacific/Honolulu"))
@@ -140,7 +160,9 @@ class ExpenseLedgerContractTest {
             ),
         )
 
-        assertValidation("expenseDate", expenses.post(id))
+        val result = expenses.post(id)
+        assertValidation("expenseDate", result)
+        assertEquals("future_real_expense", ((result as AppResult.Failure).error as AppError.Validation).code)
         assertEquals(ExpenseStatus.DRAFT, expenses.observe(id).first()?.status)
     }
 
