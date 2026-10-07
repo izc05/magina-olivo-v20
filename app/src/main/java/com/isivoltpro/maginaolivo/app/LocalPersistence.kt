@@ -21,6 +21,7 @@ import com.isivoltpro.maginaolivo.domain.agenda.ReminderReconciler
 import com.isivoltpro.maginaolivo.domain.weather.RadarSource
 import com.isivoltpro.maginaolivo.domain.market.OilMarketFeed
 import com.isivoltpro.maginaolivo.domain.profile.ProfileRepository
+import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryResourceRepository
 import com.isivoltpro.maginaolivo.domain.weather.WeatherFeed
 
 data class LocalPersistence(
@@ -54,4 +55,6 @@ data class LocalPersistence(
     val oilMarketFeed: OilMarketFeed? = null,
     /** Phase 21A: «Mi perfil» — municipality and preferred cooperative. Null where not wired (tests). */
     val profileRepository: ProfileRepository? = null,
+    /** CUE v24: reusable applicators/advisors and regulatory Machine resources. */
+    val phytosanitaryResourceRepository: PhytosanitaryResourceRepository? = null,
 )
