@@ -982,6 +982,17 @@ class OfflineFirstActivityRepository(
                     doseUnit = detail.doseUnit.normalized(),
                     reason = detail.reason.normalized(),
                     equipmentText = detail.equipmentText.normalized(),
+                    operatorPersonId = detail.operatorPersonId,
+                    applicationMachineId = detail.applicationMachineId,
+                    serviceProviderOrganizationId = detail.serviceProviderOrganizationId,
+                    productRegistrationNumber = detail.productRegistrationNumber.normalized(),
+                    productSource = detail.productSource.normalized(),
+                    productSourceVersion = detail.productSourceVersion.normalized(),
+                    productFetchedAt = detail.productFetchedAt,
+                    authorizationContextSnapshot = detail.authorizationContextSnapshot.normalized(),
+                    pestProblemCode = detail.pestProblemCode.normalized(),
+                    efficacyCode = detail.efficacyCode.normalized(),
+                    treatmentObservations = detail.treatmentObservations.normalized(),
                     metadata = metadata,
                 ),
             )
@@ -1059,8 +1070,25 @@ class OfflineFirstActivityRepository(
         }
         phytosanitary?.let {
             return ActivityDetail.Phytosanitary(
-                it.productName, it.activeSubstance, it.totalQuantity, it.unit,
-                it.doseValue, it.doseUnit, it.reason, it.equipmentText,
+                productName = it.productName,
+                activeSubstance = it.activeSubstance,
+                totalQuantity = it.totalQuantity,
+                unit = it.unit,
+                doseValue = it.doseValue,
+                doseUnit = it.doseUnit,
+                reason = it.reason,
+                equipmentText = it.equipmentText,
+                operatorPersonId = it.operatorPersonId,
+                applicationMachineId = it.applicationMachineId,
+                serviceProviderOrganizationId = it.serviceProviderOrganizationId,
+                productRegistrationNumber = it.productRegistrationNumber,
+                productSource = it.productSource,
+                productSourceVersion = it.productSourceVersion,
+                productFetchedAt = it.productFetchedAt,
+                authorizationContextSnapshot = it.authorizationContextSnapshot,
+                pestProblemCode = it.pestProblemCode,
+                efficacyCode = it.efficacyCode,
+                treatmentObservations = it.treatmentObservations,
             )
         }
         soilWork?.let { return ActivityDetail.SoilWork(it.workType, it.method) }
