@@ -107,7 +107,12 @@ class PhytosanitaryResourcesContractTest {
         ok(repository.archivePerson(id))
         assertTrue(repository.observeActivePeople().first().isEmpty())
         ok(repository.restorePerson(id))
-        assertEquals(id, repository.observeActivePeople().first().single().id)
+        val restored = repository.observeActivePeople().first().single()
+        assertEquals(id, restored.id)
+        assertEquals(RegulatoryResourceSource.REAFA, restored.source)
+        assertEquals("reafa-person-544", restored.externalId)
+        assertEquals("2026-10", restored.sourceVersion)
+        assertEquals(now, restored.fetchedAt)
     }
 
     @Test
