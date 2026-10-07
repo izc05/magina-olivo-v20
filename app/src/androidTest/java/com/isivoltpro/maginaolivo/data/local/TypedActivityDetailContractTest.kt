@@ -118,6 +118,47 @@ class TypedActivityDetailContractTest {
     }
 
     @Test
+    fun phytosanitaryKeepsCueV25ReferencesAndRegulatorySnapshot() = runBlocking {
+        val operatorId = UUID.fromString("40000000-0000-0000-0000-0000000000e1")
+        val machineId = UUID.fromString("50000000-0000-0000-0000-0000000000e1")
+        val providerId = UUID.fromString("60000000-0000-0000-0000-0000000000e1")
+        val fetchedAt = Instant.parse("2026-10-07T12:00:00Z")
+        val detail = ActivityDetail.Phytosanitary(
+            productName = "Cobre 50%",
+            activeSubstance = "Oxicloruro de cobre",
+            doseValue = 2.0,
+            doseUnit = "kg/ha",
+            reason = "Repilo",
+            equipmentText = "Atomizador arrastrado",
+            operatorPersonId = operatorId,
+            applicationMachineId = machineId,
+            serviceProviderOrganizationId = providerId,
+            productRegistrationNumber = "ES-12345",
+            productSource = "MAPA_REGFI",
+            productSourceVersion = "2026-W41",
+            productFetchedAt = fetchedAt,
+            authorizationContextSnapshot = """{"crop":"olivo","use":"repilo"}""",
+            pestProblemCode = "REPILO",
+            efficacyCode = "GOOD",
+            treatmentObservations = "Sin deriva visible",
+        )
+        val stored = roundTrip(ActivityType.PHYTOSANITARY, detail)
+        assertEquals(detail, stored.detail)
+        val row = db.activityDao().findWithTargets(stored.id)!!.phytosanitary!!
+        assertEquals(operatorId, row.operatorPersonId)
+        assertEquals(machineId, row.applicationMachineId)
+        assertEquals(providerId, row.serviceProviderOrganizationId)
+        assertEquals("ES-12345", row.productRegistrationNumber)
+        assertEquals("MAPA_REGFI", row.productSource)
+        assertEquals("2026-W41", row.productSourceVersion)
+        assertEquals(fetchedAt, row.productFetchedAt)
+        assertEquals("""{"crop":"olivo","use":"repilo"}""", row.authorizationContextSnapshot)
+        assertEquals("REPILO", row.pestProblemCode)
+        assertEquals("GOOD", row.efficacyCode)
+        assertEquals("Sin deriva visible", row.treatmentObservations)
+    }
+
+    @Test
     fun soilWorkKeepsItsWorkTypeAndMethod() = runBlocking {
         val detail = ActivityDetail.SoilWork("Desbroce", "Mecánico")
         assertEquals(detail, roundTrip(ActivityType.SOIL_WORK, detail).detail)
