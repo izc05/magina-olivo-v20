@@ -10,6 +10,7 @@ import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
 import com.isivoltpro.maginaolivo.core.time.AppClock
+import com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity
 import com.isivoltpro.maginaolivo.data.local.entity.CampaignEntity
 import com.isivoltpro.maginaolivo.data.local.entity.ExpenseEntity
 import com.isivoltpro.maginaolivo.data.local.entity.FarmEntity
@@ -771,6 +772,99 @@ class ExpenseLedgerContractTest {
     }
 
     // CR-012: closing a campaign freezes its authoritative costs even with no payments.
+
+    @Test
+    fun postingLegacyDraftPersistsTheCampaignDerivedFromItsActivity() = runBlocking {
+        val meta = LocalMetadata(now, now)
+        db.campaignDao().upsert(
+            CampaignEntity(campaignId, workspaceId, farmId, "Campaña activa", date.minusMonths(1),
+                status = CampaignStatus.ACTIVE, metadata = meta),
+        )
+        val activityId = UUID.randomUUID()
+        db.activityDao().upsert(
+            ActivityEntity(
+                activityId, workspaceId, campaignId, farmId, date,
+                ActivityType.FERTILIZATION.name, ActivityStatus.PLANNED, "Trabajo legacy", metadata = meta,
+            ),
+        )
+        val expenseId = UUID.randomUUID()
+        db.expenseDao().upsert(
+            ExpenseEntity(
+                id = expenseId,
+                workspaceId = workspaceId,
+                campaignId = null,
+                farmId = farmId,
+                activityId = activityId,
+                expenseDate = date,
+                concept = "Gasto legacy",
+                category = ExpenseCategory.PRODUCTS.name,
+                amountMinor = 6_000,
+                currency = "EUR",
+                status = ExpenseStatus.DRAFT.name,
+                origin = ExpenseOrigin.MANUAL.name,
+                metadata = meta,
+            ),
+        )
+
+        ok(expenses.post(expenseId))
+
+        val posted = db.expenseDao().findById(expenseId)!!
+        assertEquals(ExpenseStatus.POSTED.name, posted.status)
+        assertEquals(campaignId, posted.campaignId)
+        assertEquals(activityId, posted.activityId)
+        assertEquals(farmId, posted.farmId)
+        assertEquals(6_000L, ExpenseSummary.of(expenses.observeAll().first(), "EUR").totalMinor)
+    }
+
+    @Test
+    fun closedCampaignReachedThroughLegacyActivityBlocksPostDeleteAndDetach() = runBlocking {
+        val meta = LocalMetadata(now, now)
+        db.campaignDao().upsert(
+            CampaignEntity(
+                campaignId, workspaceId, farmId, "Campaña cerrada", date.minusMonths(1),
+                endDate = date, status = CampaignStatus.CLOSED, metadata = meta,
+            ),
+        )
+        val activityId = UUID.randomUUID()
+        db.activityDao().upsert(
+            ActivityEntity(
+                activityId, workspaceId, campaignId, farmId, date,
+                ActivityType.FERTILIZATION.name, ActivityStatus.PLANNED, "Trabajo legacy", metadata = meta,
+            ),
+        )
+        fun legacyExpense(id: UUID, status: ExpenseStatus, origin: ExpenseOrigin) = ExpenseEntity(
+            id = id,
+            workspaceId = workspaceId,
+            campaignId = null,
+            farmId = farmId,
+            activityId = activityId,
+            expenseDate = date,
+            concept = "Gasto legacy",
+            category = ExpenseCategory.PRODUCTS.name,
+            amountMinor = 6_000,
+            currency = "EUR",
+            status = status.name,
+            origin = origin.name,
+            metadata = meta,
+        )
+
+        val draft = UUID.randomUUID()
+        val linked = UUID.randomUUID()
+        db.expenseDao().upsert(legacyExpense(draft, ExpenseStatus.DRAFT, ExpenseOrigin.MANUAL))
+        db.expenseDao().upsert(legacyExpense(linked, ExpenseStatus.POSTED, ExpenseOrigin.ACTIVITY_COST))
+        val before = ledgerState()
+
+        assertClosedMutation(expenses.post(draft))
+        assertEquals(before, ledgerState())
+        assertClosedMutation(expenses.delete(draft))
+        assertEquals(before, ledgerState())
+        assertClosedMutation(expenses.keepAsIndependent(linked))
+        assertEquals(before, ledgerState())
+
+        assertEquals(ExpenseStatus.DRAFT.name, db.expenseDao().findById(draft)!!.status)
+        assertEquals(activityId, db.expenseDao().findById(linked)!!.activityId)
+        assertNull(db.expenseDao().findById(linked)!!.campaignId)
+    }
 
     @Test
     fun closedLinkedManualCostCannotBeRewritten() = runBlocking {
