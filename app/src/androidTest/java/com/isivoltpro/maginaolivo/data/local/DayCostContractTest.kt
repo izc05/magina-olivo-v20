@@ -16,6 +16,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
+import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstDayCostRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstEquipmentRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstExpenseRepository
@@ -699,7 +700,7 @@ class DayCostContractTest {
                 workspaceId = otherWorkspace,
                 expenseDate = day,
                 concept = "Gasto B",
-                category = ExpenseCategory.LABOUR.name,
+                category = ExpenseCategory.LABOR.name,
                 amountMinor = 5_000,
                 currency = "EUR",
                 status = ExpenseStatus.POSTED.name,
@@ -732,7 +733,7 @@ class DayCostContractTest {
         }
         assertContext(costs.saveRates(otherFarm, RecollectionRates(fullDayMinor = 9_000)))
         assertContext(costs.preferCalculated(otherDay, DayCostKind.LABOUR))
-        assertNull(costs.questionFor(otherDay, ExpenseCategory.LABOUR))
+        assertNull(costs.questionFor(otherDay, ExpenseCategory.LABOR))
         assertContext(costs.linkToDay(otherExpense, otherDay))
 
         assertEquals(ratesBefore, db.recollectionRatesDao().findForFarm(otherFarm))
