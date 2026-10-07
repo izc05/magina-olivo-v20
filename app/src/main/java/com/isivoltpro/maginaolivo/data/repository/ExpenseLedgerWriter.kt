@@ -87,19 +87,31 @@ internal class ExpenseLedgerWriter(
         // draft is checked against today's truth — real date, Farm, Parcel, work, day, Campaign —
         // with the same rules as any save; a relation that no longer holds keeps it a DRAFT.
         if (current.expenseDate.isAfter(today)) throw InvalidExpense("expenseDate", "future")
-        resolve(
+        val resolved = resolve(
             current.id,
             current.workspaceId,
             current.asDraftForCheck(),
             ExpenseStatus.POSTED,
             ExpenseOrigin.valueOf(current.origin),
             current.metadata,
+            // #451: posting confirms the stored supplier snapshot; it never refreshes its text.
+            keptProvider = current.provider.takeIf { current.supplierOrganizationId != null },
             historicalSupplierId = current.supplierOrganizationId,
         )
-        // #456: POST validates every live relation again. #476's historical Parcel exception only
-        // applies after the Expense is already POSTED; a DRAFT is not yet a historical fact.
-        // Only the status changes: the supplier name and every snapshot stay as captured (#451).
-        database.expenseDao().upsert(current.copy(status = ExpenseStatus.POSTED.name, metadata = current.metadata.next(now)))
+        requireEditableCampaign(resolved)
+        // #529: POST must persist the same structural context it just validated. Keep historical
+        // snapshots and unrelated legacy fields exactly as stored; canonicalize only relations.
+        database.expenseDao().upsert(
+            current.copy(
+                campaignId = resolved.campaignId,
+                farmId = resolved.farmId,
+                parcelId = resolved.parcelId,
+                activityId = resolved.activityId,
+                harvestId = resolved.harvestId,
+                status = ExpenseStatus.POSTED.name,
+                metadata = current.metadata.next(now),
+            ),
+        )
         database.enqueueCollapsed(idGenerator, SyncEntityType.EXPENSE, current.id, OutboxOperation.UPDATE, now)
     }
 
@@ -142,7 +154,10 @@ internal class ExpenseLedgerWriter(
     /** Also used by day linking, which changes context without rewriting purchase detail. */
     suspend fun requireEditableCampaign(expense: ExpenseEntity) {
         val dayCampaign = expense.harvestId?.let { database.harvestDao().findById(it)?.campaignId }
-        listOfNotNull(expense.campaignId, dayCampaign).distinct().forEach { campaignId ->
+        val activityCampaign = expense.activityId?.let { database.activityDao().findById(it)?.campaignId }
+        // #528: legacy rows may have campaign_id = NULL even though their Activity already names
+        // the Campaign. Every explicit relation that reaches a CLOSED Campaign protects the money.
+        listOfNotNull(expense.campaignId, dayCampaign, activityCampaign).distinct().forEach { campaignId ->
             if (database.campaignDao().findById(campaignId)?.status == CampaignStatus.CLOSED) {
                 throw InvalidExpense("campaignId", "campaign_closed")
             }
