@@ -159,13 +159,12 @@ class CampaignNotebookTest {
         val candidates = listOf(first, second)
         val legacyDay = activity(ActivityType.HARVEST_DAY, date, null)
         val legacyJornada = harvest(1_000_000, date).copy(campaignId = null)
-        val legacyDelivery = delivery(850_000, date, "Coop. San Isidro", 2_200).copy(campaignId = null)
 
         fun notebook(c: Campaign) = CampaignNotebook.project(
             c,
             activities = listOf(legacyDay),
             harvests = listOf(legacyJornada),
-            deliveries = listOf(legacyDelivery),
+            deliveries = emptyList(),
             expenses = emptyList(),
             candidateCampaigns = candidates,
         )
@@ -174,20 +173,20 @@ class CampaignNotebookTest {
         val b = notebook(second)
         assertTrue(a.harvestDays.isEmpty() && b.harvestDays.isEmpty())
         assertTrue(a.harvests.isEmpty() && b.harvests.isEmpty())
-        assertTrue(a.deliveries.isEmpty() && b.deliveries.isEmpty())
+        // Historical comparison must not count the same hand-entered kilos in both Campaigns.
         val comparison = com.isivoltpro.maginaolivo.domain.analytics.CampaignComparison.of(listOf(a, b))
-        assertTrue(comparison.all { it.deliveredGrams == null })
+        assertTrue(comparison.all { it.legacyUnweighedGrams == 0L })
 
         // Once a legacy row is explicitly assigned, date overlap no longer matters.
-        val assigned = legacyDelivery.copy(campaignId = second.id)
+        val assigned = legacyJornada.copy(campaignId = second.id)
         val assignedA = CampaignNotebook.project(
-            first, emptyList(), emptyList(), listOf(assigned), emptyList(), candidateCampaigns = candidates,
+            first, emptyList(), listOf(assigned), emptyList(), emptyList(), candidateCampaigns = candidates,
         )
         val assignedB = CampaignNotebook.project(
-            second, emptyList(), emptyList(), listOf(assigned), emptyList(), candidateCampaigns = candidates,
+            second, emptyList(), listOf(assigned), emptyList(), emptyList(), candidateCampaigns = candidates,
         )
-        assertTrue(assignedA.deliveries.isEmpty())
-        assertEquals(listOf(assigned), assignedB.deliveries)
+        assertTrue(assignedA.harvests.isEmpty())
+        assertEquals(listOf(assigned), assignedB.harvests)
     }
 
     /** #478: the Farm Diario shows a Gasto tied to a work as its own row, with or without a Campaign. */
