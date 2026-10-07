@@ -156,12 +156,28 @@ fun NotebookRootRoute(
     )
     val farms by farmsViewModel.state.collectAsStateWithLifecycle()
     var chosen by rememberSaveable { mutableStateOf(activeFarmStore.get()?.toString()) }
-    LaunchedEffect(farmRequest) {
-        val requested = farmRequest ?: return@LaunchedEffect
-        chosen = requested.toString()
-        activeFarmStore.set(requested)
-        onFarmRequestHandled()
+    val activeFarmIds = farms.farms.map { it.id }
+
+    // #427: validate persisted/navigation context only after the active Farm list is known.
+    // Never persist an archived/foreign request; repair a stale stored UUID to a real fallback.
+    LaunchedEffect(farms.isLoading, farms.error, farmRequest, activeFarmIds) {
+        if (farms.isLoading || farms.error != null) return@LaunchedEffect
+
+        val stored = chosen?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+        val requested = farmRequest?.takeIf { it in activeFarmIds }
+        val resolved = resolveNotebookFarmId(activeFarmIds, requested, stored)
+        val invalidRequest = farmRequest != null && requested == null
+        val staleStored = stored != null && stored !in activeFarmIds && requested == null
+
+        chosen = resolved?.toString()
+        if (resolved != null) activeFarmStore.set(resolved) else activeFarmStore.clear()
+
+        // Parcel context belongs to the Farm that supplied it. Drop it only when that context
+        // is proven invalid; a valid Farm/Parcel navigation request keeps the Parcel selected.
+        if (invalidRequest || staleStored) onClearParcel()
+        if (farmRequest != null) onFarmRequestHandled()
     }
+
     val activeFarm = farms.farms.firstOrNull { it.id.toString() == chosen } ?: farms.farms.firstOrNull()
     val notebook = activeFarm?.let { farm ->
         val viewModel: NotebookViewModel = viewModel(
@@ -214,6 +230,21 @@ fun NotebookRootRoute(
         }
     }
 }
+
+/**
+ * #427: one deterministic rule for the Cuaderno's operational Farm.
+ *
+ * A navigation request wins only if it is active; otherwise the last valid choice is kept,
+ * then the first active Farm is the fallback. With no active Farms there is no effective id.
+ */
+internal fun resolveNotebookFarmId(
+    activeFarmIds: List<UUID>,
+    requested: UUID?,
+    stored: UUID?,
+): UUID? =
+    requested?.takeIf { it in activeFarmIds }
+        ?: stored?.takeIf { it in activeFarmIds }
+        ?: activeFarmIds.firstOrNull()
 
 /**
  * UX-C (Issue #246), CR-011 — the one Cuaderno: context first (Farm, Campaign and, from Mi
