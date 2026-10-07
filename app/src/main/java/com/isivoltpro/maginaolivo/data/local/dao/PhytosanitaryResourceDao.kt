@@ -29,6 +29,15 @@ interface PhytosanitaryResourceDao {
     @Query(
         """
         SELECT * FROM agronomic_people
+        WHERE workspace_id = :workspaceId AND (status = 'ARCHIVED' OR deleted_at IS NOT NULL)
+        ORDER BY display_name COLLATE NOCASE, id
+        """,
+    )
+    fun observeArchivedPeople(workspaceId: UUID): Flow<List<AgronomicPersonEntity>>
+
+    @Query(
+        """
+        SELECT * FROM agronomic_people
         WHERE workspace_id = :workspaceId AND status = 'ACTIVE' AND deleted_at IS NULL
           AND display_name = :displayName COLLATE NOCASE
         LIMIT 1
