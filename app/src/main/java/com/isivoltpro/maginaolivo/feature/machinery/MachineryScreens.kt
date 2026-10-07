@@ -287,7 +287,9 @@ fun MachineDetailScreen(
                     DetailValue("Horas del contador", machine.currentHours?.let { "${editableHours(it)} h" })
                     machine.notes?.let { DetailValue("Notas", it) }
 
+                    var showPhytosanitaryDetails by rememberSaveable(machine.id) { mutableStateOf(false) }
                     MoSectionHeader("Datos fitosanitarios")
+                    if (showPhytosanitaryDetails) {
                     Text(
                         "Solo si esta máquina se utiliza para aplicar productos fitosanitarios.",
                         style = MaterialTheme.typography.bodySmall,
@@ -360,6 +362,23 @@ fun MachineDetailScreen(
                             { sheet = "phyto-inspection" },
                             Modifier.fillMaxWidth().testTag("machine-add-phyto-inspection"),
                             enabled = !state.isSaving,
+                        )
+                    }
+
+                    MoTertiaryButton(
+                        "Ocultar datos fitosanitarios",
+                        { showPhytosanitaryDetails = false },
+                        Modifier.fillMaxWidth().testTag("machine-phyto-hide"),
+                    )
+                    } else {
+                        MoTertiaryButton(
+                            if (state.phytosanitaryProfile != null || state.phytosanitaryInspections.isNotEmpty()) {
+                                "Ver datos fitosanitarios · configurados"
+                            } else {
+                                "Ver datos fitosanitarios"
+                            },
+                            { showPhytosanitaryDetails = true },
+                            Modifier.fillMaxWidth().testTag("machine-phyto-details"),
                         )
                     }
 
