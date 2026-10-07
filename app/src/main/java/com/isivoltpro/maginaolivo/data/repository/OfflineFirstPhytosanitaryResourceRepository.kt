@@ -224,6 +224,9 @@ class OfflineFirstPhytosanitaryResourceRepository(
             if (machine.workspaceId != workspaceId || machine.metadata.deletedAt != null) {
                 return@safely AppResult.Failure(AppError.Validation("machine", "context_mismatch"))
             }
+            if (machine.status != ACTIVE) {
+                return@safely AppResult.Failure(AppError.Conflict("archived_machine"))
+            }
             val current = database.phytosanitaryResourceDao().findEquipmentProfile(machineId)
             val now = clock.nowInstant()
             val metadata = current?.metadata?.next(now)
@@ -264,6 +267,9 @@ class OfflineFirstPhytosanitaryResourceRepository(
                 ?: return@safely AppResult.Failure(AppError.NotFound("machine"))
             if (machine.workspaceId != workspaceId || machine.metadata.deletedAt != null) {
                 return@safely AppResult.Failure(AppError.Validation("machine", "context_mismatch"))
+            }
+            if (machine.status != ACTIVE) {
+                return@safely AppResult.Failure(AppError.Conflict("archived_machine"))
             }
             val now = clock.nowInstant()
             val id = idGenerator.newId()
