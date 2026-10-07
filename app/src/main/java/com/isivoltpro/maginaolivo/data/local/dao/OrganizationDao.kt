@@ -20,25 +20,31 @@ interface OrganizationDao {
     @Query(
         """
         SELECT * FROM agricultural_organizations
-        WHERE deleted_at IS NULL
+        WHERE workspace_id = :workspaceId AND deleted_at IS NULL
         ORDER BY name COLLATE NOCASE, id
         """,
     )
-    fun observeActive(): Flow<List<AgriculturalOrganizationEntity>>
+    fun observeActive(workspaceId: UUID): Flow<List<AgriculturalOrganizationEntity>>
 
     @Query(
         """
         SELECT o.* FROM agricultural_organizations o
         JOIN organization_roles r ON r.organization_id = o.id
-        WHERE o.deleted_at IS NULL AND r.role IN (:roles)
+        WHERE o.workspace_id = :workspaceId AND o.deleted_at IS NULL AND r.role IN (:roles)
         GROUP BY o.id
         ORDER BY o.name COLLATE NOCASE, o.id
         """,
     )
-    fun observeWithAnyRole(roles: List<String>): Flow<List<AgriculturalOrganizationEntity>>
+    fun observeWithAnyRole(workspaceId: UUID, roles: List<String>): Flow<List<AgriculturalOrganizationEntity>>
 
-    @Query("SELECT * FROM organization_roles")
-    fun observeRoles(): Flow<List<OrganizationRoleEntity>>
+    @Query(
+        """
+        SELECT r.* FROM organization_roles r
+        JOIN agricultural_organizations o ON o.id = r.organization_id
+        WHERE o.workspace_id = :workspaceId
+        """,
+    )
+    fun observeRoles(workspaceId: UUID): Flow<List<OrganizationRoleEntity>>
 
     @Query("SELECT role FROM organization_roles WHERE organization_id = :organizationId ORDER BY role")
     suspend fun listRoles(organizationId: UUID): List<String>
