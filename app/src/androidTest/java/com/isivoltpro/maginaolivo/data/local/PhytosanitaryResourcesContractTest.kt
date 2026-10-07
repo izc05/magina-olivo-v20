@@ -83,6 +83,10 @@ class PhytosanitaryResourcesContractTest {
                     displayName = "Juan Aplicador",
                     taxId = "12345678Z",
                     isAdvisor = true,
+                    source = RegulatoryResourceSource.REAFA,
+                    externalId = "reafa-person-544",
+                    sourceVersion = "2026-10",
+                    fetchedAt = now,
                 ),
             ),
         )
@@ -90,6 +94,10 @@ class PhytosanitaryResourcesContractTest {
         assertEquals(id, person.id)
         assertEquals("12345678Z", person.taxId)
         assertTrue(person.isAdvisor)
+        assertEquals(RegulatoryResourceSource.REAFA, person.source)
+        assertEquals("reafa-person-544", person.externalId)
+        assertEquals("2026-10", person.sourceVersion)
+        assertEquals(now, person.fetchedAt)
         assertTrue(db.syncOutboxDao().listForEntity(SyncEntityType.AGRONOMIC_PERSON, id).isNotEmpty())
 
         assertValidation("displayName", repository.createPerson(AgronomicPersonDraft(" ")))
