@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 23,
-    "identityHash": "737bd95d791bf99e3c86c2430640c250",
+    "identityHash": "91bab322defd3a710500f93d721d1f38",
     "entities": [
       {
         "tableName": "workspaces",
@@ -1142,7 +1142,7 @@
       },
       {
         "tableName": "activities",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `campaign_id` TEXT, `farm_id` TEXT, `activity_date` TEXT NOT NULL, `type` TEXT NOT NULL, `status` TEXT NOT NULL, `description` TEXT NOT NULL, `product` TEXT, `quantity` REAL, `unit` TEXT, `cost_minor` INTEGER, `currency` TEXT, `notes` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `workspace_id` TEXT NOT NULL, `campaign_id` TEXT, `farm_id` TEXT, `activity_date` TEXT NOT NULL, `type` TEXT NOT NULL, `status` TEXT NOT NULL, `description` TEXT NOT NULL, `product` TEXT, `quantity` REAL, `unit` TEXT, `cost_minor` INTEGER, `currency` TEXT, `notes` TEXT, `activity_end_date` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `deleted_at` INTEGER, `version` INTEGER NOT NULL, `sync_status` TEXT NOT NULL, `remote_version` INTEGER, `last_synced_at` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1218,6 +1218,11 @@
           {
             "fieldPath": "notes",
             "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activityEndDate",
+            "columnName": "activity_end_date",
             "affinity": "TEXT"
           },
           {
@@ -5806,7 +5811,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '737bd95d791bf99e3c86c2430640c250')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '91bab322defd3a710500f93d721d1f38')"
     ]
   }
 }
