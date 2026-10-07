@@ -5,6 +5,7 @@ import com.isivoltpro.maginaolivo.domain.parcel.RegistryLink
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.core.dispatchers.AppDispatchers
 import com.isivoltpro.maginaolivo.core.id.IdGenerator
@@ -13,6 +14,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 import com.isivoltpro.maginaolivo.data.local.model.FarmStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
+import com.isivoltpro.maginaolivo.data.local.model.RecordStatus
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstFarmRepository
 import com.isivoltpro.maginaolivo.data.repository.OfflineFirstParcelRepository
@@ -506,6 +508,65 @@ class OfflineFirstFarmRepositoryTest {
             // Another parcel already owns this reference: refused, nothing changes.
             assertTrue(parcels.linkToRegistry(manualId, link.copy(cadastralReference = "23044A00400022")) is AppResult.Failure)
             assertEquals("23044A00400021", parcels.observeById(manualId).first()!!.cadastralReference)
+        } finally {
+            database.close()
+        }
+    }
+
+    /** #494: «Restaurar» only brings back an archived Parcel: never a move, never a duplicate identity. */
+    @Test
+    fun restoreOnlyReactivatesAnArchivedParcelWithAFreeIdentity() = runBlocking {
+        val workspaceId = uuid("10000000-0000-0000-0000-000000000190")
+        val database = MaginaOlivoDatabase.create(context, TEST_DATABASE)
+        try {
+            database.workspaceDao().upsert(workspace(workspaceId, TEST_INSTANT))
+            val random = object : IdGenerator { override fun newId(): UUID = UUID.randomUUID() }
+            val farms = OfflineFirstFarmRepository(database, FixedClock(TEST_INSTANT), random, TestDispatchers)
+            val farmA = (farms.create(NewFarm(workspaceId, "Cortijo")) as AppResult.Success).value
+            val farmB = (farms.create(NewFarm(workspaceId, "La Loma")) as AppResult.Success).value
+            val parcels = OfflineFirstParcelRepository(database, FixedClock(TEST_INSTANT.plusSeconds(1)), random, TestDispatchers)
+            val geometry = """{"type":"Polygon","coordinates":[[[-3.48,37.63],[-3.47,37.63],[-3.47,37.64],[-3.48,37.63]]]}"""
+            fun catastro(name: String, reference: String) = NewParcel(
+                farmA, name, cadastralReference = reference, source = ParcelSource.CATASTRO,
+                geometryGeoJson = geometry, sourceProvider = "ES_CATASTRO", sourceImportedAt = TEST_INSTANT,
+            )
+            suspend fun snapshot(parcelId: UUID) = listOf(
+                database.parcelDao().listMemberships(parcelId).toString(),
+                database.parcelDao().findById(parcelId).toString(),
+                database.syncOutboxDao().listForEntity(SyncEntityType.PARCEL, parcelId).toString(),
+            )
+
+            // An active Parcel is not moved to another Farm by «Restaurar».
+            val active = (parcels.create(NewParcel(farmA, "Norte", managedAreaM2 = 8_000.0)) as AppResult.Success).value
+            val before = snapshot(active)
+            assertEquals(AppResult.Failure(AppError.Conflict("parcel_not_archived")), parcels.restore(active, farmB))
+            assertEquals(before, snapshot(active))
+            assertEquals(farmA, database.parcelDao().findCurrentMembership(active)!!.farmId)
+
+            // An archived Parcel whose reference another active Parcel now holds stays archived.
+            val old = (parcels.create(catastro("Vieja", "23044A00400030")) as AppResult.Success).value
+            assertEquals(AppResult.Success(Unit), parcels.archive(old))
+            assertTrue(parcels.create(catastro("Nueva", "23044A00400030")) is AppResult.Success)
+            val archived = snapshot(old)
+            assertEquals(AppResult.Failure(AppError.Conflict("duplicate_cadastral_reference")), parcels.restore(old, farmA))
+            assertEquals(archived, snapshot(old))
+
+            // A legacy Catastro Parcel without geometry is not reactivated silently.
+            val legacy = (parcels.create(catastro("Sin contorno", "23044A00400031")) as AppResult.Success).value
+            assertEquals(AppResult.Success(Unit), parcels.archive(legacy))
+            database.parcelDao().upsert(database.parcelDao().findById(legacy)!!.copy(geometryGeoJson = null))
+            assertTrue(parcels.restore(legacy, farmA).let { it is AppResult.Failure && it.error is AppError.Validation })
+            assertEquals(RecordStatus.ARCHIVED, database.parcelDao().findById(legacy)!!.status)
+
+            // A valid restore creates exactly one current membership and keeps the closed history.
+            assertEquals(AppResult.Success(Unit), parcels.archive(active))
+            val closed = database.parcelDao().listMemberships(active).single()
+            assertEquals(AppResult.Success(Unit), parcels.restore(active, farmB))
+            val history = database.parcelDao().listMemberships(active)
+            assertEquals(2, history.size)
+            assertEquals(closed, history.first { it.id == closed.id })
+            assertEquals(farmB, history.single { it.validUntil == null }.farmId)
+            assertEquals(RecordStatus.ACTIVE, database.parcelDao().findById(active)!!.status)
         } finally {
             database.close()
         }

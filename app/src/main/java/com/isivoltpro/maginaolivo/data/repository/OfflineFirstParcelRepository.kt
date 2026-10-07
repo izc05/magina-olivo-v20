@@ -199,15 +199,25 @@ class OfflineFirstParcelRepository(
     }
 
     override suspend fun restore(parcelId: UUID, farmId: UUID): AppResult<Unit> = mutate(parcelId, "restore_parcel") { current, now ->
+        // #494: «Restaurar» only brings back an archived Parcel; it is never a hidden move between
+        // Farms, and it never reactivates an identity that another active Parcel now holds.
+        if (current.status != RecordStatus.ARCHIVED || current.metadata.deletedAt == null ||
+            database.parcelDao().findCurrentMembership(parcelId) != null
+        ) return@mutate AppResult.Failure(AppError.Conflict("parcel_not_archived"))
+        if (current.source == ParcelSource.CATASTRO.name &&
+            (current.cadastralReference.isNullOrBlank() || current.geometryGeoJson.isNullOrBlank())
+        ) return@mutate AppResult.Failure(AppError.Validation("catastro", "identity_and_geometry_required"))
+        if (current.source == ParcelSource.CATASTRO.name) {
+            validateGeometry(current.geometryGeoJson)?.let { return@mutate it }
+        }
+        current.cadastralReference?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }?.let { reference ->
+            val holder = database.parcelDao().findActiveByCadastralReference(current.workspaceId, reference)
+            if (holder != null && holder != parcelId) return@mutate AppResult.Failure(AppError.Conflict("duplicate_cadastral_reference"))
+        }
         val farm = database.farmDao().findById(farmId)
             ?: return@mutate AppResult.Failure(AppError.NotFound("farm"))
         if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null || farm.workspaceId != current.workspaceId) {
             return@mutate AppResult.Failure(AppError.Conflict("invalid_farm"))
-        }
-        database.parcelDao().findCurrentMembership(parcelId)?.let { membership ->
-            database.parcelDao().upsertMembership(
-                membership.copy(validUntil = now, metadata = membership.metadata.next(now)),
-            )
         }
         database.parcelDao().upsertMembership(
             FarmParcelMembershipEntity(

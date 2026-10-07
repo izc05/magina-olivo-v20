@@ -2,6 +2,7 @@ package com.isivoltpro.maginaolivo.feature.parcels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.isivoltpro.maginaolivo.core.common.AppError
 import com.isivoltpro.maginaolivo.core.common.AppResult
 import com.isivoltpro.maginaolivo.domain.activity.Activity
 import com.isivoltpro.maginaolivo.domain.activity.ActivityRepository
@@ -90,7 +91,7 @@ class FarmParcelsViewModel(
     }
 
     fun restore(parcelId: UUID) {
-        mutate("Parcela restaurada") { repository.restore(parcelId, farmId) }
+        mutate("Parcela restaurada", ::restoreError) { repository.restore(parcelId, farmId) }
     }
 
     private fun validate(draft: ParcelDraft): Double? {
@@ -106,10 +107,10 @@ class FarmParcelsViewModel(
         return if (nameError == null && areaError == null && oliveError == null) parsedArea ?: 0.0 else null
     }
 
-    private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) {
+    private fun mutate(message: String, failure: (AppError) -> String = { SAVE_FAILED }, operation: suspend () -> AppResult<Unit>) {
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
-            mutableState.value = when (operation()) {
+            mutableState.value = when (val result = operation()) {
                 is AppResult.Success -> mutableState.value.copy(
                     isSaving = false,
                     message = message,
@@ -117,7 +118,7 @@ class FarmParcelsViewModel(
                 )
                 is AppResult.Failure -> mutableState.value.copy(
                     isSaving = false,
-                    error = "No se pudo guardar en este dispositivo",
+                    error = failure(result.error),
                 )
             }
         }
@@ -196,7 +197,7 @@ class ParcelDetailViewModel(
             mutableState.value = mutableState.value.copy(error = "Selecciona una finca para restaurar la parcela")
             return
         }
-        mutate("Parcela restaurada") { repository.restore(parcelId, farmId) }
+        mutate("Parcela restaurada", ::restoreError) { repository.restore(parcelId, farmId) }
     }
 
     private fun validate(draft: ParcelDraft): Double? {
@@ -212,14 +213,14 @@ class ParcelDetailViewModel(
         return if (nameError == null && areaError == null && oliveError == null) parsedArea ?: 0.0 else null
     }
 
-    private fun mutate(message: String, operation: suspend () -> AppResult<Unit>) {
+    private fun mutate(message: String, failure: (AppError) -> String = { SAVE_FAILED }, operation: suspend () -> AppResult<Unit>) {
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(isSaving = true, error = null, message = null)
-            mutableState.value = when (operation()) {
+            mutableState.value = when (val result = operation()) {
                 is AppResult.Success -> mutableState.value.copy(isSaving = false, message = message, saveCount = mutableState.value.saveCount + 1)
                 is AppResult.Failure -> mutableState.value.copy(
                     isSaving = false,
-                    error = "No se pudo guardar en este dispositivo",
+                    error = failure(result.error),
                 )
             }
         }
@@ -281,3 +282,16 @@ private fun parseArea(value: String): Double? = value
     ?.times(10_000)
 
 private fun String.nullIfBlank(): String? = trim().takeIf(String::isNotEmpty)
+
+private const val SAVE_FAILED = "No se pudo guardar en este dispositivo"
+
+/** #494: why a Parcel cannot be restored, in the farmer's words. */
+internal fun restoreError(error: AppError): String = when {
+    error is AppError.Conflict && error.resource == "duplicate_cadastral_reference" ->
+        "Ya hay otra parcela activa con esta referencia catastral. Revísala antes de restaurar esta."
+    error is AppError.Conflict && error.resource == "parcel_not_archived" ->
+        "Esta parcela ya está activa: no hay nada que restaurar."
+    error is AppError.Validation && error.field == "catastro" ->
+        "A esta parcela del Catastro le falta la referencia o el contorno: no se puede restaurar así."
+    else -> SAVE_FAILED
+}
