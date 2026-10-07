@@ -50,6 +50,7 @@ import com.isivoltpro.maginaolivo.domain.agenda.ReminderKind
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderReconciler
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderRequest
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderRules
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.Instant
