@@ -9,7 +9,9 @@ import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicCredentialDraft
 import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicPerson
 import com.isivoltpro.maginaolivo.domain.phytosanitary.AgronomicPersonDraft
 import com.isivoltpro.maginaolivo.domain.phytosanitary.PhytosanitaryResourceRepository
+import java.time.LocalDate
 import java.util.UUID
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +45,7 @@ data class AgronomicPeopleUiState(
     val isLoading: Boolean = true,
     val active: List<AgronomicPerson> = emptyList(),
     val archived: List<AgronomicPerson> = emptyList(),
+    val credentialSummaries: Map<UUID, String> = emptyMap(),
     val isSaving: Boolean = false,
     val message: String? = null,
     val error: String? = null,
@@ -51,20 +54,50 @@ data class AgronomicPeopleUiState(
 
 class AgronomicPeopleViewModel(
     private val repository: PhytosanitaryResourceRepository,
+    private val todayProvider: () -> LocalDate = { LocalDate.now() },
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(AgronomicPeopleUiState())
+    private val credentialJobs = mutableMapOf<UUID, Job>()
     val state: StateFlow<AgronomicPeopleUiState> = mutableState.asStateFlow()
 
     init {
         viewModelScope.launch {
             repository.observeActivePeople()
                 .catch { mutableState.value = mutableState.value.copy(isLoading = false, error = "No pudimos leer los aplicadores") }
-                .collect { mutableState.value = mutableState.value.copy(isLoading = false, active = it) }
+                .collect { people ->
+                    mutableState.value = mutableState.value.copy(isLoading = false, active = people)
+                    syncCredentialObservers(people.mapTo(mutableSetOf()) { it.id })
+                }
         }
         viewModelScope.launch {
             repository.observeArchivedPeople()
                 .catch { }
                 .collect { mutableState.value = mutableState.value.copy(archived = it) }
+        }
+    }
+
+    private fun syncCredentialObservers(ids: Set<UUID>) {
+        val removed = credentialJobs.keys - ids
+        removed.forEach { id -> credentialJobs.remove(id)?.cancel() }
+        if (removed.isNotEmpty()) {
+            mutableState.value = mutableState.value.copy(
+                credentialSummaries = mutableState.value.credentialSummaries - removed,
+            )
+        }
+        (ids - credentialJobs.keys).forEach { id ->
+            credentialJobs[id] = viewModelScope.launch {
+                repository.observeCredentials(id)
+                    .catch {
+                        mutableState.value = mutableState.value.copy(
+                            credentialSummaries = mutableState.value.credentialSummaries - id,
+                        )
+                    }
+                    .collect { credentials ->
+                        val next = mutableState.value.credentialSummaries.toMutableMap()
+                        currentCredentialSummary(credentials, todayProvider())?.let { next[id] = it } ?: next.remove(id)
+                        mutableState.value = mutableState.value.copy(credentialSummaries = next)
+                    }
+            }
         }
     }
 
@@ -178,6 +211,30 @@ private fun resourceError(error: AppError): String = when {
     error is AppError.NotFound -> "Este registro ya no está disponible"
     else -> "No se pudo guardar en el dispositivo"
 }
+
+internal fun currentCredentialSummary(
+    credentials: List<AgronomicCredential>,
+    today: LocalDate,
+): String? {
+    val current = credentials.firstOrNull { credential ->
+        (credential.validFrom == null || !credential.validFrom.isAfter(today)) &&
+            (credential.validUntil == null || !credential.validUntil.isBefore(today))
+    } ?: return null
+    return buildList {
+        add(credentialKindLabel(current.credentialType))
+        add(maskIdentifier(current.number))
+        current.validUntil?.let { add("hasta $it") }
+    }.joinToString(" · ")
+}
+
+internal fun credentialKindLabel(value: String): String = when (value) {
+    "APPLICATOR_CARD", "ROPO_APPLICATOR" -> "Carné / ROPO"
+    "ADVISOR" -> "Asesor"
+    else -> value
+}
+
+internal fun maskIdentifier(value: String): String =
+    if (value.length <= 4) "••••" else "••••${value.takeLast(4)}"
 
 private fun <T> AppResult<T>.unit(): AppResult<Unit> = when (this) {
     is AppResult.Success -> AppResult.Success(Unit)
