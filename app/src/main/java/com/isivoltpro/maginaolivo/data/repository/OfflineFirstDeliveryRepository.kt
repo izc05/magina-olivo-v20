@@ -207,6 +207,7 @@ class OfflineFirstDeliveryRepository(
         inTransaction("remove_yield") {
             val delivery = database.deliveryDao().findById(deliveryId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
+            workspaceScope.mismatch(delivery.workspaceId)?.let { return@inTransaction it }
             val analysis = database.deliveryDao().findLiveAnalysis(deliveryId) ?: return@inTransaction AppResult.Success(Unit)
             val campaign = database.campaignDao().findById(delivery.campaignId)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("campaign"))
