@@ -21,6 +21,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.FarmParcelMembershipEntity
 import com.isivoltpro.maginaolivo.data.local.entity.LocalMetadata
 import com.isivoltpro.maginaolivo.data.local.entity.ParcelEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
+import com.isivoltpro.maginaolivo.data.local.model.ActivityStatus
 import com.isivoltpro.maginaolivo.data.local.model.CampaignStatus
 import com.isivoltpro.maginaolivo.data.local.model.OutboxOperation
 import com.isivoltpro.maginaolivo.data.local.model.SyncEntityType
@@ -181,6 +182,50 @@ class AgendaReminderContractTest {
         repositoryClock.value = now
         ok(activities.reopen(first))
         assertEquals(1, alarms.active.size)
+    }
+
+    @Test
+    fun correctingCompletedWorkPreservesPlanningAndNeverReactivatesReminders() = runBlocking {
+        val id = ok(
+            activities.create(
+                planned(
+                    ActivityPlanning(LocalTime.of(8, 0), 240, 4, "Cuadrilla Pérez"),
+                    ReminderRequest(ReminderKind.PREVIOUS_DAY),
+                ),
+            ),
+        )
+        repositoryClock.value = Instant.parse("2026-11-20T09:00:00Z")
+        ok(activities.complete(id))
+
+        val before = activities.observe(id).first()!!
+        val reminderRowsBefore = db.agendaDao().listForOwner("ACTIVITY", id)
+        assertEquals(ActivityStatus.COMPLETED, before.status)
+        assertTrue(alarms.active.isEmpty())
+        assertTrue(activities.observeAgenda().first().none { it.activityId == id })
+
+        // The correction surface intentionally sends no planning/reminders: those are history now.
+        ok(
+            activities.correctCompleted(
+                id,
+                ActivityChanges(
+                    type = ActivityType.PRUNING,
+                    activityDate = day.minusDays(1),
+                    description = "Poda corregida",
+                    parcelIds = setOf(parcelId),
+                    planning = null,
+                    reminders = emptyList(),
+                ),
+            ),
+        )
+
+        val corrected = activities.observe(id).first()!!
+        assertEquals(ActivityStatus.COMPLETED, corrected.status)
+        assertEquals(day.minusDays(1), corrected.activityDate)
+        assertEquals("Poda corregida", corrected.description)
+        assertEquals(before.planning, corrected.planning)
+        assertEquals(reminderRowsBefore, db.agendaDao().listForOwner("ACTIVITY", id))
+        assertTrue(alarms.active.isEmpty())
+        assertTrue(activities.observeAgenda().first().none { it.activityId == id })
     }
 
     @Test
