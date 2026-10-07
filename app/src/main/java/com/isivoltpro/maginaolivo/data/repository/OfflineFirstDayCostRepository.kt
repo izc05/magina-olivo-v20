@@ -22,8 +22,11 @@ import com.isivoltpro.maginaolivo.domain.expense.ExpenseCategory
 import com.isivoltpro.maginaolivo.domain.expense.ExpenseOrigin
 import com.isivoltpro.maginaolivo.domain.expense.UnlinkedDayCosts
 import com.isivoltpro.maginaolivo.domain.expense.RecollectionRates
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -34,13 +37,27 @@ class OfflineFirstDayCostRepository(
     private val clock: AppClock,
     private val idGenerator: IdGenerator,
     private val dispatchers: AppDispatchers,
+    private val workspaceRepository: WorkspaceRepository? = null,
 ) : DayCostRepository {
     private val costs = DayCostLedger(database, idGenerator)
+    private val workspaceScope = ActiveWorkspaceScope(database, workspaceRepository)
 
     override fun observeRates(farmId: UUID): Flow<RecollectionRates> =
-        database.recollectionRatesDao().observeForFarm(farmId)
-            .map { it?.toDomain() ?: RecollectionRates() }
-            .flowOn(dispatchers.io)
+        flow {
+            val active = when (val workspace = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(RecollectionRates())
+                is AppResult.Success -> workspace.value
+            }
+            val farm = database.farmDao().findById(farmId)
+            if (farm == null || farm.workspaceId != active) {
+                emit(RecollectionRates())
+            } else {
+                emitAll(
+                    database.recollectionRatesDao().observeForFarm(farmId)
+                        .map { it?.toDomain() ?: RecollectionRates() },
+                )
+            }
+        }.flowOn(dispatchers.io)
 
     override suspend fun saveRates(farmId: UUID, rates: RecollectionRates): AppResult<Unit> {
         val prices = listOfNotNull(rates.fullDayMinor, rates.hourlyMinor) + rates.equipmentDayMinor.values
@@ -48,6 +65,7 @@ class OfflineFirstDayCostRepository(
         return inTransaction("save_rates") {
             val farm = database.farmDao().findById(farmId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
+            workspaceScope.mismatch(farm.workspaceId)?.let { return@inTransaction it }
             val now = clock.nowInstant()
             val current = database.recollectionRatesDao().findForFarm(farmId)
             val row = RecollectionRatesEntity(
@@ -79,6 +97,7 @@ class OfflineFirstDayCostRepository(
         inTransaction("prefer_calculated") {
             val day = database.harvestDao().findById(harvestId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("harvest"))
+            workspaceScope.mismatch(day.workspaceId)?.let { return@inTransaction it }
             // A closed Campaign is history: neither its hand-typed nor its calculated costs change.
             val campaign = day.campaignId?.let { database.campaignDao().findById(it) }
             if (campaign == null || (campaign.status != CampaignStatus.ACTIVE && campaign.status != CampaignStatus.HARVEST)) {
@@ -95,7 +114,16 @@ class OfflineFirstDayCostRepository(
         }
 
     override suspend fun questionFor(harvestId: UUID, category: ExpenseCategory): DayCostQuestion? =
-        withContext(dispatchers.io) { runCatching { costs.question(harvestId, category) }.getOrNull() }
+        withContext(dispatchers.io) {
+            val active = when (val workspace = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@withContext null
+                is AppResult.Success -> workspace.value
+            }
+            val day = database.harvestDao().findById(harvestId)
+                ?.takeIf { it.metadata.deletedAt == null && it.workspaceId == active }
+                ?: return@withContext null
+            runCatching { costs.question(day.id, category) }.getOrNull()
+        }
 
     override suspend fun linkToDay(expenseId: UUID, harvestId: UUID, role: DayCostRole): AppResult<Unit> =
         inTransaction("link_to_day") {
@@ -103,6 +131,10 @@ class OfflineFirstDayCostRepository(
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("harvest"))
             val expense = database.expenseDao().findById(expenseId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("expense"))
+            workspaceScope.mismatch(day.workspaceId)?.let { return@inTransaction it }
+            if (expense.workspaceId != day.workspaceId) {
+                return@inTransaction AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+            }
             val origin = runCatching { ExpenseOrigin.valueOf(expense.origin) }.getOrNull()
             if (origin !in UnlinkedDayCosts.LINKABLE || expense.harvestId != null) {
                 return@inTransaction AppResult.Failure(AppError.Conflict("not_unlinked"))
