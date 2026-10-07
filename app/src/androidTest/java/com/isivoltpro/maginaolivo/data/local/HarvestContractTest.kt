@@ -24,6 +24,7 @@ import com.isivoltpro.maginaolivo.domain.harvest.HarvestAllocationMode
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestDraft
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestShareInput
 import com.isivoltpro.maginaolivo.domain.harvest.HarvestSummary
+import com.isivoltpro.maginaolivo.domain.workspace.WorkspaceRepository
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -314,6 +315,79 @@ class HarvestContractTest {
             listOf(OutboxOperation.DELETE),
             db.syncOutboxDao().listForEntity(SyncEntityType.HARVEST, id).map { it.operation },
         )
+    }
+
+    @Test
+    fun harvestFromAnotherWorkspaceCannotBeReadOrMutated() = runBlocking {
+        val otherWorkspaceId = UUID.fromString("10000000-0000-0000-0000-0000000000b1")
+        val otherFarmId = UUID.fromString("20000000-0000-0000-0000-0000000000b1")
+        val otherCampaignId = UUID.fromString("40000000-0000-0000-0000-0000000000b1")
+        val otherParcelId = UUID.fromString("30000000-0000-0000-0000-0000000000b1")
+        val meta = LocalMetadata(now, now)
+
+        db.workspaceDao().upsert(
+            WorkspaceEntity(otherWorkspaceId, "Otro olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
+        )
+        db.farmDao().upsert(FarmEntity(otherFarmId, otherWorkspaceId, "Finca B", metadata = meta))
+        db.parcelDao().upsert(ParcelEntity(otherParcelId, otherWorkspaceId, "Parcela B", source = "MANUAL", metadata = meta))
+        db.campaignDao().upsert(
+            CampaignEntity(otherCampaignId, otherWorkspaceId, otherFarmId, "2026/27 B", LocalDate.parse("2026-10-01"), null, CampaignStatus.HARVEST, metadata = meta),
+        )
+        db.campaignDao().upsertSnapshots(
+            listOf(
+                CampaignParcelSnapshotEntity(
+                    UUID.randomUUID(), otherWorkspaceId, otherCampaignId, otherParcelId, otherFarmId,
+                    "Finca B", "Parcela B", metadata = meta,
+                ),
+            ),
+        )
+
+        val workspaceA = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
+        }
+        val workspaceB = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(otherWorkspaceId)
+        }
+        val repoA = OfflineFirstHarvestRepository(
+            db, FixedClock(now), RandomIds, TestDispatchers,
+            workspaceRepository = workspaceA,
+            zoneId = { ZoneOffset.UTC },
+        )
+        val repoB = OfflineFirstHarvestRepository(
+            db, FixedClock(now), RandomIds, TestDispatchers,
+            workspaceRepository = workspaceB,
+            zoneId = { ZoneOffset.UTC },
+        )
+
+        val otherId = ok(
+            repoB.create(
+                HarvestDraft(
+                    farmId = otherFarmId,
+                    harvestDate = day,
+                    totalGrams = 1_100_000,
+                    shares = listOf(HarvestShareInput(otherParcelId, 1_100_000)),
+                ),
+            ),
+        )
+
+        assertNull(repoA.observe(otherId).first())
+        assertTrue(repoA.observeForCampaign(otherCampaignId).first().isEmpty())
+        assertValidation(
+            "workspaceId",
+            repoA.update(
+                otherId,
+                HarvestDraft(
+                    farmId = otherFarmId,
+                    harvestDate = day,
+                    totalGrams = 1_200_000,
+                    shares = listOf(HarvestShareInput(otherParcelId, 1_200_000)),
+                ),
+            ),
+        )
+        assertValidation("workspaceId", repoA.delete(otherId))
+        assertValidation("workspaceId", repoA.openJornada(otherFarmId, day))
+
+        assertEquals(1_100_000L, repoB.observe(otherId).first()!!.totalGrams)
     }
 
     @Test

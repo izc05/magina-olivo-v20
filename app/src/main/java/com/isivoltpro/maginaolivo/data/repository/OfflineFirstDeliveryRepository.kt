@@ -70,11 +70,31 @@ class OfflineFirstDeliveryRepository(
         }.flowOn(dispatchers.io)
 
     override fun observeForCampaign(campaignId: UUID): Flow<List<Delivery>> =
-        database.deliveryDao().observeForCampaign(campaignId).map { rows -> toDomain(rows) }.flowOn(dispatchers.io)
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
+            }
+            val campaign = database.campaignDao().findById(campaignId)
+            if (campaign == null || campaign.workspaceId != active) {
+                emit(emptyList())
+                return@flow
+            }
+            emitAll(database.deliveryDao().observeForCampaign(campaignId).map { rows -> toDomain(rows) })
+        }.flowOn(dispatchers.io)
 
     override fun observe(id: UUID): Flow<Delivery?> =
-        database.deliveryDao().observeWithParcels(id).map { row -> row?.let { toDomain(listOf(it)).single() } }
-            .flowOn(dispatchers.io)
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(null)
+                is AppResult.Success -> result.value
+            }
+            emitAll(
+                database.deliveryDao().observeWithParcels(id).map { row ->
+                    row?.takeIf { it.delivery.workspaceId == active }?.let { toDomain(listOf(it)).single() }
+                },
+            )
+        }.flowOn(dispatchers.io)
 
     override fun observeContexts(): Flow<List<HarvestContext>> =
         flow {
@@ -102,8 +122,13 @@ class OfflineFirstDeliveryRepository(
 
     override suspend fun create(draft: DeliveryDraft): AppResult<UUID> =
         inTransaction("create_delivery") {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@inTransaction result
+                is AppResult.Success -> result.value
+            }
             val workspaceId = database.farmDao().findById(draft.farmId)?.workspaceId
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
+            if (workspaceId != active) return@inTransaction contextMismatch()
             AppResult.Success(
                 writer.insert(draft, DeliverySource.MANUAL, today(workspaceId), clock.nowInstant()).id,
             )
@@ -113,6 +138,7 @@ class OfflineFirstDeliveryRepository(
         inTransaction("update_delivery") {
             val current = database.deliveryDao().findById(id)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
+            workspaceScope.mismatch(current.workspaceId)?.let { return@inTransaction it }
             writer.rewrite(current, draft, today(current.workspaceId), clock.nowInstant())
             AppResult.Success(Unit)
         }
@@ -121,6 +147,7 @@ class OfflineFirstDeliveryRepository(
         inTransaction("delete_delivery") {
             val current = database.deliveryDao().findById(id)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
+            workspaceScope.mismatch(current.workspaceId)?.let { return@inTransaction it }
             if (current.metadata.deletedAt != null) return@inTransaction AppResult.Success(Unit)
             writer.runningCampaign(current)
             val now = clock.nowInstant()
@@ -136,6 +163,7 @@ class OfflineFirstDeliveryRepository(
         inTransaction("record_yield") {
             val delivery = database.deliveryDao().findById(deliveryId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
+            workspaceScope.mismatch(delivery.workspaceId)?.let { return@inTransaction it }
             val campaign = database.campaignDao().findById(delivery.campaignId)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("campaign"))
             val existing = database.deliveryDao().findLiveAnalysis(deliveryId)
@@ -179,6 +207,7 @@ class OfflineFirstDeliveryRepository(
         inTransaction("remove_yield") {
             val delivery = database.deliveryDao().findById(deliveryId)?.takeIf { it.metadata.deletedAt == null }
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("delivery"))
+            workspaceScope.mismatch(delivery.workspaceId)?.let { return@inTransaction it }
             val analysis = database.deliveryDao().findLiveAnalysis(deliveryId) ?: return@inTransaction AppResult.Success(Unit)
             val campaign = database.campaignDao().findById(delivery.campaignId)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("campaign"))
@@ -195,6 +224,10 @@ class OfflineFirstDeliveryRepository(
     }
 
     private suspend fun today(workspaceId: UUID) = database.todayForWorkspace(workspaceId, clock, zoneId)
+
+    private fun contextMismatch() =
+        AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+
 
     private suspend fun <T> inTransaction(operation: String, block: suspend () -> AppResult<T>): AppResult<T> =
         withContext(dispatchers.io) {

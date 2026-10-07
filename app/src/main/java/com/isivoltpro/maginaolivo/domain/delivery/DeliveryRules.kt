@@ -116,13 +116,17 @@ object DeliveryRules {
  * weighted averages are exact.
  */
 object Percent {
-    private val PLAIN = Regex("""^\d{1,2}([.,]\d{1,2})?$""")
+    /** 100,00 %: the largest yield the domain accepts. */
+    const val MAX_HUNDREDTHS = 10_000
 
+    private val PLAIN = Regex("""^\d{1,3}([.,]\d{1,2})?$""")
+
+    /** #499: parser and [YieldRules] share one range, so `parseHundredths(editable(x)) == x`. */
     fun parseHundredths(text: String?): Int? {
         val cleaned = text?.replace("%", "")?.replace(" ", "")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         if (!PLAIN.matches(cleaned)) return null
         val value = cleaned.replace(',', '.').toBigDecimalOrNull() ?: return null
-        return value.movePointRight(2).setScale(0, RoundingMode.HALF_UP).intValueExact()
+        return value.movePointRight(2).setScale(0, RoundingMode.HALF_UP).intValueExact().takeIf { it <= MAX_HUNDREDTHS }
     }
 
     /** "21,35 %". */
@@ -159,7 +163,7 @@ object YieldRules {
     fun validate(draft: YieldDraft, today: LocalDate): DeliveryProblem? = when {
         draft.fatYieldHundredths == null && draft.industrialYieldHundredths == null ->
             DeliveryProblem("yield", "required")
-        listOfNotNull(draft.fatYieldHundredths, draft.industrialYieldHundredths).any { it <= 0 || it > 10_000 } ->
+        listOfNotNull(draft.fatYieldHundredths, draft.industrialYieldHundredths).any { it <= 0 || it > Percent.MAX_HUNDREDTHS } ->
             DeliveryProblem("yield", "out_of_range")
         draft.analysisDate?.isAfter(today) == true -> DeliveryProblem("analysisDate", "future")
         else -> null

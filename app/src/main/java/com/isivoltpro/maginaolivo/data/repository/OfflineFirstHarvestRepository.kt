@@ -73,11 +73,31 @@ class OfflineFirstHarvestRepository(
         }.flowOn(dispatchers.io)
 
     override fun observeForCampaign(campaignId: UUID): Flow<List<Harvest>> =
-        database.harvestDao().observeForCampaign(campaignId).map { rows -> rows.toDomain() }.flowOn(dispatchers.io)
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(emptyList())
+                is AppResult.Success -> result.value
+            }
+            val campaign = database.campaignDao().findById(campaignId)
+            if (campaign == null || campaign.workspaceId != active) {
+                emit(emptyList())
+                return@flow
+            }
+            emitAll(database.harvestDao().observeForCampaign(campaignId).map { rows -> rows.toDomain() })
+        }.flowOn(dispatchers.io)
 
     override fun observe(id: UUID): Flow<Harvest?> =
-        database.harvestDao().observeWithParcels(id).map { row -> row?.let { listOf(it).toDomain().single() } }
-            .flowOn(dispatchers.io)
+        flow {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@flow emit(null)
+                is AppResult.Success -> result.value
+            }
+            emitAll(
+                database.harvestDao().observeWithParcels(id).map { row ->
+                    row?.takeIf { it.harvest.workspaceId == active }?.let { listOf(it).toDomain().single() }
+                },
+            )
+        }.flowOn(dispatchers.io)
 
     override fun observeContexts(): Flow<List<HarvestContext>> =
         flow {
@@ -105,8 +125,13 @@ class OfflineFirstHarvestRepository(
 
     override suspend fun create(draft: HarvestDraft): AppResult<UUID> =
         inTransaction("create_harvest") {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@inTransaction result
+                is AppResult.Success -> result.value
+            }
             val farm = database.farmDao().findById(draft.farmId)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
+            if (farm.workspaceId != active) return@inTransaction contextMismatch()
             validate(draft, farm.workspaceId)?.let { return@inTransaction it }
             if (farm.status != FarmStatus.ACTIVE || farm.metadata.deletedAt != null) {
                 return@inTransaction conflict("archived_farm")
@@ -149,8 +174,13 @@ class OfflineFirstHarvestRepository(
 
     override suspend fun openJornada(farmId: UUID, date: LocalDate): AppResult<UUID> =
         inTransaction("open_jornada") {
+            val active = when (val result = workspaceScope.resolve()) {
+                is AppResult.Failure -> return@inTransaction result
+                is AppResult.Success -> result.value
+            }
             val farm = database.farmDao().findById(farmId)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("farm"))
+            if (farm.workspaceId != active) return@inTransaction contextMismatch()
             if (date.isAfter(today(farm.workspaceId))) {
                 return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "future"))
             }
@@ -176,6 +206,7 @@ class OfflineFirstHarvestRepository(
     override suspend fun update(id: UUID, draft: HarvestDraft): AppResult<Unit> =
         inTransaction("update_harvest") {
             val current = live(id) ?: return@inTransaction AppResult.Failure(AppError.NotFound("harvest"))
+            workspaceScope.mismatch(current.workspaceId)?.let { return@inTransaction it }
             if (current.farmId != draft.farmId) {
                 return@inTransaction AppResult.Failure(AppError.Validation("farmId", "cannot_change"))
             }
@@ -246,6 +277,7 @@ class OfflineFirstHarvestRepository(
         inTransaction("delete_harvest") {
             val current = database.harvestDao().findById(id)
                 ?: return@inTransaction AppResult.Failure(AppError.NotFound("harvest"))
+            workspaceScope.mismatch(current.workspaceId)?.let { return@inTransaction it }
             if (current.metadata.deletedAt != null) return@inTransaction AppResult.Success(Unit)
             val campaign = current.campaignId?.let { database.campaignDao().findById(it) }
             if (campaign == null || campaign.status !in RUNNING) return@inTransaction conflict("closed_campaign")
@@ -290,6 +322,10 @@ class OfflineFirstHarvestRepository(
 
     private suspend fun today(workspaceId: UUID): LocalDate =
         database.todayForWorkspace(workspaceId, clock, zoneId)
+
+    private fun contextMismatch() =
+        AppResult.Failure(AppError.Validation("workspaceId", "context_mismatch"))
+
 
     /**
      * Writes the origin Parcels with the Harvest, inside its transaction (#458). A Parcel the day
