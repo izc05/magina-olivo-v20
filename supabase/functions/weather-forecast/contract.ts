@@ -47,6 +47,14 @@ export interface Place {
   longitude: number | null;
 }
 
+export interface SolarTimes {
+  date: string;
+  /** IANA zone used to choose the civil date and render the returned UTC instants. */
+  timeZone: string;
+  sunriseAt: string | null;
+  sunsetAt: string | null;
+}
+
 export interface WeatherResponse {
   provider: ProviderId;
   providerName: string;
@@ -59,6 +67,8 @@ export interface WeatherResponse {
   current: Current;
   /** Up to seven local dates, only when the selected provider supplied usable data. */
   daily: DailyForecast[];
+  /** Derived from the resolved municipality coordinates; null when coordinates are unavailable. */
+  solar: SolarTimes | null;
 }
 
 export interface ForecastRequest {

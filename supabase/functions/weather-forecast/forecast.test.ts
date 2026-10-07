@@ -7,6 +7,7 @@ import { resolveMunicipality } from "./municipalities.ts";
 import { aemetCondition, parseAemetDaily, parseAemetHourly } from "./aemet.ts";
 import { metnoCondition, parseMetNo } from "./metno.ts";
 import { madridLocalToIso } from "./time.ts";
+import { solarTimesFor } from "./solar.ts";
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8"));
 const MASTER = fixture("aemet-municipios.json");
@@ -58,6 +59,29 @@ test("any Spanish municipality resolves, not only the old four", () => {
   assert.equal(find("Villanueva", "Jaén").kind, "ambiguous");
   assert.equal(find("Mancha Real", "Jaén").kind, "not_found");
   assert.equal(resolveMunicipality(MASTER, { municipalityCode: "23000" }).kind, "found");
+});
+
+test("Bedmar solar times are derived from coordinates without another provider", () => {
+  const solar = solarTimesFor(NOW, 37.8216, -3.4101)!;
+  assert.equal(solar.date, "2026-09-25");
+  assert.ok(solar.sunriseAt);
+  assert.ok(solar.sunsetAt);
+  const sunrise = Date.parse(solar.sunriseAt!);
+  const sunset = Date.parse(solar.sunsetAt!);
+  assert.ok(sunrise < sunset);
+  // Around 08:05 / 20:08 CEST on this fixture date; broad bounds protect the astronomy contract.
+  assert.ok(sunrise >= Date.parse("2026-09-25T05:30:00Z") && sunrise <= Date.parse("2026-09-25T06:30:00Z"));
+  assert.ok(sunset >= Date.parse("2026-09-25T17:30:00Z") && sunset <= Date.parse("2026-09-25T18:40:00Z"));
+});
+
+test("solar date follows Canary civil time at the Madrid/Canary boundary", () => {
+  const boundary = new Date("2026-09-25T22:30:00Z"); // 23:30 Canary, 00:30 Madrid next day
+  const canary = solarTimesFor(boundary, 28.1235, -15.4363, "Atlantic/Canary")!;
+  const mainland = solarTimesFor(boundary, 37.8216, -3.4101, "Europe/Madrid")!;
+  assert.equal(canary.date, "2026-09-25");
+  assert.equal(canary.timeZone, "Atlantic/Canary");
+  assert.equal(mainland.date, "2026-09-26");
+  assert.equal(mainland.timeZone, "Europe/Madrid");
 });
 
 test("AEMET hourly: the current hour, its rain range and wind; codes map without guessing", () => {
@@ -133,6 +157,7 @@ test("AEMET answers: MET Norway is never asked", async () => {
   assert.equal(body.updatedAt, "2026-09-25T05:40:00.000Z");
   assert.equal(body.fetchedAt, NOW.toISOString());
   assert.equal(body.location.code, "23000");
+  assert.deepEqual(body.solar, solarTimesFor(NOW, 37.8216, -3.4101));
   assert.deepEqual(body.daily, [
     {
       date: "2026-09-25",

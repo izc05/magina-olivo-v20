@@ -48,6 +48,8 @@ import com.isivoltpro.maginaolivo.ui.theme.MoSpacing
 import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 import com.isivoltpro.maginaolivo.ui.theme.MoWarmWhite
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
 
 /**
@@ -58,6 +60,14 @@ import com.isivoltpro.maginaolivo.domain.weather.WeatherNow
 internal fun WeatherNow.rainLine(today: java.time.LocalDate?): String? =
     rainProbabilityPercent?.let { "Prob. lluvia ${it.coerceIn(0, 100)} %" }
         ?: today?.let { day -> daily.firstOrNull { it.date == day }?.rainMm }?.let { "Lluvia prevista ${rainFormat(it)} mm" }
+
+internal fun WeatherNow.solarLine(now: Instant): String? {
+    val zone = solarTimeZone?.let { runCatching { ZoneId.of(it) }.getOrNull() } ?: SUN_ZONE
+    if (solarDate != now.atZone(zone).toLocalDate()) return null
+    val sunrise = sunriseAt ?: return null
+    val sunset = sunsetAt ?: return null
+    return "Salida ${SUN_TIME.format(sunrise.atZone(zone))} · Puesta ${SUN_TIME.format(sunset.atZone(zone))}"
+}
 
 /** The photograph remains visible; content grows naturally at enlarged font sizes. */
 @Composable
@@ -122,6 +132,16 @@ internal fun HomeWeatherHero(
                     }
                     when (val weather = state.weather) {
                         is FeedState.Value -> {
+                            weather.value.solarLine(now)?.let { line ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(MoSpacing.xs),
+                                    modifier = Modifier.testTag("home-weather-solar"),
+                                ) {
+                                    Icon(MoIcons.Sun, null, tint = MoSoftGold, modifier = Modifier.size(20.dp))
+                                    Text(line, style = MaterialTheme.typography.bodyMedium, color = MoWarmWhite)
+                                }
+                            }
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 WeatherTemperature(weather.value.temperatureC, Modifier.weight(1f), MoWarmWhite)
                                 WeatherConditionIcon(weather.value.condition, Modifier.size(56.dp), onPhoto = true)
@@ -226,6 +246,9 @@ internal fun WeatherConditionIcon(condition: WeatherCondition?, modifier: Modifi
 }
 
 /** #360: near-neutral, slightly warm shade over the hero photo (no olive cast). */
+private val SUN_ZONE = ZoneId.of("Europe/Madrid")
+private val SUN_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
 internal val HERO_SHADE = Color(0xFF1A1A16)
 internal const val HERO_SHADE_TOP = 0.10f
 /** Where the readable shade is reached: above the highest point any text below the brand can start. */

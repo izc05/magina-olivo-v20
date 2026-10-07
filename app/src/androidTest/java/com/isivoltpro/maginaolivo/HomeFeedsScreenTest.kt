@@ -19,6 +19,7 @@ import com.isivoltpro.maginaolivo.feature.home.HomeScreen
 import com.isivoltpro.maginaolivo.feature.home.HomeUiState
 import com.isivoltpro.maginaolivo.ui.theme.MaginaOlivoTheme
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -104,6 +105,43 @@ class HomeFeedsScreenTest {
         show(UiPolishFixtures.home.copy(weatherLocation = bedmar, weather = FeedState.Value(noProbability, "MET Norway", now, stale = false)))
         composeRule.onNodeWithTag("home-weather-rain", useUnmergedTree = true).assertDoesNotExist()
         composeRule.onNode(hasTestTag("home-weather-summary") and hasText("%", substring = true)).assertDoesNotExist()
+    }
+
+    @Test fun heroShowsTodaySunriseAndSunset() {
+        val solarWeather = WeatherNow(
+            18, WeatherCondition.CLEAR, 0, 7, now,
+            solarDate = LocalDate.parse("2026-11-26"),
+            solarTimeZone = "Europe/Madrid",
+            sunriseAt = Instant.parse("2026-11-26T07:05:00Z"),
+            sunsetAt = Instant.parse("2026-11-26T16:56:00Z"),
+        )
+        show(
+            UiPolishFixtures.home.copy(
+                today = LocalDate.parse("2026-11-26"),
+                weatherLocation = bedmar,
+                weather = FeedState.Value(solarWeather, "AEMET", now, stale = false),
+            ),
+        )
+        composeRule.onNodeWithTag("home-weather-summary").assertIsDisplayed()
+            .assertTextContains("Salida 08:05", substring = true).assertTextContains("Puesta 17:56", substring = true)
+    }
+
+    @Test fun heroNeverShowsYesterdaysSolarCacheAsToday() {
+        val yesterday = WeatherNow(
+            18, WeatherCondition.CLEAR, 0, 7, now,
+            solarDate = LocalDate.parse("2026-11-25"),
+            solarTimeZone = "Europe/Madrid",
+            sunriseAt = Instant.parse("2026-11-25T07:04:00Z"),
+            sunsetAt = Instant.parse("2026-11-25T16:57:00Z"),
+        )
+        show(
+            UiPolishFixtures.home.copy(
+                today = LocalDate.parse("2026-11-26"),
+                weatherLocation = bedmar,
+                weather = FeedState.Value(yesterday, "AEMET", now, stale = true),
+            ),
+        )
+        composeRule.onNodeWithTag("home-weather-solar").assertDoesNotExist()
     }
 
     @Test fun tappingHeroWeatherOpensTheWeek() {

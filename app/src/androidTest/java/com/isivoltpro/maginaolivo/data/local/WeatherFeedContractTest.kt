@@ -39,7 +39,16 @@ class WeatherFeedContractTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val bedmar = FeedLocation("Bedmar", "Jaén")
     private val start = Instant.parse("2026-11-26T09:00:00Z")
-    private val sunny = WeatherNow(22, WeatherCondition.CLEAR, 5, 11, Instant.parse("2026-11-26T10:00:00Z"))
+    private val sunny = WeatherNow(
+        22,
+        WeatherCondition.CLEAR,
+        5,
+        11,
+        Instant.parse("2026-11-26T10:00:00Z"),
+        solarDate = LocalDate.parse("2026-11-26"),
+        sunriseAt = Instant.parse("2026-11-26T07:05:00Z"),
+        sunsetAt = Instant.parse("2026-11-26T16:56:00Z"),
+    )
 
     private lateinit var db: MaginaOlivoDatabase
     private val clock = MovableClock(start)
