@@ -50,6 +50,7 @@ import com.isivoltpro.maginaolivo.domain.agenda.ReminderKind
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderReconciler
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderRequest
 import com.isivoltpro.maginaolivo.domain.agenda.ReminderRules
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.Instant
@@ -190,6 +191,7 @@ class OfflineFirstActivityRepository(
                             parcelNames = activity.targets.map { it.parcelName },
                             planning = activity.planning,
                             reminders = activity.reminders,
+                            activityEndDate = activity.activityEndDate,
                         )
                     }
                 },
@@ -254,6 +256,7 @@ class OfflineFirstActivityRepository(
         if (!command.asDraft && command.parcelIds.isEmpty()) {
             return AppResult.Failure(AppError.Validation("parcelIds", "empty"))
         }
+        validateDateRange(command.activityDate, command.activityEndDate)?.let { return it }
         validateDetail(command.type, command.detail)?.let { return it }
         notNegative("costMinor", command.costMinor?.toDouble())?.let { return it }
         MachineRules.validateUses(command.machines)?.let { return AppResult.Failure(AppError.Validation(it.field, it.code)) }
@@ -276,10 +279,15 @@ class OfflineFirstActivityRepository(
                 // device's temporary timezone. Pending work may still be planned in the future.
                 if (
                     command.completeImmediately && !command.asDraft &&
-                    command.type != ActivityType.HARVEST_DAY &&
-                    command.activityDate.isAfter(database.todayForWorkspace(farm.workspaceId, clock))
+                    command.type != ActivityType.HARVEST_DAY
                 ) {
-                    return@safely AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
+                    val today = database.todayForWorkspace(farm.workspaceId, clock)
+                    if (command.activityDate.isAfter(today)) {
+                        return@safely AppResult.Failure(AppError.Validation("activityDate", "future_completed_work"))
+                    }
+                    if (command.activityEndDate?.isAfter(today) == true) {
+                        return@safely AppResult.Failure(AppError.Validation("activityEndDate", "future_completed_work"))
+                    }
                 }
                 if (command.type == ActivityType.HARVEST_DAY) {
                     validateHarvestDayContext(
@@ -328,6 +336,7 @@ class OfflineFirstActivityRepository(
                         description = description,
                         notes = command.notes.normalized(),
                         metadata = pending(now),
+                        activityEndDate = command.activityEndDate,
                     ),
                 )
                 replaceDetail(id, farm.workspaceId, command.detail, now)
@@ -345,6 +354,7 @@ class OfflineFirstActivityRepository(
     override suspend fun update(id: UUID, changes: ActivityChanges): AppResult<Unit> {
         val description = changes.description.trim()
         if (description.isEmpty()) return AppResult.Failure(AppError.Validation("description", "blank"))
+        validateDateRange(changes.activityDate, changes.activityEndDate)?.let { return it }
         validateDetail(changes.type, changes.detail)?.let { return it }
         notNegative("costMinor", changes.costMinor?.toDouble())?.let { return it }
         // #429: only DRAFT and PLANNED work is editable, and neither carries money; a cost typed
@@ -380,6 +390,7 @@ class OfflineFirstActivityRepository(
                 current.copy(
                     type = changes.type.name,
                     activityDate = changes.activityDate,
+                    activityEndDate = changes.activityEndDate,
                     description = description,
                     notes = changes.notes.normalized(),
                     metadata = current.metadata.next(now),
@@ -791,6 +802,7 @@ class OfflineFirstActivityRepository(
                     customAt = if (kind == ReminderKind.CUSTOM) row.triggerAt.atZone(zone()).toLocalDateTime() else null,
                 )
             },
+            activityEndDate = activity.activityEndDate,
         )
 
     /**
@@ -825,6 +837,13 @@ class OfflineFirstActivityRepository(
             is ActivityDetail.Maintenance -> null
         }
     }
+
+    private fun validateDateRange(start: LocalDate, end: LocalDate?): AppResult.Failure? =
+        if (end != null && end.isBefore(start)) {
+            AppResult.Failure(AppError.Validation("activityEndDate", "before_start"))
+        } else {
+            null
+        }
 
     private fun notNegative(field: String, value: Double?): AppResult.Failure? =
         if (value != null && value < 0) AppResult.Failure(AppError.Validation(field, "negative")) else null

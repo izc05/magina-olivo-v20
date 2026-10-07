@@ -67,6 +67,8 @@ data class Activity(
     val planning: ActivityPlanning? = null,
     /** Its enabled local reminders (Phase 16). */
     val reminders: List<Reminder> = emptyList(),
+    /** Inclusive end; null means this Activity happened only on [activityDate]. */
+    val activityEndDate: LocalDate? = null,
 )
 
 /** One planned Activity as the Calendar lists it. */
@@ -80,6 +82,7 @@ data class AgendaEntry(
     val parcelNames: List<String>,
     val planning: ActivityPlanning?,
     val reminders: List<Reminder>,
+    val activityEndDate: LocalDate? = null,
 )
 
 data class NewActivity(
@@ -116,6 +119,7 @@ data class NewActivity(
      * Missing/null means “not confirmed yet”; the repository never infers the full Parcel silently.
      */
     val parcelAreasM2: Map<UUID, Double?> = emptyMap(),
+    val activityEndDate: LocalDate? = null,
 )
 
 data class ActivityChanges(
@@ -149,6 +153,7 @@ data class ActivityChanges(
      * A map containing parcelId -> null explicitly clears that Parcel's confirmed area.
      */
     val parcelAreasM2: Map<UUID, Double?>? = null,
+    val activityEndDate: LocalDate? = null,
 )
 
 /**

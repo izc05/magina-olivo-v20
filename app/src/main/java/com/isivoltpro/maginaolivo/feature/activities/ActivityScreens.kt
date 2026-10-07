@@ -411,6 +411,9 @@ internal fun workTypes(planning: Boolean): List<ActivityType> =
 internal fun ActivityType.needsAffectedArea(): Boolean =
     this == ActivityType.PHYTOSANITARY || this == ActivityType.FERTILIZATION || this == ActivityType.IRRIGATION
 
+internal fun ActivityType.needsDateInterval(): Boolean =
+    this == ActivityType.PHYTOSANITARY || this == ActivityType.FERTILIZATION || this == ActivityType.IRRIGATION
+
 private fun ActivityType.shortDescription(): String = when (this) {
     ActivityType.OBSERVATION -> "Revisar el estado del olivar"
     ActivityType.PRUNING -> "Poda de los olivos"
@@ -461,7 +464,7 @@ private fun ActivityRow(activity: Activity, onSelected: (UUID) -> Unit) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(activity.description, style = MaterialTheme.typography.titleSmall, maxLines = 2)
                 Text(
-                    "${activity.type.label()} · ${activity.activityDate.format(ROW_DATE)}",
+                    "${activity.type.label()} · ${activity.compactDateLabel()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MoTextSecondary,
                     maxLines = 1,
@@ -507,6 +510,8 @@ internal fun ActivityEditor(
 ) {
     var description by rememberSaveable(initial.description) { mutableStateOf(initial.description) }
     var date by rememberSaveable(initial.activityDate) { mutableStateOf(initial.activityDate?.toString().orEmpty()) }
+    var endDate by rememberSaveable(initial.activityEndDate) { mutableStateOf(initial.activityEndDate?.toString().orEmpty()) }
+    var intervalOpen by rememberSaveable(initial.activityEndDate) { mutableStateOf(initial.activityEndDate != null) }
     var notes by rememberSaveable(initial.notes) { mutableStateOf(initial.notes) }
     var type by rememberSaveable(initial.type) { mutableStateOf(initial.type.name) }
     var selected by rememberSaveable(initial.parcelIds) { mutableStateOf(initial.parcelIds.map(UUID::toString)) }
@@ -720,19 +725,58 @@ internal fun ActivityEditor(
             modifier = Modifier.testTag("activity-description"),
         )
         // #435/#414: work already done cannot be dated ahead; it is never saved as a quiet plan.
+        val parsedStart = runCatching { LocalDate.parse(date) }.getOrNull()
+        val activityType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
+        val intervalRelevant = activityType.needsDateInterval() || initial.activityEndDate != null
+        val parsedEnd = endDate
+            .takeIf { intervalRelevant && intervalOpen }
+            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
         val futureDoneWork = isFutureDoneWork(
-            activityDate = runCatching { LocalDate.parse(date) }.getOrNull(),
+            activityDate = parsedStart,
             today = today,
             doneWork = doneWork,
             type = selectedType,
         )
+        val futureDoneEnd = isFutureDoneWork(
+            activityDate = parsedEnd,
+            today = today,
+            doneWork = doneWork,
+            type = selectedType,
+        )
+        val endBeforeStart = parsedStart != null && parsedEnd != null && parsedEnd.isBefore(parsedStart)
+        val missingEnd = intervalRelevant && intervalOpen && endDate.isBlank()
         MoDateInputField(
             date, { date = it }, "Fecha",
             isError = dateError != null || futureDoneWork,
             supportingText = if (futureDoneWork) FUTURE_DONE_WORK else dateError,
             modifier = Modifier.testTag("activity-date"),
         )
-        val activityType = runCatching { ActivityType.valueOf(type) }.getOrDefault(ActivityType.OTHER)
+        if (intervalRelevant) {
+            if (!intervalOpen) {
+                TextButton(
+                    onClick = { intervalOpen = true },
+                    modifier = Modifier.testTag("activity-date-interval-open"),
+                ) { Text("Duró varios días") }
+            } else {
+                MoDateInputField(
+                    endDate,
+                    { endDate = it },
+                    "Hasta",
+                    isError = missingEnd || endBeforeStart || futureDoneEnd,
+                    supportingText = when {
+                        missingEnd -> "Selecciona la fecha final"
+                        endBeforeStart -> "La fecha final no puede ser anterior a la inicial"
+                        futureDoneEnd -> FUTURE_DONE_WORK
+                        else -> "Último día incluido"
+                    },
+                    modifier = Modifier.testTag("activity-end-date"),
+                )
+                TextButton(
+                    onClick = { intervalOpen = false; endDate = "" },
+                    modifier = Modifier.testTag("activity-date-single-day"),
+                ) { Text("Fue un solo día") }
+            }
+        }
         if (activityType.hasTypedDetail()) {
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -901,6 +945,7 @@ internal fun ActivityEditor(
                 val machineUses = readMachines() ?: return@MoPrimaryButton
                 val planned = readPlanning() ?: return@MoPrimaryButton
                 if (!readTypedDetail()) return@MoPrimaryButton
+                if (missingEnd || endBeforeStart || futureDoneEnd) return@MoPrimaryButton
                 val parcelAreas = readParcelAreas() ?: return@MoPrimaryButton
                 onSave(
                     ActivityDraft(
@@ -919,10 +964,12 @@ internal fun ActivityEditor(
                         reminders = planned.reminders,
                         parcelAreasM2 = parcelAreas,
                         campaignId = selectedCampaign?.id,
+                        activityEndDate = parsedEnd,
                     ),
                 )
             },
-            modifier = Modifier.fillMaxWidth().testTag("save-activity"), enabled = !isSaving && !futureDoneWork,
+            modifier = Modifier.fillMaxWidth().testTag("save-activity"),
+            enabled = !isSaving && !futureDoneWork && !futureDoneEnd && !missingEnd && !endBeforeStart,
         )
         onSaveDraft?.let { saveDraft ->
             MoSecondaryButton(
@@ -931,6 +978,7 @@ internal fun ActivityEditor(
                     val machineUses = readMachines() ?: return@MoSecondaryButton
                     val planned = readPlanning() ?: return@MoSecondaryButton
                     if (!readTypedDetail()) return@MoSecondaryButton
+                    if (missingEnd || endBeforeStart) return@MoSecondaryButton
                     val parcelAreas = readParcelAreas() ?: return@MoSecondaryButton
                     saveDraft(
                         ActivityDraft(
@@ -948,7 +996,8 @@ internal fun ActivityEditor(
                             planning = planned.planning,
                             reminders = planned.reminders,
                             parcelAreasM2 = parcelAreas,
-                        campaignId = selectedCampaign?.id,
+                            campaignId = selectedCampaign?.id,
+                            activityEndDate = parsedEnd,
                         ),
                     )
                 },
@@ -1218,6 +1267,7 @@ fun ActivityDetailScreen(
                     machines = activity.machines.map { MachineUseInput(it.machineId, it.startHours, it.endHours, it.usageHours) },
                     planning = activity.planning,
                     reminders = activity.reminders.map { it.toRequest() },
+                    activityEndDate = activity.activityEndDate,
                 ),
                 title = "Editar trabajo",
                 // A retired machine the Activity already named stays choosable here only.
@@ -1582,7 +1632,7 @@ private fun ActivityHeaderCard(activity: Activity) {
                 MoStatusChip(activity.status.label(), tone = activity.status.tone())
             }
             HeaderLine(activity.type.icon(), activity.type.label())
-            HeaderLine(MoIcons.Calendar, activity.activityDate.format(HEADER_DATE).replaceFirstChar { it.titlecase(SPANISH_LOCALE) })
+            HeaderLine(MoIcons.Calendar, activity.headerDateLabel())
             activity.targets.takeIf { it.isNotEmpty() }?.let { targets ->
                 HeaderLine(MoIcons.Parcels, if (targets.size == 1) targets.single().parcelName else "${targets.size} parcelas")
             }
@@ -1602,6 +1652,16 @@ private fun HeaderLine(icon: androidx.compose.ui.graphics.vector.ImageVector, te
 private val SPANISH_LOCALE: java.util.Locale = java.util.Locale.forLanguageTag("es-ES")
 private val ROW_DATE: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", SPANISH_LOCALE)
 private val HEADER_DATE: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("EEEE d 'de' MMMM yyyy", SPANISH_LOCALE)
+private val RANGE_END_DATE: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", SPANISH_LOCALE)
+
+internal fun Activity.compactDateLabel(): String =
+    activityEndDate?.let { "${activityDate.format(ROW_DATE)}–${it.format(RANGE_END_DATE)}" }
+        ?: activityDate.format(ROW_DATE)
+
+internal fun Activity.headerDateLabel(): String {
+    val start = activityDate.format(HEADER_DATE).replaceFirstChar { it.titlecase(SPANISH_LOCALE) }
+    return activityEndDate?.let { "$start · hasta ${it.format(HEADER_DATE)}" } ?: start
+}
 
 private fun hectaresLabel(areaM2: Double): String =
     "${java.text.NumberFormat.getNumberInstance(SPANISH_LOCALE).apply { maximumFractionDigits = 2 }.format(areaM2 / 10_000)} ha"

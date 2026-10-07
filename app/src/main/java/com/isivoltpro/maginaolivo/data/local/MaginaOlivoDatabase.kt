@@ -66,7 +66,7 @@ import com.isivoltpro.maginaolivo.data.local.entity.UserProfileEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WeatherCacheEntity
 import com.isivoltpro.maginaolivo.data.local.entity.WorkspaceEntity
 
-private const val DATABASE_VERSION = 22
+private const val DATABASE_VERSION = 23
 
 @Database(
     entities = [
