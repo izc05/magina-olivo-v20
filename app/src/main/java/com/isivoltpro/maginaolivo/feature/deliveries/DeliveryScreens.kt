@@ -905,13 +905,15 @@ fun DeliveryDetailScreen(
                         DetailValue("Rendimiento industrial", analysis.industrialYieldHundredths?.let(Percent::format))
                         DetailValue("Fecha del análisis", analysis.analysisDate?.let(DATE_FORMAT::format))
                     }
-                    MoSecondaryButton(
-                        if (analysis == null) "Añadir rendimiento" else "Corregir rendimiento",
-                        { sheet = "yield" },
-                        Modifier.fillMaxWidth().testTag("edit-yield"),
-                        enabled = !state.isSaving,
-                    )
-                    if (analysis != null) {
+                    if (analysis == null || delivery.editable) {
+                        MoSecondaryButton(
+                            if (analysis == null) "Añadir rendimiento" else "Corregir rendimiento",
+                            { sheet = "yield" },
+                            Modifier.fillMaxWidth().testTag("edit-yield"),
+                            enabled = !state.isSaving,
+                        )
+                    }
+                    if (analysis != null && delivery.editable) {
                         MoSecondaryButton("Quitar rendimiento", { sheet = "remove-yield" }, Modifier.fillMaxWidth())
                     }
                     if (delivery.editable) {
@@ -928,7 +930,11 @@ fun DeliveryDetailScreen(
                         )
                     } else {
                         Text(
-                            "La campaña está cerrada: la pesada forma parte del histórico. El rendimiento sí puede añadirse.",
+                            if (analysis == null) {
+                                "La campaña está cerrada: la pesada forma parte del histórico. El rendimiento pendiente sí puede añadirse."
+                            } else {
+                                "La campaña está cerrada y el rendimiento ya está confirmado. Para corregir este histórico, reabre la campaña."
+                            },
                             color = MoTextSecondary,
                             modifier = Modifier.testTag("delivery-read-only"),
                         )
