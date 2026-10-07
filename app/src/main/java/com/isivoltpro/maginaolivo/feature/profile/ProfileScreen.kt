@@ -61,7 +61,6 @@ import com.isivoltpro.maginaolivo.ui.theme.MoTextSecondary
 fun ProfileRoute(
     appVersion: String,
     onMachinery: () -> Unit,
-    onAgronomicPeople: () -> Unit,
     developerGalleryEnabled: Boolean,
     onDeveloperGallery: () -> Unit,
     persistence: LocalPersistence? = null,
@@ -69,6 +68,8 @@ fun ProfileRoute(
     onHelp: (HelpTopic) -> Unit = {},
     /** #399: DEV/QA demo farm; null outside the dev flavor, so nothing is shown there. */
     demoFarm: com.isivoltpro.maginaolivo.app.DemoFarmTools? = null,
+    /** #671: nested CUE resource management, never a bottom-bar destination. */
+    onAgronomicPeople: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val profileRepository = persistence?.profileRepository
@@ -136,7 +137,6 @@ fun ProfileScreen(
     notificationsOn: Boolean,
     onNotifications: () -> Unit,
     onMachinery: () -> Unit,
-    onAgronomicPeople: () -> Unit = {},
     developerGalleryEnabled: Boolean = false,
     onDeveloperGallery: () -> Unit = {},
     /** Phase 21C: Perfil → Ayuda y privacidad; rows are hidden where no navigation exists. */
@@ -147,6 +147,8 @@ fun ProfileScreen(
     reminderSettings: (@Composable () -> Unit)? = null,
     /** #399: «Herramientas de desarrollo», only in the dev flavor. */
     devTools: (@Composable () -> Unit)? = null,
+    /** #671: CUE resources live under Perfil, not in the root navigation. */
+    onAgronomicPeople: () -> Unit = {},
 ) {
     Column(
         Modifier
