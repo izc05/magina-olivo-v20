@@ -15,6 +15,7 @@ import {
 import { aemetDocument, parseAemetDaily, parseAemetHourly } from "./aemet.ts";
 import { metnoDocument, parseMetNo } from "./metno.ts";
 import { type MasterEntry, resolveMunicipality } from "./municipalities.ts";
+import { solarTimesFor } from "./solar.ts";
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -85,6 +86,7 @@ function respond(provider: ProviderId, place: Place, reading: { current: Current
       location: { code: place.code, name: place.name, province: place.province },
       current: reading.current,
       daily: reading.daily,
+      solar: solarTimesFor(now, place.latitude, place.longitude),
     },
   };
 }
