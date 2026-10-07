@@ -106,6 +106,34 @@ class HomeFeedsScreenTest {
         composeRule.onNode(hasTestTag("home-weather-summary") and hasText("%", substring = true)).assertDoesNotExist()
     }
 
+    @Test fun heroShowsTodaySunriseAndSunsetButNeverYesterdaysSolarCache() {
+        val solarWeather = WeatherNow(
+            18, WeatherCondition.CLEAR, 0, 7, now,
+            solarDate = LocalDate.parse("2026-11-26"),
+            sunriseAt = Instant.parse("2026-11-26T07:05:00Z"),
+            sunsetAt = Instant.parse("2026-11-26T16:56:00Z"),
+        )
+        show(
+            UiPolishFixtures.home.copy(
+                today = LocalDate.parse("2026-11-26"),
+                weatherLocation = bedmar,
+                weather = FeedState.Value(solarWeather, "AEMET", now, stale = false),
+            ),
+        )
+        composeRule.onNodeWithTag("home-weather-solar").assertIsDisplayed()
+            .assertTextContains("Salida 08:05").assertTextContains("Puesta 17:56")
+
+        val yesterday = solarWeather.copy(solarDate = LocalDate.parse("2026-11-25"))
+        show(
+            UiPolishFixtures.home.copy(
+                today = LocalDate.parse("2026-11-26"),
+                weatherLocation = bedmar,
+                weather = FeedState.Value(yesterday, "AEMET", now, stale = true),
+            ),
+        )
+        composeRule.onNodeWithTag("home-weather-solar").assertDoesNotExist()
+    }
+
     @Test fun tappingHeroWeatherOpensTheWeek() {
         var opened = 0
         show(UiPolishFixtures.home.copy(weatherLocation = bedmar), onWeatherWeek = { opened++ })
