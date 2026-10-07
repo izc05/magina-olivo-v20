@@ -107,6 +107,8 @@ Reconciliación: Holding oficial distinto de Farm. DGC oficial y SIGPAC no susti
 
 ## Gaps pendientes para cerrar #536
 
+Ampliación 2026-10-07: [matriz digital observada](DIGITAL-FIELD-MATRIX.md) cruza tratamientos Anexo V con descriptor incrustado y registra riego/suelos. Avanza los gaps siguientes sin declarar completo el schema/catálogos.
+
 - Leer y cruzar Anexo V 3.11, descriptores CUE/REA incrustados y catálogos VII para campos, precisión, obligatoriedad y códigos; no se declara matriz digital exacta cerrada en este slice.
 - Cruzar VIII/IX/X, autorización/revocación y alta #555. El flujo descrito en VI no acredita autorización concedida.
 - Completar fertilización/riego/suelos/cosecha y modelo #540: los métodos genéricos no acreditan un payload específico.
