@@ -670,6 +670,76 @@ class DayCostContractTest {
         it.moveToFirst(); it.getInt(0)
     }
 
+    @Test
+    fun dayCostRatesAndChoicesNeverCrossWorkspace() = runBlocking {
+        val otherWorkspace = UUID.randomUUID()
+        val otherFarm = UUID.randomUUID()
+        val otherCampaign = UUID.randomUUID()
+        val otherDay = UUID.randomUUID()
+        val otherExpense = UUID.randomUUID()
+        val meta = LocalMetadata(now, now)
+        db.workspaceDao().upsert(
+            WorkspaceEntity(otherWorkspace, "Otro olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
+        )
+        db.farmDao().upsert(FarmEntity(otherFarm, otherWorkspace, "Finca B", metadata = meta))
+        db.campaignDao().upsert(
+            CampaignEntity(
+                otherCampaign, otherWorkspace, otherFarm, "B 2026/27",
+                LocalDate.parse("2026-10-01"), null, CampaignStatus.ACTIVE, metadata = meta,
+            ),
+        )
+        db.harvestDao().upsert(
+            com.isivoltpro.maginaolivo.data.local.entity.HarvestEntity(
+                otherDay, otherWorkspace, otherCampaign, otherFarm, day, 0, metadata = meta,
+            ),
+        )
+        db.expenseDao().upsert(
+            ExpenseEntity(
+                id = otherExpense,
+                workspaceId = otherWorkspace,
+                expenseDate = day,
+                concept = "Gasto B",
+                category = ExpenseCategory.LABOUR.name,
+                amountMinor = 5_000,
+                currency = "EUR",
+                status = ExpenseStatus.POSTED.name,
+                origin = ExpenseOrigin.MANUAL.name,
+                farmId = otherFarm,
+                campaignId = otherCampaign,
+                metadata = meta,
+            ),
+        )
+        val otherScope = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(otherWorkspace)
+        }
+        val otherCosts = OfflineFirstDayCostRepository(
+            db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = otherScope,
+        )
+        ok(otherCosts.saveRates(otherFarm, RecollectionRates(fullDayMinor = 8_000)))
+        assertEquals(8_000L, otherCosts.observeRates(otherFarm).first().fullDayMinor)
+
+        // A neither sees nor changes B's rates or day decisions.
+        assertNull(costs.observeRates(otherFarm).first().fullDayMinor)
+        val ratesBefore = db.recollectionRatesDao().findForFarm(otherFarm)!!
+        val expenseBefore = db.expenseDao().findById(otherExpense)!!
+        val outboxBefore = db.syncOutboxDao().listForEntity(SyncEntityType.EXPENSE, otherExpense)
+
+        fun assertContext(result: AppResult<*>) {
+            assertEquals(
+                AppError.Validation("workspaceId", "context_mismatch"),
+                (result as? AppResult.Failure)?.error,
+            )
+        }
+        assertContext(costs.saveRates(otherFarm, RecollectionRates(fullDayMinor = 9_000)))
+        assertContext(costs.preferCalculated(otherDay, DayCostKind.LABOUR))
+        assertNull(costs.questionFor(otherDay, ExpenseCategory.LABOUR))
+        assertContext(costs.linkToDay(otherExpense, otherDay))
+
+        assertEquals(ratesBefore, db.recollectionRatesDao().findForFarm(otherFarm))
+        assertEquals(expenseBefore, db.expenseDao().findById(otherExpense))
+        assertEquals(outboxBefore, db.syncOutboxDao().listForEntity(SyncEntityType.EXPENSE, otherExpense))
+    }
+
     private fun cost(harvestId: UUID, kind: JornadaExpenseKind, amountMinor: Long) = ExpenseDraft(
         expenseDate = day,
         concept = kind.label,
@@ -689,7 +759,9 @@ class DayCostContractTest {
         labour = OfflineFirstLabourRepository(db, workspaces, clock, RandomIds, TestDispatchers)
         equipment = OfflineFirstEquipmentRepository(db, clock, RandomIds, TestDispatchers)
         expenses = OfflineFirstExpenseRepository(db, workspaces, clock, RandomIds, TestDispatchers)
-        costs = OfflineFirstDayCostRepository(db, clock, RandomIds, TestDispatchers)
+        costs = OfflineFirstDayCostRepository(
+            db, clock, RandomIds, TestDispatchers, workspaceRepository = workspaces,
+        )
     }
 
     private suspend fun seed() {
