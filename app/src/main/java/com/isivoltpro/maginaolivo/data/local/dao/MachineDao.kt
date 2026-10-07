@@ -27,11 +27,11 @@ interface MachineDao {
     @Query("SELECT * FROM machines WHERE id = :id LIMIT 1")
     suspend fun findById(id: UUID): MachineEntity?
 
-    @Query("SELECT * FROM machines WHERE id = :id AND deleted_at IS NULL LIMIT 1")
-    fun observeById(id: UUID): Flow<MachineEntity?>
+    @Query("SELECT * FROM machines WHERE id = :id AND workspace_id = :workspaceId AND deleted_at IS NULL LIMIT 1")
+    fun observeById(workspaceId: UUID, id: UUID): Flow<MachineEntity?>
 
-    @Query("SELECT * FROM machines WHERE status = :status AND deleted_at IS NULL ORDER BY name COLLATE NOCASE, id")
-    fun observeByStatus(status: String): Flow<List<MachineEntity>>
+    @Query("SELECT * FROM machines WHERE workspace_id = :workspaceId AND status = :status AND deleted_at IS NULL ORDER BY name COLLATE NOCASE, id")
+    fun observeByStatus(workspaceId: UUID, status: String): Flow<List<MachineEntity>>
 
     @Query(
         """
@@ -48,11 +48,11 @@ interface MachineDao {
                am.start_hours AS startHours, am.end_hours AS endHours, am.usage_hours AS usageHours
         FROM activity_machines am
         JOIN activities a ON a.id = am.activity_id
-        WHERE am.machine_id = :machineId AND a.deleted_at IS NULL
+        WHERE am.machine_id = :machineId AND a.workspace_id = :workspaceId AND a.deleted_at IS NULL
         ORDER BY a.activity_date DESC, a.id
         """,
     )
-    fun observeUses(machineId: UUID): Flow<List<MachineUseRow>>
+    fun observeUses(workspaceId: UUID, machineId: UUID): Flow<List<MachineUseRow>>
 
     @Query("SELECT * FROM activity_machines WHERE activity_id = :activityId")
     suspend fun listForActivity(activityId: UUID): List<ActivityMachineEntity>
