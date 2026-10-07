@@ -98,6 +98,65 @@ class MachineryContractTest {
         )
     }
 
+    @Test
+    fun machineCatalogDetailsUsesAndMutationsStayInsideWorkspace() = runBlocking {
+        val otherWorkspace = UUID.randomUUID()
+        val otherFarm = UUID.randomUUID()
+        val foreignMachine = UUID.randomUUID()
+        val foreignActivity = UUID.randomUUID()
+        val meta = LocalMetadata(now, now)
+
+        db.workspaceDao().upsert(
+            WorkspaceEntity(otherWorkspace, "Otro olivar", UUID.randomUUID(), "ES", "Europe/Madrid", "es-ES", "EUR", meta),
+        )
+        db.farmDao().upsert(FarmEntity(otherFarm, otherWorkspace, "Finca B", metadata = meta))
+        db.machineDao().upsert(
+            com.isivoltpro.maginaolivo.data.local.entity.MachineEntity(
+                foreignMachine, otherWorkspace, "Tractor", MachineCategory.TRACTOR.name,
+                status = "ACTIVE", metadata = meta,
+            ),
+        )
+        db.activityDao().upsert(
+            com.isivoltpro.maginaolivo.data.local.entity.ActivityEntity(
+                id = foreignActivity,
+                workspaceId = otherWorkspace,
+                farmId = otherFarm,
+                activityDate = day,
+                type = ActivityType.SOIL_WORK.name,
+                status = com.isivoltpro.maginaolivo.data.local.model.ActivityStatus.COMPLETED,
+                description = "Trabajo B",
+                metadata = meta,
+            ),
+        )
+        db.machineDao().insertUses(
+            listOf(
+                com.isivoltpro.maginaolivo.data.local.entity.ActivityMachineEntity(
+                    foreignActivity, foreignMachine, usageHours = 2.0,
+                ),
+            ),
+        )
+
+        val ownMachine = ok(machines.create(MachineDraft("Tractor", MachineCategory.TRACTOR)))
+        assertEquals(listOf(ownMachine), machines.observeActive().first().map { it.id })
+        assertEquals(null, machines.observe(foreignMachine).first())
+        assertTrue(machines.observeUses(foreignMachine).first().isEmpty())
+        assertTrue(activities.observeSelectableMachines().first().none { it.id == foreignMachine })
+
+        val before = db.machineDao().findById(foreignMachine)!!
+        assertValidation("machine", machines.update(foreignMachine, MachineDraft("Manipulada")))
+        assertValidation("machine", machines.archive(foreignMachine))
+        assertValidation("machine", machines.restore(foreignMachine))
+        assertEquals(before, db.machineDao().findById(foreignMachine))
+        assertTrue(db.syncOutboxDao().listForEntity(SyncEntityType.MACHINE, foreignMachine).isEmpty())
+
+        val otherWorkspaces = object : WorkspaceRepository {
+            override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(otherWorkspace)
+        }
+        val otherMachines = OfflineFirstMachineRepository(db, otherWorkspaces, FixedClock(now), RandomIds, TestDispatchers)
+        assertEquals(listOf(foreignMachine), otherMachines.observeActive().first().map { it.id })
+        assertEquals(1, otherMachines.observeUses(foreignMachine).first().size)
+    }
+
     // ------------------------------------------------------------ part of the Activity aggregate
 
     @Test
@@ -188,7 +247,9 @@ class MachineryContractTest {
             override suspend fun ensureLocalWorkspace(): AppResult<UUID> = AppResult.Success(workspaceId)
         }
         machines = OfflineFirstMachineRepository(db, workspaces, FixedClock(now), RandomIds, TestDispatchers)
-        activities = OfflineFirstActivityRepository(db, FixedClock(now), RandomIds, TestDispatchers)
+        activities = OfflineFirstActivityRepository(
+            db, FixedClock(now), RandomIds, TestDispatchers, workspaceRepository = workspaces,
+        )
     }
 
     private suspend fun seed() {
