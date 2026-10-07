@@ -18,7 +18,7 @@ class PostErrorMessageTest {
     @Test fun aDateAheadIsSaid() {
         assertEquals(
             "La fecha de este gasto es posterior a hoy. Corrígela antes de confirmarlo.",
-            postErrorMessage(AppError.Validation("expenseDate", "future")),
+            postErrorMessage(AppError.Validation("expenseDate", "future_real_expense")),
         )
     }
 
