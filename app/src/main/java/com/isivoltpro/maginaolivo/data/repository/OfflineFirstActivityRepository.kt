@@ -513,6 +513,9 @@ class OfflineFirstActivityRepository(
         if (date.isBefore(campaign.startDate)) {
             return AppResult.Failure(AppError.Validation("activityDate", "before_campaign"))
         }
+        if (campaign.endDate != null && date.isAfter(campaign.endDate)) {
+            return AppResult.Failure(AppError.Validation("activityDate", "after_campaign"))
+        }
         val campaignParcels = database.campaignDao().listSnapshots(campaignId).map { it.parcelId }.toSet()
         if (!campaignParcels.containsAll(parcelIds)) {
             return AppResult.Failure(AppError.Validation("parcelIds", "not_in_campaign"))

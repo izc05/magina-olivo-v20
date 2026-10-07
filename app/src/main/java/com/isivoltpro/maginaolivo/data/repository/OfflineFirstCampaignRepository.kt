@@ -159,7 +159,13 @@ class OfflineFirstCampaignRepository(
 
     override suspend fun closeToday(id: UUID): AppResult<Unit> =
         mutate(id, "close_campaign_today") { current, now ->
-            closeCurrent(current, database.todayForWorkspace(current.workspaceId, clock), now)
+            // #428: a reopened historical Campaign keeps its original close boundary.
+            // “Cerrar hoy” means today only for a Campaign that never had a close date.
+            closeCurrent(
+                current,
+                current.endDate ?: database.todayForWorkspace(current.workspaceId, clock),
+                now,
+            )
         }
 
     private suspend fun closeAt(id: UUID, endDate: LocalDate, operation: String): AppResult<Unit> =
@@ -204,7 +210,10 @@ class OfflineFirstCampaignRepository(
             return@mutate conflict("archived_farm")
         }
         if (database.campaignDao().countOtherCurrent(current.farmId, id) > 0) return@mutate conflict("active_campaign_exists")
-        database.campaignDao().upsert(current.copy(status = CampaignStatus.ACTIVE, endDate = null, metadata = current.metadata.next(now)))
+        // #428 invariant: keep endDate as the correction boundary. Reopening history must not
+        // turn an old Campaign into an unbounded current one. Only explicit close(id, newEndDate)
+        // may change that historical boundary.
+        database.campaignDao().upsert(current.copy(status = CampaignStatus.ACTIVE, metadata = current.metadata.next(now)))
         enqueue(id, OutboxOperation.UPDATE, now)
         AppResult.Success(Unit)
     }

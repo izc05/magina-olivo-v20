@@ -305,6 +305,22 @@ class ActivityEngineContractTest {
         )
         assertValidation("campaignId", closed)
         assertEquals("closed", ((closed as AppResult.Failure).error as AppError.Validation).code)
+
+        // #428: reopening for corrections keeps the historical endDate as an upper boundary.
+        db.campaignDao().upsert(
+            db.campaignDao().findById(campaignId)!!.copy(status = CampaignStatus.ACTIVE),
+        )
+        val afterBoundary = repository.create(
+            NewActivity(
+                farmId, campaignId, ActivityType.HARVEST_DAY,
+                today.plusDays(1), "Fuera del histórico", setOf(parcelA),
+            ),
+        )
+        assertValidation("activityDate", afterBoundary)
+        assertEquals(
+            "after_campaign",
+            ((afterBoundary as AppResult.Failure).error as AppError.Validation).code,
+        )
     }
 
     @Test

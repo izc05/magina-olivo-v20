@@ -244,6 +244,42 @@ class HarvestContractTest {
         assertEquals(0, count("harvests"))
     }
 
+    @Test
+    fun reopenedHistoricalCampaignKeepsJornadasInsideItsOriginalBoundary() = runBlocking {
+        val existing = ok(harvests.create(draft(2_000_000, north to null)))
+        val campaign = db.campaignDao().findById(campaignId)!!
+        db.campaignDao().upsert(
+            campaign.copy(status = CampaignStatus.ACTIVE, endDate = day),
+        )
+        val afterBoundary = day.plusDays(1)
+
+        val create = harvests.create(draft(1_000_000, north to null).copy(harvestDate = afterBoundary))
+        assertValidation("harvestDate", create)
+        assertEquals(
+            "after_campaign",
+            ((create as AppResult.Failure).error as AppError.Validation).code,
+        )
+
+        val update = harvests.update(
+            existing,
+            draft(2_500_000, north to null).copy(harvestDate = afterBoundary),
+        )
+        assertValidation("harvestDate", update)
+        assertEquals(
+            "after_campaign",
+            ((update as AppResult.Failure).error as AppError.Validation).code,
+        )
+
+        val open = harvests.openJornada(farmId, afterBoundary)
+        assertValidation("harvestDate", open)
+        assertEquals(
+            "after_campaign",
+            ((open as AppResult.Failure).error as AppError.Validation).code,
+        )
+        assertEquals(day, harvests.observe(existing).first()!!.harvestDate)
+        assertEquals(2_000_000L, harvests.observe(existing).first()!!.totalGrams)
+    }
+
     // ------------------------------------------------------------ history
 
     @Test

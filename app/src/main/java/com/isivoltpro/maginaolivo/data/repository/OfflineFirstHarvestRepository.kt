@@ -116,6 +116,9 @@ class OfflineFirstHarvestRepository(
             if (draft.harvestDate.isBefore(campaign.startDate)) {
                 return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "before_campaign"))
             }
+            if (campaign.endDate != null && draft.harvestDate.isAfter(campaign.endDate)) {
+                return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "after_campaign"))
+            }
             val id = idGenerator.newId()
             val now = clock.nowInstant()
             database.harvestDao().upsert(
@@ -159,6 +162,9 @@ class OfflineFirstHarvestRepository(
             if (date.isBefore(campaign.startDate)) {
                 return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "before_campaign"))
             }
+            if (campaign.endDate != null && date.isAfter(campaign.endDate)) {
+                return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "after_campaign"))
+            }
             if (database.harvestDao().listCampaignParcels(campaign.id).isEmpty()) {
                 return@inTransaction AppResult.Failure(AppError.Validation("parcels", "empty"))
             }
@@ -177,6 +183,9 @@ class OfflineFirstHarvestRepository(
             if (campaign == null || campaign.status !in RUNNING) return@inTransaction conflict("closed_campaign")
             if (draft.harvestDate.isBefore(campaign.startDate)) {
                 return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "before_campaign"))
+            }
+            if (campaign.endDate != null && draft.harvestDate.isAfter(campaign.endDate)) {
+                return@inTransaction AppResult.Failure(AppError.Validation("harvestDate", "after_campaign"))
             }
             if (current.dayOrigin == AUTO_DAY) return@inTransaction updateAutoDay(current, draft)
             validate(draft, current.workspaceId)?.let { return@inTransaction it }

@@ -128,6 +128,9 @@ internal class DeliveryWriter(
 
     private fun checkDate(draft: DeliveryDraft, campaign: CampaignEntity) {
         if (draft.deliveryDate.isBefore(campaign.startDate)) throw InvalidDelivery("deliveryDate", "before_campaign")
+        if (campaign.endDate != null && draft.deliveryDate.isAfter(campaign.endDate)) {
+            throw InvalidDelivery("deliveryDate", "after_campaign")
+        }
     }
 
     /**
