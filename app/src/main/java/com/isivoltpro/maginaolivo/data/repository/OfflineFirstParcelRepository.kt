@@ -198,6 +198,15 @@ class OfflineFirstParcelRepository(
 
     override suspend fun archive(parcelId: UUID): AppResult<Unit> = mutate(parcelId, "archive_parcel") { current, now ->
         if (current.metadata.deletedAt != null) return@mutate AppResult.Success(Unit)
+        // #427: a snapshot is history; current Campaign/work/planned money must be resolved explicitly.
+        when {
+            database.campaignDao().countBlockingForParcel(parcelId) > 0 ->
+                return@mutate AppResult.Failure(AppError.Conflict("archive_blocked_campaign"))
+            database.activityDao().countPlannedForParcel(parcelId) > 0 ->
+                return@mutate AppResult.Failure(AppError.Conflict("archive_blocked_planned_activity"))
+            database.expenseDao().countDraftForParcel(parcelId) > 0 ->
+                return@mutate AppResult.Failure(AppError.Conflict("archive_blocked_draft_expense"))
+        }
         database.parcelDao().findCurrentMembership(parcelId)?.let { membership ->
             database.parcelDao().upsertMembership(
                 membership.copy(validUntil = now, metadata = membership.metadata.next(now)),
